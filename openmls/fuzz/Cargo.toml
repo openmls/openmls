@@ -44,4 +44,4 @@ doc = false
 
 # Patching unreleased crates
 [patch.crates-io]
-tls_codec = { git = "https://github.com/RustCrypto/formats.git", features = ["derive", "serde_serialize"] }
+tls_codec = { git = "https://github.com/RustCrypto/formats.git", features = ["derive", "serde_serialize", "mls"] }
