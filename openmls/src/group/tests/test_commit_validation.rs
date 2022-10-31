@@ -263,7 +263,7 @@ fn test_valsem201(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
         panic!("Unexpected content type.");
     };
 
-    commit_content.proposals = vec![].into();
+    commit_content.proposals = vec![];
 
     update.set_content(MlsContentBody::Commit(commit_content));
 

@@ -260,7 +260,7 @@ impl GroupInfo {
     /// Set the extensions.
     #[cfg(test)]
     pub(crate) fn set_extensions(&mut self, extensions: Vec<Extension>) {
-        self.payload.extensions = extensions.into();
+        self.payload.extensions = extensions;
     }
 
     /// Returns the confirmation tag.
