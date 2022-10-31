@@ -554,8 +554,8 @@
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">Welcome</span> {
     <span class="ident">version</span>: <span class="ident">ProtocolVersion</span>,
     <span class="ident">cipher_suite</span>: <span class="ident">Ciphersuite</span>,
-    <span class="ident">secrets</span>: <span class="ident">TlsVecU32</span><span class="op">&lt;</span><span class="ident">EncryptedGroupSecrets</span><span class="op">&gt;</span>,
-    <span class="ident">encrypted_group_info</span>: <span class="ident">TlsByteVecU32</span>,
+    <span class="ident">secrets</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">EncryptedGroupSecrets</span><span class="op">&gt;</span>,
+    <span class="ident">encrypted_group_info</span>: <span class="ident">VLBytes</span>,
 }
 
 <span class="kw">impl</span> <span class="ident">Welcome</span> {
@@ -570,7 +570,7 @@
         <span class="self">Self</span> {
             <span class="ident">version</span>,
             <span class="ident">cipher_suite</span>,
-            <span class="ident">secrets</span>: <span class="ident">secrets</span>.<span class="ident">into</span>(),
+            <span class="ident">secrets</span>,
             <span class="ident">encrypted_group_info</span>: <span class="ident">encrypted_group_info</span>.<span class="ident">into</span>(),
         }
     }
@@ -655,7 +655,7 @@
     <span class="ident">Debug</span>, <span class="ident">PartialEq</span>, <span class="ident">Clone</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>, <span class="ident">TlsDeserialize</span>, <span class="ident">TlsSerialize</span>, <span class="ident">TlsSize</span>,
 )]</span>
 <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct</span> <span class="ident">Commit</span> {
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="ident">proposals</span>: <span class="ident">TlsVecU32</span><span class="op">&lt;</span><span class="ident">ProposalOrRef</span><span class="op">&gt;</span>,
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="ident">proposals</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">ProposalOrRef</span><span class="op">&gt;</span>,
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="ident">path</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">UpdatePath</span><span class="op">&gt;</span>,
 }
 
@@ -694,7 +694,7 @@
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">TlsDeserialize</span>, <span class="ident">TlsSerialize</span>, <span class="ident">TlsSize</span>)]</span>
 <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct</span> <span class="ident">GroupInfoTBS</span> {
     <span class="ident">group_context</span>: <span class="ident">GroupContext</span>,
-    <span class="ident">extensions</span>: <span class="ident">TlsVecU32</span><span class="op">&lt;</span><span class="ident">Extension</span><span class="op">&gt;</span>,
+    <span class="ident">extensions</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Extension</span><span class="op">&gt;</span>,
     <span class="ident">confirmation_tag</span>: <span class="ident">ConfirmationTag</span>,
     <span class="ident">signer</span>: <span class="ident">KeyPackageRef</span>,
 }
@@ -765,7 +765,7 @@
     <span class="doccomment">/// Set the extensions.</span>
     <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">test</span>)]</span>
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">set_extensions</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">extensions</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Extension</span><span class="op">&gt;</span>) {
-        <span class="self">self</span>.<span class="ident">payload</span>.<span class="ident">extensions</span> <span class="op">=</span> <span class="ident">extensions</span>.<span class="ident">into</span>();
+        <span class="self">self</span>.<span class="ident">payload</span>.<span class="ident">extensions</span> <span class="op">=</span> <span class="ident">extensions</span>;
     }
 
     <span class="doccomment">/// Returns the confirmation tag.</span>

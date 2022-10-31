@@ -387,7 +387,7 @@
 <span class="doccomment">//! updates for a [`TreeSyncDiff`] instance.</span>
 <span class="kw">use</span> <span class="ident">rayon::prelude</span>::<span class="kw-2">*</span>;
 <span class="kw">use</span> <span class="ident">std::collections::HashSet</span>;
-<span class="kw">use</span> <span class="ident">tls_codec</span>::{<span class="ident">TlsDeserialize</span>, <span class="ident">TlsSerialize</span>, <span class="ident">TlsSize</span>, <span class="ident">TlsVecU32</span>};
+<span class="kw">use</span> <span class="ident">tls_codec</span>::{<span class="ident">TlsDeserialize</span>, <span class="ident">TlsSerialize</span>, <span class="ident">TlsSize</span>};
 
 <span class="kw">use</span> <span class="ident">openmls_traits</span>::{
     <span class="ident">crypto::OpenMlsCrypto</span>,
@@ -429,7 +429,7 @@
         <span class="ident">path</span>: <span class="kw-2">&amp;</span>[<span class="ident">PlainUpdatePathNode</span>],
         <span class="ident">group_context</span>: <span class="kw-2">&amp;</span>[<span class="ident">u8</span>],
         <span class="ident">exclusion_list</span>: <span class="kw-2">&amp;</span><span class="ident">HashSet</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">LeafIndex</span><span class="op">&gt;</span>,
-        <span class="ident">key_package</span>: <span class="ident">KeyPackage</span>,
+        <span class="ident">leaf_key_package</span>: <span class="ident">KeyPackage</span>,
     ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">UpdatePath</span>, <span class="ident">LibraryError</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">copath_resolutions</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">copath_resolutions</span>(<span class="self">self</span>.<span class="ident">own_leaf_index</span>(), <span class="ident">exclusion_list</span>)<span class="question-mark">?</span>;
 
@@ -437,15 +437,15 @@
         <span class="macro">debug_assert_eq!</span>(<span class="ident">copath_resolutions</span>.<span class="ident">len</span>(), <span class="ident">path</span>.<span class="ident">len</span>());
 
         <span class="comment">// Encrypt the secrets</span>
-        <span class="kw">let</span> <span class="ident">update_path_nodes</span> <span class="op">=</span> <span class="ident">path</span>
+        <span class="kw">let</span> <span class="ident">nodes</span> <span class="op">=</span> <span class="ident">path</span>
             .<span class="ident">par_iter</span>()
             .<span class="ident">zip</span>(<span class="ident">copath_resolutions</span>.<span class="ident">par_iter</span>())
             .<span class="ident">map</span>(<span class="op">|</span>(<span class="ident">node</span>, <span class="ident">resolution</span>)<span class="op">|</span> <span class="ident">node</span>.<span class="ident">encrypt</span>(<span class="ident">backend</span>, <span class="ident">ciphersuite</span>, <span class="ident">resolution</span>, <span class="ident">group_context</span>))
             .<span class="ident">collect</span>::<span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">UpdatePathNode</span><span class="op">&gt;</span><span class="op">&gt;</span>();
 
         <span class="prelude-val">Ok</span>(<span class="ident">UpdatePath</span> {
-            <span class="ident">leaf_key_package</span>: <span class="ident">key_package</span>,
-            <span class="ident">nodes</span>: <span class="ident">update_path_nodes</span>.<span class="ident">into</span>(),
+            <span class="ident">leaf_key_package</span>,
+            <span class="ident">nodes</span>,
         })
     }
 
@@ -559,7 +559,7 @@
 <span class="doccomment">/// ```text</span>
 <span class="doccomment">/// struct {</span>
 <span class="doccomment">///     HPKEPublicKey public_key;</span>
-<span class="doccomment">///     HPKECiphertext encrypted_path_secret&lt;0..2^32-1&gt;;</span>
+<span class="doccomment">///     HPKECiphertext encrypted_path_secret&lt;V&gt;;</span>
 <span class="doccomment">/// } UpdatePathNode;</span>
 <span class="doccomment">/// ```</span>
 <span class="attribute">#[<span class="ident">derive</span>(
@@ -567,7 +567,7 @@
 )]</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">UpdatePathNode</span> {
     <span class="kw">pub</span>(<span class="kw">super</span>) <span class="ident">public_key</span>: <span class="ident">HpkePublicKey</span>,
-    <span class="kw">pub</span>(<span class="kw">super</span>) <span class="ident">encrypted_path_secrets</span>: <span class="ident">TlsVecU32</span><span class="op">&lt;</span><span class="ident">HpkeCiphertext</span><span class="op">&gt;</span>,
+    <span class="kw">pub</span>(<span class="kw">super</span>) <span class="ident">encrypted_path_secrets</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">HpkeCiphertext</span><span class="op">&gt;</span>,
 }
 
 <span class="kw">impl</span> <span class="ident">UpdatePathNode</span> {
@@ -595,7 +595,7 @@
             <span class="ident">new_eps</span>.<span class="ident">ciphertext</span>.<span class="ident">push</span>(<span class="ident">last_bits</span>);
             <span class="ident">new_eps_vec</span>.<span class="ident">push</span>(<span class="ident">new_eps</span>);
         }
-        <span class="self">self</span>.<span class="ident">encrypted_path_secrets</span> <span class="op">=</span> <span class="ident">new_eps_vec</span>.<span class="ident">into</span>();
+        <span class="self">self</span>.<span class="ident">encrypted_path_secrets</span> <span class="op">=</span> <span class="ident">new_eps_vec</span>;
     }
 
     <span class="doccomment">/// Flip the last byte of the public key in this node.</span>
@@ -704,7 +704,7 @@
 <span class="doccomment">/// ```text</span>
 <span class="doccomment">/// struct {</span>
 <span class="doccomment">///     KeyPackage leaf_key_package;</span>
-<span class="doccomment">///     UpdatePathNode nodes&lt;0..2^32-1&gt;;</span>
+<span class="doccomment">///     UpdatePathNode nodes&lt;V&gt;;</span>
 <span class="doccomment">/// } UpdatePath;</span>
 <span class="doccomment">/// ```</span>
 <span class="attribute">#[<span class="ident">derive</span>(
@@ -712,7 +712,7 @@
 )]</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">UpdatePath</span> {
     <span class="ident">leaf_key_package</span>: <span class="ident">KeyPackage</span>,
-    <span class="ident">nodes</span>: <span class="ident">TlsVecU32</span><span class="op">&lt;</span><span class="ident">UpdatePathNode</span><span class="op">&gt;</span>,
+    <span class="ident">nodes</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">UpdatePathNode</span><span class="op">&gt;</span>,
 }
 
 <span class="kw">impl</span> <span class="ident">UpdatePath</span> {
@@ -724,7 +724,7 @@
     <span class="doccomment">/// Consume the [`UpdatePath`] and return its individual parts: A</span>
     <span class="doccomment">/// [`KeyPackage`] and a vector of [`UpdatePathNode`] instances.</span>
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">into_parts</span>(<span class="self">self</span>) -&gt; (<span class="ident">KeyPackage</span>, <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">UpdatePathNode</span><span class="op">&gt;</span>) {
-        (<span class="self">self</span>.<span class="ident">leaf_key_package</span>, <span class="self">self</span>.<span class="ident">nodes</span>.<span class="ident">into</span>())
+        (<span class="self">self</span>.<span class="ident">leaf_key_package</span>, <span class="self">self</span>.<span class="ident">nodes</span>)
     }
 
     <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">test</span>)]</span>
@@ -736,7 +736,7 @@
             <span class="ident">new_node</span>.<span class="ident">flip_last_byte</span>();
             <span class="ident">new_nodes</span>.<span class="ident">push</span>(<span class="ident">new_node</span>);
         }
-        <span class="self">self</span>.<span class="ident">nodes</span> <span class="op">=</span> <span class="ident">new_nodes</span>.<span class="ident">into</span>();
+        <span class="self">self</span>.<span class="ident">nodes</span> <span class="op">=</span> <span class="ident">new_nodes</span>;
     }
 
     <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">test</span>)]</span>

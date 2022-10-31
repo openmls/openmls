@@ -235,7 +235,7 @@ pub enum HpkeAeadType {
 <pre><code class="language-rust no_run noplayground">    Debug, PartialEq, Eq, Clone, Serialize, Deserialize, TlsSerialize, TlsDeserialize, TlsSize,
 )]
 pub struct HpkeCiphertext {
-    pub kem_output: TlsByteVecU16,
+    pub kem_output: VLBytes,
 </code></pre>
 <pre><code class="language-rust no_run noplayground">/// Helper holding a (private, public) key pair as byte vectors.
 #[derive(Debug, Clone)]

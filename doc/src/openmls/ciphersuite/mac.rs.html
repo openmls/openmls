@@ -42,18 +42,14 @@
 <span id="42">42</span>
 <span id="43">43</span>
 <span id="44">44</span>
-<span id="45">45</span>
-<span id="46">46</span>
 </pre><pre class="rust"><code><span class="kw">use</span> <span class="kw">super</span>::<span class="kw-2">*</span>;
 
-<span class="doccomment">/// 9.2 Message framing</span>
+<span class="doccomment">/// 7.1 Content Authentication</span>
 <span class="doccomment">///</span>
-<span class="doccomment">/// struct {</span>
-<span class="doccomment">///     opaque mac_value&lt;0..255&gt;;</span>
-<span class="doccomment">/// } MAC;</span>
+<span class="doccomment">/// opaque MAC&lt;V&gt;;</span>
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Clone</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>, <span class="ident">TlsDeserialize</span>, <span class="ident">TlsSerialize</span>, <span class="ident">TlsSize</span>)]</span>
 <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct</span> <span class="ident">Mac</span> {
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="ident">mac_value</span>: <span class="ident">TlsByteVecU8</span>,
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="ident">mac_value</span>: <span class="ident">VLBytes</span>,
 }
 
 <span class="kw">impl</span> <span class="ident">PartialEq</span> <span class="kw">for</span> <span class="ident">Mac</span> {

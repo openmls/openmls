@@ -166,7 +166,7 @@
 <span class="kw">use</span> <span class="ident">openmls_traits</span>::{<span class="ident">types::Ciphersuite</span>, <span class="ident">OpenMlsCryptoProvider</span>};
 <span class="kw">use</span> <span class="ident">serde</span>::{<span class="ident">Deserialize</span>, <span class="ident">Serialize</span>};
 <span class="kw">use</span> <span class="ident">thiserror::Error</span>;
-<span class="kw">use</span> <span class="ident">tls_codec::TlsSliceU8</span>;
+<span class="kw">use</span> <span class="ident">tls_codec::VLByteSlice</span>;
 
 <span class="kw">use</span> <span class="kw">crate</span>::{
     <span class="ident">binary_tree</span>::{<span class="ident">LeafIndex</span>, <span class="ident">MlsBinaryTreeDiffError</span>},
@@ -298,8 +298,8 @@
             <span class="kw">let</span> <span class="ident">hash_input</span> <span class="op">=</span> <span class="ident">ParentNodeHashInput::new</span>(
                 <span class="ident">node_index</span>,
                 <span class="ident">parent_node_option</span>,
-                <span class="ident">TlsSliceU8</span>(<span class="kw-2">&amp;</span><span class="ident">left_hash</span>),
-                <span class="ident">TlsSliceU8</span>(<span class="kw-2">&amp;</span><span class="ident">right_hash</span>),
+                <span class="ident">VLByteSlice</span>(<span class="kw-2">&amp;</span><span class="ident">left_hash</span>),
+                <span class="ident">VLByteSlice</span>(<span class="kw-2">&amp;</span><span class="ident">right_hash</span>),
             );
             <span class="ident">hash_input</span>.<span class="ident">hash</span>(<span class="ident">ciphersuite</span>, <span class="ident">backend</span>)<span class="question-mark">?</span>
         };

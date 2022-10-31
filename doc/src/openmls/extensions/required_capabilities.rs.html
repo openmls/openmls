@@ -69,7 +69,7 @@
 <span id="69">69</span>
 <span id="70">70</span>
 <span id="71">71</span>
-</pre><pre class="rust"><code><span class="kw">use</span> <span class="ident">tls_codec</span>::{<span class="ident">TlsDeserialize</span>, <span class="ident">TlsSerialize</span>, <span class="ident">TlsSize</span>, <span class="ident">TlsVecU8</span>};
+</pre><pre class="rust"><code><span class="kw">use</span> <span class="ident">tls_codec</span>::{<span class="ident">TlsDeserialize</span>, <span class="ident">TlsSerialize</span>, <span class="ident">TlsSize</span>};
 
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::messages::proposals::ProposalType</span>;
 
@@ -102,8 +102,8 @@
     <span class="ident">TlsSize</span>,
 )]</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">RequiredCapabilitiesExtension</span> {
-    <span class="ident">extensions</span>: <span class="ident">TlsVecU8</span><span class="op">&lt;</span><span class="ident">ExtensionType</span><span class="op">&gt;</span>,
-    <span class="ident">proposals</span>: <span class="ident">TlsVecU8</span><span class="op">&lt;</span><span class="ident">ProposalType</span><span class="op">&gt;</span>,
+    <span class="ident">extensions</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">ExtensionType</span><span class="op">&gt;</span>,
+    <span class="ident">proposals</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">ProposalType</span><span class="op">&gt;</span>,
 }
 
 <span class="kw">impl</span> <span class="ident">RequiredCapabilitiesExtension</span> {

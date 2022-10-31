@@ -131,7 +131,7 @@
 </pre><pre class="rust"><code><span class="doccomment">//! This module contains helper structs and functions related to parent hashing</span>
 <span class="doccomment">//! and tree hashing.</span>
 <span class="kw">use</span> <span class="ident">openmls_traits</span>::{<span class="ident">crypto::OpenMlsCrypto</span>, <span class="ident">types::Ciphersuite</span>, <span class="ident">OpenMlsCryptoProvider</span>};
-<span class="kw">use</span> <span class="ident">tls_codec</span>::{<span class="ident">Serialize</span>, <span class="ident">TlsSerialize</span>, <span class="ident">TlsSize</span>, <span class="ident">TlsSliceU32</span>, <span class="ident">TlsSliceU8</span>};
+<span class="kw">use</span> <span class="ident">tls_codec</span>::{<span class="ident">Serialize</span>, <span class="ident">TlsSerialize</span>, <span class="ident">TlsSize</span>, <span class="ident">TlsSliceU32</span>, <span class="ident">TlsSliceU8</span>, <span class="ident">VLByteSlice</span>};
 
 <span class="kw">use</span> <span class="kw">crate</span>::{<span class="ident">binary_tree::LeafIndex</span>, <span class="ident">ciphersuite::HpkePublicKey</span>, <span class="ident">error::LibraryError</span>};
 
@@ -223,8 +223,8 @@
 <span class="kw">pub</span>(<span class="kw">super</span>) <span class="kw">struct</span> <span class="ident">ParentNodeHashInput</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span> {
     <span class="ident">node_index</span>: <span class="ident">LeafIndex</span>,
     <span class="ident">parent_node</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="ident">ParentNode</span><span class="op">&gt;</span>,
-    <span class="ident">left_hash</span>: <span class="ident">TlsSliceU8</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="ident">u8</span><span class="op">&gt;</span>,
-    <span class="ident">right_hash</span>: <span class="ident">TlsSliceU8</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="ident">u8</span><span class="op">&gt;</span>,
+    <span class="ident">left_hash</span>: <span class="ident">VLByteSlice</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span>,
+    <span class="ident">right_hash</span>: <span class="ident">VLByteSlice</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span>,
 }
 
 <span class="kw">impl</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span> <span class="ident">ParentNodeHashInput</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span> {
@@ -232,8 +232,8 @@
     <span class="kw">pub</span>(<span class="kw">super</span>) <span class="kw">fn</span> <span class="ident">new</span>(
         <span class="ident">node_index</span>: <span class="ident">LeafIndex</span>,
         <span class="ident">parent_node</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="ident">ParentNode</span><span class="op">&gt;</span>,
-        <span class="ident">left_hash</span>: <span class="ident">TlsSliceU8</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="ident">u8</span><span class="op">&gt;</span>,
-        <span class="ident">right_hash</span>: <span class="ident">TlsSliceU8</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="ident">u8</span><span class="op">&gt;</span>,
+        <span class="ident">left_hash</span>: <span class="ident">VLByteSlice</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span>,
+        <span class="ident">right_hash</span>: <span class="ident">VLByteSlice</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span>,
     ) -&gt; <span class="self">Self</span> {
         <span class="self">Self</span> {
             <span class="ident">node_index</span>,

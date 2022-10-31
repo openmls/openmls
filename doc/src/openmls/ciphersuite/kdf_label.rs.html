@@ -50,7 +50,11 @@
 <span id="50">50</span>
 <span id="51">51</span>
 <span id="52">52</span>
-</pre><pre class="rust"><code><span class="kw">use</span> <span class="kw">super</span>::<span class="kw-2">*</span>;
+<span id="53">53</span>
+<span id="54">54</span>
+</pre><pre class="rust"><code><span class="kw">use</span> <span class="ident">tls_codec::Serialize</span>;
+
+<span class="kw">use</span> <span class="kw">super</span>::<span class="kw-2">*</span>;
 
 <span class="doccomment">/// `KdfLabel` is later serialized and used in the `label` field of</span>
 <span class="doccomment">/// `kdf_expand_label`.</span>
@@ -66,8 +70,8 @@
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">TlsSerialize</span>, <span class="ident">TlsSize</span>)]</span>
 <span class="kw">pub</span>(<span class="kw">in</span> <span class="ident"><span class="kw">crate</span>::ciphersuite</span>) <span class="kw">struct</span> <span class="ident">KdfLabel</span> {
     <span class="ident">length</span>: <span class="ident">u16</span>,
-    <span class="ident">label</span>: <span class="ident">TlsByteVecU8</span>,
-    <span class="ident">context</span>: <span class="ident">TlsByteVecU32</span>,
+    <span class="ident">label</span>: <span class="ident">VLBytes</span>,
+    <span class="ident">context</span>: <span class="ident">VLBytes</span>,
 }
 
 <span class="kw">impl</span> <span class="ident">KdfLabel</span> {

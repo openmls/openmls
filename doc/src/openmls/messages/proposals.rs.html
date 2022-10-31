@@ -388,7 +388,7 @@
 <span class="kw">use</span> <span class="ident">serde</span>::{<span class="ident">Deserialize</span>, <span class="ident">Serialize</span>};
 <span class="kw">use</span> <span class="ident">std::convert::TryFrom</span>;
 <span class="kw">use</span> <span class="ident">tls_codec</span>::{
-    <span class="ident">Serialize</span> <span class="kw">as</span> <span class="ident">TlsSerializeTrait</span>, <span class="ident">TlsByteVecU16</span>, <span class="ident">TlsDeserialize</span>, <span class="ident">TlsSerialize</span>, <span class="ident">TlsSize</span>, <span class="ident">TlsVecU32</span>,
+    <span class="ident">Serialize</span> <span class="kw">as</span> <span class="ident">TlsSerializeTrait</span>, <span class="ident">TlsDeserialize</span>, <span class="ident">TlsSerialize</span>, <span class="ident">TlsSize</span>, <span class="ident">TlsVecU32</span>, <span class="ident">VLBytes</span>,
 };
 
 <span class="comment">// Public types</span>
@@ -597,7 +597,7 @@
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="ident">group_id</span>: <span class="ident">GroupId</span>,
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="ident">version</span>: <span class="ident">ProtocolVersion</span>,
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="ident">ciphersuite</span>: <span class="ident">Ciphersuite</span>,
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="ident">extensions</span>: <span class="ident">TlsVecU32</span><span class="op">&lt;</span><span class="ident">Extension</span><span class="op">&gt;</span>,
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="ident">extensions</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Extension</span><span class="op">&gt;</span>,
 }
 
 <span class="doccomment">/// ExternalInit Proposal.</span>
@@ -607,7 +607,7 @@
     <span class="ident">Debug</span>, <span class="ident">PartialEq</span>, <span class="ident">Eq</span>, <span class="ident">Clone</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>, <span class="ident">TlsDeserialize</span>, <span class="ident">TlsSerialize</span>, <span class="ident">TlsSize</span>,
 )]</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">ExternalInitProposal</span> {
-    <span class="ident">kem_output</span>: <span class="ident">TlsByteVecU16</span>,
+    <span class="ident">kem_output</span>: <span class="ident">VLBytes</span>,
 }
 
 <span class="kw">impl</span> <span class="ident">ExternalInitProposal</span> {
@@ -643,13 +643,13 @@
 <span class="doccomment">/// in the GroupContext for the group.</span>
 <span class="doccomment">///</span>
 <span class="doccomment">/// ```text</span>
-<span class="doccomment">/// struct { Extension extensions&lt;0..2^32-1&gt;; } GroupContextExtensions;</span>
+<span class="doccomment">/// struct { Extension extensions&lt;V&gt;; } GroupContextExtensions;</span>
 <span class="doccomment">/// ```</span>
 <span class="attribute">#[<span class="ident">derive</span>(
     <span class="ident">Debug</span>, <span class="ident">PartialEq</span>, <span class="ident">Eq</span>, <span class="ident">Clone</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>, <span class="ident">TlsDeserialize</span>, <span class="ident">TlsSerialize</span>, <span class="ident">TlsSize</span>,
 )]</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">GroupContextExtensionProposal</span> {
-    <span class="ident">extensions</span>: <span class="ident">TlsVecU32</span><span class="op">&lt;</span><span class="ident">Extension</span><span class="op">&gt;</span>,
+    <span class="ident">extensions</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Extension</span><span class="op">&gt;</span>,
 }
 
 <span class="kw">impl</span> <span class="ident">GroupContextExtensionProposal</span> {

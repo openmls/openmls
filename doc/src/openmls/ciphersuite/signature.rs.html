@@ -274,9 +274,13 @@
 <span id="274">274</span>
 <span id="275">275</span>
 <span id="276">276</span>
+<span id="277">277</span>
+<span id="278">278</span>
 </pre><pre class="rust"><code><span class="doccomment">//! Signatures.</span>
 <span class="doccomment">//!</span>
 <span class="doccomment">//! This module contains structs for creating signature keys, issuing signatures and verifying them.</span>
+
+<span class="kw">use</span> <span class="ident">tls_codec::Serialize</span>;
 
 <span class="kw">use</span> <span class="kw">super</span>::<span class="kw-2">*</span>;
 
@@ -285,7 +289,7 @@
     <span class="ident">Debug</span>, <span class="ident">PartialEq</span>, <span class="ident">Eq</span>, <span class="ident">Clone</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>, <span class="ident">TlsDeserialize</span>, <span class="ident">TlsSerialize</span>, <span class="ident">TlsSize</span>,
 )]</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">Signature</span> {
-    <span class="ident">value</span>: <span class="ident">TlsByteVecU16</span>,
+    <span class="ident">value</span>: <span class="ident">VLBytes</span>,
 }
 
 <span class="doccomment">/// Labeled signature content.</span>

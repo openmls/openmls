@@ -125,9 +125,9 @@
     <span class="ident">ciphersuite</span>: <span class="ident">Ciphersuite</span>,
     <span class="ident">group_id</span>: <span class="ident">GroupId</span>,
     <span class="ident">epoch</span>: <span class="ident">GroupEpoch</span>,
-    <span class="ident">tree_hash</span>: <span class="ident">TlsByteVecU8</span>,
-    <span class="ident">confirmed_transcript_hash</span>: <span class="ident">TlsByteVecU8</span>,
-    <span class="ident">extensions</span>: <span class="ident">TlsVecU32</span><span class="op">&lt;</span><span class="ident">Extension</span><span class="op">&gt;</span>,
+    <span class="ident">tree_hash</span>: <span class="ident">VLBytes</span>,
+    <span class="ident">confirmed_transcript_hash</span>: <span class="ident">VLBytes</span>,
+    <span class="ident">extensions</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Extension</span><span class="op">&gt;</span>,
 }
 
 <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">any</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;test-utils&quot;</span>, <span class="ident">test</span>))]</span>
