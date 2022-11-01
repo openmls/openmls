@@ -448,10 +448,38 @@
 <span id="448">448</span>
 <span id="449">449</span>
 <span id="450">450</span>
+<span id="451">451</span>
+<span id="452">452</span>
+<span id="453">453</span>
+<span id="454">454</span>
+<span id="455">455</span>
+<span id="456">456</span>
+<span id="457">457</span>
+<span id="458">458</span>
+<span id="459">459</span>
+<span id="460">460</span>
+<span id="461">461</span>
+<span id="462">462</span>
+<span id="463">463</span>
+<span id="464">464</span>
+<span id="465">465</span>
+<span id="466">466</span>
+<span id="467">467</span>
+<span id="468">468</span>
+<span id="469">469</span>
+<span id="470">470</span>
+<span id="471">471</span>
+<span id="472">472</span>
+<span id="473">473</span>
+<span id="474">474</span>
+<span id="475">475</span>
+<span id="476">476</span>
+<span id="477">477</span>
 </pre><pre class="rust"><code><span class="kw">use</span> <span class="ident">openmls_traits</span>::{<span class="ident">types::Ciphersuite</span>, <span class="ident">OpenMlsCryptoProvider</span>};
+<span class="kw">use</span> <span class="ident">std::io::Write</span>;
 <span class="kw">use</span> <span class="ident">tls_codec</span>::{
-    <span class="ident">Deserialize</span>, <span class="ident">Serialize</span>, <span class="ident">Size</span>, <span class="ident">TlsByteSliceU16</span>, <span class="ident">TlsByteVecU16</span>, <span class="ident">TlsByteVecU32</span>, <span class="ident">TlsByteVecU8</span>,
-    <span class="ident">TlsDeserialize</span>, <span class="ident">TlsSerialize</span>, <span class="ident">TlsSize</span>,
+    <span class="ident">Deserialize</span>, <span class="ident">Serialize</span>, <span class="ident">Size</span>, <span class="ident">TlsByteVecU32</span>, <span class="ident">TlsByteVecU8</span>, <span class="ident">TlsDeserialize</span>, <span class="ident">TlsSerialize</span>,
+    <span class="ident">TlsSize</span>,
 };
 
 <span class="kw">use</span> <span class="kw">crate</span>::{
@@ -760,50 +788,38 @@
         <span class="self">self</span>.<span class="ident">content_type</span>.<span class="ident">is_handshake_message</span>()
     }
 
-    <span class="doccomment">/// Encodes the `MLSCiphertextContent` struct with padding</span>
-    <span class="doccomment">/// ```text</span>
-    <span class="doccomment">/// struct {</span>
-    <span class="doccomment">///     select (MLSCiphertext.content_type) {</span>
-    <span class="doccomment">///         case application:</span>
-    <span class="doccomment">///             opaque application_data&lt;0..2^32-1&gt;;</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">///         case proposal:</span>
-    <span class="doccomment">///             Proposal proposal;</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">///         case commit:</span>
-    <span class="doccomment">///             Commit commit;</span>
-    <span class="doccomment">///     }</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">///     opaque signature&lt;0..2^16-1&gt;;</span>
-    <span class="doccomment">///     optional&lt;MAC&gt; confirmation_tag;</span>
-    <span class="doccomment">///     opaque padding&lt;0..2^16-1&gt;;</span>
-    <span class="doccomment">/// } MLSCiphertextContent;</span>
-    <span class="doccomment">/// ```</span>
+    <span class="doccomment">/// Encodes the `MLSCiphertextContent` struct with padding.</span>
     <span class="kw">fn</span> <span class="ident">encode_padded_ciphertext_content_detached</span>(
         <span class="ident">mls_plaintext</span>: <span class="kw-2">&amp;</span><span class="ident">MlsPlaintext</span>,
         <span class="ident">padding_size</span>: <span class="ident">usize</span>,
         <span class="ident">mac_len</span>: <span class="ident">usize</span>,
     ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>, <span class="ident">tls_codec::Error</span><span class="op">&gt;</span> {
-        <span class="comment">// Persist all initial fields manually (avoids cloning them)</span>
-        <span class="kw">let</span> <span class="ident">buffer</span> <span class="op">=</span> <span class="kw-2">&amp;mut</span> <span class="ident">Vec::with_capacity</span>(
-            <span class="ident">mls_plaintext</span>.<span class="ident">content</span>().<span class="ident">tls_serialized_len</span>()
-                <span class="op">+</span> <span class="ident">mls_plaintext</span>.<span class="ident">signature</span>().<span class="ident">tls_serialized_len</span>()
-                <span class="op">+</span> <span class="ident">mls_plaintext</span>.<span class="ident">confirmation_tag</span>().<span class="ident">tls_serialized_len</span>(),
-        );
-        <span class="ident">mls_plaintext</span>.<span class="ident">content</span>().<span class="ident">tls_serialize</span>(<span class="ident">buffer</span>)<span class="question-mark">?</span>;
-        <span class="ident">mls_plaintext</span>.<span class="ident">signature</span>().<span class="ident">tls_serialize</span>(<span class="ident">buffer</span>)<span class="question-mark">?</span>;
-        <span class="ident">mls_plaintext</span>.<span class="ident">confirmation_tag</span>().<span class="ident">tls_serialize</span>(<span class="ident">buffer</span>)<span class="question-mark">?</span>;
-        <span class="comment">// Add padding if needed</span>
+        <span class="kw">let</span> <span class="ident">plaintext_length</span> <span class="op">=</span> <span class="ident">mls_plaintext</span>.<span class="ident">content</span>().<span class="ident">tls_serialized_len</span>()
+            <span class="op">+</span> <span class="ident">mls_plaintext</span>.<span class="ident">signature</span>().<span class="ident">tls_serialized_len</span>()
+            <span class="op">+</span> <span class="ident">mls_plaintext</span>.<span class="ident">confirmation_tag</span>().<span class="ident">tls_serialized_len</span>();
+
         <span class="kw">let</span> <span class="ident">padding_length</span> <span class="op">=</span> <span class="kw">if</span> <span class="ident">padding_size</span> <span class="op">&gt;</span> <span class="number">0</span> {
-            <span class="comment">// Calculate padding block size</span>
-            <span class="comment">// The length of the padding block takes 2 bytes and the AEAD tag is also added.</span>
-            <span class="kw">let</span> <span class="ident">padding_offset</span> <span class="op">=</span> <span class="ident">buffer</span>.<span class="ident">len</span>() <span class="op">+</span> <span class="number">2</span> <span class="op">+</span> <span class="ident">mac_len</span>;
+            <span class="comment">// Calculate padding block size.</span>
+            <span class="comment">// Only the AEAD tag is added.</span>
+            <span class="kw">let</span> <span class="ident">padding_offset</span> <span class="op">=</span> <span class="ident">plaintext_length</span> <span class="op">+</span> <span class="ident">mac_len</span>;
             <span class="comment">// Return padding block size</span>
             (<span class="ident">padding_size</span> <span class="op">-</span> (<span class="ident">padding_offset</span> <span class="op">%</span> <span class="ident">padding_size</span>)) <span class="op">%</span> <span class="ident">padding_size</span>
         } <span class="kw">else</span> {
             <span class="number">0</span>
         };
-        <span class="ident">TlsByteSliceU16</span>(<span class="kw-2">&amp;</span><span class="macro">vec!</span>[<span class="number">0u8</span>; <span class="ident">padding_length</span>]).<span class="ident">tls_serialize</span>(<span class="ident">buffer</span>)<span class="question-mark">?</span>;
+
+        <span class="comment">// Persist all initial fields manually (avoids cloning them)</span>
+        <span class="kw">let</span> <span class="ident">buffer</span> <span class="op">=</span> <span class="kw-2">&amp;mut</span> <span class="ident">Vec::with_capacity</span>(<span class="ident">plaintext_length</span> <span class="op">+</span> <span class="ident">padding_length</span>);
+
+        <span class="ident">mls_plaintext</span>.<span class="ident">content</span>().<span class="ident">tls_serialize</span>(<span class="ident">buffer</span>)<span class="question-mark">?</span>;
+        <span class="ident">mls_plaintext</span>.<span class="ident">signature</span>().<span class="ident">tls_serialize</span>(<span class="ident">buffer</span>)<span class="question-mark">?</span>;
+        <span class="ident">mls_plaintext</span>.<span class="ident">confirmation_tag</span>().<span class="ident">tls_serialize</span>(<span class="ident">buffer</span>)<span class="question-mark">?</span>;
+        <span class="comment">// Note: The `tls_codec::Serialize` implementation for `&amp;[u8]` prepends the length.</span>
+        <span class="comment">// We do not want this here and thus use the &quot;raw&quot; `write_all` method.</span>
+        <span class="ident">buffer</span>
+            .<span class="ident">write_all</span>(<span class="kw-2">&amp;</span><span class="macro">vec!</span>[<span class="number">0u8</span>; <span class="ident">padding_length</span>])
+            .<span class="ident">map_err</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="ident">Error::EncodingError</span>(<span class="string">&quot;Failed to write padding.&quot;</span>.<span class="ident">into</span>()))<span class="question-mark">?</span>;
+
         <span class="prelude-val">Ok</span>(<span class="ident">buffer</span>.<span class="ident">to_vec</span>())
     }
 
@@ -881,14 +897,52 @@
             <span class="ident">content_type</span>,
         }
     }
+
+    <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">test</span>)]</span>
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">test_new</span>(<span class="ident">group_id</span>: <span class="ident">GroupId</span>, <span class="ident">epoch</span>: <span class="ident">GroupEpoch</span>, <span class="ident">content_type</span>: <span class="ident">ContentType</span>) -&gt; <span class="self">Self</span> {
+        <span class="ident"><span class="self">Self</span>::new</span>(<span class="ident">group_id</span>, <span class="ident">epoch</span>, <span class="ident">content_type</span>)
+    }
 }
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Clone</span>, <span class="ident">TlsSerialize</span>, <span class="ident">TlsDeserialize</span>, <span class="ident">TlsSize</span>)]</span>
+<span class="doccomment">/// MLSCiphertextContent</span>
+<span class="doccomment">///</span>
+<span class="doccomment">/// ```c</span>
+<span class="doccomment">/// // draft-ietf-mls-protocol-16</span>
+<span class="doccomment">/// struct {</span>
+<span class="doccomment">///     select (MLSCiphertext.content_type) {</span>
+<span class="doccomment">///         case application:</span>
+<span class="doccomment">///           opaque application_data&lt;V&gt;;</span>
+<span class="doccomment">///</span>
+<span class="doccomment">///         case proposal:</span>
+<span class="doccomment">///           Proposal proposal;</span>
+<span class="doccomment">///</span>
+<span class="doccomment">///         case commit:</span>
+<span class="doccomment">///           Commit commit;</span>
+<span class="doccomment">///     }</span>
+<span class="doccomment">///</span>
+<span class="doccomment">///     MLSContentAuthData auth;</span>
+<span class="doccomment">///     opaque padding[length_of_padding];</span>
+<span class="doccomment">/// } MLSCiphertextContent;</span>
+<span class="doccomment">/// ```</span>
+<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Clone</span>)]</span>
 <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct</span> <span class="ident">MlsCiphertextContent</span> {
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="ident">content</span>: <span class="ident">MlsContentBody</span>,
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="ident">signature</span>: <span class="ident">Signature</span>,
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="ident">confirmation_tag</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">ConfirmationTag</span><span class="op">&gt;</span>,
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="ident">padding</span>: <span class="ident">TlsByteVecU16</span>,
+    <span class="doccomment">/// Length of the all-zero padding.</span>
+    <span class="doccomment">///</span>
+    <span class="doccomment">/// We do not retain any bytes here to avoid the need to</span>
+    <span class="doccomment">/// keep track that all of them are zero. Instead, we only</span>
+    <span class="doccomment">/// use `length_of_padding` to track the (theoretical) size</span>
+    <span class="doccomment">/// of the all-zero byte slice.</span>
+    <span class="doccomment">///</span>
+    <span class="doccomment">/// Note, however, that we MUST make sure to (de)serialize these bytes!</span>
+    <span class="doccomment">/// Otherwise this mechanism would not make any sense because it would</span>
+    <span class="doccomment">/// not add to the ciphertext size to hide the original message length.</span>
+    <span class="doccomment">///</span>
+    <span class="doccomment">/// Sadly, we cannot `derive(TlsSerialize, TlsDeserialize)` due to this</span>
+    <span class="doccomment">/// &quot;custom&quot; mechanism.</span>
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="ident">length_of_padding</span>: <span class="ident">usize</span>,
 }
 
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">TlsSerialize</span>, <span class="ident">TlsSize</span>)]</span>
