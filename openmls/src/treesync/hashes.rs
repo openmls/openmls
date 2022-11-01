@@ -50,6 +50,7 @@ impl<'a> ParentHashInput<'a> {
 /// Helper struct that can be serialized in the course of tree hash computation.
 ///
 /// ```c
+/// // draft-ietf-mls-protocol-16
 /// enum {
 ///     reserved(0),
 ///     leaf(1),
