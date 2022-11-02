@@ -34,8 +34,8 @@ use tls_codec::{
 
 use super::Ciphersuite;
 
-const KEY_PACKAGE_REF_LABEL: &[u8; 22] = b"MLS 1.0 KeyPackage ref";
-const PROPOSAL_REF_LABEL: &[u8; 20] = b"MLS 1.0 Proposal ref";
+const KEY_PACKAGE_REF_LABEL: &[u8; 28] = b"MLS 1.0 KeyPackage Reference";
+const PROPOSAL_REF_LABEL: &[u8; 26] = b"MLS 1.0 Proposal Reference";
 
 /// A reference to an MLS object computed as a hash of the value.
 #[derive(
