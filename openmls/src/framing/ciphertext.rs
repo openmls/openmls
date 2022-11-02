@@ -1,7 +1,8 @@
 use openmls_traits::{types::Ciphersuite, OpenMlsCryptoProvider};
+use std::io::Write;
 use tls_codec::{
-    Deserialize, Serialize, Size, TlsByteSliceU16, TlsByteVecU16, TlsByteVecU32, TlsByteVecU8,
-    TlsDeserialize, TlsSerialize, TlsSize,
+    Deserialize, Serialize, Size, TlsByteVecU32, TlsByteVecU8, TlsDeserialize, TlsSerialize,
+    TlsSize,
 };
 
 use crate::{
@@ -310,50 +311,38 @@ impl MlsCiphertext {
         self.content_type.is_handshake_message()
     }
 
-    /// Encodes the `MLSCiphertextContent` struct with padding
-    /// ```text
-    /// struct {
-    ///     select (MLSCiphertext.content_type) {
-    ///         case application:
-    ///             opaque application_data<0..2^32-1>;
-    ///
-    ///         case proposal:
-    ///             Proposal proposal;
-    ///
-    ///         case commit:
-    ///             Commit commit;
-    ///     }
-    ///
-    ///     opaque signature<0..2^16-1>;
-    ///     optional<MAC> confirmation_tag;
-    ///     opaque padding<0..2^16-1>;
-    /// } MLSCiphertextContent;
-    /// ```
+    /// Encodes the `MLSCiphertextContent` struct with padding.
     fn encode_padded_ciphertext_content_detached(
         mls_plaintext: &MlsPlaintext,
         padding_size: usize,
         mac_len: usize,
     ) -> Result<Vec<u8>, tls_codec::Error> {
-        // Persist all initial fields manually (avoids cloning them)
-        let buffer = &mut Vec::with_capacity(
-            mls_plaintext.content().tls_serialized_len()
-                + mls_plaintext.signature().tls_serialized_len()
-                + mls_plaintext.confirmation_tag().tls_serialized_len(),
-        );
-        mls_plaintext.content().tls_serialize(buffer)?;
-        mls_plaintext.signature().tls_serialize(buffer)?;
-        mls_plaintext.confirmation_tag().tls_serialize(buffer)?;
-        // Add padding if needed
+        let plaintext_length = mls_plaintext.content().tls_serialized_len()
+            + mls_plaintext.signature().tls_serialized_len()
+            + mls_plaintext.confirmation_tag().tls_serialized_len();
+
         let padding_length = if padding_size > 0 {
-            // Calculate padding block size
-            // The length of the padding block takes 2 bytes and the AEAD tag is also added.
-            let padding_offset = buffer.len() + 2 + mac_len;
+            // Calculate padding block size.
+            // Only the AEAD tag is added.
+            let padding_offset = plaintext_length + mac_len;
             // Return padding block size
             (padding_size - (padding_offset % padding_size)) % padding_size
         } else {
             0
         };
-        TlsByteSliceU16(&vec![0u8; padding_length]).tls_serialize(buffer)?;
+
+        // Persist all initial fields manually (avoids cloning them)
+        let buffer = &mut Vec::with_capacity(plaintext_length + padding_length);
+
+        mls_plaintext.content().tls_serialize(buffer)?;
+        mls_plaintext.signature().tls_serialize(buffer)?;
+        mls_plaintext.confirmation_tag().tls_serialize(buffer)?;
+        // Note: The `tls_codec::Serialize` implementation for `&[u8]` prepends the length.
+        // We do not want this here and thus use the "raw" `write_all` method.
+        buffer
+            .write_all(&vec![0u8; padding_length])
+            .map_err(|_| Error::EncodingError("Failed to write padding.".into()))?;
+
         Ok(buffer.to_vec())
     }
 
@@ -431,14 +420,52 @@ impl MlsSenderDataAad {
             content_type,
         }
     }
+
+    #[cfg(test)]
+    pub fn test_new(group_id: GroupId, epoch: GroupEpoch, content_type: ContentType) -> Self {
+        Self::new(group_id, epoch, content_type)
+    }
 }
 
-#[derive(Debug, Clone, TlsSerialize, TlsDeserialize, TlsSize)]
+/// MLSCiphertextContent
+///
+/// ```c
+/// // draft-ietf-mls-protocol-16
+/// struct {
+///     select (MLSCiphertext.content_type) {
+///         case application:
+///           opaque application_data<V>;
+///
+///         case proposal:
+///           Proposal proposal;
+///
+///         case commit:
+///           Commit commit;
+///     }
+///
+///     MLSContentAuthData auth;
+///     opaque padding[length_of_padding];
+/// } MLSCiphertextContent;
+/// ```
+#[derive(Debug, Clone)]
 pub(crate) struct MlsCiphertextContent {
     pub(crate) content: MlsContentBody,
     pub(crate) signature: Signature,
     pub(crate) confirmation_tag: Option<ConfirmationTag>,
-    pub(crate) padding: TlsByteVecU16,
+    /// Length of the all-zero padding.
+    ///
+    /// We do not retain any bytes here to avoid the need to
+    /// keep track that all of them are zero. Instead, we only
+    /// use `length_of_padding` to track the (theoretical) size
+    /// of the all-zero byte slice.
+    ///
+    /// Note, however, that we MUST make sure to (de)serialize these bytes!
+    /// Otherwise this mechanism would not make any sense because it would
+    /// not add to the ciphertext size to hide the original message length.
+    ///
+    /// Sadly, we cannot `derive(TlsSerialize, TlsDeserialize)` due to this
+    /// "custom" mechanism.
+    pub(crate) length_of_padding: usize,
 }
 
 #[derive(TlsSerialize, TlsSize)]

@@ -1,9 +1,9 @@
-use tls_codec::{Serialize, TlsByteVecU32, TlsByteVecU8};
+use tls_codec::{Deserialize, Serialize, Size, TlsByteVecU32, TlsByteVecU8};
 
 use super::*;
 use std::io::{Read, Write};
 
-impl tls_codec::Deserialize for VerifiableMlsPlaintext {
+impl Deserialize for VerifiableMlsPlaintext {
     fn tls_deserialize<R: Read>(bytes: &mut R) -> Result<Self, tls_codec::Error> {
         let wire_format = WireFormat::tls_deserialize(bytes)?;
         let content: MlsContent = MlsContent::tls_deserialize(bytes)?;
@@ -36,7 +36,7 @@ impl tls_codec::Deserialize for VerifiableMlsPlaintext {
     }
 }
 
-impl tls_codec::Size for VerifiableMlsPlaintext {
+impl Size for VerifiableMlsPlaintext {
     #[inline]
     fn tls_serialized_len(&self) -> usize {
         self.tbs.wire_format.tls_serialized_len()
@@ -51,7 +51,7 @@ impl tls_codec::Size for VerifiableMlsPlaintext {
     }
 }
 
-impl tls_codec::Serialize for VerifiableMlsPlaintext {
+impl Serialize for VerifiableMlsPlaintext {
     fn tls_serialize<W: Write>(&self, writer: &mut W) -> Result<usize, tls_codec::Error> {
         let mut written = self.tbs.wire_format.tls_serialize(writer)?;
         written += self.tbs.group_id.tls_serialize(writer)?;
@@ -94,7 +94,7 @@ pub(super) fn serialize_plaintext_tbs<'a, W: Write>(
     payload.tls_serialize(buffer).map(|l| l + written)
 }
 
-impl tls_codec::Size for MlsPlaintextTbs {
+impl Size for MlsPlaintextTbs {
     #[inline]
     fn tls_serialized_len(&self) -> usize {
         let context_len = if let Some(serialized_context) = &self.serialized_context {
@@ -112,7 +112,7 @@ impl tls_codec::Size for MlsPlaintextTbs {
     }
 }
 
-impl tls_codec::Serialize for MlsPlaintextTbs {
+impl Serialize for MlsPlaintextTbs {
     fn tls_serialize<W: Write>(&self, writer: &mut W) -> Result<usize, tls_codec::Error> {
         serialize_plaintext_tbs(
             self.serialized_context.as_deref(),
@@ -127,7 +127,7 @@ impl tls_codec::Serialize for MlsPlaintextTbs {
     }
 }
 
-impl tls_codec::Deserialize for MlsCiphertext {
+impl Deserialize for MlsCiphertext {
     fn tls_deserialize<R: Read>(bytes: &mut R) -> Result<Self, tls_codec::Error> {
         let wire_format = WireFormat::tls_deserialize(bytes)?;
         let group_id = GroupId::tls_deserialize(bytes)?;
@@ -159,7 +159,7 @@ impl tls_codec::Deserialize for MlsCiphertext {
 }
 
 // TODO(#1053): Replace with `derive(TlsSerialize)`.
-impl tls_codec::Serialize for MlsMessage {
+impl Serialize for MlsMessage {
     fn tls_serialize<W: std::io::Write>(&self, writer: &mut W) -> Result<usize, tls_codec::Error> {
         match self.body {
             MlsMessageBody::Ciphertext(ref m) => m.tls_serialize(writer),
@@ -169,7 +169,7 @@ impl tls_codec::Serialize for MlsMessage {
 }
 
 // TODO(#1053): Replace with `derive(TlsDeserialize)`.
-impl tls_codec::Deserialize for MlsMessage {
+impl Deserialize for MlsMessage {
     fn tls_deserialize<R: Read>(bytes: &mut R) -> Result<Self, tls_codec::Error> {
         // Determine the wire format by looking at the first byte
         let mut first_byte_buffer = [0u8];
@@ -199,7 +199,7 @@ impl tls_codec::Deserialize for MlsMessage {
 }
 
 // TODO(#1053): Replace with `derive(Size)`.
-impl tls_codec::Size for MlsMessage {
+impl Size for MlsMessage {
     #[inline]
     fn tls_serialized_len(&self) -> usize {
         match &self.body {
@@ -208,5 +208,68 @@ impl tls_codec::Size for MlsMessage {
             }
             MlsMessageBody::Ciphertext(ciphertext) => MlsCiphertext::tls_serialized_len(ciphertext),
         }
+    }
+}
+
+impl Size for MlsCiphertextContent {
+    fn tls_serialized_len(&self) -> usize {
+        self.content.tls_serialized_len() +
+           self.signature.tls_serialized_len() +
+            self.confirmation_tag.tls_serialized_len() +
+            // Note: The padding is appended as a "raw" all-zero byte slice
+            // with length `length_of_padding`. Thus, we only need to add
+            // this length here.
+            self.length_of_padding
+    }
+}
+
+impl Serialize for MlsCiphertextContent {
+    fn tls_serialize<W: Write>(&self, writer: &mut W) -> Result<usize, Error> {
+        let mut written = 0;
+
+        written += self.content.tls_serialize(writer)?;
+        written += self.signature.tls_serialize(writer)?;
+        written += self.confirmation_tag.tls_serialize(writer)?;
+        let padding = vec![0u8; self.length_of_padding];
+        writer.write_all(&padding)?;
+        written += self.length_of_padding;
+
+        Ok(written)
+    }
+}
+
+impl Deserialize for MlsCiphertextContent {
+    /// We first decode `content`, `signature`, and `confirmation_tag`, and then make sure
+    /// that the rest of the slice contains only zero bytes, i.e., is the padding.
+    /// Note: This always "terminates" the `Read` instance because we call `read_to_end`.
+    fn tls_deserialize<R: Read>(bytes: &mut R) -> Result<Self, Error>
+    where
+        Self: Sized,
+    {
+        let content = MlsContentBody::tls_deserialize(bytes)?;
+        let signature = Signature::tls_deserialize(bytes)?;
+        let confirmation_tag = Option::<ConfirmationTag>::tls_deserialize(bytes)?;
+
+        let padding = {
+            let mut buffer = Vec::new();
+            bytes
+                .read_to_end(&mut buffer)
+                .map_err(|_| Error::InvalidInput)?;
+            buffer
+        };
+
+        let length_of_padding = padding.len();
+
+        // ValSem011: MLSCiphertextContent padding must be all-zero.
+        if !padding.into_iter().all(|byte| byte == 0x00) {
+            return Err(Error::InvalidInput);
+        }
+
+        Ok(MlsCiphertextContent {
+            content,
+            signature,
+            confirmation_tag,
+            length_of_padding,
+        })
     }
 }
