@@ -654,13 +654,6 @@
 <span id="654">654</span>
 <span id="655">655</span>
 <span id="656">656</span>
-<span id="657">657</span>
-<span id="658">658</span>
-<span id="659">659</span>
-<span id="660">660</span>
-<span id="661">661</span>
-<span id="662">662</span>
-<span id="663">663</span>
 </pre><pre class="rust"><code><span class="doccomment">//! An implementation of a diff functionality for the [`ABinaryTree`] struct.</span>
 <span class="doccomment">//!</span>
 <span class="doccomment">//! # About</span>
@@ -749,13 +742,6 @@
     ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident">OutOfBoundsError</span><span class="op">&gt;</span> {
         <span class="ident">diff</span>.<span class="ident">out_of_bounds</span>(<span class="ident">node_index</span>)<span class="question-mark">?</span>;
         <span class="prelude-val">Ok</span>(<span class="ident">NodeId</span> { <span class="ident">node_index</span> })
-    }
-
-    <span class="doccomment">/// FIXME: This is only needed to workaround the current presence of a</span>
-    <span class="doccomment">/// NodeIndex in the ParentNodeTreeHashInput struct in the spec and should</span>
-    <span class="doccomment">/// go away when #507 in the MLS spec is integrated.</span>
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">node_index</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">LeafIndex</span> {
-        <span class="self">self</span>.<span class="ident">node_index</span>
     }
 }
 

@@ -942,15 +942,6 @@
 <span id="942">942</span>
 <span id="943">943</span>
 <span id="944">944</span>
-<span id="945">945</span>
-<span id="946">946</span>
-<span id="947">947</span>
-<span id="948">948</span>
-<span id="949">949</span>
-<span id="950">950</span>
-<span id="951">951</span>
-<span id="952">952</span>
-<span id="953">953</span>
 </pre><pre class="rust"><code><span class="doccomment">//! This module provides the diff functionality for [`TreeSync`].</span>
 <span class="doccomment">//!</span>
 <span class="doccomment">//! # About</span>
@@ -1737,9 +1728,7 @@
                 .<span class="ident">node_mut</span>(<span class="ident">node_id</span>)
                 .<span class="ident">map_err</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="ident">LibraryError::custom</span>(<span class="string">&quot;Expected node to be in tree&quot;</span>))<span class="question-mark">?</span>;
             <span class="kw">let</span> <span class="ident">tree_hash</span> <span class="op">=</span>
-                <span class="comment">// Giving 0 as a node index here for now. See comment in the</span>
-                <span class="comment">// function for context.</span>
-                <span class="ident">leaf</span>.<span class="ident">compute_tree_hash</span>(<span class="ident">backend</span>, <span class="ident">ciphersuite</span>, <span class="prelude-val">Some</span>(<span class="ident">leaf_index</span>), <span class="number">0</span>,<span class="macro">vec!</span>[], <span class="macro">vec!</span>[])<span class="question-mark">?</span>;
+                <span class="ident">leaf</span>.<span class="ident">compute_tree_hash</span>(<span class="ident">backend</span>, <span class="ident">ciphersuite</span>, <span class="prelude-val">Some</span>(<span class="ident">leaf_index</span>), <span class="macro">vec!</span>[], <span class="macro">vec!</span>[])<span class="question-mark">?</span>;
             <span class="kw">return</span> <span class="prelude-val">Ok</span>(<span class="ident">tree_hash</span>);
         }
         <span class="comment">// Return early if there&#39;s already a cached tree hash.</span>
@@ -1767,15 +1756,8 @@
             .<span class="ident">diff</span>
             .<span class="ident">node_mut</span>(<span class="ident">node_id</span>)
             .<span class="ident">map_err</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="ident">LibraryError::custom</span>(<span class="string">&quot;Expected node to be in tree&quot;</span>))<span class="question-mark">?</span>;
-        <span class="kw">let</span> <span class="ident">node_index</span> <span class="op">=</span> <span class="ident">node_id</span>.<span class="ident">node_index</span>();
-        <span class="kw">let</span> <span class="ident">tree_hash</span> <span class="op">=</span> <span class="ident">node</span>.<span class="ident">compute_tree_hash</span>(
-            <span class="ident">backend</span>,
-            <span class="ident">ciphersuite</span>,
-            <span class="prelude-val">None</span>,
-            <span class="ident">node_index</span>,
-            <span class="ident">left_hash</span>,
-            <span class="ident">right_hash</span>,
-        )<span class="question-mark">?</span>;
+        <span class="kw">let</span> <span class="ident">tree_hash</span> <span class="op">=</span>
+            <span class="ident">node</span>.<span class="ident">compute_tree_hash</span>(<span class="ident">backend</span>, <span class="ident">ciphersuite</span>, <span class="prelude-val">None</span>, <span class="ident">left_hash</span>, <span class="ident">right_hash</span>)<span class="question-mark">?</span>;
 
         <span class="prelude-val">Ok</span>(<span class="ident">tree_hash</span>)
     }
