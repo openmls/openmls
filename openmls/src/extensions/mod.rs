@@ -55,9 +55,19 @@ use crate::treesync::node::Node;
 #[cfg(test)]
 mod test_extensions;
 
-/// # Extension types
+/// MLS Extension Types
 ///
-/// [IANA registrations](https://messaginglayersecurity.rocks/mls-protocol/draft-ietf-mls-protocol.html#name-mls-extension-types)
+/// Copied from draft-ietf-mls-protocol-16:
+///
+/// | Value            | Name                     | Message(s) | Recommended | Reference |
+/// |:-----------------|:-------------------------|:-----------|:------------|:----------|
+/// | 0x0000           | RESERVED                 | N/A        | N/A         | RFC XXXX  |
+/// | 0x0001           | application_id           | LN         | Y           | RFC XXXX  |
+/// | 0x0002           | ratchet_tree             | GI         | Y           | RFC XXXX  |
+/// | 0x0003           | required_capabilities    | GC         | Y           | RFC XXXX  |
+/// | 0x0004           | external_pub             | GI         | Y           | RFC XXXX  |
+/// | 0x0005           | external_senders         | GC         | Y           | RFC XXXX  |
+/// | 0xff00  - 0xffff | Reserved for Private Use | N/A        | N/A         | RFC XXXX  |
 #[derive(
     Debug,
     Copy,
@@ -74,7 +84,6 @@ mod test_extensions;
     TlsSize,
 )]
 #[repr(u16)]
-#[allow(missing_docs)]
 pub enum ExtensionType {
     /// Reserved. This must not be used.
     Reserved = 0,
@@ -142,13 +151,21 @@ impl ExtensionType {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 /// # Extension
 ///
 /// An extension is one of the [`Extension`] enum values.
 /// The enum provides a set of common functionality for all extensions.
 ///
 /// See the individual extensions for more details on each extension.
+///
+/// ```c
+/// // draft-ietf-mls-protocol-16
+/// struct {
+///     ExtensionType extension_type;
+///     opaque extension_data<V>;
+/// } Extension;
+/// ```
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub enum Extension {
     /// A [`CapabilitiesExtension`]
     Capabilities(CapabilitiesExtension),
