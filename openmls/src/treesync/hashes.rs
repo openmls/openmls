@@ -48,26 +48,73 @@ impl<'a> ParentHashInput<'a> {
 }
 
 /// Helper struct that can be serialized in the course of tree hash computation.
+///
+/// ```c
+/// // draft-ietf-mls-protocol-16
+/// enum {
+///     reserved(0),
+///     leaf(1),
+///     parent(2),
+///     (255)
+/// } NodeType;
+/// ```
 #[derive(TlsSerialize, TlsSize)]
-pub struct LeafNodeHashInput<'a> {
-    pub(super) leaf_index: &'a LeafIndex,
-    pub(super) key_package: Option<&'a KeyPackage>,
+#[repr(u8)]
+enum NodeType<'a> {
+    #[tls_codec(discriminant = 1)]
+    Leaf(LeafNodeHashInput<'a>),
+    #[tls_codec(discriminant = 2)]
+    Parent(ParentNodeHashInput<'a>),
 }
 
-impl<'a> LeafNodeHashInput<'a> {
-    /// Create a new [`LeafNodeHashInput`] instance.
-    pub(super) fn new(leaf_index: &'a LeafIndex, key_package: Option<&'a KeyPackage>) -> Self {
+/// Helper struct that can be serialized in the course of tree hash computation.
+///
+/// ```c
+/// // draft-ietf-mls-protocol-16
+/// struct {
+///   NodeType node_type;
+/// select (TreeHashInput.node_type) {
+///     case leaf:   LeafNodeHashInput leaf_node;
+///     case parent: ParentNodeHashInput parent_node;
+///   }
+/// } TreeHashInput;
+/// ```
+#[derive(TlsSerialize, TlsSize)]
+pub(super) struct TreeHashInput<'a> {
+    node_type: NodeType<'a>,
+}
+
+impl<'a> TreeHashInput<'a> {
+    /// Create a new [`TreeHashInput`] instance from a leaf node.
+    pub(super) fn new_leaf(leaf_index: &'a LeafIndex, key_package: Option<&'a KeyPackage>) -> Self {
         Self {
-            leaf_index,
-            key_package,
+            node_type: NodeType::Leaf(LeafNodeHashInput {
+                leaf_index,
+                key_package,
+            }),
         }
     }
 
-    /// Serialize and hash this instance of [`LeafNodeHashInput`].
+    /// Create a new [`TreeHashInput`] instance from a parent node.
+    pub(super) fn new_parent(
+        parent_node: Option<&'a ParentNode>,
+        left_hash: VLByteSlice<'a>,
+        right_hash: VLByteSlice<'a>,
+    ) -> Self {
+        Self {
+            node_type: NodeType::Parent(ParentNodeHashInput {
+                parent_node,
+                left_hash,
+                right_hash,
+            }),
+        }
+    }
+
+    /// Serialize and hash this instance of [`TreeHashInput`].
     pub(super) fn hash(
         &self,
-        ciphersuite: Ciphersuite,
         backend: &impl OpenMlsCryptoProvider,
+        ciphersuite: Ciphersuite,
     ) -> Result<Vec<u8>, LibraryError> {
         let payload = self
             .tls_serialize_detached()
@@ -84,47 +131,30 @@ impl<'a> LeafNodeHashInput<'a> {
 /// ```c
 /// // draft-ietf-mls-protocol-16
 /// struct {
+///     uint32 leaf_index;
+///     optional<LeafNode> leaf_node;
+/// } LeafNodeHashInput;
+/// ```
+#[derive(TlsSerialize, TlsSize)]
+struct LeafNodeHashInput<'a> {
+    leaf_index: &'a LeafIndex,
+    // TODO #819: Replace this with a LeafNode
+    key_package: Option<&'a KeyPackage>,
+}
+
+/// Helper struct that can be serialized in the course of tree hash computation.
+///
+/// ```c
+/// // draft-ietf-mls-protocol-16
+/// struct {
 ///     optional<ParentNode> parent_node;
 ///     opaque left_hash<V>;
 ///     opaque right_hash<V>;
 /// } ParentNodeHashInput;
 /// ```
 #[derive(TlsSerialize, TlsSize)]
-pub(super) struct ParentNodeHashInput<'a> {
-    node_index: LeafIndex,
+struct ParentNodeHashInput<'a> {
     parent_node: Option<&'a ParentNode>,
     left_hash: VLByteSlice<'a>,
     right_hash: VLByteSlice<'a>,
-}
-
-impl<'a> ParentNodeHashInput<'a> {
-    /// Create a new [`ParentNodeTreeHashInput`] instance.
-    pub(super) fn new(
-        node_index: LeafIndex,
-        parent_node: Option<&'a ParentNode>,
-        left_hash: VLByteSlice<'a>,
-        right_hash: VLByteSlice<'a>,
-    ) -> Self {
-        Self {
-            node_index,
-            parent_node,
-            left_hash,
-            right_hash,
-        }
-    }
-
-    /// Serialize and hash this instance of [`ParentNodeTreeHashInput`].
-    pub(super) fn hash(
-        &self,
-        ciphersuite: Ciphersuite,
-        backend: &impl OpenMlsCryptoProvider,
-    ) -> Result<Vec<u8>, LibraryError> {
-        let payload = self
-            .tls_serialize_detached()
-            .map_err(LibraryError::missing_bound_check)?;
-        backend
-            .crypto()
-            .hash(ciphersuite.hash_algorithm(), &payload)
-            .map_err(LibraryError::unexpected_crypto_error)
-    }
 }

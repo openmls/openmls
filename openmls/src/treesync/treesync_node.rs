@@ -8,10 +8,9 @@ use tls_codec::VLByteSlice;
 use crate::{
     binary_tree::{LeafIndex, MlsBinaryTreeDiffError},
     error::LibraryError,
-    treesync::hashes::{LeafNodeHashInput, ParentNodeHashInput},
 };
 
-use super::{errors::NodeError, node::leaf_node::LeafNode, Node};
+use super::{errors::NodeError, hashes::TreeHashInput, node::leaf_node::LeafNode, Node};
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[cfg_attr(test, derive(PartialEq))]
@@ -96,8 +95,6 @@ impl TreeSyncNode {
         backend: &impl OpenMlsCryptoProvider,
         ciphersuite: Ciphersuite,
         leaf_index_option: Option<LeafIndex>,
-        // This is temporary. See below.
-        node_index: LeafIndex,
         left_hash: Vec<u8>,
         right_hash: Vec<u8>,
     ) -> Result<Vec<u8>, LibraryError> {
@@ -116,11 +113,8 @@ impl TreeSyncNode {
                 None => None,
             }
             .map(|leaf_node| leaf_node.key_package());
-            // FIXME: After PR #507 of the spec is merged, this should really be the
-            // leaf index. For now, we translate to node index here.
-            let leaf_index = leaf_index * 2;
-            let hash_input = LeafNodeHashInput::new(&leaf_index, key_package_option);
-            hash_input.hash(ciphersuite, backend)?
+            let hash_input = TreeHashInput::new_leaf(&leaf_index, key_package_option);
+            hash_input.hash(backend, ciphersuite)?
         } else {
             let parent_node_option = match self.node.as_ref() {
                 Some(node) => Some(
@@ -129,16 +123,12 @@ impl TreeSyncNode {
                 ),
                 None => None,
             };
-            // FIXME: After PR #507 of the spec is merged, this not include a
-            // NodeIndex. To be able to verify against test vectors, we include
-            // it here for now.
-            let hash_input = ParentNodeHashInput::new(
-                node_index,
+            let hash_input = TreeHashInput::new_parent(
                 parent_node_option,
                 VLByteSlice(&left_hash),
                 VLByteSlice(&right_hash),
             );
-            hash_input.hash(ciphersuite, backend)?
+            hash_input.hash(backend, ciphersuite)?
         };
         self.tree_hash = Some(hash.clone());
         Ok(hash)
