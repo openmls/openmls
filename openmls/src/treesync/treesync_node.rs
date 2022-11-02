@@ -95,8 +95,6 @@ impl TreeSyncNode {
         backend: &impl OpenMlsCryptoProvider,
         ciphersuite: Ciphersuite,
         leaf_index_option: Option<LeafIndex>,
-        // This is temporary. See below.
-        node_index: LeafIndex,
         left_hash: Vec<u8>,
         right_hash: Vec<u8>,
     ) -> Result<Vec<u8>, LibraryError> {
@@ -132,7 +130,6 @@ impl TreeSyncNode {
             // NodeIndex. To be able to verify against test vectors, we include
             // it here for now.
             let hash_input = TreeHashInput::new_parent(
-                node_index,
                 parent_node_option,
                 VLByteSlice(&left_hash),
                 VLByteSlice(&right_hash),

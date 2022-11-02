@@ -97,14 +97,12 @@ impl<'a> TreeHashInput<'a> {
 
     /// Create a new [`TreeHashInput`] instance from a parent node.
     pub(super) fn new_parent(
-        node_index: LeafIndex,
         parent_node: Option<&'a ParentNode>,
         left_hash: VLByteSlice<'a>,
         right_hash: VLByteSlice<'a>,
     ) -> Self {
         Self {
             node_type: NodeType::Parent(ParentNodeHashInput {
-                node_index,
                 parent_node,
                 left_hash,
                 right_hash,
@@ -140,6 +138,7 @@ impl<'a> TreeHashInput<'a> {
 #[derive(TlsSerialize, TlsSize)]
 struct LeafNodeHashInput<'a> {
     leaf_index: &'a LeafIndex,
+    // TODO #819: Replace this with a LeafNode
     key_package: Option<&'a KeyPackage>,
 }
 
@@ -155,7 +154,6 @@ struct LeafNodeHashInput<'a> {
 /// ```
 #[derive(TlsSerialize, TlsSize)]
 struct ParentNodeHashInput<'a> {
-    node_index: LeafIndex,
     parent_node: Option<&'a ParentNode>,
     left_hash: VLByteSlice<'a>,
     right_hash: VLByteSlice<'a>,
