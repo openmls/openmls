@@ -328,7 +328,7 @@ impl UnverifiedGroupMessage {
     pub(crate) fn into_verified(
         self,
         backend: &impl OpenMlsCryptoProvider,
-        signature_key: Option<&SignaturePublicKey>,
+        signature_key: Option<&OpenMlsSignaturePublicKey>,
     ) -> Result<VerifiedMemberMessage, ValidationError> {
         // If a signature key is provided it will be used,
         // otherwise we take the key from the credential
@@ -360,7 +360,7 @@ impl UnverifiedExternalMessage {
     pub(crate) fn into_verified(
         self,
         backend: &impl OpenMlsCryptoProvider,
-        signature_key: &SignaturePublicKey,
+        signature_key: &OpenMlsSignaturePublicKey,
     ) -> Result<VerifiedExternalMessage, ValidationError> {
         // ValSem010
         self.plaintext

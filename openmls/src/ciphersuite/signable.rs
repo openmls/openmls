@@ -36,7 +36,7 @@ use crate::{
     error::LibraryError,
 };
 
-use super::SignaturePublicKey;
+use super::OpenMlsSignaturePublicKey;
 
 /// This trait must be implemented by all structs that contain a self-signature.
 pub trait SignedStruct<T> {
@@ -152,7 +152,7 @@ pub trait Verifiable: Sized {
     fn verify_with_key<T>(
         self,
         backend: &impl OpenMlsCryptoProvider,
-        signature_public_key: &SignaturePublicKey,
+        signature_public_key: &OpenMlsSignaturePublicKey,
     ) -> Result<T, CredentialError>
     where
         T: VerifiedStruct<Self>,

@@ -89,7 +89,7 @@ pub struct Certificate {
 /// MlsCredentialType.
 ///
 /// This enum contains variants containing the different available credentials.
-#[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
+#[derive(Debug, PartialEq, Eq, Clone, Serialize, Deserialize)]
 pub enum MlsCredentialType {
     /// A [`BasicCredential`]
     Basic(BasicCredential),
@@ -101,7 +101,7 @@ pub enum MlsCredentialType {
 ///
 /// This struct contains MLS credential data, where the data depends on the
 /// type. The [`CredentialType`] always matches the [`MlsCredentialType`].
-#[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
+#[derive(Debug, PartialEq, Eq, Clone, Serialize, Deserialize)]
 pub struct Credential {
     credential_type: CredentialType,
     credential: MlsCredentialType,
@@ -120,10 +120,16 @@ impl Credential {
         label: &str,
     ) -> Result<(), CredentialError> {
         match &self.credential {
-            MlsCredentialType::Basic(basic_credential) => basic_credential
-                .public_key
-                .verify_with_label(backend, signature, &SignContent::new(label, payload.into()))
-                .map_err(|_| CredentialError::InvalidSignature),
+            MlsCredentialType::Basic(basic_credential) => {
+                let signature_public_key_enriched = basic_credential
+                    .public_key
+                    .clone()
+                    .into_signature_public_key_enriched(basic_credential.signature_scheme);
+
+                signature_public_key_enriched
+                    .verify_with_label(backend, signature, &SignContent::new(label, payload.into()))
+                    .map_err(|_| CredentialError::InvalidSignature)
+            }
             // TODO: implement verification for X509 certificates. See issue #134.
             MlsCredentialType::X509(_) => panic!("X509 certificates are not yet implemented."),
         }
@@ -172,7 +178,7 @@ impl From<MlsCredentialType> for Credential {
 /// A `BasicCredential` as defined in the MLS protocol spec. It exposes an
 /// `identity` to represent the client, as well as a signature public key, along
 /// with the corresponding signature scheme.
-#[derive(Debug, Clone, Serialize, Deserialize, TlsSerialize, TlsSize)]
+#[derive(Debug, Clone, Eq, Serialize, Deserialize, TlsSerialize, TlsDeserialize, TlsSize)]
 pub struct BasicCredential {
     identity: TlsByteVecU16,
     signature_scheme: SignatureScheme,
@@ -189,7 +195,12 @@ impl BasicCredential {
         payload: &[u8],
         signature: &Signature,
     ) -> Result<(), CredentialError> {
-        self.public_key
+        let signature_public_key_enriched = self
+            .public_key
+            .clone()
+            .into_signature_public_key_enriched(self.signature_scheme);
+
+        signature_public_key_enriched
             .verify(backend, signature, payload)
             .map_err(|_| CredentialError::InvalidSignature)
     }
@@ -231,7 +242,7 @@ impl CredentialBundle {
             CredentialType::Basic => BasicCredential {
                 identity: identity.into(),
                 signature_scheme,
-                public_key,
+                public_key: public_key.into(),
             },
             _ => return Err(CredentialError::UnsupportedCredentialType),
         };
@@ -253,7 +264,7 @@ impl CredentialBundle {
         let basic_credential = BasicCredential {
             identity: identity.into(),
             signature_scheme: public_key.signature_scheme(),
-            public_key,
+            public_key: public_key.into(),
         };
         let credential = Credential {
             credential_type: CredentialType::Basic,
@@ -289,7 +300,11 @@ impl CredentialBundle {
     /// Returns the key pair of the given credential bundle.
     #[cfg(any(feature = "test-utils", test))]
     pub fn key_pair(&self) -> SignatureKeypair {
-        let public_key = self.credential().signature_key().clone();
+        let public_key = self
+            .credential()
+            .signature_key()
+            .clone()
+            .into_signature_public_key_enriched(self.credential().signature_scheme());
         let private_key = self.signature_private_key.clone();
         SignatureKeypair::from_parts(public_key, private_key)
     }

@@ -24,5 +24,11 @@ fn credential_with_signature_keypair(
 
     // Make sure the credential's keys are the original keys
     assert_eq!(signature_private_key, original_private_key);
-    assert_eq!(credential.signature_key(), &original_public_key);
+    assert_eq!(
+        credential
+            .signature_key()
+            .clone()
+            .into_signature_public_key_enriched(credential.signature_scheme()),
+        original_public_key
+    );
 }
