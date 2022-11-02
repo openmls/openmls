@@ -57,7 +57,7 @@ impl MlsGroup {
     pub fn process_unverified_message(
         &self,
         unverified_message: UnverifiedMessage,
-        signature_key: Option<&SignaturePublicKey>,
+        signature_key: Option<&OpenMlsSignaturePublicKey>,
         backend: &impl OpenMlsCryptoProvider,
     ) -> Result<ProcessedMessage, UnverifiedMessageError> {
         self.group.process_unverified_message(

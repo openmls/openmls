@@ -30,6 +30,7 @@ use tls_codec::*;
 mod capabilities_extension;
 mod codec;
 mod external_key_id_extension;
+mod external_sender_extension;
 mod life_time_extension;
 mod parent_hash_extension;
 mod ratchet_tree_extension;

@@ -1,20 +1,9 @@
 //! Tls serialization implementations for the ciphersuites.
 //! Provides encoding and decoding functionality.
 
-use crate::ciphersuite::*;
 use std::io::{Read, Write};
 
-impl tls_codec::Serialize for SignaturePublicKey {
-    fn tls_serialize<W: Write>(&self, writer: &mut W) -> Result<usize, tls_codec::Error> {
-        self.value.tls_serialize(writer)
-    }
-}
-
-impl tls_codec::Size for SignaturePublicKey {
-    fn tls_serialized_len(&self) -> usize {
-        self.value.tls_serialized_len()
-    }
-}
+use crate::ciphersuite::*;
 
 impl tls_codec::Size for Secret {
     fn tls_serialized_len(&self) -> usize {

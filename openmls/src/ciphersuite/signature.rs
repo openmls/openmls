@@ -59,8 +59,43 @@ pub struct SignaturePrivateKey {
 }
 
 /// A public signature key.
-#[derive(Eq, PartialEq, Hash, Debug, Clone, Serialize, Deserialize)]
+#[derive(
+    Eq, PartialEq, Hash, Debug, Clone, Serialize, Deserialize, TlsSerialize, TlsDeserialize, TlsSize,
+)]
 pub struct SignaturePublicKey {
+    pub(in crate::ciphersuite) value: VLBytes,
+}
+
+impl SignaturePublicKey {
+    /// Convert the "raw" signature into an enriched form, [OpenMlsSignaturePublicKey], that
+    /// already contains the signature scheme.
+    pub fn into_signature_public_key_enriched(
+        self,
+        signature_scheme: SignatureScheme,
+    ) -> OpenMlsSignaturePublicKey {
+        OpenMlsSignaturePublicKey {
+            signature_scheme,
+            value: self.value,
+        }
+    }
+
+    /// Returns the bytes of the signature public key.
+    pub fn as_slice(&self) -> &[u8] {
+        self.value.as_ref()
+    }
+}
+
+impl From<OpenMlsSignaturePublicKey> for SignaturePublicKey {
+    fn from(signature_public_key_enriched: OpenMlsSignaturePublicKey) -> Self {
+        SignaturePublicKey {
+            value: signature_public_key_enriched.value,
+        }
+    }
+}
+
+/// A public signature key.
+#[derive(Eq, PartialEq, Hash, Debug, Clone, Serialize, Deserialize)]
+pub struct OpenMlsSignaturePublicKey {
     signature_scheme: SignatureScheme,
     pub(in crate::ciphersuite) value: VLBytes,
 }
@@ -69,7 +104,7 @@ pub struct SignaturePublicKey {
 #[derive(Debug, Clone)]
 pub struct SignatureKeypair {
     private_key: SignaturePrivateKey,
-    public_key: SignaturePublicKey,
+    public_key: OpenMlsSignaturePublicKey,
 }
 
 #[cfg(test)]
@@ -104,7 +139,7 @@ impl SignatureKeypair {
                 signature_scheme,
                 value: private_key,
             },
-            public_key: SignaturePublicKey {
+            public_key: OpenMlsSignaturePublicKey {
                 signature_scheme,
                 value: public_key,
             },
@@ -112,7 +147,7 @@ impl SignatureKeypair {
     }
 
     /// Get the private and public key objects
-    pub fn into_tuple(self) -> (SignaturePrivateKey, SignaturePublicKey) {
+    pub fn into_tuple(self) -> (SignaturePrivateKey, OpenMlsSignaturePublicKey) {
         (self.private_key, self.public_key)
     }
 }
@@ -158,7 +193,7 @@ impl SignatureKeypair {
                 value: sk,
                 signature_scheme,
             },
-            public_key: SignaturePublicKey {
+            public_key: OpenMlsSignaturePublicKey {
                 value: pk.into(),
                 signature_scheme,
             },
@@ -167,7 +202,10 @@ impl SignatureKeypair {
 
     /// Create a [`SignatureKeypair`] from a public and a private key.
     #[cfg(any(feature = "test-utils", test))]
-    pub fn from_parts(public_key: SignaturePublicKey, private_key: SignaturePrivateKey) -> Self {
+    pub fn from_parts(
+        public_key: OpenMlsSignaturePublicKey,
+        private_key: SignaturePrivateKey,
+    ) -> Self {
         Self {
             private_key,
             public_key,
@@ -175,7 +213,7 @@ impl SignatureKeypair {
     }
 }
 
-impl SignaturePublicKey {
+impl OpenMlsSignaturePublicKey {
     /// Create a new signature public key from raw key bytes.
     pub fn new(value: VLBytes, signature_scheme: SignatureScheme) -> Result<Self, CryptoError> {
         Ok(Self {
