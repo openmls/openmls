@@ -113,9 +113,6 @@ impl TreeSyncNode {
                 None => None,
             }
             .map(|leaf_node| leaf_node.key_package());
-            // FIXME: After PR #507 of the spec is merged, this should really be the
-            // leaf index. For now, we translate to node index here.
-            let leaf_index = leaf_index * 2;
             let hash_input = TreeHashInput::new_leaf(&leaf_index, key_package_option);
             hash_input.hash(backend, ciphersuite)?
         } else {
@@ -126,9 +123,6 @@ impl TreeSyncNode {
                 ),
                 None => None,
             };
-            // FIXME: After PR #507 of the spec is merged, this not include a
-            // NodeIndex. To be able to verify against test vectors, we include
-            // it here for now.
             let hash_input = TreeHashInput::new_parent(
                 parent_node_option,
                 VLByteSlice(&left_hash),

@@ -784,8 +784,6 @@ impl<'a> TreeSyncDiff<'a> {
                 .node_mut(node_id)
                 .map_err(|_| LibraryError::custom("Expected node to be in tree"))?;
             let tree_hash =
-                // Giving 0 as a node index here for now. See comment in the
-                // function for context.
                 leaf.compute_tree_hash(backend, ciphersuite, Some(leaf_index), vec![], vec![])?;
             return Ok(tree_hash);
         }
