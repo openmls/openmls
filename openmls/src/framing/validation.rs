@@ -21,7 +21,7 @@
 //! | (sender is member)     | (sender is not member)
 //! |                        |
 //! V                        V
-//! UnverifiedGroupMessage   UnverifiedPreconfiguredMessage
+//! UnverifiedGroupMessage   UnverifiedExternalMessage
 //! |                        |
 //! | (verify signature)     | (verify signature)
 //! |                        |
@@ -183,8 +183,8 @@ impl DecryptedMessage {
                     }
                 }
             }
-            // Preconfigured senders are not supported yet #106/#151.
-            Sender::Preconfigured(_) => unimplemented!(),
+            // External senders are not supported yet #106/#151.
+            Sender::External(_) => unimplemented!(),
             Sender::NewMember => {
                 // Since this allows only commits to have a sender type `Member`, it checks
                 // ValSem112
@@ -269,10 +269,10 @@ impl UnverifiedMessage {
 pub(crate) enum UnverifiedContextMessage {
     /// Unverified message from a group member
     Group(UnverifiedGroupMessage),
-    /// Unverfied message from a preconfigured sender
+    /// Unverfied message from an external sender
     /// TODO: #106
     #[allow(dead_code)]
-    Preconfigured(UnverifiedPreconfiguredMessage),
+    External(UnverifiedExternalMessage),
 }
 
 impl UnverifiedContextMessage {
@@ -308,8 +308,8 @@ impl UnverifiedContextMessage {
                     })?,
                 }))
             }
-            // TODO #151/#106: We don't support preconfigured senders yet
-            Sender::Preconfigured(_) => unimplemented!(),
+            // TODO #151/#106: We don't support external senders yet
+            Sender::External(_) => unimplemented!(),
         }
     }
 }
@@ -346,14 +346,14 @@ impl UnverifiedGroupMessage {
     }
 }
 
-// TODO #151/#106: We don't support preconfigured senders yet
+// TODO #151/#106: We don't support external senders yet
 /// Part of [UnverifiedContextMessage].
-pub(crate) struct UnverifiedPreconfiguredMessage {
+pub(crate) struct UnverifiedExternalMessage {
     plaintext: VerifiableMlsPlaintext,
 }
 
-impl UnverifiedPreconfiguredMessage {
-    /// Verifies the signature on an [UnverifiedPreconfiguredMessage] and returns a [VerifiedExternalMessage] if the
+impl UnverifiedExternalMessage {
+    /// Verifies the signature on an [UnverifiedExternalMessage] and returns a [VerifiedExternalMessage] if the
     /// verification is successful.
     /// This function implements the following checks:
     ///  - ValSem010

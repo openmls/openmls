@@ -59,7 +59,7 @@ impl CoreGroup {
         //  - ValSem246
         //  - Prepares ValSem247 by setting the right credential. The remainder
         //    of ValSem247 is validated as part of ValSem010.
-        // Preconfigured senders are not supported yet #106/#151.
+        // External senders are not supported yet #106/#151.
         let credential = decrypted_message.credential(
             self.treesync(),
             self.message_secrets_store
@@ -190,7 +190,7 @@ impl CoreGroup {
                     }
                 })
             }
-            UnverifiedContextMessage::Preconfigured(external_message) => {
+            UnverifiedContextMessage::External(external_message) => {
                 // Signature verification
                 if let Some(signature_public_key) = signature_key {
                     let _verified_external_message = external_message
@@ -200,7 +200,7 @@ impl CoreGroup {
                     return Err(UnverifiedMessageError::MissingSignatureKey);
                 }
 
-                // We don't support external messages from preconfigured senders yet
+                // We don't support messages from external senders yet
                 // TODO #151/#106
                 todo!()
             }
