@@ -269,7 +269,7 @@ impl UnverifiedMessage {
 pub(crate) enum UnverifiedContextMessage {
     /// Unverified message from a group member
     Group(UnverifiedGroupMessage),
-    /// Unverfied message from an external sender
+    /// Unverified message from an external sender
     /// TODO: #106
     #[allow(dead_code)]
     External(UnverifiedExternalMessage),
