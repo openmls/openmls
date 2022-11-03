@@ -5,6 +5,32 @@ use crate::ciphersuite::hash_ref::KeyPackageRef;
 use tls_codec::{TlsDeserialize, TlsSerialize, TlsSize};
 
 /// All possible sender types according to the MLS protocol spec.
+///
+/// ```c
+/// // draft-ietf-mls-protocol-16
+/// enum {
+///     reserved(0),
+///     member(1),
+///     external(2),
+///     new_member_proposal(3),
+///     new_member_commit(4),
+///     (255)
+/// } SenderType;
+///
+/// // draft-ietf-mls-protocol-16
+/// struct {
+///     SenderType sender_type;
+///     select (Sender.sender_type) {
+///         case member:
+///             uint32 leaf_index;
+///         case external:
+///             uint32 sender_index;
+///         case new_member_commit:
+///         case new_member_proposal:
+///             struct{};
+///     }
+/// } Sender;
+/// ```
 #[derive(
     Debug, PartialEq, Eq, Clone, Serialize, Deserialize, TlsSerialize, TlsDeserialize, TlsSize,
 )]
