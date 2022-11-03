@@ -155,9 +155,9 @@ pub enum StageCommitError {
     /// External Committer used the wrong index.
     #[error("External Committer used the wrong index.")]
     InconsistentSenderIndex,
-    /// The sender is of type preconfigured, which is not valid.
-    #[error("The sender is of type preconfigured, which is not valid.")]
-    SenderTypePreconfigured,
+    /// The sender is of type external, which is not valid.
+    #[error("The sender is of type external, which is not valid.")]
+    SenderTypeExternal,
     /// Too many new members: the tree is full.
     #[error("Too many new members: the tree is full.")]
     TooManyNewMembers,

@@ -91,8 +91,8 @@ pub enum UnverifiedMessageError {
     /// The message's membership tag is invalid.
     #[error("The message's membership tag is invalid.")]
     InvalidMembershipTag,
-    /// A signature key was not provided for a preconfigured message.
-    #[error("A signature key was not provided for a preconfigured message.")]
+    /// A signature key was not provided for an external message.
+    #[error("A signature key was not provided for an external message.")]
     MissingSignatureKey,
     /// See [`StageCommitError`] for more details.
     #[error(transparent)]

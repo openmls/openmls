@@ -135,9 +135,9 @@ impl CoreGroup {
                 // ValSem112
                 self.validate_update_proposals(&proposal_queue, hash_ref)?
             }
-            Sender::Preconfigured(_) => {
+            Sender::External(_) => {
                 // A commit cannot be issued by a pre-configured sender.
-                return Err(StageCommitError::SenderTypePreconfigured);
+                return Err(StageCommitError::SenderTypeExternal);
             }
             Sender::NewMember => {
                 // ValSem240: External Commit, inline Proposals: There MUST be at least one ExternalInit proposal.
@@ -172,7 +172,7 @@ impl CoreGroup {
             }
             Sender::NewMember => diff.free_leaf_index()?,
             _ => {
-                return Err(StageCommitError::SenderTypePreconfigured);
+                return Err(StageCommitError::SenderTypeExternal);
             }
         };
 
