@@ -12,11 +12,7 @@ cargo-fuzz = true
 libfuzzer-sys = "0.4"
 
 [dependencies.openmls]
-path = ".."
-
-# Prevent this from interfering with workspaces
-[workspace]
-members = ["."]
+path = "../openmls"
 
 [[bin]]
 name = "welcome_decode"
@@ -41,7 +37,3 @@ name = "proposal_decode"
 path = "fuzz_targets/proposal_decode.rs"
 test = false
 doc = false
-
-# Patching unreleased crates
-[patch.crates-io]
-tls_codec = { git = "https://github.com/RustCrypto/formats.git", features = ["derive", "serde_serialize", "mls"] }

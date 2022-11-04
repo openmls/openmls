@@ -4,10 +4,6 @@ on:
   - push
   - pull_request_target
 
-defaults:
-  run:
-    working-directory: openmls
-
 jobs:
   clippy_check:
     runs-on: ubuntu-latest
@@ -17,4 +13,4 @@ jobs:
       - uses: actions-rs/clippy-check@v1
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
-          args: --manifest-path openmls/Cargo.toml --tests
+          args: --tests

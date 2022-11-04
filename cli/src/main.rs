@@ -189,6 +189,7 @@ fn main() {
     }
 }
 
+#[ignore]
 #[test]
 #[ignore]
 fn basic_test() {
