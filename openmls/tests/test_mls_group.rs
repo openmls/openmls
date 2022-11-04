@@ -1088,3 +1088,95 @@ fn mls_group_ratchet_tree_extension(
         assert_eq!(error, WelcomeError::MissingRatchetTree);
     }
 }
+
+#[apply(ciphersuites_and_backends)]
+fn mls_group_aad(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
+    for wire_format_policy in WIRE_FORMAT_POLICIES.iter() {
+        let group_id = GroupId::from_slice(b"Test Group");
+
+        // Generate credential bundles
+        let alice_credential = generate_credential_bundle(
+            "Alice".into(),
+            CredentialType::Basic,
+            ciphersuite.signature_algorithm(),
+            backend,
+        )
+        .expect("An unexpected error occurred.");
+
+        let bob_credential = generate_credential_bundle(
+            "Bob".into(),
+            CredentialType::Basic,
+            ciphersuite.signature_algorithm(),
+            backend,
+        )
+        .expect("An unexpected error occurred.");
+
+        // Generate KeyPackages
+        let alice_key_package =
+            generate_key_package_bundle(&[ciphersuite], &alice_credential, vec![], backend)
+                .expect("An unexpected error occurred.");
+        let alice_kpr = alice_key_package
+            .hash_ref(backend.crypto())
+            .expect("Couldn't get the key package reference for Alice.");
+
+        let bob_key_package =
+            generate_key_package_bundle(&[ciphersuite], &bob_credential, vec![], backend)
+                .expect("An unexpected error occurred.");
+
+        // Define the MlsGroup configuration
+        let mls_group_config = MlsGroupConfig::builder()
+            .wire_format_policy(*wire_format_policy)
+            .build();
+
+        // === Alice creates a group ===
+        let mut alice_group =
+            MlsGroup::new(backend, &mls_group_config, group_id, alice_kpr.as_slice())
+                .expect("An unexpected error occurred.");
+        alice_group.set_aad(&[1, 2, 3]);
+
+        // === Alice adds Bob ===
+        let (_queued_message, welcome) = alice_group
+            .add_members(backend, &[bob_key_package])
+            .unwrap();
+        alice_group.merge_pending_commit().unwrap();
+
+        let mut bob_group = MlsGroup::new_from_welcome(
+            backend,
+            &mls_group_config,
+            welcome,
+            Some(alice_group.export_ratchet_tree()),
+        )
+        .expect("Error creating group from Welcome");
+
+        // Verify AAD is present in non-commit messages
+        let message_out = alice_group.create_message(backend, &[1, 1]).unwrap();
+        let unverified_msg = bob_group
+            .parse_message(message_out.into(), backend)
+            .unwrap();
+        assert_eq!(unverified_msg.aad(), &[1, 2, 3]);
+        bob_group
+            .process_unverified_message(unverified_msg, None, backend)
+            .unwrap();
+
+        // Verify AAD is present in commit messages
+        let (message_out, _welcome) = alice_group.self_update(backend, None).unwrap();
+        alice_group.merge_pending_commit().unwrap();
+        let unverified_msg = bob_group
+            .parse_message(message_out.into(), backend)
+            .unwrap();
+        assert_eq!(unverified_msg.aad(), &[1, 2, 3]);
+        bob_group
+            .process_unverified_message(unverified_msg, None, backend)
+            .unwrap();
+
+        // Verify AAD is set on the group before and after loading
+        assert_eq!(alice_group.aad(), &[1, 2, 3]);
+        let empty_aad: &[u8] = &[];
+        assert_eq!(bob_group.aad(), empty_aad);
+
+        let mut buf: Vec<u8> = vec![];
+        alice_group.save(&mut buf).unwrap();
+        let alice_group = MlsGroup::load::<&[u8]>(buf.as_ref()).unwrap();
+        assert_eq!(alice_group.aad(), &[1, 2, 3]);
+    }
+}

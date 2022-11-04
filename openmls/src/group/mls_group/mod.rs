@@ -166,8 +166,7 @@ pub struct MlsGroup {
     // are needed in case an update proposal is commited by another group
     // member. The vector is emptied after every epoch change.
     own_kpbs: Vec<KeyPackageBundle>,
-    // The AAD that is used for all outgoing handshake messages. The AAD can be set through
-    // `set_aad()`.
+    // The AAD that is used for all outgoing messages. The AAD can be set through `set_aad()`.
     aad: Vec<u8>,
     // Resumption psk store. This is where the resumption psks are kept in a rollover list.
     resumption_psk_store: ResumptionPskStore,

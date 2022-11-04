@@ -34,6 +34,8 @@
 //! ProcessedMessage (Application, Proposal, ExternalProposal, Commit, External Commit)
 //! ```
 
+use std::borrow::Borrow;
+
 use crate::{group::errors::ValidationError, tree::index::SecretTreeLeafIndex, treesync::TreeSync};
 use core_group::{proposals::QueuedProposal, staged_commit::StagedCommit};
 use openmls_traits::OpenMlsCryptoProvider;
@@ -219,7 +221,6 @@ impl DecryptedMessage {
 pub struct UnverifiedMessage {
     plaintext: VerifiableMlsPlaintext,
     credential: Option<Credential>,
-    aad_option: Option<Vec<u8>>,
 }
 
 impl UnverifiedMessage {
@@ -231,7 +232,6 @@ impl UnverifiedMessage {
         UnverifiedMessage {
             plaintext: decrypted_message.plaintext,
             credential,
-            aad_option: None,
         }
     }
 
@@ -241,8 +241,8 @@ impl UnverifiedMessage {
     }
 
     /// Returns the AAD.
-    pub fn aad(&self) -> &Option<Vec<u8>> {
-        &self.aad_option
+    pub fn aad(&self) -> &[u8] {
+        self.plaintext.tbs.authenticated_data.borrow()
     }
 
     /// Returns the sender.
