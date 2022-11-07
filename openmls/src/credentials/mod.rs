@@ -152,6 +152,7 @@ impl Credential {
             MlsCredentialType::X509(_) => panic!("X509 certificates are not yet implemented."),
         }
     }
+
     /// Returns the public key contained in the credential.
     pub fn signature_key(&self) -> &SignaturePublicKey {
         match &self.credential {
