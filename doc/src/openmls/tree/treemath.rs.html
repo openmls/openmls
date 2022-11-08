@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `src/tree/treemath.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>treemath.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" type="text/css" href="../../../normalize.css"><link rel="stylesheet" type="text/css" href="../../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" type="text/css" href="../../../ayu.css" disabled><link rel="stylesheet" type="text/css" href="../../../dark.css" disabled><link rel="stylesheet" type="text/css" href="../../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../../storage.js"></script><script defer src="../../../source-script.js"></script><script defer src="../../../source-files.js"></script><script defer src="../../../main.js"></script><noscript><link rel="stylesheet" href="../../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../../openmls/index.html"><div class="logo-container"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></div></a><h2 class="location"></h2></nav><nav class="sidebar"><a class="sidebar-logo" href="../../../openmls/index.html"><div class="logo-container"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></div></a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../../openmls/index.html"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></a><nav class="sub"><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><button type="button">?</button></div><div id="settings-menu" tabindex="-1"><a href="../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../wheel.svg"></a></div></div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">1</span>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `src/tree/treemath.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>treemath.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" href="../../../normalize.css"><link rel="stylesheet" href="../../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" href="../../../ayu.css" disabled><link rel="stylesheet" href="../../../dark.css" disabled><link rel="stylesheet" href="../../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../../storage.js"></script><script defer src="../../../source-script.js"></script><script defer src="../../../source-files.js"></script><script defer src="../../../main.js"></script><noscript><link rel="stylesheet" href="../../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../../openmls/index.html"><div class="logo-container"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></div></a><h2 class="location"></h2></nav><nav class="sidebar"><a class="sidebar-logo" href="../../../openmls/index.html"><div class="logo-container"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></div></a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../../openmls/index.html"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></a><nav class="sub"><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><button type="button">?</button></div><div id="settings-menu" tabindex="-1"><a href="../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../wheel.svg"></a></div></div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">1</span>
 <span id="2">2</span>
 <span id="3">3</span>
 <span id="4">4</span>
@@ -175,182 +175,182 @@
 <span id="175">175</span>
 <span id="176">176</span>
 <span id="177">177</span>
-</pre><pre class="rust"><code><span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::tree::index</span>::<span class="kw-2">*</span>;
-<span class="kw">use</span> <span class="ident">thiserror::Error</span>;
+</pre><pre class="rust"><code><span class="kw">use </span><span class="kw">crate</span>::tree::index::<span class="kw-2">*</span>;
+<span class="kw">use </span>thiserror::Error;
 
-<span class="doccomment">/// TreeMath error</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Error</span>, <span class="ident">Debug</span>, <span class="ident">PartialEq</span>, <span class="ident">Clone</span>)]</span>
-<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">enum</span> <span class="ident">TreeMathError</span> {
-    <span class="doccomment">/// Leaf nodes don&#39;t have children.</span>
-    <span class="attribute">#[<span class="ident">error</span>(<span class="string">&quot;Leaf nodes don&#39;t have children.&quot;</span>)]</span>
-    <span class="ident">LeafHasNoChildren</span>,
-    <span class="doccomment">/// Root nodes don&#39;t have parents.</span>
-    <span class="attribute">#[<span class="ident">error</span>(<span class="string">&quot;Root nodes don&#39;t have parents.&quot;</span>)]</span>
-    <span class="ident">RootHasNoParent</span>,
-    <span class="doccomment">/// The leaf index is larger than the tree size.</span>
-    <span class="attribute">#[<span class="ident">error</span>(<span class="string">&quot;The leaf index is larger than the tree size.&quot;</span>)]</span>
-    <span class="ident">LeafNotInTree</span>,
-    <span class="doccomment">/// The provided input is invalid for tree math.</span>
-    <span class="attribute">#[<span class="ident">error</span>(<span class="string">&quot;The provided input is invalid for tree math.&quot;</span>)]</span>
-    <span class="ident">InvalidInput</span>,
+<span class="doccomment">/// TreeMath error
+</span><span class="attribute">#[derive(Error, Debug, PartialEq, Clone)]
+</span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">enum </span>TreeMathError {
+    <span class="doccomment">/// Leaf nodes don&#39;t have children.
+    </span><span class="attribute">#[error(<span class="string">&quot;Leaf nodes don&#39;t have children.&quot;</span>)]
+    </span>LeafHasNoChildren,
+    <span class="doccomment">/// Root nodes don&#39;t have parents.
+    </span><span class="attribute">#[error(<span class="string">&quot;Root nodes don&#39;t have parents.&quot;</span>)]
+    </span>RootHasNoParent,
+    <span class="doccomment">/// The leaf index is larger than the tree size.
+    </span><span class="attribute">#[error(<span class="string">&quot;The leaf index is larger than the tree size.&quot;</span>)]
+    </span>LeafNotInTree,
+    <span class="doccomment">/// The provided input is invalid for tree math.
+    </span><span class="attribute">#[error(<span class="string">&quot;The provided input is invalid for tree math.&quot;</span>)]
+    </span>InvalidInput,
 }
 
-<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">log2</span>(<span class="ident">x</span>: <span class="ident">usize</span>) -&gt; <span class="ident">usize</span> {
-    <span class="kw">if</span> <span class="ident">x</span> <span class="op">==</span> <span class="number">0</span> {
-        <span class="kw">return</span> <span class="number">0</span>;
+<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>log2(x: usize) -&gt; usize {
+    <span class="kw">if </span>x == <span class="number">0 </span>{
+        <span class="kw">return </span><span class="number">0</span>;
     }
-    <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">k</span> <span class="op">=</span> <span class="number">0</span>;
-    <span class="kw">while</span> (<span class="ident">x</span> <span class="op">&gt;</span><span class="op">&gt;</span> <span class="ident">k</span>) <span class="op">&gt;</span> <span class="number">0</span> {
-        <span class="ident">k</span> <span class="op">+</span><span class="op">=</span> <span class="number">1</span>
+    <span class="kw">let </span><span class="kw-2">mut </span>k = <span class="number">0</span>;
+    <span class="kw">while </span>(x &gt;&gt; k) &gt; <span class="number">0 </span>{
+        k += <span class="number">1
+    </span>}
+    k - <span class="number">1
+</span>}
+
+<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>level(index: SecretTreeNodeIndex) -&gt; usize {
+    <span class="kw">let </span>x = index.as_usize();
+    <span class="kw">if </span>(x &amp; <span class="number">0x01</span>) == <span class="number">0 </span>{
+        <span class="kw">return </span><span class="number">0</span>;
     }
-    <span class="ident">k</span> <span class="op">-</span> <span class="number">1</span>
+    <span class="kw">let </span><span class="kw-2">mut </span>k = <span class="number">0</span>;
+    <span class="kw">while </span>((x <span class="kw">as </span>u64 &gt;&gt; k) &amp; <span class="number">0x01</span>) == <span class="number">1 </span>{
+        k += <span class="number">1</span>;
+    }
+    k
 }
 
-<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">level</span>(<span class="ident">index</span>: <span class="ident">SecretTreeNodeIndex</span>) -&gt; <span class="ident">usize</span> {
-    <span class="kw">let</span> <span class="ident">x</span> <span class="op">=</span> <span class="ident">index</span>.<span class="ident">as_usize</span>();
-    <span class="kw">if</span> (<span class="ident">x</span> <span class="op">&amp;</span> <span class="number">0x01</span>) <span class="op">==</span> <span class="number">0</span> {
-        <span class="kw">return</span> <span class="number">0</span>;
-    }
-    <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">k</span> <span class="op">=</span> <span class="number">0</span>;
-    <span class="kw">while</span> ((<span class="ident">x</span> <span class="kw">as</span> <span class="ident">u64</span> <span class="op">&gt;</span><span class="op">&gt;</span> <span class="ident">k</span>) <span class="op">&amp;</span> <span class="number">0x01</span>) <span class="op">==</span> <span class="number">1</span> {
-        <span class="ident">k</span> <span class="op">+</span><span class="op">=</span> <span class="number">1</span>;
-    }
-    <span class="ident">k</span>
+<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>node_width(n: usize) -&gt; usize {
+    <span class="kw">if </span>n == <span class="number">0 </span>{
+        <span class="number">0
+    </span>} <span class="kw">else </span>{
+        <span class="number">2 </span>* (n - <span class="number">1</span>) + <span class="number">1
+    </span>}
 }
 
-<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">node_width</span>(<span class="ident">n</span>: <span class="ident">usize</span>) -&gt; <span class="ident">usize</span> {
-    <span class="kw">if</span> <span class="ident">n</span> <span class="op">==</span> <span class="number">0</span> {
-        <span class="number">0</span>
-    } <span class="kw">else</span> {
-        <span class="number">2</span> <span class="op">*</span> (<span class="ident">n</span> <span class="op">-</span> <span class="number">1</span>) <span class="op">+</span> <span class="number">1</span>
-    }
+<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>root(size: SecretTreeLeafIndex) -&gt; SecretTreeNodeIndex {
+    <span class="kw">let </span>n = size.as_usize();
+    <span class="kw">let </span>w = node_width(n);
+    SecretTreeNodeIndex::from((<span class="number">1usize </span>&lt;&lt; log2(w)) - <span class="number">1</span>)
 }
 
-<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">root</span>(<span class="ident">size</span>: <span class="ident">SecretTreeLeafIndex</span>) -&gt; <span class="ident">SecretTreeNodeIndex</span> {
-    <span class="kw">let</span> <span class="ident">n</span> <span class="op">=</span> <span class="ident">size</span>.<span class="ident">as_usize</span>();
-    <span class="kw">let</span> <span class="ident">w</span> <span class="op">=</span> <span class="ident">node_width</span>(<span class="ident">n</span>);
-    <span class="ident">SecretTreeNodeIndex::from</span>((<span class="number">1usize</span> <span class="op">&lt;</span><span class="op">&lt;</span> <span class="ident">log2</span>(<span class="ident">w</span>)) <span class="op">-</span> <span class="number">1</span>)
+<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>left(index: SecretTreeNodeIndex) -&gt; <span class="prelude-ty">Result</span>&lt;SecretTreeNodeIndex, TreeMathError&gt; {
+    <span class="kw">let </span>x = index.as_usize();
+    <span class="kw">let </span>k = level(SecretTreeNodeIndex::from(x));
+    <span class="kw">if </span>k == <span class="number">0 </span>{
+        <span class="kw">return </span><span class="prelude-val">Err</span>(TreeMathError::LeafHasNoChildren);
+    }
+    <span class="prelude-val">Ok</span>(SecretTreeNodeIndex::from(x ^ (<span class="number">0x01 </span>&lt;&lt; (k - <span class="number">1</span>))))
 }
 
-<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">left</span>(<span class="ident">index</span>: <span class="ident">SecretTreeNodeIndex</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">SecretTreeNodeIndex</span>, <span class="ident">TreeMathError</span><span class="op">&gt;</span> {
-    <span class="kw">let</span> <span class="ident">x</span> <span class="op">=</span> <span class="ident">index</span>.<span class="ident">as_usize</span>();
-    <span class="kw">let</span> <span class="ident">k</span> <span class="op">=</span> <span class="ident">level</span>(<span class="ident">SecretTreeNodeIndex::from</span>(<span class="ident">x</span>));
-    <span class="kw">if</span> <span class="ident">k</span> <span class="op">==</span> <span class="number">0</span> {
-        <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">TreeMathError::LeafHasNoChildren</span>);
+<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>right(
+    index: SecretTreeNodeIndex,
+    size: SecretTreeLeafIndex,
+) -&gt; <span class="prelude-ty">Result</span>&lt;SecretTreeNodeIndex, TreeMathError&gt; {
+    <span class="kw">let </span>x = index.as_usize();
+    <span class="kw">let </span>n = size.as_usize();
+    <span class="kw">let </span>k = level(SecretTreeNodeIndex::from(x));
+    <span class="kw">if </span>k == <span class="number">0 </span>{
+        <span class="kw">return </span><span class="prelude-val">Err</span>(TreeMathError::LeafHasNoChildren);
     }
-    <span class="prelude-val">Ok</span>(<span class="ident">SecretTreeNodeIndex::from</span>(<span class="ident">x</span> <span class="op">^</span> (<span class="number">0x01</span> <span class="op">&lt;</span><span class="op">&lt;</span> (<span class="ident">k</span> <span class="op">-</span> <span class="number">1</span>))))
+    <span class="kw">let </span><span class="kw-2">mut </span>r = x ^ (<span class="number">0x03 </span>&lt;&lt; (k - <span class="number">1</span>));
+    <span class="kw">while </span>r &gt;= node_width(n) {
+        r = left(SecretTreeNodeIndex::from(r))<span class="question-mark">?</span>.as_usize();
+    }
+    <span class="prelude-val">Ok</span>(SecretTreeNodeIndex::from(r))
 }
 
-<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">right</span>(
-    <span class="ident">index</span>: <span class="ident">SecretTreeNodeIndex</span>,
-    <span class="ident">size</span>: <span class="ident">SecretTreeLeafIndex</span>,
-) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">SecretTreeNodeIndex</span>, <span class="ident">TreeMathError</span><span class="op">&gt;</span> {
-    <span class="kw">let</span> <span class="ident">x</span> <span class="op">=</span> <span class="ident">index</span>.<span class="ident">as_usize</span>();
-    <span class="kw">let</span> <span class="ident">n</span> <span class="op">=</span> <span class="ident">size</span>.<span class="ident">as_usize</span>();
-    <span class="kw">let</span> <span class="ident">k</span> <span class="op">=</span> <span class="ident">level</span>(<span class="ident">SecretTreeNodeIndex::from</span>(<span class="ident">x</span>));
-    <span class="kw">if</span> <span class="ident">k</span> <span class="op">==</span> <span class="number">0</span> {
-        <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">TreeMathError::LeafHasNoChildren</span>);
-    }
-    <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">r</span> <span class="op">=</span> <span class="ident">x</span> <span class="op">^</span> (<span class="number">0x03</span> <span class="op">&lt;</span><span class="op">&lt;</span> (<span class="ident">k</span> <span class="op">-</span> <span class="number">1</span>));
-    <span class="kw">while</span> <span class="ident">r</span> <span class="op">&gt;</span><span class="op">=</span> <span class="ident">node_width</span>(<span class="ident">n</span>) {
-        <span class="ident">r</span> <span class="op">=</span> <span class="ident">left</span>(<span class="ident">SecretTreeNodeIndex::from</span>(<span class="ident">r</span>))<span class="question-mark">?</span>.<span class="ident">as_usize</span>();
-    }
-    <span class="prelude-val">Ok</span>(<span class="ident">SecretTreeNodeIndex::from</span>(<span class="ident">r</span>))
+<span class="comment">// The parent here might be beyond the right edge of the tree.
+</span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>parent_step(x: usize) -&gt; usize {
+    <span class="comment">// We need to use u64 for some of the operations where usize is too small on 32bit platforms
+    </span><span class="kw">let </span>k = level(SecretTreeNodeIndex::from(x));
+    <span class="kw">let </span>b = (x <span class="kw">as </span>u64 &gt;&gt; (k + <span class="number">1</span>)) &amp; <span class="number">0x01</span>;
+    <span class="kw">let </span>res = (x <span class="kw">as </span>u64 | (<span class="number">1 </span>&lt;&lt; k)) ^ (b &lt;&lt; (k + <span class="number">1</span>));
+    res <span class="kw">as </span>usize
 }
 
-<span class="comment">// The parent here might be beyond the right edge of the tree.</span>
-<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">parent_step</span>(<span class="ident">x</span>: <span class="ident">usize</span>) -&gt; <span class="ident">usize</span> {
-    <span class="comment">// We need to use u64 for some of the operations where usize is too small on 32bit platforms</span>
-    <span class="kw">let</span> <span class="ident">k</span> <span class="op">=</span> <span class="ident">level</span>(<span class="ident">SecretTreeNodeIndex::from</span>(<span class="ident">x</span>));
-    <span class="kw">let</span> <span class="ident">b</span> <span class="op">=</span> (<span class="ident">x</span> <span class="kw">as</span> <span class="ident">u64</span> <span class="op">&gt;</span><span class="op">&gt;</span> (<span class="ident">k</span> <span class="op">+</span> <span class="number">1</span>)) <span class="op">&amp;</span> <span class="number">0x01</span>;
-    <span class="kw">let</span> <span class="ident">res</span> <span class="op">=</span> (<span class="ident">x</span> <span class="kw">as</span> <span class="ident">u64</span> <span class="op">|</span> (<span class="number">1</span> <span class="op">&lt;</span><span class="op">&lt;</span> <span class="ident">k</span>)) <span class="op">^</span> (<span class="ident">b</span> <span class="op">&lt;</span><span class="op">&lt;</span> (<span class="ident">k</span> <span class="op">+</span> <span class="number">1</span>));
-    <span class="ident">res</span> <span class="kw">as</span> <span class="ident">usize</span>
-}
-
-<span class="comment">// This function is only safe to use if index &lt;= size.</span>
-<span class="comment">// If this is not checked before calling the function, `parent` should be used.</span>
-<span class="kw">fn</span> <span class="ident">try_parent</span>(
-    <span class="ident">index</span>: <span class="ident">SecretTreeNodeIndex</span>,
-    <span class="ident">size</span>: <span class="ident">SecretTreeLeafIndex</span>,
-) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">SecretTreeNodeIndex</span>, <span class="ident">TreeMathError</span><span class="op">&gt;</span> {
-    <span class="kw">let</span> <span class="ident">x</span> <span class="op">=</span> <span class="ident">index</span>.<span class="ident">as_usize</span>();
-    <span class="kw">let</span> <span class="ident">n</span> <span class="op">=</span> <span class="ident">size</span>.<span class="ident">as_usize</span>();
-    <span class="kw">if</span> <span class="ident">index</span> <span class="op">==</span> <span class="ident">root</span>(<span class="ident">size</span>) {
-        <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">TreeMathError::RootHasNoParent</span>);
+<span class="comment">// This function is only safe to use if index &lt;= size.
+// If this is not checked before calling the function, `parent` should be used.
+</span><span class="kw">fn </span>try_parent(
+    index: SecretTreeNodeIndex,
+    size: SecretTreeLeafIndex,
+) -&gt; <span class="prelude-ty">Result</span>&lt;SecretTreeNodeIndex, TreeMathError&gt; {
+    <span class="kw">let </span>x = index.as_usize();
+    <span class="kw">let </span>n = size.as_usize();
+    <span class="kw">if </span>index == root(size) {
+        <span class="kw">return </span><span class="prelude-val">Err</span>(TreeMathError::RootHasNoParent);
     }
-    <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">p</span> <span class="op">=</span> <span class="ident">parent_step</span>(<span class="ident">x</span>);
-    <span class="kw">while</span> <span class="ident">p</span> <span class="op">&gt;</span><span class="op">=</span> <span class="ident">node_width</span>(<span class="ident">n</span>) {
-        <span class="kw">let</span> <span class="ident">new_p</span> <span class="op">=</span> <span class="ident">parent_step</span>(<span class="ident">p</span>);
-        <span class="kw">if</span> <span class="ident">new_p</span> <span class="op">==</span> <span class="ident">p</span> {
-            <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">TreeMathError::InvalidInput</span>);
+    <span class="kw">let </span><span class="kw-2">mut </span>p = parent_step(x);
+    <span class="kw">while </span>p &gt;= node_width(n) {
+        <span class="kw">let </span>new_p = parent_step(p);
+        <span class="kw">if </span>new_p == p {
+            <span class="kw">return </span><span class="prelude-val">Err</span>(TreeMathError::InvalidInput);
         }
-        <span class="ident">p</span> <span class="op">=</span> <span class="ident">new_p</span>;
+        p = new_p;
     }
-    <span class="prelude-val">Ok</span>(<span class="ident">SecretTreeNodeIndex::from</span>(<span class="ident">p</span>))
+    <span class="prelude-val">Ok</span>(SecretTreeNodeIndex::from(p))
 }
 
-<span class="attribute">#[<span class="ident">inline</span>(<span class="ident">always</span>)]</span>
-<span class="kw">fn</span> <span class="ident">leaf_in_tree</span>(
-    <span class="ident">leaf_index</span>: <span class="ident">SecretTreeLeafIndex</span>,
-    <span class="ident">size</span>: <span class="ident">SecretTreeLeafIndex</span>,
-) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">TreeMathError</span><span class="op">&gt;</span> {
-    <span class="kw">if</span> <span class="ident">leaf_index</span> <span class="op">&gt;</span><span class="op">=</span> <span class="ident">size</span> {
-        <span class="prelude-val">Err</span>(<span class="ident">TreeMathError::LeafNotInTree</span>)
-    } <span class="kw">else</span> {
+<span class="attribute">#[inline(always)]
+</span><span class="kw">fn </span>leaf_in_tree(
+    leaf_index: SecretTreeLeafIndex,
+    size: SecretTreeLeafIndex,
+) -&gt; <span class="prelude-ty">Result</span>&lt;(), TreeMathError&gt; {
+    <span class="kw">if </span>leaf_index &gt;= size {
+        <span class="prelude-val">Err</span>(TreeMathError::LeafNotInTree)
+    } <span class="kw">else </span>{
         <span class="prelude-val">Ok</span>(())
     }
 }
 
-<span class="doccomment">/// Direct path from a leaf node to the root.</span>
-<span class="doccomment">/// Does not include the leaf node but includes the root.</span>
-<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">leaf_direct_path</span>(
-    <span class="ident">leaf_index</span>: <span class="ident">SecretTreeLeafIndex</span>,
-    <span class="ident">size</span>: <span class="ident">SecretTreeLeafIndex</span>,
-) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">SecretTreeNodeIndex</span><span class="op">&gt;</span>, <span class="ident">TreeMathError</span><span class="op">&gt;</span> {
-    <span class="ident">leaf_in_tree</span>(<span class="ident">leaf_index</span>, <span class="ident">size</span>)<span class="question-mark">?</span>;
-    <span class="kw">let</span> <span class="ident">node_index</span> <span class="op">=</span> <span class="ident">SecretTreeNodeIndex::from</span>(<span class="ident">leaf_index</span>);
-    <span class="kw">let</span> <span class="ident">r</span> <span class="op">=</span> <span class="ident">root</span>(<span class="ident">size</span>);
-    <span class="kw">if</span> <span class="ident">node_index</span> <span class="op">==</span> <span class="ident">r</span> {
-        <span class="kw">return</span> <span class="prelude-val">Ok</span>(<span class="macro">vec!</span>[<span class="ident">r</span>]);
+<span class="doccomment">/// Direct path from a leaf node to the root.
+/// Does not include the leaf node but includes the root.
+</span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>leaf_direct_path(
+    leaf_index: SecretTreeLeafIndex,
+    size: SecretTreeLeafIndex,
+) -&gt; <span class="prelude-ty">Result</span>&lt;Vec&lt;SecretTreeNodeIndex&gt;, TreeMathError&gt; {
+    leaf_in_tree(leaf_index, size)<span class="question-mark">?</span>;
+    <span class="kw">let </span>node_index = SecretTreeNodeIndex::from(leaf_index);
+    <span class="kw">let </span>r = root(size);
+    <span class="kw">if </span>node_index == r {
+        <span class="kw">return </span><span class="prelude-val">Ok</span>(<span class="macro">vec!</span>[r]);
     }
 
-    <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">d</span> <span class="op">=</span> <span class="macro">vec!</span>[];
-    <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">x</span> <span class="op">=</span> <span class="ident">node_index</span>;
-    <span class="kw">while</span> <span class="ident">x</span> <span class="op">!</span><span class="op">=</span> <span class="ident">r</span> {
-        <span class="ident">x</span> <span class="op">=</span> <span class="ident">try_parent</span>(<span class="ident">x</span>, <span class="ident">size</span>)<span class="question-mark">?</span>;
-        <span class="ident">d</span>.<span class="ident">push</span>(<span class="ident">x</span>);
+    <span class="kw">let </span><span class="kw-2">mut </span>d = <span class="macro">vec!</span>[];
+    <span class="kw">let </span><span class="kw-2">mut </span>x = node_index;
+    <span class="kw">while </span>x != r {
+        x = try_parent(x, size)<span class="question-mark">?</span>;
+        d.push(x);
     }
-    <span class="prelude-val">Ok</span>(<span class="ident">d</span>)
+    <span class="prelude-val">Ok</span>(d)
 }
 
-<span class="comment">// The following is not currently used but could be useful in future parent hash</span>
-<span class="comment">// computations:</span>
+<span class="comment">// The following is not currently used but could be useful in future parent hash
+// computations:
 
-<span class="attribute">#[<span class="ident">test</span>]</span>
-<span class="kw">fn</span> <span class="ident">invalid_inputs</span>() {
+</span><span class="attribute">#[test]
+</span><span class="kw">fn </span>invalid_inputs() {
     <span class="macro">assert_eq!</span>(
-        <span class="prelude-val">Err</span>(<span class="ident">TreeMathError::InvalidInput</span>),
-        <span class="ident">try_parent</span>(<span class="number">1000u32</span>.<span class="ident">into</span>(), <span class="number">100u32</span>.<span class="ident">into</span>())
+        <span class="prelude-val">Err</span>(TreeMathError::InvalidInput),
+        try_parent(<span class="number">1000u32</span>.into(), <span class="number">100u32</span>.into())
     );
 }
 
-<span class="attribute">#[<span class="ident">test</span>]</span>
-<span class="kw">fn</span> <span class="ident">test_leaf_in_tree</span>() {
-    <span class="kw">let</span> <span class="ident">tests</span> <span class="op">=</span> [(<span class="number">0u32</span>, <span class="number">2u32</span>), (<span class="number">1</span>, <span class="number">2</span>), (<span class="number">4</span>, <span class="number">5</span>), (<span class="number">9</span>, <span class="number">10</span>)];
-    <span class="kw">for</span> <span class="ident">test</span> <span class="kw">in</span> <span class="ident">tests</span>.<span class="ident">iter</span>() {
-        <span class="ident">leaf_in_tree</span>(<span class="ident">test</span>.<span class="number">0</span>.<span class="ident">into</span>(), <span class="ident">test</span>.<span class="number">1</span>.<span class="ident">into</span>()).<span class="ident">expect</span>(<span class="string">&quot;An unexpected error occurred.&quot;</span>);
+<span class="attribute">#[test]
+</span><span class="kw">fn </span>test_leaf_in_tree() {
+    <span class="kw">let </span>tests = [(<span class="number">0u32</span>, <span class="number">2u32</span>), (<span class="number">1</span>, <span class="number">2</span>), (<span class="number">4</span>, <span class="number">5</span>), (<span class="number">9</span>, <span class="number">10</span>)];
+    <span class="kw">for </span>test <span class="kw">in </span>tests.iter() {
+        leaf_in_tree(test.<span class="number">0</span>.into(), test.<span class="number">1</span>.into()).expect(<span class="string">&quot;An unexpected error occurred.&quot;</span>);
     }
 }
 
-<span class="attribute">#[<span class="ident">test</span>]</span>
-<span class="kw">fn</span> <span class="ident">test_leaf_not_in_tree</span>() {
-    <span class="kw">let</span> <span class="ident">tests</span> <span class="op">=</span> [(<span class="number">2u32</span>, <span class="number">2u32</span>), (<span class="number">7</span>, <span class="number">7</span>)];
-    <span class="kw">for</span> <span class="ident">test</span> <span class="kw">in</span> <span class="ident">tests</span>.<span class="ident">iter</span>() {
+<span class="attribute">#[test]
+</span><span class="kw">fn </span>test_leaf_not_in_tree() {
+    <span class="kw">let </span>tests = [(<span class="number">2u32</span>, <span class="number">2u32</span>), (<span class="number">7</span>, <span class="number">7</span>)];
+    <span class="kw">for </span>test <span class="kw">in </span>tests.iter() {
         <span class="macro">assert_eq!</span>(
-            <span class="ident">leaf_in_tree</span>(<span class="ident">test</span>.<span class="number">0</span>.<span class="ident">into</span>(), <span class="ident">test</span>.<span class="number">1</span>.<span class="ident">into</span>()),
-            <span class="prelude-val">Err</span>(<span class="ident">TreeMathError::LeafNotInTree</span>)
+            leaf_in_tree(test.<span class="number">0</span>.into(), test.<span class="number">1</span>.into()),
+            <span class="prelude-val">Err</span>(TreeMathError::LeafNotInTree)
         );
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-current-crate="openmls" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.64.0 (a55dd71d5 2022-09-19)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-current-crate="openmls" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0 (897e37553 2022-11-02)" ></div></body></html>

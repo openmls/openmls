@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `src/treesync/errors.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>errors.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" type="text/css" href="../../../normalize.css"><link rel="stylesheet" type="text/css" href="../../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" type="text/css" href="../../../ayu.css" disabled><link rel="stylesheet" type="text/css" href="../../../dark.css" disabled><link rel="stylesheet" type="text/css" href="../../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../../storage.js"></script><script defer src="../../../source-script.js"></script><script defer src="../../../source-files.js"></script><script defer src="../../../main.js"></script><noscript><link rel="stylesheet" href="../../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../../openmls/index.html"><div class="logo-container"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></div></a><h2 class="location"></h2></nav><nav class="sidebar"><a class="sidebar-logo" href="../../../openmls/index.html"><div class="logo-container"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></div></a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../../openmls/index.html"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></a><nav class="sub"><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><button type="button">?</button></div><div id="settings-menu" tabindex="-1"><a href="../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../wheel.svg"></a></div></div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">1</span>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `src/treesync/errors.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>errors.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" href="../../../normalize.css"><link rel="stylesheet" href="../../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" href="../../../ayu.css" disabled><link rel="stylesheet" href="../../../dark.css" disabled><link rel="stylesheet" href="../../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../../storage.js"></script><script defer src="../../../source-script.js"></script><script defer src="../../../source-files.js"></script><script defer src="../../../main.js"></script><noscript><link rel="stylesheet" href="../../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../../openmls/index.html"><div class="logo-container"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></div></a><h2 class="location"></h2></nav><nav class="sidebar"><a class="sidebar-logo" href="../../../openmls/index.html"><div class="logo-container"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></div></a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../../openmls/index.html"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></a><nav class="sub"><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><button type="button">?</button></div><div id="settings-menu" tabindex="-1"><a href="../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../wheel.svg"></a></div></div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">1</span>
 <span id="2">2</span>
 <span id="3">3</span>
 <span id="4">4</span>
@@ -203,210 +203,210 @@
 <span id="203">203</span>
 <span id="204">204</span>
 <span id="205">205</span>
-</pre><pre class="rust"><code><span class="doccomment">//! TreeSync errors</span>
-<span class="doccomment">//!</span>
-<span class="doccomment">//! This module exposes [`ApplyUpdatePathError`] and [`PublicTreeError`].</span>
+</pre><pre class="rust"><code><span class="doccomment">//! TreeSync errors
+//!
+//! This module exposes [`ApplyUpdatePathError`] and [`PublicTreeError`].
 
-<span class="kw">use</span> <span class="ident">thiserror::Error</span>;
+</span><span class="kw">use </span>thiserror::Error;
 
-<span class="kw">use</span> <span class="kw">super</span>::<span class="kw-2">*</span>;
-<span class="kw">use</span> <span class="kw">crate</span>::{<span class="ident">binary_tree::MlsBinaryTreeDiffError</span>, <span class="ident">error::LibraryError</span>};
+<span class="kw">use super</span>::<span class="kw-2">*</span>;
+<span class="kw">use crate</span>::{binary_tree::MlsBinaryTreeDiffError, error::LibraryError};
 
-<span class="comment">// === Public errors ===</span>
+<span class="comment">// === Public errors ===
 
-<span class="comment">// Re-exporting OutOfBoundsError from the ABinaryTree</span>
-<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::binary_tree::OutOfBoundsError</span>;
+// Re-exporting OutOfBoundsError from the ABinaryTree
+</span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">use </span><span class="kw">crate</span>::binary_tree::OutOfBoundsError;
 
-<span class="doccomment">/// Public tree error</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Error</span>, <span class="ident">Debug</span>, <span class="ident">PartialEq</span>, <span class="ident">Eq</span>, <span class="ident">Clone</span>)]</span>
-<span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">PublicTreeError</span> {
-    <span class="doccomment">/// The derived public key doesn&#39;t match the one in the tree.</span>
-    <span class="attribute">#[<span class="ident">error</span>(<span class="string">&quot;The derived public key doesn&#39;t match the one in the tree.&quot;</span>)]</span>
-    <span class="ident">PublicKeyMismatch</span>,
-    <span class="doccomment">/// Found two KeyPackages with the same public key.</span>
-    <span class="attribute">#[<span class="ident">error</span>(<span class="string">&quot;Found two KeyPackages with the same public key.&quot;</span>)]</span>
-    <span class="ident">DuplicateKeyPackage</span>,
-    <span class="doccomment">/// Couldn&#39;t find our own key package in this tree.</span>
-    <span class="attribute">#[<span class="ident">error</span>(<span class="string">&quot;Couldn&#39;t find our own key package in this tree.&quot;</span>)]</span>
-    <span class="ident">MissingKeyPackage</span>,
-    <span class="doccomment">/// The tree is malformed.</span>
-    <span class="attribute">#[<span class="ident">error</span>(<span class="string">&quot;The tree is malformed.&quot;</span>)]</span>
-    <span class="ident">MalformedTree</span>,
-    <span class="doccomment">/// A parent hash was invalid.</span>
-    <span class="attribute">#[<span class="ident">error</span>(<span class="string">&quot;A parent hash was invalid.&quot;</span>)]</span>
-    <span class="ident">InvalidParentHash</span>,
+<span class="doccomment">/// Public tree error
+</span><span class="attribute">#[derive(Error, Debug, PartialEq, Eq, Clone)]
+</span><span class="kw">pub enum </span>PublicTreeError {
+    <span class="doccomment">/// The derived public key doesn&#39;t match the one in the tree.
+    </span><span class="attribute">#[error(<span class="string">&quot;The derived public key doesn&#39;t match the one in the tree.&quot;</span>)]
+    </span>PublicKeyMismatch,
+    <span class="doccomment">/// Found two KeyPackages with the same public key.
+    </span><span class="attribute">#[error(<span class="string">&quot;Found two KeyPackages with the same public key.&quot;</span>)]
+    </span>DuplicateKeyPackage,
+    <span class="doccomment">/// Couldn&#39;t find our own key package in this tree.
+    </span><span class="attribute">#[error(<span class="string">&quot;Couldn&#39;t find our own key package in this tree.&quot;</span>)]
+    </span>MissingKeyPackage,
+    <span class="doccomment">/// The tree is malformed.
+    </span><span class="attribute">#[error(<span class="string">&quot;The tree is malformed.&quot;</span>)]
+    </span>MalformedTree,
+    <span class="doccomment">/// A parent hash was invalid.
+    </span><span class="attribute">#[error(<span class="string">&quot;A parent hash was invalid.&quot;</span>)]
+    </span>InvalidParentHash,
 }
 
-<span class="doccomment">/// Apply update path error</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Error</span>, <span class="ident">Debug</span>, <span class="ident">PartialEq</span>, <span class="ident">Clone</span>)]</span>
-<span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">ApplyUpdatePathError</span> {
-    <span class="doccomment">/// See [`LibraryError`] for more details.</span>
-    <span class="attribute">#[<span class="ident">error</span>(<span class="ident">transparent</span>)]</span>
-    <span class="ident">LibraryError</span>(<span class="attribute">#[<span class="ident">from</span>]</span> <span class="ident">LibraryError</span>),
-    <span class="doccomment">/// The length of the received update path and that of the sender&#39;s direct path do not match.</span>
-    <span class="attribute">#[<span class="ident">error</span>(
-        <span class="string">&quot;The length of the received update path and that of the sender&#39;s direct path do not match.&quot;</span>
-    )]</span>
-    <span class="ident">PathLengthMismatch</span>,
-    <span class="doccomment">/// The received update path and the derived nodes are not identical.</span>
-    <span class="attribute">#[<span class="ident">error</span>(<span class="string">&quot;The received update path and the derived nodes are not identical.&quot;</span>)]</span>
-    <span class="ident">PathMismatch</span>,
-    <span class="doccomment">/// The parent hash of the ney key package is invalid.</span>
-    <span class="attribute">#[<span class="ident">error</span>(<span class="string">&quot;The parent hash of the ney key package is invalid.&quot;</span>)]</span>
-    <span class="ident">ParentHashMismatch</span>,
-    <span class="doccomment">/// The parent hash of the ney key package is missing.</span>
-    <span class="attribute">#[<span class="ident">error</span>(<span class="string">&quot;The parent hash of the ney key package is missing.&quot;</span>)]</span>
-    <span class="ident">MissingParentHash</span>,
-    <span class="doccomment">/// Unable to decrypt the path node.</span>
-    <span class="attribute">#[<span class="ident">error</span>(<span class="string">&quot;Unable to decrypt the path node.&quot;</span>)]</span>
-    <span class="ident">UnableToDecrypt</span>,
-    <span class="doccomment">/// Unable to find sender in tree.</span>
-    <span class="attribute">#[<span class="ident">error</span>(<span class="string">&quot;Unable to find sender in tree.&quot;</span>)]</span>
-    <span class="ident">MissingSender</span>,
+<span class="doccomment">/// Apply update path error
+</span><span class="attribute">#[derive(Error, Debug, PartialEq, Clone)]
+</span><span class="kw">pub enum </span>ApplyUpdatePathError {
+    <span class="doccomment">/// See [`LibraryError`] for more details.
+    </span><span class="attribute">#[error(transparent)]
+    </span>LibraryError(<span class="attribute">#[from] </span>LibraryError),
+    <span class="doccomment">/// The length of the received update path and that of the sender&#39;s direct path do not match.
+    </span><span class="attribute">#[error(
+        <span class="string">&quot;The length of the received update path and that of the sender&#39;s direct path do not match.&quot;
+    </span>)]
+    </span>PathLengthMismatch,
+    <span class="doccomment">/// The received update path and the derived nodes are not identical.
+    </span><span class="attribute">#[error(<span class="string">&quot;The received update path and the derived nodes are not identical.&quot;</span>)]
+    </span>PathMismatch,
+    <span class="doccomment">/// The parent hash of the ney key package is invalid.
+    </span><span class="attribute">#[error(<span class="string">&quot;The parent hash of the ney key package is invalid.&quot;</span>)]
+    </span>ParentHashMismatch,
+    <span class="doccomment">/// The parent hash of the ney key package is missing.
+    </span><span class="attribute">#[error(<span class="string">&quot;The parent hash of the ney key package is missing.&quot;</span>)]
+    </span>MissingParentHash,
+    <span class="doccomment">/// Unable to decrypt the path node.
+    </span><span class="attribute">#[error(<span class="string">&quot;Unable to decrypt the path node.&quot;</span>)]
+    </span>UnableToDecrypt,
+    <span class="doccomment">/// Unable to find sender in tree.
+    </span><span class="attribute">#[error(<span class="string">&quot;Unable to find sender in tree.&quot;</span>)]
+    </span>MissingSender,
 }
 
-<span class="comment">// === Crate errors ===</span>
+<span class="comment">// === Crate errors ===
 
-<span class="doccomment">/// TreeSync error</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Error</span>, <span class="ident">Debug</span>, <span class="ident">PartialEq</span>, <span class="ident">Clone</span>)]</span>
-<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">enum</span> <span class="ident">TreeSyncError</span> {
-    <span class="doccomment">/// See [`LibraryError`] for more details.</span>
-    <span class="attribute">#[<span class="ident">error</span>(<span class="ident">transparent</span>)]</span>
-    <span class="ident">LibraryError</span>(<span class="attribute">#[<span class="ident">from</span>]</span> <span class="ident">LibraryError</span>),
-    <span class="doccomment">/// Found two KeyPackages with the same public key.</span>
-    <span class="attribute">#[<span class="ident">error</span>(<span class="string">&quot;Found two KeyPackages with the same public key.&quot;</span>)]</span>
-    <span class="ident">KeyPackageRefNotInTree</span>,
-    <span class="doccomment">/// See [`TreeSyncSetPathError`] for more details.</span>
-    <span class="attribute">#[<span class="ident">error</span>(<span class="ident">transparent</span>)]</span>
-    <span class="ident">SetPathError</span>(<span class="attribute">#[<span class="ident">from</span>]</span> <span class="ident">TreeSyncSetPathError</span>),
-    <span class="doccomment">/// See [`MlsBinaryTreeError`] for more details.</span>
-    <span class="attribute">#[<span class="ident">error</span>(<span class="ident">transparent</span>)]</span>
-    <span class="ident">BinaryTreeError</span>(<span class="attribute">#[<span class="ident">from</span>]</span> <span class="ident">MlsBinaryTreeError</span>),
-    <span class="doccomment">/// See [`TreeSyncNodeError`] for more details.</span>
-    <span class="attribute">#[<span class="ident">error</span>(<span class="ident">transparent</span>)]</span>
-    <span class="ident">TreeSyncNodeError</span>(<span class="attribute">#[<span class="ident">from</span>]</span> <span class="ident">TreeSyncNodeError</span>),
-    <span class="doccomment">/// See [`NodeError`] for more details.</span>
-    <span class="attribute">#[<span class="ident">error</span>(<span class="ident">transparent</span>)]</span>
-    <span class="ident">NodeTypeError</span>(<span class="attribute">#[<span class="ident">from</span>]</span> <span class="ident">NodeError</span>),
-    <span class="doccomment">/// See [`TreeSyncDiffError`] for more details.</span>
-    <span class="attribute">#[<span class="ident">error</span>(<span class="ident">transparent</span>)]</span>
-    <span class="ident">TreeSyncDiffError</span>(<span class="attribute">#[<span class="ident">from</span>]</span> <span class="ident">TreeSyncDiffError</span>),
-    <span class="doccomment">/// See [`PathSecretError`] for more details.</span>
-    <span class="attribute">#[<span class="ident">error</span>(<span class="ident">transparent</span>)]</span>
-    <span class="ident">DerivationError</span>(<span class="attribute">#[<span class="ident">from</span>]</span> <span class="ident">PathSecretError</span>),
-    <span class="doccomment">/// See [`SenderError`] for more details.</span>
-    <span class="attribute">#[<span class="ident">error</span>(<span class="ident">transparent</span>)]</span>
-    <span class="ident">SenderError</span>(<span class="attribute">#[<span class="ident">from</span>]</span> <span class="ident">SenderError</span>),
-    <span class="doccomment">/// See [`CryptoError`] for more details.</span>
-    <span class="attribute">#[<span class="ident">error</span>(<span class="ident">transparent</span>)]</span>
-    <span class="ident">CryptoError</span>(<span class="attribute">#[<span class="ident">from</span>]</span> <span class="ident">CryptoError</span>),
+</span><span class="doccomment">/// TreeSync error
+</span><span class="attribute">#[derive(Error, Debug, PartialEq, Clone)]
+</span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">enum </span>TreeSyncError {
+    <span class="doccomment">/// See [`LibraryError`] for more details.
+    </span><span class="attribute">#[error(transparent)]
+    </span>LibraryError(<span class="attribute">#[from] </span>LibraryError),
+    <span class="doccomment">/// Found two KeyPackages with the same public key.
+    </span><span class="attribute">#[error(<span class="string">&quot;Found two KeyPackages with the same public key.&quot;</span>)]
+    </span>KeyPackageRefNotInTree,
+    <span class="doccomment">/// See [`TreeSyncSetPathError`] for more details.
+    </span><span class="attribute">#[error(transparent)]
+    </span>SetPathError(<span class="attribute">#[from] </span>TreeSyncSetPathError),
+    <span class="doccomment">/// See [`MlsBinaryTreeError`] for more details.
+    </span><span class="attribute">#[error(transparent)]
+    </span>BinaryTreeError(<span class="attribute">#[from] </span>MlsBinaryTreeError),
+    <span class="doccomment">/// See [`TreeSyncNodeError`] for more details.
+    </span><span class="attribute">#[error(transparent)]
+    </span>TreeSyncNodeError(<span class="attribute">#[from] </span>TreeSyncNodeError),
+    <span class="doccomment">/// See [`NodeError`] for more details.
+    </span><span class="attribute">#[error(transparent)]
+    </span>NodeTypeError(<span class="attribute">#[from] </span>NodeError),
+    <span class="doccomment">/// See [`TreeSyncDiffError`] for more details.
+    </span><span class="attribute">#[error(transparent)]
+    </span>TreeSyncDiffError(<span class="attribute">#[from] </span>TreeSyncDiffError),
+    <span class="doccomment">/// See [`PathSecretError`] for more details.
+    </span><span class="attribute">#[error(transparent)]
+    </span>DerivationError(<span class="attribute">#[from] </span>PathSecretError),
+    <span class="doccomment">/// See [`SenderError`] for more details.
+    </span><span class="attribute">#[error(transparent)]
+    </span>SenderError(<span class="attribute">#[from] </span>SenderError),
+    <span class="doccomment">/// See [`CryptoError`] for more details.
+    </span><span class="attribute">#[error(transparent)]
+    </span>CryptoError(<span class="attribute">#[from] </span>CryptoError),
 }
 
-<span class="doccomment">/// TreeSync set path error</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Error</span>, <span class="ident">Debug</span>, <span class="ident">PartialEq</span>, <span class="ident">Clone</span>)]</span>
-<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">enum</span> <span class="ident">TreeSyncSetPathError</span> {
-    <span class="doccomment">/// See [`LibraryError`] for more details.</span>
-    <span class="attribute">#[<span class="ident">error</span>(<span class="ident">transparent</span>)]</span>
-    <span class="ident">LibraryError</span>(<span class="attribute">#[<span class="ident">from</span>]</span> <span class="ident">LibraryError</span>),
-    <span class="doccomment">/// The derived public key doesn&#39;t match the one in the tree.</span>
-    <span class="attribute">#[<span class="ident">error</span>(<span class="string">&quot;The derived public key doesn&#39;t match the one in the tree.&quot;</span>)]</span>
-    <span class="ident">PublicKeyMismatch</span>,
+<span class="doccomment">/// TreeSync set path error
+</span><span class="attribute">#[derive(Error, Debug, PartialEq, Clone)]
+</span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">enum </span>TreeSyncSetPathError {
+    <span class="doccomment">/// See [`LibraryError`] for more details.
+    </span><span class="attribute">#[error(transparent)]
+    </span>LibraryError(<span class="attribute">#[from] </span>LibraryError),
+    <span class="doccomment">/// The derived public key doesn&#39;t match the one in the tree.
+    </span><span class="attribute">#[error(<span class="string">&quot;The derived public key doesn&#39;t match the one in the tree.&quot;</span>)]
+    </span>PublicKeyMismatch,
 }
 
-<span class="doccomment">/// TreeSync set path error</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Error</span>, <span class="ident">Debug</span>, <span class="ident">PartialEq</span>, <span class="ident">Clone</span>)]</span>
-<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">enum</span> <span class="ident">TreeSyncAddLeaf</span> {
-    <span class="doccomment">/// See [`LibraryError`] for more details.</span>
-    <span class="attribute">#[<span class="ident">error</span>(<span class="ident">transparent</span>)]</span>
-    <span class="ident">LibraryError</span>(<span class="attribute">#[<span class="ident">from</span>]</span> <span class="ident">LibraryError</span>),
-    <span class="doccomment">/// The tree is full, we cannot add any more leaves.</span>
-    <span class="attribute">#[<span class="ident">error</span>(<span class="string">&quot;The tree is full, we cannot add any more leaves.&quot;</span>)]</span>
-    <span class="ident">TreeFull</span>,
+<span class="doccomment">/// TreeSync set path error
+</span><span class="attribute">#[derive(Error, Debug, PartialEq, Clone)]
+</span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">enum </span>TreeSyncAddLeaf {
+    <span class="doccomment">/// See [`LibraryError`] for more details.
+    </span><span class="attribute">#[error(transparent)]
+    </span>LibraryError(<span class="attribute">#[from] </span>LibraryError),
+    <span class="doccomment">/// The tree is full, we cannot add any more leaves.
+    </span><span class="attribute">#[error(<span class="string">&quot;The tree is full, we cannot add any more leaves.&quot;</span>)]
+    </span>TreeFull,
 }
 
-<span class="doccomment">/// TreeSync from nodes error</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Error</span>, <span class="ident">Debug</span>, <span class="ident">PartialEq</span>, <span class="ident">Clone</span>)]</span>
-<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">enum</span> <span class="ident">TreeSyncFromNodesError</span> {
-    <span class="doccomment">/// See [`LibraryError`] for more details.</span>
-    <span class="attribute">#[<span class="ident">error</span>(<span class="ident">transparent</span>)]</span>
-    <span class="ident">LibraryError</span>(<span class="attribute">#[<span class="ident">from</span>]</span> <span class="ident">LibraryError</span>),
-    <span class="doccomment">/// See [`PublicTreeError`] for more details.</span>
-    <span class="attribute">#[<span class="ident">error</span>(<span class="ident">transparent</span>)]</span>
-    <span class="ident">PublicTreeError</span>(<span class="attribute">#[<span class="ident">from</span>]</span> <span class="ident">PublicTreeError</span>),
+<span class="doccomment">/// TreeSync from nodes error
+</span><span class="attribute">#[derive(Error, Debug, PartialEq, Clone)]
+</span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">enum </span>TreeSyncFromNodesError {
+    <span class="doccomment">/// See [`LibraryError`] for more details.
+    </span><span class="attribute">#[error(transparent)]
+    </span>LibraryError(<span class="attribute">#[from] </span>LibraryError),
+    <span class="doccomment">/// See [`PublicTreeError`] for more details.
+    </span><span class="attribute">#[error(transparent)]
+    </span>PublicTreeError(<span class="attribute">#[from] </span>PublicTreeError),
 }
 
-<span class="doccomment">/// TreeSync parent hash error</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Error</span>, <span class="ident">Debug</span>, <span class="ident">PartialEq</span>, <span class="ident">Clone</span>)]</span>
-<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">enum</span> <span class="ident">TreeSyncParentHashError</span> {
-    <span class="doccomment">/// See [`LibraryError`] for more details.</span>
-    <span class="attribute">#[<span class="ident">error</span>(<span class="ident">transparent</span>)]</span>
-    <span class="ident">LibraryError</span>(<span class="attribute">#[<span class="ident">from</span>]</span> <span class="ident">LibraryError</span>),
-    <span class="doccomment">/// Parent hash mismatch.</span>
-    <span class="attribute">#[<span class="ident">error</span>(<span class="string">&quot;Parent hash mismatch.&quot;</span>)]</span>
-    <span class="ident">InvalidParentHash</span>,
+<span class="doccomment">/// TreeSync parent hash error
+</span><span class="attribute">#[derive(Error, Debug, PartialEq, Clone)]
+</span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">enum </span>TreeSyncParentHashError {
+    <span class="doccomment">/// See [`LibraryError`] for more details.
+    </span><span class="attribute">#[error(transparent)]
+    </span>LibraryError(<span class="attribute">#[from] </span>LibraryError),
+    <span class="doccomment">/// Parent hash mismatch.
+    </span><span class="attribute">#[error(<span class="string">&quot;Parent hash mismatch.&quot;</span>)]
+    </span>InvalidParentHash,
 }
 
-<span class="doccomment">/// TreeSync parent hash error</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Error</span>, <span class="ident">Debug</span>, <span class="ident">PartialEq</span>, <span class="ident">Clone</span>)]</span>
-<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">enum</span> <span class="ident">TreeSyncDiffError</span> {
-    <span class="doccomment">/// See [`LibraryError`] for more details.</span>
-    <span class="attribute">#[<span class="ident">error</span>(<span class="ident">transparent</span>)]</span>
-    <span class="ident">LibraryError</span>(<span class="attribute">#[<span class="ident">from</span>]</span> <span class="ident">LibraryError</span>),
-    <span class="attribute">#[<span class="ident">error</span>(
-        <span class="string">&quot;Couldn&#39;t find a fitting private key in the filtered resolution of the given leaf index.&quot;</span>
-    )]</span>
-    <span class="ident">NoPrivateKeyFound</span>,
-    <span class="doccomment">/// See [`NodeError`] for more details.</span>
-    <span class="attribute">#[<span class="ident">error</span>(<span class="ident">transparent</span>)]</span>
-    <span class="ident">NodeTypeError</span>(<span class="attribute">#[<span class="ident">from</span>]</span> <span class="ident">NodeError</span>),
-    <span class="doccomment">/// See [`TreeSyncNodeError`] for more details.</span>
-    <span class="attribute">#[<span class="ident">error</span>(<span class="ident">transparent</span>)]</span>
-    <span class="ident">TreeSyncNodeError</span>(<span class="attribute">#[<span class="ident">from</span>]</span> <span class="ident">TreeSyncNodeError</span>),
-    <span class="doccomment">/// See [`MlsBinaryTreeDiffError`] for more details.</span>
-    <span class="attribute">#[<span class="ident">error</span>(<span class="ident">transparent</span>)]</span>
-    <span class="ident">TreeDiffError</span>(<span class="attribute">#[<span class="ident">from</span>]</span> <span class="ident">MlsBinaryTreeDiffError</span>),
-    <span class="doccomment">/// See [`PathSecretError`] for more details.</span>
-    <span class="attribute">#[<span class="ident">error</span>(<span class="ident">transparent</span>)]</span>
-    <span class="ident">DerivationError</span>(<span class="attribute">#[<span class="ident">from</span>]</span> <span class="ident">PathSecretError</span>),
-    <span class="doccomment">/// See [`MlsBinaryTreeError`] for more details.</span>
-    <span class="attribute">#[<span class="ident">error</span>(<span class="ident">transparent</span>)]</span>
-    <span class="ident">CreationError</span>(<span class="attribute">#[<span class="ident">from</span>]</span> <span class="ident">MlsBinaryTreeError</span>),
-    <span class="doccomment">/// See [`OutOfBoundsError`] for more details.</span>
-    <span class="attribute">#[<span class="ident">error</span>(<span class="ident">transparent</span>)]</span>
-    <span class="ident">UnknownMember</span>(<span class="attribute">#[<span class="ident">from</span>]</span> <span class="ident">OutOfBoundsError</span>),
+<span class="doccomment">/// TreeSync parent hash error
+</span><span class="attribute">#[derive(Error, Debug, PartialEq, Clone)]
+</span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">enum </span>TreeSyncDiffError {
+    <span class="doccomment">/// See [`LibraryError`] for more details.
+    </span><span class="attribute">#[error(transparent)]
+    </span>LibraryError(<span class="attribute">#[from] </span>LibraryError),
+    <span class="attribute">#[error(
+        <span class="string">&quot;Couldn&#39;t find a fitting private key in the filtered resolution of the given leaf index.&quot;
+    </span>)]
+    </span>NoPrivateKeyFound,
+    <span class="doccomment">/// See [`NodeError`] for more details.
+    </span><span class="attribute">#[error(transparent)]
+    </span>NodeTypeError(<span class="attribute">#[from] </span>NodeError),
+    <span class="doccomment">/// See [`TreeSyncNodeError`] for more details.
+    </span><span class="attribute">#[error(transparent)]
+    </span>TreeSyncNodeError(<span class="attribute">#[from] </span>TreeSyncNodeError),
+    <span class="doccomment">/// See [`MlsBinaryTreeDiffError`] for more details.
+    </span><span class="attribute">#[error(transparent)]
+    </span>TreeDiffError(<span class="attribute">#[from] </span>MlsBinaryTreeDiffError),
+    <span class="doccomment">/// See [`PathSecretError`] for more details.
+    </span><span class="attribute">#[error(transparent)]
+    </span>DerivationError(<span class="attribute">#[from] </span>PathSecretError),
+    <span class="doccomment">/// See [`MlsBinaryTreeError`] for more details.
+    </span><span class="attribute">#[error(transparent)]
+    </span>CreationError(<span class="attribute">#[from] </span>MlsBinaryTreeError),
+    <span class="doccomment">/// See [`OutOfBoundsError`] for more details.
+    </span><span class="attribute">#[error(transparent)]
+    </span>UnknownMember(<span class="attribute">#[from] </span>OutOfBoundsError),
 }
 
-<span class="doccomment">/// TreeKem error</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Error</span>, <span class="ident">Debug</span>, <span class="ident">PartialEq</span>, <span class="ident">Clone</span>)]</span>
-<span class="attribute">#[<span class="ident">allow</span>(<span class="ident">clippy::enum_variant_names</span>)]</span>
-<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">enum</span> <span class="ident">TreeKemError</span> {
-    <span class="doccomment">/// See [`LibraryError`] for more details.</span>
-    <span class="attribute">#[<span class="ident">error</span>(<span class="ident">transparent</span>)]</span>
-    <span class="ident">LibraryError</span>(<span class="attribute">#[<span class="ident">from</span>]</span> <span class="ident">LibraryError</span>),
-    <span class="doccomment">/// See [`TreeSyncError`] for more details.</span>
-    <span class="attribute">#[<span class="ident">error</span>(<span class="ident">transparent</span>)]</span>
-    <span class="ident">TreeSyncError</span>(<span class="attribute">#[<span class="ident">from</span>]</span> <span class="ident">TreeSyncError</span>),
-    <span class="doccomment">/// See [`TreeSyncDiffError`] for more details.</span>
-    <span class="attribute">#[<span class="ident">error</span>(<span class="ident">transparent</span>)]</span>
-    <span class="ident">TreeSyncDiffError</span>(<span class="attribute">#[<span class="ident">from</span>]</span> <span class="ident">TreeSyncDiffError</span>),
-    <span class="doccomment">/// See [`PathSecretError`] for more details.</span>
-    <span class="attribute">#[<span class="ident">error</span>(<span class="ident">transparent</span>)]</span>
-    <span class="ident">PathSecretError</span>(<span class="attribute">#[<span class="ident">from</span>]</span> <span class="ident">PathSecretError</span>),
+<span class="doccomment">/// TreeKem error
+</span><span class="attribute">#[derive(Error, Debug, PartialEq, Clone)]
+#[allow(clippy::enum_variant_names)]
+</span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">enum </span>TreeKemError {
+    <span class="doccomment">/// See [`LibraryError`] for more details.
+    </span><span class="attribute">#[error(transparent)]
+    </span>LibraryError(<span class="attribute">#[from] </span>LibraryError),
+    <span class="doccomment">/// See [`TreeSyncError`] for more details.
+    </span><span class="attribute">#[error(transparent)]
+    </span>TreeSyncError(<span class="attribute">#[from] </span>TreeSyncError),
+    <span class="doccomment">/// See [`TreeSyncDiffError`] for more details.
+    </span><span class="attribute">#[error(transparent)]
+    </span>TreeSyncDiffError(<span class="attribute">#[from] </span>TreeSyncDiffError),
+    <span class="doccomment">/// See [`PathSecretError`] for more details.
+    </span><span class="attribute">#[error(transparent)]
+    </span>PathSecretError(<span class="attribute">#[from] </span>PathSecretError),
 }
 
-<span class="doccomment">/// Binary Tree error</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Error</span>, <span class="ident">Debug</span>, <span class="ident">PartialEq</span>, <span class="ident">Clone</span>)]</span>
-<span class="attribute">#[<span class="ident">allow</span>(<span class="ident">clippy::enum_variant_names</span>)]</span>
-<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">enum</span> <span class="ident">NodeError</span> {
-    <span class="doccomment">/// See [`LibraryError`] for more details.</span>
-    <span class="attribute">#[<span class="ident">error</span>(<span class="ident">transparent</span>)]</span>
-    <span class="ident">LibraryError</span>(<span class="attribute">#[<span class="ident">from</span>]</span> <span class="ident">LibraryError</span>),
-    <span class="doccomment">/// This is not a leaf node.</span>
-    <span class="attribute">#[<span class="ident">error</span>(<span class="string">&quot;This is not a leaf node.&quot;</span>)]</span>
-    <span class="ident">AsLeafError</span>,
-    <span class="doccomment">/// This is not a parent node.</span>
-    <span class="attribute">#[<span class="ident">error</span>(<span class="string">&quot;This is not a parent node.&quot;</span>)]</span>
-    <span class="ident">AsParentError</span>,
+<span class="doccomment">/// Binary Tree error
+</span><span class="attribute">#[derive(Error, Debug, PartialEq, Clone)]
+#[allow(clippy::enum_variant_names)]
+</span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">enum </span>NodeError {
+    <span class="doccomment">/// See [`LibraryError`] for more details.
+    </span><span class="attribute">#[error(transparent)]
+    </span>LibraryError(<span class="attribute">#[from] </span>LibraryError),
+    <span class="doccomment">/// This is not a leaf node.
+    </span><span class="attribute">#[error(<span class="string">&quot;This is not a leaf node.&quot;</span>)]
+    </span>AsLeafError,
+    <span class="doccomment">/// This is not a parent node.
+    </span><span class="attribute">#[error(<span class="string">&quot;This is not a parent node.&quot;</span>)]
+    </span>AsParentError,
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-current-crate="openmls" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.64.0 (a55dd71d5 2022-09-19)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-current-crate="openmls" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0 (897e37553 2022-11-02)" ></div></body></html>

@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `src/framing/ciphertext.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>ciphertext.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" type="text/css" href="../../../normalize.css"><link rel="stylesheet" type="text/css" href="../../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" type="text/css" href="../../../ayu.css" disabled><link rel="stylesheet" type="text/css" href="../../../dark.css" disabled><link rel="stylesheet" type="text/css" href="../../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../../storage.js"></script><script defer src="../../../source-script.js"></script><script defer src="../../../source-files.js"></script><script defer src="../../../main.js"></script><noscript><link rel="stylesheet" href="../../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../../openmls/index.html"><div class="logo-container"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></div></a><h2 class="location"></h2></nav><nav class="sidebar"><a class="sidebar-logo" href="../../../openmls/index.html"><div class="logo-container"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></div></a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../../openmls/index.html"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></a><nav class="sub"><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><button type="button">?</button></div><div id="settings-menu" tabindex="-1"><a href="../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../wheel.svg"></a></div></div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">1</span>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `src/framing/ciphertext.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>ciphertext.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" href="../../../normalize.css"><link rel="stylesheet" href="../../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" href="../../../ayu.css" disabled><link rel="stylesheet" href="../../../dark.css" disabled><link rel="stylesheet" href="../../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../../storage.js"></script><script defer src="../../../source-script.js"></script><script defer src="../../../source-files.js"></script><script defer src="../../../main.js"></script><noscript><link rel="stylesheet" href="../../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../../openmls/index.html"><div class="logo-container"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></div></a><h2 class="location"></h2></nav><nav class="sidebar"><a class="sidebar-logo" href="../../../openmls/index.html"><div class="logo-container"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></div></a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../../openmls/index.html"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></a><nav class="sub"><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><button type="button">?</button></div><div id="settings-menu" tabindex="-1"><a href="../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../wheel.svg"></a></div></div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">1</span>
 <span id="2">2</span>
 <span id="3">3</span>
 <span id="4">4</span>
@@ -475,482 +475,482 @@
 <span id="475">475</span>
 <span id="476">476</span>
 <span id="477">477</span>
-</pre><pre class="rust"><code><span class="kw">use</span> <span class="ident">openmls_traits</span>::{<span class="ident">types::Ciphersuite</span>, <span class="ident">OpenMlsCryptoProvider</span>};
-<span class="kw">use</span> <span class="ident">std::io::Write</span>;
-<span class="kw">use</span> <span class="ident">tls_codec</span>::{
-    <span class="ident">Deserialize</span>, <span class="ident">Serialize</span>, <span class="ident">Size</span>, <span class="ident">TlsByteVecU32</span>, <span class="ident">TlsByteVecU8</span>, <span class="ident">TlsDeserialize</span>, <span class="ident">TlsSerialize</span>,
-    <span class="ident">TlsSize</span>,
+</pre><pre class="rust"><code><span class="kw">use </span>openmls_traits::{types::Ciphersuite, OpenMlsCryptoProvider};
+<span class="kw">use </span>std::io::Write;
+<span class="kw">use </span>tls_codec::{
+    Deserialize, Serialize, Size, TlsByteVecU32, TlsByteVecU8, TlsDeserialize, TlsSerialize,
+    TlsSize,
 };
 
-<span class="kw">use</span> <span class="kw">crate</span>::{
-    <span class="ident">ciphersuite::hash_ref</span>::{<span class="ident">HashReference</span>, <span class="ident">KeyPackageRef</span>},
-    <span class="ident">error::LibraryError</span>,
-    <span class="ident">tree</span>::{
-        <span class="ident">index::SecretTreeLeafIndex</span>, <span class="ident">secret_tree::SecretType</span>,
-        <span class="ident">sender_ratchet::SenderRatchetConfiguration</span>,
+<span class="kw">use crate</span>::{
+    ciphersuite::hash_ref::{HashReference, KeyPackageRef},
+    error::LibraryError,
+    tree::{
+        index::SecretTreeLeafIndex, secret_tree::SecretType,
+        sender_ratchet::SenderRatchetConfiguration,
     },
 };
 
-<span class="kw">use</span> <span class="kw">super</span>::<span class="kw-2">*</span>;
+<span class="kw">use super</span>::<span class="kw-2">*</span>;
 
-<span class="doccomment">/// `MlsCiphertext` is the framing struct for an encrypted `MlsPlaintext`.</span>
-<span class="doccomment">/// This message format is meant to be sent to and received from the Delivery</span>
-<span class="doccomment">/// Service.</span>
-<span class="doccomment">///</span>
-<span class="doccomment">/// ```c</span>
-<span class="doccomment">/// // draft-ietf-mls-protocol-16</span>
-<span class="doccomment">/// struct {</span>
-<span class="doccomment">///     opaque group_id&lt;V&gt;;</span>
-<span class="doccomment">///     uint64 epoch;</span>
-<span class="doccomment">///     ContentType content_type;</span>
-<span class="doccomment">///     opaque authenticated_data&lt;V&gt;;</span>
-<span class="doccomment">///     opaque encrypted_sender_data&lt;V&gt;;</span>
-<span class="doccomment">///     opaque ciphertext&lt;V&gt;;</span>
-<span class="doccomment">/// } MLSCiphertext;</span>
-<span class="doccomment">/// ```</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">PartialEq</span>, <span class="ident">Clone</span>, <span class="ident">TlsSerialize</span>, <span class="ident">TlsSize</span>)]</span>
-<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct</span> <span class="ident">MlsCiphertext</span> {
-    <span class="ident">wire_format</span>: <span class="ident">WireFormat</span>,
-    <span class="ident">group_id</span>: <span class="ident">GroupId</span>,
-    <span class="ident">epoch</span>: <span class="ident">GroupEpoch</span>,
-    <span class="ident">content_type</span>: <span class="ident">ContentType</span>,
-    <span class="ident">authenticated_data</span>: <span class="ident">TlsByteVecU32</span>,
-    <span class="ident">encrypted_sender_data</span>: <span class="ident">TlsByteVecU8</span>,
-    <span class="ident">ciphertext</span>: <span class="ident">TlsByteVecU32</span>,
+<span class="doccomment">/// `MlsCiphertext` is the framing struct for an encrypted `MlsPlaintext`.
+/// This message format is meant to be sent to and received from the Delivery
+/// Service.
+///
+/// ```c
+/// // draft-ietf-mls-protocol-16
+/// struct {
+///     opaque group_id&lt;V&gt;;
+///     uint64 epoch;
+///     ContentType content_type;
+///     opaque authenticated_data&lt;V&gt;;
+///     opaque encrypted_sender_data&lt;V&gt;;
+///     opaque ciphertext&lt;V&gt;;
+/// } MLSCiphertext;
+/// ```
+</span><span class="attribute">#[derive(Debug, PartialEq, Clone, TlsSerialize, TlsSize)]
+</span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct </span>MlsCiphertext {
+    wire_format: WireFormat,
+    group_id: GroupId,
+    epoch: GroupEpoch,
+    content_type: ContentType,
+    authenticated_data: TlsByteVecU32,
+    encrypted_sender_data: TlsByteVecU8,
+    ciphertext: TlsByteVecU32,
 }
 
-<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct</span> <span class="ident">MlsMessageHeader</span> {
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="ident">group_id</span>: <span class="ident">GroupId</span>,
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="ident">epoch</span>: <span class="ident">GroupEpoch</span>,
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="ident">sender</span>: <span class="ident">SecretTreeLeafIndex</span>,
+<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct </span>MlsMessageHeader {
+    <span class="kw">pub</span>(<span class="kw">crate</span>) group_id: GroupId,
+    <span class="kw">pub</span>(<span class="kw">crate</span>) epoch: GroupEpoch,
+    <span class="kw">pub</span>(<span class="kw">crate</span>) sender: SecretTreeLeafIndex,
 }
 
-<span class="kw">impl</span> <span class="ident">MlsCiphertext</span> {
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">new</span>(
-        <span class="ident">wire_format</span>: <span class="ident">WireFormat</span>,
-        <span class="ident">group_id</span>: <span class="ident">GroupId</span>,
-        <span class="ident">epoch</span>: <span class="ident">GroupEpoch</span>,
-        <span class="ident">content_type</span>: <span class="ident">ContentType</span>,
-        <span class="ident">authenticated_data</span>: <span class="ident">TlsByteVecU32</span>,
-        <span class="ident">encrypted_sender_data</span>: <span class="ident">TlsByteVecU8</span>,
-        <span class="ident">ciphertext</span>: <span class="ident">TlsByteVecU32</span>,
-    ) -&gt; <span class="self">Self</span> {
-        <span class="self">Self</span> {
-            <span class="ident">wire_format</span>,
-            <span class="ident">group_id</span>,
-            <span class="ident">epoch</span>,
-            <span class="ident">content_type</span>,
-            <span class="ident">authenticated_data</span>,
-            <span class="ident">encrypted_sender_data</span>,
-            <span class="ident">ciphertext</span>,
+<span class="kw">impl </span>MlsCiphertext {
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>new(
+        wire_format: WireFormat,
+        group_id: GroupId,
+        epoch: GroupEpoch,
+        content_type: ContentType,
+        authenticated_data: TlsByteVecU32,
+        encrypted_sender_data: TlsByteVecU8,
+        ciphertext: TlsByteVecU32,
+    ) -&gt; <span class="self">Self </span>{
+        <span class="self">Self </span>{
+            wire_format,
+            group_id,
+            epoch,
+            content_type,
+            authenticated_data,
+            encrypted_sender_data,
+            ciphertext,
         }
     }
 
-    <span class="doccomment">/// Try to create a new `MlsCiphertext` from an `MlsPlaintext`</span>
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">try_from_plaintext</span>(
-        <span class="ident">mls_plaintext</span>: <span class="kw-2">&amp;</span><span class="ident">MlsPlaintext</span>,
-        <span class="ident">ciphersuite</span>: <span class="ident">Ciphersuite</span>,
-        <span class="ident">backend</span>: <span class="kw-2">&amp;</span><span class="kw">impl</span> <span class="ident">OpenMlsCryptoProvider</span>,
-        <span class="ident">header</span>: <span class="ident">MlsMessageHeader</span>,
-        <span class="ident">message_secrets</span>: <span class="kw-2">&amp;mut</span> <span class="ident">MessageSecrets</span>,
-        <span class="ident">padding_size</span>: <span class="ident">usize</span>,
-    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">MlsCiphertext</span>, <span class="ident">MessageEncryptionError</span><span class="op">&gt;</span> {
+    <span class="doccomment">/// Try to create a new `MlsCiphertext` from an `MlsPlaintext`
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>try_from_plaintext(
+        mls_plaintext: <span class="kw-2">&amp;</span>MlsPlaintext,
+        ciphersuite: Ciphersuite,
+        backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider,
+        header: MlsMessageHeader,
+        message_secrets: <span class="kw-2">&amp;mut </span>MessageSecrets,
+        padding_size: usize,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;MlsCiphertext, MessageEncryptionError&gt; {
         <span class="macro">log::debug!</span>(<span class="string">&quot;MlsCiphertext::try_from_plaintext&quot;</span>);
-        <span class="macro">log::trace!</span>(<span class="string">&quot;  ciphersuite: {}&quot;</span>, <span class="ident">ciphersuite</span>);
-        <span class="comment">// Check the plaintext has the correct wire format</span>
-        <span class="kw">if</span> <span class="ident">mls_plaintext</span>.<span class="ident">wire_format</span>() <span class="op">!</span><span class="op">=</span> <span class="ident">WireFormat::MlsCiphertext</span> {
-            <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">MessageEncryptionError::WrongWireFormat</span>);
+        <span class="macro">log::trace!</span>(<span class="string">&quot;  ciphersuite: {}&quot;</span>, ciphersuite);
+        <span class="comment">// Check the plaintext has the correct wire format
+        </span><span class="kw">if </span>mls_plaintext.wire_format() != WireFormat::MlsCiphertext {
+            <span class="kw">return </span><span class="prelude-val">Err</span>(MessageEncryptionError::WrongWireFormat);
         }
-        <span class="comment">// Check that the plaintext has the right sender type</span>
-        <span class="kw">let</span> <span class="ident">hash_ref</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">mls_plaintext</span>.<span class="ident">sender</span>() {
-            <span class="ident">Sender::Member</span>(<span class="ident">hash_ref</span>) =&gt; <span class="ident">hash_ref</span>,
-            <span class="kw">_</span> =&gt; <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">MessageEncryptionError::SenderError</span>(<span class="ident">SenderError::NotAMember</span>)),
+        <span class="comment">// Check that the plaintext has the right sender type
+        </span><span class="kw">let </span>hash_ref = <span class="kw">match </span>mls_plaintext.sender() {
+            Sender::Member(hash_ref) =&gt; hash_ref,
+            <span class="kw">_ </span>=&gt; <span class="kw">return </span><span class="prelude-val">Err</span>(MessageEncryptionError::SenderError(SenderError::NotAMember)),
         };
-        <span class="comment">// Serialize the content AAD</span>
-        <span class="kw">let</span> <span class="ident">mls_ciphertext_content_aad</span> <span class="op">=</span> <span class="ident">MlsCiphertextContentAad</span> {
-            <span class="ident">group_id</span>: <span class="ident">header</span>.<span class="ident">group_id</span>.<span class="ident">clone</span>(),
-            <span class="ident">epoch</span>: <span class="ident">header</span>.<span class="ident">epoch</span>,
-            <span class="ident">content_type</span>: <span class="ident">mls_plaintext</span>.<span class="ident">content</span>().<span class="ident">content_type</span>(),
-            <span class="ident">authenticated_data</span>: <span class="ident">TlsByteSliceU32</span>(<span class="ident">mls_plaintext</span>.<span class="ident">authenticated_data</span>()),
+        <span class="comment">// Serialize the content AAD
+        </span><span class="kw">let </span>mls_ciphertext_content_aad = MlsCiphertextContentAad {
+            group_id: header.group_id.clone(),
+            epoch: header.epoch,
+            content_type: mls_plaintext.content().content_type(),
+            authenticated_data: TlsByteSliceU32(mls_plaintext.authenticated_data()),
         };
-        <span class="kw">let</span> <span class="ident">mls_ciphertext_content_aad_bytes</span> <span class="op">=</span> <span class="ident">mls_ciphertext_content_aad</span>
-            .<span class="ident">tls_serialize_detached</span>()
-            .<span class="ident">map_err</span>(<span class="ident">LibraryError::missing_bound_check</span>)<span class="question-mark">?</span>;
-        <span class="comment">// Extract generation and key material for encryption</span>
-        <span class="kw">let</span> <span class="ident">secret_type</span> <span class="op">=</span> <span class="ident">SecretType::from</span>(<span class="kw-2">&amp;</span><span class="ident">mls_plaintext</span>.<span class="ident">content</span>().<span class="ident">content_type</span>());
-        <span class="kw">let</span> (<span class="ident">generation</span>, (<span class="ident">ratchet_key</span>, <span class="ident">ratchet_nonce</span>)) <span class="op">=</span> <span class="ident">message_secrets</span>
-            .<span class="ident">secret_tree_mut</span>()
-            .<span class="ident">secret_for_encryption</span>(<span class="ident">ciphersuite</span>, <span class="ident">backend</span>, <span class="ident">header</span>.<span class="ident">sender</span>, <span class="ident">secret_type</span>)<span class="question-mark">?</span>;
-        <span class="comment">// Sample reuse guard uniformly at random.</span>
-        <span class="kw">let</span> <span class="ident">reuse_guard</span>: <span class="ident">ReuseGuard</span> <span class="op">=</span>
-            <span class="ident">ReuseGuard::try_from_random</span>(<span class="ident">backend</span>).<span class="ident">map_err</span>(<span class="ident">LibraryError::unexpected_crypto_error</span>)<span class="question-mark">?</span>;
-        <span class="comment">// Prepare the nonce by xoring with the reuse guard.</span>
-        <span class="kw">let</span> <span class="ident">prepared_nonce</span> <span class="op">=</span> <span class="ident">ratchet_nonce</span>.<span class="ident">xor_with_reuse_guard</span>(<span class="kw-2">&amp;</span><span class="ident">reuse_guard</span>);
-        <span class="comment">// Encrypt the payload</span>
-        <span class="kw">let</span> <span class="ident">ciphertext</span> <span class="op">=</span> <span class="ident">ratchet_key</span>
-            .<span class="ident">aead_seal</span>(
-                <span class="ident">backend</span>,
-                <span class="kw-2">&amp;</span><span class="ident"><span class="self">Self</span>::encode_padded_ciphertext_content_detached</span>(
-                    <span class="ident">mls_plaintext</span>,
-                    <span class="ident">padding_size</span>,
-                    <span class="ident">ciphersuite</span>.<span class="ident">mac_length</span>(),
+        <span class="kw">let </span>mls_ciphertext_content_aad_bytes = mls_ciphertext_content_aad
+            .tls_serialize_detached()
+            .map_err(LibraryError::missing_bound_check)<span class="question-mark">?</span>;
+        <span class="comment">// Extract generation and key material for encryption
+        </span><span class="kw">let </span>secret_type = SecretType::from(<span class="kw-2">&amp;</span>mls_plaintext.content().content_type());
+        <span class="kw">let </span>(generation, (ratchet_key, ratchet_nonce)) = message_secrets
+            .secret_tree_mut()
+            .secret_for_encryption(ciphersuite, backend, header.sender, secret_type)<span class="question-mark">?</span>;
+        <span class="comment">// Sample reuse guard uniformly at random.
+        </span><span class="kw">let </span>reuse_guard: ReuseGuard =
+            ReuseGuard::try_from_random(backend).map_err(LibraryError::unexpected_crypto_error)<span class="question-mark">?</span>;
+        <span class="comment">// Prepare the nonce by xoring with the reuse guard.
+        </span><span class="kw">let </span>prepared_nonce = ratchet_nonce.xor_with_reuse_guard(<span class="kw-2">&amp;</span>reuse_guard);
+        <span class="comment">// Encrypt the payload
+        </span><span class="kw">let </span>ciphertext = ratchet_key
+            .aead_seal(
+                backend,
+                <span class="kw-2">&amp;</span><span class="self">Self</span>::encode_padded_ciphertext_content_detached(
+                    mls_plaintext,
+                    padding_size,
+                    ciphersuite.mac_length(),
                 )
-                .<span class="ident">map_err</span>(<span class="ident">LibraryError::missing_bound_check</span>)<span class="question-mark">?</span>,
-                <span class="kw-2">&amp;</span><span class="ident">mls_ciphertext_content_aad_bytes</span>,
-                <span class="kw-2">&amp;</span><span class="ident">prepared_nonce</span>,
+                .map_err(LibraryError::missing_bound_check)<span class="question-mark">?</span>,
+                <span class="kw-2">&amp;</span>mls_ciphertext_content_aad_bytes,
+                <span class="kw-2">&amp;</span>prepared_nonce,
             )
-            .<span class="ident">map_err</span>(<span class="ident">LibraryError::unexpected_crypto_error</span>)<span class="question-mark">?</span>;
-        <span class="comment">// Derive the sender data key from the key schedule using the ciphertext.</span>
-        <span class="kw">let</span> <span class="ident">sender_data_key</span> <span class="op">=</span> <span class="ident">message_secrets</span>
-            .<span class="ident">sender_data_secret</span>()
-            .<span class="ident">derive_aead_key</span>(<span class="ident">backend</span>, <span class="kw-2">&amp;</span><span class="ident">ciphertext</span>)
-            .<span class="ident">map_err</span>(<span class="ident">LibraryError::unexpected_crypto_error</span>)<span class="question-mark">?</span>;
-        <span class="comment">// Derive initial nonce from the key schedule using the ciphertext.</span>
-        <span class="kw">let</span> <span class="ident">sender_data_nonce</span> <span class="op">=</span> <span class="ident">message_secrets</span>
-            .<span class="ident">sender_data_secret</span>()
-            .<span class="ident">derive_aead_nonce</span>(<span class="ident">ciphersuite</span>, <span class="ident">backend</span>, <span class="kw-2">&amp;</span><span class="ident">ciphertext</span>)
-            .<span class="ident">map_err</span>(<span class="ident">LibraryError::unexpected_crypto_error</span>)<span class="question-mark">?</span>;
-        <span class="comment">// Compute sender data nonce by xoring reuse guard and key schedule</span>
-        <span class="comment">// nonce as per spec.</span>
-        <span class="kw">let</span> <span class="ident">mls_sender_data_aad</span> <span class="op">=</span> <span class="ident">MlsSenderDataAad::new</span>(
-            <span class="ident">header</span>.<span class="ident">group_id</span>.<span class="ident">clone</span>(),
-            <span class="ident">header</span>.<span class="ident">epoch</span>,
-            <span class="ident">mls_plaintext</span>.<span class="ident">content</span>().<span class="ident">content_type</span>(),
+            .map_err(LibraryError::unexpected_crypto_error)<span class="question-mark">?</span>;
+        <span class="comment">// Derive the sender data key from the key schedule using the ciphertext.
+        </span><span class="kw">let </span>sender_data_key = message_secrets
+            .sender_data_secret()
+            .derive_aead_key(backend, <span class="kw-2">&amp;</span>ciphertext)
+            .map_err(LibraryError::unexpected_crypto_error)<span class="question-mark">?</span>;
+        <span class="comment">// Derive initial nonce from the key schedule using the ciphertext.
+        </span><span class="kw">let </span>sender_data_nonce = message_secrets
+            .sender_data_secret()
+            .derive_aead_nonce(ciphersuite, backend, <span class="kw-2">&amp;</span>ciphertext)
+            .map_err(LibraryError::unexpected_crypto_error)<span class="question-mark">?</span>;
+        <span class="comment">// Compute sender data nonce by xoring reuse guard and key schedule
+        // nonce as per spec.
+        </span><span class="kw">let </span>mls_sender_data_aad = MlsSenderDataAad::new(
+            header.group_id.clone(),
+            header.epoch,
+            mls_plaintext.content().content_type(),
         );
-        <span class="comment">// Serialize the sender data AAD</span>
-        <span class="kw">let</span> <span class="ident">mls_sender_data_aad_bytes</span> <span class="op">=</span> <span class="ident">mls_sender_data_aad</span>
-            .<span class="ident">tls_serialize_detached</span>()
-            .<span class="ident">map_err</span>(<span class="ident">LibraryError::missing_bound_check</span>)<span class="question-mark">?</span>;
-        <span class="kw">let</span> <span class="ident">sender_data</span> <span class="op">=</span> <span class="ident">MlsSenderData::from_sender</span>(<span class="ident">hash_ref</span>, <span class="ident">generation</span>, <span class="ident">reuse_guard</span>);
-        <span class="comment">// Encrypt the sender data</span>
-        <span class="kw">let</span> <span class="ident">encrypted_sender_data</span> <span class="op">=</span> <span class="ident">sender_data_key</span>
-            .<span class="ident">aead_seal</span>(
-                <span class="ident">backend</span>,
-                <span class="kw-2">&amp;</span><span class="ident">sender_data</span>
-                    .<span class="ident">tls_serialize_detached</span>()
-                    .<span class="ident">map_err</span>(<span class="ident">LibraryError::missing_bound_check</span>)<span class="question-mark">?</span>,
-                <span class="kw-2">&amp;</span><span class="ident">mls_sender_data_aad_bytes</span>,
-                <span class="kw-2">&amp;</span><span class="ident">sender_data_nonce</span>,
+        <span class="comment">// Serialize the sender data AAD
+        </span><span class="kw">let </span>mls_sender_data_aad_bytes = mls_sender_data_aad
+            .tls_serialize_detached()
+            .map_err(LibraryError::missing_bound_check)<span class="question-mark">?</span>;
+        <span class="kw">let </span>sender_data = MlsSenderData::from_sender(hash_ref, generation, reuse_guard);
+        <span class="comment">// Encrypt the sender data
+        </span><span class="kw">let </span>encrypted_sender_data = sender_data_key
+            .aead_seal(
+                backend,
+                <span class="kw-2">&amp;</span>sender_data
+                    .tls_serialize_detached()
+                    .map_err(LibraryError::missing_bound_check)<span class="question-mark">?</span>,
+                <span class="kw-2">&amp;</span>mls_sender_data_aad_bytes,
+                <span class="kw-2">&amp;</span>sender_data_nonce,
             )
-            .<span class="ident">map_err</span>(<span class="ident">LibraryError::unexpected_crypto_error</span>)<span class="question-mark">?</span>;
-        <span class="prelude-val">Ok</span>(<span class="ident">MlsCiphertext</span> {
-            <span class="ident">wire_format</span>: <span class="ident">WireFormat::MlsCiphertext</span>,
-            <span class="ident">group_id</span>: <span class="ident">header</span>.<span class="ident">group_id</span>,
-            <span class="ident">epoch</span>: <span class="ident">header</span>.<span class="ident">epoch</span>,
-            <span class="ident">content_type</span>: <span class="ident">mls_plaintext</span>.<span class="ident">content</span>().<span class="ident">content_type</span>(),
-            <span class="ident">authenticated_data</span>: <span class="ident">mls_plaintext</span>.<span class="ident">authenticated_data</span>().<span class="ident">into</span>(),
-            <span class="ident">encrypted_sender_data</span>: <span class="ident">encrypted_sender_data</span>.<span class="ident">into</span>(),
-            <span class="ident">ciphertext</span>: <span class="ident">ciphertext</span>.<span class="ident">into</span>(),
+            .map_err(LibraryError::unexpected_crypto_error)<span class="question-mark">?</span>;
+        <span class="prelude-val">Ok</span>(MlsCiphertext {
+            wire_format: WireFormat::MlsCiphertext,
+            group_id: header.group_id,
+            epoch: header.epoch,
+            content_type: mls_plaintext.content().content_type(),
+            authenticated_data: mls_plaintext.authenticated_data().into(),
+            encrypted_sender_data: encrypted_sender_data.into(),
+            ciphertext: ciphertext.into(),
         })
     }
 
-    <span class="doccomment">/// Decrypt the sender data from this [`MlsCiphertext`].</span>
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">sender_data</span>(
+    <span class="doccomment">/// Decrypt the sender data from this [`MlsCiphertext`].
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>sender_data(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        <span class="ident">message_secrets</span>: <span class="kw-2">&amp;</span><span class="ident">MessageSecrets</span>,
-        <span class="ident">backend</span>: <span class="kw-2">&amp;</span><span class="kw">impl</span> <span class="ident">OpenMlsCryptoProvider</span>,
-        <span class="ident">ciphersuite</span>: <span class="ident">Ciphersuite</span>,
-    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">MlsSenderData</span>, <span class="ident">MessageDecryptionError</span><span class="op">&gt;</span> {
+        message_secrets: <span class="kw-2">&amp;</span>MessageSecrets,
+        backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider,
+        ciphersuite: Ciphersuite,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;MlsSenderData, MessageDecryptionError&gt; {
         <span class="macro">log::debug!</span>(<span class="string">&quot;Decrypting MlsCiphertext&quot;</span>);
-        <span class="comment">// Check the ciphertext has the correct wire format</span>
-        <span class="kw">if</span> <span class="self">self</span>.<span class="ident">wire_format</span> <span class="op">!</span><span class="op">=</span> <span class="ident">WireFormat::MlsCiphertext</span> {
-            <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">MessageDecryptionError::WrongWireFormat</span>);
+        <span class="comment">// Check the ciphertext has the correct wire format
+        </span><span class="kw">if </span><span class="self">self</span>.wire_format != WireFormat::MlsCiphertext {
+            <span class="kw">return </span><span class="prelude-val">Err</span>(MessageDecryptionError::WrongWireFormat);
         }
-        <span class="comment">// Derive key from the key schedule using the ciphertext.</span>
-        <span class="kw">let</span> <span class="ident">sender_data_key</span> <span class="op">=</span> <span class="ident">message_secrets</span>
-            .<span class="ident">sender_data_secret</span>()
-            .<span class="ident">derive_aead_key</span>(<span class="ident">backend</span>, <span class="self">self</span>.<span class="ident">ciphertext</span>.<span class="ident">as_slice</span>())
-            .<span class="ident">map_err</span>(<span class="ident">LibraryError::unexpected_crypto_error</span>)<span class="question-mark">?</span>;
-        <span class="comment">// Derive initial nonce from the key schedule using the ciphertext.</span>
-        <span class="kw">let</span> <span class="ident">sender_data_nonce</span> <span class="op">=</span> <span class="ident">message_secrets</span>
-            .<span class="ident">sender_data_secret</span>()
-            .<span class="ident">derive_aead_nonce</span>(<span class="ident">ciphersuite</span>, <span class="ident">backend</span>, <span class="self">self</span>.<span class="ident">ciphertext</span>.<span class="ident">as_slice</span>())
-            .<span class="ident">map_err</span>(<span class="ident">LibraryError::unexpected_crypto_error</span>)<span class="question-mark">?</span>;
-        <span class="comment">// Serialize sender data AAD</span>
-        <span class="kw">let</span> <span class="ident">mls_sender_data_aad</span> <span class="op">=</span>
-            <span class="ident">MlsSenderDataAad::new</span>(<span class="self">self</span>.<span class="ident">group_id</span>.<span class="ident">clone</span>(), <span class="self">self</span>.<span class="ident">epoch</span>, <span class="self">self</span>.<span class="ident">content_type</span>);
-        <span class="kw">let</span> <span class="ident">mls_sender_data_aad_bytes</span> <span class="op">=</span> <span class="ident">mls_sender_data_aad</span>
-            .<span class="ident">tls_serialize_detached</span>()
-            .<span class="ident">map_err</span>(<span class="ident">LibraryError::missing_bound_check</span>)<span class="question-mark">?</span>;
-        <span class="comment">// Decrypt sender data</span>
-        <span class="kw">let</span> <span class="ident">sender_data_bytes</span> <span class="op">=</span> <span class="ident">sender_data_key</span>
-            .<span class="ident">aead_open</span>(
-                <span class="ident">backend</span>,
-                <span class="self">self</span>.<span class="ident">encrypted_sender_data</span>.<span class="ident">as_slice</span>(),
-                <span class="kw-2">&amp;</span><span class="ident">mls_sender_data_aad_bytes</span>,
-                <span class="kw-2">&amp;</span><span class="ident">sender_data_nonce</span>,
+        <span class="comment">// Derive key from the key schedule using the ciphertext.
+        </span><span class="kw">let </span>sender_data_key = message_secrets
+            .sender_data_secret()
+            .derive_aead_key(backend, <span class="self">self</span>.ciphertext.as_slice())
+            .map_err(LibraryError::unexpected_crypto_error)<span class="question-mark">?</span>;
+        <span class="comment">// Derive initial nonce from the key schedule using the ciphertext.
+        </span><span class="kw">let </span>sender_data_nonce = message_secrets
+            .sender_data_secret()
+            .derive_aead_nonce(ciphersuite, backend, <span class="self">self</span>.ciphertext.as_slice())
+            .map_err(LibraryError::unexpected_crypto_error)<span class="question-mark">?</span>;
+        <span class="comment">// Serialize sender data AAD
+        </span><span class="kw">let </span>mls_sender_data_aad =
+            MlsSenderDataAad::new(<span class="self">self</span>.group_id.clone(), <span class="self">self</span>.epoch, <span class="self">self</span>.content_type);
+        <span class="kw">let </span>mls_sender_data_aad_bytes = mls_sender_data_aad
+            .tls_serialize_detached()
+            .map_err(LibraryError::missing_bound_check)<span class="question-mark">?</span>;
+        <span class="comment">// Decrypt sender data
+        </span><span class="kw">let </span>sender_data_bytes = sender_data_key
+            .aead_open(
+                backend,
+                <span class="self">self</span>.encrypted_sender_data.as_slice(),
+                <span class="kw-2">&amp;</span>mls_sender_data_aad_bytes,
+                <span class="kw-2">&amp;</span>sender_data_nonce,
             )
-            .<span class="ident">map_err</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> {
+            .map_err(|<span class="kw">_</span>| {
                 <span class="macro">log::error!</span>(<span class="string">&quot;Sender data decryption error&quot;</span>);
-                <span class="ident">MessageDecryptionError::AeadError</span>
+                MessageDecryptionError::AeadError
             })<span class="question-mark">?</span>;
         <span class="macro">log::trace!</span>(<span class="string">&quot;  Successfully decrypted sender data.&quot;</span>);
-        <span class="ident">MlsSenderData::tls_deserialize</span>(<span class="kw-2">&amp;mut</span> <span class="ident">sender_data_bytes</span>.<span class="ident">as_slice</span>())
-            .<span class="ident">map_err</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="ident">MessageDecryptionError::MalformedContent</span>)
+        MlsSenderData::tls_deserialize(<span class="kw-2">&amp;mut </span>sender_data_bytes.as_slice())
+            .map_err(|<span class="kw">_</span>| MessageDecryptionError::MalformedContent)
     }
 
-    <span class="doccomment">/// Decrypt this [`MlsCiphertext`] and return the [`MlsCiphertextContent`].</span>
-    <span class="attribute">#[<span class="ident">inline</span>]</span>
-    <span class="kw">fn</span> <span class="ident">decrypt</span>(
+    <span class="doccomment">/// Decrypt this [`MlsCiphertext`] and return the [`MlsCiphertextContent`].
+    </span><span class="attribute">#[inline]
+    </span><span class="kw">fn </span>decrypt(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        <span class="ident">backend</span>: <span class="kw-2">&amp;</span><span class="kw">impl</span> <span class="ident">OpenMlsCryptoProvider</span>,
-        <span class="ident">ratchet_key</span>: <span class="ident">AeadKey</span>,
-        <span class="ident">ratchet_nonce</span>: <span class="kw-2">&amp;</span><span class="ident">AeadNonce</span>,
-    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">MlsCiphertextContent</span>, <span class="ident">MessageDecryptionError</span><span class="op">&gt;</span> {
-        <span class="comment">// Serialize content AAD</span>
-        <span class="kw">let</span> <span class="ident">mls_ciphertext_content_aad_bytes</span> <span class="op">=</span> <span class="ident">MlsCiphertextContentAad</span> {
-            <span class="ident">group_id</span>: <span class="self">self</span>.<span class="ident">group_id</span>.<span class="ident">clone</span>(),
-            <span class="ident">epoch</span>: <span class="self">self</span>.<span class="ident">epoch</span>,
-            <span class="ident">content_type</span>: <span class="self">self</span>.<span class="ident">content_type</span>,
-            <span class="ident">authenticated_data</span>: <span class="ident">TlsByteSliceU32</span>(<span class="self">self</span>.<span class="ident">authenticated_data</span>.<span class="ident">as_slice</span>()),
+        backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider,
+        ratchet_key: AeadKey,
+        ratchet_nonce: <span class="kw-2">&amp;</span>AeadNonce,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;MlsCiphertextContent, MessageDecryptionError&gt; {
+        <span class="comment">// Serialize content AAD
+        </span><span class="kw">let </span>mls_ciphertext_content_aad_bytes = MlsCiphertextContentAad {
+            group_id: <span class="self">self</span>.group_id.clone(),
+            epoch: <span class="self">self</span>.epoch,
+            content_type: <span class="self">self</span>.content_type,
+            authenticated_data: TlsByteSliceU32(<span class="self">self</span>.authenticated_data.as_slice()),
         }
-        .<span class="ident">tls_serialize_detached</span>()
-        .<span class="ident">map_err</span>(<span class="ident">LibraryError::missing_bound_check</span>)<span class="question-mark">?</span>;
-        <span class="comment">// Decrypt payload</span>
-        <span class="kw">let</span> <span class="ident">mls_ciphertext_content_bytes</span> <span class="op">=</span> <span class="ident">ratchet_key</span>
-            .<span class="ident">aead_open</span>(
-                <span class="ident">backend</span>,
-                <span class="self">self</span>.<span class="ident">ciphertext</span>.<span class="ident">as_slice</span>(),
-                <span class="kw-2">&amp;</span><span class="ident">mls_ciphertext_content_aad_bytes</span>,
-                <span class="ident">ratchet_nonce</span>,
+        .tls_serialize_detached()
+        .map_err(LibraryError::missing_bound_check)<span class="question-mark">?</span>;
+        <span class="comment">// Decrypt payload
+        </span><span class="kw">let </span>mls_ciphertext_content_bytes = ratchet_key
+            .aead_open(
+                backend,
+                <span class="self">self</span>.ciphertext.as_slice(),
+                <span class="kw-2">&amp;</span>mls_ciphertext_content_aad_bytes,
+                ratchet_nonce,
             )
-            .<span class="ident">map_err</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> {
+            .map_err(|<span class="kw">_</span>| {
                 <span class="macro">log::error!</span>(<span class="string">&quot;  Ciphertext decryption error&quot;</span>);
-                <span class="ident">MessageDecryptionError::AeadError</span>
+                MessageDecryptionError::AeadError
             })<span class="question-mark">?</span>;
         <span class="macro">log_content!</span>(
-            <span class="ident">trace</span>,
+            trace,
             <span class="string">&quot;  Successfully decrypted MlsPlaintext bytes: {:x?}&quot;</span>,
-            <span class="ident">mls_ciphertext_content_bytes</span>
+            mls_ciphertext_content_bytes
         );
-        <span class="ident">MlsCiphertextContent::tls_deserialize</span>(<span class="kw-2">&amp;mut</span> <span class="ident">mls_ciphertext_content_bytes</span>.<span class="ident">as_slice</span>())
-            .<span class="ident">map_err</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="ident">MessageDecryptionError::MalformedContent</span>)
+        MlsCiphertextContent::tls_deserialize(<span class="kw-2">&amp;mut </span>mls_ciphertext_content_bytes.as_slice())
+            .map_err(|<span class="kw">_</span>| MessageDecryptionError::MalformedContent)
     }
 
-    <span class="doccomment">/// This function decrypts an [`MlsCiphertext`] into an [`VerifiableMlsPlaintext`].</span>
-    <span class="doccomment">/// In order to get an [`MlsPlaintext`] the result must be verified.</span>
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">to_plaintext</span>(
+    <span class="doccomment">/// This function decrypts an [`MlsCiphertext`] into an [`VerifiableMlsPlaintext`].
+    /// In order to get an [`MlsPlaintext`] the result must be verified.
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>to_plaintext(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        <span class="ident">ciphersuite</span>: <span class="ident">Ciphersuite</span>,
-        <span class="ident">backend</span>: <span class="kw-2">&amp;</span><span class="kw">impl</span> <span class="ident">OpenMlsCryptoProvider</span>,
-        <span class="ident">message_secrets</span>: <span class="kw-2">&amp;mut</span> <span class="ident">MessageSecrets</span>,
-        <span class="ident">sender_index</span>: <span class="ident">SecretTreeLeafIndex</span>,
-        <span class="ident">sender_ratchet_configuration</span>: <span class="kw-2">&amp;</span><span class="ident">SenderRatchetConfiguration</span>,
-        <span class="ident">sender_data</span>: <span class="ident">MlsSenderData</span>,
-    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">VerifiableMlsPlaintext</span>, <span class="ident">MessageDecryptionError</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="ident">secret_type</span> <span class="op">=</span> <span class="ident">SecretType::from</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">content_type</span>);
-        <span class="comment">// Extract generation and key material for encryption</span>
-        <span class="kw">let</span> (<span class="ident">ratchet_key</span>, <span class="ident">ratchet_nonce</span>) <span class="op">=</span> <span class="ident">message_secrets</span>
-            .<span class="ident">secret_tree_mut</span>()
-            .<span class="ident">secret_for_decryption</span>(
-                <span class="ident">ciphersuite</span>,
-                <span class="ident">backend</span>,
-                <span class="ident">sender_index</span>,
-                <span class="ident">secret_type</span>,
-                <span class="ident">sender_data</span>.<span class="ident">generation</span>,
-                <span class="ident">sender_ratchet_configuration</span>,
+        ciphersuite: Ciphersuite,
+        backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider,
+        message_secrets: <span class="kw-2">&amp;mut </span>MessageSecrets,
+        sender_index: SecretTreeLeafIndex,
+        sender_ratchet_configuration: <span class="kw-2">&amp;</span>SenderRatchetConfiguration,
+        sender_data: MlsSenderData,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;VerifiableMlsPlaintext, MessageDecryptionError&gt; {
+        <span class="kw">let </span>secret_type = SecretType::from(<span class="kw-2">&amp;</span><span class="self">self</span>.content_type);
+        <span class="comment">// Extract generation and key material for encryption
+        </span><span class="kw">let </span>(ratchet_key, ratchet_nonce) = message_secrets
+            .secret_tree_mut()
+            .secret_for_decryption(
+                ciphersuite,
+                backend,
+                sender_index,
+                secret_type,
+                sender_data.generation,
+                sender_ratchet_configuration,
             )
-            .<span class="ident">map_err</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> {
+            .map_err(|<span class="kw">_</span>| {
                 <span class="macro">log::error!</span>(<span class="string">&quot;  Ciphertext generation out of bounds&quot;</span>);
-                <span class="ident">MessageDecryptionError::GenerationOutOfBound</span>
+                MessageDecryptionError::GenerationOutOfBound
             })<span class="question-mark">?</span>;
-        <span class="comment">// Prepare the nonce by xoring with the reuse guard.</span>
-        <span class="kw">let</span> <span class="ident">prepared_nonce</span> <span class="op">=</span> <span class="ident">ratchet_nonce</span>.<span class="ident">xor_with_reuse_guard</span>(<span class="kw-2">&amp;</span><span class="ident">sender_data</span>.<span class="ident">reuse_guard</span>);
-        <span class="kw">let</span> <span class="ident">mls_ciphertext_content</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">decrypt</span>(<span class="ident">backend</span>, <span class="ident">ratchet_key</span>, <span class="kw-2">&amp;</span><span class="ident">prepared_nonce</span>)<span class="question-mark">?</span>;
+        <span class="comment">// Prepare the nonce by xoring with the reuse guard.
+        </span><span class="kw">let </span>prepared_nonce = ratchet_nonce.xor_with_reuse_guard(<span class="kw-2">&amp;</span>sender_data.reuse_guard);
+        <span class="kw">let </span>mls_ciphertext_content = <span class="self">self</span>.decrypt(backend, ratchet_key, <span class="kw-2">&amp;</span>prepared_nonce)<span class="question-mark">?</span>;
 
-        <span class="comment">// Extract sender. The sender type is always of type Member for MlsCiphertext.</span>
-        <span class="kw">let</span> <span class="ident">sender</span> <span class="op">=</span> <span class="ident">Sender::from_sender_data</span>(<span class="ident">sender_data</span>);
+        <span class="comment">// Extract sender. The sender type is always of type Member for MlsCiphertext.
+        </span><span class="kw">let </span>sender = Sender::from_sender_data(sender_data);
         <span class="macro">log_content!</span>(
-            <span class="ident">trace</span>,
+            trace,
             <span class="string">&quot;  Successfully decoded MlsPlaintext with: {:x?}&quot;</span>,
-            <span class="ident">mls_ciphertext_content</span>.<span class="ident">content</span>
+            mls_ciphertext_content.content
         );
 
-        <span class="kw">let</span> <span class="ident">verifiable</span> <span class="op">=</span> <span class="ident">VerifiableMlsPlaintext::new</span>(
-            <span class="ident">MlsPlaintextTbs::new</span>(
-                <span class="self">self</span>.<span class="ident">wire_format</span>,
-                <span class="self">self</span>.<span class="ident">group_id</span>.<span class="ident">clone</span>(),
-                <span class="self">self</span>.<span class="ident">epoch</span>,
-                <span class="ident">sender</span>,
-                <span class="self">self</span>.<span class="ident">authenticated_data</span>.<span class="ident">clone</span>(),
-                <span class="ident">mls_ciphertext_content</span>.<span class="ident">content</span>,
+        <span class="kw">let </span>verifiable = VerifiableMlsPlaintext::new(
+            MlsPlaintextTbs::new(
+                <span class="self">self</span>.wire_format,
+                <span class="self">self</span>.group_id.clone(),
+                <span class="self">self</span>.epoch,
+                sender,
+                <span class="self">self</span>.authenticated_data.clone(),
+                mls_ciphertext_content.content,
             ),
-            <span class="ident">mls_ciphertext_content</span>.<span class="ident">signature</span>,
-            <span class="ident">mls_ciphertext_content</span>.<span class="ident">confirmation_tag</span>,
-            <span class="prelude-val">None</span>, <span class="comment">/* MlsCiphertexts don&#39;t carry along the membership tag. */</span>
-        );
-        <span class="prelude-val">Ok</span>(<span class="ident">verifiable</span>)
+            mls_ciphertext_content.signature,
+            mls_ciphertext_content.confirmation_tag,
+            <span class="prelude-val">None</span>, <span class="comment">/* MlsCiphertexts don&#39;t carry along the membership tag. */
+        </span>);
+        <span class="prelude-val">Ok</span>(verifiable)
     }
 
-    <span class="doccomment">/// Returns `true` if this is a handshake message and `false` otherwise.</span>
-    <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">test</span>)]</span>
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">is_handshake_message</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">bool</span> {
-        <span class="self">self</span>.<span class="ident">content_type</span>.<span class="ident">is_handshake_message</span>()
+    <span class="doccomment">/// Returns `true` if this is a handshake message and `false` otherwise.
+    </span><span class="attribute">#[cfg(test)]
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>is_handshake_message(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; bool {
+        <span class="self">self</span>.content_type.is_handshake_message()
     }
 
-    <span class="doccomment">/// Encodes the `MLSCiphertextContent` struct with padding.</span>
-    <span class="kw">fn</span> <span class="ident">encode_padded_ciphertext_content_detached</span>(
-        <span class="ident">mls_plaintext</span>: <span class="kw-2">&amp;</span><span class="ident">MlsPlaintext</span>,
-        <span class="ident">padding_size</span>: <span class="ident">usize</span>,
-        <span class="ident">mac_len</span>: <span class="ident">usize</span>,
-    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>, <span class="ident">tls_codec::Error</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="ident">plaintext_length</span> <span class="op">=</span> <span class="ident">mls_plaintext</span>.<span class="ident">content</span>().<span class="ident">tls_serialized_len</span>()
-            <span class="op">+</span> <span class="ident">mls_plaintext</span>.<span class="ident">signature</span>().<span class="ident">tls_serialized_len</span>()
-            <span class="op">+</span> <span class="ident">mls_plaintext</span>.<span class="ident">confirmation_tag</span>().<span class="ident">tls_serialized_len</span>();
+    <span class="doccomment">/// Encodes the `MLSCiphertextContent` struct with padding.
+    </span><span class="kw">fn </span>encode_padded_ciphertext_content_detached(
+        mls_plaintext: <span class="kw-2">&amp;</span>MlsPlaintext,
+        padding_size: usize,
+        mac_len: usize,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;Vec&lt;u8&gt;, tls_codec::Error&gt; {
+        <span class="kw">let </span>plaintext_length = mls_plaintext.content().tls_serialized_len()
+            + mls_plaintext.signature().tls_serialized_len()
+            + mls_plaintext.confirmation_tag().tls_serialized_len();
 
-        <span class="kw">let</span> <span class="ident">padding_length</span> <span class="op">=</span> <span class="kw">if</span> <span class="ident">padding_size</span> <span class="op">&gt;</span> <span class="number">0</span> {
-            <span class="comment">// Calculate padding block size.</span>
-            <span class="comment">// Only the AEAD tag is added.</span>
-            <span class="kw">let</span> <span class="ident">padding_offset</span> <span class="op">=</span> <span class="ident">plaintext_length</span> <span class="op">+</span> <span class="ident">mac_len</span>;
-            <span class="comment">// Return padding block size</span>
-            (<span class="ident">padding_size</span> <span class="op">-</span> (<span class="ident">padding_offset</span> <span class="op">%</span> <span class="ident">padding_size</span>)) <span class="op">%</span> <span class="ident">padding_size</span>
-        } <span class="kw">else</span> {
-            <span class="number">0</span>
-        };
+        <span class="kw">let </span>padding_length = <span class="kw">if </span>padding_size &gt; <span class="number">0 </span>{
+            <span class="comment">// Calculate padding block size.
+            // Only the AEAD tag is added.
+            </span><span class="kw">let </span>padding_offset = plaintext_length + mac_len;
+            <span class="comment">// Return padding block size
+            </span>(padding_size - (padding_offset % padding_size)) % padding_size
+        } <span class="kw">else </span>{
+            <span class="number">0
+        </span>};
 
-        <span class="comment">// Persist all initial fields manually (avoids cloning them)</span>
-        <span class="kw">let</span> <span class="ident">buffer</span> <span class="op">=</span> <span class="kw-2">&amp;mut</span> <span class="ident">Vec::with_capacity</span>(<span class="ident">plaintext_length</span> <span class="op">+</span> <span class="ident">padding_length</span>);
+        <span class="comment">// Persist all initial fields manually (avoids cloning them)
+        </span><span class="kw">let </span>buffer = <span class="kw-2">&amp;mut </span>Vec::with_capacity(plaintext_length + padding_length);
 
-        <span class="ident">mls_plaintext</span>.<span class="ident">content</span>().<span class="ident">tls_serialize</span>(<span class="ident">buffer</span>)<span class="question-mark">?</span>;
-        <span class="ident">mls_plaintext</span>.<span class="ident">signature</span>().<span class="ident">tls_serialize</span>(<span class="ident">buffer</span>)<span class="question-mark">?</span>;
-        <span class="ident">mls_plaintext</span>.<span class="ident">confirmation_tag</span>().<span class="ident">tls_serialize</span>(<span class="ident">buffer</span>)<span class="question-mark">?</span>;
-        <span class="comment">// Note: The `tls_codec::Serialize` implementation for `&amp;[u8]` prepends the length.</span>
-        <span class="comment">// We do not want this here and thus use the &quot;raw&quot; `write_all` method.</span>
-        <span class="ident">buffer</span>
-            .<span class="ident">write_all</span>(<span class="kw-2">&amp;</span><span class="macro">vec!</span>[<span class="number">0u8</span>; <span class="ident">padding_length</span>])
-            .<span class="ident">map_err</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="ident">Error::EncodingError</span>(<span class="string">&quot;Failed to write padding.&quot;</span>.<span class="ident">into</span>()))<span class="question-mark">?</span>;
+        mls_plaintext.content().tls_serialize(buffer)<span class="question-mark">?</span>;
+        mls_plaintext.signature().tls_serialize(buffer)<span class="question-mark">?</span>;
+        mls_plaintext.confirmation_tag().tls_serialize(buffer)<span class="question-mark">?</span>;
+        <span class="comment">// Note: The `tls_codec::Serialize` implementation for `&amp;[u8]` prepends the length.
+        // We do not want this here and thus use the &quot;raw&quot; `write_all` method.
+        </span>buffer
+            .write_all(<span class="kw-2">&amp;</span><span class="macro">vec!</span>[<span class="number">0u8</span>; padding_length])
+            .map_err(|<span class="kw">_</span>| Error::EncodingError(<span class="string">&quot;Failed to write padding.&quot;</span>.into()))<span class="question-mark">?</span>;
 
-        <span class="prelude-val">Ok</span>(<span class="ident">buffer</span>.<span class="ident">to_vec</span>())
+        <span class="prelude-val">Ok</span>(buffer.to_vec())
     }
 
-    <span class="doccomment">/// Get the `group_id` in the `MlsCiphertext`.</span>
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">group_id</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span><span class="ident">GroupId</span> {
-        <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">group_id</span>
+    <span class="doccomment">/// Get the `group_id` in the `MlsCiphertext`.
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>group_id(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>GroupId {
+        <span class="kw-2">&amp;</span><span class="self">self</span>.group_id
     }
 
-    <span class="doccomment">/// Get the cipher text bytes as slice.</span>
-    <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">test</span>)]</span>
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">ciphertext</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>[<span class="ident">u8</span>] {
-        <span class="self">self</span>.<span class="ident">ciphertext</span>.<span class="ident">as_slice</span>()
+    <span class="doccomment">/// Get the cipher text bytes as slice.
+    </span><span class="attribute">#[cfg(test)]
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>ciphertext(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>[u8] {
+        <span class="self">self</span>.ciphertext.as_slice()
     }
 
-    <span class="doccomment">/// Get the `epoch` in the `MlsCiphertext`.</span>
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">epoch</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">GroupEpoch</span> {
-        <span class="self">self</span>.<span class="ident">epoch</span>
+    <span class="doccomment">/// Get the `epoch` in the `MlsCiphertext`.
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>epoch(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; GroupEpoch {
+        <span class="self">self</span>.epoch
     }
 
-    <span class="doccomment">/// Get the `content_type` in the `MlsCiphertext`.</span>
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">content_type</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">ContentType</span> {
-        <span class="self">self</span>.<span class="ident">content_type</span>
+    <span class="doccomment">/// Get the `content_type` in the `MlsCiphertext`.
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>content_type(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; ContentType {
+        <span class="self">self</span>.content_type
     }
 
-    <span class="doccomment">/// Set the wire format.</span>
-    <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">test</span>)]</span>
-    <span class="kw">pub</span>(<span class="kw">super</span>) <span class="kw">fn</span> <span class="ident">set_wire_format</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">wire_format</span>: <span class="ident">WireFormat</span>) {
-        <span class="self">self</span>.<span class="ident">wire_format</span> <span class="op">=</span> <span class="ident">wire_format</span>;
+    <span class="doccomment">/// Set the wire format.
+    </span><span class="attribute">#[cfg(test)]
+    </span><span class="kw">pub</span>(<span class="kw">super</span>) <span class="kw">fn </span>set_wire_format(<span class="kw-2">&amp;mut </span><span class="self">self</span>, wire_format: WireFormat) {
+        <span class="self">self</span>.wire_format = wire_format;
     }
 
-    <span class="doccomment">/// Set the ciphertext.</span>
-    <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">test</span>)]</span>
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">set_ciphertext</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">ciphertext</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>) {
-        <span class="self">self</span>.<span class="ident">ciphertext</span> <span class="op">=</span> <span class="ident">ciphertext</span>.<span class="ident">into</span>();
+    <span class="doccomment">/// Set the ciphertext.
+    </span><span class="attribute">#[cfg(test)]
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>set_ciphertext(<span class="kw-2">&amp;mut </span><span class="self">self</span>, ciphertext: Vec&lt;u8&gt;) {
+        <span class="self">self</span>.ciphertext = ciphertext.into();
     }
 }
 
-<span class="comment">// === Helper structs ===</span>
+<span class="comment">// === Helper structs ===
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>, <span class="ident">TlsDeserialize</span>, <span class="ident">TlsSerialize</span>, <span class="ident">TlsSize</span>)]</span>
-<span class="attribute">#[<span class="ident">cfg_attr</span>(<span class="ident">test</span>, <span class="ident">derive</span>(<span class="ident">Debug</span>))]</span>
-<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct</span> <span class="ident">MlsSenderData</span> {
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="ident">sender</span>: <span class="ident">KeyPackageRef</span>,
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="ident">generation</span>: <span class="ident">u32</span>,
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="ident">reuse_guard</span>: <span class="ident">ReuseGuard</span>,
+</span><span class="attribute">#[derive(Clone, TlsDeserialize, TlsSerialize, TlsSize)]
+#[cfg_attr(test, derive(Debug))]
+</span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct </span>MlsSenderData {
+    <span class="kw">pub</span>(<span class="kw">crate</span>) sender: KeyPackageRef,
+    <span class="kw">pub</span>(<span class="kw">crate</span>) generation: u32,
+    <span class="kw">pub</span>(<span class="kw">crate</span>) reuse_guard: ReuseGuard,
 }
 
-<span class="kw">impl</span> <span class="ident">MlsSenderData</span> {
-    <span class="doccomment">/// Build new [`MlsSenderData`] for a [`Sender`].</span>
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">from_sender</span>(
-        <span class="ident">hash_ref</span>: <span class="kw-2">&amp;</span><span class="ident">HashReference</span>,
-        <span class="ident">generation</span>: <span class="ident">u32</span>,
-        <span class="ident">reuse_guard</span>: <span class="ident">ReuseGuard</span>,
-    ) -&gt; <span class="self">Self</span> {
-        <span class="ident">MlsSenderData</span> {
-            <span class="ident">sender</span>: <span class="ident">hash_ref</span>.<span class="ident">clone</span>(),
-            <span class="ident">generation</span>,
-            <span class="ident">reuse_guard</span>,
+<span class="kw">impl </span>MlsSenderData {
+    <span class="doccomment">/// Build new [`MlsSenderData`] for a [`Sender`].
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>from_sender(
+        hash_ref: <span class="kw-2">&amp;</span>HashReference,
+        generation: u32,
+        reuse_guard: ReuseGuard,
+    ) -&gt; <span class="self">Self </span>{
+        MlsSenderData {
+            sender: hash_ref.clone(),
+            generation,
+            reuse_guard,
         }
     }
 }
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>, <span class="ident">TlsDeserialize</span>, <span class="ident">TlsSerialize</span>, <span class="ident">TlsSize</span>)]</span>
-<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct</span> <span class="ident">MlsSenderDataAad</span> {
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="ident">group_id</span>: <span class="ident">GroupId</span>,
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="ident">epoch</span>: <span class="ident">GroupEpoch</span>,
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="ident">content_type</span>: <span class="ident">ContentType</span>,
+<span class="attribute">#[derive(Clone, TlsDeserialize, TlsSerialize, TlsSize)]
+</span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct </span>MlsSenderDataAad {
+    <span class="kw">pub</span>(<span class="kw">crate</span>) group_id: GroupId,
+    <span class="kw">pub</span>(<span class="kw">crate</span>) epoch: GroupEpoch,
+    <span class="kw">pub</span>(<span class="kw">crate</span>) content_type: ContentType,
 }
 
-<span class="kw">impl</span> <span class="ident">MlsSenderDataAad</span> {
-    <span class="kw">fn</span> <span class="ident">new</span>(<span class="ident">group_id</span>: <span class="ident">GroupId</span>, <span class="ident">epoch</span>: <span class="ident">GroupEpoch</span>, <span class="ident">content_type</span>: <span class="ident">ContentType</span>) -&gt; <span class="self">Self</span> {
-        <span class="self">Self</span> {
-            <span class="ident">group_id</span>,
-            <span class="ident">epoch</span>,
-            <span class="ident">content_type</span>,
+<span class="kw">impl </span>MlsSenderDataAad {
+    <span class="kw">fn </span>new(group_id: GroupId, epoch: GroupEpoch, content_type: ContentType) -&gt; <span class="self">Self </span>{
+        <span class="self">Self </span>{
+            group_id,
+            epoch,
+            content_type,
         }
     }
 
-    <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">test</span>)]</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">test_new</span>(<span class="ident">group_id</span>: <span class="ident">GroupId</span>, <span class="ident">epoch</span>: <span class="ident">GroupEpoch</span>, <span class="ident">content_type</span>: <span class="ident">ContentType</span>) -&gt; <span class="self">Self</span> {
-        <span class="ident"><span class="self">Self</span>::new</span>(<span class="ident">group_id</span>, <span class="ident">epoch</span>, <span class="ident">content_type</span>)
+    <span class="attribute">#[cfg(test)]
+    </span><span class="kw">pub fn </span>test_new(group_id: GroupId, epoch: GroupEpoch, content_type: ContentType) -&gt; <span class="self">Self </span>{
+        <span class="self">Self</span>::new(group_id, epoch, content_type)
     }
 }
 
-<span class="doccomment">/// MLSCiphertextContent</span>
-<span class="doccomment">///</span>
-<span class="doccomment">/// ```c</span>
-<span class="doccomment">/// // draft-ietf-mls-protocol-16</span>
-<span class="doccomment">/// struct {</span>
-<span class="doccomment">///     select (MLSCiphertext.content_type) {</span>
-<span class="doccomment">///         case application:</span>
-<span class="doccomment">///           opaque application_data&lt;V&gt;;</span>
-<span class="doccomment">///</span>
-<span class="doccomment">///         case proposal:</span>
-<span class="doccomment">///           Proposal proposal;</span>
-<span class="doccomment">///</span>
-<span class="doccomment">///         case commit:</span>
-<span class="doccomment">///           Commit commit;</span>
-<span class="doccomment">///     }</span>
-<span class="doccomment">///</span>
-<span class="doccomment">///     MLSContentAuthData auth;</span>
-<span class="doccomment">///     opaque padding[length_of_padding];</span>
-<span class="doccomment">/// } MLSCiphertextContent;</span>
-<span class="doccomment">/// ```</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Clone</span>)]</span>
-<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct</span> <span class="ident">MlsCiphertextContent</span> {
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="ident">content</span>: <span class="ident">MlsContentBody</span>,
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="ident">signature</span>: <span class="ident">Signature</span>,
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="ident">confirmation_tag</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">ConfirmationTag</span><span class="op">&gt;</span>,
-    <span class="doccomment">/// Length of the all-zero padding.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// We do not retain any bytes here to avoid the need to</span>
-    <span class="doccomment">/// keep track that all of them are zero. Instead, we only</span>
-    <span class="doccomment">/// use `length_of_padding` to track the (theoretical) size</span>
-    <span class="doccomment">/// of the all-zero byte slice.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// Note, however, that we MUST make sure to (de)serialize these bytes!</span>
-    <span class="doccomment">/// Otherwise this mechanism would not make any sense because it would</span>
-    <span class="doccomment">/// not add to the ciphertext size to hide the original message length.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// Sadly, we cannot `derive(TlsSerialize, TlsDeserialize)` due to this</span>
-    <span class="doccomment">/// &quot;custom&quot; mechanism.</span>
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="ident">length_of_padding</span>: <span class="ident">usize</span>,
+<span class="doccomment">/// MLSCiphertextContent
+///
+/// ```c
+/// // draft-ietf-mls-protocol-16
+/// struct {
+///     select (MLSCiphertext.content_type) {
+///         case application:
+///           opaque application_data&lt;V&gt;;
+///
+///         case proposal:
+///           Proposal proposal;
+///
+///         case commit:
+///           Commit commit;
+///     }
+///
+///     MLSContentAuthData auth;
+///     opaque padding[length_of_padding];
+/// } MLSCiphertextContent;
+/// ```
+</span><span class="attribute">#[derive(Debug, Clone)]
+</span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct </span>MlsCiphertextContent {
+    <span class="kw">pub</span>(<span class="kw">crate</span>) content: MlsContentBody,
+    <span class="kw">pub</span>(<span class="kw">crate</span>) signature: Signature,
+    <span class="kw">pub</span>(<span class="kw">crate</span>) confirmation_tag: <span class="prelude-ty">Option</span>&lt;ConfirmationTag&gt;,
+    <span class="doccomment">/// Length of the all-zero padding.
+    ///
+    /// We do not retain any bytes here to avoid the need to
+    /// keep track that all of them are zero. Instead, we only
+    /// use `length_of_padding` to track the (theoretical) size
+    /// of the all-zero byte slice.
+    ///
+    /// Note, however, that we MUST make sure to (de)serialize these bytes!
+    /// Otherwise this mechanism would not make any sense because it would
+    /// not add to the ciphertext size to hide the original message length.
+    ///
+    /// Sadly, we cannot `derive(TlsSerialize, TlsDeserialize)` due to this
+    /// &quot;custom&quot; mechanism.
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) length_of_padding: usize,
 }
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">TlsSerialize</span>, <span class="ident">TlsSize</span>)]</span>
-<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct</span> <span class="ident">MlsCiphertextContentAad</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span> {
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="ident">group_id</span>: <span class="ident">GroupId</span>,
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="ident">epoch</span>: <span class="ident">GroupEpoch</span>,
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="ident">content_type</span>: <span class="ident">ContentType</span>,
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="ident">authenticated_data</span>: <span class="ident">TlsByteSliceU32</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span>,
+<span class="attribute">#[derive(TlsSerialize, TlsSize)]
+</span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct </span>MlsCiphertextContentAad&lt;<span class="lifetime">&#39;a</span>&gt; {
+    <span class="kw">pub</span>(<span class="kw">crate</span>) group_id: GroupId,
+    <span class="kw">pub</span>(<span class="kw">crate</span>) epoch: GroupEpoch,
+    <span class="kw">pub</span>(<span class="kw">crate</span>) content_type: ContentType,
+    <span class="kw">pub</span>(<span class="kw">crate</span>) authenticated_data: TlsByteSliceU32&lt;<span class="lifetime">&#39;a</span>&gt;,
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-current-crate="openmls" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.64.0 (a55dd71d5 2022-09-19)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-current-crate="openmls" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0 (897e37553 2022-11-02)" ></div></body></html>

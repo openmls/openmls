@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `src/group/mls_group/mod.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>mod.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" type="text/css" href="../../../../normalize.css"><link rel="stylesheet" type="text/css" href="../../../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" type="text/css" href="../../../../ayu.css" disabled><link rel="stylesheet" type="text/css" href="../../../../dark.css" disabled><link rel="stylesheet" type="text/css" href="../../../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../../../storage.js"></script><script defer src="../../../../source-script.js"></script><script defer src="../../../../source-files.js"></script><script defer src="../../../../main.js"></script><noscript><link rel="stylesheet" href="../../../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../../../openmls/index.html"><div class="logo-container"><img class="rust-logo" src="../../../../rust-logo.svg" alt="logo"></div></a><h2 class="location"></h2></nav><nav class="sidebar"><a class="sidebar-logo" href="../../../../openmls/index.html"><div class="logo-container"><img class="rust-logo" src="../../../../rust-logo.svg" alt="logo"></div></a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../../../openmls/index.html"><img class="rust-logo" src="../../../../rust-logo.svg" alt="logo"></a><nav class="sub"><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><button type="button">?</button></div><div id="settings-menu" tabindex="-1"><a href="../../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../../wheel.svg"></a></div></div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">1</span>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `src/group/mls_group/mod.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>mod.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" href="../../../../normalize.css"><link rel="stylesheet" href="../../../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" href="../../../../ayu.css" disabled><link rel="stylesheet" href="../../../../dark.css" disabled><link rel="stylesheet" href="../../../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../../../storage.js"></script><script defer src="../../../../source-script.js"></script><script defer src="../../../../source-files.js"></script><script defer src="../../../../main.js"></script><noscript><link rel="stylesheet" href="../../../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../../../openmls/index.html"><div class="logo-container"><img class="rust-logo" src="../../../../rust-logo.svg" alt="logo"></div></a><h2 class="location"></h2></nav><nav class="sidebar"><a class="sidebar-logo" href="../../../../openmls/index.html"><div class="logo-container"><img class="rust-logo" src="../../../../rust-logo.svg" alt="logo"></div></a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../../../openmls/index.html"><img class="rust-logo" src="../../../../rust-logo.svg" alt="logo"></a><nav class="sub"><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><button type="button">?</button></div><div id="settings-menu" tabindex="-1"><a href="../../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../../wheel.svg"></a></div></div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">1</span>
 <span id="2">2</span>
 <span id="3">3</span>
 <span id="4">4</span>
@@ -411,418 +411,418 @@
 <span id="411">411</span>
 <span id="412">412</span>
 <span id="413">413</span>
-</pre><pre class="rust"><code><span class="doccomment">//! MLS Group</span>
-<span class="doccomment">//!</span>
-<span class="doccomment">//! This module contains [`MlsGroup`] and its submodules.</span>
+</pre><pre class="rust"><code><span class="doccomment">//! MLS Group
+//!
+//! This module contains [`MlsGroup`] and its submodules.
 
-<span class="kw">use</span> <span class="kw">super</span>::{
-    <span class="ident">proposals</span>::{<span class="ident">ProposalStore</span>, <span class="ident">QueuedProposal</span>},
-    <span class="ident">staged_commit::StagedCommit</span>,
+</span><span class="kw">use super</span>::{
+    proposals::{ProposalStore, QueuedProposal},
+    staged_commit::StagedCommit,
 };
-<span class="kw">use</span> <span class="kw">crate</span>::{
-    <span class="ident">ciphersuite</span>::{<span class="ident">hash_ref::KeyPackageRef</span>, <span class="ident">signable::Signable</span>},
-    <span class="ident">credentials</span>::{<span class="ident">Credential</span>, <span class="ident">CredentialBundle</span>},
-    <span class="ident">error::LibraryError</span>,
-    <span class="ident">framing</span>::<span class="kw-2">*</span>,
-    <span class="ident">group</span>::<span class="kw-2">*</span>,
-    <span class="ident">key_packages</span>::{<span class="ident">KeyPackage</span>, <span class="ident">KeyPackageBundle</span>, <span class="ident">KeyPackageBundlePayload</span>},
-    <span class="ident">messages</span>::{<span class="ident">proposals</span>::<span class="kw-2">*</span>, <span class="ident">Welcome</span>},
-    <span class="ident">schedule::ResumptionPsk</span>,
-    <span class="ident">treesync::Node</span>,
+<span class="kw">use crate</span>::{
+    ciphersuite::{hash_ref::KeyPackageRef, signable::Signable},
+    credentials::{Credential, CredentialBundle},
+    error::LibraryError,
+    framing::<span class="kw-2">*</span>,
+    group::<span class="kw-2">*</span>,
+    key_packages::{KeyPackage, KeyPackageBundle, KeyPackageBundlePayload},
+    messages::{proposals::<span class="kw-2">*</span>, Welcome},
+    schedule::ResumptionPsk,
+    treesync::Node,
 };
-<span class="kw">use</span> <span class="ident">openmls_traits</span>::{<span class="ident">key_store::OpenMlsKeyStore</span>, <span class="ident">types::Ciphersuite</span>, <span class="ident">OpenMlsCryptoProvider</span>};
-<span class="kw">use</span> <span class="ident">std::io</span>::{<span class="ident">Error</span>, <span class="ident">Read</span>, <span class="ident">Write</span>};
+<span class="kw">use </span>openmls_traits::{key_store::OpenMlsKeyStore, types::Ciphersuite, OpenMlsCryptoProvider};
+<span class="kw">use </span>std::io::{Error, Read, Write};
 
-<span class="comment">// Private</span>
-<span class="kw">mod</span> <span class="ident">application</span>;
-<span class="kw">mod</span> <span class="ident">creation</span>;
-<span class="kw">mod</span> <span class="ident">exporting</span>;
-<span class="kw">mod</span> <span class="ident">resumption</span>;
-<span class="kw">mod</span> <span class="ident">updates</span>;
+<span class="comment">// Private
+</span><span class="kw">mod </span>application;
+<span class="kw">mod </span>creation;
+<span class="kw">mod </span>exporting;
+<span class="kw">mod </span>resumption;
+<span class="kw">mod </span>updates;
 
-<span class="kw">use</span> <span class="ident">config</span>::<span class="kw-2">*</span>;
-<span class="kw">use</span> <span class="ident">errors</span>::<span class="kw-2">*</span>;
-<span class="kw">use</span> <span class="ident">resumption</span>::<span class="kw-2">*</span>;
-<span class="kw">use</span> <span class="ident">ser</span>::<span class="kw-2">*</span>;
+<span class="kw">use </span>config::<span class="kw-2">*</span>;
+<span class="kw">use </span>errors::<span class="kw-2">*</span>;
+<span class="kw">use </span>resumption::<span class="kw-2">*</span>;
+<span class="kw">use </span>ser::<span class="kw-2">*</span>;
 
-<span class="comment">// Crate</span>
-<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">mod</span> <span class="ident">config</span>;
-<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">mod</span> <span class="ident">errors</span>;
-<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">mod</span> <span class="ident">membership</span>;
-<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">mod</span> <span class="ident">processing</span>;
-<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">mod</span> <span class="ident">ser</span>;
+<span class="comment">// Crate
+</span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">mod </span>config;
+<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">mod </span>errors;
+<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">mod </span>membership;
+<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">mod </span>processing;
+<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">mod </span>ser;
 
-<span class="comment">// Tests</span>
-<span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">test</span>)]</span>
-<span class="kw">mod</span> <span class="ident">test_mls_group</span>;
+<span class="comment">// Tests
+</span><span class="attribute">#[cfg(test)]
+</span><span class="kw">mod </span>test_mls_group;
 
-<span class="doccomment">/// Pending Commit state. Differentiates between Commits issued by group members</span>
-<span class="doccomment">/// and External Commits.</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>)]</span>
-<span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">PendingCommitState</span> {
-    <span class="doccomment">/// Commit from a group member</span>
-    <span class="ident">Member</span>(<span class="ident">StagedCommit</span>),
-    <span class="doccomment">/// Commit from an external joiner</span>
-    <span class="ident">External</span>(<span class="ident">StagedCommit</span>),
+<span class="doccomment">/// Pending Commit state. Differentiates between Commits issued by group members
+/// and External Commits.
+</span><span class="attribute">#[derive(Debug, Serialize, Deserialize)]
+</span><span class="kw">pub enum </span>PendingCommitState {
+    <span class="doccomment">/// Commit from a group member
+    </span>Member(StagedCommit),
+    <span class="doccomment">/// Commit from an external joiner
+    </span>External(StagedCommit),
 }
 
-<span class="kw">impl</span> <span class="ident">PendingCommitState</span> {
-    <span class="doccomment">/// Returns a reference to the [`StagedCommit`] contained in the</span>
-    <span class="doccomment">/// [`PendingCommitState`] enum.</span>
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">staged_commit</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span><span class="ident">StagedCommit</span> {
-        <span class="kw">match</span> <span class="self">self</span> {
-            <span class="ident">PendingCommitState::Member</span>(<span class="ident">pc</span>) =&gt; <span class="ident">pc</span>,
-            <span class="ident">PendingCommitState::External</span>(<span class="ident">pc</span>) =&gt; <span class="ident">pc</span>,
+<span class="kw">impl </span>PendingCommitState {
+    <span class="doccomment">/// Returns a reference to the [`StagedCommit`] contained in the
+    /// [`PendingCommitState`] enum.
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>staged_commit(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>StagedCommit {
+        <span class="kw">match </span><span class="self">self </span>{
+            PendingCommitState::Member(pc) =&gt; pc,
+            PendingCommitState::External(pc) =&gt; pc,
         }
     }
 }
 
-<span class="kw">impl</span> <span class="ident">From</span><span class="op">&lt;</span><span class="ident">PendingCommitState</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">StagedCommit</span> {
-    <span class="kw">fn</span> <span class="ident">from</span>(<span class="ident">pcs</span>: <span class="ident">PendingCommitState</span>) -&gt; <span class="self">Self</span> {
-        <span class="kw">match</span> <span class="ident">pcs</span> {
-            <span class="ident">PendingCommitState::Member</span>(<span class="ident">pc</span>) =&gt; <span class="ident">pc</span>,
-            <span class="ident">PendingCommitState::External</span>(<span class="ident">pc</span>) =&gt; <span class="ident">pc</span>,
+<span class="kw">impl </span>From&lt;PendingCommitState&gt; <span class="kw">for </span>StagedCommit {
+    <span class="kw">fn </span>from(pcs: PendingCommitState) -&gt; <span class="self">Self </span>{
+        <span class="kw">match </span>pcs {
+            PendingCommitState::Member(pc) =&gt; pc,
+            PendingCommitState::External(pc) =&gt; pc,
         }
     }
 }
 
-<span class="doccomment">/// [`MlsGroupState`] determines the state of an [`MlsGroup`]. The different</span>
-<span class="doccomment">/// states and their transitions are as follows:</span>
-<span class="doccomment">///</span>
-<span class="doccomment">/// * [`MlsGroupState::Operational`]: This is the main state of the group, which</span>
-<span class="doccomment">/// allows access to all of its functionality, (except merging pending commits,</span>
-<span class="doccomment">/// see the [`MlsGroupState::PendingCommit`] for more information) and it&#39;s the</span>
-<span class="doccomment">/// state the group starts in (except when created via</span>
-<span class="doccomment">/// [`MlsGroup::join_by_external_commit()`], see the functions documentation for</span>
-<span class="doccomment">/// more information). From this `Operational`, the group state can either</span>
-<span class="doccomment">/// transition to [`MlsGroupState::Inactive`], when it processes a commit that</span>
-<span class="doccomment">/// removes this client from the group, or to [`MlsGroupState::PendingCommit`],</span>
-<span class="doccomment">/// when this client creates a commit.</span>
-<span class="doccomment">///</span>
-<span class="doccomment">/// * [`MlsGroupState::Inactive`]: A group can enter this state from any other</span>
-<span class="doccomment">/// state when it processes a commit that removes this client from the group.</span>
-<span class="doccomment">/// This is a terminal state that the group can not exit from. If the clients</span>
-<span class="doccomment">/// wants to re-join the group, it can either be added by a group member or it</span>
-<span class="doccomment">/// can join via external commit.</span>
-<span class="doccomment">///</span>
-<span class="doccomment">/// * [`MlsGroupState::PendingCommit`]: This state is split into two possible</span>
-<span class="doccomment">/// sub-states, one for each Commit type:</span>
-<span class="doccomment">/// [`PendingCommitState::Member`] and [`PendingCommitState::Member`]:</span>
-<span class="doccomment">///</span>
-<span class="doccomment">///   * If the client creates a commit for this group, the `PendingCommit` state</span>
-<span class="doccomment">///   is entered with [`PendingCommitState::Member`] and with the [`StagedCommit`] as</span>
-<span class="doccomment">///   additional state variable. In this state, it can perform the same</span>
-<span class="doccomment">///   operations as in the [`MlsGroupState::Operational`], except that it cannot</span>
-<span class="doccomment">///   create proposals or commits. However, it can merge or clear the stored</span>
-<span class="doccomment">///   [`StagedCommit`], where both actions result in a transition to the</span>
-<span class="doccomment">///   [`MlsGroupState::Operational`]. Additionally, if a commit from another</span>
-<span class="doccomment">///   group member is processed, the own pending commit is also cleared and</span>
-<span class="doccomment">///   either the `Inactive` state is entered (if this client was removed from</span>
-<span class="doccomment">///   the group as part of the processed commit), or the `Operational` state is</span>
-<span class="doccomment">///   entered.</span>
-<span class="doccomment">///</span>
-<span class="doccomment">///   * A group can enter the [`PendingCommitState::External`] sub-state only as</span>
-<span class="doccomment">///   the initial state when the group is created via</span>
-<span class="doccomment">///   [`MlsGroup::join_by_external_commit()`]. In contrast to the</span>
-<span class="doccomment">///   [`PendingCommitState::Member`] `PendingCommit` state, the only possible</span>
-<span class="doccomment">///   functionality that can be used is the [`MlsGroup::merge_pending_commit()`]</span>
-<span class="doccomment">///   function, which merges the pending external commit and transitions the</span>
-<span class="doccomment">///   state to [`MlsGroupState::PendingCommit`]. For more information on the</span>
-<span class="doccomment">///   external commit process, see [`MlsGroup::join_by_external_commit()`] or</span>
-<span class="doccomment">///   Section 11.2.1 of the MLS specification.</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>)]</span>
-<span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">MlsGroupState</span> {
-    <span class="doccomment">/// There is currently a pending Commit that hasn&#39;t been merged yet.</span>
-    <span class="ident">PendingCommit</span>(<span class="ident">Box</span><span class="op">&lt;</span><span class="ident">PendingCommitState</span><span class="op">&gt;</span>),
-    <span class="doccomment">/// The group state is in an opertaional state, where new messages and Commits can be created.</span>
-    <span class="ident">Operational</span>,
-    <span class="doccomment">/// The group is inactive because the member has been removed.</span>
-    <span class="ident">Inactive</span>,
+<span class="doccomment">/// [`MlsGroupState`] determines the state of an [`MlsGroup`]. The different
+/// states and their transitions are as follows:
+///
+/// * [`MlsGroupState::Operational`]: This is the main state of the group, which
+/// allows access to all of its functionality, (except merging pending commits,
+/// see the [`MlsGroupState::PendingCommit`] for more information) and it&#39;s the
+/// state the group starts in (except when created via
+/// [`MlsGroup::join_by_external_commit()`], see the functions documentation for
+/// more information). From this `Operational`, the group state can either
+/// transition to [`MlsGroupState::Inactive`], when it processes a commit that
+/// removes this client from the group, or to [`MlsGroupState::PendingCommit`],
+/// when this client creates a commit.
+///
+/// * [`MlsGroupState::Inactive`]: A group can enter this state from any other
+/// state when it processes a commit that removes this client from the group.
+/// This is a terminal state that the group can not exit from. If the clients
+/// wants to re-join the group, it can either be added by a group member or it
+/// can join via external commit.
+///
+/// * [`MlsGroupState::PendingCommit`]: This state is split into two possible
+/// sub-states, one for each Commit type:
+/// [`PendingCommitState::Member`] and [`PendingCommitState::Member`]:
+///
+///   * If the client creates a commit for this group, the `PendingCommit` state
+///   is entered with [`PendingCommitState::Member`] and with the [`StagedCommit`] as
+///   additional state variable. In this state, it can perform the same
+///   operations as in the [`MlsGroupState::Operational`], except that it cannot
+///   create proposals or commits. However, it can merge or clear the stored
+///   [`StagedCommit`], where both actions result in a transition to the
+///   [`MlsGroupState::Operational`]. Additionally, if a commit from another
+///   group member is processed, the own pending commit is also cleared and
+///   either the `Inactive` state is entered (if this client was removed from
+///   the group as part of the processed commit), or the `Operational` state is
+///   entered.
+///
+///   * A group can enter the [`PendingCommitState::External`] sub-state only as
+///   the initial state when the group is created via
+///   [`MlsGroup::join_by_external_commit()`]. In contrast to the
+///   [`PendingCommitState::Member`] `PendingCommit` state, the only possible
+///   functionality that can be used is the [`MlsGroup::merge_pending_commit()`]
+///   function, which merges the pending external commit and transitions the
+///   state to [`MlsGroupState::PendingCommit`]. For more information on the
+///   external commit process, see [`MlsGroup::join_by_external_commit()`] or
+///   Section 11.2.1 of the MLS specification.
+</span><span class="attribute">#[derive(Debug, Serialize, Deserialize)]
+</span><span class="kw">pub enum </span>MlsGroupState {
+    <span class="doccomment">/// There is currently a pending Commit that hasn&#39;t been merged yet.
+    </span>PendingCommit(Box&lt;PendingCommitState&gt;),
+    <span class="doccomment">/// The group state is in an opertaional state, where new messages and Commits can be created.
+    </span>Operational,
+    <span class="doccomment">/// The group is inactive because the member has been removed.
+    </span>Inactive,
 }
 
-<span class="doccomment">/// A `MlsGroup` represents an MLS group with</span>
-<span class="doccomment">/// a high-level API. The API exposes</span>
-<span class="doccomment">/// high level functions to manage a group by adding/removing members, get the</span>
-<span class="doccomment">/// current member list, etc.</span>
-<span class="doccomment">///</span>
-<span class="doccomment">/// The API is modeled such that it can serve as a direct interface to the</span>
-<span class="doccomment">/// Delivery Service. Functions that modify the public state of the group will</span>
-<span class="doccomment">/// return a `Vec&lt;MLSMessageOut&gt;` that can be sent to the Delivery</span>
-<span class="doccomment">/// Service directly. Conversely, incoming messages from the Delivery Service</span>
-<span class="doccomment">/// can be fed into [parse_message()](`MlsGroup::parse_message()`).</span>
-<span class="doccomment">///</span>
-<span class="doccomment">/// An `MlsGroup` has an internal queue of pending proposals that builds up</span>
-<span class="doccomment">/// as new messages are processed. When creating proposals, those messages are</span>
-<span class="doccomment">/// not automatically appended to this queue, instead they have to be processed</span>
-<span class="doccomment">/// again through [parse_message()](`MlsGroup::parse_message()`). This</span>
-<span class="doccomment">/// allows the Delivery Service to reject them (e.g. if they reference the wrong</span>
-<span class="doccomment">/// epoch).</span>
-<span class="doccomment">///</span>
-<span class="doccomment">/// If incoming messages or applied operations are semantically or syntactically</span>
-<span class="doccomment">/// incorrect, an error event will be returned with a corresponding error</span>
-<span class="doccomment">/// message and the state of the group will remain unchanged.</span>
-<span class="doccomment">///</span>
-<span class="doccomment">/// An `MlsGroup` has an internal state variable determining if it is active or</span>
-<span class="doccomment">/// inactive, as well as if it has a pending commit. See [`MlsGroupState`] for</span>
-<span class="doccomment">/// more information.</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>)]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">MlsGroup</span> {
-    <span class="comment">// The group configuration. See `MlsGroupCongig` for more information.</span>
-    <span class="ident">mls_group_config</span>: <span class="ident">MlsGroupConfig</span>,
-    <span class="comment">// the internal `CoreGroup` used for lower level operations. See `CoreGroup` for more</span>
-    <span class="comment">// information.</span>
-    <span class="ident">group</span>: <span class="ident">CoreGroup</span>,
-    <span class="comment">// A [ProposalStore] that stores incoming proposals from the DS within one epoch.</span>
-    <span class="comment">// The store is emptied after every epoch change.</span>
-    <span class="ident">proposal_store</span>: <span class="ident">ProposalStore</span>,
-    <span class="comment">// Own `KeyPackageBundle`s that were created for update proposals and that</span>
-    <span class="comment">// are needed in case an update proposal is commited by another group</span>
-    <span class="comment">// member. The vector is emptied after every epoch change.</span>
-    <span class="ident">own_kpbs</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">KeyPackageBundle</span><span class="op">&gt;</span>,
-    <span class="comment">// The AAD that is used for all outgoing handshake messages. The AAD can be set through</span>
-    <span class="comment">// `set_aad()`.</span>
-    <span class="ident">aad</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>,
-    <span class="comment">// Resumption psk store. This is where the resumption psks are kept in a rollover list.</span>
-    <span class="ident">resumption_psk_store</span>: <span class="ident">ResumptionPskStore</span>,
-    <span class="comment">// A variable that indicates the state of the group. See [`MlsGroupState`]</span>
-    <span class="comment">// for more information.</span>
-    <span class="ident">group_state</span>: <span class="ident">MlsGroupState</span>,
-    <span class="comment">// A flag that indicates if the group state has changed and needs to be persisted again. The value</span>
-    <span class="comment">// is set to `InnerState::Changed` whenever an the internal group state is change and is set to</span>
-    <span class="comment">// `InnerState::Persisted` once the state has been persisted.</span>
-    <span class="ident">state_changed</span>: <span class="ident">InnerState</span>,
+<span class="doccomment">/// A `MlsGroup` represents an MLS group with
+/// a high-level API. The API exposes
+/// high level functions to manage a group by adding/removing members, get the
+/// current member list, etc.
+///
+/// The API is modeled such that it can serve as a direct interface to the
+/// Delivery Service. Functions that modify the public state of the group will
+/// return a `Vec&lt;MLSMessageOut&gt;` that can be sent to the Delivery
+/// Service directly. Conversely, incoming messages from the Delivery Service
+/// can be fed into [parse_message()](`MlsGroup::parse_message()`).
+///
+/// An `MlsGroup` has an internal queue of pending proposals that builds up
+/// as new messages are processed. When creating proposals, those messages are
+/// not automatically appended to this queue, instead they have to be processed
+/// again through [parse_message()](`MlsGroup::parse_message()`). This
+/// allows the Delivery Service to reject them (e.g. if they reference the wrong
+/// epoch).
+///
+/// If incoming messages or applied operations are semantically or syntactically
+/// incorrect, an error event will be returned with a corresponding error
+/// message and the state of the group will remain unchanged.
+///
+/// An `MlsGroup` has an internal state variable determining if it is active or
+/// inactive, as well as if it has a pending commit. See [`MlsGroupState`] for
+/// more information.
+</span><span class="attribute">#[derive(Debug)]
+</span><span class="kw">pub struct </span>MlsGroup {
+    <span class="comment">// The group configuration. See `MlsGroupCongig` for more information.
+    </span>mls_group_config: MlsGroupConfig,
+    <span class="comment">// the internal `CoreGroup` used for lower level operations. See `CoreGroup` for more
+    // information.
+    </span>group: CoreGroup,
+    <span class="comment">// A [ProposalStore] that stores incoming proposals from the DS within one epoch.
+    // The store is emptied after every epoch change.
+    </span>proposal_store: ProposalStore,
+    <span class="comment">// Own `KeyPackageBundle`s that were created for update proposals and that
+    // are needed in case an update proposal is commited by another group
+    // member. The vector is emptied after every epoch change.
+    </span>own_kpbs: Vec&lt;KeyPackageBundle&gt;,
+    <span class="comment">// The AAD that is used for all outgoing handshake messages. The AAD can be set through
+    // `set_aad()`.
+    </span>aad: Vec&lt;u8&gt;,
+    <span class="comment">// Resumption psk store. This is where the resumption psks are kept in a rollover list.
+    </span>resumption_psk_store: ResumptionPskStore,
+    <span class="comment">// A variable that indicates the state of the group. See [`MlsGroupState`]
+    // for more information.
+    </span>group_state: MlsGroupState,
+    <span class="comment">// A flag that indicates if the group state has changed and needs to be persisted again. The value
+    // is set to `InnerState::Changed` whenever an the internal group state is change and is set to
+    // `InnerState::Persisted` once the state has been persisted.
+    </span>state_changed: InnerState,
 }
 
-<span class="kw">impl</span> <span class="ident">MlsGroup</span> {
-    <span class="comment">// === Configuration ===</span>
+<span class="kw">impl </span>MlsGroup {
+    <span class="comment">// === Configuration ===
 
-    <span class="doccomment">/// Returns the configuration.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">configuration</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span><span class="ident">MlsGroupConfig</span> {
-        <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">mls_group_config</span>
+    </span><span class="doccomment">/// Returns the configuration.
+    </span><span class="kw">pub fn </span>configuration(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>MlsGroupConfig {
+        <span class="kw-2">&amp;</span><span class="self">self</span>.mls_group_config
     }
 
-    <span class="doccomment">/// Sets the configuration.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">set_configuration</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">mls_group_config</span>: <span class="kw-2">&amp;</span><span class="ident">MlsGroupConfig</span>) {
-        <span class="self">self</span>.<span class="ident">mls_group_config</span> <span class="op">=</span> <span class="ident">mls_group_config</span>.<span class="ident">clone</span>();
+    <span class="doccomment">/// Sets the configuration.
+    </span><span class="kw">pub fn </span>set_configuration(<span class="kw-2">&amp;mut </span><span class="self">self</span>, mls_group_config: <span class="kw-2">&amp;</span>MlsGroupConfig) {
+        <span class="self">self</span>.mls_group_config = mls_group_config.clone();
 
-        <span class="comment">// Since the state of the group might be changed, arm the state flag</span>
-        <span class="self">self</span>.<span class="ident">flag_state_change</span>();
+        <span class="comment">// Since the state of the group might be changed, arm the state flag
+        </span><span class="self">self</span>.flag_state_change();
     }
 
-    <span class="doccomment">/// Returns the AAD used in the framing.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">aad</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>[<span class="ident">u8</span>] {
-        <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">aad</span>
+    <span class="doccomment">/// Returns the AAD used in the framing.
+    </span><span class="kw">pub fn </span>aad(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>[u8] {
+        <span class="kw-2">&amp;</span><span class="self">self</span>.aad
     }
 
-    <span class="doccomment">/// Sets the AAD used in the framing.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">set_aad</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">aad</span>: <span class="kw-2">&amp;</span>[<span class="ident">u8</span>]) {
-        <span class="self">self</span>.<span class="ident">aad</span> <span class="op">=</span> <span class="ident">aad</span>.<span class="ident">to_vec</span>();
+    <span class="doccomment">/// Sets the AAD used in the framing.
+    </span><span class="kw">pub fn </span>set_aad(<span class="kw-2">&amp;mut </span><span class="self">self</span>, aad: <span class="kw-2">&amp;</span>[u8]) {
+        <span class="self">self</span>.aad = aad.to_vec();
 
-        <span class="comment">// Since the state of the group might be changed, arm the state flag</span>
-        <span class="self">self</span>.<span class="ident">flag_state_change</span>();
+        <span class="comment">// Since the state of the group might be changed, arm the state flag
+        </span><span class="self">self</span>.flag_state_change();
     }
 
-    <span class="comment">// === Advanced functions ===</span>
+    <span class="comment">// === Advanced functions ===
 
-    <span class="doccomment">/// Returns the group&#39;s ciphersuite.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">ciphersuite</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">Ciphersuite</span> {
-        <span class="self">self</span>.<span class="ident">group</span>.<span class="ident">ciphersuite</span>()
+    </span><span class="doccomment">/// Returns the group&#39;s ciphersuite.
+    </span><span class="kw">pub fn </span>ciphersuite(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; Ciphersuite {
+        <span class="self">self</span>.group.ciphersuite()
     }
 
-    <span class="doccomment">/// Returns whether the own client is still a member of the group or if it</span>
-    <span class="doccomment">/// was already evicted</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">is_active</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">bool</span> {
-        <span class="op">!</span><span class="macro">matches!</span>(<span class="self">self</span>.<span class="ident">group_state</span>, <span class="ident">MlsGroupState::Inactive</span>)
+    <span class="doccomment">/// Returns whether the own client is still a member of the group or if it
+    /// was already evicted
+    </span><span class="kw">pub fn </span>is_active(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; bool {
+        !<span class="macro">matches!</span>(<span class="self">self</span>.group_state, MlsGroupState::Inactive)
     }
 
-    <span class="doccomment">/// Returns own credential. If the group is inactive, it returns a</span>
-    <span class="doccomment">/// `UseAfterEviction` error.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">credential</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">Credential</span>, <span class="ident">MlsGroupStateError</span><span class="op">&gt;</span> {
-        <span class="kw">if</span> <span class="op">!</span><span class="self">self</span>.<span class="ident">is_active</span>() {
-            <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">MlsGroupStateError::UseAfterEviction</span>);
+    <span class="doccomment">/// Returns own credential. If the group is inactive, it returns a
+    /// `UseAfterEviction` error.
+    </span><span class="kw">pub fn </span>credential(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="kw-2">&amp;</span>Credential, MlsGroupStateError&gt; {
+        <span class="kw">if </span>!<span class="self">self</span>.is_active() {
+            <span class="kw">return </span><span class="prelude-val">Err</span>(MlsGroupStateError::UseAfterEviction);
         }
-        <span class="kw">let</span> <span class="ident">tree</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">group</span>.<span class="ident">treesync</span>();
-        <span class="prelude-val">Ok</span>(<span class="ident">tree</span>
-            .<span class="ident">own_leaf_node</span>()
-            .<span class="ident">map_err</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="ident">LibraryError::custom</span>(<span class="string">&quot;Own leaf node missing&quot;</span>))<span class="question-mark">?</span>
-            .<span class="ident">key_package</span>()
-            .<span class="ident">credential</span>())
+        <span class="kw">let </span>tree = <span class="self">self</span>.group.treesync();
+        <span class="prelude-val">Ok</span>(tree
+            .own_leaf_node()
+            .map_err(|<span class="kw">_</span>| LibraryError::custom(<span class="string">&quot;Own leaf node missing&quot;</span>))<span class="question-mark">?
+            </span>.key_package()
+            .credential())
     }
 
-    <span class="doccomment">/// Returns the [`KeyPackageRef`] of the client owning this group.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">key_package_ref</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">KeyPackageRef</span><span class="op">&gt;</span> {
-        <span class="self">self</span>.<span class="ident">group</span>.<span class="ident">key_package_ref</span>()
+    <span class="doccomment">/// Returns the [`KeyPackageRef`] of the client owning this group.
+    </span><span class="kw">pub fn </span>key_package_ref(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>KeyPackageRef&gt; {
+        <span class="self">self</span>.group.key_package_ref()
     }
 
-    <span class="doccomment">/// Returns the group ID.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">group_id</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span><span class="ident">GroupId</span> {
-        <span class="self">self</span>.<span class="ident">group</span>.<span class="ident">group_id</span>()
+    <span class="doccomment">/// Returns the group ID.
+    </span><span class="kw">pub fn </span>group_id(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>GroupId {
+        <span class="self">self</span>.group.group_id()
     }
 
-    <span class="doccomment">/// Returns the epoch.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">epoch</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">GroupEpoch</span> {
-        <span class="self">self</span>.<span class="ident">group</span>.<span class="ident">context</span>().<span class="ident">epoch</span>()
+    <span class="doccomment">/// Returns the epoch.
+    </span><span class="kw">pub fn </span>epoch(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; GroupEpoch {
+        <span class="self">self</span>.group.context().epoch()
     }
 
-    <span class="doccomment">/// Returns an `Iterator` over pending proposals.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">pending_proposals</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw">impl</span> <span class="ident">Iterator</span><span class="op">&lt;</span><span class="ident">Item</span> <span class="op">=</span> <span class="kw-2">&amp;</span><span class="ident">QueuedProposal</span><span class="op">&gt;</span> {
-        <span class="self">self</span>.<span class="ident">proposal_store</span>.<span class="ident">proposals</span>()
+    <span class="doccomment">/// Returns an `Iterator` over pending proposals.
+    </span><span class="kw">pub fn </span>pending_proposals(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw">impl </span>Iterator&lt;Item = <span class="kw-2">&amp;</span>QueuedProposal&gt; {
+        <span class="self">self</span>.proposal_store.proposals()
     }
 
-    <span class="doccomment">/// Returns a reference to the [`StagedCommit`] of the most recently created</span>
-    <span class="doccomment">/// commit. If there was no commit created in this epoch, either because</span>
-    <span class="doccomment">/// this commit or another commit was merged, it returns `None`.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">pending_commit</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">StagedCommit</span><span class="op">&gt;</span> {
-        <span class="kw">match</span> <span class="self">self</span>.<span class="ident">group_state</span> {
-            <span class="ident">MlsGroupState::PendingCommit</span>(<span class="kw-2">ref</span> <span class="ident">pending_commit_state</span>) =&gt; {
-                <span class="prelude-val">Some</span>(<span class="ident">pending_commit_state</span>.<span class="ident">staged_commit</span>())
+    <span class="doccomment">/// Returns a reference to the [`StagedCommit`] of the most recently created
+    /// commit. If there was no commit created in this epoch, either because
+    /// this commit or another commit was merged, it returns `None`.
+    </span><span class="kw">pub fn </span>pending_commit(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>StagedCommit&gt; {
+        <span class="kw">match </span><span class="self">self</span>.group_state {
+            MlsGroupState::PendingCommit(<span class="kw-2">ref </span>pending_commit_state) =&gt; {
+                <span class="prelude-val">Some</span>(pending_commit_state.staged_commit())
             }
-            <span class="ident">MlsGroupState::Operational</span> =&gt; <span class="prelude-val">None</span>,
-            <span class="ident">MlsGroupState::Inactive</span> =&gt; <span class="prelude-val">None</span>,
+            MlsGroupState::Operational =&gt; <span class="prelude-val">None</span>,
+            MlsGroupState::Inactive =&gt; <span class="prelude-val">None</span>,
         }
     }
 
-    <span class="doccomment">/// Sets the `group_state` to [`MlsGroupState::Operational`], thus clearing</span>
-    <span class="doccomment">/// any potentially pending commits.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// Note that this has no effect if the group was created through an external commit and</span>
-    <span class="doccomment">/// the resulting external commit has not been merged yet. For more</span>
-    <span class="doccomment">/// information, see [`MlsGroup::join_by_external_commit()`].</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// Use with caution! This function should only be used if it is clear that</span>
-    <span class="doccomment">/// the pending commit will not be used in the group. In particular, if a</span>
-    <span class="doccomment">/// pending commit is later accepted by the group, this client will lack the</span>
-    <span class="doccomment">/// key material to encrypt or decrypt group messages.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">clear_pending_commit</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>) {
-        <span class="kw">match</span> <span class="self">self</span>.<span class="ident">group_state</span> {
-            <span class="ident">MlsGroupState::PendingCommit</span>(<span class="kw-2">ref</span> <span class="ident">pending_commit_state</span>) =&gt; {
-                <span class="kw">if</span> <span class="kw">let</span> <span class="ident">PendingCommitState::Member</span>(<span class="kw">_</span>) <span class="op">=</span> <span class="kw-2">*</span><span class="kw-2">*</span><span class="ident">pending_commit_state</span> {
-                    <span class="self">self</span>.<span class="ident">group_state</span> <span class="op">=</span> <span class="ident">MlsGroupState::Operational</span>
+    <span class="doccomment">/// Sets the `group_state` to [`MlsGroupState::Operational`], thus clearing
+    /// any potentially pending commits.
+    ///
+    /// Note that this has no effect if the group was created through an external commit and
+    /// the resulting external commit has not been merged yet. For more
+    /// information, see [`MlsGroup::join_by_external_commit()`].
+    ///
+    /// Use with caution! This function should only be used if it is clear that
+    /// the pending commit will not be used in the group. In particular, if a
+    /// pending commit is later accepted by the group, this client will lack the
+    /// key material to encrypt or decrypt group messages.
+    </span><span class="kw">pub fn </span>clear_pending_commit(<span class="kw-2">&amp;mut </span><span class="self">self</span>) {
+        <span class="kw">match </span><span class="self">self</span>.group_state {
+            MlsGroupState::PendingCommit(<span class="kw-2">ref </span>pending_commit_state) =&gt; {
+                <span class="kw">if let </span>PendingCommitState::Member(<span class="kw">_</span>) = <span class="kw-2">**</span>pending_commit_state {
+                    <span class="self">self</span>.group_state = MlsGroupState::Operational
                 }
             }
-            <span class="ident">MlsGroupState::Operational</span> <span class="op">|</span> <span class="ident">MlsGroupState::Inactive</span> =&gt; (),
+            MlsGroupState::Operational | MlsGroupState::Inactive =&gt; (),
         }
     }
 
-    <span class="comment">// === Load &amp; save ===</span>
+    <span class="comment">// === Load &amp; save ===
 
-    <span class="doccomment">/// Loads the state from persisted state.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">load</span><span class="op">&lt;</span><span class="ident">R</span>: <span class="ident">Read</span><span class="op">&gt;</span>(<span class="ident">reader</span>: <span class="ident">R</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">MlsGroup</span>, <span class="ident">Error</span><span class="op">&gt;</span> {
-        <span class="comment">// TODO #245: Remove this once we have a proper serialization format</span>
-        <span class="attribute">#[<span class="ident">allow</span>(<span class="ident">deprecated</span>)]</span>
-        <span class="kw">let</span> <span class="ident">serialized_mls_group</span>: <span class="ident">SerializedMlsGroup</span> <span class="op">=</span> <span class="ident">serde_json::from_reader</span>(<span class="ident">reader</span>)<span class="question-mark">?</span>;
-        <span class="prelude-val">Ok</span>(<span class="ident">serialized_mls_group</span>.<span class="ident">into_mls_group</span>())
+    </span><span class="doccomment">/// Loads the state from persisted state.
+    </span><span class="kw">pub fn </span>load&lt;R: Read&gt;(reader: R) -&gt; <span class="prelude-ty">Result</span>&lt;MlsGroup, Error&gt; {
+        <span class="comment">// TODO #245: Remove this once we have a proper serialization format
+        </span><span class="attribute">#[allow(deprecated)]
+        </span><span class="kw">let </span>serialized_mls_group: SerializedMlsGroup = serde_json::from_reader(reader)<span class="question-mark">?</span>;
+        <span class="prelude-val">Ok</span>(serialized_mls_group.into_mls_group())
     }
 
-    <span class="doccomment">/// Persists the state.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">save</span><span class="op">&lt;</span><span class="ident">W</span>: <span class="ident">Write</span><span class="op">&gt;</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">writer</span>: <span class="kw-2">&amp;mut</span> <span class="ident">W</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">Error</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="ident">serialized_mls_group</span> <span class="op">=</span> <span class="ident">serde_json::to_string_pretty</span>(<span class="self">self</span>)<span class="question-mark">?</span>;
-        <span class="ident">writer</span>.<span class="ident">write_all</span>(<span class="kw-2">&amp;</span><span class="ident">serialized_mls_group</span>.<span class="ident">into_bytes</span>())<span class="question-mark">?</span>;
-        <span class="self">self</span>.<span class="ident">state_changed</span> <span class="op">=</span> <span class="ident">InnerState::Persisted</span>;
+    <span class="doccomment">/// Persists the state.
+    </span><span class="kw">pub fn </span>save&lt;W: Write&gt;(<span class="kw-2">&amp;mut </span><span class="self">self</span>, writer: <span class="kw-2">&amp;mut </span>W) -&gt; <span class="prelude-ty">Result</span>&lt;(), Error&gt; {
+        <span class="kw">let </span>serialized_mls_group = serde_json::to_string_pretty(<span class="self">self</span>)<span class="question-mark">?</span>;
+        writer.write_all(<span class="kw-2">&amp;</span>serialized_mls_group.into_bytes())<span class="question-mark">?</span>;
+        <span class="self">self</span>.state_changed = InnerState::Persisted;
         <span class="prelude-val">Ok</span>(())
     }
 
-    <span class="doccomment">/// Returns `true` if the internal state has changed and needs to be persisted and</span>
-    <span class="doccomment">/// `false` otherwise. Calling [`Self::save()`] resets the value to `false`.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">state_changed</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">InnerState</span> {
-        <span class="self">self</span>.<span class="ident">state_changed</span>
+    <span class="doccomment">/// Returns `true` if the internal state has changed and needs to be persisted and
+    /// `false` otherwise. Calling [`Self::save()`] resets the value to `false`.
+    </span><span class="kw">pub fn </span>state_changed(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; InnerState {
+        <span class="self">self</span>.state_changed
     }
 
-    <span class="comment">// === Extensions ===</span>
+    <span class="comment">// === Extensions ===
 
-    <span class="doccomment">/// Exports the Ratchet Tree.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">export_ratchet_tree</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">Vec</span><span class="op">&lt;</span><span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Node</span><span class="op">&gt;</span><span class="op">&gt;</span> {
-        <span class="self">self</span>.<span class="ident">group</span>.<span class="ident">treesync</span>().<span class="ident">export_nodes</span>()
+    </span><span class="doccomment">/// Exports the Ratchet Tree.
+    </span><span class="kw">pub fn </span>export_ratchet_tree(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; Vec&lt;<span class="prelude-ty">Option</span>&lt;Node&gt;&gt; {
+        <span class="self">self</span>.group.treesync().export_nodes()
     }
 }
 
-<span class="comment">// Private methods of MlsGroup</span>
-<span class="kw">impl</span> <span class="ident">MlsGroup</span> {
-    <span class="doccomment">/// Converts MlsPlaintext to MlsMessageOut. Depending on whether handshake</span>
-    <span class="doccomment">/// message should be encrypted, MlsPlaintext messages are encrypted to</span>
-    <span class="doccomment">/// MlsCiphertext first.</span>
-    <span class="kw">fn</span> <span class="ident">plaintext_to_mls_message</span>(
-        <span class="kw-2">&amp;mut</span> <span class="self">self</span>,
-        <span class="ident">plaintext</span>: <span class="ident">MlsPlaintext</span>,
-        <span class="ident">backend</span>: <span class="kw-2">&amp;</span><span class="kw">impl</span> <span class="ident">OpenMlsCryptoProvider</span>,
-    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">MlsMessageOut</span>, <span class="ident">LibraryError</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="ident">msg</span> <span class="op">=</span> <span class="kw">match</span> <span class="self">self</span>.<span class="ident">configuration</span>().<span class="ident">wire_format_policy</span>().<span class="ident">outgoing</span>() {
-            <span class="ident">OutgoingWireFormatPolicy::AlwaysPlaintext</span> =&gt; <span class="ident">MlsMessageOut::from</span>(<span class="ident">plaintext</span>),
-            <span class="ident">OutgoingWireFormatPolicy::AlwaysCiphertext</span> =&gt; {
-                <span class="kw">let</span> <span class="ident">ciphertext</span> <span class="op">=</span> <span class="self">self</span>
-                    .<span class="ident">group</span>
-                    .<span class="ident">encrypt</span>(<span class="ident">plaintext</span>, <span class="self">self</span>.<span class="ident">configuration</span>().<span class="ident">padding_size</span>(), <span class="ident">backend</span>)
-                    <span class="comment">// We can be sure the encryption will work because the plaintext was created by us</span>
-                    .<span class="ident">map_err</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="ident">LibraryError::custom</span>(<span class="string">&quot;Malformed plaintext&quot;</span>))<span class="question-mark">?</span>;
-                <span class="ident">MlsMessageOut::from</span>(<span class="ident">ciphertext</span>)
+<span class="comment">// Private methods of MlsGroup
+</span><span class="kw">impl </span>MlsGroup {
+    <span class="doccomment">/// Converts MlsPlaintext to MlsMessageOut. Depending on whether handshake
+    /// message should be encrypted, MlsPlaintext messages are encrypted to
+    /// MlsCiphertext first.
+    </span><span class="kw">fn </span>plaintext_to_mls_message(
+        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
+        plaintext: MlsPlaintext,
+        backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;MlsMessageOut, LibraryError&gt; {
+        <span class="kw">let </span>msg = <span class="kw">match </span><span class="self">self</span>.configuration().wire_format_policy().outgoing() {
+            OutgoingWireFormatPolicy::AlwaysPlaintext =&gt; MlsMessageOut::from(plaintext),
+            OutgoingWireFormatPolicy::AlwaysCiphertext =&gt; {
+                <span class="kw">let </span>ciphertext = <span class="self">self
+                    </span>.group
+                    .encrypt(plaintext, <span class="self">self</span>.configuration().padding_size(), backend)
+                    <span class="comment">// We can be sure the encryption will work because the plaintext was created by us
+                    </span>.map_err(|<span class="kw">_</span>| LibraryError::custom(<span class="string">&quot;Malformed plaintext&quot;</span>))<span class="question-mark">?</span>;
+                MlsMessageOut::from(ciphertext)
             }
         };
-        <span class="prelude-val">Ok</span>(<span class="ident">msg</span>)
+        <span class="prelude-val">Ok</span>(msg)
     }
 
-    <span class="doccomment">/// Arm the state changed flag function</span>
-    <span class="kw">fn</span> <span class="ident">flag_state_change</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>) {
-        <span class="self">self</span>.<span class="ident">state_changed</span> <span class="op">=</span> <span class="ident">InnerState::Changed</span>;
+    <span class="doccomment">/// Arm the state changed flag function
+    </span><span class="kw">fn </span>flag_state_change(<span class="kw-2">&amp;mut </span><span class="self">self</span>) {
+        <span class="self">self</span>.state_changed = InnerState::Changed;
     }
 
-    <span class="doccomment">/// Group framing parameters</span>
-    <span class="kw">fn</span> <span class="ident">framing_parameters</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">FramingParameters</span> {
-        <span class="ident">FramingParameters::new</span>(
-            <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">aad</span>,
-            <span class="self">self</span>.<span class="ident">mls_group_config</span>.<span class="ident">wire_format_policy</span>().<span class="ident">outgoing</span>(),
+    <span class="doccomment">/// Group framing parameters
+    </span><span class="kw">fn </span>framing_parameters(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; FramingParameters {
+        FramingParameters::new(
+            <span class="kw-2">&amp;</span><span class="self">self</span>.aad,
+            <span class="self">self</span>.mls_group_config.wire_format_policy().outgoing(),
         )
     }
 
-    <span class="doccomment">/// Check if the group is operational. Throws an error if the group is</span>
-    <span class="doccomment">/// inactive or if there is a pending commit.</span>
-    <span class="kw">fn</span> <span class="ident">is_operational</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">MlsGroupStateError</span><span class="op">&gt;</span> {
-        <span class="kw">match</span> <span class="self">self</span>.<span class="ident">group_state</span> {
-            <span class="ident">MlsGroupState::PendingCommit</span>(<span class="kw">_</span>) =&gt; <span class="prelude-val">Err</span>(<span class="ident">MlsGroupStateError::PendingCommit</span>),
-            <span class="ident">MlsGroupState::Inactive</span> =&gt; <span class="prelude-val">Err</span>(<span class="ident">MlsGroupStateError::UseAfterEviction</span>),
-            <span class="ident">MlsGroupState::Operational</span> =&gt; <span class="prelude-val">Ok</span>(()),
+    <span class="doccomment">/// Check if the group is operational. Throws an error if the group is
+    /// inactive or if there is a pending commit.
+    </span><span class="kw">fn </span>is_operational(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;(), MlsGroupStateError&gt; {
+        <span class="kw">match </span><span class="self">self</span>.group_state {
+            MlsGroupState::PendingCommit(<span class="kw">_</span>) =&gt; <span class="prelude-val">Err</span>(MlsGroupStateError::PendingCommit),
+            MlsGroupState::Inactive =&gt; <span class="prelude-val">Err</span>(MlsGroupStateError::UseAfterEviction),
+            MlsGroupState::Operational =&gt; <span class="prelude-val">Ok</span>(()),
         }
     }
 }
 
-<span class="comment">// Methods used in tests</span>
-<span class="kw">impl</span> <span class="ident">MlsGroup</span> {
-    <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">any</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;test-utils&quot;</span>, <span class="ident">test</span>))]</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">export_group_context</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span><span class="ident">GroupContext</span> {
-        <span class="self">self</span>.<span class="ident">group</span>.<span class="ident">context</span>()
+<span class="comment">// Methods used in tests
+</span><span class="kw">impl </span>MlsGroup {
+    <span class="attribute">#[cfg(any(feature = <span class="string">&quot;test-utils&quot;</span>, test))]
+    </span><span class="kw">pub fn </span>export_group_context(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>GroupContext {
+        <span class="self">self</span>.group.context()
     }
 
-    <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">any</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;test-utils&quot;</span>, <span class="ident">test</span>))]</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">tree_hash</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>[<span class="ident">u8</span>] {
-        <span class="self">self</span>.<span class="ident">group</span>.<span class="ident">treesync</span>().<span class="ident">tree_hash</span>()
+    <span class="attribute">#[cfg(any(feature = <span class="string">&quot;test-utils&quot;</span>, test))]
+    </span><span class="kw">pub fn </span>tree_hash(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>[u8] {
+        <span class="self">self</span>.group.treesync().tree_hash()
     }
 
-    <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">any</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;test-utils&quot;</span>, <span class="ident">test</span>))]</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">print_tree</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">message</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) {
-        <span class="self">self</span>.<span class="ident">group</span>.<span class="ident">print_tree</span>(<span class="ident">message</span>)
+    <span class="attribute">#[cfg(any(feature = <span class="string">&quot;test-utils&quot;</span>, test))]
+    </span><span class="kw">pub fn </span>print_tree(<span class="kw-2">&amp;</span><span class="self">self</span>, message: <span class="kw-2">&amp;</span>str) {
+        <span class="self">self</span>.group.print_tree(message)
     }
 
-    <span class="doccomment">/// Returns the underlying [CoreGroup].</span>
-    <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">test</span>)]</span>
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">group</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span><span class="ident">CoreGroup</span> {
-        <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">group</span>
+    <span class="doccomment">/// Returns the underlying [CoreGroup].
+    </span><span class="attribute">#[cfg(test)]
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>group(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>CoreGroup {
+        <span class="kw-2">&amp;</span><span class="self">self</span>.group
     }
 
-    <span class="doccomment">/// Clear the pending proposals.</span>
-    <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">test</span>)]</span>
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">clear_pending_proposals</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>) {
-        <span class="self">self</span>.<span class="ident">proposal_store</span>.<span class="ident">empty</span>()
+    <span class="doccomment">/// Clear the pending proposals.
+    </span><span class="attribute">#[cfg(test)]
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>clear_pending_proposals(<span class="kw-2">&amp;mut </span><span class="self">self</span>) {
+        <span class="self">self</span>.proposal_store.empty()
     }
 }
 
-<span class="doccomment">/// `Enum` that indicates whether the inner group state has been modified since the last time it was persisted.</span>
-<span class="doccomment">/// `InnerState::Changed` indicates that the state has changed and that [`.save()`] should be called.</span>
-<span class="doccomment">/// `InnerState::Persisted` indicates that the state has not been modified and therefore doesn&#39;t need to be persisted.</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">PartialEq</span>, <span class="ident">Eq</span>, <span class="ident">Clone</span>, <span class="ident">Copy</span>)]</span>
-<span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">InnerState</span> {
-    <span class="doccomment">/// The inner group state has changed and needs to be persisted.</span>
-    <span class="ident">Changed</span>,
-    <span class="doccomment">/// The inner group state hasn&#39;t changed and doesn&#39;t need to be persisted.</span>
-    <span class="ident">Persisted</span>,
+<span class="doccomment">/// `Enum` that indicates whether the inner group state has been modified since the last time it was persisted.
+/// `InnerState::Changed` indicates that the state has changed and that [`.save()`] should be called.
+/// `InnerState::Persisted` indicates that the state has not been modified and therefore doesn&#39;t need to be persisted.
+</span><span class="attribute">#[derive(Debug, PartialEq, Eq, Clone, Copy)]
+</span><span class="kw">pub enum </span>InnerState {
+    <span class="doccomment">/// The inner group state has changed and needs to be persisted.
+    </span>Changed,
+    <span class="doccomment">/// The inner group state hasn&#39;t changed and doesn&#39;t need to be persisted.
+    </span>Persisted,
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../../../" data-current-crate="openmls" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.64.0 (a55dd71d5 2022-09-19)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../../../" data-current-crate="openmls" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0 (897e37553 2022-11-02)" ></div></body></html>

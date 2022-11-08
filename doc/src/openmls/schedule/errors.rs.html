@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `src/schedule/errors.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>errors.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" type="text/css" href="../../../normalize.css"><link rel="stylesheet" type="text/css" href="../../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" type="text/css" href="../../../ayu.css" disabled><link rel="stylesheet" type="text/css" href="../../../dark.css" disabled><link rel="stylesheet" type="text/css" href="../../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../../storage.js"></script><script defer src="../../../source-script.js"></script><script defer src="../../../source-files.js"></script><script defer src="../../../main.js"></script><noscript><link rel="stylesheet" href="../../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../../openmls/index.html"><div class="logo-container"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></div></a><h2 class="location"></h2></nav><nav class="sidebar"><a class="sidebar-logo" href="../../../openmls/index.html"><div class="logo-container"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></div></a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../../openmls/index.html"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></a><nav class="sub"><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><button type="button">?</button></div><div id="settings-menu" tabindex="-1"><a href="../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../wheel.svg"></a></div></div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">1</span>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `src/schedule/errors.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>errors.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" href="../../../normalize.css"><link rel="stylesheet" href="../../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" href="../../../ayu.css" disabled><link rel="stylesheet" href="../../../dark.css" disabled><link rel="stylesheet" href="../../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../../storage.js"></script><script defer src="../../../source-script.js"></script><script defer src="../../../source-files.js"></script><script defer src="../../../main.js"></script><noscript><link rel="stylesheet" href="../../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../../openmls/index.html"><div class="logo-container"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></div></a><h2 class="location"></h2></nav><nav class="sidebar"><a class="sidebar-logo" href="../../../openmls/index.html"><div class="logo-container"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></div></a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../../openmls/index.html"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></a><nav class="sub"><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><button type="button">?</button></div><div id="settings-menu" tabindex="-1"><a href="../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../wheel.svg"></a></div></div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">1</span>
 <span id="2">2</span>
 <span id="3">3</span>
 <span id="4">4</span>
@@ -92,99 +92,99 @@
 <span id="92">92</span>
 <span id="93">93</span>
 <span id="94">94</span>
-</pre><pre class="rust"><code><span class="doccomment">//! Key schedule errors.</span>
+</pre><pre class="rust"><code><span class="doccomment">//! Key schedule errors.
 
-<span class="kw">use</span> <span class="ident">openmls_traits::types::CryptoError</span>;
-<span class="kw">use</span> <span class="ident">thiserror::Error</span>;
+</span><span class="kw">use </span>openmls_traits::types::CryptoError;
+<span class="kw">use </span>thiserror::Error;
 
-<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::error::LibraryError</span>;
+<span class="kw">use </span><span class="kw">crate</span>::error::LibraryError;
 
-<span class="comment">// === Public ===</span>
+<span class="comment">// === Public ===
 
-<span class="doccomment">/// PSK secret error</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Error</span>, <span class="ident">Debug</span>, <span class="ident">PartialEq</span>, <span class="ident">Clone</span>)]</span>
-<span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">PskError</span> {
-    <span class="doccomment">/// See [`LibraryError`] for more details.</span>
-    <span class="attribute">#[<span class="ident">error</span>(<span class="ident">transparent</span>)]</span>
-    <span class="ident">LibraryError</span>(<span class="attribute">#[<span class="ident">from</span>]</span> <span class="ident">LibraryError</span>),
-    <span class="doccomment">/// More than 2^16 PSKs were provided.</span>
-    <span class="attribute">#[<span class="ident">error</span>(<span class="string">&quot;More than 2^16 PSKs were provided.&quot;</span>)]</span>
-    <span class="ident">TooManyKeys</span>,
-    <span class="doccomment">/// The PSK could not be found in the key store.</span>
-    <span class="attribute">#[<span class="ident">error</span>(<span class="string">&quot;The PSK could not be found in the key store.&quot;</span>)]</span>
-    <span class="ident">KeyNotFound</span>,
+</span><span class="doccomment">/// PSK secret error
+</span><span class="attribute">#[derive(Error, Debug, PartialEq, Clone)]
+</span><span class="kw">pub enum </span>PskError {
+    <span class="doccomment">/// See [`LibraryError`] for more details.
+    </span><span class="attribute">#[error(transparent)]
+    </span>LibraryError(<span class="attribute">#[from] </span>LibraryError),
+    <span class="doccomment">/// More than 2^16 PSKs were provided.
+    </span><span class="attribute">#[error(<span class="string">&quot;More than 2^16 PSKs were provided.&quot;</span>)]
+    </span>TooManyKeys,
+    <span class="doccomment">/// The PSK could not be found in the key store.
+    </span><span class="attribute">#[error(<span class="string">&quot;The PSK could not be found in the key store.&quot;</span>)]
+    </span>KeyNotFound,
 }
 
-<span class="comment">// === Crate ===</span>
+<span class="comment">// === Crate ===
 
-<span class="doccomment">/// Key schedule state error</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Error</span>, <span class="ident">Debug</span>, <span class="ident">PartialEq</span>, <span class="ident">Clone</span>)]</span>
-<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">enum</span> <span class="ident">ErrorState</span> {
-    <span class="doccomment">/// Expected to be in initial state.</span>
-    <span class="attribute">#[<span class="ident">error</span>(<span class="string">&quot;Expected to be in initial state.&quot;</span>)]</span>
-    <span class="ident">Init</span>,
-    <span class="doccomment">/// Expected to be in epoch state.</span>
-    <span class="attribute">#[<span class="ident">error</span>(<span class="string">&quot;Expected to be in epoch state.&quot;</span>)]</span>
-    <span class="ident">Context</span>,
+</span><span class="doccomment">/// Key schedule state error
+</span><span class="attribute">#[derive(Error, Debug, PartialEq, Clone)]
+</span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">enum </span>ErrorState {
+    <span class="doccomment">/// Expected to be in initial state.
+    </span><span class="attribute">#[error(<span class="string">&quot;Expected to be in initial state.&quot;</span>)]
+    </span>Init,
+    <span class="doccomment">/// Expected to be in epoch state.
+    </span><span class="attribute">#[error(<span class="string">&quot;Expected to be in epoch state.&quot;</span>)]
+    </span>Context,
 }
 
-<span class="doccomment">/// Key schedule error</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Error</span>, <span class="ident">Debug</span>, <span class="ident">PartialEq</span>, <span class="ident">Clone</span>)]</span>
-<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">enum</span> <span class="ident">KeyScheduleError</span> {
-    <span class="doccomment">/// See [`LibraryError`] for more details.</span>
-    <span class="attribute">#[<span class="ident">error</span>(<span class="ident">transparent</span>)]</span>
-    <span class="ident">LibraryError</span>(<span class="attribute">#[<span class="ident">from</span>]</span> <span class="ident">LibraryError</span>),
-    <span class="doccomment">/// See [`ErrorState`] for more details.</span>
-    <span class="attribute">#[<span class="ident">error</span>(<span class="ident">transparent</span>)]</span>
-    <span class="ident">InvalidState</span>(<span class="attribute">#[<span class="ident">from</span>]</span> <span class="ident">ErrorState</span>),
-    <span class="doccomment">/// See [`CryptoError`] for more details.</span>
-    <span class="attribute">#[<span class="ident">error</span>(<span class="ident">transparent</span>)]</span>
-    <span class="ident">CryptoError</span>(<span class="attribute">#[<span class="ident">from</span>]</span> <span class="ident">CryptoError</span>),
+<span class="doccomment">/// Key schedule error
+</span><span class="attribute">#[derive(Error, Debug, PartialEq, Clone)]
+</span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">enum </span>KeyScheduleError {
+    <span class="doccomment">/// See [`LibraryError`] for more details.
+    </span><span class="attribute">#[error(transparent)]
+    </span>LibraryError(<span class="attribute">#[from] </span>LibraryError),
+    <span class="doccomment">/// See [`ErrorState`] for more details.
+    </span><span class="attribute">#[error(transparent)]
+    </span>InvalidState(<span class="attribute">#[from] </span>ErrorState),
+    <span class="doccomment">/// See [`CryptoError`] for more details.
+    </span><span class="attribute">#[error(transparent)]
+    </span>CryptoError(<span class="attribute">#[from] </span>CryptoError),
 }
 
-<span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">any</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;test-utils&quot;</span>, <span class="ident">test</span>))]</span>
-<span class="doccomment">/// KeySchedule test vector error</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Error</span>, <span class="ident">Debug</span>, <span class="ident">PartialEq</span>, <span class="ident">Eq</span>, <span class="ident">Clone</span>)]</span>
-<span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">KsTestVectorError</span> {
-    <span class="doccomment">/// The computed joiner secret doesn&#39;t match the one in the test vector.</span>
-    <span class="attribute">#[<span class="ident">error</span>(<span class="string">&quot;The computed joiner secret doesn&#39;t match the one in the test vector.&quot;</span>)]</span>
-    <span class="ident">JoinerSecretMismatch</span>,
-    <span class="doccomment">/// The computed welcome secret doesn&#39;t match the one in the test vector.</span>
-    <span class="attribute">#[<span class="ident">error</span>(<span class="string">&quot;The computed welcome secret doesn&#39;t match the one in the test vector.&quot;</span>)]</span>
-    <span class="ident">WelcomeSecretMismatch</span>,
-    <span class="doccomment">/// The computed init secret doesn&#39;t match the one in the test vector.</span>
-    <span class="attribute">#[<span class="ident">error</span>(<span class="string">&quot;The computed init secret doesn&#39;t match the one in the test vector.&quot;</span>)]</span>
-    <span class="ident">InitSecretMismatch</span>,
-    <span class="doccomment">/// The group context doesn&#39;t match the one in the test vector.</span>
-    <span class="attribute">#[<span class="ident">error</span>(<span class="string">&quot;The group context doesn&#39;t match the one in the test vector.&quot;</span>)]</span>
-    <span class="ident">GroupContextMismatch</span>,
-    <span class="doccomment">/// The computed sender data secret doesn&#39;t match the one in the test vector.</span>
-    <span class="attribute">#[<span class="ident">error</span>(<span class="string">&quot;The computed sender data secret doesn&#39;t match the one in the test vector.&quot;</span>)]</span>
-    <span class="ident">SenderDataSecretMismatch</span>,
-    <span class="doccomment">/// The computed encryption secret doesn&#39;t match the one in the test vector.</span>
-    <span class="attribute">#[<span class="ident">error</span>(<span class="string">&quot;The computed encryption secret doesn&#39;t match the one in the test vector.&quot;</span>)]</span>
-    <span class="ident">EncryptionSecretMismatch</span>,
-    <span class="doccomment">/// The computed exporter secret doesn&#39;t match the one in the test vector.</span>
-    <span class="attribute">#[<span class="ident">error</span>(<span class="string">&quot;The computed exporter secret doesn&#39;t match the one in the test vector.&quot;</span>)]</span>
-    <span class="ident">ExporterSecretMismatch</span>,
-    <span class="doccomment">/// The computed epoch authenticator doesn&#39;t match the one in the test vector.</span>
-    <span class="attribute">#[<span class="ident">error</span>(<span class="string">&quot;The computed epoch authenticator doesn&#39;t match the one in the test vector.&quot;</span>)]</span>
-    <span class="ident">EpochAuthenticatorMismatch</span>,
-    <span class="doccomment">/// The computed external secret doesn&#39;t match the one in the test vector.</span>
-    <span class="attribute">#[<span class="ident">error</span>(<span class="string">&quot;The computed external secret doesn&#39;t match the one in the test vector.&quot;</span>)]</span>
-    <span class="ident">ExternalSecretMismatch</span>,
-    <span class="doccomment">/// The computed confirmation key doesn&#39;t match the one in the test vector.</span>
-    <span class="attribute">#[<span class="ident">error</span>(<span class="string">&quot;The computed confirmation key doesn&#39;t match the one in the test vector.&quot;</span>)]</span>
-    <span class="ident">ConfirmationKeyMismatch</span>,
-    <span class="doccomment">/// The computed membership key doesn&#39;t match the one in the test vector.</span>
-    <span class="attribute">#[<span class="ident">error</span>(<span class="string">&quot;The computed membership key doesn&#39;t match the one in the test vector.&quot;</span>)]</span>
-    <span class="ident">MembershipKeyMismatch</span>,
-    <span class="doccomment">/// The computed resumption psk doesn&#39;t match the one in the test vector.</span>
-    <span class="attribute">#[<span class="ident">error</span>(<span class="string">&quot;The computed resumption psk doesn&#39;t match the one in the test vector.&quot;</span>)]</span>
-    <span class="ident">ResumptionPskMismatch</span>,
-    <span class="doccomment">/// The computed external public key doesn&#39;t match the one in the test vector.</span>
-    <span class="attribute">#[<span class="ident">error</span>(<span class="string">&quot;The computed external public key doesn&#39;t match the one in the test vector.&quot;</span>)]</span>
-    <span class="ident">ExternalPubMismatch</span>,
+<span class="attribute">#[cfg(any(feature = <span class="string">&quot;test-utils&quot;</span>, test))]
+</span><span class="doccomment">/// KeySchedule test vector error
+</span><span class="attribute">#[derive(Error, Debug, PartialEq, Eq, Clone)]
+</span><span class="kw">pub enum </span>KsTestVectorError {
+    <span class="doccomment">/// The computed joiner secret doesn&#39;t match the one in the test vector.
+    </span><span class="attribute">#[error(<span class="string">&quot;The computed joiner secret doesn&#39;t match the one in the test vector.&quot;</span>)]
+    </span>JoinerSecretMismatch,
+    <span class="doccomment">/// The computed welcome secret doesn&#39;t match the one in the test vector.
+    </span><span class="attribute">#[error(<span class="string">&quot;The computed welcome secret doesn&#39;t match the one in the test vector.&quot;</span>)]
+    </span>WelcomeSecretMismatch,
+    <span class="doccomment">/// The computed init secret doesn&#39;t match the one in the test vector.
+    </span><span class="attribute">#[error(<span class="string">&quot;The computed init secret doesn&#39;t match the one in the test vector.&quot;</span>)]
+    </span>InitSecretMismatch,
+    <span class="doccomment">/// The group context doesn&#39;t match the one in the test vector.
+    </span><span class="attribute">#[error(<span class="string">&quot;The group context doesn&#39;t match the one in the test vector.&quot;</span>)]
+    </span>GroupContextMismatch,
+    <span class="doccomment">/// The computed sender data secret doesn&#39;t match the one in the test vector.
+    </span><span class="attribute">#[error(<span class="string">&quot;The computed sender data secret doesn&#39;t match the one in the test vector.&quot;</span>)]
+    </span>SenderDataSecretMismatch,
+    <span class="doccomment">/// The computed encryption secret doesn&#39;t match the one in the test vector.
+    </span><span class="attribute">#[error(<span class="string">&quot;The computed encryption secret doesn&#39;t match the one in the test vector.&quot;</span>)]
+    </span>EncryptionSecretMismatch,
+    <span class="doccomment">/// The computed exporter secret doesn&#39;t match the one in the test vector.
+    </span><span class="attribute">#[error(<span class="string">&quot;The computed exporter secret doesn&#39;t match the one in the test vector.&quot;</span>)]
+    </span>ExporterSecretMismatch,
+    <span class="doccomment">/// The computed epoch authenticator doesn&#39;t match the one in the test vector.
+    </span><span class="attribute">#[error(<span class="string">&quot;The computed epoch authenticator doesn&#39;t match the one in the test vector.&quot;</span>)]
+    </span>EpochAuthenticatorMismatch,
+    <span class="doccomment">/// The computed external secret doesn&#39;t match the one in the test vector.
+    </span><span class="attribute">#[error(<span class="string">&quot;The computed external secret doesn&#39;t match the one in the test vector.&quot;</span>)]
+    </span>ExternalSecretMismatch,
+    <span class="doccomment">/// The computed confirmation key doesn&#39;t match the one in the test vector.
+    </span><span class="attribute">#[error(<span class="string">&quot;The computed confirmation key doesn&#39;t match the one in the test vector.&quot;</span>)]
+    </span>ConfirmationKeyMismatch,
+    <span class="doccomment">/// The computed membership key doesn&#39;t match the one in the test vector.
+    </span><span class="attribute">#[error(<span class="string">&quot;The computed membership key doesn&#39;t match the one in the test vector.&quot;</span>)]
+    </span>MembershipKeyMismatch,
+    <span class="doccomment">/// The computed resumption psk doesn&#39;t match the one in the test vector.
+    </span><span class="attribute">#[error(<span class="string">&quot;The computed resumption psk doesn&#39;t match the one in the test vector.&quot;</span>)]
+    </span>ResumptionPskMismatch,
+    <span class="doccomment">/// The computed external public key doesn&#39;t match the one in the test vector.
+    </span><span class="attribute">#[error(<span class="string">&quot;The computed external public key doesn&#39;t match the one in the test vector.&quot;</span>)]
+    </span>ExternalPubMismatch,
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-current-crate="openmls" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.64.0 (a55dd71d5 2022-09-19)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-current-crate="openmls" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0 (897e37553 2022-11-02)" ></div></body></html>

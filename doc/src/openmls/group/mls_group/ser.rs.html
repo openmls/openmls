@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `src/group/mls_group/ser.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>ser.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" type="text/css" href="../../../../normalize.css"><link rel="stylesheet" type="text/css" href="../../../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" type="text/css" href="../../../../ayu.css" disabled><link rel="stylesheet" type="text/css" href="../../../../dark.css" disabled><link rel="stylesheet" type="text/css" href="../../../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../../../storage.js"></script><script defer src="../../../../source-script.js"></script><script defer src="../../../../source-files.js"></script><script defer src="../../../../main.js"></script><noscript><link rel="stylesheet" href="../../../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../../../openmls/index.html"><div class="logo-container"><img class="rust-logo" src="../../../../rust-logo.svg" alt="logo"></div></a><h2 class="location"></h2></nav><nav class="sidebar"><a class="sidebar-logo" href="../../../../openmls/index.html"><div class="logo-container"><img class="rust-logo" src="../../../../rust-logo.svg" alt="logo"></div></a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../../../openmls/index.html"><img class="rust-logo" src="../../../../rust-logo.svg" alt="logo"></a><nav class="sub"><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><button type="button">?</button></div><div id="settings-menu" tabindex="-1"><a href="../../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../../wheel.svg"></a></div></div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">1</span>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `src/group/mls_group/ser.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>ser.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" href="../../../../normalize.css"><link rel="stylesheet" href="../../../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" href="../../../../ayu.css" disabled><link rel="stylesheet" href="../../../../dark.css" disabled><link rel="stylesheet" href="../../../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../../../storage.js"></script><script defer src="../../../../source-script.js"></script><script defer src="../../../../source-files.js"></script><script defer src="../../../../main.js"></script><noscript><link rel="stylesheet" href="../../../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../../../openmls/index.html"><div class="logo-container"><img class="rust-logo" src="../../../../rust-logo.svg" alt="logo"></div></a><h2 class="location"></h2></nav><nav class="sidebar"><a class="sidebar-logo" href="../../../../openmls/index.html"><div class="logo-container"><img class="rust-logo" src="../../../../rust-logo.svg" alt="logo"></div></a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../../../openmls/index.html"><img class="rust-logo" src="../../../../rust-logo.svg" alt="logo"></a><nav class="sub"><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><button type="button">?</button></div><div id="settings-menu" tabindex="-1"><a href="../../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../../wheel.svg"></a></div></div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">1</span>
 <span id="2">2</span>
 <span id="3">3</span>
 <span id="4">4</span>
@@ -56,63 +56,63 @@
 <span id="56">56</span>
 <span id="57">57</span>
 <span id="58">58</span>
-</pre><pre class="rust"><code><span class="comment">// TODO #245: Remove this once we have a proper serialization format</span>
-<span class="attribute">#![<span class="ident">allow</span>(<span class="ident">deprecated</span>)]</span>
+</pre><pre class="rust"><code><span class="comment">// TODO #245: Remove this once we have a proper serialization format
+</span><span class="attribute">#![allow(deprecated)]
 
-<span class="kw">use</span> <span class="kw">super</span>::<span class="kw-2">*</span>;
+</span><span class="kw">use super</span>::<span class="kw-2">*</span>;
 
-<span class="kw">use</span> <span class="ident">serde</span>::{
-    <span class="ident">ser</span>::{<span class="ident">SerializeStruct</span>, <span class="ident">Serializer</span>},
-    <span class="ident">Deserialize</span>, <span class="ident">Serialize</span>,
+<span class="kw">use </span>serde::{
+    ser::{SerializeStruct, Serializer},
+    Deserialize, Serialize,
 };
 
-<span class="doccomment">/// Helper struct that contains the serializable values of an `MlsGroup.</span>
-<span class="attribute">#[<span class="ident">deprecated</span>(
-    <span class="ident">since</span> <span class="op">=</span> <span class="string">&quot;0.4.1&quot;</span>,
-    <span class="ident">note</span> <span class="op">=</span> <span class="string">&quot;It is temporarily exposed, it will be private again after #245&quot;</span>
-)]</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Serialize</span>, <span class="ident">Deserialize</span>)]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">SerializedMlsGroup</span> {
-    <span class="ident">mls_group_config</span>: <span class="ident">MlsGroupConfig</span>,
-    <span class="ident">group</span>: <span class="ident">CoreGroup</span>,
-    <span class="ident">proposal_store</span>: <span class="ident">ProposalStore</span>,
-    <span class="ident">own_kpbs</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">KeyPackageBundle</span><span class="op">&gt;</span>,
-    <span class="ident">aad</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>,
-    <span class="ident">resumption_psk_store</span>: <span class="ident">ResumptionPskStore</span>,
-    <span class="ident">group_state</span>: <span class="ident">MlsGroupState</span>,
+<span class="doccomment">/// Helper struct that contains the serializable values of an `MlsGroup.
+</span><span class="attribute">#[deprecated(
+    since = <span class="string">&quot;0.4.1&quot;</span>,
+    note = <span class="string">&quot;It is temporarily exposed, it will be private again after #245&quot;
+</span>)]
+#[derive(Serialize, Deserialize)]
+</span><span class="kw">pub struct </span>SerializedMlsGroup {
+    mls_group_config: MlsGroupConfig,
+    group: CoreGroup,
+    proposal_store: ProposalStore,
+    own_kpbs: Vec&lt;KeyPackageBundle&gt;,
+    aad: Vec&lt;u8&gt;,
+    resumption_psk_store: ResumptionPskStore,
+    group_state: MlsGroupState,
 }
 
-<span class="kw">impl</span> <span class="ident">SerializedMlsGroup</span> {
-    <span class="doccomment">/// Helper method that converts the SerializedMlsGroup to MlsGroup.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">into_mls_group</span>(<span class="self">self</span>) -&gt; <span class="ident">MlsGroup</span> {
-        <span class="ident">MlsGroup</span> {
-            <span class="ident">mls_group_config</span>: <span class="self">self</span>.<span class="ident">mls_group_config</span>,
-            <span class="ident">group</span>: <span class="self">self</span>.<span class="ident">group</span>,
-            <span class="ident">proposal_store</span>: <span class="self">self</span>.<span class="ident">proposal_store</span>,
-            <span class="ident">own_kpbs</span>: <span class="self">self</span>.<span class="ident">own_kpbs</span>,
-            <span class="ident">aad</span>: <span class="self">self</span>.<span class="ident">aad</span>,
-            <span class="ident">resumption_psk_store</span>: <span class="self">self</span>.<span class="ident">resumption_psk_store</span>,
-            <span class="ident">group_state</span>: <span class="self">self</span>.<span class="ident">group_state</span>,
-            <span class="ident">state_changed</span>: <span class="ident">InnerState::Persisted</span>,
+<span class="kw">impl </span>SerializedMlsGroup {
+    <span class="doccomment">/// Helper method that converts the SerializedMlsGroup to MlsGroup.
+    </span><span class="kw">pub fn </span>into_mls_group(<span class="self">self</span>) -&gt; MlsGroup {
+        MlsGroup {
+            mls_group_config: <span class="self">self</span>.mls_group_config,
+            group: <span class="self">self</span>.group,
+            proposal_store: <span class="self">self</span>.proposal_store,
+            own_kpbs: <span class="self">self</span>.own_kpbs,
+            aad: <span class="self">self</span>.aad,
+            resumption_psk_store: <span class="self">self</span>.resumption_psk_store,
+            group_state: <span class="self">self</span>.group_state,
+            state_changed: InnerState::Persisted,
         }
     }
 }
 
-<span class="kw">impl</span> <span class="ident">Serialize</span> <span class="kw">for</span> <span class="ident">MlsGroup</span> {
-    <span class="kw">fn</span> <span class="ident">serialize</span><span class="op">&lt;</span><span class="ident">S</span><span class="op">&gt;</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">serializer</span>: <span class="ident">S</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">S::Ok</span>, <span class="ident">S::Error</span><span class="op">&gt;</span>
-    <span class="kw">where</span>
-        <span class="ident">S</span>: <span class="ident">Serializer</span>,
+<span class="kw">impl </span>Serialize <span class="kw">for </span>MlsGroup {
+    <span class="kw">fn </span>serialize&lt;S&gt;(<span class="kw-2">&amp;</span><span class="self">self</span>, serializer: S) -&gt; <span class="prelude-ty">Result</span>&lt;S::Ok, S::Error&gt;
+    <span class="kw">where
+        </span>S: Serializer,
     {
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">state</span> <span class="op">=</span> <span class="ident">serializer</span>.<span class="ident">serialize_struct</span>(<span class="string">&quot;SerializedMlsGroup&quot;</span>, <span class="number">6</span>)<span class="question-mark">?</span>;
-        <span class="ident">state</span>.<span class="ident">serialize_field</span>(<span class="string">&quot;mls_group_config&quot;</span>, <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">mls_group_config</span>)<span class="question-mark">?</span>;
-        <span class="ident">state</span>.<span class="ident">serialize_field</span>(<span class="string">&quot;group&quot;</span>, <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">group</span>)<span class="question-mark">?</span>;
-        <span class="ident">state</span>.<span class="ident">serialize_field</span>(<span class="string">&quot;proposal_store&quot;</span>, <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">proposal_store</span>)<span class="question-mark">?</span>;
-        <span class="ident">state</span>.<span class="ident">serialize_field</span>(<span class="string">&quot;own_kpbs&quot;</span>, <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">own_kpbs</span>)<span class="question-mark">?</span>;
-        <span class="ident">state</span>.<span class="ident">serialize_field</span>(<span class="string">&quot;aad&quot;</span>, <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">aad</span>)<span class="question-mark">?</span>;
-        <span class="ident">state</span>.<span class="ident">serialize_field</span>(<span class="string">&quot;resumption_psk_store&quot;</span>, <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">resumption_psk_store</span>)<span class="question-mark">?</span>;
-        <span class="ident">state</span>.<span class="ident">serialize_field</span>(<span class="string">&quot;group_state&quot;</span>, <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">group_state</span>)<span class="question-mark">?</span>;
-        <span class="ident">state</span>.<span class="ident">end</span>()
+        <span class="kw">let </span><span class="kw-2">mut </span>state = serializer.serialize_struct(<span class="string">&quot;SerializedMlsGroup&quot;</span>, <span class="number">6</span>)<span class="question-mark">?</span>;
+        state.serialize_field(<span class="string">&quot;mls_group_config&quot;</span>, <span class="kw-2">&amp;</span><span class="self">self</span>.mls_group_config)<span class="question-mark">?</span>;
+        state.serialize_field(<span class="string">&quot;group&quot;</span>, <span class="kw-2">&amp;</span><span class="self">self</span>.group)<span class="question-mark">?</span>;
+        state.serialize_field(<span class="string">&quot;proposal_store&quot;</span>, <span class="kw-2">&amp;</span><span class="self">self</span>.proposal_store)<span class="question-mark">?</span>;
+        state.serialize_field(<span class="string">&quot;own_kpbs&quot;</span>, <span class="kw-2">&amp;</span><span class="self">self</span>.own_kpbs)<span class="question-mark">?</span>;
+        state.serialize_field(<span class="string">&quot;aad&quot;</span>, <span class="kw-2">&amp;</span><span class="self">self</span>.aad)<span class="question-mark">?</span>;
+        state.serialize_field(<span class="string">&quot;resumption_psk_store&quot;</span>, <span class="kw-2">&amp;</span><span class="self">self</span>.resumption_psk_store)<span class="question-mark">?</span>;
+        state.serialize_field(<span class="string">&quot;group_state&quot;</span>, <span class="kw-2">&amp;</span><span class="self">self</span>.group_state)<span class="question-mark">?</span>;
+        state.end()
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../../../" data-current-crate="openmls" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.64.0 (a55dd71d5 2022-09-19)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../../../" data-current-crate="openmls" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0 (897e37553 2022-11-02)" ></div></body></html>

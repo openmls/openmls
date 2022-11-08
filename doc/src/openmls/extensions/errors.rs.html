@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `src/extensions/errors.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>errors.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" type="text/css" href="../../../normalize.css"><link rel="stylesheet" type="text/css" href="../../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" type="text/css" href="../../../ayu.css" disabled><link rel="stylesheet" type="text/css" href="../../../dark.css" disabled><link rel="stylesheet" type="text/css" href="../../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../../storage.js"></script><script defer src="../../../source-script.js"></script><script defer src="../../../source-files.js"></script><script defer src="../../../main.js"></script><noscript><link rel="stylesheet" href="../../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../../openmls/index.html"><div class="logo-container"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></div></a><h2 class="location"></h2></nav><nav class="sidebar"><a class="sidebar-logo" href="../../../openmls/index.html"><div class="logo-container"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></div></a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../../openmls/index.html"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></a><nav class="sub"><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><button type="button">?</button></div><div id="settings-menu" tabindex="-1"><a href="../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../wheel.svg"></a></div></div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">1</span>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `src/extensions/errors.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>errors.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" href="../../../normalize.css"><link rel="stylesheet" href="../../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" href="../../../ayu.css" disabled><link rel="stylesheet" href="../../../dark.css" disabled><link rel="stylesheet" href="../../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../../storage.js"></script><script defer src="../../../source-script.js"></script><script defer src="../../../source-files.js"></script><script defer src="../../../main.js"></script><noscript><link rel="stylesheet" href="../../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../../openmls/index.html"><div class="logo-container"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></div></a><h2 class="location"></h2></nav><nav class="sidebar"><a class="sidebar-logo" href="../../../openmls/index.html"><div class="logo-container"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></div></a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../../openmls/index.html"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></a><nav class="sub"><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><button type="button">?</button></div><div id="settings-menu" tabindex="-1"><a href="../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../wheel.svg"></a></div></div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">1</span>
 <span id="2">2</span>
 <span id="3">3</span>
 <span id="4">4</span>
@@ -108,115 +108,115 @@
 <span id="108">108</span>
 <span id="109">109</span>
 <span id="110">110</span>
-</pre><pre class="rust"><code><span class="doccomment">//! # Extension errors.</span>
-<span class="doccomment">//!</span>
-<span class="doccomment">//! An `ExtensionError` is thrown when an extension is invalid (for example when</span>
-<span class="doccomment">//! decoding from raw bytes) or when a check on an extension fails.</span>
-<span class="doccomment">//!</span>
-<span class="doccomment">//! `ExtensionError` holds individual errors for each extension.</span>
-<span class="doccomment">//! * `CapabilitiesExtensionError`</span>
-<span class="doccomment">//! * `LifetimeExtensionError`</span>
-<span class="doccomment">//! * `KeyPackageIdError`</span>
-<span class="doccomment">//! * `ParentHashError`</span>
-<span class="doccomment">//! * `RatchetTreeError`</span>
+</pre><pre class="rust"><code><span class="doccomment">//! # Extension errors.
+//!
+//! An `ExtensionError` is thrown when an extension is invalid (for example when
+//! decoding from raw bytes) or when a check on an extension fails.
+//!
+//! `ExtensionError` holds individual errors for each extension.
+//! * `CapabilitiesExtensionError`
+//! * `LifetimeExtensionError`
+//! * `KeyPackageIdError`
+//! * `ParentHashError`
+//! * `RatchetTreeError`
 
-<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::error</span>::{<span class="ident">ErrorString</span>, <span class="ident">LibraryError</span>};
+</span><span class="kw">use </span><span class="kw">crate</span>::error::{ErrorString, LibraryError};
 
-<span class="kw">use</span> <span class="ident">thiserror::Error</span>;
+<span class="kw">use </span>thiserror::Error;
 
-<span class="doccomment">/// Extension error</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Error</span>, <span class="ident">Debug</span>, <span class="ident">PartialEq</span>, <span class="ident">Clone</span>)]</span>
-<span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">ExtensionError</span> {
-    <span class="doccomment">/// Found a duplicate ratchet tree extension.</span>
-    <span class="attribute">#[<span class="ident">error</span>(<span class="string">&quot;Found a duplicate ratchet tree extension.&quot;</span>)]</span>
-    <span class="ident">DuplicateRatchetTreeExtension</span>,
-    <span class="doccomment">/// Unsupported proposal type in required capabilities.</span>
-    <span class="attribute">#[<span class="ident">error</span>(<span class="string">&quot;Unsupported proposal type in required capabilities.&quot;</span>)]</span>
-    <span class="ident">UnsupportedProposalType</span>,
-    <span class="doccomment">/// Unsupported extension type in required capabilities.</span>
-    <span class="attribute">#[<span class="ident">error</span>(<span class="string">&quot;Unsupported extension type in required capabilities.&quot;</span>)]</span>
-    <span class="ident">UnsupportedExtensionType</span>,
-    <span class="doccomment">/// See [`LibraryError`] for more details.</span>
-    <span class="attribute">#[<span class="ident">error</span>(<span class="ident">transparent</span>)]</span>
-    <span class="ident">LibraryError</span>(<span class="attribute">#[<span class="ident">from</span>]</span> <span class="ident">LibraryError</span>),
-    <span class="doccomment">/// See [`ErrorString`] for more details.</span>
-    <span class="attribute">#[<span class="ident">error</span>(<span class="ident">transparent</span>)]</span>
-    <span class="ident">InvalidExtensionType</span>(<span class="attribute">#[<span class="ident">from</span>]</span> <span class="ident">ErrorString</span>),
-    <span class="doccomment">/// See [`CapabilitiesExtensionError`] for more details.</span>
-    <span class="attribute">#[<span class="ident">error</span>(<span class="ident">transparent</span>)]</span>
-    <span class="ident">Capabilities</span>(<span class="attribute">#[<span class="ident">from</span>]</span> <span class="ident">CapabilitiesExtensionError</span>),
-    <span class="doccomment">/// See [`LifetimeExtensionError`] for more details.</span>
-    <span class="attribute">#[<span class="ident">error</span>(<span class="ident">transparent</span>)]</span>
-    <span class="ident">Lifetime</span>(<span class="attribute">#[<span class="ident">from</span>]</span> <span class="ident">LifetimeExtensionError</span>),
-    <span class="doccomment">/// See [`KeyPackageIdError`] for more details.</span>
-    <span class="attribute">#[<span class="ident">error</span>(<span class="ident">transparent</span>)]</span>
-    <span class="ident">KeyPackageId</span>(<span class="attribute">#[<span class="ident">from</span>]</span> <span class="ident">KeyPackageIdError</span>),
-    <span class="doccomment">/// See [`ParentHashError`] for more details.</span>
-    <span class="attribute">#[<span class="ident">error</span>(<span class="ident">transparent</span>)]</span>
-    <span class="ident">ParentHash</span>(<span class="attribute">#[<span class="ident">from</span>]</span> <span class="ident">ParentHashError</span>),
-    <span class="doccomment">/// See [`RatchetTreeError`] for more details.</span>
-    <span class="attribute">#[<span class="ident">error</span>(<span class="ident">transparent</span>)]</span>
-    <span class="ident">RatchetTree</span>(<span class="attribute">#[<span class="ident">from</span>]</span> <span class="ident">RatchetTreeError</span>),
-    <span class="doccomment">/// See [`InvalidExtensionError`] for more details.</span>
-    <span class="attribute">#[<span class="ident">error</span>(<span class="ident">transparent</span>)]</span>
-    <span class="ident">InvalidExtension</span>(<span class="attribute">#[<span class="ident">from</span>]</span> <span class="ident">InvalidExtensionError</span>),
+<span class="doccomment">/// Extension error
+</span><span class="attribute">#[derive(Error, Debug, PartialEq, Clone)]
+</span><span class="kw">pub enum </span>ExtensionError {
+    <span class="doccomment">/// Found a duplicate ratchet tree extension.
+    </span><span class="attribute">#[error(<span class="string">&quot;Found a duplicate ratchet tree extension.&quot;</span>)]
+    </span>DuplicateRatchetTreeExtension,
+    <span class="doccomment">/// Unsupported proposal type in required capabilities.
+    </span><span class="attribute">#[error(<span class="string">&quot;Unsupported proposal type in required capabilities.&quot;</span>)]
+    </span>UnsupportedProposalType,
+    <span class="doccomment">/// Unsupported extension type in required capabilities.
+    </span><span class="attribute">#[error(<span class="string">&quot;Unsupported extension type in required capabilities.&quot;</span>)]
+    </span>UnsupportedExtensionType,
+    <span class="doccomment">/// See [`LibraryError`] for more details.
+    </span><span class="attribute">#[error(transparent)]
+    </span>LibraryError(<span class="attribute">#[from] </span>LibraryError),
+    <span class="doccomment">/// See [`ErrorString`] for more details.
+    </span><span class="attribute">#[error(transparent)]
+    </span>InvalidExtensionType(<span class="attribute">#[from] </span>ErrorString),
+    <span class="doccomment">/// See [`CapabilitiesExtensionError`] for more details.
+    </span><span class="attribute">#[error(transparent)]
+    </span>Capabilities(<span class="attribute">#[from] </span>CapabilitiesExtensionError),
+    <span class="doccomment">/// See [`LifetimeExtensionError`] for more details.
+    </span><span class="attribute">#[error(transparent)]
+    </span>Lifetime(<span class="attribute">#[from] </span>LifetimeExtensionError),
+    <span class="doccomment">/// See [`KeyPackageIdError`] for more details.
+    </span><span class="attribute">#[error(transparent)]
+    </span>KeyPackageId(<span class="attribute">#[from] </span>KeyPackageIdError),
+    <span class="doccomment">/// See [`ParentHashError`] for more details.
+    </span><span class="attribute">#[error(transparent)]
+    </span>ParentHash(<span class="attribute">#[from] </span>ParentHashError),
+    <span class="doccomment">/// See [`RatchetTreeError`] for more details.
+    </span><span class="attribute">#[error(transparent)]
+    </span>RatchetTree(<span class="attribute">#[from] </span>RatchetTreeError),
+    <span class="doccomment">/// See [`InvalidExtensionError`] for more details.
+    </span><span class="attribute">#[error(transparent)]
+    </span>InvalidExtension(<span class="attribute">#[from] </span>InvalidExtensionError),
 }
 
-<span class="doccomment">/// Lifetime extension error</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Error</span>, <span class="ident">Debug</span>, <span class="ident">PartialEq</span>, <span class="ident">Eq</span>, <span class="ident">Clone</span>)]</span>
-<span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">LifetimeExtensionError</span> {
-    <span class="doccomment">/// Invalid lifetime extensions.</span>
-    <span class="attribute">#[<span class="ident">error</span>(<span class="string">&quot;Invalid lifetime extensions.&quot;</span>)]</span>
-    <span class="ident">Invalid</span>,
-    <span class="doccomment">/// Lifetime extension is expired.</span>
-    <span class="attribute">#[<span class="ident">error</span>(<span class="string">&quot;Lifetime extension is expired.&quot;</span>)]</span>
-    <span class="ident">Expired</span>,
+<span class="doccomment">/// Lifetime extension error
+</span><span class="attribute">#[derive(Error, Debug, PartialEq, Eq, Clone)]
+</span><span class="kw">pub enum </span>LifetimeExtensionError {
+    <span class="doccomment">/// Invalid lifetime extensions.
+    </span><span class="attribute">#[error(<span class="string">&quot;Invalid lifetime extensions.&quot;</span>)]
+    </span>Invalid,
+    <span class="doccomment">/// Lifetime extension is expired.
+    </span><span class="attribute">#[error(<span class="string">&quot;Lifetime extension is expired.&quot;</span>)]
+    </span>Expired,
 }
 
-<span class="doccomment">/// Capabilities extension error</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Error</span>, <span class="ident">Debug</span>, <span class="ident">PartialEq</span>, <span class="ident">Eq</span>, <span class="ident">Clone</span>)]</span>
-<span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">CapabilitiesExtensionError</span> {
-    <span class="doccomment">/// Invalid capabilities extensions.</span>
-    <span class="attribute">#[<span class="ident">error</span>(<span class="string">&quot;Invalid capabilities extensions.&quot;</span>)]</span>
-    <span class="ident">Invalid</span>,
-    <span class="doccomment">/// Capabilities extension is missing a version field.</span>
-    <span class="attribute">#[<span class="ident">error</span>(<span class="string">&quot;Capabilities extension is missing a version field.&quot;</span>)]</span>
-    <span class="ident">EmptyVersionsField</span>,
-    <span class="doccomment">/// Capabilities contains only unsupported ciphersuites.</span>
-    <span class="attribute">#[<span class="ident">error</span>(<span class="string">&quot;Capabilities contains only unsupported ciphersuites.&quot;</span>)]</span>
-    <span class="ident">UnsupportedCiphersuite</span>,
+<span class="doccomment">/// Capabilities extension error
+</span><span class="attribute">#[derive(Error, Debug, PartialEq, Eq, Clone)]
+</span><span class="kw">pub enum </span>CapabilitiesExtensionError {
+    <span class="doccomment">/// Invalid capabilities extensions.
+    </span><span class="attribute">#[error(<span class="string">&quot;Invalid capabilities extensions.&quot;</span>)]
+    </span>Invalid,
+    <span class="doccomment">/// Capabilities extension is missing a version field.
+    </span><span class="attribute">#[error(<span class="string">&quot;Capabilities extension is missing a version field.&quot;</span>)]
+    </span>EmptyVersionsField,
+    <span class="doccomment">/// Capabilities contains only unsupported ciphersuites.
+    </span><span class="attribute">#[error(<span class="string">&quot;Capabilities contains only unsupported ciphersuites.&quot;</span>)]
+    </span>UnsupportedCiphersuite,
 }
 
-<span class="doccomment">/// KeyPackage Id error</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Error</span>, <span class="ident">Debug</span>, <span class="ident">PartialEq</span>, <span class="ident">Eq</span>, <span class="ident">Clone</span>)]</span>
-<span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">KeyPackageIdError</span> {
-    <span class="doccomment">/// Invalid key package ID extensions.</span>
-    <span class="attribute">#[<span class="ident">error</span>(<span class="string">&quot;Invalid key package ID extensions.&quot;</span>)]</span>
-    <span class="ident">Invalid</span>,
+<span class="doccomment">/// KeyPackage Id error
+</span><span class="attribute">#[derive(Error, Debug, PartialEq, Eq, Clone)]
+</span><span class="kw">pub enum </span>KeyPackageIdError {
+    <span class="doccomment">/// Invalid key package ID extensions.
+    </span><span class="attribute">#[error(<span class="string">&quot;Invalid key package ID extensions.&quot;</span>)]
+    </span>Invalid,
 }
 
-<span class="doccomment">/// Parent hash error</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Error</span>, <span class="ident">Debug</span>, <span class="ident">PartialEq</span>, <span class="ident">Eq</span>, <span class="ident">Clone</span>)]</span>
-<span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">ParentHashError</span> {
-    <span class="doccomment">/// Invalid parent hash extensions.</span>
-    <span class="attribute">#[<span class="ident">error</span>(<span class="string">&quot;Invalid parent hash extensions.&quot;</span>)]</span>
-    <span class="ident">Invalid</span>,
+<span class="doccomment">/// Parent hash error
+</span><span class="attribute">#[derive(Error, Debug, PartialEq, Eq, Clone)]
+</span><span class="kw">pub enum </span>ParentHashError {
+    <span class="doccomment">/// Invalid parent hash extensions.
+    </span><span class="attribute">#[error(<span class="string">&quot;Invalid parent hash extensions.&quot;</span>)]
+    </span>Invalid,
 }
 
-<span class="doccomment">/// Ratchet tree error</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Error</span>, <span class="ident">Debug</span>, <span class="ident">PartialEq</span>, <span class="ident">Eq</span>, <span class="ident">Clone</span>)]</span>
-<span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">RatchetTreeError</span> {
-    <span class="doccomment">/// Invalid ratchet tree extensions.</span>
-    <span class="attribute">#[<span class="ident">error</span>(<span class="string">&quot;Invalid ratchet tree extensions.&quot;</span>)]</span>
-    <span class="ident">Invalid</span>,
+<span class="doccomment">/// Ratchet tree error
+</span><span class="attribute">#[derive(Error, Debug, PartialEq, Eq, Clone)]
+</span><span class="kw">pub enum </span>RatchetTreeError {
+    <span class="doccomment">/// Invalid ratchet tree extensions.
+    </span><span class="attribute">#[error(<span class="string">&quot;Invalid ratchet tree extensions.&quot;</span>)]
+    </span>Invalid,
 }
 
-<span class="doccomment">/// Invalid extension error</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Error</span>, <span class="ident">Debug</span>, <span class="ident">PartialEq</span>, <span class="ident">Eq</span>, <span class="ident">Clone</span>)]</span>
-<span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">InvalidExtensionError</span> {
-    <span class="doccomment">/// The provided extension list contains duplicate extensions.</span>
-    <span class="attribute">#[<span class="ident">error</span>(<span class="string">&quot;The provided extension list contains duplicate extensions.&quot;</span>)]</span>
-    <span class="ident">Duplicate</span>,
+<span class="doccomment">/// Invalid extension error
+</span><span class="attribute">#[derive(Error, Debug, PartialEq, Eq, Clone)]
+</span><span class="kw">pub enum </span>InvalidExtensionError {
+    <span class="doccomment">/// The provided extension list contains duplicate extensions.
+    </span><span class="attribute">#[error(<span class="string">&quot;The provided extension list contains duplicate extensions.&quot;</span>)]
+    </span>Duplicate,
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-current-crate="openmls" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.64.0 (a55dd71d5 2022-09-19)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-current-crate="openmls" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0 (897e37553 2022-11-02)" ></div></body></html>

@@ -1,3 +1,3 @@
-(function() {var implementors = {};
-implementors["openmls"] = [{"text":"impl ToKeyStoreValue for <a class=\"struct\" href=\"openmls/key_packages/struct.KeyPackageBundle.html\" title=\"struct openmls::key_packages::KeyPackageBundle\">KeyPackageBundle</a>","synthetic":false,"types":["openmls::key_packages::KeyPackageBundle"]},{"text":"impl ToKeyStoreValue for <a class=\"struct\" href=\"openmls/credentials/struct.CredentialBundle.html\" title=\"struct openmls::credentials::CredentialBundle\">CredentialBundle</a>","synthetic":false,"types":["openmls::credentials::CredentialBundle"]}];
-if (window.register_implementors) {window.register_implementors(implementors);} else {window.pending_implementors = implementors;}})()
+(function() {var implementors = {
+"openmls":[["impl ToKeyStoreValue for <a class=\"struct\" href=\"openmls/key_packages/struct.KeyPackageBundle.html\" title=\"struct openmls::key_packages::KeyPackageBundle\">KeyPackageBundle</a>"],["impl ToKeyStoreValue for <a class=\"struct\" href=\"openmls/credentials/struct.CredentialBundle.html\" title=\"struct openmls::credentials::CredentialBundle\">CredentialBundle</a>"]]
+};if (window.register_implementors) {window.register_implementors(implementors);} else {window.pending_implementors = implementors;}})()

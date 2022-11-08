@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `src/framing/validation.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>validation.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" type="text/css" href="../../../normalize.css"><link rel="stylesheet" type="text/css" href="../../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" type="text/css" href="../../../ayu.css" disabled><link rel="stylesheet" type="text/css" href="../../../dark.css" disabled><link rel="stylesheet" type="text/css" href="../../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../../storage.js"></script><script defer src="../../../source-script.js"></script><script defer src="../../../source-files.js"></script><script defer src="../../../main.js"></script><noscript><link rel="stylesheet" href="../../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../../openmls/index.html"><div class="logo-container"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></div></a><h2 class="location"></h2></nav><nav class="sidebar"><a class="sidebar-logo" href="../../../openmls/index.html"><div class="logo-container"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></div></a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../../openmls/index.html"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></a><nav class="sub"><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><button type="button">?</button></div><div id="settings-menu" tabindex="-1"><a href="../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../wheel.svg"></a></div></div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">1</span>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `src/framing/validation.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>validation.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" href="../../../normalize.css"><link rel="stylesheet" href="../../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" href="../../../ayu.css" disabled><link rel="stylesheet" href="../../../dark.css" disabled><link rel="stylesheet" href="../../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../../storage.js"></script><script defer src="../../../source-script.js"></script><script defer src="../../../source-files.js"></script><script defer src="../../../main.js"></script><noscript><link rel="stylesheet" href="../../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../../openmls/index.html"><div class="logo-container"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></div></a><h2 class="location"></h2></nav><nav class="sidebar"><a class="sidebar-logo" href="../../../openmls/index.html"><div class="logo-container"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></div></a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../../openmls/index.html"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></a><nav class="sub"><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><button type="button">?</button></div><div id="settings-menu" tabindex="-1"><a href="../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../wheel.svg"></a></div></div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">1</span>
 <span id="2">2</span>
 <span id="3">3</span>
 <span id="4">4</span>
@@ -447,454 +447,454 @@
 <span id="447">447</span>
 <span id="448">448</span>
 <span id="449">449</span>
-</pre><pre class="rust"><code><span class="doccomment">//! # Validation steps for incoming messages</span>
-<span class="doccomment">//!</span>
-<span class="doccomment">//! ```text</span>
-<span class="doccomment">//! parse_message(MlsMessageIn) -&gt; UnverifiedMessage</span>
-<span class="doccomment">//!</span>
-<span class="doccomment">//! MlsMessageIn (exposes: wire format, group, epoch)</span>
-<span class="doccomment">//! |</span>
-<span class="doccomment">//! V</span>
-<span class="doccomment">//! DecryptedMessage</span>
-<span class="doccomment">//! |</span>
-<span class="doccomment">//! V</span>
-<span class="doccomment">//! UnverifiedMessage (exposes AAD, Credential of sender)</span>
-<span class="doccomment">//!</span>
-<span class="doccomment">//! process_unverified_message(UnverfiedMessage) -&gt; ProcessedMessage</span>
-<span class="doccomment">//!</span>
-<span class="doccomment">//! UnverifiedMessage</span>
-<span class="doccomment">//! |</span>
-<span class="doccomment">//! V</span>
-<span class="doccomment">//! UnverifiedContextMessage (includes group context)</span>
-<span class="doccomment">//! |                        |</span>
-<span class="doccomment">//! | (sender is member)     | (sender is not member)</span>
-<span class="doccomment">//! |                        |</span>
-<span class="doccomment">//! V                        V</span>
-<span class="doccomment">//! UnverifiedGroupMessage   UnverifiedPreconfiguredMessage</span>
-<span class="doccomment">//! |                        |</span>
-<span class="doccomment">//! | (verify signature)     | (verify signature)</span>
-<span class="doccomment">//! |                        |</span>
-<span class="doccomment">//! V                        V</span>
-<span class="doccomment">//! VerfiedMemberMessage     VerifiedExternalMessage</span>
-<span class="doccomment">//! |                        |</span>
-<span class="doccomment">//! +------------------------+</span>
-<span class="doccomment">//! |</span>
-<span class="doccomment">//! V</span>
-<span class="doccomment">//! ProcessedMessage (Application, Proposal, ExternalProposal, Commit, External Commit)</span>
-<span class="doccomment">//! ```</span>
+</pre><pre class="rust"><code><span class="doccomment">//! # Validation steps for incoming messages
+//!
+//! ```text
+//! parse_message(MlsMessageIn) -&gt; UnverifiedMessage
+//!
+//! MlsMessageIn (exposes: wire format, group, epoch)
+//! |
+//! V
+//! DecryptedMessage
+//! |
+//! V
+//! UnverifiedMessage (exposes AAD, Credential of sender)
+//!
+//! process_unverified_message(UnverfiedMessage) -&gt; ProcessedMessage
+//!
+//! UnverifiedMessage
+//! |
+//! V
+//! UnverifiedContextMessage (includes group context)
+//! |                        |
+//! | (sender is member)     | (sender is not member)
+//! |                        |
+//! V                        V
+//! UnverifiedGroupMessage   UnverifiedExternalMessage
+//! |                        |
+//! | (verify signature)     | (verify signature)
+//! |                        |
+//! V                        V
+//! VerfiedMemberMessage     VerifiedExternalMessage
+//! |                        |
+//! +------------------------+
+//! |
+//! V
+//! ProcessedMessage (Application, Proposal, ExternalProposal, Commit, External Commit)
+//! ```
 
-<span class="kw">use</span> <span class="kw">crate</span>::{<span class="ident">group::errors::ValidationError</span>, <span class="ident">tree::index::SecretTreeLeafIndex</span>, <span class="ident">treesync::TreeSync</span>};
-<span class="kw">use</span> <span class="ident">core_group</span>::{<span class="ident">proposals::QueuedProposal</span>, <span class="ident">staged_commit::StagedCommit</span>};
-<span class="kw">use</span> <span class="ident">openmls_traits::OpenMlsCryptoProvider</span>;
+</span><span class="kw">use crate</span>::{group::errors::ValidationError, tree::index::SecretTreeLeafIndex, treesync::TreeSync};
+<span class="kw">use </span>core_group::{proposals::QueuedProposal, staged_commit::StagedCommit};
+<span class="kw">use </span>openmls_traits::OpenMlsCryptoProvider;
 
-<span class="kw">use</span> <span class="kw">crate</span>::{
-    <span class="ident">ciphersuite</span>::{<span class="ident">hash_ref::KeyPackageRef</span>, <span class="ident">signable::Verifiable</span>},
-    <span class="ident">error::LibraryError</span>,
-    <span class="ident">tree::sender_ratchet::SenderRatchetConfiguration</span>,
+<span class="kw">use crate</span>::{
+    ciphersuite::{hash_ref::KeyPackageRef, signable::Verifiable},
+    error::LibraryError,
+    tree::sender_ratchet::SenderRatchetConfiguration,
 };
 
-<span class="kw">use</span> <span class="kw">super</span>::<span class="kw-2">*</span>;
+<span class="kw">use super</span>::<span class="kw-2">*</span>;
 
-<span class="doccomment">/// Intermediate message that can be constructed either from a plaintext message or from ciphertext message.</span>
-<span class="doccomment">/// If it it constructed from a ciphertext message, the ciphertext message is decrypted first.</span>
-<span class="doccomment">/// This function implements the following checks:</span>
-<span class="doccomment">///  - ValSem005</span>
-<span class="doccomment">///  - ValSem007</span>
-<span class="doccomment">///  - ValSem009</span>
-<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct</span> <span class="ident">DecryptedMessage</span> {
-    <span class="ident">plaintext</span>: <span class="ident">VerifiableMlsPlaintext</span>,
+<span class="doccomment">/// Intermediate message that can be constructed either from a plaintext message or from ciphertext message.
+/// If it it constructed from a ciphertext message, the ciphertext message is decrypted first.
+/// This function implements the following checks:
+///  - ValSem005
+///  - ValSem007
+///  - ValSem009
+</span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct </span>DecryptedMessage {
+    plaintext: VerifiableMlsPlaintext,
 }
 
-<span class="kw">impl</span> <span class="ident">DecryptedMessage</span> {
-    <span class="doccomment">/// Constructs a [DecryptedMessage] from a [VerifiableMlsPlaintext].</span>
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">from_inbound_plaintext</span>(
-        <span class="ident">inbound_message</span>: <span class="ident">MlsMessageIn</span>,
-    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident">ValidationError</span><span class="op">&gt;</span> {
-        <span class="kw">if</span> <span class="kw">let</span> <span class="ident">MlsMessageBody::Plaintext</span>(<span class="ident">plaintext</span>) <span class="op">=</span> <span class="ident">inbound_message</span>.<span class="ident">mls_message</span>.<span class="ident">body</span> {
-            <span class="ident"><span class="self">Self</span>::from_plaintext</span>(<span class="ident">plaintext</span>)
-        } <span class="kw">else</span> {
-            <span class="prelude-val">Err</span>(<span class="ident">ValidationError::WrongWireFormat</span>)
+<span class="kw">impl </span>DecryptedMessage {
+    <span class="doccomment">/// Constructs a [DecryptedMessage] from a [VerifiableMlsPlaintext].
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>from_inbound_plaintext(
+        inbound_message: MlsMessageIn,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, ValidationError&gt; {
+        <span class="kw">if let </span>MlsMessageBody::Plaintext(plaintext) = inbound_message.mls_message.body {
+            <span class="self">Self</span>::from_plaintext(plaintext)
+        } <span class="kw">else </span>{
+            <span class="prelude-val">Err</span>(ValidationError::WrongWireFormat)
         }
     }
 
-    <span class="doccomment">/// Constructs a [DecryptedMessage] from a [MlsCiphertext] by attempting to decrypt it</span>
-    <span class="doccomment">/// to a [VerifiableMlsPlaintext] first.</span>
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">from_inbound_ciphertext</span>(
-        <span class="ident">inbound_message</span>: <span class="ident">MlsMessageIn</span>,
-        <span class="ident">backend</span>: <span class="kw-2">&amp;</span><span class="kw">impl</span> <span class="ident">OpenMlsCryptoProvider</span>,
-        <span class="ident">group</span>: <span class="kw-2">&amp;mut</span> <span class="ident">CoreGroup</span>,
-        <span class="ident">sender_ratchet_configuration</span>: <span class="kw-2">&amp;</span><span class="ident">SenderRatchetConfiguration</span>,
-    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident">ValidationError</span><span class="op">&gt;</span> {
-        <span class="comment">// This will be refactored with #265.</span>
-        <span class="kw">if</span> <span class="kw">let</span> <span class="ident">MlsMessageBody::Ciphertext</span>(<span class="ident">ciphertext</span>) <span class="op">=</span> <span class="ident">inbound_message</span>.<span class="ident">mls_message</span>.<span class="ident">body</span> {
-            <span class="kw">let</span> <span class="ident">ciphersuite</span> <span class="op">=</span> <span class="ident">group</span>.<span class="ident">ciphersuite</span>();
-            <span class="kw">let</span> (<span class="ident">message_secrets</span>, <span class="ident">old_leaves</span>) <span class="op">=</span> <span class="ident">group</span>
-                .<span class="ident">message_secrets_and_leaves_mut</span>(<span class="ident">ciphertext</span>.<span class="ident">epoch</span>())
-                .<span class="ident">map_err</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="ident">MessageDecryptionError::AeadError</span>)<span class="question-mark">?</span>;
-            <span class="kw">let</span> <span class="ident">sender_data</span> <span class="op">=</span> <span class="ident">ciphertext</span>.<span class="ident">sender_data</span>(<span class="ident">message_secrets</span>, <span class="ident">backend</span>, <span class="ident">ciphersuite</span>)<span class="question-mark">?</span>;
-            <span class="kw">let</span> <span class="ident">sender_index</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">group</span>.<span class="ident">sender_index</span>(<span class="kw-2">&amp;</span><span class="ident">sender_data</span>.<span class="ident">sender</span>) {
-                <span class="prelude-val">Ok</span>(<span class="ident">i</span>) =&gt; <span class="ident">i</span>,
+    <span class="doccomment">/// Constructs a [DecryptedMessage] from a [MlsCiphertext] by attempting to decrypt it
+    /// to a [VerifiableMlsPlaintext] first.
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>from_inbound_ciphertext(
+        inbound_message: MlsMessageIn,
+        backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider,
+        group: <span class="kw-2">&amp;mut </span>CoreGroup,
+        sender_ratchet_configuration: <span class="kw-2">&amp;</span>SenderRatchetConfiguration,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, ValidationError&gt; {
+        <span class="comment">// This will be refactored with #265.
+        </span><span class="kw">if let </span>MlsMessageBody::Ciphertext(ciphertext) = inbound_message.mls_message.body {
+            <span class="kw">let </span>ciphersuite = group.ciphersuite();
+            <span class="kw">let </span>(message_secrets, old_leaves) = group
+                .message_secrets_and_leaves_mut(ciphertext.epoch())
+                .map_err(|<span class="kw">_</span>| MessageDecryptionError::AeadError)<span class="question-mark">?</span>;
+            <span class="kw">let </span>sender_data = ciphertext.sender_data(message_secrets, backend, ciphersuite)<span class="question-mark">?</span>;
+            <span class="kw">let </span>sender_index = <span class="kw">match </span>group.sender_index(<span class="kw-2">&amp;</span>sender_data.sender) {
+                <span class="prelude-val">Ok</span>(i) =&gt; i,
                 <span class="prelude-val">Err</span>(<span class="kw">_</span>) =&gt; {
-                    <span class="comment">// If the message is old, the tree might have changed.</span>
-                    <span class="comment">// Let&#39;s look for the sender in the old leaves.</span>
-                    <span class="ident">old_leaves</span>
-                        .<span class="ident">into_iter</span>()
-                        .<span class="ident">find_map</span>(<span class="op">|</span>(<span class="ident">index</span>, <span class="ident">kpr</span>)<span class="op">|</span> {
-                            <span class="kw">if</span> <span class="ident">kpr</span> <span class="op">==</span> <span class="ident">sender_data</span>.<span class="ident">sender</span> {
-                                <span class="prelude-val">Some</span>(<span class="ident">index</span>)
-                            } <span class="kw">else</span> {
-                                <span class="prelude-val">None</span>
-                            }
+                    <span class="comment">// If the message is old, the tree might have changed.
+                    // Let&#39;s look for the sender in the old leaves.
+                    </span>old_leaves
+                        .into_iter()
+                        .find_map(|(index, kpr)| {
+                            <span class="kw">if </span>kpr == sender_data.sender {
+                                <span class="prelude-val">Some</span>(index)
+                            } <span class="kw">else </span>{
+                                <span class="prelude-val">None
+                            </span>}
                         })
-                        .<span class="ident">ok_or</span>(<span class="ident">ValidationError::UnknownMember</span>)<span class="question-mark">?</span>
-                }
+                        .ok_or(ValidationError::UnknownMember)<span class="question-mark">?
+                </span>}
             };
-            <span class="kw">let</span> <span class="ident">sender_index</span> <span class="op">=</span> <span class="ident">SecretTreeLeafIndex</span>(<span class="ident">sender_index</span>);
-            <span class="kw">let</span> <span class="ident">message_secrets</span> <span class="op">=</span> <span class="ident">group</span>
-                .<span class="ident">message_secrets_mut</span>(<span class="ident">ciphertext</span>.<span class="ident">epoch</span>())
-                .<span class="ident">map_err</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="ident">MessageDecryptionError::AeadError</span>)<span class="question-mark">?</span>;
-            <span class="kw">let</span> <span class="ident">plaintext</span> <span class="op">=</span> <span class="ident">ciphertext</span>.<span class="ident">to_plaintext</span>(
-                <span class="ident">ciphersuite</span>,
-                <span class="ident">backend</span>,
-                <span class="ident">message_secrets</span>,
-                <span class="ident">sender_index</span>,
-                <span class="ident">sender_ratchet_configuration</span>,
-                <span class="ident">sender_data</span>,
+            <span class="kw">let </span>sender_index = SecretTreeLeafIndex(sender_index);
+            <span class="kw">let </span>message_secrets = group
+                .message_secrets_mut(ciphertext.epoch())
+                .map_err(|<span class="kw">_</span>| MessageDecryptionError::AeadError)<span class="question-mark">?</span>;
+            <span class="kw">let </span>plaintext = ciphertext.to_plaintext(
+                ciphersuite,
+                backend,
+                message_secrets,
+                sender_index,
+                sender_ratchet_configuration,
+                sender_data,
             )<span class="question-mark">?</span>;
-            <span class="ident"><span class="self">Self</span>::from_plaintext</span>(<span class="ident">plaintext</span>)
-        } <span class="kw">else</span> {
-            <span class="prelude-val">Err</span>(<span class="ident">ValidationError::WrongWireFormat</span>)
+            <span class="self">Self</span>::from_plaintext(plaintext)
+        } <span class="kw">else </span>{
+            <span class="prelude-val">Err</span>(ValidationError::WrongWireFormat)
         }
     }
 
-    <span class="comment">// Internal constructor function. Does the following checks:</span>
-    <span class="comment">// - Confirmation tag must be present for Commit messages</span>
-    <span class="comment">// - Membership tag must be present for member messages, if the original incoming message was not an MlsCiphertext</span>
-    <span class="comment">// - Ensures application messages were originally MlsCiphertext messages</span>
-    <span class="kw">fn</span> <span class="ident">from_plaintext</span>(<span class="ident">plaintext</span>: <span class="ident">VerifiableMlsPlaintext</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident">ValidationError</span><span class="op">&gt;</span> {
-        <span class="comment">// ValSem007</span>
-        <span class="kw">if</span> <span class="ident">plaintext</span>.<span class="ident">sender</span>().<span class="ident">is_member</span>()
-            <span class="op">&amp;&amp;</span> <span class="ident">plaintext</span>.<span class="ident">wire_format</span>() <span class="op">!</span><span class="op">=</span> <span class="ident">WireFormat::MlsCiphertext</span>
-            <span class="op">&amp;&amp;</span> <span class="ident">plaintext</span>.<span class="ident">membership_tag</span>().<span class="ident">is_none</span>()
+    <span class="comment">// Internal constructor function. Does the following checks:
+    // - Confirmation tag must be present for Commit messages
+    // - Membership tag must be present for member messages, if the original incoming message was not an MlsCiphertext
+    // - Ensures application messages were originally MlsCiphertext messages
+    </span><span class="kw">fn </span>from_plaintext(plaintext: VerifiableMlsPlaintext) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, ValidationError&gt; {
+        <span class="comment">// ValSem007
+        </span><span class="kw">if </span>plaintext.sender().is_member()
+            &amp;&amp; plaintext.wire_format() != WireFormat::MlsCiphertext
+            &amp;&amp; plaintext.membership_tag().is_none()
         {
-            <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">ValidationError::MissingMembershipTag</span>);
+            <span class="kw">return </span><span class="prelude-val">Err</span>(ValidationError::MissingMembershipTag);
         }
-        <span class="comment">// ValSem009</span>
-        <span class="kw">if</span> <span class="ident">plaintext</span>.<span class="ident">content_type</span>() <span class="op">==</span> <span class="ident">ContentType::Commit</span> <span class="op">&amp;&amp;</span> <span class="ident">plaintext</span>.<span class="ident">confirmation_tag</span>().<span class="ident">is_none</span>()
+        <span class="comment">// ValSem009
+        </span><span class="kw">if </span>plaintext.content_type() == ContentType::Commit &amp;&amp; plaintext.confirmation_tag().is_none()
         {
-            <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">ValidationError::MissingConfirmationTag</span>);
+            <span class="kw">return </span><span class="prelude-val">Err</span>(ValidationError::MissingConfirmationTag);
         }
-        <span class="comment">// ValSem005</span>
-        <span class="kw">if</span> <span class="ident">plaintext</span>.<span class="ident">content_type</span>() <span class="op">==</span> <span class="ident">ContentType::Application</span> {
-            <span class="kw">if</span> <span class="ident">plaintext</span>.<span class="ident">wire_format</span>() <span class="op">!</span><span class="op">=</span> <span class="ident">WireFormat::MlsCiphertext</span> {
-                <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">ValidationError::UnencryptedApplicationMessage</span>);
-            } <span class="kw">else</span> <span class="kw">if</span> <span class="op">!</span><span class="ident">plaintext</span>.<span class="ident">sender</span>().<span class="ident">is_member</span>() {
-                <span class="comment">// This should not happen because the sender of an MlsCiphertext should always be a member</span>
-                <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">LibraryError::custom</span>(<span class="string">&quot;Expected sender to be member.&quot;</span>).<span class="ident">into</span>());
+        <span class="comment">// ValSem005
+        </span><span class="kw">if </span>plaintext.content_type() == ContentType::Application {
+            <span class="kw">if </span>plaintext.wire_format() != WireFormat::MlsCiphertext {
+                <span class="kw">return </span><span class="prelude-val">Err</span>(ValidationError::UnencryptedApplicationMessage);
+            } <span class="kw">else if </span>!plaintext.sender().is_member() {
+                <span class="comment">// This should not happen because the sender of an MlsCiphertext should always be a member
+                </span><span class="kw">return </span><span class="prelude-val">Err</span>(LibraryError::custom(<span class="string">&quot;Expected sender to be member.&quot;</span>).into());
             }
         }
-        <span class="prelude-val">Ok</span>(<span class="ident">DecryptedMessage</span> { <span class="ident">plaintext</span> })
+        <span class="prelude-val">Ok</span>(DecryptedMessage { plaintext })
     }
 
-    <span class="doccomment">/// Gets the correct credential from the message depending on the sender type.</span>
-    <span class="doccomment">/// Checks the following semantic validation:</span>
-    <span class="doccomment">///  - ValSem112</span>
-    <span class="doccomment">///  - ValSem246</span>
-    <span class="doccomment">///  - Prepares ValSem247 by setting the right credential. The remainder</span>
-    <span class="doccomment">///    of ValSem247 is validated as part of ValSem010.</span>
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">credential</span>(
+    <span class="doccomment">/// Gets the correct credential from the message depending on the sender type.
+    /// Checks the following semantic validation:
+    ///  - ValSem112
+    ///  - ValSem246
+    ///  - Prepares ValSem247 by setting the right credential. The remainder
+    ///    of ValSem247 is validated as part of ValSem010.
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>credential(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        <span class="ident">treesync</span>: <span class="kw-2">&amp;</span><span class="ident">TreeSync</span>,
-        <span class="ident">old_leaves</span>: <span class="kw-2">&amp;</span>[(<span class="ident">u32</span>, <span class="ident">KeyPackageRef</span>)],
-    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Credential</span>, <span class="ident">ValidationError</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="ident">sender</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">sender</span>();
-        <span class="kw">match</span> <span class="ident">sender</span> {
-            <span class="ident">Sender::Member</span>(<span class="ident">hash_ref</span>) =&gt; {
-                <span class="kw">match</span> <span class="ident">treesync</span>.<span class="ident">leaf_from_id</span>(<span class="ident">hash_ref</span>) {
-                    <span class="prelude-val">Some</span>(<span class="ident">sender_leaf</span>) =&gt; <span class="prelude-val">Ok</span>(<span class="ident">sender_leaf</span>.<span class="ident">key_package</span>().<span class="ident">credential</span>().<span class="ident">clone</span>()),
-                    <span class="prelude-val">None</span> =&gt; {
-                        <span class="comment">// This might not actually be an error but the sender&#39;s</span>
-                        <span class="comment">// key package changed. Let&#39;s check old leaves we still</span>
-                        <span class="comment">// have around.</span>
-                        <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>((<span class="ident">sender_index</span>, <span class="kw">_</span>)) <span class="op">=</span>
-                            <span class="ident">old_leaves</span>.<span class="ident">iter</span>().<span class="ident">find</span>(<span class="op">|</span>(<span class="kw">_</span>, <span class="ident">kpr</span>)<span class="op">|</span> <span class="ident">kpr</span> <span class="op">==</span> <span class="ident">hash_ref</span>)
+        treesync: <span class="kw-2">&amp;</span>TreeSync,
+        old_leaves: <span class="kw-2">&amp;</span>[(u32, KeyPackageRef)],
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;Credential, ValidationError&gt; {
+        <span class="kw">let </span>sender = <span class="self">self</span>.sender();
+        <span class="kw">match </span>sender {
+            Sender::Member(hash_ref) =&gt; {
+                <span class="kw">match </span>treesync.leaf_from_id(hash_ref) {
+                    <span class="prelude-val">Some</span>(sender_leaf) =&gt; <span class="prelude-val">Ok</span>(sender_leaf.key_package().credential().clone()),
+                    <span class="prelude-val">None </span>=&gt; {
+                        <span class="comment">// This might not actually be an error but the sender&#39;s
+                        // key package changed. Let&#39;s check old leaves we still
+                        // have around.
+                        </span><span class="kw">if let </span><span class="prelude-val">Some</span>((sender_index, <span class="kw">_</span>)) =
+                            old_leaves.iter().find(|(<span class="kw">_</span>, kpr)| kpr == hash_ref)
                         {
-                            <span class="kw">match</span> <span class="ident">treesync</span>
-                                .<span class="ident">leaf</span>(<span class="kw-2">*</span><span class="ident">sender_index</span>)
-                                .<span class="ident">map_err</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="ident">ValidationError::UnknownMember</span>)<span class="question-mark">?</span>
-                            {
-                                <span class="prelude-val">Some</span>(<span class="ident">node</span>) =&gt; <span class="prelude-val">Ok</span>(<span class="ident">node</span>.<span class="ident">key_package</span>().<span class="ident">credential</span>().<span class="ident">clone</span>()),
-                                <span class="prelude-val">None</span> =&gt; <span class="prelude-val">Err</span>(<span class="ident">ValidationError::UnknownMember</span>),
+                            <span class="kw">match </span>treesync
+                                .leaf(<span class="kw-2">*</span>sender_index)
+                                .map_err(|<span class="kw">_</span>| ValidationError::UnknownMember)<span class="question-mark">?
+                            </span>{
+                                <span class="prelude-val">Some</span>(node) =&gt; <span class="prelude-val">Ok</span>(node.key_package().credential().clone()),
+                                <span class="prelude-val">None </span>=&gt; <span class="prelude-val">Err</span>(ValidationError::UnknownMember),
                             }
-                        } <span class="kw">else</span> {
-                            <span class="prelude-val">Err</span>(<span class="ident">ValidationError::UnknownMember</span>)
+                        } <span class="kw">else </span>{
+                            <span class="prelude-val">Err</span>(ValidationError::UnknownMember)
                         }
                     }
                 }
             }
-            <span class="comment">// Preconfigured senders are not supported yet #106/#151.</span>
-            <span class="ident">Sender::Preconfigured</span>(<span class="kw">_</span>) =&gt; <span class="macro">unimplemented!</span>(),
-            <span class="ident">Sender::NewMember</span> =&gt; {
-                <span class="comment">// Since this allows only commits to have a sender type `Member`, it checks</span>
-                <span class="comment">// ValSem112</span>
-                <span class="kw">if</span> <span class="kw">let</span> <span class="ident">MlsContentBody::Commit</span>(<span class="ident">commit</span>) <span class="op">=</span> <span class="self">self</span>.<span class="ident">plaintext</span>().<span class="ident">content</span>() {
-                    <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">path</span>) <span class="op">=</span> <span class="ident">commit</span>.<span class="ident">path</span>() {
-                        <span class="prelude-val">Ok</span>(<span class="ident">path</span>.<span class="ident">leaf_key_package</span>().<span class="ident">credential</span>().<span class="ident">clone</span>())
-                    } <span class="kw">else</span> {
-                        <span class="prelude-val">Err</span>(<span class="ident">ValidationError::NoPath</span>)
+            <span class="comment">// External senders are not supported yet #106/#151.
+            </span>Sender::External(<span class="kw">_</span>) =&gt; <span class="macro">unimplemented!</span>(),
+            Sender::NewMember =&gt; {
+                <span class="comment">// Since this allows only commits to have a sender type `Member`, it checks
+                // ValSem112
+                </span><span class="kw">if let </span>MlsContentBody::Commit(commit) = <span class="self">self</span>.plaintext().content() {
+                    <span class="kw">if let </span><span class="prelude-val">Some</span>(path) = commit.path() {
+                        <span class="prelude-val">Ok</span>(path.leaf_key_package().credential().clone())
+                    } <span class="kw">else </span>{
+                        <span class="prelude-val">Err</span>(ValidationError::NoPath)
                     }
-                } <span class="kw">else</span> {
-                    <span class="prelude-val">Err</span>(<span class="ident">ValidationError::NotACommit</span>)
+                } <span class="kw">else </span>{
+                    <span class="prelude-val">Err</span>(ValidationError::NotACommit)
                 }
             }
         }
     }
 
-    <span class="doccomment">/// Returns the sender.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">sender</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span><span class="ident">Sender</span> {
-        <span class="self">self</span>.<span class="ident">plaintext</span>.<span class="ident">sender</span>()
+    <span class="doccomment">/// Returns the sender.
+    </span><span class="kw">pub fn </span>sender(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>Sender {
+        <span class="self">self</span>.plaintext.sender()
     }
 
-    <span class="doccomment">/// Returns the plaintext.</span>
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">plaintext</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span><span class="ident">VerifiableMlsPlaintext</span> {
-        <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">plaintext</span>
+    <span class="doccomment">/// Returns the plaintext.
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>plaintext(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>VerifiableMlsPlaintext {
+        <span class="kw-2">&amp;</span><span class="self">self</span>.plaintext
     }
 }
 
-<span class="doccomment">/// Partially checked and potentially decrypted message (if it was originally encrypted).</span>
-<span class="doccomment">/// Use this to inspect the [`Credential`] of the message sender</span>
-<span class="doccomment">/// and the optional `aad` if the original message was encrypted.</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>)]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">UnverifiedMessage</span> {
-    <span class="ident">plaintext</span>: <span class="ident">VerifiableMlsPlaintext</span>,
-    <span class="ident">credential</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Credential</span><span class="op">&gt;</span>,
-    <span class="ident">aad_option</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span><span class="op">&gt;</span>,
+<span class="doccomment">/// Partially checked and potentially decrypted message (if it was originally encrypted).
+/// Use this to inspect the [`Credential`] of the message sender
+/// and the optional `aad` if the original message was encrypted.
+</span><span class="attribute">#[derive(Debug)]
+</span><span class="kw">pub struct </span>UnverifiedMessage {
+    plaintext: VerifiableMlsPlaintext,
+    credential: <span class="prelude-ty">Option</span>&lt;Credential&gt;,
+    aad_option: <span class="prelude-ty">Option</span>&lt;Vec&lt;u8&gt;&gt;,
 }
 
-<span class="kw">impl</span> <span class="ident">UnverifiedMessage</span> {
-    <span class="doccomment">/// Construct an [UnverifiedMessage] from a [DecryptedMessage] and an optional [Credential].</span>
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">from_decrypted_message</span>(
-        <span class="ident">decrypted_message</span>: <span class="ident">DecryptedMessage</span>,
-        <span class="ident">credential</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Credential</span><span class="op">&gt;</span>,
-    ) -&gt; <span class="self">Self</span> {
-        <span class="ident">UnverifiedMessage</span> {
-            <span class="ident">plaintext</span>: <span class="ident">decrypted_message</span>.<span class="ident">plaintext</span>,
-            <span class="ident">credential</span>,
-            <span class="ident">aad_option</span>: <span class="prelude-val">None</span>,
+<span class="kw">impl </span>UnverifiedMessage {
+    <span class="doccomment">/// Construct an [UnverifiedMessage] from a [DecryptedMessage] and an optional [Credential].
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>from_decrypted_message(
+        decrypted_message: DecryptedMessage,
+        credential: <span class="prelude-ty">Option</span>&lt;Credential&gt;,
+    ) -&gt; <span class="self">Self </span>{
+        UnverifiedMessage {
+            plaintext: decrypted_message.plaintext,
+            credential,
+            aad_option: <span class="prelude-val">None</span>,
         }
     }
 
-    <span class="doccomment">/// Returns the epoch.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">epoch</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">GroupEpoch</span> {
-        <span class="self">self</span>.<span class="ident">plaintext</span>.<span class="ident">epoch</span>()
+    <span class="doccomment">/// Returns the epoch.
+    </span><span class="kw">pub fn </span>epoch(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; GroupEpoch {
+        <span class="self">self</span>.plaintext.epoch()
     }
 
-    <span class="doccomment">/// Returns the AAD.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">aad</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span><span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span><span class="op">&gt;</span> {
-        <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">aad_option</span>
+    <span class="doccomment">/// Returns the AAD.
+    </span><span class="kw">pub fn </span>aad(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span><span class="prelude-ty">Option</span>&lt;Vec&lt;u8&gt;&gt; {
+        <span class="kw-2">&amp;</span><span class="self">self</span>.aad_option
     }
 
-    <span class="doccomment">/// Returns the sender.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">sender</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span><span class="ident">Sender</span> {
-        <span class="self">self</span>.<span class="ident">plaintext</span>.<span class="ident">sender</span>()
+    <span class="doccomment">/// Returns the sender.
+    </span><span class="kw">pub fn </span>sender(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>Sender {
+        <span class="self">self</span>.plaintext.sender()
     }
 
-    <span class="doccomment">/// Return the credential if there is one.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">credential</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">Credential</span><span class="op">&gt;</span> {
-        <span class="self">self</span>.<span class="ident">credential</span>.<span class="ident">as_ref</span>()
+    <span class="doccomment">/// Return the credential if there is one.
+    </span><span class="kw">pub fn </span>credential(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>Credential&gt; {
+        <span class="self">self</span>.credential.as_ref()
     }
 
-    <span class="doccomment">/// Decomposes an [UnverifiedMessage] into its parts.</span>
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">into_parts</span>(<span class="self">self</span>) -&gt; (<span class="ident">VerifiableMlsPlaintext</span>, <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Credential</span><span class="op">&gt;</span>) {
-        (<span class="self">self</span>.<span class="ident">plaintext</span>, <span class="self">self</span>.<span class="ident">credential</span>)
+    <span class="doccomment">/// Decomposes an [UnverifiedMessage] into its parts.
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>into_parts(<span class="self">self</span>) -&gt; (VerifiableMlsPlaintext, <span class="prelude-ty">Option</span>&lt;Credential&gt;) {
+        (<span class="self">self</span>.plaintext, <span class="self">self</span>.credential)
     }
 }
 
-<span class="doccomment">/// Contains an VerifiableMlsPlaintext and a [Credential] if it is a message</span>
-<span class="doccomment">/// from a `Member` or a `NewMember`.  It sets the serialized group context and</span>
-<span class="doccomment">/// verifies the membership tag for member messages.  It can be converted to a</span>
-<span class="doccomment">/// verified message by verifying the signature, either with the credential or</span>
-<span class="doccomment">/// an external signature key.</span>
-<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">enum</span> <span class="ident">UnverifiedContextMessage</span> {
-    <span class="doccomment">/// Unverified message from a group member</span>
-    <span class="ident">Group</span>(<span class="ident">UnverifiedGroupMessage</span>),
-    <span class="doccomment">/// Unverfied message from a preconfigured sender</span>
-    <span class="doccomment">/// TODO: #106</span>
-    <span class="attribute">#[<span class="ident">allow</span>(<span class="ident">dead_code</span>)]</span>
-    <span class="ident">Preconfigured</span>(<span class="ident">UnverifiedPreconfiguredMessage</span>),
+<span class="doccomment">/// Contains an VerifiableMlsPlaintext and a [Credential] if it is a message
+/// from a `Member` or a `NewMember`.  It sets the serialized group context and
+/// verifies the membership tag for member messages.  It can be converted to a
+/// verified message by verifying the signature, either with the credential or
+/// an external signature key.
+</span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">enum </span>UnverifiedContextMessage {
+    <span class="doccomment">/// Unverified message from a group member
+    </span>Group(UnverifiedGroupMessage),
+    <span class="doccomment">/// Unverified message from an external sender
+    /// TODO: #106
+    </span><span class="attribute">#[allow(dead_code)]
+    </span>External(UnverifiedExternalMessage),
 }
 
-<span class="kw">impl</span> <span class="ident">UnverifiedContextMessage</span> {
-    <span class="doccomment">/// Constructs an [UnverifiedContextMessage] from an [UnverifiedMessage] and adds the serialized group context.</span>
-    <span class="doccomment">/// This function implements the following checks:</span>
-    <span class="doccomment">///  - ValSem008</span>
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">from_unverified_message</span>(
-        <span class="ident">unverified_message</span>: <span class="ident">UnverifiedMessage</span>,
-        <span class="ident">message_secrets</span>: <span class="kw-2">&amp;</span><span class="ident">MessageSecrets</span>,
-        <span class="ident">backend</span>: <span class="kw-2">&amp;</span><span class="kw">impl</span> <span class="ident">OpenMlsCryptoProvider</span>,
-    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident">ValidationError</span><span class="op">&gt;</span> {
-        <span class="comment">// Decompose UnverifiedMessage</span>
-        <span class="kw">let</span> (<span class="kw-2">mut</span> <span class="ident">plaintext</span>, <span class="ident">credential_option</span>) <span class="op">=</span> <span class="ident">unverified_message</span>.<span class="ident">into_parts</span>();
+<span class="kw">impl </span>UnverifiedContextMessage {
+    <span class="doccomment">/// Constructs an [UnverifiedContextMessage] from an [UnverifiedMessage] and adds the serialized group context.
+    /// This function implements the following checks:
+    ///  - ValSem008
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>from_unverified_message(
+        unverified_message: UnverifiedMessage,
+        message_secrets: <span class="kw-2">&amp;</span>MessageSecrets,
+        backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, ValidationError&gt; {
+        <span class="comment">// Decompose UnverifiedMessage
+        </span><span class="kw">let </span>(<span class="kw-2">mut </span>plaintext, credential_option) = unverified_message.into_parts();
 
-        <span class="kw">if</span> <span class="ident">plaintext</span>.<span class="ident">sender</span>().<span class="ident">is_member</span>() {
-            <span class="comment">// Add serialized context to plaintext. This is needed for signature &amp; membership verification.</span>
-            <span class="ident">plaintext</span>.<span class="ident">set_context</span>(<span class="ident">message_secrets</span>.<span class="ident">serialized_context</span>().<span class="ident">to_vec</span>());
-            <span class="comment">// Verify the membership tag. This needs to be done explicitly for MlsPlaintext messages,</span>
-            <span class="comment">// it is implicit for MlsCiphertext messages (because the encryption can only be known by members).</span>
-            <span class="kw">if</span> <span class="ident">plaintext</span>.<span class="ident">wire_format</span>() <span class="op">!</span><span class="op">=</span> <span class="ident">WireFormat::MlsCiphertext</span> {
-                <span class="comment">// ValSem008</span>
-                <span class="ident">plaintext</span>.<span class="ident">verify_membership</span>(<span class="ident">backend</span>, <span class="ident">message_secrets</span>.<span class="ident">membership_key</span>())<span class="question-mark">?</span>;
+        <span class="kw">if </span>plaintext.sender().is_member() {
+            <span class="comment">// Add serialized context to plaintext. This is needed for signature &amp; membership verification.
+            </span>plaintext.set_context(message_secrets.serialized_context().to_vec());
+            <span class="comment">// Verify the membership tag. This needs to be done explicitly for MlsPlaintext messages,
+            // it is implicit for MlsCiphertext messages (because the encryption can only be known by members).
+            </span><span class="kw">if </span>plaintext.wire_format() != WireFormat::MlsCiphertext {
+                <span class="comment">// ValSem008
+                </span>plaintext.verify_membership(backend, message_secrets.membership_key())<span class="question-mark">?</span>;
             }
         }
-        <span class="kw">match</span> <span class="ident">plaintext</span>.<span class="ident">sender</span>() {
-            <span class="ident">Sender::Member</span>(<span class="kw">_</span>) <span class="op">|</span> <span class="ident">Sender::NewMember</span> =&gt; {
-                <span class="prelude-val">Ok</span>(<span class="ident">UnverifiedContextMessage::Group</span>(<span class="ident">UnverifiedGroupMessage</span> {
-                    <span class="ident">plaintext</span>,
-                    <span class="comment">// If the message type is `Sender` or `NewMember`, the</span>
-                    <span class="comment">// message always contains a credential.</span>
-                    <span class="ident">credential</span>: <span class="ident">credential_option</span>.<span class="ident">ok_or_else</span>(<span class="op">|</span><span class="op">|</span> {
-                        <span class="ident">ValidationError::from</span>(<span class="ident">LibraryError::custom</span>(<span class="string">&quot;Expected credential&quot;</span>))
+        <span class="kw">match </span>plaintext.sender() {
+            Sender::Member(<span class="kw">_</span>) | Sender::NewMember =&gt; {
+                <span class="prelude-val">Ok</span>(UnverifiedContextMessage::Group(UnverifiedGroupMessage {
+                    plaintext,
+                    <span class="comment">// If the message type is `Sender` or `NewMember`, the
+                    // message always contains a credential.
+                    </span>credential: credential_option.ok_or_else(|| {
+                        ValidationError::from(LibraryError::custom(<span class="string">&quot;Expected credential&quot;</span>))
                     })<span class="question-mark">?</span>,
                 }))
             }
-            <span class="comment">// TODO #151/#106: We don&#39;t support preconfigured senders yet</span>
-            <span class="ident">Sender::Preconfigured</span>(<span class="kw">_</span>) =&gt; <span class="macro">unimplemented!</span>(),
+            <span class="comment">// TODO #151/#106: We don&#39;t support external senders yet
+            </span>Sender::External(<span class="kw">_</span>) =&gt; <span class="macro">unimplemented!</span>(),
         }
     }
 }
 
-<span class="doccomment">/// Part of [UnverifiedContextMessage].</span>
-<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct</span> <span class="ident">UnverifiedGroupMessage</span> {
-    <span class="ident">plaintext</span>: <span class="ident">VerifiableMlsPlaintext</span>,
-    <span class="ident">credential</span>: <span class="ident">Credential</span>,
+<span class="doccomment">/// Part of [UnverifiedContextMessage].
+</span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct </span>UnverifiedGroupMessage {
+    plaintext: VerifiableMlsPlaintext,
+    credential: Credential,
 }
 
-<span class="kw">impl</span> <span class="ident">UnverifiedGroupMessage</span> {
-    <span class="doccomment">/// Verifies the signature on an [UnverifiedGroupMessage] and returns a [VerifiedMemberMessage] if the</span>
-    <span class="doccomment">/// verification is successful.</span>
-    <span class="doccomment">/// This function implements the following checks:</span>
-    <span class="doccomment">///  - ValSem010</span>
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">into_verified</span>(
+<span class="kw">impl </span>UnverifiedGroupMessage {
+    <span class="doccomment">/// Verifies the signature on an [UnverifiedGroupMessage] and returns a [VerifiedMemberMessage] if the
+    /// verification is successful.
+    /// This function implements the following checks:
+    ///  - ValSem010
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>into_verified(
         <span class="self">self</span>,
-        <span class="ident">backend</span>: <span class="kw-2">&amp;</span><span class="kw">impl</span> <span class="ident">OpenMlsCryptoProvider</span>,
-        <span class="ident">signature_key</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">SignaturePublicKey</span><span class="op">&gt;</span>,
-    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">VerifiedMemberMessage</span>, <span class="ident">ValidationError</span><span class="op">&gt;</span> {
-        <span class="comment">// If a signature key is provided it will be used,</span>
-        <span class="comment">// otherwise we take the key from the credential</span>
-        <span class="kw">let</span> <span class="ident">verified_member_message</span> <span class="op">=</span> <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">signature_public_key</span>) <span class="op">=</span> <span class="ident">signature_key</span> {
-            <span class="comment">// ValSem010</span>
-            <span class="self">self</span>.<span class="ident">plaintext</span>
-                .<span class="ident">verify_with_key</span>(<span class="ident">backend</span>, <span class="ident">signature_public_key</span>)
-        } <span class="kw">else</span> {
-            <span class="comment">// ValSem010</span>
-            <span class="self">self</span>.<span class="ident">plaintext</span>.<span class="ident">verify</span>(<span class="ident">backend</span>, <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">credential</span>)
+        backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider,
+        signature_key: <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>SignaturePublicKey&gt;,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;VerifiedMemberMessage, ValidationError&gt; {
+        <span class="comment">// If a signature key is provided it will be used,
+        // otherwise we take the key from the credential
+        </span><span class="kw">let </span>verified_member_message = <span class="kw">if let </span><span class="prelude-val">Some</span>(signature_public_key) = signature_key {
+            <span class="comment">// ValSem010
+            </span><span class="self">self</span>.plaintext
+                .verify_with_key(backend, signature_public_key)
+        } <span class="kw">else </span>{
+            <span class="comment">// ValSem010
+            </span><span class="self">self</span>.plaintext.verify(backend, <span class="kw-2">&amp;</span><span class="self">self</span>.credential)
         }
-        .<span class="ident">map</span>(<span class="op">|</span><span class="ident">plaintext</span><span class="op">|</span> <span class="ident">VerifiedMemberMessage</span> { <span class="ident">plaintext</span> })
-        .<span class="ident">map_err</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="ident">ValidationError::InvalidSignature</span>)<span class="question-mark">?</span>;
-        <span class="prelude-val">Ok</span>(<span class="ident">verified_member_message</span>)
+        .map(|plaintext| VerifiedMemberMessage { plaintext })
+        .map_err(|<span class="kw">_</span>| ValidationError::InvalidSignature)<span class="question-mark">?</span>;
+        <span class="prelude-val">Ok</span>(verified_member_message)
     }
 }
 
-<span class="comment">// TODO #151/#106: We don&#39;t support preconfigured senders yet</span>
-<span class="doccomment">/// Part of [UnverifiedContextMessage].</span>
-<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct</span> <span class="ident">UnverifiedPreconfiguredMessage</span> {
-    <span class="ident">plaintext</span>: <span class="ident">VerifiableMlsPlaintext</span>,
+<span class="comment">// TODO #151/#106: We don&#39;t support external senders yet
+</span><span class="doccomment">/// Part of [UnverifiedContextMessage].
+</span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct </span>UnverifiedExternalMessage {
+    plaintext: VerifiableMlsPlaintext,
 }
 
-<span class="kw">impl</span> <span class="ident">UnverifiedPreconfiguredMessage</span> {
-    <span class="doccomment">/// Verifies the signature on an [UnverifiedPreconfiguredMessage] and returns a [VerifiedExternalMessage] if the</span>
-    <span class="doccomment">/// verification is successful.</span>
-    <span class="doccomment">/// This function implements the following checks:</span>
-    <span class="doccomment">///  - ValSem010</span>
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">into_verified</span>(
+<span class="kw">impl </span>UnverifiedExternalMessage {
+    <span class="doccomment">/// Verifies the signature on an [UnverifiedExternalMessage] and returns a [VerifiedExternalMessage] if the
+    /// verification is successful.
+    /// This function implements the following checks:
+    ///  - ValSem010
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>into_verified(
         <span class="self">self</span>,
-        <span class="ident">backend</span>: <span class="kw-2">&amp;</span><span class="kw">impl</span> <span class="ident">OpenMlsCryptoProvider</span>,
-        <span class="ident">signature_key</span>: <span class="kw-2">&amp;</span><span class="ident">SignaturePublicKey</span>,
-    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">VerifiedExternalMessage</span>, <span class="ident">ValidationError</span><span class="op">&gt;</span> {
-        <span class="comment">// ValSem010</span>
-        <span class="self">self</span>.<span class="ident">plaintext</span>
-            .<span class="ident">verify_with_key</span>(<span class="ident">backend</span>, <span class="ident">signature_key</span>)
-            .<span class="ident">map</span>(<span class="op">|</span><span class="ident">_plaintext</span><span class="op">|</span> <span class="ident">VerifiedExternalMessage</span> { <span class="ident">_plaintext</span> })
-            .<span class="ident">map_err</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="ident">ValidationError::InvalidSignature</span>)
+        backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider,
+        signature_key: <span class="kw-2">&amp;</span>SignaturePublicKey,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;VerifiedExternalMessage, ValidationError&gt; {
+        <span class="comment">// ValSem010
+        </span><span class="self">self</span>.plaintext
+            .verify_with_key(backend, signature_key)
+            .map(|_plaintext| VerifiedExternalMessage { _plaintext })
+            .map_err(|<span class="kw">_</span>| ValidationError::InvalidSignature)
     }
 }
 
-<span class="doccomment">/// Member message, where all semantic checks on the framing have been successfully performed.</span>
-<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct</span> <span class="ident">VerifiedMemberMessage</span> {
-    <span class="ident">plaintext</span>: <span class="ident">MlsPlaintext</span>,
+<span class="doccomment">/// Member message, where all semantic checks on the framing have been successfully performed.
+</span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct </span>VerifiedMemberMessage {
+    plaintext: MlsPlaintext,
 }
 
-<span class="kw">impl</span> <span class="ident">VerifiedMemberMessage</span> {
-    <span class="doccomment">/// Returns a reference to the inner [MlsPlaintext].</span>
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">plaintext</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span><span class="ident">MlsPlaintext</span> {
-        <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">plaintext</span>
+<span class="kw">impl </span>VerifiedMemberMessage {
+    <span class="doccomment">/// Returns a reference to the inner [MlsPlaintext].
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>plaintext(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>MlsPlaintext {
+        <span class="kw-2">&amp;</span><span class="self">self</span>.plaintext
     }
 
-    <span class="doccomment">/// Consumes the message and returns the inner [MlsPlaintext].</span>
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">take_plaintext</span>(<span class="self">self</span>) -&gt; <span class="ident">MlsPlaintext</span> {
-        <span class="self">self</span>.<span class="ident">plaintext</span>
-    }
-}
-
-<span class="doccomment">/// External message, where all semantic checks on the framing have been successfully performed.</span>
-<span class="doccomment">/// Note: External messages are not fully supported yet #106</span>
-<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct</span> <span class="ident">VerifiedExternalMessage</span> {
-    <span class="ident">_plaintext</span>: <span class="ident">MlsPlaintext</span>,
-}
-
-<span class="kw">impl</span> <span class="ident">VerifiedExternalMessage</span> {
-    <span class="doccomment">/// Returns a reference to the inner [MlsPlaintext].</span>
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">_plaintext</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span><span class="ident">MlsPlaintext</span> {
-        <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">_plaintext</span>
-    }
-
-    <span class="doccomment">/// Consumes the message and returns the inner [MlsPlaintext].</span>
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">_take_plaintext</span>(<span class="self">self</span>) -&gt; <span class="ident">MlsPlaintext</span> {
-        <span class="self">self</span>.<span class="ident">_plaintext</span>
+    <span class="doccomment">/// Consumes the message and returns the inner [MlsPlaintext].
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>take_plaintext(<span class="self">self</span>) -&gt; MlsPlaintext {
+        <span class="self">self</span>.plaintext
     }
 }
 
-<span class="doccomment">/// A message that has passed all syntax and semantics checks.</span>
-<span class="doccomment">///</span>
-<span class="doccomment">/// See the variants&#39; documentation for more information.</span>
-<span class="doccomment">/// [`StagedCommit`] and [`QueuedProposal`] can be inspected for authorization purposes.</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>)]</span>
-<span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">ProcessedMessage</span> {
-    <span class="doccomment">/// An application message.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// The [`ApplicationMessage`] contains a vector of bytes that can be used right-away.</span>
-    <span class="ident">ApplicationMessage</span>(<span class="ident">ApplicationMessage</span>),
-    <span class="doccomment">/// A standalone proposal.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// The [`QueuedProposal`] can be inspected for authorization purposes by the application.</span>
-    <span class="doccomment">/// If the proposal is deemed to be allowed, it should be added to the group&#39;s proposal</span>
-    <span class="doccomment">/// queue using [`MlsGroup::store_pending_proposal()`](crate::group::mls_group::MlsGroup::store_pending_proposal()).</span>
-    <span class="ident">ProposalMessage</span>(<span class="ident">Box</span><span class="op">&lt;</span><span class="ident">QueuedProposal</span><span class="op">&gt;</span>),
-    <span class="doccomment">/// A Commit message.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// The [`StagedCommit`] can be inspected for authorization purposes by the application.</span>
-    <span class="doccomment">/// If the type of the commit and the proposals it covers are deemed to be allowed,</span>
-    <span class="doccomment">/// the commit should be merged into the group&#39;s state using</span>
-    <span class="doccomment">/// [`MlsGroup::merge_staged_commit()`](crate::group::mls_group::MlsGroup::merge_staged_commit()).</span>
-    <span class="ident">StagedCommitMessage</span>(<span class="ident">Box</span><span class="op">&lt;</span><span class="ident">StagedCommit</span><span class="op">&gt;</span>),
+<span class="doccomment">/// External message, where all semantic checks on the framing have been successfully performed.
+/// Note: External messages are not fully supported yet #106
+</span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct </span>VerifiedExternalMessage {
+    _plaintext: MlsPlaintext,
 }
 
-<span class="doccomment">/// Application message received through a [ProcessedMessage].</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">PartialEq</span>, <span class="ident">Eq</span>)]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">ApplicationMessage</span> {
-    <span class="ident">bytes</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>,
-}
-
-<span class="kw">impl</span> <span class="ident">ApplicationMessage</span> {
-    <span class="doccomment">/// Create a new [ApplicationMessage].</span>
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">new</span>(<span class="ident">bytes</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>) -&gt; <span class="self">Self</span> {
-        <span class="self">Self</span> { <span class="ident">bytes</span> }
+<span class="kw">impl </span>VerifiedExternalMessage {
+    <span class="doccomment">/// Returns a reference to the inner [MlsPlaintext].
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>_plaintext(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>MlsPlaintext {
+        <span class="kw-2">&amp;</span><span class="self">self</span>._plaintext
     }
 
-    <span class="doccomment">/// Returns the inner bytes and consumes the [`ApplicationMessage`].</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">into_bytes</span>(<span class="self">self</span>) -&gt; <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span> {
-        <span class="self">self</span>.<span class="ident">bytes</span>
+    <span class="doccomment">/// Consumes the message and returns the inner [MlsPlaintext].
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>_take_plaintext(<span class="self">self</span>) -&gt; MlsPlaintext {
+        <span class="self">self</span>._plaintext
+    }
+}
+
+<span class="doccomment">/// A message that has passed all syntax and semantics checks.
+///
+/// See the variants&#39; documentation for more information.
+/// [`StagedCommit`] and [`QueuedProposal`] can be inspected for authorization purposes.
+</span><span class="attribute">#[derive(Debug)]
+</span><span class="kw">pub enum </span>ProcessedMessage {
+    <span class="doccomment">/// An application message.
+    ///
+    /// The [`ApplicationMessage`] contains a vector of bytes that can be used right-away.
+    </span>ApplicationMessage(ApplicationMessage),
+    <span class="doccomment">/// A standalone proposal.
+    ///
+    /// The [`QueuedProposal`] can be inspected for authorization purposes by the application.
+    /// If the proposal is deemed to be allowed, it should be added to the group&#39;s proposal
+    /// queue using [`MlsGroup::store_pending_proposal()`](crate::group::mls_group::MlsGroup::store_pending_proposal()).
+    </span>ProposalMessage(Box&lt;QueuedProposal&gt;),
+    <span class="doccomment">/// A Commit message.
+    ///
+    /// The [`StagedCommit`] can be inspected for authorization purposes by the application.
+    /// If the type of the commit and the proposals it covers are deemed to be allowed,
+    /// the commit should be merged into the group&#39;s state using
+    /// [`MlsGroup::merge_staged_commit()`](crate::group::mls_group::MlsGroup::merge_staged_commit()).
+    </span>StagedCommitMessage(Box&lt;StagedCommit&gt;),
+}
+
+<span class="doccomment">/// Application message received through a [ProcessedMessage].
+</span><span class="attribute">#[derive(Debug, PartialEq, Eq)]
+</span><span class="kw">pub struct </span>ApplicationMessage {
+    bytes: Vec&lt;u8&gt;,
+}
+
+<span class="kw">impl </span>ApplicationMessage {
+    <span class="doccomment">/// Create a new [ApplicationMessage].
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>new(bytes: Vec&lt;u8&gt;) -&gt; <span class="self">Self </span>{
+        <span class="self">Self </span>{ bytes }
+    }
+
+    <span class="doccomment">/// Returns the inner bytes and consumes the [`ApplicationMessage`].
+    </span><span class="kw">pub fn </span>into_bytes(<span class="self">self</span>) -&gt; Vec&lt;u8&gt; {
+        <span class="self">self</span>.bytes
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-current-crate="openmls" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.64.0 (a55dd71d5 2022-09-19)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-current-crate="openmls" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0 (897e37553 2022-11-02)" ></div></body></html>

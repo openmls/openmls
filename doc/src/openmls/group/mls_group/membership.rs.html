@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `src/group/mls_group/membership.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>membership.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" type="text/css" href="../../../../normalize.css"><link rel="stylesheet" type="text/css" href="../../../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" type="text/css" href="../../../../ayu.css" disabled><link rel="stylesheet" type="text/css" href="../../../../dark.css" disabled><link rel="stylesheet" type="text/css" href="../../../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../../../storage.js"></script><script defer src="../../../../source-script.js"></script><script defer src="../../../../source-files.js"></script><script defer src="../../../../main.js"></script><noscript><link rel="stylesheet" href="../../../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../../../openmls/index.html"><div class="logo-container"><img class="rust-logo" src="../../../../rust-logo.svg" alt="logo"></div></a><h2 class="location"></h2></nav><nav class="sidebar"><a class="sidebar-logo" href="../../../../openmls/index.html"><div class="logo-container"><img class="rust-logo" src="../../../../rust-logo.svg" alt="logo"></div></a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../../../openmls/index.html"><img class="rust-logo" src="../../../../rust-logo.svg" alt="logo"></a><nav class="sub"><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><button type="button">?</button></div><div id="settings-menu" tabindex="-1"><a href="../../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../../wheel.svg"></a></div></div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">1</span>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `src/group/mls_group/membership.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>membership.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" href="../../../../normalize.css"><link rel="stylesheet" href="../../../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" href="../../../../ayu.css" disabled><link rel="stylesheet" href="../../../../dark.css" disabled><link rel="stylesheet" href="../../../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../../../storage.js"></script><script defer src="../../../../source-script.js"></script><script defer src="../../../../source-files.js"></script><script defer src="../../../../main.js"></script><noscript><link rel="stylesheet" href="../../../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../../../openmls/index.html"><div class="logo-container"><img class="rust-logo" src="../../../../rust-logo.svg" alt="logo"></div></a><h2 class="location"></h2></nav><nav class="sidebar"><a class="sidebar-logo" href="../../../../openmls/index.html"><div class="logo-container"><img class="rust-logo" src="../../../../rust-logo.svg" alt="logo"></div></a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../../../openmls/index.html"><img class="rust-logo" src="../../../../rust-logo.svg" alt="logo"></a><nav class="sub"><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><button type="button">?</button></div><div id="settings-menu" tabindex="-1"><a href="../../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../../wheel.svg"></a></div></div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">1</span>
 <span id="2">2</span>
 <span id="3">3</span>
 <span id="4">4</span>
@@ -401,408 +401,408 @@
 <span id="401">401</span>
 <span id="402">402</span>
 <span id="403">403</span>
-</pre><pre class="rust"><code><span class="doccomment">//! MLS group membership</span>
-<span class="doccomment">//!</span>
-<span class="doccomment">//! This module contains membership-related operations and exposes [`RemoveOperation`].</span>
+</pre><pre class="rust"><code><span class="doccomment">//! MLS group membership
+//!
+//! This module contains membership-related operations and exposes [`RemoveOperation`].
 
-<span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">any</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;test-utils&quot;</span>, <span class="ident">test</span>))]</span>
-<span class="kw">use</span> <span class="ident">std::collections::BTreeMap</span>;
+</span><span class="attribute">#[cfg(any(feature = <span class="string">&quot;test-utils&quot;</span>, test))]
+</span><span class="kw">use </span>std::collections::BTreeMap;
 
-<span class="kw">use</span> <span class="ident">core_group::create_commit_params::CreateCommitParams</span>;
-<span class="kw">use</span> <span class="ident">tls_codec::Serialize</span>;
+<span class="kw">use </span>core_group::create_commit_params::CreateCommitParams;
+<span class="kw">use </span>tls_codec::Serialize;
 
-<span class="kw">use</span> <span class="kw">crate</span>::{<span class="ident">ciphersuite::hash_ref::HashReference</span>, <span class="ident">ciphersuite::hash_ref::KeyPackageRef</span>};
+<span class="kw">use crate</span>::{ciphersuite::hash_ref::HashReference, ciphersuite::hash_ref::KeyPackageRef};
 
-<span class="kw">use</span> <span class="kw">super</span>::{
-    <span class="ident">errors</span>::{<span class="ident">AddMembersError</span>, <span class="ident">LeaveGroupError</span>, <span class="ident">RemoveMembersError</span>},
+<span class="kw">use super</span>::{
+    errors::{AddMembersError, LeaveGroupError, RemoveMembersError},
     <span class="kw-2">*</span>,
 };
 
-<span class="kw">impl</span> <span class="ident">MlsGroup</span> {
-    <span class="doccomment">/// Adds members to the group.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// New members are added by providing a `KeyPackage` for each member.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// This operation results in a Commit with a `path`, i.e. it includes an</span>
-    <span class="doccomment">/// update of the committer&#39;s leaf [KeyPackage].</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// If successful, it returns a tuple of [MlsMessageOut] and [Welcome].</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// Returns an error if there is a pending commit.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">add_members</span>(
-        <span class="kw-2">&amp;mut</span> <span class="self">self</span>,
-        <span class="ident">backend</span>: <span class="kw-2">&amp;</span><span class="kw">impl</span> <span class="ident">OpenMlsCryptoProvider</span>,
-        <span class="ident">key_packages</span>: <span class="kw-2">&amp;</span>[<span class="ident">KeyPackage</span>],
-    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(<span class="ident">MlsMessageOut</span>, <span class="ident">Welcome</span>), <span class="ident">AddMembersError</span><span class="op">&gt;</span> {
-        <span class="self">self</span>.<span class="ident">is_operational</span>()<span class="question-mark">?</span>;
+<span class="kw">impl </span>MlsGroup {
+    <span class="doccomment">/// Adds members to the group.
+    ///
+    /// New members are added by providing a `KeyPackage` for each member.
+    ///
+    /// This operation results in a Commit with a `path`, i.e. it includes an
+    /// update of the committer&#39;s leaf [KeyPackage].
+    ///
+    /// If successful, it returns a tuple of [MlsMessageOut] and [Welcome].
+    ///
+    /// Returns an error if there is a pending commit.
+    </span><span class="kw">pub fn </span>add_members(
+        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
+        backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider,
+        key_packages: <span class="kw-2">&amp;</span>[KeyPackage],
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;(MlsMessageOut, Welcome), AddMembersError&gt; {
+        <span class="self">self</span>.is_operational()<span class="question-mark">?</span>;
 
-        <span class="kw">if</span> <span class="ident">key_packages</span>.<span class="ident">is_empty</span>() {
-            <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">AddMembersError::EmptyInput</span>(<span class="ident">EmptyInputError::AddMembers</span>));
+        <span class="kw">if </span>key_packages.is_empty() {
+            <span class="kw">return </span><span class="prelude-val">Err</span>(AddMembersError::EmptyInput(EmptyInputError::AddMembers));
         }
 
-        <span class="comment">// Create inline add proposals from key packages</span>
-        <span class="kw">let</span> <span class="ident">inline_proposals</span> <span class="op">=</span> <span class="ident">key_packages</span>
-            .<span class="ident">iter</span>()
-            .<span class="ident">map</span>(<span class="op">|</span><span class="ident">key_package</span><span class="op">|</span> {
-                <span class="ident">Proposal::Add</span>(<span class="ident">AddProposal</span> {
-                    <span class="ident">key_package</span>: <span class="ident">key_package</span>.<span class="ident">clone</span>(),
+        <span class="comment">// Create inline add proposals from key packages
+        </span><span class="kw">let </span>inline_proposals = key_packages
+            .iter()
+            .map(|key_package| {
+                Proposal::Add(AddProposal {
+                    key_package: key_package.clone(),
                 })
             })
-            .<span class="ident">collect</span>::<span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Proposal</span><span class="op">&gt;</span><span class="op">&gt;</span>();
+            .collect::&lt;Vec&lt;Proposal&gt;&gt;();
 
-        <span class="kw">let</span> <span class="ident">credential</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">credential</span>()<span class="question-mark">?</span>;
-        <span class="kw">let</span> <span class="ident">credential_bundle</span>: <span class="ident">CredentialBundle</span> <span class="op">=</span> <span class="ident">backend</span>
-            .<span class="ident">key_store</span>()
-            .<span class="ident">read</span>(
-                <span class="kw-2">&amp;</span><span class="ident">credential</span>
-                    .<span class="ident">signature_key</span>()
-                    .<span class="ident">tls_serialize_detached</span>()
-                    .<span class="ident">map_err</span>(<span class="ident">LibraryError::missing_bound_check</span>)<span class="question-mark">?</span>,
+        <span class="kw">let </span>credential = <span class="self">self</span>.credential()<span class="question-mark">?</span>;
+        <span class="kw">let </span>credential_bundle: CredentialBundle = backend
+            .key_store()
+            .read(
+                <span class="kw-2">&amp;</span>credential
+                    .signature_key()
+                    .tls_serialize_detached()
+                    .map_err(LibraryError::missing_bound_check)<span class="question-mark">?</span>,
             )
-            .<span class="ident">ok_or</span>(<span class="ident">AddMembersError::NoMatchingCredentialBundle</span>)<span class="question-mark">?</span>;
+            .ok_or(AddMembersError::NoMatchingCredentialBundle)<span class="question-mark">?</span>;
 
-        <span class="comment">// Create Commit over all proposals</span>
-        <span class="comment">// TODO #751</span>
-        <span class="kw">let</span> <span class="ident">params</span> <span class="op">=</span> <span class="ident">CreateCommitParams::builder</span>()
-            .<span class="ident">framing_parameters</span>(<span class="self">self</span>.<span class="ident">framing_parameters</span>())
-            .<span class="ident">credential_bundle</span>(<span class="kw-2">&amp;</span><span class="ident">credential_bundle</span>)
-            .<span class="ident">proposal_store</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">proposal_store</span>)
-            .<span class="ident">inline_proposals</span>(<span class="ident">inline_proposals</span>)
-            .<span class="ident">build</span>();
-        <span class="kw">let</span> <span class="ident">create_commit_result</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">group</span>.<span class="ident">create_commit</span>(<span class="ident">params</span>, <span class="ident">backend</span>)<span class="question-mark">?</span>;
+        <span class="comment">// Create Commit over all proposals
+        // TODO #751
+        </span><span class="kw">let </span>params = CreateCommitParams::builder()
+            .framing_parameters(<span class="self">self</span>.framing_parameters())
+            .credential_bundle(<span class="kw-2">&amp;</span>credential_bundle)
+            .proposal_store(<span class="kw-2">&amp;</span><span class="self">self</span>.proposal_store)
+            .inline_proposals(inline_proposals)
+            .build();
+        <span class="kw">let </span>create_commit_result = <span class="self">self</span>.group.create_commit(params, backend)<span class="question-mark">?</span>;
 
-        <span class="kw">let</span> <span class="ident">welcome</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">create_commit_result</span>.<span class="ident">welcome_option</span> {
-            <span class="prelude-val">Some</span>(<span class="ident">welcome</span>) =&gt; <span class="ident">welcome</span>,
-            <span class="prelude-val">None</span> =&gt; {
-                <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">LibraryError::custom</span>(<span class="string">&quot;No secrets to generate commit message.&quot;</span>).<span class="ident">into</span>())
+        <span class="kw">let </span>welcome = <span class="kw">match </span>create_commit_result.welcome_option {
+            <span class="prelude-val">Some</span>(welcome) =&gt; welcome,
+            <span class="prelude-val">None </span>=&gt; {
+                <span class="kw">return </span><span class="prelude-val">Err</span>(LibraryError::custom(<span class="string">&quot;No secrets to generate commit message.&quot;</span>).into())
             }
         };
 
-        <span class="comment">// Convert MlsPlaintext messages to MLSMessage and encrypt them if required by</span>
-        <span class="comment">// the configuration</span>
-        <span class="kw">let</span> <span class="ident">mls_messages</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">plaintext_to_mls_message</span>(<span class="ident">create_commit_result</span>.<span class="ident">commit</span>, <span class="ident">backend</span>)<span class="question-mark">?</span>;
+        <span class="comment">// Convert MlsPlaintext messages to MLSMessage and encrypt them if required by
+        // the configuration
+        </span><span class="kw">let </span>mls_messages = <span class="self">self</span>.plaintext_to_mls_message(create_commit_result.commit, backend)<span class="question-mark">?</span>;
 
-        <span class="comment">// Set the current group state to [`MlsGroupState::PendingCommit`],</span>
-        <span class="comment">// storing the current [`StagedCommit`] from the commit results</span>
-        <span class="self">self</span>.<span class="ident">group_state</span> <span class="op">=</span> <span class="ident">MlsGroupState::PendingCommit</span>(<span class="ident">Box::new</span>(<span class="ident">PendingCommitState::Member</span>(
-            <span class="ident">create_commit_result</span>.<span class="ident">staged_commit</span>,
+        <span class="comment">// Set the current group state to [`MlsGroupState::PendingCommit`],
+        // storing the current [`StagedCommit`] from the commit results
+        </span><span class="self">self</span>.group_state = MlsGroupState::PendingCommit(Box::new(PendingCommitState::Member(
+            create_commit_result.staged_commit,
         )));
 
-        <span class="comment">// Since the state of the group might be changed, arm the state flag</span>
-        <span class="self">self</span>.<span class="ident">flag_state_change</span>();
+        <span class="comment">// Since the state of the group might be changed, arm the state flag
+        </span><span class="self">self</span>.flag_state_change();
 
-        <span class="prelude-val">Ok</span>((<span class="ident">mls_messages</span>, <span class="ident">welcome</span>))
+        <span class="prelude-val">Ok</span>((mls_messages, welcome))
     }
 
-    <span class="doccomment">/// Removes members from the group.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// Members are removed by providing the index of their leaf in the tree.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// If successful, it returns a tuple of [`MlsMessageOut`] and an optional [`Welcome`].</span>
-    <span class="doccomment">/// The [Welcome] is [Some] when the queue of pending proposals contained add proposals</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// Returns an error if there is a pending commit.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">remove_members</span>(
-        <span class="kw-2">&amp;mut</span> <span class="self">self</span>,
-        <span class="ident">backend</span>: <span class="kw-2">&amp;</span><span class="kw">impl</span> <span class="ident">OpenMlsCryptoProvider</span>,
-        <span class="ident">members</span>: <span class="kw-2">&amp;</span>[<span class="ident">KeyPackageRef</span>],
-    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(<span class="ident">MlsMessageOut</span>, <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Welcome</span><span class="op">&gt;</span>), <span class="ident">RemoveMembersError</span><span class="op">&gt;</span> {
-        <span class="self">self</span>.<span class="ident">is_operational</span>()<span class="question-mark">?</span>;
+    <span class="doccomment">/// Removes members from the group.
+    ///
+    /// Members are removed by providing the index of their leaf in the tree.
+    ///
+    /// If successful, it returns a tuple of [`MlsMessageOut`] and an optional [`Welcome`].
+    /// The [Welcome] is [Some] when the queue of pending proposals contained add proposals
+    ///
+    /// Returns an error if there is a pending commit.
+    </span><span class="kw">pub fn </span>remove_members(
+        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
+        backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider,
+        members: <span class="kw-2">&amp;</span>[KeyPackageRef],
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;(MlsMessageOut, <span class="prelude-ty">Option</span>&lt;Welcome&gt;), RemoveMembersError&gt; {
+        <span class="self">self</span>.is_operational()<span class="question-mark">?</span>;
 
-        <span class="kw">if</span> <span class="ident">members</span>.<span class="ident">is_empty</span>() {
-            <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">RemoveMembersError::EmptyInput</span>(
-                <span class="ident">EmptyInputError::RemoveMembers</span>,
+        <span class="kw">if </span>members.is_empty() {
+            <span class="kw">return </span><span class="prelude-val">Err</span>(RemoveMembersError::EmptyInput(
+                EmptyInputError::RemoveMembers,
             ));
         }
 
-        <span class="comment">// Create inline remove proposals</span>
-        <span class="kw">let</span> <span class="ident">inline_proposals</span> <span class="op">=</span> <span class="ident">members</span>
-            .<span class="ident">iter</span>()
-            .<span class="ident">map</span>(<span class="op">|</span><span class="ident">member</span><span class="op">|</span> {
-                <span class="ident">Proposal::Remove</span>(<span class="ident">RemoveProposal</span> {
-                    <span class="ident">removed</span>: <span class="ident">member</span>.<span class="ident">clone</span>(),
+        <span class="comment">// Create inline remove proposals
+        </span><span class="kw">let </span>inline_proposals = members
+            .iter()
+            .map(|member| {
+                Proposal::Remove(RemoveProposal {
+                    removed: member.clone(),
                 })
             })
-            .<span class="ident">collect</span>::<span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Proposal</span><span class="op">&gt;</span><span class="op">&gt;</span>();
+            .collect::&lt;Vec&lt;Proposal&gt;&gt;();
 
-        <span class="kw">let</span> <span class="ident">credential</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">credential</span>()<span class="question-mark">?</span>;
-        <span class="kw">let</span> <span class="ident">credential_bundle</span>: <span class="ident">CredentialBundle</span> <span class="op">=</span> <span class="ident">backend</span>
-            .<span class="ident">key_store</span>()
-            .<span class="ident">read</span>(
-                <span class="kw-2">&amp;</span><span class="ident">credential</span>
-                    .<span class="ident">signature_key</span>()
-                    .<span class="ident">tls_serialize_detached</span>()
-                    .<span class="ident">map_err</span>(<span class="ident">LibraryError::missing_bound_check</span>)<span class="question-mark">?</span>,
+        <span class="kw">let </span>credential = <span class="self">self</span>.credential()<span class="question-mark">?</span>;
+        <span class="kw">let </span>credential_bundle: CredentialBundle = backend
+            .key_store()
+            .read(
+                <span class="kw-2">&amp;</span>credential
+                    .signature_key()
+                    .tls_serialize_detached()
+                    .map_err(LibraryError::missing_bound_check)<span class="question-mark">?</span>,
             )
-            .<span class="ident">ok_or</span>(<span class="ident">RemoveMembersError::NoMatchingCredentialBundle</span>)<span class="question-mark">?</span>;
+            .ok_or(RemoveMembersError::NoMatchingCredentialBundle)<span class="question-mark">?</span>;
 
-        <span class="comment">// Create Commit over all proposals</span>
-        <span class="comment">// TODO #751</span>
-        <span class="kw">let</span> <span class="ident">params</span> <span class="op">=</span> <span class="ident">CreateCommitParams::builder</span>()
-            .<span class="ident">framing_parameters</span>(<span class="self">self</span>.<span class="ident">framing_parameters</span>())
-            .<span class="ident">credential_bundle</span>(<span class="kw-2">&amp;</span><span class="ident">credential_bundle</span>)
-            .<span class="ident">proposal_store</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">proposal_store</span>)
-            .<span class="ident">inline_proposals</span>(<span class="ident">inline_proposals</span>)
-            .<span class="ident">build</span>();
-        <span class="kw">let</span> <span class="ident">create_commit_result</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">group</span>.<span class="ident">create_commit</span>(<span class="ident">params</span>, <span class="ident">backend</span>)<span class="question-mark">?</span>;
+        <span class="comment">// Create Commit over all proposals
+        // TODO #751
+        </span><span class="kw">let </span>params = CreateCommitParams::builder()
+            .framing_parameters(<span class="self">self</span>.framing_parameters())
+            .credential_bundle(<span class="kw-2">&amp;</span>credential_bundle)
+            .proposal_store(<span class="kw-2">&amp;</span><span class="self">self</span>.proposal_store)
+            .inline_proposals(inline_proposals)
+            .build();
+        <span class="kw">let </span>create_commit_result = <span class="self">self</span>.group.create_commit(params, backend)<span class="question-mark">?</span>;
 
-        <span class="comment">// Convert MlsPlaintext messages to MLSMessage and encrypt them if required by</span>
-        <span class="comment">// the configuration</span>
-        <span class="kw">let</span> <span class="ident">mls_message</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">plaintext_to_mls_message</span>(<span class="ident">create_commit_result</span>.<span class="ident">commit</span>, <span class="ident">backend</span>)<span class="question-mark">?</span>;
+        <span class="comment">// Convert MlsPlaintext messages to MLSMessage and encrypt them if required by
+        // the configuration
+        </span><span class="kw">let </span>mls_message = <span class="self">self</span>.plaintext_to_mls_message(create_commit_result.commit, backend)<span class="question-mark">?</span>;
 
-        <span class="comment">// Set the current group state to [`MlsGroupState::PendingCommit`],</span>
-        <span class="comment">// storing the current [`StagedCommit`] from the commit results</span>
-        <span class="self">self</span>.<span class="ident">group_state</span> <span class="op">=</span> <span class="ident">MlsGroupState::PendingCommit</span>(<span class="ident">Box::new</span>(<span class="ident">PendingCommitState::Member</span>(
-            <span class="ident">create_commit_result</span>.<span class="ident">staged_commit</span>,
+        <span class="comment">// Set the current group state to [`MlsGroupState::PendingCommit`],
+        // storing the current [`StagedCommit`] from the commit results
+        </span><span class="self">self</span>.group_state = MlsGroupState::PendingCommit(Box::new(PendingCommitState::Member(
+            create_commit_result.staged_commit,
         )));
 
-        <span class="comment">// Since the state of the group might be changed, arm the state flag</span>
-        <span class="self">self</span>.<span class="ident">flag_state_change</span>();
+        <span class="comment">// Since the state of the group might be changed, arm the state flag
+        </span><span class="self">self</span>.flag_state_change();
 
-        <span class="prelude-val">Ok</span>((<span class="ident">mls_message</span>, <span class="ident">create_commit_result</span>.<span class="ident">welcome_option</span>))
+        <span class="prelude-val">Ok</span>((mls_message, create_commit_result.welcome_option))
     }
 
-    <span class="doccomment">/// Creates proposals to add members to the group.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// Returns an error if there is a pending commit.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">propose_add_member</span>(
-        <span class="kw-2">&amp;mut</span> <span class="self">self</span>,
-        <span class="ident">backend</span>: <span class="kw-2">&amp;</span><span class="kw">impl</span> <span class="ident">OpenMlsCryptoProvider</span>,
+    <span class="doccomment">/// Creates proposals to add members to the group.
+    ///
+    /// Returns an error if there is a pending commit.
+    </span><span class="kw">pub fn </span>propose_add_member(
+        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
+        backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider,
 
-        <span class="ident">key_package</span>: <span class="kw-2">&amp;</span><span class="ident">KeyPackage</span>,
-    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">MlsMessageOut</span>, <span class="ident">ProposeAddMemberError</span><span class="op">&gt;</span> {
-        <span class="self">self</span>.<span class="ident">is_operational</span>()<span class="question-mark">?</span>;
+        key_package: <span class="kw-2">&amp;</span>KeyPackage,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;MlsMessageOut, ProposeAddMemberError&gt; {
+        <span class="self">self</span>.is_operational()<span class="question-mark">?</span>;
 
-        <span class="kw">let</span> <span class="ident">credential</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">credential</span>()<span class="question-mark">?</span>;
-        <span class="kw">let</span> <span class="ident">credential_bundle</span>: <span class="ident">CredentialBundle</span> <span class="op">=</span> <span class="ident">backend</span>
-            .<span class="ident">key_store</span>()
-            .<span class="ident">read</span>(
-                <span class="kw-2">&amp;</span><span class="ident">credential</span>
-                    .<span class="ident">signature_key</span>()
-                    .<span class="ident">tls_serialize_detached</span>()
-                    .<span class="ident">map_err</span>(<span class="ident">LibraryError::missing_bound_check</span>)<span class="question-mark">?</span>,
+        <span class="kw">let </span>credential = <span class="self">self</span>.credential()<span class="question-mark">?</span>;
+        <span class="kw">let </span>credential_bundle: CredentialBundle = backend
+            .key_store()
+            .read(
+                <span class="kw-2">&amp;</span>credential
+                    .signature_key()
+                    .tls_serialize_detached()
+                    .map_err(LibraryError::missing_bound_check)<span class="question-mark">?</span>,
             )
-            .<span class="ident">ok_or</span>(<span class="ident">ProposeAddMemberError::NoMatchingCredentialBundle</span>)<span class="question-mark">?</span>;
+            .ok_or(ProposeAddMemberError::NoMatchingCredentialBundle)<span class="question-mark">?</span>;
 
-        <span class="kw">let</span> <span class="ident">add_proposal</span> <span class="op">=</span> <span class="self">self</span>
-            .<span class="ident">group</span>
-            .<span class="ident">create_add_proposal</span>(
-                <span class="self">self</span>.<span class="ident">framing_parameters</span>(),
-                <span class="kw-2">&amp;</span><span class="ident">credential_bundle</span>,
-                <span class="ident">key_package</span>.<span class="ident">clone</span>(),
-                <span class="ident">backend</span>,
+        <span class="kw">let </span>add_proposal = <span class="self">self
+            </span>.group
+            .create_add_proposal(
+                <span class="self">self</span>.framing_parameters(),
+                <span class="kw-2">&amp;</span>credential_bundle,
+                key_package.clone(),
+                backend,
             )
-            .<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> <span class="kw">match</span> <span class="ident">e</span> {
-                <span class="ident"><span class="kw">crate</span>::group::errors::CreateAddProposalError::LibraryError</span>(<span class="ident">e</span>) =&gt; <span class="ident">e</span>.<span class="ident">into</span>(),
-                <span class="ident"><span class="kw">crate</span>::group::errors::CreateAddProposalError::UnsupportedExtensions</span> =&gt; {
-                    <span class="ident">ProposeAddMemberError::UnsupportedExtensions</span>
+            .map_err(|e| <span class="kw">match </span>e {
+                <span class="kw">crate</span>::group::errors::CreateAddProposalError::LibraryError(e) =&gt; e.into(),
+                <span class="kw">crate</span>::group::errors::CreateAddProposalError::UnsupportedExtensions =&gt; {
+                    ProposeAddMemberError::UnsupportedExtensions
                 }
             })<span class="question-mark">?</span>;
 
-        <span class="self">self</span>.<span class="ident">proposal_store</span>.<span class="ident">add</span>(<span class="ident">QueuedProposal::from_mls_plaintext</span>(
-            <span class="self">self</span>.<span class="ident">ciphersuite</span>(),
-            <span class="ident">backend</span>,
-            <span class="ident">add_proposal</span>.<span class="ident">clone</span>(),
+        <span class="self">self</span>.proposal_store.add(QueuedProposal::from_mls_plaintext(
+            <span class="self">self</span>.ciphersuite(),
+            backend,
+            add_proposal.clone(),
         )<span class="question-mark">?</span>);
 
-        <span class="kw">let</span> <span class="ident">mls_message</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">plaintext_to_mls_message</span>(<span class="ident">add_proposal</span>, <span class="ident">backend</span>)<span class="question-mark">?</span>;
+        <span class="kw">let </span>mls_message = <span class="self">self</span>.plaintext_to_mls_message(add_proposal, backend)<span class="question-mark">?</span>;
 
-        <span class="comment">// Since the state of the group might be changed, arm the state flag</span>
-        <span class="self">self</span>.<span class="ident">flag_state_change</span>();
+        <span class="comment">// Since the state of the group might be changed, arm the state flag
+        </span><span class="self">self</span>.flag_state_change();
 
-        <span class="prelude-val">Ok</span>(<span class="ident">mls_message</span>)
+        <span class="prelude-val">Ok</span>(mls_message)
     }
 
-    <span class="doccomment">/// Creates proposals to remove members from the group.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// Returns an error if there is a pending commit.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">propose_remove_member</span>(
-        <span class="kw-2">&amp;mut</span> <span class="self">self</span>,
-        <span class="ident">backend</span>: <span class="kw-2">&amp;</span><span class="kw">impl</span> <span class="ident">OpenMlsCryptoProvider</span>,
-        <span class="ident">member</span>: <span class="kw-2">&amp;</span><span class="ident">KeyPackageRef</span>,
-    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">MlsMessageOut</span>, <span class="ident">ProposeRemoveMemberError</span><span class="op">&gt;</span> {
-        <span class="self">self</span>.<span class="ident">is_operational</span>()<span class="question-mark">?</span>;
+    <span class="doccomment">/// Creates proposals to remove members from the group.
+    ///
+    /// Returns an error if there is a pending commit.
+    </span><span class="kw">pub fn </span>propose_remove_member(
+        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
+        backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider,
+        member: <span class="kw-2">&amp;</span>KeyPackageRef,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;MlsMessageOut, ProposeRemoveMemberError&gt; {
+        <span class="self">self</span>.is_operational()<span class="question-mark">?</span>;
 
-        <span class="kw">let</span> <span class="ident">credential</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">credential</span>()<span class="question-mark">?</span>;
-        <span class="kw">let</span> <span class="ident">credential_bundle</span>: <span class="ident">CredentialBundle</span> <span class="op">=</span> <span class="ident">backend</span>
-            .<span class="ident">key_store</span>()
-            .<span class="ident">read</span>(
-                <span class="kw-2">&amp;</span><span class="ident">credential</span>
-                    .<span class="ident">signature_key</span>()
-                    .<span class="ident">tls_serialize_detached</span>()
-                    .<span class="ident">map_err</span>(<span class="ident">LibraryError::missing_bound_check</span>)<span class="question-mark">?</span>,
+        <span class="kw">let </span>credential = <span class="self">self</span>.credential()<span class="question-mark">?</span>;
+        <span class="kw">let </span>credential_bundle: CredentialBundle = backend
+            .key_store()
+            .read(
+                <span class="kw-2">&amp;</span>credential
+                    .signature_key()
+                    .tls_serialize_detached()
+                    .map_err(LibraryError::missing_bound_check)<span class="question-mark">?</span>,
             )
-            .<span class="ident">ok_or</span>(<span class="ident">ProposeRemoveMemberError::NoMatchingCredentialBundle</span>)<span class="question-mark">?</span>;
+            .ok_or(ProposeRemoveMemberError::NoMatchingCredentialBundle)<span class="question-mark">?</span>;
 
-        <span class="kw">let</span> <span class="ident">remove_proposal</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">group</span>.<span class="ident">create_remove_proposal</span>(
-            <span class="self">self</span>.<span class="ident">framing_parameters</span>(),
-            <span class="kw-2">&amp;</span><span class="ident">credential_bundle</span>,
-            <span class="ident">member</span>,
-            <span class="ident">backend</span>,
+        <span class="kw">let </span>remove_proposal = <span class="self">self</span>.group.create_remove_proposal(
+            <span class="self">self</span>.framing_parameters(),
+            <span class="kw-2">&amp;</span>credential_bundle,
+            member,
+            backend,
         )<span class="question-mark">?</span>;
 
-        <span class="self">self</span>.<span class="ident">proposal_store</span>.<span class="ident">add</span>(<span class="ident">QueuedProposal::from_mls_plaintext</span>(
-            <span class="self">self</span>.<span class="ident">ciphersuite</span>(),
-            <span class="ident">backend</span>,
-            <span class="ident">remove_proposal</span>.<span class="ident">clone</span>(),
+        <span class="self">self</span>.proposal_store.add(QueuedProposal::from_mls_plaintext(
+            <span class="self">self</span>.ciphersuite(),
+            backend,
+            remove_proposal.clone(),
         )<span class="question-mark">?</span>);
 
-        <span class="kw">let</span> <span class="ident">mls_message</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">plaintext_to_mls_message</span>(<span class="ident">remove_proposal</span>, <span class="ident">backend</span>)<span class="question-mark">?</span>;
+        <span class="kw">let </span>mls_message = <span class="self">self</span>.plaintext_to_mls_message(remove_proposal, backend)<span class="question-mark">?</span>;
 
-        <span class="comment">// Since the state of the group might be changed, arm the state flag</span>
-        <span class="self">self</span>.<span class="ident">flag_state_change</span>();
+        <span class="comment">// Since the state of the group might be changed, arm the state flag
+        </span><span class="self">self</span>.flag_state_change();
 
-        <span class="prelude-val">Ok</span>(<span class="ident">mls_message</span>)
+        <span class="prelude-val">Ok</span>(mls_message)
     }
 
-    <span class="doccomment">/// Leave the group.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// Creates a Remove Proposal that needs to be covered by a Commit from a different member.</span>
-    <span class="doccomment">/// The Remove Proposal is returned as a [`MlsMessageOut`].</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// Returns an error if there is a pending commit.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">leave_group</span>(
-        <span class="kw-2">&amp;mut</span> <span class="self">self</span>,
-        <span class="ident">backend</span>: <span class="kw-2">&amp;</span><span class="kw">impl</span> <span class="ident">OpenMlsCryptoProvider</span>,
-    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">MlsMessageOut</span>, <span class="ident">LeaveGroupError</span><span class="op">&gt;</span> {
-        <span class="self">self</span>.<span class="ident">is_operational</span>()<span class="question-mark">?</span>;
+    <span class="doccomment">/// Leave the group.
+    ///
+    /// Creates a Remove Proposal that needs to be covered by a Commit from a different member.
+    /// The Remove Proposal is returned as a [`MlsMessageOut`].
+    ///
+    /// Returns an error if there is a pending commit.
+    </span><span class="kw">pub fn </span>leave_group(
+        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
+        backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;MlsMessageOut, LeaveGroupError&gt; {
+        <span class="self">self</span>.is_operational()<span class="question-mark">?</span>;
 
-        <span class="kw">let</span> <span class="ident">credential</span> <span class="op">=</span> <span class="self">self</span>
-            .<span class="ident">credential</span>()
-            <span class="comment">// We checked we are in the right state above</span>
-            .<span class="ident">map_err</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="ident">LibraryError::custom</span>(<span class="string">&quot;Wrong group state&quot;</span>))<span class="question-mark">?</span>;
-        <span class="kw">let</span> <span class="ident">credential_bundle</span>: <span class="ident">CredentialBundle</span> <span class="op">=</span> <span class="ident">backend</span>
-            .<span class="ident">key_store</span>()
-            .<span class="ident">read</span>(
-                <span class="kw-2">&amp;</span><span class="ident">credential</span>
-                    .<span class="ident">signature_key</span>()
-                    .<span class="ident">tls_serialize_detached</span>()
-                    .<span class="ident">map_err</span>(<span class="ident">LibraryError::missing_bound_check</span>)<span class="question-mark">?</span>,
+        <span class="kw">let </span>credential = <span class="self">self
+            </span>.credential()
+            <span class="comment">// We checked we are in the right state above
+            </span>.map_err(|<span class="kw">_</span>| LibraryError::custom(<span class="string">&quot;Wrong group state&quot;</span>))<span class="question-mark">?</span>;
+        <span class="kw">let </span>credential_bundle: CredentialBundle = backend
+            .key_store()
+            .read(
+                <span class="kw-2">&amp;</span>credential
+                    .signature_key()
+                    .tls_serialize_detached()
+                    .map_err(LibraryError::missing_bound_check)<span class="question-mark">?</span>,
             )
-            .<span class="ident">ok_or</span>(<span class="ident">LeaveGroupError::NoMatchingCredentialBundle</span>)<span class="question-mark">?</span>;
+            .ok_or(LeaveGroupError::NoMatchingCredentialBundle)<span class="question-mark">?</span>;
 
-        <span class="kw">let</span> <span class="ident">removed</span> <span class="op">=</span> <span class="self">self</span>
-            .<span class="ident">group</span>
-            .<span class="ident">key_package_ref</span>()
-            .<span class="ident">ok_or_else</span>(<span class="op">|</span><span class="op">|</span> <span class="ident">LibraryError::custom</span>(<span class="string">&quot;No key package reference for own key package.&quot;</span>))<span class="question-mark">?</span>;
-        <span class="kw">let</span> <span class="ident">remove_proposal</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">group</span>.<span class="ident">create_remove_proposal</span>(
-            <span class="self">self</span>.<span class="ident">framing_parameters</span>(),
-            <span class="kw-2">&amp;</span><span class="ident">credential_bundle</span>,
-            <span class="ident">removed</span>,
-            <span class="ident">backend</span>,
+        <span class="kw">let </span>removed = <span class="self">self
+            </span>.group
+            .key_package_ref()
+            .ok_or_else(|| LibraryError::custom(<span class="string">&quot;No key package reference for own key package.&quot;</span>))<span class="question-mark">?</span>;
+        <span class="kw">let </span>remove_proposal = <span class="self">self</span>.group.create_remove_proposal(
+            <span class="self">self</span>.framing_parameters(),
+            <span class="kw-2">&amp;</span>credential_bundle,
+            removed,
+            backend,
         )<span class="question-mark">?</span>;
 
-        <span class="self">self</span>.<span class="ident">proposal_store</span>.<span class="ident">add</span>(<span class="ident">QueuedProposal::from_mls_plaintext</span>(
-            <span class="self">self</span>.<span class="ident">ciphersuite</span>(),
-            <span class="ident">backend</span>,
-            <span class="ident">remove_proposal</span>.<span class="ident">clone</span>(),
+        <span class="self">self</span>.proposal_store.add(QueuedProposal::from_mls_plaintext(
+            <span class="self">self</span>.ciphersuite(),
+            backend,
+            remove_proposal.clone(),
         )<span class="question-mark">?</span>);
 
-        <span class="prelude-val">Ok</span>(<span class="self">self</span>.<span class="ident">plaintext_to_mls_message</span>(<span class="ident">remove_proposal</span>, <span class="ident">backend</span>)<span class="question-mark">?</span>)
+        <span class="prelude-val">Ok</span>(<span class="self">self</span>.plaintext_to_mls_message(remove_proposal, backend)<span class="question-mark">?</span>)
     }
 
-    <span class="doccomment">/// Returns a list of [`KeyPackage`]s of the current group members.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">members</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">Vec</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">KeyPackage</span><span class="op">&gt;</span> {
-        <span class="kw">match</span> <span class="self">self</span>.<span class="ident">group</span>.<span class="ident">treesync</span>().<span class="ident">full_leaves</span>() {
-            <span class="prelude-val">Ok</span>(<span class="ident">leaves</span>) =&gt; <span class="ident">leaves</span>.<span class="ident">iter</span>().<span class="ident">map</span>(<span class="op">|</span>(<span class="kw">_</span>, <span class="kw-2">&amp;</span><span class="ident">kp</span>)<span class="op">|</span> <span class="ident">kp</span>).<span class="ident">collect</span>(),
-            <span class="comment">// This should not happen, but this way we avoid returning a library error</span>
-            <span class="prelude-val">Err</span>(<span class="ident">e</span>) =&gt; {
-                <span class="macro">log::debug!</span>(<span class="string">&quot;treesync::full_leaves() returned an error: {:?}&quot;</span>, <span class="ident">e</span>);
-                <span class="ident">Vec::new</span>()
+    <span class="doccomment">/// Returns a list of [`KeyPackage`]s of the current group members.
+    </span><span class="kw">pub fn </span>members(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; Vec&lt;<span class="kw-2">&amp;</span>KeyPackage&gt; {
+        <span class="kw">match </span><span class="self">self</span>.group.treesync().full_leaves() {
+            <span class="prelude-val">Ok</span>(leaves) =&gt; leaves.iter().map(|(<span class="kw">_</span>, <span class="kw-2">&amp;</span>kp)| kp).collect(),
+            <span class="comment">// This should not happen, but this way we avoid returning a library error
+            </span><span class="prelude-val">Err</span>(e) =&gt; {
+                <span class="macro">log::debug!</span>(<span class="string">&quot;treesync::full_leaves() returned an error: {:?}&quot;</span>, e);
+                Vec::new()
             }
         }
     }
 
-    <span class="doccomment">/// Returns the [`KeyPackage`] of a member corresponding to the given</span>
-    <span class="doccomment">/// [`KeyPackageRef`]. Returns `None` if no matching [`KeyPackage`] can be</span>
-    <span class="doccomment">/// found in this group.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">member</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">key_package_ref</span>: <span class="kw-2">&amp;</span><span class="ident">KeyPackageRef</span>) -&gt; <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">KeyPackage</span><span class="op">&gt;</span> {
-        <span class="self">self</span>.<span class="ident">group</span>
-            .<span class="ident">treesync</span>()
-            <span class="comment">// Besides from returning an error if the member can&#39;t be found,</span>
-            <span class="comment">// this will only return an error in case OpenMLS is compiled with a</span>
-            <span class="comment">// sub-32 bit architecture. As a result, it should be safe to just</span>
-            <span class="comment">// return `None` instead of propagating an error.</span>
-            .<span class="ident">leaf_from_id</span>(<span class="ident">key_package_ref</span>)
-            .<span class="ident">map</span>(<span class="op">|</span><span class="ident">leaf</span><span class="op">|</span> <span class="ident">leaf</span>.<span class="ident">key_package</span>())
+    <span class="doccomment">/// Returns the [`KeyPackage`] of a member corresponding to the given
+    /// [`KeyPackageRef`]. Returns `None` if no matching [`KeyPackage`] can be
+    /// found in this group.
+    </span><span class="kw">pub fn </span>member(<span class="kw-2">&amp;</span><span class="self">self</span>, key_package_ref: <span class="kw-2">&amp;</span>KeyPackageRef) -&gt; <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>KeyPackage&gt; {
+        <span class="self">self</span>.group
+            .treesync()
+            <span class="comment">// Besides from returning an error if the member can&#39;t be found,
+            // this will only return an error in case OpenMLS is compiled with a
+            // sub-32 bit architecture. As a result, it should be safe to just
+            // return `None` instead of propagating an error.
+            </span>.leaf_from_id(key_package_ref)
+            .map(|leaf| leaf.key_package())
     }
 
-    <span class="doccomment">/// Returns the current list of members, indexed with the leaf index.</span>
-    <span class="doccomment">/// This should go away in future when all tests are rewritten to use key</span>
-    <span class="doccomment">/// package references instead of leaf indices.</span>
-    <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">any</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;test-utils&quot;</span>, <span class="ident">test</span>))]</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">indexed_members</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">BTreeMap</span><span class="op">&lt;</span><span class="ident">u32</span>, <span class="kw-2">&amp;</span><span class="ident">KeyPackage</span><span class="op">&gt;</span>, <span class="ident">LibraryError</span><span class="op">&gt;</span> {
-        <span class="self">self</span>.<span class="ident">group</span>
-            .<span class="ident">treesync</span>()
-            .<span class="ident">full_leaves</span>()
-            .<span class="ident">map_err</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="ident">LibraryError::custom</span>(<span class="string">&quot;Unexpected error in TreeSync&quot;</span>))
+    <span class="doccomment">/// Returns the current list of members, indexed with the leaf index.
+    /// This should go away in future when all tests are rewritten to use key
+    /// package references instead of leaf indices.
+    </span><span class="attribute">#[cfg(any(feature = <span class="string">&quot;test-utils&quot;</span>, test))]
+    </span><span class="kw">pub fn </span>indexed_members(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;BTreeMap&lt;u32, <span class="kw-2">&amp;</span>KeyPackage&gt;, LibraryError&gt; {
+        <span class="self">self</span>.group
+            .treesync()
+            .full_leaves()
+            .map_err(|<span class="kw">_</span>| LibraryError::custom(<span class="string">&quot;Unexpected error in TreeSync&quot;</span>))
     }
 }
 
-<span class="doccomment">/// Helper `enum` that classifies the kind of remove operation. This can be used to</span>
-<span class="doccomment">/// better interpret the semantic value of a remove proposal that is covered in a</span>
-<span class="doccomment">/// Commit message.</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>)]</span>
-<span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">RemoveOperation</span> {
-    <span class="doccomment">/// We issued a remove proposal for ourselves in the previous epoch and</span>
-    <span class="doccomment">/// the proposal has now been committed.</span>
-    <span class="ident">WeLeft</span>,
-    <span class="doccomment">/// Someone else (indicated by the [`Sender`]) removed us from the group.</span>
-    <span class="ident">WeWereRemovedBy</span>(<span class="ident">Sender</span>),
-    <span class="doccomment">/// Another member (indicated by the [`HashReference`]) requested to leave</span>
-    <span class="doccomment">/// the group by issuing a remove proposal in the previous epoch and the</span>
-    <span class="doccomment">/// proposal has now been committed.</span>
-    <span class="ident">TheyLeft</span>(<span class="ident">HashReference</span>),
-    <span class="doccomment">/// Another member (indicated by the [`HashReference`]) was removed by the [`Sender`].</span>
-    <span class="ident">TheyWereRemovedBy</span>((<span class="ident">HashReference</span>, <span class="ident">Sender</span>)),
-    <span class="doccomment">/// We removed another member (indicated by the [`HashReference`]).</span>
-    <span class="ident">WeRemovedThem</span>(<span class="ident">HashReference</span>),
+<span class="doccomment">/// Helper `enum` that classifies the kind of remove operation. This can be used to
+/// better interpret the semantic value of a remove proposal that is covered in a
+/// Commit message.
+</span><span class="attribute">#[derive(Debug)]
+</span><span class="kw">pub enum </span>RemoveOperation {
+    <span class="doccomment">/// We issued a remove proposal for ourselves in the previous epoch and
+    /// the proposal has now been committed.
+    </span>WeLeft,
+    <span class="doccomment">/// Someone else (indicated by the [`Sender`]) removed us from the group.
+    </span>WeWereRemovedBy(Sender),
+    <span class="doccomment">/// Another member (indicated by the [`HashReference`]) requested to leave
+    /// the group by issuing a remove proposal in the previous epoch and the
+    /// proposal has now been committed.
+    </span>TheyLeft(HashReference),
+    <span class="doccomment">/// Another member (indicated by the [`HashReference`]) was removed by the [`Sender`].
+    </span>TheyWereRemovedBy((HashReference, Sender)),
+    <span class="doccomment">/// We removed another member (indicated by the [`HashReference`]).
+    </span>WeRemovedThem(HashReference),
 }
 
-<span class="kw">impl</span> <span class="ident">RemoveOperation</span> {
-    <span class="doccomment">/// Constructs a new [`RemoveOperation`] from a [`QueuedRemoveProposal`] and the</span>
-    <span class="doccomment">/// corresponding [`MlsGroup`].</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new</span>(
-        <span class="ident">queued_remove_proposal</span>: <span class="ident">QueuedRemoveProposal</span>,
-        <span class="ident">group</span>: <span class="kw-2">&amp;</span><span class="ident">MlsGroup</span>,
-    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident">LibraryError</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="ident">own_hash_ref</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">group</span>.<span class="ident">key_package_ref</span>() {
-            <span class="prelude-val">Some</span>(<span class="ident">key_package_ref</span>) =&gt; <span class="ident">key_package_ref</span>,
-            <span class="prelude-val">None</span> =&gt; <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">LibraryError::custom</span>(<span class="string">&quot;Own KeyPackage was empty.&quot;</span>)),
+<span class="kw">impl </span>RemoveOperation {
+    <span class="doccomment">/// Constructs a new [`RemoveOperation`] from a [`QueuedRemoveProposal`] and the
+    /// corresponding [`MlsGroup`].
+    </span><span class="kw">pub fn </span>new(
+        queued_remove_proposal: QueuedRemoveProposal,
+        group: <span class="kw-2">&amp;</span>MlsGroup,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, LibraryError&gt; {
+        <span class="kw">let </span>own_hash_ref = <span class="kw">match </span>group.key_package_ref() {
+            <span class="prelude-val">Some</span>(key_package_ref) =&gt; key_package_ref,
+            <span class="prelude-val">None </span>=&gt; <span class="kw">return </span><span class="prelude-val">Err</span>(LibraryError::custom(<span class="string">&quot;Own KeyPackage was empty.&quot;</span>)),
         };
-        <span class="kw">let</span> <span class="ident">sender</span> <span class="op">=</span> <span class="ident">queued_remove_proposal</span>.<span class="ident">sender</span>();
-        <span class="kw">let</span> <span class="ident">removed</span> <span class="op">=</span> <span class="ident">queued_remove_proposal</span>.<span class="ident">remove_proposal</span>().<span class="ident">removed</span>();
+        <span class="kw">let </span>sender = queued_remove_proposal.sender();
+        <span class="kw">let </span>removed = queued_remove_proposal.remove_proposal().removed();
 
-        <span class="comment">// We start with the cases where the sender is a group member</span>
-        <span class="kw">if</span> <span class="kw">let</span> <span class="ident">Sender::Member</span>(<span class="ident">hash_ref</span>) <span class="op">=</span> <span class="ident">sender</span> {
-            <span class="comment">// We authored the remove proposal</span>
-            <span class="kw">if</span> <span class="ident">hash_ref</span> <span class="op">==</span> <span class="ident">own_hash_ref</span> {
-                <span class="kw">if</span> <span class="ident">removed</span> <span class="op">==</span> <span class="ident">own_hash_ref</span> {
-                    <span class="comment">// We left</span>
-                    <span class="kw">return</span> <span class="prelude-val">Ok</span>(<span class="ident"><span class="self">Self</span>::WeLeft</span>);
-                } <span class="kw">else</span> {
-                    <span class="comment">// We removed another member</span>
-                    <span class="kw">return</span> <span class="prelude-val">Ok</span>(<span class="ident"><span class="self">Self</span>::WeRemovedThem</span>(<span class="ident">removed</span>.<span class="ident">clone</span>()));
+        <span class="comment">// We start with the cases where the sender is a group member
+        </span><span class="kw">if let </span>Sender::Member(hash_ref) = sender {
+            <span class="comment">// We authored the remove proposal
+            </span><span class="kw">if </span>hash_ref == own_hash_ref {
+                <span class="kw">if </span>removed == own_hash_ref {
+                    <span class="comment">// We left
+                    </span><span class="kw">return </span><span class="prelude-val">Ok</span>(<span class="self">Self</span>::WeLeft);
+                } <span class="kw">else </span>{
+                    <span class="comment">// We removed another member
+                    </span><span class="kw">return </span><span class="prelude-val">Ok</span>(<span class="self">Self</span>::WeRemovedThem(removed.clone()));
                 }
             }
 
-            <span class="comment">// Another member left</span>
-            <span class="kw">if</span> <span class="ident">removed</span> <span class="op">==</span> <span class="ident">hash_ref</span> {
-                <span class="kw">return</span> <span class="prelude-val">Ok</span>(<span class="ident"><span class="self">Self</span>::TheyLeft</span>(<span class="ident">removed</span>.<span class="ident">clone</span>()));
+            <span class="comment">// Another member left
+            </span><span class="kw">if </span>removed == hash_ref {
+                <span class="kw">return </span><span class="prelude-val">Ok</span>(<span class="self">Self</span>::TheyLeft(removed.clone()));
             }
         }
 
-        <span class="comment">// The sender is not necessarily a group member. This covers all sender</span>
-        <span class="comment">// types (members, pre-configured senders and new members).</span>
+        <span class="comment">// The sender is not necessarily a group member. This covers all sender
+        // types (members, pre-configured senders and new members).
 
-        <span class="kw">if</span> <span class="ident">removed</span> <span class="op">==</span> <span class="ident">own_hash_ref</span> {
-            <span class="comment">// We were removed</span>
-            <span class="prelude-val">Ok</span>(<span class="ident"><span class="self">Self</span>::WeWereRemovedBy</span>(<span class="ident">sender</span>.<span class="ident">clone</span>()))
-        } <span class="kw">else</span> {
-            <span class="comment">// Another member was removed</span>
-            <span class="prelude-val">Ok</span>(<span class="ident"><span class="self">Self</span>::TheyWereRemovedBy</span>((<span class="ident">removed</span>.<span class="ident">clone</span>(), <span class="ident">sender</span>.<span class="ident">clone</span>())))
+        </span><span class="kw">if </span>removed == own_hash_ref {
+            <span class="comment">// We were removed
+            </span><span class="prelude-val">Ok</span>(<span class="self">Self</span>::WeWereRemovedBy(sender.clone()))
+        } <span class="kw">else </span>{
+            <span class="comment">// Another member was removed
+            </span><span class="prelude-val">Ok</span>(<span class="self">Self</span>::TheyWereRemovedBy((removed.clone(), sender.clone())))
         }
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../../../" data-current-crate="openmls" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.64.0 (a55dd71d5 2022-09-19)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../../../" data-current-crate="openmls" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0 (897e37553 2022-11-02)" ></div></body></html>

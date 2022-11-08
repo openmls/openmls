@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `src/binary_tree/array_representation/diff.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>diff.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" type="text/css" href="../../../../normalize.css"><link rel="stylesheet" type="text/css" href="../../../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" type="text/css" href="../../../../ayu.css" disabled><link rel="stylesheet" type="text/css" href="../../../../dark.css" disabled><link rel="stylesheet" type="text/css" href="../../../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../../../storage.js"></script><script defer src="../../../../source-script.js"></script><script defer src="../../../../source-files.js"></script><script defer src="../../../../main.js"></script><noscript><link rel="stylesheet" href="../../../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../../../openmls/index.html"><div class="logo-container"><img class="rust-logo" src="../../../../rust-logo.svg" alt="logo"></div></a><h2 class="location"></h2></nav><nav class="sidebar"><a class="sidebar-logo" href="../../../../openmls/index.html"><div class="logo-container"><img class="rust-logo" src="../../../../rust-logo.svg" alt="logo"></div></a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../../../openmls/index.html"><img class="rust-logo" src="../../../../rust-logo.svg" alt="logo"></a><nav class="sub"><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><button type="button">?</button></div><div id="settings-menu" tabindex="-1"><a href="../../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../../wheel.svg"></a></div></div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">1</span>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `src/binary_tree/array_representation/diff.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>diff.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" href="../../../../normalize.css"><link rel="stylesheet" href="../../../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" href="../../../../ayu.css" disabled><link rel="stylesheet" href="../../../../dark.css" disabled><link rel="stylesheet" href="../../../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../../../storage.js"></script><script defer src="../../../../source-script.js"></script><script defer src="../../../../source-files.js"></script><script defer src="../../../../main.js"></script><noscript><link rel="stylesheet" href="../../../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../../../openmls/index.html"><div class="logo-container"><img class="rust-logo" src="../../../../rust-logo.svg" alt="logo"></div></a><h2 class="location"></h2></nav><nav class="sidebar"><a class="sidebar-logo" href="../../../../openmls/index.html"><div class="logo-container"><img class="rust-logo" src="../../../../rust-logo.svg" alt="logo"></div></a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../../../openmls/index.html"><img class="rust-logo" src="../../../../rust-logo.svg" alt="logo"></a><nav class="sub"><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><button type="button">?</button></div><div id="settings-menu" tabindex="-1"><a href="../../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../../wheel.svg"></a></div></div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">1</span>
 <span id="2">2</span>
 <span id="3">3</span>
 <span id="4">4</span>
@@ -654,661 +654,661 @@
 <span id="654">654</span>
 <span id="655">655</span>
 <span id="656">656</span>
-</pre><pre class="rust"><code><span class="doccomment">//! An implementation of a diff functionality for the [`ABinaryTree`] struct.</span>
-<span class="doccomment">//!</span>
-<span class="doccomment">//! # About</span>
-<span class="doccomment">//!</span>
-<span class="doccomment">//! This module provides the [`AbDiff`] and [`StagedAbDiff`] structs that allow</span>
-<span class="doccomment">//! performing changes to an [`ABinaryTree`] instance without immediately applying</span>
-<span class="doccomment">//! the them. Instead, the changes can be applied to the diff and the results</span>
-<span class="doccomment">//! examined before merging the given diff back into the tree (or not).</span>
-<span class="doccomment">//!</span>
-<span class="doccomment">//! # Don&#39;t Panic!</span>
-<span class="doccomment">//!</span>
-<span class="doccomment">//! Functions in this module should never panic. However, if there is a bug in</span>
-<span class="doccomment">//! the implementation, a function will return an unrecoverable</span>
-<span class="doccomment">//! [`LibraryError`](ABinaryTreeDiffError::LibraryError). This means that some</span>
-<span class="doccomment">//! functions that are not expected to fail and throw an error, will still</span>
-<span class="doccomment">//! return a [`Result`] since they may throw a</span>
-<span class="doccomment">//! [`LibraryError`](ABinaryTreeDiffError::LibraryError).</span>
+</pre><pre class="rust"><code><span class="doccomment">//! An implementation of a diff functionality for the [`ABinaryTree`] struct.
+//!
+//! # About
+//!
+//! This module provides the [`AbDiff`] and [`StagedAbDiff`] structs that allow
+//! performing changes to an [`ABinaryTree`] instance without immediately applying
+//! the them. Instead, the changes can be applied to the diff and the results
+//! examined before merging the given diff back into the tree (or not).
+//!
+//! # Don&#39;t Panic!
+//!
+//! Functions in this module should never panic. However, if there is a bug in
+//! the implementation, a function will return an unrecoverable
+//! [`LibraryError`](ABinaryTreeDiffError::LibraryError). This means that some
+//! functions that are not expected to fail and throw an error, will still
+//! return a [`Result`] since they may throw a
+//! [`LibraryError`](ABinaryTreeDiffError::LibraryError).
 
-<span class="kw">use</span> <span class="ident">serde</span>::{<span class="ident">Deserialize</span>, <span class="ident">Serialize</span>};
-<span class="kw">use</span> <span class="ident">std</span>::{<span class="ident">collections::BTreeMap</span>, <span class="ident">convert::TryFrom</span>, <span class="ident">fmt::Debug</span>};
-<span class="kw">use</span> <span class="ident">thiserror::Error</span>;
+</span><span class="kw">use </span>serde::{Deserialize, Serialize};
+<span class="kw">use </span>std::{collections::BTreeMap, convert::TryFrom, fmt::Debug};
+<span class="kw">use </span>thiserror::Error;
 
-<span class="kw">use</span> <span class="kw">crate</span>::{
-    <span class="ident">binary_tree</span>::{<span class="ident">array_representation::treemath::sibling</span>, <span class="ident">LeafIndex</span>, <span class="ident">TreeSize</span>},
-    <span class="ident">error::LibraryError</span>,
+<span class="kw">use crate</span>::{
+    binary_tree::{array_representation::treemath::sibling, LeafIndex, TreeSize},
+    error::LibraryError,
 };
 
-<span class="kw">use</span> <span class="kw">super</span>::{
-    <span class="ident">tree</span>::{<span class="ident">to_node_index</span>, <span class="ident">ABinaryTree</span>, <span class="ident">ABinaryTreeError</span>, <span class="ident">NodeIndex</span>},
-    <span class="ident">treemath</span>::{<span class="ident">direct_path</span>, <span class="ident">left</span>, <span class="ident">lowest_common_ancestor</span>, <span class="ident">parent</span>, <span class="ident">right</span>, <span class="ident">root</span>, <span class="ident">TreeMathError</span>},
+<span class="kw">use super</span>::{
+    tree::{to_node_index, ABinaryTree, ABinaryTreeError, NodeIndex},
+    treemath::{direct_path, left, lowest_common_ancestor, parent, right, root, TreeMathError},
 };
 
-<span class="comment">// Crate types</span>
+<span class="comment">// Crate types
 
-<span class="doccomment">/// The [`StagedAbDiff`] can be created from an [`AbDiff`] instance. It&#39;s sole</span>
-<span class="doccomment">/// purpose is to be subsequently merged into an existing [`ABinaryTree`]</span>
-<span class="doccomment">/// instance. The difference between [`StagedAbDiff`] and an [`AbDiff`] is that a</span>
-<span class="doccomment">/// [`StagedAbDiff`] is immutable and does not contain a reference to the original</span>
-<span class="doccomment">/// tree. Since it only contains the actual diff without reference to the</span>
-<span class="doccomment">/// original content, it can&#39;t provide the same information as the [`AbDiff`] it</span>
-<span class="doccomment">/// was created from. However, the lack of the internal reference means that its</span>
-<span class="doccomment">/// lifetime is not tied to that of the original tree.</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>)]</span>
-<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct</span> <span class="ident">StagedAbDiff</span><span class="op">&lt;</span><span class="ident">T</span>: <span class="ident">Clone</span> <span class="op">+</span> <span class="ident">Debug</span><span class="op">&gt;</span> {
-    <span class="ident">diff</span>: <span class="ident">BTreeMap</span><span class="op">&lt;</span><span class="ident">NodeIndex</span>, <span class="ident">T</span><span class="op">&gt;</span>,
-    <span class="ident">size</span>: <span class="ident">TreeSize</span>,
+</span><span class="doccomment">/// The [`StagedAbDiff`] can be created from an [`AbDiff`] instance. It&#39;s sole
+/// purpose is to be subsequently merged into an existing [`ABinaryTree`]
+/// instance. The difference between [`StagedAbDiff`] and an [`AbDiff`] is that a
+/// [`StagedAbDiff`] is immutable and does not contain a reference to the original
+/// tree. Since it only contains the actual diff without reference to the
+/// original content, it can&#39;t provide the same information as the [`AbDiff`] it
+/// was created from. However, the lack of the internal reference means that its
+/// lifetime is not tied to that of the original tree.
+</span><span class="attribute">#[derive(Debug, Serialize, Deserialize)]
+</span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct </span>StagedAbDiff&lt;T: Clone + Debug&gt; {
+    diff: BTreeMap&lt;NodeIndex, T&gt;,
+    size: TreeSize,
 }
 
-<span class="kw">impl</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="ident">T</span>: <span class="ident">Clone</span> <span class="op">+</span> <span class="ident">Debug</span><span class="op">&gt;</span> <span class="ident">From</span><span class="op">&lt;</span><span class="ident">AbDiff</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="ident">T</span><span class="op">&gt;</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">StagedAbDiff</span><span class="op">&lt;</span><span class="ident">T</span><span class="op">&gt;</span> {
-    <span class="kw">fn</span> <span class="ident">from</span>(<span class="ident">diff</span>: <span class="ident">AbDiff</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="ident">T</span><span class="op">&gt;</span>) -&gt; <span class="self">Self</span> {
-        <span class="ident">StagedAbDiff</span> {
-            <span class="ident">diff</span>: <span class="ident">diff</span>.<span class="ident">diff</span>,
-            <span class="ident">size</span>: <span class="ident">diff</span>.<span class="ident">size</span>,
+<span class="kw">impl</span>&lt;<span class="lifetime">&#39;a</span>, T: Clone + Debug&gt; From&lt;AbDiff&lt;<span class="lifetime">&#39;a</span>, T&gt;&gt; <span class="kw">for </span>StagedAbDiff&lt;T&gt; {
+    <span class="kw">fn </span>from(diff: AbDiff&lt;<span class="lifetime">&#39;a</span>, T&gt;) -&gt; <span class="self">Self </span>{
+        StagedAbDiff {
+            diff: diff.diff,
+            size: diff.size,
         }
     }
 }
 
-<span class="kw">impl</span><span class="op">&lt;</span><span class="ident">T</span>: <span class="ident">Clone</span> <span class="op">+</span> <span class="ident">Debug</span><span class="op">&gt;</span> <span class="ident">StagedAbDiff</span><span class="op">&lt;</span><span class="ident">T</span><span class="op">&gt;</span> {
-    <span class="doccomment">/// Return the actual diff inside of this StagedAbDiff</span>
-    <span class="kw">pub</span>(<span class="kw">super</span>) <span class="kw">fn</span> <span class="ident">diff</span>(<span class="self">self</span>) -&gt; <span class="ident">BTreeMap</span><span class="op">&lt;</span><span class="ident">NodeIndex</span>, <span class="ident">T</span><span class="op">&gt;</span> {
-        <span class="self">self</span>.<span class="ident">diff</span>
+<span class="kw">impl</span>&lt;T: Clone + Debug&gt; StagedAbDiff&lt;T&gt; {
+    <span class="doccomment">/// Return the actual diff inside of this StagedAbDiff
+    </span><span class="kw">pub</span>(<span class="kw">super</span>) <span class="kw">fn </span>diff(<span class="self">self</span>) -&gt; BTreeMap&lt;NodeIndex, T&gt; {
+        <span class="self">self</span>.diff
     }
 
-    <span class="doccomment">/// Return the projected size of the tree after a merge with the diff.</span>
-    <span class="kw">pub</span>(<span class="kw">super</span>) <span class="kw">fn</span> <span class="ident">tree_size</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">TreeSize</span> {
-        <span class="self">self</span>.<span class="ident">size</span>
-    }
-}
-
-<span class="doccomment">/// A [`NodeReference`] represents the position of a node in an [`AbDiff`]. It</span>
-<span class="doccomment">/// can be used to access the node at that position or to navigate to other,</span>
-<span class="doccomment">/// neighbouring nodes via the [`AbDiff::sibling()`], [`AbDiff::left_child()`]</span>
-<span class="doccomment">/// and [`AbDiff::right_child()`] functions of the [`AbDiff`].</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Clone</span>, <span class="ident">Copy</span>, <span class="ident">PartialEq</span>)]</span>
-<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct</span> <span class="ident">NodeId</span> {
-    <span class="ident">node_index</span>: <span class="ident">NodeIndex</span>,
-}
-
-<span class="kw">impl</span> <span class="ident">NodeId</span> {
-    <span class="doccomment">/// Creates a new [`NodeReference`] to a node at the given index.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// Returns an error if the given index is outside the bounds of the diff.</span>
-    <span class="kw">pub</span>(<span class="kw">super</span>) <span class="kw">fn</span> <span class="ident">try_from_node_index</span><span class="op">&lt;</span><span class="ident">T</span>: <span class="ident">Clone</span> <span class="op">+</span> <span class="ident">Debug</span><span class="op">&gt;</span>(
-        <span class="ident">diff</span>: <span class="kw-2">&amp;</span><span class="ident">AbDiff</span><span class="op">&lt;</span><span class="ident">T</span><span class="op">&gt;</span>,
-        <span class="ident">node_index</span>: <span class="ident">NodeIndex</span>,
-    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident">OutOfBoundsError</span><span class="op">&gt;</span> {
-        <span class="ident">diff</span>.<span class="ident">out_of_bounds</span>(<span class="ident">node_index</span>)<span class="question-mark">?</span>;
-        <span class="prelude-val">Ok</span>(<span class="ident">NodeId</span> { <span class="ident">node_index</span> })
+    <span class="doccomment">/// Return the projected size of the tree after a merge with the diff.
+    </span><span class="kw">pub</span>(<span class="kw">super</span>) <span class="kw">fn </span>tree_size(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; TreeSize {
+        <span class="self">self</span>.size
     }
 }
 
-<span class="doccomment">/// The [`AbDiff`] represents a set of differences (i.e. a &quot;Diff&quot;) for an</span>
-<span class="doccomment">/// [`ABinaryTree`]. It can be created from an [`ABinaryTree`] instance and then</span>
-<span class="doccomment">/// accessed mutably or immutably. Any changes are saved by the [`AbDiff`] applied</span>
-<span class="doccomment">/// to the original [`ABinaryTree`] instance by converting it to a [`StagedAbDiff`]</span>
-<span class="doccomment">/// and subsequently merging it.</span>
-<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct</span> <span class="ident">AbDiff</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="ident">T</span>: <span class="ident">Clone</span> <span class="op">+</span> <span class="ident">Debug</span><span class="op">&gt;</span> {
-    <span class="ident">original_tree</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="ident">ABinaryTree</span><span class="op">&lt;</span><span class="ident">T</span><span class="op">&gt;</span>,
-    <span class="ident">diff</span>: <span class="ident">BTreeMap</span><span class="op">&lt;</span><span class="ident">NodeIndex</span>, <span class="ident">T</span><span class="op">&gt;</span>,
-    <span class="ident">size</span>: <span class="ident">TreeSize</span>,
+<span class="doccomment">/// A [`NodeReference`] represents the position of a node in an [`AbDiff`]. It
+/// can be used to access the node at that position or to navigate to other,
+/// neighbouring nodes via the [`AbDiff::sibling()`], [`AbDiff::left_child()`]
+/// and [`AbDiff::right_child()`] functions of the [`AbDiff`].
+</span><span class="attribute">#[derive(Debug, Clone, Copy, PartialEq)]
+</span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct </span>NodeId {
+    node_index: NodeIndex,
 }
 
-<span class="kw">impl</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="ident">T</span>: <span class="ident">Clone</span> <span class="op">+</span> <span class="ident">Debug</span><span class="op">&gt;</span> <span class="ident">TryFrom</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="ident">ABinaryTree</span><span class="op">&lt;</span><span class="ident">T</span><span class="op">&gt;</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">AbDiff</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="ident">T</span><span class="op">&gt;</span> {
-    <span class="kw">type</span> <span class="ident">Error</span> <span class="op">=</span> <span class="ident">ABinaryTreeDiffError</span>;
+<span class="kw">impl </span>NodeId {
+    <span class="doccomment">/// Creates a new [`NodeReference`] to a node at the given index.
+    ///
+    /// Returns an error if the given index is outside the bounds of the diff.
+    </span><span class="kw">pub</span>(<span class="kw">super</span>) <span class="kw">fn </span>try_from_node_index&lt;T: Clone + Debug&gt;(
+        diff: <span class="kw-2">&amp;</span>AbDiff&lt;T&gt;,
+        node_index: NodeIndex,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, OutOfBoundsError&gt; {
+        diff.out_of_bounds(node_index)<span class="question-mark">?</span>;
+        <span class="prelude-val">Ok</span>(NodeId { node_index })
+    }
+}
 
-    <span class="kw">fn</span> <span class="ident">try_from</span>(<span class="ident">tree</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="ident">ABinaryTree</span><span class="op">&lt;</span><span class="ident">T</span><span class="op">&gt;</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">AbDiff</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="ident">T</span><span class="op">&gt;</span>, <span class="ident">ABinaryTreeDiffError</span><span class="op">&gt;</span> {
-        <span class="prelude-val">Ok</span>(<span class="ident">AbDiff</span> {
-            <span class="ident">original_tree</span>: <span class="ident">tree</span>,
-            <span class="ident">diff</span>: <span class="ident">BTreeMap::new</span>(),
-            <span class="ident">size</span>: <span class="ident">tree</span>.<span class="ident">size</span>()<span class="question-mark">?</span>,
+<span class="doccomment">/// The [`AbDiff`] represents a set of differences (i.e. a &quot;Diff&quot;) for an
+/// [`ABinaryTree`]. It can be created from an [`ABinaryTree`] instance and then
+/// accessed mutably or immutably. Any changes are saved by the [`AbDiff`] applied
+/// to the original [`ABinaryTree`] instance by converting it to a [`StagedAbDiff`]
+/// and subsequently merging it.
+</span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct </span>AbDiff&lt;<span class="lifetime">&#39;a</span>, T: Clone + Debug&gt; {
+    original_tree: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>ABinaryTree&lt;T&gt;,
+    diff: BTreeMap&lt;NodeIndex, T&gt;,
+    size: TreeSize,
+}
+
+<span class="kw">impl</span>&lt;<span class="lifetime">&#39;a</span>, T: Clone + Debug&gt; TryFrom&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>ABinaryTree&lt;T&gt;&gt; <span class="kw">for </span>AbDiff&lt;<span class="lifetime">&#39;a</span>, T&gt; {
+    <span class="kw">type </span>Error = ABinaryTreeDiffError;
+
+    <span class="kw">fn </span>try_from(tree: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>ABinaryTree&lt;T&gt;) -&gt; <span class="prelude-ty">Result</span>&lt;AbDiff&lt;<span class="lifetime">&#39;a</span>, T&gt;, ABinaryTreeDiffError&gt; {
+        <span class="prelude-val">Ok</span>(AbDiff {
+            original_tree: tree,
+            diff: BTreeMap::new(),
+            size: tree.size()<span class="question-mark">?</span>,
         })
     }
 }
 
-<span class="kw">impl</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="ident">T</span>: <span class="ident">Clone</span> <span class="op">+</span> <span class="ident">Debug</span><span class="op">&gt;</span> <span class="ident">AbDiff</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="ident">T</span><span class="op">&gt;</span> {
-    <span class="comment">// Functions handling interactions with leaves.</span>
-    <span class="comment">///////////////////////////////////////////////</span>
+<span class="kw">impl</span>&lt;<span class="lifetime">&#39;a</span>, T: Clone + Debug&gt; AbDiff&lt;<span class="lifetime">&#39;a</span>, T&gt; {
+    <span class="comment">// Functions handling interactions with leaves.
+    ///////////////////////////////////////////////
 
-    <span class="doccomment">/// Extend the diff by a leaf and its new parent node.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// Returns an error if adding either of the two nodes increases the size of</span>
-    <span class="doccomment">/// the diff beyond [`NodeIndex::MAX`].</span>
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">add_leaf</span>(
-        <span class="kw-2">&amp;mut</span> <span class="self">self</span>,
-        <span class="ident">parent_node</span>: <span class="ident">T</span>,
-        <span class="ident">new_leaf</span>: <span class="ident">T</span>,
-    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">LeafIndex</span>, <span class="ident">ABinaryTreeDiffError</span><span class="op">&gt;</span> {
-        <span class="comment">// Prevent the tree from becoming too large.</span>
-        <span class="kw">if</span> <span class="self">self</span>.<span class="ident">tree_size</span>() <span class="op">&gt;</span><span class="op">=</span> <span class="ident">NodeIndex::MAX</span> <span class="op">-</span> <span class="number">1</span> {
-            <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">ABinaryTreeDiffError::TreeTooLarge</span>);
+    </span><span class="doccomment">/// Extend the diff by a leaf and its new parent node.
+    ///
+    /// Returns an error if adding either of the two nodes increases the size of
+    /// the diff beyond [`NodeIndex::MAX`].
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>add_leaf(
+        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
+        parent_node: T,
+        new_leaf: T,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;LeafIndex, ABinaryTreeDiffError&gt; {
+        <span class="comment">// Prevent the tree from becoming too large.
+        </span><span class="kw">if </span><span class="self">self</span>.tree_size() &gt;= NodeIndex::MAX - <span class="number">1 </span>{
+            <span class="kw">return </span><span class="prelude-val">Err</span>(ABinaryTreeDiffError::TreeTooLarge);
         }
-        <span class="kw">let</span> <span class="ident">original_size</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">tree_size</span>();
-        <span class="kw">let</span> <span class="ident">previous_parent</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">diff</span>.<span class="ident">insert</span>(<span class="ident">original_size</span>, <span class="ident">parent_node</span>);
-        <span class="macro">debug_assert!</span>(<span class="ident">previous_parent</span>.<span class="ident">is_none</span>());
-        <span class="kw">let</span> <span class="ident">previous_leaf</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">diff</span>.<span class="ident">insert</span>(<span class="ident">original_size</span> <span class="op">+</span> <span class="number">1</span>, <span class="ident">new_leaf</span>);
-        <span class="macro">debug_assert!</span>(<span class="ident">previous_leaf</span>.<span class="ident">is_none</span>());
-        <span class="comment">// Increase size</span>
-        <span class="self">self</span>.<span class="ident">size</span> <span class="op">+</span><span class="op">=</span> <span class="number">2</span>;
-        <span class="prelude-val">Ok</span>(<span class="self">self</span>.<span class="ident">leaf_count</span>() <span class="op">-</span> <span class="number">1</span>)
+        <span class="kw">let </span>original_size = <span class="self">self</span>.tree_size();
+        <span class="kw">let </span>previous_parent = <span class="self">self</span>.diff.insert(original_size, parent_node);
+        <span class="macro">debug_assert!</span>(previous_parent.is_none());
+        <span class="kw">let </span>previous_leaf = <span class="self">self</span>.diff.insert(original_size + <span class="number">1</span>, new_leaf);
+        <span class="macro">debug_assert!</span>(previous_leaf.is_none());
+        <span class="comment">// Increase size
+        </span><span class="self">self</span>.size += <span class="number">2</span>;
+        <span class="prelude-val">Ok</span>(<span class="self">self</span>.leaf_count() - <span class="number">1</span>)
     }
 
-    <span class="doccomment">/// Removes a leaf from the diff. To keep the binary tree (diff) balanced,</span>
-    <span class="doccomment">/// this also removes the parent of the leaf.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// Returns an error if the diff only has one leaf left.</span>
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">remove_leaf</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">ABinaryTreeDiffError</span><span class="op">&gt;</span> {
-        <span class="self">self</span>.<span class="ident">remove_node</span>()<span class="question-mark">?</span>;
-        <span class="self">self</span>.<span class="ident">remove_node</span>()
+    <span class="doccomment">/// Removes a leaf from the diff. To keep the binary tree (diff) balanced,
+    /// this also removes the parent of the leaf.
+    ///
+    /// Returns an error if the diff only has one leaf left.
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>remove_leaf(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;(), ABinaryTreeDiffError&gt; {
+        <span class="self">self</span>.remove_node()<span class="question-mark">?</span>;
+        <span class="self">self</span>.remove_node()
     }
 
-    <span class="doccomment">/// Replace the content of the node at the given leaf index with new</span>
-    <span class="doccomment">/// content.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// Returns an error if the given leaf index is larger than the leaf count</span>
-    <span class="doccomment">/// of the diff.</span>
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">replace_leaf</span>(
-        <span class="kw-2">&amp;mut</span> <span class="self">self</span>,
-        <span class="ident">leaf_index</span>: <span class="ident">LeafIndex</span>,
-        <span class="ident">new_leaf</span>: <span class="ident">T</span>,
-    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">ABinaryTreeDiffError</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="ident">node_index</span> <span class="op">=</span> <span class="ident">to_node_index</span>(<span class="ident">leaf_index</span>);
-        <span class="self">self</span>.<span class="ident">replace_node</span>(<span class="ident">node_index</span>, <span class="ident">new_leaf</span>)
+    <span class="doccomment">/// Replace the content of the node at the given leaf index with new
+    /// content.
+    ///
+    /// Returns an error if the given leaf index is larger than the leaf count
+    /// of the diff.
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>replace_leaf(
+        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
+        leaf_index: LeafIndex,
+        new_leaf: T,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;(), ABinaryTreeDiffError&gt; {
+        <span class="kw">let </span>node_index = to_node_index(leaf_index);
+        <span class="self">self</span>.replace_node(node_index, new_leaf)
     }
 
-    <span class="doccomment">/// Obtain a [`NodeReference`] to the leaf with the given [`LeafIndex`].</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// Returns an error if the given leaf index does not correspond to a leaf</span>
-    <span class="doccomment">/// in the diff.</span>
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">leaf</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">leaf_index</span>: <span class="ident">LeafIndex</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">NodeId</span>, <span class="ident">ABinaryTreeDiffError</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="ident">node_index</span> <span class="op">=</span> <span class="ident">to_node_index</span>(<span class="ident">leaf_index</span>);
-        <span class="prelude-val">Ok</span>(<span class="ident">NodeId::try_from_node_index</span>(<span class="self">self</span>, <span class="ident">node_index</span>)<span class="question-mark">?</span>)
+    <span class="doccomment">/// Obtain a [`NodeReference`] to the leaf with the given [`LeafIndex`].
+    ///
+    /// Returns an error if the given leaf index does not correspond to a leaf
+    /// in the diff.
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>leaf(<span class="kw-2">&amp;</span><span class="self">self</span>, leaf_index: LeafIndex) -&gt; <span class="prelude-ty">Result</span>&lt;NodeId, ABinaryTreeDiffError&gt; {
+        <span class="kw">let </span>node_index = to_node_index(leaf_index);
+        <span class="prelude-val">Ok</span>(NodeId::try_from_node_index(<span class="self">self</span>, node_index)<span class="question-mark">?</span>)
     }
 
-    <span class="doccomment">/// Returns references to the leaves of the diff in order from left to</span>
-    <span class="doccomment">/// right. This function should not throw an error. However, it might throw</span>
-    <span class="doccomment">/// a [`LibraryError`] error if there is a bug in the implementation.</span>
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">leaves</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">NodeId</span><span class="op">&gt;</span>, <span class="ident">LibraryError</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">leaf_references</span> <span class="op">=</span> <span class="ident">Vec::new</span>();
-        <span class="kw">for</span> <span class="ident">leaf_index</span> <span class="kw">in</span> <span class="number">0</span>..<span class="self">self</span>.<span class="ident">leaf_count</span>() {
-            <span class="kw">let</span> <span class="ident">node_index</span> <span class="op">=</span> <span class="ident">to_node_index</span>(<span class="ident">leaf_index</span>);
-            <span class="comment">// The node reference must be valid, since it is a valid leaf</span>
-            <span class="kw">let</span> <span class="ident">node_ref</span> <span class="op">=</span> <span class="ident">NodeId::try_from_node_index</span>(<span class="self">self</span>, <span class="ident">node_index</span>)
-                .<span class="ident">map_err</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="ident">LibraryError::custom</span>(<span class="string">&quot;Expected a valid node reference&quot;</span>))<span class="question-mark">?</span>;
-            <span class="ident">leaf_references</span>.<span class="ident">push</span>(<span class="ident">node_ref</span>);
+    <span class="doccomment">/// Returns references to the leaves of the diff in order from left to
+    /// right. This function should not throw an error. However, it might throw
+    /// a [`LibraryError`] error if there is a bug in the implementation.
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>leaves(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;Vec&lt;NodeId&gt;, LibraryError&gt; {
+        <span class="kw">let </span><span class="kw-2">mut </span>leaf_references = Vec::new();
+        <span class="kw">for </span>leaf_index <span class="kw">in </span><span class="number">0</span>..<span class="self">self</span>.leaf_count() {
+            <span class="kw">let </span>node_index = to_node_index(leaf_index);
+            <span class="comment">// The node reference must be valid, since it is a valid leaf
+            </span><span class="kw">let </span>node_ref = NodeId::try_from_node_index(<span class="self">self</span>, node_index)
+                .map_err(|<span class="kw">_</span>| LibraryError::custom(<span class="string">&quot;Expected a valid node reference&quot;</span>))<span class="question-mark">?</span>;
+            leaf_references.push(node_ref);
         }
-        <span class="prelude-val">Ok</span>(<span class="ident">leaf_references</span>)
+        <span class="prelude-val">Ok</span>(leaf_references)
     }
 
-    <span class="comment">// Functions related to the direct paths of leaves</span>
-    <span class="comment">//////////////////////////////////////////////////</span>
+    <span class="comment">// Functions related to the direct paths of leaves
+    //////////////////////////////////////////////////
 
-    <span class="doccomment">/// Returns a vector of [`NodeReference`] instances, each one referencing a</span>
-    <span class="doccomment">/// node in the direct path of the given [`LeafIndex`], ordered from the</span>
-    <span class="doccomment">/// parent of the corresponding leaf to the root of the tree.</span>
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">direct_path</span>(
+    </span><span class="doccomment">/// Returns a vector of [`NodeReference`] instances, each one referencing a
+    /// node in the direct path of the given [`LeafIndex`], ordered from the
+    /// parent of the corresponding leaf to the root of the tree.
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>direct_path(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        <span class="ident">leaf_index</span>: <span class="ident">LeafIndex</span>,
-    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">NodeId</span><span class="op">&gt;</span>, <span class="ident">OutOfBoundsError</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="ident">node_index</span> <span class="op">=</span> <span class="ident">to_node_index</span>(<span class="ident">leaf_index</span>);
-        <span class="comment">// `direct_path` only throws an error if the input index is out of bounds.</span>
-        <span class="kw">let</span> <span class="ident">direct_path_indices</span> <span class="op">=</span> <span class="ident">direct_path</span>(<span class="ident">node_index</span>, <span class="self">self</span>.<span class="ident">tree_size</span>())
-            .<span class="ident">map_err</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="ident">OutOfBoundsError::IndexOutOfBounds</span>)<span class="question-mark">?</span>;
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">direct_path</span> <span class="op">=</span> <span class="ident">Vec::new</span>();
-        <span class="kw">for</span> <span class="ident">node_index</span> <span class="kw">in</span> <span class="ident">direct_path_indices</span> {
-            <span class="comment">// `direct_path` only throws an error if the input index is out of bounds.</span>
-            <span class="kw">let</span> <span class="ident">node_ref</span> <span class="op">=</span> <span class="ident">NodeId::try_from_node_index</span>(<span class="self">self</span>, <span class="ident">node_index</span>)
-                .<span class="ident">map_err</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="ident">OutOfBoundsError::IndexOutOfBounds</span>)<span class="question-mark">?</span>;
-            <span class="ident">direct_path</span>.<span class="ident">push</span>(<span class="ident">node_ref</span>);
+        leaf_index: LeafIndex,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;Vec&lt;NodeId&gt;, OutOfBoundsError&gt; {
+        <span class="kw">let </span>node_index = to_node_index(leaf_index);
+        <span class="comment">// `direct_path` only throws an error if the input index is out of bounds.
+        </span><span class="kw">let </span>direct_path_indices = direct_path(node_index, <span class="self">self</span>.tree_size())
+            .map_err(|<span class="kw">_</span>| OutOfBoundsError::IndexOutOfBounds)<span class="question-mark">?</span>;
+        <span class="kw">let </span><span class="kw-2">mut </span>direct_path = Vec::new();
+        <span class="kw">for </span>node_index <span class="kw">in </span>direct_path_indices {
+            <span class="comment">// `direct_path` only throws an error if the input index is out of bounds.
+            </span><span class="kw">let </span>node_ref = NodeId::try_from_node_index(<span class="self">self</span>, node_index)
+                .map_err(|<span class="kw">_</span>| OutOfBoundsError::IndexOutOfBounds)<span class="question-mark">?</span>;
+            direct_path.push(node_ref);
         }
-        <span class="prelude-val">Ok</span>(<span class="ident">direct_path</span>)
+        <span class="prelude-val">Ok</span>(direct_path)
     }
 
-    <span class="doccomment">/// Sets all nodes in the direct path to a copy of the given node. This</span>
-    <span class="doccomment">/// function will throw an [`ABinaryTreeDiffError::OutOfBounds`] error if</span>
-    <span class="doccomment">/// the given index does not correspond to a leaf in the diff.</span>
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">set_direct_path_to_node</span>(
-        <span class="kw-2">&amp;mut</span> <span class="self">self</span>,
-        <span class="ident">leaf_index</span>: <span class="ident">LeafIndex</span>,
-        <span class="ident">node</span>: <span class="kw-2">&amp;</span><span class="ident">T</span>,
-    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">ABinaryTreeDiffError</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="ident">node_index</span> <span class="op">=</span> <span class="ident">to_node_index</span>(<span class="ident">leaf_index</span>);
-        <span class="kw">let</span> <span class="ident">direct_path</span> <span class="op">=</span> <span class="ident">direct_path</span>(<span class="ident">node_index</span>, <span class="self">self</span>.<span class="ident">tree_size</span>())<span class="question-mark">?</span>;
-        <span class="kw">for</span> <span class="ident">node_index</span> <span class="kw">in</span> <span class="kw-2">&amp;</span><span class="ident">direct_path</span> {
-            <span class="self">self</span>.<span class="ident">replace_node</span>(<span class="kw-2">*</span><span class="ident">node_index</span>, <span class="ident">node</span>.<span class="ident">clone</span>())<span class="question-mark">?</span>;
+    <span class="doccomment">/// Sets all nodes in the direct path to a copy of the given node. This
+    /// function will throw an [`ABinaryTreeDiffError::OutOfBounds`] error if
+    /// the given index does not correspond to a leaf in the diff.
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>set_direct_path_to_node(
+        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
+        leaf_index: LeafIndex,
+        node: <span class="kw-2">&amp;</span>T,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;(), ABinaryTreeDiffError&gt; {
+        <span class="kw">let </span>node_index = to_node_index(leaf_index);
+        <span class="kw">let </span>direct_path = direct_path(node_index, <span class="self">self</span>.tree_size())<span class="question-mark">?</span>;
+        <span class="kw">for </span>node_index <span class="kw">in </span><span class="kw-2">&amp;</span>direct_path {
+            <span class="self">self</span>.replace_node(<span class="kw-2">*</span>node_index, node.clone())<span class="question-mark">?</span>;
         }
         <span class="prelude-val">Ok</span>(())
     }
 
-    <span class="doccomment">/// Sets the nodes in the direct path of the given leaf index to the nodes</span>
-    <span class="doccomment">/// given in the `path`.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// Returns an error if the given `leaf_index` does not correspond to a leaf</span>
-    <span class="doccomment">/// in the diff or if the given `path` does not have the same length as the</span>
-    <span class="doccomment">/// leaf&#39;s direct path.</span>
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">set_direct_path</span>(
-        <span class="kw-2">&amp;mut</span> <span class="self">self</span>,
-        <span class="ident">leaf_index</span>: <span class="ident">LeafIndex</span>,
-        <span class="ident">path</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">T</span><span class="op">&gt;</span>,
-    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">ABinaryTreeDiffError</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="ident">node_index</span> <span class="op">=</span> <span class="ident">to_node_index</span>(<span class="ident">leaf_index</span>);
-        <span class="kw">let</span> <span class="ident">direct_path</span> <span class="op">=</span> <span class="ident">direct_path</span>(<span class="ident">node_index</span>, <span class="self">self</span>.<span class="ident">tree_size</span>())<span class="question-mark">?</span>;
-        <span class="kw">if</span> <span class="ident">path</span>.<span class="ident">len</span>() <span class="op">!</span><span class="op">=</span> <span class="ident">direct_path</span>.<span class="ident">len</span>() {
-            <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">ABinaryTreeDiffError::PathLengthMismatch</span>);
+    <span class="doccomment">/// Sets the nodes in the direct path of the given leaf index to the nodes
+    /// given in the `path`.
+    ///
+    /// Returns an error if the given `leaf_index` does not correspond to a leaf
+    /// in the diff or if the given `path` does not have the same length as the
+    /// leaf&#39;s direct path.
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>set_direct_path(
+        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
+        leaf_index: LeafIndex,
+        path: Vec&lt;T&gt;,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;(), ABinaryTreeDiffError&gt; {
+        <span class="kw">let </span>node_index = to_node_index(leaf_index);
+        <span class="kw">let </span>direct_path = direct_path(node_index, <span class="self">self</span>.tree_size())<span class="question-mark">?</span>;
+        <span class="kw">if </span>path.len() != direct_path.len() {
+            <span class="kw">return </span><span class="prelude-val">Err</span>(ABinaryTreeDiffError::PathLengthMismatch);
         }
-        <span class="kw">for</span> (<span class="ident">node_index</span>, <span class="ident">node</span>) <span class="kw">in</span> <span class="ident">direct_path</span>.<span class="ident">iter</span>().<span class="ident">zip</span>(<span class="ident">path</span>.<span class="ident">into_iter</span>()) {
-            <span class="self">self</span>.<span class="ident">replace_node</span>(<span class="kw-2">*</span><span class="ident">node_index</span>, <span class="ident">node</span>)<span class="question-mark">?</span>;
-        }
-        <span class="prelude-val">Ok</span>(())
-    }
-
-    <span class="comment">// Functions related to the shared subtree of two given leaves</span>
-    <span class="comment">//////////////////////////////////////////////////////////////</span>
-
-    <span class="doccomment">/// Given two leaf indices, returns the position of the shared subtree root</span>
-    <span class="doccomment">/// in the direct path of the first leaf index.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// Returns an error if both leaf indices are identical or if one of the</span>
-    <span class="doccomment">/// leaf indices does not correspond to a leaf in the diff.</span>
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">subtree_root_position</span>(
-        <span class="kw-2">&amp;</span><span class="self">self</span>,
-        <span class="ident">leaf_index_1</span>: <span class="ident">LeafIndex</span>,
-        <span class="ident">leaf_index_2</span>: <span class="ident">LeafIndex</span>,
-    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">usize</span>, <span class="ident">ABinaryTreeDiffError</span><span class="op">&gt;</span> {
-        <span class="comment">// If the given leaf indices are identical, the shared subtree root is</span>
-        <span class="comment">// the index itself. Since the index of the leaf itself doesn&#39;t appear</span>
-        <span class="comment">// in the direct path, we can&#39;t return anything meaningful. This check</span>
-        <span class="comment">// also ensures that the tree is large enough such that the direct path</span>
-        <span class="comment">// is never empty, since if there is a second leaf index (that is within</span>
-        <span class="comment">// the bound of the tree), there is a non-leaf root node that is in the</span>
-        <span class="comment">// direct path of all leaves.</span>
-        <span class="self">self</span>.<span class="ident">leaf_pair_check</span>(<span class="ident">leaf_index_1</span>, <span class="ident">leaf_index_2</span>)<span class="question-mark">?</span>;
-
-        <span class="kw">let</span> <span class="ident">subtree_root_node_index</span> <span class="op">=</span>
-            <span class="ident">lowest_common_ancestor</span>(<span class="ident">to_node_index</span>(<span class="ident">leaf_index_1</span>), <span class="ident">to_node_index</span>(<span class="ident">leaf_index_2</span>));
-        <span class="kw">let</span> <span class="ident">leaf_index_1_direct_path</span> <span class="op">=</span> <span class="ident">direct_path</span>(<span class="ident">to_node_index</span>(<span class="ident">leaf_index_1</span>), <span class="self">self</span>.<span class="ident">tree_size</span>())<span class="question-mark">?</span>;
-
-        <span class="ident">leaf_index_1_direct_path</span>
-            .<span class="ident">iter</span>()
-            .<span class="ident">position</span>(<span class="op">|</span><span class="kw-2">&amp;</span><span class="ident">direct_path_node_index</span><span class="op">|</span> <span class="ident">direct_path_node_index</span> <span class="op">==</span> <span class="ident">subtree_root_node_index</span>)
-            <span class="comment">// The shared subtree root has to be in the direct path of both nodes.</span>
-            .<span class="ident">ok_or_else</span>(<span class="op">|</span><span class="op">|</span> <span class="ident">LibraryError::custom</span>(<span class="string">&quot;index should be in the direct path&quot;</span>).<span class="ident">into</span>())
-    }
-
-    <span class="doccomment">/// Returns [`NodeReference`] to the copath node of the `leaf_index_1` that is</span>
-    <span class="doccomment">/// in the direct path of `leaf_index_2`.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// Returns an error if both leaf indices are identical or if one of the</span>
-    <span class="doccomment">/// leaf indices does not correspond to a leaf in the diff.</span>
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">subtree_root_copath_node</span>(
-        <span class="kw-2">&amp;</span><span class="self">self</span>,
-        <span class="ident">leaf_index_1</span>: <span class="ident">LeafIndex</span>,
-        <span class="ident">leaf_index_2</span>: <span class="ident">LeafIndex</span>,
-    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">NodeId</span>, <span class="ident">ABinaryTreeDiffError</span><span class="op">&gt;</span> {
-        <span class="self">self</span>.<span class="ident">leaf_pair_check</span>(<span class="ident">leaf_index_1</span>, <span class="ident">leaf_index_2</span>)<span class="question-mark">?</span>;
-
-        <span class="comment">// We want to return the position of the lowest common ancestor in the</span>
-        <span class="comment">// direct path of `leaf_index_1` (i.e. the sender_leaf_index).</span>
-        <span class="kw">let</span> <span class="ident">subtree_root_node_index</span> <span class="op">=</span>
-            <span class="ident">lowest_common_ancestor</span>(<span class="ident">to_node_index</span>(<span class="ident">leaf_index_1</span>), <span class="ident">to_node_index</span>(<span class="ident">leaf_index_2</span>));
-
-        <span class="comment">// Figure out which child is the relevant copath node.</span>
-        <span class="kw">let</span> <span class="ident">copath_node_index</span> <span class="op">=</span> <span class="kw">if</span> <span class="ident">leaf_index_2</span> <span class="op">&lt;</span> <span class="ident">leaf_index_1</span> {
-            <span class="ident">left</span>(<span class="ident">subtree_root_node_index</span>)<span class="question-mark">?</span>
-        } <span class="kw">else</span> {
-            <span class="ident">right</span>(<span class="ident">subtree_root_node_index</span>, <span class="self">self</span>.<span class="ident">tree_size</span>())<span class="question-mark">?</span>
-        };
-
-        <span class="prelude-val">Ok</span>(<span class="ident">NodeId::try_from_node_index</span>(<span class="self">self</span>, <span class="ident">copath_node_index</span>)<span class="question-mark">?</span>)
-    }
-
-    <span class="doccomment">/// Returns a vector of [`NodeReference`]s, where the first reference is to</span>
-    <span class="doccomment">/// the root of the shared subtree of the two given leaf indices followed by</span>
-    <span class="doccomment">/// references to the nodes in the direct path of said subtree root.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// Returns an error if either of the two given leaf indices do not</span>
-    <span class="doccomment">/// correspond to a leaf in the diff.</span>
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">subtree_path</span>(
-        <span class="kw-2">&amp;</span><span class="self">self</span>,
-        <span class="ident">leaf_index_1</span>: <span class="ident">LeafIndex</span>,
-        <span class="ident">leaf_index_2</span>: <span class="ident">LeafIndex</span>,
-    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">NodeId</span><span class="op">&gt;</span>, <span class="ident">ABinaryTreeDiffError</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="ident">node_index_1</span> <span class="op">=</span> <span class="ident">to_node_index</span>(<span class="ident">leaf_index_1</span>);
-        <span class="kw">let</span> <span class="ident">node_index_2</span> <span class="op">=</span> <span class="ident">to_node_index</span>(<span class="ident">leaf_index_2</span>);
-
-        <span class="self">self</span>.<span class="ident">out_of_bounds</span>(<span class="ident">node_index_1</span>)<span class="question-mark">?</span>;
-        <span class="self">self</span>.<span class="ident">out_of_bounds</span>(<span class="ident">node_index_2</span>)<span class="question-mark">?</span>;
-
-        <span class="kw">let</span> <span class="ident">lca</span> <span class="op">=</span> <span class="ident">lowest_common_ancestor</span>(<span class="ident">node_index_1</span>, <span class="ident">node_index_2</span>);
-        <span class="kw">let</span> <span class="ident">direct_path_indices</span> <span class="op">=</span> <span class="ident">direct_path</span>(<span class="ident">lca</span>, <span class="self">self</span>.<span class="ident">tree_size</span>())<span class="question-mark">?</span>;
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">full_path</span> <span class="op">=</span> <span class="macro">vec!</span>[<span class="ident">NodeId::try_from_node_index</span>(<span class="self">self</span>, <span class="ident">lca</span>)<span class="question-mark">?</span>];
-        <span class="kw">for</span> <span class="ident">node_index</span> <span class="kw">in</span> <span class="ident">direct_path_indices</span> {
-            <span class="kw">let</span> <span class="ident">node_ref</span> <span class="op">=</span> <span class="ident">NodeId::try_from_node_index</span>(<span class="self">self</span>, <span class="ident">node_index</span>)<span class="question-mark">?</span>;
-            <span class="ident">full_path</span>.<span class="ident">push</span>(<span class="ident">node_ref</span>);
-        }
-
-        <span class="prelude-val">Ok</span>(<span class="ident">full_path</span>)
-    }
-
-    <span class="comment">// Functions pertaining to the whole diff</span>
-    <span class="comment">/////////////////////////////////////////</span>
-
-    <span class="doccomment">/// Returns an iterator over references to the content of all nodes in the</span>
-    <span class="doccomment">/// diff.</span>
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">iter</span>(<span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="self">self</span>) -&gt; <span class="ident">DiffIterator</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="ident">T</span><span class="op">&gt;</span> {
-        <span class="ident">DiffIterator</span> {
-            <span class="ident">diff</span>: <span class="self">self</span>,
-            <span class="ident">current_index</span>: <span class="number">0u32</span>,
-        }
-    }
-
-    <span class="doccomment">/// Returns a vector containing the nodes of the tree in-order, i.e. in the</span>
-    <span class="doccomment">/// array representation of the diff. This function should not fail and only</span>
-    <span class="doccomment">/// returns a [`Result`], because it might throw a</span>
-    <span class="doccomment">/// [`LibraryError`].</span>
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">export_nodes</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">T</span><span class="op">&gt;</span>, <span class="ident">LibraryError</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">nodes</span> <span class="op">=</span> <span class="ident">Vec::new</span>();
-        <span class="kw">for</span> <span class="ident">node_index</span> <span class="kw">in</span> <span class="number">0</span>..<span class="self">self</span>.<span class="ident">tree_size</span>() {
-            <span class="kw">let</span> <span class="ident">node</span> <span class="op">=</span> <span class="self">self</span>
-                .<span class="ident">node_by_index</span>(<span class="ident">node_index</span>)
-                <span class="comment">// We know the node must be in the tree</span>
-                .<span class="ident">map_err</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="ident">LibraryError::custom</span>(<span class="string">&quot;Expected node to be in the tree&quot;</span>))<span class="question-mark">?</span>;
-            <span class="ident">nodes</span>.<span class="ident">push</span>(<span class="ident">node</span>.<span class="ident">clone</span>());
-        }
-        <span class="prelude-val">Ok</span>(<span class="ident">nodes</span>)
-    }
-
-    <span class="doccomment">/// Returns the size of the diff.</span>
-    <span class="kw">pub</span>(<span class="kw">in</span> <span class="ident"><span class="kw">crate</span>::binary_tree</span>) <span class="kw">fn</span> <span class="ident">tree_size</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">NodeIndex</span> {
-        <span class="self">self</span>.<span class="ident">size</span>
-    }
-
-    <span class="doccomment">/// Returns the leaf count of the diff.</span>
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">leaf_count</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">LeafIndex</span> {
-        ((<span class="self">self</span>.<span class="ident">tree_size</span>() <span class="op">-</span> <span class="number">1</span>) <span class="op">/</span> <span class="number">2</span>) <span class="op">+</span> <span class="number">1</span>
-    }
-
-    <span class="comment">// Functions around individual [`NodeReference`]s</span>
-    <span class="comment">///////////////////////////////////////////////</span>
-
-    <span class="doccomment">/// Returns a reference to the node pointed to by the [`NodeReference`].</span>
-    <span class="doccomment">/// Returns an Error if the [`NodeReference`] points to a node outside of the</span>
-    <span class="doccomment">/// bounds of the tree. This can happen, for example, if the node was</span>
-    <span class="doccomment">/// removed while shrinking the diff after the creation of the</span>
-    <span class="doccomment">/// [`NodeReference`].</span>
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">node</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">node_ref</span>: <span class="ident">NodeId</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">T</span>, <span class="ident">ABinaryTreeDiffError</span><span class="op">&gt;</span> {
-        <span class="self">self</span>.<span class="ident">node_by_index</span>(<span class="ident">node_ref</span>.<span class="ident">node_index</span>)
-    }
-
-    <span class="doccomment">/// Returns a mutable reference to the node pointed to by the</span>
-    <span class="doccomment">/// [`NodeReference`]. Returns an Error if the [`NodeReference`] points to a</span>
-    <span class="doccomment">/// node outside of the bounds of the tree. This can happen, for example, if</span>
-    <span class="doccomment">/// the node was removed while shrinking the diff after the creation of the</span>
-    <span class="doccomment">/// [`NodeReference`].</span>
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">node_mut</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">node_ref</span>: <span class="ident">NodeId</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="kw-2">&amp;mut</span> <span class="ident">T</span>, <span class="ident">ABinaryTreeDiffError</span><span class="op">&gt;</span> {
-        <span class="self">self</span>.<span class="ident">node_mut_by_index</span>(<span class="ident">node_ref</span>.<span class="ident">node_index</span>)
-    }
-
-    <span class="doccomment">/// Return a [`NodeReference`] to the root node of the diff. Since the diff</span>
-    <span class="doccomment">/// always consists of at least one node, this operation cannot fail.</span>
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">root</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">NodeId</span> {
-        <span class="kw">let</span> <span class="ident">root_index</span> <span class="op">=</span> <span class="ident">root</span>(<span class="self">self</span>.<span class="ident">tree_size</span>());
-        <span class="comment">// We create the reference directly instead of via self.new_reference,</span>
-        <span class="comment">// since due to the minimum tree size of one node, the root is always</span>
-        <span class="comment">// within bounds.</span>
-        <span class="ident">NodeId</span> {
-            <span class="ident">node_index</span>: <span class="ident">root_index</span>,
-        }
-    }
-
-    <span class="doccomment">/// Returns true if the given [`NodeReference`] points to a leaf and [`false`]</span>
-    <span class="doccomment">/// otherwise.</span>
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">is_leaf</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">node_ref</span>: <span class="ident">NodeId</span>) -&gt; <span class="ident">bool</span> {
-        <span class="ident">node_ref</span>.<span class="ident">node_index</span> <span class="op">%</span> <span class="number">2</span> <span class="op">==</span> <span class="number">0</span>
-    }
-
-    <span class="doccomment">/// Returns a [`NodeReference`] to the parent of the referenced node. Returns</span>
-    <span class="doccomment">/// an error when the given [`NodeReference`] points to the root node or to a</span>
-    <span class="doccomment">/// node not in the tree.</span>
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">parent</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">node_ref</span>: <span class="ident">NodeId</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">NodeId</span>, <span class="ident">ABinaryTreeDiffError</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="ident">parent_index</span> <span class="op">=</span> <span class="ident">parent</span>(<span class="ident">node_ref</span>.<span class="ident">node_index</span>, <span class="self">self</span>.<span class="ident">tree_size</span>())<span class="question-mark">?</span>;
-        <span class="prelude-val">Ok</span>(<span class="ident">NodeId::try_from_node_index</span>(<span class="self">self</span>, <span class="ident">parent_index</span>)<span class="question-mark">?</span>)
-    }
-
-    <span class="doccomment">/// Returns a [`NodeReference`] to the sibling of the referenced node. Returns</span>
-    <span class="doccomment">/// an error when the given [`NodeReference`] points to the root node or to a</span>
-    <span class="doccomment">/// node not in the tree.</span>
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">sibling</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">node_ref</span>: <span class="ident">NodeId</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">NodeId</span>, <span class="ident">ABinaryTreeDiffError</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="ident">sibling_index</span> <span class="op">=</span> <span class="ident">sibling</span>(<span class="ident">node_ref</span>.<span class="ident">node_index</span>, <span class="self">self</span>.<span class="ident">tree_size</span>())<span class="question-mark">?</span>;
-        <span class="prelude-val">Ok</span>(<span class="ident">NodeId::try_from_node_index</span>(<span class="self">self</span>, <span class="ident">sibling_index</span>)<span class="question-mark">?</span>)
-    }
-
-    <span class="doccomment">/// Returns a [`NodeReference`] to the left child of the referenced node.</span>
-    <span class="doccomment">/// Returns an error when the given [`NodeReference`] points to a leaf node or</span>
-    <span class="doccomment">/// to a node not in the tree.</span>
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">left_child</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">node_ref</span>: <span class="ident">NodeId</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">NodeId</span>, <span class="ident">ABinaryTreeDiffError</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="ident">left_child_index</span> <span class="op">=</span> <span class="ident">left</span>(<span class="ident">node_ref</span>.<span class="ident">node_index</span>)<span class="question-mark">?</span>;
-        <span class="prelude-val">Ok</span>(<span class="ident">NodeId::try_from_node_index</span>(<span class="self">self</span>, <span class="ident">left_child_index</span>)<span class="question-mark">?</span>)
-    }
-
-    <span class="doccomment">/// Returns a [`NodeReference`] to the right child of the referenced node.</span>
-    <span class="doccomment">/// Returns an error when the given [`NodeReference`] points to a leaf node or</span>
-    <span class="doccomment">/// to a node not in the tree.</span>
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">right_child</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">node_ref</span>: <span class="ident">NodeId</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">NodeId</span>, <span class="ident">ABinaryTreeDiffError</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="ident">right_child_index</span> <span class="op">=</span> <span class="ident">right</span>(<span class="ident">node_ref</span>.<span class="ident">node_index</span>, <span class="self">self</span>.<span class="ident">tree_size</span>())<span class="question-mark">?</span>;
-        <span class="prelude-val">Ok</span>(<span class="ident">NodeId::try_from_node_index</span>(<span class="self">self</span>, <span class="ident">right_child_index</span>)<span class="question-mark">?</span>)
-    }
-
-    <span class="doccomment">/// Returns the [`LeafIndex`] of the referenced node. If the referenced node</span>
-    <span class="doccomment">/// is not a leaf, [`None`] is returned.</span>
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">leaf_index</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">node_ref</span>: <span class="ident">NodeId</span>) -&gt; <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">LeafIndex</span><span class="op">&gt;</span> {
-        <span class="kw">if</span> <span class="self">self</span>.<span class="ident">is_leaf</span>(<span class="ident">node_ref</span>) {
-            <span class="prelude-val">Some</span>(<span class="ident">node_ref</span>.<span class="ident">node_index</span> <span class="op">/</span> <span class="number">2</span>)
-        } <span class="kw">else</span> {
-            <span class="prelude-val">None</span>
-        }
-    }
-
-    <span class="comment">// Private helper functions below.</span>
-    <span class="comment">//////////////////////////////////</span>
-
-    <span class="comment">// Node access functions</span>
-
-    <span class="doccomment">/// Returns a reference to the node at index `node_index` or [`None`] if the</span>
-    <span class="doccomment">/// node can neither be found in the tree nor in the diff.</span>
-    <span class="kw">fn</span> <span class="ident">node_by_index</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">node_index</span>: <span class="ident">NodeIndex</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">T</span>, <span class="ident">ABinaryTreeDiffError</span><span class="op">&gt;</span> {
-        <span class="comment">// We first check if the given node_index is within the bounds of the diff.</span>
-        <span class="self">self</span>.<span class="ident">out_of_bounds</span>(<span class="ident">node_index</span>)<span class="question-mark">?</span>;
-        <span class="comment">// If it is, check if it&#39;s in the diff.</span>
-        <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">node</span>) <span class="op">=</span> <span class="self">self</span>.<span class="ident">diff</span>.<span class="ident">get</span>(<span class="kw-2">&amp;</span><span class="ident">node_index</span>) {
-            <span class="kw">return</span> <span class="prelude-val">Ok</span>(<span class="ident">node</span>);
-        }
-        <span class="comment">// If it isn&#39;t in the diff, it must be in the tree.</span>
-        <span class="prelude-val">Ok</span>(<span class="self">self</span>.<span class="ident">original_tree</span>.<span class="ident">node_by_index</span>(<span class="ident">node_index</span>)<span class="question-mark">?</span>)
-    }
-
-    <span class="doccomment">/// Returns a mutable reference to the node in the diff at index</span>
-    <span class="doccomment">/// `node_index`. If the diff doesn&#39;t have a node at that index, it clones</span>
-    <span class="doccomment">/// the node to the diff and returns a mutable reference to that node.</span>
-    <span class="doccomment">/// Returns an error if the node can neither be found in the tree nor in the</span>
-    <span class="doccomment">/// diff, or if the index is out of the bounds of the diff.</span>
-    <span class="kw">fn</span> <span class="ident">node_mut_by_index</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">node_index</span>: <span class="ident">NodeIndex</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="kw-2">&amp;mut</span> <span class="ident">T</span>, <span class="ident">ABinaryTreeDiffError</span><span class="op">&gt;</span> {
-        <span class="comment">// We first check if the given node_index is within the bounds of the</span>
-        <span class="comment">// diff.</span>
-        <span class="self">self</span>.<span class="ident">out_of_bounds</span>(<span class="ident">node_index</span>)<span class="question-mark">?</span>;
-
-        <span class="comment">// We then check if the node is already in the diff. (Not using `if let</span>
-        <span class="comment">// ...` here, because the borrow checker doesn&#39;t like that).</span>
-        <span class="kw">if</span> <span class="self">self</span>.<span class="ident">diff</span>.<span class="ident">contains_key</span>(<span class="kw-2">&amp;</span><span class="ident">node_index</span>) {
-            <span class="kw">return</span> <span class="self">self</span>
-                .<span class="ident">diff</span>
-                .<span class="ident">get_mut</span>(<span class="kw-2">&amp;</span><span class="ident">node_index</span>)
-                <span class="comment">// We just checked that this index exists, so this must be Some.</span>
-                .<span class="ident">ok_or_else</span>(<span class="op">|</span><span class="op">|</span> <span class="ident">LibraryError::custom</span>(<span class="string">&quot;index should exist&quot;</span>).<span class="ident">into</span>());
-            <span class="comment">// If not, we take a copy from the original tree and put it in the</span>
-            <span class="comment">// diff before returning a mutable reference to it.</span>
-        }
-        <span class="kw">let</span> <span class="ident">tree_node</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">original_tree</span>.<span class="ident">node_by_index</span>(<span class="ident">node_index</span>)<span class="question-mark">?</span>;
-        <span class="self">self</span>.<span class="ident">replace_node</span>(<span class="ident">node_index</span>, <span class="ident">tree_node</span>.<span class="ident">clone</span>())<span class="question-mark">?</span>;
-        <span class="self">self</span>.<span class="ident">diff</span>
-            .<span class="ident">get_mut</span>(<span class="kw-2">&amp;</span><span class="ident">node_index</span>)
-            <span class="comment">// We just inserted this into the diff, so this should be Some.</span>
-            .<span class="ident">ok_or_else</span>(<span class="op">|</span><span class="op">|</span> <span class="ident">LibraryError::custom</span>(<span class="string">&quot;node should exist&quot;</span>).<span class="ident">into</span>())
-    }
-
-    <span class="comment">// Helper functions for node addition and removal</span>
-
-    <span class="doccomment">/// This function is used to place a node at the given index such that any</span>
-    <span class="doccomment">/// previous node in the tree at the same position is replaced upon merging</span>
-    <span class="doccomment">/// the diff. This function also overrides any previously made changes to</span>
-    <span class="doccomment">/// that node as part of modifying this diff.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// Returns an error if the given node index is larger than the current size</span>
-    <span class="doccomment">/// of the diff.</span>
-    <span class="kw">fn</span> <span class="ident">replace_node</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">node_index</span>: <span class="ident">NodeIndex</span>, <span class="ident">node</span>: <span class="ident">T</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">ABinaryTreeDiffError</span><span class="op">&gt;</span> {
-        <span class="comment">// Check that we&#39;re not out of bounds.</span>
-        <span class="self">self</span>.<span class="ident">out_of_bounds</span>(<span class="ident">node_index</span>)<span class="question-mark">?</span>;
-        <span class="self">self</span>.<span class="ident">diff</span>.<span class="ident">insert</span>(<span class="ident">node_index</span>, <span class="ident">node</span>);
-        <span class="prelude-val">Ok</span>(())
-    }
-
-    <span class="doccomment">/// Removes a node from the right edge of the diff, thus decreasing the size</span>
-    <span class="doccomment">/// of the diff by one. Throws an error if this would make the diff too</span>
-    <span class="doccomment">/// small (i.e. &lt; 1 node).</span>
-    <span class="kw">fn</span> <span class="ident">remove_node</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">ABinaryTreeDiffError</span><span class="op">&gt;</span> {
-        <span class="comment">// First make sure that the tree isn&#39;t getting too small.</span>
-        <span class="kw">if</span> <span class="self">self</span>.<span class="ident">tree_size</span>() <span class="op">&lt;</span><span class="op">=</span> <span class="number">1</span> {
-            <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">ABinaryTreeDiffError::TreeTooSmall</span>);
-        }
-        <span class="kw">let</span> <span class="ident">removed</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">diff</span>.<span class="ident">remove</span>(<span class="kw-2">&amp;</span>(<span class="self">self</span>.<span class="ident">tree_size</span>() <span class="op">-</span> <span class="number">1</span>));
-        <span class="kw">if</span> <span class="self">self</span>.<span class="ident">tree_size</span>() <span class="op">&gt;</span> <span class="self">self</span>.<span class="ident">original_tree</span>.<span class="ident">size</span>()<span class="question-mark">?</span> {
-            <span class="comment">// If the diff extended the tree, there should be a node to remove</span>
-            <span class="comment">// here.</span>
-            <span class="macro">debug_assert!</span>(<span class="ident">removed</span>.<span class="ident">is_some</span>());
-        }
-        <span class="comment">// There should be a node here to remove.</span>
-        <span class="comment">// We decrease the size to signal that a node was removed from the diff.</span>
-        <span class="self">self</span>.<span class="ident">size</span> <span class="op">-</span><span class="op">=</span> <span class="number">1</span>;
-        <span class="prelude-val">Ok</span>(())
-    }
-
-    <span class="comment">// Index checking</span>
-
-    <span class="doccomment">/// This is a helper function to check if a given leaf is outside of the</span>
-    <span class="doccomment">/// bounds of the tree.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// Returns an error if the given leaf is out of bounds. Otherwise returns</span>
-    <span class="doccomment">/// nothing.</span>
-    <span class="kw">fn</span> <span class="ident">out_of_bounds</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">node_index</span>: <span class="ident">NodeIndex</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">OutOfBoundsError</span><span class="op">&gt;</span> {
-        <span class="kw">if</span> <span class="ident">node_index</span> <span class="op">&gt;</span><span class="op">=</span> <span class="self">self</span>.<span class="ident">tree_size</span>() {
-            <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">OutOfBoundsError::IndexOutOfBounds</span>);
+        <span class="kw">for </span>(node_index, node) <span class="kw">in </span>direct_path.iter().zip(path.into_iter()) {
+            <span class="self">self</span>.replace_node(<span class="kw-2">*</span>node_index, node)<span class="question-mark">?</span>;
         }
         <span class="prelude-val">Ok</span>(())
     }
 
-    <span class="doccomment">/// This is a helper function to check the validity of two leaf indices for</span>
-    <span class="doccomment">/// use in the subtree root functions.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// Returns an error if the two given leaf indices are the same or if one of</span>
-    <span class="doccomment">/// the leaf indices doesn&#39;t correspond to a leaf in the diff. Otherwise</span>
-    <span class="doccomment">/// returns nothing.</span>
-    <span class="kw">fn</span> <span class="ident">leaf_pair_check</span>(
+    <span class="comment">// Functions related to the shared subtree of two given leaves
+    //////////////////////////////////////////////////////////////
+
+    </span><span class="doccomment">/// Given two leaf indices, returns the position of the shared subtree root
+    /// in the direct path of the first leaf index.
+    ///
+    /// Returns an error if both leaf indices are identical or if one of the
+    /// leaf indices does not correspond to a leaf in the diff.
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>subtree_root_position(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        <span class="ident">leaf_index_1</span>: <span class="ident">LeafIndex</span>,
-        <span class="ident">leaf_index_2</span>: <span class="ident">LeafIndex</span>,
-    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">ABinaryTreeDiffError</span><span class="op">&gt;</span> {
-        <span class="kw">if</span> <span class="ident">leaf_index_1</span> <span class="op">==</span> <span class="ident">leaf_index_2</span> {
-            <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">ABinaryTreeDiffError::SameLeafError</span>);
+        leaf_index_1: LeafIndex,
+        leaf_index_2: LeafIndex,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;usize, ABinaryTreeDiffError&gt; {
+        <span class="comment">// If the given leaf indices are identical, the shared subtree root is
+        // the index itself. Since the index of the leaf itself doesn&#39;t appear
+        // in the direct path, we can&#39;t return anything meaningful. This check
+        // also ensures that the tree is large enough such that the direct path
+        // is never empty, since if there is a second leaf index (that is within
+        // the bound of the tree), there is a non-leaf root node that is in the
+        // direct path of all leaves.
+        </span><span class="self">self</span>.leaf_pair_check(leaf_index_1, leaf_index_2)<span class="question-mark">?</span>;
+
+        <span class="kw">let </span>subtree_root_node_index =
+            lowest_common_ancestor(to_node_index(leaf_index_1), to_node_index(leaf_index_2));
+        <span class="kw">let </span>leaf_index_1_direct_path = direct_path(to_node_index(leaf_index_1), <span class="self">self</span>.tree_size())<span class="question-mark">?</span>;
+
+        leaf_index_1_direct_path
+            .iter()
+            .position(|<span class="kw-2">&amp;</span>direct_path_node_index| direct_path_node_index == subtree_root_node_index)
+            <span class="comment">// The shared subtree root has to be in the direct path of both nodes.
+            </span>.ok_or_else(|| LibraryError::custom(<span class="string">&quot;index should be in the direct path&quot;</span>).into())
+    }
+
+    <span class="doccomment">/// Returns [`NodeReference`] to the copath node of the `leaf_index_1` that is
+    /// in the direct path of `leaf_index_2`.
+    ///
+    /// Returns an error if both leaf indices are identical or if one of the
+    /// leaf indices does not correspond to a leaf in the diff.
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>subtree_root_copath_node(
+        <span class="kw-2">&amp;</span><span class="self">self</span>,
+        leaf_index_1: LeafIndex,
+        leaf_index_2: LeafIndex,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;NodeId, ABinaryTreeDiffError&gt; {
+        <span class="self">self</span>.leaf_pair_check(leaf_index_1, leaf_index_2)<span class="question-mark">?</span>;
+
+        <span class="comment">// We want to return the position of the lowest common ancestor in the
+        // direct path of `leaf_index_1` (i.e. the sender_leaf_index).
+        </span><span class="kw">let </span>subtree_root_node_index =
+            lowest_common_ancestor(to_node_index(leaf_index_1), to_node_index(leaf_index_2));
+
+        <span class="comment">// Figure out which child is the relevant copath node.
+        </span><span class="kw">let </span>copath_node_index = <span class="kw">if </span>leaf_index_2 &lt; leaf_index_1 {
+            left(subtree_root_node_index)<span class="question-mark">?
+        </span>} <span class="kw">else </span>{
+            right(subtree_root_node_index, <span class="self">self</span>.tree_size())<span class="question-mark">?
+        </span>};
+
+        <span class="prelude-val">Ok</span>(NodeId::try_from_node_index(<span class="self">self</span>, copath_node_index)<span class="question-mark">?</span>)
+    }
+
+    <span class="doccomment">/// Returns a vector of [`NodeReference`]s, where the first reference is to
+    /// the root of the shared subtree of the two given leaf indices followed by
+    /// references to the nodes in the direct path of said subtree root.
+    ///
+    /// Returns an error if either of the two given leaf indices do not
+    /// correspond to a leaf in the diff.
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>subtree_path(
+        <span class="kw-2">&amp;</span><span class="self">self</span>,
+        leaf_index_1: LeafIndex,
+        leaf_index_2: LeafIndex,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;Vec&lt;NodeId&gt;, ABinaryTreeDiffError&gt; {
+        <span class="kw">let </span>node_index_1 = to_node_index(leaf_index_1);
+        <span class="kw">let </span>node_index_2 = to_node_index(leaf_index_2);
+
+        <span class="self">self</span>.out_of_bounds(node_index_1)<span class="question-mark">?</span>;
+        <span class="self">self</span>.out_of_bounds(node_index_2)<span class="question-mark">?</span>;
+
+        <span class="kw">let </span>lca = lowest_common_ancestor(node_index_1, node_index_2);
+        <span class="kw">let </span>direct_path_indices = direct_path(lca, <span class="self">self</span>.tree_size())<span class="question-mark">?</span>;
+        <span class="kw">let </span><span class="kw-2">mut </span>full_path = <span class="macro">vec!</span>[NodeId::try_from_node_index(<span class="self">self</span>, lca)<span class="question-mark">?</span>];
+        <span class="kw">for </span>node_index <span class="kw">in </span>direct_path_indices {
+            <span class="kw">let </span>node_ref = NodeId::try_from_node_index(<span class="self">self</span>, node_index)<span class="question-mark">?</span>;
+            full_path.push(node_ref);
         }
 
-        <span class="kw">let</span> <span class="ident">node_index_1</span> <span class="op">=</span> <span class="ident">to_node_index</span>(<span class="ident">leaf_index_1</span>);
-        <span class="kw">let</span> <span class="ident">node_index_2</span> <span class="op">=</span> <span class="ident">to_node_index</span>(<span class="ident">leaf_index_2</span>);
+        <span class="prelude-val">Ok</span>(full_path)
+    }
 
-        <span class="self">self</span>.<span class="ident">out_of_bounds</span>(<span class="ident">node_index_1</span>)<span class="question-mark">?</span>;
-        <span class="self">self</span>.<span class="ident">out_of_bounds</span>(<span class="ident">node_index_2</span>)<span class="question-mark">?</span>;
+    <span class="comment">// Functions pertaining to the whole diff
+    /////////////////////////////////////////
+
+    </span><span class="doccomment">/// Returns an iterator over references to the content of all nodes in the
+    /// diff.
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>iter(<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span><span class="self">self</span>) -&gt; DiffIterator&lt;<span class="lifetime">&#39;a</span>, T&gt; {
+        DiffIterator {
+            diff: <span class="self">self</span>,
+            current_index: <span class="number">0u32</span>,
+        }
+    }
+
+    <span class="doccomment">/// Returns a vector containing the nodes of the tree in-order, i.e. in the
+    /// array representation of the diff. This function should not fail and only
+    /// returns a [`Result`], because it might throw a
+    /// [`LibraryError`].
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>export_nodes(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;Vec&lt;T&gt;, LibraryError&gt; {
+        <span class="kw">let </span><span class="kw-2">mut </span>nodes = Vec::new();
+        <span class="kw">for </span>node_index <span class="kw">in </span><span class="number">0</span>..<span class="self">self</span>.tree_size() {
+            <span class="kw">let </span>node = <span class="self">self
+                </span>.node_by_index(node_index)
+                <span class="comment">// We know the node must be in the tree
+                </span>.map_err(|<span class="kw">_</span>| LibraryError::custom(<span class="string">&quot;Expected node to be in the tree&quot;</span>))<span class="question-mark">?</span>;
+            nodes.push(node.clone());
+        }
+        <span class="prelude-val">Ok</span>(nodes)
+    }
+
+    <span class="doccomment">/// Returns the size of the diff.
+    </span><span class="kw">pub</span>(<span class="kw">in </span><span class="kw">crate</span>::binary_tree) <span class="kw">fn </span>tree_size(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; NodeIndex {
+        <span class="self">self</span>.size
+    }
+
+    <span class="doccomment">/// Returns the leaf count of the diff.
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>leaf_count(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; LeafIndex {
+        ((<span class="self">self</span>.tree_size() - <span class="number">1</span>) / <span class="number">2</span>) + <span class="number">1
+    </span>}
+
+    <span class="comment">// Functions around individual [`NodeReference`]s
+    ///////////////////////////////////////////////
+
+    </span><span class="doccomment">/// Returns a reference to the node pointed to by the [`NodeReference`].
+    /// Returns an Error if the [`NodeReference`] points to a node outside of the
+    /// bounds of the tree. This can happen, for example, if the node was
+    /// removed while shrinking the diff after the creation of the
+    /// [`NodeReference`].
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>node(<span class="kw-2">&amp;</span><span class="self">self</span>, node_ref: NodeId) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="kw-2">&amp;</span>T, ABinaryTreeDiffError&gt; {
+        <span class="self">self</span>.node_by_index(node_ref.node_index)
+    }
+
+    <span class="doccomment">/// Returns a mutable reference to the node pointed to by the
+    /// [`NodeReference`]. Returns an Error if the [`NodeReference`] points to a
+    /// node outside of the bounds of the tree. This can happen, for example, if
+    /// the node was removed while shrinking the diff after the creation of the
+    /// [`NodeReference`].
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>node_mut(<span class="kw-2">&amp;mut </span><span class="self">self</span>, node_ref: NodeId) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="kw-2">&amp;mut </span>T, ABinaryTreeDiffError&gt; {
+        <span class="self">self</span>.node_mut_by_index(node_ref.node_index)
+    }
+
+    <span class="doccomment">/// Return a [`NodeReference`] to the root node of the diff. Since the diff
+    /// always consists of at least one node, this operation cannot fail.
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>root(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; NodeId {
+        <span class="kw">let </span>root_index = root(<span class="self">self</span>.tree_size());
+        <span class="comment">// We create the reference directly instead of via self.new_reference,
+        // since due to the minimum tree size of one node, the root is always
+        // within bounds.
+        </span>NodeId {
+            node_index: root_index,
+        }
+    }
+
+    <span class="doccomment">/// Returns true if the given [`NodeReference`] points to a leaf and [`false`]
+    /// otherwise.
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>is_leaf(<span class="kw-2">&amp;</span><span class="self">self</span>, node_ref: NodeId) -&gt; bool {
+        node_ref.node_index % <span class="number">2 </span>== <span class="number">0
+    </span>}
+
+    <span class="doccomment">/// Returns a [`NodeReference`] to the parent of the referenced node. Returns
+    /// an error when the given [`NodeReference`] points to the root node or to a
+    /// node not in the tree.
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>parent(<span class="kw-2">&amp;</span><span class="self">self</span>, node_ref: NodeId) -&gt; <span class="prelude-ty">Result</span>&lt;NodeId, ABinaryTreeDiffError&gt; {
+        <span class="kw">let </span>parent_index = parent(node_ref.node_index, <span class="self">self</span>.tree_size())<span class="question-mark">?</span>;
+        <span class="prelude-val">Ok</span>(NodeId::try_from_node_index(<span class="self">self</span>, parent_index)<span class="question-mark">?</span>)
+    }
+
+    <span class="doccomment">/// Returns a [`NodeReference`] to the sibling of the referenced node. Returns
+    /// an error when the given [`NodeReference`] points to the root node or to a
+    /// node not in the tree.
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>sibling(<span class="kw-2">&amp;</span><span class="self">self</span>, node_ref: NodeId) -&gt; <span class="prelude-ty">Result</span>&lt;NodeId, ABinaryTreeDiffError&gt; {
+        <span class="kw">let </span>sibling_index = sibling(node_ref.node_index, <span class="self">self</span>.tree_size())<span class="question-mark">?</span>;
+        <span class="prelude-val">Ok</span>(NodeId::try_from_node_index(<span class="self">self</span>, sibling_index)<span class="question-mark">?</span>)
+    }
+
+    <span class="doccomment">/// Returns a [`NodeReference`] to the left child of the referenced node.
+    /// Returns an error when the given [`NodeReference`] points to a leaf node or
+    /// to a node not in the tree.
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>left_child(<span class="kw-2">&amp;</span><span class="self">self</span>, node_ref: NodeId) -&gt; <span class="prelude-ty">Result</span>&lt;NodeId, ABinaryTreeDiffError&gt; {
+        <span class="kw">let </span>left_child_index = left(node_ref.node_index)<span class="question-mark">?</span>;
+        <span class="prelude-val">Ok</span>(NodeId::try_from_node_index(<span class="self">self</span>, left_child_index)<span class="question-mark">?</span>)
+    }
+
+    <span class="doccomment">/// Returns a [`NodeReference`] to the right child of the referenced node.
+    /// Returns an error when the given [`NodeReference`] points to a leaf node or
+    /// to a node not in the tree.
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>right_child(<span class="kw-2">&amp;</span><span class="self">self</span>, node_ref: NodeId) -&gt; <span class="prelude-ty">Result</span>&lt;NodeId, ABinaryTreeDiffError&gt; {
+        <span class="kw">let </span>right_child_index = right(node_ref.node_index, <span class="self">self</span>.tree_size())<span class="question-mark">?</span>;
+        <span class="prelude-val">Ok</span>(NodeId::try_from_node_index(<span class="self">self</span>, right_child_index)<span class="question-mark">?</span>)
+    }
+
+    <span class="doccomment">/// Returns the [`LeafIndex`] of the referenced node. If the referenced node
+    /// is not a leaf, [`None`] is returned.
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>leaf_index(<span class="kw-2">&amp;</span><span class="self">self</span>, node_ref: NodeId) -&gt; <span class="prelude-ty">Option</span>&lt;LeafIndex&gt; {
+        <span class="kw">if </span><span class="self">self</span>.is_leaf(node_ref) {
+            <span class="prelude-val">Some</span>(node_ref.node_index / <span class="number">2</span>)
+        } <span class="kw">else </span>{
+            <span class="prelude-val">None
+        </span>}
+    }
+
+    <span class="comment">// Private helper functions below.
+    //////////////////////////////////
+
+    // Node access functions
+
+    </span><span class="doccomment">/// Returns a reference to the node at index `node_index` or [`None`] if the
+    /// node can neither be found in the tree nor in the diff.
+    </span><span class="kw">fn </span>node_by_index(<span class="kw-2">&amp;</span><span class="self">self</span>, node_index: NodeIndex) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="kw-2">&amp;</span>T, ABinaryTreeDiffError&gt; {
+        <span class="comment">// We first check if the given node_index is within the bounds of the diff.
+        </span><span class="self">self</span>.out_of_bounds(node_index)<span class="question-mark">?</span>;
+        <span class="comment">// If it is, check if it&#39;s in the diff.
+        </span><span class="kw">if let </span><span class="prelude-val">Some</span>(node) = <span class="self">self</span>.diff.get(<span class="kw-2">&amp;</span>node_index) {
+            <span class="kw">return </span><span class="prelude-val">Ok</span>(node);
+        }
+        <span class="comment">// If it isn&#39;t in the diff, it must be in the tree.
+        </span><span class="prelude-val">Ok</span>(<span class="self">self</span>.original_tree.node_by_index(node_index)<span class="question-mark">?</span>)
+    }
+
+    <span class="doccomment">/// Returns a mutable reference to the node in the diff at index
+    /// `node_index`. If the diff doesn&#39;t have a node at that index, it clones
+    /// the node to the diff and returns a mutable reference to that node.
+    /// Returns an error if the node can neither be found in the tree nor in the
+    /// diff, or if the index is out of the bounds of the diff.
+    </span><span class="kw">fn </span>node_mut_by_index(<span class="kw-2">&amp;mut </span><span class="self">self</span>, node_index: NodeIndex) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="kw-2">&amp;mut </span>T, ABinaryTreeDiffError&gt; {
+        <span class="comment">// We first check if the given node_index is within the bounds of the
+        // diff.
+        </span><span class="self">self</span>.out_of_bounds(node_index)<span class="question-mark">?</span>;
+
+        <span class="comment">// We then check if the node is already in the diff. (Not using `if let
+        // ...` here, because the borrow checker doesn&#39;t like that).
+        </span><span class="kw">if </span><span class="self">self</span>.diff.contains_key(<span class="kw-2">&amp;</span>node_index) {
+            <span class="kw">return </span><span class="self">self
+                </span>.diff
+                .get_mut(<span class="kw-2">&amp;</span>node_index)
+                <span class="comment">// We just checked that this index exists, so this must be Some.
+                </span>.ok_or_else(|| LibraryError::custom(<span class="string">&quot;index should exist&quot;</span>).into());
+            <span class="comment">// If not, we take a copy from the original tree and put it in the
+            // diff before returning a mutable reference to it.
+        </span>}
+        <span class="kw">let </span>tree_node = <span class="self">self</span>.original_tree.node_by_index(node_index)<span class="question-mark">?</span>;
+        <span class="self">self</span>.replace_node(node_index, tree_node.clone())<span class="question-mark">?</span>;
+        <span class="self">self</span>.diff
+            .get_mut(<span class="kw-2">&amp;</span>node_index)
+            <span class="comment">// We just inserted this into the diff, so this should be Some.
+            </span>.ok_or_else(|| LibraryError::custom(<span class="string">&quot;node should exist&quot;</span>).into())
+    }
+
+    <span class="comment">// Helper functions for node addition and removal
+
+    </span><span class="doccomment">/// This function is used to place a node at the given index such that any
+    /// previous node in the tree at the same position is replaced upon merging
+    /// the diff. This function also overrides any previously made changes to
+    /// that node as part of modifying this diff.
+    ///
+    /// Returns an error if the given node index is larger than the current size
+    /// of the diff.
+    </span><span class="kw">fn </span>replace_node(<span class="kw-2">&amp;mut </span><span class="self">self</span>, node_index: NodeIndex, node: T) -&gt; <span class="prelude-ty">Result</span>&lt;(), ABinaryTreeDiffError&gt; {
+        <span class="comment">// Check that we&#39;re not out of bounds.
+        </span><span class="self">self</span>.out_of_bounds(node_index)<span class="question-mark">?</span>;
+        <span class="self">self</span>.diff.insert(node_index, node);
+        <span class="prelude-val">Ok</span>(())
+    }
+
+    <span class="doccomment">/// Removes a node from the right edge of the diff, thus decreasing the size
+    /// of the diff by one. Throws an error if this would make the diff too
+    /// small (i.e. &lt; 1 node).
+    </span><span class="kw">fn </span>remove_node(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;(), ABinaryTreeDiffError&gt; {
+        <span class="comment">// First make sure that the tree isn&#39;t getting too small.
+        </span><span class="kw">if </span><span class="self">self</span>.tree_size() &lt;= <span class="number">1 </span>{
+            <span class="kw">return </span><span class="prelude-val">Err</span>(ABinaryTreeDiffError::TreeTooSmall);
+        }
+        <span class="kw">let </span>removed = <span class="self">self</span>.diff.remove(<span class="kw-2">&amp;</span>(<span class="self">self</span>.tree_size() - <span class="number">1</span>));
+        <span class="kw">if </span><span class="self">self</span>.tree_size() &gt; <span class="self">self</span>.original_tree.size()<span class="question-mark">? </span>{
+            <span class="comment">// If the diff extended the tree, there should be a node to remove
+            // here.
+            </span><span class="macro">debug_assert!</span>(removed.is_some());
+        }
+        <span class="comment">// There should be a node here to remove.
+        // We decrease the size to signal that a node was removed from the diff.
+        </span><span class="self">self</span>.size -= <span class="number">1</span>;
+        <span class="prelude-val">Ok</span>(())
+    }
+
+    <span class="comment">// Index checking
+
+    </span><span class="doccomment">/// This is a helper function to check if a given leaf is outside of the
+    /// bounds of the tree.
+    ///
+    /// Returns an error if the given leaf is out of bounds. Otherwise returns
+    /// nothing.
+    </span><span class="kw">fn </span>out_of_bounds(<span class="kw-2">&amp;</span><span class="self">self</span>, node_index: NodeIndex) -&gt; <span class="prelude-ty">Result</span>&lt;(), OutOfBoundsError&gt; {
+        <span class="kw">if </span>node_index &gt;= <span class="self">self</span>.tree_size() {
+            <span class="kw">return </span><span class="prelude-val">Err</span>(OutOfBoundsError::IndexOutOfBounds);
+        }
+        <span class="prelude-val">Ok</span>(())
+    }
+
+    <span class="doccomment">/// This is a helper function to check the validity of two leaf indices for
+    /// use in the subtree root functions.
+    ///
+    /// Returns an error if the two given leaf indices are the same or if one of
+    /// the leaf indices doesn&#39;t correspond to a leaf in the diff. Otherwise
+    /// returns nothing.
+    </span><span class="kw">fn </span>leaf_pair_check(
+        <span class="kw-2">&amp;</span><span class="self">self</span>,
+        leaf_index_1: LeafIndex,
+        leaf_index_2: LeafIndex,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;(), ABinaryTreeDiffError&gt; {
+        <span class="kw">if </span>leaf_index_1 == leaf_index_2 {
+            <span class="kw">return </span><span class="prelude-val">Err</span>(ABinaryTreeDiffError::SameLeafError);
+        }
+
+        <span class="kw">let </span>node_index_1 = to_node_index(leaf_index_1);
+        <span class="kw">let </span>node_index_2 = to_node_index(leaf_index_2);
+
+        <span class="self">self</span>.out_of_bounds(node_index_1)<span class="question-mark">?</span>;
+        <span class="self">self</span>.out_of_bounds(node_index_2)<span class="question-mark">?</span>;
 
         <span class="prelude-val">Ok</span>(())
     }
 
-    <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">test</span>)]</span>
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">deref_vec</span>(
+    <span class="attribute">#[cfg(test)]
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>deref_vec(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        <span class="ident">node_ref_vec</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">NodeId</span><span class="op">&gt;</span>,
-    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">T</span><span class="op">&gt;</span>, <span class="ident">ABinaryTreeDiffError</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">node_vec</span> <span class="op">=</span> <span class="ident">Vec::new</span>();
-        <span class="kw">for</span> <span class="ident">node_ref</span> <span class="kw">in</span> <span class="ident">node_ref_vec</span> {
-            <span class="kw">let</span> <span class="ident">node</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">node</span>(<span class="ident">node_ref</span>)<span class="question-mark">?</span>;
-            <span class="ident">node_vec</span>.<span class="ident">push</span>(<span class="ident">node</span>);
+        node_ref_vec: Vec&lt;NodeId&gt;,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;Vec&lt;<span class="kw-2">&amp;</span>T&gt;, ABinaryTreeDiffError&gt; {
+        <span class="kw">let </span><span class="kw-2">mut </span>node_vec = Vec::new();
+        <span class="kw">for </span>node_ref <span class="kw">in </span>node_ref_vec {
+            <span class="kw">let </span>node = <span class="self">self</span>.node(node_ref)<span class="question-mark">?</span>;
+            node_vec.push(node);
         }
-        <span class="prelude-val">Ok</span>(<span class="ident">node_vec</span>)
+        <span class="prelude-val">Ok</span>(node_vec)
     }
 }
 
-<span class="doccomment">/// An iterator over an [`AbDiff`] instance.</span>
-<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct</span> <span class="ident">DiffIterator</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="ident">T</span>: <span class="ident">Clone</span> <span class="op">+</span> <span class="ident">Debug</span><span class="op">&gt;</span> {
-    <span class="ident">diff</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="ident">AbDiff</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="ident">T</span><span class="op">&gt;</span>,
-    <span class="ident">current_index</span>: <span class="ident">NodeIndex</span>,
+<span class="doccomment">/// An iterator over an [`AbDiff`] instance.
+</span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct </span>DiffIterator&lt;<span class="lifetime">&#39;a</span>, T: Clone + Debug&gt; {
+    diff: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>AbDiff&lt;<span class="lifetime">&#39;a</span>, T&gt;,
+    current_index: NodeIndex,
 }
 
-<span class="kw">impl</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="ident">T</span>: <span class="ident">Clone</span> <span class="op">+</span> <span class="ident">Debug</span><span class="op">&gt;</span> <span class="ident">Iterator</span> <span class="kw">for</span> <span class="ident">DiffIterator</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="ident">T</span><span class="op">&gt;</span> {
-    <span class="kw">type</span> <span class="ident">Item</span> <span class="op">=</span> <span class="ident">NodeId</span>;
+<span class="kw">impl</span>&lt;<span class="lifetime">&#39;a</span>, T: Clone + Debug&gt; Iterator <span class="kw">for </span>DiffIterator&lt;<span class="lifetime">&#39;a</span>, T&gt; {
+    <span class="kw">type </span>Item = NodeId;
 
-    <span class="kw">fn</span> <span class="ident">next</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident"><span class="self">Self</span>::Item</span><span class="op">&gt;</span> {
-        <span class="kw">if</span> <span class="self">self</span>.<span class="ident">diff</span>.<span class="ident">node_by_index</span>(<span class="self">self</span>.<span class="ident">current_index</span>).<span class="ident">is_ok</span>() {
-            <span class="kw">let</span> <span class="ident">node_ref_option</span> <span class="op">=</span> <span class="prelude-val">Some</span>(<span class="ident">NodeId</span> {
-                <span class="ident">node_index</span>: <span class="self">self</span>.<span class="ident">current_index</span>,
+    <span class="kw">fn </span>next(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;<span class="self">Self</span>::Item&gt; {
+        <span class="kw">if </span><span class="self">self</span>.diff.node_by_index(<span class="self">self</span>.current_index).is_ok() {
+            <span class="kw">let </span>node_ref_option = <span class="prelude-val">Some</span>(NodeId {
+                node_index: <span class="self">self</span>.current_index,
             });
-            <span class="self">self</span>.<span class="ident">current_index</span> <span class="op">+</span><span class="op">=</span> <span class="number">1</span>;
-            <span class="ident">node_ref_option</span>
-        } <span class="kw">else</span> {
-            <span class="prelude-val">None</span>
-        }
+            <span class="self">self</span>.current_index += <span class="number">1</span>;
+            node_ref_option
+        } <span class="kw">else </span>{
+            <span class="prelude-val">None
+        </span>}
     }
 }
 
-<span class="doccomment">/// Binary Tree Diff error</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Error</span>, <span class="ident">Debug</span>, <span class="ident">PartialEq</span>, <span class="ident">Clone</span>)]</span>
-<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">enum</span> <span class="ident">ABinaryTreeDiffError</span> {
-    <span class="doccomment">/// See [`LibraryError`] for more details.</span>
-    <span class="attribute">#[<span class="ident">error</span>(<span class="ident">transparent</span>)]</span>
-    <span class="ident">LibraryError</span>(<span class="attribute">#[<span class="ident">from</span>]</span> <span class="ident">LibraryError</span>),
-    <span class="doccomment">/// Can&#39;t compute the copath node of the subtree root of a single leaf.</span>
-    <span class="attribute">#[<span class="ident">error</span>(<span class="string">&quot;Can&#39;t compute the copath node of the subtree root of a single leaf.&quot;</span>)]</span>
-    <span class="ident">SameLeafError</span>,
-    <span class="doccomment">/// Maximum tree size reached.</span>
-    <span class="attribute">#[<span class="ident">error</span>(<span class="string">&quot;Maximum tree size reached.&quot;</span>)]</span>
-    <span class="ident">TreeTooLarge</span>,
-    <span class="doccomment">/// Minimum tree size reached.</span>
-    <span class="attribute">#[<span class="ident">error</span>(<span class="string">&quot;Minimum tree size reached.&quot;</span>)]</span>
-    <span class="ident">TreeTooSmall</span>,
-    <span class="doccomment">/// The given path index is not the same length as the direct path.</span>
-    <span class="attribute">#[<span class="ident">error</span>(<span class="string">&quot;The given path index is not the same length as the direct path.&quot;</span>)]</span>
-    <span class="ident">PathLengthMismatch</span>,
-    <span class="doccomment">/// Error while executing folding function.</span>
-    <span class="attribute">#[<span class="ident">error</span>(<span class="string">&quot;Error while executing folding function.&quot;</span>)]</span>
-    <span class="ident">FoldingError</span>,
-    <span class="doccomment">/// See [`ABinaryTreeError`] for more details.</span>
-    <span class="attribute">#[<span class="ident">error</span>(<span class="ident">transparent</span>)]</span>
-    <span class="ident">ABinaryTreeError</span>(<span class="attribute">#[<span class="ident">from</span>]</span> <span class="ident">ABinaryTreeError</span>),
-    <span class="doccomment">/// See [`TreeMathError`] for more details.</span>
-    <span class="attribute">#[<span class="ident">error</span>(<span class="ident">transparent</span>)]</span>
-    <span class="ident">TreeError</span>(<span class="attribute">#[<span class="ident">from</span>]</span> <span class="ident">TreeMathError</span>),
-    <span class="doccomment">/// See [`OutOfBoundsError`] for more details.</span>
-    <span class="attribute">#[<span class="ident">error</span>(<span class="ident">transparent</span>)]</span>
-    <span class="ident">IndexOutOfBounds</span>(<span class="attribute">#[<span class="ident">from</span>]</span> <span class="ident">OutOfBoundsError</span>),
+<span class="doccomment">/// Binary Tree Diff error
+</span><span class="attribute">#[derive(Error, Debug, PartialEq, Clone)]
+</span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">enum </span>ABinaryTreeDiffError {
+    <span class="doccomment">/// See [`LibraryError`] for more details.
+    </span><span class="attribute">#[error(transparent)]
+    </span>LibraryError(<span class="attribute">#[from] </span>LibraryError),
+    <span class="doccomment">/// Can&#39;t compute the copath node of the subtree root of a single leaf.
+    </span><span class="attribute">#[error(<span class="string">&quot;Can&#39;t compute the copath node of the subtree root of a single leaf.&quot;</span>)]
+    </span>SameLeafError,
+    <span class="doccomment">/// Maximum tree size reached.
+    </span><span class="attribute">#[error(<span class="string">&quot;Maximum tree size reached.&quot;</span>)]
+    </span>TreeTooLarge,
+    <span class="doccomment">/// Minimum tree size reached.
+    </span><span class="attribute">#[error(<span class="string">&quot;Minimum tree size reached.&quot;</span>)]
+    </span>TreeTooSmall,
+    <span class="doccomment">/// The given path index is not the same length as the direct path.
+    </span><span class="attribute">#[error(<span class="string">&quot;The given path index is not the same length as the direct path.&quot;</span>)]
+    </span>PathLengthMismatch,
+    <span class="doccomment">/// Error while executing folding function.
+    </span><span class="attribute">#[error(<span class="string">&quot;Error while executing folding function.&quot;</span>)]
+    </span>FoldingError,
+    <span class="doccomment">/// See [`ABinaryTreeError`] for more details.
+    </span><span class="attribute">#[error(transparent)]
+    </span>ABinaryTreeError(<span class="attribute">#[from] </span>ABinaryTreeError),
+    <span class="doccomment">/// See [`TreeMathError`] for more details.
+    </span><span class="attribute">#[error(transparent)]
+    </span>TreeError(<span class="attribute">#[from] </span>TreeMathError),
+    <span class="doccomment">/// See [`OutOfBoundsError`] for more details.
+    </span><span class="attribute">#[error(transparent)]
+    </span>IndexOutOfBounds(<span class="attribute">#[from] </span>OutOfBoundsError),
 }
 
-<span class="doccomment">/// Error type for functions that only throw OutOfBounds errors.</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Error</span>, <span class="ident">Debug</span>, <span class="ident">PartialEq</span>, <span class="ident">Clone</span>)]</span>
-<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">enum</span> <span class="ident">OutOfBoundsError</span> {
-    <span class="doccomment">/// See [`LibraryError`] for more details.</span>
-    <span class="attribute">#[<span class="ident">error</span>(<span class="ident">transparent</span>)]</span>
-    <span class="ident">LibraryError</span>(<span class="attribute">#[<span class="ident">from</span>]</span> <span class="ident">LibraryError</span>),
-    <span class="doccomment">/// The given index is not within the bounds of the tree.</span>
-    <span class="attribute">#[<span class="ident">error</span>(<span class="string">&quot;The given index is not within the bounds of the tree.&quot;</span>)]</span>
-    <span class="ident">IndexOutOfBounds</span>,
+<span class="doccomment">/// Error type for functions that only throw OutOfBounds errors.
+</span><span class="attribute">#[derive(Error, Debug, PartialEq, Clone)]
+</span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">enum </span>OutOfBoundsError {
+    <span class="doccomment">/// See [`LibraryError`] for more details.
+    </span><span class="attribute">#[error(transparent)]
+    </span>LibraryError(<span class="attribute">#[from] </span>LibraryError),
+    <span class="doccomment">/// The given index is not within the bounds of the tree.
+    </span><span class="attribute">#[error(<span class="string">&quot;The given index is not within the bounds of the tree.&quot;</span>)]
+    </span>IndexOutOfBounds,
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../../../" data-current-crate="openmls" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.64.0 (a55dd71d5 2022-09-19)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../../../" data-current-crate="openmls" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0 (897e37553 2022-11-02)" ></div></body></html>

@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `src/framing/message.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>message.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" type="text/css" href="../../../normalize.css"><link rel="stylesheet" type="text/css" href="../../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" type="text/css" href="../../../ayu.css" disabled><link rel="stylesheet" type="text/css" href="../../../dark.css" disabled><link rel="stylesheet" type="text/css" href="../../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../../storage.js"></script><script defer src="../../../source-script.js"></script><script defer src="../../../source-files.js"></script><script defer src="../../../main.js"></script><noscript><link rel="stylesheet" href="../../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../../openmls/index.html"><div class="logo-container"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></div></a><h2 class="location"></h2></nav><nav class="sidebar"><a class="sidebar-logo" href="../../../openmls/index.html"><div class="logo-container"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></div></a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../../openmls/index.html"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></a><nav class="sub"><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><button type="button">?</button></div><div id="settings-menu" tabindex="-1"><a href="../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../wheel.svg"></a></div></div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">1</span>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `src/framing/message.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>message.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" href="../../../normalize.css"><link rel="stylesheet" href="../../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" href="../../../ayu.css" disabled><link rel="stylesheet" href="../../../dark.css" disabled><link rel="stylesheet" href="../../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../../storage.js"></script><script defer src="../../../source-script.js"></script><script defer src="../../../source-files.js"></script><script defer src="../../../main.js"></script><noscript><link rel="stylesheet" href="../../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../../openmls/index.html"><div class="logo-container"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></div></a><h2 class="location"></h2></nav><nav class="sidebar"><a class="sidebar-logo" href="../../../openmls/index.html"><div class="logo-container"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></div></a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../../openmls/index.html"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></a><nav class="sub"><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><button type="button">?</button></div><div id="settings-menu" tabindex="-1"><a href="../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../wheel.svg"></a></div></div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">1</span>
 <span id="2">2</span>
 <span id="3">3</span>
 <span id="4">4</span>
@@ -274,281 +274,281 @@
 <span id="274">274</span>
 <span id="275">275</span>
 <span id="276">276</span>
-</pre><pre class="rust"><code><span class="doccomment">//! MLS Message types</span>
-<span class="doccomment">//!</span>
-<span class="doccomment">//! This module defines two opaque message types that are used by the [`MlsGroup`](crate::group::mls_group::MlsGroup) API.</span>
-<span class="doccomment">//! [`MlsMessageIn`] is used for messages between the Delivery Service and the client. It can be instantiated</span>
-<span class="doccomment">//! from a byte slice.</span>
-<span class="doccomment">//! [`MlsMessageOut`] is returned by various functions of the [`MlsGroup`](crate::group::mls_group::MlsGroup) API.</span>
-<span class="doccomment">//! It is to be used between the client and the Delivery Service. It can be serialized to a byte vector.</span>
-<span class="doccomment">//!</span>
-<span class="doccomment">//! Both messages have the same API. The framing part of the message can be inspected through it. In particular,</span>
-<span class="doccomment">//! it is important to look at [`MlsMessageIn::group_id()`] to determine in which</span>
-<span class="doccomment">//! [`MlsGroup`](crate::group::mls_group::MlsGroup) it should be processed.</span>
+</pre><pre class="rust"><code><span class="doccomment">//! MLS Message types
+//!
+//! This module defines two opaque message types that are used by the [`MlsGroup`](crate::group::mls_group::MlsGroup) API.
+//! [`MlsMessageIn`] is used for messages between the Delivery Service and the client. It can be instantiated
+//! from a byte slice.
+//! [`MlsMessageOut`] is returned by various functions of the [`MlsGroup`](crate::group::mls_group::MlsGroup) API.
+//! It is to be used between the client and the Delivery Service. It can be serialized to a byte vector.
+//!
+//! Both messages have the same API. The framing part of the message can be inspected through it. In particular,
+//! it is important to look at [`MlsMessageIn::group_id()`] to determine in which
+//! [`MlsGroup`](crate::group::mls_group::MlsGroup) it should be processed.
 
-<span class="kw">use</span> <span class="ident">tls_codec</span>::{<span class="ident">Deserialize</span>, <span class="ident">Serialize</span>};
+</span><span class="kw">use </span>tls_codec::{Deserialize, Serialize};
 
-<span class="kw">use</span> <span class="kw">super</span>::<span class="kw-2">*</span>;
+<span class="kw">use super</span>::<span class="kw-2">*</span>;
 
-<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::error::LibraryError</span>;
+<span class="kw">use </span><span class="kw">crate</span>::error::LibraryError;
 
-<span class="doccomment">/// Unified message type for MLS messages.</span>
-<span class="doccomment">/// /// This is only used internally, externally we use either [`MlsMessageIn`] or</span>
-<span class="doccomment">/// [`MlsMessageOut`], depending on the context.</span>
-<span class="doccomment">///</span>
-<span class="doccomment">/// ```c</span>
-<span class="doccomment">/// // draft-ietf-mls-protocol-16</span>
-<span class="doccomment">/// struct {</span>
-<span class="doccomment">///     ProtocolVersion version = mls10;</span>
-<span class="doccomment">///</span>
-<span class="doccomment">///     // ... continued in [MlsMessageBody] ...</span>
-<span class="doccomment">/// } MLSMessage;</span>
-<span class="doccomment">/// ```</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">PartialEq</span>, <span class="ident">Debug</span>, <span class="ident">Clone</span>)]</span>
-<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct</span> <span class="ident">MlsMessage</span> {
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="ident">body</span>: <span class="ident">MlsMessageBody</span>,
+<span class="doccomment">/// Unified message type for MLS messages.
+/// /// This is only used internally, externally we use either [`MlsMessageIn`] or
+/// [`MlsMessageOut`], depending on the context.
+///
+/// ```c
+/// // draft-ietf-mls-protocol-16
+/// struct {
+///     ProtocolVersion version = mls10;
+///
+///     // ... continued in [MlsMessageBody] ...
+/// } MLSMessage;
+/// ```
+</span><span class="attribute">#[derive(PartialEq, Debug, Clone)]
+</span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct </span>MlsMessage {
+    <span class="kw">pub</span>(<span class="kw">crate</span>) body: MlsMessageBody,
 }
 
-<span class="doccomment">/// MLSMessage (Body)</span>
-<span class="doccomment">///</span>
-<span class="doccomment">/// Note: Because [MlsMessageBody] already discriminates between</span>
-<span class="doccomment">/// `mls_plaintext`, `mls_ciphertext`, etc., we don&#39;t use the</span>
-<span class="doccomment">/// `wire_format` field. This prevents inconsistent assignments</span>
-<span class="doccomment">/// where `wire_format` contradicts the variant given in `body`.</span>
-<span class="doccomment">///</span>
-<span class="doccomment">/// ```c</span>
-<span class="doccomment">/// // draft-ietf-mls-protocol-16</span>
-<span class="doccomment">/// struct {</span>
-<span class="doccomment">///     // ... continued from [MlsMessage] ...</span>
-<span class="doccomment">///</span>
-<span class="doccomment">///     WireFormat wire_format;</span>
-<span class="doccomment">///     select (MLSMessage.wire_format) {</span>
-<span class="doccomment">///         case mls_plaintext:</span>
-<span class="doccomment">///             MLSPlaintext plaintext;</span>
-<span class="doccomment">///         case mls_ciphertext:</span>
-<span class="doccomment">///             MLSCiphertext ciphertext;</span>
-<span class="doccomment">///         case mls_welcome:</span>
-<span class="doccomment">///             Welcome welcome;</span>
-<span class="doccomment">///         case mls_group_info:</span>
-<span class="doccomment">///             GroupInfo group_info;</span>
-<span class="doccomment">///         case mls_key_package:</span>
-<span class="doccomment">///             KeyPackage key_package;</span>
-<span class="doccomment">///     }</span>
-<span class="doccomment">/// } MLSMessage;</span>
-<span class="doccomment">/// ```</span>
-<span class="attribute">#[<span class="ident">allow</span>(<span class="ident">clippy::large_enum_variant</span>)]</span> <span class="comment">// TODO #979: Remove the clippy warning suppresion</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">PartialEq</span>, <span class="ident">Clone</span>, <span class="ident">TlsSerialize</span>, <span class="ident">TlsDeserialize</span>, <span class="ident">TlsSize</span>)]</span>
-<span class="attribute">#[<span class="ident">repr</span>(<span class="ident">u8</span>)]</span>
-<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">enum</span> <span class="ident">MlsMessageBody</span> {
-    <span class="doccomment">/// Plaintext message</span>
-    <span class="attribute">#[<span class="ident">tls_codec</span>(<span class="ident">discriminant</span> <span class="op">=</span> <span class="number">1</span>)]</span>
-    <span class="ident">Plaintext</span>(<span class="ident">VerifiableMlsPlaintext</span>),
+<span class="doccomment">/// MLSMessage (Body)
+///
+/// Note: Because [MlsMessageBody] already discriminates between
+/// `mls_plaintext`, `mls_ciphertext`, etc., we don&#39;t use the
+/// `wire_format` field. This prevents inconsistent assignments
+/// where `wire_format` contradicts the variant given in `body`.
+///
+/// ```c
+/// // draft-ietf-mls-protocol-16
+/// struct {
+///     // ... continued from [MlsMessage] ...
+///
+///     WireFormat wire_format;
+///     select (MLSMessage.wire_format) {
+///         case mls_plaintext:
+///             MLSPlaintext plaintext;
+///         case mls_ciphertext:
+///             MLSCiphertext ciphertext;
+///         case mls_welcome:
+///             Welcome welcome;
+///         case mls_group_info:
+///             GroupInfo group_info;
+///         case mls_key_package:
+///             KeyPackage key_package;
+///     }
+/// } MLSMessage;
+/// ```
+</span><span class="attribute">#[allow(clippy::large_enum_variant)] </span><span class="comment">// TODO #979: Remove the clippy warning suppresion
+</span><span class="attribute">#[derive(Debug, PartialEq, Clone, TlsSerialize, TlsDeserialize, TlsSize)]
+#[repr(u8)]
+</span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">enum </span>MlsMessageBody {
+    <span class="doccomment">/// Plaintext message
+    </span><span class="attribute">#[tls_codec(discriminant = <span class="number">1</span>)]
+    </span>Plaintext(VerifiableMlsPlaintext),
 
-    <span class="doccomment">/// Ciphertext message</span>
-    <span class="attribute">#[<span class="ident">tls_codec</span>(<span class="ident">discriminant</span> <span class="op">=</span> <span class="number">2</span>)]</span>
-    <span class="ident">Ciphertext</span>(<span class="ident">MlsCiphertext</span>),
+    <span class="doccomment">/// Ciphertext message
+    </span><span class="attribute">#[tls_codec(discriminant = <span class="number">2</span>)]
+    </span>Ciphertext(MlsCiphertext),
 }
 
-<span class="kw">impl</span> <span class="ident">MlsMessage</span> {
-    <span class="doccomment">/// Returns the wire format.</span>
-    <span class="kw">fn</span> <span class="ident">wire_format</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">WireFormat</span> {
-        <span class="kw">match</span> <span class="self">self</span>.<span class="ident">body</span> {
-            <span class="ident">MlsMessageBody::Ciphertext</span>(<span class="kw">_</span>) =&gt; <span class="ident">WireFormat::MlsCiphertext</span>,
-            <span class="ident">MlsMessageBody::Plaintext</span>(<span class="kw">_</span>) =&gt; <span class="ident">WireFormat::MlsPlaintext</span>,
+<span class="kw">impl </span>MlsMessage {
+    <span class="doccomment">/// Returns the wire format.
+    </span><span class="kw">fn </span>wire_format(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; WireFormat {
+        <span class="kw">match </span><span class="self">self</span>.body {
+            MlsMessageBody::Ciphertext(<span class="kw">_</span>) =&gt; WireFormat::MlsCiphertext,
+            MlsMessageBody::Plaintext(<span class="kw">_</span>) =&gt; WireFormat::MlsPlaintext,
         }
     }
 
-    <span class="doccomment">/// Returns the group ID.</span>
-    <span class="kw">fn</span> <span class="ident">group_id</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span><span class="ident">GroupId</span> {
-        <span class="kw">match</span> <span class="self">self</span>.<span class="ident">body</span> {
-            <span class="ident">MlsMessageBody::Ciphertext</span>(<span class="kw-2">ref</span> <span class="ident">m</span>) =&gt; <span class="ident">m</span>.<span class="ident">group_id</span>(),
-            <span class="ident">MlsMessageBody::Plaintext</span>(<span class="kw-2">ref</span> <span class="ident">m</span>) =&gt; <span class="ident">m</span>.<span class="ident">group_id</span>(),
+    <span class="doccomment">/// Returns the group ID.
+    </span><span class="kw">fn </span>group_id(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>GroupId {
+        <span class="kw">match </span><span class="self">self</span>.body {
+            MlsMessageBody::Ciphertext(<span class="kw-2">ref </span>m) =&gt; m.group_id(),
+            MlsMessageBody::Plaintext(<span class="kw-2">ref </span>m) =&gt; m.group_id(),
         }
     }
 
-    <span class="doccomment">/// Returns the epoch.</span>
-    <span class="kw">fn</span> <span class="ident">epoch</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">GroupEpoch</span> {
-        <span class="kw">match</span> <span class="self">self</span>.<span class="ident">body</span> {
-            <span class="ident">MlsMessageBody::Ciphertext</span>(<span class="kw-2">ref</span> <span class="ident">m</span>) =&gt; <span class="ident">m</span>.<span class="ident">epoch</span>(),
-            <span class="ident">MlsMessageBody::Plaintext</span>(<span class="kw-2">ref</span> <span class="ident">m</span>) =&gt; <span class="ident">m</span>.<span class="ident">epoch</span>(),
+    <span class="doccomment">/// Returns the epoch.
+    </span><span class="kw">fn </span>epoch(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; GroupEpoch {
+        <span class="kw">match </span><span class="self">self</span>.body {
+            MlsMessageBody::Ciphertext(<span class="kw-2">ref </span>m) =&gt; m.epoch(),
+            MlsMessageBody::Plaintext(<span class="kw-2">ref </span>m) =&gt; m.epoch(),
         }
     }
 
-    <span class="doccomment">/// Returns the content type.</span>
-    <span class="kw">fn</span> <span class="ident">content_type</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">ContentType</span> {
-        <span class="kw">match</span> <span class="self">self</span>.<span class="ident">body</span> {
-            <span class="ident">MlsMessageBody::Ciphertext</span>(<span class="kw-2">ref</span> <span class="ident">m</span>) =&gt; <span class="ident">m</span>.<span class="ident">content_type</span>(),
-            <span class="ident">MlsMessageBody::Plaintext</span>(<span class="kw-2">ref</span> <span class="ident">m</span>) =&gt; <span class="ident">m</span>.<span class="ident">content_type</span>(),
+    <span class="doccomment">/// Returns the content type.
+    </span><span class="kw">fn </span>content_type(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; ContentType {
+        <span class="kw">match </span><span class="self">self</span>.body {
+            MlsMessageBody::Ciphertext(<span class="kw-2">ref </span>m) =&gt; m.content_type(),
+            MlsMessageBody::Plaintext(<span class="kw-2">ref </span>m) =&gt; m.content_type(),
         }
     }
 
-    <span class="doccomment">/// Returns `true` if this is a handshake message and `false` otherwise.</span>
-    <span class="kw">fn</span> <span class="ident">is_handshake_message</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">bool</span> {
-        <span class="self">self</span>.<span class="ident">content_type</span>().<span class="ident">is_handshake_message</span>()
+    <span class="doccomment">/// Returns `true` if this is a handshake message and `false` otherwise.
+    </span><span class="kw">fn </span>is_handshake_message(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; bool {
+        <span class="self">self</span>.content_type().is_handshake_message()
     }
 
-    <span class="doccomment">/// Tries to deserialize from a byte slice. Returns [`MlsMessageError::DecodingError`] on failure.</span>
-    <span class="kw">fn</span> <span class="ident">try_from_bytes</span>(<span class="kw-2">mut</span> <span class="ident">bytes</span>: <span class="kw-2">&amp;</span>[<span class="ident">u8</span>]) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident">MlsMessageError</span><span class="op">&gt;</span> {
-        <span class="ident">MlsMessage::tls_deserialize</span>(<span class="kw-2">&amp;mut</span> <span class="ident">bytes</span>).<span class="ident">map_err</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="ident">MlsMessageError::UnableToDecode</span>)
+    <span class="doccomment">/// Tries to deserialize from a byte slice. Returns [`MlsMessageError::DecodingError`] on failure.
+    </span><span class="kw">fn </span>try_from_bytes(<span class="kw-2">mut </span>bytes: <span class="kw-2">&amp;</span>[u8]) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, MlsMessageError&gt; {
+        MlsMessage::tls_deserialize(<span class="kw-2">&amp;mut </span>bytes).map_err(|<span class="kw">_</span>| MlsMessageError::UnableToDecode)
     }
 
-    <span class="doccomment">/// Serializes the message to a byte vector. Returns [`MlsMessageError::EncodingError`] on failure.</span>
-    <span class="kw">fn</span> <span class="ident">to_bytes</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>, <span class="ident">MlsMessageError</span><span class="op">&gt;</span> {
-        <span class="prelude-val">Ok</span>(<span class="self">self</span>
-            .<span class="ident">tls_serialize_detached</span>()
-            .<span class="ident">map_err</span>(<span class="ident">LibraryError::missing_bound_check</span>)<span class="question-mark">?</span>)
+    <span class="doccomment">/// Serializes the message to a byte vector. Returns [`MlsMessageError::EncodingError`] on failure.
+    </span><span class="kw">fn </span>to_bytes(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;Vec&lt;u8&gt;, MlsMessageError&gt; {
+        <span class="prelude-val">Ok</span>(<span class="self">self
+            </span>.tls_serialize_detached()
+            .map_err(LibraryError::missing_bound_check)<span class="question-mark">?</span>)
     }
 }
 
-<span class="doccomment">/// Unified message type for incoming MLS messages.</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Clone</span>, <span class="ident">TlsSerialize</span>, <span class="ident">TlsDeserialize</span>, <span class="ident">TlsSize</span>)]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">MlsMessageIn</span> {
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="ident">mls_message</span>: <span class="ident">MlsMessage</span>,
+<span class="doccomment">/// Unified message type for incoming MLS messages.
+</span><span class="attribute">#[derive(Debug, Clone, TlsSerialize, TlsDeserialize, TlsSize)]
+</span><span class="kw">pub struct </span>MlsMessageIn {
+    <span class="kw">pub</span>(<span class="kw">crate</span>) mls_message: MlsMessage,
 }
 
-<span class="kw">impl</span> <span class="ident">MlsMessageIn</span> {
-    <span class="doccomment">/// Returns the wire format.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">wire_format</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">WireFormat</span> {
-        <span class="self">self</span>.<span class="ident">mls_message</span>.<span class="ident">wire_format</span>()
+<span class="kw">impl </span>MlsMessageIn {
+    <span class="doccomment">/// Returns the wire format.
+    </span><span class="kw">pub fn </span>wire_format(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; WireFormat {
+        <span class="self">self</span>.mls_message.wire_format()
     }
 
-    <span class="doccomment">/// Returns the group ID.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">group_id</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span><span class="ident">GroupId</span> {
-        <span class="self">self</span>.<span class="ident">mls_message</span>.<span class="ident">group_id</span>()
+    <span class="doccomment">/// Returns the group ID.
+    </span><span class="kw">pub fn </span>group_id(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>GroupId {
+        <span class="self">self</span>.mls_message.group_id()
     }
 
-    <span class="doccomment">/// Returns the epoch.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">epoch</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">GroupEpoch</span> {
-        <span class="self">self</span>.<span class="ident">mls_message</span>.<span class="ident">epoch</span>()
+    <span class="doccomment">/// Returns the epoch.
+    </span><span class="kw">pub fn </span>epoch(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; GroupEpoch {
+        <span class="self">self</span>.mls_message.epoch()
     }
 
-    <span class="doccomment">/// Returns the content type.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">content_type</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">ContentType</span> {
-        <span class="self">self</span>.<span class="ident">mls_message</span>.<span class="ident">content_type</span>()
+    <span class="doccomment">/// Returns the content type.
+    </span><span class="kw">pub fn </span>content_type(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; ContentType {
+        <span class="self">self</span>.mls_message.content_type()
     }
 
-    <span class="doccomment">/// Returns `true` if this is a handshake message and `false` otherwise.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">is_handshake_message</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">bool</span> {
-        <span class="self">self</span>.<span class="ident">mls_message</span>.<span class="ident">is_handshake_message</span>()
+    <span class="doccomment">/// Returns `true` if this is a handshake message and `false` otherwise.
+    </span><span class="kw">pub fn </span>is_handshake_message(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; bool {
+        <span class="self">self</span>.mls_message.is_handshake_message()
     }
 
-    <span class="doccomment">/// Tries to deserialize from a byte slice. Returns [`MlsMessageError::UnableToDecode`] on failure.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">try_from_bytes</span>(<span class="ident">bytes</span>: <span class="kw-2">&amp;</span>[<span class="ident">u8</span>]) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident">MlsMessageError</span><span class="op">&gt;</span> {
-        <span class="prelude-val">Ok</span>(<span class="self">Self</span> {
-            <span class="ident">mls_message</span>: <span class="ident">MlsMessage::try_from_bytes</span>(<span class="ident">bytes</span>)<span class="question-mark">?</span>,
+    <span class="doccomment">/// Tries to deserialize from a byte slice. Returns [`MlsMessageError::UnableToDecode`] on failure.
+    </span><span class="kw">pub fn </span>try_from_bytes(bytes: <span class="kw-2">&amp;</span>[u8]) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, MlsMessageError&gt; {
+        <span class="prelude-val">Ok</span>(<span class="self">Self </span>{
+            mls_message: MlsMessage::try_from_bytes(bytes)<span class="question-mark">?</span>,
         })
     }
 
-    <span class="doccomment">/// Serializes the message to a byte vector. Returns [`MlsMessageError::LibraryError`] on failure.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">to_bytes</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>, <span class="ident">MlsMessageError</span><span class="op">&gt;</span> {
-        <span class="self">self</span>.<span class="ident">mls_message</span>.<span class="ident">to_bytes</span>()
+    <span class="doccomment">/// Serializes the message to a byte vector. Returns [`MlsMessageError::LibraryError`] on failure.
+    </span><span class="kw">pub fn </span>to_bytes(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;Vec&lt;u8&gt;, MlsMessageError&gt; {
+        <span class="self">self</span>.mls_message.to_bytes()
     }
 }
 
-<span class="doccomment">/// Unified message type for outgoing MLS messages.</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">PartialEq</span>, <span class="ident">Debug</span>, <span class="ident">Clone</span>, <span class="ident">TlsSerialize</span>, <span class="ident">TlsDeserialize</span>, <span class="ident">TlsSize</span>)]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">MlsMessageOut</span> {
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="ident">mls_message</span>: <span class="ident">MlsMessage</span>,
+<span class="doccomment">/// Unified message type for outgoing MLS messages.
+</span><span class="attribute">#[derive(PartialEq, Debug, Clone, TlsSerialize, TlsDeserialize, TlsSize)]
+</span><span class="kw">pub struct </span>MlsMessageOut {
+    <span class="kw">pub</span>(<span class="kw">crate</span>) mls_message: MlsMessage,
 }
 
-<span class="kw">impl</span> <span class="ident">From</span><span class="op">&lt;</span><span class="ident">VerifiableMlsPlaintext</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">MlsMessageOut</span> {
-    <span class="kw">fn</span> <span class="ident">from</span>(<span class="ident">plaintext</span>: <span class="ident">VerifiableMlsPlaintext</span>) -&gt; <span class="self">Self</span> {
-        <span class="kw">let</span> <span class="ident">body</span> <span class="op">=</span> <span class="ident">MlsMessageBody::Plaintext</span>(<span class="ident">plaintext</span>);
+<span class="kw">impl </span>From&lt;VerifiableMlsPlaintext&gt; <span class="kw">for </span>MlsMessageOut {
+    <span class="kw">fn </span>from(plaintext: VerifiableMlsPlaintext) -&gt; <span class="self">Self </span>{
+        <span class="kw">let </span>body = MlsMessageBody::Plaintext(plaintext);
 
-        <span class="self">Self</span> {
-            <span class="ident">mls_message</span>: <span class="ident">MlsMessage</span> { <span class="ident">body</span> },
+        <span class="self">Self </span>{
+            mls_message: MlsMessage { body },
         }
     }
 }
 
-<span class="kw">impl</span> <span class="ident">From</span><span class="op">&lt;</span><span class="ident">MlsPlaintext</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">MlsMessageOut</span> {
-    <span class="kw">fn</span> <span class="ident">from</span>(<span class="ident">plaintext</span>: <span class="ident">MlsPlaintext</span>) -&gt; <span class="self">Self</span> {
-        <span class="kw">let</span> <span class="ident">body</span> <span class="op">=</span>
-            <span class="ident">MlsMessageBody::Plaintext</span>(<span class="ident">VerifiableMlsPlaintext::from_plaintext</span>(<span class="ident">plaintext</span>, <span class="prelude-val">None</span>));
+<span class="kw">impl </span>From&lt;MlsPlaintext&gt; <span class="kw">for </span>MlsMessageOut {
+    <span class="kw">fn </span>from(plaintext: MlsPlaintext) -&gt; <span class="self">Self </span>{
+        <span class="kw">let </span>body =
+            MlsMessageBody::Plaintext(VerifiableMlsPlaintext::from_plaintext(plaintext, <span class="prelude-val">None</span>));
 
-        <span class="self">Self</span> {
-            <span class="ident">mls_message</span>: <span class="ident">MlsMessage</span> { <span class="ident">body</span> },
+        <span class="self">Self </span>{
+            mls_message: MlsMessage { body },
         }
     }
 }
 
-<span class="kw">impl</span> <span class="ident">From</span><span class="op">&lt;</span><span class="ident">MlsCiphertext</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">MlsMessageOut</span> {
-    <span class="kw">fn</span> <span class="ident">from</span>(<span class="ident">ciphertext</span>: <span class="ident">MlsCiphertext</span>) -&gt; <span class="self">Self</span> {
-        <span class="kw">let</span> <span class="ident">body</span> <span class="op">=</span> <span class="ident">MlsMessageBody::Ciphertext</span>(<span class="ident">ciphertext</span>);
+<span class="kw">impl </span>From&lt;MlsCiphertext&gt; <span class="kw">for </span>MlsMessageOut {
+    <span class="kw">fn </span>from(ciphertext: MlsCiphertext) -&gt; <span class="self">Self </span>{
+        <span class="kw">let </span>body = MlsMessageBody::Ciphertext(ciphertext);
 
-        <span class="self">Self</span> {
-            <span class="ident">mls_message</span>: <span class="ident">MlsMessage</span> { <span class="ident">body</span> },
+        <span class="self">Self </span>{
+            mls_message: MlsMessage { body },
         }
     }
 }
 
-<span class="kw">impl</span> <span class="ident">MlsMessageOut</span> {
-    <span class="doccomment">/// Returns the wire format.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">wire_format</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">WireFormat</span> {
-        <span class="self">self</span>.<span class="ident">mls_message</span>.<span class="ident">wire_format</span>()
+<span class="kw">impl </span>MlsMessageOut {
+    <span class="doccomment">/// Returns the wire format.
+    </span><span class="kw">pub fn </span>wire_format(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; WireFormat {
+        <span class="self">self</span>.mls_message.wire_format()
     }
 
-    <span class="doccomment">/// Returns the group ID.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">group_id</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span><span class="ident">GroupId</span> {
-        <span class="self">self</span>.<span class="ident">mls_message</span>.<span class="ident">group_id</span>()
+    <span class="doccomment">/// Returns the group ID.
+    </span><span class="kw">pub fn </span>group_id(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>GroupId {
+        <span class="self">self</span>.mls_message.group_id()
     }
 
-    <span class="doccomment">/// Returns the epoch.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">epoch</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">GroupEpoch</span> {
-        <span class="self">self</span>.<span class="ident">mls_message</span>.<span class="ident">epoch</span>()
+    <span class="doccomment">/// Returns the epoch.
+    </span><span class="kw">pub fn </span>epoch(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; GroupEpoch {
+        <span class="self">self</span>.mls_message.epoch()
     }
 
-    <span class="doccomment">/// Returns the content type.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">content_type</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">ContentType</span> {
-        <span class="self">self</span>.<span class="ident">mls_message</span>.<span class="ident">content_type</span>()
+    <span class="doccomment">/// Returns the content type.
+    </span><span class="kw">pub fn </span>content_type(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; ContentType {
+        <span class="self">self</span>.mls_message.content_type()
     }
 
-    <span class="doccomment">/// Returns `true` if this is a handshake message and `false` otherwise.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">is_handshake_message</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">bool</span> {
-        <span class="self">self</span>.<span class="ident">mls_message</span>.<span class="ident">is_handshake_message</span>()
+    <span class="doccomment">/// Returns `true` if this is a handshake message and `false` otherwise.
+    </span><span class="kw">pub fn </span>is_handshake_message(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; bool {
+        <span class="self">self</span>.mls_message.is_handshake_message()
     }
 
-    <span class="doccomment">/// Tries to deserialize from a byte slice. Returns [`MlsMessageError::UnableToDecode`] on failure.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">try_from_bytes</span>(<span class="ident">bytes</span>: <span class="kw-2">&amp;</span>[<span class="ident">u8</span>]) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident">MlsMessageError</span><span class="op">&gt;</span> {
-        <span class="prelude-val">Ok</span>(<span class="self">Self</span> {
-            <span class="ident">mls_message</span>: <span class="ident">MlsMessage::try_from_bytes</span>(<span class="ident">bytes</span>)<span class="question-mark">?</span>,
+    <span class="doccomment">/// Tries to deserialize from a byte slice. Returns [`MlsMessageError::UnableToDecode`] on failure.
+    </span><span class="kw">pub fn </span>try_from_bytes(bytes: <span class="kw-2">&amp;</span>[u8]) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, MlsMessageError&gt; {
+        <span class="prelude-val">Ok</span>(<span class="self">Self </span>{
+            mls_message: MlsMessage::try_from_bytes(bytes)<span class="question-mark">?</span>,
         })
     }
 
-    <span class="doccomment">/// Serializes the message to a byte vector. Returns [`MlsMessageError::LibraryError`] on failure.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">to_bytes</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>, <span class="ident">MlsMessageError</span><span class="op">&gt;</span> {
-        <span class="self">self</span>.<span class="ident">mls_message</span>.<span class="ident">to_bytes</span>()
+    <span class="doccomment">/// Serializes the message to a byte vector. Returns [`MlsMessageError::LibraryError`] on failure.
+    </span><span class="kw">pub fn </span>to_bytes(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;Vec&lt;u8&gt;, MlsMessageError&gt; {
+        <span class="self">self</span>.mls_message.to_bytes()
     }
 }
 
-<span class="kw">impl</span> <span class="ident">From</span><span class="op">&lt;</span><span class="ident">MlsMessageOut</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">MlsMessageIn</span> {
-    <span class="kw">fn</span> <span class="ident">from</span>(<span class="ident">message</span>: <span class="ident">MlsMessageOut</span>) -&gt; <span class="self">Self</span> {
-        <span class="ident">MlsMessageIn</span> {
-            <span class="ident">mls_message</span>: <span class="ident">message</span>.<span class="ident">mls_message</span>,
+<span class="kw">impl </span>From&lt;MlsMessageOut&gt; <span class="kw">for </span>MlsMessageIn {
+    <span class="kw">fn </span>from(message: MlsMessageOut) -&gt; <span class="self">Self </span>{
+        MlsMessageIn {
+            mls_message: message.mls_message,
         }
     }
 }
 
-<span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">any</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;test-utils&quot;</span>, <span class="ident">test</span>))]</span>
-<span class="kw">impl</span> <span class="ident">From</span><span class="op">&lt;</span><span class="ident">VerifiableMlsPlaintext</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">MlsMessageIn</span> {
-    <span class="kw">fn</span> <span class="ident">from</span>(<span class="ident">plaintext</span>: <span class="ident">VerifiableMlsPlaintext</span>) -&gt; <span class="self">Self</span> {
-        <span class="kw">let</span> <span class="ident">body</span> <span class="op">=</span> <span class="ident">MlsMessageBody::Plaintext</span>(<span class="ident">plaintext</span>);
+<span class="attribute">#[cfg(any(feature = <span class="string">&quot;test-utils&quot;</span>, test))]
+</span><span class="kw">impl </span>From&lt;VerifiableMlsPlaintext&gt; <span class="kw">for </span>MlsMessageIn {
+    <span class="kw">fn </span>from(plaintext: VerifiableMlsPlaintext) -&gt; <span class="self">Self </span>{
+        <span class="kw">let </span>body = MlsMessageBody::Plaintext(plaintext);
 
-        <span class="self">Self</span> {
-            <span class="ident">mls_message</span>: <span class="ident">MlsMessage</span> { <span class="ident">body</span> },
+        <span class="self">Self </span>{
+            mls_message: MlsMessage { body },
         }
     }
 }
 
-<span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">any</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;test-utils&quot;</span>, <span class="ident">test</span>))]</span>
-<span class="kw">impl</span> <span class="ident">From</span><span class="op">&lt;</span><span class="ident">MlsCiphertext</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">MlsMessageIn</span> {
-    <span class="kw">fn</span> <span class="ident">from</span>(<span class="ident">ciphertext</span>: <span class="ident">MlsCiphertext</span>) -&gt; <span class="self">Self</span> {
-        <span class="kw">let</span> <span class="ident">body</span> <span class="op">=</span> <span class="ident">MlsMessageBody::Ciphertext</span>(<span class="ident">ciphertext</span>);
+<span class="attribute">#[cfg(any(feature = <span class="string">&quot;test-utils&quot;</span>, test))]
+</span><span class="kw">impl </span>From&lt;MlsCiphertext&gt; <span class="kw">for </span>MlsMessageIn {
+    <span class="kw">fn </span>from(ciphertext: MlsCiphertext) -&gt; <span class="self">Self </span>{
+        <span class="kw">let </span>body = MlsMessageBody::Ciphertext(ciphertext);
 
-        <span class="self">Self</span> {
-            <span class="ident">mls_message</span>: <span class="ident">MlsMessage</span> { <span class="ident">body</span> },
+        <span class="self">Self </span>{
+            mls_message: MlsMessage { body },
         }
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-current-crate="openmls" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.64.0 (a55dd71d5 2022-09-19)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-current-crate="openmls" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0 (897e37553 2022-11-02)" ></div></body></html>

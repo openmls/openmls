@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `src/group/core_group/staged_commit.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>staged_commit.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" type="text/css" href="../../../../normalize.css"><link rel="stylesheet" type="text/css" href="../../../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" type="text/css" href="../../../../ayu.css" disabled><link rel="stylesheet" type="text/css" href="../../../../dark.css" disabled><link rel="stylesheet" type="text/css" href="../../../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../../../storage.js"></script><script defer src="../../../../source-script.js"></script><script defer src="../../../../source-files.js"></script><script defer src="../../../../main.js"></script><noscript><link rel="stylesheet" href="../../../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../../../openmls/index.html"><div class="logo-container"><img class="rust-logo" src="../../../../rust-logo.svg" alt="logo"></div></a><h2 class="location"></h2></nav><nav class="sidebar"><a class="sidebar-logo" href="../../../../openmls/index.html"><div class="logo-container"><img class="rust-logo" src="../../../../rust-logo.svg" alt="logo"></div></a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../../../openmls/index.html"><img class="rust-logo" src="../../../../rust-logo.svg" alt="logo"></a><nav class="sub"><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><button type="button">?</button></div><div id="settings-menu" tabindex="-1"><a href="../../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../../wheel.svg"></a></div></div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">1</span>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `src/group/core_group/staged_commit.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>staged_commit.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" href="../../../../normalize.css"><link rel="stylesheet" href="../../../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" href="../../../../ayu.css" disabled><link rel="stylesheet" href="../../../../dark.css" disabled><link rel="stylesheet" href="../../../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../../../storage.js"></script><script defer src="../../../../source-script.js"></script><script defer src="../../../../source-files.js"></script><script defer src="../../../../main.js"></script><noscript><link rel="stylesheet" href="../../../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../../../openmls/index.html"><div class="logo-container"><img class="rust-logo" src="../../../../rust-logo.svg" alt="logo"></div></a><h2 class="location"></h2></nav><nav class="sidebar"><a class="sidebar-logo" href="../../../../openmls/index.html"><div class="logo-container"><img class="rust-logo" src="../../../../rust-logo.svg" alt="logo"></div></a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../../../openmls/index.html"><img class="rust-logo" src="../../../../rust-logo.svg" alt="logo"></a><nav class="sub"><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><button type="button">?</button></div><div id="settings-menu" tabindex="-1"><a href="../../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../../wheel.svg"></a></div></div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">1</span>
 <span id="2">2</span>
 <span id="3">3</span>
 <span id="4">4</span>
@@ -484,491 +484,491 @@
 <span id="484">484</span>
 <span id="485">485</span>
 <span id="486">486</span>
-</pre><pre class="rust"><code><span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::treesync::errors::TreeSyncAddLeaf</span>;
-<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::treesync</span>::{<span class="ident">diff::StagedTreeSyncDiff</span>, <span class="ident">treekem::DecryptPathParams</span>};
+</pre><pre class="rust"><code><span class="kw">use </span><span class="kw">crate</span>::treesync::errors::TreeSyncAddLeaf;
+<span class="kw">use </span><span class="kw">crate</span>::treesync::{diff::StagedTreeSyncDiff, treekem::DecryptPathParams};
 
-<span class="kw">use</span> <span class="ident"><span class="kw">super</span>::proposals</span>::{
-    <span class="ident">ProposalQueue</span>, <span class="ident">ProposalStore</span>, <span class="ident">QueuedAddProposal</span>, <span class="ident">QueuedPskProposal</span>, <span class="ident">QueuedRemoveProposal</span>,
-    <span class="ident">QueuedUpdateProposal</span>,
+<span class="kw">use </span><span class="kw">super</span>::proposals::{
+    ProposalQueue, ProposalStore, QueuedAddProposal, QueuedPskProposal, QueuedRemoveProposal,
+    QueuedUpdateProposal,
 };
 
-<span class="kw">use</span> <span class="ident"><span class="kw">super</span>::<span class="kw">super</span>::errors</span>::<span class="kw-2">*</span>;
-<span class="kw">use</span> <span class="kw">super</span>::<span class="kw-2">*</span>;
-<span class="kw">use</span> <span class="ident">core::fmt::Debug</span>;
-<span class="kw">use</span> <span class="ident">std::collections::HashSet</span>;
-<span class="kw">use</span> <span class="ident">std::mem</span>;
+<span class="kw">use </span><span class="kw">super</span>::<span class="kw">super</span>::errors::<span class="kw-2">*</span>;
+<span class="kw">use super</span>::<span class="kw-2">*</span>;
+<span class="kw">use </span>core::fmt::Debug;
+<span class="kw">use </span>std::collections::HashSet;
+<span class="kw">use </span>std::mem;
 
-<span class="kw">impl</span> <span class="ident">CoreGroup</span> {
-    <span class="doccomment">/// Stages a commit message that was sent by another group member.</span>
-    <span class="doccomment">/// This function does the following:</span>
-    <span class="doccomment">///  - Applies the proposals covered by the commit to the tree</span>
-    <span class="doccomment">///  - Applies the (optional) update path to the tree</span>
-    <span class="doccomment">///  - Calculates the path secrets</span>
-    <span class="doccomment">///  - Initializes the key schedule for epoch rollover</span>
-    <span class="doccomment">///  - Verifies the confirmation tag/membership tag</span>
-    <span class="doccomment">/// Returns a [StagedCommit] that can be inspected and later merged</span>
-    <span class="doccomment">/// into the group state with [CoreGroup::merge_commit()]</span>
-    <span class="doccomment">/// This function does the following checks:</span>
-    <span class="doccomment">///  - ValSem100</span>
-    <span class="doccomment">///  - ValSem101</span>
-    <span class="doccomment">///  - ValSem102</span>
-    <span class="doccomment">///  - ValSem103</span>
-    <span class="doccomment">///  - ValSem104</span>
-    <span class="doccomment">///  - ValSem105</span>
-    <span class="doccomment">///  - ValSem106</span>
-    <span class="doccomment">///  - ValSem107</span>
-    <span class="doccomment">///  - ValSem108</span>
-    <span class="doccomment">///  - ValSem109</span>
-    <span class="doccomment">///  - ValSem110</span>
-    <span class="doccomment">///  - ValSem111</span>
-    <span class="doccomment">///  - ValSem112</span>
-    <span class="doccomment">///  - ValSem200</span>
-    <span class="doccomment">///  - ValSem201</span>
-    <span class="doccomment">///  - ValSem202: Path must be the right length</span>
-    <span class="doccomment">///  - ValSem203: Path secrets must decrypt correctly</span>
-    <span class="doccomment">///  - ValSem204: Public keys from Path must be verified and match the</span>
-    <span class="doccomment">///               private keys from the direct path</span>
-    <span class="doccomment">///  - ValSem205</span>
-    <span class="doccomment">///  - ValSem240</span>
-    <span class="doccomment">///  - ValSem241</span>
-    <span class="doccomment">///  - ValSem242</span>
-    <span class="doccomment">///  - ValSem243</span>
-    <span class="doccomment">///  - ValSem244</span>
-    <span class="doccomment">///  - ValSem245</span>
-    <span class="doccomment">/// Returns an error if the given commit was sent by the owner of this</span>
-    <span class="doccomment">/// group.</span>
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">stage_commit</span>(
+<span class="kw">impl </span>CoreGroup {
+    <span class="doccomment">/// Stages a commit message that was sent by another group member.
+    /// This function does the following:
+    ///  - Applies the proposals covered by the commit to the tree
+    ///  - Applies the (optional) update path to the tree
+    ///  - Calculates the path secrets
+    ///  - Initializes the key schedule for epoch rollover
+    ///  - Verifies the confirmation tag/membership tag
+    /// Returns a [StagedCommit] that can be inspected and later merged
+    /// into the group state with [CoreGroup::merge_commit()]
+    /// This function does the following checks:
+    ///  - ValSem100
+    ///  - ValSem101
+    ///  - ValSem102
+    ///  - ValSem103
+    ///  - ValSem104
+    ///  - ValSem105
+    ///  - ValSem106
+    ///  - ValSem107
+    ///  - ValSem108
+    ///  - ValSem109
+    ///  - ValSem110
+    ///  - ValSem111
+    ///  - ValSem112
+    ///  - ValSem200
+    ///  - ValSem201
+    ///  - ValSem202: Path must be the right length
+    ///  - ValSem203: Path secrets must decrypt correctly
+    ///  - ValSem204: Public keys from Path must be verified and match the
+    ///               private keys from the direct path
+    ///  - ValSem205
+    ///  - ValSem240
+    ///  - ValSem241
+    ///  - ValSem242
+    ///  - ValSem243
+    ///  - ValSem244
+    ///  - ValSem245
+    /// Returns an error if the given commit was sent by the owner of this
+    /// group.
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>stage_commit(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        <span class="ident">mls_plaintext</span>: <span class="kw-2">&amp;</span><span class="ident">MlsPlaintext</span>,
-        <span class="ident">proposal_store</span>: <span class="kw-2">&amp;</span><span class="ident">ProposalStore</span>,
-        <span class="ident">own_key_packages</span>: <span class="kw-2">&amp;</span>[<span class="ident">KeyPackageBundle</span>],
-        <span class="ident">backend</span>: <span class="kw-2">&amp;</span><span class="kw">impl</span> <span class="ident">OpenMlsCryptoProvider</span>,
-    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">StagedCommit</span>, <span class="ident">StageCommitError</span><span class="op">&gt;</span> {
-        <span class="comment">// Extract the sender of the Commit message</span>
-        <span class="kw">let</span> <span class="ident">ciphersuite</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">ciphersuite</span>();
+        mls_plaintext: <span class="kw-2">&amp;</span>MlsPlaintext,
+        proposal_store: <span class="kw-2">&amp;</span>ProposalStore,
+        own_key_packages: <span class="kw-2">&amp;</span>[KeyPackageBundle],
+        backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;StagedCommit, StageCommitError&gt; {
+        <span class="comment">// Extract the sender of the Commit message
+        </span><span class="kw">let </span>ciphersuite = <span class="self">self</span>.ciphersuite();
 
-        <span class="comment">// Verify epoch</span>
-        <span class="kw">if</span> <span class="ident">mls_plaintext</span>.<span class="ident">epoch</span>() <span class="op">!</span><span class="op">=</span> <span class="self">self</span>.<span class="ident">group_context</span>.<span class="ident">epoch</span>() {
+        <span class="comment">// Verify epoch
+        </span><span class="kw">if </span>mls_plaintext.epoch() != <span class="self">self</span>.group_context.epoch() {
             <span class="macro">log::error!</span>(
                 <span class="string">&quot;Epoch mismatch. Got {:?}, expected {:?}&quot;</span>,
-                <span class="ident">mls_plaintext</span>.<span class="ident">epoch</span>(),
-                <span class="self">self</span>.<span class="ident">group_context</span>.<span class="ident">epoch</span>()
+                mls_plaintext.epoch(),
+                <span class="self">self</span>.group_context.epoch()
             );
-            <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">StageCommitError::EpochMismatch</span>);
+            <span class="kw">return </span><span class="prelude-val">Err</span>(StageCommitError::EpochMismatch);
         }
 
-        <span class="comment">// Check that the sender is another member of the group</span>
-        <span class="kw">let</span> <span class="ident">sender</span> <span class="op">=</span> <span class="ident">mls_plaintext</span>.<span class="ident">sender</span>();
+        <span class="comment">// Check that the sender is another member of the group
+        </span><span class="kw">let </span>sender = mls_plaintext.sender();
 
-        <span class="kw">if</span> <span class="kw">let</span> <span class="ident">Sender::Member</span>(<span class="ident">member</span>) <span class="op">=</span> <span class="ident">sender</span> {
-            <span class="kw">if</span> <span class="ident">member</span>
-                <span class="op">==</span> <span class="self">self</span>
-                    .<span class="ident">key_package_ref</span>()
-                    .<span class="ident">ok_or_else</span>(<span class="op">|</span><span class="op">|</span> <span class="ident">LibraryError::custom</span>(<span class="string">&quot;Expected own key package reference&quot;</span>))<span class="question-mark">?</span>
-            {
-                <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">StageCommitError::OwnCommit</span>);
+        <span class="kw">if let </span>Sender::Member(member) = sender {
+            <span class="kw">if </span>member
+                == <span class="self">self
+                    </span>.key_package_ref()
+                    .ok_or_else(|| LibraryError::custom(<span class="string">&quot;Expected own key package reference&quot;</span>))<span class="question-mark">?
+            </span>{
+                <span class="kw">return </span><span class="prelude-val">Err</span>(StageCommitError::OwnCommit);
             }
         }
 
-        <span class="comment">// Extract Commit &amp; Confirmation Tag from MlsPlaintext</span>
-        <span class="kw">let</span> <span class="ident">commit</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">mls_plaintext</span>.<span class="ident">content</span>() {
-            <span class="ident">MlsContentBody::Commit</span>(<span class="ident">commit</span>) =&gt; <span class="ident">commit</span>,
-            <span class="kw">_</span> =&gt; <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">StageCommitError::WrongPlaintextContentType</span>),
+        <span class="comment">// Extract Commit &amp; Confirmation Tag from MlsPlaintext
+        </span><span class="kw">let </span>commit = <span class="kw">match </span>mls_plaintext.content() {
+            MlsContentBody::Commit(commit) =&gt; commit,
+            <span class="kw">_ </span>=&gt; <span class="kw">return </span><span class="prelude-val">Err</span>(StageCommitError::WrongPlaintextContentType),
         };
 
-        <span class="kw">let</span> <span class="ident">received_confirmation_tag</span> <span class="op">=</span> <span class="ident">mls_plaintext</span>
-            .<span class="ident">confirmation_tag</span>()
-            .<span class="ident">ok_or</span>(<span class="ident">StageCommitError::ConfirmationTagMissing</span>)<span class="question-mark">?</span>;
+        <span class="kw">let </span>received_confirmation_tag = mls_plaintext
+            .confirmation_tag()
+            .ok_or(StageCommitError::ConfirmationTagMissing)<span class="question-mark">?</span>;
 
-        <span class="comment">// Build a queue with all proposals from the Commit and check that we have all</span>
-        <span class="comment">// of the proposals by reference locally</span>
-        <span class="kw">let</span> <span class="ident">proposal_queue</span> <span class="op">=</span> <span class="ident">ProposalQueue::from_committed_proposals</span>(
-            <span class="ident">ciphersuite</span>,
-            <span class="ident">backend</span>,
-            <span class="ident">commit</span>.<span class="ident">proposals</span>.<span class="ident">as_slice</span>().<span class="ident">to_vec</span>(),
-            <span class="ident">proposal_store</span>,
-            <span class="ident">sender</span>,
+        <span class="comment">// Build a queue with all proposals from the Commit and check that we have all
+        // of the proposals by reference locally
+        </span><span class="kw">let </span>proposal_queue = ProposalQueue::from_committed_proposals(
+            ciphersuite,
+            backend,
+            commit.proposals.as_slice().to_vec(),
+            proposal_store,
+            sender,
         )
-        .<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> <span class="kw">match</span> <span class="ident">e</span> {
-            <span class="ident">FromCommittedProposalsError::LibraryError</span>(<span class="ident">e</span>) =&gt; <span class="ident">StageCommitError::LibraryError</span>(<span class="ident">e</span>),
-            <span class="ident">FromCommittedProposalsError::ProposalNotFound</span> =&gt; <span class="ident">StageCommitError::MissingProposal</span>,
-            <span class="ident">FromCommittedProposalsError::SelfRemoval</span> =&gt; <span class="ident">StageCommitError::AttemptedSelfRemoval</span>,
+        .map_err(|e| <span class="kw">match </span>e {
+            FromCommittedProposalsError::LibraryError(e) =&gt; StageCommitError::LibraryError(e),
+            FromCommittedProposalsError::ProposalNotFound =&gt; StageCommitError::MissingProposal,
+            FromCommittedProposalsError::SelfRemoval =&gt; StageCommitError::AttemptedSelfRemoval,
         })<span class="question-mark">?</span>;
 
-        <span class="kw">let</span> <span class="ident">commit_update_key_package</span> <span class="op">=</span> <span class="ident">commit</span>
-            .<span class="ident">path</span>()
-            .<span class="ident">as_ref</span>()
-            .<span class="ident">map</span>(<span class="op">|</span><span class="ident">update_path</span><span class="op">|</span> <span class="ident">update_path</span>.<span class="ident">leaf_key_package</span>().<span class="ident">clone</span>());
+        <span class="kw">let </span>commit_update_key_package = commit
+            .path()
+            .as_ref()
+            .map(|update_path| update_path.leaf_key_package().clone());
 
-        <span class="comment">// Validate the staged proposals by doing the following checks:</span>
-        <span class="comment">// ValSem100</span>
-        <span class="comment">// ValSem101</span>
-        <span class="comment">// ValSem102</span>
-        <span class="comment">// ValSem103</span>
-        <span class="comment">// ValSem104</span>
-        <span class="comment">// ValSem105</span>
-        <span class="comment">// ValSem106</span>
-        <span class="self">self</span>.<span class="ident">validate_add_proposals</span>(<span class="kw-2">&amp;</span><span class="ident">proposal_queue</span>)<span class="question-mark">?</span>;
-        <span class="comment">// ValSem107</span>
-        <span class="comment">// ValSem108</span>
-        <span class="self">self</span>.<span class="ident">validate_remove_proposals</span>(<span class="kw-2">&amp;</span><span class="ident">proposal_queue</span>)<span class="question-mark">?</span>;
+        <span class="comment">// Validate the staged proposals by doing the following checks:
+        // ValSem100
+        // ValSem101
+        // ValSem102
+        // ValSem103
+        // ValSem104
+        // ValSem105
+        // ValSem106
+        </span><span class="self">self</span>.validate_add_proposals(<span class="kw-2">&amp;</span>proposal_queue)<span class="question-mark">?</span>;
+        <span class="comment">// ValSem107
+        // ValSem108
+        </span><span class="self">self</span>.validate_remove_proposals(<span class="kw-2">&amp;</span>proposal_queue)<span class="question-mark">?</span>;
 
-        <span class="kw">let</span> <span class="ident">public_key_set</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">sender</span> {
-            <span class="ident">Sender::Member</span>(<span class="ident">hash_ref</span>) =&gt; {
-                <span class="comment">// ValSem109</span>
-                <span class="comment">// ValSem110</span>
-                <span class="comment">// ValSem111</span>
-                <span class="comment">// ValSem112</span>
-                <span class="self">self</span>.<span class="ident">validate_update_proposals</span>(<span class="kw-2">&amp;</span><span class="ident">proposal_queue</span>, <span class="ident">hash_ref</span>)<span class="question-mark">?</span>
+        <span class="kw">let </span>public_key_set = <span class="kw">match </span>sender {
+            Sender::Member(hash_ref) =&gt; {
+                <span class="comment">// ValSem109
+                // ValSem110
+                // ValSem111
+                // ValSem112
+                </span><span class="self">self</span>.validate_update_proposals(<span class="kw-2">&amp;</span>proposal_queue, hash_ref)<span class="question-mark">?
+            </span>}
+            Sender::External(<span class="kw">_</span>) =&gt; {
+                <span class="comment">// A commit cannot be issued by a pre-configured sender.
+                </span><span class="kw">return </span><span class="prelude-val">Err</span>(StageCommitError::SenderTypeExternal);
             }
-            <span class="ident">Sender::Preconfigured</span>(<span class="kw">_</span>) =&gt; {
-                <span class="comment">// A commit cannot be issued by a pre-configured sender.</span>
-                <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">StageCommitError::SenderTypePreconfigured</span>);
-            }
-            <span class="ident">Sender::NewMember</span> =&gt; {
-                <span class="comment">// ValSem240: External Commit, inline Proposals: There MUST be at least one ExternalInit proposal.</span>
-                <span class="comment">// ValSem241: External Commit, inline Proposals: There MUST be at most one ExternalInit proposal.</span>
-                <span class="comment">// ValSem242: External Commit, inline Proposals: There MUST NOT be any Add proposals.</span>
-                <span class="comment">// ValSem243: External Commit, inline Proposals: There MUST NOT be any Update proposals.</span>
-                <span class="comment">// ValSem244: External Commit, inline Remove Proposal: The identity and the endpoint_id of the removed</span>
-                <span class="comment">//            leaf are identical to the ones in the path KeyPackage.</span>
-                <span class="comment">// ValSem245: External Commit, referenced Proposals: There MUST NOT be any ExternalInit proposals.</span>
-                <span class="self">self</span>.<span class="ident">validate_external_commit</span>(<span class="kw-2">&amp;</span><span class="ident">proposal_queue</span>, <span class="ident">commit_update_key_package</span>.<span class="ident">as_ref</span>())<span class="question-mark">?</span>;
-                <span class="comment">// Since there are no update proposals in an External Commit we have no public keys to return</span>
-                <span class="ident">HashSet::new</span>()
-            }
-        };
-
-        <span class="comment">// Create provisional tree and apply proposals</span>
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">diff</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">treesync</span>().<span class="ident">empty_diff</span>()<span class="question-mark">?</span>;
-
-        <span class="kw">let</span> <span class="ident">apply_proposals_values</span> <span class="op">=</span> <span class="self">self</span>
-            .<span class="ident">apply_proposals</span>(<span class="kw-2">&amp;mut</span> <span class="ident">diff</span>, <span class="ident">backend</span>, <span class="kw-2">&amp;</span><span class="ident">proposal_queue</span>, <span class="ident">own_key_packages</span>)
-            .<span class="ident">map_err</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="ident">StageCommitError::OwnKeyNotFound</span>)<span class="question-mark">?</span>;
-
-        <span class="comment">// Now we can actually look at the public keys as they might have changed.</span>
-        <span class="kw">let</span> <span class="ident">sender_index</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">sender</span> {
-            <span class="ident">Sender::Member</span>(<span class="ident">hash_ref</span>) =&gt; {
-                <span class="comment">// Own commits have to be merged directly instead of staging them.</span>
-                <span class="comment">// We can&#39;t check for this explicitly. But if it&#39;s an own commit</span>
-                <span class="comment">// we won&#39;t be able to get the sender index because the kpr is our</span>
-                <span class="comment">// own new one that&#39;s only in the staged commit.</span>
-                <span class="self">self</span>.<span class="ident">sender_index</span>(<span class="ident">hash_ref</span>)
-                    .<span class="ident">map_err</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="ident">StageCommitError::InconsistentSenderIndex</span>)<span class="question-mark">?</span>
-            }
-            <span class="ident">Sender::NewMember</span> =&gt; <span class="ident">diff</span>.<span class="ident">free_leaf_index</span>()<span class="question-mark">?</span>,
-            <span class="kw">_</span> =&gt; {
-                <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">StageCommitError::SenderTypePreconfigured</span>);
+            Sender::NewMember =&gt; {
+                <span class="comment">// ValSem240: External Commit, inline Proposals: There MUST be at least one ExternalInit proposal.
+                // ValSem241: External Commit, inline Proposals: There MUST be at most one ExternalInit proposal.
+                // ValSem242: External Commit, inline Proposals: There MUST NOT be any Add proposals.
+                // ValSem243: External Commit, inline Proposals: There MUST NOT be any Update proposals.
+                // ValSem244: External Commit, inline Remove Proposal: The identity and the endpoint_id of the removed
+                //            leaf are identical to the ones in the path KeyPackage.
+                // ValSem245: External Commit, referenced Proposals: There MUST NOT be any ExternalInit proposals.
+                </span><span class="self">self</span>.validate_external_commit(<span class="kw-2">&amp;</span>proposal_queue, commit_update_key_package.as_ref())<span class="question-mark">?</span>;
+                <span class="comment">// Since there are no update proposals in an External Commit we have no public keys to return
+                </span>HashSet::new()
             }
         };
 
-        <span class="comment">// Check if we were removed from the group</span>
-        <span class="kw">if</span> <span class="ident">apply_proposals_values</span>.<span class="ident">self_removed</span> {
-            <span class="kw">let</span> <span class="ident">staged_diff</span> <span class="op">=</span> <span class="ident">diff</span>.<span class="ident">into_staged_diff</span>(<span class="ident">backend</span>, <span class="ident">ciphersuite</span>)<span class="question-mark">?</span>;
-            <span class="kw">return</span> <span class="prelude-val">Ok</span>(<span class="ident">StagedCommit::new</span>(
-                <span class="ident">proposal_queue</span>,
-                <span class="ident">StagedCommitState::SelfRemoved</span>(<span class="ident">Box::new</span>(<span class="ident">staged_diff</span>)),
-                <span class="ident">commit_update_key_package</span>,
+        <span class="comment">// Create provisional tree and apply proposals
+        </span><span class="kw">let </span><span class="kw-2">mut </span>diff = <span class="self">self</span>.treesync().empty_diff()<span class="question-mark">?</span>;
+
+        <span class="kw">let </span>apply_proposals_values = <span class="self">self
+            </span>.apply_proposals(<span class="kw-2">&amp;mut </span>diff, backend, <span class="kw-2">&amp;</span>proposal_queue, own_key_packages)
+            .map_err(|<span class="kw">_</span>| StageCommitError::OwnKeyNotFound)<span class="question-mark">?</span>;
+
+        <span class="comment">// Now we can actually look at the public keys as they might have changed.
+        </span><span class="kw">let </span>sender_index = <span class="kw">match </span>sender {
+            Sender::Member(hash_ref) =&gt; {
+                <span class="comment">// Own commits have to be merged directly instead of staging them.
+                // We can&#39;t check for this explicitly. But if it&#39;s an own commit
+                // we won&#39;t be able to get the sender index because the kpr is our
+                // own new one that&#39;s only in the staged commit.
+                </span><span class="self">self</span>.sender_index(hash_ref)
+                    .map_err(|<span class="kw">_</span>| StageCommitError::InconsistentSenderIndex)<span class="question-mark">?
+            </span>}
+            Sender::NewMember =&gt; diff.free_leaf_index()<span class="question-mark">?</span>,
+            <span class="kw">_ </span>=&gt; {
+                <span class="kw">return </span><span class="prelude-val">Err</span>(StageCommitError::SenderTypeExternal);
+            }
+        };
+
+        <span class="comment">// Check if we were removed from the group
+        </span><span class="kw">if </span>apply_proposals_values.self_removed {
+            <span class="kw">let </span>staged_diff = diff.into_staged_diff(backend, ciphersuite)<span class="question-mark">?</span>;
+            <span class="kw">return </span><span class="prelude-val">Ok</span>(StagedCommit::new(
+                proposal_queue,
+                StagedCommitState::SelfRemoved(Box::new(staged_diff)),
+                commit_update_key_package,
             ));
         }
 
-        <span class="comment">// Determine if Commit has a path</span>
-        <span class="kw">let</span> <span class="ident">commit_secret</span> <span class="op">=</span> <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">path</span>) <span class="op">=</span> <span class="ident">commit</span>.<span class="ident">path</span>.<span class="ident">clone</span>() {
-            <span class="comment">// Verify KeyPackage and MlsPlaintext membership tag</span>
-            <span class="comment">// Note that the signature must have been verified already.</span>
-            <span class="comment">// TODO #106: Support external members</span>
-            <span class="kw">let</span> <span class="ident">kp</span> <span class="op">=</span> <span class="ident">path</span>.<span class="ident">leaf_key_package</span>();
-            <span class="kw">if</span> <span class="ident">kp</span>.<span class="ident">verify</span>(<span class="ident">backend</span>).<span class="ident">is_err</span>() {
-                <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">StageCommitError::PathKeyPackageVerificationFailure</span>);
+        <span class="comment">// Determine if Commit has a path
+        </span><span class="kw">let </span>commit_secret = <span class="kw">if let </span><span class="prelude-val">Some</span>(path) = commit.path.clone() {
+            <span class="comment">// Verify KeyPackage and MlsPlaintext membership tag
+            // Note that the signature must have been verified already.
+            // TODO #106: Support external members
+            </span><span class="kw">let </span>kp = path.leaf_key_package();
+            <span class="kw">if </span>kp.verify(backend).is_err() {
+                <span class="kw">return </span><span class="prelude-val">Err</span>(StageCommitError::PathKeyPackageVerificationFailure);
             }
-            <span class="kw">let</span> <span class="ident">serialized_context</span> <span class="op">=</span> <span class="self">self</span>
-                .<span class="ident">group_context</span>
-                .<span class="ident">tls_serialize_detached</span>()
-                .<span class="ident">map_err</span>(<span class="ident">LibraryError::missing_bound_check</span>)<span class="question-mark">?</span>;
+            <span class="kw">let </span>serialized_context = <span class="self">self
+                </span>.group_context
+                .tls_serialize_detached()
+                .map_err(LibraryError::missing_bound_check)<span class="question-mark">?</span>;
 
-            <span class="kw">let</span> (<span class="ident">key_package</span>, <span class="ident">update_path_nodes</span>) <span class="op">=</span> <span class="ident">path</span>.<span class="ident">into_parts</span>();
+            <span class="kw">let </span>(key_package, update_path_nodes) = path.into_parts();
 
-            <span class="comment">// Make sure that the new path key package is valid</span>
-            <span class="self">self</span>.<span class="ident">validate_path_key_package</span>(<span class="ident">sender_index</span>, <span class="kw-2">&amp;</span><span class="ident">key_package</span>, <span class="ident">public_key_set</span>, <span class="ident">sender</span>)<span class="question-mark">?</span>;
+            <span class="comment">// Make sure that the new path key package is valid
+            </span><span class="self">self</span>.validate_path_key_package(sender_index, <span class="kw-2">&amp;</span>key_package, public_key_set, sender)<span class="question-mark">?</span>;
 
-            <span class="comment">// If the committer is a `NewMember`, we have to add the leaf to</span>
-            <span class="comment">// the tree before we can apply or even decrypt an update path.</span>
-            <span class="comment">// While `apply_received_update_path` will happily update a</span>
-            <span class="comment">// blank leaf, we still have to call `add_leaf` here in case</span>
-            <span class="comment">// there are no blanks and the new member extended the tree to</span>
-            <span class="comment">// fit in.</span>
-            <span class="kw">if</span> <span class="ident">apply_proposals_values</span>.<span class="ident">external_init_secret_option</span>.<span class="ident">is_some</span>() {
-                <span class="kw">let</span> <span class="ident">sender_leaf_index</span> <span class="op">=</span> <span class="ident">diff</span>
-                    .<span class="ident">add_leaf</span>(<span class="ident">key_package</span>.<span class="ident">clone</span>(), <span class="ident">backend</span>.<span class="ident">crypto</span>())
-                    .<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> <span class="kw">match</span> <span class="ident">e</span> {
-                        <span class="ident">TreeSyncAddLeaf::LibraryError</span>(<span class="ident">e</span>) =&gt; <span class="ident">e</span>.<span class="ident">into</span>(),
-                        <span class="ident">TreeSyncAddLeaf::TreeFull</span> =&gt; <span class="ident">StageCommitError::TooManyNewMembers</span>,
+            <span class="comment">// If the committer is a `NewMember`, we have to add the leaf to
+            // the tree before we can apply or even decrypt an update path.
+            // While `apply_received_update_path` will happily update a
+            // blank leaf, we still have to call `add_leaf` here in case
+            // there are no blanks and the new member extended the tree to
+            // fit in.
+            </span><span class="kw">if </span>apply_proposals_values.external_init_secret_option.is_some() {
+                <span class="kw">let </span>sender_leaf_index = diff
+                    .add_leaf(key_package.clone(), backend.crypto())
+                    .map_err(|e| <span class="kw">match </span>e {
+                        TreeSyncAddLeaf::LibraryError(e) =&gt; e.into(),
+                        TreeSyncAddLeaf::TreeFull =&gt; StageCommitError::TooManyNewMembers,
                     })<span class="question-mark">?</span>;
-                <span class="comment">// The new member should have the same index as the claimed sender index.</span>
-                <span class="kw">if</span> <span class="ident">sender_leaf_index</span> <span class="op">!</span><span class="op">=</span> <span class="ident">sender_index</span> {
-                    <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">StageCommitError::InconsistentSenderIndex</span>);
+                <span class="comment">// The new member should have the same index as the claimed sender index.
+                </span><span class="kw">if </span>sender_leaf_index != sender_index {
+                    <span class="kw">return </span><span class="prelude-val">Err</span>(StageCommitError::InconsistentSenderIndex);
                 }
             }
 
-            <span class="comment">// Decrypt the UpdatePath</span>
-            <span class="kw">let</span> <span class="ident">decrypt_path_params</span> <span class="op">=</span> <span class="ident">DecryptPathParams</span> {
-                <span class="ident">version</span>: <span class="self">self</span>.<span class="ident">mls_version</span>,
-                <span class="ident">update_path</span>: <span class="ident">update_path_nodes</span>,
-                <span class="ident">sender_leaf_index</span>: <span class="ident">sender_index</span>,
-                <span class="ident">exclusion_list</span>: <span class="kw-2">&amp;</span><span class="ident">apply_proposals_values</span>.<span class="ident">exclusion_list</span>(),
-                <span class="ident">group_context</span>: <span class="kw-2">&amp;</span><span class="ident">serialized_context</span>,
+            <span class="comment">// Decrypt the UpdatePath
+            </span><span class="kw">let </span>decrypt_path_params = DecryptPathParams {
+                version: <span class="self">self</span>.mls_version,
+                update_path: update_path_nodes,
+                sender_leaf_index: sender_index,
+                exclusion_list: <span class="kw-2">&amp;</span>apply_proposals_values.exclusion_list(),
+                group_context: <span class="kw-2">&amp;</span>serialized_context,
             };
-            <span class="comment">// ValSem202: Path must be the right length</span>
-            <span class="comment">// ValSem203: Path secrets must decrypt correctly</span>
-            <span class="comment">// ValSem204: Public keys from Path must be verified and match the private keys from the direct path</span>
-            <span class="kw">let</span> (<span class="ident">plain_path</span>, <span class="ident">commit_secret</span>) <span class="op">=</span>
-                <span class="ident">diff</span>.<span class="ident">decrypt_path</span>(<span class="ident">backend</span>, <span class="ident">ciphersuite</span>, <span class="ident">decrypt_path_params</span>)<span class="question-mark">?</span>;
-            <span class="ident">diff</span>.<span class="ident">apply_received_update_path</span>(
-                <span class="ident">backend</span>,
-                <span class="ident">ciphersuite</span>,
-                <span class="ident">sender_index</span>,
-                <span class="ident">key_package</span>,
-                <span class="ident">plain_path</span>,
+            <span class="comment">// ValSem202: Path must be the right length
+            // ValSem203: Path secrets must decrypt correctly
+            // ValSem204: Public keys from Path must be verified and match the private keys from the direct path
+            </span><span class="kw">let </span>(plain_path, commit_secret) =
+                diff.decrypt_path(backend, ciphersuite, decrypt_path_params)<span class="question-mark">?</span>;
+            diff.apply_received_update_path(
+                backend,
+                ciphersuite,
+                sender_index,
+                key_package,
+                plain_path,
             )<span class="question-mark">?</span>;
-            <span class="ident">commit_secret</span>
-        } <span class="kw">else</span> {
-            <span class="kw">if</span> <span class="ident">apply_proposals_values</span>.<span class="ident">path_required</span> {
-                <span class="comment">// ValSem201</span>
-                <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">StageCommitError::RequiredPathNotFound</span>);
+            commit_secret
+        } <span class="kw">else </span>{
+            <span class="kw">if </span>apply_proposals_values.path_required {
+                <span class="comment">// ValSem201
+                </span><span class="kw">return </span><span class="prelude-val">Err</span>(StageCommitError::RequiredPathNotFound);
             }
-            <span class="ident">CommitSecret::zero_secret</span>(<span class="ident">ciphersuite</span>, <span class="self">self</span>.<span class="ident">mls_version</span>)
+            CommitSecret::zero_secret(ciphersuite, <span class="self">self</span>.mls_version)
         };
 
-        <span class="comment">// Check if we need to include the init secret from an external commit</span>
-        <span class="comment">// we applied earlier or if we use the one from the previous epoch.</span>
-        <span class="kw">let</span> <span class="ident">init_secret</span> <span class="op">=</span>
-            <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="kw-2">ref</span> <span class="ident">init_secret</span>) <span class="op">=</span> <span class="ident">apply_proposals_values</span>.<span class="ident">external_init_secret_option</span> {
-                <span class="ident">init_secret</span>
-            } <span class="kw">else</span> {
-                <span class="self">self</span>.<span class="ident">group_epoch_secrets</span>.<span class="ident">init_secret</span>()
+        <span class="comment">// Check if we need to include the init secret from an external commit
+        // we applied earlier or if we use the one from the previous epoch.
+        </span><span class="kw">let </span>init_secret =
+            <span class="kw">if let </span><span class="prelude-val">Some</span>(<span class="kw-2">ref </span>init_secret) = apply_proposals_values.external_init_secret_option {
+                init_secret
+            } <span class="kw">else </span>{
+                <span class="self">self</span>.group_epoch_secrets.init_secret()
             };
 
-        <span class="kw">let</span> <span class="ident">joiner_secret</span> <span class="op">=</span> <span class="ident">JoinerSecret::new</span>(<span class="ident">backend</span>, <span class="ident">commit_secret</span>, <span class="ident">init_secret</span>)
-            .<span class="ident">map_err</span>(<span class="ident">LibraryError::unexpected_crypto_error</span>)<span class="question-mark">?</span>;
+        <span class="kw">let </span>joiner_secret = JoinerSecret::new(backend, commit_secret, init_secret)
+            .map_err(LibraryError::unexpected_crypto_error)<span class="question-mark">?</span>;
 
-        <span class="comment">// Create provisional group state</span>
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">provisional_epoch</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">group_context</span>.<span class="ident">epoch</span>();
-        <span class="ident">provisional_epoch</span>.<span class="ident">increment</span>();
+        <span class="comment">// Create provisional group state
+        </span><span class="kw">let </span><span class="kw-2">mut </span>provisional_epoch = <span class="self">self</span>.group_context.epoch();
+        provisional_epoch.increment();
 
-        <span class="kw">let</span> <span class="ident">confirmed_transcript_hash</span> <span class="op">=</span> <span class="ident">update_confirmed_transcript_hash</span>(
-            <span class="ident">ciphersuite</span>,
-            <span class="ident">backend</span>,
-            <span class="comment">// It is ok to use return a library error here, because we know the MlsPlaintext contains a Commit</span>
-            <span class="kw-2">&amp;</span><span class="ident">MlsPlaintextCommitContent::try_from</span>(<span class="ident">mls_plaintext</span>)
-                .<span class="ident">map_err</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="ident">LibraryError::custom</span>(<span class="string">&quot;Could not convert commit content&quot;</span>))<span class="question-mark">?</span>,
-            <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">interim_transcript_hash</span>,
+        <span class="kw">let </span>confirmed_transcript_hash = update_confirmed_transcript_hash(
+            ciphersuite,
+            backend,
+            <span class="comment">// It is ok to use return a library error here, because we know the MlsPlaintext contains a Commit
+            </span><span class="kw-2">&amp;</span>MlsPlaintextCommitContent::try_from(mls_plaintext)
+                .map_err(|<span class="kw">_</span>| LibraryError::custom(<span class="string">&quot;Could not convert commit content&quot;</span>))<span class="question-mark">?</span>,
+            <span class="kw-2">&amp;</span><span class="self">self</span>.interim_transcript_hash,
         )<span class="question-mark">?</span>;
 
-        <span class="kw">let</span> <span class="ident">provisional_group_context</span> <span class="op">=</span> <span class="ident">GroupContext::new</span>(
-            <span class="ident">ciphersuite</span>,
-            <span class="self">self</span>.<span class="ident">group_context</span>.<span class="ident">group_id</span>().<span class="ident">clone</span>(),
-            <span class="ident">provisional_epoch</span>,
-            <span class="ident">diff</span>.<span class="ident">compute_tree_hashes</span>(<span class="ident">backend</span>, <span class="ident">ciphersuite</span>)<span class="question-mark">?</span>,
-            <span class="ident">confirmed_transcript_hash</span>.<span class="ident">clone</span>(),
-            <span class="self">self</span>.<span class="ident">group_context</span>.<span class="ident">extensions</span>(),
+        <span class="kw">let </span>provisional_group_context = GroupContext::new(
+            ciphersuite,
+            <span class="self">self</span>.group_context.group_id().clone(),
+            provisional_epoch,
+            diff.compute_tree_hashes(backend, ciphersuite)<span class="question-mark">?</span>,
+            confirmed_transcript_hash.clone(),
+            <span class="self">self</span>.group_context.extensions(),
         );
 
-        <span class="comment">// Prepare the PskSecret</span>
-        <span class="kw">let</span> <span class="ident">psk_secret</span> <span class="op">=</span> <span class="ident">PskSecret::new</span>(
-            <span class="ident">ciphersuite</span>,
-            <span class="ident">backend</span>,
-            <span class="ident">apply_proposals_values</span>.<span class="ident">presharedkeys</span>.<span class="ident">psks</span>(),
+        <span class="comment">// Prepare the PskSecret
+        </span><span class="kw">let </span>psk_secret = PskSecret::new(
+            ciphersuite,
+            backend,
+            apply_proposals_values.presharedkeys.psks(),
         )<span class="question-mark">?</span>;
 
-        <span class="comment">// Create key schedule</span>
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">key_schedule</span> <span class="op">=</span> <span class="ident">KeySchedule::init</span>(<span class="ident">ciphersuite</span>, <span class="ident">backend</span>, <span class="ident">joiner_secret</span>, <span class="ident">psk_secret</span>)<span class="question-mark">?</span>;
+        <span class="comment">// Create key schedule
+        </span><span class="kw">let </span><span class="kw-2">mut </span>key_schedule = KeySchedule::init(ciphersuite, backend, joiner_secret, psk_secret)<span class="question-mark">?</span>;
 
-        <span class="kw">let</span> <span class="ident">serialized_provisional_group_context</span> <span class="op">=</span> <span class="ident">provisional_group_context</span>
-            .<span class="ident">tls_serialize_detached</span>()
-            .<span class="ident">map_err</span>(<span class="ident">LibraryError::missing_bound_check</span>)<span class="question-mark">?</span>;
+        <span class="kw">let </span>serialized_provisional_group_context = provisional_group_context
+            .tls_serialize_detached()
+            .map_err(LibraryError::missing_bound_check)<span class="question-mark">?</span>;
 
-        <span class="ident">key_schedule</span>
-            .<span class="ident">add_context</span>(<span class="ident">backend</span>, <span class="kw-2">&amp;</span><span class="ident">serialized_provisional_group_context</span>)
-            .<span class="ident">map_err</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="ident">LibraryError::custom</span>(<span class="string">&quot;Using the key schedule in the wrong state&quot;</span>))<span class="question-mark">?</span>;
-        <span class="kw">let</span> <span class="ident">provisional_epoch_secrets</span> <span class="op">=</span> <span class="ident">key_schedule</span>
-            .<span class="ident">epoch_secrets</span>(<span class="ident">backend</span>)
-            .<span class="ident">map_err</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="ident">LibraryError::custom</span>(<span class="string">&quot;Using the key schedule in the wrong state&quot;</span>))<span class="question-mark">?</span>;
+        key_schedule
+            .add_context(backend, <span class="kw-2">&amp;</span>serialized_provisional_group_context)
+            .map_err(|<span class="kw">_</span>| LibraryError::custom(<span class="string">&quot;Using the key schedule in the wrong state&quot;</span>))<span class="question-mark">?</span>;
+        <span class="kw">let </span>provisional_epoch_secrets = key_schedule
+            .epoch_secrets(backend)
+            .map_err(|<span class="kw">_</span>| LibraryError::custom(<span class="string">&quot;Using the key schedule in the wrong state&quot;</span>))<span class="question-mark">?</span>;
 
-        <span class="kw">let</span> <span class="ident">mls_plaintext_commit_auth_data</span> <span class="op">=</span> <span class="ident">MlsPlaintextCommitAuthData::try_from</span>(<span class="ident">mls_plaintext</span>)
-            .<span class="ident">map_err</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> {
+        <span class="kw">let </span>mls_plaintext_commit_auth_data = MlsPlaintextCommitAuthData::try_from(mls_plaintext)
+            .map_err(|<span class="kw">_</span>| {
                 <span class="macro">log::error!</span>(<span class="string">&quot;Confirmation tag is missing in commit. This should be unreachable because we verified the tag before.&quot;</span>);
-                <span class="ident">StageCommitError::ConfirmationTagMissing</span>
+                StageCommitError::ConfirmationTagMissing
             })<span class="question-mark">?</span>;
 
-        <span class="kw">let</span> <span class="ident">interim_transcript_hash</span> <span class="op">=</span> <span class="ident">update_interim_transcript_hash</span>(
-            <span class="ident">ciphersuite</span>,
-            <span class="ident">backend</span>,
-            <span class="kw-2">&amp;</span><span class="ident">mls_plaintext_commit_auth_data</span>,
-            <span class="kw-2">&amp;</span><span class="ident">confirmed_transcript_hash</span>,
+        <span class="kw">let </span>interim_transcript_hash = update_interim_transcript_hash(
+            ciphersuite,
+            backend,
+            <span class="kw-2">&amp;</span>mls_plaintext_commit_auth_data,
+            <span class="kw-2">&amp;</span>confirmed_transcript_hash,
         )<span class="question-mark">?</span>;
 
-        <span class="comment">// Verify confirmation tag</span>
-        <span class="comment">// ValSem205</span>
-        <span class="kw">let</span> <span class="ident">own_confirmation_tag</span> <span class="op">=</span> <span class="ident">provisional_epoch_secrets</span>
-            .<span class="ident">confirmation_key</span>()
-            .<span class="ident">tag</span>(<span class="ident">backend</span>, <span class="kw-2">&amp;</span><span class="ident">confirmed_transcript_hash</span>)
-            .<span class="ident">map_err</span>(<span class="ident">LibraryError::unexpected_crypto_error</span>)<span class="question-mark">?</span>;
-        <span class="kw">if</span> <span class="kw-2">&amp;</span><span class="ident">own_confirmation_tag</span> <span class="op">!</span><span class="op">=</span> <span class="ident">received_confirmation_tag</span> {
+        <span class="comment">// Verify confirmation tag
+        // ValSem205
+        </span><span class="kw">let </span>own_confirmation_tag = provisional_epoch_secrets
+            .confirmation_key()
+            .tag(backend, <span class="kw-2">&amp;</span>confirmed_transcript_hash)
+            .map_err(LibraryError::unexpected_crypto_error)<span class="question-mark">?</span>;
+        <span class="kw">if </span><span class="kw-2">&amp;</span>own_confirmation_tag != received_confirmation_tag {
             <span class="macro">log::error!</span>(<span class="string">&quot;Confirmation tag mismatch&quot;</span>);
-            <span class="macro">log_crypto!</span>(<span class="ident">trace</span>, <span class="string">&quot;  Got:      {:x?}&quot;</span>, <span class="ident">received_confirmation_tag</span>);
-            <span class="macro">log_crypto!</span>(<span class="ident">trace</span>, <span class="string">&quot;  Expected: {:x?}&quot;</span>, <span class="ident">own_confirmation_tag</span>);
-            <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">StageCommitError::ConfirmationTagMismatch</span>);
+            <span class="macro">log_crypto!</span>(trace, <span class="string">&quot;  Got:      {:x?}&quot;</span>, received_confirmation_tag);
+            <span class="macro">log_crypto!</span>(trace, <span class="string">&quot;  Expected: {:x?}&quot;</span>, own_confirmation_tag);
+            <span class="kw">return </span><span class="prelude-val">Err</span>(StageCommitError::ConfirmationTagMismatch);
         }
 
-        <span class="kw">let</span> (<span class="ident">provisional_group_epoch_secrets</span>, <span class="ident">provisional_message_secrets</span>) <span class="op">=</span>
-            <span class="ident">provisional_epoch_secrets</span>.<span class="ident">split_secrets</span>(
-                <span class="ident">serialized_provisional_group_context</span>,
-                <span class="ident">diff</span>.<span class="ident">leaf_count</span>(),
-                <span class="comment">// The index should be the same on TreeSync and Diff.</span>
-                <span class="ident">diff</span>.<span class="ident">own_leaf_index</span>(),
+        <span class="kw">let </span>(provisional_group_epoch_secrets, provisional_message_secrets) =
+            provisional_epoch_secrets.split_secrets(
+                serialized_provisional_group_context,
+                diff.leaf_count(),
+                <span class="comment">// The index should be the same on TreeSync and Diff.
+                </span>diff.own_leaf_index(),
             );
 
-        <span class="comment">// Make the diff a staged diff. This finalizes the diff and no more changes can be applied to it.</span>
-        <span class="kw">let</span> <span class="ident">staged_diff</span> <span class="op">=</span> <span class="ident">diff</span>.<span class="ident">into_staged_diff</span>(<span class="ident">backend</span>, <span class="ident">ciphersuite</span>)<span class="question-mark">?</span>;
+        <span class="comment">// Make the diff a staged diff. This finalizes the diff and no more changes can be applied to it.
+        </span><span class="kw">let </span>staged_diff = diff.into_staged_diff(backend, ciphersuite)<span class="question-mark">?</span>;
 
-        <span class="kw">let</span> <span class="ident">staged_commit_state</span> <span class="op">=</span>
-            <span class="ident">StagedCommitState::GroupMember</span>(<span class="ident">Box::new</span>(<span class="ident">MemberStagedCommitState</span> {
-                <span class="ident">group_context</span>: <span class="ident">provisional_group_context</span>,
-                <span class="ident">group_epoch_secrets</span>: <span class="ident">provisional_group_epoch_secrets</span>,
-                <span class="ident">message_secrets</span>: <span class="ident">provisional_message_secrets</span>,
-                <span class="ident">interim_transcript_hash</span>,
-                <span class="ident">staged_diff</span>,
+        <span class="kw">let </span>staged_commit_state =
+            StagedCommitState::GroupMember(Box::new(MemberStagedCommitState {
+                group_context: provisional_group_context,
+                group_epoch_secrets: provisional_group_epoch_secrets,
+                message_secrets: provisional_message_secrets,
+                interim_transcript_hash,
+                staged_diff,
             }));
 
-        <span class="prelude-val">Ok</span>(<span class="ident">StagedCommit::new</span>(
-            <span class="ident">proposal_queue</span>,
-            <span class="ident">staged_commit_state</span>,
-            <span class="ident">commit_update_key_package</span>,
+        <span class="prelude-val">Ok</span>(StagedCommit::new(
+            proposal_queue,
+            staged_commit_state,
+            commit_update_key_package,
         ))
     }
 
-    <span class="doccomment">/// Merges a [StagedCommit] into the group state and optionally return a [`SecretTree`]</span>
-    <span class="doccomment">/// from the previous epoch. The secret tree is returned if the Commit does not contain a self removal.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// This function should not fail and only returns a [`Result`], because it</span>
-    <span class="doccomment">/// might throw a `LibraryError`.</span>
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">merge_commit</span>(
-        <span class="kw-2">&amp;mut</span> <span class="self">self</span>,
-        <span class="ident">staged_commit</span>: <span class="ident">StagedCommit</span>,
-    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">MessageSecrets</span><span class="op">&gt;</span>, <span class="ident">LibraryError</span><span class="op">&gt;</span> {
-        <span class="kw">match</span> <span class="ident">staged_commit</span>.<span class="ident">state</span> {
-            <span class="ident">StagedCommitState::SelfRemoved</span>(<span class="ident">staged_diff</span>) =&gt; {
-                <span class="self">self</span>.<span class="ident">tree</span>.<span class="ident">merge_diff</span>(<span class="kw-2">*</span><span class="ident">staged_diff</span>)<span class="question-mark">?</span>;
+    <span class="doccomment">/// Merges a [StagedCommit] into the group state and optionally return a [`SecretTree`]
+    /// from the previous epoch. The secret tree is returned if the Commit does not contain a self removal.
+    ///
+    /// This function should not fail and only returns a [`Result`], because it
+    /// might throw a `LibraryError`.
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>merge_commit(
+        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
+        staged_commit: StagedCommit,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="prelude-ty">Option</span>&lt;MessageSecrets&gt;, LibraryError&gt; {
+        <span class="kw">match </span>staged_commit.state {
+            StagedCommitState::SelfRemoved(staged_diff) =&gt; {
+                <span class="self">self</span>.tree.merge_diff(<span class="kw-2">*</span>staged_diff)<span class="question-mark">?</span>;
                 <span class="prelude-val">Ok</span>(<span class="prelude-val">None</span>)
             }
-            <span class="ident">StagedCommitState::GroupMember</span>(<span class="ident">state</span>) =&gt; {
-                <span class="self">self</span>.<span class="ident">group_context</span> <span class="op">=</span> <span class="ident">state</span>.<span class="ident">group_context</span>;
-                <span class="self">self</span>.<span class="ident">group_epoch_secrets</span> <span class="op">=</span> <span class="ident">state</span>.<span class="ident">group_epoch_secrets</span>;
+            StagedCommitState::GroupMember(state) =&gt; {
+                <span class="self">self</span>.group_context = state.group_context;
+                <span class="self">self</span>.group_epoch_secrets = state.group_epoch_secrets;
 
-                <span class="comment">// Replace the previous message secrets with the new ones and return the previous message secrets</span>
-                <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">message_secrets</span> <span class="op">=</span> <span class="ident">state</span>.<span class="ident">message_secrets</span>;
-                <span class="ident">mem::swap</span>(
-                    <span class="kw-2">&amp;mut</span> <span class="ident">message_secrets</span>,
-                    <span class="self">self</span>.<span class="ident">message_secrets_store</span>.<span class="ident">message_secrets_mut</span>(),
+                <span class="comment">// Replace the previous message secrets with the new ones and return the previous message secrets
+                </span><span class="kw">let </span><span class="kw-2">mut </span>message_secrets = state.message_secrets;
+                mem::swap(
+                    <span class="kw-2">&amp;mut </span>message_secrets,
+                    <span class="self">self</span>.message_secrets_store.message_secrets_mut(),
                 );
 
-                <span class="self">self</span>.<span class="ident">interim_transcript_hash</span> <span class="op">=</span> <span class="ident">state</span>.<span class="ident">interim_transcript_hash</span>;
+                <span class="self">self</span>.interim_transcript_hash = state.interim_transcript_hash;
 
-                <span class="self">self</span>.<span class="ident">tree</span>.<span class="ident">merge_diff</span>(<span class="ident">state</span>.<span class="ident">staged_diff</span>)<span class="question-mark">?</span>;
-                <span class="prelude-val">Ok</span>(<span class="prelude-val">Some</span>(<span class="ident">message_secrets</span>))
+                <span class="self">self</span>.tree.merge_diff(state.staged_diff)<span class="question-mark">?</span>;
+                <span class="prelude-val">Ok</span>(<span class="prelude-val">Some</span>(message_secrets))
             }
         }
     }
 }
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>)]</span>
-<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">enum</span> <span class="ident">StagedCommitState</span> {
-    <span class="ident">SelfRemoved</span>(<span class="ident">Box</span><span class="op">&lt;</span><span class="ident">StagedTreeSyncDiff</span><span class="op">&gt;</span>),
-    <span class="ident">GroupMember</span>(<span class="ident">Box</span><span class="op">&lt;</span><span class="ident">MemberStagedCommitState</span><span class="op">&gt;</span>),
+<span class="attribute">#[derive(Debug, Serialize, Deserialize)]
+</span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">enum </span>StagedCommitState {
+    SelfRemoved(Box&lt;StagedTreeSyncDiff&gt;),
+    GroupMember(Box&lt;MemberStagedCommitState&gt;),
 }
 
-<span class="doccomment">/// Contains the changes from a commit to the group state.</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>)]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">StagedCommit</span> {
-    <span class="ident">staged_proposal_queue</span>: <span class="ident">ProposalQueue</span>,
-    <span class="ident">state</span>: <span class="ident">StagedCommitState</span>,
-    <span class="ident">commit_update_key_package</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">KeyPackage</span><span class="op">&gt;</span>,
+<span class="doccomment">/// Contains the changes from a commit to the group state.
+</span><span class="attribute">#[derive(Debug, Serialize, Deserialize)]
+</span><span class="kw">pub struct </span>StagedCommit {
+    staged_proposal_queue: ProposalQueue,
+    state: StagedCommitState,
+    commit_update_key_package: <span class="prelude-ty">Option</span>&lt;KeyPackage&gt;,
 }
 
-<span class="kw">impl</span> <span class="ident">StagedCommit</span> {
-    <span class="doccomment">/// Create a new [`StagedCommit`] from the provisional group state created</span>
-    <span class="doccomment">/// during the commit process.</span>
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">new</span>(
-        <span class="ident">staged_proposal_queue</span>: <span class="ident">ProposalQueue</span>,
-        <span class="ident">state</span>: <span class="ident">StagedCommitState</span>,
-        <span class="ident">commit_update_key_package</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">KeyPackage</span><span class="op">&gt;</span>,
-    ) -&gt; <span class="self">Self</span> {
-        <span class="ident">StagedCommit</span> {
-            <span class="ident">staged_proposal_queue</span>,
-            <span class="ident">state</span>,
-            <span class="ident">commit_update_key_package</span>,
+<span class="kw">impl </span>StagedCommit {
+    <span class="doccomment">/// Create a new [`StagedCommit`] from the provisional group state created
+    /// during the commit process.
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>new(
+        staged_proposal_queue: ProposalQueue,
+        state: StagedCommitState,
+        commit_update_key_package: <span class="prelude-ty">Option</span>&lt;KeyPackage&gt;,
+    ) -&gt; <span class="self">Self </span>{
+        StagedCommit {
+            staged_proposal_queue,
+            state,
+            commit_update_key_package,
         }
     }
 
-    <span class="doccomment">/// Returns the Add proposals that are covered by the Commit message as in iterator over [QueuedAddProposal].</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">add_proposals</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw">impl</span> <span class="ident">Iterator</span><span class="op">&lt;</span><span class="ident">Item</span> <span class="op">=</span> <span class="ident">QueuedAddProposal</span><span class="op">&gt;</span> {
-        <span class="self">self</span>.<span class="ident">staged_proposal_queue</span>.<span class="ident">add_proposals</span>()
+    <span class="doccomment">/// Returns the Add proposals that are covered by the Commit message as in iterator over [QueuedAddProposal].
+    </span><span class="kw">pub fn </span>add_proposals(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw">impl </span>Iterator&lt;Item = QueuedAddProposal&gt; {
+        <span class="self">self</span>.staged_proposal_queue.add_proposals()
     }
 
-    <span class="doccomment">/// Returns the Remove proposals that are covered by the Commit message as in iterator over [QueuedRemoveProposal].</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">remove_proposals</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw">impl</span> <span class="ident">Iterator</span><span class="op">&lt;</span><span class="ident">Item</span> <span class="op">=</span> <span class="ident">QueuedRemoveProposal</span><span class="op">&gt;</span> {
-        <span class="self">self</span>.<span class="ident">staged_proposal_queue</span>.<span class="ident">remove_proposals</span>()
+    <span class="doccomment">/// Returns the Remove proposals that are covered by the Commit message as in iterator over [QueuedRemoveProposal].
+    </span><span class="kw">pub fn </span>remove_proposals(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw">impl </span>Iterator&lt;Item = QueuedRemoveProposal&gt; {
+        <span class="self">self</span>.staged_proposal_queue.remove_proposals()
     }
 
-    <span class="doccomment">/// Returns the Update proposals that are covered by the Commit message as in iterator over [QueuedUpdateProposal].</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">update_proposals</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw">impl</span> <span class="ident">Iterator</span><span class="op">&lt;</span><span class="ident">Item</span> <span class="op">=</span> <span class="ident">QueuedUpdateProposal</span><span class="op">&gt;</span> {
-        <span class="self">self</span>.<span class="ident">staged_proposal_queue</span>.<span class="ident">update_proposals</span>()
+    <span class="doccomment">/// Returns the Update proposals that are covered by the Commit message as in iterator over [QueuedUpdateProposal].
+    </span><span class="kw">pub fn </span>update_proposals(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw">impl </span>Iterator&lt;Item = QueuedUpdateProposal&gt; {
+        <span class="self">self</span>.staged_proposal_queue.update_proposals()
     }
 
-    <span class="doccomment">/// Returns the PresharedKey proposals that are covered by the Commit message as in iterator over [QueuedPskProposal].</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">psk_proposals</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw">impl</span> <span class="ident">Iterator</span><span class="op">&lt;</span><span class="ident">Item</span> <span class="op">=</span> <span class="ident">QueuedPskProposal</span><span class="op">&gt;</span> {
-        <span class="self">self</span>.<span class="ident">staged_proposal_queue</span>.<span class="ident">psk_proposals</span>()
+    <span class="doccomment">/// Returns the PresharedKey proposals that are covered by the Commit message as in iterator over [QueuedPskProposal].
+    </span><span class="kw">pub fn </span>psk_proposals(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw">impl </span>Iterator&lt;Item = QueuedPskProposal&gt; {
+        <span class="self">self</span>.staged_proposal_queue.psk_proposals()
     }
 
-    <span class="doccomment">/// Returns an optional key package from the Commit&#39;s update path.</span>
-    <span class="doccomment">/// A key package is returned for full and empty Commits, but not for partial Commits.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">commit_update_key_package</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">KeyPackage</span><span class="op">&gt;</span> {
-        <span class="self">self</span>.<span class="ident">commit_update_key_package</span>.<span class="ident">as_ref</span>()
+    <span class="doccomment">/// Returns an optional key package from the Commit&#39;s update path.
+    /// A key package is returned for full and empty Commits, but not for partial Commits.
+    </span><span class="kw">pub fn </span>commit_update_key_package(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>KeyPackage&gt; {
+        <span class="self">self</span>.commit_update_key_package.as_ref()
     }
 
-    <span class="doccomment">/// Returns `true` if the member was removed through a proposal covered by this Commit message</span>
-    <span class="doccomment">/// and `false` otherwise.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">self_removed</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">bool</span> {
-        <span class="macro">matches!</span>(<span class="self">self</span>.<span class="ident">state</span>, <span class="ident">StagedCommitState::SelfRemoved</span>(<span class="kw">_</span>))
+    <span class="doccomment">/// Returns `true` if the member was removed through a proposal covered by this Commit message
+    /// and `false` otherwise.
+    </span><span class="kw">pub fn </span>self_removed(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; bool {
+        <span class="macro">matches!</span>(<span class="self">self</span>.state, StagedCommitState::SelfRemoved(<span class="kw">_</span>))
     }
 }
 
-<span class="doccomment">/// This struct is used internally by [StagedCommit] to encapsulate all the modified group state.</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>)]</span>
-<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct</span> <span class="ident">MemberStagedCommitState</span> {
-    <span class="ident">group_context</span>: <span class="ident">GroupContext</span>,
-    <span class="ident">group_epoch_secrets</span>: <span class="ident">GroupEpochSecrets</span>,
-    <span class="ident">message_secrets</span>: <span class="ident">MessageSecrets</span>,
-    <span class="ident">interim_transcript_hash</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>,
-    <span class="ident">staged_diff</span>: <span class="ident">StagedTreeSyncDiff</span>,
+<span class="doccomment">/// This struct is used internally by [StagedCommit] to encapsulate all the modified group state.
+</span><span class="attribute">#[derive(Debug, Serialize, Deserialize)]
+</span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct </span>MemberStagedCommitState {
+    group_context: GroupContext,
+    group_epoch_secrets: GroupEpochSecrets,
+    message_secrets: MessageSecrets,
+    interim_transcript_hash: Vec&lt;u8&gt;,
+    staged_diff: StagedTreeSyncDiff,
 }
 
-<span class="kw">impl</span> <span class="ident">MemberStagedCommitState</span> {
-    <span class="kw">pub</span>(<span class="kw">super</span>) <span class="kw">fn</span> <span class="ident">new</span>(
-        <span class="ident">group_context</span>: <span class="ident">GroupContext</span>,
-        <span class="ident">group_epoch_secrets</span>: <span class="ident">GroupEpochSecrets</span>,
-        <span class="ident">message_secrets</span>: <span class="ident">MessageSecrets</span>,
-        <span class="ident">interim_transcript_hash</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>,
-        <span class="ident">staged_diff</span>: <span class="ident">StagedTreeSyncDiff</span>,
-    ) -&gt; <span class="self">Self</span> {
-        <span class="self">Self</span> {
-            <span class="ident">group_context</span>,
-            <span class="ident">group_epoch_secrets</span>,
-            <span class="ident">message_secrets</span>,
-            <span class="ident">interim_transcript_hash</span>,
-            <span class="ident">staged_diff</span>,
+<span class="kw">impl </span>MemberStagedCommitState {
+    <span class="kw">pub</span>(<span class="kw">super</span>) <span class="kw">fn </span>new(
+        group_context: GroupContext,
+        group_epoch_secrets: GroupEpochSecrets,
+        message_secrets: MessageSecrets,
+        interim_transcript_hash: Vec&lt;u8&gt;,
+        staged_diff: StagedTreeSyncDiff,
+    ) -&gt; <span class="self">Self </span>{
+        <span class="self">Self </span>{
+            group_context,
+            group_epoch_secrets,
+            message_secrets,
+            interim_transcript_hash,
+            staged_diff,
         }
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../../../" data-current-crate="openmls" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.64.0 (a55dd71d5 2022-09-19)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../../../" data-current-crate="openmls" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0 (897e37553 2022-11-02)" ></div></body></html>

@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `src/ciphersuite/signable.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>signable.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" type="text/css" href="../../../normalize.css"><link rel="stylesheet" type="text/css" href="../../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" type="text/css" href="../../../ayu.css" disabled><link rel="stylesheet" type="text/css" href="../../../dark.css" disabled><link rel="stylesheet" type="text/css" href="../../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../../storage.js"></script><script defer src="../../../source-script.js"></script><script defer src="../../../source-files.js"></script><script defer src="../../../main.js"></script><noscript><link rel="stylesheet" href="../../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../../openmls/index.html"><div class="logo-container"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></div></a><h2 class="location"></h2></nav><nav class="sidebar"><a class="sidebar-logo" href="../../../openmls/index.html"><div class="logo-container"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></div></a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../../openmls/index.html"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></a><nav class="sub"><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><button type="button">?</button></div><div id="settings-menu" tabindex="-1"><a href="../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../wheel.svg"></a></div></div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">1</span>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `src/ciphersuite/signable.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>signable.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" href="../../../normalize.css"><link rel="stylesheet" href="../../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" href="../../../ayu.css" disabled><link rel="stylesheet" href="../../../dark.css" disabled><link rel="stylesheet" href="../../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../../storage.js"></script><script defer src="../../../source-script.js"></script><script defer src="../../../source-files.js"></script><script defer src="../../../main.js"></script><noscript><link rel="stylesheet" href="../../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../../openmls/index.html"><div class="logo-container"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></div></a><h2 class="location"></h2></nav><nav class="sidebar"><a class="sidebar-logo" href="../../../openmls/index.html"><div class="logo-container"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></div></a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../../openmls/index.html"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></a><nav class="sub"><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><button type="button">?</button></div><div id="settings-menu" tabindex="-1"><a href="../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../wheel.svg"></a></div></div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">1</span>
 <span id="2">2</span>
 <span id="3">3</span>
 <span id="4">4</span>
@@ -183,190 +183,190 @@
 <span id="183">183</span>
 <span id="184">184</span>
 <span id="185">185</span>
-</pre><pre class="rust"><code><span class="doccomment">//! This module defines traits used for signing and verifying</span>
-<span class="doccomment">//! structs from the MLS protocol spec.</span>
-<span class="doccomment">//!</span>
-<span class="doccomment">//! # Type-Enforced Verification</span>
-<span class="doccomment">//!</span>
-<span class="doccomment">//! This module contains four traits, each describing the property they enable</span>
-<span class="doccomment">//! upon implementation: [`Signable`], [`SignedStruct`], [`Verifiable`] and</span>
-<span class="doccomment">//! [`VerifiedStruct`].</span>
-<span class="doccomment">//!</span>
-<span class="doccomment">//! Each trait represents the state of a struct in a sender-receiver flow with</span>
-<span class="doccomment">//! the following transitions.</span>
-<span class="doccomment">//!</span>
-<span class="doccomment">//! * the signer creates an instance of a struct that implements [`Signable`]</span>
-<span class="doccomment">//! * the signer signs it, consuming the [`Signable`] struct and producing a [`SignedStruct`]</span>
-<span class="doccomment">//! * the signer serializes the struct and sends it to the verifier</span>
-<span class="doccomment">//! * the verifier deserializes the byte-string into a struct implementing [`Verifiable`]</span>
-<span class="doccomment">//! * the verifier verifies the struct, consuming the [`Verifiable`] struct and producing a [`VerifiedStruct`]</span>
-<span class="doccomment">//!</span>
-<span class="doccomment">//! Using this process, we can ensure that only structs implementing</span>
-<span class="doccomment">//! [`SignedStruct`] are sent over the wire and only structs implementing</span>
-<span class="doccomment">//! [`VerifiedStruct`] are used on the verifier side as input for further</span>
-<span class="doccomment">//! processing functions.</span>
-<span class="doccomment">//!</span>
-<span class="doccomment">//! For the type-safety to work, it is important that [`Signable`] and</span>
-<span class="doccomment">//! [`SignedStruct`] are implemented by distinct structs. The same goes for</span>
-<span class="doccomment">//! [`Verifiable`] and [`VerifiedStruct`]. In addition, only the</span>
-<span class="doccomment">//! [`SignedStruct`] should implement the [`tls_codec::Serialize`] trait.</span>
-<span class="doccomment">//! Similarly, only the [`Verifiable`] struct should implement the</span>
-<span class="doccomment">//! [`tls_codec::Deserialize`] trait.</span>
+</pre><pre class="rust"><code><span class="doccomment">//! This module defines traits used for signing and verifying
+//! structs from the MLS protocol spec.
+//!
+//! # Type-Enforced Verification
+//!
+//! This module contains four traits, each describing the property they enable
+//! upon implementation: [`Signable`], [`SignedStruct`], [`Verifiable`] and
+//! [`VerifiedStruct`].
+//!
+//! Each trait represents the state of a struct in a sender-receiver flow with
+//! the following transitions.
+//!
+//! * the signer creates an instance of a struct that implements [`Signable`]
+//! * the signer signs it, consuming the [`Signable`] struct and producing a [`SignedStruct`]
+//! * the signer serializes the struct and sends it to the verifier
+//! * the verifier deserializes the byte-string into a struct implementing [`Verifiable`]
+//! * the verifier verifies the struct, consuming the [`Verifiable`] struct and producing a [`VerifiedStruct`]
+//!
+//! Using this process, we can ensure that only structs implementing
+//! [`SignedStruct`] are sent over the wire and only structs implementing
+//! [`VerifiedStruct`] are used on the verifier side as input for further
+//! processing functions.
+//!
+//! For the type-safety to work, it is important that [`Signable`] and
+//! [`SignedStruct`] are implemented by distinct structs. The same goes for
+//! [`Verifiable`] and [`VerifiedStruct`]. In addition, only the
+//! [`SignedStruct`] should implement the [`tls_codec::Serialize`] trait.
+//! Similarly, only the [`Verifiable`] struct should implement the
+//! [`tls_codec::Deserialize`] trait.
 
-<span class="kw">use</span> <span class="ident">openmls_traits::OpenMlsCryptoProvider</span>;
+</span><span class="kw">use </span>openmls_traits::OpenMlsCryptoProvider;
 
-<span class="kw">use</span> <span class="kw">crate</span>::{
-    <span class="ident">ciphersuite::Signature</span>,
-    <span class="ident">credentials</span>::{<span class="ident">errors::CredentialError</span>, <span class="ident">Credential</span>, <span class="ident">CredentialBundle</span>},
-    <span class="ident">error::LibraryError</span>,
+<span class="kw">use crate</span>::{
+    ciphersuite::Signature,
+    credentials::{errors::CredentialError, Credential, CredentialBundle},
+    error::LibraryError,
 };
 
-<span class="kw">use</span> <span class="ident"><span class="kw">super</span>::SignaturePublicKey</span>;
+<span class="kw">use </span><span class="kw">super</span>::SignaturePublicKey;
 
-<span class="doccomment">/// This trait must be implemented by all structs that contain a self-signature.</span>
-<span class="kw">pub</span> <span class="kw">trait</span> <span class="ident">SignedStruct</span><span class="op">&lt;</span><span class="ident">T</span><span class="op">&gt;</span> {
-    <span class="doccomment">/// Build a signed struct version from the payload struct.</span>
-    <span class="kw">fn</span> <span class="ident">from_payload</span>(<span class="ident">payload</span>: <span class="ident">T</span>, <span class="ident">signature</span>: <span class="ident">Signature</span>) -&gt; <span class="self">Self</span>;
+<span class="doccomment">/// This trait must be implemented by all structs that contain a self-signature.
+</span><span class="kw">pub trait </span>SignedStruct&lt;T&gt; {
+    <span class="doccomment">/// Build a signed struct version from the payload struct.
+    </span><span class="kw">fn </span>from_payload(payload: T, signature: Signature) -&gt; <span class="self">Self</span>;
 }
 
-<span class="doccomment">/// This trait must be implemented by all structs that contain a verified</span>
-<span class="doccomment">/// self-signature.</span>
-<span class="kw">pub</span> <span class="kw">trait</span> <span class="ident">VerifiedStruct</span><span class="op">&lt;</span><span class="ident">T</span><span class="op">&gt;</span> {
-    <span class="doccomment">/// This type is used to prevent users of the trait from bypassing `verify`</span>
-    <span class="doccomment">/// by simply calling `from_verifiable`. `Seal` should be a dummy type</span>
-    <span class="doccomment">/// defined in a private module as follows:</span>
-    <span class="doccomment">/// ```</span>
-    <span class="doccomment">/// mod private_mod {</span>
-    <span class="doccomment">///     pub struct Seal;</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">///     impl Default for Seal {</span>
-    <span class="doccomment">///         fn default() -&gt; Self {</span>
-    <span class="doccomment">///             Seal {}</span>
-    <span class="doccomment">///         }</span>
-    <span class="doccomment">///     }</span>
-    <span class="doccomment">/// }</span>
-    <span class="doccomment">/// ```</span>
-    <span class="kw">type</span> <span class="ident">SealingType</span>: <span class="ident">Default</span>;
+<span class="doccomment">/// This trait must be implemented by all structs that contain a verified
+/// self-signature.
+</span><span class="kw">pub trait </span>VerifiedStruct&lt;T&gt; {
+    <span class="doccomment">/// This type is used to prevent users of the trait from bypassing `verify`
+    /// by simply calling `from_verifiable`. `Seal` should be a dummy type
+    /// defined in a private module as follows:
+    /// ```
+    /// mod private_mod {
+    ///     pub struct Seal;
+    ///
+    ///     impl Default for Seal {
+    ///         fn default() -&gt; Self {
+    ///             Seal {}
+    ///         }
+    ///     }
+    /// }
+    /// ```
+    </span><span class="kw">type </span>SealingType: Default;
 
-    <span class="doccomment">/// Build a verified struct version from the payload struct. This function</span>
-    <span class="doccomment">/// is only meant to be called by the implementation of the `Verifiable`</span>
-    <span class="doccomment">/// trait corresponding to this `VerifiedStruct`.</span>
-    <span class="attribute">#[<span class="ident">doc</span>(<span class="ident">hidden</span>)]</span>
-    <span class="kw">fn</span> <span class="ident">from_verifiable</span>(<span class="ident">verifiable</span>: <span class="ident">T</span>, <span class="ident">_seal</span>: <span class="ident"><span class="self">Self</span>::SealingType</span>) -&gt; <span class="self">Self</span>;
+    <span class="doccomment">/// Build a verified struct version from the payload struct. This function
+    /// is only meant to be called by the implementation of the `Verifiable`
+    /// trait corresponding to this `VerifiedStruct`.
+    </span><span class="attribute">#[doc(hidden)]
+    </span><span class="kw">fn </span>from_verifiable(verifiable: T, _seal: <span class="self">Self</span>::SealingType) -&gt; <span class="self">Self</span>;
 }
 
-<span class="doccomment">/// The `Signable` trait is implemented by all struct that are being signed.</span>
-<span class="doccomment">/// The implementation has to provide the `unsigned_payload` function.</span>
-<span class="kw">pub</span> <span class="kw">trait</span> <span class="ident">Signable</span>: <span class="ident">Sized</span> {
-    <span class="doccomment">/// The type of the object once it&#39;s signed.</span>
-    <span class="kw">type</span> <span class="ident">SignedOutput</span>;
+<span class="doccomment">/// The `Signable` trait is implemented by all struct that are being signed.
+/// The implementation has to provide the `unsigned_payload` function.
+</span><span class="kw">pub trait </span>Signable: Sized {
+    <span class="doccomment">/// The type of the object once it&#39;s signed.
+    </span><span class="kw">type </span>SignedOutput;
 
-    <span class="doccomment">/// Return the unsigned, serialized payload that should be signed.</span>
-    <span class="kw">fn</span> <span class="ident">unsigned_payload</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>, <span class="ident">tls_codec::Error</span><span class="op">&gt;</span>;
+    <span class="doccomment">/// Return the unsigned, serialized payload that should be signed.
+    </span><span class="kw">fn </span>unsigned_payload(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;Vec&lt;u8&gt;, tls_codec::Error&gt;;
 
-    <span class="doccomment">/// Return the string label used for labeled signing.</span>
-    <span class="kw">fn</span> <span class="ident">label</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span><span class="ident">str</span>;
+    <span class="doccomment">/// Return the string label used for labeled signing.
+    </span><span class="kw">fn </span>label(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>str;
 
-    <span class="doccomment">/// Sign the payload with the given `id`.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// Returns a `Signature`.</span>
-    <span class="kw">fn</span> <span class="ident">sign</span>(
+    <span class="doccomment">/// Sign the payload with the given `id`.
+    ///
+    /// Returns a `Signature`.
+    </span><span class="kw">fn </span>sign(
         <span class="self">self</span>,
-        <span class="ident">backend</span>: <span class="kw-2">&amp;</span><span class="kw">impl</span> <span class="ident">OpenMlsCryptoProvider</span>,
-        <span class="ident">credential_bundle</span>: <span class="kw-2">&amp;</span><span class="ident">CredentialBundle</span>,
-    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident"><span class="self">Self</span>::SignedOutput</span>, <span class="ident">LibraryError</span><span class="op">&gt;</span>
-    <span class="kw">where</span>
-        <span class="ident"><span class="self">Self</span>::SignedOutput</span>: <span class="ident">SignedStruct</span><span class="op">&lt;</span><span class="self">Self</span><span class="op">&gt;</span>,
+        backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider,
+        credential_bundle: <span class="kw-2">&amp;</span>CredentialBundle,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>::SignedOutput, LibraryError&gt;
+    <span class="kw">where
+        </span><span class="self">Self</span>::SignedOutput: SignedStruct&lt;<span class="self">Self</span>&gt;,
     {
-        <span class="kw">let</span> <span class="ident">payload</span> <span class="op">=</span> <span class="self">self</span>
-            .<span class="ident">unsigned_payload</span>()
-            .<span class="ident">map_err</span>(<span class="ident">LibraryError::missing_bound_check</span>)<span class="question-mark">?</span>;
-        <span class="kw">let</span> <span class="ident">signature</span> <span class="op">=</span> <span class="ident">credential_bundle</span>
-            .<span class="ident">sign</span>(<span class="ident">backend</span>, <span class="kw-2">&amp;</span><span class="ident">payload</span>, <span class="self">self</span>.<span class="ident">label</span>())
-            .<span class="ident">map_err</span>(<span class="ident">LibraryError::unexpected_crypto_error</span>)<span class="question-mark">?</span>;
-        <span class="prelude-val">Ok</span>(<span class="ident"><span class="self">Self</span>::SignedOutput::from_payload</span>(<span class="self">self</span>, <span class="ident">signature</span>))
+        <span class="kw">let </span>payload = <span class="self">self
+            </span>.unsigned_payload()
+            .map_err(LibraryError::missing_bound_check)<span class="question-mark">?</span>;
+        <span class="kw">let </span>signature = credential_bundle
+            .sign(backend, <span class="kw-2">&amp;</span>payload, <span class="self">self</span>.label())
+            .map_err(LibraryError::unexpected_crypto_error)<span class="question-mark">?</span>;
+        <span class="prelude-val">Ok</span>(<span class="self">Self</span>::SignedOutput::from_payload(<span class="self">self</span>, signature))
     }
 }
 
-<span class="doccomment">/// The verifiable trait must be implemented by any struct that is signed with</span>
-<span class="doccomment">/// a credential. The actual `verify` method is provided.</span>
-<span class="doccomment">/// The `unsigned_payload` and `signature` functions have to be implemented for</span>
-<span class="doccomment">/// each struct, returning the serialized payload and the signature respectively.</span>
-<span class="doccomment">///</span>
-<span class="doccomment">/// Note that `Verifiable` should not be implemented on the same struct as</span>
-<span class="doccomment">/// `Signable`. If this appears to be necessary, it is probably a sign that the</span>
-<span class="doccomment">/// struct implementing them aren&#39;t well defined. Not that both traits define an</span>
-<span class="doccomment">/// `unsigned_payload` function.</span>
-<span class="kw">pub</span> <span class="kw">trait</span> <span class="ident">Verifiable</span>: <span class="ident">Sized</span> {
-    <span class="doccomment">/// Return the unsigned, serialized payload that should be verified.</span>
-    <span class="kw">fn</span> <span class="ident">unsigned_payload</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>, <span class="ident">tls_codec::Error</span><span class="op">&gt;</span>;
+<span class="doccomment">/// The verifiable trait must be implemented by any struct that is signed with
+/// a credential. The actual `verify` method is provided.
+/// The `unsigned_payload` and `signature` functions have to be implemented for
+/// each struct, returning the serialized payload and the signature respectively.
+///
+/// Note that `Verifiable` should not be implemented on the same struct as
+/// `Signable`. If this appears to be necessary, it is probably a sign that the
+/// struct implementing them aren&#39;t well defined. Not that both traits define an
+/// `unsigned_payload` function.
+</span><span class="kw">pub trait </span>Verifiable: Sized {
+    <span class="doccomment">/// Return the unsigned, serialized payload that should be verified.
+    </span><span class="kw">fn </span>unsigned_payload(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;Vec&lt;u8&gt;, tls_codec::Error&gt;;
 
-    <span class="doccomment">/// A reference to the signature to be verified.</span>
-    <span class="kw">fn</span> <span class="ident">signature</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span><span class="ident">Signature</span>;
+    <span class="doccomment">/// A reference to the signature to be verified.
+    </span><span class="kw">fn </span>signature(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>Signature;
 
-    <span class="doccomment">/// Return the string label used for labeled verification.</span>
-    <span class="kw">fn</span> <span class="ident">label</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span><span class="ident">str</span>;
+    <span class="doccomment">/// Return the string label used for labeled verification.
+    </span><span class="kw">fn </span>label(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>str;
 
-    <span class="doccomment">/// Verifies the payload against the given `credential`.</span>
-    <span class="doccomment">/// The signature is fetched via the [`Verifiable::signature()`] function and</span>
-    <span class="doccomment">/// the payload via [`Verifiable::unsigned_payload()`].</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// Returns `Ok(Self::VerifiedOutput)` if the signature is valid and</span>
-    <span class="doccomment">/// `CredentialError::InvalidSignature` otherwise.</span>
-    <span class="kw">fn</span> <span class="ident">verify</span><span class="op">&lt;</span><span class="ident">T</span><span class="op">&gt;</span>(
+    <span class="doccomment">/// Verifies the payload against the given `credential`.
+    /// The signature is fetched via the [`Verifiable::signature()`] function and
+    /// the payload via [`Verifiable::unsigned_payload()`].
+    ///
+    /// Returns `Ok(Self::VerifiedOutput)` if the signature is valid and
+    /// `CredentialError::InvalidSignature` otherwise.
+    </span><span class="kw">fn </span>verify&lt;T&gt;(
         <span class="self">self</span>,
-        <span class="ident">backend</span>: <span class="kw-2">&amp;</span><span class="kw">impl</span> <span class="ident">OpenMlsCryptoProvider</span>,
-        <span class="ident">credential</span>: <span class="kw-2">&amp;</span><span class="ident">Credential</span>,
-    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">T</span>, <span class="ident">CredentialError</span><span class="op">&gt;</span>
-    <span class="kw">where</span>
-        <span class="ident">T</span>: <span class="ident">VerifiedStruct</span><span class="op">&lt;</span><span class="self">Self</span><span class="op">&gt;</span>,
+        backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider,
+        credential: <span class="kw-2">&amp;</span>Credential,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;T, CredentialError&gt;
+    <span class="kw">where
+        </span>T: VerifiedStruct&lt;<span class="self">Self</span>&gt;,
     {
-        <span class="kw">let</span> <span class="ident">payload</span> <span class="op">=</span> <span class="self">self</span>
-            .<span class="ident">unsigned_payload</span>()
-            .<span class="ident">map_err</span>(<span class="ident">LibraryError::missing_bound_check</span>)<span class="question-mark">?</span>;
-        <span class="ident">credential</span>.<span class="ident">verify</span>(<span class="ident">backend</span>, <span class="kw-2">&amp;</span><span class="ident">payload</span>, <span class="self">self</span>.<span class="ident">signature</span>(), <span class="self">self</span>.<span class="ident">label</span>())<span class="question-mark">?</span>;
-        <span class="prelude-val">Ok</span>(<span class="ident">T::from_verifiable</span>(<span class="self">self</span>, <span class="ident">T::SealingType::default</span>()))
+        <span class="kw">let </span>payload = <span class="self">self
+            </span>.unsigned_payload()
+            .map_err(LibraryError::missing_bound_check)<span class="question-mark">?</span>;
+        credential.verify(backend, <span class="kw-2">&amp;</span>payload, <span class="self">self</span>.signature(), <span class="self">self</span>.label())<span class="question-mark">?</span>;
+        <span class="prelude-val">Ok</span>(T::from_verifiable(<span class="self">self</span>, T::SealingType::default()))
     }
 
-    <span class="doccomment">/// Verifies the payload against the given `SignatureKey`.</span>
-    <span class="doccomment">/// The signature is fetched via the [`Verifiable::signature()`] function and</span>
-    <span class="doccomment">/// the payload via [`Verifiable::unsigned_payload()`].</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// Returns `Ok(Self::VerifiedOutput)` if the signature is valid and</span>
-    <span class="doccomment">/// `CredentialError::InvalidSignature` otherwise.</span>
-    <span class="kw">fn</span> <span class="ident">verify_with_key</span><span class="op">&lt;</span><span class="ident">T</span><span class="op">&gt;</span>(
+    <span class="doccomment">/// Verifies the payload against the given `SignatureKey`.
+    /// The signature is fetched via the [`Verifiable::signature()`] function and
+    /// the payload via [`Verifiable::unsigned_payload()`].
+    ///
+    /// Returns `Ok(Self::VerifiedOutput)` if the signature is valid and
+    /// `CredentialError::InvalidSignature` otherwise.
+    </span><span class="kw">fn </span>verify_with_key&lt;T&gt;(
         <span class="self">self</span>,
-        <span class="ident">backend</span>: <span class="kw-2">&amp;</span><span class="kw">impl</span> <span class="ident">OpenMlsCryptoProvider</span>,
-        <span class="ident">signature_public_key</span>: <span class="kw-2">&amp;</span><span class="ident">SignaturePublicKey</span>,
-    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">T</span>, <span class="ident">CredentialError</span><span class="op">&gt;</span>
-    <span class="kw">where</span>
-        <span class="ident">T</span>: <span class="ident">VerifiedStruct</span><span class="op">&lt;</span><span class="self">Self</span><span class="op">&gt;</span>,
+        backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider,
+        signature_public_key: <span class="kw-2">&amp;</span>SignaturePublicKey,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;T, CredentialError&gt;
+    <span class="kw">where
+        </span>T: VerifiedStruct&lt;<span class="self">Self</span>&gt;,
     {
-        <span class="kw">let</span> <span class="ident">payload</span> <span class="op">=</span> <span class="self">self</span>
-            .<span class="ident">unsigned_payload</span>()
-            .<span class="ident">map_err</span>(<span class="ident">LibraryError::missing_bound_check</span>)<span class="question-mark">?</span>;
-        <span class="ident">signature_public_key</span>
-            .<span class="ident">verify</span>(<span class="ident">backend</span>, <span class="self">self</span>.<span class="ident">signature</span>(), <span class="kw-2">&amp;</span><span class="ident">payload</span>)
-            .<span class="ident">map_err</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="ident">CredentialError::InvalidSignature</span>)<span class="question-mark">?</span>;
-        <span class="prelude-val">Ok</span>(<span class="ident">T::from_verifiable</span>(<span class="self">self</span>, <span class="ident">T::SealingType::default</span>()))
+        <span class="kw">let </span>payload = <span class="self">self
+            </span>.unsigned_payload()
+            .map_err(LibraryError::missing_bound_check)<span class="question-mark">?</span>;
+        signature_public_key
+            .verify(backend, <span class="self">self</span>.signature(), <span class="kw-2">&amp;</span>payload)
+            .map_err(|<span class="kw">_</span>| CredentialError::InvalidSignature)<span class="question-mark">?</span>;
+        <span class="prelude-val">Ok</span>(T::from_verifiable(<span class="self">self</span>, T::SealingType::default()))
     }
 
-    <span class="doccomment">/// Verifies the payload against the given `credential`.</span>
-    <span class="doccomment">/// The signature is fetched via the [`Verifiable::signature()`] function and</span>
-    <span class="doccomment">/// the payload via [`Verifiable::unsigned_payload()`].</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// Returns `Ok(())` if the signature is valid and</span>
-    <span class="doccomment">/// `CredentialError::InvalidSignature` otherwise.</span>
-    <span class="kw">fn</span> <span class="ident">verify_no_out</span>(
+    <span class="doccomment">/// Verifies the payload against the given `credential`.
+    /// The signature is fetched via the [`Verifiable::signature()`] function and
+    /// the payload via [`Verifiable::unsigned_payload()`].
+    ///
+    /// Returns `Ok(())` if the signature is valid and
+    /// `CredentialError::InvalidSignature` otherwise.
+    </span><span class="kw">fn </span>verify_no_out(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        <span class="ident">backend</span>: <span class="kw-2">&amp;</span><span class="kw">impl</span> <span class="ident">OpenMlsCryptoProvider</span>,
-        <span class="ident">credential</span>: <span class="kw-2">&amp;</span><span class="ident">Credential</span>,
-    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">CredentialError</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="ident">payload</span> <span class="op">=</span> <span class="self">self</span>
-            .<span class="ident">unsigned_payload</span>()
-            .<span class="ident">map_err</span>(<span class="ident">LibraryError::missing_bound_check</span>)<span class="question-mark">?</span>;
-        <span class="ident">credential</span>.<span class="ident">verify</span>(<span class="ident">backend</span>, <span class="kw-2">&amp;</span><span class="ident">payload</span>, <span class="self">self</span>.<span class="ident">signature</span>(), <span class="self">self</span>.<span class="ident">label</span>())
+        backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider,
+        credential: <span class="kw-2">&amp;</span>Credential,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;(), CredentialError&gt; {
+        <span class="kw">let </span>payload = <span class="self">self
+            </span>.unsigned_payload()
+            .map_err(LibraryError::missing_bound_check)<span class="question-mark">?</span>;
+        credential.verify(backend, <span class="kw-2">&amp;</span>payload, <span class="self">self</span>.signature(), <span class="self">self</span>.label())
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-current-crate="openmls" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.64.0 (a55dd71d5 2022-09-19)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-current-crate="openmls" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0 (897e37553 2022-11-02)" ></div></body></html>

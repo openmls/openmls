@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `src/messages/proposals.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>proposals.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" type="text/css" href="../../../normalize.css"><link rel="stylesheet" type="text/css" href="../../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" type="text/css" href="../../../ayu.css" disabled><link rel="stylesheet" type="text/css" href="../../../dark.css" disabled><link rel="stylesheet" type="text/css" href="../../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../../storage.js"></script><script defer src="../../../source-script.js"></script><script defer src="../../../source-files.js"></script><script defer src="../../../main.js"></script><noscript><link rel="stylesheet" href="../../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../../openmls/index.html"><div class="logo-container"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></div></a><h2 class="location"></h2></nav><nav class="sidebar"><a class="sidebar-logo" href="../../../openmls/index.html"><div class="logo-container"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></div></a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../../openmls/index.html"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></a><nav class="sub"><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><button type="button">?</button></div><div id="settings-menu" tabindex="-1"><a href="../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../wheel.svg"></a></div></div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">1</span>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `src/messages/proposals.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>proposals.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" href="../../../normalize.css"><link rel="stylesheet" href="../../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" href="../../../ayu.css" disabled><link rel="stylesheet" href="../../../dark.css" disabled><link rel="stylesheet" href="../../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../../storage.js"></script><script defer src="../../../source-script.js"></script><script defer src="../../../source-files.js"></script><script defer src="../../../main.js"></script><noscript><link rel="stylesheet" href="../../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../../openmls/index.html"><div class="logo-container"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></div></a><h2 class="location"></h2></nav><nav class="sidebar"><a class="sidebar-logo" href="../../../openmls/index.html"><div class="logo-container"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></div></a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../../openmls/index.html"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></a><nav class="sub"><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><button type="button">?</button></div><div id="settings-menu" tabindex="-1"><a href="../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../wheel.svg"></a></div></div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">1</span>
 <span id="2">2</span>
 <span id="3">3</span>
 <span id="4">4</span>
@@ -367,374 +367,374 @@
 <span id="367">367</span>
 <span id="368">368</span>
 <span id="369">369</span>
-</pre><pre class="rust"><code><span class="doccomment">//! # Proposals</span>
-<span class="doccomment">//!</span>
-<span class="doccomment">//! This module defines all the different types of Proposals.</span>
-<span class="doccomment">//!</span>
-<span class="doccomment">//! To find out if a specific proposal type is supported,</span>
-<span class="doccomment">//! [`ProposalType::is_supported()`] can be used.</span>
+</pre><pre class="rust"><code><span class="doccomment">//! # Proposals
+//!
+//! This module defines all the different types of Proposals.
+//!
+//! To find out if a specific proposal type is supported,
+//! [`ProposalType::is_supported()`] can be used.
 
-<span class="kw">use</span> <span class="kw">crate</span>::{
-    <span class="ident">ciphersuite::hash_ref</span>::{<span class="ident">make_proposal_ref</span>, <span class="ident">KeyPackageRef</span>, <span class="ident">ProposalRef</span>},
-    <span class="ident">error::LibraryError</span>,
-    <span class="ident">extensions::Extension</span>,
-    <span class="ident">group::GroupId</span>,
-    <span class="ident">key_packages</span>::<span class="kw-2">*</span>,
-    <span class="ident">schedule::psk</span>::<span class="kw-2">*</span>,
-    <span class="ident">versions::ProtocolVersion</span>,
+</span><span class="kw">use crate</span>::{
+    ciphersuite::hash_ref::{make_proposal_ref, KeyPackageRef, ProposalRef},
+    error::LibraryError,
+    extensions::Extension,
+    group::GroupId,
+    key_packages::<span class="kw-2">*</span>,
+    schedule::psk::<span class="kw-2">*</span>,
+    versions::ProtocolVersion,
 };
 
-<span class="kw">use</span> <span class="ident">openmls_traits</span>::{<span class="ident">types::Ciphersuite</span>, <span class="ident">OpenMlsCryptoProvider</span>};
-<span class="kw">use</span> <span class="ident">serde</span>::{<span class="ident">Deserialize</span>, <span class="ident">Serialize</span>};
-<span class="kw">use</span> <span class="ident">std::convert::TryFrom</span>;
-<span class="kw">use</span> <span class="ident">tls_codec</span>::{
-    <span class="ident">Serialize</span> <span class="kw">as</span> <span class="ident">TlsSerializeTrait</span>, <span class="ident">TlsDeserialize</span>, <span class="ident">TlsSerialize</span>, <span class="ident">TlsSize</span>, <span class="ident">TlsVecU32</span>, <span class="ident">VLBytes</span>,
+<span class="kw">use </span>openmls_traits::{types::Ciphersuite, OpenMlsCryptoProvider};
+<span class="kw">use </span>serde::{Deserialize, Serialize};
+<span class="kw">use </span>std::convert::TryFrom;
+<span class="kw">use </span>tls_codec::{
+    Serialize <span class="kw">as </span>TlsSerializeTrait, TlsDeserialize, TlsSerialize, TlsSize, TlsVecU32, VLBytes,
 };
 
-<span class="comment">// Public types</span>
+<span class="comment">// Public types
 
-<span class="doccomment">/// ## MLS Proposal Types</span>
-<span class="doccomment">///</span>
-<span class="doccomment">/// | Value            | Name                     | Recommended | Reference |</span>
-<span class="doccomment">/// |:=================|:=========================|:============|:==========|</span>
-<span class="doccomment">/// | 0x0000           | RESERVED                 | N/A         | RFC XXXX  |</span>
-<span class="doccomment">/// | 0x0001           | add                      | Y           | RFC XXXX  |</span>
-<span class="doccomment">/// | 0x0002           | update                   | Y           | RFC XXXX  |</span>
-<span class="doccomment">/// | 0x0003           | remove                   | Y           | RFC XXXX  |</span>
-<span class="doccomment">/// | 0x0004           | psk                      | Y           | RFC XXXX  |</span>
-<span class="doccomment">/// | 0x0005           | reinit                   | Y           | RFC XXXX  |</span>
-<span class="doccomment">/// | 0x0006           | external_init            | Y           | RFC XXXX  |</span>
-<span class="doccomment">/// | 0x0007           | app_ack                  | Y           | RFC XXXX  |</span>
-<span class="doccomment">/// | 0xff00  - 0xffff | Reserved for Private Use | N/A         | RFC XXXX  |</span>
-<span class="attribute">#[<span class="ident">derive</span>(
-    <span class="ident">PartialEq</span>, <span class="ident">Eq</span>, <span class="ident">Clone</span>, <span class="ident">Copy</span>, <span class="ident">Debug</span>, <span class="ident">TlsSerialize</span>, <span class="ident">TlsDeserialize</span>, <span class="ident">TlsSize</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>,
-)]</span>
-<span class="attribute">#[<span class="ident">repr</span>(<span class="ident">u16</span>)]</span>
-<span class="attribute">#[<span class="ident">allow</span>(<span class="ident">missing_docs</span>)]</span>
-<span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">ProposalType</span> {
-    <span class="ident">Add</span> <span class="op">=</span> <span class="number">1</span>,
-    <span class="ident">Update</span> <span class="op">=</span> <span class="number">2</span>,
-    <span class="ident">Remove</span> <span class="op">=</span> <span class="number">3</span>,
-    <span class="ident">Presharedkey</span> <span class="op">=</span> <span class="number">4</span>,
-    <span class="ident">Reinit</span> <span class="op">=</span> <span class="number">5</span>,
-    <span class="ident">ExternalInit</span> <span class="op">=</span> <span class="number">6</span>,
-    <span class="ident">AppAck</span> <span class="op">=</span> <span class="number">7</span>,
-    <span class="ident">GroupContextExtensions</span> <span class="op">=</span> <span class="number">8</span>,
+</span><span class="doccomment">/// ## MLS Proposal Types
+///
+/// | Value            | Name                     | Recommended | Reference |
+/// |:=================|:=========================|:============|:==========|
+/// | 0x0000           | RESERVED                 | N/A         | RFC XXXX  |
+/// | 0x0001           | add                      | Y           | RFC XXXX  |
+/// | 0x0002           | update                   | Y           | RFC XXXX  |
+/// | 0x0003           | remove                   | Y           | RFC XXXX  |
+/// | 0x0004           | psk                      | Y           | RFC XXXX  |
+/// | 0x0005           | reinit                   | Y           | RFC XXXX  |
+/// | 0x0006           | external_init            | Y           | RFC XXXX  |
+/// | 0x0007           | app_ack                  | Y           | RFC XXXX  |
+/// | 0xff00  - 0xffff | Reserved for Private Use | N/A         | RFC XXXX  |
+</span><span class="attribute">#[derive(
+    PartialEq, Eq, Clone, Copy, Debug, TlsSerialize, TlsDeserialize, TlsSize, Serialize, Deserialize,
+)]
+#[repr(u16)]
+#[allow(missing_docs)]
+</span><span class="kw">pub enum </span>ProposalType {
+    Add = <span class="number">1</span>,
+    Update = <span class="number">2</span>,
+    Remove = <span class="number">3</span>,
+    Presharedkey = <span class="number">4</span>,
+    Reinit = <span class="number">5</span>,
+    ExternalInit = <span class="number">6</span>,
+    AppAck = <span class="number">7</span>,
+    GroupContextExtensions = <span class="number">8</span>,
 }
 
-<span class="kw">impl</span> <span class="ident">ProposalType</span> {
-    <span class="doccomment">/// Check whether a proposal type is supported or not. Returns `true`</span>
-    <span class="doccomment">/// if a proposal is supported and `false` otherwise.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">is_supported</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">bool</span> {
-        <span class="kw">match</span> <span class="self">self</span> {
-            <span class="ident">ProposalType::Add</span>
-            <span class="op">|</span> <span class="ident">ProposalType::Update</span>
-            <span class="op">|</span> <span class="ident">ProposalType::Remove</span>
-            <span class="op">|</span> <span class="ident">ProposalType::Presharedkey</span>
-            <span class="op">|</span> <span class="ident">ProposalType::Reinit</span>
-            <span class="op">|</span> <span class="ident">ProposalType::ExternalInit</span> =&gt; <span class="bool-val">true</span>,
-            <span class="ident">ProposalType::AppAck</span> =&gt; <span class="bool-val">false</span>,
-            <span class="ident">ProposalType::GroupContextExtensions</span> =&gt; <span class="bool-val">true</span>,
+<span class="kw">impl </span>ProposalType {
+    <span class="doccomment">/// Check whether a proposal type is supported or not. Returns `true`
+    /// if a proposal is supported and `false` otherwise.
+    </span><span class="kw">pub fn </span>is_supported(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; bool {
+        <span class="kw">match </span><span class="self">self </span>{
+            ProposalType::Add
+            | ProposalType::Update
+            | ProposalType::Remove
+            | ProposalType::Presharedkey
+            | ProposalType::Reinit
+            | ProposalType::ExternalInit =&gt; <span class="bool-val">true</span>,
+            ProposalType::AppAck =&gt; <span class="bool-val">false</span>,
+            ProposalType::GroupContextExtensions =&gt; <span class="bool-val">true</span>,
         }
     }
 }
 
-<span class="kw">impl</span> <span class="ident">TryFrom</span><span class="op">&lt;</span><span class="ident">u16</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">ProposalType</span> {
-    <span class="kw">type</span> <span class="ident">Error</span> <span class="op">=</span> <span class="kw-2">&amp;</span><span class="lifetime">&#39;static</span> <span class="ident">str</span>;
-    <span class="kw">fn</span> <span class="ident">try_from</span>(<span class="ident">value</span>: <span class="ident">u16</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident"><span class="self">Self</span>::Error</span><span class="op">&gt;</span> {
-        <span class="kw">match</span> <span class="ident">value</span> {
-            <span class="number">1</span> =&gt; <span class="prelude-val">Ok</span>(<span class="ident">ProposalType::Add</span>),
-            <span class="number">2</span> =&gt; <span class="prelude-val">Ok</span>(<span class="ident">ProposalType::Update</span>),
-            <span class="number">3</span> =&gt; <span class="prelude-val">Ok</span>(<span class="ident">ProposalType::Remove</span>),
-            <span class="number">4</span> =&gt; <span class="prelude-val">Ok</span>(<span class="ident">ProposalType::Presharedkey</span>),
-            <span class="number">5</span> =&gt; <span class="prelude-val">Ok</span>(<span class="ident">ProposalType::Reinit</span>),
-            <span class="number">6</span> =&gt; <span class="prelude-val">Ok</span>(<span class="ident">ProposalType::ExternalInit</span>),
-            <span class="number">7</span> =&gt; <span class="prelude-val">Ok</span>(<span class="ident">ProposalType::AppAck</span>),
-            <span class="number">8</span> =&gt; <span class="prelude-val">Ok</span>(<span class="ident">ProposalType::GroupContextExtensions</span>),
-            <span class="kw">_</span> =&gt; <span class="prelude-val">Err</span>(<span class="string">&quot;Unknown proposal type.&quot;</span>),
+<span class="kw">impl </span>TryFrom&lt;u16&gt; <span class="kw">for </span>ProposalType {
+    <span class="kw">type </span>Error = <span class="kw-2">&amp;</span><span class="lifetime">&#39;static </span>str;
+    <span class="kw">fn </span>try_from(value: u16) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, <span class="self">Self</span>::Error&gt; {
+        <span class="kw">match </span>value {
+            <span class="number">1 </span>=&gt; <span class="prelude-val">Ok</span>(ProposalType::Add),
+            <span class="number">2 </span>=&gt; <span class="prelude-val">Ok</span>(ProposalType::Update),
+            <span class="number">3 </span>=&gt; <span class="prelude-val">Ok</span>(ProposalType::Remove),
+            <span class="number">4 </span>=&gt; <span class="prelude-val">Ok</span>(ProposalType::Presharedkey),
+            <span class="number">5 </span>=&gt; <span class="prelude-val">Ok</span>(ProposalType::Reinit),
+            <span class="number">6 </span>=&gt; <span class="prelude-val">Ok</span>(ProposalType::ExternalInit),
+            <span class="number">7 </span>=&gt; <span class="prelude-val">Ok</span>(ProposalType::AppAck),
+            <span class="number">8 </span>=&gt; <span class="prelude-val">Ok</span>(ProposalType::GroupContextExtensions),
+            <span class="kw">_ </span>=&gt; <span class="prelude-val">Err</span>(<span class="string">&quot;Unknown proposal type.&quot;</span>),
         }
     }
 }
 
-<span class="doccomment">/// Proposal.</span>
-<span class="doccomment">///</span>
-<span class="doccomment">/// This `enum` contains the different proposals in its variants.</span>
-<span class="doccomment">///</span>
-<span class="doccomment">/// ```c</span>
-<span class="doccomment">/// // draft-ietf-mls-protocol-16</span>
-<span class="doccomment">///</span>
-<span class="doccomment">/// struct {</span>
-<span class="doccomment">///     ProposalType msg_type;</span>
-<span class="doccomment">///     select (Proposal.msg_type) {</span>
-<span class="doccomment">///         case add:                      Add;</span>
-<span class="doccomment">///         case update:                   Update;</span>
-<span class="doccomment">///         case remove:                   Remove;</span>
-<span class="doccomment">///         case psk:                      PreSharedKey;</span>
-<span class="doccomment">///         case reinit:                   ReInit;</span>
-<span class="doccomment">///         case external_init:            ExternalInit;</span>
-<span class="doccomment">///         case group_context_extensions: GroupContextExtensions;</span>
-<span class="doccomment">///     };</span>
-<span class="doccomment">/// } Proposal;</span>
-<span class="doccomment">/// ```</span>
-<span class="attribute">#[<span class="ident">allow</span>(<span class="ident">clippy::large_enum_variant</span>)]</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">PartialEq</span>, <span class="ident">Clone</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>)]</span>
-<span class="attribute">#[<span class="ident">allow</span>(<span class="ident">missing_docs</span>)]</span>
-<span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">Proposal</span> {
-    <span class="ident">Add</span>(<span class="ident">AddProposal</span>),
-    <span class="ident">Update</span>(<span class="ident">UpdateProposal</span>),
-    <span class="ident">Remove</span>(<span class="ident">RemoveProposal</span>),
-    <span class="ident">PreSharedKey</span>(<span class="ident">PreSharedKeyProposal</span>),
-    <span class="ident">ReInit</span>(<span class="ident">ReInitProposal</span>),
-    <span class="ident">ExternalInit</span>(<span class="ident">ExternalInitProposal</span>),
-    <span class="comment">// TODO(#916): `AppAck` is not in draft-ietf-mls-protocol-16.</span>
-    <span class="ident">AppAck</span>(<span class="ident">AppAckProposal</span>),
-    <span class="ident">GroupContextExtensions</span>(<span class="ident">GroupContextExtensionProposal</span>),
+<span class="doccomment">/// Proposal.
+///
+/// This `enum` contains the different proposals in its variants.
+///
+/// ```c
+/// // draft-ietf-mls-protocol-16
+///
+/// struct {
+///     ProposalType msg_type;
+///     select (Proposal.msg_type) {
+///         case add:                      Add;
+///         case update:                   Update;
+///         case remove:                   Remove;
+///         case psk:                      PreSharedKey;
+///         case reinit:                   ReInit;
+///         case external_init:            ExternalInit;
+///         case group_context_extensions: GroupContextExtensions;
+///     };
+/// } Proposal;
+/// ```
+</span><span class="attribute">#[allow(clippy::large_enum_variant)]
+#[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
+#[allow(missing_docs)]
+</span><span class="kw">pub enum </span>Proposal {
+    Add(AddProposal),
+    Update(UpdateProposal),
+    Remove(RemoveProposal),
+    PreSharedKey(PreSharedKeyProposal),
+    ReInit(ReInitProposal),
+    ExternalInit(ExternalInitProposal),
+    <span class="comment">// TODO(#916): `AppAck` is not in draft-ietf-mls-protocol-16.
+    </span>AppAck(AppAckProposal),
+    GroupContextExtensions(GroupContextExtensionProposal),
 }
 
-<span class="kw">impl</span> <span class="ident">Proposal</span> {
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">proposal_type</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">ProposalType</span> {
-        <span class="kw">match</span> <span class="self">self</span> {
-            <span class="ident">Proposal::Add</span>(<span class="kw-2">ref</span> <span class="ident">_a</span>) =&gt; <span class="ident">ProposalType::Add</span>,
-            <span class="ident">Proposal::Update</span>(<span class="kw-2">ref</span> <span class="ident">_u</span>) =&gt; <span class="ident">ProposalType::Update</span>,
-            <span class="ident">Proposal::Remove</span>(<span class="kw-2">ref</span> <span class="ident">_r</span>) =&gt; <span class="ident">ProposalType::Remove</span>,
-            <span class="ident">Proposal::PreSharedKey</span>(<span class="kw-2">ref</span> <span class="ident">_p</span>) =&gt; <span class="ident">ProposalType::Presharedkey</span>,
-            <span class="ident">Proposal::ReInit</span>(<span class="kw-2">ref</span> <span class="ident">_r</span>) =&gt; <span class="ident">ProposalType::Reinit</span>,
-            <span class="ident">Proposal::ExternalInit</span>(<span class="kw-2">ref</span> <span class="ident">_r</span>) =&gt; <span class="ident">ProposalType::ExternalInit</span>,
-            <span class="ident">Proposal::AppAck</span>(<span class="kw-2">ref</span> <span class="ident">_r</span>) =&gt; <span class="ident">ProposalType::AppAck</span>,
-            <span class="ident">Proposal::GroupContextExtensions</span>(<span class="kw-2">ref</span> <span class="ident">_r</span>) =&gt; <span class="ident">ProposalType::GroupContextExtensions</span>,
+<span class="kw">impl </span>Proposal {
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>proposal_type(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; ProposalType {
+        <span class="kw">match </span><span class="self">self </span>{
+            Proposal::Add(<span class="kw-2">ref </span>_a) =&gt; ProposalType::Add,
+            Proposal::Update(<span class="kw-2">ref </span>_u) =&gt; ProposalType::Update,
+            Proposal::Remove(<span class="kw-2">ref </span>_r) =&gt; ProposalType::Remove,
+            Proposal::PreSharedKey(<span class="kw-2">ref </span>_p) =&gt; ProposalType::Presharedkey,
+            Proposal::ReInit(<span class="kw-2">ref </span>_r) =&gt; ProposalType::Reinit,
+            Proposal::ExternalInit(<span class="kw-2">ref </span>_r) =&gt; ProposalType::ExternalInit,
+            Proposal::AppAck(<span class="kw-2">ref </span>_r) =&gt; ProposalType::AppAck,
+            Proposal::GroupContextExtensions(<span class="kw-2">ref </span>_r) =&gt; ProposalType::GroupContextExtensions,
         }
     }
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">is_type</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">proposal_type</span>: <span class="ident">ProposalType</span>) -&gt; <span class="ident">bool</span> {
-        <span class="self">self</span>.<span class="ident">proposal_type</span>() <span class="op">==</span> <span class="ident">proposal_type</span>
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>is_type(<span class="kw-2">&amp;</span><span class="self">self</span>, proposal_type: ProposalType) -&gt; bool {
+        <span class="self">self</span>.proposal_type() == proposal_type
     }
 }
 
-<span class="doccomment">/// Add Proposal.</span>
-<span class="doccomment">///</span>
-<span class="doccomment">/// An Add proposal requests that a client with a specified KeyPackage be added to the group.</span>
-<span class="attribute">#[<span class="ident">derive</span>(
-    <span class="ident">Debug</span>, <span class="ident">PartialEq</span>, <span class="ident">Clone</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>, <span class="ident">TlsSerialize</span>, <span class="ident">TlsDeserialize</span>, <span class="ident">TlsSize</span>,
-)]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">AddProposal</span> {
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="ident">key_package</span>: <span class="ident">KeyPackage</span>,
+<span class="doccomment">/// Add Proposal.
+///
+/// An Add proposal requests that a client with a specified KeyPackage be added to the group.
+</span><span class="attribute">#[derive(
+    Debug, PartialEq, Clone, Serialize, Deserialize, TlsSerialize, TlsDeserialize, TlsSize,
+)]
+</span><span class="kw">pub struct </span>AddProposal {
+    <span class="kw">pub</span>(<span class="kw">crate</span>) key_package: KeyPackage,
 }
 
-<span class="kw">impl</span> <span class="ident">AddProposal</span> {
-    <span class="doccomment">/// Returns a reference to the key package in the proposal.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">key_package</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span><span class="ident">KeyPackage</span> {
-        <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">key_package</span>
+<span class="kw">impl </span>AddProposal {
+    <span class="doccomment">/// Returns a reference to the key package in the proposal.
+    </span><span class="kw">pub fn </span>key_package(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>KeyPackage {
+        <span class="kw-2">&amp;</span><span class="self">self</span>.key_package
     }
 }
 
-<span class="doccomment">/// Update Proposal.</span>
-<span class="doccomment">///</span>
-<span class="doccomment">/// An Update proposal is a similar mechanism to Add with the distinction that it is the</span>
-<span class="doccomment">/// sender&#39;s leaf KeyPackage in the tree which would be updated with a new KeyPackage.</span>
-<span class="attribute">#[<span class="ident">derive</span>(
-    <span class="ident">Debug</span>, <span class="ident">PartialEq</span>, <span class="ident">Clone</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>, <span class="ident">TlsDeserialize</span>, <span class="ident">TlsSerialize</span>, <span class="ident">TlsSize</span>,
-)]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">UpdateProposal</span> {
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="ident">key_package</span>: <span class="ident">KeyPackage</span>,
+<span class="doccomment">/// Update Proposal.
+///
+/// An Update proposal is a similar mechanism to Add with the distinction that it is the
+/// sender&#39;s leaf KeyPackage in the tree which would be updated with a new KeyPackage.
+</span><span class="attribute">#[derive(
+    Debug, PartialEq, Clone, Serialize, Deserialize, TlsDeserialize, TlsSerialize, TlsSize,
+)]
+</span><span class="kw">pub struct </span>UpdateProposal {
+    <span class="kw">pub</span>(<span class="kw">crate</span>) key_package: KeyPackage,
 }
 
-<span class="kw">impl</span> <span class="ident">UpdateProposal</span> {
-    <span class="doccomment">/// Returns a reference to the key package in the proposal.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">key_package</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span><span class="ident">KeyPackage</span> {
-        <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">key_package</span>
+<span class="kw">impl </span>UpdateProposal {
+    <span class="doccomment">/// Returns a reference to the key package in the proposal.
+    </span><span class="kw">pub fn </span>key_package(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>KeyPackage {
+        <span class="kw-2">&amp;</span><span class="self">self</span>.key_package
     }
 }
 
-<span class="doccomment">/// Remove Proposal.</span>
-<span class="doccomment">///</span>
-<span class="doccomment">/// A Remove proposal requests that the member with KeyPackageRef removed be removed from the group.</span>
-<span class="attribute">#[<span class="ident">derive</span>(
-    <span class="ident">Debug</span>, <span class="ident">PartialEq</span>, <span class="ident">Eq</span>, <span class="ident">Clone</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>, <span class="ident">TlsDeserialize</span>, <span class="ident">TlsSerialize</span>, <span class="ident">TlsSize</span>,
-)]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">RemoveProposal</span> {
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="ident">removed</span>: <span class="ident">KeyPackageRef</span>,
+<span class="doccomment">/// Remove Proposal.
+///
+/// A Remove proposal requests that the member with KeyPackageRef removed be removed from the group.
+</span><span class="attribute">#[derive(
+    Debug, PartialEq, Eq, Clone, Serialize, Deserialize, TlsDeserialize, TlsSerialize, TlsSize,
+)]
+</span><span class="kw">pub struct </span>RemoveProposal {
+    <span class="kw">pub</span>(<span class="kw">crate</span>) removed: KeyPackageRef,
 }
 
-<span class="kw">impl</span> <span class="ident">RemoveProposal</span> {
-    <span class="doccomment">/// Returns the [`KeyPackageRef`] index in this proposal.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">removed</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span><span class="ident">KeyPackageRef</span> {
-        <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">removed</span>
+<span class="kw">impl </span>RemoveProposal {
+    <span class="doccomment">/// Returns the [`KeyPackageRef`] index in this proposal.
+    </span><span class="kw">pub fn </span>removed(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>KeyPackageRef {
+        <span class="kw-2">&amp;</span><span class="self">self</span>.removed
     }
 }
 
-<span class="doccomment">/// Preshared Key Proposal.</span>
-<span class="attribute">#[<span class="ident">derive</span>(
-    <span class="ident">Debug</span>, <span class="ident">PartialEq</span>, <span class="ident">Eq</span>, <span class="ident">Clone</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>, <span class="ident">TlsDeserialize</span>, <span class="ident">TlsSerialize</span>, <span class="ident">TlsSize</span>,
-)]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">PreSharedKeyProposal</span> {
-    <span class="ident">psk</span>: <span class="ident">PreSharedKeyId</span>,
+<span class="doccomment">/// Preshared Key Proposal.
+</span><span class="attribute">#[derive(
+    Debug, PartialEq, Eq, Clone, Serialize, Deserialize, TlsDeserialize, TlsSerialize, TlsSize,
+)]
+</span><span class="kw">pub struct </span>PreSharedKeyProposal {
+    psk: PreSharedKeyId,
 }
 
-<span class="kw">impl</span> <span class="ident">PreSharedKeyProposal</span> {
-    <span class="doccomment">/// Create a new PSK proposal</span>
-    <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">any</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;test-utils&quot;</span>, <span class="ident">test</span>))]</span>
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">new</span>(<span class="ident">psk</span>: <span class="ident">PreSharedKeyId</span>) -&gt; <span class="self">Self</span> {
-        <span class="self">Self</span> { <span class="ident">psk</span> }
+<span class="kw">impl </span>PreSharedKeyProposal {
+    <span class="doccomment">/// Create a new PSK proposal
+    </span><span class="attribute">#[cfg(any(feature = <span class="string">&quot;test-utils&quot;</span>, test))]
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>new(psk: PreSharedKeyId) -&gt; <span class="self">Self </span>{
+        <span class="self">Self </span>{ psk }
     }
 
-    <span class="doccomment">/// Returns a reference to the [`PreSharedKeyId`] in this proposal.</span>
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">_psk</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span><span class="ident">PreSharedKeyId</span> {
-        <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">psk</span>
+    <span class="doccomment">/// Returns a reference to the [`PreSharedKeyId`] in this proposal.
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>_psk(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>PreSharedKeyId {
+        <span class="kw-2">&amp;</span><span class="self">self</span>.psk
     }
 
-    <span class="doccomment">/// Returns the [`PreSharedKeyId`] and consume this proposal.</span>
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">into_psk_id</span>(<span class="self">self</span>) -&gt; <span class="ident">PreSharedKeyId</span> {
-        <span class="self">self</span>.<span class="ident">psk</span>
-    }
-}
-
-<span class="doccomment">/// ReInit proposal.</span>
-<span class="doccomment">///</span>
-<span class="doccomment">/// This is used to re-initialize a group.</span>
-<span class="attribute">#[<span class="ident">derive</span>(
-    <span class="ident">Debug</span>, <span class="ident">PartialEq</span>, <span class="ident">Eq</span>, <span class="ident">Clone</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>, <span class="ident">TlsDeserialize</span>, <span class="ident">TlsSerialize</span>, <span class="ident">TlsSize</span>,
-)]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">ReInitProposal</span> {
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="ident">group_id</span>: <span class="ident">GroupId</span>,
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="ident">version</span>: <span class="ident">ProtocolVersion</span>,
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="ident">ciphersuite</span>: <span class="ident">Ciphersuite</span>,
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="ident">extensions</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Extension</span><span class="op">&gt;</span>,
-}
-
-<span class="doccomment">/// ExternalInit Proposal.</span>
-<span class="doccomment">///</span>
-<span class="doccomment">/// This proposal is used for External Commits only.</span>
-<span class="attribute">#[<span class="ident">derive</span>(
-    <span class="ident">Debug</span>, <span class="ident">PartialEq</span>, <span class="ident">Eq</span>, <span class="ident">Clone</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>, <span class="ident">TlsDeserialize</span>, <span class="ident">TlsSerialize</span>, <span class="ident">TlsSize</span>,
-)]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">ExternalInitProposal</span> {
-    <span class="ident">kem_output</span>: <span class="ident">VLBytes</span>,
-}
-
-<span class="kw">impl</span> <span class="ident">ExternalInitProposal</span> {
-    <span class="doccomment">/// Returns the `kem_output` contained in the proposal.</span>
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">kem_output</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>[<span class="ident">u8</span>] {
-        <span class="self">self</span>.<span class="ident">kem_output</span>.<span class="ident">as_slice</span>()
+    <span class="doccomment">/// Returns the [`PreSharedKeyId`] and consume this proposal.
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>into_psk_id(<span class="self">self</span>) -&gt; PreSharedKeyId {
+        <span class="self">self</span>.psk
     }
 }
 
-<span class="kw">impl</span> <span class="ident">From</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">ExternalInitProposal</span> {
-    <span class="kw">fn</span> <span class="ident">from</span>(<span class="ident">kem_output</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>) -&gt; <span class="self">Self</span> {
-        <span class="ident">ExternalInitProposal</span> {
-            <span class="ident">kem_output</span>: <span class="ident">kem_output</span>.<span class="ident">into</span>(),
-        }
+<span class="doccomment">/// ReInit proposal.
+///
+/// This is used to re-initialize a group.
+</span><span class="attribute">#[derive(
+    Debug, PartialEq, Eq, Clone, Serialize, Deserialize, TlsDeserialize, TlsSerialize, TlsSize,
+)]
+</span><span class="kw">pub struct </span>ReInitProposal {
+    <span class="kw">pub</span>(<span class="kw">crate</span>) group_id: GroupId,
+    <span class="kw">pub</span>(<span class="kw">crate</span>) version: ProtocolVersion,
+    <span class="kw">pub</span>(<span class="kw">crate</span>) ciphersuite: Ciphersuite,
+    <span class="kw">pub</span>(<span class="kw">crate</span>) extensions: Vec&lt;Extension&gt;,
+}
+
+<span class="doccomment">/// ExternalInit Proposal.
+///
+/// This proposal is used for External Commits only.
+</span><span class="attribute">#[derive(
+    Debug, PartialEq, Eq, Clone, Serialize, Deserialize, TlsDeserialize, TlsSerialize, TlsSize,
+)]
+</span><span class="kw">pub struct </span>ExternalInitProposal {
+    kem_output: VLBytes,
+}
+
+<span class="kw">impl </span>ExternalInitProposal {
+    <span class="doccomment">/// Returns the `kem_output` contained in the proposal.
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>kem_output(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>[u8] {
+        <span class="self">self</span>.kem_output.as_slice()
     }
 }
 
-<span class="comment">// TODO: #291 Implement AppAck</span>
-
-<span class="doccomment">/// AppAck Proposal.</span>
-<span class="doccomment">///</span>
-<span class="doccomment">/// This is not yet supported.</span>
-<span class="attribute">#[<span class="ident">derive</span>(
-    <span class="ident">Debug</span>, <span class="ident">PartialEq</span>, <span class="ident">Clone</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>, <span class="ident">TlsDeserialize</span>, <span class="ident">TlsSerialize</span>, <span class="ident">TlsSize</span>,
-)]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">AppAckProposal</span> {
-    <span class="ident">received_ranges</span>: <span class="ident">TlsVecU32</span><span class="op">&lt;</span><span class="ident">MessageRange</span><span class="op">&gt;</span>,
-}
-
-<span class="doccomment">/// ## Group Context Extensions Proposal</span>
-<span class="doccomment">///</span>
-<span class="doccomment">/// A GroupContextExtensions proposal is used to update the list of extensions</span>
-<span class="doccomment">/// in the GroupContext for the group.</span>
-<span class="doccomment">///</span>
-<span class="doccomment">/// ```text</span>
-<span class="doccomment">/// struct { Extension extensions&lt;V&gt;; } GroupContextExtensions;</span>
-<span class="doccomment">/// ```</span>
-<span class="attribute">#[<span class="ident">derive</span>(
-    <span class="ident">Debug</span>, <span class="ident">PartialEq</span>, <span class="ident">Eq</span>, <span class="ident">Clone</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>, <span class="ident">TlsDeserialize</span>, <span class="ident">TlsSerialize</span>, <span class="ident">TlsSize</span>,
-)]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">GroupContextExtensionProposal</span> {
-    <span class="ident">extensions</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Extension</span><span class="op">&gt;</span>,
-}
-
-<span class="kw">impl</span> <span class="ident">GroupContextExtensionProposal</span> {
-    <span class="doccomment">/// Create a new [`GroupContextExtensionProposal`].</span>
-    <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">test</span>)]</span>
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">new</span>(<span class="ident">extensions</span>: <span class="kw-2">&amp;</span>[<span class="ident">Extension</span>]) -&gt; <span class="self">Self</span> {
-        <span class="self">Self</span> {
-            <span class="ident">extensions</span>: <span class="ident">extensions</span>.<span class="ident">into</span>(),
+<span class="kw">impl </span>From&lt;Vec&lt;u8&gt;&gt; <span class="kw">for </span>ExternalInitProposal {
+    <span class="kw">fn </span>from(kem_output: Vec&lt;u8&gt;) -&gt; <span class="self">Self </span>{
+        ExternalInitProposal {
+            kem_output: kem_output.into(),
         }
     }
 }
 
-<span class="comment">// Crate-only types</span>
+<span class="comment">// TODO: #291 Implement AppAck
 
-<span class="doccomment">/// 11.2 Commit</span>
-<span class="doccomment">///</span>
-<span class="doccomment">/// enum {</span>
-<span class="doccomment">///   reserved(0),</span>
-<span class="doccomment">///   proposal(1)</span>
-<span class="doccomment">///   reference(2),</span>
-<span class="doccomment">///   (255)</span>
-<span class="doccomment">/// } ProposalOrRefType;</span>
-<span class="doccomment">///</span>
-<span class="doccomment">/// struct {</span>
-<span class="doccomment">///   ProposalOrRefType type;</span>
-<span class="doccomment">///   select (ProposalOrRef.type) {</span>
-<span class="doccomment">///     case proposal:  Proposal proposal;</span>
-<span class="doccomment">///     case reference: opaque hash&lt;0..255&gt;;</span>
-<span class="doccomment">///   }</span>
-<span class="doccomment">/// } ProposalOrRef;</span>
-<span class="doccomment">///</span>
-<span class="doccomment">/// Type of Proposal, either by value or by reference</span>
-<span class="doccomment">/// We only implement the values (1, 2), other values are not valid</span>
-<span class="doccomment">/// and will yield `ProposalOrRefTypeError::UnknownValue` when decoded.</span>
-<span class="attribute">#[<span class="ident">derive</span>(
-    <span class="ident">PartialEq</span>, <span class="ident">Clone</span>, <span class="ident">Copy</span>, <span class="ident">Debug</span>, <span class="ident">TlsSerialize</span>, <span class="ident">TlsDeserialize</span>, <span class="ident">TlsSize</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>,
-)]</span>
-<span class="attribute">#[<span class="ident">repr</span>(<span class="ident">u8</span>)]</span>
-<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">enum</span> <span class="ident">ProposalOrRefType</span> {
-    <span class="ident">Proposal</span> <span class="op">=</span> <span class="number">1</span>,
-    <span class="ident">Reference</span> <span class="op">=</span> <span class="number">2</span>,
+</span><span class="doccomment">/// AppAck Proposal.
+///
+/// This is not yet supported.
+</span><span class="attribute">#[derive(
+    Debug, PartialEq, Clone, Serialize, Deserialize, TlsDeserialize, TlsSerialize, TlsSize,
+)]
+</span><span class="kw">pub struct </span>AppAckProposal {
+    received_ranges: TlsVecU32&lt;MessageRange&gt;,
 }
 
-<span class="doccomment">/// Type of Proposal, either by value or by reference.</span>
-<span class="attribute">#[<span class="ident">derive</span>(
-    <span class="ident">Debug</span>, <span class="ident">PartialEq</span>, <span class="ident">Clone</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>, <span class="ident">TlsSerialize</span>, <span class="ident">TlsDeserialize</span>, <span class="ident">TlsSize</span>,
-)]</span>
-<span class="attribute">#[<span class="ident">repr</span>(<span class="ident">u8</span>)]</span>
-<span class="attribute">#[<span class="ident">allow</span>(<span class="ident">missing_docs</span>)]</span>
-<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">enum</span> <span class="ident">ProposalOrRef</span> {
-    <span class="attribute">#[<span class="ident">tls_codec</span>(<span class="ident">discriminant</span> <span class="op">=</span> <span class="number">1</span>)]</span>
-    <span class="ident">Proposal</span>(<span class="ident">Proposal</span>),
-    <span class="ident">Reference</span>(<span class="ident">ProposalRef</span>),
+<span class="doccomment">/// ## Group Context Extensions Proposal
+///
+/// A GroupContextExtensions proposal is used to update the list of extensions
+/// in the GroupContext for the group.
+///
+/// ```text
+/// struct { Extension extensions&lt;V&gt;; } GroupContextExtensions;
+/// ```
+</span><span class="attribute">#[derive(
+    Debug, PartialEq, Eq, Clone, Serialize, Deserialize, TlsDeserialize, TlsSerialize, TlsSize,
+)]
+</span><span class="kw">pub struct </span>GroupContextExtensionProposal {
+    extensions: Vec&lt;Extension&gt;,
 }
 
-<span class="kw">impl</span> <span class="ident">ProposalRef</span> {
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">from_proposal</span>(
-        <span class="ident">ciphersuite</span>: <span class="ident">Ciphersuite</span>,
-        <span class="ident">backend</span>: <span class="kw-2">&amp;</span><span class="kw">impl</span> <span class="ident">OpenMlsCryptoProvider</span>,
-        <span class="ident">proposal</span>: <span class="kw-2">&amp;</span><span class="ident">Proposal</span>,
-    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident">LibraryError</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="ident">encoded</span> <span class="op">=</span> <span class="ident">proposal</span>
-            .<span class="ident">tls_serialize_detached</span>()
-            .<span class="ident">map_err</span>(<span class="ident">LibraryError::missing_bound_check</span>)<span class="question-mark">?</span>;
-
-        <span class="ident">make_proposal_ref</span>(<span class="kw-2">&amp;</span><span class="ident">encoded</span>, <span class="ident">ciphersuite</span>, <span class="ident">backend</span>.<span class="ident">crypto</span>())
-            .<span class="ident">map_err</span>(<span class="ident">LibraryError::unexpected_crypto_error</span>)
+<span class="kw">impl </span>GroupContextExtensionProposal {
+    <span class="doccomment">/// Create a new [`GroupContextExtensionProposal`].
+    </span><span class="attribute">#[cfg(test)]
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>new(extensions: <span class="kw-2">&amp;</span>[Extension]) -&gt; <span class="self">Self </span>{
+        <span class="self">Self </span>{
+            extensions: extensions.into(),
+        }
     }
 }
 
-<span class="doccomment">/// TODO: #291 Implement AppAck</span>
-<span class="doccomment">/// ```text</span>
-<span class="doccomment">/// struct {</span>
-<span class="doccomment">///     KeyPackageRef sender;</span>
-<span class="doccomment">///     uint32 first_generation;</span>
-<span class="doccomment">///     uint32 last_generation;</span>
-<span class="doccomment">/// } MessageRange;</span>
-<span class="doccomment">/// ```</span>
-<span class="attribute">#[<span class="ident">derive</span>(
-    <span class="ident">Debug</span>, <span class="ident">PartialEq</span>, <span class="ident">Clone</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>, <span class="ident">TlsDeserialize</span>, <span class="ident">TlsSerialize</span>, <span class="ident">TlsSize</span>,
-)]</span>
-<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct</span> <span class="ident">MessageRange</span> {
-    <span class="ident">sender</span>: <span class="ident">KeyPackageRef</span>,
-    <span class="ident">first_generation</span>: <span class="ident">u32</span>,
-    <span class="ident">last_generation</span>: <span class="ident">u32</span>,
+<span class="comment">// Crate-only types
+
+</span><span class="doccomment">/// 11.2 Commit
+///
+/// enum {
+///   reserved(0),
+///   proposal(1)
+///   reference(2),
+///   (255)
+/// } ProposalOrRefType;
+///
+/// struct {
+///   ProposalOrRefType type;
+///   select (ProposalOrRef.type) {
+///     case proposal:  Proposal proposal;
+///     case reference: opaque hash&lt;0..255&gt;;
+///   }
+/// } ProposalOrRef;
+///
+/// Type of Proposal, either by value or by reference
+/// We only implement the values (1, 2), other values are not valid
+/// and will yield `ProposalOrRefTypeError::UnknownValue` when decoded.
+</span><span class="attribute">#[derive(
+    PartialEq, Clone, Copy, Debug, TlsSerialize, TlsDeserialize, TlsSize, Serialize, Deserialize,
+)]
+#[repr(u8)]
+</span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">enum </span>ProposalOrRefType {
+    Proposal = <span class="number">1</span>,
+    Reference = <span class="number">2</span>,
+}
+
+<span class="doccomment">/// Type of Proposal, either by value or by reference.
+</span><span class="attribute">#[derive(
+    Debug, PartialEq, Clone, Serialize, Deserialize, TlsSerialize, TlsDeserialize, TlsSize,
+)]
+#[repr(u8)]
+#[allow(missing_docs)]
+</span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">enum </span>ProposalOrRef {
+    <span class="attribute">#[tls_codec(discriminant = <span class="number">1</span>)]
+    </span>Proposal(Proposal),
+    Reference(ProposalRef),
+}
+
+<span class="kw">impl </span>ProposalRef {
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>from_proposal(
+        ciphersuite: Ciphersuite,
+        backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider,
+        proposal: <span class="kw-2">&amp;</span>Proposal,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, LibraryError&gt; {
+        <span class="kw">let </span>encoded = proposal
+            .tls_serialize_detached()
+            .map_err(LibraryError::missing_bound_check)<span class="question-mark">?</span>;
+
+        make_proposal_ref(<span class="kw-2">&amp;</span>encoded, ciphersuite, backend.crypto())
+            .map_err(LibraryError::unexpected_crypto_error)
+    }
+}
+
+<span class="doccomment">/// TODO: #291 Implement AppAck
+/// ```text
+/// struct {
+///     KeyPackageRef sender;
+///     uint32 first_generation;
+///     uint32 last_generation;
+/// } MessageRange;
+/// ```
+</span><span class="attribute">#[derive(
+    Debug, PartialEq, Clone, Serialize, Deserialize, TlsDeserialize, TlsSerialize, TlsSize,
+)]
+</span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct </span>MessageRange {
+    sender: KeyPackageRef,
+    first_generation: u32,
+    last_generation: u32,
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-current-crate="openmls" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.64.0 (a55dd71d5 2022-09-19)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-current-crate="openmls" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0 (897e37553 2022-11-02)" ></div></body></html>

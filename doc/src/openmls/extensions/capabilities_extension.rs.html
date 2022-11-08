@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `src/extensions/capabilities_extension.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>capabilities_extension.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" type="text/css" href="../../../normalize.css"><link rel="stylesheet" type="text/css" href="../../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" type="text/css" href="../../../ayu.css" disabled><link rel="stylesheet" type="text/css" href="../../../dark.css" disabled><link rel="stylesheet" type="text/css" href="../../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../../storage.js"></script><script defer src="../../../source-script.js"></script><script defer src="../../../source-files.js"></script><script defer src="../../../main.js"></script><noscript><link rel="stylesheet" href="../../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../../openmls/index.html"><div class="logo-container"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></div></a><h2 class="location"></h2></nav><nav class="sidebar"><a class="sidebar-logo" href="../../../openmls/index.html"><div class="logo-container"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></div></a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../../openmls/index.html"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></a><nav class="sub"><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><button type="button">?</button></div><div id="settings-menu" tabindex="-1"><a href="../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../wheel.svg"></a></div></div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">1</span>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `src/extensions/capabilities_extension.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>capabilities_extension.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" href="../../../normalize.css"><link rel="stylesheet" href="../../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" href="../../../ayu.css" disabled><link rel="stylesheet" href="../../../dark.css" disabled><link rel="stylesheet" href="../../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../../storage.js"></script><script defer src="../../../source-script.js"></script><script defer src="../../../source-files.js"></script><script defer src="../../../main.js"></script><noscript><link rel="stylesheet" href="../../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../../openmls/index.html"><div class="logo-container"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></div></a><h2 class="location"></h2></nav><nav class="sidebar"><a class="sidebar-logo" href="../../../openmls/index.html"><div class="logo-container"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></div></a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../../openmls/index.html"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></a><nav class="sub"><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><button type="button">?</button></div><div id="settings-menu" tabindex="-1"><a href="../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../wheel.svg"></a></div></div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">1</span>
 <span id="2">2</span>
 <span id="3">3</span>
 <span id="4">4</span>
@@ -136,143 +136,143 @@
 <span id="136">136</span>
 <span id="137">137</span>
 <span id="138">138</span>
-</pre><pre class="rust"><code><span class="kw">use</span> <span class="ident">openmls_traits::types::Ciphersuite</span>;
-<span class="kw">use</span> <span class="ident">tls_codec</span>::{<span class="ident">TlsDeserialize</span>, <span class="ident">TlsSerialize</span>, <span class="ident">TlsSize</span>};
+</pre><pre class="rust"><code><span class="kw">use </span>openmls_traits::types::Ciphersuite;
+<span class="kw">use </span>tls_codec::{TlsDeserialize, TlsSerialize, TlsSize};
 
-<span class="kw">use</span> <span class="kw">super</span>::{<span class="ident">Deserialize</span>, <span class="ident">ExtensionType</span>, <span class="ident">RequiredCapabilitiesExtension</span>, <span class="ident">Serialize</span>};
-<span class="kw">use</span> <span class="kw">crate</span>::{<span class="ident">messages::proposals::ProposalType</span>, <span class="ident">versions::ProtocolVersion</span>};
+<span class="kw">use super</span>::{Deserialize, ExtensionType, RequiredCapabilitiesExtension, Serialize};
+<span class="kw">use crate</span>::{messages::proposals::ProposalType, versions::ProtocolVersion};
 
-<span class="doccomment">/// # Capabilities Extension</span>
-<span class="doccomment">///</span>
-<span class="doccomment">/// The capabilities extension indicates what protocol versions, ciphersuites,</span>
-<span class="doccomment">/// protocol extensions, and non-default proposal types are supported by a client.</span>
-<span class="doccomment">///</span>
-<span class="doccomment">/// Proposal types defined in the RFC are considered &quot;default&quot; and thus need not</span>
-<span class="doccomment">/// be listed.</span>
-<span class="doccomment">///</span>
-<span class="doccomment">/// This extension is always present in a KeyPackage.</span>
-<span class="attribute">#[<span class="ident">derive</span>(
-    <span class="ident">PartialEq</span>, <span class="ident">Eq</span>, <span class="ident">Clone</span>, <span class="ident">Debug</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>, <span class="ident">TlsSize</span>, <span class="ident">TlsSerialize</span>, <span class="ident">TlsDeserialize</span>,
-)]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">CapabilitiesExtension</span> {
-    <span class="ident">versions</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">ProtocolVersion</span><span class="op">&gt;</span>,
-    <span class="ident">ciphersuites</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Ciphersuite</span><span class="op">&gt;</span>,
-    <span class="ident">extensions</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">ExtensionType</span><span class="op">&gt;</span>,
-    <span class="ident">proposals</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">ProposalType</span><span class="op">&gt;</span>,
+<span class="doccomment">/// # Capabilities Extension
+///
+/// The capabilities extension indicates what protocol versions, ciphersuites,
+/// protocol extensions, and non-default proposal types are supported by a client.
+///
+/// Proposal types defined in the RFC are considered &quot;default&quot; and thus need not
+/// be listed.
+///
+/// This extension is always present in a KeyPackage.
+</span><span class="attribute">#[derive(
+    PartialEq, Eq, Clone, Debug, Serialize, Deserialize, TlsSize, TlsSerialize, TlsDeserialize,
+)]
+</span><span class="kw">pub struct </span>CapabilitiesExtension {
+    versions: Vec&lt;ProtocolVersion&gt;,
+    ciphersuites: Vec&lt;Ciphersuite&gt;,
+    extensions: Vec&lt;ExtensionType&gt;,
+    proposals: Vec&lt;ProposalType&gt;,
 }
 
-<span class="kw">fn</span> <span class="ident">default_extensions</span>() -&gt; <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">ExtensionType</span><span class="op">&gt;</span> {
+<span class="kw">fn </span>default_extensions() -&gt; Vec&lt;ExtensionType&gt; {
     <span class="macro">vec!</span>[
-        <span class="ident">ExtensionType::Capabilities</span>,
-        <span class="ident">ExtensionType::Lifetime</span>,
-        <span class="ident">ExtensionType::ExternalKeyId</span>,
+        ExtensionType::Capabilities,
+        ExtensionType::Lifetime,
+        ExtensionType::ExternalKeyId,
     ]
 }
 
-<span class="kw">fn</span> <span class="ident">default_proposals</span>() -&gt; <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">ProposalType</span><span class="op">&gt;</span> {
+<span class="kw">fn </span>default_proposals() -&gt; Vec&lt;ProposalType&gt; {
     <span class="macro">vec!</span>[
-        <span class="ident">ProposalType::Add</span>,
-        <span class="ident">ProposalType::Update</span>,
-        <span class="ident">ProposalType::Remove</span>,
-        <span class="ident">ProposalType::Presharedkey</span>,
-        <span class="ident">ProposalType::Reinit</span>,
-        <span class="ident">ProposalType::GroupContextExtensions</span>,
+        ProposalType::Add,
+        ProposalType::Update,
+        ProposalType::Remove,
+        ProposalType::Presharedkey,
+        ProposalType::Reinit,
+        ProposalType::GroupContextExtensions,
     ]
 }
 
-<span class="kw">fn</span> <span class="ident">default_versions</span>() -&gt; <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">ProtocolVersion</span><span class="op">&gt;</span> {
-    <span class="macro">vec!</span>[<span class="ident">ProtocolVersion::Mls10</span>]
+<span class="kw">fn </span>default_versions() -&gt; Vec&lt;ProtocolVersion&gt; {
+    <span class="macro">vec!</span>[ProtocolVersion::Mls10]
 }
 
-<span class="kw">fn</span> <span class="ident">default_ciphersuites</span>() -&gt; <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Ciphersuite</span><span class="op">&gt;</span> {
+<span class="kw">fn </span>default_ciphersuites() -&gt; Vec&lt;Ciphersuite&gt; {
     <span class="macro">vec!</span>[
-        <span class="ident">Ciphersuite::MLS_128_DHKEMX25519_AES128GCM_SHA256_Ed25519</span>,
-        <span class="ident">Ciphersuite::MLS_128_DHKEMP256_AES128GCM_SHA256_P256</span>,
-        <span class="ident">Ciphersuite::MLS_128_DHKEMX25519_CHACHA20POLY1305_SHA256_Ed25519</span>,
+        Ciphersuite::MLS_128_DHKEMX25519_AES128GCM_SHA256_Ed25519,
+        Ciphersuite::MLS_128_DHKEMP256_AES128GCM_SHA256_P256,
+        Ciphersuite::MLS_128_DHKEMX25519_CHACHA20POLY1305_SHA256_Ed25519,
     ]
 }
 
-<span class="kw">impl</span> <span class="ident">Default</span> <span class="kw">for</span> <span class="ident">CapabilitiesExtension</span> {
-    <span class="kw">fn</span> <span class="ident">default</span>() -&gt; <span class="self">Self</span> {
-        <span class="ident">CapabilitiesExtension</span> {
-            <span class="ident">versions</span>: <span class="ident">default_versions</span>(),
-            <span class="ident">ciphersuites</span>: <span class="ident">default_ciphersuites</span>(),
-            <span class="ident">extensions</span>: <span class="ident">default_extensions</span>(),
-            <span class="ident">proposals</span>: <span class="ident">default_proposals</span>(),
+<span class="kw">impl </span>Default <span class="kw">for </span>CapabilitiesExtension {
+    <span class="kw">fn </span>default() -&gt; <span class="self">Self </span>{
+        CapabilitiesExtension {
+            versions: default_versions(),
+            ciphersuites: default_ciphersuites(),
+            extensions: default_extensions(),
+            proposals: default_proposals(),
         }
     }
 }
 
-<span class="kw">impl</span> <span class="ident">CapabilitiesExtension</span> {
-    <span class="doccomment">/// Create a new capabilities extension with the given configuration.</span>
-    <span class="doccomment">/// Any argument that is `None` is filled with the default values from the</span>
-    <span class="doccomment">/// global configuration.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new</span>(
-        <span class="ident">versions</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="kw-2">&amp;</span>[<span class="ident">ProtocolVersion</span>]<span class="op">&gt;</span>,
-        <span class="ident">ciphersuites</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="kw-2">&amp;</span>[<span class="ident">Ciphersuite</span>]<span class="op">&gt;</span>,
-        <span class="ident">extensions</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="kw-2">&amp;</span>[<span class="ident">ExtensionType</span>]<span class="op">&gt;</span>,
-        <span class="ident">proposals</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="kw-2">&amp;</span>[<span class="ident">ProposalType</span>]<span class="op">&gt;</span>,
-    ) -&gt; <span class="self">Self</span> {
-        <span class="self">Self</span> {
-            <span class="ident">versions</span>: <span class="kw">match</span> <span class="ident">versions</span> {
-                <span class="prelude-val">Some</span>(<span class="ident">v</span>) =&gt; <span class="ident">v</span>.<span class="ident">into</span>(),
-                <span class="prelude-val">None</span> =&gt; <span class="ident">default_versions</span>(),
+<span class="kw">impl </span>CapabilitiesExtension {
+    <span class="doccomment">/// Create a new capabilities extension with the given configuration.
+    /// Any argument that is `None` is filled with the default values from the
+    /// global configuration.
+    </span><span class="kw">pub fn </span>new(
+        versions: <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>[ProtocolVersion]&gt;,
+        ciphersuites: <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>[Ciphersuite]&gt;,
+        extensions: <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>[ExtensionType]&gt;,
+        proposals: <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>[ProposalType]&gt;,
+    ) -&gt; <span class="self">Self </span>{
+        <span class="self">Self </span>{
+            versions: <span class="kw">match </span>versions {
+                <span class="prelude-val">Some</span>(v) =&gt; v.into(),
+                <span class="prelude-val">None </span>=&gt; default_versions(),
             },
-            <span class="ident">ciphersuites</span>: <span class="kw">match</span> <span class="ident">ciphersuites</span> {
-                <span class="prelude-val">Some</span>(<span class="ident">c</span>) =&gt; <span class="ident">c</span>.<span class="ident">into</span>(),
-                <span class="prelude-val">None</span> =&gt; <span class="ident">default_ciphersuites</span>(),
+            ciphersuites: <span class="kw">match </span>ciphersuites {
+                <span class="prelude-val">Some</span>(c) =&gt; c.into(),
+                <span class="prelude-val">None </span>=&gt; default_ciphersuites(),
             },
-            <span class="ident">extensions</span>: <span class="kw">match</span> <span class="ident">extensions</span> {
-                <span class="prelude-val">Some</span>(<span class="ident">e</span>) =&gt; <span class="ident">e</span>.<span class="ident">into</span>(),
-                <span class="prelude-val">None</span> =&gt; <span class="ident">default_extensions</span>(),
+            extensions: <span class="kw">match </span>extensions {
+                <span class="prelude-val">Some</span>(e) =&gt; e.into(),
+                <span class="prelude-val">None </span>=&gt; default_extensions(),
             },
-            <span class="ident">proposals</span>: <span class="kw">match</span> <span class="ident">proposals</span> {
-                <span class="prelude-val">Some</span>(<span class="ident">p</span>) =&gt; <span class="ident">p</span>.<span class="ident">into</span>(),
-                <span class="prelude-val">None</span> =&gt; <span class="ident">default_proposals</span>(),
+            proposals: <span class="kw">match </span>proposals {
+                <span class="prelude-val">Some</span>(p) =&gt; p.into(),
+                <span class="prelude-val">None </span>=&gt; default_proposals(),
             },
         }
     }
-    <span class="doccomment">/// Get a reference to the list of versions in this extension.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">versions</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>[<span class="ident">ProtocolVersion</span>] {
-        <span class="self">self</span>.<span class="ident">versions</span>.<span class="ident">as_slice</span>()
+    <span class="doccomment">/// Get a reference to the list of versions in this extension.
+    </span><span class="kw">pub fn </span>versions(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>[ProtocolVersion] {
+        <span class="self">self</span>.versions.as_slice()
     }
-    <span class="doccomment">/// Get a reference to the list of ciphersuites in this extension.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">ciphersuites</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>[<span class="ident">Ciphersuite</span>] {
-        <span class="self">self</span>.<span class="ident">ciphersuites</span>.<span class="ident">as_slice</span>()
+    <span class="doccomment">/// Get a reference to the list of ciphersuites in this extension.
+    </span><span class="kw">pub fn </span>ciphersuites(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>[Ciphersuite] {
+        <span class="self">self</span>.ciphersuites.as_slice()
     }
-    <span class="doccomment">/// Get a reference to the list of supported extensions.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">extensions</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>[<span class="ident">ExtensionType</span>] {
-        <span class="self">self</span>.<span class="ident">extensions</span>.<span class="ident">as_slice</span>()
+    <span class="doccomment">/// Get a reference to the list of supported extensions.
+    </span><span class="kw">pub fn </span>extensions(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>[ExtensionType] {
+        <span class="self">self</span>.extensions.as_slice()
     }
-    <span class="doccomment">/// Get a reference to the list of supported proposals.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">proposals</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>[<span class="ident">ProposalType</span>] {
-        <span class="self">self</span>.<span class="ident">proposals</span>.<span class="ident">as_slice</span>()
+    <span class="doccomment">/// Get a reference to the list of supported proposals.
+    </span><span class="kw">pub fn </span>proposals(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>[ProposalType] {
+        <span class="self">self</span>.proposals.as_slice()
     }
-    <span class="doccomment">/// Check if this [`CapabilitiesExtension`] supports all the capabilities</span>
-    <span class="doccomment">/// required by the given [`RequiredCapabilities`] extension. Returns</span>
-    <span class="doccomment">/// `true` if that is the case and `false` otherwise.</span>
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">supports_required_capabilities</span>(
+    <span class="doccomment">/// Check if this [`CapabilitiesExtension`] supports all the capabilities
+    /// required by the given [`RequiredCapabilities`] extension. Returns
+    /// `true` if that is the case and `false` otherwise.
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>supports_required_capabilities(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        <span class="ident">required_capabilities</span>: <span class="kw-2">&amp;</span><span class="ident">RequiredCapabilitiesExtension</span>,
-    ) -&gt; <span class="ident">bool</span> {
-        <span class="comment">// Check if all required extensions are supported.</span>
-        <span class="kw">if</span> <span class="ident">required_capabilities</span>
-            .<span class="ident">extensions</span>()
-            .<span class="ident">iter</span>()
-            .<span class="ident">any</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> <span class="op">!</span><span class="self">self</span>.<span class="ident">extensions</span>().<span class="ident">contains</span>(<span class="ident">e</span>))
+        required_capabilities: <span class="kw-2">&amp;</span>RequiredCapabilitiesExtension,
+    ) -&gt; bool {
+        <span class="comment">// Check if all required extensions are supported.
+        </span><span class="kw">if </span>required_capabilities
+            .extensions()
+            .iter()
+            .any(|e| !<span class="self">self</span>.extensions().contains(e))
         {
-            <span class="kw">return</span> <span class="bool-val">false</span>;
+            <span class="kw">return </span><span class="bool-val">false</span>;
         }
-        <span class="comment">// Check if all required proposals are supported.</span>
-        <span class="kw">if</span> <span class="ident">required_capabilities</span>
-            .<span class="ident">proposals</span>()
-            .<span class="ident">iter</span>()
-            .<span class="ident">any</span>(<span class="op">|</span><span class="ident">p</span><span class="op">|</span> <span class="op">!</span><span class="self">self</span>.<span class="ident">proposals</span>().<span class="ident">contains</span>(<span class="ident">p</span>))
+        <span class="comment">// Check if all required proposals are supported.
+        </span><span class="kw">if </span>required_capabilities
+            .proposals()
+            .iter()
+            .any(|p| !<span class="self">self</span>.proposals().contains(p))
         {
-            <span class="kw">return</span> <span class="bool-val">false</span>;
+            <span class="kw">return </span><span class="bool-val">false</span>;
         }
-        <span class="bool-val">true</span>
-    }
+        <span class="bool-val">true
+    </span>}
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-current-crate="openmls" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.64.0 (a55dd71d5 2022-09-19)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-current-crate="openmls" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0 (897e37553 2022-11-02)" ></div></body></html>

@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `src/error.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>error.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" type="text/css" href="../../normalize.css"><link rel="stylesheet" type="text/css" href="../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" type="text/css" href="../../ayu.css" disabled><link rel="stylesheet" type="text/css" href="../../dark.css" disabled><link rel="stylesheet" type="text/css" href="../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../storage.js"></script><script defer src="../../source-script.js"></script><script defer src="../../source-files.js"></script><script defer src="../../main.js"></script><noscript><link rel="stylesheet" href="../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../openmls/index.html"><div class="logo-container"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></div></a><h2 class="location"></h2></nav><nav class="sidebar"><a class="sidebar-logo" href="../../openmls/index.html"><div class="logo-container"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></div></a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../openmls/index.html"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></a><nav class="sub"><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><button type="button">?</button></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../wheel.svg"></a></div></div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">1</span>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `src/error.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>error.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" href="../../normalize.css"><link rel="stylesheet" href="../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" href="../../ayu.css" disabled><link rel="stylesheet" href="../../dark.css" disabled><link rel="stylesheet" href="../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../storage.js"></script><script defer src="../../source-script.js"></script><script defer src="../../source-files.js"></script><script defer src="../../main.js"></script><noscript><link rel="stylesheet" href="../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../openmls/index.html"><div class="logo-container"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></div></a><h2 class="location"></h2></nav><nav class="sidebar"><a class="sidebar-logo" href="../../openmls/index.html"><div class="logo-container"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></div></a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../openmls/index.html"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></a><nav class="sub"><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><button type="button">?</button></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../wheel.svg"></a></div></div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">1</span>
 <span id="2">2</span>
 <span id="3">3</span>
 <span id="4">4</span>
@@ -173,151 +173,151 @@
 <span id="173">173</span>
 <span id="174">174</span>
 <span id="175">175</span>
-</pre><pre class="rust"><code><span class="doccomment">//! # OpenMLS Errors</span>
-<span class="doccomment">//!</span>
-<span class="doccomment">//! Each module has their own errors it is returning. This module will defines</span>
-<span class="doccomment">//! helper macros and functions to define OpenMLS errors.</span>
-<span class="doccomment">//!</span>
-<span class="doccomment">//! ## Error handling</span>
-<span class="doccomment">//!</span>
-<span class="doccomment">//! Most function calls in the library return a `Result` and can therefore surface errors to the library consumer.</span>
-<span class="doccomment">//! Errors can have different sources, depending on their nature. The following list explains the different error sources and how to handle them:</span>
-<span class="doccomment">//!</span>
-<span class="doccomment">//! ### Errors in dependencies</span>
-<span class="doccomment">//!</span>
-<span class="doccomment">//! The OpenMLS library relies on external dependencies for cryptographic primitives and storage of cryptographic key material. See the traits in the [User Manual] for more details on the dependencies.</span>
-<span class="doccomment">//! When an unexpected error occurs in one of those dependencies, it is usually surfaced as a `LibraryError` to the consumer.</span>
-<span class="doccomment">//!</span>
-<span class="doccomment">//! ### Errors induced by wrong API use</span>
-<span class="doccomment">//!</span>
-<span class="doccomment">//! Whenever the caller calls an OpenMLS function with invalid input, an error is returned. Examples of wrong input can be: Adding a member twice to a group, interacting with an inactive group, removing inexistent</span>
-<span class="doccomment">//! members from a group, etc. The precise error message depends on the function called, and the error will typically be an `enum` with explicit variants that state the reason for the error.</span>
-<span class="doccomment">//! Consumers can branch on the variants of the `enum` and take action accordingly.</span>
-<span class="doccomment">//!</span>
-<span class="doccomment">//! ### Errors induced by processing invalid payload</span>
-<span class="doccomment">//!</span>
-<span class="doccomment">//! The library processes external payload in the form of messages sent over a network, or state loaded from disk. In both cases, multi-layered checks need to be done to make sure the payload</span>
-<span class="doccomment">//! is syntactically and semantically correct. The syntax checks typically all happen at the serialization level and get detected early on. Semantic validation is more complex because data needs to be evaluated</span>
-<span class="doccomment">//! in context. You can find more details about validation in the validation chapter of the [User Manual].</span>
-<span class="doccomment">//! These errors are surfaced to the consumer at various stages of the processing, and the processing is aborted for the payload in question. Much like errors induced by wrong API usage, these errors are `enums` that</span>
-<span class="doccomment">//! contain explicit variants for every error type. Consumers can branch on these variants to take action according to the specific error.</span>
-<span class="doccomment">//!</span>
-<span class="doccomment">//! ### Correctness errors in the library itself</span>
-<span class="doccomment">//!</span>
-<span class="doccomment">//! While the library has good test coverage in the form of unit &amp; integration tests, theoretical correctness errors cannot be completely excluded. Should such an error occur, consumers will get</span>
-<span class="doccomment">//! a `LibraryError` as a return value that contains backtraces indicating where in the code the error occurred and a short string for context. These details are important for debugging the library in such a case.</span>
-<span class="doccomment">//! Consumers should save this information.</span>
-<span class="doccomment">//!</span>
-<span class="doccomment">//! All errors derive [`thiserror::Error`](https://docs.rs/thiserror/latest/thiserror/) as well as</span>
-<span class="doccomment">//! [`Debug`](`std::fmt::Debug`), [`PartialEq`](`std::cmp::PartialEq`), and [`Clone`](`std::clone::Clone`).</span>
+</pre><pre class="rust"><code><span class="doccomment">//! # OpenMLS Errors
+//!
+//! Each module has their own errors it is returning. This module will defines
+//! helper macros and functions to define OpenMLS errors.
+//!
+//! ## Error handling
+//!
+//! Most function calls in the library return a `Result` and can therefore surface errors to the library consumer.
+//! Errors can have different sources, depending on their nature. The following list explains the different error sources and how to handle them:
+//!
+//! ### Errors in dependencies
+//!
+//! The OpenMLS library relies on external dependencies for cryptographic primitives and storage of cryptographic key material. See the traits in the [User Manual] for more details on the dependencies.
+//! When an unexpected error occurs in one of those dependencies, it is usually surfaced as a `LibraryError` to the consumer.
+//!
+//! ### Errors induced by wrong API use
+//!
+//! Whenever the caller calls an OpenMLS function with invalid input, an error is returned. Examples of wrong input can be: Adding a member twice to a group, interacting with an inactive group, removing inexistent
+//! members from a group, etc. The precise error message depends on the function called, and the error will typically be an `enum` with explicit variants that state the reason for the error.
+//! Consumers can branch on the variants of the `enum` and take action accordingly.
+//!
+//! ### Errors induced by processing invalid payload
+//!
+//! The library processes external payload in the form of messages sent over a network, or state loaded from disk. In both cases, multi-layered checks need to be done to make sure the payload
+//! is syntactically and semantically correct. The syntax checks typically all happen at the serialization level and get detected early on. Semantic validation is more complex because data needs to be evaluated
+//! in context. You can find more details about validation in the validation chapter of the [User Manual].
+//! These errors are surfaced to the consumer at various stages of the processing, and the processing is aborted for the payload in question. Much like errors induced by wrong API usage, these errors are `enums` that
+//! contain explicit variants for every error type. Consumers can branch on these variants to take action according to the specific error.
+//!
+//! ### Correctness errors in the library itself
+//!
+//! While the library has good test coverage in the form of unit &amp; integration tests, theoretical correctness errors cannot be completely excluded. Should such an error occur, consumers will get
+//! a `LibraryError` as a return value that contains backtraces indicating where in the code the error occurred and a short string for context. These details are important for debugging the library in such a case.
+//! Consumers should save this information.
+//!
+//! All errors derive [`thiserror::Error`](https://docs.rs/thiserror/latest/thiserror/) as well as
+//! [`Debug`](`std::fmt::Debug`), [`PartialEq`](`std::cmp::PartialEq`), and [`Clone`](`std::clone::Clone`).
 
-<span class="kw">use</span> <span class="ident">backtrace::Backtrace</span>;
-<span class="kw">use</span> <span class="ident">openmls_traits::types::CryptoError</span>;
-<span class="kw">use</span> <span class="ident">std::fmt::Display</span>;
-<span class="kw">use</span> <span class="ident">thiserror::Error</span>;
-<span class="kw">use</span> <span class="ident">tls_codec::Error</span> <span class="kw">as</span> <span class="ident">TlsCodecError</span>;
+</span><span class="kw">use </span>backtrace::Backtrace;
+<span class="kw">use </span>openmls_traits::types::CryptoError;
+<span class="kw">use </span>std::fmt::Display;
+<span class="kw">use </span>thiserror::Error;
+<span class="kw">use </span>tls_codec::Error <span class="kw">as </span>TlsCodecError;
 
-<span class="doccomment">/// Generic error type that indicates unrecoverable errors in the library.</span>
-<span class="doccomment">///</span>
-<span class="doccomment">/// This error has 3 subtypes:</span>
-<span class="doccomment">///</span>
-<span class="doccomment">/// **MissingBoundsCheck**</span>
-<span class="doccomment">///</span>
-<span class="doccomment">/// This error is returned when the library tries to serialize data that is too big for the</span>
-<span class="doccomment">/// MLS structs. In particular, when element lists contain more elements than the theoretical maximum</span>
-<span class="doccomment">/// defined in the spec, the serialization will fail. This should not happen when all input values are checked.</span>
-<span class="doccomment">///</span>
-<span class="doccomment">/// **CryptoError**</span>
-<span class="doccomment">///</span>
-<span class="doccomment">/// This error is returned if the underlying crypto provider encountered an unexpected error. Possible reasons</span>
-<span class="doccomment">/// for this could be: the implementation of the crypto provider is not correct, the key material is not correct,</span>
-<span class="doccomment">/// the crypto provider does not support all functions required. Another reason could be that the OpenMLS library</span>
-<span class="doccomment">/// does not use the crypto provider API correctly.</span>
-<span class="doccomment">///</span>
-<span class="doccomment">/// **Custom**</span>
-<span class="doccomment">///</span>
-<span class="doccomment">/// This error is returned in situations where the implementation would otherwise use an `unwrap()`.</span>
-<span class="doccomment">/// If applications receive this error, it clearly indicates an implementation mistake in OpenMLS. The error</span>
-<span class="doccomment">/// includes a string that can give some more context about where the error originated and helps debugging.</span>
-<span class="doccomment">///</span>
-<span class="doccomment">/// In all cases, when a `LibraryError` is returned, applications should try to recover gracefully from it.</span>
-<span class="doccomment">/// It is recommended to log the error for potential debugging.</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Error</span>, <span class="ident">Debug</span>, <span class="ident">PartialEq</span>, <span class="ident">Clone</span>)]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">LibraryError</span> {
-    <span class="ident">internal</span>: <span class="ident">InternalLibraryError</span>,
+<span class="doccomment">/// Generic error type that indicates unrecoverable errors in the library.
+///
+/// This error has 3 subtypes:
+///
+/// **MissingBoundsCheck**
+///
+/// This error is returned when the library tries to serialize data that is too big for the
+/// MLS structs. In particular, when element lists contain more elements than the theoretical maximum
+/// defined in the spec, the serialization will fail. This should not happen when all input values are checked.
+///
+/// **CryptoError**
+///
+/// This error is returned if the underlying crypto provider encountered an unexpected error. Possible reasons
+/// for this could be: the implementation of the crypto provider is not correct, the key material is not correct,
+/// the crypto provider does not support all functions required. Another reason could be that the OpenMLS library
+/// does not use the crypto provider API correctly.
+///
+/// **Custom**
+///
+/// This error is returned in situations where the implementation would otherwise use an `unwrap()`.
+/// If applications receive this error, it clearly indicates an implementation mistake in OpenMLS. The error
+/// includes a string that can give some more context about where the error originated and helps debugging.
+///
+/// In all cases, when a `LibraryError` is returned, applications should try to recover gracefully from it.
+/// It is recommended to log the error for potential debugging.
+</span><span class="attribute">#[derive(Error, Debug, PartialEq, Clone)]
+</span><span class="kw">pub struct </span>LibraryError {
+    internal: InternalLibraryError,
 }
 
-<span class="kw">impl</span> <span class="ident">LibraryError</span> {
-    <span class="doccomment">/// A custom error (typically to avoid an unwrap())</span>
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">custom</span>(<span class="ident">s</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;static</span> <span class="ident">str</span>) -&gt; <span class="self">Self</span> {
-        <span class="kw">let</span> <span class="ident">bt</span> <span class="op">=</span> <span class="ident">Backtrace::new</span>();
-        <span class="kw">let</span> <span class="ident">display_string</span> <span class="op">=</span> <span class="macro">format!</span>(<span class="string">&quot;Error description: {}\n Backtrace:\n{:?}&quot;</span>, <span class="ident">s</span>, <span class="ident">bt</span>);
-        <span class="self">Self</span> {
-            <span class="ident">internal</span>: <span class="ident">InternalLibraryError::Custom</span>(<span class="ident">display_string</span>),
+<span class="kw">impl </span>LibraryError {
+    <span class="doccomment">/// A custom error (typically to avoid an unwrap())
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>custom(s: <span class="kw-2">&amp;</span><span class="lifetime">&#39;static </span>str) -&gt; <span class="self">Self </span>{
+        <span class="kw">let </span>bt = Backtrace::new();
+        <span class="kw">let </span>display_string = <span class="macro">format!</span>(<span class="string">&quot;Error description: {}\n Backtrace:\n{:?}&quot;</span>, s, bt);
+        <span class="self">Self </span>{
+            internal: InternalLibraryError::Custom(display_string),
         }
     }
 
-    <span class="doccomment">/// Used when encoding doesn&#39;t work because of missing bound checks</span>
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">missing_bound_check</span>(<span class="ident">e</span>: <span class="ident">TlsCodecError</span>) -&gt; <span class="self">Self</span> {
-        <span class="self">Self</span> {
-            <span class="ident">internal</span>: <span class="ident">InternalLibraryError::MissingBoundsCheck</span>(<span class="ident">e</span>),
+    <span class="doccomment">/// Used when encoding doesn&#39;t work because of missing bound checks
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>missing_bound_check(e: TlsCodecError) -&gt; <span class="self">Self </span>{
+        <span class="self">Self </span>{
+            internal: InternalLibraryError::MissingBoundsCheck(e),
         }
     }
 
-    <span class="doccomment">/// Used when the crypto provider returns an unexpected error</span>
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">unexpected_crypto_error</span>(<span class="ident">e</span>: <span class="ident">CryptoError</span>) -&gt; <span class="self">Self</span> {
-        <span class="self">Self</span> {
-            <span class="ident">internal</span>: <span class="ident">InternalLibraryError::CryptoError</span>(<span class="ident">e</span>),
+    <span class="doccomment">/// Used when the crypto provider returns an unexpected error
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>unexpected_crypto_error(e: CryptoError) -&gt; <span class="self">Self </span>{
+        <span class="self">Self </span>{
+            internal: InternalLibraryError::CryptoError(e),
         }
     }
 }
 
-<span class="kw">impl</span> <span class="ident">Display</span> <span class="kw">for</span> <span class="ident">LibraryError</span> {
-    <span class="kw">fn</span> <span class="ident">fmt</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">f</span>: <span class="kw-2">&amp;mut</span> <span class="ident">std::fmt::Formatter</span><span class="op">&lt;</span><span class="lifetime">&#39;_</span><span class="op">&gt;</span>) -&gt; <span class="ident">std::fmt::Result</span> {
-        <span class="macro">write!</span>(<span class="ident">f</span>, <span class="string">&quot;{:?}&quot;</span>, <span class="self">self</span>.<span class="ident">internal</span>)
+<span class="kw">impl </span>Display <span class="kw">for </span>LibraryError {
+    <span class="kw">fn </span>fmt(<span class="kw-2">&amp;</span><span class="self">self</span>, f: <span class="kw-2">&amp;mut </span>std::fmt::Formatter&lt;<span class="lifetime">&#39;_</span>&gt;) -&gt; std::fmt::Result {
+        <span class="macro">write!</span>(f, <span class="string">&quot;{:?}&quot;</span>, <span class="self">self</span>.internal)
     }
 }
 
-<span class="doccomment">/// Internal enum to differentiate between the different types of library errors</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Error</span>, <span class="ident">Debug</span>, <span class="ident">PartialEq</span>, <span class="ident">Clone</span>)]</span>
-<span class="kw">enum</span> <span class="ident">InternalLibraryError</span> {
-    <span class="doccomment">/// See [`TlsCodecError`] for more details.</span>
-    <span class="attribute">#[<span class="ident">error</span>(<span class="ident">transparent</span>)]</span>
-    <span class="ident">MissingBoundsCheck</span>(<span class="attribute">#[<span class="ident">from</span>]</span> <span class="ident">TlsCodecError</span>),
-    <span class="doccomment">/// See [`CryptoError`] for more details.</span>
-    <span class="attribute">#[<span class="ident">error</span>(<span class="ident">transparent</span>)]</span>
-    <span class="ident">CryptoError</span>(<span class="attribute">#[<span class="ident">from</span>]</span> <span class="ident">CryptoError</span>),
-    <span class="attribute">#[<span class="ident">error</span>(<span class="string">&quot;Custom library error: {0}&quot;</span>)]</span>
-    <span class="ident">Custom</span>(<span class="ident">String</span>),
+<span class="doccomment">/// Internal enum to differentiate between the different types of library errors
+</span><span class="attribute">#[derive(Error, Debug, PartialEq, Clone)]
+</span><span class="kw">enum </span>InternalLibraryError {
+    <span class="doccomment">/// See [`TlsCodecError`] for more details.
+    </span><span class="attribute">#[error(transparent)]
+    </span>MissingBoundsCheck(<span class="attribute">#[from] </span>TlsCodecError),
+    <span class="doccomment">/// See [`CryptoError`] for more details.
+    </span><span class="attribute">#[error(transparent)]
+    </span>CryptoError(<span class="attribute">#[from] </span>CryptoError),
+    <span class="attribute">#[error(<span class="string">&quot;Custom library error: {0}&quot;</span>)]
+    </span>Custom(String),
 }
 
-<span class="doccomment">/// A wrapper struct for an error string. This can be used when no complex error</span>
-<span class="doccomment">/// variant is needed.</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Clone</span>, <span class="ident">PartialEq</span>, <span class="ident">Eq</span>)]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">ErrorString</span>(<span class="ident">String</span>);
+<span class="doccomment">/// A wrapper struct for an error string. This can be used when no complex error
+/// variant is needed.
+</span><span class="attribute">#[derive(Debug, Clone, PartialEq, Eq)]
+</span><span class="kw">pub struct </span>ErrorString(String);
 
-<span class="kw">impl</span> <span class="ident">From</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">ErrorString</span> {
-    <span class="kw">fn</span> <span class="ident">from</span>(<span class="ident">s</span>: <span class="ident">String</span>) -&gt; <span class="self">Self</span> {
-        <span class="self">Self</span>(<span class="ident">s</span>)
+<span class="kw">impl </span>From&lt;String&gt; <span class="kw">for </span>ErrorString {
+    <span class="kw">fn </span>from(s: String) -&gt; <span class="self">Self </span>{
+        <span class="self">Self</span>(s)
     }
 }
-<span class="kw">impl</span> <span class="ident">From</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">str</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">ErrorString</span> {
-    <span class="kw">fn</span> <span class="ident">from</span>(<span class="ident">s</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) -&gt; <span class="self">Self</span> {
-        <span class="self">Self</span>(<span class="ident">s</span>.<span class="ident">to_string</span>())
-    }
-}
-
-<span class="kw">impl</span> <span class="ident">std::error::Error</span> <span class="kw">for</span> <span class="ident">ErrorString</span> {}
-
-<span class="kw">impl</span> <span class="ident">std::fmt::Display</span> <span class="kw">for</span> <span class="ident">ErrorString</span> {
-    <span class="kw">fn</span> <span class="ident">fmt</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">f</span>: <span class="kw-2">&amp;mut</span> <span class="ident">std::fmt::Formatter</span><span class="op">&lt;</span><span class="lifetime">&#39;_</span><span class="op">&gt;</span>) -&gt; <span class="ident">std::fmt::Result</span> {
-        <span class="ident">f</span>.<span class="ident">write_fmt</span>(<span class="macro">format_args!</span>(<span class="string">&quot;{}&quot;</span>, <span class="self">self</span>.<span class="number">0</span>))
+<span class="kw">impl </span>From&lt;<span class="kw-2">&amp;</span>str&gt; <span class="kw">for </span>ErrorString {
+    <span class="kw">fn </span>from(s: <span class="kw-2">&amp;</span>str) -&gt; <span class="self">Self </span>{
+        <span class="self">Self</span>(s.to_string())
     }
 }
 
-<span class="kw">impl</span> <span class="ident">ErrorString</span> {
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">_description</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">String</span> {
-        <span class="self">self</span>.<span class="number">0</span>.<span class="ident">clone</span>()
+<span class="kw">impl </span>std::error::Error <span class="kw">for </span>ErrorString {}
+
+<span class="kw">impl </span>std::fmt::Display <span class="kw">for </span>ErrorString {
+    <span class="kw">fn </span>fmt(<span class="kw-2">&amp;</span><span class="self">self</span>, f: <span class="kw-2">&amp;mut </span>std::fmt::Formatter&lt;<span class="lifetime">&#39;_</span>&gt;) -&gt; std::fmt::Result {
+        f.write_fmt(<span class="macro">format_args!</span>(<span class="string">&quot;{}&quot;</span>, <span class="self">self</span>.<span class="number">0</span>))
+    }
+}
+
+<span class="kw">impl </span>ErrorString {
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>_description(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; String {
+        <span class="self">self</span>.<span class="number">0</span>.clone()
     }
 }
 
@@ -347,6 +347,6 @@ Add comments for naked variants:
 
  The above was tested in VSCode, but should be easily adaptable to other tools.
 
-*/</span>
-</code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="openmls" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.64.0 (a55dd71d5 2022-09-19)" ></div></body></html>
+*/
+</span></code></pre></div>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="openmls" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0 (897e37553 2022-11-02)" ></div></body></html>

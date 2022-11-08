@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `src/prelude.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>prelude.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" type="text/css" href="../../normalize.css"><link rel="stylesheet" type="text/css" href="../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" type="text/css" href="../../ayu.css" disabled><link rel="stylesheet" type="text/css" href="../../dark.css" disabled><link rel="stylesheet" type="text/css" href="../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../storage.js"></script><script defer src="../../source-script.js"></script><script defer src="../../source-files.js"></script><script defer src="../../main.js"></script><noscript><link rel="stylesheet" href="../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../openmls/index.html"><div class="logo-container"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></div></a><h2 class="location"></h2></nav><nav class="sidebar"><a class="sidebar-logo" href="../../openmls/index.html"><div class="logo-container"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></div></a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../openmls/index.html"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></a><nav class="sub"><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><button type="button">?</button></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../wheel.svg"></a></div></div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">1</span>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `src/prelude.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>prelude.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" href="../../normalize.css"><link rel="stylesheet" href="../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" href="../../ayu.css" disabled><link rel="stylesheet" href="../../dark.css" disabled><link rel="stylesheet" href="../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../storage.js"></script><script defer src="../../source-script.js"></script><script defer src="../../source-files.js"></script><script defer src="../../main.js"></script><noscript><link rel="stylesheet" href="../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../openmls/index.html"><div class="logo-container"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></div></a><h2 class="location"></h2></nav><nav class="sidebar"><a class="sidebar-logo" href="../../openmls/index.html"><div class="logo-container"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></div></a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../openmls/index.html"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></a><nav class="sub"><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><button type="button">?</button></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../wheel.svg"></a></div></div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">1</span>
 <span id="2">2</span>
 <span id="3">3</span>
 <span id="4">4</span>
@@ -58,65 +58,65 @@
 <span id="58">58</span>
 <span id="59">59</span>
 <span id="60">60</span>
-</pre><pre class="rust"><code><span class="doccomment">//! Prelude for OpenMLS.</span>
-<span class="doccomment">//! Include this to get access to all the public functions of OpenMLS.</span>
+</pre><pre class="rust"><code><span class="doccomment">//! Prelude for OpenMLS.
+//! Include this to get access to all the public functions of OpenMLS.
 
-<span class="comment">// MlsGroup</span>
-<span class="kw">pub</span> <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::group</span>::{<span class="ident">errors</span>::<span class="kw-2">*</span>, <span class="ident">ser</span>::<span class="kw-2">*</span>, <span class="kw-2">*</span>};
+</span><span class="comment">// MlsGroup
+</span><span class="kw">pub use </span><span class="kw">crate</span>::group::{errors::<span class="kw-2">*</span>, ser::<span class="kw-2">*</span>, <span class="kw-2">*</span>};
 
-<span class="comment">// Ciphersuite</span>
-<span class="kw">pub</span> <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::ciphersuite</span>::{<span class="ident">hash_ref::KeyPackageRef</span>, <span class="ident">signable</span>::<span class="kw-2">*</span>, <span class="ident">signature</span>::<span class="kw-2">*</span>, <span class="kw-2">*</span>};
+<span class="comment">// Ciphersuite
+</span><span class="kw">pub use </span><span class="kw">crate</span>::ciphersuite::{hash_ref::KeyPackageRef, signable::<span class="kw-2">*</span>, signature::<span class="kw-2">*</span>, <span class="kw-2">*</span>};
 
-<span class="comment">// Messages</span>
-<span class="kw">pub</span> <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::messages</span>::{<span class="ident">proposals</span>::<span class="kw-2">*</span>, <span class="ident">public_group_state</span>::<span class="kw-2">*</span>, <span class="kw-2">*</span>};
+<span class="comment">// Messages
+</span><span class="kw">pub use </span><span class="kw">crate</span>::messages::{proposals::<span class="kw-2">*</span>, public_group_state::<span class="kw-2">*</span>, <span class="kw-2">*</span>};
 
-<span class="comment">// Credentials</span>
-<span class="kw">pub</span> <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::credentials</span>::{<span class="ident">errors</span>::<span class="kw-2">*</span>, <span class="kw-2">*</span>};
+<span class="comment">// Credentials
+</span><span class="kw">pub use </span><span class="kw">crate</span>::credentials::{errors::<span class="kw-2">*</span>, <span class="kw-2">*</span>};
 
-<span class="comment">// MLS Versions</span>
-<span class="kw">pub</span> <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::versions</span>::<span class="kw-2">*</span>;
+<span class="comment">// MLS Versions
+</span><span class="kw">pub use </span><span class="kw">crate</span>::versions::<span class="kw-2">*</span>;
 
-<span class="comment">// Extensions</span>
-<span class="kw">pub</span> <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::extensions</span>::{<span class="ident">errors</span>::<span class="kw-2">*</span>, <span class="kw-2">*</span>};
+<span class="comment">// Extensions
+</span><span class="kw">pub use </span><span class="kw">crate</span>::extensions::{errors::<span class="kw-2">*</span>, <span class="kw-2">*</span>};
 
-<span class="comment">// Framing</span>
-<span class="kw">pub</span> <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::framing</span>::{<span class="ident">message</span>::<span class="kw-2">*</span>, <span class="ident">sender</span>::<span class="kw-2">*</span>, <span class="ident">validation</span>::<span class="kw-2">*</span>};
+<span class="comment">// Framing
+</span><span class="kw">pub use </span><span class="kw">crate</span>::framing::{message::<span class="kw-2">*</span>, sender::<span class="kw-2">*</span>, validation::<span class="kw-2">*</span>};
 
-<span class="comment">// Key packages</span>
-<span class="kw">pub</span> <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::key_packages</span>::{<span class="ident">errors</span>::<span class="kw-2">*</span>, <span class="kw-2">*</span>};
+<span class="comment">// Key packages
+</span><span class="kw">pub use </span><span class="kw">crate</span>::key_packages::{errors::<span class="kw-2">*</span>, <span class="kw-2">*</span>};
 
-<span class="comment">// Key store</span>
-<span class="kw">pub</span> <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::key_store</span>::<span class="kw-2">*</span>;
+<span class="comment">// Key store
+</span><span class="kw">pub use </span><span class="kw">crate</span>::key_store::<span class="kw-2">*</span>;
 
-<span class="comment">// Tree</span>
-<span class="kw">pub</span> <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::tree::sender_ratchet::SenderRatchetConfiguration</span>;
+<span class="comment">// Tree
+</span><span class="kw">pub use </span><span class="kw">crate</span>::tree::sender_ratchet::SenderRatchetConfiguration;
 
-<span class="comment">// TreeSync</span>
-<span class="kw">pub</span> <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::treesync</span>::{
-    <span class="ident">errors</span>::{<span class="ident">ApplyUpdatePathError</span>, <span class="ident">PublicTreeError</span>},
-    <span class="ident">node::leaf_node::LeafNode</span>,
-    <span class="ident">node::parent_node::ParentNode</span>,
-    <span class="ident">node::Node</span>,
+<span class="comment">// TreeSync
+</span><span class="kw">pub use </span><span class="kw">crate</span>::treesync::{
+    errors::{ApplyUpdatePathError, PublicTreeError},
+    node::leaf_node::LeafNode,
+    node::parent_node::ParentNode,
+    node::Node,
 };
 
-<span class="comment">// PSKs</span>
-<span class="comment">// TODO #751</span>
-<span class="comment">// pub use crate::schedule::psk::{</span>
-<span class="comment">//    BranchPsk, ExternalPsk, PreSharedKeyId, PreSharedKeys, Psk, PskBundle, PskType, ReinitPsk,</span>
-<span class="comment">// };</span>
+<span class="comment">// PSKs
+// TODO #751
+// pub use crate::schedule::psk::{
+//    BranchPsk, ExternalPsk, PreSharedKeyId, PreSharedKeys, Psk, PskBundle, PskType, ReinitPsk,
+// };
 
-<span class="comment">// TLS codec traits</span>
-<span class="kw">pub</span> <span class="kw">use</span> <span class="ident">tls_codec</span>::{
-    <span class="ident">Deserialize</span> <span class="kw">as</span> <span class="ident">TlsDeserializeTrait</span>, <span class="ident">Serialize</span> <span class="kw">as</span> <span class="ident">TlsSerializeTrait</span>, <span class="ident">Size</span> <span class="kw">as</span> <span class="ident">TlsSizeTrait</span>,
+// TLS codec traits
+</span><span class="kw">pub use </span>tls_codec::{
+    Deserialize <span class="kw">as </span>TlsDeserializeTrait, Serialize <span class="kw">as </span>TlsSerializeTrait, Size <span class="kw">as </span>TlsSizeTrait,
 };
 
-<span class="comment">// Errors</span>
-<span class="kw">pub</span> <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::error</span>::<span class="kw-2">*</span>;
+<span class="comment">// Errors
+</span><span class="kw">pub use </span><span class="kw">crate</span>::error::<span class="kw-2">*</span>;
 
-<span class="comment">// OpenMLS traits</span>
-<span class="kw">pub</span> <span class="kw">use</span> <span class="ident">openmls_traits</span>::{
-    <span class="ident">crypto::OpenMlsCrypto</span>, <span class="ident">key_store::OpenMlsKeyStore</span>, <span class="ident">random::OpenMlsRand</span>, <span class="ident">types</span>::<span class="kw-2">*</span>,
-    <span class="ident">OpenMlsCryptoProvider</span>,
+<span class="comment">// OpenMLS traits
+</span><span class="kw">pub use </span>openmls_traits::{
+    crypto::OpenMlsCrypto, key_store::OpenMlsKeyStore, random::OpenMlsRand, types::<span class="kw-2">*</span>,
+    OpenMlsCryptoProvider,
 };
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="openmls" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.64.0 (a55dd71d5 2022-09-19)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="openmls" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0 (897e37553 2022-11-02)" ></div></body></html>

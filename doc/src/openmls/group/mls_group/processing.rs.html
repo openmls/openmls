@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `src/group/mls_group/processing.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>processing.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" type="text/css" href="../../../../normalize.css"><link rel="stylesheet" type="text/css" href="../../../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" type="text/css" href="../../../../ayu.css" disabled><link rel="stylesheet" type="text/css" href="../../../../dark.css" disabled><link rel="stylesheet" type="text/css" href="../../../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../../../storage.js"></script><script defer src="../../../../source-script.js"></script><script defer src="../../../../source-files.js"></script><script defer src="../../../../main.js"></script><noscript><link rel="stylesheet" href="../../../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../../../openmls/index.html"><div class="logo-container"><img class="rust-logo" src="../../../../rust-logo.svg" alt="logo"></div></a><h2 class="location"></h2></nav><nav class="sidebar"><a class="sidebar-logo" href="../../../../openmls/index.html"><div class="logo-container"><img class="rust-logo" src="../../../../rust-logo.svg" alt="logo"></div></a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../../../openmls/index.html"><img class="rust-logo" src="../../../../rust-logo.svg" alt="logo"></a><nav class="sub"><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><button type="button">?</button></div><div id="settings-menu" tabindex="-1"><a href="../../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../../wheel.svg"></a></div></div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">1</span>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `src/group/mls_group/processing.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>processing.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" href="../../../../normalize.css"><link rel="stylesheet" href="../../../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" href="../../../../ayu.css" disabled><link rel="stylesheet" href="../../../../dark.css" disabled><link rel="stylesheet" href="../../../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../../../storage.js"></script><script defer src="../../../../source-script.js"></script><script defer src="../../../../source-files.js"></script><script defer src="../../../../main.js"></script><noscript><link rel="stylesheet" href="../../../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../../../openmls/index.html"><div class="logo-container"><img class="rust-logo" src="../../../../rust-logo.svg" alt="logo"></div></a><h2 class="location"></h2></nav><nav class="sidebar"><a class="sidebar-logo" href="../../../../openmls/index.html"><div class="logo-container"><img class="rust-logo" src="../../../../rust-logo.svg" alt="logo"></div></a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../../../openmls/index.html"><img class="rust-logo" src="../../../../rust-logo.svg" alt="logo"></a><nav class="sub"><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><button type="button">?</button></div><div id="settings-menu" tabindex="-1"><a href="../../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../../wheel.svg"></a></div></div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">1</span>
 <span id="2">2</span>
 <span id="3">3</span>
 <span id="4">4</span>
@@ -171,178 +171,178 @@
 <span id="171">171</span>
 <span id="172">172</span>
 <span id="173">173</span>
-</pre><pre class="rust"><code><span class="doccomment">//! Processing functions of an [`MlsGroup`] for incoming messages.</span>
+</pre><pre class="rust"><code><span class="doccomment">//! Processing functions of an [`MlsGroup`] for incoming messages.
 
-<span class="kw">use</span> <span class="ident">std::mem</span>;
+</span><span class="kw">use </span>std::mem;
 
-<span class="kw">use</span> <span class="ident">core_group</span>::{
-    <span class="ident">create_commit_params::CreateCommitParams</span>, <span class="ident">proposals::QueuedProposal</span>,
-    <span class="ident">staged_commit::StagedCommit</span>,
+<span class="kw">use </span>core_group::{
+    create_commit_params::CreateCommitParams, proposals::QueuedProposal,
+    staged_commit::StagedCommit,
 };
-<span class="kw">use</span> <span class="ident">tls_codec::Serialize</span>;
+<span class="kw">use </span>tls_codec::Serialize;
 
-<span class="kw">use</span> <span class="kw">super</span>::{<span class="ident">errors::UnverifiedMessageError</span>, <span class="kw-2">*</span>};
+<span class="kw">use super</span>::{errors::UnverifiedMessageError, <span class="kw-2">*</span>};
 
-<span class="kw">impl</span> <span class="ident">MlsGroup</span> {
-    <span class="doccomment">/// Parses incoming messages from the DS.</span>
-    <span class="doccomment">/// Checks for syntactic errors and makes some semantic checks as well.</span>
-    <span class="doccomment">/// If the input is an encrypted message, it will be decrypted.</span>
-    <span class="doccomment">/// Returns an [`UnverifiedMessage`] that can be inspected and later processed in</span>
-    <span class="doccomment">/// [`Self::process_unverified_message()`].</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">parse_message</span>(
-        <span class="kw-2">&amp;mut</span> <span class="self">self</span>,
-        <span class="ident">message</span>: <span class="ident">MlsMessageIn</span>,
-        <span class="ident">backend</span>: <span class="kw-2">&amp;</span><span class="kw">impl</span> <span class="ident">OpenMlsCryptoProvider</span>,
-    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">UnverifiedMessage</span>, <span class="ident">ParseMessageError</span><span class="op">&gt;</span> {
-        <span class="comment">// Make sure we are still a member of the group</span>
-        <span class="kw">if</span> <span class="op">!</span><span class="self">self</span>.<span class="ident">is_active</span>() {
-            <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">ParseMessageError::GroupStateError</span>(
-                <span class="ident">MlsGroupStateError::UseAfterEviction</span>,
+<span class="kw">impl </span>MlsGroup {
+    <span class="doccomment">/// Parses incoming messages from the DS.
+    /// Checks for syntactic errors and makes some semantic checks as well.
+    /// If the input is an encrypted message, it will be decrypted.
+    /// Returns an [`UnverifiedMessage`] that can be inspected and later processed in
+    /// [`Self::process_unverified_message()`].
+    </span><span class="kw">pub fn </span>parse_message(
+        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
+        message: MlsMessageIn,
+        backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;UnverifiedMessage, ParseMessageError&gt; {
+        <span class="comment">// Make sure we are still a member of the group
+        </span><span class="kw">if </span>!<span class="self">self</span>.is_active() {
+            <span class="kw">return </span><span class="prelude-val">Err</span>(ParseMessageError::GroupStateError(
+                MlsGroupStateError::UseAfterEviction,
             ));
         }
 
-        <span class="comment">// Check that handshake messages are compatible with the incoming wire format policy</span>
-        <span class="kw">if</span> <span class="ident">message</span>.<span class="ident">is_handshake_message</span>()
-            <span class="op">&amp;&amp;</span> <span class="op">!</span><span class="self">self</span>
-                .<span class="ident">configuration</span>()
-                .<span class="ident">wire_format_policy</span>()
-                .<span class="ident">incoming</span>()
-                .<span class="ident">is_compatible_with</span>(<span class="ident">message</span>.<span class="ident">wire_format</span>())
+        <span class="comment">// Check that handshake messages are compatible with the incoming wire format policy
+        </span><span class="kw">if </span>message.is_handshake_message()
+            &amp;&amp; !<span class="self">self
+                </span>.configuration()
+                .wire_format_policy()
+                .incoming()
+                .is_compatible_with(message.wire_format())
         {
-            <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">ParseMessageError::IncompatibleWireFormat</span>);
+            <span class="kw">return </span><span class="prelude-val">Err</span>(ParseMessageError::IncompatibleWireFormat);
         }
 
-        <span class="comment">// Since the state of the group might be changed, arm the state flag</span>
-        <span class="self">self</span>.<span class="ident">flag_state_change</span>();
+        <span class="comment">// Since the state of the group might be changed, arm the state flag
+        </span><span class="self">self</span>.flag_state_change();
 
-        <span class="comment">// Parse the message</span>
-        <span class="kw">let</span> <span class="ident">sender_ratchet_configuration</span> <span class="op">=</span>
-            <span class="self">self</span>.<span class="ident">configuration</span>().<span class="ident">sender_ratchet_configuration</span>().<span class="ident">clone</span>();
-        <span class="self">self</span>.<span class="ident">group</span>
-            .<span class="ident">parse_message</span>(<span class="ident">backend</span>, <span class="ident">message</span>, <span class="kw-2">&amp;</span><span class="ident">sender_ratchet_configuration</span>)
-            .<span class="ident">map_err</span>(<span class="ident">ParseMessageError::from</span>)
+        <span class="comment">// Parse the message
+        </span><span class="kw">let </span>sender_ratchet_configuration =
+            <span class="self">self</span>.configuration().sender_ratchet_configuration().clone();
+        <span class="self">self</span>.group
+            .parse_message(backend, message, <span class="kw-2">&amp;</span>sender_ratchet_configuration)
+            .map_err(ParseMessageError::from)
     }
 
-    <span class="doccomment">/// This processing function does most of the semantic verifications.</span>
-    <span class="doccomment">/// It returns a [ProcessedMessage] enum.</span>
-    <span class="doccomment">/// Returns an [`UnverifiedMessageError`] when the validation checks fail</span>
-    <span class="doccomment">/// with the exact reason of the failure.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">process_unverified_message</span>(
+    <span class="doccomment">/// This processing function does most of the semantic verifications.
+    /// It returns a [ProcessedMessage] enum.
+    /// Returns an [`UnverifiedMessageError`] when the validation checks fail
+    /// with the exact reason of the failure.
+    </span><span class="kw">pub fn </span>process_unverified_message(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        <span class="ident">unverified_message</span>: <span class="ident">UnverifiedMessage</span>,
-        <span class="ident">signature_key</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">SignaturePublicKey</span><span class="op">&gt;</span>,
-        <span class="ident">backend</span>: <span class="kw-2">&amp;</span><span class="kw">impl</span> <span class="ident">OpenMlsCryptoProvider</span>,
-    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">ProcessedMessage</span>, <span class="ident">UnverifiedMessageError</span><span class="op">&gt;</span> {
-        <span class="self">self</span>.<span class="ident">group</span>.<span class="ident">process_unverified_message</span>(
-            <span class="ident">unverified_message</span>,
-            <span class="ident">signature_key</span>,
-            <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">proposal_store</span>,
-            <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">own_kpbs</span>,
-            <span class="ident">backend</span>,
+        unverified_message: UnverifiedMessage,
+        signature_key: <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>SignaturePublicKey&gt;,
+        backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;ProcessedMessage, UnverifiedMessageError&gt; {
+        <span class="self">self</span>.group.process_unverified_message(
+            unverified_message,
+            signature_key,
+            <span class="kw-2">&amp;</span><span class="self">self</span>.proposal_store,
+            <span class="kw-2">&amp;</span><span class="self">self</span>.own_kpbs,
+            backend,
         )
     }
 
-    <span class="doccomment">/// Stores a standalone proposal in the internal [ProposalStore]</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">store_pending_proposal</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">proposal</span>: <span class="ident">QueuedProposal</span>) {
-        <span class="comment">// Store the proposal in in the internal ProposalStore</span>
-        <span class="self">self</span>.<span class="ident">proposal_store</span>.<span class="ident">add</span>(<span class="ident">proposal</span>);
+    <span class="doccomment">/// Stores a standalone proposal in the internal [ProposalStore]
+    </span><span class="kw">pub fn </span>store_pending_proposal(<span class="kw-2">&amp;mut </span><span class="self">self</span>, proposal: QueuedProposal) {
+        <span class="comment">// Store the proposal in in the internal ProposalStore
+        </span><span class="self">self</span>.proposal_store.add(proposal);
 
-        <span class="comment">// Since the state of the group might be changed, arm the state flag</span>
-        <span class="self">self</span>.<span class="ident">flag_state_change</span>();
+        <span class="comment">// Since the state of the group might be changed, arm the state flag
+        </span><span class="self">self</span>.flag_state_change();
     }
 
-    <span class="doccomment">/// Creates a Commit message that covers the pending proposals that are</span>
-    <span class="doccomment">/// currently stored in the group&#39;s [ProposalStore].</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// Returns an error if there is a pending commit.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">commit_to_pending_proposals</span>(
-        <span class="kw-2">&amp;mut</span> <span class="self">self</span>,
-        <span class="ident">backend</span>: <span class="kw-2">&amp;</span><span class="kw">impl</span> <span class="ident">OpenMlsCryptoProvider</span>,
-    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(<span class="ident">MlsMessageOut</span>, <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Welcome</span><span class="op">&gt;</span>), <span class="ident">CommitToPendingProposalsError</span><span class="op">&gt;</span> {
-        <span class="self">self</span>.<span class="ident">is_operational</span>()<span class="question-mark">?</span>;
+    <span class="doccomment">/// Creates a Commit message that covers the pending proposals that are
+    /// currently stored in the group&#39;s [ProposalStore].
+    ///
+    /// Returns an error if there is a pending commit.
+    </span><span class="kw">pub fn </span>commit_to_pending_proposals(
+        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
+        backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;(MlsMessageOut, <span class="prelude-ty">Option</span>&lt;Welcome&gt;), CommitToPendingProposalsError&gt; {
+        <span class="self">self</span>.is_operational()<span class="question-mark">?</span>;
 
-        <span class="kw">let</span> <span class="ident">credential</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">credential</span>()<span class="question-mark">?</span>;
-        <span class="kw">let</span> <span class="ident">credential_bundle</span>: <span class="ident">CredentialBundle</span> <span class="op">=</span> <span class="ident">backend</span>
-            .<span class="ident">key_store</span>()
-            .<span class="ident">read</span>(
-                <span class="kw-2">&amp;</span><span class="ident">credential</span>
-                    .<span class="ident">signature_key</span>()
-                    .<span class="ident">tls_serialize_detached</span>()
-                    .<span class="ident">map_err</span>(<span class="ident">LibraryError::missing_bound_check</span>)<span class="question-mark">?</span>,
+        <span class="kw">let </span>credential = <span class="self">self</span>.credential()<span class="question-mark">?</span>;
+        <span class="kw">let </span>credential_bundle: CredentialBundle = backend
+            .key_store()
+            .read(
+                <span class="kw-2">&amp;</span>credential
+                    .signature_key()
+                    .tls_serialize_detached()
+                    .map_err(LibraryError::missing_bound_check)<span class="question-mark">?</span>,
             )
-            .<span class="ident">ok_or</span>(<span class="ident">CommitToPendingProposalsError::NoMatchingCredentialBundle</span>)<span class="question-mark">?</span>;
+            .ok_or(CommitToPendingProposalsError::NoMatchingCredentialBundle)<span class="question-mark">?</span>;
 
-        <span class="comment">// Create Commit over all pending proposals</span>
-        <span class="comment">// TODO #751</span>
-        <span class="kw">let</span> <span class="ident">params</span> <span class="op">=</span> <span class="ident">CreateCommitParams::builder</span>()
-            .<span class="ident">framing_parameters</span>(<span class="self">self</span>.<span class="ident">framing_parameters</span>())
-            .<span class="ident">credential_bundle</span>(<span class="kw-2">&amp;</span><span class="ident">credential_bundle</span>)
-            .<span class="ident">proposal_store</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">proposal_store</span>)
-            .<span class="ident">build</span>();
-        <span class="kw">let</span> <span class="ident">create_commit_result</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">group</span>.<span class="ident">create_commit</span>(<span class="ident">params</span>, <span class="ident">backend</span>)<span class="question-mark">?</span>;
+        <span class="comment">// Create Commit over all pending proposals
+        // TODO #751
+        </span><span class="kw">let </span>params = CreateCommitParams::builder()
+            .framing_parameters(<span class="self">self</span>.framing_parameters())
+            .credential_bundle(<span class="kw-2">&amp;</span>credential_bundle)
+            .proposal_store(<span class="kw-2">&amp;</span><span class="self">self</span>.proposal_store)
+            .build();
+        <span class="kw">let </span>create_commit_result = <span class="self">self</span>.group.create_commit(params, backend)<span class="question-mark">?</span>;
 
-        <span class="comment">// Convert MlsPlaintext messages to MLSMessage and encrypt them if required by</span>
-        <span class="comment">// the configuration</span>
-        <span class="kw">let</span> <span class="ident">mls_message</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">plaintext_to_mls_message</span>(<span class="ident">create_commit_result</span>.<span class="ident">commit</span>, <span class="ident">backend</span>)<span class="question-mark">?</span>;
+        <span class="comment">// Convert MlsPlaintext messages to MLSMessage and encrypt them if required by
+        // the configuration
+        </span><span class="kw">let </span>mls_message = <span class="self">self</span>.plaintext_to_mls_message(create_commit_result.commit, backend)<span class="question-mark">?</span>;
 
-        <span class="comment">// Set the current group state to [`MlsGroupState::PendingCommit`],</span>
-        <span class="comment">// storing the current [`StagedCommit`] from the commit results</span>
-        <span class="self">self</span>.<span class="ident">group_state</span> <span class="op">=</span> <span class="ident">MlsGroupState::PendingCommit</span>(<span class="ident">Box::new</span>(<span class="ident">PendingCommitState::Member</span>(
-            <span class="ident">create_commit_result</span>.<span class="ident">staged_commit</span>,
+        <span class="comment">// Set the current group state to [`MlsGroupState::PendingCommit`],
+        // storing the current [`StagedCommit`] from the commit results
+        </span><span class="self">self</span>.group_state = MlsGroupState::PendingCommit(Box::new(PendingCommitState::Member(
+            create_commit_result.staged_commit,
         )));
 
-        <span class="comment">// Since the state of the group might be changed, arm the state flag</span>
-        <span class="self">self</span>.<span class="ident">flag_state_change</span>();
+        <span class="comment">// Since the state of the group might be changed, arm the state flag
+        </span><span class="self">self</span>.flag_state_change();
 
-        <span class="prelude-val">Ok</span>((<span class="ident">mls_message</span>, <span class="ident">create_commit_result</span>.<span class="ident">welcome_option</span>))
+        <span class="prelude-val">Ok</span>((mls_message, create_commit_result.welcome_option))
     }
 
-    <span class="doccomment">/// Merge a [StagedCommit] into the group after inspection. As this advances</span>
-    <span class="doccomment">/// the epoch of the group, it also clears any pending commits.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">merge_staged_commit</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">staged_commit</span>: <span class="ident">StagedCommit</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">LibraryError</span><span class="op">&gt;</span> {
-        <span class="comment">// Check if we were removed from the group</span>
-        <span class="kw">if</span> <span class="ident">staged_commit</span>.<span class="ident">self_removed</span>() {
-            <span class="self">self</span>.<span class="ident">group_state</span> <span class="op">=</span> <span class="ident">MlsGroupState::Inactive</span>;
+    <span class="doccomment">/// Merge a [StagedCommit] into the group after inspection. As this advances
+    /// the epoch of the group, it also clears any pending commits.
+    </span><span class="kw">pub fn </span>merge_staged_commit(<span class="kw-2">&amp;mut </span><span class="self">self</span>, staged_commit: StagedCommit) -&gt; <span class="prelude-ty">Result</span>&lt;(), LibraryError&gt; {
+        <span class="comment">// Check if we were removed from the group
+        </span><span class="kw">if </span>staged_commit.self_removed() {
+            <span class="self">self</span>.group_state = MlsGroupState::Inactive;
         }
 
-        <span class="comment">// Since the state of the group might be changed, arm the state flag</span>
-        <span class="self">self</span>.<span class="ident">flag_state_change</span>();
+        <span class="comment">// Since the state of the group might be changed, arm the state flag
+        </span><span class="self">self</span>.flag_state_change();
 
-        <span class="comment">// Merge staged commit</span>
-        <span class="self">self</span>.<span class="ident">group</span>
-            .<span class="ident">merge_staged_commit</span>(<span class="ident">staged_commit</span>, <span class="kw-2">&amp;mut</span> <span class="self">self</span>.<span class="ident">proposal_store</span>)<span class="question-mark">?</span>;
+        <span class="comment">// Merge staged commit
+        </span><span class="self">self</span>.group
+            .merge_staged_commit(staged_commit, <span class="kw-2">&amp;mut </span><span class="self">self</span>.proposal_store)<span class="question-mark">?</span>;
 
-        <span class="comment">// Extract and store the resumption psk for the current epoch</span>
-        <span class="kw">let</span> <span class="ident">resumption_psk</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">group</span>.<span class="ident">group_epoch_secrets</span>().<span class="ident">resumption_psk</span>();
-        <span class="self">self</span>.<span class="ident">resumption_psk_store</span>
-            .<span class="ident">add</span>(<span class="self">self</span>.<span class="ident">group</span>.<span class="ident">context</span>().<span class="ident">epoch</span>(), <span class="ident">resumption_psk</span>.<span class="ident">clone</span>());
+        <span class="comment">// Extract and store the resumption psk for the current epoch
+        </span><span class="kw">let </span>resumption_psk = <span class="self">self</span>.group.group_epoch_secrets().resumption_psk();
+        <span class="self">self</span>.resumption_psk_store
+            .add(<span class="self">self</span>.group.context().epoch(), resumption_psk.clone());
 
-        <span class="comment">// Delete own KeyPackageBundles</span>
-        <span class="self">self</span>.<span class="ident">own_kpbs</span>.<span class="ident">clear</span>();
+        <span class="comment">// Delete own KeyPackageBundles
+        </span><span class="self">self</span>.own_kpbs.clear();
 
-        <span class="comment">// Delete a potential pending commit</span>
-        <span class="self">self</span>.<span class="ident">clear_pending_commit</span>();
+        <span class="comment">// Delete a potential pending commit
+        </span><span class="self">self</span>.clear_pending_commit();
 
         <span class="prelude-val">Ok</span>(())
     }
 
-    <span class="doccomment">/// Merges the pending [`StagedCommit`] if there is one, and</span>
-    <span class="doccomment">/// clears the field by setting it to `None`.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">merge_pending_commit</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">MlsGroupStateError</span><span class="op">&gt;</span> {
-        <span class="kw">match</span> <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">group_state</span> {
-            <span class="ident">MlsGroupState::PendingCommit</span>(<span class="kw">_</span>) =&gt; {
-                <span class="kw">let</span> <span class="ident">old_state</span> <span class="op">=</span> <span class="ident">mem::replace</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>.<span class="ident">group_state</span>, <span class="ident">MlsGroupState::Operational</span>);
-                <span class="kw">if</span> <span class="kw">let</span> <span class="ident">MlsGroupState::PendingCommit</span>(<span class="ident">pending_commit_state</span>) <span class="op">=</span> <span class="ident">old_state</span> {
-                    <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Err</span>(<span class="ident">e</span>) <span class="op">=</span> <span class="self">self</span>.<span class="ident">merge_staged_commit</span>((<span class="kw-2">*</span><span class="ident">pending_commit_state</span>).<span class="ident">into</span>()) {
-                        <span class="macro">log::debug!</span>(<span class="string">&quot;Error when merging own commit: {:?}&quot;</span>, <span class="ident">e</span>);
+    <span class="doccomment">/// Merges the pending [`StagedCommit`] if there is one, and
+    /// clears the field by setting it to `None`.
+    </span><span class="kw">pub fn </span>merge_pending_commit(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;(), MlsGroupStateError&gt; {
+        <span class="kw">match </span><span class="kw-2">&amp;</span><span class="self">self</span>.group_state {
+            MlsGroupState::PendingCommit(<span class="kw">_</span>) =&gt; {
+                <span class="kw">let </span>old_state = mem::replace(<span class="kw-2">&amp;mut </span><span class="self">self</span>.group_state, MlsGroupState::Operational);
+                <span class="kw">if let </span>MlsGroupState::PendingCommit(pending_commit_state) = old_state {
+                    <span class="kw">if let </span><span class="prelude-val">Err</span>(e) = <span class="self">self</span>.merge_staged_commit((<span class="kw-2">*</span>pending_commit_state).into()) {
+                        <span class="macro">log::debug!</span>(<span class="string">&quot;Error when merging own commit: {:?}&quot;</span>, e);
                     }
                 }
                 <span class="prelude-val">Ok</span>(())
             }
-            <span class="ident">MlsGroupState::Inactive</span> =&gt; <span class="prelude-val">Err</span>(<span class="ident">MlsGroupStateError::UseAfterEviction</span>),
-            <span class="ident">MlsGroupState::Operational</span> =&gt; <span class="prelude-val">Ok</span>(()),
+            MlsGroupState::Inactive =&gt; <span class="prelude-val">Err</span>(MlsGroupStateError::UseAfterEviction),
+            MlsGroupState::Operational =&gt; <span class="prelude-val">Ok</span>(()),
         }
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../../../" data-current-crate="openmls" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.64.0 (a55dd71d5 2022-09-19)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../../../" data-current-crate="openmls" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0 (897e37553 2022-11-02)" ></div></body></html>

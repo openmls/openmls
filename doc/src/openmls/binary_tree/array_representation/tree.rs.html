@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `src/binary_tree/array_representation/tree.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>tree.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" type="text/css" href="../../../../normalize.css"><link rel="stylesheet" type="text/css" href="../../../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" type="text/css" href="../../../../ayu.css" disabled><link rel="stylesheet" type="text/css" href="../../../../dark.css" disabled><link rel="stylesheet" type="text/css" href="../../../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../../../storage.js"></script><script defer src="../../../../source-script.js"></script><script defer src="../../../../source-files.js"></script><script defer src="../../../../main.js"></script><noscript><link rel="stylesheet" href="../../../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../../../openmls/index.html"><div class="logo-container"><img class="rust-logo" src="../../../../rust-logo.svg" alt="logo"></div></a><h2 class="location"></h2></nav><nav class="sidebar"><a class="sidebar-logo" href="../../../../openmls/index.html"><div class="logo-container"><img class="rust-logo" src="../../../../rust-logo.svg" alt="logo"></div></a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../../../openmls/index.html"><img class="rust-logo" src="../../../../rust-logo.svg" alt="logo"></a><nav class="sub"><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><button type="button">?</button></div><div id="settings-menu" tabindex="-1"><a href="../../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../../wheel.svg"></a></div></div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">1</span>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `src/binary_tree/array_representation/tree.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>tree.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" href="../../../../normalize.css"><link rel="stylesheet" href="../../../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" href="../../../../ayu.css" disabled><link rel="stylesheet" href="../../../../dark.css" disabled><link rel="stylesheet" href="../../../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../../../storage.js"></script><script defer src="../../../../source-script.js"></script><script defer src="../../../../source-files.js"></script><script defer src="../../../../main.js"></script><noscript><link rel="stylesheet" href="../../../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../../../openmls/index.html"><div class="logo-container"><img class="rust-logo" src="../../../../rust-logo.svg" alt="logo"></div></a><h2 class="location"></h2></nav><nav class="sidebar"><a class="sidebar-logo" href="../../../../openmls/index.html"><div class="logo-container"><img class="rust-logo" src="../../../../rust-logo.svg" alt="logo"></div></a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../../../openmls/index.html"><img class="rust-logo" src="../../../../rust-logo.svg" alt="logo"></a><nav class="sub"><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><button type="button">?</button></div><div id="settings-menu" tabindex="-1"><a href="../../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../../wheel.svg"></a></div></div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">1</span>
 <span id="2">2</span>
 <span id="3">3</span>
 <span id="4">4</span>
@@ -205,212 +205,212 @@
 <span id="205">205</span>
 <span id="206">206</span>
 <span id="207">207</span>
-</pre><pre class="rust"><code><span class="doccomment">//! A binary tree implementation for use with MLS.</span>
-<span class="doccomment">//!</span>
-<span class="doccomment">//! # About</span>
-<span class="doccomment">//!</span>
-<span class="doccomment">//! This module contains an implementation of a binary tree based on an array</span>
-<span class="doccomment">//! representation. The main [`ABinaryTree`] struct is generally immutable, but</span>
-<span class="doccomment">//! allows the creation of an [`AbDiff`] struct, where changes can be made before</span>
-<span class="doccomment">//! merging it back into an existing tree.</span>
-<span class="doccomment">//!</span>
-<span class="doccomment">//! # Don&#39;t Panic!</span>
-<span class="doccomment">//!</span>
-<span class="doccomment">//! Functions in this module should never panic. However, if there is a bug in</span>
-<span class="doccomment">//! the implementation, a function will return an unrecoverable</span>
-<span class="doccomment">//! [`LibraryError`](ABinaryTreeError::LibraryError). This means that some</span>
-<span class="doccomment">//! functions that are not expected to fail and throw an error, will still</span>
-<span class="doccomment">//! return a [`Result`] since they may throw a</span>
-<span class="doccomment">//! [`LibraryError`](ABinaryTreeError::LibraryError).</span>
+</pre><pre class="rust"><code><span class="doccomment">//! A binary tree implementation for use with MLS.
+//!
+//! # About
+//!
+//! This module contains an implementation of a binary tree based on an array
+//! representation. The main [`ABinaryTree`] struct is generally immutable, but
+//! allows the creation of an [`AbDiff`] struct, where changes can be made before
+//! merging it back into an existing tree.
+//!
+//! # Don&#39;t Panic!
+//!
+//! Functions in this module should never panic. However, if there is a bug in
+//! the implementation, a function will return an unrecoverable
+//! [`LibraryError`](ABinaryTreeError::LibraryError). This means that some
+//! functions that are not expected to fail and throw an error, will still
+//! return a [`Result`] since they may throw a
+//! [`LibraryError`](ABinaryTreeError::LibraryError).
 
-<span class="kw">use</span> <span class="ident">serde</span>::{<span class="ident">Deserialize</span>, <span class="ident">Serialize</span>};
-<span class="kw">use</span> <span class="ident">std</span>::{
-    <span class="ident">convert</span>::{<span class="ident">TryFrom</span>, <span class="ident">TryInto</span>},
-    <span class="ident">fmt::Debug</span>,
+</span><span class="kw">use </span>serde::{Deserialize, Serialize};
+<span class="kw">use </span>std::{
+    convert::{TryFrom, TryInto},
+    fmt::Debug,
 };
-<span class="kw">use</span> <span class="ident">thiserror::Error</span>;
+<span class="kw">use </span>thiserror::Error;
 
-<span class="kw">use</span> <span class="ident"><span class="kw">super</span>::diff</span>::{<span class="ident">AbDiff</span>, <span class="ident">StagedAbDiff</span>};
+<span class="kw">use </span><span class="kw">super</span>::diff::{AbDiff, StagedAbDiff};
 
-<span class="kw">use</span> <span class="kw">crate</span>::{
-    <span class="ident">binary_tree</span>::{<span class="ident">LeafIndex</span>, <span class="ident">TreeSize</span>},
-    <span class="ident">error::LibraryError</span>,
+<span class="kw">use crate</span>::{
+    binary_tree::{LeafIndex, TreeSize},
+    error::LibraryError,
 };
 
-<span class="doccomment">/// The [`NodeIndex`] is used to index nodes.</span>
-<span class="kw">pub</span>(<span class="kw">in</span> <span class="ident"><span class="kw">crate</span>::binary_tree</span>) <span class="kw">type</span> <span class="ident">NodeIndex</span> <span class="op">=</span> <span class="ident">u32</span>;
+<span class="doccomment">/// The [`NodeIndex`] is used to index nodes.
+</span><span class="kw">pub</span>(<span class="kw">in </span><span class="kw">crate</span>::binary_tree) <span class="kw">type </span>NodeIndex = u32;
 
-<span class="doccomment">/// Given a [`LeafIndex`], compute the position of the corresponding [`NodeIndex`].</span>
-<span class="kw">pub</span>(<span class="kw">super</span>) <span class="kw">fn</span> <span class="ident">to_node_index</span>(<span class="ident">leaf_index</span>: <span class="ident">LeafIndex</span>) -&gt; <span class="ident">NodeIndex</span> {
-    <span class="ident">leaf_index</span> <span class="op">*</span> <span class="number">2</span>
+<span class="doccomment">/// Given a [`LeafIndex`], compute the position of the corresponding [`NodeIndex`].
+</span><span class="kw">pub</span>(<span class="kw">super</span>) <span class="kw">fn </span>to_node_index(leaf_index: LeafIndex) -&gt; NodeIndex {
+    leaf_index * <span class="number">2
+</span>}
+
+<span class="attribute">#[cfg_attr(test, derive(PartialEq))]
+#[derive(Clone, Debug, Serialize, Deserialize)]
+</span><span class="doccomment">/// A representation of a full, left-balanced binary tree that uses a simple
+/// vector to store nodes. Each tree has to consist of at least one node.
+</span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct </span>ABinaryTree&lt;T: Clone + Debug&gt; {
+    nodes: Vec&lt;T&gt;,
 }
 
-<span class="attribute">#[<span class="ident">cfg_attr</span>(<span class="ident">test</span>, <span class="ident">derive</span>(<span class="ident">PartialEq</span>))]</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>, <span class="ident">Debug</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>)]</span>
-<span class="doccomment">/// A representation of a full, left-balanced binary tree that uses a simple</span>
-<span class="doccomment">/// vector to store nodes. Each tree has to consist of at least one node.</span>
-<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct</span> <span class="ident">ABinaryTree</span><span class="op">&lt;</span><span class="ident">T</span>: <span class="ident">Clone</span> <span class="op">+</span> <span class="ident">Debug</span><span class="op">&gt;</span> {
-    <span class="ident">nodes</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">T</span><span class="op">&gt;</span>,
-}
+<span class="kw">impl</span>&lt;T: Clone + Debug&gt; TryFrom&lt;Vec&lt;T&gt;&gt; <span class="kw">for </span>ABinaryTree&lt;T&gt; {
+    <span class="kw">type </span>Error = ABinaryTreeError;
 
-<span class="kw">impl</span><span class="op">&lt;</span><span class="ident">T</span>: <span class="ident">Clone</span> <span class="op">+</span> <span class="ident">Debug</span><span class="op">&gt;</span> <span class="ident">TryFrom</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">T</span><span class="op">&gt;</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">ABinaryTree</span><span class="op">&lt;</span><span class="ident">T</span><span class="op">&gt;</span> {
-    <span class="kw">type</span> <span class="ident">Error</span> <span class="op">=</span> <span class="ident">ABinaryTreeError</span>;
-
-    <span class="kw">fn</span> <span class="ident">try_from</span>(<span class="ident">nodes</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">T</span><span class="op">&gt;</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident"><span class="self">Self</span>::Error</span><span class="op">&gt;</span> {
-        <span class="ident"><span class="self">Self</span>::new</span>(<span class="ident">nodes</span>)
+    <span class="kw">fn </span>try_from(nodes: Vec&lt;T&gt;) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, <span class="self">Self</span>::Error&gt; {
+        <span class="self">Self</span>::new(nodes)
     }
 }
 
-<span class="kw">impl</span><span class="op">&lt;</span><span class="ident">T</span>: <span class="ident">Clone</span> <span class="op">+</span> <span class="ident">Debug</span><span class="op">&gt;</span> <span class="ident">ABinaryTree</span><span class="op">&lt;</span><span class="ident">T</span><span class="op">&gt;</span> {
-    <span class="doccomment">/// Create a tree from the given vector of nodes. The vector of nodes can&#39;t</span>
-    <span class="doccomment">/// be empty and has to yield a full, left-balanced binary tree. The nodes</span>
-    <span class="doccomment">/// in the tree are ordered in the array-representation. This function</span>
-    <span class="doccomment">/// throws a [`ABinaryTreeError::InvalidNumberOfNodes`] error if the number of nodes does not</span>
-    <span class="doccomment">/// allow the creation of a full, left-balanced binary tree and an</span>
-    <span class="doccomment">/// [`ABinaryTreeError::OutOfRange`] error if the number of given nodes exceeds the range of</span>
-    <span class="doccomment">/// [`NodeIndex`].</span>
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">new</span>(<span class="ident">nodes</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">T</span><span class="op">&gt;</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident">ABinaryTreeError</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="ident">max_nodes</span> <span class="op">=</span> <span class="ident">usize::try_from</span>(<span class="ident">NodeIndex::MAX</span>)
-            .<span class="ident">map_err</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="ident">LibraryError::custom</span>(<span class="string">&quot;Architecture not supported&quot;</span>))<span class="question-mark">?</span>;
-        <span class="kw">if</span> <span class="ident">nodes</span>.<span class="ident">len</span>() <span class="op">&gt;</span> <span class="ident">max_nodes</span> {
-            <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">ABinaryTreeError::OutOfRange</span>);
+<span class="kw">impl</span>&lt;T: Clone + Debug&gt; ABinaryTree&lt;T&gt; {
+    <span class="doccomment">/// Create a tree from the given vector of nodes. The vector of nodes can&#39;t
+    /// be empty and has to yield a full, left-balanced binary tree. The nodes
+    /// in the tree are ordered in the array-representation. This function
+    /// throws a [`ABinaryTreeError::InvalidNumberOfNodes`] error if the number of nodes does not
+    /// allow the creation of a full, left-balanced binary tree and an
+    /// [`ABinaryTreeError::OutOfRange`] error if the number of given nodes exceeds the range of
+    /// [`NodeIndex`].
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>new(nodes: Vec&lt;T&gt;) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, ABinaryTreeError&gt; {
+        <span class="kw">let </span>max_nodes = usize::try_from(NodeIndex::MAX)
+            .map_err(|<span class="kw">_</span>| LibraryError::custom(<span class="string">&quot;Architecture not supported&quot;</span>))<span class="question-mark">?</span>;
+        <span class="kw">if </span>nodes.len() &gt; max_nodes {
+            <span class="kw">return </span><span class="prelude-val">Err</span>(ABinaryTreeError::OutOfRange);
         }
-        <span class="kw">if</span> <span class="ident">nodes</span>.<span class="ident">len</span>() <span class="op">%</span> <span class="number">2</span> <span class="op">!</span><span class="op">=</span> <span class="number">1</span> {
-            <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">ABinaryTreeError::InvalidNumberOfNodes</span>);
+        <span class="kw">if </span>nodes.len() % <span class="number">2 </span>!= <span class="number">1 </span>{
+            <span class="kw">return </span><span class="prelude-val">Err</span>(ABinaryTreeError::InvalidNumberOfNodes);
         }
-        <span class="prelude-val">Ok</span>(<span class="ident">ABinaryTree</span> { <span class="ident">nodes</span> })
+        <span class="prelude-val">Ok</span>(ABinaryTree { nodes })
     }
 
-    <span class="doccomment">/// Obtain a reference to the data contained in the node at index</span>
-    <span class="doccomment">/// `node_index`, where the indexing corresponds to the array representation</span>
-    <span class="doccomment">/// of the underlying binary tree. Returns [`ABinaryTreeError::OutOfBounds`]</span>
-    <span class="doccomment">/// if the index is larger than the size of the tree.</span>
-    <span class="kw">pub</span>(<span class="kw">in</span> <span class="ident"><span class="kw">crate</span>::binary_tree</span>) <span class="kw">fn</span> <span class="ident">node_by_index</span>(
+    <span class="doccomment">/// Obtain a reference to the data contained in the node at index
+    /// `node_index`, where the indexing corresponds to the array representation
+    /// of the underlying binary tree. Returns [`ABinaryTreeError::OutOfBounds`]
+    /// if the index is larger than the size of the tree.
+    </span><span class="kw">pub</span>(<span class="kw">in </span><span class="kw">crate</span>::binary_tree) <span class="kw">fn </span>node_by_index(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        <span class="ident">node_index</span>: <span class="ident">NodeIndex</span>,
-    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">T</span>, <span class="ident">ABinaryTreeError</span><span class="op">&gt;</span> {
-        <span class="self">self</span>.<span class="ident">nodes</span>
-            .<span class="ident">get</span>(
-                <span class="ident">usize::try_from</span>(<span class="ident">node_index</span>)
-                    .<span class="ident">map_err</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="ident">LibraryError::custom</span>(<span class="string">&quot;Architecture not supported&quot;</span>))<span class="question-mark">?</span>,
+        node_index: NodeIndex,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="kw-2">&amp;</span>T, ABinaryTreeError&gt; {
+        <span class="self">self</span>.nodes
+            .get(
+                usize::try_from(node_index)
+                    .map_err(|<span class="kw">_</span>| LibraryError::custom(<span class="string">&quot;Architecture not supported&quot;</span>))<span class="question-mark">?</span>,
             )
-            .<span class="ident">ok_or</span>(<span class="ident">ABinaryTreeError::OutOfBounds</span>)
+            .ok_or(ABinaryTreeError::OutOfBounds)
     }
 
-    <span class="doccomment">/// Return the number of nodes in the tree.</span>
-    <span class="kw">pub</span>(<span class="kw">in</span> <span class="ident"><span class="kw">crate</span>::binary_tree</span>) <span class="kw">fn</span> <span class="ident">size</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">NodeIndex</span>, <span class="ident">LibraryError</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="ident">tree_size</span> <span class="op">=</span>
-            <span class="ident">u32::try_from</span>(<span class="self">self</span>.<span class="ident">nodes</span>.<span class="ident">len</span>()).<span class="ident">map_err</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="ident">LibraryError::custom</span>(<span class="string">&quot;Tree is too big&quot;</span>))<span class="question-mark">?</span>;
-        <span class="prelude-val">Ok</span>(<span class="ident">tree_size</span>)
+    <span class="doccomment">/// Return the number of nodes in the tree.
+    </span><span class="kw">pub</span>(<span class="kw">in </span><span class="kw">crate</span>::binary_tree) <span class="kw">fn </span>size(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;NodeIndex, LibraryError&gt; {
+        <span class="kw">let </span>tree_size =
+            u32::try_from(<span class="self">self</span>.nodes.len()).map_err(|<span class="kw">_</span>| LibraryError::custom(<span class="string">&quot;Tree is too big&quot;</span>))<span class="question-mark">?</span>;
+        <span class="prelude-val">Ok</span>(tree_size)
     }
 
-    <span class="doccomment">/// Return the number of leaves in the tree.</span>
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">leaf_count</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">TreeSize</span>, <span class="ident">LibraryError</span><span class="op">&gt;</span> {
-        <span class="comment">// This works, because the tree always has at least one leaf.</span>
-        <span class="prelude-val">Ok</span>(((<span class="self">self</span>.<span class="ident">size</span>()<span class="question-mark">?</span> <span class="op">-</span> <span class="number">1</span>) <span class="op">/</span> <span class="number">2</span>) <span class="op">+</span> <span class="number">1</span>)
+    <span class="doccomment">/// Return the number of leaves in the tree.
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>leaf_count(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;TreeSize, LibraryError&gt; {
+        <span class="comment">// This works, because the tree always has at least one leaf.
+        </span><span class="prelude-val">Ok</span>(((<span class="self">self</span>.size()<span class="question-mark">? </span>- <span class="number">1</span>) / <span class="number">2</span>) + <span class="number">1</span>)
     }
 
-    <span class="doccomment">/// Return a vector of leaves sorted according to their position in the tree</span>
-    <span class="doccomment">/// from left to right. This function should not fail and only returns a</span>
-    <span class="doccomment">/// [`Result`], because it might throw a</span>
-    <span class="doccomment">/// [`LibraryError`](ABinaryTreeError::LibraryError).</span>
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">leaves</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">T</span><span class="op">&gt;</span>, <span class="ident">LibraryError</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">leaf_references</span> <span class="op">=</span> <span class="ident">Vec::new</span>();
-        <span class="kw">for</span> <span class="ident">leaf_index</span> <span class="kw">in</span> <span class="number">0</span>..<span class="self">self</span>.<span class="ident">leaf_count</span>()<span class="question-mark">?</span> {
-            <span class="kw">let</span> <span class="ident">node_index</span> <span class="op">=</span> <span class="ident">usize::try_from</span>(<span class="ident">to_node_index</span>(<span class="ident">leaf_index</span>))
-                <span class="comment">// The tree size and thus the leaf count should fit into usize on 32</span>
-                <span class="comment">// bit architectures.</span>
-                .<span class="ident">map_err</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="ident">LibraryError::custom</span>(<span class="string">&quot;Tree is too big&quot;</span>))<span class="question-mark">?</span>;
-            <span class="kw">let</span> <span class="ident">node_ref</span> <span class="op">=</span> <span class="self">self</span>
-                .<span class="ident">nodes</span>
-                .<span class="ident">get</span>(<span class="ident">node_index</span>)
-                <span class="comment">// Since the index is within the bounds of the tree, this should</span>
-                <span class="comment">// be Some.</span>
-                .<span class="ident">ok_or_else</span>(<span class="op">|</span><span class="op">|</span> <span class="ident">LibraryError::custom</span>(<span class="string">&quot;Node not found&quot;</span>))<span class="question-mark">?</span>;
-            <span class="ident">leaf_references</span>.<span class="ident">push</span>(<span class="ident">node_ref</span>);
+    <span class="doccomment">/// Return a vector of leaves sorted according to their position in the tree
+    /// from left to right. This function should not fail and only returns a
+    /// [`Result`], because it might throw a
+    /// [`LibraryError`](ABinaryTreeError::LibraryError).
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>leaves(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;Vec&lt;<span class="kw-2">&amp;</span>T&gt;, LibraryError&gt; {
+        <span class="kw">let </span><span class="kw-2">mut </span>leaf_references = Vec::new();
+        <span class="kw">for </span>leaf_index <span class="kw">in </span><span class="number">0</span>..<span class="self">self</span>.leaf_count()<span class="question-mark">? </span>{
+            <span class="kw">let </span>node_index = usize::try_from(to_node_index(leaf_index))
+                <span class="comment">// The tree size and thus the leaf count should fit into usize on 32
+                // bit architectures.
+                </span>.map_err(|<span class="kw">_</span>| LibraryError::custom(<span class="string">&quot;Tree is too big&quot;</span>))<span class="question-mark">?</span>;
+            <span class="kw">let </span>node_ref = <span class="self">self
+                </span>.nodes
+                .get(node_index)
+                <span class="comment">// Since the index is within the bounds of the tree, this should
+                // be Some.
+                </span>.ok_or_else(|| LibraryError::custom(<span class="string">&quot;Node not found&quot;</span>))<span class="question-mark">?</span>;
+            leaf_references.push(node_ref);
         }
-        <span class="prelude-val">Ok</span>(<span class="ident">leaf_references</span>)
+        <span class="prelude-val">Ok</span>(leaf_references)
     }
 
-    <span class="doccomment">/// Creates and returns an empty [`AbDiff`].</span>
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">empty_diff</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">AbDiff</span><span class="op">&lt;</span><span class="lifetime">&#39;_</span>, <span class="ident">T</span><span class="op">&gt;</span>, <span class="ident">ABinaryTreeError</span><span class="op">&gt;</span> {
-        <span class="self">self</span>.<span class="ident">try_into</span>()
-            .<span class="ident">map_err</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="ident">ABinaryTreeError::ABinaryTreeDiffError</span>)
+    <span class="doccomment">/// Creates and returns an empty [`AbDiff`].
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>empty_diff(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;AbDiff&lt;<span class="lifetime">&#39;_</span>, T&gt;, ABinaryTreeError&gt; {
+        <span class="self">self</span>.try_into()
+            .map_err(|<span class="kw">_</span>| ABinaryTreeError::ABinaryTreeDiffError)
     }
 
-    <span class="doccomment">/// Merges the changes applied to the [`StagedAbDiff`] into the tree.</span>
-    <span class="doccomment">/// Depending on the changes made to the diff, this can either increase or</span>
-    <span class="doccomment">/// decrease the size of the tree, although not beyond the minimum size of</span>
-    <span class="doccomment">/// leaf or the maximum size of `u32::MAX`.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// This function should not fail and only returns a [`Result`], because it</span>
-    <span class="doccomment">/// might throw a [LibraryError](ABinaryTreeError::LibraryError).</span>
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">merge_diff</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">diff</span>: <span class="ident">StagedAbDiff</span><span class="op">&lt;</span><span class="ident">T</span><span class="op">&gt;</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">LibraryError</span><span class="op">&gt;</span> {
-        <span class="comment">// The diff size should fit into a 32 bit usize.</span>
-        <span class="kw">let</span> <span class="ident">diff_size</span> <span class="op">=</span> <span class="ident">usize::try_from</span>(<span class="ident">diff</span>.<span class="ident">tree_size</span>())
-            .<span class="ident">map_err</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="ident">LibraryError::custom</span>(<span class="string">&quot;Architecture not supported&quot;</span>))<span class="question-mark">?</span>;
-        <span class="comment">// If the size of the diff is smaller than the tree, truncate the tree</span>
-        <span class="comment">// to the size of the diff.</span>
-        <span class="self">self</span>.<span class="ident">nodes</span>.<span class="ident">truncate</span>(<span class="ident">diff_size</span>);
+    <span class="doccomment">/// Merges the changes applied to the [`StagedAbDiff`] into the tree.
+    /// Depending on the changes made to the diff, this can either increase or
+    /// decrease the size of the tree, although not beyond the minimum size of
+    /// leaf or the maximum size of `u32::MAX`.
+    ///
+    /// This function should not fail and only returns a [`Result`], because it
+    /// might throw a [LibraryError](ABinaryTreeError::LibraryError).
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>merge_diff(<span class="kw-2">&amp;mut </span><span class="self">self</span>, diff: StagedAbDiff&lt;T&gt;) -&gt; <span class="prelude-ty">Result</span>&lt;(), LibraryError&gt; {
+        <span class="comment">// The diff size should fit into a 32 bit usize.
+        </span><span class="kw">let </span>diff_size = usize::try_from(diff.tree_size())
+            .map_err(|<span class="kw">_</span>| LibraryError::custom(<span class="string">&quot;Architecture not supported&quot;</span>))<span class="question-mark">?</span>;
+        <span class="comment">// If the size of the diff is smaller than the tree, truncate the tree
+        // to the size of the diff.
+        </span><span class="self">self</span>.nodes.truncate(diff_size);
 
-        <span class="comment">// Iterate over the BTreeMap in order of indices.</span>
-        <span class="kw">for</span> (<span class="ident">node_index</span>, <span class="ident">diff_node</span>) <span class="kw">in</span> <span class="ident">diff</span>.<span class="ident">diff</span>().<span class="ident">into_iter</span>() {
-            <span class="kw">match</span> <span class="ident">node_index</span> {
-                <span class="comment">// If the node would extend the tree, push it to the vector of nodes.</span>
-                <span class="ident">node_index</span> <span class="kw">if</span> <span class="ident">node_index</span> <span class="op">==</span> <span class="self">self</span>.<span class="ident">size</span>()<span class="question-mark">?</span> =&gt; <span class="self">self</span>.<span class="ident">nodes</span>.<span class="ident">push</span>(<span class="ident">diff_node</span>),
-                <span class="comment">// If the node index points too far outside of the tree,</span>
-                <span class="comment">// something has gone wrong.</span>
-                <span class="ident">node_index</span> <span class="kw">if</span> <span class="ident">node_index</span> <span class="op">&gt;</span> <span class="self">self</span>.<span class="ident">size</span>()<span class="question-mark">?</span> =&gt; {
-                    <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">LibraryError::custom</span>(<span class="string">&quot;Node is outside the tree&quot;</span>))
+        <span class="comment">// Iterate over the BTreeMap in order of indices.
+        </span><span class="kw">for </span>(node_index, diff_node) <span class="kw">in </span>diff.diff().into_iter() {
+            <span class="kw">match </span>node_index {
+                <span class="comment">// If the node would extend the tree, push it to the vector of nodes.
+                </span>node_index <span class="kw">if </span>node_index == <span class="self">self</span>.size()<span class="question-mark">? </span>=&gt; <span class="self">self</span>.nodes.push(diff_node),
+                <span class="comment">// If the node index points too far outside of the tree,
+                // something has gone wrong.
+                </span>node_index <span class="kw">if </span>node_index &gt; <span class="self">self</span>.size()<span class="question-mark">? </span>=&gt; {
+                    <span class="kw">return </span><span class="prelude-val">Err</span>(LibraryError::custom(<span class="string">&quot;Node is outside the tree&quot;</span>))
                 }
-                <span class="comment">// If the node_index points to somewhere within the size of the</span>
-                <span class="comment">// tree, do a swap-remove.</span>
-                <span class="ident">node_index</span> =&gt; {
-                    <span class="comment">// Perform swap-remove.</span>
-                    <span class="kw">let</span> <span class="ident">node_index</span> <span class="op">=</span> <span class="ident">usize::try_from</span>(<span class="ident">node_index</span>)
-                        .<span class="ident">map_err</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="ident">LibraryError::custom</span>(<span class="string">&quot;Architecture not supported&quot;</span>))<span class="question-mark">?</span>;
-                    <span class="self">self</span>.<span class="ident">nodes</span>[<span class="ident">node_index</span>] <span class="op">=</span> <span class="ident">diff_node</span>;
+                <span class="comment">// If the node_index points to somewhere within the size of the
+                // tree, do a swap-remove.
+                </span>node_index =&gt; {
+                    <span class="comment">// Perform swap-remove.
+                    </span><span class="kw">let </span>node_index = usize::try_from(node_index)
+                        .map_err(|<span class="kw">_</span>| LibraryError::custom(<span class="string">&quot;Architecture not supported&quot;</span>))<span class="question-mark">?</span>;
+                    <span class="self">self</span>.nodes[node_index] = diff_node;
                 }
             }
         }
         <span class="prelude-val">Ok</span>(())
     }
 
-    <span class="doccomment">/// Export the nodes of the tree in the array representation.</span>
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">nodes</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>[<span class="ident">T</span>] {
-        <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">nodes</span>
+    <span class="doccomment">/// Export the nodes of the tree in the array representation.
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>nodes(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>[T] {
+        <span class="kw-2">&amp;</span><span class="self">self</span>.nodes
     }
 
-    <span class="doccomment">/// Return a reference to the leaf at the given `LeafIndex`.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// Returns an error if the leaf is outside of the tree.</span>
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">leaf</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">leaf_index</span>: <span class="ident">LeafIndex</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">T</span>, <span class="ident">ABinaryTreeError</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="ident">node_index</span> <span class="op">=</span> <span class="ident">usize::try_from</span>(<span class="ident">to_node_index</span>(<span class="ident">leaf_index</span>))
-            .<span class="ident">map_err</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="ident">LibraryError::custom</span>(<span class="string">&quot;Architecture not supported&quot;</span>))<span class="question-mark">?</span>;
-        <span class="self">self</span>.<span class="ident">nodes</span>
-            .<span class="ident">get</span>(<span class="ident">node_index</span>)
-            .<span class="ident">ok_or</span>(<span class="ident">ABinaryTreeError::OutOfBounds</span>)
+    <span class="doccomment">/// Return a reference to the leaf at the given `LeafIndex`.
+    ///
+    /// Returns an error if the leaf is outside of the tree.
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>leaf(<span class="kw-2">&amp;</span><span class="self">self</span>, leaf_index: LeafIndex) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="kw-2">&amp;</span>T, ABinaryTreeError&gt; {
+        <span class="kw">let </span>node_index = usize::try_from(to_node_index(leaf_index))
+            .map_err(|<span class="kw">_</span>| LibraryError::custom(<span class="string">&quot;Architecture not supported&quot;</span>))<span class="question-mark">?</span>;
+        <span class="self">self</span>.nodes
+            .get(node_index)
+            .ok_or(ABinaryTreeError::OutOfBounds)
     }
 }
 
-<span class="doccomment">/// Binary Tree error</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Error</span>, <span class="ident">Debug</span>, <span class="ident">PartialEq</span>, <span class="ident">Clone</span>)]</span>
-<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">enum</span> <span class="ident">ABinaryTreeError</span> {
-    <span class="doccomment">/// See [`LibraryError`] for more details.</span>
-    <span class="attribute">#[<span class="ident">error</span>(<span class="ident">transparent</span>)]</span>
-    <span class="ident">LibraryError</span>(<span class="attribute">#[<span class="ident">from</span>]</span> <span class="ident">LibraryError</span>),
-    <span class="doccomment">/// Adding nodes exceeds the maximum possible size of the tree.</span>
-    <span class="attribute">#[<span class="ident">error</span>(<span class="string">&quot;Adding nodes exceeds the maximum possible size of the tree.&quot;</span>)]</span>
-    <span class="ident">OutOfRange</span>,
-    <span class="doccomment">/// Not enough nodes to remove.</span>
-    <span class="attribute">#[<span class="ident">error</span>(<span class="string">&quot;Not enough nodes to remove.&quot;</span>)]</span>
-    <span class="ident">InvalidNumberOfNodes</span>,
-    <span class="doccomment">/// The given index is outside of the tree.</span>
-    <span class="attribute">#[<span class="ident">error</span>(<span class="string">&quot;The given index is outside of the tree.&quot;</span>)]</span>
-    <span class="ident">OutOfBounds</span>,
-    <span class="doccomment">/// An error occurred while handling a diff.</span>
-    <span class="attribute">#[<span class="ident">error</span>(<span class="string">&quot;An error occurred while handling a diff.&quot;</span>)]</span>
-    <span class="ident">ABinaryTreeDiffError</span>,
+<span class="doccomment">/// Binary Tree error
+</span><span class="attribute">#[derive(Error, Debug, PartialEq, Clone)]
+</span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">enum </span>ABinaryTreeError {
+    <span class="doccomment">/// See [`LibraryError`] for more details.
+    </span><span class="attribute">#[error(transparent)]
+    </span>LibraryError(<span class="attribute">#[from] </span>LibraryError),
+    <span class="doccomment">/// Adding nodes exceeds the maximum possible size of the tree.
+    </span><span class="attribute">#[error(<span class="string">&quot;Adding nodes exceeds the maximum possible size of the tree.&quot;</span>)]
+    </span>OutOfRange,
+    <span class="doccomment">/// Not enough nodes to remove.
+    </span><span class="attribute">#[error(<span class="string">&quot;Not enough nodes to remove.&quot;</span>)]
+    </span>InvalidNumberOfNodes,
+    <span class="doccomment">/// The given index is outside of the tree.
+    </span><span class="attribute">#[error(<span class="string">&quot;The given index is outside of the tree.&quot;</span>)]
+    </span>OutOfBounds,
+    <span class="doccomment">/// An error occurred while handling a diff.
+    </span><span class="attribute">#[error(<span class="string">&quot;An error occurred while handling a diff.&quot;</span>)]
+    </span>ABinaryTreeDiffError,
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../../../" data-current-crate="openmls" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.64.0 (a55dd71d5 2022-09-19)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../../../" data-current-crate="openmls" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0 (897e37553 2022-11-02)" ></div></body></html>

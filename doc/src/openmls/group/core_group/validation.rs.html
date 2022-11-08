@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `src/group/core_group/validation.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>validation.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" type="text/css" href="../../../../normalize.css"><link rel="stylesheet" type="text/css" href="../../../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" type="text/css" href="../../../../ayu.css" disabled><link rel="stylesheet" type="text/css" href="../../../../dark.css" disabled><link rel="stylesheet" type="text/css" href="../../../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../../../storage.js"></script><script defer src="../../../../source-script.js"></script><script defer src="../../../../source-files.js"></script><script defer src="../../../../main.js"></script><noscript><link rel="stylesheet" href="../../../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../../../openmls/index.html"><div class="logo-container"><img class="rust-logo" src="../../../../rust-logo.svg" alt="logo"></div></a><h2 class="location"></h2></nav><nav class="sidebar"><a class="sidebar-logo" href="../../../../openmls/index.html"><div class="logo-container"><img class="rust-logo" src="../../../../rust-logo.svg" alt="logo"></div></a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../../../openmls/index.html"><img class="rust-logo" src="../../../../rust-logo.svg" alt="logo"></a><nav class="sub"><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><button type="button">?</button></div><div id="settings-menu" tabindex="-1"><a href="../../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../../wheel.svg"></a></div></div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">1</span>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `src/group/core_group/validation.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>validation.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" href="../../../../normalize.css"><link rel="stylesheet" href="../../../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" href="../../../../ayu.css" disabled><link rel="stylesheet" href="../../../../dark.css" disabled><link rel="stylesheet" href="../../../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../../../storage.js"></script><script defer src="../../../../source-script.js"></script><script defer src="../../../../source-files.js"></script><script defer src="../../../../main.js"></script><noscript><link rel="stylesheet" href="../../../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../../../openmls/index.html"><div class="logo-container"><img class="rust-logo" src="../../../../rust-logo.svg" alt="logo"></div></a><h2 class="location"></h2></nav><nav class="sidebar"><a class="sidebar-logo" href="../../../../openmls/index.html"><div class="logo-container"><img class="rust-logo" src="../../../../rust-logo.svg" alt="logo"></div></a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../../../openmls/index.html"><img class="rust-logo" src="../../../../rust-logo.svg" alt="logo"></a><nav class="sub"><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><button type="button">?</button></div><div id="settings-menu" tabindex="-1"><a href="../../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../../wheel.svg"></a></div></div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">1</span>
 <span id="2">2</span>
 <span id="3">3</span>
 <span id="4">4</span>
@@ -434,51 +434,51 @@
 <span id="434">434</span>
 <span id="435">435</span>
 <span id="436">436</span>
-</pre><pre class="rust"><code><span class="doccomment">//! This module contains validation functions for incoming messages</span>
-<span class="doccomment">//! as defined in &lt;https://github.com/openmls/openmls/wiki/Message-validation&gt;</span>
+</pre><pre class="rust"><code><span class="doccomment">//! This module contains validation functions for incoming messages
+//! as defined in &lt;https://github.com/openmls/openmls/wiki/Message-validation&gt;
 
-<span class="kw">use</span> <span class="ident">std::collections::HashSet</span>;
+</span><span class="kw">use </span>std::collections::HashSet;
 
-<span class="kw">use</span> <span class="kw">crate</span>::{
-    <span class="ident">ciphersuite::hash_ref::HashReference</span>,
-    <span class="ident">error::LibraryError</span>,
-    <span class="ident">extensions::ExtensionType</span>,
-    <span class="ident">framing::Sender</span>,
-    <span class="ident">group::errors::ExternalCommitValidationError</span>,
-    <span class="ident">group::errors::ValidationError</span>,
-    <span class="ident">messages::proposals</span>::{<span class="ident">Proposal</span>, <span class="ident">ProposalOrRefType</span>, <span class="ident">ProposalType</span>},
+<span class="kw">use crate</span>::{
+    ciphersuite::hash_ref::HashReference,
+    error::LibraryError,
+    extensions::ExtensionType,
+    framing::Sender,
+    group::errors::ExternalCommitValidationError,
+    group::errors::ValidationError,
+    messages::proposals::{Proposal, ProposalOrRefType, ProposalType},
 };
 
-<span class="kw">use</span> <span class="kw">super</span>::{
-    <span class="ident">proposals::ProposalQueue</span>, <span class="ident">ContentType</span>, <span class="ident">CoreGroup</span>, <span class="ident">KeyPackage</span>, <span class="ident">MlsMessageIn</span>,
-    <span class="ident">ProposalValidationError</span>, <span class="ident">VerifiableMlsPlaintext</span>, <span class="ident">WireFormat</span>,
+<span class="kw">use super</span>::{
+    proposals::ProposalQueue, ContentType, CoreGroup, KeyPackage, MlsMessageIn,
+    ProposalValidationError, VerifiableMlsPlaintext, WireFormat,
 };
 
-<span class="kw">impl</span> <span class="ident">CoreGroup</span> {
-    <span class="comment">// === Messages ===</span>
+<span class="kw">impl </span>CoreGroup {
+    <span class="comment">// === Messages ===
 
-    <span class="doccomment">/// Checks the following semantic validation:</span>
-    <span class="doccomment">///  - ValSem002</span>
-    <span class="doccomment">///  - ValSem003</span>
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">validate_framing</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">message</span>: <span class="kw-2">&amp;</span><span class="ident">MlsMessageIn</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">ValidationError</span><span class="op">&gt;</span> {
-        <span class="comment">// ValSem002</span>
-        <span class="kw">if</span> <span class="ident">message</span>.<span class="ident">group_id</span>() <span class="op">!</span><span class="op">=</span> <span class="self">self</span>.<span class="ident">group_id</span>() {
-            <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">ValidationError::WrongGroupId</span>);
+    </span><span class="doccomment">/// Checks the following semantic validation:
+    ///  - ValSem002
+    ///  - ValSem003
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>validate_framing(<span class="kw-2">&amp;</span><span class="self">self</span>, message: <span class="kw-2">&amp;</span>MlsMessageIn) -&gt; <span class="prelude-ty">Result</span>&lt;(), ValidationError&gt; {
+        <span class="comment">// ValSem002
+        </span><span class="kw">if </span>message.group_id() != <span class="self">self</span>.group_id() {
+            <span class="kw">return </span><span class="prelude-val">Err</span>(ValidationError::WrongGroupId);
         }
 
-        <span class="comment">// ValSem003: Check boundaries for the epoch</span>
-        <span class="comment">// We differentiate depending on the content type</span>
-        <span class="kw">match</span> <span class="ident">message</span>.<span class="ident">content_type</span>() {
-            <span class="comment">// For application messages we allow messages for older epochs as well</span>
-            <span class="ident">ContentType::Application</span> =&gt; {
-                <span class="kw">if</span> <span class="ident">message</span>.<span class="ident">epoch</span>() <span class="op">&gt;</span> <span class="self">self</span>.<span class="ident">context</span>().<span class="ident">epoch</span>() {
-                    <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">ValidationError::WrongEpoch</span>);
+        <span class="comment">// ValSem003: Check boundaries for the epoch
+        // We differentiate depending on the content type
+        </span><span class="kw">match </span>message.content_type() {
+            <span class="comment">// For application messages we allow messages for older epochs as well
+            </span>ContentType::Application =&gt; {
+                <span class="kw">if </span>message.epoch() &gt; <span class="self">self</span>.context().epoch() {
+                    <span class="kw">return </span><span class="prelude-val">Err</span>(ValidationError::WrongEpoch);
                 }
             }
-            <span class="comment">// For all other messages we only only accept the current epoch</span>
-            <span class="kw">_</span> =&gt; {
-                <span class="kw">if</span> <span class="ident">message</span>.<span class="ident">epoch</span>() <span class="op">!</span><span class="op">=</span> <span class="self">self</span>.<span class="ident">context</span>().<span class="ident">epoch</span>() {
-                    <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">ValidationError::WrongEpoch</span>);
+            <span class="comment">// For all other messages we only only accept the current epoch
+            </span><span class="kw">_ </span>=&gt; {
+                <span class="kw">if </span>message.epoch() != <span class="self">self</span>.context().epoch() {
+                    <span class="kw">return </span><span class="prelude-val">Err</span>(ValidationError::WrongEpoch);
                 }
             }
         }
@@ -486,382 +486,382 @@
         <span class="prelude-val">Ok</span>(())
     }
 
-    <span class="doccomment">/// Checks the following semantic validation:</span>
-    <span class="doccomment">///  - ValSem004</span>
-    <span class="doccomment">///  - ValSem005</span>
-    <span class="doccomment">///  - ValSem007</span>
-    <span class="doccomment">///  - ValSem009</span>
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">validate_plaintext</span>(
+    <span class="doccomment">/// Checks the following semantic validation:
+    ///  - ValSem004
+    ///  - ValSem005
+    ///  - ValSem007
+    ///  - ValSem009
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>validate_plaintext(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        <span class="ident">plaintext</span>: <span class="kw-2">&amp;</span><span class="ident">VerifiableMlsPlaintext</span>,
-    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">ValidationError</span><span class="op">&gt;</span> {
-        <span class="comment">// ValSem004</span>
-        <span class="kw">let</span> <span class="ident">sender</span> <span class="op">=</span> <span class="ident">plaintext</span>.<span class="ident">sender</span>();
-        <span class="kw">if</span> <span class="kw">let</span> <span class="ident">Sender::Member</span>(<span class="ident">hash_ref</span>) <span class="op">=</span> <span class="ident">sender</span> {
-            <span class="comment">// If the sender is a member, it has to be in the tree ...</span>
-            <span class="kw">if</span> <span class="self">self</span>
-            .<span class="ident">treesync</span>()
-            .<span class="ident">leaf_from_id</span>(<span class="ident">hash_ref</span>)
-            .<span class="ident">is_none</span>()
-        <span class="comment">// ... or in a tree from a past epoch we still have around.</span>
-        <span class="op">&amp;&amp;</span> <span class="op">!</span><span class="self">self</span>
-            .<span class="ident">message_secrets_store</span>
-            .<span class="ident">epoch_has_leaf</span>(<span class="ident">plaintext</span>.<span class="ident">epoch</span>(), <span class="ident">hash_ref</span>)
+        plaintext: <span class="kw-2">&amp;</span>VerifiableMlsPlaintext,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;(), ValidationError&gt; {
+        <span class="comment">// ValSem004
+        </span><span class="kw">let </span>sender = plaintext.sender();
+        <span class="kw">if let </span>Sender::Member(hash_ref) = sender {
+            <span class="comment">// If the sender is a member, it has to be in the tree ...
+            </span><span class="kw">if </span><span class="self">self
+            </span>.treesync()
+            .leaf_from_id(hash_ref)
+            .is_none()
+        <span class="comment">// ... or in a tree from a past epoch we still have around.
+        </span>&amp;&amp; !<span class="self">self
+            </span>.message_secrets_store
+            .epoch_has_leaf(plaintext.epoch(), hash_ref)
             {
-                <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">ValidationError::UnknownMember</span>);
+                <span class="kw">return </span><span class="prelude-val">Err</span>(ValidationError::UnknownMember);
             }
         }
 
-        <span class="comment">// ValSem005</span>
-        <span class="comment">// Application messages must always be encrypted</span>
-        <span class="kw">if</span> <span class="ident">plaintext</span>.<span class="ident">content_type</span>() <span class="op">==</span> <span class="ident">ContentType::Application</span> {
-            <span class="kw">if</span> <span class="ident">plaintext</span>.<span class="ident">wire_format</span>() <span class="op">!</span><span class="op">=</span> <span class="ident">WireFormat::MlsCiphertext</span> {
-                <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">ValidationError::UnencryptedApplicationMessage</span>);
-            } <span class="kw">else</span> <span class="kw">if</span> <span class="op">!</span><span class="ident">plaintext</span>.<span class="ident">sender</span>().<span class="ident">is_member</span>() {
-                <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">ValidationError::NonMemberApplicationMessage</span>);
+        <span class="comment">// ValSem005
+        // Application messages must always be encrypted
+        </span><span class="kw">if </span>plaintext.content_type() == ContentType::Application {
+            <span class="kw">if </span>plaintext.wire_format() != WireFormat::MlsCiphertext {
+                <span class="kw">return </span><span class="prelude-val">Err</span>(ValidationError::UnencryptedApplicationMessage);
+            } <span class="kw">else if </span>!plaintext.sender().is_member() {
+                <span class="kw">return </span><span class="prelude-val">Err</span>(ValidationError::NonMemberApplicationMessage);
             }
         }
 
-        <span class="comment">// ValSem007</span>
-        <span class="comment">// If the sender is of type member and the message was not an MlsCiphertext,</span>
-        <span class="comment">// the member has to prove its ownership by adding a membership tag.</span>
-        <span class="comment">// The membership tag is checkecked in ValSem008.</span>
-        <span class="kw">if</span> <span class="ident">plaintext</span>.<span class="ident">sender</span>().<span class="ident">is_member</span>()
-            <span class="op">&amp;&amp;</span> <span class="ident">plaintext</span>.<span class="ident">wire_format</span>() <span class="op">!</span><span class="op">=</span> <span class="ident">WireFormat::MlsCiphertext</span>
-            <span class="op">&amp;&amp;</span> <span class="ident">plaintext</span>.<span class="ident">membership_tag</span>().<span class="ident">is_none</span>()
+        <span class="comment">// ValSem007
+        // If the sender is of type member and the message was not an MlsCiphertext,
+        // the member has to prove its ownership by adding a membership tag.
+        // The membership tag is checkecked in ValSem008.
+        </span><span class="kw">if </span>plaintext.sender().is_member()
+            &amp;&amp; plaintext.wire_format() != WireFormat::MlsCiphertext
+            &amp;&amp; plaintext.membership_tag().is_none()
         {
-            <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">ValidationError::MissingMembershipTag</span>);
+            <span class="kw">return </span><span class="prelude-val">Err</span>(ValidationError::MissingMembershipTag);
         }
 
-        <span class="comment">// ValSem009</span>
-        <span class="kw">if</span> <span class="ident">plaintext</span>.<span class="ident">content_type</span>() <span class="op">==</span> <span class="ident">ContentType::Commit</span> <span class="op">&amp;&amp;</span> <span class="ident">plaintext</span>.<span class="ident">confirmation_tag</span>().<span class="ident">is_none</span>()
+        <span class="comment">// ValSem009
+        </span><span class="kw">if </span>plaintext.content_type() == ContentType::Commit &amp;&amp; plaintext.confirmation_tag().is_none()
         {
-            <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">ValidationError::MissingConfirmationTag</span>);
+            <span class="kw">return </span><span class="prelude-val">Err</span>(ValidationError::MissingConfirmationTag);
         }
 
         <span class="prelude-val">Ok</span>(())
     }
 
-    <span class="comment">// === Proposals ===</span>
+    <span class="comment">// === Proposals ===
 
-    <span class="doccomment">/// Validate Add proposals. This function implements the following checks:</span>
-    <span class="doccomment">///  - ValSem100</span>
-    <span class="doccomment">///  - ValSem101</span>
-    <span class="doccomment">///  - ValSem102</span>
-    <span class="doccomment">///  - ValSem103</span>
-    <span class="doccomment">///  - ValSem104</span>
-    <span class="doccomment">///  - ValSem105</span>
-    <span class="doccomment">///  - ValSem106</span>
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">validate_add_proposals</span>(
+    </span><span class="doccomment">/// Validate Add proposals. This function implements the following checks:
+    ///  - ValSem100
+    ///  - ValSem101
+    ///  - ValSem102
+    ///  - ValSem103
+    ///  - ValSem104
+    ///  - ValSem105
+    ///  - ValSem106
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>validate_add_proposals(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        <span class="ident">proposal_queue</span>: <span class="kw-2">&amp;</span><span class="ident">ProposalQueue</span>,
-    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">ProposalValidationError</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="ident">add_proposals</span> <span class="op">=</span> <span class="ident">proposal_queue</span>.<span class="ident">add_proposals</span>();
+        proposal_queue: <span class="kw-2">&amp;</span>ProposalQueue,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;(), ProposalValidationError&gt; {
+        <span class="kw">let </span>add_proposals = proposal_queue.add_proposals();
 
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">identity_set</span> <span class="op">=</span> <span class="ident">HashSet::new</span>();
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">signature_key_set</span> <span class="op">=</span> <span class="ident">HashSet::new</span>();
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">public_key_set</span> <span class="op">=</span> <span class="ident">HashSet::new</span>();
-        <span class="kw">for</span> <span class="ident">add_proposal</span> <span class="kw">in</span> <span class="ident">add_proposals</span> {
-            <span class="kw">let</span> <span class="ident">identity</span> <span class="op">=</span> <span class="ident">add_proposal</span>
-                .<span class="ident">add_proposal</span>()
-                .<span class="ident">key_package</span>()
-                .<span class="ident">credential</span>()
-                .<span class="ident">identity</span>()
-                .<span class="ident">to_vec</span>();
-            <span class="comment">// ValSem100</span>
-            <span class="kw">if</span> <span class="op">!</span><span class="ident">identity_set</span>.<span class="ident">insert</span>(<span class="ident">identity</span>) {
-                <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">ProposalValidationError::DuplicateIdentityAddProposal</span>);
+        <span class="kw">let </span><span class="kw-2">mut </span>identity_set = HashSet::new();
+        <span class="kw">let </span><span class="kw-2">mut </span>signature_key_set = HashSet::new();
+        <span class="kw">let </span><span class="kw-2">mut </span>public_key_set = HashSet::new();
+        <span class="kw">for </span>add_proposal <span class="kw">in </span>add_proposals {
+            <span class="kw">let </span>identity = add_proposal
+                .add_proposal()
+                .key_package()
+                .credential()
+                .identity()
+                .to_vec();
+            <span class="comment">// ValSem100
+            </span><span class="kw">if </span>!identity_set.insert(identity) {
+                <span class="kw">return </span><span class="prelude-val">Err</span>(ProposalValidationError::DuplicateIdentityAddProposal);
             }
-            <span class="kw">let</span> <span class="ident">signature_key</span> <span class="op">=</span> <span class="ident">add_proposal</span>
-                .<span class="ident">add_proposal</span>()
-                .<span class="ident">key_package</span>()
-                .<span class="ident">credential</span>()
-                .<span class="ident">signature_key</span>()
-                .<span class="ident">as_slice</span>()
-                .<span class="ident">to_vec</span>();
-            <span class="comment">// ValSem101</span>
-            <span class="kw">if</span> <span class="op">!</span><span class="ident">signature_key_set</span>.<span class="ident">insert</span>(<span class="ident">signature_key</span>) {
-                <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">ProposalValidationError::DuplicateSignatureKeyAddProposal</span>);
+            <span class="kw">let </span>signature_key = add_proposal
+                .add_proposal()
+                .key_package()
+                .credential()
+                .signature_key()
+                .as_slice()
+                .to_vec();
+            <span class="comment">// ValSem101
+            </span><span class="kw">if </span>!signature_key_set.insert(signature_key) {
+                <span class="kw">return </span><span class="prelude-val">Err</span>(ProposalValidationError::DuplicateSignatureKeyAddProposal);
             }
-            <span class="kw">let</span> <span class="ident">public_key</span> <span class="op">=</span> <span class="ident">add_proposal</span>
-                .<span class="ident">add_proposal</span>()
-                .<span class="ident">key_package</span>()
-                .<span class="ident">hpke_init_key</span>()
-                .<span class="ident">as_slice</span>()
-                .<span class="ident">to_vec</span>();
-            <span class="comment">// ValSem102</span>
-            <span class="kw">if</span> <span class="op">!</span><span class="ident">public_key_set</span>.<span class="ident">insert</span>(<span class="ident">public_key</span>) {
-                <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">ProposalValidationError::DuplicatePublicKeyAddProposal</span>);
+            <span class="kw">let </span>public_key = add_proposal
+                .add_proposal()
+                .key_package()
+                .hpke_init_key()
+                .as_slice()
+                .to_vec();
+            <span class="comment">// ValSem102
+            </span><span class="kw">if </span>!public_key_set.insert(public_key) {
+                <span class="kw">return </span><span class="prelude-val">Err</span>(ProposalValidationError::DuplicatePublicKeyAddProposal);
             }
 
-            <span class="comment">// ValSem106: Check the required capabilities of the add proposals</span>
-            <span class="comment">// This includes the following checks:</span>
-            <span class="comment">// - Do ciphersuite and version match that of the group?</span>
-            <span class="comment">// - Are the two listed in the `Capabilities` Extension?</span>
-            <span class="comment">// - If a `RequiredCapabilitiesExtension` is present in the group:</span>
-            <span class="comment">//   Does the key package advertise the capabilities required by that</span>
-            <span class="comment">//   extension?</span>
+            <span class="comment">// ValSem106: Check the required capabilities of the add proposals
+            // This includes the following checks:
+            // - Do ciphersuite and version match that of the group?
+            // - Are the two listed in the `Capabilities` Extension?
+            // - If a `RequiredCapabilitiesExtension` is present in the group:
+            //   Does the key package advertise the capabilities required by that
+            //   extension?
 
-            <span class="comment">// Check if ciphersuite and version of the group are correct.</span>
-            <span class="kw">if</span> <span class="ident">add_proposal</span>.<span class="ident">add_proposal</span>().<span class="ident">key_package</span>().<span class="ident">ciphersuite</span>() <span class="op">!</span><span class="op">=</span> <span class="self">self</span>.<span class="ident">ciphersuite</span>()
-                <span class="op">|</span><span class="op">|</span> <span class="ident">add_proposal</span>.<span class="ident">add_proposal</span>().<span class="ident">key_package</span>().<span class="ident">protocol_version</span>() <span class="op">!</span><span class="op">=</span> <span class="self">self</span>.<span class="ident">version</span>()
+            // Check if ciphersuite and version of the group are correct.
+            </span><span class="kw">if </span>add_proposal.add_proposal().key_package().ciphersuite() != <span class="self">self</span>.ciphersuite()
+                || add_proposal.add_proposal().key_package().protocol_version() != <span class="self">self</span>.version()
             {
                 <span class="macro">log::error!</span>(<span class="string">&quot;Tried to commit an Add proposal, where either the `Ciphersuite` or the `ProtocolVersion` is not compatible with the group.&quot;</span>);
 
-                <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">ProposalValidationError::InsufficientCapabilities</span>);
+                <span class="kw">return </span><span class="prelude-val">Err</span>(ProposalValidationError::InsufficientCapabilities);
             }
 
-            <span class="comment">// Check if the ciphersuite and the version of the group are</span>
-            <span class="comment">// supported.</span>
-            <span class="kw">let</span> <span class="ident">capabilities</span> <span class="op">=</span> <span class="ident">add_proposal</span>
-                .<span class="ident">add_proposal</span>()
-                .<span class="ident">key_package</span>()
-                .<span class="ident">extension_with_type</span>(<span class="ident">ExtensionType::Capabilities</span>)
-                .<span class="ident">ok_or</span>(<span class="ident">ProposalValidationError::InsufficientCapabilities</span>)<span class="question-mark">?</span>
-                .<span class="ident">as_capabilities_extension</span>()
-                .<span class="ident">map_err</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> {
-                    <span class="comment">// Mismatches between Extensions and ExtensionTypes should be</span>
-                    <span class="comment">// caught when constructing KeyPackages.</span>
-                    <span class="ident">ProposalValidationError::LibraryError</span>(<span class="ident">LibraryError::custom</span>(
+            <span class="comment">// Check if the ciphersuite and the version of the group are
+            // supported.
+            </span><span class="kw">let </span>capabilities = add_proposal
+                .add_proposal()
+                .key_package()
+                .extension_with_type(ExtensionType::Capabilities)
+                .ok_or(ProposalValidationError::InsufficientCapabilities)<span class="question-mark">?
+                </span>.as_capabilities_extension()
+                .map_err(|<span class="kw">_</span>| {
+                    <span class="comment">// Mismatches between Extensions and ExtensionTypes should be
+                    // caught when constructing KeyPackages.
+                    </span>ProposalValidationError::LibraryError(LibraryError::custom(
                         <span class="string">&quot;ExtensionType didn&#39;t match extension content.&quot;</span>,
                     ))
                 })<span class="question-mark">?</span>;
-            <span class="kw">if</span> <span class="op">!</span><span class="ident">capabilities</span>.<span class="ident">ciphersuites</span>().<span class="ident">contains</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">ciphersuite</span>())
-                <span class="op">|</span><span class="op">|</span> <span class="op">!</span><span class="ident">capabilities</span>.<span class="ident">versions</span>().<span class="ident">contains</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">version</span>())
+            <span class="kw">if </span>!capabilities.ciphersuites().contains(<span class="kw-2">&amp;</span><span class="self">self</span>.ciphersuite())
+                || !capabilities.versions().contains(<span class="kw-2">&amp;</span><span class="self">self</span>.version())
             {
                 <span class="macro">log::error!</span>(<span class="string">&quot;Tried to commit an Add proposal, where either the group&#39;s `Ciphersuite` or the group&#39;s `ProtocolVersion` is not in the `KeyPackage`&#39;s `Capabilities`.&quot;</span>);
-                <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">ProposalValidationError::InsufficientCapabilities</span>);
+                <span class="kw">return </span><span class="prelude-val">Err</span>(ProposalValidationError::InsufficientCapabilities);
             }
-            <span class="comment">// If there is a required capabilities extension, check if that one</span>
-            <span class="comment">// is supported.</span>
-            <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">required_capabilities_extension</span>) <span class="op">=</span> <span class="self">self</span>
-                .<span class="ident">group_context_extensions</span>()
-                .<span class="ident">iter</span>()
-                .<span class="ident">find</span>(<span class="op">|</span><span class="kw-2">&amp;</span><span class="ident">e</span><span class="op">|</span> <span class="ident">e</span>.<span class="ident">extension_type</span>() <span class="op">==</span> <span class="ident">ExtensionType::RequiredCapabilities</span>)
+            <span class="comment">// If there is a required capabilities extension, check if that one
+            // is supported.
+            </span><span class="kw">if let </span><span class="prelude-val">Some</span>(required_capabilities_extension) = <span class="self">self
+                </span>.group_context_extensions()
+                .iter()
+                .find(|<span class="kw-2">&amp;</span>e| e.extension_type() == ExtensionType::RequiredCapabilities)
             {
-                <span class="kw">let</span> <span class="ident">required_capabilities</span> <span class="op">=</span> <span class="ident">required_capabilities_extension</span>
-                    .<span class="ident">as_required_capabilities_extension</span>()
-                    .<span class="ident">map_err</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> {
-                        <span class="comment">// Mismatches between Extensions and ExtensionTypes should be</span>
-                        <span class="comment">// caught when constructing KeyPackages.</span>
-                        <span class="ident">ProposalValidationError::LibraryError</span>(<span class="ident">LibraryError::custom</span>(
+                <span class="kw">let </span>required_capabilities = required_capabilities_extension
+                    .as_required_capabilities_extension()
+                    .map_err(|<span class="kw">_</span>| {
+                        <span class="comment">// Mismatches between Extensions and ExtensionTypes should be
+                        // caught when constructing KeyPackages.
+                        </span>ProposalValidationError::LibraryError(LibraryError::custom(
                             <span class="string">&quot;ExtensionType didn&#39;t match extension content.&quot;</span>,
                         ))
                     })<span class="question-mark">?</span>;
-                <span class="comment">// Check if all required capabilities are supported.</span>
-                <span class="kw">if</span> <span class="op">!</span><span class="ident">capabilities</span>.<span class="ident">supports_required_capabilities</span>(<span class="ident">required_capabilities</span>) {
+                <span class="comment">// Check if all required capabilities are supported.
+                </span><span class="kw">if </span>!capabilities.supports_required_capabilities(required_capabilities) {
                     <span class="macro">log::error!</span>(<span class="string">&quot;Tried to commit an Add proposal, where the `Capabilities` of the given `KeyPackage` do not fulfill the `RequiredCapabilities` of the group.&quot;</span>);
-                    <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">ProposalValidationError::InsufficientCapabilities</span>);
+                    <span class="kw">return </span><span class="prelude-val">Err</span>(ProposalValidationError::InsufficientCapabilities);
                 }
             }
         }
 
-        <span class="kw">for</span> (<span class="ident">_index</span>, <span class="ident">key_package</span>) <span class="kw">in</span> <span class="self">self</span>.<span class="ident">treesync</span>().<span class="ident">full_leaves</span>()<span class="question-mark">?</span> {
-            <span class="kw">let</span> <span class="ident">identity</span> <span class="op">=</span> <span class="ident">key_package</span>.<span class="ident">credential</span>().<span class="ident">identity</span>();
-            <span class="comment">// ValSem103</span>
-            <span class="kw">if</span> <span class="ident">identity_set</span>.<span class="ident">contains</span>(<span class="ident">identity</span>) {
-                <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">ProposalValidationError::ExistingIdentityAddProposal</span>);
+        <span class="kw">for </span>(_index, key_package) <span class="kw">in </span><span class="self">self</span>.treesync().full_leaves()<span class="question-mark">? </span>{
+            <span class="kw">let </span>identity = key_package.credential().identity();
+            <span class="comment">// ValSem103
+            </span><span class="kw">if </span>identity_set.contains(identity) {
+                <span class="kw">return </span><span class="prelude-val">Err</span>(ProposalValidationError::ExistingIdentityAddProposal);
             }
-            <span class="comment">// ValSem104</span>
-            <span class="kw">let</span> <span class="ident">signature_key</span> <span class="op">=</span> <span class="ident">key_package</span>.<span class="ident">credential</span>().<span class="ident">signature_key</span>().<span class="ident">as_slice</span>();
-            <span class="kw">if</span> <span class="ident">signature_key_set</span>.<span class="ident">contains</span>(<span class="ident">signature_key</span>) {
-                <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">ProposalValidationError::ExistingSignatureKeyAddProposal</span>);
+            <span class="comment">// ValSem104
+            </span><span class="kw">let </span>signature_key = key_package.credential().signature_key().as_slice();
+            <span class="kw">if </span>signature_key_set.contains(signature_key) {
+                <span class="kw">return </span><span class="prelude-val">Err</span>(ProposalValidationError::ExistingSignatureKeyAddProposal);
             }
-            <span class="comment">// ValSem105</span>
-            <span class="kw">let</span> <span class="ident">public_key</span> <span class="op">=</span> <span class="ident">key_package</span>.<span class="ident">hpke_init_key</span>().<span class="ident">as_slice</span>();
-            <span class="kw">if</span> <span class="ident">public_key_set</span>.<span class="ident">contains</span>(<span class="ident">public_key</span>) {
-                <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">ProposalValidationError::ExistingPublicKeyAddProposal</span>);
+            <span class="comment">// ValSem105
+            </span><span class="kw">let </span>public_key = key_package.hpke_init_key().as_slice();
+            <span class="kw">if </span>public_key_set.contains(public_key) {
+                <span class="kw">return </span><span class="prelude-val">Err</span>(ProposalValidationError::ExistingPublicKeyAddProposal);
             }
         }
         <span class="prelude-val">Ok</span>(())
     }
 
-    <span class="doccomment">/// Validate Remove proposals. This function implements the following checks:</span>
-    <span class="doccomment">///  - ValSem107</span>
-    <span class="doccomment">///  - ValSem108</span>
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">validate_remove_proposals</span>(
+    <span class="doccomment">/// Validate Remove proposals. This function implements the following checks:
+    ///  - ValSem107
+    ///  - ValSem108
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>validate_remove_proposals(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        <span class="ident">proposal_queue</span>: <span class="kw-2">&amp;</span><span class="ident">ProposalQueue</span>,
-    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">ProposalValidationError</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="ident">remove_proposals</span> <span class="op">=</span> <span class="ident">proposal_queue</span>.<span class="ident">remove_proposals</span>();
+        proposal_queue: <span class="kw-2">&amp;</span>ProposalQueue,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;(), ProposalValidationError&gt; {
+        <span class="kw">let </span>remove_proposals = proposal_queue.remove_proposals();
 
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">removes_set</span> <span class="op">=</span> <span class="ident">HashSet::new</span>();
+        <span class="kw">let </span><span class="kw-2">mut </span>removes_set = HashSet::new();
 
-        <span class="kw">for</span> <span class="ident">remove_proposal</span> <span class="kw">in</span> <span class="ident">remove_proposals</span> {
-            <span class="kw">let</span> <span class="ident">removed</span> <span class="op">=</span> <span class="ident">remove_proposal</span>.<span class="ident">remove_proposal</span>().<span class="ident">removed</span>();
-            <span class="comment">// ValSem107</span>
-            <span class="kw">if</span> <span class="op">!</span><span class="ident">removes_set</span>.<span class="ident">insert</span>(<span class="ident">removed</span>.<span class="ident">clone</span>()) {
-                <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">ProposalValidationError::DuplicateMemberRemoval</span>);
+        <span class="kw">for </span>remove_proposal <span class="kw">in </span>remove_proposals {
+            <span class="kw">let </span>removed = remove_proposal.remove_proposal().removed();
+            <span class="comment">// ValSem107
+            </span><span class="kw">if </span>!removes_set.insert(removed.clone()) {
+                <span class="kw">return </span><span class="prelude-val">Err</span>(ProposalValidationError::DuplicateMemberRemoval);
             }
 
-            <span class="comment">// TODO: ValSem108</span>
-            <span class="kw">if</span> <span class="op">!</span><span class="self">self</span>
-                .<span class="ident">treesync</span>()
-                .<span class="ident">leaves</span>()
-                .<span class="ident">contains_key</span>(<span class="kw-2">&amp;</span><span class="prelude-val">Some</span>(<span class="ident">removed</span>.<span class="ident">clone</span>()))
+            <span class="comment">// TODO: ValSem108
+            </span><span class="kw">if </span>!<span class="self">self
+                </span>.treesync()
+                .leaves()
+                .contains_key(<span class="kw-2">&amp;</span><span class="prelude-val">Some</span>(removed.clone()))
             {
-                <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">ProposalValidationError::UnknownMemberRemoval</span>);
+                <span class="kw">return </span><span class="prelude-val">Err</span>(ProposalValidationError::UnknownMemberRemoval);
             }
         }
 
         <span class="prelude-val">Ok</span>(())
     }
 
-    <span class="doccomment">/// Validate Update proposals. This function implements the following checks:</span>
-    <span class="doccomment">///  - ValSem109</span>
-    <span class="doccomment">///  - ValSem110</span>
-    <span class="doccomment">///  - ValSem111</span>
-    <span class="doccomment">///  - ValSem112</span>
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">validate_update_proposals</span>(
+    <span class="doccomment">/// Validate Update proposals. This function implements the following checks:
+    ///  - ValSem109
+    ///  - ValSem110
+    ///  - ValSem111
+    ///  - ValSem112
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>validate_update_proposals(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        <span class="ident">proposal_queue</span>: <span class="kw-2">&amp;</span><span class="ident">ProposalQueue</span>,
-        <span class="ident">committer</span>: <span class="kw-2">&amp;</span><span class="ident">HashReference</span>,
-    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">HashSet</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span><span class="op">&gt;</span>, <span class="ident">ProposalValidationError</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">public_key_set</span> <span class="op">=</span> <span class="ident">HashSet::new</span>();
-        <span class="kw">for</span> (<span class="ident">_index</span>, <span class="ident">key_package</span>) <span class="kw">in</span> <span class="self">self</span>.<span class="ident">treesync</span>().<span class="ident">full_leaves</span>()<span class="question-mark">?</span> {
-            <span class="kw">let</span> <span class="ident">public_key</span> <span class="op">=</span> <span class="ident">key_package</span>.<span class="ident">hpke_init_key</span>().<span class="ident">as_slice</span>().<span class="ident">to_vec</span>();
-            <span class="ident">public_key_set</span>.<span class="ident">insert</span>(<span class="ident">public_key</span>);
+        proposal_queue: <span class="kw-2">&amp;</span>ProposalQueue,
+        committer: <span class="kw-2">&amp;</span>HashReference,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;HashSet&lt;Vec&lt;u8&gt;&gt;, ProposalValidationError&gt; {
+        <span class="kw">let </span><span class="kw-2">mut </span>public_key_set = HashSet::new();
+        <span class="kw">for </span>(_index, key_package) <span class="kw">in </span><span class="self">self</span>.treesync().full_leaves()<span class="question-mark">? </span>{
+            <span class="kw">let </span>public_key = key_package.hpke_init_key().as_slice().to_vec();
+            public_key_set.insert(public_key);
         }
 
-        <span class="comment">// Check the update proposals from the proposal queue first</span>
-        <span class="kw">let</span> <span class="ident">update_proposals</span> <span class="op">=</span> <span class="ident">proposal_queue</span>.<span class="ident">update_proposals</span>();
-        <span class="kw">let</span> <span class="ident">tree</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">treesync</span>();
+        <span class="comment">// Check the update proposals from the proposal queue first
+        </span><span class="kw">let </span>update_proposals = proposal_queue.update_proposals();
+        <span class="kw">let </span>tree = <span class="self">self</span>.treesync();
 
-        <span class="kw">for</span> <span class="ident">update_proposal</span> <span class="kw">in</span> <span class="ident">update_proposals</span> {
-            <span class="kw">let</span> <span class="ident">hash_ref</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">update_proposal</span>.<span class="ident">sender</span>() {
-                <span class="ident">Sender::Member</span>(<span class="ident">hash_ref</span>) =&gt; <span class="ident">hash_ref</span>,
-                <span class="kw">_</span> =&gt; <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">ProposalValidationError::UpdateFromNonMember</span>),
+        <span class="kw">for </span>update_proposal <span class="kw">in </span>update_proposals {
+            <span class="kw">let </span>hash_ref = <span class="kw">match </span>update_proposal.sender() {
+                Sender::Member(hash_ref) =&gt; hash_ref,
+                <span class="kw">_ </span>=&gt; <span class="kw">return </span><span class="prelude-val">Err</span>(ProposalValidationError::UpdateFromNonMember),
             };
-            <span class="comment">// ValSem112</span>
-            <span class="comment">// The sender of a standalone update proposal must be of type member</span>
-            <span class="kw">if</span> <span class="kw">let</span> <span class="ident">Sender::Member</span>(<span class="ident">hash_ref</span>) <span class="op">=</span> <span class="ident">update_proposal</span>.<span class="ident">sender</span>() {
-                <span class="comment">// ValSem111</span>
-                <span class="comment">// The sender of a full Commit must not include own update proposals</span>
-                <span class="kw">if</span> <span class="ident">committer</span> <span class="op">==</span> <span class="ident">hash_ref</span> {
-                    <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">ProposalValidationError::CommitterIncludedOwnUpdate</span>);
+            <span class="comment">// ValSem112
+            // The sender of a standalone update proposal must be of type member
+            </span><span class="kw">if let </span>Sender::Member(hash_ref) = update_proposal.sender() {
+                <span class="comment">// ValSem111
+                // The sender of a full Commit must not include own update proposals
+                </span><span class="kw">if </span>committer == hash_ref {
+                    <span class="kw">return </span><span class="prelude-val">Err</span>(ProposalValidationError::CommitterIncludedOwnUpdate);
                 }
-            } <span class="kw">else</span> {
-                <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">ProposalValidationError::UpdateFromNonMember</span>);
+            } <span class="kw">else </span>{
+                <span class="kw">return </span><span class="prelude-val">Err</span>(ProposalValidationError::UpdateFromNonMember);
             }
 
-            <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">leaf_node</span>) <span class="op">=</span> <span class="ident">tree</span>.<span class="ident">leaf_from_id</span>(<span class="ident">hash_ref</span>) {
-                <span class="kw">let</span> <span class="ident">existing_key_package</span> <span class="op">=</span> <span class="ident">leaf_node</span>.<span class="ident">key_package</span>();
-                <span class="comment">// ValSem109</span>
-                <span class="comment">// Identity must be unchanged between existing member and new proposal</span>
-                <span class="kw">if</span> <span class="ident">update_proposal</span>
-                    .<span class="ident">update_proposal</span>()
-                    .<span class="ident">key_package</span>()
-                    .<span class="ident">credential</span>()
-                    .<span class="ident">identity</span>()
-                    <span class="op">!</span><span class="op">=</span> <span class="ident">existing_key_package</span>.<span class="ident">credential</span>().<span class="ident">identity</span>()
+            <span class="kw">if let </span><span class="prelude-val">Some</span>(leaf_node) = tree.leaf_from_id(hash_ref) {
+                <span class="kw">let </span>existing_key_package = leaf_node.key_package();
+                <span class="comment">// ValSem109
+                // Identity must be unchanged between existing member and new proposal
+                </span><span class="kw">if </span>update_proposal
+                    .update_proposal()
+                    .key_package()
+                    .credential()
+                    .identity()
+                    != existing_key_package.credential().identity()
                 {
-                    <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">ProposalValidationError::UpdateProposalIdentityMismatch</span>);
+                    <span class="kw">return </span><span class="prelude-val">Err</span>(ProposalValidationError::UpdateProposalIdentityMismatch);
                 }
-                <span class="kw">let</span> <span class="ident">public_key</span> <span class="op">=</span> <span class="ident">update_proposal</span>
-                    .<span class="ident">update_proposal</span>()
-                    .<span class="ident">key_package</span>()
-                    .<span class="ident">hpke_init_key</span>()
-                    .<span class="ident">as_slice</span>();
-                <span class="comment">// ValSem110</span>
-                <span class="comment">// HPKE init key must be unique among existing members</span>
-                <span class="kw">if</span> <span class="ident">public_key_set</span>.<span class="ident">contains</span>(<span class="ident">public_key</span>) {
-                    <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">ProposalValidationError::ExistingPublicKeyUpdateProposal</span>);
+                <span class="kw">let </span>public_key = update_proposal
+                    .update_proposal()
+                    .key_package()
+                    .hpke_init_key()
+                    .as_slice();
+                <span class="comment">// ValSem110
+                // HPKE init key must be unique among existing members
+                </span><span class="kw">if </span>public_key_set.contains(public_key) {
+                    <span class="kw">return </span><span class="prelude-val">Err</span>(ProposalValidationError::ExistingPublicKeyUpdateProposal);
                 }
-            } <span class="kw">else</span> {
-                <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">ProposalValidationError::UnknownMember</span>);
+            } <span class="kw">else </span>{
+                <span class="kw">return </span><span class="prelude-val">Err</span>(ProposalValidationError::UnknownMember);
             }
         }
-        <span class="prelude-val">Ok</span>(<span class="ident">public_key_set</span>)
+        <span class="prelude-val">Ok</span>(public_key_set)
     }
 
-    <span class="doccomment">/// Validate the new key package in a path</span>
-    <span class="doccomment">/// TODO: #730 - There&#39;s nothing testing this function.</span>
-    <span class="doccomment">/// - ValSem109</span>
-    <span class="doccomment">/// - ValSem110</span>
-    <span class="kw">pub</span>(<span class="kw">super</span>) <span class="kw">fn</span> <span class="ident">validate_path_key_package</span>(
+    <span class="doccomment">/// Validate the new key package in a path
+    /// TODO: #730 - There&#39;s nothing testing this function.
+    /// - ValSem109
+    /// - ValSem110
+    </span><span class="kw">pub</span>(<span class="kw">super</span>) <span class="kw">fn </span>validate_path_key_package(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        <span class="ident">sender</span>: <span class="ident">u32</span>,
-        <span class="ident">key_package</span>: <span class="kw-2">&amp;</span><span class="ident">KeyPackage</span>,
-        <span class="ident">public_key_set</span>: <span class="ident">HashSet</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span><span class="op">&gt;</span>,
-        <span class="ident">proposal_sender</span>: <span class="kw-2">&amp;</span><span class="ident">Sender</span>,
-    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">ProposalValidationError</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="ident">indexed_key_packages</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">treesync</span>().<span class="ident">full_leaves</span>()<span class="question-mark">?</span>;
-        <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">existing_key_package</span>) <span class="op">=</span> <span class="ident">indexed_key_packages</span>.<span class="ident">get</span>(<span class="kw-2">&amp;</span><span class="ident">sender</span>) {
-            <span class="comment">// ValSem109</span>
-            <span class="kw">if</span> <span class="ident">key_package</span>.<span class="ident">credential</span>().<span class="ident">identity</span>() <span class="op">!</span><span class="op">=</span> <span class="ident">existing_key_package</span>.<span class="ident">credential</span>().<span class="ident">identity</span>() {
-                <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">ProposalValidationError::UpdateProposalIdentityMismatch</span>);
+        sender: u32,
+        key_package: <span class="kw-2">&amp;</span>KeyPackage,
+        public_key_set: HashSet&lt;Vec&lt;u8&gt;&gt;,
+        proposal_sender: <span class="kw-2">&amp;</span>Sender,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;(), ProposalValidationError&gt; {
+        <span class="kw">let </span>indexed_key_packages = <span class="self">self</span>.treesync().full_leaves()<span class="question-mark">?</span>;
+        <span class="kw">if let </span><span class="prelude-val">Some</span>(existing_key_package) = indexed_key_packages.get(<span class="kw-2">&amp;</span>sender) {
+            <span class="comment">// ValSem109
+            </span><span class="kw">if </span>key_package.credential().identity() != existing_key_package.credential().identity() {
+                <span class="kw">return </span><span class="prelude-val">Err</span>(ProposalValidationError::UpdateProposalIdentityMismatch);
             }
-            <span class="comment">// ValSem110</span>
-            <span class="kw">if</span> <span class="ident">public_key_set</span>.<span class="ident">contains</span>(<span class="ident">key_package</span>.<span class="ident">hpke_init_key</span>().<span class="ident">as_slice</span>()) {
-                <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">ProposalValidationError::ExistingPublicKeyUpdateProposal</span>);
+            <span class="comment">// ValSem110
+            </span><span class="kw">if </span>public_key_set.contains(key_package.hpke_init_key().as_slice()) {
+                <span class="kw">return </span><span class="prelude-val">Err</span>(ProposalValidationError::ExistingPublicKeyUpdateProposal);
             }
-        } <span class="kw">else</span> <span class="kw">if</span> <span class="ident">proposal_sender</span>.<span class="ident">is_member</span>() {
-            <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">ProposalValidationError::UnknownMember</span>);
+        } <span class="kw">else if </span>proposal_sender.is_member() {
+            <span class="kw">return </span><span class="prelude-val">Err</span>(ProposalValidationError::UnknownMember);
         }
         <span class="prelude-val">Ok</span>(())
     }
 
-    <span class="doccomment">/// Validate constraints on an external commit. This function implements the following checks:</span>
-    <span class="doccomment">///  - ValSem240: External Commit, inline Proposals: There MUST be at least one ExternalInit proposal.</span>
-    <span class="doccomment">///  - ValSem241: External Commit, inline Proposals: There MUST be at most one ExternalInit proposal.</span>
-    <span class="doccomment">///  - ValSem242: External Commit, inline Proposals: There MUST NOT be any Add proposals.</span>
-    <span class="doccomment">///  - ValSem243: External Commit, inline Proposals: There MUST NOT be any Update proposals.</span>
-    <span class="doccomment">///  - ValSem244: External Commit, inline Remove Proposal: The identity and the endpoint_id of the removed</span>
-    <span class="doccomment">///               leaf are identical to the ones in the path KeyPackage.</span>
-    <span class="doccomment">///  - ValSem245: External Commit, referenced Proposals: There MUST NOT be any ExternalInit proposals.</span>
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">validate_external_commit</span>(
+    <span class="doccomment">/// Validate constraints on an external commit. This function implements the following checks:
+    ///  - ValSem240: External Commit, inline Proposals: There MUST be at least one ExternalInit proposal.
+    ///  - ValSem241: External Commit, inline Proposals: There MUST be at most one ExternalInit proposal.
+    ///  - ValSem242: External Commit, inline Proposals: There MUST NOT be any Add proposals.
+    ///  - ValSem243: External Commit, inline Proposals: There MUST NOT be any Update proposals.
+    ///  - ValSem244: External Commit, inline Remove Proposal: The identity and the endpoint_id of the removed
+    ///               leaf are identical to the ones in the path KeyPackage.
+    ///  - ValSem245: External Commit, referenced Proposals: There MUST NOT be any ExternalInit proposals.
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>validate_external_commit(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        <span class="ident">proposal_queue</span>: <span class="kw-2">&amp;</span><span class="ident">ProposalQueue</span>,
-        <span class="ident">path_key_package_option</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">KeyPackage</span><span class="op">&gt;</span>,
-    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">ExternalCommitValidationError</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">external_init_proposals</span> <span class="op">=</span>
-            <span class="ident">proposal_queue</span>.<span class="ident">filtered_by_type</span>(<span class="ident">ProposalType::ExternalInit</span>);
-        <span class="comment">// ValSem240: External Commit, inline Proposals: There MUST be at least one ExternalInit proposal.</span>
-        <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">external_init_proposal</span>) <span class="op">=</span> <span class="ident">external_init_proposals</span>.<span class="ident">next</span>() {
-            <span class="comment">// ValSem245: External Commit, referenced Proposals: There MUST NOT be any ExternalInit proposals.</span>
-            <span class="kw">if</span> <span class="ident">external_init_proposal</span>.<span class="ident">proposal_or_ref_type</span>() <span class="op">==</span> <span class="ident">ProposalOrRefType::Reference</span> {
-                <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">ExternalCommitValidationError::ReferencedExternalInitProposal</span>);
+        proposal_queue: <span class="kw-2">&amp;</span>ProposalQueue,
+        path_key_package_option: <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>KeyPackage&gt;,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;(), ExternalCommitValidationError&gt; {
+        <span class="kw">let </span><span class="kw-2">mut </span>external_init_proposals =
+            proposal_queue.filtered_by_type(ProposalType::ExternalInit);
+        <span class="comment">// ValSem240: External Commit, inline Proposals: There MUST be at least one ExternalInit proposal.
+        </span><span class="kw">if let </span><span class="prelude-val">Some</span>(external_init_proposal) = external_init_proposals.next() {
+            <span class="comment">// ValSem245: External Commit, referenced Proposals: There MUST NOT be any ExternalInit proposals.
+            </span><span class="kw">if </span>external_init_proposal.proposal_or_ref_type() == ProposalOrRefType::Reference {
+                <span class="kw">return </span><span class="prelude-val">Err</span>(ExternalCommitValidationError::ReferencedExternalInitProposal);
             }
-        } <span class="kw">else</span> {
-            <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">ExternalCommitValidationError::NoExternalInitProposals</span>);
+        } <span class="kw">else </span>{
+            <span class="kw">return </span><span class="prelude-val">Err</span>(ExternalCommitValidationError::NoExternalInitProposals);
         };
 
-        <span class="comment">// ValSem241: External Commit, inline Proposals: There MUST be at most one ExternalInit proposal.</span>
-        <span class="kw">if</span> <span class="ident">external_init_proposals</span>.<span class="ident">next</span>().<span class="ident">is_some</span>() {
-            <span class="comment">// ValSem245: External Commit, referenced Proposals: There MUST NOT be any ExternalInit proposals.</span>
-            <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">ExternalCommitValidationError::MultipleExternalInitProposals</span>);
+        <span class="comment">// ValSem241: External Commit, inline Proposals: There MUST be at most one ExternalInit proposal.
+        </span><span class="kw">if </span>external_init_proposals.next().is_some() {
+            <span class="comment">// ValSem245: External Commit, referenced Proposals: There MUST NOT be any ExternalInit proposals.
+            </span><span class="kw">return </span><span class="prelude-val">Err</span>(ExternalCommitValidationError::MultipleExternalInitProposals);
         }
 
-        <span class="kw">let</span> <span class="ident">add_proposals</span> <span class="op">=</span> <span class="ident">proposal_queue</span>.<span class="ident">filtered_by_type</span>(<span class="ident">ProposalType::Add</span>);
-        <span class="kw">for</span> <span class="ident">proposal</span> <span class="kw">in</span> <span class="ident">add_proposals</span> {
-            <span class="comment">// ValSem242: External Commit, inline Proposals: There MUST NOT be any Add proposals.</span>
-            <span class="kw">if</span> <span class="ident">proposal</span>.<span class="ident">proposal_or_ref_type</span>() <span class="op">==</span> <span class="ident">ProposalOrRefType::Proposal</span> {
-                <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">ExternalCommitValidationError::InvalidInlineProposals</span>);
+        <span class="kw">let </span>add_proposals = proposal_queue.filtered_by_type(ProposalType::Add);
+        <span class="kw">for </span>proposal <span class="kw">in </span>add_proposals {
+            <span class="comment">// ValSem242: External Commit, inline Proposals: There MUST NOT be any Add proposals.
+            </span><span class="kw">if </span>proposal.proposal_or_ref_type() == ProposalOrRefType::Proposal {
+                <span class="kw">return </span><span class="prelude-val">Err</span>(ExternalCommitValidationError::InvalidInlineProposals);
             }
         }
-        <span class="kw">let</span> <span class="ident">update_proposals</span> <span class="op">=</span> <span class="ident">proposal_queue</span>.<span class="ident">filtered_by_type</span>(<span class="ident">ProposalType::Update</span>);
-        <span class="kw">for</span> <span class="ident">proposal</span> <span class="kw">in</span> <span class="ident">update_proposals</span> {
-            <span class="comment">// ValSem243: External Commit, inline Proposals: There MUST NOT be any Update proposals.</span>
-            <span class="kw">if</span> <span class="ident">proposal</span>.<span class="ident">proposal_or_ref_type</span>() <span class="op">==</span> <span class="ident">ProposalOrRefType::Proposal</span> {
-                <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">ExternalCommitValidationError::InvalidInlineProposals</span>);
+        <span class="kw">let </span>update_proposals = proposal_queue.filtered_by_type(ProposalType::Update);
+        <span class="kw">for </span>proposal <span class="kw">in </span>update_proposals {
+            <span class="comment">// ValSem243: External Commit, inline Proposals: There MUST NOT be any Update proposals.
+            </span><span class="kw">if </span>proposal.proposal_or_ref_type() == ProposalOrRefType::Proposal {
+                <span class="kw">return </span><span class="prelude-val">Err</span>(ExternalCommitValidationError::InvalidInlineProposals);
             }
         }
 
-        <span class="kw">let</span> <span class="ident">remove_proposals</span> <span class="op">=</span> <span class="ident">proposal_queue</span>.<span class="ident">filtered_by_type</span>(<span class="ident">ProposalType::Remove</span>);
-        <span class="kw">for</span> <span class="ident">proposal</span> <span class="kw">in</span> <span class="ident">remove_proposals</span> {
-            <span class="kw">if</span> <span class="ident">proposal</span>.<span class="ident">proposal_or_ref_type</span>() <span class="op">==</span> <span class="ident">ProposalOrRefType::Proposal</span> {
-                <span class="kw">if</span> <span class="kw">let</span> <span class="ident">Proposal::Remove</span>(<span class="ident">remove_proposal</span>) <span class="op">=</span> <span class="ident">proposal</span>.<span class="ident">proposal</span>() {
-                    <span class="kw">let</span> <span class="ident">removed_leaf</span> <span class="op">=</span> <span class="self">self</span>
-                        .<span class="ident">treesync</span>()
-                        .<span class="ident">leaf_from_id</span>(<span class="ident">remove_proposal</span>.<span class="ident">removed</span>())
-                        .<span class="ident">ok_or</span>(<span class="ident">ExternalCommitValidationError::UnknownMemberRemoval</span>)<span class="question-mark">?</span>;
+        <span class="kw">let </span>remove_proposals = proposal_queue.filtered_by_type(ProposalType::Remove);
+        <span class="kw">for </span>proposal <span class="kw">in </span>remove_proposals {
+            <span class="kw">if </span>proposal.proposal_or_ref_type() == ProposalOrRefType::Proposal {
+                <span class="kw">if let </span>Proposal::Remove(remove_proposal) = proposal.proposal() {
+                    <span class="kw">let </span>removed_leaf = <span class="self">self
+                        </span>.treesync()
+                        .leaf_from_id(remove_proposal.removed())
+                        .ok_or(ExternalCommitValidationError::UnknownMemberRemoval)<span class="question-mark">?</span>;
 
-                    <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">path_key_package</span>) <span class="op">=</span> <span class="ident">path_key_package_option</span> {
-                        <span class="comment">// ValSem244: External Commit, inline Remove Proposal: The identity and the endpoint_id of the removed leaf are identical to the ones in the path KeyPackage.</span>
-                        <span class="kw">if</span> <span class="ident">removed_leaf</span>.<span class="ident">key_package</span>().<span class="ident">credential</span>().<span class="ident">identity</span>()
-                            <span class="op">!</span><span class="op">=</span> <span class="ident">path_key_package</span>.<span class="ident">credential</span>().<span class="ident">identity</span>()
+                    <span class="kw">if let </span><span class="prelude-val">Some</span>(path_key_package) = path_key_package_option {
+                        <span class="comment">// ValSem244: External Commit, inline Remove Proposal: The identity and the endpoint_id of the removed leaf are identical to the ones in the path KeyPackage.
+                        </span><span class="kw">if </span>removed_leaf.key_package().credential().identity()
+                            != path_key_package.credential().identity()
                         {
-                            <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">ExternalCommitValidationError::InvalidRemoveProposal</span>);
+                            <span class="kw">return </span><span class="prelude-val">Err</span>(ExternalCommitValidationError::InvalidRemoveProposal);
                         }
                     };
                 }
@@ -871,4 +871,4 @@
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../../../" data-current-crate="openmls" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.64.0 (a55dd71d5 2022-09-19)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../../../" data-current-crate="openmls" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0 (897e37553 2022-11-02)" ></div></body></html>

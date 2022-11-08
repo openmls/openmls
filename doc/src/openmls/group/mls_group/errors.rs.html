@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `src/group/mls_group/errors.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>errors.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" type="text/css" href="../../../../normalize.css"><link rel="stylesheet" type="text/css" href="../../../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" type="text/css" href="../../../../ayu.css" disabled><link rel="stylesheet" type="text/css" href="../../../../dark.css" disabled><link rel="stylesheet" type="text/css" href="../../../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../../../storage.js"></script><script defer src="../../../../source-script.js"></script><script defer src="../../../../source-files.js"></script><script defer src="../../../../main.js"></script><noscript><link rel="stylesheet" href="../../../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../../../openmls/index.html"><div class="logo-container"><img class="rust-logo" src="../../../../rust-logo.svg" alt="logo"></div></a><h2 class="location"></h2></nav><nav class="sidebar"><a class="sidebar-logo" href="../../../../openmls/index.html"><div class="logo-container"><img class="rust-logo" src="../../../../rust-logo.svg" alt="logo"></div></a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../../../openmls/index.html"><img class="rust-logo" src="../../../../rust-logo.svg" alt="logo"></a><nav class="sub"><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><button type="button">?</button></div><div id="settings-menu" tabindex="-1"><a href="../../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../../wheel.svg"></a></div></div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">1</span>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `src/group/mls_group/errors.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>errors.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" href="../../../../normalize.css"><link rel="stylesheet" href="../../../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" href="../../../../ayu.css" disabled><link rel="stylesheet" href="../../../../dark.css" disabled><link rel="stylesheet" href="../../../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../../../storage.js"></script><script defer src="../../../../source-script.js"></script><script defer src="../../../../source-files.js"></script><script defer src="../../../../main.js"></script><noscript><link rel="stylesheet" href="../../../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../../../openmls/index.html"><div class="logo-container"><img class="rust-logo" src="../../../../rust-logo.svg" alt="logo"></div></a><h2 class="location"></h2></nav><nav class="sidebar"><a class="sidebar-logo" href="../../../../openmls/index.html"><div class="logo-container"><img class="rust-logo" src="../../../../rust-logo.svg" alt="logo"></div></a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../../../openmls/index.html"><img class="rust-logo" src="../../../../rust-logo.svg" alt="logo"></a><nav class="sub"><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><button type="button">?</button></div><div id="settings-menu" tabindex="-1"><a href="../../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../../wheel.svg"></a></div></div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">1</span>
 <span id="2">2</span>
 <span id="3">3</span>
 <span id="4">4</span>
@@ -273,280 +273,280 @@
 <span id="273">273</span>
 <span id="274">274</span>
 <span id="275">275</span>
-</pre><pre class="rust"><code><span class="doccomment">//! # MlsGroup errors</span>
-<span class="doccomment">//!</span>
-<span class="doccomment">//! This module defines the public errors that can be returned from all calls</span>
-<span class="doccomment">//! to methods of [`MlsGroup`](super::MlsGroup).</span>
+</pre><pre class="rust"><code><span class="doccomment">//! # MlsGroup errors
+//!
+//! This module defines the public errors that can be returned from all calls
+//! to methods of [`MlsGroup`](super::MlsGroup).
 
-<span class="comment">// These errors are exposed through `crate::group::errors`.</span>
+</span><span class="comment">// These errors are exposed through `crate::group::errors`.
 
-<span class="kw">use</span> <span class="kw">crate</span>::{
-    <span class="ident">error::LibraryError</span>,
-    <span class="ident">group::errors</span>::{<span class="ident">CreateCommitError</span>, <span class="ident">StageCommitError</span>, <span class="ident">ValidationError</span>},
+</span><span class="kw">use crate</span>::{
+    error::LibraryError,
+    group::errors::{CreateCommitError, StageCommitError, ValidationError},
 };
-<span class="kw">use</span> <span class="ident">thiserror::Error</span>;
+<span class="kw">use </span>thiserror::Error;
 
-<span class="doccomment">/// New group error</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Error</span>, <span class="ident">Debug</span>, <span class="ident">PartialEq</span>, <span class="ident">Clone</span>)]</span>
-<span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">NewGroupError</span> {
-    <span class="doccomment">/// See [`LibraryError`] for more details.</span>
-    <span class="attribute">#[<span class="ident">error</span>(<span class="ident">transparent</span>)]</span>
-    <span class="ident">LibraryError</span>(<span class="attribute">#[<span class="ident">from</span>]</span> <span class="ident">LibraryError</span>),
-    <span class="doccomment">/// No matching KeyPackageBundle was found in the key store.</span>
-    <span class="attribute">#[<span class="ident">error</span>(<span class="string">&quot;No matching KeyPackageBundle was found in the key store.&quot;</span>)]</span>
-    <span class="ident">NoMatchingKeyPackageBundle</span>,
-    <span class="doccomment">/// Failed to delete the KeyPackageBundle from the key store.</span>
-    <span class="attribute">#[<span class="ident">error</span>(<span class="string">&quot;Failed to delete the KeyPackageBundle from the key store.&quot;</span>)]</span>
-    <span class="ident">KeyStoreDeletionError</span>,
-    <span class="doccomment">/// Unsupported proposal type in required capabilities.</span>
-    <span class="attribute">#[<span class="ident">error</span>(<span class="string">&quot;Unsupported proposal type in required capabilities.&quot;</span>)]</span>
-    <span class="ident">UnsupportedProposalType</span>,
-    <span class="doccomment">/// Unsupported extension type in required capabilities.</span>
-    <span class="attribute">#[<span class="ident">error</span>(<span class="string">&quot;Unsupported extension type in required capabilities.&quot;</span>)]</span>
-    <span class="ident">UnsupportedExtensionType</span>,
+<span class="doccomment">/// New group error
+</span><span class="attribute">#[derive(Error, Debug, PartialEq, Clone)]
+</span><span class="kw">pub enum </span>NewGroupError {
+    <span class="doccomment">/// See [`LibraryError`] for more details.
+    </span><span class="attribute">#[error(transparent)]
+    </span>LibraryError(<span class="attribute">#[from] </span>LibraryError),
+    <span class="doccomment">/// No matching KeyPackageBundle was found in the key store.
+    </span><span class="attribute">#[error(<span class="string">&quot;No matching KeyPackageBundle was found in the key store.&quot;</span>)]
+    </span>NoMatchingKeyPackageBundle,
+    <span class="doccomment">/// Failed to delete the KeyPackageBundle from the key store.
+    </span><span class="attribute">#[error(<span class="string">&quot;Failed to delete the KeyPackageBundle from the key store.&quot;</span>)]
+    </span>KeyStoreDeletionError,
+    <span class="doccomment">/// Unsupported proposal type in required capabilities.
+    </span><span class="attribute">#[error(<span class="string">&quot;Unsupported proposal type in required capabilities.&quot;</span>)]
+    </span>UnsupportedProposalType,
+    <span class="doccomment">/// Unsupported extension type in required capabilities.
+    </span><span class="attribute">#[error(<span class="string">&quot;Unsupported extension type in required capabilities.&quot;</span>)]
+    </span>UnsupportedExtensionType,
 }
 
-<span class="doccomment">/// EmptyInput error</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Error</span>, <span class="ident">Debug</span>, <span class="ident">PartialEq</span>, <span class="ident">Eq</span>, <span class="ident">Clone</span>)]</span>
-<span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">EmptyInputError</span> {
-    <span class="doccomment">/// An empty list of KeyPackages was provided.</span>
-    <span class="attribute">#[<span class="ident">error</span>(<span class="string">&quot;An empty list of KeyPackages was provided.&quot;</span>)]</span>
-    <span class="ident">AddMembers</span>,
-    <span class="doccomment">/// An empty list of KeyPackage references was provided.</span>
-    <span class="attribute">#[<span class="ident">error</span>(<span class="string">&quot;An empty list of KeyPackage references was provided.&quot;</span>)]</span>
-    <span class="ident">RemoveMembers</span>,
+<span class="doccomment">/// EmptyInput error
+</span><span class="attribute">#[derive(Error, Debug, PartialEq, Eq, Clone)]
+</span><span class="kw">pub enum </span>EmptyInputError {
+    <span class="doccomment">/// An empty list of KeyPackages was provided.
+    </span><span class="attribute">#[error(<span class="string">&quot;An empty list of KeyPackages was provided.&quot;</span>)]
+    </span>AddMembers,
+    <span class="doccomment">/// An empty list of KeyPackage references was provided.
+    </span><span class="attribute">#[error(<span class="string">&quot;An empty list of KeyPackage references was provided.&quot;</span>)]
+    </span>RemoveMembers,
 }
 
-<span class="doccomment">/// Group state error</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Error</span>, <span class="ident">Debug</span>, <span class="ident">PartialEq</span>, <span class="ident">Clone</span>)]</span>
-<span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">MlsGroupStateError</span> {
-    <span class="doccomment">/// See [`LibraryError`] for more details.</span>
-    <span class="attribute">#[<span class="ident">error</span>(<span class="ident">transparent</span>)]</span>
-    <span class="ident">LibraryError</span>(<span class="attribute">#[<span class="ident">from</span>]</span> <span class="ident">LibraryError</span>),
-    <span class="doccomment">/// Tried to use a group after being evicted from it.</span>
-    <span class="attribute">#[<span class="ident">error</span>(<span class="string">&quot;Tried to use a group after being evicted from it.&quot;</span>)]</span>
-    <span class="ident">UseAfterEviction</span>,
-    <span class="doccomment">/// Can&#39;t create message because a pending proposal exists.</span>
-    <span class="attribute">#[<span class="ident">error</span>(<span class="string">&quot;Can&#39;t create message because a pending proposal exists.&quot;</span>)]</span>
-    <span class="ident">PendingProposal</span>,
-    <span class="doccomment">/// Can&#39;t execute operation because a pending commit exists.</span>
-    <span class="attribute">#[<span class="ident">error</span>(<span class="string">&quot;Can&#39;t execute operation because a pending commit exists.&quot;</span>)]</span>
-    <span class="ident">PendingCommit</span>,
+<span class="doccomment">/// Group state error
+</span><span class="attribute">#[derive(Error, Debug, PartialEq, Clone)]
+</span><span class="kw">pub enum </span>MlsGroupStateError {
+    <span class="doccomment">/// See [`LibraryError`] for more details.
+    </span><span class="attribute">#[error(transparent)]
+    </span>LibraryError(<span class="attribute">#[from] </span>LibraryError),
+    <span class="doccomment">/// Tried to use a group after being evicted from it.
+    </span><span class="attribute">#[error(<span class="string">&quot;Tried to use a group after being evicted from it.&quot;</span>)]
+    </span>UseAfterEviction,
+    <span class="doccomment">/// Can&#39;t create message because a pending proposal exists.
+    </span><span class="attribute">#[error(<span class="string">&quot;Can&#39;t create message because a pending proposal exists.&quot;</span>)]
+    </span>PendingProposal,
+    <span class="doccomment">/// Can&#39;t execute operation because a pending commit exists.
+    </span><span class="attribute">#[error(<span class="string">&quot;Can&#39;t execute operation because a pending commit exists.&quot;</span>)]
+    </span>PendingCommit,
 }
 
-<span class="doccomment">/// Parse message error</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Error</span>, <span class="ident">Debug</span>, <span class="ident">PartialEq</span>, <span class="ident">Clone</span>)]</span>
-<span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">ParseMessageError</span> {
-    <span class="doccomment">/// See [`LibraryError`] for more details.</span>
-    <span class="attribute">#[<span class="ident">error</span>(<span class="ident">transparent</span>)]</span>
-    <span class="ident">LibraryError</span>(<span class="attribute">#[<span class="ident">from</span>]</span> <span class="ident">LibraryError</span>),
-    <span class="doccomment">/// The message&#39;s wire format is incompatible with the group&#39;s wire format policy.</span>
-    <span class="attribute">#[<span class="ident">error</span>(<span class="string">&quot;The message&#39;s wire format is incompatible with the group&#39;s wire format policy.&quot;</span>)]</span>
-    <span class="ident">IncompatibleWireFormat</span>,
-    <span class="doccomment">/// See [`ValidationError`] for more details.</span>
-    <span class="attribute">#[<span class="ident">error</span>(<span class="ident">transparent</span>)]</span>
-    <span class="ident">ValidationError</span>(<span class="attribute">#[<span class="ident">from</span>]</span> <span class="ident">ValidationError</span>),
-    <span class="doccomment">/// See [`MlsGroupStateError`] for more details.</span>
-    <span class="attribute">#[<span class="ident">error</span>(<span class="ident">transparent</span>)]</span>
-    <span class="ident">GroupStateError</span>(<span class="attribute">#[<span class="ident">from</span>]</span> <span class="ident">MlsGroupStateError</span>),
+<span class="doccomment">/// Parse message error
+</span><span class="attribute">#[derive(Error, Debug, PartialEq, Clone)]
+</span><span class="kw">pub enum </span>ParseMessageError {
+    <span class="doccomment">/// See [`LibraryError`] for more details.
+    </span><span class="attribute">#[error(transparent)]
+    </span>LibraryError(<span class="attribute">#[from] </span>LibraryError),
+    <span class="doccomment">/// The message&#39;s wire format is incompatible with the group&#39;s wire format policy.
+    </span><span class="attribute">#[error(<span class="string">&quot;The message&#39;s wire format is incompatible with the group&#39;s wire format policy.&quot;</span>)]
+    </span>IncompatibleWireFormat,
+    <span class="doccomment">/// See [`ValidationError`] for more details.
+    </span><span class="attribute">#[error(transparent)]
+    </span>ValidationError(<span class="attribute">#[from] </span>ValidationError),
+    <span class="doccomment">/// See [`MlsGroupStateError`] for more details.
+    </span><span class="attribute">#[error(transparent)]
+    </span>GroupStateError(<span class="attribute">#[from] </span>MlsGroupStateError),
 }
 
-<span class="doccomment">/// Unverified message error</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Error</span>, <span class="ident">Debug</span>, <span class="ident">PartialEq</span>, <span class="ident">Clone</span>)]</span>
-<span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">UnverifiedMessageError</span> {
-    <span class="doccomment">/// See [`LibraryError`] for more details.</span>
-    <span class="attribute">#[<span class="ident">error</span>(<span class="ident">transparent</span>)]</span>
-    <span class="ident">LibraryError</span>(<span class="attribute">#[<span class="ident">from</span>]</span> <span class="ident">LibraryError</span>),
-    <span class="doccomment">/// The message is from an epoch too far in the past.</span>
-    <span class="attribute">#[<span class="ident">error</span>(<span class="string">&quot;The message is from an epoch too far in the past.&quot;</span>)]</span>
-    <span class="ident">NoPastEpochData</span>,
-    <span class="doccomment">/// The message&#39;s signature is invalid.</span>
-    <span class="attribute">#[<span class="ident">error</span>(<span class="string">&quot;The message&#39;s signature is invalid.&quot;</span>)]</span>
-    <span class="ident">InvalidSignature</span>,
-    <span class="doccomment">/// The message&#39;s membership tag is invalid.</span>
-    <span class="attribute">#[<span class="ident">error</span>(<span class="string">&quot;The message&#39;s membership tag is invalid.&quot;</span>)]</span>
-    <span class="ident">InvalidMembershipTag</span>,
-    <span class="doccomment">/// A signature key was not provided for a preconfigured message.</span>
-    <span class="attribute">#[<span class="ident">error</span>(<span class="string">&quot;A signature key was not provided for a preconfigured message.&quot;</span>)]</span>
-    <span class="ident">MissingSignatureKey</span>,
-    <span class="doccomment">/// See [`StageCommitError`] for more details.</span>
-    <span class="attribute">#[<span class="ident">error</span>(<span class="ident">transparent</span>)]</span>
-    <span class="ident">InvalidCommit</span>(<span class="attribute">#[<span class="ident">from</span>]</span> <span class="ident">StageCommitError</span>),
+<span class="doccomment">/// Unverified message error
+</span><span class="attribute">#[derive(Error, Debug, PartialEq, Clone)]
+</span><span class="kw">pub enum </span>UnverifiedMessageError {
+    <span class="doccomment">/// See [`LibraryError`] for more details.
+    </span><span class="attribute">#[error(transparent)]
+    </span>LibraryError(<span class="attribute">#[from] </span>LibraryError),
+    <span class="doccomment">/// The message is from an epoch too far in the past.
+    </span><span class="attribute">#[error(<span class="string">&quot;The message is from an epoch too far in the past.&quot;</span>)]
+    </span>NoPastEpochData,
+    <span class="doccomment">/// The message&#39;s signature is invalid.
+    </span><span class="attribute">#[error(<span class="string">&quot;The message&#39;s signature is invalid.&quot;</span>)]
+    </span>InvalidSignature,
+    <span class="doccomment">/// The message&#39;s membership tag is invalid.
+    </span><span class="attribute">#[error(<span class="string">&quot;The message&#39;s membership tag is invalid.&quot;</span>)]
+    </span>InvalidMembershipTag,
+    <span class="doccomment">/// A signature key was not provided for an external message.
+    </span><span class="attribute">#[error(<span class="string">&quot;A signature key was not provided for an external message.&quot;</span>)]
+    </span>MissingSignatureKey,
+    <span class="doccomment">/// See [`StageCommitError`] for more details.
+    </span><span class="attribute">#[error(transparent)]
+    </span>InvalidCommit(<span class="attribute">#[from] </span>StageCommitError),
 }
 
-<span class="doccomment">/// Create message error</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Error</span>, <span class="ident">Debug</span>, <span class="ident">PartialEq</span>, <span class="ident">Clone</span>)]</span>
-<span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">CreateMessageError</span> {
-    <span class="doccomment">/// See [`LibraryError`] for more details.</span>
-    <span class="attribute">#[<span class="ident">error</span>(<span class="ident">transparent</span>)]</span>
-    <span class="ident">LibraryError</span>(<span class="attribute">#[<span class="ident">from</span>]</span> <span class="ident">LibraryError</span>),
-    <span class="doccomment">/// The own CredentialBundle could not be found in the key store.</span>
-    <span class="attribute">#[<span class="ident">error</span>(<span class="string">&quot;The own CredentialBundle could not be found in the key store.&quot;</span>)]</span>
-    <span class="ident">NoMatchingCredentialBundle</span>,
-    <span class="doccomment">/// See [`MlsGroupStateError`] for more details.</span>
-    <span class="attribute">#[<span class="ident">error</span>(<span class="ident">transparent</span>)]</span>
-    <span class="ident">GroupStateError</span>(<span class="attribute">#[<span class="ident">from</span>]</span> <span class="ident">MlsGroupStateError</span>),
+<span class="doccomment">/// Create message error
+</span><span class="attribute">#[derive(Error, Debug, PartialEq, Clone)]
+</span><span class="kw">pub enum </span>CreateMessageError {
+    <span class="doccomment">/// See [`LibraryError`] for more details.
+    </span><span class="attribute">#[error(transparent)]
+    </span>LibraryError(<span class="attribute">#[from] </span>LibraryError),
+    <span class="doccomment">/// The own CredentialBundle could not be found in the key store.
+    </span><span class="attribute">#[error(<span class="string">&quot;The own CredentialBundle could not be found in the key store.&quot;</span>)]
+    </span>NoMatchingCredentialBundle,
+    <span class="doccomment">/// See [`MlsGroupStateError`] for more details.
+    </span><span class="attribute">#[error(transparent)]
+    </span>GroupStateError(<span class="attribute">#[from] </span>MlsGroupStateError),
 }
 
-<span class="doccomment">/// Add members error</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Error</span>, <span class="ident">Debug</span>, <span class="ident">PartialEq</span>, <span class="ident">Clone</span>)]</span>
-<span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">AddMembersError</span> {
-    <span class="doccomment">/// See [`LibraryError`] for more details.</span>
-    <span class="attribute">#[<span class="ident">error</span>(<span class="ident">transparent</span>)]</span>
-    <span class="ident">LibraryError</span>(<span class="attribute">#[<span class="ident">from</span>]</span> <span class="ident">LibraryError</span>),
-    <span class="doccomment">/// The own CredentialBundle could not be found in the key store.</span>
-    <span class="attribute">#[<span class="ident">error</span>(<span class="string">&quot;The own CredentialBundle could not be found in the key store.&quot;</span>)]</span>
-    <span class="ident">NoMatchingCredentialBundle</span>,
-    <span class="doccomment">/// See [`EmptyInputError`] for more details.</span>
-    <span class="attribute">#[<span class="ident">error</span>(<span class="ident">transparent</span>)]</span>
-    <span class="ident">EmptyInput</span>(<span class="attribute">#[<span class="ident">from</span>]</span> <span class="ident">EmptyInputError</span>),
-    <span class="doccomment">/// See [`CreateCommitError`] for more details.</span>
-    <span class="attribute">#[<span class="ident">error</span>(<span class="ident">transparent</span>)]</span>
-    <span class="ident">CreateCommitError</span>(<span class="attribute">#[<span class="ident">from</span>]</span> <span class="ident">CreateCommitError</span>),
-    <span class="doccomment">/// See [`MlsGroupStateError`] for more details.</span>
-    <span class="attribute">#[<span class="ident">error</span>(<span class="ident">transparent</span>)]</span>
-    <span class="ident">GroupStateError</span>(<span class="attribute">#[<span class="ident">from</span>]</span> <span class="ident">MlsGroupStateError</span>),
+<span class="doccomment">/// Add members error
+</span><span class="attribute">#[derive(Error, Debug, PartialEq, Clone)]
+</span><span class="kw">pub enum </span>AddMembersError {
+    <span class="doccomment">/// See [`LibraryError`] for more details.
+    </span><span class="attribute">#[error(transparent)]
+    </span>LibraryError(<span class="attribute">#[from] </span>LibraryError),
+    <span class="doccomment">/// The own CredentialBundle could not be found in the key store.
+    </span><span class="attribute">#[error(<span class="string">&quot;The own CredentialBundle could not be found in the key store.&quot;</span>)]
+    </span>NoMatchingCredentialBundle,
+    <span class="doccomment">/// See [`EmptyInputError`] for more details.
+    </span><span class="attribute">#[error(transparent)]
+    </span>EmptyInput(<span class="attribute">#[from] </span>EmptyInputError),
+    <span class="doccomment">/// See [`CreateCommitError`] for more details.
+    </span><span class="attribute">#[error(transparent)]
+    </span>CreateCommitError(<span class="attribute">#[from] </span>CreateCommitError),
+    <span class="doccomment">/// See [`MlsGroupStateError`] for more details.
+    </span><span class="attribute">#[error(transparent)]
+    </span>GroupStateError(<span class="attribute">#[from] </span>MlsGroupStateError),
 }
 
-<span class="doccomment">/// Propose add members error</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Error</span>, <span class="ident">Debug</span>, <span class="ident">PartialEq</span>, <span class="ident">Clone</span>)]</span>
-<span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">ProposeAddMemberError</span> {
-    <span class="doccomment">/// See [`LibraryError`] for more details.</span>
-    <span class="attribute">#[<span class="ident">error</span>(<span class="ident">transparent</span>)]</span>
-    <span class="ident">LibraryError</span>(<span class="attribute">#[<span class="ident">from</span>]</span> <span class="ident">LibraryError</span>),
-    <span class="doccomment">/// The own CredentialBundle could not be found in the key store.</span>
-    <span class="attribute">#[<span class="ident">error</span>(<span class="string">&quot;The own CredentialBundle could not be found in the key store.&quot;</span>)]</span>
-    <span class="ident">NoMatchingCredentialBundle</span>,
-    <span class="doccomment">/// The new member does not support all required extensions.</span>
-    <span class="attribute">#[<span class="ident">error</span>(<span class="string">&quot;The new member does not support all required extensions.&quot;</span>)]</span>
-    <span class="ident">UnsupportedExtensions</span>,
-    <span class="doccomment">/// See [`MlsGroupStateError`] for more details.</span>
-    <span class="attribute">#[<span class="ident">error</span>(<span class="ident">transparent</span>)]</span>
-    <span class="ident">GroupStateError</span>(<span class="attribute">#[<span class="ident">from</span>]</span> <span class="ident">MlsGroupStateError</span>),
+<span class="doccomment">/// Propose add members error
+</span><span class="attribute">#[derive(Error, Debug, PartialEq, Clone)]
+</span><span class="kw">pub enum </span>ProposeAddMemberError {
+    <span class="doccomment">/// See [`LibraryError`] for more details.
+    </span><span class="attribute">#[error(transparent)]
+    </span>LibraryError(<span class="attribute">#[from] </span>LibraryError),
+    <span class="doccomment">/// The own CredentialBundle could not be found in the key store.
+    </span><span class="attribute">#[error(<span class="string">&quot;The own CredentialBundle could not be found in the key store.&quot;</span>)]
+    </span>NoMatchingCredentialBundle,
+    <span class="doccomment">/// The new member does not support all required extensions.
+    </span><span class="attribute">#[error(<span class="string">&quot;The new member does not support all required extensions.&quot;</span>)]
+    </span>UnsupportedExtensions,
+    <span class="doccomment">/// See [`MlsGroupStateError`] for more details.
+    </span><span class="attribute">#[error(transparent)]
+    </span>GroupStateError(<span class="attribute">#[from] </span>MlsGroupStateError),
 }
 
-<span class="doccomment">/// Propose remove members error</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Error</span>, <span class="ident">Debug</span>, <span class="ident">PartialEq</span>, <span class="ident">Clone</span>)]</span>
-<span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">ProposeRemoveMemberError</span> {
-    <span class="doccomment">/// See [`LibraryError`] for more details.</span>
-    <span class="attribute">#[<span class="ident">error</span>(<span class="ident">transparent</span>)]</span>
-    <span class="ident">LibraryError</span>(<span class="attribute">#[<span class="ident">from</span>]</span> <span class="ident">LibraryError</span>),
-    <span class="doccomment">/// The own CredentialBundle could not be found in the key store.</span>
-    <span class="attribute">#[<span class="ident">error</span>(<span class="string">&quot;The own CredentialBundle could not be found in the key store.&quot;</span>)]</span>
-    <span class="ident">NoMatchingCredentialBundle</span>,
-    <span class="doccomment">/// See [`MlsGroupStateError`] for more details.</span>
-    <span class="attribute">#[<span class="ident">error</span>(<span class="ident">transparent</span>)]</span>
-    <span class="ident">GroupStateError</span>(<span class="attribute">#[<span class="ident">from</span>]</span> <span class="ident">MlsGroupStateError</span>),
+<span class="doccomment">/// Propose remove members error
+</span><span class="attribute">#[derive(Error, Debug, PartialEq, Clone)]
+</span><span class="kw">pub enum </span>ProposeRemoveMemberError {
+    <span class="doccomment">/// See [`LibraryError`] for more details.
+    </span><span class="attribute">#[error(transparent)]
+    </span>LibraryError(<span class="attribute">#[from] </span>LibraryError),
+    <span class="doccomment">/// The own CredentialBundle could not be found in the key store.
+    </span><span class="attribute">#[error(<span class="string">&quot;The own CredentialBundle could not be found in the key store.&quot;</span>)]
+    </span>NoMatchingCredentialBundle,
+    <span class="doccomment">/// See [`MlsGroupStateError`] for more details.
+    </span><span class="attribute">#[error(transparent)]
+    </span>GroupStateError(<span class="attribute">#[from] </span>MlsGroupStateError),
 }
 
-<span class="doccomment">/// Remove members error</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Error</span>, <span class="ident">Debug</span>, <span class="ident">PartialEq</span>, <span class="ident">Clone</span>)]</span>
-<span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">RemoveMembersError</span> {
-    <span class="doccomment">/// See [`LibraryError`] for more details.</span>
-    <span class="attribute">#[<span class="ident">error</span>(<span class="ident">transparent</span>)]</span>
-    <span class="ident">LibraryError</span>(<span class="attribute">#[<span class="ident">from</span>]</span> <span class="ident">LibraryError</span>),
-    <span class="doccomment">/// The own CredentialBundle could not be found in the key store.</span>
-    <span class="attribute">#[<span class="ident">error</span>(<span class="string">&quot;The own CredentialBundle could not be found in the key store.&quot;</span>)]</span>
-    <span class="ident">NoMatchingCredentialBundle</span>,
-    <span class="doccomment">/// See [`EmptyInputError`] for more details.</span>
-    <span class="attribute">#[<span class="ident">error</span>(<span class="ident">transparent</span>)]</span>
-    <span class="ident">EmptyInput</span>(<span class="attribute">#[<span class="ident">from</span>]</span> <span class="ident">EmptyInputError</span>),
-    <span class="doccomment">/// See [`CreateCommitError`] for more details.</span>
-    <span class="attribute">#[<span class="ident">error</span>(<span class="ident">transparent</span>)]</span>
-    <span class="ident">CreateCommitError</span>(<span class="attribute">#[<span class="ident">from</span>]</span> <span class="ident">CreateCommitError</span>),
-    <span class="doccomment">/// See [`MlsGroupStateError`] for more details.</span>
-    <span class="attribute">#[<span class="ident">error</span>(<span class="ident">transparent</span>)]</span>
-    <span class="ident">GroupStateError</span>(<span class="attribute">#[<span class="ident">from</span>]</span> <span class="ident">MlsGroupStateError</span>),
+<span class="doccomment">/// Remove members error
+</span><span class="attribute">#[derive(Error, Debug, PartialEq, Clone)]
+</span><span class="kw">pub enum </span>RemoveMembersError {
+    <span class="doccomment">/// See [`LibraryError`] for more details.
+    </span><span class="attribute">#[error(transparent)]
+    </span>LibraryError(<span class="attribute">#[from] </span>LibraryError),
+    <span class="doccomment">/// The own CredentialBundle could not be found in the key store.
+    </span><span class="attribute">#[error(<span class="string">&quot;The own CredentialBundle could not be found in the key store.&quot;</span>)]
+    </span>NoMatchingCredentialBundle,
+    <span class="doccomment">/// See [`EmptyInputError`] for more details.
+    </span><span class="attribute">#[error(transparent)]
+    </span>EmptyInput(<span class="attribute">#[from] </span>EmptyInputError),
+    <span class="doccomment">/// See [`CreateCommitError`] for more details.
+    </span><span class="attribute">#[error(transparent)]
+    </span>CreateCommitError(<span class="attribute">#[from] </span>CreateCommitError),
+    <span class="doccomment">/// See [`MlsGroupStateError`] for more details.
+    </span><span class="attribute">#[error(transparent)]
+    </span>GroupStateError(<span class="attribute">#[from] </span>MlsGroupStateError),
 }
 
-<span class="doccomment">/// Leave group error</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Error</span>, <span class="ident">Debug</span>, <span class="ident">PartialEq</span>, <span class="ident">Clone</span>)]</span>
-<span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">LeaveGroupError</span> {
-    <span class="doccomment">/// See [`LibraryError`] for more details.</span>
-    <span class="attribute">#[<span class="ident">error</span>(<span class="ident">transparent</span>)]</span>
-    <span class="ident">LibraryError</span>(<span class="attribute">#[<span class="ident">from</span>]</span> <span class="ident">LibraryError</span>),
-    <span class="doccomment">/// The own CredentialBundle could not be found in the key store.</span>
-    <span class="attribute">#[<span class="ident">error</span>(<span class="string">&quot;The own CredentialBundle could not be found in the key store.&quot;</span>)]</span>
-    <span class="ident">NoMatchingCredentialBundle</span>,
-    <span class="doccomment">/// See [`MlsGroupStateError`] for more details.</span>
-    <span class="attribute">#[<span class="ident">error</span>(<span class="ident">transparent</span>)]</span>
-    <span class="ident">GroupStateError</span>(<span class="attribute">#[<span class="ident">from</span>]</span> <span class="ident">MlsGroupStateError</span>),
+<span class="doccomment">/// Leave group error
+</span><span class="attribute">#[derive(Error, Debug, PartialEq, Clone)]
+</span><span class="kw">pub enum </span>LeaveGroupError {
+    <span class="doccomment">/// See [`LibraryError`] for more details.
+    </span><span class="attribute">#[error(transparent)]
+    </span>LibraryError(<span class="attribute">#[from] </span>LibraryError),
+    <span class="doccomment">/// The own CredentialBundle could not be found in the key store.
+    </span><span class="attribute">#[error(<span class="string">&quot;The own CredentialBundle could not be found in the key store.&quot;</span>)]
+    </span>NoMatchingCredentialBundle,
+    <span class="doccomment">/// See [`MlsGroupStateError`] for more details.
+    </span><span class="attribute">#[error(transparent)]
+    </span>GroupStateError(<span class="attribute">#[from] </span>MlsGroupStateError),
 }
 
-<span class="doccomment">/// Self update error</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Error</span>, <span class="ident">Debug</span>, <span class="ident">PartialEq</span>, <span class="ident">Clone</span>)]</span>
-<span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">SelfUpdateError</span> {
-    <span class="doccomment">/// See [`LibraryError`] for more details.</span>
-    <span class="attribute">#[<span class="ident">error</span>(<span class="ident">transparent</span>)]</span>
-    <span class="ident">LibraryError</span>(<span class="attribute">#[<span class="ident">from</span>]</span> <span class="ident">LibraryError</span>),
-    <span class="doccomment">/// The own CredentialBundle could not be found in the key store.</span>
-    <span class="attribute">#[<span class="ident">error</span>(<span class="string">&quot;The own CredentialBundle could not be found in the key store.&quot;</span>)]</span>
-    <span class="ident">NoMatchingCredentialBundle</span>,
-    <span class="doccomment">/// See [`CreateCommitError`] for more details.</span>
-    <span class="attribute">#[<span class="ident">error</span>(<span class="ident">transparent</span>)]</span>
-    <span class="ident">CreateCommitError</span>(<span class="attribute">#[<span class="ident">from</span>]</span> <span class="ident">CreateCommitError</span>),
-    <span class="doccomment">/// See [`MlsGroupStateError`] for more details.</span>
-    <span class="attribute">#[<span class="ident">error</span>(<span class="ident">transparent</span>)]</span>
-    <span class="ident">GroupStateError</span>(<span class="attribute">#[<span class="ident">from</span>]</span> <span class="ident">MlsGroupStateError</span>),
+<span class="doccomment">/// Self update error
+</span><span class="attribute">#[derive(Error, Debug, PartialEq, Clone)]
+</span><span class="kw">pub enum </span>SelfUpdateError {
+    <span class="doccomment">/// See [`LibraryError`] for more details.
+    </span><span class="attribute">#[error(transparent)]
+    </span>LibraryError(<span class="attribute">#[from] </span>LibraryError),
+    <span class="doccomment">/// The own CredentialBundle could not be found in the key store.
+    </span><span class="attribute">#[error(<span class="string">&quot;The own CredentialBundle could not be found in the key store.&quot;</span>)]
+    </span>NoMatchingCredentialBundle,
+    <span class="doccomment">/// See [`CreateCommitError`] for more details.
+    </span><span class="attribute">#[error(transparent)]
+    </span>CreateCommitError(<span class="attribute">#[from] </span>CreateCommitError),
+    <span class="doccomment">/// See [`MlsGroupStateError`] for more details.
+    </span><span class="attribute">#[error(transparent)]
+    </span>GroupStateError(<span class="attribute">#[from] </span>MlsGroupStateError),
 }
 
-<span class="doccomment">/// Propose self update error</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Error</span>, <span class="ident">Debug</span>, <span class="ident">PartialEq</span>, <span class="ident">Clone</span>)]</span>
-<span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">ProposeSelfUpdateError</span> {
-    <span class="doccomment">/// See [`LibraryError`] for more details.</span>
-    <span class="attribute">#[<span class="ident">error</span>(<span class="ident">transparent</span>)]</span>
-    <span class="ident">LibraryError</span>(<span class="attribute">#[<span class="ident">from</span>]</span> <span class="ident">LibraryError</span>),
-    <span class="doccomment">/// The own CredentialBundle could not be found in the key store.</span>
-    <span class="attribute">#[<span class="ident">error</span>(<span class="string">&quot;The own CredentialBundle could not be found in the key store.&quot;</span>)]</span>
-    <span class="ident">NoMatchingCredentialBundle</span>,
-    <span class="doccomment">/// See [`MlsGroupStateError`] for more details.</span>
-    <span class="attribute">#[<span class="ident">error</span>(<span class="ident">transparent</span>)]</span>
-    <span class="ident">GroupStateError</span>(<span class="attribute">#[<span class="ident">from</span>]</span> <span class="ident">MlsGroupStateError</span>),
+<span class="doccomment">/// Propose self update error
+</span><span class="attribute">#[derive(Error, Debug, PartialEq, Clone)]
+</span><span class="kw">pub enum </span>ProposeSelfUpdateError {
+    <span class="doccomment">/// See [`LibraryError`] for more details.
+    </span><span class="attribute">#[error(transparent)]
+    </span>LibraryError(<span class="attribute">#[from] </span>LibraryError),
+    <span class="doccomment">/// The own CredentialBundle could not be found in the key store.
+    </span><span class="attribute">#[error(<span class="string">&quot;The own CredentialBundle could not be found in the key store.&quot;</span>)]
+    </span>NoMatchingCredentialBundle,
+    <span class="doccomment">/// See [`MlsGroupStateError`] for more details.
+    </span><span class="attribute">#[error(transparent)]
+    </span>GroupStateError(<span class="attribute">#[from] </span>MlsGroupStateError),
 }
 
-<span class="doccomment">/// Commit to pending proposals error</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Error</span>, <span class="ident">Debug</span>, <span class="ident">PartialEq</span>, <span class="ident">Clone</span>)]</span>
-<span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">CommitToPendingProposalsError</span> {
-    <span class="doccomment">/// See [`LibraryError`] for more details.</span>
-    <span class="attribute">#[<span class="ident">error</span>(<span class="ident">transparent</span>)]</span>
-    <span class="ident">LibraryError</span>(<span class="attribute">#[<span class="ident">from</span>]</span> <span class="ident">LibraryError</span>),
-    <span class="doccomment">/// The own CredentialBundle could not be found in the key store.</span>
-    <span class="attribute">#[<span class="ident">error</span>(<span class="string">&quot;The own CredentialBundle could not be found in the key store.&quot;</span>)]</span>
-    <span class="ident">NoMatchingCredentialBundle</span>,
-    <span class="doccomment">/// See [`CreateCommitError`] for more details.</span>
-    <span class="attribute">#[<span class="ident">error</span>(<span class="ident">transparent</span>)]</span>
-    <span class="ident">CreateCommitError</span>(<span class="attribute">#[<span class="ident">from</span>]</span> <span class="ident">CreateCommitError</span>),
-    <span class="doccomment">/// See [`MlsGroupStateError`] for more details.</span>
-    <span class="attribute">#[<span class="ident">error</span>(<span class="ident">transparent</span>)]</span>
-    <span class="ident">GroupStateError</span>(<span class="attribute">#[<span class="ident">from</span>]</span> <span class="ident">MlsGroupStateError</span>),
+<span class="doccomment">/// Commit to pending proposals error
+</span><span class="attribute">#[derive(Error, Debug, PartialEq, Clone)]
+</span><span class="kw">pub enum </span>CommitToPendingProposalsError {
+    <span class="doccomment">/// See [`LibraryError`] for more details.
+    </span><span class="attribute">#[error(transparent)]
+    </span>LibraryError(<span class="attribute">#[from] </span>LibraryError),
+    <span class="doccomment">/// The own CredentialBundle could not be found in the key store.
+    </span><span class="attribute">#[error(<span class="string">&quot;The own CredentialBundle could not be found in the key store.&quot;</span>)]
+    </span>NoMatchingCredentialBundle,
+    <span class="doccomment">/// See [`CreateCommitError`] for more details.
+    </span><span class="attribute">#[error(transparent)]
+    </span>CreateCommitError(<span class="attribute">#[from] </span>CreateCommitError),
+    <span class="doccomment">/// See [`MlsGroupStateError`] for more details.
+    </span><span class="attribute">#[error(transparent)]
+    </span>GroupStateError(<span class="attribute">#[from] </span>MlsGroupStateError),
 }
 
-<span class="doccomment">/// Export public group state error</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Error</span>, <span class="ident">Debug</span>, <span class="ident">PartialEq</span>, <span class="ident">Clone</span>)]</span>
-<span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">ExportPublicGroupStateError</span> {
-    <span class="doccomment">/// See [`LibraryError`] for more details.</span>
-    <span class="attribute">#[<span class="ident">error</span>(<span class="ident">transparent</span>)]</span>
-    <span class="ident">LibraryError</span>(<span class="attribute">#[<span class="ident">from</span>]</span> <span class="ident">LibraryError</span>),
-    <span class="doccomment">/// The own CredentialBundle could not be found in the key store.</span>
-    <span class="attribute">#[<span class="ident">error</span>(<span class="string">&quot;The own CredentialBundle could not be found in the key store.&quot;</span>)]</span>
-    <span class="ident">NoMatchingCredentialBundle</span>,
-    <span class="doccomment">/// See [`MlsGroupStateError`] for more details.</span>
-    <span class="attribute">#[<span class="ident">error</span>(<span class="ident">transparent</span>)]</span>
-    <span class="ident">GroupStateError</span>(<span class="attribute">#[<span class="ident">from</span>]</span> <span class="ident">MlsGroupStateError</span>),
+<span class="doccomment">/// Export public group state error
+</span><span class="attribute">#[derive(Error, Debug, PartialEq, Clone)]
+</span><span class="kw">pub enum </span>ExportPublicGroupStateError {
+    <span class="doccomment">/// See [`LibraryError`] for more details.
+    </span><span class="attribute">#[error(transparent)]
+    </span>LibraryError(<span class="attribute">#[from] </span>LibraryError),
+    <span class="doccomment">/// The own CredentialBundle could not be found in the key store.
+    </span><span class="attribute">#[error(<span class="string">&quot;The own CredentialBundle could not be found in the key store.&quot;</span>)]
+    </span>NoMatchingCredentialBundle,
+    <span class="doccomment">/// See [`MlsGroupStateError`] for more details.
+    </span><span class="attribute">#[error(transparent)]
+    </span>GroupStateError(<span class="attribute">#[from] </span>MlsGroupStateError),
 }
 
-<span class="doccomment">/// Export secret error</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Error</span>, <span class="ident">Debug</span>, <span class="ident">PartialEq</span>, <span class="ident">Clone</span>)]</span>
-<span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">ExportSecretError</span> {
-    <span class="doccomment">/// See [`LibraryError`] for more details.</span>
-    <span class="attribute">#[<span class="ident">error</span>(<span class="ident">transparent</span>)]</span>
-    <span class="ident">LibraryError</span>(<span class="attribute">#[<span class="ident">from</span>]</span> <span class="ident">LibraryError</span>),
-    <span class="doccomment">/// The requested key length is too long.</span>
-    <span class="attribute">#[<span class="ident">error</span>(<span class="string">&quot;The requested key length is too long.&quot;</span>)]</span>
-    <span class="ident">KeyLengthTooLong</span>,
-    <span class="doccomment">/// See [`MlsGroupStateError`] for more details.</span>
-    <span class="attribute">#[<span class="ident">error</span>(<span class="ident">transparent</span>)]</span>
-    <span class="ident">GroupStateError</span>(<span class="attribute">#[<span class="ident">from</span>]</span> <span class="ident">MlsGroupStateError</span>),
+<span class="doccomment">/// Export secret error
+</span><span class="attribute">#[derive(Error, Debug, PartialEq, Clone)]
+</span><span class="kw">pub enum </span>ExportSecretError {
+    <span class="doccomment">/// See [`LibraryError`] for more details.
+    </span><span class="attribute">#[error(transparent)]
+    </span>LibraryError(<span class="attribute">#[from] </span>LibraryError),
+    <span class="doccomment">/// The requested key length is too long.
+    </span><span class="attribute">#[error(<span class="string">&quot;The requested key length is too long.&quot;</span>)]
+    </span>KeyLengthTooLong,
+    <span class="doccomment">/// See [`MlsGroupStateError`] for more details.
+    </span><span class="attribute">#[error(transparent)]
+    </span>GroupStateError(<span class="attribute">#[from] </span>MlsGroupStateError),
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../../../" data-current-crate="openmls" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.64.0 (a55dd71d5 2022-09-19)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../../../" data-current-crate="openmls" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0 (897e37553 2022-11-02)" ></div></body></html>

@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `src/lib.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>lib.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" type="text/css" href="../../normalize.css"><link rel="stylesheet" type="text/css" href="../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" type="text/css" href="../../ayu.css" disabled><link rel="stylesheet" type="text/css" href="../../dark.css" disabled><link rel="stylesheet" type="text/css" href="../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../storage.js"></script><script defer src="../../source-script.js"></script><script defer src="../../source-files.js"></script><script defer src="../../main.js"></script><noscript><link rel="stylesheet" href="../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../openmls/index.html"><div class="logo-container"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></div></a><h2 class="location"></h2></nav><nav class="sidebar"><a class="sidebar-logo" href="../../openmls/index.html"><div class="logo-container"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></div></a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../openmls/index.html"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></a><nav class="sub"><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><button type="button">?</button></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../wheel.svg"></a></div></div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">1</span>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `src/lib.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>lib.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" href="../../normalize.css"><link rel="stylesheet" href="../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" href="../../ayu.css" disabled><link rel="stylesheet" href="../../dark.css" disabled><link rel="stylesheet" href="../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../storage.js"></script><script defer src="../../source-script.js"></script><script defer src="../../source-files.js"></script><script defer src="../../main.js"></script><noscript><link rel="stylesheet" href="../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../openmls/index.html"><div class="logo-container"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></div></a><h2 class="location"></h2></nav><nav class="sidebar"><a class="sidebar-logo" href="../../openmls/index.html"><div class="logo-container"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></div></a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../openmls/index.html"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></a><nav class="sub"><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><button type="button">?</button></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../wheel.svg"></a></div></div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">1</span>
 <span id="2">2</span>
 <span id="3">3</span>
 <span id="4">4</span>
@@ -177,184 +177,184 @@
 <span id="177">177</span>
 <span id="178">178</span>
 <span id="179">179</span>
-</pre><pre class="rust"><code><span class="attribute">#![<span class="ident">doc</span> <span class="op">=</span> <span class="macro">include_str!</span>(<span class="string">&quot;../README.md&quot;</span>)]</span>
-<span class="doccomment">//! ## Quick Start</span>
-<span class="doccomment">//! For a quick start to learn how OpenMLS works here&#39;s the basic code to set</span>
-<span class="doccomment">//! up to parties and have them create a group.</span>
-<span class="doccomment">//!</span>
-<span class="doccomment">//! ```</span>
-<span class="doccomment">//! use openmls::prelude::*;</span>
-<span class="doccomment">//! use openmls_rust_crypto::{OpenMlsRustCrypto};</span>
-<span class="doccomment">//!</span>
-<span class="doccomment">//! // Define ciphersuite ...</span>
-<span class="doccomment">//! let ciphersuite = Ciphersuite::MLS_128_DHKEMX25519_AES128GCM_SHA256_Ed25519;</span>
-<span class="doccomment">//! // ... and the crypto backend to use.</span>
-<span class="doccomment">//! let backend = &amp;OpenMlsRustCrypto::default();</span>
-<span class="doccomment">//!</span>
-<span class="doccomment">//! // Now let&#39;s create two participants.</span>
-<span class="doccomment">//!</span>
-<span class="doccomment">//! // A helper to create and store credentials.</span>
-<span class="doccomment">//! fn generate_credential_bundle(</span>
-<span class="doccomment">//!     identity: Vec&lt;u8&gt;,</span>
-<span class="doccomment">//!     credential_type: CredentialType,</span>
-<span class="doccomment">//!     signature_algorithm: SignatureScheme,</span>
-<span class="doccomment">//!     backend: &amp;impl OpenMlsCryptoProvider,</span>
-<span class="doccomment">//! ) -&gt; Result&lt;Credential, CredentialError&gt; {</span>
-<span class="doccomment">//!     let credential_bundle =</span>
-<span class="doccomment">//!         CredentialBundle::new(identity, credential_type, signature_algorithm, backend)?;</span>
-<span class="doccomment">//!     let credential_id =  credential_bundle.credential()</span>
-<span class="doccomment">//!         .signature_key()</span>
-<span class="doccomment">//!         .tls_serialize_detached()</span>
-<span class="doccomment">//!         .expect(&quot;Error serializing signature key.&quot;);</span>
-<span class="doccomment">//!     // Store the credential bundle into the key store so OpenMLS has access</span>
-<span class="doccomment">//!     // to it.</span>
-<span class="doccomment">//!     backend</span>
-<span class="doccomment">//!         .key_store()</span>
-<span class="doccomment">//!         .store(&amp;credential_id, &amp;credential_bundle)</span>
-<span class="doccomment">//!         .expect(&quot;An unexpected error occurred.&quot;);</span>
-<span class="doccomment">//!     Ok(credential_bundle.into_parts().0)</span>
-<span class="doccomment">//! }</span>
-<span class="doccomment">//!</span>
-<span class="doccomment">//! // A helper to create key package bundles.</span>
-<span class="doccomment">//! fn generate_key_package_bundle(</span>
-<span class="doccomment">//!     ciphersuites: &amp;[Ciphersuite],</span>
-<span class="doccomment">//!     credential: &amp;Credential,</span>
-<span class="doccomment">//!     backend: &amp;impl OpenMlsCryptoProvider,</span>
-<span class="doccomment">//! ) -&gt; Result&lt;KeyPackage, KeyPackageBundleNewError&gt; {</span>
-<span class="doccomment">//!     // Fetch the credential bundle from the key store</span>
-<span class="doccomment">//!     let credential_id = credential</span>
-<span class="doccomment">//!         .signature_key()</span>
-<span class="doccomment">//!         .tls_serialize_detached()</span>
-<span class="doccomment">//!         .expect(&quot;Error serializing signature key.&quot;);</span>
-<span class="doccomment">//!     let credential_bundle = backend</span>
-<span class="doccomment">//!         .key_store()</span>
-<span class="doccomment">//!         .read(&amp;credential_id)</span>
-<span class="doccomment">//!         .expect(&quot;An unexpected error occurred.&quot;);</span>
-<span class="doccomment">//!</span>
-<span class="doccomment">//!     // Create the key package bundle</span>
-<span class="doccomment">//!     let key_package_bundle =</span>
-<span class="doccomment">//!         KeyPackageBundle::new(ciphersuites, &amp;credential_bundle, backend, vec![])?;</span>
-<span class="doccomment">//!</span>
-<span class="doccomment">//!     // Store it in the key store</span>
-<span class="doccomment">//!     let key_package_id = key_package_bundle.key_package()</span>
-<span class="doccomment">//!             .hash_ref(backend.crypto())</span>
-<span class="doccomment">//!             .expect(&quot;Could not hash KeyPackage.&quot;);</span>
-<span class="doccomment">//!     backend</span>
-<span class="doccomment">//!         .key_store()</span>
-<span class="doccomment">//!         .store(key_package_id.as_slice(), &amp;key_package_bundle)</span>
-<span class="doccomment">//!         .expect(&quot;An unexpected error occurred.&quot;);</span>
-<span class="doccomment">//!     Ok(key_package_bundle.into_parts().0)</span>
-<span class="doccomment">//! }</span>
-<span class="doccomment">//!</span>
-<span class="doccomment">//! // First they need credentials to identify them</span>
-<span class="doccomment">//! let sasha_credential = generate_credential_bundle(</span>
-<span class="doccomment">//!     &quot;Sasha&quot;.into(),</span>
-<span class="doccomment">//!     CredentialType::Basic,</span>
-<span class="doccomment">//!     ciphersuite.signature_algorithm(),</span>
-<span class="doccomment">//!     backend,</span>
-<span class="doccomment">//! )</span>
-<span class="doccomment">//! .expect(&quot;An unexpected error occurred.&quot;);</span>
-<span class="doccomment">//!</span>
-<span class="doccomment">//! let maxim_credential = generate_credential_bundle(</span>
-<span class="doccomment">//!     &quot;Maxim&quot;.into(),</span>
-<span class="doccomment">//!     CredentialType::Basic,</span>
-<span class="doccomment">//!     ciphersuite.signature_algorithm(),</span>
-<span class="doccomment">//!     backend,</span>
-<span class="doccomment">//! )</span>
-<span class="doccomment">//! .expect(&quot;An unexpected error occurred.&quot;);</span>
-<span class="doccomment">//!</span>
-<span class="doccomment">//! // Then they generate key packages to facilitate the asynchronous handshakes</span>
-<span class="doccomment">//! // in MLS</span>
-<span class="doccomment">//!</span>
-<span class="doccomment">//! // Generate KeyPackages</span>
-<span class="doccomment">//! let sasha_key_package = generate_key_package_bundle(&amp;[ciphersuite], &amp;sasha_credential, backend)</span>
-<span class="doccomment">//!     .expect(&quot;An unexpected error occurred.&quot;);</span>
-<span class="doccomment">//!</span>
-<span class="doccomment">//! let maxim_key_package = generate_key_package_bundle(&amp;[ciphersuite], &amp;maxim_credential, backend)</span>
-<span class="doccomment">//!     .expect(&quot;An unexpected error occurred.&quot;);</span>
-<span class="doccomment">//!</span>
-<span class="doccomment">//! // Now Sasha starts a new group ...</span>
-<span class="doccomment">//! let mut sasha_group = MlsGroup::new(</span>
-<span class="doccomment">//!     backend,</span>
-<span class="doccomment">//!     &amp;MlsGroupConfig::default(),</span>
-<span class="doccomment">//!     GroupId::from_slice(b&quot;My First Group&quot;),</span>
-<span class="doccomment">//!     sasha_key_package</span>
-<span class="doccomment">//!         .hash_ref(backend.crypto())</span>
-<span class="doccomment">//!         .expect(&quot;Could not hash KeyPackage.&quot;)</span>
-<span class="doccomment">//!         .as_slice(),</span>
-<span class="doccomment">//! )</span>
-<span class="doccomment">//! .expect(&quot;An unexpected error occurred.&quot;);</span>
-<span class="doccomment">//!</span>
-<span class="doccomment">//! // ... and invites Maxim.</span>
-<span class="doccomment">//! // The key package has to be retrieved from Maxim in some way. Most likely</span>
-<span class="doccomment">//! // via a server storing key packages for users.</span>
-<span class="doccomment">//! let (mls_message_out, welcome) = sasha_group</span>
-<span class="doccomment">//!     .add_members(backend, &amp;[maxim_key_package])</span>
-<span class="doccomment">//!     .expect(&quot;Could not add members.&quot;);</span>
-<span class="doccomment">//!</span>
-<span class="doccomment">//! // Sasha merges the pending commit that adds Maxim.</span>
-<span class="doccomment">//! sasha_group</span>
-<span class="doccomment">//!    .merge_pending_commit()</span>
-<span class="doccomment">//!    .expect(&quot;error merging pending commit&quot;);</span>
-<span class="doccomment">//!</span>
-<span class="doccomment">//! // Now Maxim can join the group.</span>
-<span class="doccomment">//!  let mut maxim_group = MlsGroup::new_from_welcome(</span>
-<span class="doccomment">//!     backend,</span>
-<span class="doccomment">//!     &amp;MlsGroupConfig::default(),</span>
-<span class="doccomment">//!     welcome,</span>
-<span class="doccomment">//!     // The public tree is need and transferred out of band.</span>
-<span class="doccomment">//!     // It is also possible to use the [`RatchetTreeExtension`]</span>
-<span class="doccomment">//!     Some(sasha_group.export_ratchet_tree()),</span>
-<span class="doccomment">//!  )</span>
-<span class="doccomment">//!  .expect(&quot;Error joining group from Welcome&quot;);</span>
-<span class="doccomment">//! ```</span>
-<span class="doccomment">//!</span>
-<span class="doccomment">//! [//]: # &quot;links and badges&quot;</span>
-<span class="doccomment">//! [user Manual]: https://openmls.tech/book</span>
-<span class="attribute">#![<span class="ident">cfg_attr</span>(<span class="ident">docsrs</span>, <span class="ident">feature</span>(<span class="ident">doc_cfg</span>))]</span>
-<span class="attribute">#![<span class="ident">cfg_attr</span>(<span class="ident">not</span>(<span class="ident">test</span>), <span class="ident">forbid</span>(<span class="ident">unsafe_code</span>))]</span>
-<span class="attribute">#![<span class="ident">cfg_attr</span>(<span class="ident">not</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;test-utils&quot;</span>), <span class="ident">deny</span>(<span class="ident">missing_docs</span>))]</span>
-<span class="attribute">#![<span class="ident">deny</span>(<span class="ident">rustdoc::broken_intra_doc_links</span>)]</span>
-<span class="attribute">#![<span class="ident">deny</span>(<span class="ident">rustdoc::private_intra_doc_links</span>)]</span>
+</pre><pre class="rust"><code><span class="attribute">#![doc = <span class="macro">include_str!</span>(<span class="string">&quot;../README.md&quot;</span>)]
+</span><span class="doccomment">//! ## Quick Start
+//! For a quick start to learn how OpenMLS works here&#39;s the basic code to set
+//! up to parties and have them create a group.
+//!
+//! ```
+//! use openmls::prelude::*;
+//! use openmls_rust_crypto::{OpenMlsRustCrypto};
+//!
+//! // Define ciphersuite ...
+//! let ciphersuite = Ciphersuite::MLS_128_DHKEMX25519_AES128GCM_SHA256_Ed25519;
+//! // ... and the crypto backend to use.
+//! let backend = &amp;OpenMlsRustCrypto::default();
+//!
+//! // Now let&#39;s create two participants.
+//!
+//! // A helper to create and store credentials.
+//! fn generate_credential_bundle(
+//!     identity: Vec&lt;u8&gt;,
+//!     credential_type: CredentialType,
+//!     signature_algorithm: SignatureScheme,
+//!     backend: &amp;impl OpenMlsCryptoProvider,
+//! ) -&gt; Result&lt;Credential, CredentialError&gt; {
+//!     let credential_bundle =
+//!         CredentialBundle::new(identity, credential_type, signature_algorithm, backend)?;
+//!     let credential_id =  credential_bundle.credential()
+//!         .signature_key()
+//!         .tls_serialize_detached()
+//!         .expect(&quot;Error serializing signature key.&quot;);
+//!     // Store the credential bundle into the key store so OpenMLS has access
+//!     // to it.
+//!     backend
+//!         .key_store()
+//!         .store(&amp;credential_id, &amp;credential_bundle)
+//!         .expect(&quot;An unexpected error occurred.&quot;);
+//!     Ok(credential_bundle.into_parts().0)
+//! }
+//!
+//! // A helper to create key package bundles.
+//! fn generate_key_package_bundle(
+//!     ciphersuites: &amp;[Ciphersuite],
+//!     credential: &amp;Credential,
+//!     backend: &amp;impl OpenMlsCryptoProvider,
+//! ) -&gt; Result&lt;KeyPackage, KeyPackageBundleNewError&gt; {
+//!     // Fetch the credential bundle from the key store
+//!     let credential_id = credential
+//!         .signature_key()
+//!         .tls_serialize_detached()
+//!         .expect(&quot;Error serializing signature key.&quot;);
+//!     let credential_bundle = backend
+//!         .key_store()
+//!         .read(&amp;credential_id)
+//!         .expect(&quot;An unexpected error occurred.&quot;);
+//!
+//!     // Create the key package bundle
+//!     let key_package_bundle =
+//!         KeyPackageBundle::new(ciphersuites, &amp;credential_bundle, backend, vec![])?;
+//!
+//!     // Store it in the key store
+//!     let key_package_id = key_package_bundle.key_package()
+//!             .hash_ref(backend.crypto())
+//!             .expect(&quot;Could not hash KeyPackage.&quot;);
+//!     backend
+//!         .key_store()
+//!         .store(key_package_id.as_slice(), &amp;key_package_bundle)
+//!         .expect(&quot;An unexpected error occurred.&quot;);
+//!     Ok(key_package_bundle.into_parts().0)
+//! }
+//!
+//! // First they need credentials to identify them
+//! let sasha_credential = generate_credential_bundle(
+//!     &quot;Sasha&quot;.into(),
+//!     CredentialType::Basic,
+//!     ciphersuite.signature_algorithm(),
+//!     backend,
+//! )
+//! .expect(&quot;An unexpected error occurred.&quot;);
+//!
+//! let maxim_credential = generate_credential_bundle(
+//!     &quot;Maxim&quot;.into(),
+//!     CredentialType::Basic,
+//!     ciphersuite.signature_algorithm(),
+//!     backend,
+//! )
+//! .expect(&quot;An unexpected error occurred.&quot;);
+//!
+//! // Then they generate key packages to facilitate the asynchronous handshakes
+//! // in MLS
+//!
+//! // Generate KeyPackages
+//! let sasha_key_package = generate_key_package_bundle(&amp;[ciphersuite], &amp;sasha_credential, backend)
+//!     .expect(&quot;An unexpected error occurred.&quot;);
+//!
+//! let maxim_key_package = generate_key_package_bundle(&amp;[ciphersuite], &amp;maxim_credential, backend)
+//!     .expect(&quot;An unexpected error occurred.&quot;);
+//!
+//! // Now Sasha starts a new group ...
+//! let mut sasha_group = MlsGroup::new(
+//!     backend,
+//!     &amp;MlsGroupConfig::default(),
+//!     GroupId::from_slice(b&quot;My First Group&quot;),
+//!     sasha_key_package
+//!         .hash_ref(backend.crypto())
+//!         .expect(&quot;Could not hash KeyPackage.&quot;)
+//!         .as_slice(),
+//! )
+//! .expect(&quot;An unexpected error occurred.&quot;);
+//!
+//! // ... and invites Maxim.
+//! // The key package has to be retrieved from Maxim in some way. Most likely
+//! // via a server storing key packages for users.
+//! let (mls_message_out, welcome) = sasha_group
+//!     .add_members(backend, &amp;[maxim_key_package])
+//!     .expect(&quot;Could not add members.&quot;);
+//!
+//! // Sasha merges the pending commit that adds Maxim.
+//! sasha_group
+//!    .merge_pending_commit()
+//!    .expect(&quot;error merging pending commit&quot;);
+//!
+//! // Now Maxim can join the group.
+//!  let mut maxim_group = MlsGroup::new_from_welcome(
+//!     backend,
+//!     &amp;MlsGroupConfig::default(),
+//!     welcome,
+//!     // The public tree is need and transferred out of band.
+//!     // It is also possible to use the [`RatchetTreeExtension`]
+//!     Some(sasha_group.export_ratchet_tree()),
+//!  )
+//!  .expect(&quot;Error joining group from Welcome&quot;);
+//! ```
+//!
+//! [//]: # &quot;links and badges&quot;
+//! [user Manual]: https://openmls.tech/book
+</span><span class="attribute">#![cfg_attr(docsrs, feature(doc_cfg))]
+#![cfg_attr(not(test), forbid(unsafe_code))]
+#![cfg_attr(not(feature = <span class="string">&quot;test-utils&quot;</span>), deny(missing_docs))]
+#![deny(rustdoc::broken_intra_doc_links)]
+#![deny(rustdoc::private_intra_doc_links)]
 
-<span class="comment">// === Testing ===</span>
+</span><span class="comment">// === Testing ===
 
-<span class="doccomment">/// Single place, re-exporting all structs and functions needed for integration tests</span>
-<span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">any</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;test-utils&quot;</span>, <span class="ident">test</span>))]</span>
-<span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">prelude_test</span>;
+</span><span class="doccomment">/// Single place, re-exporting all structs and functions needed for integration tests
+</span><span class="attribute">#[cfg(any(feature = <span class="string">&quot;test-utils&quot;</span>, test))]
+</span><span class="kw">pub mod </span>prelude_test;
 
-<span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">any</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;test-utils&quot;</span>, <span class="ident">test</span>))]</span>
-<span class="kw">pub</span> <span class="kw">use</span> <span class="ident">rstest_reuse</span>;
+<span class="attribute">#[cfg(any(feature = <span class="string">&quot;test-utils&quot;</span>, test))]
+</span><span class="kw">pub use </span>rstest_reuse;
 
-<span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">any</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;test-utils&quot;</span>, <span class="ident">test</span>))]</span>
-<span class="attribute">#[<span class="ident">macro_use</span>]</span>
-<span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">test_utils</span>;
+<span class="attribute">#[cfg(any(feature = <span class="string">&quot;test-utils&quot;</span>, test))]
+#[macro_use]
+</span><span class="kw">pub mod </span>test_utils;
 
-<span class="comment">// === Modules ===</span>
+<span class="comment">// === Modules ===
 
-<span class="attribute">#[<span class="ident">macro_use</span>]</span>
-<span class="kw">mod</span> <span class="ident">utils</span>;
+</span><span class="attribute">#[macro_use]
+</span><span class="kw">mod </span>utils;
 
-<span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">error</span>;
+<span class="kw">pub mod </span>error;
 
-<span class="comment">// Public</span>
-<span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">ciphersuite</span>;
-<span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">credentials</span>;
-<span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">extensions</span>;
-<span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">framing</span>;
-<span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">group</span>;
-<span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">key_packages</span>;
-<span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">messages</span>;
-<span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">schedule</span>;
-<span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">treesync</span>;
-<span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">versions</span>;
+<span class="comment">// Public
+</span><span class="kw">pub mod </span>ciphersuite;
+<span class="kw">pub mod </span>credentials;
+<span class="kw">pub mod </span>extensions;
+<span class="kw">pub mod </span>framing;
+<span class="kw">pub mod </span>group;
+<span class="kw">pub mod </span>key_packages;
+<span class="kw">pub mod </span>messages;
+<span class="kw">pub mod </span>schedule;
+<span class="kw">pub mod </span>treesync;
+<span class="kw">pub mod </span>versions;
 
-<span class="comment">// Private</span>
-<span class="kw">mod</span> <span class="ident">binary_tree</span>;
-<span class="kw">mod</span> <span class="ident">key_store</span>;
-<span class="kw">mod</span> <span class="ident">tree</span>;
+<span class="comment">// Private
+</span><span class="kw">mod </span>binary_tree;
+<span class="kw">mod </span>key_store;
+<span class="kw">mod </span>tree;
 
-<span class="doccomment">/// Single place, re-exporting the most used public functions.</span>
-<span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">prelude</span>;
+<span class="doccomment">/// Single place, re-exporting the most used public functions.
+</span><span class="kw">pub mod </span>prelude;
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="openmls" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.64.0 (a55dd71d5 2022-09-19)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="openmls" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0 (897e37553 2022-11-02)" ></div></body></html>

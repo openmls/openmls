@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `src/group/mls_group/exporting.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>exporting.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" type="text/css" href="../../../../normalize.css"><link rel="stylesheet" type="text/css" href="../../../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" type="text/css" href="../../../../ayu.css" disabled><link rel="stylesheet" type="text/css" href="../../../../dark.css" disabled><link rel="stylesheet" type="text/css" href="../../../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../../../storage.js"></script><script defer src="../../../../source-script.js"></script><script defer src="../../../../source-files.js"></script><script defer src="../../../../main.js"></script><noscript><link rel="stylesheet" href="../../../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../../../openmls/index.html"><div class="logo-container"><img class="rust-logo" src="../../../../rust-logo.svg" alt="logo"></div></a><h2 class="location"></h2></nav><nav class="sidebar"><a class="sidebar-logo" href="../../../../openmls/index.html"><div class="logo-container"><img class="rust-logo" src="../../../../rust-logo.svg" alt="logo"></div></a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../../../openmls/index.html"><img class="rust-logo" src="../../../../rust-logo.svg" alt="logo"></a><nav class="sub"><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><button type="button">?</button></div><div id="settings-menu" tabindex="-1"><a href="../../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../../wheel.svg"></a></div></div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">1</span>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `src/group/mls_group/exporting.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>exporting.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" href="../../../../normalize.css"><link rel="stylesheet" href="../../../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" href="../../../../ayu.css" disabled><link rel="stylesheet" href="../../../../dark.css" disabled><link rel="stylesheet" href="../../../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../../../storage.js"></script><script defer src="../../../../source-script.js"></script><script defer src="../../../../source-files.js"></script><script defer src="../../../../main.js"></script><noscript><link rel="stylesheet" href="../../../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../../../openmls/index.html"><div class="logo-container"><img class="rust-logo" src="../../../../rust-logo.svg" alt="logo"></div></a><h2 class="location"></h2></nav><nav class="sidebar"><a class="sidebar-logo" href="../../../../openmls/index.html"><div class="logo-container"><img class="rust-logo" src="../../../../rust-logo.svg" alt="logo"></div></a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../../../openmls/index.html"><img class="rust-logo" src="../../../../rust-logo.svg" alt="logo"></a><nav class="sub"><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><button type="button">?</button></div><div id="settings-menu" tabindex="-1"><a href="../../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../../wheel.svg"></a></div></div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">1</span>
 <span id="2">2</span>
 <span id="3">3</span>
 <span id="4">4</span>
@@ -79,86 +79,86 @@
 <span id="79">79</span>
 <span id="80">80</span>
 <span id="81">81</span>
-</pre><pre class="rust"><code><span class="kw">use</span> <span class="ident">tls_codec::Serialize</span>;
+</pre><pre class="rust"><code><span class="kw">use </span>tls_codec::Serialize;
 
-<span class="kw">use</span> <span class="kw">crate</span>::{
-    <span class="ident">group::errors::ExporterError</span>, <span class="ident">messages::public_group_state::PublicGroupState</span>,
-    <span class="ident">schedule::EpochAuthenticator</span>,
+<span class="kw">use crate</span>::{
+    group::errors::ExporterError, messages::public_group_state::PublicGroupState,
+    schedule::EpochAuthenticator,
 };
 
-<span class="kw">use</span> <span class="kw">super</span>::<span class="kw-2">*</span>;
+<span class="kw">use super</span>::<span class="kw-2">*</span>;
 
-<span class="kw">impl</span> <span class="ident">MlsGroup</span> {
-    <span class="comment">// === Export secrets ===</span>
+<span class="kw">impl </span>MlsGroup {
+    <span class="comment">// === Export secrets ===
 
-    <span class="doccomment">/// Exports a secret from the current epoch.</span>
-    <span class="doccomment">/// Returns [`ExportSecretError::KeyLengthTooLong`] if the requested</span>
-    <span class="doccomment">/// key length is too long.</span>
-    <span class="doccomment">/// Returns [`ExportSecretError::GroupStateError(MlsGroupStateError::UseAfterEviction)`](MlsGroupStateError::UseAfterEviction)</span>
-    <span class="doccomment">/// if the group is not active.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">export_secret</span>(
+    </span><span class="doccomment">/// Exports a secret from the current epoch.
+    /// Returns [`ExportSecretError::KeyLengthTooLong`] if the requested
+    /// key length is too long.
+    /// Returns [`ExportSecretError::GroupStateError(MlsGroupStateError::UseAfterEviction)`](MlsGroupStateError::UseAfterEviction)
+    /// if the group is not active.
+    </span><span class="kw">pub fn </span>export_secret(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        <span class="ident">backend</span>: <span class="kw-2">&amp;</span><span class="kw">impl</span> <span class="ident">OpenMlsCryptoProvider</span>,
-        <span class="ident">label</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>,
-        <span class="ident">context</span>: <span class="kw-2">&amp;</span>[<span class="ident">u8</span>],
-        <span class="ident">key_length</span>: <span class="ident">usize</span>,
-    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>, <span class="ident">ExportSecretError</span><span class="op">&gt;</span> {
-        <span class="kw">if</span> <span class="self">self</span>.<span class="ident">is_active</span>() {
-            <span class="prelude-val">Ok</span>(<span class="self">self</span>
-                .<span class="ident">group</span>
-                .<span class="ident">export_secret</span>(<span class="ident">backend</span>, <span class="ident">label</span>, <span class="ident">context</span>, <span class="ident">key_length</span>)
-                .<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> <span class="kw">match</span> <span class="ident">e</span> {
-                    <span class="ident">ExporterError::LibraryError</span>(<span class="ident">e</span>) =&gt; <span class="ident">e</span>.<span class="ident">into</span>(),
-                    <span class="ident">ExporterError::KeyLengthTooLong</span> =&gt; <span class="ident">ExportSecretError::KeyLengthTooLong</span>,
+        backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider,
+        label: <span class="kw-2">&amp;</span>str,
+        context: <span class="kw-2">&amp;</span>[u8],
+        key_length: usize,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;Vec&lt;u8&gt;, ExportSecretError&gt; {
+        <span class="kw">if </span><span class="self">self</span>.is_active() {
+            <span class="prelude-val">Ok</span>(<span class="self">self
+                </span>.group
+                .export_secret(backend, label, context, key_length)
+                .map_err(|e| <span class="kw">match </span>e {
+                    ExporterError::LibraryError(e) =&gt; e.into(),
+                    ExporterError::KeyLengthTooLong =&gt; ExportSecretError::KeyLengthTooLong,
                 })<span class="question-mark">?</span>)
-        } <span class="kw">else</span> {
-            <span class="prelude-val">Err</span>(<span class="ident">ExportSecretError::GroupStateError</span>(
-                <span class="ident">MlsGroupStateError::UseAfterEviction</span>,
+        } <span class="kw">else </span>{
+            <span class="prelude-val">Err</span>(ExportSecretError::GroupStateError(
+                MlsGroupStateError::UseAfterEviction,
             ))
         }
     }
 
-    <span class="doccomment">/// Returns the epoch authenticator of the current epoch.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">epoch_authenticator</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span><span class="ident">EpochAuthenticator</span> {
-        <span class="self">self</span>.<span class="ident">group</span>.<span class="ident">epoch_authenticator</span>()
+    <span class="doccomment">/// Returns the epoch authenticator of the current epoch.
+    </span><span class="kw">pub fn </span>epoch_authenticator(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>EpochAuthenticator {
+        <span class="self">self</span>.group.epoch_authenticator()
     }
 
-    <span class="doccomment">/// Returns the resumption psk of the current epoch.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">resumption_psk</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span><span class="ident">ResumptionPsk</span> {
-        <span class="self">self</span>.<span class="ident">group</span>.<span class="ident">resumption_psk</span>()
+    <span class="doccomment">/// Returns the resumption psk of the current epoch.
+    </span><span class="kw">pub fn </span>resumption_psk(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>ResumptionPsk {
+        <span class="self">self</span>.group.resumption_psk()
     }
 
-    <span class="doccomment">/// Returns a resumption psk for a given epoch. If no resumption psk</span>
-    <span class="doccomment">/// is available for that epoch,  `None` is returned.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">get_past_resumption_psk</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">epoch</span>: <span class="ident">GroupEpoch</span>) -&gt; <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">ResumptionPsk</span><span class="op">&gt;</span> {
-        <span class="self">self</span>.<span class="ident">resumption_psk_store</span>.<span class="ident">get</span>(<span class="ident">epoch</span>)
+    <span class="doccomment">/// Returns a resumption psk for a given epoch. If no resumption psk
+    /// is available for that epoch,  `None` is returned.
+    </span><span class="kw">pub fn </span>get_past_resumption_psk(<span class="kw-2">&amp;</span><span class="self">self</span>, epoch: GroupEpoch) -&gt; <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>ResumptionPsk&gt; {
+        <span class="self">self</span>.resumption_psk_store.get(epoch)
     }
 
-    <span class="comment">// === Export public group state ===</span>
+    <span class="comment">// === Export public group state ===
 
-    <span class="doccomment">/// Exports the public group state.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">export_public_group_state</span>(
+    </span><span class="doccomment">/// Exports the public group state.
+    </span><span class="kw">pub fn </span>export_public_group_state(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        <span class="ident">backend</span>: <span class="kw-2">&amp;</span><span class="kw">impl</span> <span class="ident">OpenMlsCryptoProvider</span>,
-    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">PublicGroupState</span>, <span class="ident">ExportPublicGroupStateError</span><span class="op">&gt;</span> {
-        <span class="kw">match</span> <span class="self">self</span>.<span class="ident">credential</span>() {
-            <span class="prelude-val">Ok</span>(<span class="ident">credential</span>) =&gt; {
-                <span class="kw">let</span> <span class="ident">credential_bundle</span>: <span class="ident">CredentialBundle</span> <span class="op">=</span> <span class="ident">backend</span>
-                    .<span class="ident">key_store</span>()
-                    .<span class="ident">read</span>(
-                        <span class="kw-2">&amp;</span><span class="ident">credential</span>
-                            .<span class="ident">signature_key</span>()
-                            .<span class="ident">tls_serialize_detached</span>()
-                            .<span class="ident">map_err</span>(<span class="ident">LibraryError::missing_bound_check</span>)<span class="question-mark">?</span>,
+        backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;PublicGroupState, ExportPublicGroupStateError&gt; {
+        <span class="kw">match </span><span class="self">self</span>.credential() {
+            <span class="prelude-val">Ok</span>(credential) =&gt; {
+                <span class="kw">let </span>credential_bundle: CredentialBundle = backend
+                    .key_store()
+                    .read(
+                        <span class="kw-2">&amp;</span>credential
+                            .signature_key()
+                            .tls_serialize_detached()
+                            .map_err(LibraryError::missing_bound_check)<span class="question-mark">?</span>,
                     )
-                    .<span class="ident">ok_or</span>(<span class="ident">ExportPublicGroupStateError::NoMatchingCredentialBundle</span>)<span class="question-mark">?</span>;
-                <span class="prelude-val">Ok</span>(<span class="self">self</span>
-                    .<span class="ident">group</span>
-                    .<span class="ident">export_public_group_state</span>(<span class="ident">backend</span>, <span class="kw-2">&amp;</span><span class="ident">credential_bundle</span>)<span class="question-mark">?</span>)
+                    .ok_or(ExportPublicGroupStateError::NoMatchingCredentialBundle)<span class="question-mark">?</span>;
+                <span class="prelude-val">Ok</span>(<span class="self">self
+                    </span>.group
+                    .export_public_group_state(backend, <span class="kw-2">&amp;</span>credential_bundle)<span class="question-mark">?</span>)
             }
-            <span class="prelude-val">Err</span>(<span class="ident">e</span>) =&gt; <span class="prelude-val">Err</span>(<span class="ident">e</span>.<span class="ident">into</span>()),
+            <span class="prelude-val">Err</span>(e) =&gt; <span class="prelude-val">Err</span>(e.into()),
         }
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../../../" data-current-crate="openmls" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.64.0 (a55dd71d5 2022-09-19)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../../../" data-current-crate="openmls" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0 (897e37553 2022-11-02)" ></div></body></html>

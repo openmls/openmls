@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `src/ciphersuite/aead.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>aead.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" type="text/css" href="../../../normalize.css"><link rel="stylesheet" type="text/css" href="../../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" type="text/css" href="../../../ayu.css" disabled><link rel="stylesheet" type="text/css" href="../../../dark.css" disabled><link rel="stylesheet" type="text/css" href="../../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../../storage.js"></script><script defer src="../../../source-script.js"></script><script defer src="../../../source-files.js"></script><script defer src="../../../main.js"></script><noscript><link rel="stylesheet" href="../../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../../openmls/index.html"><div class="logo-container"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></div></a><h2 class="location"></h2></nav><nav class="sidebar"><a class="sidebar-logo" href="../../../openmls/index.html"><div class="logo-container"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></div></a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../../openmls/index.html"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></a><nav class="sub"><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><button type="button">?</button></div><div id="settings-menu" tabindex="-1"><a href="../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../wheel.svg"></a></div></div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">1</span>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `src/ciphersuite/aead.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>aead.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" href="../../../normalize.css"><link rel="stylesheet" href="../../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" href="../../../ayu.css" disabled><link rel="stylesheet" href="../../../dark.css" disabled><link rel="stylesheet" href="../../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../../storage.js"></script><script defer src="../../../source-script.js"></script><script defer src="../../../source-files.js"></script><script defer src="../../../main.js"></script><noscript><link rel="stylesheet" href="../../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../../openmls/index.html"><div class="logo-container"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></div></a><h2 class="location"></h2></nav><nav class="sidebar"><a class="sidebar-logo" href="../../../openmls/index.html"><div class="logo-container"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></div></a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../../openmls/index.html"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></a><nav class="sub"><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><button type="button">?</button></div><div id="settings-menu" tabindex="-1"><a href="../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../wheel.svg"></a></div></div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">1</span>
 <span id="2">2</span>
 <span id="3">3</span>
 <span id="4">4</span>
@@ -158,165 +158,165 @@
 <span id="158">158</span>
 <span id="159">159</span>
 <span id="160">160</span>
-</pre><pre class="rust"><code><span class="kw">use</span> <span class="kw">super</span>::<span class="kw-2">*</span>;
+</pre><pre class="rust"><code><span class="kw">use super</span>::<span class="kw-2">*</span>;
 
-<span class="doccomment">/// The default NONCE size in bytes.</span>
-<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">const</span> <span class="ident">NONCE_BYTES</span>: <span class="ident">usize</span> <span class="op">=</span> <span class="number">12</span>;
+<span class="doccomment">/// The default NONCE size in bytes.
+</span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">const </span>NONCE_BYTES: usize = <span class="number">12</span>;
 
-<span class="doccomment">/// AEAD keys holding the plain key value and the AEAD algorithm type.</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>)]</span>
-<span class="attribute">#[<span class="ident">cfg_attr</span>(<span class="ident">any</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;test-utils&quot;</span>, <span class="ident">test</span>), <span class="ident">derive</span>(<span class="ident">Clone</span>, <span class="ident">PartialEq</span>, <span class="ident">Eq</span>))]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">AeadKey</span> {
-    <span class="ident">aead_mode</span>: <span class="ident">AeadType</span>,
-    <span class="ident">value</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>,
+<span class="doccomment">/// AEAD keys holding the plain key value and the AEAD algorithm type.
+</span><span class="attribute">#[derive(Debug, Serialize, Deserialize)]
+#[cfg_attr(any(feature = <span class="string">&quot;test-utils&quot;</span>, test), derive(Clone, PartialEq, Eq))]
+</span><span class="kw">pub struct </span>AeadKey {
+    aead_mode: AeadType,
+    value: Vec&lt;u8&gt;,
 }
 
-<span class="doccomment">/// AEAD Nonce</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>, <span class="ident">PartialEq</span>, <span class="ident">Debug</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>)]</span>
-<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct</span> <span class="ident">AeadNonce</span>([<span class="ident">u8</span>; <span class="ident">NONCE_BYTES</span>]);
+<span class="doccomment">/// AEAD Nonce
+</span><span class="attribute">#[derive(Clone, PartialEq, Debug, Serialize, Deserialize)]
+</span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct </span>AeadNonce([u8; NONCE_BYTES]);
 
-<span class="kw">impl</span> <span class="ident">AeadKey</span> {
-    <span class="doccomment">/// Create an `AeadKey` from a `Secret`. TODO: This function should</span>
-    <span class="doccomment">/// disappear when tackling issue #103.</span>
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">from_secret</span>(<span class="ident">secret</span>: <span class="ident">Secret</span>) -&gt; <span class="self">Self</span> {
-        <span class="macro">log::trace!</span>(<span class="string">&quot;AeadKey::from_secret with {}&quot;</span>, <span class="ident">secret</span>.<span class="ident">ciphersuite</span>);
-        <span class="ident">AeadKey</span> {
-            <span class="ident">aead_mode</span>: <span class="ident">secret</span>.<span class="ident">ciphersuite</span>.<span class="ident">aead_algorithm</span>(),
-            <span class="ident">value</span>: <span class="ident">secret</span>.<span class="ident">value</span>,
+<span class="kw">impl </span>AeadKey {
+    <span class="doccomment">/// Create an `AeadKey` from a `Secret`. TODO: This function should
+    /// disappear when tackling issue #103.
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>from_secret(secret: Secret) -&gt; <span class="self">Self </span>{
+        <span class="macro">log::trace!</span>(<span class="string">&quot;AeadKey::from_secret with {}&quot;</span>, secret.ciphersuite);
+        AeadKey {
+            aead_mode: secret.ciphersuite.aead_algorithm(),
+            value: secret.value,
         }
     }
 
-    <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">test</span>)]</span>
-    <span class="doccomment">/// Generate a random AEAD Key</span>
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">random</span>(<span class="ident">ciphersuite</span>: <span class="ident">Ciphersuite</span>, <span class="ident">rng</span>: <span class="kw-2">&amp;</span><span class="kw">impl</span> <span class="ident">OpenMlsRand</span>) -&gt; <span class="self">Self</span> {
-        <span class="ident">AeadKey</span> {
-            <span class="ident">aead_mode</span>: <span class="ident">ciphersuite</span>.<span class="ident">aead_algorithm</span>(),
-            <span class="ident">value</span>: <span class="ident">aead_key_gen</span>(<span class="ident">ciphersuite</span>.<span class="ident">aead_algorithm</span>(), <span class="ident">rng</span>),
+    <span class="attribute">#[cfg(test)]
+    </span><span class="doccomment">/// Generate a random AEAD Key
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>random(ciphersuite: Ciphersuite, rng: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsRand) -&gt; <span class="self">Self </span>{
+        AeadKey {
+            aead_mode: ciphersuite.aead_algorithm(),
+            value: aead_key_gen(ciphersuite.aead_algorithm(), rng),
         }
     }
 
-    <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">any</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;test-utils&quot;</span>, <span class="ident">test</span>))]</span>
-    <span class="doccomment">/// Get a slice to the key value.</span>
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">as_slice</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>[<span class="ident">u8</span>] {
-        <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">value</span>
+    <span class="attribute">#[cfg(any(feature = <span class="string">&quot;test-utils&quot;</span>, test))]
+    </span><span class="doccomment">/// Get a slice to the key value.
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>as_slice(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>[u8] {
+        <span class="kw-2">&amp;</span><span class="self">self</span>.value
     }
 
-    <span class="doccomment">/// Encrypt a payload under the AeadKey given a nonce.</span>
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">aead_seal</span>(
+    <span class="doccomment">/// Encrypt a payload under the AeadKey given a nonce.
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>aead_seal(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        <span class="ident">backend</span>: <span class="kw-2">&amp;</span><span class="kw">impl</span> <span class="ident">OpenMlsCryptoProvider</span>,
-        <span class="ident">msg</span>: <span class="kw-2">&amp;</span>[<span class="ident">u8</span>],
-        <span class="ident">aad</span>: <span class="kw-2">&amp;</span>[<span class="ident">u8</span>],
-        <span class="ident">nonce</span>: <span class="kw-2">&amp;</span><span class="ident">AeadNonce</span>,
-    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>, <span class="ident">CryptoError</span><span class="op">&gt;</span> {
-        <span class="ident">backend</span>
-            .<span class="ident">crypto</span>()
-            .<span class="ident">aead_encrypt</span>(<span class="self">self</span>.<span class="ident">aead_mode</span>, <span class="self">self</span>.<span class="ident">value</span>.<span class="ident">as_slice</span>(), <span class="ident">msg</span>, <span class="kw-2">&amp;</span><span class="ident">nonce</span>.<span class="number">0</span>, <span class="ident">aad</span>)
-            .<span class="ident">map_err</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="ident">CryptoError::CryptoLibraryError</span>)
+        backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider,
+        msg: <span class="kw-2">&amp;</span>[u8],
+        aad: <span class="kw-2">&amp;</span>[u8],
+        nonce: <span class="kw-2">&amp;</span>AeadNonce,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;Vec&lt;u8&gt;, CryptoError&gt; {
+        backend
+            .crypto()
+            .aead_encrypt(<span class="self">self</span>.aead_mode, <span class="self">self</span>.value.as_slice(), msg, <span class="kw-2">&amp;</span>nonce.<span class="number">0</span>, aad)
+            .map_err(|<span class="kw">_</span>| CryptoError::CryptoLibraryError)
     }
 
-    <span class="doccomment">/// AEAD decrypt `ciphertext` with `key`, `aad`, and `nonce`.</span>
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">aead_open</span>(
+    <span class="doccomment">/// AEAD decrypt `ciphertext` with `key`, `aad`, and `nonce`.
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>aead_open(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        <span class="ident">backend</span>: <span class="kw-2">&amp;</span><span class="kw">impl</span> <span class="ident">OpenMlsCryptoProvider</span>,
-        <span class="ident">ciphertext</span>: <span class="kw-2">&amp;</span>[<span class="ident">u8</span>],
-        <span class="ident">aad</span>: <span class="kw-2">&amp;</span>[<span class="ident">u8</span>],
-        <span class="ident">nonce</span>: <span class="kw-2">&amp;</span><span class="ident">AeadNonce</span>,
-    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>, <span class="ident">CryptoError</span><span class="op">&gt;</span> {
-        <span class="ident">backend</span>
-            .<span class="ident">crypto</span>()
-            .<span class="ident">aead_decrypt</span>(
-                <span class="self">self</span>.<span class="ident">aead_mode</span>,
-                <span class="self">self</span>.<span class="ident">value</span>.<span class="ident">as_slice</span>(),
-                <span class="ident">ciphertext</span>,
-                <span class="kw-2">&amp;</span><span class="ident">nonce</span>.<span class="number">0</span>,
-                <span class="ident">aad</span>,
+        backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider,
+        ciphertext: <span class="kw-2">&amp;</span>[u8],
+        aad: <span class="kw-2">&amp;</span>[u8],
+        nonce: <span class="kw-2">&amp;</span>AeadNonce,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;Vec&lt;u8&gt;, CryptoError&gt; {
+        backend
+            .crypto()
+            .aead_decrypt(
+                <span class="self">self</span>.aead_mode,
+                <span class="self">self</span>.value.as_slice(),
+                ciphertext,
+                <span class="kw-2">&amp;</span>nonce.<span class="number">0</span>,
+                aad,
             )
-            .<span class="ident">map_err</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="ident">CryptoError::AeadDecryptionError</span>)
+            .map_err(|<span class="kw">_</span>| CryptoError::AeadDecryptionError)
     }
 }
 
-<span class="kw">impl</span> <span class="ident">AeadNonce</span> {
-    <span class="doccomment">/// Create an `AeadNonce` from a `Secret`. TODO: This function should</span>
-    <span class="doccomment">/// disappear when tackling issue #103.</span>
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">from_secret</span>(<span class="ident">secret</span>: <span class="ident">Secret</span>) -&gt; <span class="self">Self</span> {
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">nonce</span> <span class="op">=</span> [<span class="number">0u8</span>; <span class="ident">NONCE_BYTES</span>];
-        <span class="ident">nonce</span>.<span class="ident">clone_from_slice</span>(<span class="kw-2">&amp;</span><span class="ident">secret</span>.<span class="ident">value</span>);
-        <span class="self">Self</span>(<span class="ident">nonce</span>)
+<span class="kw">impl </span>AeadNonce {
+    <span class="doccomment">/// Create an `AeadNonce` from a `Secret`. TODO: This function should
+    /// disappear when tackling issue #103.
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>from_secret(secret: Secret) -&gt; <span class="self">Self </span>{
+        <span class="kw">let </span><span class="kw-2">mut </span>nonce = [<span class="number">0u8</span>; NONCE_BYTES];
+        nonce.clone_from_slice(<span class="kw-2">&amp;</span>secret.value);
+        <span class="self">Self</span>(nonce)
     }
 
-    <span class="doccomment">/// Generate a new random nonce.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// **NOTE: This has to wait until it can acquire the lock to get randomness!**</span>
-    <span class="doccomment">/// TODO: This panics if another thread holding the rng panics.</span>
-    <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">test</span>)]</span>
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">random</span>(<span class="ident">rng</span>: <span class="kw-2">&amp;</span><span class="kw">impl</span> <span class="ident">OpenMlsCryptoProvider</span>) -&gt; <span class="self">Self</span> {
-        <span class="self">Self</span>(<span class="ident">rng</span>.<span class="ident">rand</span>().<span class="ident">random_array</span>().<span class="ident">expect</span>(<span class="string">&quot;Not enough entropy.&quot;</span>))
+    <span class="doccomment">/// Generate a new random nonce.
+    ///
+    /// **NOTE: This has to wait until it can acquire the lock to get randomness!**
+    /// TODO: This panics if another thread holding the rng panics.
+    </span><span class="attribute">#[cfg(test)]
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>random(rng: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider) -&gt; <span class="self">Self </span>{
+        <span class="self">Self</span>(rng.rand().random_array().expect(<span class="string">&quot;Not enough entropy.&quot;</span>))
     }
 
-    <span class="doccomment">/// Get a slice to the nonce value.</span>
-    <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">any</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;test-utils&quot;</span>, <span class="ident">test</span>))]</span>
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">as_slice</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>[<span class="ident">u8</span>] {
-        <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="number">0</span>
-    }
+    <span class="doccomment">/// Get a slice to the nonce value.
+    </span><span class="attribute">#[cfg(any(feature = <span class="string">&quot;test-utils&quot;</span>, test))]
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>as_slice(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>[u8] {
+        <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="number">0
+    </span>}
 
-    <span class="doccomment">/// Xor the first bytes of the nonce with the reuse_guard.</span>
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">xor_with_reuse_guard</span>(<span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">reuse_guard</span>: <span class="kw-2">&amp;</span><span class="ident">ReuseGuard</span>) -&gt; <span class="self">Self</span> {
+    <span class="doccomment">/// Xor the first bytes of the nonce with the reuse_guard.
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>xor_with_reuse_guard(<span class="kw-2">mut </span><span class="self">self</span>, reuse_guard: <span class="kw-2">&amp;</span>ReuseGuard) -&gt; <span class="self">Self </span>{
         <span class="macro">log_crypto!</span>(
-            <span class="ident">trace</span>,
+            trace,
             <span class="string">&quot;  XOR re-use guard {:x?}^{:x?}&quot;</span>,
             <span class="self">self</span>.<span class="number">0</span>,
-            <span class="ident">reuse_guard</span>.<span class="ident">value</span>
+            reuse_guard.value
         );
-        <span class="kw">for</span> <span class="ident">i</span> <span class="kw">in</span> <span class="number">0</span>..<span class="ident">REUSE_GUARD_BYTES</span> {
-            <span class="self">self</span>.<span class="number">0</span>[<span class="ident">i</span>] <span class="op">^</span><span class="op">=</span> <span class="ident">reuse_guard</span>.<span class="ident">value</span>[<span class="ident">i</span>]
+        <span class="kw">for </span>i <span class="kw">in </span><span class="number">0</span>..REUSE_GUARD_BYTES {
+            <span class="self">self</span>.<span class="number">0</span>[i] ^= reuse_guard.value[i]
         }
-        <span class="macro">log_crypto!</span>(<span class="ident">trace</span>, <span class="string">&quot;    = {:x?}&quot;</span>, <span class="self">self</span>.<span class="number">0</span>);
-        <span class="self">self</span>
+        <span class="macro">log_crypto!</span>(trace, <span class="string">&quot;    = {:x?}&quot;</span>, <span class="self">self</span>.<span class="number">0</span>);
+        <span class="self">self
+    </span>}
+}
+
+<span class="attribute">#[cfg(test)]
+</span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>aead_key_gen(
+    alg: openmls_traits::types::AeadType,
+    rng: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsRand,
+) -&gt; Vec&lt;u8&gt; {
+    <span class="kw">match </span>alg {
+        openmls_traits::types::AeadType::Aes128Gcm =&gt; {
+            rng.random_vec(<span class="number">16</span>).expect(<span class="string">&quot;An unexpected error occurred.&quot;</span>)
+        }
+        openmls_traits::types::AeadType::Aes256Gcm
+        | openmls_traits::types::AeadType::ChaCha20Poly1305 =&gt; {
+            rng.random_vec(<span class="number">32</span>).expect(<span class="string">&quot;An unexpected error occurred.&quot;</span>)
+        }
     }
 }
 
-<span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">test</span>)]</span>
-<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">aead_key_gen</span>(
-    <span class="ident">alg</span>: <span class="ident">openmls_traits::types::AeadType</span>,
-    <span class="ident">rng</span>: <span class="kw-2">&amp;</span><span class="kw">impl</span> <span class="ident">OpenMlsRand</span>,
-) -&gt; <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span> {
-    <span class="kw">match</span> <span class="ident">alg</span> {
-        <span class="ident">openmls_traits::types::AeadType::Aes128Gcm</span> =&gt; {
-            <span class="ident">rng</span>.<span class="ident">random_vec</span>(<span class="number">16</span>).<span class="ident">expect</span>(<span class="string">&quot;An unexpected error occurred.&quot;</span>)
-        }
-        <span class="ident">openmls_traits::types::AeadType::Aes256Gcm</span>
-        <span class="op">|</span> <span class="ident">openmls_traits::types::AeadType::ChaCha20Poly1305</span> =&gt; {
-            <span class="ident">rng</span>.<span class="ident">random_vec</span>(<span class="number">32</span>).<span class="ident">expect</span>(<span class="string">&quot;An unexpected error occurred.&quot;</span>)
-        }
-    }
-}
+<span class="attribute">#[cfg(test)]
+</span><span class="kw">mod </span>unit_tests {
+    <span class="kw">use </span><span class="kw">crate</span>::test_utils::<span class="kw-2">*</span>;
 
-<span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">test</span>)]</span>
-<span class="kw">mod</span> <span class="ident">unit_tests</span> {
-    <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::test_utils</span>::<span class="kw-2">*</span>;
+    <span class="kw">use super</span>::<span class="kw-2">*</span>;
 
-    <span class="kw">use</span> <span class="kw">super</span>::<span class="kw-2">*</span>;
-
-    <span class="doccomment">/// Make sure that xoring works by xoring a nonce with a reuse guard, testing if</span>
-    <span class="doccomment">/// it has changed, xoring it again and testing that it&#39;s back in its original</span>
-    <span class="doccomment">/// state.</span>
-    <span class="attribute">#[<span class="ident">apply</span>(<span class="ident">backends</span>)]</span>
-    <span class="kw">fn</span> <span class="ident">test_xor</span>(<span class="ident">backend</span>: <span class="kw-2">&amp;</span><span class="kw">impl</span> <span class="ident">OpenMlsCryptoProvider</span>) {
-        <span class="kw">let</span> <span class="ident">reuse_guard</span>: <span class="ident">ReuseGuard</span> <span class="op">=</span>
-            <span class="ident">ReuseGuard::try_from_random</span>(<span class="ident">backend</span>).<span class="ident">expect</span>(<span class="string">&quot;An unexpected error occurred.&quot;</span>);
-        <span class="kw">let</span> <span class="ident">original_nonce</span> <span class="op">=</span> <span class="ident">AeadNonce::random</span>(<span class="ident">backend</span>);
-        <span class="kw">let</span> <span class="ident">xored_once</span> <span class="op">=</span> <span class="ident">original_nonce</span>.<span class="ident">clone</span>().<span class="ident">xor_with_reuse_guard</span>(<span class="kw-2">&amp;</span><span class="ident">reuse_guard</span>);
+    <span class="doccomment">/// Make sure that xoring works by xoring a nonce with a reuse guard, testing if
+    /// it has changed, xoring it again and testing that it&#39;s back in its original
+    /// state.
+    </span><span class="attribute">#[apply(backends)]
+    </span><span class="kw">fn </span>test_xor(backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider) {
+        <span class="kw">let </span>reuse_guard: ReuseGuard =
+            ReuseGuard::try_from_random(backend).expect(<span class="string">&quot;An unexpected error occurred.&quot;</span>);
+        <span class="kw">let </span>original_nonce = AeadNonce::random(backend);
+        <span class="kw">let </span>xored_once = original_nonce.clone().xor_with_reuse_guard(<span class="kw-2">&amp;</span>reuse_guard);
         <span class="macro">assert_ne!</span>(
-            <span class="ident">original_nonce</span>, <span class="ident">xored_once</span>,
-            <span class="string">&quot;xoring with reuse_guard did not change the nonce&quot;</span>
-        );
-        <span class="kw">let</span> <span class="ident">xored_twice</span> <span class="op">=</span> <span class="ident">xored_once</span>.<span class="ident">xor_with_reuse_guard</span>(<span class="kw-2">&amp;</span><span class="ident">reuse_guard</span>);
+            original_nonce, xored_once,
+            <span class="string">&quot;xoring with reuse_guard did not change the nonce&quot;
+        </span>);
+        <span class="kw">let </span>xored_twice = xored_once.xor_with_reuse_guard(<span class="kw-2">&amp;</span>reuse_guard);
         <span class="macro">assert_eq!</span>(
-            <span class="ident">original_nonce</span>, <span class="ident">xored_twice</span>,
-            <span class="string">&quot;xoring twice changed the original value&quot;</span>
-        );
+            original_nonce, xored_twice,
+            <span class="string">&quot;xoring twice changed the original value&quot;
+        </span>);
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-current-crate="openmls" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.64.0 (a55dd71d5 2022-09-19)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-current-crate="openmls" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0 (897e37553 2022-11-02)" ></div></body></html>

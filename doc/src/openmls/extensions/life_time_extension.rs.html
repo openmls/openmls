@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `src/extensions/life_time_extension.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>life_time_extension.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" type="text/css" href="../../../normalize.css"><link rel="stylesheet" type="text/css" href="../../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" type="text/css" href="../../../ayu.css" disabled><link rel="stylesheet" type="text/css" href="../../../dark.css" disabled><link rel="stylesheet" type="text/css" href="../../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../../storage.js"></script><script defer src="../../../source-script.js"></script><script defer src="../../../source-files.js"></script><script defer src="../../../main.js"></script><noscript><link rel="stylesheet" href="../../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../../openmls/index.html"><div class="logo-container"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></div></a><h2 class="location"></h2></nav><nav class="sidebar"><a class="sidebar-logo" href="../../../openmls/index.html"><div class="logo-container"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></div></a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../../openmls/index.html"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></a><nav class="sub"><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><button type="button">?</button></div><div id="settings-menu" tabindex="-1"><a href="../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../wheel.svg"></a></div></div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">1</span>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `src/extensions/life_time_extension.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>life_time_extension.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" href="../../../normalize.css"><link rel="stylesheet" href="../../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" href="../../../ayu.css" disabled><link rel="stylesheet" href="../../../dark.css" disabled><link rel="stylesheet" href="../../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../../storage.js"></script><script defer src="../../../source-script.js"></script><script defer src="../../../source-files.js"></script><script defer src="../../../main.js"></script><noscript><link rel="stylesheet" href="../../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../../openmls/index.html"><div class="logo-container"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></div></a><h2 class="location"></h2></nav><nav class="sidebar"><a class="sidebar-logo" href="../../../openmls/index.html"><div class="logo-container"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></div></a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../../openmls/index.html"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></a><nav class="sub"><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><button type="button">?</button></div><div id="settings-menu" tabindex="-1"><a href="../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../wheel.svg"></a></div></div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">1</span>
 <span id="2">2</span>
 <span id="3">3</span>
 <span id="4">4</span>
@@ -88,95 +88,95 @@
 <span id="88">88</span>
 <span id="89">89</span>
 <span id="90">90</span>
-</pre><pre class="rust"><code><span class="kw">use</span> <span class="ident">tls_codec</span>::{<span class="ident">TlsSerialize</span>, <span class="ident">TlsSize</span>};
+</pre><pre class="rust"><code><span class="kw">use </span>tls_codec::{TlsSerialize, TlsSize};
 
-<span class="kw">use</span> <span class="kw">super</span>::{<span class="ident">Deserialize</span>, <span class="ident">LifetimeExtensionError</span>, <span class="ident">Serialize</span>};
+<span class="kw">use super</span>::{Deserialize, LifetimeExtensionError, Serialize};
 
-<span class="kw">use</span> <span class="ident">std::io::Read</span>;
-<span class="kw">use</span> <span class="ident">std::time</span>::{<span class="ident">SystemTime</span>, <span class="ident">UNIX_EPOCH</span>};
+<span class="kw">use </span>std::io::Read;
+<span class="kw">use </span>std::time::{SystemTime, UNIX_EPOCH};
 
-<span class="doccomment">/// This value is used as the default lifetime of `KeyPackage`s if no default</span>
-<span class="doccomment">/// lifetime is configured. The value is in seconds and amounts to 3 * 28 Days,</span>
-<span class="doccomment">/// i.e. about 3 months.</span>
-<span class="kw">const</span> <span class="ident">DEFAULT_KEY_PACKAGE_LIFETIME</span>: <span class="ident">u64</span> <span class="op">=</span> <span class="number">60</span> <span class="op">*</span> <span class="number">60</span> <span class="op">*</span> <span class="number">24</span> <span class="op">*</span> <span class="number">28</span> <span class="op">*</span> <span class="number">3</span>; <span class="comment">// in Seconds</span>
-<span class="doccomment">/// This value is used as the default amount of time (in seconds) the lifetime</span>
-<span class="doccomment">/// of a `KeyPackage` is extended into the past to allow for skewed clocks. The</span>
-<span class="doccomment">/// value is in seconds and amounts to 1h.</span>
-<span class="kw">const</span> <span class="ident">DEFAULT_KEY_PACKAGE_LIFETIME_MARGIN</span>: <span class="ident">u64</span> <span class="op">=</span> <span class="number">60</span> <span class="op">*</span> <span class="number">60</span>; <span class="comment">// in Seconds</span>
+<span class="doccomment">/// This value is used as the default lifetime of `KeyPackage`s if no default
+/// lifetime is configured. The value is in seconds and amounts to 3 * 28 Days,
+/// i.e. about 3 months.
+</span><span class="kw">const </span>DEFAULT_KEY_PACKAGE_LIFETIME: u64 = <span class="number">60 </span>* <span class="number">60 </span>* <span class="number">24 </span>* <span class="number">28 </span>* <span class="number">3</span>; <span class="comment">// in Seconds
+</span><span class="doccomment">/// This value is used as the default amount of time (in seconds) the lifetime
+/// of a `KeyPackage` is extended into the past to allow for skewed clocks. The
+/// value is in seconds and amounts to 1h.
+</span><span class="kw">const </span>DEFAULT_KEY_PACKAGE_LIFETIME_MARGIN: u64 = <span class="number">60 </span>* <span class="number">60</span>; <span class="comment">// in Seconds
 
-<span class="doccomment">/// # Life time extension</span>
-<span class="doccomment">///</span>
-<span class="doccomment">/// The lifetime extension represents the times between which clients will</span>
-<span class="doccomment">/// consider a KeyPackage valid. This time is represented as an absolute time,</span>
-<span class="doccomment">/// measured in seconds since the Unix epoch (1970-01-01T00:00:00Z).</span>
-<span class="doccomment">/// A client MUST NOT use the data in a KeyPackage for any processing before</span>
-<span class="doccomment">/// the not_before date, or after the not_after date.</span>
-<span class="doccomment">///</span>
-<span class="doccomment">/// Applications MUST define a maximum total lifetime that is acceptable for a</span>
-<span class="doccomment">/// KeyPackage, and reject any KeyPackage where the total lifetime is longer</span>
-<span class="doccomment">/// than this duration.This extension MUST always be present in a KeyPackage.</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">PartialEq</span>, <span class="ident">Eq</span>, <span class="ident">Clone</span>, <span class="ident">Debug</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>, <span class="ident">TlsSerialize</span>, <span class="ident">TlsSize</span>)]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">LifetimeExtension</span> {
-    <span class="ident">not_before</span>: <span class="ident">u64</span>,
-    <span class="ident">not_after</span>: <span class="ident">u64</span>,
+</span><span class="doccomment">/// # Life time extension
+///
+/// The lifetime extension represents the times between which clients will
+/// consider a KeyPackage valid. This time is represented as an absolute time,
+/// measured in seconds since the Unix epoch (1970-01-01T00:00:00Z).
+/// A client MUST NOT use the data in a KeyPackage for any processing before
+/// the not_before date, or after the not_after date.
+///
+/// Applications MUST define a maximum total lifetime that is acceptable for a
+/// KeyPackage, and reject any KeyPackage where the total lifetime is longer
+/// than this duration.This extension MUST always be present in a KeyPackage.
+</span><span class="attribute">#[derive(PartialEq, Eq, Clone, Debug, Serialize, Deserialize, TlsSerialize, TlsSize)]
+</span><span class="kw">pub struct </span>LifetimeExtension {
+    not_before: u64,
+    not_after: u64,
 }
 
-<span class="kw">impl</span> <span class="ident">LifetimeExtension</span> {
-    <span class="doccomment">/// Create a new lifetime extensions with lifetime `t` (in seconds).</span>
-    <span class="doccomment">/// Note that the lifetime is extended 1h into the past to adapt to skewed</span>
-    <span class="doccomment">/// clocks, i.e. `not_before` is set to now - 1h.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new</span>(<span class="ident">t</span>: <span class="ident">u64</span>) -&gt; <span class="self">Self</span> {
-        <span class="kw">let</span> <span class="ident">lifetime_margin</span>: <span class="ident">u64</span> <span class="op">=</span> <span class="ident">DEFAULT_KEY_PACKAGE_LIFETIME_MARGIN</span>;
-        <span class="kw">let</span> <span class="ident">now</span> <span class="op">=</span> <span class="ident">SystemTime::now</span>()
-            .<span class="ident">duration_since</span>(<span class="ident">UNIX_EPOCH</span>)
-            .<span class="ident">expect</span>(<span class="string">&quot;SystemTime before UNIX EPOCH!&quot;</span>)
-            .<span class="ident">as_secs</span>();
-        <span class="kw">let</span> <span class="ident">not_before</span> <span class="op">=</span> <span class="ident">now</span> <span class="op">-</span> <span class="ident">lifetime_margin</span>;
-        <span class="kw">let</span> <span class="ident">not_after</span> <span class="op">=</span> <span class="ident">now</span> <span class="op">+</span> <span class="ident">t</span>;
-        <span class="self">Self</span> {
-            <span class="ident">not_before</span>,
-            <span class="ident">not_after</span>,
+<span class="kw">impl </span>LifetimeExtension {
+    <span class="doccomment">/// Create a new lifetime extensions with lifetime `t` (in seconds).
+    /// Note that the lifetime is extended 1h into the past to adapt to skewed
+    /// clocks, i.e. `not_before` is set to now - 1h.
+    </span><span class="kw">pub fn </span>new(t: u64) -&gt; <span class="self">Self </span>{
+        <span class="kw">let </span>lifetime_margin: u64 = DEFAULT_KEY_PACKAGE_LIFETIME_MARGIN;
+        <span class="kw">let </span>now = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .expect(<span class="string">&quot;SystemTime before UNIX EPOCH!&quot;</span>)
+            .as_secs();
+        <span class="kw">let </span>not_before = now - lifetime_margin;
+        <span class="kw">let </span>not_after = now + t;
+        <span class="self">Self </span>{
+            not_before,
+            not_after,
         }
     }
 
-    <span class="doccomment">/// Returns true if this lifetime is valid.</span>
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">is_valid</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">bool</span> {
-        <span class="kw">let</span> <span class="ident">now</span> <span class="op">=</span> <span class="ident">SystemTime::now</span>()
-            .<span class="ident">duration_since</span>(<span class="ident">UNIX_EPOCH</span>)
-            .<span class="ident">expect</span>(<span class="string">&quot;SystemTime before UNIX EPOCH!&quot;</span>)
-            .<span class="ident">as_secs</span>();
-        <span class="self">self</span>.<span class="ident">not_before</span> <span class="op">&lt;</span> <span class="ident">now</span> <span class="op">&amp;&amp;</span> <span class="ident">now</span> <span class="op">&lt;</span> <span class="self">self</span>.<span class="ident">not_after</span>
+    <span class="doccomment">/// Returns true if this lifetime is valid.
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>is_valid(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; bool {
+        <span class="kw">let </span>now = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .expect(<span class="string">&quot;SystemTime before UNIX EPOCH!&quot;</span>)
+            .as_secs();
+        <span class="self">self</span>.not_before &lt; now &amp;&amp; now &lt; <span class="self">self</span>.not_after
     }
 }
 
-<span class="kw">impl</span> <span class="ident">Default</span> <span class="kw">for</span> <span class="ident">LifetimeExtension</span> {
-    <span class="kw">fn</span> <span class="ident">default</span>() -&gt; <span class="self">Self</span> {
-        <span class="ident">LifetimeExtension::new</span>(<span class="ident">DEFAULT_KEY_PACKAGE_LIFETIME</span>)
+<span class="kw">impl </span>Default <span class="kw">for </span>LifetimeExtension {
+    <span class="kw">fn </span>default() -&gt; <span class="self">Self </span>{
+        LifetimeExtension::new(DEFAULT_KEY_PACKAGE_LIFETIME)
     }
 }
 
-<span class="comment">// Deserialize manually in order to do additional validity checks.</span>
-<span class="kw">impl</span> <span class="ident">tls_codec::Deserialize</span> <span class="kw">for</span> <span class="ident">LifetimeExtension</span> {
-    <span class="kw">fn</span> <span class="ident">tls_deserialize</span><span class="op">&lt;</span><span class="ident">R</span>: <span class="ident">Read</span><span class="op">&gt;</span>(<span class="ident">bytes</span>: <span class="kw-2">&amp;mut</span> <span class="ident">R</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident">tls_codec::Error</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="ident">not_before</span> <span class="op">=</span> <span class="ident">u64::tls_deserialize</span>(<span class="ident">bytes</span>)<span class="question-mark">?</span>;
-        <span class="kw">let</span> <span class="ident">not_after</span> <span class="op">=</span> <span class="ident">u64::tls_deserialize</span>(<span class="ident">bytes</span>)<span class="question-mark">?</span>;
-        <span class="kw">let</span> <span class="ident">out</span> <span class="op">=</span> <span class="self">Self</span> {
-            <span class="ident">not_before</span>,
-            <span class="ident">not_after</span>,
+<span class="comment">// Deserialize manually in order to do additional validity checks.
+</span><span class="kw">impl </span>tls_codec::Deserialize <span class="kw">for </span>LifetimeExtension {
+    <span class="kw">fn </span>tls_deserialize&lt;R: Read&gt;(bytes: <span class="kw-2">&amp;mut </span>R) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, tls_codec::Error&gt; {
+        <span class="kw">let </span>not_before = u64::tls_deserialize(bytes)<span class="question-mark">?</span>;
+        <span class="kw">let </span>not_after = u64::tls_deserialize(bytes)<span class="question-mark">?</span>;
+        <span class="kw">let </span>out = <span class="self">Self </span>{
+            not_before,
+            not_after,
         };
-        <span class="kw">if</span> <span class="op">!</span><span class="ident">out</span>.<span class="ident">is_valid</span>() {
+        <span class="kw">if </span>!out.is_valid() {
             <span class="macro">log::trace!</span>(
                 <span class="string">&quot;Lifetime expired!\n\tnot before: {:?} - not_after: {:?}&quot;</span>,
-                <span class="ident">not_before</span>,
-                <span class="ident">not_after</span>
+                not_before,
+                not_after
             );
-            <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">tls_codec::Error::DecodingError</span>(<span class="macro">format!</span>(
+            <span class="kw">return </span><span class="prelude-val">Err</span>(tls_codec::Error::DecodingError(<span class="macro">format!</span>(
                 <span class="string">&quot;{:?}&quot;</span>,
-                <span class="ident">LifetimeExtensionError::Invalid</span>
+                LifetimeExtensionError::Invalid
             )));
         }
-        <span class="prelude-val">Ok</span>(<span class="ident">out</span>)
+        <span class="prelude-val">Ok</span>(out)
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-current-crate="openmls" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.64.0 (a55dd71d5 2022-09-19)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-current-crate="openmls" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0 (897e37553 2022-11-02)" ></div></body></html>

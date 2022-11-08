@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `src/group/core_group/process.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>process.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" type="text/css" href="../../../../normalize.css"><link rel="stylesheet" type="text/css" href="../../../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" type="text/css" href="../../../../ayu.css" disabled><link rel="stylesheet" type="text/css" href="../../../../dark.css" disabled><link rel="stylesheet" type="text/css" href="../../../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../../../storage.js"></script><script defer src="../../../../source-script.js"></script><script defer src="../../../../source-files.js"></script><script defer src="../../../../main.js"></script><noscript><link rel="stylesheet" href="../../../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../../../openmls/index.html"><div class="logo-container"><img class="rust-logo" src="../../../../rust-logo.svg" alt="logo"></div></a><h2 class="location"></h2></nav><nav class="sidebar"><a class="sidebar-logo" href="../../../../openmls/index.html"><div class="logo-container"><img class="rust-logo" src="../../../../rust-logo.svg" alt="logo"></div></a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../../../openmls/index.html"><img class="rust-logo" src="../../../../rust-logo.svg" alt="logo"></a><nav class="sub"><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><button type="button">?</button></div><div id="settings-menu" tabindex="-1"><a href="../../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../../wheel.svg"></a></div></div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">1</span>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `src/group/core_group/process.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>process.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" href="../../../../normalize.css"><link rel="stylesheet" href="../../../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" href="../../../../ayu.css" disabled><link rel="stylesheet" href="../../../../dark.css" disabled><link rel="stylesheet" href="../../../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../../../storage.js"></script><script defer src="../../../../source-script.js"></script><script defer src="../../../../source-files.js"></script><script defer src="../../../../main.js"></script><noscript><link rel="stylesheet" href="../../../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../../../openmls/index.html"><div class="logo-container"><img class="rust-logo" src="../../../../rust-logo.svg" alt="logo"></div></a><h2 class="location"></h2></nav><nav class="sidebar"><a class="sidebar-logo" href="../../../../openmls/index.html"><div class="logo-container"><img class="rust-logo" src="../../../../rust-logo.svg" alt="logo"></div></a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../../../openmls/index.html"><img class="rust-logo" src="../../../../rust-logo.svg" alt="logo"></a><nav class="sub"><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><button type="button">?</button></div><div id="settings-menu" tabindex="-1"><a href="../../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../../wheel.svg"></a></div></div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">1</span>
 <span id="2">2</span>
 <span id="3">3</span>
 <span id="4">4</span>
@@ -245,235 +245,235 @@
 <span id="245">245</span>
 <span id="246">246</span>
 <span id="247">247</span>
-</pre><pre class="rust"><code><span class="kw">use</span> <span class="ident">core_group</span>::{<span class="ident">proposals::QueuedProposal</span>, <span class="ident">staged_commit::StagedCommit</span>};
+</pre><pre class="rust"><code><span class="kw">use </span>core_group::{proposals::QueuedProposal, staged_commit::StagedCommit};
 
-<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::group</span>::{<span class="ident">errors::ValidationError</span>, <span class="ident">mls_group::errors::UnverifiedMessageError</span>};
+<span class="kw">use </span><span class="kw">crate</span>::group::{errors::ValidationError, mls_group::errors::UnverifiedMessageError};
 
-<span class="kw">use</span> <span class="kw">super</span>::{<span class="ident">proposals::ProposalStore</span>, <span class="kw-2">*</span>};
+<span class="kw">use super</span>::{proposals::ProposalStore, <span class="kw-2">*</span>};
 
-<span class="kw">impl</span> <span class="ident">CoreGroup</span> {
-    <span class="doccomment">/// This function is used to parse messages from the DS.</span>
-    <span class="doccomment">/// It checks for syntactic errors and makes some semantic checks as well.</span>
-    <span class="doccomment">/// If the input is a [MlsCiphertext] message, it will be decrypted.</span>
-    <span class="doccomment">/// Returns an [UnverifiedMessage] that can be inspected and later processed in</span>
-    <span class="doccomment">/// [Self::process_unverified_message()].</span>
-    <span class="doccomment">/// Checks the following semantic validation:</span>
-    <span class="doccomment">///  - ValSem002</span>
-    <span class="doccomment">///  - ValSem003</span>
-    <span class="doccomment">///  - ValSem004</span>
-    <span class="doccomment">///  - ValSem005</span>
-    <span class="doccomment">///  - ValSem006</span>
-    <span class="doccomment">///  - ValSem007</span>
-    <span class="doccomment">///  - ValSem009</span>
-    <span class="doccomment">///  - ValSem112</span>
-    <span class="doccomment">///  - ValSem246</span>
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">parse_message</span>(
-        <span class="kw-2">&amp;mut</span> <span class="self">self</span>,
-        <span class="ident">backend</span>: <span class="kw-2">&amp;</span><span class="kw">impl</span> <span class="ident">OpenMlsCryptoProvider</span>,
-        <span class="ident">message</span>: <span class="ident">MlsMessageIn</span>,
-        <span class="ident">sender_ratchet_configuration</span>: <span class="kw-2">&amp;</span><span class="ident">SenderRatchetConfiguration</span>,
-    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">UnverifiedMessage</span>, <span class="ident">ValidationError</span><span class="op">&gt;</span> {
-        <span class="comment">// Checks the following semantic validation:</span>
-        <span class="comment">//  - ValSem002</span>
-        <span class="comment">//  - ValSem003</span>
-        <span class="self">self</span>.<span class="ident">validate_framing</span>(<span class="kw-2">&amp;</span><span class="ident">message</span>)<span class="question-mark">?</span>;
+<span class="kw">impl </span>CoreGroup {
+    <span class="doccomment">/// This function is used to parse messages from the DS.
+    /// It checks for syntactic errors and makes some semantic checks as well.
+    /// If the input is a [MlsCiphertext] message, it will be decrypted.
+    /// Returns an [UnverifiedMessage] that can be inspected and later processed in
+    /// [Self::process_unverified_message()].
+    /// Checks the following semantic validation:
+    ///  - ValSem002
+    ///  - ValSem003
+    ///  - ValSem004
+    ///  - ValSem005
+    ///  - ValSem006
+    ///  - ValSem007
+    ///  - ValSem009
+    ///  - ValSem112
+    ///  - ValSem246
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>parse_message(
+        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
+        backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider,
+        message: MlsMessageIn,
+        sender_ratchet_configuration: <span class="kw-2">&amp;</span>SenderRatchetConfiguration,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;UnverifiedMessage, ValidationError&gt; {
+        <span class="comment">// Checks the following semantic validation:
+        //  - ValSem002
+        //  - ValSem003
+        </span><span class="self">self</span>.validate_framing(<span class="kw-2">&amp;</span>message)<span class="question-mark">?</span>;
 
-        <span class="comment">// Checks the following semantic validation:</span>
-        <span class="comment">//  - ValSem006</span>
-        <span class="kw">let</span> <span class="ident">decrypted_message</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">message</span>.<span class="ident">wire_format</span>() {
-            <span class="ident">WireFormat::MlsPlaintext</span> =&gt; <span class="ident">DecryptedMessage::from_inbound_plaintext</span>(<span class="ident">message</span>)<span class="question-mark">?</span>,
-            <span class="ident">WireFormat::MlsCiphertext</span> =&gt; {
-                <span class="comment">// If the message is older than the current epoch, we need to fetch the correct secret tree first</span>
-                <span class="ident">DecryptedMessage::from_inbound_ciphertext</span>(
-                    <span class="ident">message</span>,
-                    <span class="ident">backend</span>,
+        <span class="comment">// Checks the following semantic validation:
+        //  - ValSem006
+        </span><span class="kw">let </span>decrypted_message = <span class="kw">match </span>message.wire_format() {
+            WireFormat::MlsPlaintext =&gt; DecryptedMessage::from_inbound_plaintext(message)<span class="question-mark">?</span>,
+            WireFormat::MlsCiphertext =&gt; {
+                <span class="comment">// If the message is older than the current epoch, we need to fetch the correct secret tree first
+                </span>DecryptedMessage::from_inbound_ciphertext(
+                    message,
+                    backend,
                     <span class="self">self</span>,
-                    <span class="ident">sender_ratchet_configuration</span>,
-                )<span class="question-mark">?</span>
-            }
+                    sender_ratchet_configuration,
+                )<span class="question-mark">?
+            </span>}
         };
 
-        <span class="comment">// Checks the following semantic validation:</span>
-        <span class="comment">//  - ValSem004</span>
-        <span class="comment">//  - ValSem005</span>
-        <span class="comment">//  - ValSem007</span>
-        <span class="comment">//  - ValSem009</span>
-        <span class="self">self</span>.<span class="ident">validate_plaintext</span>(<span class="ident">decrypted_message</span>.<span class="ident">plaintext</span>())<span class="question-mark">?</span>;
+        <span class="comment">// Checks the following semantic validation:
+        //  - ValSem004
+        //  - ValSem005
+        //  - ValSem007
+        //  - ValSem009
+        </span><span class="self">self</span>.validate_plaintext(decrypted_message.plaintext())<span class="question-mark">?</span>;
 
-        <span class="comment">// Extract the credential if the sender is a member or a new member.</span>
-        <span class="comment">// Checks the following semantic validation:</span>
-        <span class="comment">//  - ValSem112</span>
-        <span class="comment">//  - ValSem246</span>
-        <span class="comment">//  - Prepares ValSem247 by setting the right credential. The remainder</span>
-        <span class="comment">//    of ValSem247 is validated as part of ValSem010.</span>
-        <span class="comment">// Preconfigured senders are not supported yet #106/#151.</span>
-        <span class="kw">let</span> <span class="ident">credential</span> <span class="op">=</span> <span class="ident">decrypted_message</span>.<span class="ident">credential</span>(
-            <span class="self">self</span>.<span class="ident">treesync</span>(),
-            <span class="self">self</span>.<span class="ident">message_secrets_store</span>
-                .<span class="ident">leaves_for_epoch</span>(<span class="ident">decrypted_message</span>.<span class="ident">plaintext</span>().<span class="ident">epoch</span>()),
+        <span class="comment">// Extract the credential if the sender is a member or a new member.
+        // Checks the following semantic validation:
+        //  - ValSem112
+        //  - ValSem246
+        //  - Prepares ValSem247 by setting the right credential. The remainder
+        //    of ValSem247 is validated as part of ValSem010.
+        // External senders are not supported yet #106/#151.
+        </span><span class="kw">let </span>credential = decrypted_message.credential(
+            <span class="self">self</span>.treesync(),
+            <span class="self">self</span>.message_secrets_store
+                .leaves_for_epoch(decrypted_message.plaintext().epoch()),
         )<span class="question-mark">?</span>;
 
-        <span class="prelude-val">Ok</span>(<span class="ident">UnverifiedMessage::from_decrypted_message</span>(
-            <span class="ident">decrypted_message</span>,
-            <span class="prelude-val">Some</span>(<span class="ident">credential</span>),
+        <span class="prelude-val">Ok</span>(UnverifiedMessage::from_decrypted_message(
+            decrypted_message,
+            <span class="prelude-val">Some</span>(credential),
         ))
     }
 
-    <span class="doccomment">/// This processing function does most of the semantic verifications.</span>
-    <span class="doccomment">/// It returns a [ProcessedMessage] enum.</span>
-    <span class="doccomment">/// Checks the following semantic validation:</span>
-    <span class="doccomment">///  - ValSem008</span>
-    <span class="doccomment">///  - ValSem010</span>
-    <span class="doccomment">///  - ValSem100</span>
-    <span class="doccomment">///  - ValSem101</span>
-    <span class="doccomment">///  - ValSem102</span>
-    <span class="doccomment">///  - ValSem103</span>
-    <span class="doccomment">///  - ValSem104</span>
-    <span class="doccomment">///  - ValSem105</span>
-    <span class="doccomment">///  - ValSem106</span>
-    <span class="doccomment">///  - ValSem107</span>
-    <span class="doccomment">///  - ValSem108</span>
-    <span class="doccomment">///  - ValSem109</span>
-    <span class="doccomment">///  - ValSem110</span>
-    <span class="doccomment">///  - ValSem111</span>
-    <span class="doccomment">///  - ValSem112</span>
-    <span class="doccomment">///  - ValSem200</span>
-    <span class="doccomment">///  - ValSem201</span>
-    <span class="doccomment">///  - ValSem202: Path must be the right length</span>
-    <span class="doccomment">///  - ValSem203: Path secrets must decrypt correctly</span>
-    <span class="doccomment">///  - ValSem204: Public keys from Path must be verified and match the</span>
-    <span class="doccomment">///               private keys from the direct path</span>
-    <span class="doccomment">///  - ValSem205</span>
-    <span class="doccomment">///  - ValSem240</span>
-    <span class="doccomment">///  - ValSem241</span>
-    <span class="doccomment">///  - ValSem242</span>
-    <span class="doccomment">///  - ValSem243</span>
-    <span class="doccomment">///  - ValSem244</span>
-    <span class="doccomment">///  - ValSem245</span>
-    <span class="doccomment">///  - ValSem247 (as part of ValSem010)</span>
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">process_unverified_message</span>(
+    <span class="doccomment">/// This processing function does most of the semantic verifications.
+    /// It returns a [ProcessedMessage] enum.
+    /// Checks the following semantic validation:
+    ///  - ValSem008
+    ///  - ValSem010
+    ///  - ValSem100
+    ///  - ValSem101
+    ///  - ValSem102
+    ///  - ValSem103
+    ///  - ValSem104
+    ///  - ValSem105
+    ///  - ValSem106
+    ///  - ValSem107
+    ///  - ValSem108
+    ///  - ValSem109
+    ///  - ValSem110
+    ///  - ValSem111
+    ///  - ValSem112
+    ///  - ValSem200
+    ///  - ValSem201
+    ///  - ValSem202: Path must be the right length
+    ///  - ValSem203: Path secrets must decrypt correctly
+    ///  - ValSem204: Public keys from Path must be verified and match the
+    ///               private keys from the direct path
+    ///  - ValSem205
+    ///  - ValSem240
+    ///  - ValSem241
+    ///  - ValSem242
+    ///  - ValSem243
+    ///  - ValSem244
+    ///  - ValSem245
+    ///  - ValSem247 (as part of ValSem010)
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>process_unverified_message(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        <span class="ident">unverified_message</span>: <span class="ident">UnverifiedMessage</span>,
-        <span class="ident">signature_key</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">SignaturePublicKey</span><span class="op">&gt;</span>,
-        <span class="ident">proposal_store</span>: <span class="kw-2">&amp;</span><span class="ident">ProposalStore</span>,
-        <span class="ident">own_kpbs</span>: <span class="kw-2">&amp;</span>[<span class="ident">KeyPackageBundle</span>],
-        <span class="ident">backend</span>: <span class="kw-2">&amp;</span><span class="kw">impl</span> <span class="ident">OpenMlsCryptoProvider</span>,
-    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">ProcessedMessage</span>, <span class="ident">UnverifiedMessageError</span><span class="op">&gt;</span> {
-        <span class="comment">// Add the context to the message and verify the membership tag if necessary.</span>
-        <span class="comment">// If the message is older than the current epoch, we need to fetch the correct secret tree first.</span>
-        <span class="kw">let</span> <span class="ident">message_secrets</span> <span class="op">=</span> <span class="self">self</span>
-            .<span class="ident">message_secrets_for_epoch</span>(<span class="ident">unverified_message</span>.<span class="ident">epoch</span>())
-            .<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> <span class="kw">match</span> <span class="ident">e</span> {
-                <span class="ident">SecretTreeError::TooDistantInThePast</span> =&gt; <span class="ident">UnverifiedMessageError::NoPastEpochData</span>,
-                <span class="kw">_</span> =&gt; <span class="ident">LibraryError::custom</span>(<span class="string">&quot;Unexpected return value&quot;</span>).<span class="ident">into</span>(),
+        unverified_message: UnverifiedMessage,
+        signature_key: <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>SignaturePublicKey&gt;,
+        proposal_store: <span class="kw-2">&amp;</span>ProposalStore,
+        own_kpbs: <span class="kw-2">&amp;</span>[KeyPackageBundle],
+        backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;ProcessedMessage, UnverifiedMessageError&gt; {
+        <span class="comment">// Add the context to the message and verify the membership tag if necessary.
+        // If the message is older than the current epoch, we need to fetch the correct secret tree first.
+        </span><span class="kw">let </span>message_secrets = <span class="self">self
+            </span>.message_secrets_for_epoch(unverified_message.epoch())
+            .map_err(|e| <span class="kw">match </span>e {
+                SecretTreeError::TooDistantInThePast =&gt; UnverifiedMessageError::NoPastEpochData,
+                <span class="kw">_ </span>=&gt; LibraryError::custom(<span class="string">&quot;Unexpected return value&quot;</span>).into(),
             })<span class="question-mark">?</span>;
 
-        <span class="comment">// Checks the following semantic validation:</span>
-        <span class="comment">//  - ValSem008</span>
-        <span class="kw">let</span> <span class="ident">context_plaintext</span> <span class="op">=</span> <span class="ident">UnverifiedContextMessage::from_unverified_message</span>(
-            <span class="ident">unverified_message</span>,
-            <span class="ident">message_secrets</span>,
-            <span class="ident">backend</span>,
+        <span class="comment">// Checks the following semantic validation:
+        //  - ValSem008
+        </span><span class="kw">let </span>context_plaintext = UnverifiedContextMessage::from_unverified_message(
+            unverified_message,
+            message_secrets,
+            backend,
         )
-        .<span class="ident">map_err</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="ident">UnverifiedMessageError::InvalidMembershipTag</span>)<span class="question-mark">?</span>;
+        .map_err(|<span class="kw">_</span>| UnverifiedMessageError::InvalidMembershipTag)<span class="question-mark">?</span>;
 
-        <span class="kw">match</span> <span class="ident">context_plaintext</span> {
-            <span class="ident">UnverifiedContextMessage::Group</span>(<span class="ident">unverified_message</span>) =&gt; {
-                <span class="comment">// Checks the following semantic validation:</span>
-                <span class="comment">//  - ValSem010</span>
-                <span class="comment">//  - ValSem247 (as part of ValSem010)</span>
-                <span class="kw">let</span> <span class="ident">verified_member_message</span> <span class="op">=</span> <span class="ident">unverified_message</span>
-                    .<span class="ident">into_verified</span>(<span class="ident">backend</span>, <span class="ident">signature_key</span>)
-                    .<span class="ident">map_err</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="ident">UnverifiedMessageError::InvalidSignature</span>)<span class="question-mark">?</span>;
+        <span class="kw">match </span>context_plaintext {
+            UnverifiedContextMessage::Group(unverified_message) =&gt; {
+                <span class="comment">// Checks the following semantic validation:
+                //  - ValSem010
+                //  - ValSem247 (as part of ValSem010)
+                </span><span class="kw">let </span>verified_member_message = unverified_message
+                    .into_verified(backend, signature_key)
+                    .map_err(|<span class="kw">_</span>| UnverifiedMessageError::InvalidSignature)<span class="question-mark">?</span>;
 
-                <span class="prelude-val">Ok</span>(<span class="kw">match</span> <span class="ident">verified_member_message</span>.<span class="ident">plaintext</span>().<span class="ident">content</span>() {
-                    <span class="ident">MlsContentBody::Application</span>(<span class="ident">application_message</span>) =&gt; {
-                        <span class="ident">ProcessedMessage::ApplicationMessage</span>(<span class="ident">ApplicationMessage::new</span>(
-                            <span class="ident">application_message</span>.<span class="ident">as_slice</span>().<span class="ident">to_vec</span>(),
+                <span class="prelude-val">Ok</span>(<span class="kw">match </span>verified_member_message.plaintext().content() {
+                    MlsContentBody::Application(application_message) =&gt; {
+                        ProcessedMessage::ApplicationMessage(ApplicationMessage::new(
+                            application_message.as_slice().to_vec(),
                         ))
                     }
-                    <span class="ident">MlsContentBody::Proposal</span>(<span class="ident">_proposal</span>) =&gt; <span class="ident">ProcessedMessage::ProposalMessage</span>(
-                        <span class="ident">Box::new</span>(<span class="ident">QueuedProposal::from_mls_plaintext</span>(
-                            <span class="self">self</span>.<span class="ident">ciphersuite</span>(),
-                            <span class="ident">backend</span>,
-                            <span class="ident">verified_member_message</span>.<span class="ident">take_plaintext</span>(),
+                    MlsContentBody::Proposal(_proposal) =&gt; ProcessedMessage::ProposalMessage(
+                        Box::new(QueuedProposal::from_mls_plaintext(
+                            <span class="self">self</span>.ciphersuite(),
+                            backend,
+                            verified_member_message.take_plaintext(),
                         )<span class="question-mark">?</span>),
                     ),
-                    <span class="ident">MlsContentBody::Commit</span>(<span class="ident">_commit</span>) =&gt; {
-                        <span class="comment">//  - ValSem100</span>
-                        <span class="comment">//  - ValSem101</span>
-                        <span class="comment">//  - ValSem102</span>
-                        <span class="comment">//  - ValSem103</span>
-                        <span class="comment">//  - ValSem104</span>
-                        <span class="comment">//  - ValSem105</span>
-                        <span class="comment">//  - ValSem106</span>
-                        <span class="comment">//  - ValSem107</span>
-                        <span class="comment">//  - ValSem108</span>
-                        <span class="comment">//  - ValSem109</span>
-                        <span class="comment">//  - ValSem110</span>
-                        <span class="comment">//  - ValSem111</span>
-                        <span class="comment">//  - ValSem112</span>
-                        <span class="comment">//  - ValSem200</span>
-                        <span class="comment">//  - ValSem201</span>
-                        <span class="comment">//  - ValSem202: Path must be the right length</span>
-                        <span class="comment">//  - ValSem203: Path secrets must decrypt correctly</span>
-                        <span class="comment">//  - ValSem204: Public keys from Path must be verified</span>
-                        <span class="comment">//               and match the private keys from the</span>
-                        <span class="comment">//               direct path</span>
-                        <span class="comment">//  - ValSem205</span>
-                        <span class="comment">//  - ValSem240</span>
-                        <span class="comment">//  - ValSem241</span>
-                        <span class="comment">//  - ValSem242</span>
-                        <span class="comment">//  - ValSem243</span>
-                        <span class="comment">//  - ValSem244</span>
-                        <span class="comment">//  - ValSem245</span>
-                        <span class="kw">let</span> <span class="ident">staged_commit</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">stage_commit</span>(
-                            <span class="ident">verified_member_message</span>.<span class="ident">plaintext</span>(),
-                            <span class="ident">proposal_store</span>,
-                            <span class="ident">own_kpbs</span>,
-                            <span class="ident">backend</span>,
+                    MlsContentBody::Commit(_commit) =&gt; {
+                        <span class="comment">//  - ValSem100
+                        //  - ValSem101
+                        //  - ValSem102
+                        //  - ValSem103
+                        //  - ValSem104
+                        //  - ValSem105
+                        //  - ValSem106
+                        //  - ValSem107
+                        //  - ValSem108
+                        //  - ValSem109
+                        //  - ValSem110
+                        //  - ValSem111
+                        //  - ValSem112
+                        //  - ValSem200
+                        //  - ValSem201
+                        //  - ValSem202: Path must be the right length
+                        //  - ValSem203: Path secrets must decrypt correctly
+                        //  - ValSem204: Public keys from Path must be verified
+                        //               and match the private keys from the
+                        //               direct path
+                        //  - ValSem205
+                        //  - ValSem240
+                        //  - ValSem241
+                        //  - ValSem242
+                        //  - ValSem243
+                        //  - ValSem244
+                        //  - ValSem245
+                        </span><span class="kw">let </span>staged_commit = <span class="self">self</span>.stage_commit(
+                            verified_member_message.plaintext(),
+                            proposal_store,
+                            own_kpbs,
+                            backend,
                         )<span class="question-mark">?</span>;
-                        <span class="ident">ProcessedMessage::StagedCommitMessage</span>(<span class="ident">Box::new</span>(<span class="ident">staged_commit</span>))
+                        ProcessedMessage::StagedCommitMessage(Box::new(staged_commit))
                     }
                 })
             }
-            <span class="ident">UnverifiedContextMessage::Preconfigured</span>(<span class="ident">external_message</span>) =&gt; {
-                <span class="comment">// Signature verification</span>
-                <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">signature_public_key</span>) <span class="op">=</span> <span class="ident">signature_key</span> {
-                    <span class="kw">let</span> <span class="ident">_verified_external_message</span> <span class="op">=</span> <span class="ident">external_message</span>
-                        .<span class="ident">into_verified</span>(<span class="ident">backend</span>, <span class="ident">signature_public_key</span>)
-                        .<span class="ident">map_err</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="ident">UnverifiedMessageError::InvalidSignature</span>)<span class="question-mark">?</span>;
-                } <span class="kw">else</span> {
-                    <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">UnverifiedMessageError::MissingSignatureKey</span>);
+            UnverifiedContextMessage::External(external_message) =&gt; {
+                <span class="comment">// Signature verification
+                </span><span class="kw">if let </span><span class="prelude-val">Some</span>(signature_public_key) = signature_key {
+                    <span class="kw">let </span>_verified_external_message = external_message
+                        .into_verified(backend, signature_public_key)
+                        .map_err(|<span class="kw">_</span>| UnverifiedMessageError::InvalidSignature)<span class="question-mark">?</span>;
+                } <span class="kw">else </span>{
+                    <span class="kw">return </span><span class="prelude-val">Err</span>(UnverifiedMessageError::MissingSignatureKey);
                 }
 
-                <span class="comment">// We don&#39;t support external messages from preconfigured senders yet</span>
-                <span class="comment">// TODO #151/#106</span>
-                <span class="macro">todo!</span>()
+                <span class="comment">// We don&#39;t support messages from external senders yet
+                // TODO #151/#106
+                </span><span class="macro">todo!</span>()
             }
         }
     }
 
-    <span class="doccomment">/// Merge a [StagedCommit] into the group after inspection</span>
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">merge_staged_commit</span>(
-        <span class="kw-2">&amp;mut</span> <span class="self">self</span>,
-        <span class="ident">staged_commit</span>: <span class="ident">StagedCommit</span>,
-        <span class="ident">proposal_store</span>: <span class="kw-2">&amp;mut</span> <span class="ident">ProposalStore</span>,
-    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">LibraryError</span><span class="op">&gt;</span> {
-        <span class="comment">// Save the past epoch</span>
-        <span class="kw">let</span> <span class="ident">past_epoch</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">context</span>().<span class="ident">epoch</span>();
-        <span class="comment">// We may need to keep a mapping from key package references to indices.</span>
-        <span class="kw">let</span> <span class="ident">leaves</span> <span class="op">=</span> <span class="self">self</span>
-            .<span class="ident">treesync</span>()
-            .<span class="ident">full_leaves</span>()
-            <span class="comment">// This should disappear after refactoring TreeSync, fetching the leaves should never fail</span>
-            .<span class="ident">map_err</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="ident">LibraryError::custom</span>(<span class="string">&quot;Unexpected error in TreeSync&quot;</span>))<span class="question-mark">?</span>;
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">my_leaves</span> <span class="op">=</span> <span class="ident">Vec::with_capacity</span>(<span class="ident">leaves</span>.<span class="ident">len</span>());
-        <span class="kw">for</span> (<span class="kw-2">&amp;</span><span class="ident">i</span>, <span class="kw">_</span>) <span class="kw">in</span> <span class="ident">leaves</span>.<span class="ident">iter</span>() {
-            <span class="ident">my_leaves</span>.<span class="ident">push</span>((
-                <span class="ident">i</span>,
-                <span class="self">self</span>.<span class="ident">treesync</span>().<span class="ident">leaf_id</span>(<span class="ident">i</span>).<span class="ident">ok_or_else</span>(<span class="op">|</span><span class="op">|</span> {
-                    <span class="ident">LibraryError::custom</span>(
+    <span class="doccomment">/// Merge a [StagedCommit] into the group after inspection
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>merge_staged_commit(
+        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
+        staged_commit: StagedCommit,
+        proposal_store: <span class="kw-2">&amp;mut </span>ProposalStore,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;(), LibraryError&gt; {
+        <span class="comment">// Save the past epoch
+        </span><span class="kw">let </span>past_epoch = <span class="self">self</span>.context().epoch();
+        <span class="comment">// We may need to keep a mapping from key package references to indices.
+        </span><span class="kw">let </span>leaves = <span class="self">self
+            </span>.treesync()
+            .full_leaves()
+            <span class="comment">// This should disappear after refactoring TreeSync, fetching the leaves should never fail
+            </span>.map_err(|<span class="kw">_</span>| LibraryError::custom(<span class="string">&quot;Unexpected error in TreeSync&quot;</span>))<span class="question-mark">?</span>;
+        <span class="kw">let </span><span class="kw-2">mut </span>my_leaves = Vec::with_capacity(leaves.len());
+        <span class="kw">for </span>(<span class="kw-2">&amp;</span>i, <span class="kw">_</span>) <span class="kw">in </span>leaves.iter() {
+            my_leaves.push((
+                i,
+                <span class="self">self</span>.treesync().leaf_id(i).ok_or_else(|| {
+                    LibraryError::custom(
                         <span class="string">&quot;Unable to get the key package reference for a leaf from \
                          tree. This indicates a bug in the library where the tree \
                          isn&#39;t built correctly.&quot;</span>,
@@ -481,16 +481,16 @@
                 })<span class="question-mark">?</span>,
             ))
         }
-        <span class="comment">// Merge the staged commit into the group state and store the secret tree from the</span>
-        <span class="comment">// previous epoch in the message secrets store.</span>
-        <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">message_secrets</span>) <span class="op">=</span> <span class="self">self</span>.<span class="ident">merge_commit</span>(<span class="ident">staged_commit</span>)<span class="question-mark">?</span> {
-            <span class="self">self</span>.<span class="ident">message_secrets_store</span>
-                .<span class="ident">add</span>(<span class="ident">past_epoch</span>, <span class="ident">message_secrets</span>, <span class="ident">my_leaves</span>);
+        <span class="comment">// Merge the staged commit into the group state and store the secret tree from the
+        // previous epoch in the message secrets store.
+        </span><span class="kw">if let </span><span class="prelude-val">Some</span>(message_secrets) = <span class="self">self</span>.merge_commit(staged_commit)<span class="question-mark">? </span>{
+            <span class="self">self</span>.message_secrets_store
+                .add(past_epoch, message_secrets, my_leaves);
         }
-        <span class="comment">// Empty the proposal store</span>
-        <span class="ident">proposal_store</span>.<span class="ident">empty</span>();
+        <span class="comment">// Empty the proposal store
+        </span>proposal_store.empty();
         <span class="prelude-val">Ok</span>(())
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../../../" data-current-crate="openmls" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.64.0 (a55dd71d5 2022-09-19)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../../../" data-current-crate="openmls" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0 (897e37553 2022-11-02)" ></div></body></html>

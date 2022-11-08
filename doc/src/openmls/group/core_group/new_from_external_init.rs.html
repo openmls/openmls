@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `src/group/core_group/new_from_external_init.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>new_from_external_init.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" type="text/css" href="../../../../normalize.css"><link rel="stylesheet" type="text/css" href="../../../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" type="text/css" href="../../../../ayu.css" disabled><link rel="stylesheet" type="text/css" href="../../../../dark.css" disabled><link rel="stylesheet" type="text/css" href="../../../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../../../storage.js"></script><script defer src="../../../../source-script.js"></script><script defer src="../../../../source-files.js"></script><script defer src="../../../../main.js"></script><noscript><link rel="stylesheet" href="../../../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../../../openmls/index.html"><div class="logo-container"><img class="rust-logo" src="../../../../rust-logo.svg" alt="logo"></div></a><h2 class="location"></h2></nav><nav class="sidebar"><a class="sidebar-logo" href="../../../../openmls/index.html"><div class="logo-container"><img class="rust-logo" src="../../../../rust-logo.svg" alt="logo"></div></a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../../../openmls/index.html"><img class="rust-logo" src="../../../../rust-logo.svg" alt="logo"></a><nav class="sub"><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><button type="button">?</button></div><div id="settings-menu" tabindex="-1"><a href="../../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../../wheel.svg"></a></div></div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">1</span>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `src/group/core_group/new_from_external_init.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>new_from_external_init.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" href="../../../../normalize.css"><link rel="stylesheet" href="../../../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" href="../../../../ayu.css" disabled><link rel="stylesheet" href="../../../../dark.css" disabled><link rel="stylesheet" href="../../../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../../../storage.js"></script><script defer src="../../../../source-script.js"></script><script defer src="../../../../source-files.js"></script><script defer src="../../../../main.js"></script><noscript><link rel="stylesheet" href="../../../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../../../openmls/index.html"><div class="logo-container"><img class="rust-logo" src="../../../../rust-logo.svg" alt="logo"></div></a><h2 class="location"></h2></nav><nav class="sidebar"><a class="sidebar-logo" href="../../../../openmls/index.html"><div class="logo-container"><img class="rust-logo" src="../../../../rust-logo.svg" alt="logo"></div></a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../../../openmls/index.html"><img class="rust-logo" src="../../../../rust-logo.svg" alt="logo"></a><nav class="sub"><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><button type="button">?</button></div><div id="settings-menu" tabindex="-1"><a href="../../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../../wheel.svg"></a></div></div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">1</span>
 <span id="2">2</span>
 <span id="3">3</span>
 <span id="4">4</span>
@@ -163,170 +163,170 @@
 <span id="163">163</span>
 <span id="164">164</span>
 <span id="165">165</span>
-</pre><pre class="rust"><code><span class="kw">use</span> <span class="kw">crate</span>::{
-    <span class="ident">ciphersuite::signable::Verifiable</span>,
-    <span class="ident">group::errors::ExternalCommitError</span>,
-    <span class="ident">messages</span>::{
-        <span class="ident">proposals</span>::{<span class="ident">ExternalInitProposal</span>, <span class="ident">Proposal</span>},
-        <span class="ident">public_group_state</span>::{<span class="ident">PublicGroupState</span>, <span class="ident">VerifiablePublicGroupState</span>},
+</pre><pre class="rust"><code><span class="kw">use crate</span>::{
+    ciphersuite::signable::Verifiable,
+    group::errors::ExternalCommitError,
+    messages::{
+        proposals::{ExternalInitProposal, Proposal},
+        public_group_state::{PublicGroupState, VerifiablePublicGroupState},
     },
-    <span class="ident">treesync</span>::{<span class="ident">errors::TreeSyncFromNodesError</span>, <span class="ident">node::Node</span>},
+    treesync::{errors::TreeSyncFromNodesError, node::Node},
 };
 
-<span class="kw">use</span> <span class="kw">super</span>::{
-    <span class="ident">create_commit_params</span>::{<span class="ident">CommitType</span>, <span class="ident">CreateCommitParams</span>},
-    <span class="ident">CoreGroup</span>,
+<span class="kw">use super</span>::{
+    create_commit_params::{CommitType, CreateCommitParams},
+    CoreGroup,
 };
-<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::group::core_group</span>::<span class="kw-2">*</span>;
+<span class="kw">use </span><span class="kw">crate</span>::group::core_group::<span class="kw-2">*</span>;
 
-<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">type</span> <span class="ident">ExternalCommitResult</span> <span class="op">=</span> (<span class="ident">CoreGroup</span>, <span class="ident">CreateCommitResult</span>);
+<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">type </span>ExternalCommitResult = (CoreGroup, CreateCommitResult);
 
-<span class="kw">impl</span> <span class="ident">CoreGroup</span> {
-    <span class="doccomment">/// Join a group without the help of an internal member. This function</span>
-    <span class="doccomment">/// requires a `PublicGroupState`, as well as the corresponding public tree</span>
-    <span class="doccomment">/// `nodes`. After the group state is initialized, this function creates an</span>
-    <span class="doccomment">/// `ExternalInit` proposal and commits it along with the given proposals by</span>
-    <span class="doccomment">/// reference and by value.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// Returns the new `CoreGroup` object, as well as the `MlsPlaintext`</span>
-    <span class="doccomment">/// containing the commit.</span>
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">join_by_external_commit</span>(
-        <span class="ident">backend</span>: <span class="kw-2">&amp;</span><span class="kw">impl</span> <span class="ident">OpenMlsCryptoProvider</span>,
-        <span class="ident">params</span>: <span class="ident">CreateCommitParams</span>,
-        <span class="ident">tree_option</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="kw-2">&amp;</span>[<span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Node</span><span class="op">&gt;</span>]<span class="op">&gt;</span>,
-        <span class="ident">verifiable_public_group_state</span>: <span class="ident">VerifiablePublicGroupState</span>,
-    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">ExternalCommitResult</span>, <span class="ident">ExternalCommitError</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="ident">ciphersuite</span> <span class="op">=</span> <span class="ident">verifiable_public_group_state</span>.<span class="ident">ciphersuite</span>();
-        <span class="kw">if</span> <span class="ident">verifiable_public_group_state</span>.<span class="ident">version</span>() <span class="op">!</span><span class="op">=</span> <span class="ident">ProtocolVersion::Mls10</span> {
-            <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">ExternalCommitError::UnsupportedMlsVersion</span>);
+<span class="kw">impl </span>CoreGroup {
+    <span class="doccomment">/// Join a group without the help of an internal member. This function
+    /// requires a `PublicGroupState`, as well as the corresponding public tree
+    /// `nodes`. After the group state is initialized, this function creates an
+    /// `ExternalInit` proposal and commits it along with the given proposals by
+    /// reference and by value.
+    ///
+    /// Returns the new `CoreGroup` object, as well as the `MlsPlaintext`
+    /// containing the commit.
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>join_by_external_commit(
+        backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider,
+        params: CreateCommitParams,
+        tree_option: <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>[<span class="prelude-ty">Option</span>&lt;Node&gt;]&gt;,
+        verifiable_public_group_state: VerifiablePublicGroupState,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;ExternalCommitResult, ExternalCommitError&gt; {
+        <span class="kw">let </span>ciphersuite = verifiable_public_group_state.ciphersuite();
+        <span class="kw">if </span>verifiable_public_group_state.version() != ProtocolVersion::Mls10 {
+            <span class="kw">return </span><span class="prelude-val">Err</span>(ExternalCommitError::UnsupportedMlsVersion);
         }
 
-        <span class="comment">// Build the ratchet tree</span>
+        <span class="comment">// Build the ratchet tree
 
-        <span class="comment">// Set nodes either from the extension or from the `nodes_option`.</span>
-        <span class="comment">// If we got a ratchet tree extension in the welcome, we enable it for</span>
-        <span class="comment">// this group. Note that this is not strictly necessary. But there&#39;s</span>
-        <span class="comment">// currently no other mechanism to enable the extension.</span>
-        <span class="kw">let</span> <span class="ident">extension_tree_option</span> <span class="op">=</span> <span class="ident">try_nodes_from_extensions</span>(
-            <span class="ident">verifiable_public_group_state</span>.<span class="ident">other_extensions</span>(),
-            <span class="ident">backend</span>.<span class="ident">crypto</span>(),
+        // Set nodes either from the extension or from the `nodes_option`.
+        // If we got a ratchet tree extension in the welcome, we enable it for
+        // this group. Note that this is not strictly necessary. But there&#39;s
+        // currently no other mechanism to enable the extension.
+        </span><span class="kw">let </span>extension_tree_option = try_nodes_from_extensions(
+            verifiable_public_group_state.other_extensions(),
+            backend.crypto(),
         )
-        .<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> <span class="kw">match</span> <span class="ident">e</span> {
-            <span class="ident">ExtensionError::DuplicateRatchetTreeExtension</span> =&gt; {
-                <span class="ident">ExternalCommitError::DuplicateRatchetTreeExtension</span>
+        .map_err(|e| <span class="kw">match </span>e {
+            ExtensionError::DuplicateRatchetTreeExtension =&gt; {
+                ExternalCommitError::DuplicateRatchetTreeExtension
             }
-            <span class="kw">_</span> =&gt; <span class="ident">LibraryError::custom</span>(<span class="string">&quot;Unexpected extension error&quot;</span>).<span class="ident">into</span>(),
+            <span class="kw">_ </span>=&gt; LibraryError::custom(<span class="string">&quot;Unexpected extension error&quot;</span>).into(),
         })<span class="question-mark">?</span>;
-        <span class="kw">let</span> (<span class="ident">nodes</span>, <span class="ident">enable_ratchet_tree_extension</span>) <span class="op">=</span> <span class="kw">match</span> <span class="ident">extension_tree_option</span> {
-            <span class="prelude-val">Some</span>(<span class="ident">nodes</span>) =&gt; (<span class="ident">nodes</span>, <span class="bool-val">true</span>),
-            <span class="prelude-val">None</span> =&gt; <span class="kw">match</span> <span class="ident">tree_option</span> {
-                <span class="prelude-val">Some</span>(<span class="ident">n</span>) =&gt; (<span class="ident">n</span>.<span class="ident">into</span>(), <span class="bool-val">false</span>),
-                <span class="prelude-val">None</span> =&gt; <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">ExternalCommitError::MissingRatchetTree</span>),
+        <span class="kw">let </span>(nodes, enable_ratchet_tree_extension) = <span class="kw">match </span>extension_tree_option {
+            <span class="prelude-val">Some</span>(nodes) =&gt; (nodes, <span class="bool-val">true</span>),
+            <span class="prelude-val">None </span>=&gt; <span class="kw">match </span>tree_option {
+                <span class="prelude-val">Some</span>(n) =&gt; (n.into(), <span class="bool-val">false</span>),
+                <span class="prelude-val">None </span>=&gt; <span class="kw">return </span><span class="prelude-val">Err</span>(ExternalCommitError::MissingRatchetTree),
             },
         };
 
-        <span class="comment">// Create a RatchetTree from the given nodes. We have to do this before</span>
-        <span class="comment">// verifying the PGS, since we need to find the Credential to verify the</span>
-        <span class="comment">// signature against.</span>
-        <span class="kw">let</span> <span class="ident">treesync</span> <span class="op">=</span> <span class="ident">TreeSync::from_nodes_without_leaf</span>(<span class="ident">backend</span>, <span class="ident">ciphersuite</span>, <span class="ident">nodes</span>).<span class="ident">map_err</span>(
-            <span class="op">|</span><span class="ident">e</span><span class="op">|</span> <span class="kw">match</span> <span class="ident">e</span> {
-                <span class="ident">TreeSyncFromNodesError::LibraryError</span>(<span class="ident">e</span>) =&gt; <span class="ident">e</span>.<span class="ident">into</span>(),
-                <span class="ident">TreeSyncFromNodesError::PublicTreeError</span>(<span class="ident">e</span>) =&gt; {
-                    <span class="ident">ExternalCommitError::PublicTreeError</span>(<span class="ident">e</span>)
+        <span class="comment">// Create a RatchetTree from the given nodes. We have to do this before
+        // verifying the PGS, since we need to find the Credential to verify the
+        // signature against.
+        </span><span class="kw">let </span>treesync = TreeSync::from_nodes_without_leaf(backend, ciphersuite, nodes).map_err(
+            |e| <span class="kw">match </span>e {
+                TreeSyncFromNodesError::LibraryError(e) =&gt; e.into(),
+                TreeSyncFromNodesError::PublicTreeError(e) =&gt; {
+                    ExternalCommitError::PublicTreeError(e)
                 }
             },
         )<span class="question-mark">?</span>;
 
-        <span class="kw">if</span> <span class="ident">treesync</span>.<span class="ident">tree_hash</span>() <span class="op">!</span><span class="op">=</span> <span class="ident">verifiable_public_group_state</span>.<span class="ident">tree_hash</span>() {
-            <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">ExternalCommitError::TreeHashMismatch</span>);
+        <span class="kw">if </span>treesync.tree_hash() != verifiable_public_group_state.tree_hash() {
+            <span class="kw">return </span><span class="prelude-val">Err</span>(ExternalCommitError::TreeHashMismatch);
         }
 
-        <span class="comment">// FIXME #680: Validation of external commits</span>
-        <span class="kw">let</span> <span class="ident">pgs_signer_leaf</span> <span class="op">=</span> <span class="ident">treesync</span>.<span class="ident">leaf_from_id</span>(<span class="ident">verifiable_public_group_state</span>.<span class="ident">signer</span>());
-        <span class="kw">let</span> <span class="ident">pgs_signer_credential</span> <span class="op">=</span> <span class="ident">pgs_signer_leaf</span>
-            .<span class="ident">ok_or</span>(<span class="ident">ExternalCommitError::UnknownSender</span>)<span class="question-mark">?</span>
-            .<span class="ident">key_package</span>()
-            .<span class="ident">credential</span>();
-        <span class="kw">let</span> <span class="ident">pgs</span>: <span class="ident">PublicGroupState</span> <span class="op">=</span> <span class="ident">verifiable_public_group_state</span>
-            .<span class="ident">verify</span>(<span class="ident">backend</span>, <span class="ident">pgs_signer_credential</span>)
-            .<span class="ident">map_err</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="ident">ExternalCommitError::InvalidPublicGroupStateSignature</span>)<span class="question-mark">?</span>;
+        <span class="comment">// FIXME #680: Validation of external commits
+        </span><span class="kw">let </span>pgs_signer_leaf = treesync.leaf_from_id(verifiable_public_group_state.signer());
+        <span class="kw">let </span>pgs_signer_credential = pgs_signer_leaf
+            .ok_or(ExternalCommitError::UnknownSender)<span class="question-mark">?
+            </span>.key_package()
+            .credential();
+        <span class="kw">let </span>pgs: PublicGroupState = verifiable_public_group_state
+            .verify(backend, pgs_signer_credential)
+            .map_err(|<span class="kw">_</span>| ExternalCommitError::InvalidPublicGroupStateSignature)<span class="question-mark">?</span>;
 
-        <span class="kw">let</span> (<span class="ident">init_secret</span>, <span class="ident">kem_output</span>) <span class="op">=</span> <span class="ident">InitSecret::from_public_group_state</span>(<span class="ident">backend</span>, <span class="kw-2">&amp;</span><span class="ident">pgs</span>)
-            .<span class="ident">map_err</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="ident">ExternalCommitError::UnsupportedCiphersuite</span>)<span class="question-mark">?</span>;
+        <span class="kw">let </span>(init_secret, kem_output) = InitSecret::from_public_group_state(backend, <span class="kw-2">&amp;</span>pgs)
+            .map_err(|<span class="kw">_</span>| ExternalCommitError::UnsupportedCiphersuite)<span class="question-mark">?</span>;
 
-        <span class="kw">let</span> <span class="ident">group_context</span> <span class="op">=</span> <span class="ident">GroupContext::new</span>(
-            <span class="ident">ciphersuite</span>,
-            <span class="ident">pgs</span>.<span class="ident">group_id</span>,
-            <span class="ident">pgs</span>.<span class="ident">epoch</span>,
-            <span class="ident">pgs</span>.<span class="ident">tree_hash</span>.<span class="ident">as_slice</span>().<span class="ident">to_vec</span>(),
-            <span class="ident">pgs</span>.<span class="ident">confirmed_transcript_hash</span>.<span class="ident">into</span>(),
-            <span class="ident">pgs</span>.<span class="ident">group_context_extensions</span>.<span class="ident">as_slice</span>(),
+        <span class="kw">let </span>group_context = GroupContext::new(
+            ciphersuite,
+            pgs.group_id,
+            pgs.epoch,
+            pgs.tree_hash.as_slice().to_vec(),
+            pgs.confirmed_transcript_hash.into(),
+            pgs.group_context_extensions.as_slice(),
         );
 
-        <span class="comment">// The `EpochSecrets` we create here are essentially zero, with the</span>
-        <span class="comment">// exception of the `InitSecret`, which is all we need here for the</span>
-        <span class="comment">// external commit.</span>
-        <span class="kw">let</span> <span class="ident">epoch_secrets</span> <span class="op">=</span> <span class="ident">EpochSecrets::with_init_secret</span>(<span class="ident">backend</span>, <span class="ident">init_secret</span>)
-            .<span class="ident">map_err</span>(<span class="ident">LibraryError::unexpected_crypto_error</span>)<span class="question-mark">?</span>;
-        <span class="kw">let</span> (<span class="ident">group_epoch_secrets</span>, <span class="ident">message_secrets</span>) <span class="op">=</span> <span class="ident">epoch_secrets</span>.<span class="ident">split_secrets</span>(
-            <span class="ident">group_context</span>
-                .<span class="ident">tls_serialize_detached</span>()
-                .<span class="ident">map_err</span>(<span class="ident">LibraryError::missing_bound_check</span>)<span class="question-mark">?</span>,
-            <span class="ident">treesync</span>
-                .<span class="ident">leaf_count</span>()
-                .<span class="ident">map_err</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="ident">LibraryError::custom</span>(<span class="string">&quot;The tree was too big&quot;</span>))<span class="question-mark">?</span>,
-            <span class="comment">// We use a fake own index of 0 here, as we&#39;re not going to use the</span>
-            <span class="comment">// tree for encryption until after the first commit. This issue is</span>
-            <span class="comment">// tracked in #767.</span>
-            <span class="number">0u32</span>,
+        <span class="comment">// The `EpochSecrets` we create here are essentially zero, with the
+        // exception of the `InitSecret`, which is all we need here for the
+        // external commit.
+        </span><span class="kw">let </span>epoch_secrets = EpochSecrets::with_init_secret(backend, init_secret)
+            .map_err(LibraryError::unexpected_crypto_error)<span class="question-mark">?</span>;
+        <span class="kw">let </span>(group_epoch_secrets, message_secrets) = epoch_secrets.split_secrets(
+            group_context
+                .tls_serialize_detached()
+                .map_err(LibraryError::missing_bound_check)<span class="question-mark">?</span>,
+            treesync
+                .leaf_count()
+                .map_err(|<span class="kw">_</span>| LibraryError::custom(<span class="string">&quot;The tree was too big&quot;</span>))<span class="question-mark">?</span>,
+            <span class="comment">// We use a fake own index of 0 here, as we&#39;re not going to use the
+            // tree for encryption until after the first commit. This issue is
+            // tracked in #767.
+            </span><span class="number">0u32</span>,
         );
-        <span class="kw">let</span> <span class="ident">message_secrets_store</span> <span class="op">=</span> <span class="ident">MessageSecretsStore::new_with_secret</span>(<span class="number">0</span>, <span class="ident">message_secrets</span>);
+        <span class="kw">let </span>message_secrets_store = MessageSecretsStore::new_with_secret(<span class="number">0</span>, message_secrets);
 
-        <span class="comment">// Prepare interim transcript hash</span>
-        <span class="kw">let</span> <span class="ident">group</span> <span class="op">=</span> <span class="ident">CoreGroup</span> {
-            <span class="ident">ciphersuite</span>,
-            <span class="ident">group_context</span>,
-            <span class="ident">tree</span>: <span class="ident">treesync</span>,
-            <span class="ident">interim_transcript_hash</span>: <span class="ident">pgs</span>.<span class="ident">interim_transcript_hash</span>.<span class="ident">into</span>(),
-            <span class="ident">use_ratchet_tree_extension</span>: <span class="ident">enable_ratchet_tree_extension</span>,
-            <span class="ident">mls_version</span>: <span class="ident">pgs</span>.<span class="ident">version</span>,
-            <span class="ident">group_epoch_secrets</span>,
-            <span class="ident">message_secrets_store</span>,
+        <span class="comment">// Prepare interim transcript hash
+        </span><span class="kw">let </span>group = CoreGroup {
+            ciphersuite,
+            group_context,
+            tree: treesync,
+            interim_transcript_hash: pgs.interim_transcript_hash.into(),
+            use_ratchet_tree_extension: enable_ratchet_tree_extension,
+            mls_version: pgs.version,
+            group_epoch_secrets,
+            message_secrets_store,
         };
 
-        <span class="kw">let</span> <span class="ident">external_init_proposal</span> <span class="op">=</span> <span class="ident">Proposal::ExternalInit</span>(<span class="ident">ExternalInitProposal::from</span>(<span class="ident">kem_output</span>));
+        <span class="kw">let </span>external_init_proposal = Proposal::ExternalInit(ExternalInitProposal::from(kem_output));
 
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">inline_proposals</span> <span class="op">=</span> <span class="macro">vec!</span>[<span class="ident">external_init_proposal</span>];
+        <span class="kw">let </span><span class="kw-2">mut </span>inline_proposals = <span class="macro">vec!</span>[external_init_proposal];
 
-        <span class="comment">// If there is a group member in the group with the same identity as us,</span>
-        <span class="comment">// commit a remove proposal.</span>
-        <span class="kw">for</span> (<span class="kw">_</span>, <span class="ident">key_package</span>) <span class="kw">in</span> <span class="ident">group</span>.<span class="ident">treesync</span>().<span class="ident">full_leaves</span>()<span class="question-mark">?</span> {
-            <span class="kw">if</span> <span class="ident">key_package</span>.<span class="ident">credential</span>().<span class="ident">identity</span>()
-                <span class="op">==</span> <span class="ident">params</span>.<span class="ident">credential_bundle</span>().<span class="ident">credential</span>().<span class="ident">identity</span>()
+        <span class="comment">// If there is a group member in the group with the same identity as us,
+        // commit a remove proposal.
+        </span><span class="kw">for </span>(<span class="kw">_</span>, key_package) <span class="kw">in </span>group.treesync().full_leaves()<span class="question-mark">? </span>{
+            <span class="kw">if </span>key_package.credential().identity()
+                == params.credential_bundle().credential().identity()
             {
-                <span class="kw">let</span> <span class="ident">remove_proposal</span> <span class="op">=</span> <span class="ident">Proposal::Remove</span>(<span class="ident">RemoveProposal</span> {
-                    <span class="ident">removed</span>: <span class="ident">key_package</span>.<span class="ident">hash_ref</span>(<span class="ident">backend</span>.<span class="ident">crypto</span>())<span class="question-mark">?</span>,
+                <span class="kw">let </span>remove_proposal = Proposal::Remove(RemoveProposal {
+                    removed: key_package.hash_ref(backend.crypto())<span class="question-mark">?</span>,
                 });
-                <span class="ident">inline_proposals</span>.<span class="ident">push</span>(<span class="ident">remove_proposal</span>);
+                inline_proposals.push(remove_proposal);
                 <span class="kw">break</span>;
             };
         }
 
-        <span class="kw">let</span> <span class="ident">params</span> <span class="op">=</span> <span class="ident">CreateCommitParams::builder</span>()
-            .<span class="ident">framing_parameters</span>(<span class="kw-2">*</span><span class="ident">params</span>.<span class="ident">framing_parameters</span>())
-            .<span class="ident">credential_bundle</span>(<span class="ident">params</span>.<span class="ident">credential_bundle</span>())
-            .<span class="ident">proposal_store</span>(<span class="ident">params</span>.<span class="ident">proposal_store</span>())
-            .<span class="ident">inline_proposals</span>(<span class="ident">inline_proposals</span>)
-            .<span class="ident">commit_type</span>(<span class="ident">CommitType::External</span>)
-            .<span class="ident">build</span>();
+        <span class="kw">let </span>params = CreateCommitParams::builder()
+            .framing_parameters(<span class="kw-2">*</span>params.framing_parameters())
+            .credential_bundle(params.credential_bundle())
+            .proposal_store(params.proposal_store())
+            .inline_proposals(inline_proposals)
+            .commit_type(CommitType::External)
+            .build();
 
-        <span class="comment">// Immediately create the commit to add ourselves to the group.</span>
-        <span class="kw">let</span> <span class="ident">create_commit_result</span> <span class="op">=</span> <span class="ident">group</span>
-            .<span class="ident">create_commit</span>(<span class="ident">params</span>, <span class="ident">backend</span>)
-            .<span class="ident">map_err</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="ident">ExternalCommitError::CommitError</span>)<span class="question-mark">?</span>;
+        <span class="comment">// Immediately create the commit to add ourselves to the group.
+        </span><span class="kw">let </span>create_commit_result = group
+            .create_commit(params, backend)
+            .map_err(|<span class="kw">_</span>| ExternalCommitError::CommitError)<span class="question-mark">?</span>;
 
-        <span class="prelude-val">Ok</span>((<span class="ident">group</span>, <span class="ident">create_commit_result</span>))
+        <span class="prelude-val">Ok</span>((group, create_commit_result))
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../../../" data-current-crate="openmls" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.64.0 (a55dd71d5 2022-09-19)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../../../" data-current-crate="openmls" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0 (897e37553 2022-11-02)" ></div></body></html>
