@@ -190,6 +190,7 @@ fn main() {
 }
 
 #[test]
+#[ignore]
 fn basic_test() {
     // Reset the server before doing anything for testing.
     backend::Backend::default().reset_server();

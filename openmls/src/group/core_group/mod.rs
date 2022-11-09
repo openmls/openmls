@@ -87,6 +87,7 @@ pub struct Member {
 }
 
 impl Member {
+    /// Create new member.
     pub fn new(
         index: u32,
         encryption_key: Vec<u8>,
@@ -616,7 +617,7 @@ impl CoreGroup {
         self.treesync()
             .own_leaf_node()
             .ok()
-            .and_then(|node| Some(node.key_package().credential().identity()))
+            .map(|node| node.key_package().credential().identity())
     }
 
     /// Get a reference to the group epoch secrets from the group

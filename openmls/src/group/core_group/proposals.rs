@@ -375,7 +375,7 @@ impl ProposalQueue {
                     // Only members can send update proposals
                     // ValSem112
                     let leaf_index = match queued_proposal.sender.clone() {
-                        Sender::Member(hash_ref) => hash_ref.clone(),
+                        Sender::Member(hash_ref) => hash_ref,
                         _ => return Err(ProposalQueueError::SenderError(SenderError::NotAMember)),
                     };
                     if leaf_index != own_index {

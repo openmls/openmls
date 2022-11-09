@@ -359,7 +359,7 @@ impl RemoveOperation {
 
             // Another member left
             if removed == *leaf_index {
-                return Ok(Self::TheyLeft(removed.clone()));
+                return Ok(Self::TheyLeft(removed));
             }
         }
 

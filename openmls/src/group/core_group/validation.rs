@@ -255,7 +255,7 @@ impl CoreGroup {
         for remove_proposal in remove_proposals {
             let removed = remove_proposal.remove_proposal().removed();
             // ValSem107
-            if !removes_set.insert(removed.clone()) {
+            if !removes_set.insert(removed) {
                 return Err(ProposalValidationError::DuplicateMemberRemoval);
             }
 
@@ -287,8 +287,9 @@ impl CoreGroup {
                 self.treesync()
                     .leaf(index)
                     .and_then(|leaf| {
-                        leaf.and_then(|leaf| Some(leaf.public_key()))
-                            .ok_or(LibraryError::custom("This must have been a leaf node").into())
+                        leaf.map(|leaf| leaf.public_key()).ok_or_else(|| {
+                            LibraryError::custom("This must have been a leaf node").into()
+                        })
                     })
                     .unwrap() // This is a library error really
                     .as_slice()

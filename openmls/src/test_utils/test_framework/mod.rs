@@ -38,7 +38,7 @@ use openmls_traits::{
     types::{Ciphersuite, SignatureScheme},
     OpenMlsCryptoProvider,
 };
-use rayon::prelude::*; 
+use rayon::prelude::*;
 use std::{collections::HashMap, sync::RwLock};
 use tls_codec::*;
 
