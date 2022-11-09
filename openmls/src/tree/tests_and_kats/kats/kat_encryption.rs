@@ -86,7 +86,6 @@ use crate::{
     group::*,
     key_packages::KeyPackageBundle,
     messages::proposals::Proposal,
-    prelude_test::hash_ref::KeyPackageRef,
     schedule::{EncryptionSecret, MembershipKey, SenderDataSecret},
     test_utils::*,
     tree::{
@@ -184,13 +183,12 @@ fn receiver_group(
 // XXX: we could be more creative in generating these messages.
 #[cfg(any(feature = "test-utils", test))]
 fn build_handshake_messages(
-    leaf: &KeyPackageRef,
+    leaf: u32,
     sender_index: SecretTreeLeafIndex,
     group: &mut CoreGroup,
     credential_bundle: &CredentialBundle,
     backend: &impl OpenMlsCryptoProvider,
 ) -> (Vec<u8>, Vec<u8>) {
-    use openmls_traits::random::OpenMlsRand;
     use tls_codec::Serialize;
 
     let epoch = random_u64();
@@ -203,14 +201,7 @@ fn build_handshake_messages(
     let mut plaintext = MlsPlaintext::member_proposal(
         framing_parameters,
         leaf,
-        Proposal::Remove(RemoveProposal {
-            removed: KeyPackageRef::from_slice(
-                &backend
-                    .rand()
-                    .random_vec(16)
-                    .expect("Error getting randomness"),
-            ),
-        }),
+        Proposal::Remove(RemoveProposal { removed: 7 }), // XXX: use random removed
         credential_bundle,
         group.context(),
         &membership_key,
@@ -243,7 +234,7 @@ fn build_handshake_messages(
 
 #[cfg(any(feature = "test-utils", test))]
 fn build_application_messages(
-    leaf: &KeyPackageRef,
+    leaf: u32,
     sender_index: SecretTreeLeafIndex,
     group: &mut CoreGroup,
     credential_bundle: &CredentialBundle,
@@ -375,10 +366,7 @@ pub fn generate_test_vector(
             let application_key_string = bytes_to_hex(application_secret_key.as_slice());
             let application_nonce_string = bytes_to_hex(application_secret_nonce.as_slice());
             let (application_plaintext, application_ciphertext) = build_application_messages(
-                &group
-                    .key_package_ref()
-                    .expect("An unexpected error occurred.")
-                    .clone(),
+                group.own_leaf_index(),
                 leaf.into(),
                 &mut group,
                 &credential_bundle,
@@ -407,10 +395,7 @@ pub fn generate_test_vector(
             let handshake_nonce_string = bytes_to_hex(handshake_secret_nonce.as_slice());
 
             let (handshake_plaintext, handshake_ciphertext) = build_handshake_messages(
-                &group
-                    .key_package_ref()
-                    .expect("An unexpected error occurred.")
-                    .clone(),
+                group.own_leaf_index(),
                 leaf.into(),
                 &mut group,
                 &credential_bundle,

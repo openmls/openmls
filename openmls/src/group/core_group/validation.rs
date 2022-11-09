@@ -4,7 +4,6 @@
 use std::collections::HashSet;
 
 use crate::{
-    ciphersuite::hash_ref::HashReference,
     error::LibraryError,
     extensions::ExtensionType,
     framing::Sender,
@@ -14,7 +13,7 @@ use crate::{
 };
 
 use super::{
-    proposals::ProposalQueue, ContentType, CoreGroup, KeyPackage, MlsMessageIn,
+    proposals::ProposalQueue, ContentType, CoreGroup, KeyPackage, Member, MlsMessageIn,
     ProposalValidationError, VerifiableMlsPlaintext, WireFormat,
 };
 
@@ -61,19 +60,11 @@ impl CoreGroup {
     ) -> Result<(), ValidationError> {
         // ValSem004
         let sender = plaintext.sender();
-        if let Sender::Member(hash_ref) = sender {
-            // If the sender is a member, it has to be in the tree ...
-            if self
-            .treesync()
-            .leaf_from_id(hash_ref)
-            .is_none()
-        // ... or in a tree from a past epoch we still have around.
-        && !self
-            .message_secrets_store
-            .epoch_has_leaf(plaintext.epoch(), hash_ref)
-            {
-                return Err(ValidationError::UnknownMember);
-            }
+        if let Sender::Member(leaf_index) = sender {
+            // If the sender is a member, it has to be in the tree.
+            self.treesync()
+                .leaf_is_in_tree(*leaf_index)
+                .map_err(|_| ValidationError::UnknownMember)?;
         }
 
         // ValSem005
@@ -220,19 +211,29 @@ impl CoreGroup {
             }
         }
 
-        for (_index, key_package) in self.treesync().full_leaves()? {
-            let identity = key_package.credential().identity();
+        for Member {
+            index,
+            identity,
+            encryption_key: _,
+            signature_key,
+        } in self.treesync().full_leave_members()?
+        {
             // ValSem103
-            if identity_set.contains(identity) {
+            if identity_set.contains(&identity) {
                 return Err(ProposalValidationError::ExistingIdentityAddProposal);
             }
             // ValSem104
-            let signature_key = key_package.credential().signature_key().as_slice();
-            if signature_key_set.contains(signature_key) {
+            if signature_key_set.contains(&signature_key) {
                 return Err(ProposalValidationError::ExistingSignatureKeyAddProposal);
             }
             // ValSem105
-            let public_key = key_package.hpke_init_key().as_slice();
+            let public_key = self
+                .treesync()
+                .leaf(index)
+                .map_err(|_| ProposalValidationError::UnknownMember)?
+                .unwrap()
+                .public_key()
+                .as_slice();
             if public_key_set.contains(public_key) {
                 return Err(ProposalValidationError::ExistingPublicKeyAddProposal);
             }
@@ -259,11 +260,7 @@ impl CoreGroup {
             }
 
             // TODO: ValSem108
-            if !self
-                .treesync()
-                .leaves()
-                .contains_key(&Some(removed.clone()))
-            {
+            if self.treesync().leaf_is_in_tree(removed).is_err() {
                 return Err(ProposalValidationError::UnknownMemberRemoval);
             }
         }
@@ -276,15 +273,27 @@ impl CoreGroup {
     ///  - ValSem110
     ///  - ValSem111
     ///  - ValSem112
+    /// TODO: This validation must be updated according to Sec. 13.2
     pub(crate) fn validate_update_proposals(
         &self,
         proposal_queue: &ProposalQueue,
-        committer: &HashReference,
+        committer: u32,
     ) -> Result<HashSet<Vec<u8>>, ProposalValidationError> {
-        let mut public_key_set = HashSet::new();
-        for (_index, key_package) in self.treesync().full_leaves()? {
-            let public_key = key_package.hpke_init_key().as_slice().to_vec();
-            public_key_set.insert(public_key);
+        let mut encryption_keys = HashSet::new();
+        for index in self.treesync().full_leaves()? {
+            // 8.3. Leaf Node Validation
+            // encryption key must be unique
+            encryption_keys.insert(
+                self.treesync()
+                    .leaf(index)
+                    .and_then(|leaf| {
+                        leaf.and_then(|leaf| Some(leaf.public_key()))
+                            .ok_or(LibraryError::custom("This must have been a leaf node").into())
+                    })
+                    .unwrap() // This is a library error really
+                    .as_slice()
+                    .to_vec(),
+            );
         }
 
         // Check the update proposals from the proposal queue first
@@ -292,23 +301,26 @@ impl CoreGroup {
         let tree = self.treesync();
 
         for update_proposal in update_proposals {
-            let hash_ref = match update_proposal.sender() {
-                Sender::Member(hash_ref) => hash_ref,
+            let sender_leaf_index = match update_proposal.sender() {
+                Sender::Member(hash_ref) => *hash_ref,
                 _ => return Err(ProposalValidationError::UpdateFromNonMember),
             };
             // ValSem112
             // The sender of a standalone update proposal must be of type member
-            if let Sender::Member(hash_ref) = update_proposal.sender() {
+            if let Sender::Member(sender_index) = update_proposal.sender() {
                 // ValSem111
                 // The sender of a full Commit must not include own update proposals
-                if committer == hash_ref {
+                if committer == *sender_index {
                     return Err(ProposalValidationError::CommitterIncludedOwnUpdate);
                 }
             } else {
                 return Err(ProposalValidationError::UpdateFromNonMember);
             }
 
-            if let Some(leaf_node) = tree.leaf_from_id(hash_ref) {
+            if let Some(leaf_node) = tree
+                .leaf(sender_leaf_index)
+                .map_err(|_| ProposalValidationError::UnknownMember)?
+            {
                 let existing_key_package = leaf_node.key_package();
                 // ValSem109
                 // Identity must be unchanged between existing member and new proposal
@@ -321,21 +333,22 @@ impl CoreGroup {
                 {
                     return Err(ProposalValidationError::UpdateProposalIdentityMismatch);
                 }
-                let public_key = update_proposal
+                // FIXME: The update proposal will hold the leaf.
+                let encryption_key = update_proposal
                     .update_proposal()
                     .key_package()
                     .hpke_init_key()
                     .as_slice();
                 // ValSem110
                 // HPKE init key must be unique among existing members
-                if public_key_set.contains(public_key) {
+                if encryption_keys.contains(encryption_key) {
                     return Err(ProposalValidationError::ExistingPublicKeyUpdateProposal);
                 }
             } else {
                 return Err(ProposalValidationError::UnknownMember);
             }
         }
-        Ok(public_key_set)
+        Ok(encryption_keys)
     }
 
     /// Validate the new key package in a path
@@ -349,10 +362,13 @@ impl CoreGroup {
         public_key_set: HashSet<Vec<u8>>,
         proposal_sender: &Sender,
     ) -> Result<(), ProposalValidationError> {
-        let indexed_key_packages = self.treesync().full_leaves()?;
-        if let Some(existing_key_package) = indexed_key_packages.get(&sender) {
+        let members = self.treesync().full_leave_members()?;
+        if let Some(Member {
+            index: _, identity, ..
+        }) = members.iter().find(|Member { index, .. }| index == &sender)
+        {
             // ValSem109
-            if key_package.credential().identity() != existing_key_package.credential().identity() {
+            if key_package.credential().identity() != identity {
                 return Err(ProposalValidationError::UpdateProposalIdentityMismatch);
             }
             // ValSem110
@@ -415,14 +431,16 @@ impl CoreGroup {
         for proposal in remove_proposals {
             if proposal.proposal_or_ref_type() == ProposalOrRefType::Proposal {
                 if let Proposal::Remove(remove_proposal) = proposal.proposal() {
-                    let removed_leaf = self
-                        .treesync()
-                        .leaf_from_id(remove_proposal.removed())
-                        .ok_or(ExternalCommitValidationError::UnknownMemberRemoval)?;
+                    let removed_leaf = remove_proposal.removed();
 
                     if let Some(path_key_package) = path_key_package_option {
                         // ValSem244: External Commit, inline Remove Proposal: The identity and the endpoint_id of the removed leaf are identical to the ones in the path KeyPackage.
-                        if removed_leaf.key_package().credential().identity()
+                        let leaf = self
+                            .treesync()
+                            .leaf(removed_leaf)
+                            .map_err(|_| ExternalCommitValidationError::UnknownMemberRemoval)?
+                            .ok_or(ExternalCommitValidationError::UnknownMemberRemoval)?;
+                        if leaf.key_package().credential().identity()
                             != path_key_package.credential().identity()
                         {
                             return Err(ExternalCommitValidationError::InvalidRemoveProposal);

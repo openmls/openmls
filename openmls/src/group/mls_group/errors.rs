@@ -162,6 +162,9 @@ pub enum ProposeRemoveMemberError {
     /// See [`MlsGroupStateError`] for more details.
     #[error(transparent)]
     GroupStateError(#[from] MlsGroupStateError),
+    /// The member that should be removed can not be found.
+    #[error("The member that should be removed can not be found.")]
+    UnknownMember,
 }
 
 /// Remove members error
@@ -182,6 +185,9 @@ pub enum RemoveMembersError {
     /// See [`MlsGroupStateError`] for more details.
     #[error(transparent)]
     GroupStateError(#[from] MlsGroupStateError),
+    /// The member that should be removed can not be found.
+    #[error("The member that should be removed can not be found.")]
+    UnknownMember,
 }
 
 /// Leave group error

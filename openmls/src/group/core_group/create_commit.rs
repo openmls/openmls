@@ -53,30 +53,19 @@ impl CoreGroup {
                 (Sender::NewMemberCommit, leaf_index)
             }
             CommitType::Member => (
-                Sender::build_member(
-                    self.key_package_ref()
-                        .ok_or_else(|| LibraryError::custom("missing key package"))?,
-                ),
+                Sender::build_member(self.own_leaf_index()),
                 self.own_leaf_index(),
             ),
         };
 
         // Filter proposals
-        let own_kpr = if params.commit_type() == CommitType::External {
-            None
-        } else {
-            Some(
-                self.key_package_ref()
-                    .ok_or_else(|| LibraryError::custom("missing key package"))?,
-            )
-        };
         let (proposal_queue, contains_own_updates) = ProposalQueue::filter_proposals(
             ciphersuite,
             backend,
-            sender,
+            sender.clone(),
             params.proposal_store(),
             params.inline_proposals(),
-            own_kpr,
+            own_leaf_index,
         )
         .map_err(|e| match e {
             crate::group::errors::ProposalQueueError::LibraryError(e) => e.into(),
@@ -119,12 +108,12 @@ impl CoreGroup {
         // ValSem108
         self.validate_remove_proposals(&proposal_queue)?;
         // Validate update proposals for member commits
-        if let Some(hash_ref) = own_kpr {
+        if let Sender::Member(sender_index) = &sender {
             // ValSem109
             // ValSem110
             // ValSem111
             // ValSem112
-            self.validate_update_proposals(&proposal_queue, hash_ref)?;
+            self.validate_update_proposals(&proposal_queue, *sender_index)?;
         }
 
         // Apply proposals to tree
@@ -185,10 +174,7 @@ impl CoreGroup {
 
         let sender = match params.commit_type() {
             CommitType::External => Sender::NewMemberCommit,
-            CommitType::Member => Sender::build_member(
-                self.key_package_ref()
-                    .ok_or_else(|| LibraryError::custom(" missing key package"))?,
-            ),
+            CommitType::Member => Sender::build_member(self.own_leaf_index()),
         };
 
         // Keep a copy of the update path key package
@@ -326,7 +312,7 @@ impl CoreGroup {
                     group_context,
                     &other_extensions,
                     confirmation_tag.clone(),
-                    diff.hash_ref()?,
+                    diff.own_leaf_index(),
                 )
             };
             // Sign to-be-signed group info.
@@ -422,11 +408,7 @@ impl CoreGroup {
             .flatten();
         let leaf_index = if let Some(remove_proposal) = remove_proposal_option {
             if let Proposal::Remove(remove_proposal) = remove_proposal {
-                let removed = remove_proposal.removed();
-                let removed_index = self
-                    .treesync()
-                    .leaf_index(removed)
-                    .map_err(|_| LibraryError::custom("Expected valid remove proposal"))?;
+                let removed_index = remove_proposal.removed();
                 if removed_index < free_leaf_index {
                     removed_index
                 } else {
@@ -460,7 +442,7 @@ impl CoreGroup {
             )
             .map_err(|_| LibraryError::custom("Unexpected KeyPackage error"))?;
 
-            diff.add_leaf(key_package_bundle.key_package().clone(), backend.crypto())
+            diff.add_leaf(key_package_bundle.key_package().clone())
                 .map_err(|_| LibraryError::custom("Tree full: cannot add more members"))?;
             diff.own_leaf()
                 .map_err(|_| LibraryError::custom("Expected own leaf"))?

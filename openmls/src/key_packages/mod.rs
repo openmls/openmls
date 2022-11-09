@@ -363,8 +363,8 @@ impl KeyPackage {
     }
 
     /// Compute the [`KeyPackageRef`] of this [`KeyPackage`].
-    /// The [`KeyPackageRef`] is used to identify a member in a group (leaf in
-    /// the tree) within MLS.
+    /// The [`KeyPackageRef`] is used to identify a new member that should get
+    /// added to a group.
     pub fn hash_ref(&self, backend: &impl OpenMlsCrypto) -> Result<KeyPackageRef, LibraryError> {
         make_key_package_ref(
             &self

@@ -116,14 +116,12 @@ impl CoreGroup {
         // this group. Note that this is not strictly necessary. But there's
         // currently no other mechanism to enable the extension.
         let (nodes, enable_ratchet_tree_extension) =
-            match try_nodes_from_extensions(group_info.extensions(), backend.crypto()).map_err(
-                |e| match e {
-                    ExtensionError::DuplicateRatchetTreeExtension => {
-                        WelcomeError::DuplicateRatchetTreeExtension
-                    }
-                    _ => LibraryError::custom("Unexpected extension error").into(),
-                },
-            )? {
+            match try_nodes_from_extensions(group_info.extensions()).map_err(|e| match e {
+                ExtensionError::DuplicateRatchetTreeExtension => {
+                    WelcomeError::DuplicateRatchetTreeExtension
+                }
+                _ => LibraryError::custom("Unexpected extension error").into(),
+            })? {
                 Some(nodes) => (nodes, true),
                 None => match nodes_option {
                     Some(n) => (n, false),
@@ -147,7 +145,8 @@ impl CoreGroup {
         })?;
 
         let signer_key_package = tree
-            .leaf_from_id(group_info.signer())
+            .leaf(group_info.signer())
+            .map_err(|_| WelcomeError::UnknownSender)?
             .ok_or(WelcomeError::UnknownSender)?
             .key_package();
 

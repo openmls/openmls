@@ -73,11 +73,23 @@ impl User {
         let mut recipients = Vec::new();
 
         let mls_group = group.mls_group.borrow();
-        for member in mls_group.members() {
-            if self.identity.borrow().credential.credential().identity()
-                != member.credential().identity()
+        for Member {
+            index: _,
+            encryption_key: _,
+            signature_key,
+            ..
+        } in mls_group.members().unwrap().iter()
+        {
+            if self
+                .identity
+                .borrow()
+                .credential
+                .credential()
+                .signature_key()
+                .as_slice()
+                != signature_key.as_slice()
             {
-                let contact = match self.contacts.get(member.credential().identity()) {
+                let contact = match self.contacts.get(signature_key) {
                     Some(c) => c.id.clone(),
                     None => panic!("There's a member in the group we don't know."),
                 };

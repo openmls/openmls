@@ -4,10 +4,7 @@
 //! Proposals, Commits and application messages.
 
 use crate::{
-    ciphersuite::{
-        hash_ref::KeyPackageRef,
-        signable::{Signable, SignedStruct, Verifiable, VerifiedStruct},
-    },
+    ciphersuite::signable::{Signable, SignedStruct, Verifiable, VerifiedStruct},
     error::LibraryError,
     group::errors::ValidationError,
 };
@@ -185,14 +182,14 @@ impl MlsPlaintext {
     #[inline]
     fn new_with_membership_tag(
         framing_parameters: FramingParameters,
-        sender_reference: &KeyPackageRef,
+        sender_leaf_index: u32,
         body: MlsContentBody,
         credential_bundle: &CredentialBundle,
         context: &GroupContext,
         membership_key: &MembershipKey,
         backend: &impl OpenMlsCryptoProvider,
     ) -> Result<Self, LibraryError> {
-        let sender = Sender::build_member(sender_reference);
+        let sender = Sender::build_member(sender_leaf_index);
         let mut mls_plaintext = Self::new(
             framing_parameters,
             sender,
@@ -215,7 +212,7 @@ impl MlsPlaintext {
     /// The sender type is always `SenderType::Member`.
     pub(crate) fn member_proposal(
         framing_parameters: FramingParameters,
-        sender_reference: &KeyPackageRef,
+        sender_leaf_index: u32,
         proposal: Proposal,
         credential_bundle: &CredentialBundle,
         context: &GroupContext,
@@ -224,7 +221,7 @@ impl MlsPlaintext {
     ) -> Result<Self, LibraryError> {
         Self::new_with_membership_tag(
             framing_parameters,
-            sender_reference,
+            sender_leaf_index,
             MlsContentBody::Proposal(proposal),
             credential_bundle,
             context,
@@ -282,7 +279,7 @@ impl MlsPlaintext {
     /// This constructor builds an `MlsPlaintext` containing an application
     /// message. The sender type is always `SenderType::Member`.
     pub(crate) fn new_application(
-        sender_reference: &KeyPackageRef,
+        sender_leaf_index: u32,
         authenticated_data: &[u8],
         application_message: &[u8],
         credential_bundle: &CredentialBundle,
@@ -294,7 +291,7 @@ impl MlsPlaintext {
             FramingParameters::new(authenticated_data, WireFormat::MlsCiphertext);
         Self::new_with_membership_tag(
             framing_parameters,
-            sender_reference,
+            sender_leaf_index,
             MlsContentBody::Application(application_message.into()),
             credential_bundle,
             context,

@@ -1,7 +1,7 @@
 //! # The sender of a message.
 
 use super::*;
-use crate::ciphersuite::hash_ref::KeyPackageRef;
+use crate::prelude::LibraryError;
 use tls_codec::{TlsDeserialize, TlsSerialize, TlsSize};
 
 /// All possible sender types according to the MLS protocol spec.
@@ -38,7 +38,7 @@ use tls_codec::{TlsDeserialize, TlsSerialize, TlsSize};
 pub enum Sender {
     /// The sender is a member of the group
     #[tls_codec(discriminant = 1)]
-    Member(KeyPackageRef),
+    Member(u32),
     /// The sender is not a member of the group and has an external value instead
     External(TlsByteVecU8),
     /// The sender is a new member of the group that joins itself through
@@ -52,16 +52,25 @@ pub enum Sender {
 impl Sender {
     /// Build a [`Sender`] from [`MlsSenderData`].
     pub(crate) fn from_sender_data(sender_data: MlsSenderData) -> Self {
-        Self::Member(sender_data.sender)
+        Self::Member(sender_data.leaf_index)
     }
 
     /// Create a member sender.
-    pub(crate) fn build_member(kpr: &KeyPackageRef) -> Self {
-        Self::Member(kpr.clone())
+    pub(crate) fn build_member(leaf_index: u32) -> Self {
+        Self::Member(leaf_index)
     }
 
     /// Returns true if this [`Sender`] has [`SenderType::Member`].
     pub(crate) fn is_member(&self) -> bool {
         matches!(self, Sender::Member(_))
+    }
+
+    /// Returns the leaf index of the [`Sender`] or a [`LibraryError`] if this
+    /// is not a [`Sender::Member`].
+    pub(crate) fn as_member(&self) -> Result<u32, LibraryError> {
+        match self {
+            Sender::Member(leaf_index) => Ok(*leaf_index),
+            _ => Err(LibraryError::custom("The sender is not a member")),
+        }
     }
 }

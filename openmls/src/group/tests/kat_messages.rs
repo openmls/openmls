@@ -5,20 +5,10 @@
 //! for more description on the test vectors.
 
 use crate::{
-    ciphersuite::signable::Signable,
-    credentials::*,
-    framing::*,
-    group::*,
-    key_packages::*,
-    messages::proposals::*,
-    messages::public_group_state::*,
-    messages::*,
-    prelude_test::{hash_ref::KeyPackageRef, signable::Verifiable},
-    schedule::psk::*,
-    test_utils::*,
-    tree::sender_ratchet::*,
-    treesync::node::Node,
-    versions::ProtocolVersion,
+    ciphersuite::signable::Signable, credentials::*, framing::*, group::*, key_packages::*,
+    messages::proposals::*, messages::public_group_state::*, messages::*,
+    prelude_test::signable::Verifiable, schedule::psk::*, test_utils::*, tree::sender_ratchet::*,
+    treesync::node::Node, versions::ProtocolVersion,
 };
 
 use openmls_rust_crypto::OpenMlsRustCrypto;
@@ -111,12 +101,7 @@ pub fn generate_test_vector(ciphersuite: Ciphersuite) -> MessagesTestVector {
                     .expect("An unexpected error occurred.")
                     .into(),
             }),
-            &KeyPackageRef::from_slice(
-                &crypto
-                    .rand()
-                    .random_vec(16)
-                    .expect("Error getting randomnes"),
-            ),
+            group.own_leaf_index(),
         )
     };
     let group_info = group_info_tbs
@@ -159,12 +144,7 @@ pub fn generate_test_vector(ciphersuite: Ciphersuite) -> MessagesTestVector {
     // Create proposal to remove a user
     // TODO #525: This is not a valid RemoveProposal since random_u32() is not a valid KeyPackageRef.
     let remove_proposal = RemoveProposal {
-        removed: KeyPackageRef::from_slice(
-            &crypto
-                .rand()
-                .random_vec(16)
-                .expect("Error getting randomnes"),
-        ),
+        removed: 7, // XXX: use valid, random
     };
 
     let psk_id = PreSharedKeyId::new(

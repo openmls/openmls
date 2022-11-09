@@ -7,10 +7,7 @@ use openmls_rust_crypto::OpenMlsRustCrypto;
 use tls_codec::{Deserialize, Serialize};
 
 use crate::{
-    ciphersuite::{
-        hash_ref::KeyPackageRef,
-        signable::{Signable, Verifiable},
-    },
+    ciphersuite::signable::{Signable, Verifiable},
     framing::*,
     group::{
         core_group::{
@@ -38,12 +35,7 @@ fn codec_plaintext(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvide
         backend,
     )
     .expect("An unexpected error occurred.");
-    let sender = Sender::build_member(&KeyPackageRef::from_slice(
-        &backend
-            .rand()
-            .random_vec(16)
-            .expect("An unexpected error occurred."),
-    ));
+    let sender = Sender::build_member(987543210);
     let group_context = GroupContext::new(
         ciphersuite,
         GroupId::random(backend),
@@ -92,12 +84,7 @@ fn codec_ciphertext(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvid
         backend,
     )
     .expect("An unexpected error occurred.");
-    let sender = Sender::build_member(&KeyPackageRef::from_slice(
-        &backend
-            .rand()
-            .random_vec(16)
-            .expect("An unexpected error occurred."),
-    ));
+    let sender = Sender::build_member(987543210);
     let group_context = GroupContext::new(
         ciphersuite,
         GroupId::from_slice(&[5, 5, 5]),
@@ -176,12 +163,7 @@ fn wire_format_checks(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProv
         backend,
     )
     .expect("An unexpected error occurred.");
-    let sender = Sender::build_member(&KeyPackageRef::from_slice(
-        &backend
-            .rand()
-            .random_vec(16)
-            .expect("An unexpected error occurred."),
-    ));
+    let sender = Sender::build_member(987543210);
     let group_context = GroupContext::new(
         ciphersuite,
         GroupId::from_slice(&[5, 5, 5]),
@@ -339,12 +321,7 @@ fn membership_tag(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
             .expect("Not enough randomness."),
     );
     let mut mls_plaintext = MlsPlaintext::new_application(
-        &KeyPackageRef::from_slice(
-            &backend
-                .rand()
-                .random_vec(16)
-                .expect("An unexpected error occurred."),
-        ),
+        987543210,
         &[1, 2, 3],
         &[4, 5, 6],
         &credential_bundle,
@@ -415,9 +392,6 @@ fn unknown_sender(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
         KeyPackageBundle::new(&[ciphersuite], &bob_credential_bundle, backend, Vec::new())
             .expect("An unexpected error occurred.");
     let bob_key_package = bob_key_package_bundle.key_package();
-    let bob_kpr = bob_key_package
-        .hash_ref(backend.crypto())
-        .expect("Error computing hash reference.");
 
     let charlie_key_package_bundle = KeyPackageBundle::new(
         &[ciphersuite],
@@ -513,12 +487,7 @@ fn unknown_sender(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
 
     // Alice removes Bob
     let bob_remove_proposal = group_alice
-        .create_remove_proposal(
-            framing_parameters,
-            &alice_credential_bundle,
-            &bob_kpr,
-            backend,
-        )
+        .create_remove_proposal(framing_parameters, &alice_credential_bundle, 1, backend)
         .expect("Could not create proposal.");
 
     proposal_store.empty();
@@ -554,12 +523,7 @@ fn unknown_sender(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
     // Alice sends a message with a sender that is outside of the group
     // Expected result: SenderError::UnknownSender
     let bogus_sender_message = MlsPlaintext::new_application(
-        &KeyPackageRef::from_slice(
-            &backend
-                .rand()
-                .random_vec(16)
-                .expect("An unexpected error occurred."),
-        ),
+        987543210,
         &[],
         &[1, 2, 3],
         &alice_credential_bundle,

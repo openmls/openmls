@@ -454,6 +454,9 @@ pub(crate) enum CreateGroupContextExtProposalError {
     /// See [`KeyPackageExtensionSupportError`] for more details.
     #[error(transparent)]
     KeyPackageExtensionSupport(#[from] KeyPackageExtensionSupportError),
+    /// See [`TreeSyncError`] for more details.
+    #[error(transparent)]
+    TreeSyncError(#[from] TreeSyncError),
     /// See [`ExtensionError`] for more details.
     #[error(transparent)]
     Extension(#[from] ExtensionError),

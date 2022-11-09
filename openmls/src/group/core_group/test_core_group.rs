@@ -5,7 +5,7 @@ use openmls_traits::{
 use tls_codec::Serialize;
 
 use crate::{
-    ciphersuite::{hash_ref::make_key_package_ref, signable::Signable, AeadNonce},
+    ciphersuite::{signable::Signable, AeadNonce},
     credentials::*,
     framing::*,
     group::{errors::*, *},
@@ -103,20 +103,7 @@ fn test_failed_groupinfo_decryption(
             &Vec::new(),
         );
 
-        GroupInfoTBS::new(
-            group_context,
-            &extensions,
-            confirmation_tag,
-            &make_key_package_ref(
-                &key_package_bundle
-                    .key_package()
-                    .tls_serialize_detached()
-                    .expect("An unexpected error occurred."),
-                ciphersuite,
-                backend.crypto(),
-            )
-            .expect("An unexpected error occurred."),
-        )
+        GroupInfoTBS::new(group_context, &extensions, confirmation_tag, 0)
     };
 
     // Generate key and nonce for the symmetric cipher.
@@ -734,19 +721,23 @@ fn test_proposal_application_after_self_was_removed(
     .expect("Error joining group.");
 
     // Alice adds Charlie and removes Bob in the same commit.
-    let bob_kp_ref = alice_group
+    let bob_index = alice_group
         .treesync()
-        .leaves()
-        .values()
-        .find(|&kp| kp.credential().identity() == b"Bob")
+        .full_leave_members()
+        .expect("Error getting leaves")
+        .iter()
+        .find(
+            |Member {
+                 index: _, identity, ..
+             }| identity == b"Bob",
+        )
         .expect("Couldn't find Bob in tree.")
-        .hash_ref(backend.crypto())
-        .expect("error computing hash ref");
+        .index;
     let bob_remove_proposal = alice_group
         .create_remove_proposal(
             framing_parameters,
             &alice_credential_bundle,
-            &bob_kp_ref,
+            bob_index,
             backend,
         )
         .expect("Could not create proposal");
@@ -811,33 +802,36 @@ fn test_proposal_application_after_self_was_removed(
     // to his tree after he was removed by comparing membership lists. In
     // particular, Bob's list should show that he was removed and Charlie was
     // added.
-    let alice_members: Vec<&Credential> = alice_group
+    let alice_members = alice_group
         .treesync()
-        .full_leaves()
-        .expect("Error getting leaves")
-        .iter()
-        .map(|(_, kp)| kp.credential())
-        .collect();
+        .full_leave_members()
+        .expect("Error getting leaves");
 
-    let bob_members: Vec<&Credential> = bob_group
+    let bob_members = bob_group
         .treesync()
-        .full_leaves()
-        .expect("Error getting leaves")
-        .iter()
-        .map(|(_, kp)| kp.credential())
-        .collect();
+        .full_leave_members()
+        .expect("Error getting leaves");
 
-    let charlie_members: Vec<&Credential> = charlie_group
+    let charlie_members = charlie_group
         .treesync()
-        .full_leaves()
-        .expect("Error getting leaves")
+        .full_leave_members()
+        .expect("Error getting leaves");
+
+    for (alice_member, (bob_member, charlie_member)) in alice_members
         .iter()
-        .map(|(_, kp)| kp.credential())
-        .collect();
+        .zip(bob_members.iter().zip(charlie_members.iter()))
+    {
+        // Note that we can't compare encryption keys for Bob because they
+        // didn't get updated.
+        assert_eq!(alice_member.index, bob_member.index);
+        assert_eq!(alice_member.identity, bob_member.identity);
+        assert_eq!(alice_member.signature_key, bob_member.signature_key);
+        assert_eq!(charlie_member.index, bob_member.index);
+        assert_eq!(charlie_member.identity, bob_member.identity);
+        assert_eq!(charlie_member.signature_key, bob_member.signature_key);
+        assert_eq!(alice_member.encryption_key, alice_member.encryption_key);
+    }
 
-    assert_eq!(alice_members, bob_members,);
-    assert_eq!(bob_members, charlie_members);
-
-    assert_eq!(bob_members[0].identity(), b"Alice");
-    assert_eq!(bob_members[1].identity(), b"Charlie");
+    assert_eq!(bob_members[0].identity, b"Alice");
+    assert_eq!(bob_members[1].identity, b"Charlie");
 }

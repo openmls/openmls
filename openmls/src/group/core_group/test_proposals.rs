@@ -2,11 +2,9 @@ use crate::test_utils::*;
 use openmls_rust_crypto::OpenMlsRustCrypto;
 use openmls_traits::{types::Ciphersuite, OpenMlsCryptoProvider};
 
+use super::CoreGroup;
 use crate::{
-    ciphersuite::{
-        hash_ref::{make_key_package_ref, ProposalRef},
-        Secret,
-    },
+    ciphersuite::{hash_ref::ProposalRef, Secret},
     credentials::{CredentialBundle, CredentialType},
     extensions::{ApplicationIdExtension, Extension, ExtensionType, RequiredCapabilitiesExtension},
     framing::sender::Sender,
@@ -21,9 +19,6 @@ use crate::{
     messages::proposals::{AddProposal, Proposal, ProposalOrRef, ProposalType},
     schedule::MembershipKey,
 };
-use tls_codec::Serialize;
-
-use super::CoreGroup;
 
 fn setup_client(
     id: &str,
@@ -55,25 +50,6 @@ fn proposal_queue_functions(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryp
         setup_client("Alice", ciphersuite, backend);
     let (_bob_credential_bundle, bob_key_package_bundle) =
         setup_client("Bob", ciphersuite, backend);
-
-    let alice_kpr = make_key_package_ref(
-        &alice_key_package_bundle
-            .key_package()
-            .tls_serialize_detached()
-            .expect("An unexpected error occurred."),
-        ciphersuite,
-        backend.crypto(),
-    )
-    .expect("An unexpected error occurred.");
-    let bob_kpr = make_key_package_ref(
-        &bob_key_package_bundle
-            .key_package()
-            .tls_serialize_detached()
-            .expect("An unexpected error occurred."),
-        ciphersuite,
-        backend.crypto(),
-    )
-    .expect("An unexpected error occurred.");
 
     let bob_key_package = bob_key_package_bundle.key_package();
     let alice_update_key_package_bundle = KeyPackageBundle::new(
@@ -127,7 +103,7 @@ fn proposal_queue_functions(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryp
     // Frame proposals in MlsPlaintext
     let mls_plaintext_add_alice1 = MlsPlaintext::member_proposal(
         framing_parameters,
-        &alice_kpr,
+        0,
         proposal_add_alice1,
         &alice_credential_bundle,
         &group_context,
@@ -139,7 +115,7 @@ fn proposal_queue_functions(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryp
     .expect("Could not create proposal.");
     let mls_plaintext_add_alice2 = MlsPlaintext::member_proposal(
         framing_parameters,
-        &bob_kpr,
+        1,
         proposal_add_alice2,
         &alice_credential_bundle,
         &group_context,
@@ -151,7 +127,7 @@ fn proposal_queue_functions(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryp
     .expect("Could not create proposal.");
     let _mls_plaintext_add_bob1 = MlsPlaintext::member_proposal(
         framing_parameters,
-        &bob_kpr,
+        1,
         proposal_add_bob1,
         &alice_credential_bundle,
         &group_context,
@@ -174,10 +150,10 @@ fn proposal_queue_functions(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryp
     let (proposal_queue, own_update) = ProposalQueue::filter_proposals(
         ciphersuite,
         backend,
-        Sender::build_member(&bob_kpr),
+        Sender::build_member(1),
         &proposal_store,
         &[],
-        &alice_kpr,
+        0,
     )
     .expect("Could not create ProposalQueue.");
 
@@ -214,25 +190,6 @@ fn proposal_queue_order(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoPr
         setup_client("Alice", ciphersuite, backend);
     let (_bob_credential_bundle, bob_key_package_bundle) =
         setup_client("Bob", ciphersuite, backend);
-
-    let alice_kpr = make_key_package_ref(
-        &alice_key_package_bundle
-            .key_package()
-            .tls_serialize_detached()
-            .expect("An unexpected error occurred."),
-        ciphersuite,
-        backend.crypto(),
-    )
-    .expect("An unexpected error occurred.");
-    let bob_kpr = make_key_package_ref(
-        &bob_key_package_bundle
-            .key_package()
-            .tls_serialize_detached()
-            .expect("An unexpected error occurred."),
-        ciphersuite,
-        backend.crypto(),
-    )
-    .expect("An unexpected error occurred.");
 
     let bob_key_package = bob_key_package_bundle.key_package();
     let alice_update_key_package_bundle = KeyPackageBundle::new(
@@ -271,7 +228,7 @@ fn proposal_queue_order(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoPr
     // Frame proposals in MlsPlaintext
     let mls_plaintext_add_alice1 = MlsPlaintext::member_proposal(
         framing_parameters,
-        &alice_kpr,
+        0,
         proposal_add_alice1.clone(),
         &alice_credential_bundle,
         &group_context,
@@ -284,7 +241,7 @@ fn proposal_queue_order(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoPr
     .expect("Could not create proposal.");
     let mls_plaintext_add_bob1 = MlsPlaintext::member_proposal(
         framing_parameters,
-        &bob_kpr,
+        1,
         proposal_add_bob1.clone(),
         &alice_credential_bundle,
         &group_context,
@@ -311,7 +268,7 @@ fn proposal_queue_order(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoPr
         ProposalOrRef::Reference(proposal_reference_add_alice1),
     ];
 
-    let sender = Sender::build_member(&alice_kpr);
+    let sender = Sender::build_member(0);
 
     // And the same should go for proposal queues built from committed
     // proposals. The order here should be dictated by the proposals passed
@@ -589,8 +546,8 @@ fn test_group_context_extension_proposal_fails(
         .expect_err("Bob was able to create a gce proposal for an extension not supported by all other parties.");
     assert_eq!(
         e,
-        CreateGroupContextExtProposalError::KeyPackageExtensionSupport(
-            KeyPackageExtensionSupportError::UnsupportedExtension
+        CreateGroupContextExtProposalError::TreeSyncError(
+            crate::treesync::errors::TreeSyncError::UnsupportedExtension
         )
     );
 }

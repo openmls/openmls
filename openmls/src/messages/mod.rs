@@ -192,7 +192,7 @@ pub(crate) struct GroupInfoTBS {
     group_context: GroupContext,
     extensions: Vec<Extension>,
     confirmation_tag: ConfirmationTag,
-    signer: KeyPackageRef,
+    signer: u32,
 }
 
 impl GroupInfoTBS {
@@ -201,13 +201,13 @@ impl GroupInfoTBS {
         group_context: GroupContext,
         extensions: &[Extension],
         confirmation_tag: ConfirmationTag,
-        signer: &KeyPackageRef,
+        signer: u32,
     ) -> Self {
         Self {
             group_context,
             extensions: extensions.into(),
             confirmation_tag,
-            signer: signer.clone(),
+            signer,
         }
     }
 }
@@ -270,8 +270,8 @@ impl GroupInfo {
     }
 
     /// Returns the signer.
-    pub(crate) fn signer(&self) -> &KeyPackageRef {
-        &self.payload.signer
+    pub(crate) fn signer(&self) -> u32 {
+        self.payload.signer
     }
 
     /// Re-sign the group info.

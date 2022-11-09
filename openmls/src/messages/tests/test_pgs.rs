@@ -84,12 +84,7 @@ fn test_pgs(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
         .expect("Could not export the public group state");
 
     // Make sure Alice is the signer
-    assert_eq!(
-        &pgs.signer,
-        group_alice
-            .key_package_ref()
-            .expect("An unexpected error occurred.")
-    );
+    assert_eq!(pgs.signer, group_alice.own_leaf_index());
 
     let encoded = pgs.tls_serialize_detached().expect("Could not encode");
     let verifiable_pgs = VerifiablePublicGroupState::tls_deserialize(&mut encoded.as_slice())

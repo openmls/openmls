@@ -37,7 +37,7 @@ mod test_proposals;
 use super::errors::CreateGroupContextExtProposalError;
 
 use crate::{
-    ciphersuite::{hash_ref::KeyPackageRef, signable::*},
+    ciphersuite::signable::*,
     credentials::*,
     error::LibraryError,
     extensions::errors::*,
@@ -47,7 +47,7 @@ use crate::{
     messages::{proposals::*, public_group_state::*, *},
     schedule::{message_secrets::*, psk::*, *},
     tree::{secret_tree::SecretTreeError, sender_ratchet::SenderRatchetConfiguration},
-    treesync::{errors::TreeSyncError, *},
+    treesync::*,
     versions::ProtocolVersion,
 };
 
@@ -71,6 +71,35 @@ pub(crate) struct CreateCommitResult {
     pub(crate) commit: MlsPlaintext,
     pub(crate) welcome_option: Option<Welcome>,
     pub(crate) staged_commit: StagedCommit,
+}
+
+/// A member in the group is identified by this [`Member`] struct.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct Member {
+    /// The member's leaf index in the ratchet tree.
+    pub index: u32,
+    /// The member's identity from the credential.
+    pub identity: Vec<u8>,
+    /// The member's public HPHKE encryption key.
+    pub encryption_key: Vec<u8>,
+    /// The member's public signature key.
+    pub signature_key: Vec<u8>,
+}
+
+impl Member {
+    pub fn new(
+        index: u32,
+        encryption_key: Vec<u8>,
+        signature_key: Vec<u8>,
+        identity: Vec<u8>,
+    ) -> Self {
+        Self {
+            index,
+            encryption_key,
+            signature_key,
+            identity,
+        }
+    }
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -263,8 +292,7 @@ impl CoreGroup {
         let proposal = Proposal::Add(add_proposal);
         MlsPlaintext::member_proposal(
             framing_parameters,
-            self.key_package_ref()
-                .ok_or_else(|| LibraryError::custom("missing key package"))?,
+            self.own_leaf_index(),
             proposal,
             credential_bundle,
             self.context(),
@@ -289,8 +317,7 @@ impl CoreGroup {
         let proposal = Proposal::Update(update_proposal);
         MlsPlaintext::member_proposal(
             framing_parameters,
-            self.key_package_ref()
-                .ok_or_else(|| LibraryError::custom("missing key package"))?,
+            self.own_leaf_index(),
             proposal,
             credential_bundle,
             self.context(),
@@ -307,17 +334,14 @@ impl CoreGroup {
         &self,
         framing_parameters: FramingParameters,
         credential_bundle: &CredentialBundle,
-        removed: &KeyPackageRef,
+        removed: u32,
         backend: &impl OpenMlsCryptoProvider,
     ) -> Result<MlsPlaintext, LibraryError> {
-        let remove_proposal = RemoveProposal {
-            removed: removed.clone(),
-        };
+        let remove_proposal = RemoveProposal { removed };
         let proposal = Proposal::Remove(remove_proposal);
         MlsPlaintext::member_proposal(
             framing_parameters,
-            self.key_package_ref()
-                .ok_or_else(|| LibraryError::custom("missing key package"))?,
+            self.own_leaf_index(),
             proposal,
             credential_bundle,
             self.context(),
@@ -343,8 +367,7 @@ impl CoreGroup {
         let proposal = Proposal::PreSharedKey(presharedkey_proposal);
         MlsPlaintext::member_proposal(
             framing_parameters,
-            self.key_package_ref()
-                .ok_or_else(|| LibraryError::custom("missing key package"))?,
+            self.own_leaf_index(),
             proposal,
             credential_bundle,
             self.context(),
@@ -378,16 +401,14 @@ impl CoreGroup {
                 .validate_required_capabilities(required_capabilities)?;
             // Ensure that all other key packages support all the required
             // extensions as well.
-            for (_index, key_package) in self.treesync().full_leaves()? {
-                key_package.check_extension_support(required_capabilities.extensions())?;
-            }
+            self.treesync()
+                .check_extension_support(required_capabilities.extensions())?;
         }
         let proposal = GroupContextExtensionProposal::new(extensions);
         let proposal = Proposal::GroupContextExtensions(proposal);
         MlsPlaintext::member_proposal(
             framing_parameters,
-            self.key_package_ref()
-                .ok_or_else(|| LibraryError::custom("missing key package"))?,
+            self.own_leaf_index(),
             proposal,
             credential_bundle,
             self.context(),
@@ -407,8 +428,7 @@ impl CoreGroup {
         backend: &impl OpenMlsCryptoProvider,
     ) -> Result<MlsCiphertext, MessageEncryptionError> {
         let mls_plaintext = MlsPlaintext::new_application(
-            self.key_package_ref()
-                .ok_or_else(|| LibraryError::custom("missing key package"))?,
+            self.own_leaf_index(),
             aad,
             msg,
             credential_bundle,
@@ -449,15 +469,23 @@ impl CoreGroup {
         backend: &impl OpenMlsCryptoProvider,
         sender_ratchet_configuration: &SenderRatchetConfiguration,
     ) -> Result<VerifiableMlsPlaintext, MessageDecryptionError> {
+        use crate::tree::index::SecretTreeLeafIndex;
+
         let ciphersuite = self.ciphersuite();
         let message_secrets = self
             .message_secrets_mut(mls_ciphertext.epoch())
             .map_err(|_| MessageDecryptionError::AeadError)?;
         let sender_data = mls_ciphertext.sender_data(message_secrets, backend, ciphersuite)?;
-        let sender_index = self
-            .sender_index(&sender_data.sender)
-            .map_err(|_| MessageDecryptionError::SenderError(SenderError::UnknownSender))?;
-        let sender_index = crate::tree::index::SecretTreeLeafIndex(sender_index);
+        if self
+            .treesync()
+            .leaf_is_in_tree(sender_data.leaf_index)
+            .is_err()
+        {
+            return Err(MessageDecryptionError::SenderError(
+                SenderError::UnknownSender,
+            ));
+        }
+        let sender_index = SecretTreeLeafIndex(sender_data.leaf_index);
         let message_secrets = self
             .message_secrets_mut(mls_ciphertext.epoch())
             .map_err(|_| MessageDecryptionError::AeadError)?;
@@ -578,25 +606,17 @@ impl CoreGroup {
 
 // Private and crate functions
 impl CoreGroup {
-    /// Get the leaf index in the tree for a given [`KeyPackageRef`].
-    pub(crate) fn sender_index(
-        &self,
-        key_package_ref: &KeyPackageRef,
-    ) -> Result<u32, TreeSyncError> {
-        self.treesync().leaf_index(key_package_ref)
-    }
-
     /// Get the leaf index of this client.
     pub(crate) fn own_leaf_index(&self) -> u32 {
         self.treesync().own_leaf_index()
     }
 
-    /// Get the [`KeyPackageRef`] of the client owning this group.
-    pub(crate) fn key_package_ref(&self) -> Option<&KeyPackageRef> {
+    /// Get the identity of the client's [`Credential`] owning this group.
+    pub(crate) fn own_identity(&self) -> Option<&[u8]> {
         self.treesync()
             .own_leaf_node()
             .ok()
-            .and_then(|node| node.key_package_ref())
+            .and_then(|node| Some(node.key_package().credential().identity()))
     }
 
     /// Get a reference to the group epoch secrets from the group
@@ -652,7 +672,7 @@ impl CoreGroup {
     pub(crate) fn message_secrets_and_leaves_mut<'secret, 'group: 'secret>(
         &'group mut self,
         epoch: GroupEpoch,
-    ) -> Result<(&'secret mut MessageSecrets, IndexedKeyPackageRefs), MessageDecryptionError> {
+    ) -> Result<(&'secret mut MessageSecrets, &[Member]), MessageDecryptionError> {
         if epoch < self.context().epoch() {
             self.message_secrets_store
                 .secrets_and_leaves_for_epoch_mut(epoch)
@@ -662,7 +682,7 @@ impl CoreGroup {
         } else {
             // No need for leaves here. The tree of the current epoch is
             // available to the caller.
-            Ok((self.message_secrets_store.message_secrets_mut(), Vec::new()))
+            Ok((self.message_secrets_store.message_secrets_mut(), &[]))
         }
     }
 
@@ -739,5 +759,3 @@ pub(crate) struct CoreGroupConfig {
     /// Defaults to false.
     pub(crate) add_ratchet_tree_extension: bool,
 }
-
-pub(crate) type IndexedKeyPackageRefs = Vec<(u32, KeyPackageRef)>;

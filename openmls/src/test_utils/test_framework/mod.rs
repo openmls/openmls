@@ -38,7 +38,7 @@ use openmls_traits::{
     types::{Ciphersuite, SignatureScheme},
     OpenMlsCryptoProvider,
 };
-use rayon::prelude::*;
+use rayon::prelude::*; 
 use std::{collections::HashMap, sync::RwLock};
 use tls_codec::*;
 
@@ -66,10 +66,10 @@ pub struct Group {
 
 impl Group {
     /// Return the identity of a random member of the group.
-    pub fn random_group_member(&self) -> Vec<u8> {
+    pub fn random_group_member(&self) -> (u32, Vec<u8>) {
         let index = (OsRng.next_u32() as usize) % self.members.len();
-        let (_, identity) = self.members[index].clone();
-        identity
+        let (i, identity) = self.members[index].clone();
+        (i as u32, identity)
     }
 }
 
@@ -195,8 +195,8 @@ impl MlsGroupTestSetup {
         Ok(key_package)
     }
 
-    /// Convert an index in the tree into the corresponding key package reference.
-    pub fn key_package_ref_by_index(&self, index: usize, group: &Group) -> Option<KeyPackageRef> {
+    /// Convert an index in the tree into the corresponding identity.
+    pub fn identity_by_index(&self, index: usize, group: &Group) -> Option<Vec<u8>> {
         let (_, id) = group
             .members
             .iter()
@@ -208,11 +208,11 @@ impl MlsGroupTestSetup {
             .expect("An unexpected error occurred.")
             .read()
             .expect("An unexpected error occurred.");
-        client.key_package_ref(&group.group_id)
+        client.identity(&group.group_id)
     }
 
     /// Convert an identity in the tree into the corresponding key package reference.
-    pub fn key_package_ref_by_id(&self, id: &[u8], group: &Group) -> Option<KeyPackageRef> {
+    pub fn identity_by_id(&self, id: &[u8], group: &Group) -> Option<Vec<u8>> {
         let (_, id) = group
             .members
             .iter()
@@ -224,7 +224,7 @@ impl MlsGroupTestSetup {
             .expect("An unexpected error occurred.")
             .read()
             .expect("An unexpected error occurred.");
-        client.key_package_ref(&group.group_id)
+        client.identity(&group.group_id)
     }
 
     /// Deliver a Welcome message to the intended recipients. It uses the given
@@ -325,7 +325,16 @@ impl MlsGroupTestSetup {
         group.members = sender
             .get_members_of_group(&group.group_id)?
             .iter()
-            .map(|(index, cred)| (*index, cred.identity().to_vec()))
+            .map(
+                |Member {
+                     index, identity, ..
+                 }| {
+                    (
+                        usize::try_from(*index).expect("The tree is too large."),
+                        identity.clone(),
+                    )
+                },
+            )
             .collect();
         group.public_tree = sender_group.export_ratchet_tree();
         group.exporter_secret = sender_group.export_secret(&sender.crypto, "test", &[], 32)?;
@@ -478,7 +487,7 @@ impl MlsGroupTestSetup {
             // Add between 1 and 5 new members.
             let number_of_adds = ((OsRng.next_u32() as usize) % 5 % new_members.len()) + 1;
             let members_to_add = new_members.drain(0..number_of_adds).collect();
-            self.add_clients(ActionType::Commit, group, &adder_id, members_to_add)?;
+            self.add_clients(ActionType::Commit, group, &adder_id.1, members_to_add)?;
         }
         Ok(group_id)
     }
@@ -564,7 +573,7 @@ impl MlsGroupTestSetup {
         action_type: ActionType,
         group: &mut Group,
         remover_id: &[u8],
-        target_members: &[hash_ref::KeyPackageRef],
+        target_members: &[u32],
     ) -> Result<(), SetupError> {
         let clients = self.clients.read().expect("An unexpected error occurred.");
         let remover = clients
@@ -606,7 +615,7 @@ impl MlsGroupTestSetup {
                     "Perfoming a self-update with action type: {:?}",
                     action_type
                 );
-                self.self_update(action_type, group, &member_id, None)?;
+                self.self_update(action_type, group, &member_id.1, None)?;
             }
             1 => {
                 // If it's a single-member group, don't remove anyone.
@@ -618,7 +627,7 @@ impl MlsGroupTestSetup {
                     let (own_index, _) = group
                         .members
                         .iter()
-                        .find(|(_, identity)| identity == &member_id)
+                        .find(|(_, identity)| identity == &member_id.1)
                         .expect("An unexpected error occurred.")
                         .clone();
                     println!(
@@ -626,7 +635,7 @@ impl MlsGroupTestSetup {
                         action_type, own_index
                     );
 
-                    let mut target_member_ids = Vec::new();
+                    let mut target_member_leaf_indices = Vec::new();
                     let mut target_member_identities = Vec::new();
                     let clients = self.clients.read().expect("An unexpected error occurred.");
                     // Get the client references, as opposed to just the member indices.
@@ -658,15 +667,15 @@ impl MlsGroupTestSetup {
                         let client_group = client_group
                             .get(&group.group_id)
                             .expect("An unexpected error occurred.");
-                        target_member_ids.push(
-                            client_group
-                                .key_package_ref()
-                                .cloned()
-                                .expect("An unexpected error occurred."),
-                        );
+                        target_member_leaf_indices.push(client_group.own_leaf_index());
                         target_member_identities.push(identity);
                     }
-                    self.remove_clients(action_type, group, &member_id, &target_member_ids)?
+                    self.remove_clients(
+                        action_type,
+                        group,
+                        &member_id.1,
+                        &target_member_leaf_indices,
+                    )?
                 };
             }
             2 => {
@@ -687,7 +696,7 @@ impl MlsGroupTestSetup {
                         action_type, new_member_ids
                     );
                     // Have the adder add them to the group.
-                    self.add_clients(action_type, group, &member_id, new_member_ids)?;
+                    self.add_clients(action_type, group, &member_id.1, new_member_ids)?;
                 }
             }
             _ => return Err(SetupError::Unknown),

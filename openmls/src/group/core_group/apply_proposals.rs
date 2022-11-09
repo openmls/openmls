@@ -95,15 +95,11 @@ impl CoreGroup {
                 let sender = queued_proposal.sender();
                 // Only members can send update proposals
                 // ValSem112
-                let hash_ref = match sender {
-                    Sender::Member(hash_ref) => hash_ref,
+                let sender_index = match sender {
+                    Sender::Member(sender_index) => *sender_index,
                     // This should not happen with validated proposals
                     _ => return Err(LibraryError::custom("Update proposal from non-member").into()),
                 };
-                let sender_index = self
-                    .sender_index(hash_ref)
-                    // This should not happen with validated proposals
-                    .map_err(|_| LibraryError::custom("Update proposal from non-member"))?;
                 let leaf_node: LeafNode = if sender_index == self.tree.own_leaf_index() {
                     let own_kpb = match key_package_bundles
                         .iter()
@@ -113,10 +109,10 @@ impl CoreGroup {
                         // We lost the KeyPackageBundle apparently
                         None => return Err(ApplyProposalsError::MissingKeyPackageBundle),
                     };
-                    LeafNode::new_from_bundle(own_kpb.clone(), backend.crypto())
+                    LeafNode::new_from_bundle(own_kpb.clone())
                 } else {
-                    LeafNode::new(update_proposal.key_package().clone(), backend.crypto())
-                }?;
+                    LeafNode::new(update_proposal.key_package().clone())
+                };
                 diff.update_leaf(leaf_node, sender_index)
                     .map_err(|_| LibraryError::custom("Update proposal from non-member"))?;
             }
@@ -127,17 +123,13 @@ impl CoreGroup {
             has_removes = true;
             if let Proposal::Remove(remove_proposal) = queued_proposal.proposal() {
                 // Check if we got removed from the group
-                if let Some(own_kpr) = self.key_package_ref() {
-                    if remove_proposal.removed() == own_kpr {
-                        self_removed = true;
-                    }
+                if remove_proposal.removed() == self.own_leaf_index() {
+                    self_removed = true;
                 }
                 // Blank the direct path of the removed member
-                if let Ok(removed_index) = self.sender_index(remove_proposal.removed()) {
-                    diff.blank_leaf(removed_index)
-                        // The remove proposals were validated before, so this should not happen
-                        .map_err(|_| LibraryError::custom("Removed member not in tree"))?;
-                }
+                diff.blank_leaf(remove_proposal.removed())
+                    // The remove proposals were validated before, so this should not happen
+                    .map_err(|_| LibraryError::custom("Removed member not in tree"))?;
             }
         }
 
@@ -156,7 +148,7 @@ impl CoreGroup {
         let mut invitation_list = Vec::new();
         for add_proposal in add_proposals {
             let leaf_index = diff
-                .add_leaf(add_proposal.key_package().clone(), backend.crypto())
+                .add_leaf(add_proposal.key_package().clone())
                 // TODO #810
                 .map_err(|_| LibraryError::custom("Tree full: cannot add more members"))?;
             invitation_list.push((leaf_index, add_proposal.clone()))

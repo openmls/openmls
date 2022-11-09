@@ -18,7 +18,6 @@ use openmls_rust_crypto::OpenMlsRustCrypto;
 use openmls_traits::{
     crypto::OpenMlsCrypto,
     key_store::OpenMlsKeyStore,
-    random::OpenMlsRand,
     types::{Ciphersuite, SignatureScheme},
     OpenMlsCryptoProvider,
 };
@@ -258,12 +257,7 @@ fn test_welcome_message_with_version(
             ConfirmationTag(Mac {
                 mac_value: vec![1, 2, 3, 4, 5].into(),
             }),
-            &KeyPackageRef::from_slice(
-                &backend
-                    .rand()
-                    .random_vec(16)
-                    .expect("An unexpected error occurred."),
-            ),
+            1,
         )
     };
 

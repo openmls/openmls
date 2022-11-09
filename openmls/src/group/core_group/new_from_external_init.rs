@@ -44,7 +44,6 @@ impl CoreGroup {
         // currently no other mechanism to enable the extension.
         let extension_tree_option = try_nodes_from_extensions(
             verifiable_public_group_state.other_extensions(),
-            backend.crypto(),
         )
         .map_err(|e| match e {
             ExtensionError::DuplicateRatchetTreeExtension => {
@@ -76,8 +75,9 @@ impl CoreGroup {
             return Err(ExternalCommitError::TreeHashMismatch);
         }
 
-        // FIXME #680: Validation of external commits
-        let pgs_signer_leaf = treesync.leaf_from_id(verifiable_public_group_state.signer());
+        let pgs_signer_leaf = treesync
+            .leaf(verifiable_public_group_state.signer())
+            .map_err(|_| ExternalCommitError::UnknownSender)?;
         let pgs_signer_credential = pgs_signer_leaf
             .ok_or(ExternalCommitError::UnknownSender)?
             .key_package()
@@ -135,13 +135,12 @@ impl CoreGroup {
 
         // If there is a group member in the group with the same identity as us,
         // commit a remove proposal.
-        for (_, key_package) in group.treesync().full_leaves()? {
-            if key_package.credential().identity()
-                == params.credential_bundle().credential().identity()
-            {
-                let remove_proposal = Proposal::Remove(RemoveProposal {
-                    removed: key_package.hash_ref(backend.crypto())?,
-                });
+        for Member {
+            index, identity, ..
+        } in group.treesync().full_leave_members()?
+        {
+            if identity == params.credential_bundle().credential().identity() {
+                let remove_proposal = Proposal::Remove(RemoveProposal { removed: index });
                 inline_proposals.push(remove_proposal);
                 break;
             };

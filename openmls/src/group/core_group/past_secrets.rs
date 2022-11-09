@@ -10,7 +10,7 @@ use super::*;
 struct EpochTree {
     epoch: u64,
     message_secrets: MessageSecrets,
-    leaves: Vec<(u32, KeyPackageRef)>,
+    leaves: Vec<Member>,
 }
 
 /// Can store message secrets for up to `max_epochs`. The trees are added with [`self::add()`] and can be queried
@@ -55,7 +55,7 @@ impl MessageSecretsStore {
         &mut self,
         group_epoch: impl Into<GroupEpoch>,
         message_secrets: MessageSecrets,
-        leaves: Vec<(u32, KeyPackageRef)>,
+        leaves: Vec<Member>,
     ) {
         // Don't store the tree if it's not intended
         if self.max_epochs == 0 {
@@ -109,27 +109,22 @@ impl MessageSecretsStore {
     }
 
     /// Get a mutable reference to a secret tree for a given epoch `group_epoch`.
-    /// Return a vector with the key package references and leaf indices of the
-    /// epoch.
+    /// Return a vector with the leaf indices of the epoch.
     pub(crate) fn secrets_and_leaves_for_epoch_mut(
         &mut self,
         group_epoch: impl Into<GroupEpoch>,
-    ) -> Option<(&mut MessageSecrets, Vec<(u32, KeyPackageRef)>)> {
+    ) -> Option<(&mut MessageSecrets, &[Member])> {
         let epoch = group_epoch.into().as_u64();
         for epoch_tree in self.past_epoch_trees.iter_mut() {
             if epoch_tree.epoch == epoch {
-                return Some((&mut epoch_tree.message_secrets, epoch_tree.leaves.clone()));
+                return Some((&mut epoch_tree.message_secrets, &epoch_tree.leaves));
             }
         }
         None
     }
 
-    /// Return a slice with the key package references and leaf indices of the
-    /// epoch.
-    pub(crate) fn leaves_for_epoch(
-        &self,
-        group_epoch: impl Into<GroupEpoch>,
-    ) -> &[(u32, KeyPackageRef)] {
+    /// Return a slice with the leaf indices of the epoch.
+    pub(crate) fn leaves_for_epoch(&self, group_epoch: impl Into<GroupEpoch>) -> &[Member] {
         let epoch = group_epoch.into().as_u64();
         for epoch_tree in self.past_epoch_trees.iter() {
             if epoch_tree.epoch == epoch {
@@ -137,17 +132,6 @@ impl MessageSecretsStore {
             }
         }
         &[]
-    }
-
-    /// Check if the provided epoch contains the key package reference.
-    pub(crate) fn epoch_has_leaf(
-        &self,
-        group_epoch: GroupEpoch,
-        key_package_ref: &KeyPackageRef,
-    ) -> bool {
-        self.past_epoch_trees.iter().any(|t| {
-            t.epoch == group_epoch.0 && t.leaves.iter().any(|(_, kpr)| kpr == key_package_ref)
-        })
     }
 
     /// Get a mutable reference to the message secrets of the current epoch.
