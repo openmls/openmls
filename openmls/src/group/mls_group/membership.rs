@@ -90,7 +90,7 @@ impl MlsGroup {
     ///
     /// Members are removed by providing the member's "identity".
     /// The identity is an opaque byte string that is not interpreted by OpenMLS.
-    /// This can be the `identity` in a [`BasicCredential`] or some other form
+    /// This can be the `identity` in a `BasicCredential` or some other form
     /// of identity.
     ///
     /// If successful, it returns a tuple of [`MlsMessageOut`] and an optional [`Welcome`].
@@ -292,7 +292,7 @@ impl MlsGroup {
         Ok(self.plaintext_to_mls_message(remove_proposal, backend)?)
     }
 
-    /// Returns a list of [`Members`] in the group.
+    /// Returns a list of [`Member`]s in the group.
     pub fn members(&self) -> Result<Vec<Member>, LibraryError> {
         self.group.treesync().full_leave_members()
     }

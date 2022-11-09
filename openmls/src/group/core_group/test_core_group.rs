@@ -829,7 +829,7 @@ fn test_proposal_application_after_self_was_removed(
         assert_eq!(charlie_member.index, bob_member.index);
         assert_eq!(charlie_member.identity, bob_member.identity);
         assert_eq!(charlie_member.signature_key, bob_member.signature_key);
-        assert_eq!(alice_member.encryption_key, alice_member.encryption_key);
+        assert_eq!(charlie_member.encryption_key, alice_member.encryption_key);
     }
 
     assert_eq!(bob_members[0].identity, b"Alice");
