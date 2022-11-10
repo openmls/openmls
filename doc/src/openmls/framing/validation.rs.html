@@ -777,7 +777,7 @@
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>into_verified(
         <span class="self">self</span>,
         backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider,
-        signature_key: <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>SignaturePublicKey&gt;,
+        signature_key: <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>OpenMlsSignaturePublicKey&gt;,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;VerifiedMemberMessage, ValidationError&gt; {
         <span class="comment">// If a signature key is provided it will be used,
         // otherwise we take the key from the credential
@@ -809,7 +809,7 @@
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>into_verified(
         <span class="self">self</span>,
         backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider,
-        signature_key: <span class="kw-2">&amp;</span>SignaturePublicKey,
+        signature_key: <span class="kw-2">&amp;</span>OpenMlsSignaturePublicKey,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;VerifiedExternalMessage, ValidationError&gt; {
         <span class="comment">// ValSem010
         </span><span class="self">self</span>.plaintext

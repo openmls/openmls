@@ -354,7 +354,7 @@
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>process_unverified_message(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         unverified_message: UnverifiedMessage,
-        signature_key: <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>SignaturePublicKey&gt;,
+        signature_key: <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>OpenMlsSignaturePublicKey&gt;,
         proposal_store: <span class="kw-2">&amp;</span>ProposalStore,
         own_kpbs: <span class="kw-2">&amp;</span>[KeyPackageBundle],
         backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider,

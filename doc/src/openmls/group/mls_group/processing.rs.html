@@ -230,7 +230,7 @@
     </span><span class="kw">pub fn </span>process_unverified_message(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         unverified_message: UnverifiedMessage,
-        signature_key: <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>SignaturePublicKey&gt;,
+        signature_key: <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>OpenMlsSignaturePublicKey&gt;,
         backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;ProcessedMessage, UnverifiedMessageError&gt; {
         <span class="self">self</span>.group.process_unverified_message(

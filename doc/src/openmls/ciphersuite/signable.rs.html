@@ -221,7 +221,7 @@
     error::LibraryError,
 };
 
-<span class="kw">use </span><span class="kw">super</span>::SignaturePublicKey;
+<span class="kw">use </span><span class="kw">super</span>::OpenMlsSignaturePublicKey;
 
 <span class="doccomment">/// This trait must be implemented by all structs that contain a self-signature.
 </span><span class="kw">pub trait </span>SignedStruct&lt;T&gt; {
@@ -337,7 +337,7 @@
     </span><span class="kw">fn </span>verify_with_key&lt;T&gt;(
         <span class="self">self</span>,
         backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider,
-        signature_public_key: <span class="kw-2">&amp;</span>SignaturePublicKey,
+        signature_public_key: <span class="kw-2">&amp;</span>OpenMlsSignaturePublicKey,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;T, CredentialError&gt;
     <span class="kw">where
         </span>T: VerifiedStruct&lt;<span class="self">Self</span>&gt;,
