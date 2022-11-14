@@ -274,6 +274,20 @@
 <span id="274">274</span>
 <span id="275">275</span>
 <span id="276">276</span>
+<span id="277">277</span>
+<span id="278">278</span>
+<span id="279">279</span>
+<span id="280">280</span>
+<span id="281">281</span>
+<span id="282">282</span>
+<span id="283">283</span>
+<span id="284">284</span>
+<span id="285">285</span>
+<span id="286">286</span>
+<span id="287">287</span>
+<span id="288">288</span>
+<span id="289">289</span>
+<span id="290">290</span>
 </pre><pre class="rust"><code><span class="doccomment">//! MLS Message types
 //!
 //! This module defines two opaque message types that are used by the [`MlsGroup`](crate::group::mls_group::MlsGroup) API.
@@ -430,6 +444,20 @@
     <span class="doccomment">/// Returns `true` if this is a handshake message and `false` otherwise.
     </span><span class="kw">pub fn </span>is_handshake_message(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; bool {
         <span class="self">self</span>.mls_message.is_handshake_message()
+    }
+
+    <span class="doccomment">/// Returns `true` if this is either an external proposal or external commit
+    </span><span class="kw">pub fn </span>is_external(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; bool {
+        <span class="kw">match </span><span class="kw-2">&amp;</span><span class="self">self</span>.mls_message.body {
+            MlsMessageBody::Plaintext(p) =&gt; {
+                <span class="macro">matches!</span>(
+                    p.sender(),
+                    Sender::NewMemberProposal | Sender::NewMemberCommit | Sender::External(<span class="kw">_</span>)
+                )
+            }
+            <span class="comment">// external message cannot be encrypted
+            </span>MlsMessageBody::Ciphertext(<span class="kw">_</span>) =&gt; <span class="bool-val">false</span>,
+        }
     }
 
     <span class="doccomment">/// Tries to deserialize from a byte slice. Returns [`MlsMessageError::UnableToDecode`] on failure.

@@ -375,6 +375,46 @@ If the group configuration does not use the ratchet tree extension, the ratchet 
         .expect(&quot;Could not create proposal to add Bob&quot;);
 </code></pre>
 <p>In this case, the function returns an <code>MlsMessageOut</code> that needs to be fanned out to existing group members.</p>
+<h2 id="external-proposal"><a class="header" href="#external-proposal">External proposal</a></h2>
+<p>Parties outside the group can also make proposals to add themselves to the group with an external proposal. Since those
+proposals are crafted by outsiders, they are always plaintext messages.</p>
+<pre><code class="language-rust no_run noplayground">    let proposal = JoinProposal::new(
+        bob_key_package,
+        alice_group.group_id().clone(),
+        alice_group.epoch(),
+        &amp;bob_credential_bundle,
+        backend,
+    )
+    .expect(&quot;Could not create external Add proposal&quot;);
+</code></pre>
+<p>It is then up to the group members to validate the proposal and commit it.
+Note that in this scenario it is up to the application to define a proper authorization policy to grant the sender. </p>
+<pre><code class="language-rust no_run noplayground">    let unverified_message = alice_group
+        .parse_message(proposal.into(), backend)
+        .expect(&quot;Could not parse message.&quot;);
+    let alice_processed_message = alice_group
+        .process_unverified_message(unverified_message, None, backend)
+        .expect(&quot;Could not process unverified message.&quot;);
+    match alice_processed_message {
+        ProcessedMessage::ExternalJoinProposalMessage(proposal) =&gt; {
+            alice_group.store_pending_proposal(*proposal);
+            let (_commit, welcome) = alice_group
+                .commit_to_pending_proposals(backend)
+                .expect(&quot;Could not commit&quot;);
+            assert_eq!(alice_group.members().len(), 1);
+            alice_group
+                .merge_pending_commit()
+                .expect(&quot;Could not merge commit&quot;);
+            assert_eq!(alice_group.members().len(), 2);
+
+            let bob_group =
+                MlsGroup::new_from_welcome(backend, &amp;mls_group_config, welcome.unwrap(), None)
+                    .expect(&quot;Bob could not join the group&quot;);
+            assert_eq!(bob_group.members().len(), 2);
+        }
+        _ =&gt; unreachable!(),
+    }
+</code></pre>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="removing-members-from-a-group"><a class="header" href="#removing-members-from-a-group">Removing members from a group</a></h1>
 <h2 id="immediate-operation-1"><a class="header" href="#immediate-operation-1">Immediate operation</a></h2>
 <p>Members can be removed from the group atomically with the <code>.remove_members()</code> function, which takes the <code>KeyPackageRef</code> of group member as input. References to the <code>KeyPackage</code>s of group members can be obtained using the <code>.members()</code> function, from which one can in turn compute the <code>KeyPackageRef</code> using their <code>.hash_ref()</code> function.</p>

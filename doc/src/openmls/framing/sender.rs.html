@@ -65,7 +65,6 @@
 <span id="65">65</span>
 <span id="66">66</span>
 <span id="67">67</span>
-<span id="68">68</span>
 </pre><pre class="rust"><code><span class="doccomment">//! # The sender of a message.
 
 </span><span class="kw">use super</span>::<span class="kw-2">*</span>;
@@ -109,8 +108,12 @@
     </span>Member(KeyPackageRef),
     <span class="doccomment">/// The sender is not a member of the group and has an external value instead
     </span>External(TlsByteVecU8),
-    <span class="doccomment">/// The sender is a new member of the group that joins through an External Commit
-    </span>NewMember,
+    <span class="doccomment">/// The sender is a new member of the group that joins itself through
+    /// an [External Add proposal](crate::messages::external_proposals::JoinProposal)
+    </span>NewMemberProposal,
+    <span class="doccomment">/// The sender is a new member of the group that joins itself through
+    /// an [External Commit](crate::group::mls_group::MlsGroup::join_by_external_commit)
+    </span>NewMemberCommit,
 }
 
 <span class="kw">impl </span>Sender {
@@ -122,11 +125,6 @@
     <span class="doccomment">/// Create a member sender.
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>build_member(kpr: <span class="kw-2">&amp;</span>KeyPackageRef) -&gt; <span class="self">Self </span>{
         <span class="self">Self</span>::Member(kpr.clone())
-    }
-
-    <span class="doccomment">/// Create a new member sender.
-    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>build_new_member() -&gt; <span class="self">Self </span>{
-        <span class="self">Self</span>::NewMember
     }
 
     <span class="doccomment">/// Returns true if this [`Sender`] has [`SenderType::Member`].

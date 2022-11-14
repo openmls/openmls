@@ -484,6 +484,10 @@
 <span id="484">484</span>
 <span id="485">485</span>
 <span id="486">486</span>
+<span id="487">487</span>
+<span id="488">488</span>
+<span id="489">489</span>
+<span id="490">490</span>
 </pre><pre class="rust"><code><span class="kw">use </span><span class="kw">crate</span>::treesync::errors::TreeSyncAddLeaf;
 <span class="kw">use </span><span class="kw">crate</span>::treesync::{diff::StagedTreeSyncDiff, treekem::DecryptPathParams};
 
@@ -625,7 +629,11 @@
                 <span class="comment">// A commit cannot be issued by a pre-configured sender.
                 </span><span class="kw">return </span><span class="prelude-val">Err</span>(StageCommitError::SenderTypeExternal);
             }
-            Sender::NewMember =&gt; {
+            Sender::NewMemberProposal =&gt; {
+                <span class="comment">// A commit cannot be issued by a `NewMemberProposal` sender.
+                </span><span class="kw">return </span><span class="prelude-val">Err</span>(StageCommitError::SenderTypeNewMemberProposal);
+            }
+            Sender::NewMemberCommit =&gt; {
                 <span class="comment">// ValSem240: External Commit, inline Proposals: There MUST be at least one ExternalInit proposal.
                 // ValSem241: External Commit, inline Proposals: There MUST be at most one ExternalInit proposal.
                 // ValSem242: External Commit, inline Proposals: There MUST NOT be any Add proposals.
@@ -656,7 +664,7 @@
                 </span><span class="self">self</span>.sender_index(hash_ref)
                     .map_err(|<span class="kw">_</span>| StageCommitError::InconsistentSenderIndex)<span class="question-mark">?
             </span>}
-            Sender::NewMember =&gt; diff.free_leaf_index()<span class="question-mark">?</span>,
+            Sender::NewMemberCommit =&gt; diff.free_leaf_index()<span class="question-mark">?</span>,
             <span class="kw">_ </span>=&gt; {
                 <span class="kw">return </span><span class="prelude-val">Err</span>(StageCommitError::SenderTypeExternal);
             }
@@ -691,7 +699,7 @@
             <span class="comment">// Make sure that the new path key package is valid
             </span><span class="self">self</span>.validate_path_key_package(sender_index, <span class="kw-2">&amp;</span>key_package, public_key_set, sender)<span class="question-mark">?</span>;
 
-            <span class="comment">// If the committer is a `NewMember`, we have to add the leaf to
+            <span class="comment">// If the committer is a `NewMemberCommit`, we have to add the leaf to
             // the tree before we can apply or even decrypt an update path.
             // While `apply_received_update_path` will happily update a
             // blank leaf, we still have to call `add_leaf` here in case

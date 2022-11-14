@@ -529,7 +529,7 @@
                 // group.
                 </span><span class="kw">let </span>leaf_index =
                     <span class="self">self</span>.free_leaf_index(params.inline_proposals().iter().map(<span class="prelude-val">Some</span>))<span class="question-mark">?</span>;
-                (Sender::build_new_member(), leaf_index)
+                (Sender::NewMemberCommit, leaf_index)
             }
             CommitType::Member =&gt; (
                 Sender::build_member(
@@ -663,7 +663,7 @@
             };
 
         <span class="kw">let </span>sender = <span class="kw">match </span>params.commit_type() {
-            CommitType::External =&gt; Sender::build_new_member(),
+            CommitType::External =&gt; Sender::NewMemberCommit,
             CommitType::Member =&gt; Sender::build_member(
                 <span class="self">self</span>.key_package_ref()
                     .ok_or_else(|| LibraryError::custom(<span class="string">&quot; missing key package&quot;</span>))<span class="question-mark">?</span>,

@@ -171,6 +171,7 @@
 <span id="171">171</span>
 <span id="172">172</span>
 <span id="173">173</span>
+<span id="174">174</span>
 </pre><pre class="rust"><code><span class="doccomment">//! Processing functions of an [`MlsGroup`] for incoming messages.
 
 </span><span class="kw">use </span>std::mem;
@@ -202,7 +203,8 @@
         }
 
         <span class="comment">// Check that handshake messages are compatible with the incoming wire format policy
-        </span><span class="kw">if </span>message.is_handshake_message()
+        </span><span class="kw">if </span>!message.is_external()
+            &amp;&amp; message.is_handshake_message()
             &amp;&amp; !<span class="self">self
                 </span>.configuration()
                 .wire_format_policy()

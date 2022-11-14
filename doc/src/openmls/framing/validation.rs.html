@@ -447,6 +447,63 @@
 <span id="447">447</span>
 <span id="448">448</span>
 <span id="449">449</span>
+<span id="450">450</span>
+<span id="451">451</span>
+<span id="452">452</span>
+<span id="453">453</span>
+<span id="454">454</span>
+<span id="455">455</span>
+<span id="456">456</span>
+<span id="457">457</span>
+<span id="458">458</span>
+<span id="459">459</span>
+<span id="460">460</span>
+<span id="461">461</span>
+<span id="462">462</span>
+<span id="463">463</span>
+<span id="464">464</span>
+<span id="465">465</span>
+<span id="466">466</span>
+<span id="467">467</span>
+<span id="468">468</span>
+<span id="469">469</span>
+<span id="470">470</span>
+<span id="471">471</span>
+<span id="472">472</span>
+<span id="473">473</span>
+<span id="474">474</span>
+<span id="475">475</span>
+<span id="476">476</span>
+<span id="477">477</span>
+<span id="478">478</span>
+<span id="479">479</span>
+<span id="480">480</span>
+<span id="481">481</span>
+<span id="482">482</span>
+<span id="483">483</span>
+<span id="484">484</span>
+<span id="485">485</span>
+<span id="486">486</span>
+<span id="487">487</span>
+<span id="488">488</span>
+<span id="489">489</span>
+<span id="490">490</span>
+<span id="491">491</span>
+<span id="492">492</span>
+<span id="493">493</span>
+<span id="494">494</span>
+<span id="495">495</span>
+<span id="496">496</span>
+<span id="497">497</span>
+<span id="498">498</span>
+<span id="499">499</span>
+<span id="500">500</span>
+<span id="501">501</span>
+<span id="502">502</span>
+<span id="503">503</span>
+<span id="504">504</span>
+<span id="505">505</span>
+<span id="506">506</span>
 </pre><pre class="rust"><code><span class="doccomment">//! # Validation steps for incoming messages
 //!
 //! ```text
@@ -634,17 +691,23 @@
             }
             <span class="comment">// External senders are not supported yet #106/#151.
             </span>Sender::External(<span class="kw">_</span>) =&gt; <span class="macro">unimplemented!</span>(),
-            Sender::NewMember =&gt; {
-                <span class="comment">// Since this allows only commits to have a sender type `Member`, it checks
-                // ValSem112
-                </span><span class="kw">if let </span>MlsContentBody::Commit(commit) = <span class="self">self</span>.plaintext().content() {
-                    <span class="kw">if let </span><span class="prelude-val">Some</span>(path) = commit.path() {
-                        <span class="prelude-val">Ok</span>(path.leaf_key_package().credential().clone())
-                    } <span class="kw">else </span>{
-                        <span class="prelude-val">Err</span>(ValidationError::NoPath)
+            Sender::NewMemberCommit =&gt; {
+                <span class="comment">// only external commits can have a sender type `NewMemberCommit`
+                </span><span class="kw">match </span><span class="self">self</span>.plaintext().content() {
+                    MlsContentBody::Commit(Commit { path, .. }) =&gt; path
+                        .as_ref()
+                        .map(|p| p.leaf_key_package().credential().clone())
+                        .ok_or(ValidationError::NoPath),
+                    <span class="kw">_ </span>=&gt; <span class="prelude-val">Err</span>(ValidationError::NotACommit),
+                }
+            }
+            Sender::NewMemberProposal =&gt; {
+                <span class="comment">// only External Add proposals can have a sender type `NewMemberProposal`
+                </span><span class="kw">match </span><span class="self">self</span>.plaintext().content() {
+                    MlsContentBody::Proposal(Proposal::Add(AddProposal { key_package })) =&gt; {
+                        <span class="prelude-val">Ok</span>(key_package.credential().clone())
                     }
-                } <span class="kw">else </span>{
-                    <span class="prelude-val">Err</span>(ValidationError::NotACommit)
+                    <span class="kw">_ </span>=&gt; <span class="prelude-val">Err</span>(ValidationError::NotAnExternalAddProposal),
                 }
             }
         }
@@ -664,7 +727,7 @@
 <span class="doccomment">/// Partially checked and potentially decrypted message (if it was originally encrypted).
 /// Use this to inspect the [`Credential`] of the message sender
 /// and the optional `aad` if the original message was encrypted.
-</span><span class="attribute">#[derive(Debug)]
+</span><span class="attribute">#[derive(Debug, Clone)]
 </span><span class="kw">pub struct </span>UnverifiedMessage {
     plaintext: VerifiableMlsPlaintext,
     credential: <span class="prelude-ty">Option</span>&lt;Credential&gt;,
@@ -711,13 +774,15 @@
 }
 
 <span class="doccomment">/// Contains an VerifiableMlsPlaintext and a [Credential] if it is a message
-/// from a `Member` or a `NewMember`.  It sets the serialized group context and
-/// verifies the membership tag for member messages.  It can be converted to a
-/// verified message by verifying the signature, either with the credential or
-/// an external signature key.
+/// from a `Member`, a `Preconfigured`, a `NewMemberProposal` or a `NewMemberCommit`. It sets the
+/// serialized group context and verifies the membership tag for member messages. It can be
+/// converted to a verified message by verifying the signature, either with the credential or an
+/// external signature key.
 </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">enum </span>UnverifiedContextMessage {
     <span class="doccomment">/// Unverified message from a group member
     </span>Group(UnverifiedGroupMessage),
+    <span class="doccomment">/// Unverified message from either a `NewMemberProposal` or a `NewMemberCommit`
+    </span>NewMember(UnverifiedNewMemberMessage),
     <span class="doccomment">/// Unverified message from an external sender
     /// TODO: #106
     </span><span class="attribute">#[allow(dead_code)]
@@ -747,11 +812,10 @@
             }
         }
         <span class="kw">match </span>plaintext.sender() {
-            Sender::Member(<span class="kw">_</span>) | Sender::NewMember =&gt; {
+            Sender::Member(<span class="kw">_</span>) =&gt; {
                 <span class="prelude-val">Ok</span>(UnverifiedContextMessage::Group(UnverifiedGroupMessage {
                     plaintext,
-                    <span class="comment">// If the message type is `Sender` or `NewMember`, the
-                    // message always contains a credential.
+                    <span class="comment">// If the message type is `Member` it always contains credentials
                     </span>credential: credential_option.ok_or_else(|| {
                         ValidationError::from(LibraryError::custom(<span class="string">&quot;Expected credential&quot;</span>))
                     })<span class="question-mark">?</span>,
@@ -759,6 +823,17 @@
             }
             <span class="comment">// TODO #151/#106: We don&#39;t support external senders yet
             </span>Sender::External(<span class="kw">_</span>) =&gt; <span class="macro">unimplemented!</span>(),
+            Sender::NewMemberProposal | Sender::NewMemberCommit =&gt; {
+                <span class="prelude-val">Ok</span>(UnverifiedContextMessage::NewMember(
+                    UnverifiedNewMemberMessage {
+                        plaintext,
+                        <span class="comment">// If the message type is `NewMemberCommit` or `NewMemberProposal` it always contains credentials
+                        </span>credential: credential_option.ok_or_else(|| {
+                            ValidationError::from(LibraryError::custom(<span class="string">&quot;Expected credential&quot;</span>))
+                        })<span class="question-mark">?</span>,
+                    },
+                ))
+            }
         }
     }
 }
@@ -795,6 +870,37 @@
     }
 }
 
+<span class="doccomment">/// Part of [UnverifiedContextMessage].
+</span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct </span>UnverifiedNewMemberMessage {
+    plaintext: VerifiableMlsPlaintext,
+    credential: Credential,
+}
+
+<span class="kw">impl </span>UnverifiedNewMemberMessage {
+    <span class="doccomment">/// Verifies the signature of an [UnverifiedNewMemberMessage] and returns a
+    /// [VerifiedExternalMessage] if the verification is successful.
+    /// This function implements the following checks:
+    /// - ValSem010
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>into_verified(
+        <span class="self">self</span>,
+        backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider,
+        signature_key: <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>OpenMlsSignaturePublicKey&gt;,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;VerifiedExternalMessage, ValidationError&gt; {
+        <span class="comment">// If a signature key is provided it will be used, otherwise we take it from the credential
+        </span><span class="kw">let </span>verified_external_message = <span class="kw">if let </span><span class="prelude-val">Some</span>(signature_public_key) = signature_key {
+            <span class="comment">// ValSem010
+            </span><span class="self">self</span>.plaintext
+                .verify_with_key(backend, signature_public_key)
+        } <span class="kw">else </span>{
+            <span class="comment">// ValSem010
+            </span><span class="self">self</span>.plaintext.verify(backend, <span class="kw-2">&amp;</span><span class="self">self</span>.credential)
+        }
+        .map(|plaintext| VerifiedExternalMessage { plaintext })
+        .map_err(|<span class="kw">_</span>| ValidationError::InvalidSignature)<span class="question-mark">?</span>;
+        <span class="prelude-val">Ok</span>(verified_external_message)
+    }
+}
+
 <span class="comment">// TODO #151/#106: We don&#39;t support external senders yet
 </span><span class="doccomment">/// Part of [UnverifiedContextMessage].
 </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct </span>UnverifiedExternalMessage {
@@ -814,7 +920,7 @@
         <span class="comment">// ValSem010
         </span><span class="self">self</span>.plaintext
             .verify_with_key(backend, signature_key)
-            .map(|_plaintext| VerifiedExternalMessage { _plaintext })
+            .map(|plaintext| VerifiedExternalMessage { plaintext })
             .map_err(|<span class="kw">_</span>| ValidationError::InvalidSignature)
     }
 }
@@ -839,18 +945,18 @@
 <span class="doccomment">/// External message, where all semantic checks on the framing have been successfully performed.
 /// Note: External messages are not fully supported yet #106
 </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct </span>VerifiedExternalMessage {
-    _plaintext: MlsPlaintext,
+    plaintext: MlsPlaintext,
 }
 
 <span class="kw">impl </span>VerifiedExternalMessage {
     <span class="doccomment">/// Returns a reference to the inner [MlsPlaintext].
-    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>_plaintext(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>MlsPlaintext {
-        <span class="kw-2">&amp;</span><span class="self">self</span>._plaintext
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>plaintext(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>MlsPlaintext {
+        <span class="kw-2">&amp;</span><span class="self">self</span>.plaintext
     }
 
     <span class="doccomment">/// Consumes the message and returns the inner [MlsPlaintext].
-    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>_take_plaintext(<span class="self">self</span>) -&gt; MlsPlaintext {
-        <span class="self">self</span>._plaintext
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>take_plaintext(<span class="self">self</span>) -&gt; MlsPlaintext {
+        <span class="self">self</span>.plaintext
     }
 }
 
@@ -870,6 +976,14 @@
     /// If the proposal is deemed to be allowed, it should be added to the group&#39;s proposal
     /// queue using [`MlsGroup::store_pending_proposal()`](crate::group::mls_group::MlsGroup::store_pending_proposal()).
     </span>ProposalMessage(Box&lt;QueuedProposal&gt;),
+    <span class="doccomment">/// An [external join proposal](crate::prelude::JoinProposal) sent by a
+    /// [NewMemberProposal](crate::prelude::Sender::NewMemberProposal) sender which is outside the group.
+    ///
+    /// Since this originates from a party outside the group, the [`QueuedProposal`] SHOULD be
+    /// inspected for authorization purposes by the application. If the proposal is deemed to be
+    /// allowed, it should be added to the group&#39;s proposal queue using
+    /// [`MlsGroup::store_pending_proposal()`](crate::group::mls_group::MlsGroup::store_pending_proposal()).
+    </span>ExternalJoinProposalMessage(Box&lt;QueuedProposal&gt;),
     <span class="doccomment">/// A Commit message.
     ///
     /// The [`StagedCommit`] can be inspected for authorization purposes by the application.

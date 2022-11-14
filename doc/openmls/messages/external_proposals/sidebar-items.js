@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"struct":[["JoinProposal","External Add Proposal where sender is NewMemberProposal. A client outside the group can request joining the group. This proposal should then be committed by a group member. Note that this is unconstrained i.e. it works for any MLS group. This is not the case for the same external proposal with a Preconfigured sender"]]};

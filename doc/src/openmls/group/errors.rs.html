@@ -452,6 +452,12 @@
 <span id="452">452</span>
 <span id="453">453</span>
 <span id="454">454</span>
+<span id="455">455</span>
+<span id="456">456</span>
+<span id="457">457</span>
+<span id="458">458</span>
+<span id="459">459</span>
+<span id="460">460</span>
 </pre><pre class="rust"><code><span class="doccomment">//! # MLS group errors
 //!
 //! This module contains errors that originate at lower levels and are partially re-exported in errors thrown by functions of the `MlsGroup` API.
@@ -612,6 +618,9 @@
     <span class="doccomment">/// The sender is of type external, which is not valid.
     </span><span class="attribute">#[error(<span class="string">&quot;The sender is of type external, which is not valid.&quot;</span>)]
     </span>SenderTypeExternal,
+    <span class="doccomment">/// The sender is of type `NewMemberProposal`, which is not valid.
+    </span><span class="attribute">#[error(<span class="string">&quot;The sender is of type NewMemberProposal, which is not valid.&quot;</span>)]
+    </span>SenderTypeNewMemberProposal,
     <span class="doccomment">/// Too many new members: the tree is full.
     </span><span class="attribute">#[error(<span class="string">&quot;Too many new members: the tree is full.&quot;</span>)]
     </span>TooManyNewMembers,
@@ -667,11 +676,14 @@
     <span class="doccomment">/// Message epoch differs from the group&#39;s epoch.
     </span><span class="attribute">#[error(<span class="string">&quot;Message epoch differs from the group&#39;s epoch.&quot;</span>)]
     </span>WrongEpoch,
-    <span class="doccomment">/// The MlsPlaintext is not a Commit despite the sender begin of type NewMember.
-    </span><span class="attribute">#[error(<span class="string">&quot;The MlsPlaintext is not a Commit despite the sender begin of type NewMember.&quot;</span>)]
+    <span class="doccomment">/// The MlsPlaintext is not a Commit despite the sender begin of type [NewMemberCommit](crate::prelude::Sender::NewMemberCommit).
+    </span><span class="attribute">#[error(<span class="string">&quot;The MlsPlaintext is not a Commit despite the sender begin of type NewMemberCommit.&quot;</span>)]
     </span>NotACommit,
-    <span class="doccomment">/// The Commit doesn&#39;t have a path despite the sender being of type NewMember.
-    </span><span class="attribute">#[error(<span class="string">&quot;The Commit doesn&#39;t have a path despite the sender being of type NewMember.&quot;</span>)]
+    <span class="doccomment">/// The MlsPlaintext is not an External Add Proposal despite the sender begin of type [NewMemberProposal](crate::prelude::Sender::NewMemberProposal).
+    </span><span class="attribute">#[error(<span class="string">&quot;The MlsPlaintext is not an external Add proposal despite the sender begin of type NewMemberProposal.&quot;</span>)]
+    </span>NotAnExternalAddProposal,
+    <span class="doccomment">/// The Commit doesn&#39;t have a path despite the sender being of type NewMemberCommit.
+    </span><span class="attribute">#[error(<span class="string">&quot;The Commit doesn&#39;t have a path despite the sender being of type NewMemberCommit.&quot;</span>)]
     </span>NoPath,
     <span class="doccomment">/// The MlsPlaintext contains an application message but was not encrypted.
     </span><span class="attribute">#[error(<span class="string">&quot;The MlsPlaintext contains an application message but was not encrypted.&quot;</span>)]

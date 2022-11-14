@@ -853,6 +853,29 @@
 <span id="853">853</span>
 <span id="854">854</span>
 <span id="855">855</span>
+<span id="856">856</span>
+<span id="857">857</span>
+<span id="858">858</span>
+<span id="859">859</span>
+<span id="860">860</span>
+<span id="861">861</span>
+<span id="862">862</span>
+<span id="863">863</span>
+<span id="864">864</span>
+<span id="865">865</span>
+<span id="866">866</span>
+<span id="867">867</span>
+<span id="868">868</span>
+<span id="869">869</span>
+<span id="870">870</span>
+<span id="871">871</span>
+<span id="872">872</span>
+<span id="873">873</span>
+<span id="874">874</span>
+<span id="875">875</span>
+<span id="876">876</span>
+<span id="877">877</span>
+<span id="878">878</span>
 </pre><pre class="rust"><code><span class="doccomment">//! # MlsPlaintext
 //!
 //! An MlsPlaintext is a framing structure for MLS messages. It can contain
@@ -1088,9 +1111,32 @@
         )
     }
 
+    <span class="doccomment">/// This constructor builds an `MlsPlaintext` containing an External Proposal.
+    /// The sender is [Sender::NewMemberProposal].
+    </span><span class="comment">// TODO #151/#106: We don&#39;t support preconfigured senders yet
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>new_external_proposal(
+        proposal: Proposal,
+        credential_bundle: <span class="kw-2">&amp;</span>CredentialBundle,
+        group_id: GroupId,
+        epoch: GroupEpoch,
+        backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, LibraryError&gt; {
+        <span class="kw">let </span>body = MlsContentBody::Proposal(proposal);
+
+        <span class="kw">let </span>message = MlsPlaintextTbs::new(
+            WireFormat::MlsPlaintext,
+            group_id,
+            epoch,
+            Sender::NewMemberProposal,
+            <span class="macro">vec!</span>[].into(),
+            body,
+        );
+        message.sign(backend, credential_bundle)
+    }
+
     <span class="doccomment">/// This constructor builds an `MlsPlaintext` containing a Commit. If the
     /// given `CommitType` is `Member`, the `SenderType` is `Member` as well. If
-    /// it&#39;s an `External` commit, the `SenderType` is `NewMember`. If it is an
+    /// it&#39;s an `External` commit, the `SenderType` is `NewMemberCommit`. If it is an
     /// `External` commit, the context is not signed along with the rest of the
     /// commit.
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>commit(
