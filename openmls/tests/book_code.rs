@@ -1110,7 +1110,6 @@ fn book_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvide
     let bob_key_package =
         generate_key_package_bundle(&[ciphersuite], bob_credential_bundle.credential(), backend)
             .expect("An unexpected error occurred.");
-    let bob_kp_ref = bob_key_package.hash_ref(backend.crypto()).unwrap();
 
     // ANCHOR: external_join_proposal
     let proposal = JoinProposal::new(
@@ -1136,28 +1135,28 @@ fn book_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvide
             let (_commit, welcome) = alice_group
                 .commit_to_pending_proposals(backend)
                 .expect("Could not commit");
-            assert_eq!(alice_group.members().len(), 1);
+            assert_eq!(alice_group.members().unwrap().len(), 1);
             alice_group
                 .merge_pending_commit()
                 .expect("Could not merge commit");
-            assert_eq!(alice_group.members().len(), 2);
+            assert_eq!(alice_group.members().unwrap().len(), 2);
 
             let bob_group =
                 MlsGroup::new_from_welcome(backend, &mls_group_config, welcome.unwrap(), None)
                     .expect("Bob could not join the group");
-            assert_eq!(bob_group.members().len(), 2);
+            assert_eq!(bob_group.members().unwrap().len(), 2);
         }
         _ => unreachable!(),
     }
     // ANCHOR_END: decrypt_external_join_proposal
     // now cleanup
     alice_group
-        .remove_members(backend, &[bob_kp_ref])
+        .remove_members(backend, &[1])
         .expect("Could not remove Bob");
     alice_group
         .merge_pending_commit()
         .expect("Could not nerge commit");
-    assert_eq!(alice_group.members().len(), 1);
+    assert_eq!(alice_group.members().unwrap().len(), 1);
 
     // === Save the group state ===
 
