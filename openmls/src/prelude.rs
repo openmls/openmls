@@ -8,7 +8,7 @@ pub use crate::group::{errors::*, ser::*, *};
 pub use crate::ciphersuite::{hash_ref::KeyPackageRef, signable::*, signature::*, *};
 
 // Messages
-pub use crate::messages::{proposals::*, public_group_state::*, *};
+pub use crate::messages::{external_proposals::*, proposals::*, public_group_state::*, *};
 
 // Credentials
 pub use crate::credentials::{errors::*, *};

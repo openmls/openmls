@@ -424,6 +424,8 @@ fn test_valsem243(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
     let mut plaintext = VerifiableMlsPlaintext::tls_deserialize(&mut serialized_message.as_slice())
         .expect("Could not deserialize message.");
 
+    assert!(matches!(plaintext.sender(), Sender::NewMemberCommit));
+
     let original_plaintext = plaintext.clone();
 
     let mut content = if let MlsContentBody::Commit(commit) = plaintext.content() {

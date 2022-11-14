@@ -19,3 +19,19 @@ Members can also be added as a proposal (without the corresponding Commit messag
 ```
 
 In this case, the function returns an `MlsMessageOut` that needs to be fanned out to existing group members.
+
+## External proposal
+
+Parties outside the group can also make proposals to add themselves to the group with an external proposal. Since those
+proposals are crafted by outsiders, they are always plaintext messages.
+
+```rust,no_run,noplayground
+{{#include ../../../openmls/tests/book_code.rs:external_join_proposal}}
+```
+
+It is then up to the group members to validate the proposal and commit it.
+Note that in this scenario it is up to the application to define a proper authorization policy to grant the sender. 
+
+```rust,no_run,noplayground
+{{#include ../../../openmls/tests/book_code.rs:decrypt_external_join_proposal}}
+```

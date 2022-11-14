@@ -139,7 +139,11 @@ impl CoreGroup {
                 // A commit cannot be issued by a pre-configured sender.
                 return Err(StageCommitError::SenderTypeExternal);
             }
-            Sender::NewMember => {
+            Sender::NewMemberProposal => {
+                // A commit cannot be issued by a `NewMemberProposal` sender.
+                return Err(StageCommitError::SenderTypeNewMemberProposal);
+            }
+            Sender::NewMemberCommit => {
                 // ValSem240: External Commit, inline Proposals: There MUST be at least one ExternalInit proposal.
                 // ValSem241: External Commit, inline Proposals: There MUST be at most one ExternalInit proposal.
                 // ValSem242: External Commit, inline Proposals: There MUST NOT be any Add proposals.
@@ -170,7 +174,7 @@ impl CoreGroup {
                 self.sender_index(hash_ref)
                     .map_err(|_| StageCommitError::InconsistentSenderIndex)?
             }
-            Sender::NewMember => diff.free_leaf_index()?,
+            Sender::NewMemberCommit => diff.free_leaf_index()?,
             _ => {
                 return Err(StageCommitError::SenderTypeExternal);
             }
@@ -205,7 +209,7 @@ impl CoreGroup {
             // Make sure that the new path key package is valid
             self.validate_path_key_package(sender_index, &key_package, public_key_set, sender)?;
 
-            // If the committer is a `NewMember`, we have to add the leaf to
+            // If the committer is a `NewMemberCommit`, we have to add the leaf to
             // the tree before we can apply or even decrypt an update path.
             // While `apply_received_update_path` will happily update a
             // blank leaf, we still have to call `add_leaf` here in case

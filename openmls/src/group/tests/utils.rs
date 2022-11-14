@@ -388,3 +388,25 @@ pub(super) fn generate_key_package_bundle(
         .expect("An unexpected error occurred.");
     Ok(kp)
 }
+
+// Helper function to generate a CredentialBundle
+pub(super) fn get_credential_bundle(
+    identity: Vec<u8>,
+    credential_type: CredentialType,
+    signature_scheme: SignatureScheme,
+    backend: &impl OpenMlsCryptoProvider,
+) -> Result<CredentialBundle, CredentialError> {
+    let cb = CredentialBundle::new(identity, credential_type, signature_scheme, backend)?;
+    let credential = cb.credential().clone();
+    backend
+        .key_store()
+        .store(
+            &credential
+                .signature_key()
+                .tls_serialize_detached()
+                .expect("Error serializing signature key."),
+            &cb,
+        )
+        .expect("An unexpected error occurred.");
+    Ok(cb)
+}

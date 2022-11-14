@@ -233,9 +233,32 @@ impl MlsPlaintext {
         )
     }
 
+    /// This constructor builds an `MlsPlaintext` containing an External Proposal.
+    /// The sender is [Sender::NewMemberProposal].
+    // TODO #151/#106: We don't support preconfigured senders yet
+    pub(crate) fn new_external_proposal(
+        proposal: Proposal,
+        credential_bundle: &CredentialBundle,
+        group_id: GroupId,
+        epoch: GroupEpoch,
+        backend: &impl OpenMlsCryptoProvider,
+    ) -> Result<Self, LibraryError> {
+        let body = MlsContentBody::Proposal(proposal);
+
+        let message = MlsPlaintextTbs::new(
+            WireFormat::MlsPlaintext,
+            group_id,
+            epoch,
+            Sender::NewMemberProposal,
+            vec![].into(),
+            body,
+        );
+        message.sign(backend, credential_bundle)
+    }
+
     /// This constructor builds an `MlsPlaintext` containing a Commit. If the
     /// given `CommitType` is `Member`, the `SenderType` is `Member` as well. If
-    /// it's an `External` commit, the `SenderType` is `NewMember`. If it is an
+    /// it's an `External` commit, the `SenderType` is `NewMemberCommit`. If it is an
     /// `External` commit, the context is not signed along with the rest of the
     /// commit.
     pub(crate) fn commit(

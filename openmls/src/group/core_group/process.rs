@@ -204,6 +204,37 @@ impl CoreGroup {
                 // TODO #151/#106
                 todo!()
             }
+            UnverifiedContextMessage::NewMember(external_message) => {
+                // Signature verification
+                let verified_external_message = external_message
+                    .into_verified(backend, signature_key)
+                    .map_err(|_| UnverifiedMessageError::InvalidSignature)?;
+                Ok(match verified_external_message.plaintext().content() {
+                    MlsContentBody::Proposal(_proposal) => {
+                        ProcessedMessage::ExternalJoinProposalMessage(Box::new(
+                            QueuedProposal::from_mls_plaintext(
+                                self.ciphersuite(),
+                                backend,
+                                verified_external_message.take_plaintext(),
+                            )?,
+                        ))
+                    }
+                    MlsContentBody::Commit(_commit) => {
+                        let staged_commit = self.stage_commit(
+                            verified_external_message.plaintext(),
+                            proposal_store,
+                            own_kpbs,
+                            backend,
+                        )?;
+                        ProcessedMessage::StagedCommitMessage(Box::new(staged_commit))
+                    }
+                    _ => {
+                        return Err(UnverifiedMessageError::LibraryError(LibraryError::custom(
+                            "Implementation error",
+                        )))
+                    }
+                })
+            }
         }
     }
 
