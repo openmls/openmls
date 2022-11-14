@@ -15,7 +15,7 @@
 //! OpenMLS supports the following extensions:
 //!
 //! - [`CapabilitiesExtension`] (KeyPackage extension)
-//! - [`ExternalKeyIdExtension`] (KeyPackage extension)
+//! - [`ApplicationIdExtension`] (KeyPackage extension)
 //! - [`LifetimeExtension`] (KeyPackage extension)
 //! - [`ParentHashExtension`] (KeyPackage extension)
 //! - [`RatchetTreeExtension`] (GroupInfo extension)
@@ -27,9 +27,9 @@ use std::{convert::TryFrom, fmt::Debug};
 use tls_codec::*;
 
 // Private
+mod application_id_extension;
 mod capabilities_extension;
 mod codec;
-mod external_key_id_extension;
 mod external_sender_extension;
 mod life_time_extension;
 mod parent_hash_extension;
@@ -41,8 +41,8 @@ use errors::*;
 pub mod errors;
 
 // Public re-exports
+pub use application_id_extension::ApplicationIdExtension;
 pub use capabilities_extension::CapabilitiesExtension;
-pub use external_key_id_extension::ExternalKeyIdExtension;
 pub use life_time_extension::LifetimeExtension;
 pub use parent_hash_extension::ParentHashExtension;
 pub use ratchet_tree_extension::RatchetTreeExtension;
@@ -95,9 +95,9 @@ pub enum ExtensionType {
     /// consider a KeyPackage valid.
     Lifetime = 2,
 
-    /// The external key id extension allows applications to add an explicit,
+    /// The application id extension allows applications to add an explicit,
     /// application-defined identifier to a KeyPackage.
-    ExternalKeyId = 3,
+    ApplicationId = 3,
 
     /// The parent hash extension carries information to authenticate the
     /// structure of the tree, as described below.
@@ -123,7 +123,7 @@ impl TryFrom<u16> for ExtensionType {
             0 => Ok(ExtensionType::Reserved),
             1 => Ok(ExtensionType::Capabilities),
             2 => Ok(ExtensionType::Lifetime),
-            3 => Ok(ExtensionType::ExternalKeyId),
+            3 => Ok(ExtensionType::ApplicationId),
             4 => Ok(ExtensionType::ParentHash),
             5 => Ok(ExtensionType::RatchetTree),
             _ => Err(tls_codec::Error::DecodingError(format!(
@@ -141,7 +141,7 @@ impl ExtensionType {
             ExtensionType::Reserved
             | ExtensionType::Capabilities
             | ExtensionType::Lifetime
-            | ExtensionType::ExternalKeyId
+            | ExtensionType::ApplicationId
             | ExtensionType::ParentHash
             | ExtensionType::RatchetTree
             | ExtensionType::RequiredCapabilities => true,
@@ -168,8 +168,8 @@ pub enum Extension {
     /// A [`CapabilitiesExtension`]
     Capabilities(CapabilitiesExtension),
 
-    /// An [`ExternalKeyIdExtension`]
-    ExternalKeyId(ExternalKeyIdExtension),
+    /// An [`ApplicationIdExtension`]
+    ApplicationId(ApplicationIdExtension),
 
     /// A [`LifetimeExtension`]
     LifeTime(LifetimeExtension),
@@ -209,14 +209,14 @@ impl Extension {
         }
     }
 
-    /// Get a reference to this extension as [`ExternalKeyIdExtension`].
+    /// Get a reference to this extension as [`ApplicationIdExtension`].
     /// Returns an [`ExtensionError::InvalidExtensionType`] if called on an
-    /// [`Extension`] that's not an [`ExternalKeyIdExtension`].
-    pub fn as_external_key_id_extension(&self) -> Result<&ExternalKeyIdExtension, ExtensionError> {
+    /// [`Extension`] that's not an [`ApplicationIdExtension`].
+    pub fn as_application_id_extension(&self) -> Result<&ApplicationIdExtension, ExtensionError> {
         match self {
-            Self::ExternalKeyId(e) => Ok(e),
+            Self::ApplicationId(e) => Ok(e),
             _ => Err(ExtensionError::InvalidExtensionType(
-                "This is not an ExternalKeyIdExtension".into(),
+                "This is not an ApplicationIdExtension".into(),
             )),
         }
     }
@@ -264,7 +264,7 @@ impl Extension {
     pub const fn extension_type(&self) -> ExtensionType {
         match self {
             Extension::Capabilities(_) => ExtensionType::Capabilities,
-            Extension::ExternalKeyId(_) => ExtensionType::ExternalKeyId,
+            Extension::ApplicationId(_) => ExtensionType::ApplicationId,
             Extension::LifeTime(_) => ExtensionType::Lifetime,
             Extension::ParentHash(_) => ExtensionType::ParentHash,
             Extension::RatchetTree(_) => ExtensionType::RatchetTree,

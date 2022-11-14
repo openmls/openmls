@@ -51,9 +51,9 @@ fn capabilities() {
 fn key_package_id() {
     // A key package extension with the default values for openmls.
     let data = &[0u8, 8, 1, 2, 3, 4, 5, 6, 6, 6];
-    let kpi = ExternalKeyIdExtension::new(&data[2..]);
+    let kpi = ApplicationIdExtension::new(&data[2..]);
 
-    let kpi_from_bytes = ExternalKeyIdExtension::tls_deserialize(&mut (data as &[u8]))
+    let kpi_from_bytes = ApplicationIdExtension::tls_deserialize(&mut (data as &[u8]))
         .expect("An unexpected error occurred.");
     assert_eq!(kpi, kpi_from_bytes);
 
@@ -279,7 +279,7 @@ fn required_capabilities() {
 
     // Build one with some content.
     let required_capabilities = RequiredCapabilitiesExtension::new(
-        &[ExtensionType::ExternalKeyId, ExtensionType::RatchetTree],
+        &[ExtensionType::ApplicationId, ExtensionType::RatchetTree],
         &[ProposalType::Reinit],
     );
     let ext = Extension::RequiredCapabilities(required_capabilities);
