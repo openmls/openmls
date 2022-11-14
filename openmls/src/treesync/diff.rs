@@ -907,27 +907,6 @@ impl<'a> TreeSyncDiff<'a> {
         Ok(nodes)
     }
 
-    // /// Returns the [`KeyPackageRef`] for the own leaf in the tree resulting from
-    // /// merging this diff.
-    // ///
-    // /// Returns an error if the own leaf is not in the tree.
-    // pub(crate) fn hash_ref(&self) -> Result<&KeyPackageRef, LibraryError> {
-    //     let node = self
-    //         .diff
-    //         .node(
-    //             self.diff
-    //                 .leaf(self.own_leaf_index)
-    //                 .map_err(|_| LibraryError::custom("Expected own leaf to be in the tree"))?,
-    //         )
-    //         .map_err(|_| LibraryError::custom("Expected own leaf to be in the tree"))?;
-    //     if let Some(Node::LeafNode(node)) = node.node() {
-    //         node.key_package_ref()
-    //             .ok_or_else(|| LibraryError::custom("missing key package ref"))
-    //     } else {
-    //         Err(LibraryError::custom("missing leaf node"))
-    //     }
-    // }
-
     /// Get the length of the direct path of the given [`LeafIndex`].
     pub(super) fn direct_path_len(&self, leaf_index: LeafIndex) -> Result<usize, OutOfBoundsError> {
         Ok(self.diff.direct_path(leaf_index)?.len())

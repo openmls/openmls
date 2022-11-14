@@ -1491,25 +1491,19 @@ fn test_valsem108(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
     // We first go the manual route
     let _remove_proposal1 = alice_group
         .propose_remove_member(backend, fake_leaf_index)
-        .expect("error while creating remove proposal");
-    // This should fail, since there is no member with the given hash reference.
-    let err = alice_group.commit_to_pending_proposals(backend).expect_err(
-        "no error while trying to commit to remove proposal targeting non group member",
-    );
+        .expect_err("Successfully created remove proposal for leaf not in the tree");
+    let _ = alice_group
+        .commit_to_pending_proposals(backend)
+        .expect("No error while committing empty proposals");
+    // FIXME: #1098 This shouldn't be necessary. Something is broken in the state logic.
+    alice_group.clear_pending_commit();
 
-    // // Creating the proposal should fail already because the member is not known.
-    // let err = alice_group
-    //     .propose_remove_member(backend, fake_leaf_index)
-    //     .expect_err("Successfully created remove proposal for unknown member");
+    // Creating the proposal should fail already because the member is not known.
+    let err = alice_group
+        .propose_remove_member(backend, fake_leaf_index)
+        .expect_err("Successfully created remove proposal for unknown member");
 
-    assert_eq!(
-        err,
-        CommitToPendingProposalsError::CreateCommitError(
-            CreateCommitError::ProposalValidationError(
-                ProposalValidationError::UnknownMemberRemoval
-            )
-        )
-    );
+    assert_eq!(err, ProposeRemoveMemberError::UnknownMember);
 
     // Clear commit to try another way of committing a remove of a non-member.
     alice_group.clear_pending_commit();

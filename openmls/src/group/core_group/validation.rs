@@ -62,9 +62,15 @@ impl CoreGroup {
         let sender = plaintext.sender();
         if let Sender::Member(leaf_index) = sender {
             // If the sender is a member, it has to be in the tree.
-            self.treesync()
-                .leaf_is_in_tree(*leaf_index)
-                .map_err(|_| ValidationError::UnknownMember)?;
+            // TODO: #133 Lookup of a leaf index in the old tree isn't very
+            //       useful. Add a proper validation step here.
+            if self.treesync().leaf_is_in_tree(*leaf_index).is_err()
+                && !self
+                    .message_secrets_store
+                    .epoch_has_leaf(plaintext.epoch(), *leaf_index)
+            {
+                return Err(ValidationError::UnknownMember);
+            }
         }
 
         // ValSem005
@@ -231,7 +237,7 @@ impl CoreGroup {
                 .treesync()
                 .leaf(index)
                 .map_err(|_| ProposalValidationError::UnknownMember)?
-                .unwrap()
+                .ok_or(ProposalValidationError::UnknownMember)?
                 .public_key()
                 .as_slice();
             if public_key_set.contains(public_key) {
@@ -273,7 +279,7 @@ impl CoreGroup {
     ///  - ValSem110
     ///  - ValSem111
     ///  - ValSem112
-    /// TODO: This validation must be updated according to Sec. 13.2
+    /// TODO: #133 This validation must be updated according to Sec. 13.2
     pub(crate) fn validate_update_proposals(
         &self,
         proposal_queue: &ProposalQueue,
@@ -291,7 +297,7 @@ impl CoreGroup {
                             LibraryError::custom("This must have been a leaf node").into()
                         })
                     })
-                    .unwrap() // This is a library error really
+                    .map_err(|_| LibraryError::custom("This must have been a leaf node."))?
                     .as_slice()
                     .to_vec(),
             );
@@ -334,7 +340,7 @@ impl CoreGroup {
                 {
                     return Err(ProposalValidationError::UpdateProposalIdentityMismatch);
                 }
-                // FIXME: The update proposal will hold the leaf.
+                // FIXME: #819 The update proposal will hold the leaf.
                 let encryption_key = update_proposal
                     .update_proposal()
                     .key_package()

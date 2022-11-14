@@ -1,7 +1,6 @@
 //! # The sender of a message.
 
 use super::*;
-use crate::prelude::LibraryError;
 use tls_codec::{TlsDeserialize, TlsSerialize, TlsSize};
 
 /// All possible sender types according to the MLS protocol spec.
@@ -65,12 +64,12 @@ impl Sender {
         matches!(self, Sender::Member(_))
     }
 
-    /// Returns the leaf index of the [`Sender`] or a [`LibraryError`] if this
+    /// Returns the leaf index of the [`Sender`] or [`None`] if this
     /// is not a [`Sender::Member`].
-    pub(crate) fn as_member(&self) -> Result<u32, LibraryError> {
+    pub(crate) fn as_member(&self) -> Option<u32> {
         match self {
-            Sender::Member(leaf_index) => Ok(*leaf_index),
-            _ => Err(LibraryError::custom("The sender is not a member")),
+            Sender::Member(leaf_index) => Some(*leaf_index),
+            _ => None,
         }
     }
 }

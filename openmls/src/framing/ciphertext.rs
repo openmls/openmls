@@ -138,9 +138,13 @@ impl MlsCiphertext {
         let mls_sender_data_aad_bytes = mls_sender_data_aad
             .tls_serialize_detached()
             .map_err(LibraryError::missing_bound_check)?;
+        let leaf_index = mls_plaintext
+            .sender()
+            .as_member()
+            .ok_or(MessageEncryptionError::SenderError(SenderError::NotAMember))?;
         let sender_data = MlsSenderData::from_sender(
-            // XXX: This will fail for messages with a non-member sender.
-            mls_plaintext.sender().as_member()?,
+            // XXX: #106 This will fail for messages with a non-member sender.
+            leaf_index,
             generation,
             reuse_guard,
         );

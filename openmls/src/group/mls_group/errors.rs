@@ -57,6 +57,9 @@ pub enum MlsGroupStateError {
     /// Can't execute operation because a pending commit exists.
     #[error("Can't execute operation because a pending commit exists.")]
     PendingCommit,
+    /// Can't execute operation because there is no pending commit.
+    #[error("Can't execute operation because there is no pending commit")]
+    NoPendingCommit,
 }
 
 /// Parse message error

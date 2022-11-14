@@ -62,7 +62,10 @@ use std::io::{Error, Read, Write};
 use tls_codec::Serialize as TlsSerializeTrait;
 
 use super::{
-    errors::{CoreGroupBuildError, CreateAddProposalError, ExporterError, ProposalValidationError},
+    errors::{
+        CoreGroupBuildError, CreateAddProposalError, ExporterError, ProposalValidationError,
+        ValidationError,
+    },
     group_context::*,
 };
 
@@ -337,7 +340,10 @@ impl CoreGroup {
         credential_bundle: &CredentialBundle,
         removed: u32,
         backend: &impl OpenMlsCryptoProvider,
-    ) -> Result<MlsPlaintext, LibraryError> {
+    ) -> Result<MlsPlaintext, ValidationError> {
+        if self.treesync().leaf_is_in_tree(removed).is_err() {
+            return Err(ValidationError::UnknownMember);
+        }
         let remove_proposal = RemoveProposal { removed };
         let proposal = Proposal::Remove(remove_proposal);
         MlsPlaintext::member_proposal(
@@ -349,6 +355,7 @@ impl CoreGroup {
             self.message_secrets().membership_key(),
             backend,
         )
+        .map_err(ValidationError::LibraryError)
     }
 
     // 11.1.4. PreSharedKey

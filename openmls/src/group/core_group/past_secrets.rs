@@ -134,6 +134,16 @@ impl MessageSecretsStore {
         &[]
     }
 
+    /// Check if the provided epoch contains a leaf index.
+    pub(crate) fn epoch_has_leaf(&self, group_epoch: GroupEpoch, leaf_index: u32) -> bool {
+        self.past_epoch_trees.iter().any(|t| {
+            t.epoch == group_epoch.0
+                && t.leaves
+                    .iter()
+                    .any(|Member { index, .. }| *index == leaf_index)
+        })
+    }
+
     /// Get a mutable reference to the message secrets of the current epoch.
     pub(crate) fn message_secrets_mut(&mut self) -> &mut MessageSecrets {
         &mut self.message_secrets

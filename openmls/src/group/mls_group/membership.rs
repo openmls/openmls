@@ -88,7 +88,7 @@ impl MlsGroup {
 
     /// Removes members from the group.
     ///
-    /// Members are removed by providing the member's "identity".
+    /// Members are removed by providing the member's leaf index.
     /// The identity is an opaque byte string that is not interpreted by OpenMLS.
     /// This can be the `identity` in a `BasicCredential` or some other form
     /// of identity.
@@ -110,9 +110,7 @@ impl MlsGroup {
             ));
         }
 
-        // Get the leaf indices for the identities in the `members` slice.
         // Create inline remove proposals
-        // XXX: Could be done more efficiently.
         let mut inline_proposals = Vec::new();
         for member in members.iter() {
             inline_proposals.push(Proposal::Remove(RemoveProposal { removed: *member }))
@@ -161,7 +159,6 @@ impl MlsGroup {
     pub fn propose_add_member(
         &mut self,
         backend: &impl OpenMlsCryptoProvider,
-
         key_package: &KeyPackage,
     ) -> Result<MlsMessageOut, ProposeAddMemberError> {
         self.is_operational()?;
@@ -207,7 +204,7 @@ impl MlsGroup {
     }
 
     /// Creates proposals to remove members from the group.
-    /// The `member` has to be the member's "identity".
+    /// The `member` has to be the member's leaf index.
     ///
     /// Returns an error if there is a pending commit.
     pub fn propose_remove_member(
@@ -228,12 +225,15 @@ impl MlsGroup {
             )
             .ok_or(ProposeRemoveMemberError::NoMatchingCredentialBundle)?;
 
-        let remove_proposal = self.group.create_remove_proposal(
-            self.framing_parameters(),
-            &credential_bundle,
-            member,
-            backend,
-        )?;
+        let remove_proposal = self
+            .group
+            .create_remove_proposal(
+                self.framing_parameters(),
+                &credential_bundle,
+                member,
+                backend,
+            )
+            .map_err(|_| ProposeRemoveMemberError::UnknownMember)?;
 
         self.proposal_store.add(QueuedProposal::from_mls_plaintext(
             self.ciphersuite(),
@@ -276,12 +276,15 @@ impl MlsGroup {
             .ok_or(LeaveGroupError::NoMatchingCredentialBundle)?;
 
         let removed = self.group.own_leaf_index();
-        let remove_proposal = self.group.create_remove_proposal(
-            self.framing_parameters(),
-            &credential_bundle,
-            removed,
-            backend,
-        )?;
+        let remove_proposal = self
+            .group
+            .create_remove_proposal(
+                self.framing_parameters(),
+                &credential_bundle,
+                removed,
+                backend,
+            )
+            .map_err(|_| LibraryError::custom("Creating a self removal should not fail"))?;
 
         self.proposal_store.add(QueuedProposal::from_mls_plaintext(
             self.ciphersuite(),

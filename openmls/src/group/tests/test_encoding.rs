@@ -240,7 +240,7 @@ fn test_remove_proposal_encoding(backend: &impl OpenMlsCryptoProvider) {
             .expect("An unexpected error occurred.");
 
         let remove = group_state
-            .create_remove_proposal(framing_parameters, credential_bundle, 777, backend)
+            .create_remove_proposal(framing_parameters, credential_bundle, 1, backend)
             .expect("Could not create proposal.");
         let remove_encoded = remove
             .tls_serialize_detached()
