@@ -8,7 +8,7 @@ use crate::{
         Secret,
     },
     credentials::{CredentialBundle, CredentialType},
-    extensions::{Extension, ExtensionType, ExternalKeyIdExtension, RequiredCapabilitiesExtension},
+    extensions::{ApplicationIdExtension, Extension, ExtensionType, RequiredCapabilitiesExtension},
     framing::sender::Sender,
     framing::{FramingParameters, MlsPlaintext, WireFormat},
     group::{
@@ -374,7 +374,7 @@ fn test_required_extension_key_package_mismatch(
     let extensions = &[
         ExtensionType::Capabilities,
         ExtensionType::RequiredCapabilities,
-        ExtensionType::ExternalKeyId,
+        ExtensionType::ApplicationId,
     ];
     let proposals = &[
         ProposalType::GroupContextExtensions,
@@ -414,13 +414,13 @@ fn test_group_context_extensions(ciphersuite: Ciphersuite, backend: &impl OpenMl
         &[ciphersuite],
         &bob_credential_bundle,
         backend,
-        vec![Extension::ExternalKeyId(ExternalKeyIdExtension::default())],
+        vec![Extension::ApplicationId(ApplicationIdExtension::default())],
     )
     .expect("An unexpected error occurred.");
     let bob_key_package = bob_key_package_bundle.key_package();
 
     // Set required capabilities
-    let extensions = &[ExtensionType::Capabilities, ExtensionType::ExternalKeyId];
+    let extensions = &[ExtensionType::Capabilities, ExtensionType::ApplicationId];
     let proposals = &[
         ProposalType::GroupContextExtensions,
         ProposalType::Add,
@@ -495,7 +495,7 @@ fn test_group_context_extension_proposal_fails(
         &[ciphersuite],
         &bob_credential_bundle,
         backend,
-        vec![Extension::ExternalKeyId(ExternalKeyIdExtension::default())],
+        vec![Extension::ApplicationId(ApplicationIdExtension::default())],
     )
     .expect("An unexpected error occurred.");
     let bob_key_package = bob_key_package_bundle.key_package();
@@ -517,7 +517,7 @@ fn test_group_context_extension_proposal_fails(
 
     // Alice tries to add a required capability she doesn't support herself.
     let required_key_id = Extension::RequiredCapabilities(RequiredCapabilitiesExtension::new(
-        &[ExtensionType::ExternalKeyId],
+        &[ExtensionType::ApplicationId],
         &[],
     ));
     let e = alice_group.create_group_context_ext_proposal(
@@ -611,14 +611,14 @@ fn test_group_context_extension_proposal(
         &[ciphersuite],
         &bob_credential_bundle,
         backend,
-        vec![Extension::ExternalKeyId(ExternalKeyIdExtension::default())],
+        vec![Extension::ApplicationId(ApplicationIdExtension::default())],
     )
     .expect("An unexpected error occurred.");
     let alice_key_package_bundle = KeyPackageBundle::new(
         &[ciphersuite],
         &alice_credential_bundle,
         backend,
-        vec![Extension::ExternalKeyId(ExternalKeyIdExtension::default())],
+        vec![Extension::ApplicationId(ApplicationIdExtension::default())],
     )
     .expect("An unexpected error occurred.");
     let bob_key_package = bob_key_package_bundle.key_package();
@@ -683,7 +683,7 @@ fn test_group_context_extension_proposal(
 
     // Alice adds a required capability.
     let required_key_id = Extension::RequiredCapabilities(RequiredCapabilitiesExtension::new(
-        &[ExtensionType::ExternalKeyId],
+        &[ExtensionType::ApplicationId],
         &[],
     ));
     let gce_proposal = alice_group

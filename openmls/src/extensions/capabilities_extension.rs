@@ -27,7 +27,7 @@ fn default_extensions() -> Vec<ExtensionType> {
     vec![
         ExtensionType::Capabilities,
         ExtensionType::Lifetime,
-        ExtensionType::ExternalKeyId,
+        ExtensionType::ApplicationId,
     ]
 }
 
