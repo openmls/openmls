@@ -16,7 +16,7 @@ use openmls_traits::OpenMlsCryptoProvider;
 /// External Add Proposal where sender is [NewMemberProposal](crate::prelude::Sender::NewMemberProposal). A client
 /// outside the group can request joining the group. This proposal should then be committed by a
 /// group member. Note that this is unconstrained i.e. it works for any [MLS group](crate::prelude::MlsGroup).
-/// This is not the case for the same external proposal with a [Preconfigured sender](crate::prelude::Sender::Preconfigured)
+/// This is not the case for the same external proposal with a [Preconfigured sender](crate::prelude::Sender::External)
 pub struct JoinProposal;
 
 impl JoinProposal {

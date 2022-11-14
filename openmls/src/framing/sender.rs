@@ -42,7 +42,7 @@ pub enum Sender {
     /// The sender is not a member of the group and has an external value instead
     External(TlsByteVecU8),
     /// The sender is a new member of the group that joins itself through
-    /// an [External Add proposal](crate::messages::external_proposals::ExternalProposal::Join)
+    /// an [External Add proposal](crate::messages::external_proposals::JoinProposal)
     NewMemberProposal,
     /// The sender is a new member of the group that joins itself through
     /// an [External Commit](crate::group::mls_group::MlsGroup::join_by_external_commit)
