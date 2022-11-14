@@ -304,15 +304,15 @@ impl KeyPackage {
         })
     }
 
-    /// Get the external ID of this key package as byte slice.
-    /// See [`ExternalKeyIdExtension`](`crate::extensions::ExternalKeyIdExtension`)
-    /// for more details on the external key ID extension.
+    /// Get the application ID of this key package as byte slice.
+    /// See [`ApplicationIdExtension`](`crate::extensions::ApplicationIdExtension`)
+    /// for more details on the application ID extension.
     ///
     ///
-    /// Returns a [`ExtensionError`] if no external key ID extension is present.
-    pub fn external_key_id(&self) -> Result<&[u8], ExtensionError> {
-        if let Some(key_id_ext) = self.extension_with_type(ExtensionType::ExternalKeyId) {
-            return Ok(key_id_ext.as_external_key_id_extension()?.as_slice());
+    /// Returns a [`ExtensionError`] if no application ID extension is present.
+    pub fn application_id(&self) -> Result<&[u8], ExtensionError> {
+        if let Some(key_id_ext) = self.extension_with_type(ExtensionType::ApplicationId) {
+            return Ok(key_id_ext.as_application_id_extension()?.as_slice());
         } else {
             Err(ExtensionError::InvalidExtensionType(
                 "Tried to get a key ID extension".into(),

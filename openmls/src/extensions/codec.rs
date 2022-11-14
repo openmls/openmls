@@ -3,7 +3,7 @@ use std::io::{Read, Write};
 use tls_codec::{Deserialize, Serialize, Size, TlsByteVecU32, TlsSliceU32};
 
 use crate::extensions::{
-    CapabilitiesExtension, Extension, ExtensionType, ExternalKeyIdExtension, LifetimeExtension,
+    ApplicationIdExtension, CapabilitiesExtension, Extension, ExtensionType, LifetimeExtension,
     ParentHashExtension, RatchetTreeExtension, RequiredCapabilitiesExtension,
 };
 
@@ -14,7 +14,7 @@ impl Size for Extension {
             + 4 /* u32 len */ +
             match self {
                 Extension::Capabilities(e) => e.tls_serialized_len(),
-                Extension::ExternalKeyId(e) => e.tls_serialized_len(),
+                Extension::ApplicationId(e) => e.tls_serialized_len(),
                 Extension::LifeTime(e) => e.tls_serialized_len(),
                 Extension::ParentHash(e) => e.tls_serialized_len(),
                 Extension::RatchetTree(e) => e.tls_serialized_len(),
@@ -34,7 +34,7 @@ impl Serialize for Extension {
 
         let extension_data_written = match self {
             Extension::Capabilities(e) => e.tls_serialize(&mut extension_data),
-            Extension::ExternalKeyId(e) => e.tls_serialize(&mut extension_data),
+            Extension::ApplicationId(e) => e.tls_serialize(&mut extension_data),
             Extension::LifeTime(e) => e.tls_serialize(&mut extension_data),
             Extension::ParentHash(e) => e.tls_serialize(&mut extension_data),
             Extension::RatchetTree(e) => e.tls_serialize(&mut extension_data),
@@ -62,8 +62,8 @@ impl Deserialize for Extension {
             ExtensionType::Capabilities => Extension::Capabilities(
                 CapabilitiesExtension::tls_deserialize(&mut extension_data)?,
             ),
-            ExtensionType::ExternalKeyId => Extension::ExternalKeyId(
-                ExternalKeyIdExtension::tls_deserialize(&mut extension_data)?,
+            ExtensionType::ApplicationId => Extension::ApplicationId(
+                ApplicationIdExtension::tls_deserialize(&mut extension_data)?,
             ),
             ExtensionType::Lifetime => {
                 Extension::LifeTime(LifetimeExtension::tls_deserialize(&mut extension_data)?)

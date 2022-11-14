@@ -2,10 +2,10 @@ use tls_codec::{TlsByteVecU16, TlsDeserialize, TlsSerialize, TlsSize};
 
 use super::{Deserialize, Serialize};
 
-/// # External KeyPackage Identifiers
+/// # Application Identifiers
 ///
 /// Within MLS, a KeyPackage is identified by its hash ([`KeyPackageRef`](`crate::ciphersuite::hash_ref::KeyPackageRef`)).
-/// The external key id extension allows applications to add an explicit,
+/// The application id extension allows applications to add an explicit,
 /// application-defined identifier to a KeyPackage.
 ///
 /// A byte vector of length at most 2^16-1.
@@ -21,11 +21,11 @@ use super::{Deserialize, Serialize};
     TlsDeserialize,
     TlsSize,
 )]
-pub struct ExternalKeyIdExtension {
+pub struct ApplicationIdExtension {
     key_id: TlsByteVecU16,
 }
 
-impl ExternalKeyIdExtension {
+impl ApplicationIdExtension {
     /// Create a new key identifier extension from a byte slice.
     pub fn new(id: &[u8]) -> Self {
         Self { key_id: id.into() }

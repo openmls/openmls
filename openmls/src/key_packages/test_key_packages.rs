@@ -95,7 +95,7 @@ fn key_package_id_extension(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryp
 
     // Add an ID to the key package.
     let id = [1, 2, 3, 4];
-    kpb.add_extension(Extension::ExternalKeyId(ExternalKeyIdExtension::new(&id)));
+    kpb.add_extension(Extension::ApplicationId(ApplicationIdExtension::new(&id)));
 
     // Sign it to make it valid.
     let kpb = kpb
@@ -106,7 +106,7 @@ fn key_package_id_extension(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryp
     // Check ID
     assert_eq!(
         &id[..],
-        kpb.key_package().external_key_id().expect("No key ID")
+        kpb.key_package().application_id().expect("No key ID")
     );
 }
 
