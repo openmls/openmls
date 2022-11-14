@@ -162,7 +162,7 @@ impl MlsMessageIn {
             MlsMessageBody::Plaintext(p) => {
                 matches!(
                     p.sender(),
-                    Sender::NewMemberProposal | Sender::NewMemberCommit | Sender::Preconfigured(_)
+                    Sender::NewMemberProposal | Sender::NewMemberCommit | Sender::External(_)
                 )
             }
             // external message cannot be encrypted

@@ -378,7 +378,7 @@ impl UnverifiedNewMemberMessage {
     pub(crate) fn into_verified(
         self,
         backend: &impl OpenMlsCryptoProvider,
-        signature_key: Option<&SignaturePublicKey>,
+        signature_key: Option<&OpenMlsSignaturePublicKey>,
     ) -> Result<VerifiedExternalMessage, ValidationError> {
         // If a signature key is provided it will be used, otherwise we take it from the credential
         let verified_external_message = if let Some(signature_public_key) = signature_key {
