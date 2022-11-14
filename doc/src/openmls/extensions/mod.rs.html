@@ -342,7 +342,7 @@
 //! OpenMLS supports the following extensions:
 //!
 //! - [`CapabilitiesExtension`] (KeyPackage extension)
-//! - [`ExternalKeyIdExtension`] (KeyPackage extension)
+//! - [`ApplicationIdExtension`] (KeyPackage extension)
 //! - [`LifetimeExtension`] (KeyPackage extension)
 //! - [`ParentHashExtension`] (KeyPackage extension)
 //! - [`RatchetTreeExtension`] (GroupInfo extension)
@@ -354,9 +354,9 @@
 <span class="kw">use </span>tls_codec::<span class="kw-2">*</span>;
 
 <span class="comment">// Private
-</span><span class="kw">mod </span>capabilities_extension;
+</span><span class="kw">mod </span>application_id_extension;
+<span class="kw">mod </span>capabilities_extension;
 <span class="kw">mod </span>codec;
-<span class="kw">mod </span>external_key_id_extension;
 <span class="kw">mod </span>external_sender_extension;
 <span class="kw">mod </span>life_time_extension;
 <span class="kw">mod </span>parent_hash_extension;
@@ -368,8 +368,8 @@
 </span><span class="kw">pub mod </span>errors;
 
 <span class="comment">// Public re-exports
-</span><span class="kw">pub use </span>capabilities_extension::CapabilitiesExtension;
-<span class="kw">pub use </span>external_key_id_extension::ExternalKeyIdExtension;
+</span><span class="kw">pub use </span>application_id_extension::ApplicationIdExtension;
+<span class="kw">pub use </span>capabilities_extension::CapabilitiesExtension;
 <span class="kw">pub use </span>life_time_extension::LifetimeExtension;
 <span class="kw">pub use </span>parent_hash_extension::ParentHashExtension;
 <span class="kw">pub use </span>ratchet_tree_extension::RatchetTreeExtension;
@@ -422,9 +422,9 @@
     /// consider a KeyPackage valid.
     </span>Lifetime = <span class="number">2</span>,
 
-    <span class="doccomment">/// The external key id extension allows applications to add an explicit,
+    <span class="doccomment">/// The application id extension allows applications to add an explicit,
     /// application-defined identifier to a KeyPackage.
-    </span>ExternalKeyId = <span class="number">3</span>,
+    </span>ApplicationId = <span class="number">3</span>,
 
     <span class="doccomment">/// The parent hash extension carries information to authenticate the
     /// structure of the tree, as described below.
@@ -450,7 +450,7 @@
             <span class="number">0 </span>=&gt; <span class="prelude-val">Ok</span>(ExtensionType::Reserved),
             <span class="number">1 </span>=&gt; <span class="prelude-val">Ok</span>(ExtensionType::Capabilities),
             <span class="number">2 </span>=&gt; <span class="prelude-val">Ok</span>(ExtensionType::Lifetime),
-            <span class="number">3 </span>=&gt; <span class="prelude-val">Ok</span>(ExtensionType::ExternalKeyId),
+            <span class="number">3 </span>=&gt; <span class="prelude-val">Ok</span>(ExtensionType::ApplicationId),
             <span class="number">4 </span>=&gt; <span class="prelude-val">Ok</span>(ExtensionType::ParentHash),
             <span class="number">5 </span>=&gt; <span class="prelude-val">Ok</span>(ExtensionType::RatchetTree),
             <span class="kw">_ </span>=&gt; <span class="prelude-val">Err</span>(tls_codec::Error::DecodingError(<span class="macro">format!</span>(
@@ -468,7 +468,7 @@
             ExtensionType::Reserved
             | ExtensionType::Capabilities
             | ExtensionType::Lifetime
-            | ExtensionType::ExternalKeyId
+            | ExtensionType::ApplicationId
             | ExtensionType::ParentHash
             | ExtensionType::RatchetTree
             | ExtensionType::RequiredCapabilities =&gt; <span class="bool-val">true</span>,
@@ -495,8 +495,8 @@
     <span class="doccomment">/// A [`CapabilitiesExtension`]
     </span>Capabilities(CapabilitiesExtension),
 
-    <span class="doccomment">/// An [`ExternalKeyIdExtension`]
-    </span>ExternalKeyId(ExternalKeyIdExtension),
+    <span class="doccomment">/// An [`ApplicationIdExtension`]
+    </span>ApplicationId(ApplicationIdExtension),
 
     <span class="doccomment">/// A [`LifetimeExtension`]
     </span>LifeTime(LifetimeExtension),
@@ -536,14 +536,14 @@
         }
     }
 
-    <span class="doccomment">/// Get a reference to this extension as [`ExternalKeyIdExtension`].
+    <span class="doccomment">/// Get a reference to this extension as [`ApplicationIdExtension`].
     /// Returns an [`ExtensionError::InvalidExtensionType`] if called on an
-    /// [`Extension`] that&#39;s not an [`ExternalKeyIdExtension`].
-    </span><span class="kw">pub fn </span>as_external_key_id_extension(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="kw-2">&amp;</span>ExternalKeyIdExtension, ExtensionError&gt; {
+    /// [`Extension`] that&#39;s not an [`ApplicationIdExtension`].
+    </span><span class="kw">pub fn </span>as_application_id_extension(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="kw-2">&amp;</span>ApplicationIdExtension, ExtensionError&gt; {
         <span class="kw">match </span><span class="self">self </span>{
-            <span class="self">Self</span>::ExternalKeyId(e) =&gt; <span class="prelude-val">Ok</span>(e),
+            <span class="self">Self</span>::ApplicationId(e) =&gt; <span class="prelude-val">Ok</span>(e),
             <span class="kw">_ </span>=&gt; <span class="prelude-val">Err</span>(ExtensionError::InvalidExtensionType(
-                <span class="string">&quot;This is not an ExternalKeyIdExtension&quot;</span>.into(),
+                <span class="string">&quot;This is not an ApplicationIdExtension&quot;</span>.into(),
             )),
         }
     }
@@ -591,7 +591,7 @@
     </span><span class="kw">pub const fn </span>extension_type(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; ExtensionType {
         <span class="kw">match </span><span class="self">self </span>{
             Extension::Capabilities(<span class="kw">_</span>) =&gt; ExtensionType::Capabilities,
-            Extension::ExternalKeyId(<span class="kw">_</span>) =&gt; ExtensionType::ExternalKeyId,
+            Extension::ApplicationId(<span class="kw">_</span>) =&gt; ExtensionType::ApplicationId,
             Extension::LifeTime(<span class="kw">_</span>) =&gt; ExtensionType::Lifetime,
             Extension::ParentHash(<span class="kw">_</span>) =&gt; ExtensionType::ParentHash,
             Extension::RatchetTree(<span class="kw">_</span>) =&gt; ExtensionType::RatchetTree,

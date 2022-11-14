@@ -1139,15 +1139,15 @@
         })
     }
 
-    <span class="doccomment">/// Get the external ID of this key package as byte slice.
-    /// See [`ExternalKeyIdExtension`](`crate::extensions::ExternalKeyIdExtension`)
-    /// for more details on the external key ID extension.
+    <span class="doccomment">/// Get the application ID of this key package as byte slice.
+    /// See [`ApplicationIdExtension`](`crate::extensions::ApplicationIdExtension`)
+    /// for more details on the application ID extension.
     ///
     ///
-    /// Returns a [`ExtensionError`] if no external key ID extension is present.
-    </span><span class="kw">pub fn </span>external_key_id(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="kw-2">&amp;</span>[u8], ExtensionError&gt; {
-        <span class="kw">if let </span><span class="prelude-val">Some</span>(key_id_ext) = <span class="self">self</span>.extension_with_type(ExtensionType::ExternalKeyId) {
-            <span class="kw">return </span><span class="prelude-val">Ok</span>(key_id_ext.as_external_key_id_extension()<span class="question-mark">?</span>.as_slice());
+    /// Returns a [`ExtensionError`] if no application ID extension is present.
+    </span><span class="kw">pub fn </span>application_id(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="kw-2">&amp;</span>[u8], ExtensionError&gt; {
+        <span class="kw">if let </span><span class="prelude-val">Some</span>(key_id_ext) = <span class="self">self</span>.extension_with_type(ExtensionType::ApplicationId) {
+            <span class="kw">return </span><span class="prelude-val">Ok</span>(key_id_ext.as_application_id_extension()<span class="question-mark">?</span>.as_slice());
         } <span class="kw">else </span>{
             <span class="prelude-val">Err</span>(ExtensionError::InvalidExtensionType(
                 <span class="string">&quot;Tried to get a key ID extension&quot;</span>.into(),
