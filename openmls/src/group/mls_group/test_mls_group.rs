@@ -3,13 +3,11 @@ use openmls_traits::{key_store::OpenMlsKeyStore, types::SignatureScheme, OpenMls
 use tls_codec::Serialize;
 
 use crate::{
-    ciphersuite::hash_ref::KeyPackageRef,
     credentials::{errors::CredentialError, *},
     framing::*,
     group::{errors::*, *},
     key_packages::{errors::*, *},
     messages::proposals::*,
-    prelude_test::hash_ref::make_key_package_ref,
     test_utils::test_framework::{
         errors::ClientError, ActionType::Commit, CodecUse, MlsGroupTestSetup,
     },
@@ -235,15 +233,8 @@ fn remover(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
 
     // === Alice removes Bob & Charlie commits ===
 
-    let bob_kpr = bob_group
-        .key_package_ref()
-        .expect("Error getting key package reference.");
-    let alice_kpr = &alice_group
-        .key_package_ref()
-        .expect("An unexpected error occurred.")
-        .clone();
     let queued_messages = alice_group
-        .propose_remove_member(backend, bob_kpr)
+        .propose_remove_member(backend, 1)
         .expect("Could not propose removal");
 
     let unverified_message = charlie_group
@@ -257,7 +248,7 @@ fn remover(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
     if let ProcessedMessage::ProposalMessage(staged_proposal) = charlie_processed_message {
         if let Proposal::Remove(ref remove_proposal) = staged_proposal.proposal() {
             // Check that Bob was removed
-            assert_eq!(remove_proposal.removed(), bob_kpr);
+            assert_eq!(remove_proposal.removed(), 1);
             // Store proposal
             charlie_group.store_pending_proposal(*staged_proposal.clone());
         } else {
@@ -267,7 +258,7 @@ fn remover(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
         // Check that Alice removed Bob
         assert!(matches!(
             staged_proposal.sender(),
-            Sender::Member(member) if member == alice_kpr
+            Sender::Member(member) if *member == 0
         ));
     } else {
         unreachable!("Expected a QueuedProposal.");
@@ -285,9 +276,9 @@ fn remover(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
             .next()
             .expect("Expected a proposal.");
         // Check that Bob was removed
-        assert_eq!(remove.remove_proposal().removed(), bob_kpr);
+        assert_eq!(remove.remove_proposal().removed(), 1);
         // Check that Alice removed Bob
-        assert!(matches!(remove.sender(), Sender::Member(member) if member == alice_kpr));
+        assert!(matches!(remove.sender(), Sender::Member(member) if *member == 0));
     } else {
         unreachable!("Expected a StagedCommit.");
     };
@@ -350,8 +341,8 @@ fn export_secret(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider)
     )
 }
 
-#[apply(ciphersuites_and_backends)]
-fn test_invalid_plaintext(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
+#[apply(ciphersuites)]
+fn test_invalid_plaintext(ciphersuite: Ciphersuite) {
     // Some basic setup functions for the MlsGroup.
     let mls_group_config = MlsGroupConfig::test_default();
 
@@ -413,12 +404,7 @@ fn test_invalid_plaintext(ciphersuite: Ciphersuite, backend: &impl OpenMlsCrypto
 
     // Tamper with the message such that sender lookup fails
     let mut msg_invalid_sender = mls_message;
-    let random_sender = Sender::build_member(&KeyPackageRef::from_slice(
-        &backend
-            .rand()
-            .random_vec(16)
-            .expect("An unexpected error occurred."),
-    ));
+    let random_sender = Sender::build_member(987543210);
     match &mut msg_invalid_sender.mls_message.body {
         MlsMessageBody::Plaintext(pt) => pt.set_sender(random_sender),
         MlsMessageBody::Ciphertext(_) => panic!("This should be a plaintext!"),
@@ -467,15 +453,6 @@ fn test_pending_commit_logic(ciphersuite: Ciphersuite, backend: &impl OpenMlsCry
     let bob_key_package =
         generate_key_package_bundle(backend, &[ciphersuite], &bob_credential, vec![])
             .expect("An unexpected error occurred.");
-
-    let bob_kpr = make_key_package_ref(
-        &bob_key_package
-            .tls_serialize_detached()
-            .expect("An unexpected error occurred."),
-        ciphersuite,
-        backend.crypto(),
-    )
-    .expect("An unexpected error occurred.");
 
     // Define the MlsGroup configuration
     let mls_group_config = MlsGroupConfig::test_default();
@@ -545,14 +522,14 @@ fn test_pending_commit_logic(ciphersuite: Ciphersuite, backend: &impl OpenMlsCry
         ProposeAddMemberError::GroupStateError(MlsGroupStateError::PendingCommit)
     );
     let error = alice_group
-        .remove_members(backend, &[bob_kpr.clone()])
+        .remove_members(backend, &[1])
         .expect_err("no error committing while a commit is pending");
     assert_eq!(
         error,
         RemoveMembersError::GroupStateError(MlsGroupStateError::PendingCommit)
     );
     let error = alice_group
-        .propose_remove_member(backend, &bob_kpr)
+        .propose_remove_member(backend, 1)
         .expect_err("no error creating a proposal while a commit is pending");
     assert_eq!(
         error,

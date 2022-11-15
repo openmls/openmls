@@ -75,11 +75,7 @@ impl CoreGroup {
         let sender = mls_plaintext.sender();
 
         if let Sender::Member(member) = sender {
-            if member
-                == self
-                    .key_package_ref()
-                    .ok_or_else(|| LibraryError::custom("Expected own key package reference"))?
-            {
+            if *member == self.own_leaf_index() {
                 return Err(StageCommitError::OwnCommit);
             }
         }
@@ -128,12 +124,12 @@ impl CoreGroup {
         self.validate_remove_proposals(&proposal_queue)?;
 
         let public_key_set = match sender {
-            Sender::Member(hash_ref) => {
+            Sender::Member(leaf_index) => {
                 // ValSem109
                 // ValSem110
                 // ValSem111
                 // ValSem112
-                self.validate_update_proposals(&proposal_queue, hash_ref)?
+                self.validate_update_proposals(&proposal_queue, *leaf_index)?
             }
             Sender::External(_) => {
                 // A commit cannot be issued by a pre-configured sender.
@@ -166,13 +162,12 @@ impl CoreGroup {
 
         // Now we can actually look at the public keys as they might have changed.
         let sender_index = match sender {
-            Sender::Member(hash_ref) => {
+            Sender::Member(leaf_index) => {
                 // Own commits have to be merged directly instead of staging them.
-                // We can't check for this explicitly. But if it's an own commit
-                // we won't be able to get the sender index because the kpr is our
-                // own new one that's only in the staged commit.
-                self.sender_index(hash_ref)
-                    .map_err(|_| StageCommitError::InconsistentSenderIndex)?
+                if leaf_index == &self.own_leaf_index() {
+                    return Err(StageCommitError::InconsistentSenderIndex);
+                }
+                *leaf_index
             }
             Sender::NewMemberCommit => diff.free_leaf_index()?,
             _ => {
@@ -216,9 +211,8 @@ impl CoreGroup {
             // there are no blanks and the new member extended the tree to
             // fit in.
             if apply_proposals_values.external_init_secret_option.is_some() {
-                let sender_leaf_index = diff
-                    .add_leaf(key_package.clone(), backend.crypto())
-                    .map_err(|e| match e {
+                let sender_leaf_index =
+                    diff.add_leaf(key_package.clone()).map_err(|e| match e {
                         TreeSyncAddLeaf::LibraryError(e) => e.into(),
                         TreeSyncAddLeaf::TreeFull => StageCommitError::TooManyNewMembers,
                     })?;

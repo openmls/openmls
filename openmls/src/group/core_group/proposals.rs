@@ -1,8 +1,5 @@
 use crate::{
-    ciphersuite::{
-        hash_ref::{KeyPackageRef, ProposalRef},
-        *,
-    },
+    ciphersuite::hash_ref::ProposalRef,
     error::LibraryError,
     framing::*,
     group::errors::*,
@@ -161,8 +158,8 @@ impl ProposalQueue {
                 ProposalOrRef::Proposal(proposal) => {
                     // ValSem200
                     if let Proposal::Remove(ref remove_proposal) = proposal {
-                        if let Sender::Member(hash_ref) = sender {
-                            if remove_proposal.removed() == hash_ref {
+                        if let Sender::Member(leaf_index) = sender {
+                            if remove_proposal.removed() == *leaf_index {
                                 return Err(FromCommittedProposalsError::SelfRemoval);
                             }
                         }
@@ -181,8 +178,8 @@ impl ProposalQueue {
                             // ValSem200
                             if let Proposal::Remove(ref remove_proposal) = queued_proposal.proposal
                             {
-                                if let Sender::Member(hash_ref) = sender {
-                                    if remove_proposal.removed() == hash_ref {
+                                if let Sender::Member(leaf_index) = sender {
+                                    if remove_proposal.removed() == *leaf_index {
                                         return Err(FromCommittedProposalsError::SelfRemoval);
                                     }
                                 }
@@ -333,14 +330,14 @@ impl ProposalQueue {
         sender: Sender,
         proposal_store: &'a ProposalStore,
         inline_proposals: &'a [Proposal],
-        own_kpr: impl Into<Option<&'a hash_ref::KeyPackageRef>>,
+        own_index: u32,
     ) -> Result<(Self, bool), ProposalQueueError> {
         #[derive(Clone, Default)]
         struct Member {
             updates: Vec<QueuedProposal>,
             removes: Vec<QueuedProposal>,
         }
-        let mut members = HashMap::<KeyPackageRef, Member>::new();
+        let mut members = HashMap::<u32, Member>::new();
         let mut adds: HashSet<ProposalRef> = HashSet::new();
         let mut valid_proposals: HashSet<ProposalRef> = HashSet::new();
         let mut proposal_pool: HashMap<ProposalRef, QueuedProposal> = HashMap::new();
@@ -368,7 +365,6 @@ impl ProposalQueue {
         );
 
         // Parse proposals and build adds and member list
-        let own_kpr = own_kpr.into();
         for queued_proposal in queued_proposal_list {
             match queued_proposal.proposal {
                 Proposal::Add(_) => {
@@ -376,18 +372,15 @@ impl ProposalQueue {
                     proposal_pool.insert(queued_proposal.proposal_reference(), queued_proposal);
                 }
                 Proposal::Update(_) => {
-                    let own_kpr = own_kpr.ok_or_else(|| {
-                        LibraryError::custom("own_kpr has to be Some for Member Commits")
-                    })?;
                     // Only members can send update proposals
                     // ValSem112
-                    let hash_ref = match queued_proposal.sender.clone() {
-                        Sender::Member(hash_ref) => hash_ref.clone(),
+                    let leaf_index = match queued_proposal.sender.clone() {
+                        Sender::Member(hash_ref) => hash_ref,
                         _ => return Err(ProposalQueueError::SenderError(SenderError::NotAMember)),
                     };
-                    if &hash_ref != own_kpr {
+                    if leaf_index != own_index {
                         members
-                            .entry(hash_ref.clone())
+                            .entry(leaf_index)
                             .or_insert_with(Member::default)
                             .updates
                             .push(queued_proposal.clone());
@@ -400,7 +393,7 @@ impl ProposalQueue {
                 Proposal::Remove(ref remove_proposal) => {
                     let removed = remove_proposal.removed();
                     members
-                        .entry(removed.clone())
+                        .entry(removed)
                         .or_insert_with(Member::default)
                         .updates
                         .push(queued_proposal.clone());

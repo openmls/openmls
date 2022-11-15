@@ -844,9 +844,7 @@ fn group_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvid
         .create_remove_proposal(
             framing_parameters,
             &charlie_credential_bundle,
-            group_bob
-                .key_package_ref()
-                .expect("An unexpected error occurred."),
+            group_bob.own_leaf_index(),
             backend,
         )
         .expect("Could not create proposal.");

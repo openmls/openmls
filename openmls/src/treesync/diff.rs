@@ -17,7 +17,7 @@
 //! functions that are not expected to fail and throw an error, will still
 //! return a [`Result`] since they may throw a
 //! [`LibraryError`](TreeSyncDiffError::LibraryError).
-use openmls_traits::{crypto::OpenMlsCrypto, types::Ciphersuite, OpenMlsCryptoProvider};
+use openmls_traits::{types::Ciphersuite, OpenMlsCryptoProvider};
 use serde::{Deserialize, Serialize};
 
 use std::{collections::HashSet, convert::TryFrom};
@@ -37,9 +37,7 @@ use crate::{
     binary_tree::{
         array_representation::diff::NodeId, LeafIndex, MlsBinaryTreeDiff, StagedMlsBinaryTreeDiff,
     },
-    ciphersuite::{
-        hash_ref::KeyPackageRef, signable::Signable, HpkePrivateKey, HpkePublicKey, Secret,
-    },
+    ciphersuite::{signable::Signable, HpkePrivateKey, HpkePublicKey, Secret},
     credentials::CredentialBundle,
     error::LibraryError,
     extensions::ExtensionType,
@@ -173,12 +171,8 @@ impl<'a> TreeSyncDiff<'a> {
     /// path.
     ///
     /// Returns the LeafIndex of the new leaf.
-    pub(crate) fn add_leaf(
-        &mut self,
-        leaf_node: KeyPackage,
-        backend: &impl OpenMlsCrypto,
-    ) -> Result<LeafIndex, TreeSyncAddLeaf> {
-        let node = Node::LeafNode(LeafNode::new(leaf_node, backend)?);
+    pub(crate) fn add_leaf(&mut self, leaf_node: KeyPackage) -> Result<LeafIndex, TreeSyncAddLeaf> {
+        let node = Node::LeafNode(LeafNode::new(leaf_node));
         // Find a free leaf and fill it with the new key package.
         let leaf_index = self.free_leaf_index()?;
         // If the free leaf index is within the tree, put the new leaf there,
@@ -288,10 +282,7 @@ impl<'a> TreeSyncDiff<'a> {
         let key_package_bundle = key_package_bundle_payload.sign(backend, credential_bundle)?;
 
         let key_package = key_package_bundle.key_package().clone();
-        let node = Node::LeafNode(LeafNode::new_from_bundle(
-            key_package_bundle,
-            backend.crypto(),
-        )?);
+        let node = Node::LeafNode(LeafNode::new_from_bundle(key_package_bundle));
 
         // Replace the leaf.
         self.diff
@@ -332,7 +323,7 @@ impl<'a> TreeSyncDiff<'a> {
         };
 
         // Replace the leaf.
-        let node = Node::LeafNode(LeafNode::new(key_package, backend.crypto())?);
+        let node = Node::LeafNode(LeafNode::new(key_package));
         self.diff
             .replace_leaf(sender_leaf_index, node.into())
             // We assume the sender leaf is in the tree
@@ -914,27 +905,6 @@ impl<'a> TreeSyncDiff<'a> {
             .map(|ts_node| ts_node.node().to_owned())
             .collect();
         Ok(nodes)
-    }
-
-    /// Returns the [`KeyPackageRef`] for the own leaf in the tree resulting from
-    /// merging this diff.
-    ///
-    /// Returns an error if the own leaf is not in the tree.
-    pub(crate) fn hash_ref(&self) -> Result<&KeyPackageRef, LibraryError> {
-        let node = self
-            .diff
-            .node(
-                self.diff
-                    .leaf(self.own_leaf_index)
-                    .map_err(|_| LibraryError::custom("Expected own leaf to be in the tree"))?,
-            )
-            .map_err(|_| LibraryError::custom("Expected own leaf to be in the tree"))?;
-        if let Some(Node::LeafNode(node)) = node.node() {
-            node.key_package_ref()
-                .ok_or_else(|| LibraryError::custom("missing key package ref"))
-        } else {
-            Err(LibraryError::custom("missing leaf node"))
-        }
     }
 
     /// Get the length of the direct path of the given [`LeafIndex`].

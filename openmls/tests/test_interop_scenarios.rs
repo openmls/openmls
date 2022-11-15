@@ -242,13 +242,10 @@ fn remove(ciphersuite: Ciphersuite) {
         .last()
         .expect("An unexpected error occurred.")
         .clone();
-    let bob_kpr = setup
-        .key_package_ref_by_index(bob_index, group)
-        .expect("Couldn't get key package reference.");
 
     // Have alice remove Bob.
     setup
-        .remove_clients(ActionType::Commit, group, &alice_id, &[bob_kpr])
+        .remove_clients(ActionType::Commit, group, &alice_id, &[bob_index as u32])
         .expect("Error removing Bob from the group.");
 
     // Check that group members agree on a group state.
@@ -306,11 +303,8 @@ fn large_group_lifecycle(ciphersuite: Ciphersuite) {
         while remover_id == target_id {
             target_id = group.random_group_member();
         }
-        let target_kpr = setup
-            .key_package_ref_by_id(&target_id, group)
-            .expect("Couldn't get key package reference.");
         setup
-            .remove_clients(ActionType::Commit, group, &remover_id, &[target_kpr])
+            .remove_clients(ActionType::Commit, group, &remover_id.1, &[target_id.0])
             .expect("Error while removing group member.");
         group_members = group.members.clone();
         setup.check_group_states(group);

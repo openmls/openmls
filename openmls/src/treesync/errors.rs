@@ -62,15 +62,18 @@ pub enum ApplyUpdatePathError {
 
 // === Crate errors ===
 
+// TODO: This will go away in #819 again.
+// `UnsupportedExtension` is only used in tests for now
+#[allow(dead_code)]
 /// TreeSync error
 #[derive(Error, Debug, PartialEq, Clone)]
 pub(crate) enum TreeSyncError {
     /// See [`LibraryError`] for more details.
     #[error(transparent)]
     LibraryError(#[from] LibraryError),
-    /// Found two KeyPackages with the same public key.
-    #[error("Found two KeyPackages with the same public key.")]
-    KeyPackageRefNotInTree,
+    /// A requested leaf is not in the tree.
+    #[error("The leaf does not exist in the tree.")]
+    LeafNotInTree,
     /// See [`TreeSyncSetPathError`] for more details.
     #[error(transparent)]
     SetPathError(#[from] TreeSyncSetPathError),
@@ -95,6 +98,9 @@ pub(crate) enum TreeSyncError {
     /// See [`CryptoError`] for more details.
     #[error(transparent)]
     CryptoError(#[from] CryptoError),
+    /// An extension type is not supported by a leaf in the tree.
+    #[error("An extension type is not supported by a leaf in the tree.")]
+    UnsupportedExtension,
 }
 
 /// TreeSync set path error

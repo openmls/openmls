@@ -116,8 +116,8 @@ fn external_add_proposal_should_succeed(
             mut bob_group,
         } = validation_test_setup(policy, ciphersuite, backend);
 
-        assert_eq!(alice_group.members().len(), 2);
-        assert_eq!(bob_group.members().len(), 2);
+        assert_eq!(alice_group.members().unwrap().len(), 2);
+        assert_eq!(bob_group.members().unwrap().len(), 2);
 
         // A new client, Charlie, will now ask joining with an external Add proposal
         let charlie_cb = get_credential_bundle(
@@ -192,7 +192,7 @@ fn external_add_proposal_should_succeed(
         // and Alice will commit it
         let (commit, welcome) = alice_group.commit_to_pending_proposals(backend).unwrap();
         alice_group.merge_pending_commit().unwrap();
-        assert_eq!(alice_group.members().len(), 3);
+        assert_eq!(alice_group.members().unwrap().len(), 3);
 
         // Bob will also process the commit
         let parsed = bob_group.parse_message(commit.into(), backend).unwrap();
@@ -205,7 +205,7 @@ fn external_add_proposal_should_succeed(
             }
             _ => unreachable!(),
         }
-        assert_eq!(bob_group.members().len(), 3);
+        assert_eq!(bob_group.members().unwrap().len(), 3);
 
         // Finally, Charlie can join with the Welcome
         let cfg = MlsGroupConfig::builder().wire_format_policy(policy).build();
@@ -216,7 +216,7 @@ fn external_add_proposal_should_succeed(
             Some(alice_group.export_ratchet_tree()),
         )
         .unwrap();
-        assert_eq!(charlie_group.members().len(), 3);
+        assert_eq!(charlie_group.members().unwrap().len(), 3);
     }
 }
 
@@ -302,16 +302,7 @@ fn new_member_proposal_sender_should_be_reserved_for_join_proposals(
     alice_group.clear_pending_proposals();
 
     // Remove proposal cannot have a 'new_member_proposal' sender
-    let bob_kp = alice_group
-        .members()
-        .into_iter()
-        .find(|kp| kp.credential().identity() == b"Bob")
-        .unwrap();
-    let bob_kpr = bob_kp.hash_ref(backend.crypto()).unwrap();
-
-    let remove_proposal = alice_group
-        .propose_remove_member(backend, &bob_kpr)
-        .unwrap();
+    let remove_proposal = alice_group.propose_remove_member(backend, 1).unwrap();
     if let MlsMessageBody::Plaintext(mut plaintext) = remove_proposal.mls_message.body {
         plaintext.set_sender(Sender::NewMemberProposal);
         assert!(matches!(

@@ -21,7 +21,6 @@
 //! - [`RatchetTreeExtension`] (GroupInfo extension)
 //! - [`RequiredCapabilitiesExtension`] (GroupContext extension)
 
-use openmls_traits::crypto::OpenMlsCrypto;
 use serde::{Deserialize, Serialize};
 use std::{convert::TryFrom, fmt::Debug};
 use tls_codec::*;
@@ -294,23 +293,13 @@ impl Ord for Extension {
 /// error if there is either no [`RatchetTreeExtension`] or more than one.
 pub(crate) fn try_nodes_from_extensions(
     other_extensions: &[Extension],
-    crypto_backend: &impl OpenMlsCrypto,
 ) -> Result<Option<Vec<Option<Node>>>, ExtensionError> {
     let mut ratchet_tree_extensions = other_extensions
         .iter()
         .filter(|e| e.extension_type() == ExtensionType::RatchetTree);
 
     let nodes = match ratchet_tree_extensions.next() {
-        Some(e) => {
-            let mut nodes: Vec<Option<Node>> = e.as_ratchet_tree_extension()?.as_slice().into();
-            // Compute the key package references.
-            for node in nodes.iter_mut().flatten() {
-                if let Node::LeafNode(leaf) = node {
-                    leaf.set_key_package_ref(crypto_backend)?;
-                }
-            }
-            Some(nodes)
-        }
+        Some(e) => Some(e.as_ratchet_tree_extension()?.as_slice().into()),
         None => None,
     };
 

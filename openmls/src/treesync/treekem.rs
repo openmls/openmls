@@ -242,7 +242,7 @@ impl UpdatePathNode {
 pub(crate) struct PlaintextSecret {
     public_key: HpkePublicKey,
     group_secrets_bytes: Vec<u8>,
-    key_package_ref: KeyPackageRef,
+    new_member: KeyPackageRef,
 }
 
 impl PlaintextSecret {
@@ -292,7 +292,7 @@ impl PlaintextSecret {
             plaintext_secrets.push(PlaintextSecret {
                 public_key: key_package.hpke_init_key().clone(),
                 group_secrets_bytes,
-                key_package_ref: key_package.hash_ref(backend.crypto())?,
+                new_member: key_package.hash_ref(backend.crypto())?,
             });
         }
         Ok(plaintext_secrets)
@@ -314,7 +314,7 @@ impl PlaintextSecret {
             &[],
             &self.group_secrets_bytes,
         );
-        EncryptedGroupSecrets::new(self.key_package_ref, encrypted_group_secrets)
+        EncryptedGroupSecrets::new(self.new_member, encrypted_group_secrets)
     }
 }
 

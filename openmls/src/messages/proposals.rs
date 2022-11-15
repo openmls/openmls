@@ -182,13 +182,13 @@ impl UpdateProposal {
     Debug, PartialEq, Eq, Clone, Serialize, Deserialize, TlsDeserialize, TlsSerialize, TlsSize,
 )]
 pub struct RemoveProposal {
-    pub(crate) removed: KeyPackageRef,
+    pub(crate) removed: u32,
 }
 
 impl RemoveProposal {
-    /// Returns the [`KeyPackageRef`] index in this proposal.
-    pub fn removed(&self) -> &KeyPackageRef {
-        &self.removed
+    /// Returns the leaf index of the removed leaf in this proposal.
+    pub fn removed(&self) -> u32 {
+        self.removed
     }
 }
 

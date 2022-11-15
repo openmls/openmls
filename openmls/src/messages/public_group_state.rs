@@ -8,7 +8,6 @@ use tls_codec::{Serialize, TlsByteVecU8, TlsDeserialize, TlsSerialize, TlsSize, 
 
 use crate::{
     ciphersuite::{
-        hash_ref::KeyPackageRef,
         signable::{Signable, SignedStruct, Verifiable, VerifiedStruct},
         HpkePublicKey, Signature,
     },
@@ -50,7 +49,7 @@ pub struct PublicGroupState {
     pub(crate) group_context_extensions: TlsVecU32<Extension>,
     pub(crate) other_extensions: TlsVecU32<Extension>,
     pub(crate) external_pub: HpkePublicKey,
-    pub(crate) signer: KeyPackageRef,
+    pub(crate) signer: u32,
     pub(crate) signature: Signature,
 }
 
@@ -88,8 +87,8 @@ impl VerifiablePublicGroupState {
     }
 
     /// Returns a reference to the [`KeyPackageRef`] of the signer.
-    pub(crate) fn signer(&self) -> &KeyPackageRef {
-        &self.tbs.signer
+    pub(crate) fn signer(&self) -> u32 {
+        self.tbs.signer
     }
 
     /// Returns a reference to the non [`GroupContext`] extensions of the unverified
@@ -183,7 +182,7 @@ pub(crate) struct PublicGroupStateTbs {
     pub(crate) group_context_extensions: TlsVecU32<Extension>,
     pub(crate) other_extensions: TlsVecU32<Extension>,
     pub(crate) external_pub: HpkePublicKey,
-    pub(crate) signer: KeyPackageRef,
+    pub(crate) signer: u32,
 }
 
 impl PublicGroupStateTbs {
@@ -218,10 +217,7 @@ impl PublicGroupStateTbs {
             other_extensions,
             external_pub: external_pub.into(),
             ciphersuite,
-            signer: core_group
-                .key_package_ref()
-                .cloned()
-                .ok_or_else(|| LibraryError::custom("missing key package ref"))?,
+            signer: core_group.own_leaf_index(),
         })
     }
 }

@@ -2,14 +2,13 @@
 //! https://openmls.tech/book/message_validation.html#semantic-validation-of-message-framing
 
 use openmls_rust_crypto::OpenMlsRustCrypto;
-use openmls_traits::{random::OpenMlsRand, types::Ciphersuite, OpenMlsCryptoProvider};
+use openmls_traits::{types::Ciphersuite, OpenMlsCryptoProvider};
 use tls_codec::{Deserialize, Serialize};
 
 use rstest::*;
 use rstest_reuse::{self, *};
 
 use crate::{
-    ciphersuite::hash_ref::KeyPackageRef,
     credentials::*,
     framing::*,
     group::{errors::*, *},
@@ -323,12 +322,7 @@ fn test_valsem004(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
 
     let original_message = plaintext.clone();
 
-    let random_sender = Sender::build_member(&KeyPackageRef::from_slice(
-        &backend
-            .rand()
-            .random_vec(16)
-            .expect("An unexpected error occurred."),
-    ));
+    let random_sender = Sender::build_member(987);
     plaintext.set_sender(random_sender);
 
     let message_in = MlsMessageIn::from(plaintext);

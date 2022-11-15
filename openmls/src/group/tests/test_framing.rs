@@ -10,7 +10,7 @@ use tls_codec::Serialize;
 
 use super::utils::*;
 use crate::{
-    ciphersuite::{hash_ref::KeyPackageRef, signable::Signable},
+    ciphersuite::signable::Signable,
     credentials::{CredentialBundle, CredentialType},
     framing::{MessageDecryptionError, WireFormat, *},
     group::*,
@@ -125,9 +125,7 @@ fn bad_padding(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
         )
         .unwrap();
 
-        let sender = Sender::build_member(&KeyPackageRef::from_slice(
-            &backend.rand().random_vec(16).unwrap(),
-        ));
+        let sender = Sender::build_member(654);
 
         let group_context = GroupContext::new(
             ciphersuite,
@@ -187,8 +185,8 @@ fn bad_padding(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
                 sender: SecretTreeLeafIndex(0),
             };
 
-            let hash_ref = match plaintext.sender() {
-                Sender::Member(hash_ref) => hash_ref,
+            let leaf_index = match plaintext.sender() {
+                Sender::Member(leaf_index) => *leaf_index,
                 _ => panic!("Unexpected match."),
             };
 
@@ -288,7 +286,7 @@ fn bad_padding(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
             );
             // Serialize the sender data AAD
             let mls_sender_data_aad_bytes = mls_sender_data_aad.tls_serialize_detached().unwrap();
-            let sender_data = MlsSenderData::from_sender(hash_ref, generation, reuse_guard);
+            let sender_data = MlsSenderData::from_sender(leaf_index, generation, reuse_guard);
             // Encrypt the sender data
             let encrypted_sender_data = sender_data_key
                 .aead_seal(

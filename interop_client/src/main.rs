@@ -738,10 +738,7 @@ impl MlsClient for MlsClientImpl {
 
         let proposal = interop_group
             .group
-            .propose_remove_member(
-                &self.crypto_provider,
-                &KeyPackageRef::from_slice(&remove_proposal_request.removed),
-            )
+            .propose_remove_member(&self.crypto_provider, remove_proposal_request.removed)
             .map_err(into_status)?
             .to_bytes()
             .unwrap();

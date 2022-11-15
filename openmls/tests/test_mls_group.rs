@@ -108,9 +108,6 @@ fn mls_group_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoPr
         let alice_key_package =
             generate_key_package_bundle(&[ciphersuite], &alice_credential, vec![], backend)
                 .expect("An unexpected error occurred.");
-        let alice_kpr = alice_key_package
-            .hash_ref(backend.crypto())
-            .expect("Couldn't get the key package reference for Alice.");
 
         let bob_key_package =
             generate_key_package_bundle(&[ciphersuite], &bob_credential, vec![], backend)
@@ -153,7 +150,9 @@ fn mls_group_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoPr
                 &bob_credential
             );
             // Check that Alice added Bob
-            assert!(matches!(add.sender(), Sender::Member(member) if member == &alice_kpr));
+            assert!(
+                matches!(add.sender(), Sender::Member(member) if *member == alice_group.own_leaf_index())
+            );
         } else {
             unreachable!("Expected a StagedCommit.");
         }
@@ -163,12 +162,20 @@ fn mls_group_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoPr
             .expect("error merging pending commit");
 
         // Check that the group now has two members
-        assert_eq!(alice_group.members().len(), 2);
+        assert_eq!(
+            alice_group
+                .members()
+                .expect("Library error getting group member list")
+                .len(),
+            2
+        );
 
         // Check that Alice & Bob are the members of the group
-        let members = alice_group.members();
-        assert_eq!(members[0].credential().identity(), b"Alice");
-        assert_eq!(members[1].credential().identity(), b"Bob");
+        let members = alice_group
+            .members()
+            .expect("Library error getting group member list");
+        assert_eq!(members[0].identity, b"Alice");
+        assert_eq!(members[1].identity, b"Bob");
 
         let mut bob_group = MlsGroup::new_from_welcome(
             backend,
@@ -179,7 +186,14 @@ fn mls_group_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoPr
         .expect("Error creating group from Welcome");
 
         // Make sure that both groups have the same members
-        assert_eq!(alice_group.members(), bob_group.members());
+        assert_eq!(
+            alice_group
+                .members()
+                .expect("Library error getting group member list"),
+            bob_group
+                .members()
+                .expect("Library error getting group member list")
+        );
 
         // Make sure that both groups have the same epoch authenticator
         assert_eq!(
@@ -234,12 +248,12 @@ fn mls_group_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoPr
 
         // Check that we received the correct message
         if let ProcessedMessage::StagedCommitMessage(staged_commit) = alice_processed_message {
-            let update = staged_commit
+            let update_kp = staged_commit
                 .commit_update_key_package()
                 .expect("Expected a KeyPackage.")
                 .clone();
             // Check that Bob updated
-            assert_eq!(update.credential(), &bob_credential);
+            assert_eq!(update_kp.credential(), &bob_credential);
 
             // Merge staged Commit
             alice_group
@@ -247,8 +261,13 @@ fn mls_group_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoPr
                 .expect("Could not merge Commit.");
 
             // Check Bob's new key package
-            let members = alice_group.members();
-            assert_eq!(members[1], &update);
+            let members = alice_group
+                .members()
+                .expect("Library error getting group member list");
+            assert_eq!(
+                &members[1].signature_key,
+                update_kp.credential().signature_key().as_slice()
+            );
         } else {
             unreachable!("Expected a StagedCommit.");
         }
@@ -302,9 +321,7 @@ fn mls_group_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoPr
             // Check that Alice sent the proposal.
             assert!(matches!(
                 staged_proposal.sender(),
-                Sender::Member(member) if member == alice_group
-                                          .key_package_ref()
-                                          .expect("An unexpected error occured.")
+                Sender::Member(member) if *member == alice_group.own_leaf_index()
             ));
 
             bob_group.store_pending_proposal(*staged_proposal);
@@ -327,20 +344,25 @@ fn mls_group_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoPr
 
         // Check that we received the correct message
         if let ProcessedMessage::StagedCommitMessage(staged_commit) = bob_processed_message {
-            let update = staged_commit
+            let update_kp = staged_commit
                 .commit_update_key_package()
                 .expect("Expected a KeyPackage.")
                 .clone();
             // Check that Alice updated
-            assert_eq!(update.credential(), &alice_credential);
+            assert_eq!(update_kp.credential(), &alice_credential);
 
             bob_group
                 .merge_staged_commit(*staged_commit)
                 .expect("Could not merge StagedCommit");
 
             // Check Alice's new key package
-            let members = bob_group.members();
-            assert_eq!(members[0], &update);
+            let members = bob_group
+                .members()
+                .expect("Library error getting group member list");
+            assert_eq!(
+                &members[0].signature_key,
+                update_kp.credential().signature_key().as_slice()
+            );
         } else {
             unreachable!("Expected a StagedCommit.");
         }
@@ -410,10 +432,12 @@ fn mls_group_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoPr
         );
 
         // Check that Alice, Bob & Charlie are the members of the group
-        let members = alice_group.members();
-        assert_eq!(members[0].credential().identity(), b"Alice");
-        assert_eq!(members[1].credential().identity(), b"Bob");
-        assert_eq!(members[2].credential().identity(), b"Charlie");
+        let members = alice_group
+            .members()
+            .expect("Library error getting group member list");
+        assert_eq!(members[0].identity, b"Alice");
+        assert_eq!(members[1].identity, b"Bob");
+        assert_eq!(members[2].identity, b"Charlie");
 
         // === Charlie sends a message to the group ===
         let message_charlie = b"Hi, I'm Charlie!";
@@ -498,17 +522,9 @@ fn mls_group_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoPr
         );
 
         // === Charlie removes Bob ===
-        let bob_kpr = bob_group
-            .key_package_ref()
-            .cloned()
-            .expect("An unexpected error occurred.");
-        let charlie_kpr = charlie_group
-            .key_package_ref()
-            .cloned()
-            .expect("An unexpected error occurred.");
         println!(" >>> Charlie is removing bob");
         let (queued_message, welcome_option) = charlie_group
-            .remove_members(backend, &[bob_kpr.clone()])
+            .remove_members(backend, &[bob_group.own_leaf_index()])
             .expect("Could not remove member from group.");
 
         // Check that Bob's group is still active
@@ -537,9 +553,11 @@ fn mls_group_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoPr
                 .next()
                 .expect("Expected a proposal.");
             // Check that Bob was removed
-            assert_eq!(remove.remove_proposal().removed(), &bob_kpr);
+            assert_eq!(remove.remove_proposal().removed(), members[1].index);
             // Check that Charlie removed Bob
-            assert!(matches!(remove.sender(), Sender::Member(member) if member == &charlie_kpr));
+            assert!(
+                matches!(remove.sender(), Sender::Member(member) if *member == members[2].index)
+            );
 
             // Merge staged Commit
             alice_group
@@ -556,9 +574,11 @@ fn mls_group_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoPr
                 .next()
                 .expect("Expected a proposal.");
             // Check that Bob was removed
-            assert_eq!(remove.remove_proposal().removed(), &bob_kpr);
+            assert_eq!(remove.remove_proposal().removed(), members[1].index);
             // Check that Charlie removed Bob
-            assert!(matches!(remove.sender(), Sender::Member(member) if member == &charlie_kpr));
+            assert!(
+                matches!(remove.sender(), Sender::Member(member) if *member == members[2].index)
+            );
 
             // Merge staged Commit
             bob_group
@@ -581,12 +601,20 @@ fn mls_group_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoPr
         );
 
         // Make sure the group only contains two members
-        assert_eq!(alice_group.members().len(), 2);
+        assert_eq!(
+            alice_group
+                .members()
+                .expect("Library error getting group member list")
+                .len(),
+            2
+        );
 
         // Check that Alice & Charlie are the members of the group
-        let members = alice_group.members();
-        assert_eq!(members[0].credential().identity(), b"Alice");
-        assert_eq!(members[1].credential().identity(), b"Charlie");
+        let members = alice_group
+            .members()
+            .expect("Library error getting group member list");
+        assert_eq!(members[0].identity, b"Alice");
+        assert_eq!(members[1].identity, b"Charlie");
 
         // Check that Bob can no longer send messages
         assert!(bob_group
@@ -599,21 +627,10 @@ fn mls_group_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoPr
         let bob_key_package =
             generate_key_package_bundle(&[ciphersuite], &bob_credential, vec![], backend)
                 .expect("An unexpected error occurred.");
-        let bob_kpr = bob_key_package
-            .hash_ref(backend.crypto())
-            .expect("Couldn't get the key package reference for Bob.");
 
         // Create RemoveProposal and process it
-        let alice_kpr = alice_group
-            .key_package_ref()
-            .cloned()
-            .expect("An unexpected error occurred.");
-        let charlie_kpr = charlie_group
-            .key_package_ref()
-            .cloned()
-            .expect("An unexpected error occurred.");
         let queued_message = alice_group
-            .propose_remove_member(backend, &charlie_kpr)
+            .propose_remove_member(backend, charlie_group.own_leaf_index())
             .expect("Could not create proposal to remove Charlie");
 
         let unverified_message = charlie_group
@@ -627,7 +644,7 @@ fn mls_group_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoPr
         if let ProcessedMessage::ProposalMessage(staged_proposal) = charlie_processed_message {
             if let Proposal::Remove(ref remove_proposal) = staged_proposal.proposal() {
                 // Check that Charlie was removed
-                assert_eq!(remove_proposal.removed(), &charlie_kpr);
+                assert_eq!(remove_proposal.removed(), members[1].index);
                 // Store proposal
                 charlie_group.store_pending_proposal(*staged_proposal.clone());
             } else {
@@ -637,7 +654,7 @@ fn mls_group_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoPr
             // Check that Alice removed Charlie
             assert!(matches!(
                 staged_proposal.sender(),
-                Sender::Member(member) if member == &alice_kpr
+                Sender::Member(member) if *member == members[0].index
             ));
         } else {
             unreachable!("Expected a QueuedProposal.");
@@ -667,7 +684,7 @@ fn mls_group_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoPr
             // Check that Alice added Bob
             assert!(matches!(
                 staged_proposal.sender(),
-                Sender::Member(member) if member == &alice_kpr
+                Sender::Member(member) if *member == members[0].index
             ));
             // Store proposal
             charlie_group.store_pending_proposal(*staged_proposal);
@@ -702,12 +719,20 @@ fn mls_group_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoPr
         }
 
         // Make sure the group contains two members
-        assert_eq!(alice_group.members().len(), 2);
+        assert_eq!(
+            alice_group
+                .members()
+                .expect("Library error getting group member list")
+                .len(),
+            2
+        );
 
         // Check that Alice & Bob are the members of the group
-        let members = alice_group.members();
-        assert_eq!(members[0].credential().identity(), b"Alice");
-        assert_eq!(members[1].credential().identity(), b"Bob");
+        let members = alice_group
+            .members()
+            .expect("Library error getting group member list");
+        assert_eq!(members[0].identity, b"Alice");
+        assert_eq!(members[1].identity, b"Bob");
 
         // Bob creates a new group
         let mut bob_group = MlsGroup::new_from_welcome(
@@ -719,20 +744,36 @@ fn mls_group_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoPr
         .expect("Error creating group from Welcome");
 
         // Make sure the group contains two members
-        assert_eq!(alice_group.members().len(), 2);
+        assert_eq!(
+            alice_group
+                .members()
+                .expect("Library error getting group member list")
+                .len(),
+            2
+        );
 
         // Check that Alice & Bob are the members of the group
-        let members = alice_group.members();
-        assert_eq!(members[0].credential().identity(), b"Alice");
-        assert_eq!(members[1].credential().identity(), b"Bob");
+        let members = alice_group
+            .members()
+            .expect("Library error getting group member list");
+        assert_eq!(members[0].identity, b"Alice");
+        assert_eq!(members[1].identity, b"Bob");
 
         // Make sure the group contains two members
-        assert_eq!(bob_group.members().len(), 2);
+        assert_eq!(
+            bob_group
+                .members()
+                .expect("Library error getting group member list")
+                .len(),
+            2
+        );
 
         // Check that Alice & Bob are the members of the group
-        let members = bob_group.members();
-        assert_eq!(members[0].credential().identity(), b"Alice");
-        assert_eq!(members[1].credential().identity(), b"Bob");
+        let members = bob_group
+            .members()
+            .expect("Library error getting group member list");
+        assert_eq!(members[0].identity, b"Alice");
+        assert_eq!(members[1].identity, b"Bob");
 
         // === Alice sends a message to the group ===
         let message_alice = b"Hi, I'm Alice!";
@@ -800,15 +841,16 @@ fn mls_group_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoPr
         assert!(bob_group.is_active());
 
         // Check that we received the correct proposals
+        let bob_leaf_index = bob_group.own_leaf_index();
         if let Some(staged_commit) = alice_group.pending_commit() {
             let remove = staged_commit
                 .remove_proposals()
                 .next()
                 .expect("Expected a proposal.");
             // Check that Bob was removed
-            assert_eq!(remove.remove_proposal().removed(), &bob_kpr);
+            assert_eq!(remove.remove_proposal().removed(), bob_leaf_index);
             // Check that Bob removed himself
-            assert!(matches!(remove.sender(), Sender::Member(member) if member == &bob_kpr));
+            assert!(matches!(remove.sender(), Sender::Member(member) if *member == bob_leaf_index));
 
             // Merge staged Commit
         } else {
@@ -833,9 +875,9 @@ fn mls_group_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoPr
                 .next()
                 .expect("Expected a proposal.");
             // Check that Bob was removed
-            assert_eq!(remove.remove_proposal().removed(), &bob_kpr);
+            assert_eq!(remove.remove_proposal().removed(), bob_leaf_index);
             // Check that Bob removed himself
-            assert!(matches!(remove.sender(), Sender::Member(member) if member == &bob_kpr));
+            assert!(matches!(remove.sender(), Sender::Member(member) if *member == bob_leaf_index));
 
             assert!(staged_commit.self_removed());
             // Merge staged Commit
@@ -850,11 +892,19 @@ fn mls_group_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoPr
         assert!(!bob_group.is_active());
 
         // Make sure the group contains one member
-        assert_eq!(alice_group.members().len(), 1);
+        assert_eq!(
+            alice_group
+                .members()
+                .expect("Library error getting group member list")
+                .len(),
+            1
+        );
 
         // Check that Alice is the only member of the group
-        let members = alice_group.members();
-        assert_eq!(members[0].credential().identity(), b"Alice");
+        let members = alice_group
+            .members()
+            .expect("Library error getting group member list");
+        assert_eq!(members[0].identity, b"Alice");
 
         // === Save the group state ===
 

@@ -577,10 +577,7 @@ fn test_valsem244(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
     content.proposals.remove(proposal_position);
 
     let remove_proposal = ProposalOrRef::Proposal(Proposal::Remove(RemoveProposal {
-        removed: alice_group
-            .key_package_ref()
-            .cloned()
-            .expect("An unexpected error occurred."),
+        removed: alice_group.own_leaf_index(),
     }));
 
     content.proposals.push(remove_proposal);
@@ -680,12 +677,7 @@ fn test_valsem245(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
         ciphersuite,
         backend,
         second_ext_init_prop,
-        &Sender::Member(
-            alice_group
-                .key_package_ref()
-                .cloned()
-                .expect("An unexpected error occurred."),
-        ),
+        &Sender::Member(alice_group.own_leaf_index()),
     )
     .expect("error creating queued proposal");
 

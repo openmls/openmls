@@ -246,30 +246,17 @@ impl CoreGroup {
     ) -> Result<(), LibraryError> {
         // Save the past epoch
         let past_epoch = self.context().epoch();
-        // We may need to keep a mapping from key package references to indices.
+        // Get all the full leaves
         let leaves = self
             .treesync()
-            .full_leaves()
+            .full_leave_members()
             // This should disappear after refactoring TreeSync, fetching the leaves should never fail
             .map_err(|_| LibraryError::custom("Unexpected error in TreeSync"))?;
-        let mut my_leaves = Vec::with_capacity(leaves.len());
-        for (&i, _) in leaves.iter() {
-            my_leaves.push((
-                i,
-                self.treesync().leaf_id(i).ok_or_else(|| {
-                    LibraryError::custom(
-                        "Unable to get the key package reference for a leaf from \
-                         tree. This indicates a bug in the library where the tree \
-                         isn't built correctly.",
-                    )
-                })?,
-            ))
-        }
         // Merge the staged commit into the group state and store the secret tree from the
         // previous epoch in the message secrets store.
         if let Some(message_secrets) = self.merge_commit(staged_commit)? {
             self.message_secrets_store
-                .add(past_epoch, message_secrets, my_leaves);
+                .add(past_epoch, message_secrets, leaves);
         }
         // Empty the proposal store
         proposal_store.empty();

@@ -35,12 +35,14 @@ fn test_mls_group_api(ciphersuite: Ciphersuite) {
 
     // Remove a member
     let (_, remover_id) = group.members[2].clone();
-    let (_, target_id) = group.members[3].clone();
-    let target_kpr = setup
-        .key_package_ref_by_id(&target_id, group)
-        .expect("Couldn't get key package reference.");
+    let (target_index, _) = group.members[3].clone();
     setup
-        .remove_clients(ActionType::Commit, group, &remover_id, &[target_kpr])
+        .remove_clients(
+            ActionType::Commit,
+            group,
+            &remover_id,
+            &[target_index as u32],
+        )
         .expect("An unexpected error occurred.");
 
     // Check that all group members agree on the same group state.

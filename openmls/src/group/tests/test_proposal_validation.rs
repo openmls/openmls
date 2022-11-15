@@ -9,7 +9,7 @@ use rstest_reuse::{self, *};
 use tls_codec::{Deserialize, Serialize};
 
 use crate::{
-    ciphersuite::{hash_ref::ProposalRef, signable::Signable, *},
+    ciphersuite::{hash_ref::ProposalRef, signable::Signable},
     credentials::*,
     framing::{
         MlsContentBody, MlsMessageIn, MlsMessageOut, MlsPlaintext, ProcessedMessage, Sender,
@@ -1328,11 +1328,7 @@ fn test_valsem106(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
                         ciphersuite,
                         backend,
                         add_proposal.clone(),
-                        &Sender::build_member(
-                            alice_group
-                                .key_package_ref()
-                                .expect("error getting key package ref"),
-                        ),
+                        &Sender::build_member(alice_group.own_leaf_index()),
                     )
                     .expect("error creating queued proposal"),
                 )
@@ -1401,16 +1397,14 @@ fn test_valsem107(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
     // use the `remove_members` endpoint with two times the same KeyPackageRef
     // as input. We first create both commits and then make sure they look as
     // expected.
-    let bob_kp_ref = bob_group
-        .key_package_ref()
-        .expect("error getting key package ref");
+    let bob_leaf_index = bob_group.own_leaf_index();
 
     // We first go the manual route
     let _remove_proposal1 = alice_group
-        .propose_remove_member(backend, bob_kp_ref)
+        .propose_remove_member(backend, bob_leaf_index)
         .expect("error while creating remove proposal");
     let _remove_proposal2 = alice_group
-        .propose_remove_member(backend, bob_kp_ref)
+        .propose_remove_member(backend, bob_leaf_index)
         .expect("error while creating remove proposal");
     // While this shouldn't fail, it should produce a valid commit, i.e. one
     // that contains only one remove proposal.
@@ -1422,7 +1416,7 @@ fn test_valsem107(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
     alice_group.clear_pending_commit();
 
     let (combined_commit, _welcome) = alice_group
-        .remove_members(backend, &[bob_kp_ref.clone(), bob_kp_ref.clone()])
+        .remove_members(backend, &[bob_leaf_index, bob_leaf_index])
         .expect("error while trying to remove the same member twice");
 
     // Now let's verify that both commits only contain one proposal.
@@ -1447,7 +1441,7 @@ fn test_valsem107(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
         // Depending on the commit, the proposal is either inline or it's a
         // reference.
         let expected_inline_proposal = Proposal::Remove(RemoveProposal {
-            removed: bob_kp_ref.clone(),
+            removed: bob_leaf_index,
         });
         let expected_reference_proposal =
             ProposalRef::from_proposal(ciphersuite, backend, &expected_inline_proposal)
@@ -1492,32 +1486,31 @@ fn test_valsem108(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
     // There are two ways in which we could use the MlsGroup API to commit to
     // remove proposals: Create the proposals and then commit them manually or
     // use the `remove_members` endpoint.
-    let fake_kp_ref = hash_ref::HashReference::from_slice(&[0u8; 16]);
+    let fake_leaf_index = 9238754;
 
     // We first go the manual route
     let _remove_proposal1 = alice_group
-        .propose_remove_member(backend, &fake_kp_ref)
-        .expect("error while creating remove proposal");
-    // This should fail, since there is no member with the given hash reference.
-    let err = alice_group.commit_to_pending_proposals(backend).expect_err(
-        "no error while trying to commit to remove proposal targeting non group member",
-    );
+        .propose_remove_member(backend, fake_leaf_index)
+        .expect_err("Successfully created remove proposal for leaf not in the tree");
+    let _ = alice_group
+        .commit_to_pending_proposals(backend)
+        .expect("No error while committing empty proposals");
+    // FIXME: #1098 This shouldn't be necessary. Something is broken in the state logic.
+    alice_group.clear_pending_commit();
 
-    assert_eq!(
-        err,
-        CommitToPendingProposalsError::CreateCommitError(
-            CreateCommitError::ProposalValidationError(
-                ProposalValidationError::UnknownMemberRemoval
-            )
-        )
-    );
+    // Creating the proposal should fail already because the member is not known.
+    let err = alice_group
+        .propose_remove_member(backend, fake_leaf_index)
+        .expect_err("Successfully created remove proposal for unknown member");
+
+    assert_eq!(err, ProposeRemoveMemberError::UnknownMember);
 
     // Clear commit to try another way of committing a remove of a non-member.
     alice_group.clear_pending_commit();
     alice_group.clear_pending_proposals();
 
     let err = alice_group
-        .remove_members(backend, &[fake_kp_ref.clone()])
+        .remove_members(backend, &[fake_leaf_index])
         .expect_err("no error while trying to remove non-group-member");
 
     assert_eq!(
@@ -1543,10 +1536,8 @@ fn test_valsem108(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
     // Keep the original plaintext for positive test later.
     let original_plaintext = plaintext.clone();
 
-    // Use the fake kp_ref generated earlier to create a remove proposal.
-    let remove_proposal = Proposal::Remove(RemoveProposal {
-        removed: fake_kp_ref,
-    });
+    // Use a random leaf index that doesn't exist to create a remove proposal.
+    let remove_proposal = Proposal::Remove(RemoveProposal { removed: 987 });
 
     // Artificially add a proposal trying to remove someone that is not in a
     // group.
@@ -1987,11 +1978,7 @@ fn test_valsem111(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
             ciphersuite,
             backend,
             update_proposal.clone(),
-            &Sender::build_member(
-                alice_group
-                    .key_package_ref()
-                    .expect("error getting key package ref"),
-            ),
+            &Sender::build_member(alice_group.own_leaf_index()),
         )
         .expect("error creating queued proposal"),
     );

@@ -18,8 +18,6 @@
 // Finally, this module contains the [`treekem`] module, which allows the
 // encryption and decryption of updates to the tree.
 
-use std::collections::BTreeMap;
-
 use openmls_traits::{
     types::{Ciphersuite, CryptoError},
     OpenMlsCryptoProvider,
@@ -28,10 +26,10 @@ use serde::{Deserialize, Serialize};
 
 use crate::{
     binary_tree::{LeafIndex, MlsBinaryTree, MlsBinaryTreeError},
-    ciphersuite::hash_ref::KeyPackageRef,
     error::LibraryError,
     framing::SenderError,
-    key_packages::{KeyPackage, KeyPackageBundle},
+    group::Member,
+    key_packages::KeyPackageBundle,
     messages::{PathSecret, PathSecretError},
     schedule::CommitSecret,
 };
@@ -93,7 +91,7 @@ impl TreeSync {
         let key_package = key_package_bundle.key_package();
         // We generate our own leaf without a private key for now. The private
         // key is set in the `from_nodes` constructor below.
-        let node = Node::LeafNode(LeafNode::new(key_package.clone(), backend.crypto())?);
+        let node = Node::LeafNode(LeafNode::new(key_package.clone()));
         let path_secret: PathSecret = key_package_bundle.leaf_secret().clone().into();
         let commit_secret: CommitSecret = path_secret
             .derive_path_secret(backend, key_package.ciphersuite())?
@@ -157,17 +155,12 @@ impl TreeSync {
         backend: &impl OpenMlsCryptoProvider,
         ciphersuite: Ciphersuite,
         node_options: &[Option<Node>],
-        sender_kpr: &KeyPackageRef,
+        sender_index: u32,
         path_secret_option: impl Into<Option<PathSecret>>,
         key_package_bundle: KeyPackageBundle,
     ) -> Result<(Self, Option<CommitSecret>), TreeSyncFromNodesError> {
         let mut tree_sync =
             Self::from_nodes(backend, ciphersuite, node_options, key_package_bundle)?;
-
-        // Get the leaf index of the sender.
-        let sender_index = tree_sync
-            .leaf_index(sender_kpr)
-            .map_err(|_| LibraryError::custom("Sender not in tree"))?;
 
         // Populate the tree with secrets and derive a commit secret if a path
         // secret is given.
@@ -225,7 +218,6 @@ impl TreeSync {
                                 return Err(PublicTreeError::DuplicateKeyPackage.into());
                             }
                         }
-                        leaf_node.set_key_package_ref(backend.crypto())?;
                     }
                     node.into()
                 }
@@ -341,57 +333,92 @@ impl TreeSync {
         Ok(self.tree.leaf_count()?)
     }
 
-    /// Returns a [`BTreeMap`] mapping leaf indices to the corresponding
-    /// [`KeyPackage`] instances in the leaves. The map only contains full
-    /// nodes.
+    /// Returns a list of [`LeafIndex`]es containing only full nodes.
     ///
     /// This function should not fail and only returns a [`Result`], because it
     /// might throw a [LibraryError](TreeSyncError::LibraryError).
-    pub(crate) fn full_leaves(&self) -> Result<BTreeMap<LeafIndex, &KeyPackage>, LibraryError> {
-        let tsn_leaves: Vec<(usize, &TreeSyncNode)> = self
-            .tree
+    pub(crate) fn full_leaves(&self) -> Result<Vec<LeafIndex>, LibraryError> {
+        self.tree
             .leaves()?
             .drain(..)
             .enumerate()
             .filter(|(_, tsn)| tsn.node().is_some())
-            .collect();
-        let mut leaves = BTreeMap::new();
-        for (index, tsn_leaf) in tsn_leaves {
+            .map(|(index, _)| {
+                u32::try_from(index).map_err(|_| LibraryError::custom("Index outside of the tree"))
+            })
+            .collect()
+    }
+
+    /// Returns a list of [`Member`]s containing only full nodes.
+    ///
+    /// This function should not fail and only returns a [`Result`], because it
+    /// might throw a [LibraryError](TreeSyncError::LibraryError).
+    ///
+    /// XXX: For performance reasons we probably want to have this in a borrowing
+    ///      version as well. But it might well go away again.
+    pub(crate) fn full_leave_members(&self) -> Result<Vec<Member>, LibraryError> {
+        let mut leaves = self.tree.leaves()?;
+        let leaves = leaves
+            .drain(..)
+            .enumerate()
+            .filter(|(_, tsn)| tsn.node().is_some());
+        let mut out = vec![];
+        for (index, tsn) in leaves {
             let index = u32::try_from(index)
                 .map_err(|_| LibraryError::custom("Index outside of the tree"))?;
-            if let Some(ref node) = tsn_leaf.node() {
-                let leaf = node
-                    .as_leaf_node()
-                    .map_err(|_| LibraryError::custom("Expected a leaf node"))?;
-                leaves.insert(index, leaf.key_package());
-            }
+            let (encryption_key, signature_key, identity) = if let Some(node) = tsn.node() {
+                // This is a little verbose but will go away soon with #819.
+                if let Ok(leaf_node) = node.as_leaf_node() {
+                    (
+                        leaf_node.public_key(),
+                        leaf_node.key_package().credential().signature_key(),
+                        leaf_node.key_package().credential().identity(),
+                    )
+                } else {
+                    return Err(LibraryError::custom("The tree is broken."));
+                }
+            } else {
+                return Err(LibraryError::custom("The tree is broken."));
+            };
+            out.push(Member::new(
+                index,
+                encryption_key.as_slice().to_vec(),
+                signature_key.as_slice().to_vec(),
+                identity.to_vec(),
+            ))
         }
-        Ok(leaves)
+        Ok(out)
     }
 
-    /// Returns a [`BTreeMap`] mapping [`KeyPackageRef`]s to the corresponding
-    /// [`KeyPackage`] instances in the leaves. The map only contains full
-    /// nodes.
-    pub(crate) fn leaves(&self) -> BTreeMap<Option<KeyPackageRef>, &KeyPackage> {
-        let tsn_leaves = self.tree.nodes().iter().filter(|tsn| tsn.node().is_some());
-        let mut leaves = BTreeMap::new();
-        for tsn_leaf in tsn_leaves {
-            if let Some(Node::LeafNode(leaf)) = tsn_leaf.node() {
-                leaves.insert(leaf.key_package_ref().cloned(), leaf.key_package());
-            }
-        }
-        leaves
-    }
-
-    /// Return the [`KeyPackageRef`] of the node with the given `leaf_index`.
-    pub(crate) fn leaf_id(&self, leaf_index: u32) -> Option<KeyPackageRef> {
-        let tsn = self.tree.leaf(leaf_index).ok()?;
-        match tsn.node() {
-            Some(node) => {
-                let leaf = node.as_leaf_node().ok()?;
-                leaf.key_package_ref().cloned()
-            }
-            None => None,
+    /// Returns a [`TreeSyncError::UnsupportedExtension`] if an [`ExtensionType`]
+    /// in `extensions` is not supported by a leaf in this tree.
+    #[cfg(test)]
+    pub(crate) fn check_extension_support(
+        &self,
+        extensions: &[crate::extensions::ExtensionType],
+    ) -> Result<(), TreeSyncError> {
+        if self.tree.leaves()?.iter().any(|&tsn| {
+            tsn.node()
+                .as_ref()
+                .and_then(|node| {
+                    node.as_leaf_node()
+                        .and_then(|leaf_node| {
+                            leaf_node
+                                .key_package()
+                                .check_extension_support(extensions)
+                                .map_err(|_| {
+                                    NodeError::LibraryError(LibraryError::custom(
+                                        "This is never used, so we don't care",
+                                    ))
+                                }) // Here we get an error if the extensions are not supported
+                        })
+                        .ok() // Turn the error into None
+                })
+                .is_none() // Return true if this is none
+        }) {
+            Err(TreeSyncError::UnsupportedExtension)
+        } else {
+            Ok(())
         }
     }
 
@@ -432,49 +459,12 @@ impl TreeSync {
         })
     }
 
-    /// Return a reference to the leaf at the given `key_package_ref` or `None`
-    /// if the leaf is blank or outside the tree.
-    pub(crate) fn leaf_from_id(&self, key_package_ref: &KeyPackageRef) -> Option<&LeafNode> {
-        match self.leaf_index(key_package_ref) {
-            Ok(leaf_index) => match self.tree.leaf(leaf_index) {
-                Ok(leaf) => leaf
-                    .node()
-                    .as_ref()
-                    .and_then(|node| node.as_leaf_node().ok()),
-                Err(_) => None,
-            },
-            Err(_) => None,
+    /// Returns a [`TreeSyncError`] if the `leaf_index` is not a leaf in this
+    /// tree or empty.
+    pub(crate) fn leaf_is_in_tree(&self, leaf_index: LeafIndex) -> Result<(), TreeSyncError> {
+        if self.tree.leaf(leaf_index)?.node().is_none() {
+            return Err(TreeSyncError::LeafNotInTree);
         }
-    }
-
-    /// Get the [`LeafIndex`] for a given [`KeyPackageRef`].
-    ///
-    /// This should go away and this tree should handle [`KeyPackageRef`] instead.
-    /// See: #732
-    pub(crate) fn leaf_index(
-        &self,
-        key_package_ref: &KeyPackageRef,
-    ) -> Result<LeafIndex, TreeSyncError> {
-        self.tree
-            .nodes()
-            .iter()
-            .enumerate()
-            .find(|(_i, node)| {
-                if let Some(n) = node.node() {
-                    if let Ok(leaf_node) = n.as_leaf_node() {
-                        if let Some(kpr) = leaf_node.key_package_ref() {
-                            kpr == key_package_ref
-                        } else {
-                            false
-                        }
-                    } else {
-                        false
-                    }
-                } else {
-                    false
-                }
-            })
-            .map(|(node_index, _)| (node_index / 2) as u32)
-            .ok_or(TreeSyncError::KeyPackageRefNotInTree)
+        Ok(())
     }
 }

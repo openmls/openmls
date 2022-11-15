@@ -39,8 +39,7 @@ use core_group::{proposals::QueuedProposal, staged_commit::StagedCommit};
 use openmls_traits::OpenMlsCryptoProvider;
 
 use crate::{
-    ciphersuite::{hash_ref::KeyPackageRef, signable::Verifiable},
-    error::LibraryError,
+    ciphersuite::signable::Verifiable, error::LibraryError,
     tree::sender_ratchet::SenderRatchetConfiguration,
 };
 
@@ -79,28 +78,13 @@ impl DecryptedMessage {
         // This will be refactored with #265.
         if let MlsMessageBody::Ciphertext(ciphertext) = inbound_message.mls_message.body {
             let ciphersuite = group.ciphersuite();
-            let (message_secrets, old_leaves) = group
+            // TODO: #819 The old leaves should not be needed any more.
+            //       Revisit when the transition is further along.
+            let (message_secrets, _old_leaves) = group
                 .message_secrets_and_leaves_mut(ciphertext.epoch())
                 .map_err(|_| MessageDecryptionError::AeadError)?;
             let sender_data = ciphertext.sender_data(message_secrets, backend, ciphersuite)?;
-            let sender_index = match group.sender_index(&sender_data.sender) {
-                Ok(i) => i,
-                Err(_) => {
-                    // If the message is old, the tree might have changed.
-                    // Let's look for the sender in the old leaves.
-                    old_leaves
-                        .into_iter()
-                        .find_map(|(index, kpr)| {
-                            if kpr == sender_data.sender {
-                                Some(index)
-                            } else {
-                                None
-                            }
-                        })
-                        .ok_or(ValidationError::UnknownMember)?
-                }
-            };
-            let sender_index = SecretTreeLeafIndex(sender_index);
+            let sender_index = SecretTreeLeafIndex(sender_data.leaf_index);
             let message_secrets = group
                 .message_secrets_mut(ciphertext.epoch())
                 .map_err(|_| MessageDecryptionError::AeadError)?;
@@ -156,22 +140,30 @@ impl DecryptedMessage {
     pub(crate) fn credential(
         &self,
         treesync: &TreeSync,
-        old_leaves: &[(u32, KeyPackageRef)],
+        old_leaves: &[Member],
     ) -> Result<Credential, ValidationError> {
         let sender = self.sender();
         match sender {
-            Sender::Member(hash_ref) => {
-                match treesync.leaf_from_id(hash_ref) {
+            Sender::Member(leaf_index) => {
+                match treesync
+                    .leaf(*leaf_index)
+                    .map_err(|_| ValidationError::UnknownMember)?
+                {
                     Some(sender_leaf) => Ok(sender_leaf.key_package().credential().clone()),
                     None => {
                         // This might not actually be an error but the sender's
                         // key package changed. Let's check old leaves we still
                         // have around.
-                        if let Some((sender_index, _)) =
-                            old_leaves.iter().find(|(_, kpr)| kpr == hash_ref)
+                        // TODO: As part of #819 looking up old leaves changes.
+                        //       Just checking the index is probably not enough.
+                        //       Revisit when the transition is further along
+                        //       and we have better test cases.
+                        if let Some(Member { index, .. }) = old_leaves
+                            .iter()
+                            .find(|&old_member| *leaf_index == old_member.index)
                         {
                             match treesync
-                                .leaf(*sender_index)
+                                .leaf(*index)
                                 .map_err(|_| ValidationError::UnknownMember)?
                             {
                                 Some(node) => Ok(node.key_package().credential().clone()),

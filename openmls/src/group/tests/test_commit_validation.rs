@@ -109,16 +109,11 @@ fn test_valsem200(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
         mut bob_group,
     } = validation_test_setup(PURE_PLAINTEXT_WIRE_FORMAT_POLICY, ciphersuite, backend);
 
-    let alice_hash_ref = alice_group
-        .key_package_ref()
-        .cloned()
-        .expect("Couldn't find key package ref.");
-
     // Since Alice won't commit to her own removal directly, we have to create
     // proposal and commit independently and then insert the proposal into the
     // commit manually.
     let serialized_proposal_message = alice_group
-        .propose_remove_member(backend, &alice_hash_ref)
+        .propose_remove_member(backend, alice_group.own_leaf_index())
         .expect("error creating commit")
         .tls_serialize_detached()
         .expect("serialization error");
@@ -339,13 +334,7 @@ fn test_valsem201(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
 
     // Create the remove.
     let serialized_remove = alice_group
-        .remove_members(
-            backend,
-            &[bob_group
-                .key_package_ref()
-                .cloned()
-                .expect("error retrieving kp ref")],
-        )
+        .remove_members(backend, &[bob_group.own_leaf_index()])
         .expect("Error creating remove")
         .tls_serialize_detached()
         .expect("Could not serialize message.");

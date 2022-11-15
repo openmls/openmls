@@ -6,7 +6,6 @@ use tls_codec::{
 };
 
 use crate::{
-    ciphersuite::hash_ref::{HashReference, KeyPackageRef},
     error::LibraryError,
     tree::{
         index::SecretTreeLeafIndex, secret_tree::SecretType,
@@ -84,11 +83,6 @@ impl MlsCiphertext {
         if mls_plaintext.wire_format() != WireFormat::MlsCiphertext {
             return Err(MessageEncryptionError::WrongWireFormat);
         }
-        // Check that the plaintext has the right sender type
-        let hash_ref = match mls_plaintext.sender() {
-            Sender::Member(hash_ref) => hash_ref,
-            _ => return Err(MessageEncryptionError::SenderError(SenderError::NotAMember)),
-        };
         // Serialize the content AAD
         let mls_ciphertext_content_aad = MlsCiphertextContentAad {
             group_id: header.group_id.clone(),
@@ -144,7 +138,16 @@ impl MlsCiphertext {
         let mls_sender_data_aad_bytes = mls_sender_data_aad
             .tls_serialize_detached()
             .map_err(LibraryError::missing_bound_check)?;
-        let sender_data = MlsSenderData::from_sender(hash_ref, generation, reuse_guard);
+        let leaf_index = mls_plaintext
+            .sender()
+            .as_member()
+            .ok_or(MessageEncryptionError::SenderError(SenderError::NotAMember))?;
+        let sender_data = MlsSenderData::from_sender(
+            // XXX: #106 This will fail for messages with a non-member sender.
+            leaf_index,
+            generation,
+            reuse_guard,
+        );
         // Encrypt the sender data
         let encrypted_sender_data = sender_data_key
             .aead_seal(
@@ -385,20 +388,16 @@ impl MlsCiphertext {
 #[derive(Clone, TlsDeserialize, TlsSerialize, TlsSize)]
 #[cfg_attr(test, derive(Debug))]
 pub(crate) struct MlsSenderData {
-    pub(crate) sender: KeyPackageRef,
+    pub(crate) leaf_index: u32,
     pub(crate) generation: u32,
     pub(crate) reuse_guard: ReuseGuard,
 }
 
 impl MlsSenderData {
     /// Build new [`MlsSenderData`] for a [`Sender`].
-    pub(crate) fn from_sender(
-        hash_ref: &HashReference,
-        generation: u32,
-        reuse_guard: ReuseGuard,
-    ) -> Self {
+    pub(crate) fn from_sender(leaf_index: u32, generation: u32, reuse_guard: ReuseGuard) -> Self {
         MlsSenderData {
-            sender: hash_ref.clone(),
+            leaf_index,
             generation,
             reuse_guard,
         }

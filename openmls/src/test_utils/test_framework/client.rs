@@ -185,17 +185,11 @@ impl Client {
     /// Get the credential and the index of each group member of the group with
     /// the given id. Returns an error if no group exists with the given group
     /// id.
-    pub fn get_members_of_group(
-        &self,
-        group_id: &GroupId,
-    ) -> Result<Vec<(usize, Credential)>, ClientError> {
+    pub fn get_members_of_group(&self, group_id: &GroupId) -> Result<Vec<Member>, ClientError> {
         let groups = self.groups.read().expect("An unexpected error occurred.");
         let group = groups.get(group_id).ok_or(ClientError::NoMatchingGroup)?;
-        let members = group.indexed_members().expect("error getting members");
-        Ok(members
-            .into_iter()
-            .map(|(index, kp)| (index as usize, kp.credential().clone()))
-            .collect())
+        let members = group.members().expect("error getting members");
+        Ok(members)
     }
 
     /// Have the client either propose or commit (depending on the
@@ -264,7 +258,7 @@ impl Client {
         &self,
         action_type: ActionType,
         group_id: &GroupId,
-        targets: &[KeyPackageRef],
+        targets: &[u32],
     ) -> Result<(Vec<MlsMessageOut>, Option<Welcome>), ClientError> {
         let mut groups = self.groups.write().expect("An unexpected error occurred.");
         let group = groups
@@ -278,7 +272,7 @@ impl Client {
             ActionType::Proposal => {
                 let mut messages = Vec::new();
                 for target in targets {
-                    let message = group.propose_remove_member(&self.crypto, target)?;
+                    let message = group.propose_remove_member(&self.crypto, *target)?;
                     messages.push(message);
                 }
                 (messages, None)
@@ -287,10 +281,10 @@ impl Client {
         Ok(action_results)
     }
 
-    /// Get the [`KeyPackageRef`] of this client in the given group.
-    pub fn key_package_ref(&self, group_id: &GroupId) -> Option<KeyPackageRef> {
-        let groups = self.groups.read().expect("An unexpected error occurred.");
-        let group = groups.get(group_id).expect("An unexpected error occurred.");
-        group.key_package_ref().cloned()
+    /// Get the identity of this client in the given group.
+    pub fn identity(&self, group_id: &GroupId) -> Option<Vec<u8>> {
+        let groups = self.groups.read().unwrap();
+        let group = groups.get(group_id).unwrap();
+        group.own_identity().map(|s| s.to_vec())
     }
 }

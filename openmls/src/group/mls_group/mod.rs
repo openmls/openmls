@@ -7,7 +7,7 @@ use super::{
     staged_commit::StagedCommit,
 };
 use crate::{
-    ciphersuite::{hash_ref::KeyPackageRef, signable::Signable},
+    ciphersuite::signable::Signable,
     credentials::{Credential, CredentialBundle},
     error::LibraryError,
     framing::*,
@@ -236,9 +236,14 @@ impl MlsGroup {
             .credential())
     }
 
-    /// Returns the [`KeyPackageRef`] of the client owning this group.
-    pub fn key_package_ref(&self) -> Option<&KeyPackageRef> {
-        self.group.key_package_ref()
+    /// Get the identity of the client's [`Credential`] owning this group.
+    pub fn own_identity(&self) -> Option<&[u8]> {
+        self.group.own_identity()
+    }
+
+    /// Returns the leaf index of the client in the tree owning this group.
+    pub fn own_leaf_index(&self) -> u32 {
+        self.group.treesync().own_leaf_index()
     }
 
     /// Returns the group ID.
