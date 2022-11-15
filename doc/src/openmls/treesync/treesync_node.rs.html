@@ -150,7 +150,6 @@
 <span id="150">150</span>
 <span id="151">151</span>
 <span id="152">152</span>
-<span id="153">153</span>
 </pre><pre class="rust"><code><span class="doccomment">//! This module contains the [`TreeSyncNode`] struct and its implementation.
 
 </span><span class="kw">use </span>openmls_traits::{types::Ciphersuite, OpenMlsCryptoProvider};
@@ -212,10 +211,9 @@
     </span><span class="kw">pub</span>(<span class="kw">in </span><span class="kw">crate</span>::treesync) <span class="kw">fn </span>node_without_private_key(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;Node&gt; {
         <span class="kw">if let </span><span class="prelude-val">Some</span>(node) = <span class="self">self</span>.node() {
             <span class="kw">match </span>node {
-                Node::LeafNode(leaf_node) =&gt; Node::LeafNode(LeafNode::new_with_ref(
-                    leaf_node.key_package().clone(),
-                    leaf_node.key_package_ref().cloned(),
-                )),
+                Node::LeafNode(leaf_node) =&gt; {
+                    Node::LeafNode(LeafNode::new(leaf_node.key_package().clone()))
+                }
                 Node::ParentNode(parent_node) =&gt; {
                     Node::ParentNode(parent_node.clone_without_private_key())
                 }

@@ -482,12 +482,6 @@
 <span id="482">482</span>
 <span id="483">483</span>
 <span id="484">484</span>
-<span id="485">485</span>
-<span id="486">486</span>
-<span id="487">487</span>
-<span id="488">488</span>
-<span id="489">489</span>
-<span id="490">490</span>
 </pre><pre class="rust"><code><span class="kw">use </span><span class="kw">crate</span>::treesync::errors::TreeSyncAddLeaf;
 <span class="kw">use </span><span class="kw">crate</span>::treesync::{diff::StagedTreeSyncDiff, treekem::DecryptPathParams};
 
@@ -565,11 +559,7 @@
         </span><span class="kw">let </span>sender = mls_plaintext.sender();
 
         <span class="kw">if let </span>Sender::Member(member) = sender {
-            <span class="kw">if </span>member
-                == <span class="self">self
-                    </span>.key_package_ref()
-                    .ok_or_else(|| LibraryError::custom(<span class="string">&quot;Expected own key package reference&quot;</span>))<span class="question-mark">?
-            </span>{
+            <span class="kw">if </span><span class="kw-2">*</span>member == <span class="self">self</span>.own_leaf_index() {
                 <span class="kw">return </span><span class="prelude-val">Err</span>(StageCommitError::OwnCommit);
             }
         }
@@ -618,12 +608,12 @@
         </span><span class="self">self</span>.validate_remove_proposals(<span class="kw-2">&amp;</span>proposal_queue)<span class="question-mark">?</span>;
 
         <span class="kw">let </span>public_key_set = <span class="kw">match </span>sender {
-            Sender::Member(hash_ref) =&gt; {
+            Sender::Member(leaf_index) =&gt; {
                 <span class="comment">// ValSem109
                 // ValSem110
                 // ValSem111
                 // ValSem112
-                </span><span class="self">self</span>.validate_update_proposals(<span class="kw-2">&amp;</span>proposal_queue, hash_ref)<span class="question-mark">?
+                </span><span class="self">self</span>.validate_update_proposals(<span class="kw-2">&amp;</span>proposal_queue, <span class="kw-2">*</span>leaf_index)<span class="question-mark">?
             </span>}
             Sender::External(<span class="kw">_</span>) =&gt; {
                 <span class="comment">// A commit cannot be issued by a pre-configured sender.
@@ -656,14 +646,13 @@
 
         <span class="comment">// Now we can actually look at the public keys as they might have changed.
         </span><span class="kw">let </span>sender_index = <span class="kw">match </span>sender {
-            Sender::Member(hash_ref) =&gt; {
+            Sender::Member(leaf_index) =&gt; {
                 <span class="comment">// Own commits have to be merged directly instead of staging them.
-                // We can&#39;t check for this explicitly. But if it&#39;s an own commit
-                // we won&#39;t be able to get the sender index because the kpr is our
-                // own new one that&#39;s only in the staged commit.
-                </span><span class="self">self</span>.sender_index(hash_ref)
-                    .map_err(|<span class="kw">_</span>| StageCommitError::InconsistentSenderIndex)<span class="question-mark">?
-            </span>}
+                </span><span class="kw">if </span>leaf_index == <span class="kw-2">&amp;</span><span class="self">self</span>.own_leaf_index() {
+                    <span class="kw">return </span><span class="prelude-val">Err</span>(StageCommitError::InconsistentSenderIndex);
+                }
+                <span class="kw-2">*</span>leaf_index
+            }
             Sender::NewMemberCommit =&gt; diff.free_leaf_index()<span class="question-mark">?</span>,
             <span class="kw">_ </span>=&gt; {
                 <span class="kw">return </span><span class="prelude-val">Err</span>(StageCommitError::SenderTypeExternal);
@@ -706,9 +695,8 @@
             // there are no blanks and the new member extended the tree to
             // fit in.
             </span><span class="kw">if </span>apply_proposals_values.external_init_secret_option.is_some() {
-                <span class="kw">let </span>sender_leaf_index = diff
-                    .add_leaf(key_package.clone(), backend.crypto())
-                    .map_err(|e| <span class="kw">match </span>e {
+                <span class="kw">let </span>sender_leaf_index =
+                    diff.add_leaf(key_package.clone()).map_err(|e| <span class="kw">match </span>e {
                         TreeSyncAddLeaf::LibraryError(e) =&gt; e.into(),
                         TreeSyncAddLeaf::TreeFull =&gt; StageCommitError::TooManyNewMembers,
                     })<span class="question-mark">?</span>;

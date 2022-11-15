@@ -458,6 +458,9 @@
 <span id="458">458</span>
 <span id="459">459</span>
 <span id="460">460</span>
+<span id="461">461</span>
+<span id="462">462</span>
+<span id="463">463</span>
 </pre><pre class="rust"><code><span class="doccomment">//! # MLS group errors
 //!
 //! This module contains errors that originate at lower levels and are partially re-exported in errors thrown by functions of the `MlsGroup` API.
@@ -914,6 +917,9 @@
     <span class="doccomment">/// See [`KeyPackageExtensionSupportError`] for more details.
     </span><span class="attribute">#[error(transparent)]
     </span>KeyPackageExtensionSupport(<span class="attribute">#[from] </span>KeyPackageExtensionSupportError),
+    <span class="doccomment">/// See [`TreeSyncError`] for more details.
+    </span><span class="attribute">#[error(transparent)]
+    </span>TreeSyncError(<span class="attribute">#[from] </span>TreeSyncError),
     <span class="doccomment">/// See [`ExtensionError`] for more details.
     </span><span class="attribute">#[error(transparent)]
     </span>Extension(<span class="attribute">#[from] </span>ExtensionError),

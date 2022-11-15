@@ -203,6 +203,12 @@
 <span id="203">203</span>
 <span id="204">204</span>
 <span id="205">205</span>
+<span id="206">206</span>
+<span id="207">207</span>
+<span id="208">208</span>
+<span id="209">209</span>
+<span id="210">210</span>
+<span id="211">211</span>
 </pre><pre class="rust"><code><span class="doccomment">//! TreeSync errors
 //!
 //! This module exposes [`ApplyUpdatePathError`] and [`PublicTreeError`].
@@ -267,15 +273,18 @@
 
 <span class="comment">// === Crate errors ===
 
+// TODO: This will go away in #819 again.
+// `UnsupportedExtension` is only used in tests for now
+</span><span class="attribute">#[allow(dead_code)]
 </span><span class="doccomment">/// TreeSync error
 </span><span class="attribute">#[derive(Error, Debug, PartialEq, Clone)]
 </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">enum </span>TreeSyncError {
     <span class="doccomment">/// See [`LibraryError`] for more details.
     </span><span class="attribute">#[error(transparent)]
     </span>LibraryError(<span class="attribute">#[from] </span>LibraryError),
-    <span class="doccomment">/// Found two KeyPackages with the same public key.
-    </span><span class="attribute">#[error(<span class="string">&quot;Found two KeyPackages with the same public key.&quot;</span>)]
-    </span>KeyPackageRefNotInTree,
+    <span class="doccomment">/// A requested leaf is not in the tree.
+    </span><span class="attribute">#[error(<span class="string">&quot;The leaf does not exist in the tree.&quot;</span>)]
+    </span>LeafNotInTree,
     <span class="doccomment">/// See [`TreeSyncSetPathError`] for more details.
     </span><span class="attribute">#[error(transparent)]
     </span>SetPathError(<span class="attribute">#[from] </span>TreeSyncSetPathError),
@@ -300,6 +309,9 @@
     <span class="doccomment">/// See [`CryptoError`] for more details.
     </span><span class="attribute">#[error(transparent)]
     </span>CryptoError(<span class="attribute">#[from] </span>CryptoError),
+    <span class="doccomment">/// An extension type is not supported by a leaf in the tree.
+    </span><span class="attribute">#[error(<span class="string">&quot;An extension type is not supported by a leaf in the tree.&quot;</span>)]
+    </span>UnsupportedExtension,
 }
 
 <span class="doccomment">/// TreeSync set path error

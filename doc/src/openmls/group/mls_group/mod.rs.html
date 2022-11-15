@@ -411,6 +411,11 @@
 <span id="411">411</span>
 <span id="412">412</span>
 <span id="413">413</span>
+<span id="414">414</span>
+<span id="415">415</span>
+<span id="416">416</span>
+<span id="417">417</span>
+<span id="418">418</span>
 </pre><pre class="rust"><code><span class="doccomment">//! MLS Group
 //!
 //! This module contains [`MlsGroup`] and its submodules.
@@ -420,7 +425,7 @@
     staged_commit::StagedCommit,
 };
 <span class="kw">use crate</span>::{
-    ciphersuite::{hash_ref::KeyPackageRef, signable::Signable},
+    ciphersuite::signable::Signable,
     credentials::{Credential, CredentialBundle},
     error::LibraryError,
     framing::<span class="kw-2">*</span>,
@@ -649,9 +654,14 @@
             .credential())
     }
 
-    <span class="doccomment">/// Returns the [`KeyPackageRef`] of the client owning this group.
-    </span><span class="kw">pub fn </span>key_package_ref(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>KeyPackageRef&gt; {
-        <span class="self">self</span>.group.key_package_ref()
+    <span class="doccomment">/// Get the identity of the client&#39;s [`Credential`] owning this group.
+    </span><span class="kw">pub fn </span>own_identity(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>[u8]&gt; {
+        <span class="self">self</span>.group.own_identity()
+    }
+
+    <span class="doccomment">/// Returns the leaf index of the client in the tree owning this group.
+    </span><span class="kw">pub fn </span>own_leaf_index(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; u32 {
+        <span class="self">self</span>.group.treesync().own_leaf_index()
     }
 
     <span class="doccomment">/// Returns the group ID.

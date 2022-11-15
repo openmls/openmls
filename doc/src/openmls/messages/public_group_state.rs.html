@@ -233,10 +233,6 @@
 <span id="233">233</span>
 <span id="234">234</span>
 <span id="235">235</span>
-<span id="236">236</span>
-<span id="237">237</span>
-<span id="238">238</span>
-<span id="239">239</span>
 </pre><pre class="rust"><code><span class="doccomment">//! This module contains the types and implementations for the
 //! `PublicGroupState` and `PublicGroupStateTbs` structs of the MLS spec. The
 //! `PublicGroupState` implements type-enforced verification using the set of
@@ -247,7 +243,6 @@
 
 <span class="kw">use crate</span>::{
     ciphersuite::{
-        hash_ref::KeyPackageRef,
         signable::{Signable, SignedStruct, Verifiable, VerifiedStruct},
         HpkePublicKey, Signature,
     },
@@ -289,7 +284,7 @@
     <span class="kw">pub</span>(<span class="kw">crate</span>) group_context_extensions: TlsVecU32&lt;Extension&gt;,
     <span class="kw">pub</span>(<span class="kw">crate</span>) other_extensions: TlsVecU32&lt;Extension&gt;,
     <span class="kw">pub</span>(<span class="kw">crate</span>) external_pub: HpkePublicKey,
-    <span class="kw">pub</span>(<span class="kw">crate</span>) signer: KeyPackageRef,
+    <span class="kw">pub</span>(<span class="kw">crate</span>) signer: u32,
     <span class="kw">pub</span>(<span class="kw">crate</span>) signature: Signature,
 }
 
@@ -327,8 +322,8 @@
     }
 
     <span class="doccomment">/// Returns a reference to the [`KeyPackageRef`] of the signer.
-    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>signer(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>KeyPackageRef {
-        <span class="kw-2">&amp;</span><span class="self">self</span>.tbs.signer
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>signer(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; u32 {
+        <span class="self">self</span>.tbs.signer
     }
 
     <span class="doccomment">/// Returns a reference to the non [`GroupContext`] extensions of the unverified
@@ -422,7 +417,7 @@
     <span class="kw">pub</span>(<span class="kw">crate</span>) group_context_extensions: TlsVecU32&lt;Extension&gt;,
     <span class="kw">pub</span>(<span class="kw">crate</span>) other_extensions: TlsVecU32&lt;Extension&gt;,
     <span class="kw">pub</span>(<span class="kw">crate</span>) external_pub: HpkePublicKey,
-    <span class="kw">pub</span>(<span class="kw">crate</span>) signer: KeyPackageRef,
+    <span class="kw">pub</span>(<span class="kw">crate</span>) signer: u32,
 }
 
 <span class="kw">impl </span>PublicGroupStateTbs {
@@ -457,10 +452,7 @@
             other_extensions,
             external_pub: external_pub.into(),
             ciphersuite,
-            signer: core_group
-                .key_package_ref()
-                .cloned()
-                .ok_or_else(|| LibraryError::custom(<span class="string">&quot;missing key package ref&quot;</span>))<span class="question-mark">?</span>,
+            signer: core_group.own_leaf_index(),
         })
     }
 }

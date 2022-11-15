@@ -263,19 +263,6 @@
 <span id="263">263</span>
 <span id="264">264</span>
 <span id="265">265</span>
-<span id="266">266</span>
-<span id="267">267</span>
-<span id="268">268</span>
-<span id="269">269</span>
-<span id="270">270</span>
-<span id="271">271</span>
-<span id="272">272</span>
-<span id="273">273</span>
-<span id="274">274</span>
-<span id="275">275</span>
-<span id="276">276</span>
-<span id="277">277</span>
-<span id="278">278</span>
 </pre><pre class="rust"><code><span class="kw">use </span>core_group::{proposals::QueuedProposal, staged_commit::StagedCommit};
 
 <span class="kw">use </span><span class="kw">crate</span>::group::{errors::ValidationError, mls_group::errors::UnverifiedMessageError};
@@ -524,30 +511,17 @@
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(), LibraryError&gt; {
         <span class="comment">// Save the past epoch
         </span><span class="kw">let </span>past_epoch = <span class="self">self</span>.context().epoch();
-        <span class="comment">// We may need to keep a mapping from key package references to indices.
+        <span class="comment">// Get all the full leaves
         </span><span class="kw">let </span>leaves = <span class="self">self
             </span>.treesync()
-            .full_leaves()
+            .full_leave_members()
             <span class="comment">// This should disappear after refactoring TreeSync, fetching the leaves should never fail
             </span>.map_err(|<span class="kw">_</span>| LibraryError::custom(<span class="string">&quot;Unexpected error in TreeSync&quot;</span>))<span class="question-mark">?</span>;
-        <span class="kw">let </span><span class="kw-2">mut </span>my_leaves = Vec::with_capacity(leaves.len());
-        <span class="kw">for </span>(<span class="kw-2">&amp;</span>i, <span class="kw">_</span>) <span class="kw">in </span>leaves.iter() {
-            my_leaves.push((
-                i,
-                <span class="self">self</span>.treesync().leaf_id(i).ok_or_else(|| {
-                    LibraryError::custom(
-                        <span class="string">&quot;Unable to get the key package reference for a leaf from \
-                         tree. This indicates a bug in the library where the tree \
-                         isn&#39;t built correctly.&quot;</span>,
-                    )
-                })<span class="question-mark">?</span>,
-            ))
-        }
         <span class="comment">// Merge the staged commit into the group state and store the secret tree from the
         // previous epoch in the message secrets store.
         </span><span class="kw">if let </span><span class="prelude-val">Some</span>(message_secrets) = <span class="self">self</span>.merge_commit(staged_commit)<span class="question-mark">? </span>{
             <span class="self">self</span>.message_secrets_store
-                .add(past_epoch, message_secrets, my_leaves);
+                .add(past_epoch, message_secrets, leaves);
         }
         <span class="comment">// Empty the proposal store
         </span>proposal_store.empty();

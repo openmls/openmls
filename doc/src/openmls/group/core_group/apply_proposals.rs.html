@@ -189,14 +189,6 @@
 <span id="189">189</span>
 <span id="190">190</span>
 <span id="191">191</span>
-<span id="192">192</span>
-<span id="193">193</span>
-<span id="194">194</span>
-<span id="195">195</span>
-<span id="196">196</span>
-<span id="197">197</span>
-<span id="198">198</span>
-<span id="199">199</span>
 </pre><pre class="rust"><code><span class="kw">use </span>std::collections::HashSet;
 
 <span class="kw">use </span>openmls_traits::OpenMlsCryptoProvider;
@@ -294,15 +286,11 @@
                 </span><span class="kw">let </span>sender = queued_proposal.sender();
                 <span class="comment">// Only members can send update proposals
                 // ValSem112
-                </span><span class="kw">let </span>hash_ref = <span class="kw">match </span>sender {
-                    Sender::Member(hash_ref) =&gt; hash_ref,
+                </span><span class="kw">let </span>sender_index = <span class="kw">match </span>sender {
+                    Sender::Member(sender_index) =&gt; <span class="kw-2">*</span>sender_index,
                     <span class="comment">// This should not happen with validated proposals
                     </span><span class="kw">_ </span>=&gt; <span class="kw">return </span><span class="prelude-val">Err</span>(LibraryError::custom(<span class="string">&quot;Update proposal from non-member&quot;</span>).into()),
                 };
-                <span class="kw">let </span>sender_index = <span class="self">self
-                    </span>.sender_index(hash_ref)
-                    <span class="comment">// This should not happen with validated proposals
-                    </span>.map_err(|<span class="kw">_</span>| LibraryError::custom(<span class="string">&quot;Update proposal from non-member&quot;</span>))<span class="question-mark">?</span>;
                 <span class="kw">let </span>leaf_node: LeafNode = <span class="kw">if </span>sender_index == <span class="self">self</span>.tree.own_leaf_index() {
                     <span class="kw">let </span>own_kpb = <span class="kw">match </span>key_package_bundles
                         .iter()
@@ -312,10 +300,10 @@
                         <span class="comment">// We lost the KeyPackageBundle apparently
                         </span><span class="prelude-val">None </span>=&gt; <span class="kw">return </span><span class="prelude-val">Err</span>(ApplyProposalsError::MissingKeyPackageBundle),
                     };
-                    LeafNode::new_from_bundle(own_kpb.clone(), backend.crypto())
+                    LeafNode::new_from_bundle(own_kpb.clone())
                 } <span class="kw">else </span>{
-                    LeafNode::new(update_proposal.key_package().clone(), backend.crypto())
-                }<span class="question-mark">?</span>;
+                    LeafNode::new(update_proposal.key_package().clone())
+                };
                 diff.update_leaf(leaf_node, sender_index)
                     .map_err(|<span class="kw">_</span>| LibraryError::custom(<span class="string">&quot;Update proposal from non-member&quot;</span>))<span class="question-mark">?</span>;
             }
@@ -326,17 +314,13 @@
             has_removes = <span class="bool-val">true</span>;
             <span class="kw">if let </span>Proposal::Remove(remove_proposal) = queued_proposal.proposal() {
                 <span class="comment">// Check if we got removed from the group
-                </span><span class="kw">if let </span><span class="prelude-val">Some</span>(own_kpr) = <span class="self">self</span>.key_package_ref() {
-                    <span class="kw">if </span>remove_proposal.removed() == own_kpr {
-                        self_removed = <span class="bool-val">true</span>;
-                    }
+                </span><span class="kw">if </span>remove_proposal.removed() == <span class="self">self</span>.own_leaf_index() {
+                    self_removed = <span class="bool-val">true</span>;
                 }
                 <span class="comment">// Blank the direct path of the removed member
-                </span><span class="kw">if let </span><span class="prelude-val">Ok</span>(removed_index) = <span class="self">self</span>.sender_index(remove_proposal.removed()) {
-                    diff.blank_leaf(removed_index)
-                        <span class="comment">// The remove proposals were validated before, so this should not happen
-                        </span>.map_err(|<span class="kw">_</span>| LibraryError::custom(<span class="string">&quot;Removed member not in tree&quot;</span>))<span class="question-mark">?</span>;
-                }
+                </span>diff.blank_leaf(remove_proposal.removed())
+                    <span class="comment">// The remove proposals were validated before, so this should not happen
+                    </span>.map_err(|<span class="kw">_</span>| LibraryError::custom(<span class="string">&quot;Removed member not in tree&quot;</span>))<span class="question-mark">?</span>;
             }
         }
 
@@ -355,7 +339,7 @@
         </span><span class="kw">let </span><span class="kw-2">mut </span>invitation_list = Vec::new();
         <span class="kw">for </span>add_proposal <span class="kw">in </span>add_proposals {
             <span class="kw">let </span>leaf_index = diff
-                .add_leaf(add_proposal.key_package().clone(), backend.crypto())
+                .add_leaf(add_proposal.key_package().clone())
                 <span class="comment">// TODO #810
                 </span>.map_err(|<span class="kw">_</span>| LibraryError::custom(<span class="string">&quot;Tree full: cannot add more members&quot;</span>))<span class="question-mark">?</span>;
             invitation_list.push((leaf_index, add_proposal.clone()))

@@ -65,10 +65,17 @@
 <span id="65">65</span>
 <span id="66">66</span>
 <span id="67">67</span>
+<span id="68">68</span>
+<span id="69">69</span>
+<span id="70">70</span>
+<span id="71">71</span>
+<span id="72">72</span>
+<span id="73">73</span>
+<span id="74">74</span>
+<span id="75">75</span>
 </pre><pre class="rust"><code><span class="doccomment">//! # The sender of a message.
 
 </span><span class="kw">use super</span>::<span class="kw-2">*</span>;
-<span class="kw">use </span><span class="kw">crate</span>::ciphersuite::hash_ref::KeyPackageRef;
 <span class="kw">use </span>tls_codec::{TlsDeserialize, TlsSerialize, TlsSize};
 
 <span class="doccomment">/// All possible sender types according to the MLS protocol spec.
@@ -105,7 +112,7 @@
 </span><span class="kw">pub enum </span>Sender {
     <span class="doccomment">/// The sender is a member of the group
     </span><span class="attribute">#[tls_codec(discriminant = <span class="number">1</span>)]
-    </span>Member(KeyPackageRef),
+    </span>Member(u32),
     <span class="doccomment">/// The sender is not a member of the group and has an external value instead
     </span>External(TlsByteVecU8),
     <span class="doccomment">/// The sender is a new member of the group that joins itself through
@@ -119,17 +126,26 @@
 <span class="kw">impl </span>Sender {
     <span class="doccomment">/// Build a [`Sender`] from [`MlsSenderData`].
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>from_sender_data(sender_data: MlsSenderData) -&gt; <span class="self">Self </span>{
-        <span class="self">Self</span>::Member(sender_data.sender)
+        <span class="self">Self</span>::Member(sender_data.leaf_index)
     }
 
     <span class="doccomment">/// Create a member sender.
-    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>build_member(kpr: <span class="kw-2">&amp;</span>KeyPackageRef) -&gt; <span class="self">Self </span>{
-        <span class="self">Self</span>::Member(kpr.clone())
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>build_member(leaf_index: u32) -&gt; <span class="self">Self </span>{
+        <span class="self">Self</span>::Member(leaf_index)
     }
 
     <span class="doccomment">/// Returns true if this [`Sender`] has [`SenderType::Member`].
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>is_member(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; bool {
         <span class="macro">matches!</span>(<span class="self">self</span>, Sender::Member(<span class="kw">_</span>))
+    }
+
+    <span class="doccomment">/// Returns the leaf index of the [`Sender`] or [`None`] if this
+    /// is not a [`Sender::Member`].
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>as_member(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;u32&gt; {
+        <span class="kw">match </span><span class="self">self </span>{
+            Sender::Member(leaf_index) =&gt; <span class="prelude-val">Some</span>(<span class="kw-2">*</span>leaf_index),
+            <span class="kw">_ </span>=&gt; <span class="prelude-val">None</span>,
+        }
     }
 }
 </code></pre></div>

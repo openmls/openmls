@@ -314,17 +314,6 @@
 <span id="314">314</span>
 <span id="315">315</span>
 <span id="316">316</span>
-<span id="317">317</span>
-<span id="318">318</span>
-<span id="319">319</span>
-<span id="320">320</span>
-<span id="321">321</span>
-<span id="322">322</span>
-<span id="323">323</span>
-<span id="324">324</span>
-<span id="325">325</span>
-<span id="326">326</span>
-<span id="327">327</span>
 </pre><pre class="rust"><code><span class="doccomment">//! # Extensions
 //!
 //! In MLS, extensions appear in the following places:
@@ -348,8 +337,7 @@
 //! - [`RatchetTreeExtension`] (GroupInfo extension)
 //! - [`RequiredCapabilitiesExtension`] (GroupContext extension)
 
-</span><span class="kw">use </span>openmls_traits::crypto::OpenMlsCrypto;
-<span class="kw">use </span>serde::{Deserialize, Serialize};
+</span><span class="kw">use </span>serde::{Deserialize, Serialize};
 <span class="kw">use </span>std::{convert::TryFrom, fmt::Debug};
 <span class="kw">use </span>tls_codec::<span class="kw-2">*</span>;
 
@@ -621,23 +609,13 @@
 /// error if there is either no [`RatchetTreeExtension`] or more than one.
 </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>try_nodes_from_extensions(
     other_extensions: <span class="kw-2">&amp;</span>[Extension],
-    crypto_backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCrypto,
 ) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="prelude-ty">Option</span>&lt;Vec&lt;<span class="prelude-ty">Option</span>&lt;Node&gt;&gt;&gt;, ExtensionError&gt; {
     <span class="kw">let </span><span class="kw-2">mut </span>ratchet_tree_extensions = other_extensions
         .iter()
         .filter(|e| e.extension_type() == ExtensionType::RatchetTree);
 
     <span class="kw">let </span>nodes = <span class="kw">match </span>ratchet_tree_extensions.next() {
-        <span class="prelude-val">Some</span>(e) =&gt; {
-            <span class="kw">let </span><span class="kw-2">mut </span>nodes: Vec&lt;<span class="prelude-ty">Option</span>&lt;Node&gt;&gt; = e.as_ratchet_tree_extension()<span class="question-mark">?</span>.as_slice().into();
-            <span class="comment">// Compute the key package references.
-            </span><span class="kw">for </span>node <span class="kw">in </span>nodes.iter_mut().flatten() {
-                <span class="kw">if let </span>Node::LeafNode(leaf) = node {
-                    leaf.set_key_package_ref(crypto_backend)<span class="question-mark">?</span>;
-                }
-            }
-            <span class="prelude-val">Some</span>(nodes)
-        }
+        <span class="prelude-val">Some</span>(e) =&gt; <span class="prelude-val">Some</span>(e.as_ratchet_tree_extension()<span class="question-mark">?</span>.as_slice().into()),
         <span class="prelude-val">None </span>=&gt; <span class="prelude-val">None</span>,
     };
 

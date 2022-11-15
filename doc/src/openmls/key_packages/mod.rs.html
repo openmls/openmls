@@ -1198,8 +1198,8 @@
     }
 
     <span class="doccomment">/// Compute the [`KeyPackageRef`] of this [`KeyPackage`].
-    /// The [`KeyPackageRef`] is used to identify a member in a group (leaf in
-    /// the tree) within MLS.
+    /// The [`KeyPackageRef`] is used to identify a new member that should get
+    /// added to a group.
     </span><span class="kw">pub fn </span>hash_ref(<span class="kw-2">&amp;</span><span class="self">self</span>, backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCrypto) -&gt; <span class="prelude-ty">Result</span>&lt;KeyPackageRef, LibraryError&gt; {
         make_key_package_ref(
             <span class="kw-2">&amp;</span><span class="self">self

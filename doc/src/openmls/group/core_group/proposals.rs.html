@@ -555,18 +555,8 @@
 <span id="555">555</span>
 <span id="556">556</span>
 <span id="557">557</span>
-<span id="558">558</span>
-<span id="559">559</span>
-<span id="560">560</span>
-<span id="561">561</span>
-<span id="562">562</span>
-<span id="563">563</span>
-<span id="564">564</span>
 </pre><pre class="rust"><code><span class="kw">use crate</span>::{
-    ciphersuite::{
-        hash_ref::{KeyPackageRef, ProposalRef},
-        <span class="kw-2">*</span>,
-    },
+    ciphersuite::hash_ref::ProposalRef,
     error::LibraryError,
     framing::<span class="kw-2">*</span>,
     group::errors::<span class="kw-2">*</span>,
@@ -725,8 +715,8 @@
                 ProposalOrRef::Proposal(proposal) =&gt; {
                     <span class="comment">// ValSem200
                     </span><span class="kw">if let </span>Proposal::Remove(<span class="kw-2">ref </span>remove_proposal) = proposal {
-                        <span class="kw">if let </span>Sender::Member(hash_ref) = sender {
-                            <span class="kw">if </span>remove_proposal.removed() == hash_ref {
+                        <span class="kw">if let </span>Sender::Member(leaf_index) = sender {
+                            <span class="kw">if </span>remove_proposal.removed() == <span class="kw-2">*</span>leaf_index {
                                 <span class="kw">return </span><span class="prelude-val">Err</span>(FromCommittedProposalsError::SelfRemoval);
                             }
                         }
@@ -745,8 +735,8 @@
                             <span class="comment">// ValSem200
                             </span><span class="kw">if let </span>Proposal::Remove(<span class="kw-2">ref </span>remove_proposal) = queued_proposal.proposal
                             {
-                                <span class="kw">if let </span>Sender::Member(hash_ref) = sender {
-                                    <span class="kw">if </span>remove_proposal.removed() == hash_ref {
+                                <span class="kw">if let </span>Sender::Member(leaf_index) = sender {
+                                    <span class="kw">if </span>remove_proposal.removed() == <span class="kw-2">*</span>leaf_index {
                                         <span class="kw">return </span><span class="prelude-val">Err</span>(FromCommittedProposalsError::SelfRemoval);
                                     }
                                 }
@@ -897,14 +887,14 @@
         sender: Sender,
         proposal_store: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>ProposalStore,
         inline_proposals: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[Proposal],
-        own_kpr: <span class="kw">impl </span>Into&lt;<span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>hash_ref::KeyPackageRef&gt;&gt;,
+        own_index: u32,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(<span class="self">Self</span>, bool), ProposalQueueError&gt; {
         <span class="attribute">#[derive(Clone, Default)]
         </span><span class="kw">struct </span>Member {
             updates: Vec&lt;QueuedProposal&gt;,
             removes: Vec&lt;QueuedProposal&gt;,
         }
-        <span class="kw">let </span><span class="kw-2">mut </span>members = HashMap::&lt;KeyPackageRef, Member&gt;::new();
+        <span class="kw">let </span><span class="kw-2">mut </span>members = HashMap::&lt;u32, Member&gt;::new();
         <span class="kw">let </span><span class="kw-2">mut </span>adds: HashSet&lt;ProposalRef&gt; = HashSet::new();
         <span class="kw">let </span><span class="kw-2">mut </span>valid_proposals: HashSet&lt;ProposalRef&gt; = HashSet::new();
         <span class="kw">let </span><span class="kw-2">mut </span>proposal_pool: HashMap&lt;ProposalRef, QueuedProposal&gt; = HashMap::new();
@@ -932,26 +922,22 @@
         );
 
         <span class="comment">// Parse proposals and build adds and member list
-        </span><span class="kw">let </span>own_kpr = own_kpr.into();
-        <span class="kw">for </span>queued_proposal <span class="kw">in </span>queued_proposal_list {
+        </span><span class="kw">for </span>queued_proposal <span class="kw">in </span>queued_proposal_list {
             <span class="kw">match </span>queued_proposal.proposal {
                 Proposal::Add(<span class="kw">_</span>) =&gt; {
                     adds.insert(queued_proposal.proposal_reference());
                     proposal_pool.insert(queued_proposal.proposal_reference(), queued_proposal);
                 }
                 Proposal::Update(<span class="kw">_</span>) =&gt; {
-                    <span class="kw">let </span>own_kpr = own_kpr.ok_or_else(|| {
-                        LibraryError::custom(<span class="string">&quot;own_kpr has to be Some for Member Commits&quot;</span>)
-                    })<span class="question-mark">?</span>;
                     <span class="comment">// Only members can send update proposals
                     // ValSem112
-                    </span><span class="kw">let </span>hash_ref = <span class="kw">match </span>queued_proposal.sender.clone() {
-                        Sender::Member(hash_ref) =&gt; hash_ref.clone(),
+                    </span><span class="kw">let </span>leaf_index = <span class="kw">match </span>queued_proposal.sender.clone() {
+                        Sender::Member(hash_ref) =&gt; hash_ref,
                         <span class="kw">_ </span>=&gt; <span class="kw">return </span><span class="prelude-val">Err</span>(ProposalQueueError::SenderError(SenderError::NotAMember)),
                     };
-                    <span class="kw">if </span><span class="kw-2">&amp;</span>hash_ref != own_kpr {
+                    <span class="kw">if </span>leaf_index != own_index {
                         members
-                            .entry(hash_ref.clone())
+                            .entry(leaf_index)
                             .or_insert_with(Member::default)
                             .updates
                             .push(queued_proposal.clone());
@@ -964,7 +950,7 @@
                 Proposal::Remove(<span class="kw-2">ref </span>remove_proposal) =&gt; {
                     <span class="kw">let </span>removed = remove_proposal.removed();
                     members
-                        .entry(removed.clone())
+                        .entry(removed)
                         .or_insert_with(Member::default)
                         .updates
                         .push(queued_proposal.clone());

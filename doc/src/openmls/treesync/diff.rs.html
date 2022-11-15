@@ -912,36 +912,6 @@
 <span id="912">912</span>
 <span id="913">913</span>
 <span id="914">914</span>
-<span id="915">915</span>
-<span id="916">916</span>
-<span id="917">917</span>
-<span id="918">918</span>
-<span id="919">919</span>
-<span id="920">920</span>
-<span id="921">921</span>
-<span id="922">922</span>
-<span id="923">923</span>
-<span id="924">924</span>
-<span id="925">925</span>
-<span id="926">926</span>
-<span id="927">927</span>
-<span id="928">928</span>
-<span id="929">929</span>
-<span id="930">930</span>
-<span id="931">931</span>
-<span id="932">932</span>
-<span id="933">933</span>
-<span id="934">934</span>
-<span id="935">935</span>
-<span id="936">936</span>
-<span id="937">937</span>
-<span id="938">938</span>
-<span id="939">939</span>
-<span id="940">940</span>
-<span id="941">941</span>
-<span id="942">942</span>
-<span id="943">943</span>
-<span id="944">944</span>
 </pre><pre class="rust"><code><span class="doccomment">//! This module provides the diff functionality for [`TreeSync`].
 //!
 //! # About
@@ -961,7 +931,7 @@
 //! functions that are not expected to fail and throw an error, will still
 //! return a [`Result`] since they may throw a
 //! [`LibraryError`](TreeSyncDiffError::LibraryError).
-</span><span class="kw">use </span>openmls_traits::{crypto::OpenMlsCrypto, types::Ciphersuite, OpenMlsCryptoProvider};
+</span><span class="kw">use </span>openmls_traits::{types::Ciphersuite, OpenMlsCryptoProvider};
 <span class="kw">use </span>serde::{Deserialize, Serialize};
 
 <span class="kw">use </span>std::{collections::HashSet, convert::TryFrom};
@@ -981,9 +951,7 @@
     binary_tree::{
         array_representation::diff::NodeId, LeafIndex, MlsBinaryTreeDiff, StagedMlsBinaryTreeDiff,
     },
-    ciphersuite::{
-        hash_ref::KeyPackageRef, signable::Signable, HpkePrivateKey, HpkePublicKey, Secret,
-    },
+    ciphersuite::{signable::Signable, HpkePrivateKey, HpkePublicKey, Secret},
     credentials::CredentialBundle,
     error::LibraryError,
     extensions::ExtensionType,
@@ -1117,12 +1085,8 @@
     /// path.
     ///
     /// Returns the LeafIndex of the new leaf.
-    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>add_leaf(
-        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
-        leaf_node: KeyPackage,
-        backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCrypto,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;LeafIndex, TreeSyncAddLeaf&gt; {
-        <span class="kw">let </span>node = Node::LeafNode(LeafNode::new(leaf_node, backend)<span class="question-mark">?</span>);
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>add_leaf(<span class="kw-2">&amp;mut </span><span class="self">self</span>, leaf_node: KeyPackage) -&gt; <span class="prelude-ty">Result</span>&lt;LeafIndex, TreeSyncAddLeaf&gt; {
+        <span class="kw">let </span>node = Node::LeafNode(LeafNode::new(leaf_node));
         <span class="comment">// Find a free leaf and fill it with the new key package.
         </span><span class="kw">let </span>leaf_index = <span class="self">self</span>.free_leaf_index()<span class="question-mark">?</span>;
         <span class="comment">// If the free leaf index is within the tree, put the new leaf there,
@@ -1232,10 +1196,7 @@
         <span class="kw">let </span>key_package_bundle = key_package_bundle_payload.sign(backend, credential_bundle)<span class="question-mark">?</span>;
 
         <span class="kw">let </span>key_package = key_package_bundle.key_package().clone();
-        <span class="kw">let </span>node = Node::LeafNode(LeafNode::new_from_bundle(
-            key_package_bundle,
-            backend.crypto(),
-        )<span class="question-mark">?</span>);
+        <span class="kw">let </span>node = Node::LeafNode(LeafNode::new_from_bundle(key_package_bundle));
 
         <span class="comment">// Replace the leaf.
         </span><span class="self">self</span>.diff
@@ -1276,7 +1237,7 @@
         };
 
         <span class="comment">// Replace the leaf.
-        </span><span class="kw">let </span>node = Node::LeafNode(LeafNode::new(key_package, backend.crypto())<span class="question-mark">?</span>);
+        </span><span class="kw">let </span>node = Node::LeafNode(LeafNode::new(key_package));
         <span class="self">self</span>.diff
             .replace_leaf(sender_leaf_index, node.into())
             <span class="comment">// We assume the sender leaf is in the tree
@@ -1858,27 +1819,6 @@
             .map(|ts_node| ts_node.node().to_owned())
             .collect();
         <span class="prelude-val">Ok</span>(nodes)
-    }
-
-    <span class="doccomment">/// Returns the [`KeyPackageRef`] for the own leaf in the tree resulting from
-    /// merging this diff.
-    ///
-    /// Returns an error if the own leaf is not in the tree.
-    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>hash_ref(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="kw-2">&amp;</span>KeyPackageRef, LibraryError&gt; {
-        <span class="kw">let </span>node = <span class="self">self
-            </span>.diff
-            .node(
-                <span class="self">self</span>.diff
-                    .leaf(<span class="self">self</span>.own_leaf_index)
-                    .map_err(|<span class="kw">_</span>| LibraryError::custom(<span class="string">&quot;Expected own leaf to be in the tree&quot;</span>))<span class="question-mark">?</span>,
-            )
-            .map_err(|<span class="kw">_</span>| LibraryError::custom(<span class="string">&quot;Expected own leaf to be in the tree&quot;</span>))<span class="question-mark">?</span>;
-        <span class="kw">if let </span><span class="prelude-val">Some</span>(Node::LeafNode(node)) = node.node() {
-            node.key_package_ref()
-                .ok_or_else(|| LibraryError::custom(<span class="string">&quot;missing key package ref&quot;</span>))
-        } <span class="kw">else </span>{
-            <span class="prelude-val">Err</span>(LibraryError::custom(<span class="string">&quot;missing leaf node&quot;</span>))
-        }
     }
 
     <span class="doccomment">/// Get the length of the direct path of the given [`LeafIndex`].

@@ -468,16 +468,6 @@
 <span id="468">468</span>
 <span id="469">469</span>
 <span id="470">470</span>
-<span id="471">471</span>
-<span id="472">472</span>
-<span id="473">473</span>
-<span id="474">474</span>
-<span id="475">475</span>
-<span id="476">476</span>
-<span id="477">477</span>
-<span id="478">478</span>
-<span id="479">479</span>
-<span id="480">480</span>
 </pre><pre class="rust"><code><span class="doccomment">//! This module implements the ratchet tree component of MLS.
 //!
 //! It exposes the [`Node`] enum that can contain either a [`LeafNode`] or a [`ParentNode`].
@@ -498,9 +488,7 @@
 // Finally, this module contains the [`treekem`] module, which allows the
 // encryption and decryption of updates to the tree.
 
-</span><span class="kw">use </span>std::collections::BTreeMap;
-
-<span class="kw">use </span>openmls_traits::{
+</span><span class="kw">use </span>openmls_traits::{
     types::{Ciphersuite, CryptoError},
     OpenMlsCryptoProvider,
 };
@@ -508,10 +496,10 @@
 
 <span class="kw">use crate</span>::{
     binary_tree::{LeafIndex, MlsBinaryTree, MlsBinaryTreeError},
-    ciphersuite::hash_ref::KeyPackageRef,
     error::LibraryError,
     framing::SenderError,
-    key_packages::{KeyPackage, KeyPackageBundle},
+    group::Member,
+    key_packages::KeyPackageBundle,
     messages::{PathSecret, PathSecretError},
     schedule::CommitSecret,
 };
@@ -573,7 +561,7 @@
         <span class="kw">let </span>key_package = key_package_bundle.key_package();
         <span class="comment">// We generate our own leaf without a private key for now. The private
         // key is set in the `from_nodes` constructor below.
-        </span><span class="kw">let </span>node = Node::LeafNode(LeafNode::new(key_package.clone(), backend.crypto())<span class="question-mark">?</span>);
+        </span><span class="kw">let </span>node = Node::LeafNode(LeafNode::new(key_package.clone()));
         <span class="kw">let </span>path_secret: PathSecret = key_package_bundle.leaf_secret().clone().into();
         <span class="kw">let </span>commit_secret: CommitSecret = path_secret
             .derive_path_secret(backend, key_package.ciphersuite())<span class="question-mark">?
@@ -637,17 +625,12 @@
         backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider,
         ciphersuite: Ciphersuite,
         node_options: <span class="kw-2">&amp;</span>[<span class="prelude-ty">Option</span>&lt;Node&gt;],
-        sender_kpr: <span class="kw-2">&amp;</span>KeyPackageRef,
+        sender_index: u32,
         path_secret_option: <span class="kw">impl </span>Into&lt;<span class="prelude-ty">Option</span>&lt;PathSecret&gt;&gt;,
         key_package_bundle: KeyPackageBundle,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(<span class="self">Self</span>, <span class="prelude-ty">Option</span>&lt;CommitSecret&gt;), TreeSyncFromNodesError&gt; {
         <span class="kw">let </span><span class="kw-2">mut </span>tree_sync =
             <span class="self">Self</span>::from_nodes(backend, ciphersuite, node_options, key_package_bundle)<span class="question-mark">?</span>;
-
-        <span class="comment">// Get the leaf index of the sender.
-        </span><span class="kw">let </span>sender_index = tree_sync
-            .leaf_index(sender_kpr)
-            .map_err(|<span class="kw">_</span>| LibraryError::custom(<span class="string">&quot;Sender not in tree&quot;</span>))<span class="question-mark">?</span>;
 
         <span class="comment">// Populate the tree with secrets and derive a commit secret if a path
         // secret is given.
@@ -705,7 +688,6 @@
                                 <span class="kw">return </span><span class="prelude-val">Err</span>(PublicTreeError::DuplicateKeyPackage.into());
                             }
                         }
-                        leaf_node.set_key_package_ref(backend.crypto())<span class="question-mark">?</span>;
                     }
                     node.into()
                 }
@@ -821,57 +803,92 @@
         <span class="prelude-val">Ok</span>(<span class="self">self</span>.tree.leaf_count()<span class="question-mark">?</span>)
     }
 
-    <span class="doccomment">/// Returns a [`BTreeMap`] mapping leaf indices to the corresponding
-    /// [`KeyPackage`] instances in the leaves. The map only contains full
-    /// nodes.
+    <span class="doccomment">/// Returns a list of [`LeafIndex`]es containing only full nodes.
     ///
     /// This function should not fail and only returns a [`Result`], because it
     /// might throw a [LibraryError](TreeSyncError::LibraryError).
-    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>full_leaves(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;BTreeMap&lt;LeafIndex, <span class="kw-2">&amp;</span>KeyPackage&gt;, LibraryError&gt; {
-        <span class="kw">let </span>tsn_leaves: Vec&lt;(usize, <span class="kw-2">&amp;</span>TreeSyncNode)&gt; = <span class="self">self
-            </span>.tree
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>full_leaves(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;Vec&lt;LeafIndex&gt;, LibraryError&gt; {
+        <span class="self">self</span>.tree
             .leaves()<span class="question-mark">?
             </span>.drain(..)
             .enumerate()
             .filter(|(<span class="kw">_</span>, tsn)| tsn.node().is_some())
-            .collect();
-        <span class="kw">let </span><span class="kw-2">mut </span>leaves = BTreeMap::new();
-        <span class="kw">for </span>(index, tsn_leaf) <span class="kw">in </span>tsn_leaves {
+            .map(|(index, <span class="kw">_</span>)| {
+                u32::try_from(index).map_err(|<span class="kw">_</span>| LibraryError::custom(<span class="string">&quot;Index outside of the tree&quot;</span>))
+            })
+            .collect()
+    }
+
+    <span class="doccomment">/// Returns a list of [`Member`]s containing only full nodes.
+    ///
+    /// This function should not fail and only returns a [`Result`], because it
+    /// might throw a [LibraryError](TreeSyncError::LibraryError).
+    ///
+    /// XXX: For performance reasons we probably want to have this in a borrowing
+    ///      version as well. But it might well go away again.
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>full_leave_members(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;Vec&lt;Member&gt;, LibraryError&gt; {
+        <span class="kw">let </span><span class="kw-2">mut </span>leaves = <span class="self">self</span>.tree.leaves()<span class="question-mark">?</span>;
+        <span class="kw">let </span>leaves = leaves
+            .drain(..)
+            .enumerate()
+            .filter(|(<span class="kw">_</span>, tsn)| tsn.node().is_some());
+        <span class="kw">let </span><span class="kw-2">mut </span>out = <span class="macro">vec!</span>[];
+        <span class="kw">for </span>(index, tsn) <span class="kw">in </span>leaves {
             <span class="kw">let </span>index = u32::try_from(index)
                 .map_err(|<span class="kw">_</span>| LibraryError::custom(<span class="string">&quot;Index outside of the tree&quot;</span>))<span class="question-mark">?</span>;
-            <span class="kw">if let </span><span class="prelude-val">Some</span>(<span class="kw-2">ref </span>node) = tsn_leaf.node() {
-                <span class="kw">let </span>leaf = node
-                    .as_leaf_node()
-                    .map_err(|<span class="kw">_</span>| LibraryError::custom(<span class="string">&quot;Expected a leaf node&quot;</span>))<span class="question-mark">?</span>;
-                leaves.insert(index, leaf.key_package());
-            }
+            <span class="kw">let </span>(encryption_key, signature_key, identity) = <span class="kw">if let </span><span class="prelude-val">Some</span>(node) = tsn.node() {
+                <span class="comment">// This is a little verbose but will go away soon with #819.
+                </span><span class="kw">if let </span><span class="prelude-val">Ok</span>(leaf_node) = node.as_leaf_node() {
+                    (
+                        leaf_node.public_key(),
+                        leaf_node.key_package().credential().signature_key(),
+                        leaf_node.key_package().credential().identity(),
+                    )
+                } <span class="kw">else </span>{
+                    <span class="kw">return </span><span class="prelude-val">Err</span>(LibraryError::custom(<span class="string">&quot;The tree is broken.&quot;</span>));
+                }
+            } <span class="kw">else </span>{
+                <span class="kw">return </span><span class="prelude-val">Err</span>(LibraryError::custom(<span class="string">&quot;The tree is broken.&quot;</span>));
+            };
+            out.push(Member::new(
+                index,
+                encryption_key.as_slice().to_vec(),
+                signature_key.as_slice().to_vec(),
+                identity.to_vec(),
+            ))
         }
-        <span class="prelude-val">Ok</span>(leaves)
+        <span class="prelude-val">Ok</span>(out)
     }
 
-    <span class="doccomment">/// Returns a [`BTreeMap`] mapping [`KeyPackageRef`]s to the corresponding
-    /// [`KeyPackage`] instances in the leaves. The map only contains full
-    /// nodes.
-    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>leaves(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; BTreeMap&lt;<span class="prelude-ty">Option</span>&lt;KeyPackageRef&gt;, <span class="kw-2">&amp;</span>KeyPackage&gt; {
-        <span class="kw">let </span>tsn_leaves = <span class="self">self</span>.tree.nodes().iter().filter(|tsn| tsn.node().is_some());
-        <span class="kw">let </span><span class="kw-2">mut </span>leaves = BTreeMap::new();
-        <span class="kw">for </span>tsn_leaf <span class="kw">in </span>tsn_leaves {
-            <span class="kw">if let </span><span class="prelude-val">Some</span>(Node::LeafNode(leaf)) = tsn_leaf.node() {
-                leaves.insert(leaf.key_package_ref().cloned(), leaf.key_package());
-            }
-        }
-        leaves
-    }
-
-    <span class="doccomment">/// Return the [`KeyPackageRef`] of the node with the given `leaf_index`.
-    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>leaf_id(<span class="kw-2">&amp;</span><span class="self">self</span>, leaf_index: u32) -&gt; <span class="prelude-ty">Option</span>&lt;KeyPackageRef&gt; {
-        <span class="kw">let </span>tsn = <span class="self">self</span>.tree.leaf(leaf_index).ok()<span class="question-mark">?</span>;
-        <span class="kw">match </span>tsn.node() {
-            <span class="prelude-val">Some</span>(node) =&gt; {
-                <span class="kw">let </span>leaf = node.as_leaf_node().ok()<span class="question-mark">?</span>;
-                leaf.key_package_ref().cloned()
-            }
-            <span class="prelude-val">None </span>=&gt; <span class="prelude-val">None</span>,
+    <span class="doccomment">/// Returns a [`TreeSyncError::UnsupportedExtension`] if an [`ExtensionType`]
+    /// in `extensions` is not supported by a leaf in this tree.
+    </span><span class="attribute">#[cfg(test)]
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>check_extension_support(
+        <span class="kw-2">&amp;</span><span class="self">self</span>,
+        extensions: <span class="kw-2">&amp;</span>[<span class="kw">crate</span>::extensions::ExtensionType],
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;(), TreeSyncError&gt; {
+        <span class="kw">if </span><span class="self">self</span>.tree.leaves()<span class="question-mark">?</span>.iter().any(|<span class="kw-2">&amp;</span>tsn| {
+            tsn.node()
+                .as_ref()
+                .and_then(|node| {
+                    node.as_leaf_node()
+                        .and_then(|leaf_node| {
+                            leaf_node
+                                .key_package()
+                                .check_extension_support(extensions)
+                                .map_err(|<span class="kw">_</span>| {
+                                    NodeError::LibraryError(LibraryError::custom(
+                                        <span class="string">&quot;This is never used, so we don&#39;t care&quot;</span>,
+                                    ))
+                                }) <span class="comment">// Here we get an error if the extensions are not supported
+                        </span>})
+                        .ok() <span class="comment">// Turn the error into None
+                </span>})
+                .is_none() <span class="comment">// Return true if this is none
+        </span>}) {
+            <span class="prelude-val">Err</span>(TreeSyncError::UnsupportedExtension)
+        } <span class="kw">else </span>{
+            <span class="prelude-val">Ok</span>(())
         }
     }
 
@@ -912,50 +929,13 @@
         })
     }
 
-    <span class="doccomment">/// Return a reference to the leaf at the given `key_package_ref` or `None`
-    /// if the leaf is blank or outside the tree.
-    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>leaf_from_id(<span class="kw-2">&amp;</span><span class="self">self</span>, key_package_ref: <span class="kw-2">&amp;</span>KeyPackageRef) -&gt; <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>LeafNode&gt; {
-        <span class="kw">match </span><span class="self">self</span>.leaf_index(key_package_ref) {
-            <span class="prelude-val">Ok</span>(leaf_index) =&gt; <span class="kw">match </span><span class="self">self</span>.tree.leaf(leaf_index) {
-                <span class="prelude-val">Ok</span>(leaf) =&gt; leaf
-                    .node()
-                    .as_ref()
-                    .and_then(|node| node.as_leaf_node().ok()),
-                <span class="prelude-val">Err</span>(<span class="kw">_</span>) =&gt; <span class="prelude-val">None</span>,
-            },
-            <span class="prelude-val">Err</span>(<span class="kw">_</span>) =&gt; <span class="prelude-val">None</span>,
+    <span class="doccomment">/// Returns a [`TreeSyncError`] if the `leaf_index` is not a leaf in this
+    /// tree or empty.
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>leaf_is_in_tree(<span class="kw-2">&amp;</span><span class="self">self</span>, leaf_index: LeafIndex) -&gt; <span class="prelude-ty">Result</span>&lt;(), TreeSyncError&gt; {
+        <span class="kw">if </span><span class="self">self</span>.tree.leaf(leaf_index)<span class="question-mark">?</span>.node().is_none() {
+            <span class="kw">return </span><span class="prelude-val">Err</span>(TreeSyncError::LeafNotInTree);
         }
-    }
-
-    <span class="doccomment">/// Get the [`LeafIndex`] for a given [`KeyPackageRef`].
-    ///
-    /// This should go away and this tree should handle [`KeyPackageRef`] instead.
-    /// See: #732
-    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>leaf_index(
-        <span class="kw-2">&amp;</span><span class="self">self</span>,
-        key_package_ref: <span class="kw-2">&amp;</span>KeyPackageRef,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;LeafIndex, TreeSyncError&gt; {
-        <span class="self">self</span>.tree
-            .nodes()
-            .iter()
-            .enumerate()
-            .find(|(_i, node)| {
-                <span class="kw">if let </span><span class="prelude-val">Some</span>(n) = node.node() {
-                    <span class="kw">if let </span><span class="prelude-val">Ok</span>(leaf_node) = n.as_leaf_node() {
-                        <span class="kw">if let </span><span class="prelude-val">Some</span>(kpr) = leaf_node.key_package_ref() {
-                            kpr == key_package_ref
-                        } <span class="kw">else </span>{
-                            <span class="bool-val">false
-                        </span>}
-                    } <span class="kw">else </span>{
-                        <span class="bool-val">false
-                    </span>}
-                } <span class="kw">else </span>{
-                    <span class="bool-val">false
-                </span>}
-            })
-            .map(|(node_index, <span class="kw">_</span>)| (node_index / <span class="number">2</span>) <span class="kw">as </span>u32)
-            .ok_or(TreeSyncError::KeyPackageRefNotInTree)
+        <span class="prelude-val">Ok</span>(())
     }
 }
 </code></pre></div>

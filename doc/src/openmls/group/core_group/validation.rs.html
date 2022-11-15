@@ -434,13 +434,37 @@
 <span id="434">434</span>
 <span id="435">435</span>
 <span id="436">436</span>
+<span id="437">437</span>
+<span id="438">438</span>
+<span id="439">439</span>
+<span id="440">440</span>
+<span id="441">441</span>
+<span id="442">442</span>
+<span id="443">443</span>
+<span id="444">444</span>
+<span id="445">445</span>
+<span id="446">446</span>
+<span id="447">447</span>
+<span id="448">448</span>
+<span id="449">449</span>
+<span id="450">450</span>
+<span id="451">451</span>
+<span id="452">452</span>
+<span id="453">453</span>
+<span id="454">454</span>
+<span id="455">455</span>
+<span id="456">456</span>
+<span id="457">457</span>
+<span id="458">458</span>
+<span id="459">459</span>
+<span id="460">460</span>
+<span id="461">461</span>
 </pre><pre class="rust"><code><span class="doccomment">//! This module contains validation functions for incoming messages
 //! as defined in &lt;https://github.com/openmls/openmls/wiki/Message-validation&gt;
 
 </span><span class="kw">use </span>std::collections::HashSet;
 
 <span class="kw">use crate</span>::{
-    ciphersuite::hash_ref::HashReference,
     error::LibraryError,
     extensions::ExtensionType,
     framing::Sender,
@@ -450,7 +474,7 @@
 };
 
 <span class="kw">use super</span>::{
-    proposals::ProposalQueue, ContentType, CoreGroup, KeyPackage, MlsMessageIn,
+    proposals::ProposalQueue, ContentType, CoreGroup, KeyPackage, Member, MlsMessageIn,
     ProposalValidationError, VerifiableMlsPlaintext, WireFormat,
 };
 
@@ -497,16 +521,14 @@
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(), ValidationError&gt; {
         <span class="comment">// ValSem004
         </span><span class="kw">let </span>sender = plaintext.sender();
-        <span class="kw">if let </span>Sender::Member(hash_ref) = sender {
-            <span class="comment">// If the sender is a member, it has to be in the tree ...
-            </span><span class="kw">if </span><span class="self">self
-            </span>.treesync()
-            .leaf_from_id(hash_ref)
-            .is_none()
-        <span class="comment">// ... or in a tree from a past epoch we still have around.
-        </span>&amp;&amp; !<span class="self">self
-            </span>.message_secrets_store
-            .epoch_has_leaf(plaintext.epoch(), hash_ref)
+        <span class="kw">if let </span>Sender::Member(leaf_index) = sender {
+            <span class="comment">// If the sender is a member, it has to be in the tree.
+            // TODO: #133 Lookup of a leaf index in the old tree isn&#39;t very
+            //       useful. Add a proper validation step here.
+            </span><span class="kw">if </span><span class="self">self</span>.treesync().leaf_is_in_tree(<span class="kw-2">*</span>leaf_index).is_err()
+                &amp;&amp; !<span class="self">self
+                    </span>.message_secrets_store
+                    .epoch_has_leaf(plaintext.epoch(), <span class="kw-2">*</span>leaf_index)
             {
                 <span class="kw">return </span><span class="prelude-val">Err</span>(ValidationError::UnknownMember);
             }
@@ -656,19 +678,29 @@
             }
         }
 
-        <span class="kw">for </span>(_index, key_package) <span class="kw">in </span><span class="self">self</span>.treesync().full_leaves()<span class="question-mark">? </span>{
-            <span class="kw">let </span>identity = key_package.credential().identity();
+        <span class="kw">for </span>Member {
+            index,
+            identity,
+            encryption_key: <span class="kw">_</span>,
+            signature_key,
+        } <span class="kw">in </span><span class="self">self</span>.treesync().full_leave_members()<span class="question-mark">?
+        </span>{
             <span class="comment">// ValSem103
-            </span><span class="kw">if </span>identity_set.contains(identity) {
+            </span><span class="kw">if </span>identity_set.contains(<span class="kw-2">&amp;</span>identity) {
                 <span class="kw">return </span><span class="prelude-val">Err</span>(ProposalValidationError::ExistingIdentityAddProposal);
             }
             <span class="comment">// ValSem104
-            </span><span class="kw">let </span>signature_key = key_package.credential().signature_key().as_slice();
-            <span class="kw">if </span>signature_key_set.contains(signature_key) {
+            </span><span class="kw">if </span>signature_key_set.contains(<span class="kw-2">&amp;</span>signature_key) {
                 <span class="kw">return </span><span class="prelude-val">Err</span>(ProposalValidationError::ExistingSignatureKeyAddProposal);
             }
             <span class="comment">// ValSem105
-            </span><span class="kw">let </span>public_key = key_package.hpke_init_key().as_slice();
+            </span><span class="kw">let </span>public_key = <span class="self">self
+                </span>.treesync()
+                .leaf(index)
+                .map_err(|<span class="kw">_</span>| ProposalValidationError::UnknownMember)<span class="question-mark">?
+                </span>.ok_or(ProposalValidationError::UnknownMember)<span class="question-mark">?
+                </span>.public_key()
+                .as_slice();
             <span class="kw">if </span>public_key_set.contains(public_key) {
                 <span class="kw">return </span><span class="prelude-val">Err</span>(ProposalValidationError::ExistingPublicKeyAddProposal);
             }
@@ -690,16 +722,12 @@
         <span class="kw">for </span>remove_proposal <span class="kw">in </span>remove_proposals {
             <span class="kw">let </span>removed = remove_proposal.remove_proposal().removed();
             <span class="comment">// ValSem107
-            </span><span class="kw">if </span>!removes_set.insert(removed.clone()) {
+            </span><span class="kw">if </span>!removes_set.insert(removed) {
                 <span class="kw">return </span><span class="prelude-val">Err</span>(ProposalValidationError::DuplicateMemberRemoval);
             }
 
             <span class="comment">// TODO: ValSem108
-            </span><span class="kw">if </span>!<span class="self">self
-                </span>.treesync()
-                .leaves()
-                .contains_key(<span class="kw-2">&amp;</span><span class="prelude-val">Some</span>(removed.clone()))
-            {
+            </span><span class="kw">if </span><span class="self">self</span>.treesync().leaf_is_in_tree(removed).is_err() {
                 <span class="kw">return </span><span class="prelude-val">Err</span>(ProposalValidationError::UnknownMemberRemoval);
             }
         }
@@ -712,15 +740,28 @@
     ///  - ValSem110
     ///  - ValSem111
     ///  - ValSem112
+    /// TODO: #133 This validation must be updated according to Sec. 13.2
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>validate_update_proposals(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         proposal_queue: <span class="kw-2">&amp;</span>ProposalQueue,
-        committer: <span class="kw-2">&amp;</span>HashReference,
+        committer: u32,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;HashSet&lt;Vec&lt;u8&gt;&gt;, ProposalValidationError&gt; {
-        <span class="kw">let </span><span class="kw-2">mut </span>public_key_set = HashSet::new();
-        <span class="kw">for </span>(_index, key_package) <span class="kw">in </span><span class="self">self</span>.treesync().full_leaves()<span class="question-mark">? </span>{
-            <span class="kw">let </span>public_key = key_package.hpke_init_key().as_slice().to_vec();
-            public_key_set.insert(public_key);
+        <span class="kw">let </span><span class="kw-2">mut </span>encryption_keys = HashSet::new();
+        <span class="kw">for </span>index <span class="kw">in </span><span class="self">self</span>.treesync().full_leaves()<span class="question-mark">? </span>{
+            <span class="comment">// 8.3. Leaf Node Validation
+            // encryption key must be unique
+            </span>encryption_keys.insert(
+                <span class="self">self</span>.treesync()
+                    .leaf(index)
+                    .and_then(|leaf| {
+                        leaf.map(|leaf| leaf.public_key()).ok_or_else(|| {
+                            LibraryError::custom(<span class="string">&quot;This must have been a leaf node&quot;</span>).into()
+                        })
+                    })
+                    .map_err(|<span class="kw">_</span>| LibraryError::custom(<span class="string">&quot;This must have been a leaf node.&quot;</span>))<span class="question-mark">?
+                    </span>.as_slice()
+                    .to_vec(),
+            );
         }
 
         <span class="comment">// Check the update proposals from the proposal queue first
@@ -728,23 +769,26 @@
         <span class="kw">let </span>tree = <span class="self">self</span>.treesync();
 
         <span class="kw">for </span>update_proposal <span class="kw">in </span>update_proposals {
-            <span class="kw">let </span>hash_ref = <span class="kw">match </span>update_proposal.sender() {
-                Sender::Member(hash_ref) =&gt; hash_ref,
+            <span class="kw">let </span>sender_leaf_index = <span class="kw">match </span>update_proposal.sender() {
+                Sender::Member(hash_ref) =&gt; <span class="kw-2">*</span>hash_ref,
                 <span class="kw">_ </span>=&gt; <span class="kw">return </span><span class="prelude-val">Err</span>(ProposalValidationError::UpdateFromNonMember),
             };
             <span class="comment">// ValSem112
             // The sender of a standalone update proposal must be of type member
-            </span><span class="kw">if let </span>Sender::Member(hash_ref) = update_proposal.sender() {
+            </span><span class="kw">if let </span>Sender::Member(sender_index) = update_proposal.sender() {
                 <span class="comment">// ValSem111
                 // The sender of a full Commit must not include own update proposals
-                </span><span class="kw">if </span>committer == hash_ref {
+                </span><span class="kw">if </span>committer == <span class="kw-2">*</span>sender_index {
                     <span class="kw">return </span><span class="prelude-val">Err</span>(ProposalValidationError::CommitterIncludedOwnUpdate);
                 }
             } <span class="kw">else </span>{
                 <span class="kw">return </span><span class="prelude-val">Err</span>(ProposalValidationError::UpdateFromNonMember);
             }
 
-            <span class="kw">if let </span><span class="prelude-val">Some</span>(leaf_node) = tree.leaf_from_id(hash_ref) {
+            <span class="kw">if let </span><span class="prelude-val">Some</span>(leaf_node) = tree
+                .leaf(sender_leaf_index)
+                .map_err(|<span class="kw">_</span>| ProposalValidationError::UnknownMember)<span class="question-mark">?
+            </span>{
                 <span class="kw">let </span>existing_key_package = leaf_node.key_package();
                 <span class="comment">// ValSem109
                 // Identity must be unchanged between existing member and new proposal
@@ -757,21 +801,22 @@
                 {
                     <span class="kw">return </span><span class="prelude-val">Err</span>(ProposalValidationError::UpdateProposalIdentityMismatch);
                 }
-                <span class="kw">let </span>public_key = update_proposal
+                <span class="comment">// FIXME: #819 The update proposal will hold the leaf.
+                </span><span class="kw">let </span>encryption_key = update_proposal
                     .update_proposal()
                     .key_package()
                     .hpke_init_key()
                     .as_slice();
                 <span class="comment">// ValSem110
                 // HPKE init key must be unique among existing members
-                </span><span class="kw">if </span>public_key_set.contains(public_key) {
+                </span><span class="kw">if </span>encryption_keys.contains(encryption_key) {
                     <span class="kw">return </span><span class="prelude-val">Err</span>(ProposalValidationError::ExistingPublicKeyUpdateProposal);
                 }
             } <span class="kw">else </span>{
                 <span class="kw">return </span><span class="prelude-val">Err</span>(ProposalValidationError::UnknownMember);
             }
         }
-        <span class="prelude-val">Ok</span>(public_key_set)
+        <span class="prelude-val">Ok</span>(encryption_keys)
     }
 
     <span class="doccomment">/// Validate the new key package in a path
@@ -785,10 +830,13 @@
         public_key_set: HashSet&lt;Vec&lt;u8&gt;&gt;,
         proposal_sender: <span class="kw-2">&amp;</span>Sender,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(), ProposalValidationError&gt; {
-        <span class="kw">let </span>indexed_key_packages = <span class="self">self</span>.treesync().full_leaves()<span class="question-mark">?</span>;
-        <span class="kw">if let </span><span class="prelude-val">Some</span>(existing_key_package) = indexed_key_packages.get(<span class="kw-2">&amp;</span>sender) {
+        <span class="kw">let </span>members = <span class="self">self</span>.treesync().full_leave_members()<span class="question-mark">?</span>;
+        <span class="kw">if let </span><span class="prelude-val">Some</span>(Member {
+            index: <span class="kw">_</span>, identity, ..
+        }) = members.iter().find(|Member { index, .. }| index == <span class="kw-2">&amp;</span>sender)
+        {
             <span class="comment">// ValSem109
-            </span><span class="kw">if </span>key_package.credential().identity() != existing_key_package.credential().identity() {
+            </span><span class="kw">if </span>key_package.credential().identity() != identity {
                 <span class="kw">return </span><span class="prelude-val">Err</span>(ProposalValidationError::UpdateProposalIdentityMismatch);
             }
             <span class="comment">// ValSem110
@@ -851,14 +899,16 @@
         <span class="kw">for </span>proposal <span class="kw">in </span>remove_proposals {
             <span class="kw">if </span>proposal.proposal_or_ref_type() == ProposalOrRefType::Proposal {
                 <span class="kw">if let </span>Proposal::Remove(remove_proposal) = proposal.proposal() {
-                    <span class="kw">let </span>removed_leaf = <span class="self">self
-                        </span>.treesync()
-                        .leaf_from_id(remove_proposal.removed())
-                        .ok_or(ExternalCommitValidationError::UnknownMemberRemoval)<span class="question-mark">?</span>;
+                    <span class="kw">let </span>removed_leaf = remove_proposal.removed();
 
                     <span class="kw">if let </span><span class="prelude-val">Some</span>(path_key_package) = path_key_package_option {
                         <span class="comment">// ValSem244: External Commit, inline Remove Proposal: The identity and the endpoint_id of the removed leaf are identical to the ones in the path KeyPackage.
-                        </span><span class="kw">if </span>removed_leaf.key_package().credential().identity()
+                        </span><span class="kw">let </span>leaf = <span class="self">self
+                            </span>.treesync()
+                            .leaf(removed_leaf)
+                            .map_err(|<span class="kw">_</span>| ExternalCommitValidationError::UnknownMemberRemoval)<span class="question-mark">?
+                            </span>.ok_or(ExternalCommitValidationError::UnknownMemberRemoval)<span class="question-mark">?</span>;
+                        <span class="kw">if </span>leaf.key_package().credential().identity()
                             != path_key_package.credential().identity()
                         {
                             <span class="kw">return </span><span class="prelude-val">Err</span>(ExternalCommitValidationError::InvalidRemoveProposal);

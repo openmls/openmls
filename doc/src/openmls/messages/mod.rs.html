@@ -698,7 +698,7 @@
     group_context: GroupContext,
     extensions: Vec&lt;Extension&gt;,
     confirmation_tag: ConfirmationTag,
-    signer: KeyPackageRef,
+    signer: u32,
 }
 
 <span class="kw">impl </span>GroupInfoTBS {
@@ -707,13 +707,13 @@
         group_context: GroupContext,
         extensions: <span class="kw-2">&amp;</span>[Extension],
         confirmation_tag: ConfirmationTag,
-        signer: <span class="kw-2">&amp;</span>KeyPackageRef,
+        signer: u32,
     ) -&gt; <span class="self">Self </span>{
         <span class="self">Self </span>{
             group_context,
             extensions: extensions.into(),
             confirmation_tag,
-            signer: signer.clone(),
+            signer,
         }
     }
 }
@@ -776,8 +776,8 @@
     }
 
     <span class="doccomment">/// Returns the signer.
-    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>signer(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>KeyPackageRef {
-        <span class="kw-2">&amp;</span><span class="self">self</span>.payload.signer
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>signer(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; u32 {
+        <span class="self">self</span>.payload.signer
     }
 
     <span class="doccomment">/// Re-sign the group info.

@@ -273,6 +273,15 @@
 <span id="273">273</span>
 <span id="274">274</span>
 <span id="275">275</span>
+<span id="276">276</span>
+<span id="277">277</span>
+<span id="278">278</span>
+<span id="279">279</span>
+<span id="280">280</span>
+<span id="281">281</span>
+<span id="282">282</span>
+<span id="283">283</span>
+<span id="284">284</span>
 </pre><pre class="rust"><code><span class="doccomment">//! # MlsGroup errors
 //!
 //! This module defines the public errors that can be returned from all calls
@@ -332,6 +341,9 @@
     <span class="doccomment">/// Can&#39;t execute operation because a pending commit exists.
     </span><span class="attribute">#[error(<span class="string">&quot;Can&#39;t execute operation because a pending commit exists.&quot;</span>)]
     </span>PendingCommit,
+    <span class="doccomment">/// Can&#39;t execute operation because there is no pending commit.
+    </span><span class="attribute">#[error(<span class="string">&quot;Can&#39;t execute operation because there is no pending commit&quot;</span>)]
+    </span>NoPendingCommit,
 }
 
 <span class="doccomment">/// Parse message error
@@ -437,6 +449,9 @@
     <span class="doccomment">/// See [`MlsGroupStateError`] for more details.
     </span><span class="attribute">#[error(transparent)]
     </span>GroupStateError(<span class="attribute">#[from] </span>MlsGroupStateError),
+    <span class="doccomment">/// The member that should be removed can not be found.
+    </span><span class="attribute">#[error(<span class="string">&quot;The member that should be removed can not be found.&quot;</span>)]
+    </span>UnknownMember,
 }
 
 <span class="doccomment">/// Remove members error
@@ -457,6 +472,9 @@
     <span class="doccomment">/// See [`MlsGroupStateError`] for more details.
     </span><span class="attribute">#[error(transparent)]
     </span>GroupStateError(<span class="attribute">#[from] </span>MlsGroupStateError),
+    <span class="doccomment">/// The member that should be removed can not be found.
+    </span><span class="attribute">#[error(<span class="string">&quot;The member that should be removed can not be found.&quot;</span>)]
+    </span>UnknownMember,
 }
 
 <span class="doccomment">/// Leave group error

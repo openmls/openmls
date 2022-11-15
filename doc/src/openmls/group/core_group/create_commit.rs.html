@@ -459,24 +459,6 @@
 <span id="459">459</span>
 <span id="460">460</span>
 <span id="461">461</span>
-<span id="462">462</span>
-<span id="463">463</span>
-<span id="464">464</span>
-<span id="465">465</span>
-<span id="466">466</span>
-<span id="467">467</span>
-<span id="468">468</span>
-<span id="469">469</span>
-<span id="470">470</span>
-<span id="471">471</span>
-<span id="472">472</span>
-<span id="473">473</span>
-<span id="474">474</span>
-<span id="475">475</span>
-<span id="476">476</span>
-<span id="477">477</span>
-<span id="478">478</span>
-<span id="479">479</span>
 </pre><pre class="rust"><code><span class="kw">use </span>openmls_traits::OpenMlsCryptoProvider;
 
 <span class="kw">use crate</span>::{
@@ -532,30 +514,19 @@
                 (Sender::NewMemberCommit, leaf_index)
             }
             CommitType::Member =&gt; (
-                Sender::build_member(
-                    <span class="self">self</span>.key_package_ref()
-                        .ok_or_else(|| LibraryError::custom(<span class="string">&quot;missing key package&quot;</span>))<span class="question-mark">?</span>,
-                ),
+                Sender::build_member(<span class="self">self</span>.own_leaf_index()),
                 <span class="self">self</span>.own_leaf_index(),
             ),
         };
 
         <span class="comment">// Filter proposals
-        </span><span class="kw">let </span>own_kpr = <span class="kw">if </span>params.commit_type() == CommitType::External {
-            <span class="prelude-val">None
-        </span>} <span class="kw">else </span>{
-            <span class="prelude-val">Some</span>(
-                <span class="self">self</span>.key_package_ref()
-                    .ok_or_else(|| LibraryError::custom(<span class="string">&quot;missing key package&quot;</span>))<span class="question-mark">?</span>,
-            )
-        };
-        <span class="kw">let </span>(proposal_queue, contains_own_updates) = ProposalQueue::filter_proposals(
+        </span><span class="kw">let </span>(proposal_queue, contains_own_updates) = ProposalQueue::filter_proposals(
             ciphersuite,
             backend,
-            sender,
+            sender.clone(),
             params.proposal_store(),
             params.inline_proposals(),
-            own_kpr,
+            own_leaf_index,
         )
         .map_err(|e| <span class="kw">match </span>e {
             <span class="kw">crate</span>::group::errors::ProposalQueueError::LibraryError(e) =&gt; e.into(),
@@ -598,12 +569,12 @@
         // ValSem108
         </span><span class="self">self</span>.validate_remove_proposals(<span class="kw-2">&amp;</span>proposal_queue)<span class="question-mark">?</span>;
         <span class="comment">// Validate update proposals for member commits
-        </span><span class="kw">if let </span><span class="prelude-val">Some</span>(hash_ref) = own_kpr {
+        </span><span class="kw">if let </span>Sender::Member(sender_index) = <span class="kw-2">&amp;</span>sender {
             <span class="comment">// ValSem109
             // ValSem110
             // ValSem111
             // ValSem112
-            </span><span class="self">self</span>.validate_update_proposals(<span class="kw-2">&amp;</span>proposal_queue, hash_ref)<span class="question-mark">?</span>;
+            </span><span class="self">self</span>.validate_update_proposals(<span class="kw-2">&amp;</span>proposal_queue, <span class="kw-2">*</span>sender_index)<span class="question-mark">?</span>;
         }
 
         <span class="comment">// Apply proposals to tree
@@ -664,10 +635,7 @@
 
         <span class="kw">let </span>sender = <span class="kw">match </span>params.commit_type() {
             CommitType::External =&gt; Sender::NewMemberCommit,
-            CommitType::Member =&gt; Sender::build_member(
-                <span class="self">self</span>.key_package_ref()
-                    .ok_or_else(|| LibraryError::custom(<span class="string">&quot; missing key package&quot;</span>))<span class="question-mark">?</span>,
-            ),
+            CommitType::Member =&gt; Sender::build_member(<span class="self">self</span>.own_leaf_index()),
         };
 
         <span class="comment">// Keep a copy of the update path key package
@@ -805,7 +773,7 @@
                     group_context,
                     <span class="kw-2">&amp;</span>other_extensions,
                     confirmation_tag.clone(),
-                    diff.hash_ref()<span class="question-mark">?</span>,
+                    diff.own_leaf_index(),
                 )
             };
             <span class="comment">// Sign to-be-signed group info.
@@ -901,11 +869,7 @@
             .flatten();
         <span class="kw">let </span>leaf_index = <span class="kw">if let </span><span class="prelude-val">Some</span>(remove_proposal) = remove_proposal_option {
             <span class="kw">if let </span>Proposal::Remove(remove_proposal) = remove_proposal {
-                <span class="kw">let </span>removed = remove_proposal.removed();
-                <span class="kw">let </span>removed_index = <span class="self">self
-                    </span>.treesync()
-                    .leaf_index(removed)
-                    .map_err(|<span class="kw">_</span>| LibraryError::custom(<span class="string">&quot;Expected valid remove proposal&quot;</span>))<span class="question-mark">?</span>;
+                <span class="kw">let </span>removed_index = remove_proposal.removed();
                 <span class="kw">if </span>removed_index &lt; free_leaf_index {
                     removed_index
                 } <span class="kw">else </span>{
@@ -939,7 +903,7 @@
             )
             .map_err(|<span class="kw">_</span>| LibraryError::custom(<span class="string">&quot;Unexpected KeyPackage error&quot;</span>))<span class="question-mark">?</span>;
 
-            diff.add_leaf(key_package_bundle.key_package().clone(), backend.crypto())
+            diff.add_leaf(key_package_bundle.key_package().clone())
                 .map_err(|<span class="kw">_</span>| LibraryError::custom(<span class="string">&quot;Tree full: cannot add more members&quot;</span>))<span class="question-mark">?</span>;
             diff.own_leaf()
                 .map_err(|<span class="kw">_</span>| LibraryError::custom(<span class="string">&quot;Expected own leaf&quot;</span>))<span class="question-mark">?

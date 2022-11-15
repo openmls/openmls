@@ -873,19 +873,13 @@
 <span id="873">873</span>
 <span id="874">874</span>
 <span id="875">875</span>
-<span id="876">876</span>
-<span id="877">877</span>
-<span id="878">878</span>
 </pre><pre class="rust"><code><span class="doccomment">//! # MlsPlaintext
 //!
 //! An MlsPlaintext is a framing structure for MLS messages. It can contain
 //! Proposals, Commits and application messages.
 
 </span><span class="kw">use crate</span>::{
-    ciphersuite::{
-        hash_ref::KeyPackageRef,
-        signable::{Signable, SignedStruct, Verifiable, VerifiedStruct},
-    },
+    ciphersuite::signable::{Signable, SignedStruct, Verifiable, VerifiedStruct},
     error::LibraryError,
     group::errors::ValidationError,
 };
@@ -1063,14 +1057,14 @@
     </span><span class="attribute">#[inline]
     </span><span class="kw">fn </span>new_with_membership_tag(
         framing_parameters: FramingParameters,
-        sender_reference: <span class="kw-2">&amp;</span>KeyPackageRef,
+        sender_leaf_index: u32,
         body: MlsContentBody,
         credential_bundle: <span class="kw-2">&amp;</span>CredentialBundle,
         context: <span class="kw-2">&amp;</span>GroupContext,
         membership_key: <span class="kw-2">&amp;</span>MembershipKey,
         backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, LibraryError&gt; {
-        <span class="kw">let </span>sender = Sender::build_member(sender_reference);
+        <span class="kw">let </span>sender = Sender::build_member(sender_leaf_index);
         <span class="kw">let </span><span class="kw-2">mut </span>mls_plaintext = <span class="self">Self</span>::new(
             framing_parameters,
             sender,
@@ -1093,7 +1087,7 @@
     /// The sender type is always `SenderType::Member`.
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>member_proposal(
         framing_parameters: FramingParameters,
-        sender_reference: <span class="kw-2">&amp;</span>KeyPackageRef,
+        sender_leaf_index: u32,
         proposal: Proposal,
         credential_bundle: <span class="kw-2">&amp;</span>CredentialBundle,
         context: <span class="kw-2">&amp;</span>GroupContext,
@@ -1102,7 +1096,7 @@
     ) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, LibraryError&gt; {
         <span class="self">Self</span>::new_with_membership_tag(
             framing_parameters,
-            sender_reference,
+            sender_leaf_index,
             MlsContentBody::Proposal(proposal),
             credential_bundle,
             context,
@@ -1160,7 +1154,7 @@
     <span class="doccomment">/// This constructor builds an `MlsPlaintext` containing an application
     /// message. The sender type is always `SenderType::Member`.
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>new_application(
-        sender_reference: <span class="kw-2">&amp;</span>KeyPackageRef,
+        sender_leaf_index: u32,
         authenticated_data: <span class="kw-2">&amp;</span>[u8],
         application_message: <span class="kw-2">&amp;</span>[u8],
         credential_bundle: <span class="kw-2">&amp;</span>CredentialBundle,
@@ -1172,7 +1166,7 @@
             FramingParameters::new(authenticated_data, WireFormat::MlsCiphertext);
         <span class="self">Self</span>::new_with_membership_tag(
             framing_parameters,
-            sender_reference,
+            sender_leaf_index,
             MlsContentBody::Application(application_message.into()),
             credential_bundle,
             context,

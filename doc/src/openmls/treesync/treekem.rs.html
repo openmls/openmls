@@ -623,7 +623,7 @@
 </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct </span>PlaintextSecret {
     public_key: HpkePublicKey,
     group_secrets_bytes: Vec&lt;u8&gt;,
-    key_package_ref: KeyPackageRef,
+    new_member: KeyPackageRef,
 }
 
 <span class="kw">impl </span>PlaintextSecret {
@@ -673,7 +673,7 @@
             plaintext_secrets.push(PlaintextSecret {
                 public_key: key_package.hpke_init_key().clone(),
                 group_secrets_bytes,
-                key_package_ref: key_package.hash_ref(backend.crypto())<span class="question-mark">?</span>,
+                new_member: key_package.hash_ref(backend.crypto())<span class="question-mark">?</span>,
             });
         }
         <span class="prelude-val">Ok</span>(plaintext_secrets)
@@ -695,7 +695,7 @@
             <span class="kw-2">&amp;</span>[],
             <span class="kw-2">&amp;</span><span class="self">self</span>.group_secrets_bytes,
         );
-        EncryptedGroupSecrets::new(<span class="self">self</span>.key_package_ref, encrypted_group_secrets)
+        EncryptedGroupSecrets::new(<span class="self">self</span>.new_member, encrypted_group_secrets)
     }
 }
 

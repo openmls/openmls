@@ -162,7 +162,6 @@
 <span id="162">162</span>
 <span id="163">163</span>
 <span id="164">164</span>
-<span id="165">165</span>
 </pre><pre class="rust"><code><span class="kw">use crate</span>::{
     ciphersuite::signable::Verifiable,
     group::errors::ExternalCommitError,
@@ -209,7 +208,6 @@
         // currently no other mechanism to enable the extension.
         </span><span class="kw">let </span>extension_tree_option = try_nodes_from_extensions(
             verifiable_public_group_state.other_extensions(),
-            backend.crypto(),
         )
         .map_err(|e| <span class="kw">match </span>e {
             ExtensionError::DuplicateRatchetTreeExtension =&gt; {
@@ -241,8 +239,9 @@
             <span class="kw">return </span><span class="prelude-val">Err</span>(ExternalCommitError::TreeHashMismatch);
         }
 
-        <span class="comment">// FIXME #680: Validation of external commits
-        </span><span class="kw">let </span>pgs_signer_leaf = treesync.leaf_from_id(verifiable_public_group_state.signer());
+        <span class="kw">let </span>pgs_signer_leaf = treesync
+            .leaf(verifiable_public_group_state.signer())
+            .map_err(|<span class="kw">_</span>| ExternalCommitError::UnknownSender)<span class="question-mark">?</span>;
         <span class="kw">let </span>pgs_signer_credential = pgs_signer_leaf
             .ok_or(ExternalCommitError::UnknownSender)<span class="question-mark">?
             </span>.key_package()
@@ -300,13 +299,12 @@
 
         <span class="comment">// If there is a group member in the group with the same identity as us,
         // commit a remove proposal.
-        </span><span class="kw">for </span>(<span class="kw">_</span>, key_package) <span class="kw">in </span>group.treesync().full_leaves()<span class="question-mark">? </span>{
-            <span class="kw">if </span>key_package.credential().identity()
-                == params.credential_bundle().credential().identity()
-            {
-                <span class="kw">let </span>remove_proposal = Proposal::Remove(RemoveProposal {
-                    removed: key_package.hash_ref(backend.crypto())<span class="question-mark">?</span>,
-                });
+        </span><span class="kw">for </span>Member {
+            index, identity, ..
+        } <span class="kw">in </span>group.treesync().full_leave_members()<span class="question-mark">?
+        </span>{
+            <span class="kw">if </span>identity == params.credential_bundle().credential().identity() {
+                <span class="kw">let </span>remove_proposal = Proposal::Remove(RemoveProposal { removed: index });
                 inline_proposals.push(remove_proposal);
                 <span class="kw">break</span>;
             };

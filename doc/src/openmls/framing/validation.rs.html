@@ -496,14 +496,6 @@
 <span id="496">496</span>
 <span id="497">497</span>
 <span id="498">498</span>
-<span id="499">499</span>
-<span id="500">500</span>
-<span id="501">501</span>
-<span id="502">502</span>
-<span id="503">503</span>
-<span id="504">504</span>
-<span id="505">505</span>
-<span id="506">506</span>
 </pre><pre class="rust"><code><span class="doccomment">//! # Validation steps for incoming messages
 //!
 //! ```text
@@ -545,8 +537,7 @@
 <span class="kw">use </span>openmls_traits::OpenMlsCryptoProvider;
 
 <span class="kw">use crate</span>::{
-    ciphersuite::{hash_ref::KeyPackageRef, signable::Verifiable},
-    error::LibraryError,
+    ciphersuite::signable::Verifiable, error::LibraryError,
     tree::sender_ratchet::SenderRatchetConfiguration,
 };
 
@@ -585,28 +576,13 @@
         <span class="comment">// This will be refactored with #265.
         </span><span class="kw">if let </span>MlsMessageBody::Ciphertext(ciphertext) = inbound_message.mls_message.body {
             <span class="kw">let </span>ciphersuite = group.ciphersuite();
-            <span class="kw">let </span>(message_secrets, old_leaves) = group
+            <span class="comment">// TODO: #819 The old leaves should not be needed any more.
+            //       Revisit when the transition is further along.
+            </span><span class="kw">let </span>(message_secrets, _old_leaves) = group
                 .message_secrets_and_leaves_mut(ciphertext.epoch())
                 .map_err(|<span class="kw">_</span>| MessageDecryptionError::AeadError)<span class="question-mark">?</span>;
             <span class="kw">let </span>sender_data = ciphertext.sender_data(message_secrets, backend, ciphersuite)<span class="question-mark">?</span>;
-            <span class="kw">let </span>sender_index = <span class="kw">match </span>group.sender_index(<span class="kw-2">&amp;</span>sender_data.sender) {
-                <span class="prelude-val">Ok</span>(i) =&gt; i,
-                <span class="prelude-val">Err</span>(<span class="kw">_</span>) =&gt; {
-                    <span class="comment">// If the message is old, the tree might have changed.
-                    // Let&#39;s look for the sender in the old leaves.
-                    </span>old_leaves
-                        .into_iter()
-                        .find_map(|(index, kpr)| {
-                            <span class="kw">if </span>kpr == sender_data.sender {
-                                <span class="prelude-val">Some</span>(index)
-                            } <span class="kw">else </span>{
-                                <span class="prelude-val">None
-                            </span>}
-                        })
-                        .ok_or(ValidationError::UnknownMember)<span class="question-mark">?
-                </span>}
-            };
-            <span class="kw">let </span>sender_index = SecretTreeLeafIndex(sender_index);
+            <span class="kw">let </span>sender_index = SecretTreeLeafIndex(sender_data.leaf_index);
             <span class="kw">let </span>message_secrets = group
                 .message_secrets_mut(ciphertext.epoch())
                 .map_err(|<span class="kw">_</span>| MessageDecryptionError::AeadError)<span class="question-mark">?</span>;
@@ -662,22 +638,30 @@
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>credential(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         treesync: <span class="kw-2">&amp;</span>TreeSync,
-        old_leaves: <span class="kw-2">&amp;</span>[(u32, KeyPackageRef)],
+        old_leaves: <span class="kw-2">&amp;</span>[Member],
     ) -&gt; <span class="prelude-ty">Result</span>&lt;Credential, ValidationError&gt; {
         <span class="kw">let </span>sender = <span class="self">self</span>.sender();
         <span class="kw">match </span>sender {
-            Sender::Member(hash_ref) =&gt; {
-                <span class="kw">match </span>treesync.leaf_from_id(hash_ref) {
+            Sender::Member(leaf_index) =&gt; {
+                <span class="kw">match </span>treesync
+                    .leaf(<span class="kw-2">*</span>leaf_index)
+                    .map_err(|<span class="kw">_</span>| ValidationError::UnknownMember)<span class="question-mark">?
+                </span>{
                     <span class="prelude-val">Some</span>(sender_leaf) =&gt; <span class="prelude-val">Ok</span>(sender_leaf.key_package().credential().clone()),
                     <span class="prelude-val">None </span>=&gt; {
                         <span class="comment">// This might not actually be an error but the sender&#39;s
                         // key package changed. Let&#39;s check old leaves we still
                         // have around.
-                        </span><span class="kw">if let </span><span class="prelude-val">Some</span>((sender_index, <span class="kw">_</span>)) =
-                            old_leaves.iter().find(|(<span class="kw">_</span>, kpr)| kpr == hash_ref)
+                        // TODO: As part of #819 looking up old leaves changes.
+                        //       Just checking the index is probably not enough.
+                        //       Revisit when the transition is further along
+                        //       and we have better test cases.
+                        </span><span class="kw">if let </span><span class="prelude-val">Some</span>(Member { index, .. }) = old_leaves
+                            .iter()
+                            .find(|<span class="kw-2">&amp;</span>old_member| <span class="kw-2">*</span>leaf_index == old_member.index)
                         {
                             <span class="kw">match </span>treesync
-                                .leaf(<span class="kw-2">*</span>sender_index)
+                                .leaf(<span class="kw-2">*</span>index)
                                 .map_err(|<span class="kw">_</span>| ValidationError::UnknownMember)<span class="question-mark">?
                             </span>{
                                 <span class="prelude-val">Some</span>(node) =&gt; <span class="prelude-val">Ok</span>(node.key_package().credential().clone()),

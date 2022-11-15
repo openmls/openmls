@@ -375,43 +375,12 @@
 <span id="375">375</span>
 <span id="376">376</span>
 <span id="377">377</span>
-<span id="378">378</span>
-<span id="379">379</span>
-<span id="380">380</span>
-<span id="381">381</span>
-<span id="382">382</span>
-<span id="383">383</span>
-<span id="384">384</span>
-<span id="385">385</span>
-<span id="386">386</span>
-<span id="387">387</span>
-<span id="388">388</span>
-<span id="389">389</span>
-<span id="390">390</span>
-<span id="391">391</span>
-<span id="392">392</span>
-<span id="393">393</span>
-<span id="394">394</span>
-<span id="395">395</span>
-<span id="396">396</span>
-<span id="397">397</span>
-<span id="398">398</span>
-<span id="399">399</span>
-<span id="400">400</span>
-<span id="401">401</span>
-<span id="402">402</span>
-<span id="403">403</span>
 </pre><pre class="rust"><code><span class="doccomment">//! MLS group membership
 //!
 //! This module contains membership-related operations and exposes [`RemoveOperation`].
 
-</span><span class="attribute">#[cfg(any(feature = <span class="string">&quot;test-utils&quot;</span>, test))]
-</span><span class="kw">use </span>std::collections::BTreeMap;
-
-<span class="kw">use </span>core_group::create_commit_params::CreateCommitParams;
+</span><span class="kw">use </span>core_group::create_commit_params::CreateCommitParams;
 <span class="kw">use </span>tls_codec::Serialize;
-
-<span class="kw">use crate</span>::{ciphersuite::hash_ref::HashReference, ciphersuite::hash_ref::KeyPackageRef};
 
 <span class="kw">use super</span>::{
     errors::{AddMembersError, LeaveGroupError, RemoveMembersError},
@@ -496,7 +465,7 @@
 
     <span class="doccomment">/// Removes members from the group.
     ///
-    /// Members are removed by providing the index of their leaf in the tree.
+    /// Members are removed by providing the member&#39;s leaf index.
     ///
     /// If successful, it returns a tuple of [`MlsMessageOut`] and an optional [`Welcome`].
     /// The [Welcome] is [Some] when the queue of pending proposals contained add proposals
@@ -505,7 +474,7 @@
     </span><span class="kw">pub fn </span>remove_members(
         <span class="kw-2">&amp;mut </span><span class="self">self</span>,
         backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider,
-        members: <span class="kw-2">&amp;</span>[KeyPackageRef],
+        members: <span class="kw-2">&amp;</span>[u32],
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(MlsMessageOut, <span class="prelude-ty">Option</span>&lt;Welcome&gt;), RemoveMembersError&gt; {
         <span class="self">self</span>.is_operational()<span class="question-mark">?</span>;
 
@@ -516,14 +485,10 @@
         }
 
         <span class="comment">// Create inline remove proposals
-        </span><span class="kw">let </span>inline_proposals = members
-            .iter()
-            .map(|member| {
-                Proposal::Remove(RemoveProposal {
-                    removed: member.clone(),
-                })
-            })
-            .collect::&lt;Vec&lt;Proposal&gt;&gt;();
+        </span><span class="kw">let </span><span class="kw-2">mut </span>inline_proposals = Vec::new();
+        <span class="kw">for </span>member <span class="kw">in </span>members.iter() {
+            inline_proposals.push(Proposal::Remove(RemoveProposal { removed: <span class="kw-2">*</span>member }))
+        }
 
         <span class="kw">let </span>credential = <span class="self">self</span>.credential()<span class="question-mark">?</span>;
         <span class="kw">let </span>credential_bundle: CredentialBundle = backend
@@ -568,7 +533,6 @@
     </span><span class="kw">pub fn </span>propose_add_member(
         <span class="kw-2">&amp;mut </span><span class="self">self</span>,
         backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider,
-
         key_package: <span class="kw-2">&amp;</span>KeyPackage,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;MlsMessageOut, ProposeAddMemberError&gt; {
         <span class="self">self</span>.is_operational()<span class="question-mark">?</span>;
@@ -614,12 +578,13 @@
     }
 
     <span class="doccomment">/// Creates proposals to remove members from the group.
+    /// The `member` has to be the member&#39;s leaf index.
     ///
     /// Returns an error if there is a pending commit.
     </span><span class="kw">pub fn </span>propose_remove_member(
         <span class="kw-2">&amp;mut </span><span class="self">self</span>,
         backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider,
-        member: <span class="kw-2">&amp;</span>KeyPackageRef,
+        member: u32,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;MlsMessageOut, ProposeRemoveMemberError&gt; {
         <span class="self">self</span>.is_operational()<span class="question-mark">?</span>;
 
@@ -634,12 +599,15 @@
             )
             .ok_or(ProposeRemoveMemberError::NoMatchingCredentialBundle)<span class="question-mark">?</span>;
 
-        <span class="kw">let </span>remove_proposal = <span class="self">self</span>.group.create_remove_proposal(
-            <span class="self">self</span>.framing_parameters(),
-            <span class="kw-2">&amp;</span>credential_bundle,
-            member,
-            backend,
-        )<span class="question-mark">?</span>;
+        <span class="kw">let </span>remove_proposal = <span class="self">self
+            </span>.group
+            .create_remove_proposal(
+                <span class="self">self</span>.framing_parameters(),
+                <span class="kw-2">&amp;</span>credential_bundle,
+                member,
+                backend,
+            )
+            .map_err(|<span class="kw">_</span>| ProposeRemoveMemberError::UnknownMember)<span class="question-mark">?</span>;
 
         <span class="self">self</span>.proposal_store.add(QueuedProposal::from_mls_plaintext(
             <span class="self">self</span>.ciphersuite(),
@@ -681,16 +649,16 @@
             )
             .ok_or(LeaveGroupError::NoMatchingCredentialBundle)<span class="question-mark">?</span>;
 
-        <span class="kw">let </span>removed = <span class="self">self
+        <span class="kw">let </span>removed = <span class="self">self</span>.group.own_leaf_index();
+        <span class="kw">let </span>remove_proposal = <span class="self">self
             </span>.group
-            .key_package_ref()
-            .ok_or_else(|| LibraryError::custom(<span class="string">&quot;No key package reference for own key package.&quot;</span>))<span class="question-mark">?</span>;
-        <span class="kw">let </span>remove_proposal = <span class="self">self</span>.group.create_remove_proposal(
-            <span class="self">self</span>.framing_parameters(),
-            <span class="kw-2">&amp;</span>credential_bundle,
-            removed,
-            backend,
-        )<span class="question-mark">?</span>;
+            .create_remove_proposal(
+                <span class="self">self</span>.framing_parameters(),
+                <span class="kw-2">&amp;</span>credential_bundle,
+                removed,
+                backend,
+            )
+            .map_err(|<span class="kw">_</span>| LibraryError::custom(<span class="string">&quot;Creating a self removal should not fail&quot;</span>))<span class="question-mark">?</span>;
 
         <span class="self">self</span>.proposal_store.add(QueuedProposal::from_mls_plaintext(
             <span class="self">self</span>.ciphersuite(),
@@ -701,41 +669,24 @@
         <span class="prelude-val">Ok</span>(<span class="self">self</span>.plaintext_to_mls_message(remove_proposal, backend)<span class="question-mark">?</span>)
     }
 
-    <span class="doccomment">/// Returns a list of [`KeyPackage`]s of the current group members.
-    </span><span class="kw">pub fn </span>members(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; Vec&lt;<span class="kw-2">&amp;</span>KeyPackage&gt; {
-        <span class="kw">match </span><span class="self">self</span>.group.treesync().full_leaves() {
-            <span class="prelude-val">Ok</span>(leaves) =&gt; leaves.iter().map(|(<span class="kw">_</span>, <span class="kw-2">&amp;</span>kp)| kp).collect(),
-            <span class="comment">// This should not happen, but this way we avoid returning a library error
-            </span><span class="prelude-val">Err</span>(e) =&gt; {
-                <span class="macro">log::debug!</span>(<span class="string">&quot;treesync::full_leaves() returned an error: {:?}&quot;</span>, e);
-                Vec::new()
-            }
-        }
+    <span class="doccomment">/// Returns a list of [`Member`]s in the group.
+    </span><span class="kw">pub fn </span>members(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;Vec&lt;Member&gt;, LibraryError&gt; {
+        <span class="self">self</span>.group.treesync().full_leave_members()
     }
 
     <span class="doccomment">/// Returns the [`KeyPackage`] of a member corresponding to the given
-    /// [`KeyPackageRef`]. Returns `None` if no matching [`KeyPackage`] can be
-    /// found in this group.
-    </span><span class="kw">pub fn </span>member(<span class="kw-2">&amp;</span><span class="self">self</span>, key_package_ref: <span class="kw-2">&amp;</span>KeyPackageRef) -&gt; <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>KeyPackage&gt; {
+    /// leaf index. Returns `None` if the member can not be found in this group.
+    </span><span class="kw">pub fn </span>member(<span class="kw-2">&amp;</span><span class="self">self</span>, leaf_index: u32) -&gt; <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>KeyPackage&gt; {
         <span class="self">self</span>.group
             .treesync()
             <span class="comment">// Besides from returning an error if the member can&#39;t be found,
             // this will only return an error in case OpenMLS is compiled with a
             // sub-32 bit architecture. As a result, it should be safe to just
             // return `None` instead of propagating an error.
-            </span>.leaf_from_id(key_package_ref)
-            .map(|leaf| leaf.key_package())
-    }
-
-    <span class="doccomment">/// Returns the current list of members, indexed with the leaf index.
-    /// This should go away in future when all tests are rewritten to use key
-    /// package references instead of leaf indices.
-    </span><span class="attribute">#[cfg(any(feature = <span class="string">&quot;test-utils&quot;</span>, test))]
-    </span><span class="kw">pub fn </span>indexed_members(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;BTreeMap&lt;u32, <span class="kw-2">&amp;</span>KeyPackage&gt;, LibraryError&gt; {
-        <span class="self">self</span>.group
-            .treesync()
-            .full_leaves()
-            .map_err(|<span class="kw">_</span>| LibraryError::custom(<span class="string">&quot;Unexpected error in TreeSync&quot;</span>))
+            </span>.leaf(leaf_index)
+            .map(|leaf| leaf.map(|l| l.key_package()))
+            .ok()
+            .flatten()
     }
 }
 
@@ -749,14 +700,14 @@
     </span>WeLeft,
     <span class="doccomment">/// Someone else (indicated by the [`Sender`]) removed us from the group.
     </span>WeWereRemovedBy(Sender),
-    <span class="doccomment">/// Another member (indicated by the [`HashReference`]) requested to leave
+    <span class="doccomment">/// Another member (indicated by the leaf index) requested to leave
     /// the group by issuing a remove proposal in the previous epoch and the
     /// proposal has now been committed.
-    </span>TheyLeft(HashReference),
-    <span class="doccomment">/// Another member (indicated by the [`HashReference`]) was removed by the [`Sender`].
-    </span>TheyWereRemovedBy((HashReference, Sender)),
-    <span class="doccomment">/// We removed another member (indicated by the [`HashReference`]).
-    </span>WeRemovedThem(HashReference),
+    </span>TheyLeft(u32),
+    <span class="doccomment">/// Another member (indicated by the leaf index) was removed by the [`Sender`].
+    </span>TheyWereRemovedBy((u32, Sender)),
+    <span class="doccomment">/// We removed another member (indicated by the leaf index).
+    </span>WeRemovedThem(u32),
 }
 
 <span class="kw">impl </span>RemoveOperation {
@@ -766,41 +717,38 @@
         queued_remove_proposal: QueuedRemoveProposal,
         group: <span class="kw-2">&amp;</span>MlsGroup,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, LibraryError&gt; {
-        <span class="kw">let </span>own_hash_ref = <span class="kw">match </span>group.key_package_ref() {
-            <span class="prelude-val">Some</span>(key_package_ref) =&gt; key_package_ref,
-            <span class="prelude-val">None </span>=&gt; <span class="kw">return </span><span class="prelude-val">Err</span>(LibraryError::custom(<span class="string">&quot;Own KeyPackage was empty.&quot;</span>)),
-        };
+        <span class="kw">let </span>own_index = group.own_leaf_index();
         <span class="kw">let </span>sender = queued_remove_proposal.sender();
         <span class="kw">let </span>removed = queued_remove_proposal.remove_proposal().removed();
 
         <span class="comment">// We start with the cases where the sender is a group member
-        </span><span class="kw">if let </span>Sender::Member(hash_ref) = sender {
+        </span><span class="kw">if let </span>Sender::Member(leaf_index) = sender {
             <span class="comment">// We authored the remove proposal
-            </span><span class="kw">if </span>hash_ref == own_hash_ref {
-                <span class="kw">if </span>removed == own_hash_ref {
+            </span><span class="kw">if </span><span class="kw-2">*</span>leaf_index == own_index {
+                <span class="kw">if </span>removed == own_index {
                     <span class="comment">// We left
                     </span><span class="kw">return </span><span class="prelude-val">Ok</span>(<span class="self">Self</span>::WeLeft);
                 } <span class="kw">else </span>{
                     <span class="comment">// We removed another member
-                    </span><span class="kw">return </span><span class="prelude-val">Ok</span>(<span class="self">Self</span>::WeRemovedThem(removed.clone()));
+                    </span><span class="kw">return </span><span class="prelude-val">Ok</span>(<span class="self">Self</span>::WeRemovedThem(removed));
                 }
             }
 
             <span class="comment">// Another member left
-            </span><span class="kw">if </span>removed == hash_ref {
-                <span class="kw">return </span><span class="prelude-val">Ok</span>(<span class="self">Self</span>::TheyLeft(removed.clone()));
+            </span><span class="kw">if </span>removed == <span class="kw-2">*</span>leaf_index {
+                <span class="kw">return </span><span class="prelude-val">Ok</span>(<span class="self">Self</span>::TheyLeft(removed));
             }
         }
 
         <span class="comment">// The sender is not necessarily a group member. This covers all sender
         // types (members, pre-configured senders and new members).
 
-        </span><span class="kw">if </span>removed == own_hash_ref {
+        </span><span class="kw">if </span>removed == own_index {
             <span class="comment">// We were removed
             </span><span class="prelude-val">Ok</span>(<span class="self">Self</span>::WeWereRemovedBy(sender.clone()))
         } <span class="kw">else </span>{
             <span class="comment">// Another member was removed
-            </span><span class="prelude-val">Ok</span>(<span class="self">Self</span>::TheyWereRemovedBy((removed.clone(), sender.clone())))
+            </span><span class="prelude-val">Ok</span>(<span class="self">Self</span>::TheyWereRemovedBy((removed, sender.clone())))
         }
     }
 }

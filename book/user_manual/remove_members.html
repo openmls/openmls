@@ -138,7 +138,7 @@
 <h2 id="immediate-operation"><a class="header" href="#immediate-operation">Immediate operation</a></h2>
 <p>Members can be removed from the group atomically with the <code>.remove_members()</code> function, which takes the <code>KeyPackageRef</code> of group member as input. References to the <code>KeyPackage</code>s of group members can be obtained using the <code>.members()</code> function, from which one can in turn compute the <code>KeyPackageRef</code> using their <code>.hash_ref()</code> function.</p>
 <pre><code class="language-rust no_run noplayground">    let (mls_message_out, welcome_option) = charlie_group
-        .remove_members(backend, &amp;[bob_kp_ref])
+        .remove_members(backend, &amp;[bob_member.index])
         .expect(&quot;Could not remove Bob from group.&quot;);
 </code></pre>
 <p>The function returns the tuple <code>(MlsMessageOut, Option&lt;Welcome&gt;)</code>. The <code>MlsMessageOut</code> contains a Commit message that needs to be fanned out to existing group members.
@@ -146,12 +146,7 @@ Even though members were removed in this operation, the Commit message could pot
 <h2 id="proposal"><a class="header" href="#proposal">Proposal</a></h2>
 <p>Members can also be removed as a proposal (without the corresponding Commit message) by using the <code>.propose_remove_member()</code> function:</p>
 <pre><code class="language-rust no_run noplayground">    let mls_message_out = alice_group
-        .propose_remove_member(
-            backend,
-            charlie_group
-                .key_package_ref()
-                .expect(&quot;An unexpected error occurred.&quot;),
-        )
+        .propose_remove_member(backend, charlie_group.own_leaf_index())
         .expect(&quot;Could not create proposal to remove Charlie.&quot;);
 </code></pre>
 <p>In this case, the function returns an <code>MlsMessageOut</code> that needs to be fanned out to existing group members.</p>
@@ -171,7 +166,7 @@ Even though members were removed in this operation, the Commit message could pot
             RemoveOperation::WeLeft =&gt; unreachable!(),
             // We expect this variant, since Bob was removed by Charlie
             RemoveOperation::WeWereRemovedBy(member) =&gt; {
-                assert!(matches!(member, Sender::Member(member) if member == charlies_old_kpr));
+                assert!(matches!(member, Sender::Member(member) if member == charlies_leaf_index));
             }
             RemoveOperation::TheyLeft(_) =&gt; unreachable!(),
             RemoveOperation::TheyWereRemovedBy(_) =&gt; unreachable!(),
@@ -191,10 +186,12 @@ Even though members were removed in this operation, the Commit message could pot
 
     // Check that Bob's group is no longer active
     assert!(!bob_group.is_active());
-    let members = bob_group.members();
+    let members = bob_group
+        .members()
+        .expect(&quot;Library error getting group member list&quot;);
     assert_eq!(members.len(), 2);
-    assert_eq!(members[0].credential().identity(), b&quot;Alice&quot;);
-    assert_eq!(members[1].credential().identity(), b&quot;Charlie&quot;);
+    assert_eq!(members[0].identity, b&quot;Alice&quot;);
+    assert_eq!(members[1].identity, b&quot;Charlie&quot;);
 </code></pre>
 
                     </main>

@@ -474,7 +474,6 @@
 <span id="474">474</span>
 <span id="475">475</span>
 <span id="476">476</span>
-<span id="477">477</span>
 </pre><pre class="rust"><code><span class="kw">use </span>openmls_traits::{types::Ciphersuite, OpenMlsCryptoProvider};
 <span class="kw">use </span>std::io::Write;
 <span class="kw">use </span>tls_codec::{
@@ -483,7 +482,6 @@
 };
 
 <span class="kw">use crate</span>::{
-    ciphersuite::hash_ref::{HashReference, KeyPackageRef},
     error::LibraryError,
     tree::{
         index::SecretTreeLeafIndex, secret_tree::SecretType,
@@ -561,11 +559,6 @@
         </span><span class="kw">if </span>mls_plaintext.wire_format() != WireFormat::MlsCiphertext {
             <span class="kw">return </span><span class="prelude-val">Err</span>(MessageEncryptionError::WrongWireFormat);
         }
-        <span class="comment">// Check that the plaintext has the right sender type
-        </span><span class="kw">let </span>hash_ref = <span class="kw">match </span>mls_plaintext.sender() {
-            Sender::Member(hash_ref) =&gt; hash_ref,
-            <span class="kw">_ </span>=&gt; <span class="kw">return </span><span class="prelude-val">Err</span>(MessageEncryptionError::SenderError(SenderError::NotAMember)),
-        };
         <span class="comment">// Serialize the content AAD
         </span><span class="kw">let </span>mls_ciphertext_content_aad = MlsCiphertextContentAad {
             group_id: header.group_id.clone(),
@@ -621,7 +614,16 @@
         </span><span class="kw">let </span>mls_sender_data_aad_bytes = mls_sender_data_aad
             .tls_serialize_detached()
             .map_err(LibraryError::missing_bound_check)<span class="question-mark">?</span>;
-        <span class="kw">let </span>sender_data = MlsSenderData::from_sender(hash_ref, generation, reuse_guard);
+        <span class="kw">let </span>leaf_index = mls_plaintext
+            .sender()
+            .as_member()
+            .ok_or(MessageEncryptionError::SenderError(SenderError::NotAMember))<span class="question-mark">?</span>;
+        <span class="kw">let </span>sender_data = MlsSenderData::from_sender(
+            <span class="comment">// XXX: #106 This will fail for messages with a non-member sender.
+            </span>leaf_index,
+            generation,
+            reuse_guard,
+        );
         <span class="comment">// Encrypt the sender data
         </span><span class="kw">let </span>encrypted_sender_data = sender_data_key
             .aead_seal(
@@ -862,20 +864,16 @@
 </span><span class="attribute">#[derive(Clone, TlsDeserialize, TlsSerialize, TlsSize)]
 #[cfg_attr(test, derive(Debug))]
 </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct </span>MlsSenderData {
-    <span class="kw">pub</span>(<span class="kw">crate</span>) sender: KeyPackageRef,
+    <span class="kw">pub</span>(<span class="kw">crate</span>) leaf_index: u32,
     <span class="kw">pub</span>(<span class="kw">crate</span>) generation: u32,
     <span class="kw">pub</span>(<span class="kw">crate</span>) reuse_guard: ReuseGuard,
 }
 
 <span class="kw">impl </span>MlsSenderData {
     <span class="doccomment">/// Build new [`MlsSenderData`] for a [`Sender`].
-    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>from_sender(
-        hash_ref: <span class="kw-2">&amp;</span>HashReference,
-        generation: u32,
-        reuse_guard: ReuseGuard,
-    ) -&gt; <span class="self">Self </span>{
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>from_sender(leaf_index: u32, generation: u32, reuse_guard: ReuseGuard) -&gt; <span class="self">Self </span>{
         MlsSenderData {
-            sender: hash_ref.clone(),
+            leaf_index,
             generation,
             reuse_guard,
         }

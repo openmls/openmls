@@ -182,9 +182,7 @@
         // Check that Alice added Bob
         assert!(matches!(
             staged_proposal.sender(),
-            Sender::Member(member) if member == alice_group
-            .key_package_ref()
-            .expect(&quot;An unexpected error occurred.&quot;)
+            Sender::Member(member) if *member == alice_group.own_leaf_index()
         ));
         // Store proposal
         charlie_group.store_pending_proposal(*staged_proposal);
@@ -201,14 +199,12 @@
         // Check that Bob was removed
         assert_eq!(
             remove.remove_proposal().removed(),
-            bob_group
-                .key_package_ref()
-                .expect(&quot;An unexpected error occurred.&quot;)
+            bob_group.own_leaf_index()
         );
         // Check that Charlie removed Bob
         assert!(matches!(
             remove.sender(),
-            Sender::Member(member) if member == &amp;charlies_old_kpr
+            Sender::Member(member) if *member == charlies_leaf_index
         ));
         // Merge staged commit
         alice_group
@@ -240,7 +236,7 @@
             RemoveOperation::WeLeft =&gt; unreachable!(),
             // We expect this variant, since Bob was removed by Charlie
             RemoveOperation::WeWereRemovedBy(member) =&gt; {
-                assert!(matches!(member, Sender::Member(member) if member == charlies_old_kpr));
+                assert!(matches!(member, Sender::Member(member) if member == charlies_leaf_index));
             }
             RemoveOperation::TheyLeft(_) =&gt; unreachable!(),
             RemoveOperation::TheyWereRemovedBy(_) =&gt; unreachable!(),

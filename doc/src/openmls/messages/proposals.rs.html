@@ -551,13 +551,13 @@
     Debug, PartialEq, Eq, Clone, Serialize, Deserialize, TlsDeserialize, TlsSerialize, TlsSize,
 )]
 </span><span class="kw">pub struct </span>RemoveProposal {
-    <span class="kw">pub</span>(<span class="kw">crate</span>) removed: KeyPackageRef,
+    <span class="kw">pub</span>(<span class="kw">crate</span>) removed: u32,
 }
 
 <span class="kw">impl </span>RemoveProposal {
-    <span class="doccomment">/// Returns the [`KeyPackageRef`] index in this proposal.
-    </span><span class="kw">pub fn </span>removed(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>KeyPackageRef {
-        <span class="kw-2">&amp;</span><span class="self">self</span>.removed
+    <span class="doccomment">/// Returns the leaf index of the removed leaf in this proposal.
+    </span><span class="kw">pub fn </span>removed(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; u32 {
+        <span class="self">self</span>.removed
     }
 }
 
