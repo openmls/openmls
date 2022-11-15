@@ -89,9 +89,6 @@ impl MlsGroup {
     /// Removes members from the group.
     ///
     /// Members are removed by providing the member's leaf index.
-    /// The identity is an opaque byte string that is not interpreted by OpenMLS.
-    /// This can be the `identity` in a `BasicCredential` or some other form
-    /// of identity.
     ///
     /// If successful, it returns a tuple of [`MlsMessageOut`] and an optional [`Welcome`].
     /// The [Welcome] is [Some] when the queue of pending proposals contained add proposals

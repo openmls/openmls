@@ -109,7 +109,8 @@ impl MessageSecretsStore {
     }
 
     /// Get a mutable reference to a secret tree for a given epoch `group_epoch`.
-    /// Return a vector with the leaf indices of the epoch.
+    /// Return a mutable reference to the [`MessageSecrets`] and a slice to the
+    /// [`Member`]s of the epoch.
     pub(crate) fn secrets_and_leaves_for_epoch_mut(
         &mut self,
         group_epoch: impl Into<GroupEpoch>,
@@ -123,7 +124,7 @@ impl MessageSecretsStore {
         None
     }
 
-    /// Return a slice with the leaf indices of the epoch.
+    /// Return a slice with the [`Member`]s of the `group_epoch`.
     pub(crate) fn leaves_for_epoch(&self, group_epoch: impl Into<GroupEpoch>) -> &[Member] {
         let epoch = group_epoch.into().as_u64();
         for epoch_tree in self.past_epoch_trees.iter() {
