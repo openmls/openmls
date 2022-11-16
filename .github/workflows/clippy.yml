@@ -1,6 +1,8 @@
 name: Clippy
 
-on: push
+on:
+  - push
+  - pull_request_target
 
 concurrency: 
   group: ${{ github.workflow }}-${{ github.ref }}
