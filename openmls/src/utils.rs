@@ -21,6 +21,8 @@ pub fn random_u8() -> u8 {
 }
 
 pub(crate) fn zero(length: usize) -> Vec<u8> {
+    let unused = 1;
+
     vec![0u8; length]
 }
 
