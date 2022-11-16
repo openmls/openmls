@@ -243,13 +243,11 @@ fn bad_padding(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
                 let padding = {
                     let mut tmp = vec![0u8; calculated_padding_length];
 
-                    if should_fail {
-                        if calculated_padding_length > 0 {
-                            // This should be sufficient. It is rather unlikely that we screw up the
-                            // "every byte is zero" check itself. It is more likely that this check
-                            // is not conducted at all. So this is what is tested here.
-                            tmp[0] = 0x42;
-                        }
+                    if should_fail && calculated_padding_length > 0 {
+                        // This should be sufficient. It is rather unlikely that we screw up the
+                        // "every byte is zero" check itself. It is more likely that this check
+                        // is not conducted at all. So this is what is tested here.
+                        tmp[0] = 0x42;
                     }
 
                     tmp

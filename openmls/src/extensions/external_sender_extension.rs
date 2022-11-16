@@ -58,7 +58,7 @@ mod test {
 
                 external_sender_extensions.push(ExternalSender {
                     signature_key: credential.signature_key().clone(),
-                    credential: credential,
+                    credential,
                 });
             }
 

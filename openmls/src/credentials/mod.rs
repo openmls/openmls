@@ -218,7 +218,7 @@ impl PartialEq for BasicCredential {
 /// This struct contains a [`Credential`] and the private key corresponding to
 /// the signature key it contains.
 #[derive(Debug, Clone, Serialize, Deserialize)]
-#[cfg_attr(any(feature = "test-utils", test), derive(PartialEq))]
+#[cfg_attr(any(feature = "test-utils", test), derive(Eq, PartialEq))]
 pub struct CredentialBundle {
     credential: Credential,
     signature_private_key: SignaturePrivateKey,
