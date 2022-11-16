@@ -161,7 +161,7 @@ pub struct MlsGroup {
     group: CoreGroup,
     // A [ProposalStore] that stores incoming proposals from the DS within one epoch.
     // The store is emptied after every epoch change.
-    proposal_store: ProposalStore,
+    pub(crate) proposal_store: ProposalStore,
     // Own `KeyPackageBundle`s that were created for update proposals and that
     // are needed in case an update proposal is commited by another group
     // member. The vector is emptied after every epoch change.
@@ -358,7 +358,7 @@ impl MlsGroup {
     }
 
     /// Group framing parameters
-    fn framing_parameters(&self) -> FramingParameters {
+    pub(crate) fn framing_parameters(&self) -> FramingParameters {
         FramingParameters::new(
             &self.aad,
             self.mls_group_config.wire_format_policy().outgoing(),

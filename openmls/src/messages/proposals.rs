@@ -125,18 +125,30 @@ pub enum Proposal {
 impl Proposal {
     pub(crate) fn proposal_type(&self) -> ProposalType {
         match self {
-            Proposal::Add(ref _a) => ProposalType::Add,
-            Proposal::Update(ref _u) => ProposalType::Update,
-            Proposal::Remove(ref _r) => ProposalType::Remove,
-            Proposal::PreSharedKey(ref _p) => ProposalType::Presharedkey,
-            Proposal::ReInit(ref _r) => ProposalType::Reinit,
-            Proposal::ExternalInit(ref _r) => ProposalType::ExternalInit,
-            Proposal::AppAck(ref _r) => ProposalType::AppAck,
-            Proposal::GroupContextExtensions(ref _r) => ProposalType::GroupContextExtensions,
+            Self::Add(ref _a) => ProposalType::Add,
+            Self::Update(ref _u) => ProposalType::Update,
+            Self::Remove(ref _r) => ProposalType::Remove,
+            Self::PreSharedKey(ref _p) => ProposalType::Presharedkey,
+            Self::ReInit(ref _r) => ProposalType::Reinit,
+            Self::ExternalInit(ref _r) => ProposalType::ExternalInit,
+            Self::AppAck(ref _r) => ProposalType::AppAck,
+            Self::GroupContextExtensions(ref _r) => ProposalType::GroupContextExtensions,
         }
     }
+
     pub(crate) fn is_type(&self, proposal_type: ProposalType) -> bool {
         self.proposal_type() == proposal_type
+    }
+
+    /// Indicates whether a [Commit](crate::prelude::Commit) containing this [Proposal] requires a path
+    pub fn is_path_required(&self) -> bool {
+        match self {
+            Self::Add(_) | Self::PreSharedKey(_) | Self::ReInit(_) | Self::AppAck(_) => false,
+            Self::Update(_)
+            | Self::Remove(_)
+            | Self::ExternalInit(_)
+            | Self::GroupContextExtensions(_) => true,
+        }
     }
 }
 

@@ -73,9 +73,9 @@ The following is a list of the individual semantic validation steps performed by
 ### Commit message validation
 
 | ValidationStep | Description                                                                            | Implemented | Tested | Test File |
-| -------------- | -------------------------------------------------------------------------------------- | ----------- | ------ | --------- |
+| -------------- |----------------------------------------------------------------------------------------| ----------- | ------ | --------- |
 | `ValSem200`    | Commit must not cover inline self Remove proposal                                      | ✅          | ✅     | `openmls/src/group/tests/test_commit_validation.rs`       |
-| `ValSem201`    | Path must be present, if Commit contains Removes or Updates                            | ✅          | ✅     | `openmls/src/group/tests/test_commit_validation.rs`       |
+| `ValSem201`    | Path must be present, if at least one proposal requires a path                         | ✅          | ✅     | `openmls/src/group/tests/test_commit_validation.rs`       |
 | `ValSem202`    | Path must be the right length                                                          | ✅          | ✅     | `openmls/src/group/tests/test_commit_validation.rs`       |
 | `ValSem203`    | Path secrets must decrypt correctly                                                    | ✅          | ✅     | `openmls/src/group/tests/test_commit_validation.rs`       |
 | `ValSem204`    | Public keys from Path must be verified and match the private keys from the direct path | ✅          | ✅     | `openmls/src/group/tests/test_commit_validation.rs`       |

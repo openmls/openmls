@@ -56,8 +56,6 @@ impl CoreGroup {
         key_package_bundles: &[KeyPackageBundle],
     ) -> Result<ApplyProposalsValues, ApplyProposalsError> {
         log::debug!("Applying proposal");
-        let mut has_updates = false;
-        let mut has_removes = false;
         let mut self_removed = false;
         let mut external_init_secret_option = None;
 
@@ -89,7 +87,6 @@ impl CoreGroup {
 
         // Process updates first
         for queued_proposal in proposal_queue.filtered_by_type(ProposalType::Update) {
-            has_updates = true;
             if let Proposal::Update(update_proposal) = queued_proposal.proposal() {
                 // Check if this is our own update.
                 let sender = queued_proposal.sender();
@@ -120,7 +117,6 @@ impl CoreGroup {
 
         // Process removes
         for queued_proposal in proposal_queue.filtered_by_type(ProposalType::Remove) {
-            has_removes = true;
             if let Proposal::Remove(remove_proposal) = queued_proposal.proposal() {
                 // Check if we got removed from the group
                 if remove_proposal.removed() == self.own_leaf_index() {
@@ -168,15 +164,16 @@ impl CoreGroup {
 
         let presharedkeys = PreSharedKeys { psks: psks.into() };
 
-        // This flag determines if the commit requires a path. A path is
-        // required if the commit is empty, i.e. if it doesn't contain any
-        // proposals or if it is a "full" commit. A commit is full if it refers
-        // to proposal types other than Add, PreSharedKey and/or ReInit
-        // proposals.
-        let path_required = has_updates
-            || has_removes
-            // The fact that this is some implies that there's an external init
-            // proposal.
+        let proposals_require_path = proposal_queue
+            .queued_proposals()
+            .any(|p| p.proposal().is_path_required());
+
+        // This flag determines if the commit requires a path. A path is required if:
+        // * none of the proposals require a path
+        // * (or) it is an external commit
+        // * (or) the commit is empty which implicitly means it's a self-update
+        let path_required = proposals_require_path
+            // The fact that this is some implies that there's an external init proposal.
             || external_init_secret_option.is_some()
             || proposal_queue.is_empty();
 
