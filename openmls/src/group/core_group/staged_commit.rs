@@ -48,7 +48,6 @@ impl CoreGroup {
     ///  - ValSem242
     ///  - ValSem243
     ///  - ValSem244
-    ///  - ValSem245
     /// Returns an error if the given commit was sent by the owner of this
     /// group.
     pub(crate) fn stage_commit(
@@ -142,11 +141,10 @@ impl CoreGroup {
             Sender::NewMemberCommit => {
                 // ValSem240: External Commit, inline Proposals: There MUST be at least one ExternalInit proposal.
                 // ValSem241: External Commit, inline Proposals: There MUST be at most one ExternalInit proposal.
-                // ValSem242: External Commit, inline Proposals: There MUST NOT be any Add proposals.
-                // ValSem243: External Commit, inline Proposals: There MUST NOT be any Update proposals.
-                // ValSem244: External Commit, inline Remove Proposal: The identity and the endpoint_id of the removed
+                // ValSem242: External Commit must only cover inline proposal in allowlist (ExternalInit, Remove, PreSharedKey)
+                // ValSem243: External Commit, inline Remove Proposal: The identity and the endpoint_id of the removed
                 //            leaf are identical to the ones in the path KeyPackage.
-                // ValSem245: External Commit, referenced Proposals: There MUST NOT be any ExternalInit proposals.
+                // ValSem244: External Commit, referenced Proposals: There MUST NOT be any ExternalInit proposals.
                 self.validate_external_commit(&proposal_queue, commit_update_key_package.as_ref())?;
                 // Since there are no update proposals in an External Commit we have no public keys to return
                 HashSet::new()
