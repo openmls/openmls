@@ -3,7 +3,7 @@ use tls_codec::{Deserialize, Serialize, Size, TlsByteVecU32, TlsByteVecU8};
 use super::*;
 use std::io::{Read, Write};
 
-impl Deserialize for VerifiableMlsPlaintext {
+impl Deserialize for VerifiableMlsAuthContent {
     fn tls_deserialize<R: Read>(bytes: &mut R) -> Result<Self, tls_codec::Error> {
         let wire_format = WireFormat::tls_deserialize(bytes)?;
         let content: MlsContent = MlsContent::tls_deserialize(bytes)?;
@@ -18,7 +18,7 @@ impl Deserialize for VerifiableMlsPlaintext {
             ));
         }
 
-        let verifiable = VerifiableMlsPlaintext::new(
+        let verifiable = VerifiableMlsAuthContent::new(
             MlsContentTbs::new(
                 wire_format,
                 content.group_id,
@@ -36,7 +36,7 @@ impl Deserialize for VerifiableMlsPlaintext {
     }
 }
 
-impl Size for VerifiableMlsPlaintext {
+impl Size for VerifiableMlsAuthContent {
     #[inline]
     fn tls_serialized_len(&self) -> usize {
         self.tbs.wire_format.tls_serialized_len()
@@ -47,7 +47,7 @@ impl Size for VerifiableMlsPlaintext {
     }
 }
 
-impl Serialize for VerifiableMlsPlaintext {
+impl Serialize for VerifiableMlsAuthContent {
     fn tls_serialize<W: Write>(&self, writer: &mut W) -> Result<usize, tls_codec::Error> {
         let mut written = self.tbs.wire_format.tls_serialize(writer)?;
         written += self.tbs.content.tls_serialize(writer)?;
@@ -149,7 +149,7 @@ impl Deserialize for MlsMessage {
                 let wire_format = WireFormat::tls_deserialize(&mut vec![*first_byte].as_slice())?;
                 let body = match wire_format {
                     WireFormat::MlsPlaintext => {
-                        let plaintext = VerifiableMlsPlaintext::tls_deserialize(&mut chain)?;
+                        let plaintext = VerifiableMlsAuthContent::tls_deserialize(&mut chain)?;
                         MlsMessageBody::Plaintext(plaintext)
                     }
                     WireFormat::MlsCiphertext => {
@@ -171,7 +171,7 @@ impl Size for MlsMessage {
     fn tls_serialized_len(&self) -> usize {
         match &self.body {
             MlsMessageBody::Plaintext(plaintext) => {
-                VerifiableMlsPlaintext::tls_serialized_len(plaintext)
+                VerifiableMlsAuthContent::tls_serialized_len(plaintext)
             }
             MlsMessageBody::Ciphertext(ciphertext) => MlsCiphertext::tls_serialized_len(ciphertext),
         }

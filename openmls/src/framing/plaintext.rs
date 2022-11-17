@@ -478,15 +478,15 @@ fn encode_tbs<'a>(
 }
 
 #[derive(PartialEq, Debug, Clone)]
-pub(crate) struct VerifiableMlsPlaintext {
+pub(crate) struct VerifiableMlsAuthContent {
     pub(super) tbs: MlsContentTbs,
     pub(super) signature: Signature,
     pub(super) confirmation_tag: Option<ConfirmationTag>,
     pub(super) membership_tag: Option<MembershipTag>,
 }
 
-impl VerifiableMlsPlaintext {
-    /// Create a new [`VerifiableMlsPlaintext`] from a [`MlsContentTbs`] and
+impl VerifiableMlsAuthContent {
+    /// Create a new [`VerifiableMlsAuthContent`] from a [`MlsContentTbs`] and
     /// a [`Signature`].
     pub(crate) fn new(
         tbs: MlsContentTbs,
@@ -502,7 +502,7 @@ impl VerifiableMlsPlaintext {
         }
     }
 
-    /// Create a [`VerifiableMlsPlaintext`] from an [`MlsPlaintext`] and the
+    /// Create a [`VerifiableMlsAuthContent`] from an [`MlsPlaintext`] and the
     /// serialized context.
     pub(crate) fn from_plaintext(
         mls_plaintext: MlsPlaintext,
@@ -744,7 +744,7 @@ impl MlsContentTbs {
     }
 }
 
-impl Verifiable for VerifiableMlsPlaintext {
+impl Verifiable for VerifiableMlsAuthContent {
     fn unsigned_payload(&self) -> Result<Vec<u8>, tls_codec::Error> {
         self.tbs.tls_serialize_detached()
     }
@@ -763,8 +763,8 @@ mod private_mod {
     pub(crate) struct Seal;
 }
 
-impl VerifiedStruct<VerifiableMlsPlaintext> for MlsPlaintext {
-    fn from_verifiable(v: VerifiableMlsPlaintext, _seal: Self::SealingType) -> Self {
+impl VerifiedStruct<VerifiableMlsAuthContent> for MlsPlaintext {
+    fn from_verifiable(v: VerifiableMlsAuthContent, _seal: Self::SealingType) -> Self {
         Self {
             wire_format: v.tbs.wire_format,
             content: v.tbs.content,

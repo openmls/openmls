@@ -253,7 +253,7 @@ impl MlsCiphertext {
             .map_err(|_| MessageDecryptionError::MalformedContent)
     }
 
-    /// This function decrypts an [`MlsCiphertext`] into an [`VerifiableMlsPlaintext`].
+    /// This function decrypts an [`MlsCiphertext`] into an [`VerifiableMlsAuthContent`].
     /// In order to get an [`MlsPlaintext`] the result must be verified.
     pub(crate) fn to_plaintext(
         &self,
@@ -263,7 +263,7 @@ impl MlsCiphertext {
         sender_index: SecretTreeLeafIndex,
         sender_ratchet_configuration: &SenderRatchetConfiguration,
         sender_data: MlsSenderData,
-    ) -> Result<VerifiableMlsPlaintext, MessageDecryptionError> {
+    ) -> Result<VerifiableMlsAuthContent, MessageDecryptionError> {
         let secret_type = SecretType::from(&self.content_type);
         // Extract generation and key material for encryption
         let (ratchet_key, ratchet_nonce) = message_secrets
@@ -292,7 +292,7 @@ impl MlsCiphertext {
             mls_ciphertext_content.content
         );
 
-        let verifiable = VerifiableMlsPlaintext::new(
+        let verifiable = VerifiableMlsAuthContent::new(
             MlsContentTbs::new(
                 self.wire_format,
                 self.group_id.clone(),

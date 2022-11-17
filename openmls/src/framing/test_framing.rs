@@ -64,7 +64,7 @@ fn codec_plaintext(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvide
     let enc = orig
         .tls_serialize_detached()
         .expect("An unexpected error occurred.");
-    let mut copy = VerifiableMlsPlaintext::tls_deserialize(&mut enc.as_slice())
+    let mut copy = VerifiableMlsAuthContent::tls_deserialize(&mut enc.as_slice())
         .expect("An unexpected error occurred.");
     copy.set_context(serialized_context);
     let copy = copy
@@ -335,7 +335,7 @@ fn membership_tag(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
         .expect("An unexpected error occurred.");
 
     let verifiable_mls_plaintext =
-        VerifiableMlsPlaintext::from_plaintext(mls_plaintext.clone(), serialized_context.clone());
+        VerifiableMlsAuthContent::from_plaintext(mls_plaintext.clone(), serialized_context.clone());
 
     println!(
         "Membership tag error: {:?}",
@@ -350,7 +350,7 @@ fn membership_tag(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
     // Change the content of the plaintext message
     mls_plaintext.set_content(MlsContentBody::Application(vec![7, 8, 9].into()));
     let verifiable_mls_plaintext =
-        VerifiableMlsPlaintext::from_plaintext(mls_plaintext.clone(), serialized_context);
+        VerifiableMlsAuthContent::from_plaintext(mls_plaintext.clone(), serialized_context);
 
     // Expect the signature & membership tag verification to fail
     assert!(verifiable_mls_plaintext
@@ -760,7 +760,7 @@ fn invalid_plaintext_signature(ciphersuite: Ciphersuite, backend: &impl OpenMlsC
     //     .tls_serialize_detached()
     //     .expect("An unexpected error occurred.");
     // let mut input_commit =
-    //     VerifiableMlsPlaintext::tls_deserialize(&mut original_encoded_commit.as_slice())
+    //     VerifiableMlsAuthContent::tls_deserialize(&mut original_encoded_commit.as_slice())
     //         .expect("An unexpected error occurred.");
     // let original_input_commit = input_commit.clone();
 
@@ -814,7 +814,7 @@ fn invalid_plaintext_signature(ciphersuite: Ciphersuite, backend: &impl OpenMlsC
     //     .commit
     //     .tls_serialize_detached()
     //     .expect("An unexpected error occurred.");
-    // let input_commit = VerifiableMlsPlaintext::tls_deserialize(&mut encoded_commit.as_slice())
+    // let input_commit = VerifiableMlsAuthContent::tls_deserialize(&mut encoded_commit.as_slice())
     //     .expect("An unexpected error occurred.");
     // let decoded_commit = group_bob.verify(input_commit, backend);
     // assert_eq!(
@@ -880,7 +880,7 @@ fn invalid_plaintext_signature(ciphersuite: Ciphersuite, backend: &impl OpenMlsC
     //     .commit
     //     .tls_serialize_detached()
     //     .expect("An unexpected error occurred.");
-    // let input_commit = VerifiableMlsPlaintext::tls_deserialize(&mut encoded_commit.as_slice())
+    // let input_commit = VerifiableMlsAuthContent::tls_deserialize(&mut encoded_commit.as_slice())
     //     .expect("An unexpected error occurred.");
     // let decoded_commit = group_bob
     //     .verify(input_commit, backend)

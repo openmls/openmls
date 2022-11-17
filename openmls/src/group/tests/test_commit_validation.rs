@@ -120,7 +120,7 @@ fn test_valsem200(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
 
     // Let's get the proposal out of the message.
     let proposal_message =
-        VerifiableMlsPlaintext::tls_deserialize(&mut serialized_proposal_message.as_slice())
+        VerifiableMlsAuthContent::tls_deserialize(&mut serialized_proposal_message.as_slice())
             .expect("Could not deserialize message.");
 
     let proposal = if let MlsContentBody::Proposal(proposal) = proposal_message.content() {
@@ -140,8 +140,9 @@ fn test_valsem200(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
         .tls_serialize_detached()
         .expect("Could not serialize message.");
 
-    let mut plaintext = VerifiableMlsPlaintext::tls_deserialize(&mut serialized_message.as_slice())
-        .expect("Could not deserialize message.");
+    let mut plaintext =
+        VerifiableMlsAuthContent::tls_deserialize(&mut serialized_message.as_slice())
+            .expect("Could not deserialize message.");
 
     // Keep the original plaintext for positive test later.
     let original_plaintext = plaintext.clone();
@@ -197,8 +198,8 @@ fn test_valsem200(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
         .set_membership_tag(backend, &serialized_context, membership_key)
         .expect("error refreshing membership tag");
 
-    let verifiable_plaintext: VerifiableMlsPlaintext =
-        VerifiableMlsPlaintext::from_plaintext(signed_plaintext, None);
+    let verifiable_plaintext: VerifiableMlsAuthContent =
+        VerifiableMlsAuthContent::from_plaintext(signed_plaintext, None);
 
     // Have Bob try to process the commit.
     let message_in = MlsMessageIn::from(verifiable_plaintext);
@@ -246,7 +247,7 @@ fn test_valsem201(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
         .tls_serialize_detached()
         .expect("error serializing plaintext");
 
-    let mut update = VerifiableMlsPlaintext::tls_deserialize(&mut serialized_update.as_slice())
+    let mut update = VerifiableMlsAuthContent::tls_deserialize(&mut serialized_update.as_slice())
         .expect("Could not deserialize message.");
 
     // The self-update currently contains an update proposal. This should change
@@ -282,7 +283,7 @@ fn test_valsem201(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
     );
 
     let original_update_plaintext =
-        VerifiableMlsPlaintext::tls_deserialize(&mut serialized_update.as_slice())
+        VerifiableMlsAuthContent::tls_deserialize(&mut serialized_update.as_slice())
             .expect("Could not deserialize message.");
 
     // Positive case
@@ -356,7 +357,7 @@ fn test_valsem201(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
     );
 
     let original_remove_plaintext =
-        VerifiableMlsPlaintext::tls_deserialize(&mut serialized_remove.as_slice())
+        VerifiableMlsAuthContent::tls_deserialize(&mut serialized_remove.as_slice())
             .expect("Could not deserialize message.");
 
     // Positive case
@@ -416,7 +417,7 @@ fn test_valsem201(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
     );
 
     let original_update_plaintext =
-        VerifiableMlsPlaintext::tls_deserialize(&mut serialized_update.as_slice())
+        VerifiableMlsAuthContent::tls_deserialize(&mut serialized_update.as_slice())
             .expect("Could not deserialize message.");
 
     // Positive case
@@ -434,7 +435,7 @@ fn erase_path(
     alice_group: &MlsGroup,
 ) -> MlsMessageIn {
     let mut plaintext =
-        VerifiableMlsPlaintext::tls_deserialize(&mut pt).expect("Could not deserialize message.");
+        VerifiableMlsAuthContent::tls_deserialize(&mut pt).expect("Could not deserialize message.");
 
     // Keep the original plaintext for positive test later.
     let original_plaintext = plaintext.clone();
@@ -487,8 +488,8 @@ fn erase_path(
         .set_membership_tag(backend, &serialized_context, membership_key)
         .expect("error refreshing membership tag");
 
-    let verifiable_plaintext: VerifiableMlsPlaintext =
-        VerifiableMlsPlaintext::from_plaintext(signed_plaintext, None);
+    let verifiable_plaintext: VerifiableMlsAuthContent =
+        VerifiableMlsAuthContent::from_plaintext(signed_plaintext, None);
 
     MlsMessageIn::from(verifiable_plaintext)
 }
@@ -512,8 +513,9 @@ fn test_valsem202(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
         .tls_serialize_detached()
         .expect("Could not serialize message.");
 
-    let mut plaintext = VerifiableMlsPlaintext::tls_deserialize(&mut serialized_update.as_slice())
-        .expect("Could not deserialize message.");
+    let mut plaintext =
+        VerifiableMlsAuthContent::tls_deserialize(&mut serialized_update.as_slice())
+            .expect("Could not deserialize message.");
 
     // Keep the original plaintext for positive test later.
     let original_plaintext = plaintext.clone();
@@ -568,8 +570,8 @@ fn test_valsem202(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
         .set_membership_tag(backend, &serialized_context, membership_key)
         .expect("error refreshing membership tag");
 
-    let verifiable_plaintext: VerifiableMlsPlaintext =
-        VerifiableMlsPlaintext::from_plaintext(signed_plaintext, None);
+    let verifiable_plaintext: VerifiableMlsAuthContent =
+        VerifiableMlsAuthContent::from_plaintext(signed_plaintext, None);
 
     let update_message_in = MlsMessageIn::from(verifiable_plaintext);
 
@@ -589,7 +591,7 @@ fn test_valsem202(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
     );
 
     let original_update_plaintext =
-        VerifiableMlsPlaintext::tls_deserialize(&mut serialized_update.as_slice())
+        VerifiableMlsAuthContent::tls_deserialize(&mut serialized_update.as_slice())
             .expect("Could not deserialize message.");
 
     // Positive case
@@ -620,8 +622,9 @@ fn test_valsem203(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
         .tls_serialize_detached()
         .expect("Could not serialize message.");
 
-    let mut plaintext = VerifiableMlsPlaintext::tls_deserialize(&mut serialized_update.as_slice())
-        .expect("Could not deserialize message.");
+    let mut plaintext =
+        VerifiableMlsAuthContent::tls_deserialize(&mut serialized_update.as_slice())
+            .expect("Could not deserialize message.");
 
     // Keep the original plaintext for positive test later.
     let original_plaintext = plaintext.clone();
@@ -678,8 +681,8 @@ fn test_valsem203(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
         .set_membership_tag(backend, &serialized_context, membership_key)
         .expect("error refreshing membership tag");
 
-    let verifiable_plaintext: VerifiableMlsPlaintext =
-        VerifiableMlsPlaintext::from_plaintext(signed_plaintext, None);
+    let verifiable_plaintext: VerifiableMlsAuthContent =
+        VerifiableMlsAuthContent::from_plaintext(signed_plaintext, None);
 
     let update_message_in = MlsMessageIn::from(verifiable_plaintext);
 
@@ -699,7 +702,7 @@ fn test_valsem203(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
     );
 
     let original_update_plaintext =
-        VerifiableMlsPlaintext::tls_deserialize(&mut serialized_update.as_slice())
+        VerifiableMlsAuthContent::tls_deserialize(&mut serialized_update.as_slice())
             .expect("Could not deserialize message.");
 
     // Positive case
@@ -730,8 +733,9 @@ fn test_valsem204(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
         .tls_serialize_detached()
         .expect("Could not serialize message.");
 
-    let mut plaintext = VerifiableMlsPlaintext::tls_deserialize(&mut serialized_update.as_slice())
-        .expect("Could not deserialize message.");
+    let mut plaintext =
+        VerifiableMlsAuthContent::tls_deserialize(&mut serialized_update.as_slice())
+            .expect("Could not deserialize message.");
 
     // Keep the original plaintext for positive test later.
     let original_plaintext = plaintext.clone();
@@ -788,8 +792,8 @@ fn test_valsem204(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
         .set_membership_tag(backend, &serialized_context, membership_key)
         .expect("error refreshing membership tag");
 
-    let verifiable_plaintext: VerifiableMlsPlaintext =
-        VerifiableMlsPlaintext::from_plaintext(signed_plaintext, None);
+    let verifiable_plaintext: VerifiableMlsAuthContent =
+        VerifiableMlsAuthContent::from_plaintext(signed_plaintext, None);
 
     let update_message_in = MlsMessageIn::from(verifiable_plaintext);
 
@@ -809,7 +813,7 @@ fn test_valsem204(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
     );
 
     let original_update_plaintext =
-        VerifiableMlsPlaintext::tls_deserialize(&mut serialized_update.as_slice())
+        VerifiableMlsAuthContent::tls_deserialize(&mut serialized_update.as_slice())
             .expect("Could not deserialize message.");
 
     // Positive case
@@ -840,8 +844,9 @@ fn test_valsem205(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
         .tls_serialize_detached()
         .expect("Could not serialize message.");
 
-    let mut plaintext = VerifiableMlsPlaintext::tls_deserialize(&mut serialized_update.as_slice())
-        .expect("Could not deserialize message.");
+    let mut plaintext =
+        VerifiableMlsAuthContent::tls_deserialize(&mut serialized_update.as_slice())
+            .expect("Could not deserialize message.");
 
     // Keep the original plaintext for positive test later.
     let original_plaintext = plaintext.clone();
@@ -879,8 +884,8 @@ fn test_valsem205(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
         .set_membership_tag(backend, &serialized_context, membership_key)
         .expect("error refreshing membership tag");
 
-    let verifiable_plaintext: VerifiableMlsPlaintext =
-        VerifiableMlsPlaintext::from_plaintext(verified_plaintext, None);
+    let verifiable_plaintext: VerifiableMlsAuthContent =
+        VerifiableMlsAuthContent::from_plaintext(verified_plaintext, None);
 
     let update_message_in = MlsMessageIn::from(verifiable_plaintext);
 
