@@ -175,6 +175,15 @@ impl Commit {
 )]
 pub struct ConfirmationTag(pub(crate) Mac);
 
+impl ConfirmationTag {
+    #[cfg(any(feature = "test-utils", test))]
+    pub fn dummy() -> Self {
+        Self(Mac {
+            mac_value: vec![].into(),
+        })
+    }
+}
+
 /// GroupInfo (To Be Signed)
 ///
 /// ```c
