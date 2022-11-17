@@ -59,7 +59,6 @@ impl Serialize for VerifiableMlsAuthContent {
     }
 }
 
-// This might get refactored with the TLS codec refactoring, just suppressing the warning for now
 pub(super) fn serialize_plaintext_tbs<'a, W: Write>(
     wire_format: WireFormat,
     content: &MlsContent,
@@ -68,10 +67,14 @@ pub(super) fn serialize_plaintext_tbs<'a, W: Write>(
 ) -> Result<usize, tls_codec::Error> {
     let mut written = wire_format.tls_serialize(buffer)?;
     written += content.tls_serialize(buffer)?;
-    serialized_context
-        .into()
-        .tls_serialize(buffer)
-        .map(|l| l + written)
+    written += if let Some(serialized_context) = serialized_context.into() {
+        // Only a member should have a context.
+        debug_assert!(matches!(content.sender, Sender::Member(_)));
+        buffer.write(serialized_context)?
+    } else {
+        0
+    };
+    Ok(written)
 }
 
 impl Size for MlsContentTbs {
@@ -79,7 +82,11 @@ impl Size for MlsContentTbs {
     fn tls_serialized_len(&self) -> usize {
         self.wire_format.tls_serialized_len()
             + self.content.tls_serialized_len()
-            + self.serialized_context.tls_serialized_len()
+            + if let Some(serialized_context) = &self.serialized_context {
+                serialized_context.tls_serialized_len()
+            } else {
+                0
+            }
     }
 }
 
