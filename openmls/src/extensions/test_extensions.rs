@@ -17,8 +17,8 @@ use crate::{
 fn capabilities() {
     // A capabilities extension with the default values for openmls.
     let extension_bytes = [
-        0u8, 1, 0, 0, 0, 29, 1, 1, 6, 0, 1, 0, 2, 0, 3, 6, 0, 1, 0, 2, 0, 3, 12, 0, 1, 0, 2, 0, 3,
-        0, 4, 0, 5, 0, 8,
+        0xff, 0x00, 0, 0, 0, 29, 1, 1, 6, 0, 1, 0, 2, 0, 3, 6, 0xff, 00, 0xff, 01, 0, 1, 12, 0, 1,
+        0, 2, 0, 3, 0, 4, 0, 5, 0, 8,
     ];
     let mut extension_bytes_mut = &extension_bytes[..];
 
@@ -259,7 +259,7 @@ fn ratchet_tree_extension(ciphersuite: Ciphersuite, backend: &impl OpenMlsCrypto
 #[test]
 fn required_capabilities() {
     // A required capabilities extension with the default values for openmls (none).
-    let extension_bytes = vec![0u8, 6, 0, 0, 0, 2, 0, 0];
+    let extension_bytes = vec![0u8, 3, 0, 0, 0, 2, 0, 0];
     let mut extension_bytes_mut = &extension_bytes[..];
 
     let ext = Extension::RequiredCapabilities(RequiredCapabilitiesExtension::default());
@@ -283,7 +283,7 @@ fn required_capabilities() {
         &[ProposalType::Reinit],
     );
     let ext = Extension::RequiredCapabilities(required_capabilities);
-    let extension_bytes = vec![0u8, 6, 0, 0, 0, 8, 4, 0, 3, 0, 5, 2, 0, 5];
+    let extension_bytes = vec![0u8, 3, 0, 0, 0, 8, 4, 0, 1, 0, 2, 2, 0, 5];
 
     // Test encoding and decoding
     let encoded = ext
