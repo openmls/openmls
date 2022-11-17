@@ -171,7 +171,7 @@ pub enum Extension {
     ApplicationId(ApplicationIdExtension),
 
     /// A [`LifetimeExtension`]
-    LifeTime(LifetimeExtension),
+    Lifetime(LifetimeExtension),
 
     /// A [`ParentHashExtension`]
     ParentHash(ParentHashExtension),
@@ -201,7 +201,7 @@ impl Extension {
     /// [`Extension`] that's not a [`LifetimeExtension`].
     pub fn as_lifetime_extension(&self) -> Result<&LifetimeExtension, ExtensionError> {
         match self {
-            Self::LifeTime(e) => Ok(e),
+            Self::Lifetime(e) => Ok(e),
             _ => Err(ExtensionError::InvalidExtensionType(
                 "This is not a LifetimeExtension".into(),
             )),
@@ -264,7 +264,7 @@ impl Extension {
         match self {
             Extension::Capabilities(_) => ExtensionType::Capabilities,
             Extension::ApplicationId(_) => ExtensionType::ApplicationId,
-            Extension::LifeTime(_) => ExtensionType::Lifetime,
+            Extension::Lifetime(_) => ExtensionType::Lifetime,
             Extension::ParentHash(_) => ExtensionType::ParentHash,
             Extension::RatchetTree(_) => ExtensionType::RatchetTree,
             Extension::RequiredCapabilities(_) => ExtensionType::RequiredCapabilities,
