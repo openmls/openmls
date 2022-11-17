@@ -901,3 +901,41 @@ fn test_valsem247(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
         .process_unverified_message(unverified_message, None, backend)
         .expect("Unexpected error.");
 }
+
+// External Commit should work when group use ciphertext WireFormat
+#[apply(ciphersuites_and_backends)]
+fn test_pure_ciphertest(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
+    // Test with MlsCiphertext
+    let ECValidationTestSetup {
+        mut alice_group,
+        bob_credential_bundle,
+        plaintext: _,
+        original_plaintext: _,
+    } = validation_test_setup(PURE_CIPHERTEXT_WIRE_FORMAT_POLICY, ciphersuite, backend);
+
+    // Bob wants to commit externally.
+
+    // Have Alice export everything that bob needs.
+    let pgs_encoded: Vec<u8> = alice_group
+        .export_public_group_state(backend)
+        .expect("Error exporting PGS")
+        .tls_serialize_detached()
+        .expect("Error serializing PGS");
+    let pgs = VerifiablePublicGroupState::tls_deserialize(&mut pgs_encoded.as_slice())
+        .expect("Error deserializing PGS");
+
+    let (_bob_group, message) = MlsGroup::join_by_external_commit(
+        backend,
+        None,
+        pgs,
+        alice_group.configuration(),
+        &[],
+        &bob_credential_bundle,
+    )
+    .expect("Error initializing group externally.");
+
+    assert_eq!(message.wire_format(), WireFormat::MlsPlaintext);
+
+    // Would fail if handshake message processing did not distinguish external messages
+    assert!(alice_group.parse_message(message.into(), backend).is_ok());
+}
