@@ -420,7 +420,7 @@ impl MlsClient for MlsClientImpl {
             .wire_format_policy(wire_format_policy)
             .use_ratchet_tree_extension(true)
             .build();
-        let group = MlsGroup::new(
+        let group = MlsGroup::new_with_group_id(
             &self.crypto_provider,
             &mls_group_config,
             GroupId::from_slice(&create_group_request.group_id),
