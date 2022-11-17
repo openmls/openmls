@@ -34,7 +34,7 @@ fn create_commit_optional_path(ciphersuite: Ciphersuite, backend: &impl OpenMlsC
     .expect("An unexpected error occurred.");
 
     // Mandatory extensions, will be fixed in #164
-    let lifetime_extension = Extension::LifeTime(LifetimeExtension::new(60));
+    let lifetime_extension = Extension::Lifetime(LifetimeExtension::new(60));
     let mandatory_extensions: Vec<Extension> = vec![lifetime_extension];
 
     // Generate KeyPackages
@@ -310,7 +310,7 @@ fn group_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvid
         None,
         None,
     ));
-    let lifetime_extension = Extension::LifeTime(LifetimeExtension::new(60));
+    let lifetime_extension = Extension::Lifetime(LifetimeExtension::new(60));
     let mandatory_extensions: Vec<Extension> = vec![capabilities_extension, lifetime_extension];
 
     // Generate KeyPackages

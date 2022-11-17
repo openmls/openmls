@@ -110,7 +110,7 @@ pub(crate) fn setup(config: TestSetupConfig, backend: &impl OpenMlsCryptoProvide
                     None,
                     None,
                 ));
-                let lifetime_extension = Extension::LifeTime(LifetimeExtension::new(60));
+                let lifetime_extension = Extension::Lifetime(LifetimeExtension::new(60));
                 let mandatory_extensions: Vec<Extension> =
                     vec![capabilities_extension, lifetime_extension];
                 let key_package_bundle: KeyPackageBundle = KeyPackageBundle::new(
