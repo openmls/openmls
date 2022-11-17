@@ -19,7 +19,7 @@ impl Deserialize for VerifiableMlsPlaintext {
         }
 
         let verifiable = VerifiableMlsPlaintext::new(
-            MlsPlaintextTbs::new(
+            MlsContentTbs::new(
                 wire_format,
                 content.group_id,
                 content.epoch,
@@ -94,7 +94,7 @@ pub(super) fn serialize_plaintext_tbs<'a, W: Write>(
     payload.tls_serialize(buffer).map(|l| l + written)
 }
 
-impl Size for MlsPlaintextTbs {
+impl Size for MlsContentTbs {
     #[inline]
     fn tls_serialized_len(&self) -> usize {
         let context_len = if let Some(serialized_context) = &self.serialized_context {
@@ -112,7 +112,7 @@ impl Size for MlsPlaintextTbs {
     }
 }
 
-impl Serialize for MlsPlaintextTbs {
+impl Serialize for MlsContentTbs {
     fn tls_serialize<W: Write>(&self, writer: &mut W) -> Result<usize, tls_codec::Error> {
         serialize_plaintext_tbs(
             self.serialized_context.as_deref(),

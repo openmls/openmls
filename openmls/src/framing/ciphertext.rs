@@ -293,7 +293,7 @@ impl MlsCiphertext {
         );
 
         let verifiable = VerifiableMlsPlaintext::new(
-            MlsPlaintextTbs::new(
+            MlsContentTbs::new(
                 self.wire_format,
                 self.group_id.clone(),
                 self.epoch,

@@ -48,7 +48,7 @@ fn codec_plaintext(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvide
     let serialized_context = group_context
         .tls_serialize_detached()
         .expect("An unexpected error occurred.");
-    let signature_input = MlsPlaintextTbs::new(
+    let signature_input = MlsContentTbs::new(
         WireFormat::MlsPlaintext,
         GroupId::random(backend),
         1,
@@ -97,7 +97,7 @@ fn codec_ciphertext(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvid
     let serialized_context = group_context
         .tls_serialize_detached()
         .expect("An unexpected error occurred.");
-    let signature_input = MlsPlaintextTbs::new(
+    let signature_input = MlsContentTbs::new(
         WireFormat::MlsCiphertext,
         GroupId::random(backend),
         1,
@@ -176,7 +176,7 @@ fn wire_format_checks(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProv
     let serialized_context = group_context
         .tls_serialize_detached()
         .expect("An unexpected error occurred.");
-    let signature_input = MlsPlaintextTbs::new(
+    let signature_input = MlsContentTbs::new(
         WireFormat::MlsCiphertext,
         GroupId::random(backend),
         1,

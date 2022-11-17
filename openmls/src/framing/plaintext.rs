@@ -159,7 +159,7 @@ impl MlsPlaintext {
         context: &GroupContext,
         backend: &impl OpenMlsCryptoProvider,
     ) -> Result<Self, LibraryError> {
-        let mut mls_plaintext = MlsPlaintextTbs::new(
+        let mut mls_plaintext = MlsContentTbs::new(
             framing_parameters.wire_format(),
             context.group_id().clone(),
             context.epoch(),
@@ -242,7 +242,7 @@ impl MlsPlaintext {
     ) -> Result<Self, LibraryError> {
         let body = MlsContentBody::Proposal(proposal);
 
-        let message = MlsPlaintextTbs::new(
+        let message = MlsContentTbs::new(
             WireFormat::MlsPlaintext,
             group_id,
             epoch,
@@ -457,8 +457,8 @@ impl<'a> MlsPlaintextTbmPayload<'a> {
 pub(crate) struct MembershipTag(pub(crate) Mac);
 
 #[derive(PartialEq, Debug, Clone)]
-pub(crate) struct MlsPlaintextTbs {
     pub(super) serialized_context: Option<Vec<u8>>,
+pub(crate) struct MlsContentTbs {
     pub(super) wire_format: WireFormat,
     pub(super) group_id: GroupId,
     pub(super) epoch: GroupEpoch,
@@ -487,17 +487,17 @@ fn encode_tbs<'a>(
 
 #[derive(PartialEq, Debug, Clone)]
 pub(crate) struct VerifiableMlsPlaintext {
-    pub(super) tbs: MlsPlaintextTbs,
+    pub(super) tbs: MlsContentTbs,
     pub(super) signature: Signature,
     pub(super) confirmation_tag: Option<ConfirmationTag>,
     pub(super) membership_tag: Option<MembershipTag>,
 }
 
 impl VerifiableMlsPlaintext {
-    /// Create a new [`VerifiableMlsPlaintext`] from a [`MlsPlaintextTbs`] and
+    /// Create a new [`VerifiableMlsPlaintext`] from a [`MlsContentTbs`] and
     /// a [`Signature`].
     pub(crate) fn new(
-        tbs: MlsPlaintextTbs,
+        tbs: MlsContentTbs,
         signature: Signature,
         confirmation_tag: impl Into<Option<ConfirmationTag>>,
         membership_tag: impl Into<Option<MembershipTag>>,
@@ -522,13 +522,13 @@ impl VerifiableMlsPlaintext {
 
         match serialized_context.into() {
             Some(context) => Self {
-                tbs: MlsPlaintextTbs::from_plaintext(mls_plaintext).with_context(context),
+                tbs: MlsContentTbs::from_plaintext(mls_plaintext).with_context(context),
                 signature,
                 confirmation_tag,
                 membership_tag,
             },
             None => Self {
-                tbs: MlsPlaintextTbs::from_plaintext(mls_plaintext),
+                tbs: MlsContentTbs::from_plaintext(mls_plaintext),
                 signature,
                 confirmation_tag,
                 membership_tag,
@@ -618,7 +618,7 @@ impl VerifiableMlsPlaintext {
 
     /// Get the underlying MlsPlaintext data of the tbs object.
     #[cfg(test)]
-    pub(crate) fn payload(&self) -> &MlsPlaintextTbs {
+    pub(crate) fn payload(&self) -> &MlsContentTbs {
         &self.tbs
     }
 
@@ -691,7 +691,7 @@ impl VerifiableMlsPlaintext {
     }
 }
 
-impl Signable for MlsPlaintextTbs {
+impl Signable for MlsContentTbs {
     type SignedOutput = MlsPlaintext;
 
     fn unsigned_payload(&self) -> Result<Vec<u8>, tls_codec::Error> {
@@ -703,8 +703,8 @@ impl Signable for MlsPlaintextTbs {
     }
 }
 
-impl MlsPlaintextTbs {
-    /// Create an MlsPlaintextTbs from an existing values.
+impl MlsContentTbs {
+    /// Create an MlsContentTbs from an existing values.
     /// Note that if you would like to add a serialized context, you
     /// should subsequently call [`with_context`].
     pub(crate) fn new(
@@ -715,7 +715,6 @@ impl MlsPlaintextTbs {
         authenticated_data: TlsByteVecU32,
         body: MlsContentBody,
     ) -> Self {
-        MlsPlaintextTbs {
             serialized_context: None,
             wire_format,
             group_id,
@@ -723,9 +722,10 @@ impl MlsPlaintextTbs {
             sender,
             authenticated_data,
             body,
+        MlsContentTbs {
         }
     }
-    /// Adds a serialized context to MlsPlaintextTbs.
+    /// Adds a serialized context to MlsContentTbs.
     /// This consumes the original struct and can be used as a builder function.
     pub(crate) fn with_context(mut self, serialized_context: Vec<u8>) -> Self {
         self.serialized_context = Some(serialized_context);
@@ -736,7 +736,7 @@ impl MlsPlaintextTbs {
     /// This consumes the existing plaintext.
     /// To get the `MlsPlaintext` back use `sign`.
     fn from_plaintext(mls_plaintext: MlsPlaintext) -> Self {
-        MlsPlaintextTbs {
+        MlsContentTbs {
             wire_format: mls_plaintext.wire_format,
             serialized_context: None,
             group_id: mls_plaintext.content.group_id,
@@ -794,8 +794,6 @@ impl VerifiedStruct<VerifiableMlsPlaintext> for MlsPlaintext {
     type SealingType = private_mod::Seal;
 }
 
-impl SignedStruct<MlsPlaintextTbs> for MlsPlaintext {
-    fn from_payload(tbs: MlsPlaintextTbs, signature: Signature) -> Self {
         let content = MlsContent {
             group_id: tbs.group_id,
             epoch: tbs.epoch,
@@ -804,6 +802,8 @@ impl SignedStruct<MlsPlaintextTbs> for MlsPlaintext {
             body: tbs.body,
         };
 
+impl SignedStruct<MlsContentTbs> for MlsPlaintext {
+    fn from_payload(tbs: MlsContentTbs, signature: Signature) -> Self {
         Self {
             wire_format: tbs.wire_format,
             content,
