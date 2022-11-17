@@ -174,7 +174,6 @@
 <span id="174">174</span>
 <span id="175">175</span>
 <span id="176">176</span>
-<span id="177">177</span>
 </pre><pre class="rust"><code><span class="kw">use crate</span>::{
     group::{
         core_group::create_commit_params::CreateCommitParams,
@@ -319,8 +318,7 @@
             ResumptionPskStore::new(mls_group_config.number_of_resumption_psks);
 
         <span class="comment">// Prepare the commit parameters
-        </span><span class="kw">let </span>framing_parameters =
-            FramingParameters::new(aad, mls_group_config.wire_format_policy().outgoing());
+        </span><span class="kw">let </span>framing_parameters = FramingParameters::new(aad, WireFormat::MlsPlaintext);
 
         <span class="kw">let </span>proposal_store = ProposalStore::new();
         <span class="kw">let </span>params = CreateCommitParams::builder()
