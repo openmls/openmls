@@ -52,7 +52,7 @@ pub struct GroupId {
 impl GroupId {
     /// Create a new (random) group ID.
     ///
-    /// Note: Group IDs should be random and not be misuses as, e.g., a group name.
+    /// Group IDs should be random and not be misused as, e.g., a group name.
     pub fn random(backend: &impl OpenMlsCryptoProvider) -> Self {
         Self {
             value: backend
@@ -65,8 +65,7 @@ impl GroupId {
 
     /// Create a group ID from a byte slice.
     ///
-    /// Note: This should be used for testing only.
-    #[cfg(any(feature = "test-utils", test))]
+    /// This should be used only if the group ID is chosen by an entity that ensures uniqueness.
     pub fn from_slice(bytes: &[u8]) -> Self {
         GroupId {
             value: bytes.into(),

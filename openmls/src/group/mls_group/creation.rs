@@ -30,7 +30,6 @@ impl MlsGroup {
         )
     }
 
-    #[cfg(any(feature = "test-utils", test))]
     pub fn new_with_group_id(
         backend: &impl OpenMlsCryptoProvider,
         mls_group_config: &MlsGroupConfig,
