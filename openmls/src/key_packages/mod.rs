@@ -721,7 +721,7 @@ impl KeyPackageBundle {
             .iter()
             .any(|e| e.extension_type() == ExtensionType::Lifetime)
         {
-            extensions.push(Extension::LifeTime(LifetimeExtension::default()));
+            extensions.push(Extension::Lifetime(LifetimeExtension::default()));
         }
         let key_package = KeyPackage::new(
             ciphersuites[0],

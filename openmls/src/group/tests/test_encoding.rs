@@ -108,7 +108,7 @@ fn test_update_proposal_encoding(backend: &impl OpenMlsCryptoProvider) {
             None,
             None,
         ));
-        let lifetime_extension = Extension::LifeTime(LifetimeExtension::new(60));
+        let lifetime_extension = Extension::Lifetime(LifetimeExtension::new(60));
         let mandatory_extensions: Vec<Extension> = vec![capabilities_extension, lifetime_extension];
 
         let key_package_bundle = KeyPackageBundle::new(
@@ -173,7 +173,7 @@ fn test_add_proposal_encoding(backend: &impl OpenMlsCryptoProvider) {
             None,
             None,
         ));
-        let lifetime_extension = Extension::LifeTime(LifetimeExtension::new(60));
+        let lifetime_extension = Extension::Lifetime(LifetimeExtension::new(60));
         let mandatory_extensions: Vec<Extension> = vec![capabilities_extension, lifetime_extension];
 
         let key_package_bundle = KeyPackageBundle::new(
@@ -294,7 +294,7 @@ fn test_commit_encoding(backend: &impl OpenMlsCryptoProvider) {
             None,
             None,
         ));
-        let lifetime_extension = Extension::LifeTime(LifetimeExtension::new(60));
+        let lifetime_extension = Extension::Lifetime(LifetimeExtension::new(60));
         let mandatory_extensions: Vec<Extension> = vec![capabilities_extension, lifetime_extension];
 
         let alice_key_package_bundle = KeyPackageBundle::new(

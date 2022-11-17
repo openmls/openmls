@@ -15,7 +15,7 @@ impl Size for Extension {
             match self {
                 Extension::Capabilities(e) => e.tls_serialized_len(),
                 Extension::ApplicationId(e) => e.tls_serialized_len(),
-                Extension::LifeTime(e) => e.tls_serialized_len(),
+                Extension::Lifetime(e) => e.tls_serialized_len(),
                 Extension::ParentHash(e) => e.tls_serialized_len(),
                 Extension::RatchetTree(e) => e.tls_serialized_len(),
                 Extension::RequiredCapabilities(e) => e.tls_serialized_len(),
@@ -35,7 +35,7 @@ impl Serialize for Extension {
         let extension_data_written = match self {
             Extension::Capabilities(e) => e.tls_serialize(&mut extension_data),
             Extension::ApplicationId(e) => e.tls_serialize(&mut extension_data),
-            Extension::LifeTime(e) => e.tls_serialize(&mut extension_data),
+            Extension::Lifetime(e) => e.tls_serialize(&mut extension_data),
             Extension::ParentHash(e) => e.tls_serialize(&mut extension_data),
             Extension::RatchetTree(e) => e.tls_serialize(&mut extension_data),
             Extension::RequiredCapabilities(e) => e.tls_serialize(&mut extension_data),
@@ -66,7 +66,7 @@ impl Deserialize for Extension {
                 ApplicationIdExtension::tls_deserialize(&mut extension_data)?,
             ),
             ExtensionType::Lifetime => {
-                Extension::LifeTime(LifetimeExtension::tls_deserialize(&mut extension_data)?)
+                Extension::Lifetime(LifetimeExtension::tls_deserialize(&mut extension_data)?)
             }
             ExtensionType::ParentHash => {
                 Extension::ParentHash(ParentHashExtension::tls_deserialize(&mut extension_data)?)
