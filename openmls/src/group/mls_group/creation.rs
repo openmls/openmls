@@ -30,6 +30,12 @@ impl MlsGroup {
         )
     }
 
+    /// Creates a new group with a given group ID with the creator as the only member.
+    ///
+    /// This function removes the `KeyPackageBundle` corresponding to the
+    /// `key_package_hash` from the key store. Returns an error
+    /// ([`NewGroupError::NoMatchingKeyPackageBundle`]) if no
+    /// [`KeyPackageBundle`] can be found.
     pub fn new_with_group_id(
         backend: &impl OpenMlsCryptoProvider,
         mls_group_config: &MlsGroupConfig,
