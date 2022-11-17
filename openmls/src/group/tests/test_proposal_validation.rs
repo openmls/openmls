@@ -71,7 +71,7 @@ fn create_group_with_members(
     member_key_packages: &[KeyPackage],
     backend: &impl OpenMlsCryptoProvider,
 ) -> Result<(MlsMessageOut, Welcome), AddMembersError> {
-    let mut alice_group = MlsGroup::new(
+    let mut alice_group = MlsGroup::new_with_group_id(
         backend,
         &MlsGroupConfig::default(),
         GroupId::from_slice(b"Alice's Friends"),
@@ -122,7 +122,7 @@ fn new_test_group(
         .hash_ref(backend.crypto())
         .expect("Could not hash KeyPackage.");
 
-    MlsGroup::new(backend, &mls_group_config, group_id, kpr.as_slice()).unwrap()
+    MlsGroup::new_with_group_id(backend, &mls_group_config, group_id, kpr.as_slice()).unwrap()
 }
 
 // Validation test setup

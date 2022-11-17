@@ -87,7 +87,7 @@ fn test_mls_group_persistence(ciphersuite: Ciphersuite, backend: &impl OpenMlsCr
 
     // === Alice creates a group ===
 
-    let mut alice_group = MlsGroup::new(
+    let mut alice_group = MlsGroup::new_with_group_id(
         backend,
         &mls_group_config,
         group_id,
@@ -171,7 +171,7 @@ fn remover(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
     let mls_group_config = MlsGroupConfig::default();
 
     // === Alice creates a group ===
-    let mut alice_group = MlsGroup::new(
+    let mut alice_group = MlsGroup::new_with_group_id(
         backend,
         &mls_group_config,
         group_id,
@@ -312,7 +312,7 @@ fn export_secret(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider)
     let mls_group_config = MlsGroupConfig::test_default();
 
     // === Alice creates a group ===
-    let alice_group = MlsGroup::new(
+    let alice_group = MlsGroup::new_with_group_id(
         backend,
         &mls_group_config,
         group_id,
@@ -458,7 +458,7 @@ fn test_pending_commit_logic(ciphersuite: Ciphersuite, backend: &impl OpenMlsCry
     let mls_group_config = MlsGroupConfig::test_default();
 
     // === Alice creates a group ===
-    let mut alice_group = MlsGroup::new(
+    let mut alice_group = MlsGroup::new_with_group_id(
         backend,
         &mls_group_config,
         group_id,

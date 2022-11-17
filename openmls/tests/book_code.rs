@@ -143,10 +143,6 @@ fn generate_key_package_bundle(
 ///  - Test saving the group state
 #[apply(ciphersuites_and_backends)]
 fn book_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
-    // ANCHOR: set_group_id
-    let group_id = GroupId::from_slice(b"Test Group");
-    // ANCHOR_END: set_group_id
-
     // Generate credential bundles
     let alice_credential = generate_credential_bundle(
         "Alice".into(),
@@ -195,7 +191,6 @@ fn book_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvide
     let mut alice_group = MlsGroup::new(
         backend,
         &mls_group_config,
-        group_id,
         alice_key_package
             .hash_ref(backend.crypto())
             .expect("Could not hash KeyPackage.")
@@ -1241,7 +1236,7 @@ fn test_empty_input_errors(ciphersuite: Ciphersuite, backend: &impl OpenMlsCrypt
     let mls_group_config = MlsGroupConfig::test_default();
 
     // === Alice creates a group ===
-    let mut alice_group = MlsGroup::new(
+    let mut alice_group = MlsGroup::new_with_group_id(
         backend,
         &mls_group_config,
         group_id,

@@ -66,7 +66,7 @@ fn validation_test_setup(
         .build();
 
     // === Alice creates a group ===
-    let alice_group = MlsGroup::new(
+    let alice_group = MlsGroup::new_with_group_id(
         backend,
         &mls_group_config,
         group_id,
