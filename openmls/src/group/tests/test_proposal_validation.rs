@@ -188,7 +188,7 @@ fn insert_proposal_and_resign(
 
     commit_content.proposals.push(proposal_or_ref);
 
-    plaintext.set_content(MlsContentBody::Commit(commit_content));
+    plaintext.set_content_body(MlsContentBody::Commit(commit_content));
 
     let committer_credential_bundle = backend
         .key_store()

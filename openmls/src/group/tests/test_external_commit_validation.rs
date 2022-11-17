@@ -160,7 +160,7 @@ fn test_valsem240(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
 
     content.proposals.remove(proposal_position);
 
-    plaintext.set_content(MlsContentBody::Commit(content));
+    plaintext.set_content_body(MlsContentBody::Commit(content));
 
     // We have to re-sign, since we changed the content.
     let mut signed_plaintext: MlsPlaintext = plaintext
@@ -232,7 +232,7 @@ fn test_valsem241(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
 
     content.proposals.push(second_ext_init_prop);
 
-    plaintext.set_content(MlsContentBody::Commit(content));
+    plaintext.set_content_body(MlsContentBody::Commit(content));
 
     // We have to re-sign, since we changed the content.
     let mut signed_plaintext: MlsPlaintext = plaintext
@@ -313,7 +313,7 @@ fn test_valsem242(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
 
     content.proposals.push(add_proposal);
 
-    plaintext.set_content(MlsContentBody::Commit(content));
+    plaintext.set_content_body(MlsContentBody::Commit(content));
 
     // We have to re-sign, since we changed the content.
     let mut signed_plaintext: MlsPlaintext = plaintext
@@ -449,7 +449,7 @@ fn test_valsem243(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
 
     content.proposals.push(update_proposal);
 
-    plaintext.set_content(MlsContentBody::Commit(content));
+    plaintext.set_content_body(MlsContentBody::Commit(content));
 
     // We have to re-sign, since we changed the content.
     let mut signed_plaintext: MlsPlaintext = plaintext
@@ -582,7 +582,7 @@ fn test_valsem244(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
 
     content.proposals.push(remove_proposal);
 
-    plaintext.set_content(MlsContentBody::Commit(content));
+    plaintext.set_content_body(MlsContentBody::Commit(content));
 
     // We have to re-sign, since we changed the content.
     let mut signed_plaintext: MlsPlaintext = plaintext
@@ -688,7 +688,7 @@ fn test_valsem245(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
 
     content.proposals.push(proposal_reference);
 
-    plaintext.set_content(MlsContentBody::Commit(content));
+    plaintext.set_content_body(MlsContentBody::Commit(content));
 
     // We have to re-sign, since we changed the content.
     let mut signed_plaintext: MlsPlaintext = plaintext
@@ -755,7 +755,7 @@ fn test_valsem246(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
     // Remove the path from the commit
     content.path = None;
 
-    plaintext.set_content(MlsContentBody::Commit(content));
+    plaintext.set_content_body(MlsContentBody::Commit(content));
 
     // We have to re-sign, since we changed the content.
     let mut signed_plaintext: MlsPlaintext = plaintext
@@ -833,7 +833,7 @@ fn test_valsem247(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
         path.set_leaf_key_package(bob_new_key_package)
     }
 
-    plaintext.set_content(MlsContentBody::Commit(content));
+    plaintext.set_content_body(MlsContentBody::Commit(content));
 
     // We have to re-sign, since we changed the content.
     let mut signed_plaintext: MlsPlaintext = plaintext

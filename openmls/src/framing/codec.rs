@@ -40,11 +40,7 @@ impl Size for VerifiableMlsPlaintext {
     #[inline]
     fn tls_serialized_len(&self) -> usize {
         self.tbs.wire_format.tls_serialized_len()
-            + self.tbs.group_id.tls_serialized_len()
-            + self.tbs.epoch.tls_serialized_len()
-            + self.tbs.sender.tls_serialized_len()
-            + self.tbs.authenticated_data.tls_serialized_len()
-            + self.tbs.body.tls_serialized_len()
+            + self.tbs.content.tls_serialized_len()
             + self.signature.tls_serialized_len()
             + self.confirmation_tag.tls_serialized_len()
             + self.membership_tag.tls_serialized_len()
@@ -54,11 +50,7 @@ impl Size for VerifiableMlsPlaintext {
 impl Serialize for VerifiableMlsPlaintext {
     fn tls_serialize<W: Write>(&self, writer: &mut W) -> Result<usize, tls_codec::Error> {
         let mut written = self.tbs.wire_format.tls_serialize(writer)?;
-        written += self.tbs.group_id.tls_serialize(writer)?;
-        written += self.tbs.epoch.tls_serialize(writer)?;
-        written += self.tbs.sender.tls_serialize(writer)?;
-        written += self.tbs.authenticated_data.tls_serialize(writer)?;
-        written += self.tbs.body.tls_serialize(writer)?;
+        written += self.tbs.content.tls_serialize(writer)?;
         written += self.signature.tls_serialize(writer)?;
         written += self.confirmation_tag.tls_serialize(writer)?;
         self.membership_tag
@@ -68,60 +60,35 @@ impl Serialize for VerifiableMlsPlaintext {
 }
 
 // This might get refactored with the TLS codec refactoring, just suppressing the warning for now
-#[allow(clippy::too_many_arguments)]
 pub(super) fn serialize_plaintext_tbs<'a, W: Write>(
-    serialized_context: impl Into<Option<&'a [u8]>>,
     wire_format: WireFormat,
-    group_id: &GroupId,
-    epoch: &GroupEpoch,
-    sender: &Sender,
-    authenticated_data: &TlsByteVecU32,
-    payload: &MlsContentBody,
+    content: &MlsContent,
+    serialized_context: impl Into<Option<&'a [u8]>>,
     buffer: &mut W,
 ) -> Result<usize, tls_codec::Error> {
-    let mut written = if let Some(serialized_context) = serialized_context.into() {
-        // Only a member should have a context.
-        debug_assert!(matches!(sender, Sender::Member(_)));
-        buffer.write(serialized_context)?
-    } else {
-        0
-    };
-    written += wire_format.tls_serialize(buffer)?;
-    written += group_id.tls_serialize(buffer)?;
-    written += epoch.tls_serialize(buffer)?;
-    written += sender.tls_serialize(buffer)?;
-    written += authenticated_data.tls_serialize(buffer)?;
-    payload.tls_serialize(buffer).map(|l| l + written)
+    let mut written = wire_format.tls_serialize(buffer)?;
+    written += content.tls_serialize(buffer)?;
+    serialized_context
+        .into()
+        .tls_serialize(buffer)
+        .map(|l| l + written)
 }
 
 impl Size for MlsContentTbs {
     #[inline]
     fn tls_serialized_len(&self) -> usize {
-        let context_len = if let Some(serialized_context) = &self.serialized_context {
-            serialized_context.len()
-        } else {
-            0
-        };
-        context_len
-            + self.wire_format.tls_serialized_len()
-            + self.group_id.tls_serialized_len()
-            + self.epoch.tls_serialized_len()
-            + self.sender.tls_serialized_len()
-            + self.authenticated_data.tls_serialized_len()
-            + self.body.tls_serialized_len()
+        self.wire_format.tls_serialized_len()
+            + self.content.tls_serialized_len()
+            + self.serialized_context.tls_serialized_len()
     }
 }
 
 impl Serialize for MlsContentTbs {
     fn tls_serialize<W: Write>(&self, writer: &mut W) -> Result<usize, tls_codec::Error> {
         serialize_plaintext_tbs(
-            self.serialized_context.as_deref(),
             self.wire_format,
-            &self.group_id,
-            &self.epoch,
-            &self.sender,
-            &self.authenticated_data,
-            &self.body,
+            &self.content,
+            self.serialized_context.as_deref(),
             writer,
         )
     }

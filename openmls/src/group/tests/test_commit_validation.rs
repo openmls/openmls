@@ -156,7 +156,7 @@ fn test_valsem200(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
         .proposals
         .push(ProposalOrRef::Proposal(proposal));
 
-    plaintext.set_content(MlsContentBody::Commit(commit_content));
+    plaintext.set_content_body(MlsContentBody::Commit(commit_content));
 
     let alice_credential_bundle = backend
         .key_store()
@@ -260,7 +260,7 @@ fn test_valsem201(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
 
     commit_content.proposals = vec![];
 
-    update.set_content(MlsContentBody::Commit(commit_content));
+    update.set_content_body(MlsContentBody::Commit(commit_content));
 
     let serialized_update = update
         .tls_serialize_detached()
@@ -446,7 +446,7 @@ fn erase_path(
     };
     commit_content.path = None;
 
-    plaintext.set_content(MlsContentBody::Commit(commit_content));
+    plaintext.set_content_body(MlsContentBody::Commit(commit_content));
 
     let alice_credential_bundle = backend
         .key_store()
@@ -527,7 +527,7 @@ fn test_valsem202(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
         path.pop();
     };
 
-    plaintext.set_content(MlsContentBody::Commit(commit_content));
+    plaintext.set_content_body(MlsContentBody::Commit(commit_content));
 
     let alice_credential_bundle = backend
         .key_store()
@@ -637,7 +637,7 @@ fn test_valsem203(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
         path.flip_eps_bytes();
     };
 
-    plaintext.set_content(MlsContentBody::Commit(commit_content));
+    plaintext.set_content_body(MlsContentBody::Commit(commit_content));
 
     let alice_credential_bundle = backend
         .key_store()
@@ -747,7 +747,7 @@ fn test_valsem204(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
         path.flip_node_bytes();
     };
 
-    plaintext.set_content(MlsContentBody::Commit(commit_content));
+    plaintext.set_content_body(MlsContentBody::Commit(commit_content));
 
     let alice_credential_bundle = backend
         .key_store()
