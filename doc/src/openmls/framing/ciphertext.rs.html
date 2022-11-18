@@ -512,7 +512,7 @@
     group_id: GroupId,
     epoch: GroupEpoch,
     content_type: ContentType,
-    authenticated_data: TlsByteVecU32,
+    authenticated_data: VLBytes,
     encrypted_sender_data: TlsByteVecU8,
     ciphertext: TlsByteVecU32,
 }
@@ -529,7 +529,7 @@
         group_id: GroupId,
         epoch: GroupEpoch,
         content_type: ContentType,
-        authenticated_data: TlsByteVecU32,
+        authenticated_data: VLBytes,
         encrypted_sender_data: TlsByteVecU8,
         ciphertext: TlsByteVecU32,
     ) -&gt; <span class="self">Self </span>{
@@ -729,7 +729,7 @@
             .map_err(|<span class="kw">_</span>| MessageDecryptionError::MalformedContent)
     }
 
-    <span class="doccomment">/// This function decrypts an [`MlsCiphertext`] into an [`VerifiableMlsPlaintext`].
+    <span class="doccomment">/// This function decrypts an [`MlsCiphertext`] into an [`VerifiableMlsAuthContent`].
     /// In order to get an [`MlsPlaintext`] the result must be verified.
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>to_plaintext(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
@@ -739,7 +739,7 @@
         sender_index: SecretTreeLeafIndex,
         sender_ratchet_configuration: <span class="kw-2">&amp;</span>SenderRatchetConfiguration,
         sender_data: MlsSenderData,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;VerifiableMlsPlaintext, MessageDecryptionError&gt; {
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;VerifiableMlsAuthContent, MessageDecryptionError&gt; {
         <span class="kw">let </span>secret_type = SecretType::from(<span class="kw-2">&amp;</span><span class="self">self</span>.content_type);
         <span class="comment">// Extract generation and key material for encryption
         </span><span class="kw">let </span>(ratchet_key, ratchet_nonce) = message_secrets
@@ -768,8 +768,8 @@
             mls_ciphertext_content.content
         );
 
-        <span class="kw">let </span>verifiable = VerifiableMlsPlaintext::new(
-            MlsPlaintextTbs::new(
+        <span class="kw">let </span>verifiable = VerifiableMlsAuthContent::new(
+            MlsContentTbs::new(
                 <span class="self">self</span>.wire_format,
                 <span class="self">self</span>.group_id.clone(),
                 <span class="self">self</span>.epoch,

@@ -356,7 +356,7 @@
 </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">enum </span>MlsMessageBody {
     <span class="doccomment">/// Plaintext message
     </span><span class="attribute">#[tls_codec(discriminant = <span class="number">1</span>)]
-    </span>Plaintext(VerifiableMlsPlaintext),
+    </span>Plaintext(VerifiableMlsAuthContent),
 
     <span class="doccomment">/// Ciphertext message
     </span><span class="attribute">#[tls_codec(discriminant = <span class="number">2</span>)]
@@ -479,8 +479,8 @@
     <span class="kw">pub</span>(<span class="kw">crate</span>) mls_message: MlsMessage,
 }
 
-<span class="kw">impl </span>From&lt;VerifiableMlsPlaintext&gt; <span class="kw">for </span>MlsMessageOut {
-    <span class="kw">fn </span>from(plaintext: VerifiableMlsPlaintext) -&gt; <span class="self">Self </span>{
+<span class="kw">impl </span>From&lt;VerifiableMlsAuthContent&gt; <span class="kw">for </span>MlsMessageOut {
+    <span class="kw">fn </span>from(plaintext: VerifiableMlsAuthContent) -&gt; <span class="self">Self </span>{
         <span class="kw">let </span>body = MlsMessageBody::Plaintext(plaintext);
 
         <span class="self">Self </span>{
@@ -492,7 +492,7 @@
 <span class="kw">impl </span>From&lt;MlsPlaintext&gt; <span class="kw">for </span>MlsMessageOut {
     <span class="kw">fn </span>from(plaintext: MlsPlaintext) -&gt; <span class="self">Self </span>{
         <span class="kw">let </span>body =
-            MlsMessageBody::Plaintext(VerifiableMlsPlaintext::from_plaintext(plaintext, <span class="prelude-val">None</span>));
+            MlsMessageBody::Plaintext(VerifiableMlsAuthContent::from_plaintext(plaintext, <span class="prelude-val">None</span>));
 
         <span class="self">Self </span>{
             mls_message: MlsMessage { body },
@@ -558,8 +558,8 @@
 }
 
 <span class="attribute">#[cfg(any(feature = <span class="string">&quot;test-utils&quot;</span>, test))]
-</span><span class="kw">impl </span>From&lt;VerifiableMlsPlaintext&gt; <span class="kw">for </span>MlsMessageIn {
-    <span class="kw">fn </span>from(plaintext: VerifiableMlsPlaintext) -&gt; <span class="self">Self </span>{
+</span><span class="kw">impl </span>From&lt;VerifiableMlsAuthContent&gt; <span class="kw">for </span>MlsMessageIn {
+    <span class="kw">fn </span>from(plaintext: VerifiableMlsAuthContent) -&gt; <span class="self">Self </span>{
         <span class="kw">let </span>body = MlsMessageBody::Plaintext(plaintext);
 
         <span class="self">Self </span>{

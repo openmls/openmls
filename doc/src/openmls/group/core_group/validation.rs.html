@@ -475,7 +475,7 @@
 
 <span class="kw">use super</span>::{
     proposals::ProposalQueue, ContentType, CoreGroup, KeyPackage, Member, MlsMessageIn,
-    ProposalValidationError, VerifiableMlsPlaintext, WireFormat,
+    ProposalValidationError, VerifiableMlsAuthContent, WireFormat,
 };
 
 <span class="kw">impl </span>CoreGroup {
@@ -517,7 +517,7 @@
     ///  - ValSem009
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>validate_plaintext(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        plaintext: <span class="kw-2">&amp;</span>VerifiableMlsPlaintext,
+        plaintext: <span class="kw-2">&amp;</span>VerifiableMlsAuthContent,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(), ValidationError&gt; {
         <span class="comment">// ValSem004
         </span><span class="kw">let </span>sender = plaintext.sender();

@@ -1245,7 +1245,7 @@
         mls_ciphertext: <span class="kw-2">&amp;</span>MlsCiphertext,
         backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider,
         sender_ratchet_configuration: <span class="kw-2">&amp;</span>SenderRatchetConfiguration,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;VerifiableMlsPlaintext, MessageDecryptionError&gt; {
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;VerifiableMlsAuthContent, MessageDecryptionError&gt; {
         <span class="kw">use </span><span class="kw">crate</span>::tree::index::SecretTreeLeafIndex;
 
         <span class="kw">let </span>ciphersuite = <span class="self">self</span>.ciphersuite();

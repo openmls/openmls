@@ -550,11 +550,11 @@
 ///  - ValSem007
 ///  - ValSem009
 </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct </span>DecryptedMessage {
-    plaintext: VerifiableMlsPlaintext,
+    plaintext: VerifiableMlsAuthContent,
 }
 
 <span class="kw">impl </span>DecryptedMessage {
-    <span class="doccomment">/// Constructs a [DecryptedMessage] from a [VerifiableMlsPlaintext].
+    <span class="doccomment">/// Constructs a [DecryptedMessage] from a [VerifiableMlsAuthContent].
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>from_inbound_plaintext(
         inbound_message: MlsMessageIn,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, ValidationError&gt; {
@@ -566,7 +566,7 @@
     }
 
     <span class="doccomment">/// Constructs a [DecryptedMessage] from a [MlsCiphertext] by attempting to decrypt it
-    /// to a [VerifiableMlsPlaintext] first.
+    /// to a [VerifiableMlsAuthContent] first.
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>from_inbound_ciphertext(
         inbound_message: MlsMessageIn,
         backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider,
@@ -604,7 +604,7 @@
     // - Confirmation tag must be present for Commit messages
     // - Membership tag must be present for member messages, if the original incoming message was not an MlsCiphertext
     // - Ensures application messages were originally MlsCiphertext messages
-    </span><span class="kw">fn </span>from_plaintext(plaintext: VerifiableMlsPlaintext) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, ValidationError&gt; {
+    </span><span class="kw">fn </span>from_plaintext(plaintext: VerifiableMlsAuthContent) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, ValidationError&gt; {
         <span class="comment">// ValSem007
         </span><span class="kw">if </span>plaintext.sender().is_member()
             &amp;&amp; plaintext.wire_format() != WireFormat::MlsCiphertext
@@ -703,7 +703,7 @@
     }
 
     <span class="doccomment">/// Returns the plaintext.
-    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>plaintext(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>VerifiableMlsPlaintext {
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>plaintext(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>VerifiableMlsAuthContent {
         <span class="kw-2">&amp;</span><span class="self">self</span>.plaintext
     }
 }
@@ -713,7 +713,7 @@
 /// and the optional `aad` if the original message was encrypted.
 </span><span class="attribute">#[derive(Debug, Clone)]
 </span><span class="kw">pub struct </span>UnverifiedMessage {
-    plaintext: VerifiableMlsPlaintext,
+    plaintext: VerifiableMlsAuthContent,
     credential: <span class="prelude-ty">Option</span>&lt;Credential&gt;,
     aad_option: <span class="prelude-ty">Option</span>&lt;Vec&lt;u8&gt;&gt;,
 }
@@ -752,12 +752,12 @@
     }
 
     <span class="doccomment">/// Decomposes an [UnverifiedMessage] into its parts.
-    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>into_parts(<span class="self">self</span>) -&gt; (VerifiableMlsPlaintext, <span class="prelude-ty">Option</span>&lt;Credential&gt;) {
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>into_parts(<span class="self">self</span>) -&gt; (VerifiableMlsAuthContent, <span class="prelude-ty">Option</span>&lt;Credential&gt;) {
         (<span class="self">self</span>.plaintext, <span class="self">self</span>.credential)
     }
 }
 
-<span class="doccomment">/// Contains an VerifiableMlsPlaintext and a [Credential] if it is a message
+<span class="doccomment">/// Contains an VerifiableMlsAuthContent and a [Credential] if it is a message
 /// from a `Member`, a `Preconfigured`, a `NewMemberProposal` or a `NewMemberCommit`. It sets the
 /// serialized group context and verifies the membership tag for member messages. It can be
 /// converted to a verified message by verifying the signature, either with the credential or an
@@ -824,7 +824,7 @@
 
 <span class="doccomment">/// Part of [UnverifiedContextMessage].
 </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct </span>UnverifiedGroupMessage {
-    plaintext: VerifiableMlsPlaintext,
+    plaintext: VerifiableMlsAuthContent,
     credential: Credential,
 }
 
@@ -856,7 +856,7 @@
 
 <span class="doccomment">/// Part of [UnverifiedContextMessage].
 </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct </span>UnverifiedNewMemberMessage {
-    plaintext: VerifiableMlsPlaintext,
+    plaintext: VerifiableMlsAuthContent,
     credential: Credential,
 }
 
@@ -888,7 +888,7 @@
 <span class="comment">// TODO #151/#106: We don&#39;t support external senders yet
 </span><span class="doccomment">/// Part of [UnverifiedContextMessage].
 </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct </span>UnverifiedExternalMessage {
-    plaintext: VerifiableMlsPlaintext,
+    plaintext: VerifiableMlsAuthContent,
 }
 
 <span class="kw">impl </span>UnverifiedExternalMessage {
