@@ -745,7 +745,7 @@ pub(crate) fn update_confirmed_transcript_hash(
 pub(crate) fn update_interim_transcript_hash(
     ciphersuite: Ciphersuite,
     backend: &impl OpenMlsCryptoProvider,
-    mls_plaintext_commit_auth_data: &MlsPlaintextCommitAuthData,
+    mls_plaintext_commit_auth_data: &InterimTranscriptHashInput,
     confirmed_transcript_hash: &[u8],
 ) -> Result<Vec<u8>, LibraryError> {
     let commit_auth_data_bytes = mls_plaintext_commit_auth_data

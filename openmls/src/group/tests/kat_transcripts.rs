@@ -112,7 +112,7 @@ pub fn generate_test_vector(ciphersuite: Ciphersuite) -> TranscriptTestVector {
     let interim_transcript_hash_after = update_interim_transcript_hash(
         ciphersuite,
         &crypto,
-        &MlsPlaintextCommitAuthData::try_from(&commit).expect("An unexpected error occurred."),
+        &InterimTranscriptHashInput::try_from(&commit).expect("An unexpected error occurred."),
         &confirmed_transcript_hash_after,
     )
     .expect("Error updating interim transcript hash");
@@ -302,7 +302,7 @@ pub fn run_test_vector(
     let my_interim_transcript_hash_after = update_interim_transcript_hash(
         ciphersuite,
         backend,
-        &MlsPlaintextCommitAuthData::try_from(&commit).expect("An unexpected error occurred."),
+        &InterimTranscriptHashInput::try_from(&commit).expect("An unexpected error occurred."),
         &my_confirmed_transcript_hash_after,
     )
     .expect("Error updating interim transcript hash");

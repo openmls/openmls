@@ -844,16 +844,16 @@ impl<'a> TryFrom<&'a MlsPlaintext> for ConfirmedTranscriptHashInput<'a> {
 }
 
 #[derive(TlsSerialize, TlsSize)]
-pub(crate) struct MlsPlaintextCommitAuthData<'a> {
+pub(crate) struct InterimTranscriptHashInput<'a> {
     pub(crate) confirmation_tag: Option<&'a ConfirmationTag>,
 }
 
-impl<'a> TryFrom<&'a MlsPlaintext> for MlsPlaintextCommitAuthData<'a> {
+impl<'a> TryFrom<&'a MlsPlaintext> for InterimTranscriptHashInput<'a> {
     type Error = &'static str;
 
     fn try_from(mls_plaintext: &'a MlsPlaintext) -> Result<Self, Self::Error> {
         match mls_plaintext.auth.confirmation_tag.as_ref() {
-            Some(confirmation_tag) => Ok(MlsPlaintextCommitAuthData {
+            Some(confirmation_tag) => Ok(InterimTranscriptHashInput {
                 confirmation_tag: Some(confirmation_tag),
             }),
             None => Err("MLSPlaintext needs to contain a confirmation tag."),
@@ -861,9 +861,9 @@ impl<'a> TryFrom<&'a MlsPlaintext> for MlsPlaintextCommitAuthData<'a> {
     }
 }
 
-impl<'a> From<&'a ConfirmationTag> for MlsPlaintextCommitAuthData<'a> {
+impl<'a> From<&'a ConfirmationTag> for InterimTranscriptHashInput<'a> {
     fn from(confirmation_tag: &'a ConfirmationTag) -> Self {
-        MlsPlaintextCommitAuthData {
+        InterimTranscriptHashInput {
             confirmation_tag: Some(confirmation_tag),
         }
     }

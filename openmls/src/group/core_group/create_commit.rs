@@ -352,7 +352,7 @@ impl CoreGroup {
         let provisional_interim_transcript_hash = update_interim_transcript_hash(
             ciphersuite,
             backend,
-            &MlsPlaintextCommitAuthData::from(&confirmation_tag),
+            &InterimTranscriptHashInput::from(&confirmation_tag),
             &confirmed_transcript_hash,
         )?;
 
