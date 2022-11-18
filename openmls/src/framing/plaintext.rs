@@ -320,7 +320,7 @@ impl MlsPlaintext {
     ) -> Result<(), LibraryError> {
         let tbs_payload =
             encode_tbs(self, serialized_context).map_err(LibraryError::missing_bound_check)?;
-        let tbm_payload = MlsPlaintextTbmPayload::new(&tbs_payload, &self.auth)?;
+        let tbm_payload = MlsContentTbm::new(&tbs_payload, &self.auth)?;
         let membership_tag = membership_key.tag(backend, tbm_payload)?;
 
         self.membership_tag = Some(membership_tag);
@@ -407,21 +407,23 @@ impl ContentType {
     }
 }
 
-/// 9.1 Content Authentication
+/// 7.2 Encoding and Decoding a Plaintext
 ///
 /// ```c
+/// // draft-ietf-mls-protocol-16
+///
 /// struct {
-///   MLSPlaintextTBS tbs;
+///   MLSContentTBS tbs;
 ///   MLSContentAuthData auth;
-/// } MLSPlaintextTBM;
+/// } MLSContentTBM;
 /// ```
 #[derive(Debug)]
-pub(crate) struct MlsPlaintextTbmPayload<'a> {
+pub(crate) struct MlsContentTbm<'a> {
     tbs_payload: &'a [u8],
     auth: &'a MlsContentAuthData,
 }
 
-impl<'a> MlsPlaintextTbmPayload<'a> {
+impl<'a> MlsContentTbm<'a> {
     pub(crate) fn new(
         tbs_payload: &'a [u8],
         auth: &'a MlsContentAuthData,
@@ -561,7 +563,7 @@ impl VerifiableMlsAuthContent {
             .tbs
             .tls_serialize_detached()
             .map_err(LibraryError::missing_bound_check)?;
-        let tbm_payload = MlsPlaintextTbmPayload::new(&tbs_payload, &self.auth)?;
+        let tbm_payload = MlsContentTbm::new(&tbs_payload, &self.auth)?;
         let expected_membership_tag = &membership_key.tag(backend, tbm_payload)?;
 
         // Verify the membership tag
