@@ -29,8 +29,8 @@ use super::utils::{generate_credential_bundle, generate_key_package_bundle};
 struct ECValidationTestSetup {
     alice_group: MlsGroup,
     bob_credential_bundle: CredentialBundle,
-    plaintext: VerifiableMlsPlaintext,
-    original_plaintext: VerifiableMlsPlaintext,
+    plaintext: VerifiableMlsAuthContent,
+    original_plaintext: VerifiableMlsAuthContent,
 }
 
 // Validation test setup
@@ -118,7 +118,7 @@ fn validation_test_setup(
         .tls_serialize_detached()
         .expect("Could not serialize message.");
 
-    let message = VerifiableMlsPlaintext::tls_deserialize(&mut serialized_message.as_slice())
+    let message = VerifiableMlsAuthContent::tls_deserialize(&mut serialized_message.as_slice())
         .expect("Could not deserialize message.");
 
     let original_plaintext = message.clone();
@@ -160,7 +160,7 @@ fn test_valsem240(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
 
     content.proposals.remove(proposal_position);
 
-    plaintext.set_content(MlsContentBody::Commit(content));
+    plaintext.set_content_body(MlsContentBody::Commit(content));
 
     // We have to re-sign, since we changed the content.
     let mut signed_plaintext: MlsPlaintext = plaintext
@@ -177,8 +177,8 @@ fn test_valsem240(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
             .clone(),
     );
 
-    let verifiable_plaintext: VerifiableMlsPlaintext =
-        VerifiableMlsPlaintext::from_plaintext(signed_plaintext, None);
+    let verifiable_plaintext: VerifiableMlsAuthContent =
+        VerifiableMlsAuthContent::from_plaintext(signed_plaintext, None);
 
     // Have alice process the commit resulting from external init.
     let message_in = MlsMessageIn::from(verifiable_plaintext);
@@ -232,7 +232,7 @@ fn test_valsem241(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
 
     content.proposals.push(second_ext_init_prop);
 
-    plaintext.set_content(MlsContentBody::Commit(content));
+    plaintext.set_content_body(MlsContentBody::Commit(content));
 
     // We have to re-sign, since we changed the content.
     let mut signed_plaintext: MlsPlaintext = plaintext
@@ -249,8 +249,8 @@ fn test_valsem241(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
             .clone(),
     );
 
-    let verifiable_plaintext: VerifiableMlsPlaintext =
-        VerifiableMlsPlaintext::from_plaintext(signed_plaintext, None);
+    let verifiable_plaintext: VerifiableMlsAuthContent =
+        VerifiableMlsAuthContent::from_plaintext(signed_plaintext, None);
 
     // Have alice process the commit resulting from external init.
     let message_in = MlsMessageIn::from(verifiable_plaintext);
@@ -313,7 +313,7 @@ fn test_valsem242(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
 
     content.proposals.push(add_proposal);
 
-    plaintext.set_content(MlsContentBody::Commit(content));
+    plaintext.set_content_body(MlsContentBody::Commit(content));
 
     // We have to re-sign, since we changed the content.
     let mut signed_plaintext: MlsPlaintext = plaintext
@@ -330,8 +330,8 @@ fn test_valsem242(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
             .clone(),
     );
 
-    let verifiable_plaintext: VerifiableMlsPlaintext =
-        VerifiableMlsPlaintext::from_plaintext(signed_plaintext, None);
+    let verifiable_plaintext: VerifiableMlsAuthContent =
+        VerifiableMlsAuthContent::from_plaintext(signed_plaintext, None);
 
     // Have alice process the commit resulting from external init.
     let message_in = MlsMessageIn::from(verifiable_plaintext);
@@ -421,8 +421,9 @@ fn test_valsem243(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
         .tls_serialize_detached()
         .expect("Could not serialize message.");
 
-    let mut plaintext = VerifiableMlsPlaintext::tls_deserialize(&mut serialized_message.as_slice())
-        .expect("Could not deserialize message.");
+    let mut plaintext =
+        VerifiableMlsAuthContent::tls_deserialize(&mut serialized_message.as_slice())
+            .expect("Could not deserialize message.");
 
     assert!(matches!(plaintext.sender(), Sender::NewMemberCommit));
 
@@ -449,7 +450,7 @@ fn test_valsem243(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
 
     content.proposals.push(update_proposal);
 
-    plaintext.set_content(MlsContentBody::Commit(content));
+    plaintext.set_content_body(MlsContentBody::Commit(content));
 
     // We have to re-sign, since we changed the content.
     let mut signed_plaintext: MlsPlaintext = plaintext
@@ -466,8 +467,8 @@ fn test_valsem243(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
             .clone(),
     );
 
-    let verifiable_plaintext: VerifiableMlsPlaintext =
-        VerifiableMlsPlaintext::from_plaintext(signed_plaintext, None);
+    let verifiable_plaintext: VerifiableMlsAuthContent =
+        VerifiableMlsAuthContent::from_plaintext(signed_plaintext, None);
 
     // Have alice process the commit resulting from external init.
     let message_in = MlsMessageIn::from(verifiable_plaintext);
@@ -553,8 +554,9 @@ fn test_valsem244(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
         .tls_serialize_detached()
         .expect("Could not serialize message.");
 
-    let mut plaintext = VerifiableMlsPlaintext::tls_deserialize(&mut serialized_message.as_slice())
-        .expect("Could not deserialize message.");
+    let mut plaintext =
+        VerifiableMlsAuthContent::tls_deserialize(&mut serialized_message.as_slice())
+            .expect("Could not deserialize message.");
 
     let original_plaintext = plaintext.clone();
 
@@ -582,7 +584,7 @@ fn test_valsem244(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
 
     content.proposals.push(remove_proposal);
 
-    plaintext.set_content(MlsContentBody::Commit(content));
+    plaintext.set_content_body(MlsContentBody::Commit(content));
 
     // We have to re-sign, since we changed the content.
     let mut signed_plaintext: MlsPlaintext = plaintext
@@ -599,8 +601,8 @@ fn test_valsem244(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
             .clone(),
     );
 
-    let verifiable_plaintext: VerifiableMlsPlaintext =
-        VerifiableMlsPlaintext::from_plaintext(signed_plaintext, None);
+    let verifiable_plaintext: VerifiableMlsAuthContent =
+        VerifiableMlsAuthContent::from_plaintext(signed_plaintext, None);
 
     // Have alice process the commit resulting from external init.
     let message_in = MlsMessageIn::from(verifiable_plaintext);
@@ -688,7 +690,7 @@ fn test_valsem245(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
 
     content.proposals.push(proposal_reference);
 
-    plaintext.set_content(MlsContentBody::Commit(content));
+    plaintext.set_content_body(MlsContentBody::Commit(content));
 
     // We have to re-sign, since we changed the content.
     let mut signed_plaintext: MlsPlaintext = plaintext
@@ -705,8 +707,8 @@ fn test_valsem245(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
             .clone(),
     );
 
-    let verifiable_plaintext: VerifiableMlsPlaintext =
-        VerifiableMlsPlaintext::from_plaintext(signed_plaintext, None);
+    let verifiable_plaintext: VerifiableMlsAuthContent =
+        VerifiableMlsAuthContent::from_plaintext(signed_plaintext, None);
 
     // Have alice process the commit resulting from external init.
     let message_in = MlsMessageIn::from(verifiable_plaintext);
@@ -755,7 +757,7 @@ fn test_valsem246(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
     // Remove the path from the commit
     content.path = None;
 
-    plaintext.set_content(MlsContentBody::Commit(content));
+    plaintext.set_content_body(MlsContentBody::Commit(content));
 
     // We have to re-sign, since we changed the content.
     let mut signed_plaintext: MlsPlaintext = plaintext
@@ -772,8 +774,8 @@ fn test_valsem246(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
             .clone(),
     );
 
-    let verifiable_plaintext: VerifiableMlsPlaintext =
-        VerifiableMlsPlaintext::from_plaintext(signed_plaintext, None);
+    let verifiable_plaintext: VerifiableMlsAuthContent =
+        VerifiableMlsAuthContent::from_plaintext(signed_plaintext, None);
 
     // Have alice process the commit resulting from external init.
     let message_in = MlsMessageIn::from(verifiable_plaintext);
@@ -833,7 +835,7 @@ fn test_valsem247(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
         path.set_leaf_key_package(bob_new_key_package)
     }
 
-    plaintext.set_content(MlsContentBody::Commit(content));
+    plaintext.set_content_body(MlsContentBody::Commit(content));
 
     // We have to re-sign, since we changed the content.
     let mut signed_plaintext: MlsPlaintext = plaintext
@@ -850,8 +852,8 @@ fn test_valsem247(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
             .clone(),
     );
 
-    let verifiable_plaintext: VerifiableMlsPlaintext =
-        VerifiableMlsPlaintext::from_plaintext(signed_plaintext, None);
+    let verifiable_plaintext: VerifiableMlsAuthContent =
+        VerifiableMlsAuthContent::from_plaintext(signed_plaintext, None);
 
     // Have alice process the commit resulting from external init.
     let message_in = MlsMessageIn::from(verifiable_plaintext);

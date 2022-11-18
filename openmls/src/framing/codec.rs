@@ -3,7 +3,7 @@ use tls_codec::{Deserialize, Serialize, Size, TlsByteVecU32, TlsByteVecU8};
 use super::*;
 use std::io::{Read, Write};
 
-impl Deserialize for VerifiableMlsPlaintext {
+impl Deserialize for VerifiableMlsAuthContent {
     fn tls_deserialize<R: Read>(bytes: &mut R) -> Result<Self, tls_codec::Error> {
         let wire_format = WireFormat::tls_deserialize(bytes)?;
         let content: MlsContent = MlsContent::tls_deserialize(bytes)?;
@@ -18,8 +18,8 @@ impl Deserialize for VerifiableMlsPlaintext {
             ));
         }
 
-        let verifiable = VerifiableMlsPlaintext::new(
-            MlsPlaintextTbs::new(
+        let verifiable = VerifiableMlsAuthContent::new(
+            MlsContentTbs::new(
                 wire_format,
                 content.group_id,
                 content.epoch,
@@ -36,29 +36,21 @@ impl Deserialize for VerifiableMlsPlaintext {
     }
 }
 
-impl Size for VerifiableMlsPlaintext {
+impl Size for VerifiableMlsAuthContent {
     #[inline]
     fn tls_serialized_len(&self) -> usize {
         self.tbs.wire_format.tls_serialized_len()
-            + self.tbs.group_id.tls_serialized_len()
-            + self.tbs.epoch.tls_serialized_len()
-            + self.tbs.sender.tls_serialized_len()
-            + self.tbs.authenticated_data.tls_serialized_len()
-            + self.tbs.body.tls_serialized_len()
+            + self.tbs.content.tls_serialized_len()
             + self.signature.tls_serialized_len()
             + self.confirmation_tag.tls_serialized_len()
             + self.membership_tag.tls_serialized_len()
     }
 }
 
-impl Serialize for VerifiableMlsPlaintext {
+impl Serialize for VerifiableMlsAuthContent {
     fn tls_serialize<W: Write>(&self, writer: &mut W) -> Result<usize, tls_codec::Error> {
         let mut written = self.tbs.wire_format.tls_serialize(writer)?;
-        written += self.tbs.group_id.tls_serialize(writer)?;
-        written += self.tbs.epoch.tls_serialize(writer)?;
-        written += self.tbs.sender.tls_serialize(writer)?;
-        written += self.tbs.authenticated_data.tls_serialize(writer)?;
-        written += self.tbs.body.tls_serialize(writer)?;
+        written += self.tbs.content.tls_serialize(writer)?;
         written += self.signature.tls_serialize(writer)?;
         written += self.confirmation_tag.tls_serialize(writer)?;
         self.membership_tag
@@ -67,61 +59,43 @@ impl Serialize for VerifiableMlsPlaintext {
     }
 }
 
-// This might get refactored with the TLS codec refactoring, just suppressing the warning for now
-#[allow(clippy::too_many_arguments)]
 pub(super) fn serialize_plaintext_tbs<'a, W: Write>(
-    serialized_context: impl Into<Option<&'a [u8]>>,
     wire_format: WireFormat,
-    group_id: &GroupId,
-    epoch: &GroupEpoch,
-    sender: &Sender,
-    authenticated_data: &TlsByteVecU32,
-    payload: &MlsContentBody,
+    content: &MlsContent,
+    serialized_context: impl Into<Option<&'a [u8]>>,
     buffer: &mut W,
 ) -> Result<usize, tls_codec::Error> {
-    let mut written = if let Some(serialized_context) = serialized_context.into() {
+    let mut written = wire_format.tls_serialize(buffer)?;
+    written += content.tls_serialize(buffer)?;
+    written += if let Some(serialized_context) = serialized_context.into() {
         // Only a member should have a context.
-        debug_assert!(matches!(sender, Sender::Member(_)));
+        debug_assert!(matches!(content.sender, Sender::Member(_)));
         buffer.write(serialized_context)?
     } else {
         0
     };
-    written += wire_format.tls_serialize(buffer)?;
-    written += group_id.tls_serialize(buffer)?;
-    written += epoch.tls_serialize(buffer)?;
-    written += sender.tls_serialize(buffer)?;
-    written += authenticated_data.tls_serialize(buffer)?;
-    payload.tls_serialize(buffer).map(|l| l + written)
+    Ok(written)
 }
 
-impl Size for MlsPlaintextTbs {
+impl Size for MlsContentTbs {
     #[inline]
     fn tls_serialized_len(&self) -> usize {
-        let context_len = if let Some(serialized_context) = &self.serialized_context {
-            serialized_context.len()
-        } else {
-            0
-        };
-        context_len
-            + self.wire_format.tls_serialized_len()
-            + self.group_id.tls_serialized_len()
-            + self.epoch.tls_serialized_len()
-            + self.sender.tls_serialized_len()
-            + self.authenticated_data.tls_serialized_len()
-            + self.body.tls_serialized_len()
+        self.wire_format.tls_serialized_len()
+            + self.content.tls_serialized_len()
+            + if let Some(serialized_context) = &self.serialized_context {
+                serialized_context.tls_serialized_len()
+            } else {
+                0
+            }
     }
 }
 
-impl Serialize for MlsPlaintextTbs {
+impl Serialize for MlsContentTbs {
     fn tls_serialize<W: Write>(&self, writer: &mut W) -> Result<usize, tls_codec::Error> {
         serialize_plaintext_tbs(
-            self.serialized_context.as_deref(),
             self.wire_format,
-            &self.group_id,
-            &self.epoch,
-            &self.sender,
-            &self.authenticated_data,
-            &self.body,
+            &self.content,
+            self.serialized_context.as_deref(),
             writer,
         )
     }
@@ -133,7 +107,7 @@ impl Deserialize for MlsCiphertext {
         let group_id = GroupId::tls_deserialize(bytes)?;
         let epoch = GroupEpoch::tls_deserialize(bytes)?;
         let content_type = ContentType::tls_deserialize(bytes)?;
-        let authenticated_data = TlsByteVecU32::tls_deserialize(bytes)?;
+        let authenticated_data = VLBytes::tls_deserialize(bytes)?;
         let encrypted_sender_data = TlsByteVecU8::tls_deserialize(bytes)?;
         let ciphertext = TlsByteVecU32::tls_deserialize(bytes)?;
 
@@ -182,7 +156,7 @@ impl Deserialize for MlsMessage {
                 let wire_format = WireFormat::tls_deserialize(&mut vec![*first_byte].as_slice())?;
                 let body = match wire_format {
                     WireFormat::MlsPlaintext => {
-                        let plaintext = VerifiableMlsPlaintext::tls_deserialize(&mut chain)?;
+                        let plaintext = VerifiableMlsAuthContent::tls_deserialize(&mut chain)?;
                         MlsMessageBody::Plaintext(plaintext)
                     }
                     WireFormat::MlsCiphertext => {
@@ -204,7 +178,7 @@ impl Size for MlsMessage {
     fn tls_serialized_len(&self) -> usize {
         match &self.body {
             MlsMessageBody::Plaintext(plaintext) => {
-                VerifiableMlsPlaintext::tls_serialized_len(plaintext)
+                VerifiableMlsAuthContent::tls_serialized_len(plaintext)
             }
             MlsMessageBody::Ciphertext(ciphertext) => MlsCiphertext::tls_serialized_len(ciphertext),
         }

@@ -13,7 +13,7 @@ use crate::{
     credentials::*,
     framing::{
         MlsContentBody, MlsMessageIn, MlsMessageOut, MlsPlaintext, ProcessedMessage, Sender,
-        VerifiableMlsPlaintext,
+        VerifiableMlsAuthContent,
     },
     group::{errors::*, *},
     key_packages::*,
@@ -176,10 +176,10 @@ fn validation_test_setup(
 fn insert_proposal_and_resign(
     backend: &impl OpenMlsCryptoProvider,
     proposal_or_ref: ProposalOrRef,
-    mut plaintext: VerifiableMlsPlaintext,
-    original_plaintext: &VerifiableMlsPlaintext,
+    mut plaintext: VerifiableMlsAuthContent,
+    original_plaintext: &VerifiableMlsAuthContent,
     committer_group: &MlsGroup,
-) -> VerifiableMlsPlaintext {
+) -> VerifiableMlsAuthContent {
     let mut commit_content = if let MlsContentBody::Commit(commit) = plaintext.content() {
         commit.clone()
     } else {
@@ -188,7 +188,7 @@ fn insert_proposal_and_resign(
 
     commit_content.proposals.push(proposal_or_ref);
 
-    plaintext.set_content(MlsContentBody::Commit(commit_content));
+    plaintext.set_content_body(MlsContentBody::Commit(commit_content));
 
     let committer_credential_bundle = backend
         .key_store()
@@ -229,7 +229,7 @@ fn insert_proposal_and_resign(
         .set_membership_tag(backend, &serialized_context, membership_key)
         .expect("error refreshing membership tag");
 
-    VerifiableMlsPlaintext::from_plaintext(signed_plaintext, None)
+    VerifiableMlsAuthContent::from_plaintext(signed_plaintext, None)
 }
 
 enum KeyUniqueness {
@@ -307,7 +307,7 @@ fn test_valsem100(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
         .tls_serialize_detached()
         .expect("Could not serialize message.");
 
-    let plaintext = VerifiableMlsPlaintext::tls_deserialize(&mut serialized_update.as_slice())
+    let plaintext = VerifiableMlsAuthContent::tls_deserialize(&mut serialized_update.as_slice())
         .expect("Could not deserialize message.");
 
     // Keep the original plaintext for positive test later.
@@ -323,7 +323,7 @@ fn test_valsem100(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
         key_package: charlie_key_package,
     });
 
-    let verifiable_plaintext: VerifiableMlsPlaintext = insert_proposal_and_resign(
+    let verifiable_plaintext: VerifiableMlsAuthContent = insert_proposal_and_resign(
         backend,
         ProposalOrRef::Proposal(second_add_proposal),
         plaintext,
@@ -350,7 +350,7 @@ fn test_valsem100(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
     );
 
     let original_update_plaintext =
-        VerifiableMlsPlaintext::tls_deserialize(&mut serialized_update.as_slice())
+        VerifiableMlsAuthContent::tls_deserialize(&mut serialized_update.as_slice())
             .expect("Could not deserialize message.");
 
     // Positive case
@@ -457,7 +457,7 @@ fn test_valsem101(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
         .tls_serialize_detached()
         .expect("Could not serialize message.");
 
-    let plaintext = VerifiableMlsPlaintext::tls_deserialize(&mut serialized_update.as_slice())
+    let plaintext = VerifiableMlsAuthContent::tls_deserialize(&mut serialized_update.as_slice())
         .expect("Could not deserialize message.");
 
     // Keep the original plaintext for positive test later.
@@ -477,7 +477,7 @@ fn test_valsem101(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
         key_package: dave_key_package_bundle.key_package().clone(),
     });
 
-    let verifiable_plaintext: VerifiableMlsPlaintext = insert_proposal_and_resign(
+    let verifiable_plaintext: VerifiableMlsAuthContent = insert_proposal_and_resign(
         backend,
         ProposalOrRef::Proposal(second_add_proposal),
         plaintext,
@@ -504,7 +504,7 @@ fn test_valsem101(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
     );
 
     let original_update_plaintext =
-        VerifiableMlsPlaintext::tls_deserialize(&mut serialized_update.as_slice())
+        VerifiableMlsAuthContent::tls_deserialize(&mut serialized_update.as_slice())
             .expect("Could not deserialize message.");
 
     // Positive case
@@ -617,7 +617,7 @@ fn test_valsem102(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
         .tls_serialize_detached()
         .expect("Could not serialize message.");
 
-    let plaintext = VerifiableMlsPlaintext::tls_deserialize(&mut serialized_update.as_slice())
+    let plaintext = VerifiableMlsAuthContent::tls_deserialize(&mut serialized_update.as_slice())
         .expect("Could not deserialize message.");
 
     // Keep the original plaintext for positive test later.
@@ -638,7 +638,7 @@ fn test_valsem102(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
         key_package: dave_key_package_bundle.key_package().clone(),
     });
 
-    let verifiable_plaintext: VerifiableMlsPlaintext = insert_proposal_and_resign(
+    let verifiable_plaintext: VerifiableMlsAuthContent = insert_proposal_and_resign(
         backend,
         ProposalOrRef::Proposal(second_add_proposal),
         plaintext,
@@ -665,7 +665,7 @@ fn test_valsem102(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
     );
 
     let original_update_plaintext =
-        VerifiableMlsPlaintext::tls_deserialize(&mut serialized_update.as_slice())
+        VerifiableMlsAuthContent::tls_deserialize(&mut serialized_update.as_slice())
             .expect("Could not deserialize message.");
 
     // Positive case
@@ -739,7 +739,7 @@ fn test_valsem103(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
         .tls_serialize_detached()
         .expect("Could not serialize message.");
 
-    let plaintext = VerifiableMlsPlaintext::tls_deserialize(&mut serialized_update.as_slice())
+    let plaintext = VerifiableMlsAuthContent::tls_deserialize(&mut serialized_update.as_slice())
         .expect("Could not deserialize message.");
 
     // Keep the original plaintext for positive test later.
@@ -750,7 +750,7 @@ fn test_valsem103(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
     });
 
     // Artificially add a proposal trying to add (another) Bob.
-    let verifiable_plaintext: VerifiableMlsPlaintext = insert_proposal_and_resign(
+    let verifiable_plaintext: VerifiableMlsAuthContent = insert_proposal_and_resign(
         backend,
         ProposalOrRef::Proposal(add_proposal),
         plaintext,
@@ -777,7 +777,7 @@ fn test_valsem103(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
     );
 
     let original_update_plaintext =
-        VerifiableMlsPlaintext::tls_deserialize(&mut serialized_update.as_slice())
+        VerifiableMlsAuthContent::tls_deserialize(&mut serialized_update.as_slice())
             .expect("Could not deserialize message.");
 
     // Positive case
@@ -892,7 +892,7 @@ fn test_valsem104(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
         .tls_serialize_detached()
         .expect("Could not serialize message.");
 
-    let plaintext = VerifiableMlsPlaintext::tls_deserialize(&mut serialized_update.as_slice())
+    let plaintext = VerifiableMlsAuthContent::tls_deserialize(&mut serialized_update.as_slice())
         .expect("Could not deserialize message.");
 
     // Keep the original plaintext for positive test later.
@@ -922,7 +922,7 @@ fn test_valsem104(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
     });
 
     // Artificially add a proposal trying to add (another) Bob.
-    let verifiable_plaintext: VerifiableMlsPlaintext = insert_proposal_and_resign(
+    let verifiable_plaintext: VerifiableMlsAuthContent = insert_proposal_and_resign(
         backend,
         ProposalOrRef::Proposal(add_proposal),
         plaintext,
@@ -949,7 +949,7 @@ fn test_valsem104(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
     );
 
     let original_update_plaintext =
-        VerifiableMlsPlaintext::tls_deserialize(&mut serialized_update.as_slice())
+        VerifiableMlsAuthContent::tls_deserialize(&mut serialized_update.as_slice())
             .expect("Could not deserialize message.");
 
     // Positive case
@@ -1058,7 +1058,7 @@ fn test_valsem105(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
         .tls_serialize_detached()
         .expect("Could not serialize message.");
 
-    let plaintext = VerifiableMlsPlaintext::tls_deserialize(&mut serialized_update.as_slice())
+    let plaintext = VerifiableMlsAuthContent::tls_deserialize(&mut serialized_update.as_slice())
         .expect("Could not deserialize message.");
 
     // Keep the original plaintext for positive test later.
@@ -1090,7 +1090,7 @@ fn test_valsem105(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
 
     // Artificially add a proposal trying to add someone with an existing HPKE
     // public key.
-    let verifiable_plaintext: VerifiableMlsPlaintext = insert_proposal_and_resign(
+    let verifiable_plaintext: VerifiableMlsAuthContent = insert_proposal_and_resign(
         backend,
         ProposalOrRef::Proposal(add_proposal),
         plaintext,
@@ -1117,7 +1117,7 @@ fn test_valsem105(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
     );
 
     let original_update_plaintext =
-        VerifiableMlsPlaintext::tls_deserialize(&mut serialized_update.as_slice())
+        VerifiableMlsAuthContent::tls_deserialize(&mut serialized_update.as_slice())
             .expect("Could not deserialize message.");
 
     // Positive case
@@ -1290,8 +1290,9 @@ fn test_valsem106(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
             .tls_serialize_detached()
             .expect("Could not serialize message.");
 
-        let plaintext = VerifiableMlsPlaintext::tls_deserialize(&mut serialized_update.as_slice())
-            .expect("Could not deserialize message.");
+        let plaintext =
+            VerifiableMlsAuthContent::tls_deserialize(&mut serialized_update.as_slice())
+                .expect("Could not deserialize message.");
 
         // Keep the original plaintext for positive test later.
         let original_plaintext = plaintext.clone();
@@ -1310,7 +1311,7 @@ fn test_valsem106(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
                 ),
             };
             // Artificially add the proposal.
-            let verifiable_plaintext: VerifiableMlsPlaintext = insert_proposal_and_resign(
+            let verifiable_plaintext: VerifiableMlsAuthContent = insert_proposal_and_resign(
                 backend,
                 proposal_or_ref,
                 plaintext.clone(),
@@ -1361,7 +1362,7 @@ fn test_valsem106(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
             assert_eq!(err, expected_error);
 
             let original_update_plaintext =
-                VerifiableMlsPlaintext::tls_deserialize(&mut serialized_update.as_slice())
+                VerifiableMlsAuthContent::tls_deserialize(&mut serialized_update.as_slice())
                     .expect("Could not deserialize message.");
 
             // Positive case
@@ -1425,8 +1426,9 @@ fn test_valsem107(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
             .tls_serialize_detached()
             .expect("error serializing plaintext");
 
-        let plaintext = VerifiableMlsPlaintext::tls_deserialize(&mut serialized_message.as_slice())
-            .expect("Could not deserialize message.");
+        let plaintext =
+            VerifiableMlsAuthContent::tls_deserialize(&mut serialized_message.as_slice())
+                .expect("Could not deserialize message.");
 
         let commit_content = if let MlsContentBody::Commit(commit) = plaintext.content() {
             commit.clone()
@@ -1530,7 +1532,7 @@ fn test_valsem108(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
         .tls_serialize_detached()
         .expect("Could not serialize message.");
 
-    let plaintext = VerifiableMlsPlaintext::tls_deserialize(&mut serialized_update.as_slice())
+    let plaintext = VerifiableMlsAuthContent::tls_deserialize(&mut serialized_update.as_slice())
         .expect("Could not deserialize message.");
 
     // Keep the original plaintext for positive test later.
@@ -1541,7 +1543,7 @@ fn test_valsem108(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
 
     // Artificially add a proposal trying to remove someone that is not in a
     // group.
-    let verifiable_plaintext: VerifiableMlsPlaintext = insert_proposal_and_resign(
+    let verifiable_plaintext: VerifiableMlsAuthContent = insert_proposal_and_resign(
         backend,
         ProposalOrRef::Proposal(remove_proposal),
         plaintext,
@@ -1568,7 +1570,7 @@ fn test_valsem108(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
     );
 
     let original_update_plaintext =
-        VerifiableMlsPlaintext::tls_deserialize(&mut serialized_update.as_slice())
+        VerifiableMlsAuthContent::tls_deserialize(&mut serialized_update.as_slice())
             .expect("Could not deserialize message.");
 
     // Positive case
@@ -1669,7 +1671,7 @@ fn test_valsem109(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
         .tls_serialize_detached()
         .expect("Could not serialize message.");
 
-    let plaintext = VerifiableMlsPlaintext::tls_deserialize(&mut serialized_update.as_slice())
+    let plaintext = VerifiableMlsAuthContent::tls_deserialize(&mut serialized_update.as_slice())
         .expect("Could not deserialize message.");
 
     // Keep the original plaintext for positive test later.
@@ -1680,7 +1682,7 @@ fn test_valsem109(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
     });
 
     // Artificially add the proposal.
-    let verifiable_plaintext: VerifiableMlsPlaintext = insert_proposal_and_resign(
+    let verifiable_plaintext: VerifiableMlsAuthContent = insert_proposal_and_resign(
         backend,
         ProposalOrRef::Reference(
             ProposalRef::from_proposal(ciphersuite, backend, &update_proposal)
@@ -1710,7 +1712,7 @@ fn test_valsem109(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
     );
 
     let original_update_plaintext =
-        VerifiableMlsPlaintext::tls_deserialize(&mut serialized_update.as_slice())
+        VerifiableMlsAuthContent::tls_deserialize(&mut serialized_update.as_slice())
             .expect("Could not deserialize message.");
 
     // Positive case
@@ -1825,7 +1827,7 @@ fn test_valsem110(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
         .tls_serialize_detached()
         .expect("Could not serialize message.");
 
-    let plaintext = VerifiableMlsPlaintext::tls_deserialize(&mut serialized_update.as_slice())
+    let plaintext = VerifiableMlsAuthContent::tls_deserialize(&mut serialized_update.as_slice())
         .expect("Could not deserialize message.");
 
     // Keep the original plaintext for positive test later.
@@ -1836,7 +1838,7 @@ fn test_valsem110(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
     });
 
     // Artificially add the proposal.
-    let verifiable_plaintext: VerifiableMlsPlaintext = insert_proposal_and_resign(
+    let verifiable_plaintext: VerifiableMlsAuthContent = insert_proposal_and_resign(
         backend,
         ProposalOrRef::Reference(
             ProposalRef::from_proposal(ciphersuite, backend, &update_proposal)
@@ -1866,7 +1868,7 @@ fn test_valsem110(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
     );
 
     let original_update_plaintext =
-        VerifiableMlsPlaintext::tls_deserialize(&mut serialized_update.as_slice())
+        VerifiableMlsAuthContent::tls_deserialize(&mut serialized_update.as_slice())
             .expect("Could not deserialize message.");
 
     // Positive case
@@ -1922,7 +1924,7 @@ fn test_valsem111(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
         .tls_serialize_detached()
         .expect("error serializing plaintext");
 
-    let plaintext = VerifiableMlsPlaintext::tls_deserialize(&mut serialized_message.as_slice())
+    let plaintext = VerifiableMlsAuthContent::tls_deserialize(&mut serialized_message.as_slice())
         .expect("Could not deserialize message.");
 
     let commit_content = if let MlsContentBody::Commit(commit) = plaintext.content() {
@@ -1938,14 +1940,14 @@ fn test_valsem111(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
         .tls_serialize_detached()
         .expect("Could not serialize message.");
 
-    let plaintext = VerifiableMlsPlaintext::tls_deserialize(&mut serialized_update.as_slice())
+    let plaintext = VerifiableMlsAuthContent::tls_deserialize(&mut serialized_update.as_slice())
         .expect("Could not deserialize message.");
 
     // Keep the original plaintext for positive test later.
     let original_plaintext = plaintext.clone();
 
     // Let's insert the proposal into the commit.
-    let verifiable_plaintext: VerifiableMlsPlaintext = insert_proposal_and_resign(
+    let verifiable_plaintext: VerifiableMlsAuthContent = insert_proposal_and_resign(
         backend,
         ProposalOrRef::Proposal(update_proposal.clone()),
         plaintext,
@@ -1997,7 +1999,7 @@ fn test_valsem111(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
         .tls_serialize_detached()
         .expect("Could not serialize message.");
 
-    let plaintext = VerifiableMlsPlaintext::tls_deserialize(&mut serialized_update.as_slice())
+    let plaintext = VerifiableMlsAuthContent::tls_deserialize(&mut serialized_update.as_slice())
         .expect("Could not deserialize message.");
 
     // Keep the original plaintext for positive test later.
@@ -2005,7 +2007,7 @@ fn test_valsem111(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
 
     // Let's insert the proposal into the commit.
     // Artificially add the proposal.
-    let verifiable_plaintext: VerifiableMlsPlaintext = insert_proposal_and_resign(
+    let verifiable_plaintext: VerifiableMlsAuthContent = insert_proposal_and_resign(
         backend,
         ProposalOrRef::Reference(
             ProposalRef::from_proposal(ciphersuite, backend, &update_proposal)
@@ -2035,7 +2037,7 @@ fn test_valsem111(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
     );
 
     let original_update_plaintext =
-        VerifiableMlsPlaintext::tls_deserialize(&mut serialized_update.as_slice())
+        VerifiableMlsAuthContent::tls_deserialize(&mut serialized_update.as_slice())
             .expect("Could not deserialize message.");
 
     // Positive case
@@ -2074,13 +2076,14 @@ fn test_valsem112(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
         .tls_serialize_detached()
         .expect("error serializing plaintext");
 
-    let plaintext = VerifiableMlsPlaintext::tls_deserialize(&mut serialized_update.as_slice())
+    let plaintext = VerifiableMlsAuthContent::tls_deserialize(&mut serialized_update.as_slice())
         .expect("Could not deserialize message.");
 
     assert!(plaintext.sender().is_member());
 
-    let mut plaintext = VerifiableMlsPlaintext::tls_deserialize(&mut serialized_update.as_slice())
-        .expect("Could not deserialize message.");
+    let mut plaintext =
+        VerifiableMlsAuthContent::tls_deserialize(&mut serialized_update.as_slice())
+            .expect("Could not deserialize message.");
 
     // Keep the original plaintext for positive test later.
     let original_plaintext = plaintext.clone();
