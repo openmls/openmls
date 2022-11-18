@@ -112,7 +112,7 @@ impl MlsPlaintext {
 
     #[cfg(test)]
     pub fn test_signature(&self) -> &Signature {
-        &self.auth().signature
+        &self.auth.signature
     }
 
     pub(super) fn wire_format(&self) -> WireFormat {
