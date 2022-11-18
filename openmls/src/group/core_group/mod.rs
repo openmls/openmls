@@ -727,7 +727,7 @@ impl CoreGroup {
 pub(crate) fn update_confirmed_transcript_hash(
     ciphersuite: Ciphersuite,
     backend: &impl OpenMlsCryptoProvider,
-    mls_plaintext_commit_content: &MlsPlaintextCommitContent,
+    mls_plaintext_commit_content: &ConfirmedTranscriptHashInput,
     interim_transcript_hash: &[u8],
 ) -> Result<Vec<u8>, LibraryError> {
     let commit_content_bytes = mls_plaintext_commit_content

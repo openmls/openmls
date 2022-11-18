@@ -209,7 +209,7 @@ impl CoreGroup {
             backend,
             // It is ok to a library error here, because we know the MlsPlaintext contains a
             // Commit
-            &MlsPlaintextCommitContent::try_from(&mls_plaintext)
+            &ConfirmedTranscriptHashInput::try_from(&mls_plaintext)
                 .map_err(|_| LibraryError::custom("MlsPlaintext did not contain a commit"))?,
             &self.interim_transcript_hash,
         )?;

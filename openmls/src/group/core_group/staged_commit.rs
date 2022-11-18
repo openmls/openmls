@@ -271,7 +271,7 @@ impl CoreGroup {
             ciphersuite,
             backend,
             // It is ok to use return a library error here, because we know the MlsPlaintext contains a Commit
-            &MlsPlaintextCommitContent::try_from(mls_plaintext)
+            &ConfirmedTranscriptHashInput::try_from(mls_plaintext)
                 .map_err(|_| LibraryError::custom("Could not convert commit content"))?,
             &self.interim_transcript_hash,
         )?;

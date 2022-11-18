@@ -808,7 +808,7 @@ impl SignedStruct<MlsContentTbs> for MlsPlaintext {
 }
 
 #[derive(TlsSerialize, TlsSize)]
-pub(crate) struct MlsPlaintextCommitContent<'a> {
+pub(crate) struct ConfirmedTranscriptHashInput<'a> {
     pub(super) wire_format: WireFormat,
     pub(super) group_id: &'a GroupId,
     pub(super) epoch: GroupEpoch,
@@ -819,7 +819,7 @@ pub(crate) struct MlsPlaintextCommitContent<'a> {
     pub(super) signature: &'a Signature,
 }
 
-impl<'a> TryFrom<&'a MlsPlaintext> for MlsPlaintextCommitContent<'a> {
+impl<'a> TryFrom<&'a MlsPlaintext> for ConfirmedTranscriptHashInput<'a> {
     type Error = &'static str;
 
     fn try_from(mls_plaintext: &'a MlsPlaintext) -> Result<Self, Self::Error> {
@@ -827,7 +827,7 @@ impl<'a> TryFrom<&'a MlsPlaintext> for MlsPlaintextCommitContent<'a> {
             MlsContentBody::Commit(commit) => commit,
             _ => return Err("MlsPlaintext needs to contain a Commit."),
         };
-        Ok(MlsPlaintextCommitContent {
+        Ok(ConfirmedTranscriptHashInput {
             wire_format: mls_plaintext.wire_format,
             group_id: &mls_plaintext.content.group_id,
             epoch: mls_plaintext.content.epoch,
