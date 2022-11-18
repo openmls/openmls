@@ -379,7 +379,7 @@ fn test_valsem201(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
             panic!()
         };
 
-        let commit = VerifiableMlsPlaintext::from_plaintext(commit, None);
+        let commit = VerifiableMlsAuthContent::from_plaintext(commit, None);
         // verify that a path is indeed required when the commit is received
         if is_path_required {
             let commit_wo_path = erase_path(backend, commit.clone(), &alice_group);
@@ -414,7 +414,7 @@ fn test_valsem201(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
 
 fn erase_path(
     backend: &impl OpenMlsCryptoProvider,
-    mut plaintext: VerifiableMlsPlaintext,
+    mut plaintext: VerifiableMlsAuthContent,
     alice_group: &MlsGroup,
 ) -> MlsMessageIn {
     // Keep the original plaintext for positive test later.
@@ -468,7 +468,7 @@ fn erase_path(
         .set_membership_tag(backend, &serialized_context, membership_key)
         .expect("error refreshing membership tag");
 
-    VerifiableMlsPlaintext::from_plaintext(signed_plaintext, None).into()
+    VerifiableMlsAuthContent::from_plaintext(signed_plaintext, None).into()
 }
 
 // ValSem202: Path must be the right length
