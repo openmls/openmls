@@ -137,7 +137,7 @@ fn bad_padding(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
         );
 
         let plaintext = {
-            let plaintext_tbs = MlsPlaintextTbs::new(
+            let plaintext_tbs = MlsContentTbs::new(
                 WireFormat::MlsCiphertext,
                 GroupId::random(backend),
                 1,

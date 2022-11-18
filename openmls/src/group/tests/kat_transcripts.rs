@@ -209,7 +209,7 @@ pub fn run_test_vector(
 
     // Check membership and confirmation tags.
     let commit_bytes = hex_to_bytes(&test_vector.commit);
-    let mut commit = VerifiableMlsPlaintext::tls_deserialize(&mut commit_bytes.as_slice())
+    let mut commit = VerifiableMlsAuthContent::tls_deserialize(&mut commit_bytes.as_slice())
         .expect("Error decoding commit");
     let context = GroupContext::new(
         ciphersuite,

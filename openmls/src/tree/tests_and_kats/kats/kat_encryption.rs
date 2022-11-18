@@ -581,7 +581,7 @@ pub fn run_test_vector(
                 );
 
             // Note that we can't actually get an MlsPlaintext because we don't
-            // have enough information. We encode the VerifiableMlsPlaintext
+            // have enough information. We encode the VerifiableMlsAuthContent
             // and compare it to the plaintext in the test vector instead.
 
             // Swap secret tree

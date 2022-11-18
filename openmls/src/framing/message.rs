@@ -66,7 +66,7 @@ pub(crate) struct MlsMessage {
 pub(crate) enum MlsMessageBody {
     /// Plaintext message
     #[tls_codec(discriminant = 1)]
-    Plaintext(VerifiableMlsPlaintext),
+    Plaintext(VerifiableMlsAuthContent),
 
     /// Ciphertext message
     #[tls_codec(discriminant = 2)]
@@ -189,8 +189,8 @@ pub struct MlsMessageOut {
     pub(crate) mls_message: MlsMessage,
 }
 
-impl From<VerifiableMlsPlaintext> for MlsMessageOut {
-    fn from(plaintext: VerifiableMlsPlaintext) -> Self {
+impl From<VerifiableMlsAuthContent> for MlsMessageOut {
+    fn from(plaintext: VerifiableMlsAuthContent) -> Self {
         let body = MlsMessageBody::Plaintext(plaintext);
 
         Self {
@@ -202,7 +202,7 @@ impl From<VerifiableMlsPlaintext> for MlsMessageOut {
 impl From<MlsPlaintext> for MlsMessageOut {
     fn from(plaintext: MlsPlaintext) -> Self {
         let body =
-            MlsMessageBody::Plaintext(VerifiableMlsPlaintext::from_plaintext(plaintext, None));
+            MlsMessageBody::Plaintext(VerifiableMlsAuthContent::from_plaintext(plaintext, None));
 
         Self {
             mls_message: MlsMessage { body },
@@ -268,8 +268,8 @@ impl From<MlsMessageOut> for MlsMessageIn {
 }
 
 #[cfg(any(feature = "test-utils", test))]
-impl From<VerifiableMlsPlaintext> for MlsMessageIn {
-    fn from(plaintext: VerifiableMlsPlaintext) -> Self {
+impl From<VerifiableMlsAuthContent> for MlsMessageIn {
+    fn from(plaintext: VerifiableMlsAuthContent) -> Self {
         let body = MlsMessageBody::Plaintext(plaintext);
 
         Self {
