@@ -807,15 +807,21 @@ impl SignedStruct<MlsContentTbs> for MlsPlaintext {
     }
 }
 
+/// 9.2 Transcript Hashes
+///
+/// ```c
+/// // draft-ietf-mls-protocol-16
+///
+/// struct {
+///    WireFormat wire_format;
+///    MLSContent content; /* with content_type == commit */
+///    opaque signature<V>;
+///} ConfirmedTranscriptHashInput;
+/// ```
 #[derive(TlsSerialize, TlsSize)]
 pub(crate) struct ConfirmedTranscriptHashInput<'a> {
     pub(super) wire_format: WireFormat,
-    pub(super) group_id: &'a GroupId,
-    pub(super) epoch: GroupEpoch,
-    pub(super) sender: &'a Sender,
-    pub(super) authenticated_data: &'a VLBytes,
-    pub(super) content_type: ContentType,
-    pub(super) commit: &'a Commit,
+    pub(super) mls_content: &'a MlsContent,
     pub(super) signature: &'a Signature,
 }
 
@@ -823,18 +829,15 @@ impl<'a> TryFrom<&'a MlsPlaintext> for ConfirmedTranscriptHashInput<'a> {
     type Error = &'static str;
 
     fn try_from(mls_plaintext: &'a MlsPlaintext) -> Result<Self, Self::Error> {
-        let commit = match &mls_plaintext.content.body {
-            MlsContentBody::Commit(commit) => commit,
-            _ => return Err("MlsPlaintext needs to contain a Commit."),
-        };
+        if !matches!(
+            mls_plaintext.content.body.content_type(),
+            ContentType::Commit
+        ) {
+            return Err("MlsPlaintext needs to contain a Commit.");
+        }
         Ok(ConfirmedTranscriptHashInput {
             wire_format: mls_plaintext.wire_format,
-            group_id: &mls_plaintext.content.group_id,
-            epoch: mls_plaintext.content.epoch,
-            sender: &mls_plaintext.content.sender,
-            authenticated_data: &mls_plaintext.content.authenticated_data,
-            content_type: mls_plaintext.content().content_type(),
-            commit,
+            mls_content: &mls_plaintext.content,
             signature: &mls_plaintext.auth.signature,
         })
     }
