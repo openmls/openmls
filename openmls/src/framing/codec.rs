@@ -107,7 +107,7 @@ impl Deserialize for MlsCiphertext {
         let group_id = GroupId::tls_deserialize(bytes)?;
         let epoch = GroupEpoch::tls_deserialize(bytes)?;
         let content_type = ContentType::tls_deserialize(bytes)?;
-        let authenticated_data = TlsByteVecU32::tls_deserialize(bytes)?;
+        let authenticated_data = VLBytes::tls_deserialize(bytes)?;
         let encrypted_sender_data = TlsByteVecU8::tls_deserialize(bytes)?;
         let ciphertext = TlsByteVecU32::tls_deserialize(bytes)?;
 

@@ -36,7 +36,7 @@ pub(crate) struct MlsCiphertext {
     group_id: GroupId,
     epoch: GroupEpoch,
     content_type: ContentType,
-    authenticated_data: TlsByteVecU32,
+    authenticated_data: VLBytes,
     encrypted_sender_data: TlsByteVecU8,
     ciphertext: TlsByteVecU32,
 }
@@ -53,7 +53,7 @@ impl MlsCiphertext {
         group_id: GroupId,
         epoch: GroupEpoch,
         content_type: ContentType,
-        authenticated_data: TlsByteVecU32,
+        authenticated_data: VLBytes,
         encrypted_sender_data: TlsByteVecU8,
         ciphertext: TlsByteVecU32,
     ) -> Self {

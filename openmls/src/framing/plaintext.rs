@@ -56,7 +56,7 @@ pub(crate) struct MlsContent {
     pub(crate) group_id: GroupId,
     pub(crate) epoch: GroupEpoch,
     pub(crate) sender: Sender,
-    pub(crate) authenticated_data: TlsByteVecU32,
+    pub(crate) authenticated_data: VLBytes,
 
     pub(crate) body: MlsContentBody,
 }
@@ -704,7 +704,7 @@ impl MlsContentTbs {
         group_id: GroupId,
         epoch: impl Into<GroupEpoch>,
         sender: Sender,
-        authenticated_data: TlsByteVecU32,
+        authenticated_data: VLBytes,
         body: MlsContentBody,
     ) -> Self {
         let content = MlsContent {
@@ -796,7 +796,7 @@ pub(crate) struct MlsPlaintextCommitContent<'a> {
     pub(super) group_id: &'a GroupId,
     pub(super) epoch: GroupEpoch,
     pub(super) sender: &'a Sender,
-    pub(super) authenticated_data: &'a TlsByteVecU32,
+    pub(super) authenticated_data: &'a VLBytes,
     pub(super) content_type: ContentType,
     pub(super) commit: &'a Commit,
     pub(super) signature: &'a Signature,
