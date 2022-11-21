@@ -14,13 +14,7 @@ use crate::{
     credentials::{errors::*, *},
     framing::*,
     group::{errors::*, *},
-    messages::{
-        proposals::{
-            AddProposal, ExternalInitProposal, Proposal, ProposalOrRef, ProposalType,
-            RemoveProposal, UpdateProposal,
-        },
-        public_group_state::VerifiablePublicGroupState,
-    },
+    messages::{proposals::*, public_group_state::VerifiablePublicGroupState},
 };
 
 use super::utils::{generate_credential_bundle, generate_key_package_bundle};
@@ -120,6 +114,8 @@ fn validation_test_setup(
 
     let message = VerifiableMlsAuthContent::tls_deserialize(&mut serialized_message.as_slice())
         .expect("Could not deserialize message.");
+
+    assert!(matches!(message.sender(), Sender::NewMemberCommit));
 
     let original_plaintext = message.clone();
 
@@ -281,226 +277,158 @@ fn test_valsem241(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
         .expect("Unexpected error.");
 }
 
-// ValSem242: External Commit, inline Proposals: There MUST NOT be any Add proposals.
+// ValSem242: External Commit must only cover inline proposal in allowlist (ExternalInit, Remove, PreSharedKey)
 #[apply(ciphersuites_and_backends)]
 fn test_valsem242(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
     // Test with MlsPlaintext
     let ECValidationTestSetup {
         mut alice_group,
         bob_credential_bundle,
-        mut plaintext,
-        original_plaintext,
-    } = validation_test_setup(PURE_PLAINTEXT_WIRE_FORMAT_POLICY, ciphersuite, backend);
-
-    let mut content = if let MlsContentBody::Commit(commit) = plaintext.content() {
-        commit.clone()
-    } else {
-        panic!("Unexpected content type.");
-    };
-
-    let bob_key_package = generate_key_package_bundle(
-        &[ciphersuite],
-        bob_credential_bundle.credential(),
-        vec![],
-        backend,
-    )
-    .expect("An unexpected error occurred.");
-
-    // Add an Add proposal to the external commit.
-    let add_proposal = ProposalOrRef::Proposal(Proposal::Add(AddProposal {
-        key_package: bob_key_package,
-    }));
-
-    content.proposals.push(add_proposal);
-
-    plaintext.set_content_body(MlsContentBody::Commit(content));
-
-    // We have to re-sign, since we changed the content.
-    let mut signed_plaintext: MlsPlaintext = plaintext
-        .payload()
-        .clone()
-        .sign(backend, &bob_credential_bundle)
-        .expect("Error signing modified payload.");
-
-    // Set old confirmation tag
-    signed_plaintext.set_confirmation_tag(
-        original_plaintext
-            .confirmation_tag()
-            .expect("no confirmation tag on original message")
-            .clone(),
-    );
-
-    let verifiable_plaintext: VerifiableMlsAuthContent =
-        VerifiableMlsAuthContent::from_plaintext(signed_plaintext, None);
-
-    // Have alice process the commit resulting from external init.
-    let message_in = MlsMessageIn::from(verifiable_plaintext);
-
-    let unverified_message = alice_group
-        .parse_message(message_in, backend)
-        .expect("Could not parse message.");
-
-    let err = alice_group
-        .process_unverified_message(unverified_message, None, backend)
-        .expect_err(
-            "Could process unverified message despite Add proposal in the external commit.",
-        );
-
-    assert_eq!(
-        err,
-        UnverifiedMessageError::InvalidCommit(StageCommitError::ExternalCommitValidation(
-            ExternalCommitValidationError::InvalidInlineProposals
-        ))
-    );
-
-    // Positive case
-    let unverified_message = alice_group
-        .parse_message(MlsMessageIn::from(original_plaintext), backend)
-        .expect("Could not parse message.");
-    alice_group
-        .process_unverified_message(unverified_message, None, backend)
-        .expect("Unexpected error.");
-}
-
-// ValSem243: External Commit, inline Proposals: There MUST NOT be any Update proposals.
-#[apply(ciphersuites_and_backends)]
-fn test_valsem243(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
-    // Test with MlsPlaintext
-    let ECValidationTestSetup {
-        mut alice_group,
-        bob_credential_bundle,
-        plaintext: _,
-        original_plaintext: _,
+        ..
     } = validation_test_setup(PURE_PLAINTEXT_WIRE_FORMAT_POLICY, ciphersuite, backend);
 
     // Alice has to add Bob first, so that in the external commit, we can have
-    // an update proposal that comes from a leaf that's actually inside of the
+    // an Update proposal that comes from a leaf that's actually inside of the
     // tree. If that is not the case, we'll get a general proposal validation
     // error before we get the external commit specific one.
-
     let bob_key_package = generate_key_package_bundle(
         &[ciphersuite],
         bob_credential_bundle.credential(),
         vec![],
         backend,
     )
-    .expect("An unexpected error occurred.");
+    .unwrap();
 
     let (_message, _welcome) = alice_group
         .add_members(backend, &[bob_key_package])
-        .expect("Could not add member.");
+        .unwrap();
+    alice_group.merge_pending_commit().unwrap();
 
-    alice_group
-        .merge_pending_commit()
-        .expect("error merging pending commit");
+    let add_proposal = || {
+        let charlie_credential = generate_credential_bundle(
+            "Charlie".into(),
+            CredentialType::Basic,
+            ciphersuite.signature_algorithm(),
+            backend,
+        )
+        .unwrap();
+        let charlie_key_package =
+            generate_key_package_bundle(&[ciphersuite], &charlie_credential, vec![], backend)
+                .unwrap();
 
-    // Bob wants to commit externally.
-
-    // Have Alice export everything that bob needs.
-    let pgs_encoded: Vec<u8> = alice_group
-        .export_public_group_state(backend)
-        .expect("Error exporting PGS")
-        .tls_serialize_detached()
-        .expect("Error serializing PGS");
-    let verifiable_public_group_state =
-        VerifiablePublicGroupState::tls_deserialize(&mut pgs_encoded.as_slice())
-            .expect("Error deserializing PGS");
-    let tree_option = alice_group.export_ratchet_tree();
-
-    let (_bob_group, message) = MlsGroup::join_by_external_commit(
-        backend,
-        Some(&tree_option), // Note that this isn't actually used.
-        verifiable_public_group_state,
-        alice_group.configuration(),
-        &[],
-        &bob_credential_bundle,
-    )
-    .expect("Error initializing group externally.");
-
-    let serialized_message = message
-        .tls_serialize_detached()
-        .expect("Could not serialize message.");
-
-    let mut plaintext =
-        VerifiableMlsAuthContent::tls_deserialize(&mut serialized_message.as_slice())
-            .expect("Could not deserialize message.");
-
-    assert!(matches!(plaintext.sender(), Sender::NewMemberCommit));
-    assert!(matches!(plaintext.content_type(), ContentType::Commit));
-
-    let original_plaintext = plaintext.clone();
-
-    let mut content = if let MlsContentBody::Commit(commit) = plaintext.content() {
-        commit.clone()
-    } else {
-        panic!("Unexpected content type.");
+        ProposalOrRef::Proposal(Proposal::Add(AddProposal {
+            key_package: charlie_key_package,
+        }))
     };
 
-    let bob_key_package = generate_key_package_bundle(
-        &[ciphersuite],
-        bob_credential_bundle.credential(),
-        vec![],
-        backend,
-    )
-    .expect("Error generating key package");
+    let update_proposal = || {
+        let bob_key_package = generate_key_package_bundle(
+            &[ciphersuite],
+            bob_credential_bundle.credential(),
+            vec![],
+            backend,
+        )
+        .unwrap();
+        ProposalOrRef::Proposal(Proposal::Update(UpdateProposal {
+            key_package: bob_key_package,
+        }))
+    };
 
-    // Add an Update proposal to the external commit.
-    let update_proposal = ProposalOrRef::Proposal(Proposal::Update(UpdateProposal {
-        key_package: bob_key_package,
-    }));
+    let reinit_proposal = || {
+        ProposalOrRef::Proposal(Proposal::ReInit(ReInitProposal {
+            group_id: alice_group.group_id().clone(),
+            version: Default::default(),
+            ciphersuite,
+            extensions: alice_group.group().group_context_extensions().to_vec(),
+        }))
+    };
 
-    content.proposals.push(update_proposal);
-
-    plaintext.set_content_body(MlsContentBody::Commit(content));
-
-    // We have to re-sign, since we changed the content.
-    let mut signed_plaintext: MlsPlaintext = plaintext
-        .payload()
-        .clone()
-        .sign(backend, &bob_credential_bundle)
-        .expect("Error signing modified payload.");
-
-    // Set old confirmation tag
-    signed_plaintext.set_confirmation_tag(
-        original_plaintext
-            .confirmation_tag()
-            .expect("no confirmation tag on original message")
-            .clone(),
-    );
-
-    let verifiable_plaintext: VerifiableMlsAuthContent =
-        VerifiableMlsAuthContent::from_plaintext(signed_plaintext, None);
-
-    // Have alice process the commit resulting from external init.
-    let message_in = MlsMessageIn::from(verifiable_plaintext);
-
-    let unverified_message = alice_group
-        .parse_message(message_in, backend)
-        .expect("Could not parse message.");
-
-    let err = alice_group
-        .process_unverified_message(unverified_message, None, backend)
-        .expect_err("Could process unverified message Update proposal in the external commit.");
-
-    assert_eq!(
-        err,
-        UnverifiedMessageError::InvalidCommit(StageCommitError::ExternalCommitValidation(
-            ExternalCommitValidationError::InvalidInlineProposals
+    let gce_proposal = || {
+        ProposalOrRef::Proposal(Proposal::GroupContextExtensions(
+            GroupContextExtensionProposal::new(alice_group.group().group_context_extensions()),
         ))
-    );
+    };
 
-    // Positive case
-    let unverified_message = alice_group
-        .parse_message(MlsMessageIn::from(original_plaintext), backend)
-        .expect("Could not parse message.");
-    alice_group
-        .process_unverified_message(unverified_message, None, backend)
-        .expect("Unexpected error.");
+    let deny_list = vec![
+        update_proposal(),
+        add_proposal(),
+        reinit_proposal(),
+        gce_proposal(),
+    ];
+    for proposal in deny_list {
+        let pgs_encoded: Vec<u8> = alice_group
+            .export_public_group_state(backend)
+            .unwrap()
+            .tls_serialize_detached()
+            .unwrap();
+        let pgs = VerifiablePublicGroupState::tls_deserialize(&mut pgs_encoded.as_slice()).unwrap();
+
+        let (_bob_group, message) = MlsGroup::join_by_external_commit(
+            backend,
+            None,
+            pgs,
+            alice_group.configuration(),
+            &[],
+            &bob_credential_bundle,
+        )
+        .unwrap();
+
+        let serialized_message = message.tls_serialize_detached().unwrap();
+        let mut plaintext =
+            VerifiableMlsAuthContent::tls_deserialize(&mut serialized_message.as_slice()).unwrap();
+
+        assert!(matches!(plaintext.sender(), Sender::NewMemberCommit));
+        assert!(matches!(plaintext.content_type(), ContentType::Commit));
+
+        let original_plaintext = plaintext.clone();
+
+        let mut commit = if let MlsContentBody::Commit(commit) = plaintext.content() {
+            commit.clone()
+        } else {
+            panic!("Unexpected content type.");
+        };
+        commit.proposals.push(proposal);
+        plaintext.set_content_body(MlsContentBody::Commit(commit.clone()));
+
+        // We have to re-sign, since we changed the content.
+        let mut signed_plaintext = plaintext
+            .payload()
+            .clone()
+            .sign(backend, &bob_credential_bundle)
+            .unwrap();
+
+        // Set old confirmation tag
+        signed_plaintext
+            .set_confirmation_tag(original_plaintext.confirmation_tag().unwrap().clone());
+
+        let verifiable_plaintext = VerifiableMlsAuthContent::from_plaintext(signed_plaintext, None);
+
+        let unverified_msg = alice_group
+            .parse_message(verifiable_plaintext.into(), backend)
+            .unwrap();
+
+        let processed_msg = alice_group.process_unverified_message(unverified_msg, None, backend);
+
+        assert_eq!(
+            processed_msg.unwrap_err(),
+            UnverifiedMessageError::InvalidCommit(StageCommitError::ExternalCommitValidation(
+                ExternalCommitValidationError::InvalidInlineProposals
+            ))
+        );
+
+        // Positive case
+        let unverified_message = alice_group
+            .parse_message(original_plaintext.into(), backend)
+            .unwrap();
+        alice_group
+            .process_unverified_message(unverified_message, None, backend)
+            .unwrap();
+    }
 }
 
-// ValSem244: External Commit, inline Remove Proposal: The identity and the endpoint_id of the removed leaf are identical to the ones in the path KeyPackage.
+// ValSem243: External Commit, inline Remove Proposal: The identity and the endpoint_id of the removed leaf are identical to the ones in the path KeyPackage.
 #[apply(ciphersuites_and_backends)]
-fn test_valsem244(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
+fn test_valsem243(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
     // Test with MlsPlaintext
     let ECValidationTestSetup {
         mut alice_group,
@@ -655,9 +583,9 @@ fn test_valsem244(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
         .expect("Unexpected error.");
 }
 
-// ValSem245: External Commit, referenced Proposals: There MUST NOT be any ExternalInit proposals.
+// ValSem244: External Commit, referenced Proposals: There MUST NOT be any ExternalInit proposals.
 #[apply(ciphersuites_and_backends)]
-fn test_valsem245(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
+fn test_valsem244(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
     // Test with MlsPlaintext
     let ECValidationTestSetup {
         mut alice_group,
@@ -738,9 +666,9 @@ fn test_valsem245(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
         .expect("Unexpected error.");
 }
 
-// ValSem246: External Commit: MUST contain a path.
+// ValSem245: External Commit: MUST contain a path.
 #[apply(ciphersuites_and_backends)]
-fn test_valsem246(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
+fn test_valsem245(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
     // Test with MlsPlaintext
     let ECValidationTestSetup {
         mut alice_group,
@@ -799,9 +727,9 @@ fn test_valsem246(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
         .expect("Unexpected error.");
 }
 
-// ValSem247: External Commit: The signature of the MLSPlaintext MUST be verified with the credential of the KeyPackage in the included `path`.
+// ValSem246: External Commit: The signature of the MLSPlaintext MUST be verified with the credential of the KeyPackage in the included `path`.
 #[apply(ciphersuites_and_backends)]
-fn test_valsem247(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
+fn test_valsem246(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
     // Test with MlsPlaintext
     let ECValidationTestSetup {
         mut alice_group,

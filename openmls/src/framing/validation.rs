@@ -134,9 +134,9 @@ impl DecryptedMessage {
     /// Gets the correct credential from the message depending on the sender type.
     /// Checks the following semantic validation:
     ///  - ValSem112
-    ///  - ValSem246
-    ///  - Prepares ValSem247 by setting the right credential. The remainder
-    ///    of ValSem247 is validated as part of ValSem010.
+    ///  - ValSem245
+    ///  - Prepares ValSem246 by setting the right credential. The remainder
+    ///    of ValSem246 is validated as part of ValSem010.
     pub(crate) fn credential(
         &self,
         treesync: &TreeSync,
