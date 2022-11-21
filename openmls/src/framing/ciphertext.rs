@@ -301,8 +301,7 @@ impl MlsCiphertext {
                 self.authenticated_data.clone(),
                 mls_ciphertext_content.content,
             ),
-            mls_ciphertext_content.signature,
-            mls_ciphertext_content.confirmation_tag,
+            mls_ciphertext_content.auth,
             None, /* MlsCiphertexts don't carry along the membership tag. */
         );
         Ok(verifiable)
@@ -321,8 +320,7 @@ impl MlsCiphertext {
         mac_len: usize,
     ) -> Result<Vec<u8>, tls_codec::Error> {
         let plaintext_length = mls_plaintext.content().tls_serialized_len()
-            + mls_plaintext.signature().tls_serialized_len()
-            + mls_plaintext.confirmation_tag().tls_serialized_len();
+            + mls_plaintext.auth().tls_serialized_len();
 
         let padding_length = if padding_size > 0 {
             // Calculate padding block size.
@@ -338,8 +336,7 @@ impl MlsCiphertext {
         let buffer = &mut Vec::with_capacity(plaintext_length + padding_length);
 
         mls_plaintext.content().tls_serialize(buffer)?;
-        mls_plaintext.signature().tls_serialize(buffer)?;
-        mls_plaintext.confirmation_tag().tls_serialize(buffer)?;
+        mls_plaintext.auth().tls_serialize(buffer)?;
         // Note: The `tls_codec::Serialize` implementation for `&[u8]` prepends the length.
         // We do not want this here and thus use the "raw" `write_all` method.
         buffer
@@ -449,8 +446,7 @@ impl MlsSenderDataAad {
 #[derive(Debug, Clone)]
 pub(crate) struct MlsCiphertextContent {
     pub(crate) content: MlsContentBody,
-    pub(crate) signature: Signature,
-    pub(crate) confirmation_tag: Option<ConfirmationTag>,
+    pub(crate) auth: MlsContentAuthData,
     /// Length of the all-zero padding.
     ///
     /// We do not retain any bytes here to avoid the need to
