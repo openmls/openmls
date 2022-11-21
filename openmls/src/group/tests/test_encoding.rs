@@ -131,7 +131,7 @@ fn test_update_proposal_encoding(backend: &impl OpenMlsCryptoProvider) {
             .tls_serialize_detached()
             .expect("Could not encode proposal.");
         let mut update_decoded =
-            match VerifiableMlsPlaintext::tls_deserialize(&mut update_encoded.as_slice()) {
+            match VerifiableMlsAuthContent::tls_deserialize(&mut update_encoded.as_slice()) {
                 Ok(a) => a,
                 Err(err) => panic!("Error decoding MPLSPlaintext Update: {:?}", err),
             };
@@ -197,7 +197,7 @@ fn test_add_proposal_encoding(backend: &impl OpenMlsCryptoProvider) {
             .tls_serialize_detached()
             .expect("Could not encode proposal.");
         let mut verifiable_plaintext =
-            VerifiableMlsPlaintext::tls_deserialize(&mut add_encoded.as_slice())
+            VerifiableMlsAuthContent::tls_deserialize(&mut add_encoded.as_slice())
                 .expect("An unexpected error occurred.");
 
         verifiable_plaintext.set_context(
@@ -246,7 +246,7 @@ fn test_remove_proposal_encoding(backend: &impl OpenMlsCryptoProvider) {
             .tls_serialize_detached()
             .expect("Could not encode proposal.");
         let mut verifiable_plaintext =
-            VerifiableMlsPlaintext::tls_deserialize(&mut remove_encoded.as_slice())
+            VerifiableMlsAuthContent::tls_deserialize(&mut remove_encoded.as_slice())
                 .expect("An unexpected error occurred.");
 
         verifiable_plaintext.set_context(
@@ -357,7 +357,7 @@ fn test_commit_encoding(backend: &impl OpenMlsCryptoProvider) {
             .expect("An unexpected error occurred.");
 
         let mut verifiable_plaintext =
-            VerifiableMlsPlaintext::tls_deserialize(&mut commit_encoded.as_slice())
+            VerifiableMlsAuthContent::tls_deserialize(&mut commit_encoded.as_slice())
                 .expect("An unexpected error occurred.");
 
         verifiable_plaintext.set_context(

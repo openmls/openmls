@@ -476,7 +476,7 @@ impl CoreGroup {
         mls_ciphertext: &MlsCiphertext,
         backend: &impl OpenMlsCryptoProvider,
         sender_ratchet_configuration: &SenderRatchetConfiguration,
-    ) -> Result<VerifiableMlsPlaintext, MessageDecryptionError> {
+    ) -> Result<VerifiableMlsAuthContent, MessageDecryptionError> {
         use crate::tree::index::SecretTreeLeafIndex;
 
         let ciphersuite = self.ciphersuite();

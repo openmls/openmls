@@ -52,11 +52,11 @@ use super::*;
 ///  - ValSem007
 ///  - ValSem009
 pub(crate) struct DecryptedMessage {
-    plaintext: VerifiableMlsPlaintext,
+    plaintext: VerifiableMlsAuthContent,
 }
 
 impl DecryptedMessage {
-    /// Constructs a [DecryptedMessage] from a [VerifiableMlsPlaintext].
+    /// Constructs a [DecryptedMessage] from a [VerifiableMlsAuthContent].
     pub(crate) fn from_inbound_plaintext(
         inbound_message: MlsMessageIn,
     ) -> Result<Self, ValidationError> {
@@ -68,7 +68,7 @@ impl DecryptedMessage {
     }
 
     /// Constructs a [DecryptedMessage] from a [MlsCiphertext] by attempting to decrypt it
-    /// to a [VerifiableMlsPlaintext] first.
+    /// to a [VerifiableMlsAuthContent] first.
     pub(crate) fn from_inbound_ciphertext(
         inbound_message: MlsMessageIn,
         backend: &impl OpenMlsCryptoProvider,
@@ -106,7 +106,7 @@ impl DecryptedMessage {
     // - Confirmation tag must be present for Commit messages
     // - Membership tag must be present for member messages, if the original incoming message was not an MlsCiphertext
     // - Ensures application messages were originally MlsCiphertext messages
-    fn from_plaintext(plaintext: VerifiableMlsPlaintext) -> Result<Self, ValidationError> {
+    fn from_plaintext(plaintext: VerifiableMlsAuthContent) -> Result<Self, ValidationError> {
         // ValSem007
         if plaintext.sender().is_member()
             && plaintext.wire_format() != WireFormat::MlsCiphertext
@@ -205,7 +205,7 @@ impl DecryptedMessage {
     }
 
     /// Returns the plaintext.
-    pub(crate) fn plaintext(&self) -> &VerifiableMlsPlaintext {
+    pub(crate) fn plaintext(&self) -> &VerifiableMlsAuthContent {
         &self.plaintext
     }
 }
@@ -215,7 +215,7 @@ impl DecryptedMessage {
 /// and the optional `aad` if the original message was encrypted.
 #[derive(Debug, Clone)]
 pub struct UnverifiedMessage {
-    plaintext: VerifiableMlsPlaintext,
+    plaintext: VerifiableMlsAuthContent,
     credential: Option<Credential>,
     aad_option: Option<Vec<u8>>,
 }
@@ -254,12 +254,12 @@ impl UnverifiedMessage {
     }
 
     /// Decomposes an [UnverifiedMessage] into its parts.
-    pub(crate) fn into_parts(self) -> (VerifiableMlsPlaintext, Option<Credential>) {
+    pub(crate) fn into_parts(self) -> (VerifiableMlsAuthContent, Option<Credential>) {
         (self.plaintext, self.credential)
     }
 }
 
-/// Contains an VerifiableMlsPlaintext and a [Credential] if it is a message
+/// Contains an VerifiableMlsAuthContent and a [Credential] if it is a message
 /// from a `Member`, a `Preconfigured`, a `NewMemberProposal` or a `NewMemberCommit`. It sets the
 /// serialized group context and verifies the membership tag for member messages. It can be
 /// converted to a verified message by verifying the signature, either with the credential or an
@@ -326,7 +326,7 @@ impl UnverifiedContextMessage {
 
 /// Part of [UnverifiedContextMessage].
 pub(crate) struct UnverifiedGroupMessage {
-    plaintext: VerifiableMlsPlaintext,
+    plaintext: VerifiableMlsAuthContent,
     credential: Credential,
 }
 
@@ -358,7 +358,7 @@ impl UnverifiedGroupMessage {
 
 /// Part of [UnverifiedContextMessage].
 pub(crate) struct UnverifiedNewMemberMessage {
-    plaintext: VerifiableMlsPlaintext,
+    plaintext: VerifiableMlsAuthContent,
     credential: Credential,
 }
 
@@ -390,7 +390,7 @@ impl UnverifiedNewMemberMessage {
 // TODO #151/#106: We don't support external senders yet
 /// Part of [UnverifiedContextMessage].
 pub(crate) struct UnverifiedExternalMessage {
-    plaintext: VerifiableMlsPlaintext,
+    plaintext: VerifiableMlsAuthContent,
 }
 
 impl UnverifiedExternalMessage {

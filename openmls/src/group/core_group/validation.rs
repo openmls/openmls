@@ -14,7 +14,7 @@ use crate::{
 
 use super::{
     proposals::ProposalQueue, ContentType, CoreGroup, KeyPackage, Member, MlsMessageIn,
-    ProposalValidationError, VerifiableMlsPlaintext, WireFormat,
+    ProposalValidationError, VerifiableMlsAuthContent, WireFormat,
 };
 
 impl CoreGroup {
@@ -56,7 +56,7 @@ impl CoreGroup {
     ///  - ValSem009
     pub(crate) fn validate_plaintext(
         &self,
-        plaintext: &VerifiableMlsPlaintext,
+        plaintext: &VerifiableMlsAuthContent,
     ) -> Result<(), ValidationError> {
         // ValSem004
         let sender = plaintext.sender();

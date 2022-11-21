@@ -110,7 +110,7 @@ fn test_valsem001(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
 
     serialized_message[0] = WireFormat::MlsCiphertext as u8;
 
-    let err = VerifiableMlsPlaintext::tls_deserialize(&mut serialized_message.as_slice())
+    let err = VerifiableMlsAuthContent::tls_deserialize(&mut serialized_message.as_slice())
         .expect_err("Could deserialize message despite wrong wire format.");
 
     assert_eq!(
@@ -119,7 +119,7 @@ fn test_valsem001(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
     );
 
     // Positive case
-    VerifiableMlsPlaintext::tls_deserialize(&mut original_message.as_slice())
+    VerifiableMlsAuthContent::tls_deserialize(&mut original_message.as_slice())
         .expect("Unexpected error.");
 
     // Test with MlsCiphertext
@@ -174,8 +174,9 @@ fn test_valsem002(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
         .tls_serialize_detached()
         .expect("Could not serialize message.");
 
-    let mut plaintext = VerifiableMlsPlaintext::tls_deserialize(&mut serialized_message.as_slice())
-        .expect("Could not deserialize message.");
+    let mut plaintext =
+        VerifiableMlsAuthContent::tls_deserialize(&mut serialized_message.as_slice())
+            .expect("Could not deserialize message.");
 
     let original_message = plaintext.clone();
 
@@ -259,8 +260,9 @@ fn test_valsem003(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
         .tls_serialize_detached()
         .expect("Could not serialize message.");
 
-    let mut plaintext = VerifiableMlsPlaintext::tls_deserialize(&mut serialized_message.as_slice())
-        .expect("Could not deserialize message.");
+    let mut plaintext =
+        VerifiableMlsAuthContent::tls_deserialize(&mut serialized_message.as_slice())
+            .expect("Could not deserialize message.");
 
     let original_message = plaintext.clone();
 
@@ -317,8 +319,9 @@ fn test_valsem004(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
         .tls_serialize_detached()
         .expect("Could not serialize message.");
 
-    let mut plaintext = VerifiableMlsPlaintext::tls_deserialize(&mut serialized_message.as_slice())
-        .expect("Could not deserialize message.");
+    let mut plaintext =
+        VerifiableMlsAuthContent::tls_deserialize(&mut serialized_message.as_slice())
+            .expect("Could not deserialize message.");
 
     let original_message = plaintext.clone();
 
@@ -361,12 +364,13 @@ fn test_valsem005(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
         .tls_serialize_detached()
         .expect("Could not serialize message.");
 
-    let mut plaintext = VerifiableMlsPlaintext::tls_deserialize(&mut serialized_message.as_slice())
-        .expect("Could not deserialize message.");
+    let mut plaintext =
+        VerifiableMlsAuthContent::tls_deserialize(&mut serialized_message.as_slice())
+            .expect("Could not deserialize message.");
 
     let original_message = plaintext.clone();
 
-    plaintext.set_content(MlsContentBody::Application(vec![1, 2, 3].into()));
+    plaintext.set_content_body(MlsContentBody::Application(vec![1, 2, 3].into()));
 
     let message_in = MlsMessageIn::from(plaintext);
 
@@ -467,8 +471,9 @@ fn test_valsem007(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
         .tls_serialize_detached()
         .expect("Could not serialize message.");
 
-    let mut plaintext = VerifiableMlsPlaintext::tls_deserialize(&mut serialized_message.as_slice())
-        .expect("Could not deserialize message.");
+    let mut plaintext =
+        VerifiableMlsAuthContent::tls_deserialize(&mut serialized_message.as_slice())
+            .expect("Could not deserialize message.");
 
     let original_message = plaintext.clone();
 
@@ -532,8 +537,9 @@ fn test_valsem008(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
         .tls_serialize_detached()
         .expect("Could not serialize message.");
 
-    let mut plaintext = VerifiableMlsPlaintext::tls_deserialize(&mut serialized_message.as_slice())
-        .expect("Could not deserialize message.");
+    let mut plaintext =
+        VerifiableMlsAuthContent::tls_deserialize(&mut serialized_message.as_slice())
+            .expect("Could not deserialize message.");
 
     let original_message = plaintext.clone();
 
@@ -582,8 +588,9 @@ fn test_valsem009(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
         .tls_serialize_detached()
         .expect("Could not serialize message.");
 
-    let mut plaintext = VerifiableMlsPlaintext::tls_deserialize(&mut serialized_message.as_slice())
-        .expect("Could not deserialize message.");
+    let mut plaintext =
+        VerifiableMlsAuthContent::tls_deserialize(&mut serialized_message.as_slice())
+            .expect("Could not deserialize message.");
 
     let original_message = plaintext.clone();
 
@@ -647,8 +654,9 @@ fn test_valsem010(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
         .tls_serialize_detached()
         .expect("Could not serialize message.");
 
-    let mut plaintext = VerifiableMlsPlaintext::tls_deserialize(&mut serialized_message.as_slice())
-        .expect("Could not deserialize message.");
+    let mut plaintext =
+        VerifiableMlsAuthContent::tls_deserialize(&mut serialized_message.as_slice())
+            .expect("Could not deserialize message.");
 
     let original_message = plaintext.clone();
 
@@ -677,9 +685,9 @@ fn test_valsem010(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
         .payload()
         .tls_serialize_detached()
         .expect("Could not serialize Tbs.");
-    let tbm_payload =
-        MlsPlaintextTbmPayload::new(&tbs_payload, &signature, confirmation_tag.as_ref())
-            .expect("Could not create MlsPlaintextTbm.");
+    let auth_data = MlsContentAuthData::new(signature.clone(), confirmation_tag);
+    let tbm_payload = MlsPlaintextTbmPayload::new(&tbs_payload, &auth_data)
+        .expect("Could not create MlsPlaintextTbm.");
     let new_membership_tag = alice_group
         .group()
         .message_secrets()

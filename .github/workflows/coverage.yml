@@ -4,10 +4,6 @@ on:
   - push
   - pull_request_target
 
-concurrency: 
-  group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
-
 defaults:
   run:
     working-directory: openmls

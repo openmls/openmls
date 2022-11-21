@@ -36,7 +36,7 @@ pub(crate) struct MlsCiphertext {
     group_id: GroupId,
     epoch: GroupEpoch,
     content_type: ContentType,
-    authenticated_data: TlsByteVecU32,
+    authenticated_data: VLBytes,
     encrypted_sender_data: TlsByteVecU8,
     ciphertext: TlsByteVecU32,
 }
@@ -53,7 +53,7 @@ impl MlsCiphertext {
         group_id: GroupId,
         epoch: GroupEpoch,
         content_type: ContentType,
-        authenticated_data: TlsByteVecU32,
+        authenticated_data: VLBytes,
         encrypted_sender_data: TlsByteVecU8,
         ciphertext: TlsByteVecU32,
     ) -> Self {
@@ -253,7 +253,7 @@ impl MlsCiphertext {
             .map_err(|_| MessageDecryptionError::MalformedContent)
     }
 
-    /// This function decrypts an [`MlsCiphertext`] into an [`VerifiableMlsPlaintext`].
+    /// This function decrypts an [`MlsCiphertext`] into an [`VerifiableMlsAuthContent`].
     /// In order to get an [`MlsPlaintext`] the result must be verified.
     pub(crate) fn to_plaintext(
         &self,
@@ -263,7 +263,7 @@ impl MlsCiphertext {
         sender_index: SecretTreeLeafIndex,
         sender_ratchet_configuration: &SenderRatchetConfiguration,
         sender_data: MlsSenderData,
-    ) -> Result<VerifiableMlsPlaintext, MessageDecryptionError> {
+    ) -> Result<VerifiableMlsAuthContent, MessageDecryptionError> {
         let secret_type = SecretType::from(&self.content_type);
         // Extract generation and key material for encryption
         let (ratchet_key, ratchet_nonce) = message_secrets
@@ -292,8 +292,8 @@ impl MlsCiphertext {
             mls_ciphertext_content.content
         );
 
-        let verifiable = VerifiableMlsPlaintext::new(
-            MlsPlaintextTbs::new(
+        let verifiable = VerifiableMlsAuthContent::new(
+            MlsContentTbs::new(
                 self.wire_format,
                 self.group_id.clone(),
                 self.epoch,
@@ -301,8 +301,7 @@ impl MlsCiphertext {
                 self.authenticated_data.clone(),
                 mls_ciphertext_content.content,
             ),
-            mls_ciphertext_content.signature,
-            mls_ciphertext_content.confirmation_tag,
+            mls_ciphertext_content.auth,
             None, /* MlsCiphertexts don't carry along the membership tag. */
         );
         Ok(verifiable)
@@ -321,8 +320,7 @@ impl MlsCiphertext {
         mac_len: usize,
     ) -> Result<Vec<u8>, tls_codec::Error> {
         let plaintext_length = mls_plaintext.content().tls_serialized_len()
-            + mls_plaintext.signature().tls_serialized_len()
-            + mls_plaintext.confirmation_tag().tls_serialized_len();
+            + mls_plaintext.auth().tls_serialized_len();
 
         let padding_length = if padding_size > 0 {
             // Calculate padding block size.
@@ -338,8 +336,7 @@ impl MlsCiphertext {
         let buffer = &mut Vec::with_capacity(plaintext_length + padding_length);
 
         mls_plaintext.content().tls_serialize(buffer)?;
-        mls_plaintext.signature().tls_serialize(buffer)?;
-        mls_plaintext.confirmation_tag().tls_serialize(buffer)?;
+        mls_plaintext.auth().tls_serialize(buffer)?;
         // Note: The `tls_codec::Serialize` implementation for `&[u8]` prepends the length.
         // We do not want this here and thus use the "raw" `write_all` method.
         buffer
@@ -449,8 +446,7 @@ impl MlsSenderDataAad {
 #[derive(Debug, Clone)]
 pub(crate) struct MlsCiphertextContent {
     pub(crate) content: MlsContentBody,
-    pub(crate) signature: Signature,
-    pub(crate) confirmation_tag: Option<ConfirmationTag>,
+    pub(crate) auth: MlsContentAuthData,
     /// Length of the all-zero padding.
     ///
     /// We do not retain any bytes here to avoid the need to
