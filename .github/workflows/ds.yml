@@ -33,4 +33,4 @@ jobs:
       - name: Test DS lib
         run: cargo test --verbose -p ds-lib
       - name: Test DS
-        run: cargo test --verbose -p ds
+        run: cargo test --verbose -p mls-ds
