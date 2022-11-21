@@ -455,10 +455,6 @@
 <span id="455">455</span>
 <span id="456">456</span>
 <span id="457">457</span>
-<span id="458">458</span>
-<span id="459">459</span>
-<span id="460">460</span>
-<span id="461">461</span>
 </pre><pre class="rust"><code><span class="doccomment">//! This module contains validation functions for incoming messages
 //! as defined in &lt;https://github.com/openmls/openmls/wiki/Message-validation&gt;
 
@@ -852,11 +848,10 @@
     <span class="doccomment">/// Validate constraints on an external commit. This function implements the following checks:
     ///  - ValSem240: External Commit, inline Proposals: There MUST be at least one ExternalInit proposal.
     ///  - ValSem241: External Commit, inline Proposals: There MUST be at most one ExternalInit proposal.
-    ///  - ValSem242: External Commit, inline Proposals: There MUST NOT be any Add proposals.
-    ///  - ValSem243: External Commit, inline Proposals: There MUST NOT be any Update proposals.
-    ///  - ValSem244: External Commit, inline Remove Proposal: The identity and the endpoint_id of the removed
+    ///  - ValSem242: External Commit must only cover inline proposal in allowlist (ExternalInit, Remove, PreSharedKey)
+    ///  - ValSem243: External Commit, inline Remove Proposal: The identity and the endpoint_id of the removed
     ///               leaf are identical to the ones in the path KeyPackage.
-    ///  - ValSem245: External Commit, referenced Proposals: There MUST NOT be any ExternalInit proposals.
+    ///  - ValSem244: External Commit, referenced Proposals: There MUST NOT be any ExternalInit proposals.
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>validate_external_commit(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         proposal_queue: <span class="kw-2">&amp;</span>ProposalQueue,
@@ -866,7 +861,7 @@
             proposal_queue.filtered_by_type(ProposalType::ExternalInit);
         <span class="comment">// ValSem240: External Commit, inline Proposals: There MUST be at least one ExternalInit proposal.
         </span><span class="kw">if let </span><span class="prelude-val">Some</span>(external_init_proposal) = external_init_proposals.next() {
-            <span class="comment">// ValSem245: External Commit, referenced Proposals: There MUST NOT be any ExternalInit proposals.
+            <span class="comment">// ValSem244: External Commit, referenced Proposals: There MUST NOT be any ExternalInit proposals.
             </span><span class="kw">if </span>external_init_proposal.proposal_or_ref_type() == ProposalOrRefType::Reference {
                 <span class="kw">return </span><span class="prelude-val">Err</span>(ExternalCommitValidationError::ReferencedExternalInitProposal);
             }
@@ -876,23 +871,20 @@
 
         <span class="comment">// ValSem241: External Commit, inline Proposals: There MUST be at most one ExternalInit proposal.
         </span><span class="kw">if </span>external_init_proposals.next().is_some() {
-            <span class="comment">// ValSem245: External Commit, referenced Proposals: There MUST NOT be any ExternalInit proposals.
+            <span class="comment">// ValSem244: External Commit, referenced Proposals: There MUST NOT be any ExternalInit proposals.
             </span><span class="kw">return </span><span class="prelude-val">Err</span>(ExternalCommitValidationError::MultipleExternalInitProposals);
         }
-
-        <span class="kw">let </span>add_proposals = proposal_queue.filtered_by_type(ProposalType::Add);
-        <span class="kw">for </span>proposal <span class="kw">in </span>add_proposals {
-            <span class="comment">// ValSem242: External Commit, inline Proposals: There MUST NOT be any Add proposals.
-            </span><span class="kw">if </span>proposal.proposal_or_ref_type() == ProposalOrRefType::Proposal {
-                <span class="kw">return </span><span class="prelude-val">Err</span>(ExternalCommitValidationError::InvalidInlineProposals);
-            }
-        }
-        <span class="kw">let </span>update_proposals = proposal_queue.filtered_by_type(ProposalType::Update);
-        <span class="kw">for </span>proposal <span class="kw">in </span>update_proposals {
-            <span class="comment">// ValSem243: External Commit, inline Proposals: There MUST NOT be any Update proposals.
-            </span><span class="kw">if </span>proposal.proposal_or_ref_type() == ProposalOrRefType::Proposal {
-                <span class="kw">return </span><span class="prelude-val">Err</span>(ExternalCommitValidationError::InvalidInlineProposals);
-            }
+        <span class="comment">// ValSem242: External Commit must only cover inline proposal in allowlist (ExternalInit, Remove, PreSharedKey)
+        </span><span class="kw">let </span>contains_denied_proposal = proposal_queue.queued_proposals().any(|p| {
+            <span class="kw">let </span>is_inline = p.proposal_or_ref_type() == ProposalOrRefType::Proposal;
+            <span class="kw">let </span>is_allowed_type = <span class="macro">matches!</span>(
+                p.proposal(),
+                Proposal::ExternalInit(<span class="kw">_</span>) | Proposal::Remove(<span class="kw">_</span>) | Proposal::PreSharedKey(<span class="kw">_</span>)
+            );
+            is_inline &amp;&amp; !is_allowed_type
+        });
+        <span class="kw">if </span>contains_denied_proposal {
+            <span class="kw">return </span><span class="prelude-val">Err</span>(ExternalCommitValidationError::InvalidInlineProposals);
         }
 
         <span class="kw">let </span>remove_proposals = proposal_queue.filtered_by_type(ProposalType::Remove);
@@ -902,7 +894,7 @@
                     <span class="kw">let </span>removed_leaf = remove_proposal.removed();
 
                     <span class="kw">if let </span><span class="prelude-val">Some</span>(path_key_package) = path_key_package_option {
-                        <span class="comment">// ValSem244: External Commit, inline Remove Proposal: The identity and the endpoint_id of the removed leaf are identical to the ones in the path KeyPackage.
+                        <span class="comment">// ValSem243: External Commit, inline Remove Proposal: The identity and the endpoint_id of the removed leaf are identical to the ones in the path KeyPackage.
                         </span><span class="kw">let </span>leaf = <span class="self">self
                             </span>.treesync()
                             .leaf(removed_leaf)

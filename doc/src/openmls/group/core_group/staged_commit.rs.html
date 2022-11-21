@@ -480,8 +480,6 @@
 <span id="480">480</span>
 <span id="481">481</span>
 <span id="482">482</span>
-<span id="483">483</span>
-<span id="484">484</span>
 </pre><pre class="rust"><code><span class="kw">use </span><span class="kw">crate</span>::treesync::errors::TreeSyncAddLeaf;
 <span class="kw">use </span><span class="kw">crate</span>::treesync::{diff::StagedTreeSyncDiff, treekem::DecryptPathParams};
 
@@ -532,7 +530,6 @@
     ///  - ValSem242
     ///  - ValSem243
     ///  - ValSem244
-    ///  - ValSem245
     /// Returns an error if the given commit was sent by the owner of this
     /// group.
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>stage_commit(
@@ -626,11 +623,10 @@
             Sender::NewMemberCommit =&gt; {
                 <span class="comment">// ValSem240: External Commit, inline Proposals: There MUST be at least one ExternalInit proposal.
                 // ValSem241: External Commit, inline Proposals: There MUST be at most one ExternalInit proposal.
-                // ValSem242: External Commit, inline Proposals: There MUST NOT be any Add proposals.
-                // ValSem243: External Commit, inline Proposals: There MUST NOT be any Update proposals.
-                // ValSem244: External Commit, inline Remove Proposal: The identity and the endpoint_id of the removed
+                // ValSem242: External Commit must only cover inline proposal in allowlist (ExternalInit, Remove, PreSharedKey)
+                // ValSem243: External Commit, inline Remove Proposal: The identity and the endpoint_id of the removed
                 //            leaf are identical to the ones in the path KeyPackage.
-                // ValSem245: External Commit, referenced Proposals: There MUST NOT be any ExternalInit proposals.
+                // ValSem244: External Commit, referenced Proposals: There MUST NOT be any ExternalInit proposals.
                 </span><span class="self">self</span>.validate_external_commit(<span class="kw-2">&amp;</span>proposal_queue, commit_update_key_package.as_ref())<span class="question-mark">?</span>;
                 <span class="comment">// Since there are no update proposals in an External Commit we have no public keys to return
                 </span>HashSet::new()

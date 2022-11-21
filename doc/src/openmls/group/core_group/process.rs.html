@@ -261,8 +261,6 @@
 <span id="261">261</span>
 <span id="262">262</span>
 <span id="263">263</span>
-<span id="264">264</span>
-<span id="265">265</span>
 </pre><pre class="rust"><code><span class="kw">use </span>core_group::{proposals::QueuedProposal, staged_commit::StagedCommit};
 
 <span class="kw">use </span><span class="kw">crate</span>::group::{errors::ValidationError, mls_group::errors::UnverifiedMessageError};
@@ -284,7 +282,7 @@
     ///  - ValSem007
     ///  - ValSem009
     ///  - ValSem112
-    ///  - ValSem246
+    ///  - ValSem245
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>parse_message(
         <span class="kw-2">&amp;mut </span><span class="self">self</span>,
         backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider,
@@ -321,9 +319,9 @@
         <span class="comment">// Extract the credential if the sender is a member or a new member.
         // Checks the following semantic validation:
         //  - ValSem112
-        //  - ValSem246
-        //  - Prepares ValSem247 by setting the right credential. The remainder
-        //    of ValSem247 is validated as part of ValSem010.
+        //  - ValSem245
+        //  - Prepares ValSem246 by setting the right credential. The remainder
+        //    of ValSem246 is validated as part of ValSem010.
         // External senders are not supported yet #106/#151.
         </span><span class="kw">let </span>credential = decrypted_message.credential(
             <span class="self">self</span>.treesync(),
@@ -367,8 +365,7 @@
     ///  - ValSem242
     ///  - ValSem243
     ///  - ValSem244
-    ///  - ValSem245
-    ///  - ValSem247 (as part of ValSem010)
+    ///  - ValSem246 (as part of ValSem010)
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>process_unverified_message(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         unverified_message: UnverifiedMessage,
@@ -399,7 +396,7 @@
             UnverifiedContextMessage::Group(unverified_message) =&gt; {
                 <span class="comment">// Checks the following semantic validation:
                 //  - ValSem010
-                //  - ValSem247 (as part of ValSem010)
+                //  - ValSem246 (as part of ValSem010)
                 </span><span class="kw">let </span>verified_member_message = unverified_message
                     .into_verified(backend, signature_key)
                     .map_err(|<span class="kw">_</span>| UnverifiedMessageError::InvalidSignature)<span class="question-mark">?</span>;
@@ -444,7 +441,6 @@
                         //  - ValSem242
                         //  - ValSem243
                         //  - ValSem244
-                        //  - ValSem245
                         </span><span class="kw">let </span>staged_commit = <span class="self">self</span>.stage_commit(
                             verified_member_message.plaintext(),
                             proposal_store,

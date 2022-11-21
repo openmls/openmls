@@ -203,12 +203,11 @@ Further syntax checks are applied for the latter case once the message is decryp
 <div class="table-wrapper"><table><thead><tr><th>ValidationStep</th><th>Description</th><th>Implemented</th><th>Tested</th><th>Test File</th></tr></thead><tbody>
 <tr><td><code>ValSem240</code></td><td>External Commit must cover at least one inline ExternalInit proposal</td><td>✅</td><td>✅</td><td><code>openmls/src/group/tests/test_external_commit_validation.rs</code></td></tr>
 <tr><td><code>ValSem241</code></td><td>External Commit must cover at most one inline ExternalInit proposal</td><td>✅</td><td>✅</td><td><code>openmls/src/group/tests/test_external_commit_validation.rs</code></td></tr>
-<tr><td><code>ValSem242</code></td><td>External Commit must not cover any inline Add proposals</td><td>✅</td><td>✅</td><td><code>openmls/src/group/tests/test_external_commit_validation.rs</code></td></tr>
-<tr><td><code>ValSem243</code></td><td>External Commit must not cover any inline Update proposals</td><td>✅</td><td>✅</td><td><code>openmls/src/group/tests/test_external_commit_validation.rs</code></td></tr>
-<tr><td><code>ValSem244</code></td><td>Identity of inline Remove proposal target and external committer must be the same</td><td>✅</td><td>✅</td><td><code>openmls/src/group/tests/test_external_commit_validation.rs</code></td></tr>
-<tr><td><code>ValSem245</code></td><td>External Commit must not cover any ExternalInit proposals by reference</td><td>✅</td><td>✅</td><td><code>openmls/src/group/tests/test_external_commit_validation.rs</code></td></tr>
-<tr><td><code>ValSem246</code></td><td>External Commit must contain a path</td><td>✅</td><td>✅</td><td><code>openmls/src/group/tests/test_external_commit_validation.rs</code></td></tr>
-<tr><td><code>ValSem247</code></td><td>External Commit signature must be verified using the credential in the path KeyPackage</td><td>✅</td><td>✅</td><td><code>openmls/src/group/tests/test_external_commit_validation.rs</code></td></tr>
+<tr><td><code>ValSem242</code></td><td>External Commit must only cover inline proposal in allowlist (ExternalInit, Remove, PreSharedKey)</td><td>✅</td><td>✅</td><td><code>openmls/src/group/tests/test_external_commit_validation.rs</code></td></tr>
+<tr><td><code>ValSem243</code></td><td>Identity of inline Remove proposal target and external committer must be the same</td><td>✅</td><td>✅</td><td><code>openmls/src/group/tests/test_external_commit_validation.rs</code></td></tr>
+<tr><td><code>ValSem244</code></td><td>External Commit must not cover any ExternalInit proposals by reference</td><td>✅</td><td>✅</td><td><code>openmls/src/group/tests/test_external_commit_validation.rs</code></td></tr>
+<tr><td><code>ValSem245</code></td><td>External Commit must contain a path</td><td>✅</td><td>✅</td><td><code>openmls/src/group/tests/test_external_commit_validation.rs</code></td></tr>
+<tr><td><code>ValSem246</code></td><td>External Commit signature must be verified using the credential in the path KeyPackage</td><td>✅</td><td>✅</td><td><code>openmls/src/group/tests/test_external_commit_validation.rs</code></td></tr>
 </tbody></table>
 </div>
                     </main>
