@@ -230,7 +230,7 @@ async fn test_group() {
     // Client1 creates MyFirstGroup
     let group_id = GroupId::from_slice(b"MyFirstGroup");
     let group_ciphersuite = key_package_bundles[0].ciphersuite();
-    let mut group = MlsGroup::new(
+    let mut group = MlsGroup::new_with_group_id(
         crypto,
         &mls_group_config,
         group_id,
