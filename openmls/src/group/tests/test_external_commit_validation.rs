@@ -426,6 +426,7 @@ fn test_valsem243(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
             .expect("Could not deserialize message.");
 
     assert!(matches!(plaintext.sender(), Sender::NewMemberCommit));
+    assert!(matches!(plaintext.content_type(), ContentType::Commit));
 
     let original_plaintext = plaintext.clone();
 
