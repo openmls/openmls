@@ -21,7 +21,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        arch:
+        os:
           - macos-latest
           - ubuntu-latest
           - windows-latest
@@ -35,7 +35,7 @@ jobs:
           toolchain: stable
           profile: minimal
           override: true
-          target: ${{ matrix.arch }}
+          target: ${{ matrix.os }}
       - name: Test DS lib
         run: cargo test --verbose -p ds-lib
       - name: Test DS
