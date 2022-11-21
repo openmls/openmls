@@ -142,7 +142,7 @@ fn external_add_proposal_should_succeed(
         .unwrap();
 
         // an external proposal is always plaintext and has sender type 'new_member_proposal'
-        let verify_proposal = |msg: &VerifiableMlsPlaintext| {
+        let verify_proposal = |msg: &VerifiableMlsAuthContent| {
             *msg.sender() == Sender::NewMemberProposal
                 && msg.content_type() == ContentType::Proposal
                 && matches!(msg.content(), MlsContentBody::Proposal(p) if p.proposal_type() == ProposalType::Add)
