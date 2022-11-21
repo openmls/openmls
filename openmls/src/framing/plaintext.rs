@@ -112,7 +112,7 @@ impl MlsPlaintext {
 
     #[cfg(test)]
     pub fn test_signature(&self) -> &Signature {
-        &self.auth().signature
+        &self.auth.signature
     }
 
     pub(super) fn wire_format(&self) -> WireFormat {
@@ -530,19 +530,16 @@ impl VerifiableMlsAuthContent {
         mls_plaintext: MlsPlaintext,
         serialized_context: impl Into<Option<Vec<u8>>>,
     ) -> Self {
-        let membership_tag = mls_plaintext.membership_tag.clone();
-        let auth = mls_plaintext.auth.clone();
-
-        let tbs = if let Some(serialized_context) = serialized_context.into() {
-            MlsContentTbs::from_plaintext(mls_plaintext).with_context(serialized_context)
-        } else {
-            MlsContentTbs::from_plaintext(mls_plaintext)
+        let tbs = MlsContentTbs {
+            wire_format: mls_plaintext.wire_format,
+            content: mls_plaintext.content,
+            serialized_context: serialized_context.into(),
         };
 
         Self {
             tbs,
-            auth,
-            membership_tag,
+            auth: mls_plaintext.auth,
+            membership_tag: mls_plaintext.membership_tag,
         }
     }
 
@@ -739,17 +736,6 @@ impl MlsContentTbs {
     pub(crate) fn with_context(mut self, serialized_context: Vec<u8>) -> Self {
         self.serialized_context = Some(serialized_context);
         self
-    }
-
-    /// Create a new signable MlsPlaintext from an existing MlsPlaintext.
-    /// This consumes the existing plaintext.
-    /// To get the `MlsPlaintext` back use `sign`.
-    fn from_plaintext(mls_plaintext: MlsPlaintext) -> Self {
-        MlsContentTbs {
-            wire_format: mls_plaintext.wire_format,
-            content: mls_plaintext.content,
-            serialized_context: None,
-        }
     }
 
     /// Get the epoch.
