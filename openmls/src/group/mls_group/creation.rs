@@ -11,7 +11,7 @@ use super::*;
 impl MlsGroup {
     // === Group creation ===
 
-    /// Creates a new group with the creator as the only member.
+    /// Creates a new group with the creator as the only member (and a random group ID).
     ///
     /// This function removes the `KeyPackageBundle` corresponding to the
     /// `key_package_hash` from the key store. Returns an error
