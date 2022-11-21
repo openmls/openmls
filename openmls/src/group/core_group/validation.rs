@@ -395,6 +395,7 @@ impl CoreGroup {
     ///  - ValSem243: External Commit, inline Remove Proposal: The identity and the endpoint_id of the removed
     ///               leaf are identical to the ones in the path KeyPackage.
     ///  - ValSem244: External Commit, referenced Proposals: There MUST NOT be any ExternalInit proposals.
+    ///  - ValSem248: External Commit, There MUST NOT be any referenced proposals.
     pub(crate) fn validate_external_commit(
         &self,
         proposal_queue: &ProposalQueue,
@@ -428,6 +429,15 @@ impl CoreGroup {
         });
         if contains_denied_proposal {
             return Err(ExternalCommitValidationError::InvalidInlineProposals);
+        }
+
+        if proposal_queue.queued_proposals().any(|proposal| {
+            matches!(
+                proposal.proposal_or_ref_type(),
+                ProposalOrRefType::Reference
+            )
+        }) {
+            return Err(ExternalCommitValidationError::ReferencedProposal);
         }
 
         let remove_proposals = proposal_queue.filtered_by_type(ProposalType::Remove);

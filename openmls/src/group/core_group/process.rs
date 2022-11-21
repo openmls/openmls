@@ -103,6 +103,7 @@ impl CoreGroup {
     ///  - ValSem243
     ///  - ValSem244
     ///  - ValSem246 (as part of ValSem010)
+    ///  - ValSem248
     pub(crate) fn process_unverified_message(
         &self,
         unverified_message: UnverifiedMessage,

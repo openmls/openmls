@@ -92,3 +92,4 @@ The following is a list of the individual semantic validation steps performed by
 | `ValSem244`    | External Commit must not cover any ExternalInit proposals by reference                            | ✅           | ✅      | `openmls/src/group/tests/test_external_commit_validation.rs` |
 | `ValSem245`    | External Commit must contain a path                                                               | ✅           | ✅      | `openmls/src/group/tests/test_external_commit_validation.rs` |
 | `ValSem246`    | External Commit signature must be verified using the credential in the path KeyPackage            | ✅           | ✅      | `openmls/src/group/tests/test_external_commit_validation.rs` |
+| `ValSem248`    | External Commit must not include any proposals by reference                                       | ✅           | ✅      | `openmls/src/group/tests/test_external_commit_validation.rs` |

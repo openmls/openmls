@@ -6,16 +6,16 @@ use openmls_rust_crypto::OpenMlsRustCrypto;
 use openmls_traits::{key_store::OpenMlsKeyStore, types::Ciphersuite, OpenMlsCryptoProvider};
 use tls_codec::{Deserialize, Serialize};
 
-use rstest::*;
-use rstest_reuse::{self, *};
-
 use crate::{
     ciphersuite::signable::{Signable, Verifiable},
     credentials::{errors::*, *},
     framing::*,
     group::{errors::*, *},
     messages::{proposals::*, public_group_state::VerifiablePublicGroupState},
+    prelude::hash_ref::ProposalRef,
 };
+use rstest::*;
+use rstest_reuse::{self, *};
 
 use super::utils::{generate_credential_bundle, generate_key_package_bundle};
 
@@ -868,4 +868,85 @@ fn test_pure_ciphertest(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoPr
 
     // Would fail if handshake message processing did not distinguish external messages
     assert!(alice_group.parse_message(message.into(), backend).is_ok());
+}
+
+// ValSem248: External Commit must not include any proposals by reference
+#[apply(ciphersuites_and_backends)]
+fn test_valsem248(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
+    // Test with MlsPlaintext
+    let ECValidationTestSetup {
+        mut alice_group,
+        bob_credential_bundle,
+        mut plaintext,
+        original_plaintext,
+    } = validation_test_setup(PURE_PLAINTEXT_WIRE_FORMAT_POLICY, ciphersuite, backend);
+
+    let mut content = if let MlsContentBody::Commit(commit) = plaintext.content() {
+        commit.clone()
+    } else {
+        panic!("Unexpected content type.");
+    };
+
+    // Add an Add proposal by reference
+    let bob_key_package = generate_key_package_bundle(
+        &[ciphersuite],
+        bob_credential_bundle.credential(),
+        vec![],
+        backend,
+    )
+    .unwrap();
+
+    alice_group
+        .propose_add_member(backend, &bob_key_package)
+        .unwrap();
+
+    let add_proposal = Proposal::Add(AddProposal {
+        key_package: bob_key_package,
+    });
+
+    let proposal_ref = ProposalRef::from_proposal(ciphersuite, backend, &add_proposal).unwrap();
+
+    // Add an Add proposal to the external commit.
+    let add_proposal_ref = ProposalOrRef::Reference(proposal_ref);
+
+    content.proposals.push(add_proposal_ref);
+
+    plaintext.set_content_body(MlsContentBody::Commit(content));
+
+    // We have to re-sign, since we changed the content.
+    let mut signed_plaintext: MlsPlaintext = plaintext
+        .payload()
+        .clone()
+        .sign(backend, &bob_credential_bundle)
+        .unwrap();
+
+    // Set old confirmation tag
+    signed_plaintext.set_confirmation_tag(original_plaintext.confirmation_tag().unwrap().clone());
+
+    let verifiable_plaintext: VerifiableMlsAuthContent =
+        VerifiableMlsAuthContent::from_plaintext(signed_plaintext, None);
+
+    // Have alice process the commit resulting from external init.
+    let message_in = MlsMessageIn::from(verifiable_plaintext);
+
+    let unverified_message = alice_group.parse_message(message_in, backend).unwrap();
+
+    let err = alice_group
+        .process_unverified_message(unverified_message, None, backend)
+        .unwrap_err();
+
+    assert_eq!(
+        err,
+        UnverifiedMessageError::InvalidCommit(StageCommitError::ExternalCommitValidation(
+            ExternalCommitValidationError::ReferencedProposal
+        ))
+    );
+
+    // Positive case
+    let unverified_message = alice_group
+        .parse_message(MlsMessageIn::from(original_plaintext), backend)
+        .expect("Could not parse message.");
+    alice_group
+        .process_unverified_message(unverified_message, None, backend)
+        .expect("Unexpected error.");
 }
