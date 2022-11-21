@@ -232,11 +232,26 @@ impl Size for MlsCiphertextContent {
     }
 }
 
+/// Serializes the content without the `content_type` field.
+pub(super) fn serialize_content<W: Write>(
+    content_body: &MlsContentBody,
+    writer: &mut W,
+) -> Result<usize, Error> {
+    match content_body {
+        MlsContentBody::Application(a) => a.tls_serialize(writer),
+        MlsContentBody::Proposal(p) => p.tls_serialize(writer),
+        MlsContentBody::Commit(c) => c.tls_serialize(writer),
+    }
+}
+
 impl Serialize for MlsCiphertextContent {
     fn tls_serialize<W: Write>(&self, writer: &mut W) -> Result<usize, Error> {
         let mut written = 0;
 
-        written += self.content.tls_serialize(writer)?;
+        // The `content` field is serialized without the `content_type`, which
+        // is not part of the struct as per MLS spec.
+        written += serialize_content(&self.content, writer)?;
+
         written += self.auth.tls_serialize(writer)?;
         let padding = vec![0u8; self.length_of_padding];
         writer.write_all(&padding)?;
@@ -246,36 +261,38 @@ impl Serialize for MlsCiphertextContent {
     }
 }
 
-impl Deserialize for MlsCiphertextContent {
-    /// We first decode `content`, `signature`, and `confirmation_tag`, and then make sure
-    /// that the rest of the slice contains only zero bytes, i.e., is the padding.
-    /// Note: This always "terminates" the `Read` instance because we call `read_to_end`.
-    fn tls_deserialize<R: Read>(bytes: &mut R) -> Result<Self, Error>
-    where
-        Self: Sized,
-    {
-        let content = MlsContentBody::tls_deserialize(bytes)?;
-        let auth = deserialize_content_auth_data(bytes, content.content_type())?;
-
-        let padding = {
-            let mut buffer = Vec::new();
-            bytes
-                .read_to_end(&mut buffer)
-                .map_err(|_| Error::InvalidInput)?;
-            buffer
-        };
-
-        let length_of_padding = padding.len();
-
-        // ValSem011: MLSCiphertextContent padding must be all-zero.
-        if !padding.into_iter().all(|byte| byte == 0x00) {
-            return Err(Error::InvalidInput);
+/// This function implements deserialization manually, as it requires `content_type` as additional input.
+pub(super) fn deserialize_ciphertext_content<R: Read>(
+    bytes: &mut R,
+    content_type: ContentType,
+) -> Result<MlsCiphertextContent, tls_codec::Error> {
+    let content = match content_type {
+        ContentType::Application => {
+            MlsContentBody::Application(TlsByteVecU32::tls_deserialize(bytes)?)
         }
+        ContentType::Proposal => MlsContentBody::Proposal(Proposal::tls_deserialize(bytes)?),
+        ContentType::Commit => MlsContentBody::Commit(Commit::tls_deserialize(bytes)?),
+    };
+    let auth = deserialize_content_auth_data(bytes, content_type)?;
 
-        Ok(MlsCiphertextContent {
-            content,
-            auth,
-            length_of_padding,
-        })
+    let padding = {
+        let mut buffer = Vec::new();
+        bytes
+            .read_to_end(&mut buffer)
+            .map_err(|_| Error::InvalidInput)?;
+        buffer
+    };
+
+    let length_of_padding = padding.len();
+
+    // ValSem011: MLSCiphertextContent padding must be all-zero.
+    if !padding.into_iter().all(|byte| byte == 0x00) {
+        return Err(Error::InvalidInput);
     }
+
+    Ok(MlsCiphertextContent {
+        content,
+        auth,
+        length_of_padding,
+    })
 }
