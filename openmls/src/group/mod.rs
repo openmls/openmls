@@ -36,7 +36,6 @@ pub(crate) use create_commit_params::*;
 pub(crate) mod tests;
 #[cfg(any(feature = "test-utils", test))]
 pub use group_context::GroupContext;
-#[cfg(any(feature = "test-utils", test))]
 use openmls_traits::random::OpenMlsRand;
 #[cfg(any(feature = "test-utils", test))]
 pub use proposals::*;
