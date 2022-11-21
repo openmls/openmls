@@ -223,7 +223,7 @@ fn book_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvide
         // ANCHOR_END: alice_create_group_with_group_id
 
         // Silence "unused variable" and "does not need to be mutable" warnings.
-        let _ignore_mut_warning = alice_group.borrow_mut();
+        let _ignore_mut_warning = &mut alice_group;
     }
 
     // === Alice adds Bob ===
