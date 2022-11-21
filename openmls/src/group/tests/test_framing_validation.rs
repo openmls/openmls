@@ -685,9 +685,9 @@ fn test_valsem010(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
         .payload()
         .tls_serialize_detached()
         .expect("Could not serialize Tbs.");
-    let tbm_payload =
-        MlsPlaintextTbmPayload::new(&tbs_payload, &signature, confirmation_tag.as_ref())
-            .expect("Could not create MlsPlaintextTbm.");
+    let auth_data = MlsContentAuthData::new(signature.clone(), confirmation_tag);
+    let tbm_payload = MlsPlaintextTbmPayload::new(&tbs_payload, &auth_data)
+        .expect("Could not create MlsPlaintextTbm.");
     let new_membership_tag = alice_group
         .group()
         .message_secrets()
