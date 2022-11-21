@@ -324,7 +324,7 @@ impl MlsCiphertext {
         padding_size: usize,
         mac_len: usize,
     ) -> Result<Vec<u8>, tls_codec::Error> {
-        let plaintext_length = mls_plaintext.content().tls_serialized_len()
+        let plaintext_length = mls_plaintext.content().serialized_len_without_type()
             + mls_plaintext.auth().tls_serialized_len();
 
         let padding_length = if padding_size > 0 {
@@ -342,7 +342,7 @@ impl MlsCiphertext {
 
         // The `content` field is serialized without the `content_type`, which
         // is not part of the struct as per MLS spec.
-        codec::serialize_content(mls_plaintext.content(), buffer)?;
+        mls_plaintext.content().serialize_without_type(buffer)?;
         mls_plaintext.auth().tls_serialize(buffer)?;
         // Note: The `tls_codec::Serialize` implementation for `&[u8]` prepends the length.
         // We do not want this here and thus use the "raw" `write_all` method.

@@ -11,8 +11,11 @@ use crate::{
 
 use super::*;
 use openmls_traits::OpenMlsCryptoProvider;
-use std::convert::TryFrom;
-use tls_codec::{Serialize, TlsByteVecU32, TlsDeserialize, TlsSerialize, TlsSize};
+use std::{
+    convert::TryFrom,
+    io::{Read, Write},
+};
+use tls_codec::{Deserialize, Serialize, TlsByteVecU32, TlsDeserialize, TlsSerialize, TlsSize};
 
 /// `MLSPlaintext` is a framing structure for MLS messages. It can contain
 /// Proposals, Commits and application messages.
@@ -95,6 +98,37 @@ impl MlsContentBody {
             Self::Proposal(_) => ContentType::Proposal,
             Self::Commit(_) => ContentType::Commit,
         }
+    }
+
+    /// Returns the length of the serialized content without the `content_type` field.
+    pub(crate) fn serialized_len_without_type(&self) -> usize {
+        match self {
+            MlsContentBody::Application(a) => a.tls_serialized_len(),
+            MlsContentBody::Proposal(p) => p.tls_serialized_len(),
+            MlsContentBody::Commit(c) => c.tls_serialized_len(),
+        }
+    }
+
+    /// Serializes the content without the `content_type` field.
+    pub(crate) fn serialize_without_type<W: Write>(&self, writer: &mut W) -> Result<usize, Error> {
+        match self {
+            MlsContentBody::Application(a) => a.tls_serialize(writer),
+            MlsContentBody::Proposal(p) => p.tls_serialize(writer),
+            MlsContentBody::Commit(c) => c.tls_serialize(writer),
+        }
+    }
+
+    pub(super) fn deserialize_without_type<R: Read>(
+        bytes: &mut R,
+        content_type: ContentType,
+    ) -> Result<Self, tls_codec::Error> {
+        Ok(match content_type {
+            ContentType::Application => {
+                MlsContentBody::Application(TlsByteVecU32::tls_deserialize(bytes)?)
+            }
+            ContentType::Proposal => MlsContentBody::Proposal(Proposal::tls_deserialize(bytes)?),
+            ContentType::Commit => MlsContentBody::Commit(Commit::tls_deserialize(bytes)?),
+        })
     }
 }
 

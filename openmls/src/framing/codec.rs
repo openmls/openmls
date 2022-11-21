@@ -232,25 +232,13 @@ impl Size for MlsCiphertextContent {
     }
 }
 
-/// Serializes the content without the `content_type` field.
-pub(super) fn serialize_content<W: Write>(
-    content_body: &MlsContentBody,
-    writer: &mut W,
-) -> Result<usize, Error> {
-    match content_body {
-        MlsContentBody::Application(a) => a.tls_serialize(writer),
-        MlsContentBody::Proposal(p) => p.tls_serialize(writer),
-        MlsContentBody::Commit(c) => c.tls_serialize(writer),
-    }
-}
-
 impl Serialize for MlsCiphertextContent {
     fn tls_serialize<W: Write>(&self, writer: &mut W) -> Result<usize, Error> {
         let mut written = 0;
 
         // The `content` field is serialized without the `content_type`, which
         // is not part of the struct as per MLS spec.
-        written += serialize_content(&self.content, writer)?;
+        written += self.content.serialize_without_type(writer)?;
 
         written += self.auth.tls_serialize(writer)?;
         let padding = vec![0u8; self.length_of_padding];
@@ -266,13 +254,7 @@ pub(super) fn deserialize_ciphertext_content<R: Read>(
     bytes: &mut R,
     content_type: ContentType,
 ) -> Result<MlsCiphertextContent, tls_codec::Error> {
-    let content = match content_type {
-        ContentType::Application => {
-            MlsContentBody::Application(TlsByteVecU32::tls_deserialize(bytes)?)
-        }
-        ContentType::Proposal => MlsContentBody::Proposal(Proposal::tls_deserialize(bytes)?),
-        ContentType::Commit => MlsContentBody::Commit(Commit::tls_deserialize(bytes)?),
-    };
+    let content = MlsContentBody::deserialize_without_type(bytes, content_type)?;
     let auth = deserialize_content_auth_data(bytes, content_type)?;
 
     let padding = {
