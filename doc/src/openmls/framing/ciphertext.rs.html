@@ -470,10 +470,6 @@
 <span id="470">470</span>
 <span id="471">471</span>
 <span id="472">472</span>
-<span id="473">473</span>
-<span id="474">474</span>
-<span id="475">475</span>
-<span id="476">476</span>
 </pre><pre class="rust"><code><span class="kw">use </span>openmls_traits::{types::Ciphersuite, OpenMlsCryptoProvider};
 <span class="kw">use </span>std::io::Write;
 <span class="kw">use </span>tls_codec::{
@@ -777,8 +773,7 @@
                 <span class="self">self</span>.authenticated_data.clone(),
                 mls_ciphertext_content.content,
             ),
-            mls_ciphertext_content.signature,
-            mls_ciphertext_content.confirmation_tag,
+            mls_ciphertext_content.auth,
             <span class="prelude-val">None</span>, <span class="comment">/* MlsCiphertexts don&#39;t carry along the membership tag. */
         </span>);
         <span class="prelude-val">Ok</span>(verifiable)
@@ -797,8 +792,7 @@
         mac_len: usize,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;Vec&lt;u8&gt;, tls_codec::Error&gt; {
         <span class="kw">let </span>plaintext_length = mls_plaintext.content().tls_serialized_len()
-            + mls_plaintext.signature().tls_serialized_len()
-            + mls_plaintext.confirmation_tag().tls_serialized_len();
+            + mls_plaintext.auth().tls_serialized_len();
 
         <span class="kw">let </span>padding_length = <span class="kw">if </span>padding_size &gt; <span class="number">0 </span>{
             <span class="comment">// Calculate padding block size.
@@ -814,8 +808,7 @@
         </span><span class="kw">let </span>buffer = <span class="kw-2">&amp;mut </span>Vec::with_capacity(plaintext_length + padding_length);
 
         mls_plaintext.content().tls_serialize(buffer)<span class="question-mark">?</span>;
-        mls_plaintext.signature().tls_serialize(buffer)<span class="question-mark">?</span>;
-        mls_plaintext.confirmation_tag().tls_serialize(buffer)<span class="question-mark">?</span>;
+        mls_plaintext.auth().tls_serialize(buffer)<span class="question-mark">?</span>;
         <span class="comment">// Note: The `tls_codec::Serialize` implementation for `&amp;[u8]` prepends the length.
         // We do not want this here and thus use the &quot;raw&quot; `write_all` method.
         </span>buffer
@@ -925,8 +918,7 @@
 </span><span class="attribute">#[derive(Debug, Clone)]
 </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct </span>MlsCiphertextContent {
     <span class="kw">pub</span>(<span class="kw">crate</span>) content: MlsContentBody,
-    <span class="kw">pub</span>(<span class="kw">crate</span>) signature: Signature,
-    <span class="kw">pub</span>(<span class="kw">crate</span>) confirmation_tag: <span class="prelude-ty">Option</span>&lt;ConfirmationTag&gt;,
+    <span class="kw">pub</span>(<span class="kw">crate</span>) auth: MlsContentAuthData,
     <span class="doccomment">/// Length of the all-zero padding.
     ///
     /// We do not retain any bytes here to avoid the need to
