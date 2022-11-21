@@ -30,12 +30,6 @@ jobs:
       - uses: actions/checkout@v2
         with:
           ref: ${{ github.event.pull_request.head.sha }}
-      - uses: actions-rs/toolchain@v1
-        with:
-          toolchain: stable
-          profile: minimal
-          override: true
-          target: ${{ matrix.os }}
       - name: Test DS lib
         run: cargo test --verbose -p ds-lib
       - name: Test DS
