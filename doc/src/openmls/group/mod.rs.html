@@ -119,6 +119,9 @@
 <span id="119">119</span>
 <span id="120">120</span>
 <span id="121">121</span>
+<span id="122">122</span>
+<span id="123">123</span>
+<span id="124">124</span>
 </pre><pre class="rust"><code><span class="doccomment">//! Group API for MLS
 //!
 //! This module contains the API to interact with groups.
@@ -157,8 +160,7 @@
 </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">mod </span>tests;
 <span class="attribute">#[cfg(any(feature = <span class="string">&quot;test-utils&quot;</span>, test))]
 </span><span class="kw">pub use </span>group_context::GroupContext;
-<span class="attribute">#[cfg(any(feature = <span class="string">&quot;test-utils&quot;</span>, test))]
-</span><span class="kw">use </span>openmls_traits::random::OpenMlsRand;
+<span class="kw">use </span>openmls_traits::random::OpenMlsRand;
 <span class="attribute">#[cfg(any(feature = <span class="string">&quot;test-utils&quot;</span>, test))]
 </span><span class="kw">pub use </span>proposals::<span class="kw-2">*</span>;
 
@@ -171,10 +173,12 @@
 }
 
 <span class="kw">impl </span>GroupId {
-    <span class="attribute">#[cfg(any(feature = <span class="string">&quot;test-utils&quot;</span>, test))]
-    </span><span class="kw">pub fn </span>random(rng: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider) -&gt; <span class="self">Self </span>{
+    <span class="doccomment">/// Create a new (random) group ID.
+    ///
+    /// Group IDs should be random and not be misused as, e.g., a group name.
+    </span><span class="kw">pub fn </span>random(backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider) -&gt; <span class="self">Self </span>{
         <span class="self">Self </span>{
-            value: rng
+            value: backend
                 .rand()
                 .random_vec(<span class="number">16</span>)
                 .expect(<span class="string">&quot;Not enough randomness.&quot;</span>)
@@ -182,7 +186,9 @@
         }
     }
 
-    <span class="doccomment">/// Creates a group ID from a byte slice.
+    <span class="doccomment">/// Create a group ID from a byte slice.
+    ///
+    /// This should be used only if the group ID is chosen by an entity that ensures uniqueness.
     </span><span class="kw">pub fn </span>from_slice(bytes: <span class="kw-2">&amp;</span>[u8]) -&gt; <span class="self">Self </span>{
         GroupId {
             value: bytes.into(),
