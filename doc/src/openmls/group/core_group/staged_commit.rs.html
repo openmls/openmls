@@ -751,7 +751,7 @@
             ciphersuite,
             backend,
             <span class="comment">// It is ok to use return a library error here, because we know the MlsPlaintext contains a Commit
-            </span><span class="kw-2">&amp;</span>MlsPlaintextCommitContent::try_from(mls_plaintext)
+            </span><span class="kw-2">&amp;</span>ConfirmedTranscriptHashInput::try_from(mls_plaintext)
                 .map_err(|<span class="kw">_</span>| LibraryError::custom(<span class="string">&quot;Could not convert commit content&quot;</span>))<span class="question-mark">?</span>,
             <span class="kw-2">&amp;</span><span class="self">self</span>.interim_transcript_hash,
         )<span class="question-mark">?</span>;
@@ -786,7 +786,7 @@
             .epoch_secrets(backend)
             .map_err(|<span class="kw">_</span>| LibraryError::custom(<span class="string">&quot;Using the key schedule in the wrong state&quot;</span>))<span class="question-mark">?</span>;
 
-        <span class="kw">let </span>mls_plaintext_commit_auth_data = MlsPlaintextCommitAuthData::try_from(mls_plaintext)
+        <span class="kw">let </span>mls_plaintext_commit_auth_data = InterimTranscriptHashInput::try_from(mls_plaintext)
             .map_err(|<span class="kw">_</span>| {
                 <span class="macro">log::error!</span>(<span class="string">&quot;Confirmation tag is missing in commit. This should be unreachable because we verified the tag before.&quot;</span>);
                 StageCommitError::ConfirmationTagMissing

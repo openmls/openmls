@@ -849,6 +849,41 @@
 <span id="849">849</span>
 <span id="850">850</span>
 <span id="851">851</span>
+<span id="852">852</span>
+<span id="853">853</span>
+<span id="854">854</span>
+<span id="855">855</span>
+<span id="856">856</span>
+<span id="857">857</span>
+<span id="858">858</span>
+<span id="859">859</span>
+<span id="860">860</span>
+<span id="861">861</span>
+<span id="862">862</span>
+<span id="863">863</span>
+<span id="864">864</span>
+<span id="865">865</span>
+<span id="866">866</span>
+<span id="867">867</span>
+<span id="868">868</span>
+<span id="869">869</span>
+<span id="870">870</span>
+<span id="871">871</span>
+<span id="872">872</span>
+<span id="873">873</span>
+<span id="874">874</span>
+<span id="875">875</span>
+<span id="876">876</span>
+<span id="877">877</span>
+<span id="878">878</span>
+<span id="879">879</span>
+<span id="880">880</span>
+<span id="881">881</span>
+<span id="882">882</span>
+<span id="883">883</span>
+<span id="884">884</span>
+<span id="885">885</span>
+<span id="886">886</span>
 </pre><pre class="rust"><code><span class="doccomment">//! # MlsPlaintext
 //!
 //! An MlsPlaintext is a framing structure for MLS messages. It can contain
@@ -862,8 +897,11 @@
 
 <span class="kw">use super</span>::<span class="kw-2">*</span>;
 <span class="kw">use </span>openmls_traits::OpenMlsCryptoProvider;
-<span class="kw">use </span>std::convert::TryFrom;
-<span class="kw">use </span>tls_codec::{Serialize, TlsByteVecU32, TlsDeserialize, TlsSerialize, TlsSize};
+<span class="kw">use </span>std::{
+    convert::TryFrom,
+    io::{Read, Write},
+};
+<span class="kw">use </span>tls_codec::{Deserialize, Serialize, TlsByteVecU32, TlsDeserialize, TlsSerialize, TlsSize};
 
 <span class="doccomment">/// `MLSPlaintext` is a framing structure for MLS messages. It can contain
 /// Proposals, Commits and application messages.
@@ -946,6 +984,37 @@
             <span class="self">Self</span>::Proposal(<span class="kw">_</span>) =&gt; ContentType::Proposal,
             <span class="self">Self</span>::Commit(<span class="kw">_</span>) =&gt; ContentType::Commit,
         }
+    }
+
+    <span class="doccomment">/// Returns the length of the serialized content without the `content_type` field.
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>serialized_len_without_type(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; usize {
+        <span class="kw">match </span><span class="self">self </span>{
+            MlsContentBody::Application(a) =&gt; a.tls_serialized_len(),
+            MlsContentBody::Proposal(p) =&gt; p.tls_serialized_len(),
+            MlsContentBody::Commit(c) =&gt; c.tls_serialized_len(),
+        }
+    }
+
+    <span class="doccomment">/// Serializes the content without the `content_type` field.
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>serialize_without_type&lt;W: Write&gt;(<span class="kw-2">&amp;</span><span class="self">self</span>, writer: <span class="kw-2">&amp;mut </span>W) -&gt; <span class="prelude-ty">Result</span>&lt;usize, Error&gt; {
+        <span class="kw">match </span><span class="self">self </span>{
+            MlsContentBody::Application(a) =&gt; a.tls_serialize(writer),
+            MlsContentBody::Proposal(p) =&gt; p.tls_serialize(writer),
+            MlsContentBody::Commit(c) =&gt; c.tls_serialize(writer),
+        }
+    }
+
+    <span class="kw">pub</span>(<span class="kw">super</span>) <span class="kw">fn </span>deserialize_without_type&lt;R: Read&gt;(
+        bytes: <span class="kw-2">&amp;mut </span>R,
+        content_type: ContentType,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, tls_codec::Error&gt; {
+        <span class="prelude-val">Ok</span>(<span class="kw">match </span>content_type {
+            ContentType::Application =&gt; {
+                MlsContentBody::Application(TlsByteVecU32::tls_deserialize(bytes)<span class="question-mark">?</span>)
+            }
+            ContentType::Proposal =&gt; MlsContentBody::Proposal(Proposal::tls_deserialize(bytes)<span class="question-mark">?</span>),
+            ContentType::Commit =&gt; MlsContentBody::Commit(Commit::tls_deserialize(bytes)<span class="question-mark">?</span>),
+        })
     }
 }
 
@@ -1171,7 +1240,7 @@
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(), LibraryError&gt; {
         <span class="kw">let </span>tbs_payload =
             encode_tbs(<span class="self">self</span>, serialized_context).map_err(LibraryError::missing_bound_check)<span class="question-mark">?</span>;
-        <span class="kw">let </span>tbm_payload = MlsPlaintextTbmPayload::new(<span class="kw-2">&amp;</span>tbs_payload, <span class="kw-2">&amp;</span><span class="self">self</span>.auth)<span class="question-mark">?</span>;
+        <span class="kw">let </span>tbm_payload = MlsContentTbm::new(<span class="kw-2">&amp;</span>tbs_payload, <span class="kw-2">&amp;</span><span class="self">self</span>.auth)<span class="question-mark">?</span>;
         <span class="kw">let </span>membership_tag = membership_key.tag(backend, tbm_payload)<span class="question-mark">?</span>;
 
         <span class="self">self</span>.membership_tag = <span class="prelude-val">Some</span>(membership_tag);
@@ -1258,21 +1327,23 @@
     }
 }
 
-<span class="doccomment">/// 9.1 Content Authentication
+<span class="doccomment">/// 7.2 Encoding and Decoding a Plaintext
 ///
 /// ```c
+/// // draft-ietf-mls-protocol-16
+///
 /// struct {
-///   MLSPlaintextTBS tbs;
+///   MLSContentTBS tbs;
 ///   MLSContentAuthData auth;
-/// } MLSPlaintextTBM;
+/// } MLSContentTBM;
 /// ```
 </span><span class="attribute">#[derive(Debug)]
-</span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct </span>MlsPlaintextTbmPayload&lt;<span class="lifetime">&#39;a</span>&gt; {
+</span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct </span>MlsContentTbm&lt;<span class="lifetime">&#39;a</span>&gt; {
     tbs_payload: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8],
     auth: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>MlsContentAuthData,
 }
 
-<span class="kw">impl</span>&lt;<span class="lifetime">&#39;a</span>&gt; MlsPlaintextTbmPayload&lt;<span class="lifetime">&#39;a</span>&gt; {
+<span class="kw">impl</span>&lt;<span class="lifetime">&#39;a</span>&gt; MlsContentTbm&lt;<span class="lifetime">&#39;a</span>&gt; {
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>new(
         tbs_payload: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8],
         auth: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>MlsContentAuthData,
@@ -1409,7 +1480,7 @@
             </span>.tbs
             .tls_serialize_detached()
             .map_err(LibraryError::missing_bound_check)<span class="question-mark">?</span>;
-        <span class="kw">let </span>tbm_payload = MlsPlaintextTbmPayload::new(<span class="kw-2">&amp;</span>tbs_payload, <span class="kw-2">&amp;</span><span class="self">self</span>.auth)<span class="question-mark">?</span>;
+        <span class="kw">let </span>tbm_payload = MlsContentTbm::new(<span class="kw-2">&amp;</span>tbs_payload, <span class="kw-2">&amp;</span><span class="self">self</span>.auth)<span class="question-mark">?</span>;
         <span class="kw">let </span>expected_membership_tag = <span class="kw-2">&amp;</span>membership_key.tag(backend, tbm_payload)<span class="question-mark">?</span>;
 
         <span class="comment">// Verify the membership tag
@@ -1642,62 +1713,61 @@
     }
 }
 
-<span class="attribute">#[derive(TlsSerialize, TlsSize)]
-</span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct </span>MlsPlaintextCommitContent&lt;<span class="lifetime">&#39;a</span>&gt; {
+<span class="doccomment">/// 9.2 Transcript Hashes
+///
+/// ```c
+/// // draft-ietf-mls-protocol-16
+///
+/// struct {
+///    WireFormat wire_format;
+///    MLSContent content; /* with content_type == commit */
+///    opaque signature&lt;V&gt;;
+///} ConfirmedTranscriptHashInput;
+/// ```
+</span><span class="attribute">#[derive(TlsSerialize, TlsSize)]
+</span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct </span>ConfirmedTranscriptHashInput&lt;<span class="lifetime">&#39;a</span>&gt; {
     <span class="kw">pub</span>(<span class="kw">super</span>) wire_format: WireFormat,
-    <span class="kw">pub</span>(<span class="kw">super</span>) group_id: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>GroupId,
-    <span class="kw">pub</span>(<span class="kw">super</span>) epoch: GroupEpoch,
-    <span class="kw">pub</span>(<span class="kw">super</span>) sender: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>Sender,
-    <span class="kw">pub</span>(<span class="kw">super</span>) authenticated_data: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>VLBytes,
-    <span class="kw">pub</span>(<span class="kw">super</span>) content_type: ContentType,
-    <span class="kw">pub</span>(<span class="kw">super</span>) commit: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>Commit,
+    <span class="kw">pub</span>(<span class="kw">super</span>) mls_content: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>MlsContent,
     <span class="kw">pub</span>(<span class="kw">super</span>) signature: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>Signature,
 }
 
-<span class="kw">impl</span>&lt;<span class="lifetime">&#39;a</span>&gt; TryFrom&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>MlsPlaintext&gt; <span class="kw">for </span>MlsPlaintextCommitContent&lt;<span class="lifetime">&#39;a</span>&gt; {
+<span class="kw">impl</span>&lt;<span class="lifetime">&#39;a</span>&gt; TryFrom&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>MlsPlaintext&gt; <span class="kw">for </span>ConfirmedTranscriptHashInput&lt;<span class="lifetime">&#39;a</span>&gt; {
     <span class="kw">type </span>Error = <span class="kw-2">&amp;</span><span class="lifetime">&#39;static </span>str;
 
     <span class="kw">fn </span>try_from(mls_plaintext: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>MlsPlaintext) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, <span class="self">Self</span>::Error&gt; {
-        <span class="kw">let </span>commit = <span class="kw">match </span><span class="kw-2">&amp;</span>mls_plaintext.content.body {
-            MlsContentBody::Commit(commit) =&gt; commit,
-            <span class="kw">_ </span>=&gt; <span class="kw">return </span><span class="prelude-val">Err</span>(<span class="string">&quot;MlsPlaintext needs to contain a Commit.&quot;</span>),
-        };
-        <span class="prelude-val">Ok</span>(MlsPlaintextCommitContent {
+        <span class="kw">if </span>!<span class="macro">matches!</span>(
+            mls_plaintext.content.body.content_type(),
+            ContentType::Commit
+        ) {
+            <span class="kw">return </span><span class="prelude-val">Err</span>(<span class="string">&quot;MlsPlaintext needs to contain a Commit.&quot;</span>);
+        }
+        <span class="prelude-val">Ok</span>(ConfirmedTranscriptHashInput {
             wire_format: mls_plaintext.wire_format,
-            group_id: <span class="kw-2">&amp;</span>mls_plaintext.content.group_id,
-            epoch: mls_plaintext.content.epoch,
-            sender: <span class="kw-2">&amp;</span>mls_plaintext.content.sender,
-            authenticated_data: <span class="kw-2">&amp;</span>mls_plaintext.content.authenticated_data,
-            content_type: mls_plaintext.content().content_type(),
-            commit,
+            mls_content: <span class="kw-2">&amp;</span>mls_plaintext.content,
             signature: <span class="kw-2">&amp;</span>mls_plaintext.auth.signature,
         })
     }
 }
 
 <span class="attribute">#[derive(TlsSerialize, TlsSize)]
-</span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct </span>MlsPlaintextCommitAuthData&lt;<span class="lifetime">&#39;a</span>&gt; {
-    <span class="kw">pub</span>(<span class="kw">crate</span>) confirmation_tag: <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>ConfirmationTag&gt;,
+</span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct </span>InterimTranscriptHashInput&lt;<span class="lifetime">&#39;a</span>&gt; {
+    <span class="kw">pub</span>(<span class="kw">crate</span>) confirmation_tag: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>ConfirmationTag,
 }
 
-<span class="kw">impl</span>&lt;<span class="lifetime">&#39;a</span>&gt; TryFrom&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>MlsPlaintext&gt; <span class="kw">for </span>MlsPlaintextCommitAuthData&lt;<span class="lifetime">&#39;a</span>&gt; {
+<span class="kw">impl</span>&lt;<span class="lifetime">&#39;a</span>&gt; TryFrom&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>MlsPlaintext&gt; <span class="kw">for </span>InterimTranscriptHashInput&lt;<span class="lifetime">&#39;a</span>&gt; {
     <span class="kw">type </span>Error = <span class="kw-2">&amp;</span><span class="lifetime">&#39;static </span>str;
 
     <span class="kw">fn </span>try_from(mls_plaintext: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>MlsPlaintext) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, <span class="self">Self</span>::Error&gt; {
         <span class="kw">match </span>mls_plaintext.auth.confirmation_tag.as_ref() {
-            <span class="prelude-val">Some</span>(confirmation_tag) =&gt; <span class="prelude-val">Ok</span>(MlsPlaintextCommitAuthData {
-                confirmation_tag: <span class="prelude-val">Some</span>(confirmation_tag),
-            }),
+            <span class="prelude-val">Some</span>(confirmation_tag) =&gt; <span class="prelude-val">Ok</span>(InterimTranscriptHashInput { confirmation_tag }),
             <span class="prelude-val">None </span>=&gt; <span class="prelude-val">Err</span>(<span class="string">&quot;MLSPlaintext needs to contain a confirmation tag.&quot;</span>),
         }
     }
 }
 
-<span class="kw">impl</span>&lt;<span class="lifetime">&#39;a</span>&gt; From&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>ConfirmationTag&gt; <span class="kw">for </span>MlsPlaintextCommitAuthData&lt;<span class="lifetime">&#39;a</span>&gt; {
+<span class="kw">impl</span>&lt;<span class="lifetime">&#39;a</span>&gt; From&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>ConfirmationTag&gt; <span class="kw">for </span>InterimTranscriptHashInput&lt;<span class="lifetime">&#39;a</span>&gt; {
     <span class="kw">fn </span>from(confirmation_tag: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>ConfirmationTag) -&gt; <span class="self">Self </span>{
-        MlsPlaintextCommitAuthData {
-            confirmation_tag: <span class="prelude-val">Some</span>(confirmation_tag),
-        }
+        InterimTranscriptHashInput { confirmation_tag }
     }
 }
 </code></pre></div>

@@ -1496,7 +1496,7 @@
 </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>update_confirmed_transcript_hash(
     ciphersuite: Ciphersuite,
     backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider,
-    mls_plaintext_commit_content: <span class="kw-2">&amp;</span>MlsPlaintextCommitContent,
+    mls_plaintext_commit_content: <span class="kw-2">&amp;</span>ConfirmedTranscriptHashInput,
     interim_transcript_hash: <span class="kw-2">&amp;</span>[u8],
 ) -&gt; <span class="prelude-ty">Result</span>&lt;Vec&lt;u8&gt;, LibraryError&gt; {
     <span class="kw">let </span>commit_content_bytes = mls_plaintext_commit_content
@@ -1514,7 +1514,7 @@
 <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>update_interim_transcript_hash(
     ciphersuite: Ciphersuite,
     backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider,
-    mls_plaintext_commit_auth_data: <span class="kw-2">&amp;</span>MlsPlaintextCommitAuthData,
+    mls_plaintext_commit_auth_data: <span class="kw-2">&amp;</span>InterimTranscriptHashInput,
     confirmed_transcript_hash: <span class="kw-2">&amp;</span>[u8],
 ) -&gt; <span class="prelude-ty">Result</span>&lt;Vec&lt;u8&gt;, LibraryError&gt; {
     <span class="kw">let </span>commit_auth_data_bytes = mls_plaintext_commit_auth_data

@@ -670,7 +670,7 @@
             backend,
             <span class="comment">// It is ok to a library error here, because we know the MlsPlaintext contains a
             // Commit
-            </span><span class="kw-2">&amp;</span>MlsPlaintextCommitContent::try_from(<span class="kw-2">&amp;</span>mls_plaintext)
+            </span><span class="kw-2">&amp;</span>ConfirmedTranscriptHashInput::try_from(<span class="kw-2">&amp;</span>mls_plaintext)
                 .map_err(|<span class="kw">_</span>| LibraryError::custom(<span class="string">&quot;MlsPlaintext did not contain a commit&quot;</span>))<span class="question-mark">?</span>,
             <span class="kw-2">&amp;</span><span class="self">self</span>.interim_transcript_hash,
         )<span class="question-mark">?</span>;
@@ -813,7 +813,7 @@
         <span class="kw">let </span>provisional_interim_transcript_hash = update_interim_transcript_hash(
             ciphersuite,
             backend,
-            <span class="kw-2">&amp;</span>MlsPlaintextCommitAuthData::from(<span class="kw-2">&amp;</span>confirmation_tag),
+            <span class="kw-2">&amp;</span>InterimTranscriptHashInput::from(<span class="kw-2">&amp;</span>confirmation_tag),
             <span class="kw-2">&amp;</span>confirmed_transcript_hash,
         )<span class="question-mark">?</span>;
 

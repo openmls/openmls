@@ -470,12 +470,25 @@
 <span id="470">470</span>
 <span id="471">471</span>
 <span id="472">472</span>
+<span id="473">473</span>
+<span id="474">474</span>
+<span id="475">475</span>
+<span id="476">476</span>
+<span id="477">477</span>
+<span id="478">478</span>
+<span id="479">479</span>
+<span id="480">480</span>
+<span id="481">481</span>
+<span id="482">482</span>
+<span id="483">483</span>
 </pre><pre class="rust"><code><span class="kw">use </span>openmls_traits::{types::Ciphersuite, OpenMlsCryptoProvider};
 <span class="kw">use </span>std::io::Write;
 <span class="kw">use </span>tls_codec::{
     Deserialize, Serialize, Size, TlsByteVecU32, TlsByteVecU8, TlsDeserialize, TlsSerialize,
     TlsSize,
 };
+
+<span class="kw">use </span><span class="kw">super</span>::codec::deserialize_ciphertext_content;
 
 <span class="kw">use crate</span>::{
     error::LibraryError,
@@ -721,8 +734,11 @@
             <span class="string">&quot;  Successfully decrypted MlsPlaintext bytes: {:x?}&quot;</span>,
             mls_ciphertext_content_bytes
         );
-        MlsCiphertextContent::tls_deserialize(<span class="kw-2">&amp;mut </span>mls_ciphertext_content_bytes.as_slice())
-            .map_err(|<span class="kw">_</span>| MessageDecryptionError::MalformedContent)
+        deserialize_ciphertext_content(
+            <span class="kw-2">&amp;mut </span>mls_ciphertext_content_bytes.as_slice(),
+            <span class="self">self</span>.content_type(),
+        )
+        .map_err(|<span class="kw">_</span>| MessageDecryptionError::MalformedContent)
     }
 
     <span class="doccomment">/// This function decrypts an [`MlsCiphertext`] into an [`VerifiableMlsAuthContent`].
@@ -791,7 +807,7 @@
         padding_size: usize,
         mac_len: usize,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;Vec&lt;u8&gt;, tls_codec::Error&gt; {
-        <span class="kw">let </span>plaintext_length = mls_plaintext.content().tls_serialized_len()
+        <span class="kw">let </span>plaintext_length = mls_plaintext.content().serialized_len_without_type()
             + mls_plaintext.auth().tls_serialized_len();
 
         <span class="kw">let </span>padding_length = <span class="kw">if </span>padding_size &gt; <span class="number">0 </span>{
@@ -807,7 +823,9 @@
         <span class="comment">// Persist all initial fields manually (avoids cloning them)
         </span><span class="kw">let </span>buffer = <span class="kw-2">&amp;mut </span>Vec::with_capacity(plaintext_length + padding_length);
 
-        mls_plaintext.content().tls_serialize(buffer)<span class="question-mark">?</span>;
+        <span class="comment">// The `content` field is serialized without the `content_type`, which
+        // is not part of the struct as per MLS spec.
+        </span>mls_plaintext.content().serialize_without_type(buffer)<span class="question-mark">?</span>;
         mls_plaintext.auth().tls_serialize(buffer)<span class="question-mark">?</span>;
         <span class="comment">// Note: The `tls_codec::Serialize` implementation for `&amp;[u8]` prepends the length.
         // We do not want this here and thus use the &quot;raw&quot; `write_all` method.
@@ -917,7 +935,11 @@
 /// ```
 </span><span class="attribute">#[derive(Debug, Clone)]
 </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct </span>MlsCiphertextContent {
-    <span class="kw">pub</span>(<span class="kw">crate</span>) content: MlsContentBody,
+    <span class="comment">// The `content` field is serialized and deserialized manually without the
+    // `content_type`, which is not part of the struct as per MLS spec. See the
+    // implementation of `TlsSerialize` for `MlsCiphertextContent`, as well as
+    // `deserialize_ciphertext_content`.
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) content: MlsContentBody,
     <span class="kw">pub</span>(<span class="kw">crate</span>) auth: MlsContentAuthData,
     <span class="doccomment">/// Length of the all-zero padding.
     ///

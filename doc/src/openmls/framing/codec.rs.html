@@ -278,7 +278,6 @@
 <span id="278">278</span>
 <span id="279">279</span>
 <span id="280">280</span>
-<span id="281">281</span>
 </pre><pre class="rust"><code><span class="kw">use </span>tls_codec::{Deserialize, Serialize, Size, TlsByteVecU32, TlsByteVecU8};
 
 <span class="kw">use super</span>::<span class="kw-2">*</span>;
@@ -517,7 +516,10 @@
     <span class="kw">fn </span>tls_serialize&lt;W: Write&gt;(<span class="kw-2">&amp;</span><span class="self">self</span>, writer: <span class="kw-2">&amp;mut </span>W) -&gt; <span class="prelude-ty">Result</span>&lt;usize, Error&gt; {
         <span class="kw">let </span><span class="kw-2">mut </span>written = <span class="number">0</span>;
 
-        written += <span class="self">self</span>.content.tls_serialize(writer)<span class="question-mark">?</span>;
+        <span class="comment">// The `content` field is serialized without the `content_type`, which
+        // is not part of the struct as per MLS spec.
+        </span>written += <span class="self">self</span>.content.serialize_without_type(writer)<span class="question-mark">?</span>;
+
         written += <span class="self">self</span>.auth.tls_serialize(writer)<span class="question-mark">?</span>;
         <span class="kw">let </span>padding = <span class="macro">vec!</span>[<span class="number">0u8</span>; <span class="self">self</span>.length_of_padding];
         writer.write_all(<span class="kw-2">&amp;</span>padding)<span class="question-mark">?</span>;
@@ -527,38 +529,34 @@
     }
 }
 
-<span class="kw">impl </span>Deserialize <span class="kw">for </span>MlsCiphertextContent {
-    <span class="doccomment">/// We first decode `content`, `signature`, and `confirmation_tag`, and then make sure
-    /// that the rest of the slice contains only zero bytes, i.e., is the padding.
-    /// Note: This always &quot;terminates&quot; the `Read` instance because we call `read_to_end`.
-    </span><span class="kw">fn </span>tls_deserialize&lt;R: Read&gt;(bytes: <span class="kw-2">&amp;mut </span>R) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, Error&gt;
-    <span class="kw">where
-        </span><span class="self">Self</span>: Sized,
-    {
-        <span class="kw">let </span>content = MlsContentBody::tls_deserialize(bytes)<span class="question-mark">?</span>;
-        <span class="kw">let </span>auth = deserialize_content_auth_data(bytes, content.content_type())<span class="question-mark">?</span>;
+<span class="doccomment">/// This function implements deserialization manually, as it requires `content_type` as additional input.
+</span><span class="kw">pub</span>(<span class="kw">super</span>) <span class="kw">fn </span>deserialize_ciphertext_content&lt;R: Read&gt;(
+    bytes: <span class="kw-2">&amp;mut </span>R,
+    content_type: ContentType,
+) -&gt; <span class="prelude-ty">Result</span>&lt;MlsCiphertextContent, tls_codec::Error&gt; {
+    <span class="kw">let </span>content = MlsContentBody::deserialize_without_type(bytes, content_type)<span class="question-mark">?</span>;
+    <span class="kw">let </span>auth = deserialize_content_auth_data(bytes, content_type)<span class="question-mark">?</span>;
 
-        <span class="kw">let </span>padding = {
-            <span class="kw">let </span><span class="kw-2">mut </span>buffer = Vec::new();
-            bytes
-                .read_to_end(<span class="kw-2">&amp;mut </span>buffer)
-                .map_err(|<span class="kw">_</span>| Error::InvalidInput)<span class="question-mark">?</span>;
-            buffer
-        };
+    <span class="kw">let </span>padding = {
+        <span class="kw">let </span><span class="kw-2">mut </span>buffer = Vec::new();
+        bytes
+            .read_to_end(<span class="kw-2">&amp;mut </span>buffer)
+            .map_err(|<span class="kw">_</span>| Error::InvalidInput)<span class="question-mark">?</span>;
+        buffer
+    };
 
-        <span class="kw">let </span>length_of_padding = padding.len();
+    <span class="kw">let </span>length_of_padding = padding.len();
 
-        <span class="comment">// ValSem011: MLSCiphertextContent padding must be all-zero.
-        </span><span class="kw">if </span>!padding.into_iter().all(|byte| byte == <span class="number">0x00</span>) {
-            <span class="kw">return </span><span class="prelude-val">Err</span>(Error::InvalidInput);
-        }
-
-        <span class="prelude-val">Ok</span>(MlsCiphertextContent {
-            content,
-            auth,
-            length_of_padding,
-        })
+    <span class="comment">// ValSem011: MLSCiphertextContent padding must be all-zero.
+    </span><span class="kw">if </span>!padding.into_iter().all(|byte| byte == <span class="number">0x00</span>) {
+        <span class="kw">return </span><span class="prelude-val">Err</span>(Error::InvalidInput);
     }
+
+    <span class="prelude-val">Ok</span>(MlsCiphertextContent {
+        content,
+        auth,
+        length_of_padding,
+    })
 }
 </code></pre></div>
 </section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-current-crate="openmls" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0 (897e37553 2022-11-02)" ></div></body></html>

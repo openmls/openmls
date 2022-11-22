@@ -428,7 +428,7 @@
         <span class="kw">let </span>interim_transcript_hash = update_interim_transcript_hash(
             ciphersuite,
             backend,
-            <span class="kw-2">&amp;</span>MlsPlaintextCommitAuthData::from(<span class="kw-2">&amp;</span>confirmation_tag),
+            <span class="kw-2">&amp;</span>InterimTranscriptHashInput::from(<span class="kw-2">&amp;</span>confirmation_tag),
             group_context.confirmed_transcript_hash(),
         )<span class="question-mark">?</span>;
 

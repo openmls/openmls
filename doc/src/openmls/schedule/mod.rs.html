@@ -1381,7 +1381,7 @@
     binary_tree::LeafIndex,
     ciphersuite::{AeadKey, AeadNonce, HpkePrivateKey, Mac, Secret},
     error::LibraryError,
-    framing::{MembershipTag, MlsPlaintextTbmPayload},
+    framing::{MembershipTag, MlsContentTbm},
     messages::{public_group_state::PublicGroupState, ConfirmationTag, PathSecret},
     tree::secret_tree::SecretTree,
     versions::ProtocolVersion,
@@ -2122,7 +2122,7 @@
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>tag(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider,
-        tbm_payload: MlsPlaintextTbmPayload,
+        tbm_payload: MlsContentTbm,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;MembershipTag, LibraryError&gt; {
         <span class="prelude-val">Ok</span>(MembershipTag(
             Mac::new(
