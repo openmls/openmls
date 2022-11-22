@@ -71,7 +71,7 @@ impl CoreGroup {
         }
 
         // Obtain external_pub from GroupInfo extensions.
-        // TODO: Check for duplicates?
+        // TODO(#720): Check for duplicates.
         let external_pub = {
             let ext = group_info
                 .extensions()
