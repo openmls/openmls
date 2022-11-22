@@ -236,7 +236,10 @@ impl Serialize for MlsCiphertextContent {
     fn tls_serialize<W: Write>(&self, writer: &mut W) -> Result<usize, Error> {
         let mut written = 0;
 
-        written += self.content.tls_serialize(writer)?;
+        // The `content` field is serialized without the `content_type`, which
+        // is not part of the struct as per MLS spec.
+        written += self.content.serialize_without_type(writer)?;
+
         written += self.auth.tls_serialize(writer)?;
         let padding = vec![0u8; self.length_of_padding];
         writer.write_all(&padding)?;
@@ -246,36 +249,32 @@ impl Serialize for MlsCiphertextContent {
     }
 }
 
-impl Deserialize for MlsCiphertextContent {
-    /// We first decode `content`, `signature`, and `confirmation_tag`, and then make sure
-    /// that the rest of the slice contains only zero bytes, i.e., is the padding.
-    /// Note: This always "terminates" the `Read` instance because we call `read_to_end`.
-    fn tls_deserialize<R: Read>(bytes: &mut R) -> Result<Self, Error>
-    where
-        Self: Sized,
-    {
-        let content = MlsContentBody::tls_deserialize(bytes)?;
-        let auth = deserialize_content_auth_data(bytes, content.content_type())?;
+/// This function implements deserialization manually, as it requires `content_type` as additional input.
+pub(super) fn deserialize_ciphertext_content<R: Read>(
+    bytes: &mut R,
+    content_type: ContentType,
+) -> Result<MlsCiphertextContent, tls_codec::Error> {
+    let content = MlsContentBody::deserialize_without_type(bytes, content_type)?;
+    let auth = deserialize_content_auth_data(bytes, content_type)?;
 
-        let padding = {
-            let mut buffer = Vec::new();
-            bytes
-                .read_to_end(&mut buffer)
-                .map_err(|_| Error::InvalidInput)?;
-            buffer
-        };
+    let padding = {
+        let mut buffer = Vec::new();
+        bytes
+            .read_to_end(&mut buffer)
+            .map_err(|_| Error::InvalidInput)?;
+        buffer
+    };
 
-        let length_of_padding = padding.len();
+    let length_of_padding = padding.len();
 
-        // ValSem011: MLSCiphertextContent padding must be all-zero.
-        if !padding.into_iter().all(|byte| byte == 0x00) {
-            return Err(Error::InvalidInput);
-        }
-
-        Ok(MlsCiphertextContent {
-            content,
-            auth,
-            length_of_padding,
-        })
+    // ValSem011: MLSCiphertextContent padding must be all-zero.
+    if !padding.into_iter().all(|byte| byte == 0x00) {
+        return Err(Error::InvalidInput);
     }
+
+    Ok(MlsCiphertextContent {
+        content,
+        auth,
+        length_of_padding,
+    })
 }

@@ -215,7 +215,7 @@ fn bad_padding(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
             let prepared_nonce = ratchet_nonce.xor_with_reuse_guard(&reuse_guard);
 
             let padded = {
-                let plaintext_length = plaintext.content().tls_serialized_len()
+                let plaintext_length = plaintext.content().serialized_len_without_type()
                     + plaintext.test_signature().tls_serialized_len()
                     + plaintext.confirmation_tag().tls_serialized_len();
 
@@ -231,7 +231,10 @@ fn bad_padding(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
 
                 let mut buffer = Vec::with_capacity(plaintext_length + calculated_padding_length);
 
-                plaintext.content().tls_serialize(&mut buffer).unwrap();
+                plaintext
+                    .content()
+                    .serialize_without_type(&mut buffer)
+                    .unwrap();
                 plaintext
                     .test_signature()
                     .tls_serialize(&mut buffer)
