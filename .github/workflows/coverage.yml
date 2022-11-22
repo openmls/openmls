@@ -18,11 +18,10 @@ jobs:
         with:
           submodules: true
 
-      - name: Install nightly toolchain
+      - name: Install stable toolchain
         uses: actions-rs/toolchain@v1
         with:
-          toolchain: nightly
-          override: true
+          toolchain: stable
 
       - name: Clean
         run: cargo clean
