@@ -17,6 +17,7 @@
 //! - [`ApplicationIdExtension`] (KeyPackage extension)
 //! - [`RatchetTreeExtension`] (GroupInfo extension)
 //! - [`RequiredCapabilitiesExtension`] (GroupContext extension)
+//! - [`ExternalPubExtension`] (GroupInfo extension)
 //! - [`CapabilitiesExtension`] (KeyPackage extension)
 //! - [`LifetimeExtension`] (KeyPackage extension)
 //! - [`ParentHashExtension`] (KeyPackage extension)
@@ -29,6 +30,7 @@ use tls_codec::*;
 mod application_id_extension;
 mod capabilities_extension;
 mod codec;
+mod external_pub_extension;
 mod external_sender_extension;
 mod life_time_extension;
 mod parent_hash_extension;
@@ -42,6 +44,7 @@ pub mod errors;
 // Public re-exports
 pub use application_id_extension::ApplicationIdExtension;
 pub use capabilities_extension::CapabilitiesExtension;
+pub use external_pub_extension::ExternalPubExtension;
 pub use life_time_extension::LifetimeExtension;
 pub use parent_hash_extension::ParentHashExtension;
 pub use ratchet_tree_extension::RatchetTreeExtension;
@@ -97,6 +100,10 @@ pub enum ExtensionType {
     /// that imposes certain requirements on clients in the group.
     RequiredCapabilities = 3,
 
+    /// To join a group via an External Commit, a new member needs a GroupInfo
+    /// with an ExternalPub extension present in its extensions field.
+    ExternalPub = 4,
+
     /// The capabilities extension indicates what protocol versions, ciphersuites,
     /// protocol extensions, and non-default proposal types are supported by a
     /// client.
@@ -123,6 +130,7 @@ impl TryFrom<u16> for ExtensionType {
             1 => Ok(ExtensionType::ApplicationId),
             2 => Ok(ExtensionType::RatchetTree),
             3 => Ok(ExtensionType::RequiredCapabilities),
+            4 => Ok(ExtensionType::ExternalPub),
             0xff00 => Ok(ExtensionType::Capabilities),
             0xff01 => Ok(ExtensionType::Lifetime),
             0xff02 => Ok(ExtensionType::ParentHash),
@@ -142,6 +150,7 @@ impl ExtensionType {
             | ExtensionType::ApplicationId
             | ExtensionType::RatchetTree
             | ExtensionType::RequiredCapabilities
+            | ExtensionType::ExternalPub
             | ExtensionType::Capabilities
             | ExtensionType::Lifetime
             | ExtensionType::ParentHash => true,
@@ -173,6 +182,9 @@ pub enum Extension {
 
     /// A [`RequiredCapabilitiesExtension`]
     RequiredCapabilities(RequiredCapabilitiesExtension),
+
+    /// A [`ExternalPubExtension`]
+    ExternalPub(ExternalPubExtension),
 
     /// A [`CapabilitiesExtension`]
     Capabilities(CapabilitiesExtension),
@@ -223,6 +235,18 @@ impl Extension {
         }
     }
 
+    /// Get a reference to this extension as [`ExternalPubExtension`].
+    /// Returns an [`ExtensionError::InvalidExtensionType`] error if called on an
+    /// [`Extension`] that's not a [`ExternalPubExtension`].
+    pub fn as_external_pub_extension(&self) -> Result<&ExternalPubExtension, ExtensionError> {
+        match self {
+            Self::ExternalPub(e) => Ok(e),
+            _ => Err(ExtensionError::InvalidExtensionType(
+                "This is not an ExternalPubExtension".into(),
+            )),
+        }
+    }
+
     /// Get a reference to this extension as [`CapabilitiesExtension`].
     /// Returns an [`ExtensionError::InvalidExtensionType`] error if called on an
     /// [`Extension`] that's not a [`CapabilitiesExtension`].
@@ -266,6 +290,7 @@ impl Extension {
             Extension::ApplicationId(_) => ExtensionType::ApplicationId,
             Extension::RatchetTree(_) => ExtensionType::RatchetTree,
             Extension::RequiredCapabilities(_) => ExtensionType::RequiredCapabilities,
+            Extension::ExternalPub(_) => ExtensionType::ExternalPub,
             Extension::Capabilities(_) => ExtensionType::Capabilities,
             Extension::Lifetime(_) => ExtensionType::Lifetime,
             Extension::ParentHash(_) => ExtensionType::ParentHash,
