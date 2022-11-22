@@ -5,6 +5,8 @@ use tls_codec::{
     TlsSize,
 };
 
+use super::codec::deserialize_ciphertext_content;
+
 use crate::{
     error::LibraryError,
     tree::{
@@ -249,8 +251,11 @@ impl MlsCiphertext {
             "  Successfully decrypted MlsPlaintext bytes: {:x?}",
             mls_ciphertext_content_bytes
         );
-        MlsCiphertextContent::tls_deserialize(&mut mls_ciphertext_content_bytes.as_slice())
-            .map_err(|_| MessageDecryptionError::MalformedContent)
+        deserialize_ciphertext_content(
+            &mut mls_ciphertext_content_bytes.as_slice(),
+            self.content_type(),
+        )
+        .map_err(|_| MessageDecryptionError::MalformedContent)
     }
 
     /// This function decrypts an [`MlsCiphertext`] into an [`VerifiableMlsAuthContent`].
@@ -319,7 +324,7 @@ impl MlsCiphertext {
         padding_size: usize,
         mac_len: usize,
     ) -> Result<Vec<u8>, tls_codec::Error> {
-        let plaintext_length = mls_plaintext.content().tls_serialized_len()
+        let plaintext_length = mls_plaintext.content().serialized_len_without_type()
             + mls_plaintext.auth().tls_serialized_len();
 
         let padding_length = if padding_size > 0 {
@@ -335,7 +340,9 @@ impl MlsCiphertext {
         // Persist all initial fields manually (avoids cloning them)
         let buffer = &mut Vec::with_capacity(plaintext_length + padding_length);
 
-        mls_plaintext.content().tls_serialize(buffer)?;
+        // The `content` field is serialized without the `content_type`, which
+        // is not part of the struct as per MLS spec.
+        mls_plaintext.content().serialize_without_type(buffer)?;
         mls_plaintext.auth().tls_serialize(buffer)?;
         // Note: The `tls_codec::Serialize` implementation for `&[u8]` prepends the length.
         // We do not want this here and thus use the "raw" `write_all` method.
@@ -445,6 +452,10 @@ impl MlsSenderDataAad {
 /// ```
 #[derive(Debug, Clone)]
 pub(crate) struct MlsCiphertextContent {
+    // The `content` field is serialized and deserialized manually without the
+    // `content_type`, which is not part of the struct as per MLS spec. See the
+    // implementation of `TlsSerialize` for `MlsCiphertextContent`, as well as
+    // `deserialize_ciphertext_content`.
     pub(crate) content: MlsContentBody,
     pub(crate) auth: MlsContentAuthData,
     /// Length of the all-zero padding.

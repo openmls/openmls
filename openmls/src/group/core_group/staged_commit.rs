@@ -269,7 +269,7 @@ impl CoreGroup {
             ciphersuite,
             backend,
             // It is ok to use return a library error here, because we know the MlsPlaintext contains a Commit
-            &MlsPlaintextCommitContent::try_from(mls_plaintext)
+            &ConfirmedTranscriptHashInput::try_from(mls_plaintext)
                 .map_err(|_| LibraryError::custom("Could not convert commit content"))?,
             &self.interim_transcript_hash,
         )?;
@@ -304,7 +304,7 @@ impl CoreGroup {
             .epoch_secrets(backend)
             .map_err(|_| LibraryError::custom("Using the key schedule in the wrong state"))?;
 
-        let mls_plaintext_commit_auth_data = MlsPlaintextCommitAuthData::try_from(mls_plaintext)
+        let mls_plaintext_commit_auth_data = InterimTranscriptHashInput::try_from(mls_plaintext)
             .map_err(|_| {
                 log::error!("Confirmation tag is missing in commit. This should be unreachable because we verified the tag before.");
                 StageCommitError::ConfirmationTagMissing
