@@ -11,8 +11,11 @@ use crate::{
 
 use super::*;
 use openmls_traits::OpenMlsCryptoProvider;
-use std::convert::TryFrom;
-use tls_codec::{Serialize, TlsByteVecU32, TlsDeserialize, TlsSerialize, TlsSize};
+use std::{
+    convert::TryFrom,
+    io::{Read, Write},
+};
+use tls_codec::{Deserialize, Serialize, TlsByteVecU32, TlsDeserialize, TlsSerialize, TlsSize};
 
 /// `MLSPlaintext` is a framing structure for MLS messages. It can contain
 /// Proposals, Commits and application messages.
@@ -95,6 +98,37 @@ impl MlsContentBody {
             Self::Proposal(_) => ContentType::Proposal,
             Self::Commit(_) => ContentType::Commit,
         }
+    }
+
+    /// Returns the length of the serialized content without the `content_type` field.
+    pub(crate) fn serialized_len_without_type(&self) -> usize {
+        match self {
+            MlsContentBody::Application(a) => a.tls_serialized_len(),
+            MlsContentBody::Proposal(p) => p.tls_serialized_len(),
+            MlsContentBody::Commit(c) => c.tls_serialized_len(),
+        }
+    }
+
+    /// Serializes the content without the `content_type` field.
+    pub(crate) fn serialize_without_type<W: Write>(&self, writer: &mut W) -> Result<usize, Error> {
+        match self {
+            MlsContentBody::Application(a) => a.tls_serialize(writer),
+            MlsContentBody::Proposal(p) => p.tls_serialize(writer),
+            MlsContentBody::Commit(c) => c.tls_serialize(writer),
+        }
+    }
+
+    pub(super) fn deserialize_without_type<R: Read>(
+        bytes: &mut R,
+        content_type: ContentType,
+    ) -> Result<Self, tls_codec::Error> {
+        Ok(match content_type {
+            ContentType::Application => {
+                MlsContentBody::Application(TlsByteVecU32::tls_deserialize(bytes)?)
+            }
+            ContentType::Proposal => MlsContentBody::Proposal(Proposal::tls_deserialize(bytes)?),
+            ContentType::Commit => MlsContentBody::Commit(Commit::tls_deserialize(bytes)?),
+        })
     }
 }
 
@@ -320,7 +354,7 @@ impl MlsPlaintext {
     ) -> Result<(), LibraryError> {
         let tbs_payload =
             encode_tbs(self, serialized_context).map_err(LibraryError::missing_bound_check)?;
-        let tbm_payload = MlsPlaintextTbmPayload::new(&tbs_payload, &self.auth)?;
+        let tbm_payload = MlsContentTbm::new(&tbs_payload, &self.auth)?;
         let membership_tag = membership_key.tag(backend, tbm_payload)?;
 
         self.membership_tag = Some(membership_tag);
@@ -407,21 +441,23 @@ impl ContentType {
     }
 }
 
-/// 9.1 Content Authentication
+/// 7.2 Encoding and Decoding a Plaintext
 ///
 /// ```c
+/// // draft-ietf-mls-protocol-16
+///
 /// struct {
-///   MLSPlaintextTBS tbs;
+///   MLSContentTBS tbs;
 ///   MLSContentAuthData auth;
-/// } MLSPlaintextTBM;
+/// } MLSContentTBM;
 /// ```
 #[derive(Debug)]
-pub(crate) struct MlsPlaintextTbmPayload<'a> {
+pub(crate) struct MlsContentTbm<'a> {
     tbs_payload: &'a [u8],
     auth: &'a MlsContentAuthData,
 }
 
-impl<'a> MlsPlaintextTbmPayload<'a> {
+impl<'a> MlsContentTbm<'a> {
     pub(crate) fn new(
         tbs_payload: &'a [u8],
         auth: &'a MlsContentAuthData,
@@ -558,7 +594,7 @@ impl VerifiableMlsAuthContent {
             .tbs
             .tls_serialize_detached()
             .map_err(LibraryError::missing_bound_check)?;
-        let tbm_payload = MlsPlaintextTbmPayload::new(&tbs_payload, &self.auth)?;
+        let tbm_payload = MlsContentTbm::new(&tbs_payload, &self.auth)?;
         let expected_membership_tag = &membership_key.tag(backend, tbm_payload)?;
 
         // Verify the membership tag
@@ -791,61 +827,60 @@ impl SignedStruct<MlsContentTbs> for MlsPlaintext {
     }
 }
 
+/// 9.2 Transcript Hashes
+///
+/// ```c
+/// // draft-ietf-mls-protocol-16
+///
+/// struct {
+///    WireFormat wire_format;
+///    MLSContent content; /* with content_type == commit */
+///    opaque signature<V>;
+///} ConfirmedTranscriptHashInput;
+/// ```
 #[derive(TlsSerialize, TlsSize)]
-pub(crate) struct MlsPlaintextCommitContent<'a> {
+pub(crate) struct ConfirmedTranscriptHashInput<'a> {
     pub(super) wire_format: WireFormat,
-    pub(super) group_id: &'a GroupId,
-    pub(super) epoch: GroupEpoch,
-    pub(super) sender: &'a Sender,
-    pub(super) authenticated_data: &'a VLBytes,
-    pub(super) content_type: ContentType,
-    pub(super) commit: &'a Commit,
+    pub(super) mls_content: &'a MlsContent,
     pub(super) signature: &'a Signature,
 }
 
-impl<'a> TryFrom<&'a MlsPlaintext> for MlsPlaintextCommitContent<'a> {
+impl<'a> TryFrom<&'a MlsPlaintext> for ConfirmedTranscriptHashInput<'a> {
     type Error = &'static str;
 
     fn try_from(mls_plaintext: &'a MlsPlaintext) -> Result<Self, Self::Error> {
-        let commit = match &mls_plaintext.content.body {
-            MlsContentBody::Commit(commit) => commit,
-            _ => return Err("MlsPlaintext needs to contain a Commit."),
-        };
-        Ok(MlsPlaintextCommitContent {
+        if !matches!(
+            mls_plaintext.content.body.content_type(),
+            ContentType::Commit
+        ) {
+            return Err("MlsPlaintext needs to contain a Commit.");
+        }
+        Ok(ConfirmedTranscriptHashInput {
             wire_format: mls_plaintext.wire_format,
-            group_id: &mls_plaintext.content.group_id,
-            epoch: mls_plaintext.content.epoch,
-            sender: &mls_plaintext.content.sender,
-            authenticated_data: &mls_plaintext.content.authenticated_data,
-            content_type: mls_plaintext.content().content_type(),
-            commit,
+            mls_content: &mls_plaintext.content,
             signature: &mls_plaintext.auth.signature,
         })
     }
 }
 
 #[derive(TlsSerialize, TlsSize)]
-pub(crate) struct MlsPlaintextCommitAuthData<'a> {
-    pub(crate) confirmation_tag: Option<&'a ConfirmationTag>,
+pub(crate) struct InterimTranscriptHashInput<'a> {
+    pub(crate) confirmation_tag: &'a ConfirmationTag,
 }
 
-impl<'a> TryFrom<&'a MlsPlaintext> for MlsPlaintextCommitAuthData<'a> {
+impl<'a> TryFrom<&'a MlsPlaintext> for InterimTranscriptHashInput<'a> {
     type Error = &'static str;
 
     fn try_from(mls_plaintext: &'a MlsPlaintext) -> Result<Self, Self::Error> {
         match mls_plaintext.auth.confirmation_tag.as_ref() {
-            Some(confirmation_tag) => Ok(MlsPlaintextCommitAuthData {
-                confirmation_tag: Some(confirmation_tag),
-            }),
+            Some(confirmation_tag) => Ok(InterimTranscriptHashInput { confirmation_tag }),
             None => Err("MLSPlaintext needs to contain a confirmation tag."),
         }
     }
 }
 
-impl<'a> From<&'a ConfirmationTag> for MlsPlaintextCommitAuthData<'a> {
+impl<'a> From<&'a ConfirmationTag> for InterimTranscriptHashInput<'a> {
     fn from(confirmation_tag: &'a ConfirmationTag) -> Self {
-        MlsPlaintextCommitAuthData {
-            confirmation_tag: Some(confirmation_tag),
-        }
+        InterimTranscriptHashInput { confirmation_tag }
     }
 }
