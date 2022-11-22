@@ -37,14 +37,13 @@ mod test_proposals;
 use super::errors::CreateGroupContextExtProposalError;
 
 use crate::{
-    ciphersuite::signable::*,
     credentials::*,
     error::LibraryError,
     extensions::errors::*,
     framing::*,
     group::*,
     key_packages::{errors::KeyPackageExtensionSupportError, *},
-    messages::{proposals::*, public_group_state::*, *},
+    messages::{proposals::*, *},
     schedule::{message_secrets::*, psk::*, *},
     tree::{secret_tree::SecretTreeError, sender_ratchet::SenderRatchetConfiguration},
     treesync::*,
@@ -577,6 +576,7 @@ impl CoreGroup {
     /// Get the groups extensions.
     /// Right now this is limited to the ratchet tree extension which is built
     /// on the fly when calling this function.
+    #[cfg(test)]
     pub(crate) fn other_extensions(&self) -> Vec<Extension> {
         vec![Extension::RatchetTree(RatchetTreeExtension::new(
             self.treesync().export_nodes(),
@@ -591,17 +591,6 @@ impl CoreGroup {
     /// Get the required capabilities extension of this group.
     pub(crate) fn required_capabilities(&self) -> Option<&RequiredCapabilitiesExtension> {
         self.group_context.required_capabilities()
-    }
-
-    /// Export the `PublicGroupState`
-    pub(crate) fn export_public_group_state(
-        &self,
-        backend: &impl OpenMlsCryptoProvider,
-        credential_bundle: &CredentialBundle,
-    ) -> Result<PublicGroupState, LibraryError> {
-        let pgs_tbs = PublicGroupStateTbs::new(backend, self)?;
-        // XXX: #719 removes the PublicGroupState
-        pgs_tbs.sign(backend, credential_bundle)
     }
 
     /// Returns `true` if the group uses the ratchet tree extension anf `false
@@ -700,13 +689,9 @@ impl CoreGroup {
     }
 
     /// Current interim transcript hash of the group
+    #[cfg(test)]
     pub(crate) fn interim_transcript_hash(&self) -> &[u8] {
         &self.interim_transcript_hash
-    }
-
-    /// Current confirmed transcript hash of the group
-    pub(crate) fn confirmed_transcript_hash(&self) -> &[u8] {
-        self.group_context.confirmed_transcript_hash()
     }
 
     #[cfg(any(feature = "test-utils", test))]

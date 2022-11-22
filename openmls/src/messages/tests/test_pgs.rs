@@ -1,13 +1,4 @@
-use tls_codec::{Deserialize, Serialize};
-
-use crate::{
-    credentials::*,
-    framing::*,
-    group::*,
-    key_packages::*,
-    messages::{public_group_state::*, *},
-    test_utils::*,
-};
+use crate::{credentials::*, framing::*, group::*, key_packages::*, messages::*, test_utils::*};
 
 /// Tests the creation of a `PublicGroupState` and verifies it was correctly
 /// signed
@@ -78,21 +69,4 @@ fn test_pgs(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
     group_alice
         .merge_commit(create_commit_result.staged_commit)
         .expect("error merging commit");
-
-    let pgs = group_alice
-        .export_public_group_state(backend, &alice_credential_bundle)
-        .expect("Could not export the public group state");
-
-    // Make sure Alice is the signer
-    assert_eq!(pgs.signer, group_alice.own_leaf_index());
-
-    let encoded = pgs.tls_serialize_detached().expect("Could not encode");
-    let verifiable_pgs = VerifiablePublicGroupState::tls_deserialize(&mut encoded.as_slice())
-        .expect("Could not decode");
-
-    let pgs_decoded: PublicGroupState = verifiable_pgs
-        .verify(backend, alice_credential_bundle.credential())
-        .expect("error verifiying public group state");
-
-    assert_eq!(pgs, pgs_decoded)
 }

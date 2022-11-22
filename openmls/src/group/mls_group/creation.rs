@@ -3,7 +3,7 @@ use crate::{
         core_group::create_commit_params::CreateCommitParams,
         errors::{CoreGroupBuildError, ExternalCommitError, WelcomeError},
     },
-    messages::public_group_state::VerifiablePublicGroupState,
+    messages::GroupInfo,
 };
 
 use super::*;
@@ -153,10 +153,11 @@ impl MlsGroup {
     pub fn join_by_external_commit(
         backend: &impl OpenMlsCryptoProvider,
         tree_option: Option<&[Option<Node>]>,
-        verifiable_public_group_state: VerifiablePublicGroupState,
+        group_info: GroupInfo,
         mls_group_config: &MlsGroupConfig,
         aad: &[u8],
         credential_bundle: &CredentialBundle,
+        interim_transcript_hash: &[u8],
     ) -> Result<(Self, MlsMessageOut), ExternalCommitError> {
         let resumption_psk_store =
             ResumptionPskStore::new(mls_group_config.number_of_resumption_psks);
@@ -174,7 +175,8 @@ impl MlsGroup {
             backend,
             params,
             tree_option,
-            verifiable_public_group_state,
+            group_info,
+            interim_transcript_hash,
         )?;
         group.set_max_past_epochs(mls_group_config.max_past_epochs);
 

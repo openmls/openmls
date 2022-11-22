@@ -29,7 +29,6 @@ use tls_codec::{Serialize as TlsSerializeTrait, *};
 pub mod codec;
 pub mod external_proposals;
 pub mod proposals;
-pub mod public_group_state;
 
 // Tests
 #[cfg(test)]
@@ -251,7 +250,7 @@ impl Signable for GroupInfoTBS {
 ///     opaque signature<V>;
 /// } GroupInfo;
 /// ```
-pub(crate) struct GroupInfo {
+pub struct GroupInfo {
     payload: GroupInfoTBS,
     signature: Signature,
 }

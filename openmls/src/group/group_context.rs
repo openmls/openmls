@@ -74,6 +74,11 @@ impl GroupContext {
         )
     }
 
+    /// Return the protocol version.
+    pub(crate) fn protocol_version(&self) -> ProtocolVersion {
+        self.protocol_version
+    }
+
     /// Return the ciphersuite.
     pub(crate) fn ciphersuite(&self) -> Ciphersuite {
         self.ciphersuite
@@ -87,6 +92,11 @@ impl GroupContext {
     /// Return the epoch.
     pub(crate) fn epoch(&self) -> GroupEpoch {
         self.epoch
+    }
+
+    /// Return the epoch.
+    pub(crate) fn tree_hash(&self) -> &[u8] {
+        self.tree_hash.as_slice()
     }
 
     /// Return the confirmed transcript hash.

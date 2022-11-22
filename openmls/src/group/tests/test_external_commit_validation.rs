@@ -14,7 +14,7 @@ use crate::{
     credentials::{errors::*, *},
     framing::*,
     group::{errors::*, *},
-    messages::{proposals::*, public_group_state::VerifiablePublicGroupState},
+    messages::{proposals::*, ConfirmationTag, GroupInfoTBS},
 };
 
 use super::utils::{generate_credential_bundle, generate_key_package_bundle};
@@ -87,24 +87,41 @@ fn validation_test_setup(
 
     // Bob wants to commit externally.
 
-    // Have Alice export everything that bob needs.
-    let pgs_encoded: Vec<u8> = alice_group
-        .export_public_group_state(backend)
-        .expect("Error exporting PGS")
-        .tls_serialize_detached()
-        .expect("Error serializing PGS");
-    let verifiable_public_group_state =
-        VerifiablePublicGroupState::tls_deserialize(&mut pgs_encoded.as_slice())
-            .expect("Error deserializing PGS");
+    let group_info = {
+        let mut extensions = alice_group.group().other_extensions();
+        let external_pub = alice_group
+            .group()
+            .group_epoch_secrets()
+            .external_secret()
+            .derive_external_keypair(backend.crypto(), ciphersuite)
+            .public;
+        extensions.push(Extension::ExternalPub(ExternalPubExtension::new(
+            HpkePublicKey::from(external_pub),
+        )));
+
+        // Create to-be-signed group info.
+        let group_info_tbs = GroupInfoTBS::new(
+            alice_group.export_group_context().clone(),
+            &extensions,
+            ConfirmationTag::dummy(),
+            alice_group.own_leaf_index(),
+        );
+
+        // Sign to-be-signed group info.
+        group_info_tbs
+            .sign(backend, &bob_credential_bundle)
+            .unwrap()
+    };
     let tree_option = alice_group.export_ratchet_tree();
 
     let (_bob_group, message) = MlsGroup::join_by_external_commit(
         backend,
         Some(&tree_option),
-        verifiable_public_group_state,
+        group_info,
         alice_group.configuration(),
         &[],
         &bob_credential_bundle,
+        alice_group.group().interim_transcript_hash(),
     )
     .expect("Error initializing group externally.");
 
@@ -356,20 +373,40 @@ fn test_valsem242(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
         gce_proposal(),
     ];
     for proposal in deny_list {
-        let pgs_encoded: Vec<u8> = alice_group
-            .export_public_group_state(backend)
-            .unwrap()
-            .tls_serialize_detached()
-            .unwrap();
-        let pgs = VerifiablePublicGroupState::tls_deserialize(&mut pgs_encoded.as_slice()).unwrap();
+        let group_info = {
+            let mut extensions = alice_group.group().other_extensions();
+            let external_pub = alice_group
+                .group()
+                .group_epoch_secrets()
+                .external_secret()
+                .derive_external_keypair(backend.crypto(), ciphersuite)
+                .public;
+            extensions.push(Extension::ExternalPub(ExternalPubExtension::new(
+                HpkePublicKey::from(external_pub),
+            )));
+
+            // Create to-be-signed group info.
+            let group_info_tbs = GroupInfoTBS::new(
+                alice_group.export_group_context().clone(),
+                &extensions,
+                ConfirmationTag::dummy(),
+                alice_group.own_leaf_index(),
+            );
+
+            // Sign to-be-signed group info.
+            group_info_tbs
+                .sign(backend, &bob_credential_bundle)
+                .unwrap()
+        };
 
         let (_bob_group, message) = MlsGroup::join_by_external_commit(
             backend,
             None,
-            pgs,
+            group_info,
             alice_group.configuration(),
             &[],
             &bob_credential_bundle,
+            alice_group.group().interim_transcript_hash(),
         )
         .unwrap();
 
@@ -458,24 +495,41 @@ fn test_valsem243(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
 
     // Bob wants to commit externally.
 
-    // Have Alice export everything that bob needs.
-    let pgs_encoded: Vec<u8> = alice_group
-        .export_public_group_state(backend)
-        .expect("Error exporting PGS")
-        .tls_serialize_detached()
-        .expect("Error serializing PGS");
-    let verifiable_public_group_state =
-        VerifiablePublicGroupState::tls_deserialize(&mut pgs_encoded.as_slice())
-            .expect("Error deserializing PGS");
+    let group_info = {
+        let mut extensions = alice_group.group().other_extensions();
+        let external_pub = alice_group
+            .group()
+            .group_epoch_secrets()
+            .external_secret()
+            .derive_external_keypair(backend.crypto(), ciphersuite)
+            .public;
+        extensions.push(Extension::ExternalPub(ExternalPubExtension::new(
+            HpkePublicKey::from(external_pub),
+        )));
+
+        // Create to-be-signed group info.
+        let group_info_tbs = GroupInfoTBS::new(
+            alice_group.export_group_context().clone(),
+            &extensions,
+            ConfirmationTag::dummy(),
+            alice_group.own_leaf_index(),
+        );
+
+        // Sign to-be-signed group info.
+        group_info_tbs
+            .sign(backend, &bob_credential_bundle)
+            .unwrap()
+    };
     let tree_option = alice_group.export_ratchet_tree();
 
     let (_bob_group, message) = MlsGroup::join_by_external_commit(
         backend,
         Some(&tree_option),
-        verifiable_public_group_state.clone(),
+        group_info,
         alice_group.configuration(),
         &[],
         &bob_credential_bundle,
+        alice_group.group().interim_transcript_hash(),
     )
     .expect("Error initializing group externally.");
 
@@ -564,13 +618,39 @@ fn test_valsem243(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
                 .expect("Error serializing signature key."),
         )
         .expect("An unexpected error occurred.");
+    let group_info = {
+        let mut extensions = alice_group.group().other_extensions();
+        let external_pub = alice_group
+            .group()
+            .group_epoch_secrets()
+            .external_secret()
+            .derive_external_keypair(backend.crypto(), ciphersuite)
+            .public;
+        extensions.push(Extension::ExternalPub(ExternalPubExtension::new(
+            HpkePublicKey::from(external_pub),
+        )));
+
+        // Create to-be-signed group info.
+        let group_info_tbs = GroupInfoTBS::new(
+            alice_group.export_group_context().clone(),
+            &extensions,
+            ConfirmationTag::dummy(),
+            alice_group.own_leaf_index(),
+        );
+
+        // Sign to-be-signed group info.
+        group_info_tbs
+            .sign(backend, &bob_credential_bundle)
+            .unwrap()
+    };
     let alice_external_commit = MlsGroup::join_by_external_commit(
         backend,
         Some(&tree_option),
-        verifiable_public_group_state,
+        group_info,
         alice_group.configuration(),
         &[],
         &alice_credential_bundle,
+        alice_group.group().interim_transcript_hash(),
     );
     assert!(alice_external_commit.is_ok());
 
@@ -846,21 +926,40 @@ fn test_pure_ciphertest(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoPr
     // Bob wants to commit externally.
 
     // Have Alice export everything that bob needs.
-    let pgs_encoded: Vec<u8> = alice_group
-        .export_public_group_state(backend)
-        .expect("Error exporting PGS")
-        .tls_serialize_detached()
-        .expect("Error serializing PGS");
-    let pgs = VerifiablePublicGroupState::tls_deserialize(&mut pgs_encoded.as_slice())
-        .expect("Error deserializing PGS");
+    let group_info = {
+        let mut extensions = alice_group.group().other_extensions();
+        let external_pub = alice_group
+            .group()
+            .group_epoch_secrets()
+            .external_secret()
+            .derive_external_keypair(backend.crypto(), ciphersuite)
+            .public;
+        extensions.push(Extension::ExternalPub(ExternalPubExtension::new(
+            HpkePublicKey::from(external_pub),
+        )));
+
+        // Create to-be-signed group info.
+        let group_info_tbs = GroupInfoTBS::new(
+            alice_group.export_group_context().clone(),
+            &extensions,
+            ConfirmationTag::dummy(),
+            alice_group.own_leaf_index(),
+        );
+
+        // Sign to-be-signed group info.
+        group_info_tbs
+            .sign(backend, &bob_credential_bundle)
+            .unwrap()
+    };
 
     let (_bob_group, message) = MlsGroup::join_by_external_commit(
         backend,
         None,
-        pgs,
+        group_info,
         alice_group.configuration(),
         &[],
         &bob_credential_bundle,
+        alice_group.group().interim_transcript_hash(),
     )
     .expect("Error initializing group externally.");
 
