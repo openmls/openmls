@@ -11,12 +11,32 @@ use super::*;
 impl MlsGroup {
     // === Group creation ===
 
-    /// Creates a new group from scratch with only the creator as a member. This
-    /// function removes the `KeyPackageBundle` corresponding to the
+    /// Creates a new group with the creator as the only member (and a random group ID).
+    ///
+    /// This function removes the `KeyPackageBundle` corresponding to the
     /// `key_package_hash` from the key store. Returns an error
     /// ([`NewGroupError::NoMatchingKeyPackageBundle`]) if no
     /// [`KeyPackageBundle`] can be found.
     pub fn new(
+        backend: &impl OpenMlsCryptoProvider,
+        mls_group_config: &MlsGroupConfig,
+        key_package_hash: &[u8],
+    ) -> Result<Self, NewGroupError> {
+        Self::new_with_group_id(
+            backend,
+            mls_group_config,
+            GroupId::random(backend),
+            key_package_hash,
+        )
+    }
+
+    /// Creates a new group with a given group ID with the creator as the only member.
+    ///
+    /// This function removes the `KeyPackageBundle` corresponding to the
+    /// `key_package_hash` from the key store. Returns an error
+    /// ([`NewGroupError::NoMatchingKeyPackageBundle`]) if no
+    /// [`KeyPackageBundle`] can be found.
+    pub fn new_with_group_id(
         backend: &impl OpenMlsCryptoProvider,
         mls_group_config: &MlsGroupConfig,
         group_id: GroupId,

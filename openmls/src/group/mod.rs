@@ -36,7 +36,6 @@ pub(crate) use create_commit_params::*;
 pub(crate) mod tests;
 #[cfg(any(feature = "test-utils", test))]
 pub use group_context::GroupContext;
-#[cfg(any(feature = "test-utils", test))]
 use openmls_traits::random::OpenMlsRand;
 #[cfg(any(feature = "test-utils", test))]
 pub use proposals::*;
@@ -50,10 +49,12 @@ pub struct GroupId {
 }
 
 impl GroupId {
-    #[cfg(any(feature = "test-utils", test))]
-    pub fn random(rng: &impl OpenMlsCryptoProvider) -> Self {
+    /// Create a new (random) group ID.
+    ///
+    /// Group IDs should be random and not be misused as, e.g., a group name.
+    pub fn random(backend: &impl OpenMlsCryptoProvider) -> Self {
         Self {
-            value: rng
+            value: backend
                 .rand()
                 .random_vec(16)
                 .expect("Not enough randomness.")
@@ -61,7 +62,9 @@ impl GroupId {
         }
     }
 
-    /// Creates a group ID from a byte slice.
+    /// Create a group ID from a byte slice.
+    ///
+    /// This should be used only if the group ID is chosen by an entity that ensures uniqueness.
     pub fn from_slice(bytes: &[u8]) -> Self {
         GroupId {
             value: bytes.into(),

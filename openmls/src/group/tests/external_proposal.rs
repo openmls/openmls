@@ -54,7 +54,7 @@ fn new_test_group(
         .hash_ref(backend.crypto())
         .expect("Could not hash KeyPackage.");
 
-    MlsGroup::new(backend, &mls_group_config, group_id, kpr.as_slice()).unwrap()
+    MlsGroup::new_with_group_id(backend, &mls_group_config, group_id, kpr.as_slice()).unwrap()
 }
 
 // Validation test setup

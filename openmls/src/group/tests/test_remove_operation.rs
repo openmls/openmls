@@ -57,7 +57,7 @@ fn test_remove_operation_variants(ciphersuite: Ciphersuite, backend: &impl OpenM
         let mls_group_config = MlsGroupConfig::default();
 
         // === Alice creates a group ===
-        let mut alice_group = MlsGroup::new(
+        let mut alice_group = MlsGroup::new_with_group_id(
             backend,
             &mls_group_config,
             group_id,
