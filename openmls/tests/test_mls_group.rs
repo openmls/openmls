@@ -120,7 +120,7 @@ fn mls_group_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoPr
             .build();
 
         // === Alice creates a group ===
-        let mut alice_group = MlsGroup::new(
+        let mut alice_group = MlsGroup::new_with_group_id(
             backend,
             &mls_group_config,
             group_id,
@@ -992,7 +992,7 @@ fn test_empty_input_errors(ciphersuite: Ciphersuite, backend: &impl OpenMlsCrypt
     let mls_group_config = MlsGroupConfig::test_default();
 
     // === Alice creates a group ===
-    let mut alice_group = MlsGroup::new(
+    let mut alice_group = MlsGroup::new_with_group_id(
         backend,
         &mls_group_config,
         group_id,
@@ -1060,7 +1060,7 @@ fn mls_group_ratchet_tree_extension(
             .build();
 
         // === Alice creates a group ===
-        let mut alice_group = MlsGroup::new(
+        let mut alice_group = MlsGroup::new_with_group_id(
             backend,
             &mls_group_config,
             group_id.clone(),
@@ -1113,7 +1113,7 @@ fn mls_group_ratchet_tree_extension(
         let mls_group_config = MlsGroupConfig::test_default();
 
         // === Alice creates a group ===
-        let mut alice_group = MlsGroup::new(
+        let mut alice_group = MlsGroup::new_with_group_id(
             backend,
             &mls_group_config,
             group_id,

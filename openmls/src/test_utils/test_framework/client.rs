@@ -71,15 +71,15 @@ impl Client {
         Ok(kp)
     }
 
-    /// Create a group with the given `group_id`, `ciphersuite` and
-    /// `mls_group_config`. Throws an error if the client doesn't support
-    /// the `ciphersuite`, i.e. if no corresponding `CredentialBundle` exists.
+    /// Create a group with the given [MlsGroupConfig] and [Ciphersuite], and return the created [GroupId].
+    ///
+    /// Returns an error if the client doesn't support the `ciphersuite`, i.e.,
+    /// if no corresponding `CredentialBundle` exists.
     pub fn create_group(
         &self,
-        group_id: GroupId,
         mls_group_config: MlsGroupConfig,
         ciphersuite: Ciphersuite,
-    ) -> Result<(), ClientError> {
+    ) -> Result<GroupId, ClientError> {
         let credential = self
             .credentials
             .get(&ciphersuite)
@@ -111,14 +111,14 @@ impl Client {
         let group_state = MlsGroup::new(
             &self.crypto,
             &mls_group_config,
-            group_id.clone(),
             key_package.hash_ref(self.crypto.crypto())?.as_slice(),
         )?;
+        let group_id = group_state.group_id().clone();
         self.groups
             .write()
             .expect("An unexpected error occurred.")
-            .insert(group_id, group_state);
-        Ok(())
+            .insert(group_state.group_id().clone(), group_state);
+        Ok(group_id)
     }
 
     /// Join a group based on the given `welcome` and `ratchet_tree`. The group

@@ -391,11 +391,10 @@ impl CoreGroup {
     /// Validate constraints on an external commit. This function implements the following checks:
     ///  - ValSem240: External Commit, inline Proposals: There MUST be at least one ExternalInit proposal.
     ///  - ValSem241: External Commit, inline Proposals: There MUST be at most one ExternalInit proposal.
-    ///  - ValSem242: External Commit, inline Proposals: There MUST NOT be any Add proposals.
-    ///  - ValSem243: External Commit, inline Proposals: There MUST NOT be any Update proposals.
-    ///  - ValSem244: External Commit, inline Remove Proposal: The identity and the endpoint_id of the removed
+    ///  - ValSem242: External Commit must only cover inline proposal in allowlist (ExternalInit, Remove, PreSharedKey)
+    ///  - ValSem243: External Commit, inline Remove Proposal: The identity and the endpoint_id of the removed
     ///               leaf are identical to the ones in the path KeyPackage.
-    ///  - ValSem245: External Commit, referenced Proposals: There MUST NOT be any ExternalInit proposals.
+    ///  - ValSem244: External Commit, referenced Proposals: There MUST NOT be any ExternalInit proposals.
     pub(crate) fn validate_external_commit(
         &self,
         proposal_queue: &ProposalQueue,
@@ -405,7 +404,7 @@ impl CoreGroup {
             proposal_queue.filtered_by_type(ProposalType::ExternalInit);
         // ValSem240: External Commit, inline Proposals: There MUST be at least one ExternalInit proposal.
         if let Some(external_init_proposal) = external_init_proposals.next() {
-            // ValSem245: External Commit, referenced Proposals: There MUST NOT be any ExternalInit proposals.
+            // ValSem244: External Commit, referenced Proposals: There MUST NOT be any ExternalInit proposals.
             if external_init_proposal.proposal_or_ref_type() == ProposalOrRefType::Reference {
                 return Err(ExternalCommitValidationError::ReferencedExternalInitProposal);
             }
@@ -415,23 +414,20 @@ impl CoreGroup {
 
         // ValSem241: External Commit, inline Proposals: There MUST be at most one ExternalInit proposal.
         if external_init_proposals.next().is_some() {
-            // ValSem245: External Commit, referenced Proposals: There MUST NOT be any ExternalInit proposals.
+            // ValSem244: External Commit, referenced Proposals: There MUST NOT be any ExternalInit proposals.
             return Err(ExternalCommitValidationError::MultipleExternalInitProposals);
         }
-
-        let add_proposals = proposal_queue.filtered_by_type(ProposalType::Add);
-        for proposal in add_proposals {
-            // ValSem242: External Commit, inline Proposals: There MUST NOT be any Add proposals.
-            if proposal.proposal_or_ref_type() == ProposalOrRefType::Proposal {
-                return Err(ExternalCommitValidationError::InvalidInlineProposals);
-            }
-        }
-        let update_proposals = proposal_queue.filtered_by_type(ProposalType::Update);
-        for proposal in update_proposals {
-            // ValSem243: External Commit, inline Proposals: There MUST NOT be any Update proposals.
-            if proposal.proposal_or_ref_type() == ProposalOrRefType::Proposal {
-                return Err(ExternalCommitValidationError::InvalidInlineProposals);
-            }
+        // ValSem242: External Commit must only cover inline proposal in allowlist (ExternalInit, Remove, PreSharedKey)
+        let contains_denied_proposal = proposal_queue.queued_proposals().any(|p| {
+            let is_inline = p.proposal_or_ref_type() == ProposalOrRefType::Proposal;
+            let is_allowed_type = matches!(
+                p.proposal(),
+                Proposal::ExternalInit(_) | Proposal::Remove(_) | Proposal::PreSharedKey(_)
+            );
+            is_inline && !is_allowed_type
+        });
+        if contains_denied_proposal {
+            return Err(ExternalCommitValidationError::InvalidInlineProposals);
         }
 
         let remove_proposals = proposal_queue.filtered_by_type(ProposalType::Remove);
@@ -441,7 +437,7 @@ impl CoreGroup {
                     let removed_leaf = remove_proposal.removed();
 
                     if let Some(path_key_package) = path_key_package_option {
-                        // ValSem244: External Commit, inline Remove Proposal: The identity and the endpoint_id of the removed leaf are identical to the ones in the path KeyPackage.
+                        // ValSem243: External Commit, inline Remove Proposal: The identity and the endpoint_id of the removed leaf are identical to the ones in the path KeyPackage.
                         let leaf = self
                             .treesync()
                             .leaf(removed_leaf)

@@ -10,7 +10,7 @@ use crate::{
     group::*,
     messages::{
         external_proposals::*,
-        proposals::{AddProposal, Proposal},
+        proposals::{AddProposal, Proposal, ProposalType},
     },
 };
 
@@ -54,7 +54,7 @@ fn new_test_group(
         .hash_ref(backend.crypto())
         .expect("Could not hash KeyPackage.");
 
-    MlsGroup::new(backend, &mls_group_config, group_id, kpr.as_slice()).unwrap()
+    MlsGroup::new_with_group_id(backend, &mls_group_config, group_id, kpr.as_slice()).unwrap()
 }
 
 // Validation test setup
@@ -142,8 +142,13 @@ fn external_add_proposal_should_succeed(
         .unwrap();
 
         // an external proposal is always plaintext and has sender type 'new_member_proposal'
+        let verify_proposal = |msg: &VerifiableMlsAuthContent| {
+            *msg.sender() == Sender::NewMemberProposal
+                && msg.content_type() == ContentType::Proposal
+                && matches!(msg.content(), MlsContentBody::Proposal(p) if p.proposal_type() == ProposalType::Add)
+        };
         assert!(
-            matches!(proposal.mls_message.body, MlsMessageBody::Plaintext(ref msg) if *msg.sender() == Sender::NewMemberProposal)
+            matches!(proposal.mls_message.body, MlsMessageBody::Plaintext(ref msg) if verify_proposal(msg))
         );
 
         // Alice & Bob process the proposal

@@ -250,7 +250,7 @@ impl User {
             .use_ratchet_tree_extension(true)
             .build();
 
-        let mut mls_group = MlsGroup::new(
+        let mut mls_group = MlsGroup::new_with_group_id(
             &self.crypto,
             &group_config,
             GroupId::from_slice(group_id),

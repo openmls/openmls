@@ -10,14 +10,17 @@ In practice, the supported and required extensions are set by adding them to the
 {{#include ../../../openmls/tests/book_code.rs:create_key_package_bundle}}
 ```
 
-Every group has a unique group ID that needs to be specified at the time of the group creation. The group ID cannot be changed after the group creation and therefore remains immutable throughout the group's lifetime. It should be chosen so that it doesn't collide with any other group IDs in the same system:
-
-```rust,no_run,noplayground
-{{#include ../../../openmls/tests/book_code.rs:set_group_id}}
-```
-
 After that, the group can be created:
 
 ```rust,no_run,noplayground
 {{#include ../../../openmls/tests/book_code.rs:alice_create_group}}
 ```
+
+Note: Every group is assigned a random group ID during creation. The group ID cannot be changed and remains immutable throughout the group's lifetime. Choosing it randomly makes sure that the group ID doesn't collide with any other group ID in the same system.
+
+If someone else already gave you a group ID, e.g., a backend server, you can also create a group using a specific group ID:
+
+```rust,no_run,noplayground
+{{#include ../../../openmls/tests/book_code.rs:alice_create_group_with_group_id}}
+```
+

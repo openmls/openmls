@@ -66,7 +66,7 @@ fn validation_test_setup(
         .build();
 
     // === Alice creates a group ===
-    let alice_group = MlsGroup::new(
+    let alice_group = MlsGroup::new_with_group_id(
         backend,
         &mls_group_config,
         group_id,
@@ -686,8 +686,8 @@ fn test_valsem010(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
         .tls_serialize_detached()
         .expect("Could not serialize Tbs.");
     let auth_data = MlsContentAuthData::new(signature.clone(), confirmation_tag);
-    let tbm_payload = MlsPlaintextTbmPayload::new(&tbs_payload, &auth_data)
-        .expect("Could not create MlsPlaintextTbm.");
+    let tbm_payload =
+        MlsContentTbm::new(&tbs_payload, &auth_data).expect("Could not create MlsContentTbm.");
     let new_membership_tag = alice_group
         .group()
         .message_secrets()
