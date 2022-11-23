@@ -94,7 +94,7 @@ impl GroupContext {
         self.epoch
     }
 
-    /// Return the epoch.
+    /// Return the tree hash.
     pub(crate) fn tree_hash(&self) -> &[u8] {
         self.tree_hash.as_slice()
     }
