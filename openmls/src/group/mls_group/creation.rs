@@ -157,7 +157,6 @@ impl MlsGroup {
         mls_group_config: &MlsGroupConfig,
         aad: &[u8],
         credential_bundle: &CredentialBundle,
-        interim_transcript_hash: &[u8],
     ) -> Result<(Self, MlsMessageOut), ExternalCommitError> {
         let resumption_psk_store =
             ResumptionPskStore::new(mls_group_config.number_of_resumption_psks);
@@ -171,13 +170,8 @@ impl MlsGroup {
             .credential_bundle(credential_bundle)
             .proposal_store(&proposal_store)
             .build();
-        let (mut group, create_commit_result) = CoreGroup::join_by_external_commit(
-            backend,
-            params,
-            tree_option,
-            group_info,
-            interim_transcript_hash,
-        )?;
+        let (mut group, create_commit_result) =
+            CoreGroup::join_by_external_commit(backend, params, tree_option, group_info)?;
         group.set_max_past_epochs(mls_group_config.max_past_epochs);
 
         let mls_group = MlsGroup {

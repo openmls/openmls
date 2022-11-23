@@ -26,7 +26,6 @@ impl CoreGroup {
         params: CreateCommitParams,
         tree_option: Option<&[Option<Node>]>,
         group_info: GroupInfo,
-        interim_transcript_hash: &[u8],
     ) -> Result<ExternalCommitResult, ExternalCommitError> {
         let ciphersuite = group_info.group_context().ciphersuite();
         if group_info.group_context().protocol_version() != ProtocolVersion::Mls10 {
@@ -108,12 +107,28 @@ impl CoreGroup {
         );
         let message_secrets_store = MessageSecretsStore::new_with_secret(0, message_secrets);
 
+        let interim_transcript_hash = {
+            if group_info.group_context().epoch() == GroupEpoch::from(0) {
+                vec![]
+            } else {
+                // New members compute the interim transcript hash using
+                // the confirmation_tag field of the GroupInfo struct.
+                compute_interim_transcript_hash(
+                    ciphersuite,
+                    backend,
+                    group_info.group_context().confirmed_transcript_hash(),
+                    &InterimTranscriptHashInput::from(group_info.confirmation_tag()),
+                )
+                .unwrap()
+            }
+        };
+
         // Prepare interim transcript hash
         let group = CoreGroup {
             ciphersuite,
-            group_context,
+            group_context: group_info.group_context().clone(),
             tree: treesync,
-            interim_transcript_hash: interim_transcript_hash.into(),
+            interim_transcript_hash: interim_transcript_hash,
             use_ratchet_tree_extension: enable_ratchet_tree_extension,
             mls_version: group_info.group_context().protocol_version(),
             group_epoch_secrets,

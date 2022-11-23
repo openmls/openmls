@@ -688,12 +688,6 @@ impl CoreGroup {
         self.message_secrets_store.message_secrets_mut()
     }
 
-    /// Current interim transcript hash of the group
-    #[cfg(test)]
-    pub(crate) fn interim_transcript_hash(&self) -> &[u8] {
-        &self.interim_transcript_hash
-    }
-
     #[cfg(any(feature = "test-utils", test))]
     pub(crate) fn context_mut(&mut self) -> &mut GroupContext {
         &mut self.group_context

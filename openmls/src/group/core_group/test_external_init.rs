@@ -7,7 +7,7 @@ use crate::{
     key_packages::KeyPackageBundle,
     messages::{
         proposals::{ProposalOrRef, ProposalType},
-        ConfirmationTag, GroupInfo, GroupInfoTBS,
+        GroupInfo, GroupInfoTBS,
     },
     test_utils::*,
 };
@@ -120,14 +120,9 @@ fn test_external_init(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProv
         .credential_bundle(&charly_credential_bundle)
         .proposal_store(&proposal_store)
         .build();
-    let (mut group_charly, create_commit_result) = CoreGroup::join_by_external_commit(
-        backend,
-        params,
-        None,
-        group_info,
-        group_alice.interim_transcript_hash.as_slice(),
-    )
-    .expect("Error initializing group externally.");
+    let (mut group_charly, create_commit_result) =
+        CoreGroup::join_by_external_commit(backend, params, None, group_info)
+            .expect("Error initializing group externally.");
 
     // Have alice and bob process the commit resulting from external init.
     let proposal_store = ProposalStore::default();
@@ -195,14 +190,9 @@ fn test_external_init(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProv
         .credential_bundle(&bob_credential_bundle)
         .proposal_store(&proposal_store)
         .build();
-    let (mut new_group_bob, create_commit_result) = CoreGroup::join_by_external_commit(
-        backend,
-        params,
-        Some(&nodes_option),
-        group_info,
-        group_alice.interim_transcript_hash(),
-    )
-    .expect("Error initializing group externally.");
+    let (mut new_group_bob, create_commit_result) =
+        CoreGroup::join_by_external_commit(backend, params, Some(&nodes_option), group_info)
+            .expect("Error initializing group externally.");
 
     // Let's make sure there's a remove in the commit.
     let contains_remove = match create_commit_result.commit.content() {
@@ -305,14 +295,9 @@ fn test_external_init_single_member_group(
         .credential_bundle(&charly_credential_bundle)
         .proposal_store(&proposal_store)
         .build();
-    let (mut group_charly, create_commit_result) = CoreGroup::join_by_external_commit(
-        backend,
-        params,
-        Some(&nodes_option),
-        group_info,
-        group_alice.interim_transcript_hash(),
-    )
-    .expect("Error initializing group externally.");
+    let (mut group_charly, create_commit_result) =
+        CoreGroup::join_by_external_commit(backend, params, Some(&nodes_option), group_info)
+            .expect("Error initializing group externally.");
 
     // Have alice and bob process the commit resulting from external init.
     let proposal_store = ProposalStore::default();
@@ -341,11 +326,11 @@ fn test_external_init_single_member_group(
 fn create_group_info(
     backend: &impl OpenMlsCryptoProvider,
     ciphersuite: Ciphersuite,
-    group_alice: &CoreGroup,
+    alice_group: &CoreGroup,
     alice_credential_bundle: &CredentialBundle,
 ) -> GroupInfo {
-    let mut extensions = group_alice.other_extensions();
-    let external_pub = group_alice
+    let mut extensions = alice_group.other_extensions();
+    let external_pub = alice_group
         .group_epoch_secrets()
         .external_secret()
         .derive_external_keypair(backend.crypto(), ciphersuite)
@@ -356,10 +341,14 @@ fn create_group_info(
 
     // Create to-be-signed group info.
     let group_info_tbs = GroupInfoTBS::new(
-        group_alice.group_context.clone(),
+        alice_group.group_context.clone(),
         &extensions,
-        ConfirmationTag::dummy(),
-        group_alice.own_leaf_index(),
+        alice_group
+            .message_secrets()
+            .confirmation_key()
+            .tag(backend, alice_group.context().confirmed_transcript_hash())
+            .unwrap(),
+        alice_group.own_leaf_index(),
     );
 
     // Sign to-be-signed group info.

@@ -14,7 +14,7 @@ use crate::{
     credentials::{errors::*, *},
     framing::*,
     group::{errors::*, *},
-    messages::{proposals::*, ConfirmationTag, GroupInfo, GroupInfoTBS},
+    messages::{proposals::*, GroupInfo, GroupInfoTBS},
 };
 
 use super::utils::{generate_credential_bundle, generate_key_package_bundle};
@@ -97,7 +97,6 @@ fn validation_test_setup(
         alice_group.configuration(),
         &[],
         &bob_credential_bundle,
-        alice_group.group().interim_transcript_hash(),
     )
     .expect("Error initializing group externally.");
 
@@ -359,7 +358,6 @@ fn test_valsem242(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
             alice_group.configuration(),
             &[],
             &bob_credential_bundle,
-            alice_group.group().interim_transcript_hash(),
         )
         .unwrap();
 
@@ -458,7 +456,6 @@ fn test_valsem243(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
         alice_group.configuration(),
         &[],
         &bob_credential_bundle,
-        alice_group.group().interim_transcript_hash(),
     )
     .expect("Error initializing group externally.");
 
@@ -555,7 +552,6 @@ fn test_valsem243(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
         alice_group.configuration(),
         &[],
         &alice_credential_bundle,
-        alice_group.group().interim_transcript_hash(),
     );
     assert!(alice_external_commit.is_ok());
 
@@ -840,7 +836,6 @@ fn test_pure_ciphertest(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoPr
         alice_group.configuration(),
         &[],
         &bob_credential_bundle,
-        alice_group.group().interim_transcript_hash(),
     )
     .expect("Error initializing group externally.");
 
@@ -871,7 +866,15 @@ fn create_group_info(
     let group_info_tbs = GroupInfoTBS::new(
         alice_group.export_group_context().clone(),
         &extensions,
-        ConfirmationTag::dummy(),
+        alice_group
+            .group()
+            .message_secrets()
+            .confirmation_key()
+            .tag(
+                backend,
+                alice_group.group().context().confirmed_transcript_hash(),
+            )
+            .unwrap(),
         alice_group.own_leaf_index(),
     );
 
