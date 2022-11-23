@@ -237,6 +237,7 @@ fn test_valsem003(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
     let (message, _welcome) = alice_group
         .self_update(backend, None)
         .expect("Could not self update.");
+    alice_group.merge_pending_commit().unwrap();
 
     alice_group
         .merge_pending_commit()
@@ -261,10 +262,9 @@ fn test_valsem003(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
         .self_update(backend, None)
         .expect("Could not add member.");
 
-    let serialized_message = message
-        .tls_serialize_detached()
-        .expect("Could not serialize message.");
+    let current_epoch = message.epoch();
 
+    let serialized_message = message.tls_serialize_detached().unwrap();
     let mut plaintext =
         VerifiableMlsAuthContent::tls_deserialize(&mut serialized_message.as_slice())
             .expect("Could not deserialize message.");
@@ -272,37 +272,44 @@ fn test_valsem003(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
     let original_message = plaintext.clone();
 
     // Set the epoch too high
-    plaintext.set_epoch(100);
-
-    let message_in = MlsMessageIn::from(plaintext.clone());
-
+    plaintext.set_epoch(current_epoch.as_u64() + 1);
     let err = bob_group
-        .process_message(backend, message_in)
+        .process_message(backend, plaintext.clone().into())
         .expect_err("Could parse message despite wrong epoch.");
-
     assert_eq!(
         err,
         ProcessMessageError::ValidationError(ValidationError::WrongEpoch)
     );
 
     // Set the epoch too low
-    plaintext.set_epoch(0);
-
-    let message_in = MlsMessageIn::from(plaintext);
-
+    plaintext.set_epoch(current_epoch.as_u64() - 1);
     let err = bob_group
-        .process_message(backend, message_in)
+        .process_message(backend, plaintext.into())
         .expect_err("Could parse message despite wrong epoch.");
-
     assert_eq!(
         err,
         ProcessMessageError::ValidationError(ValidationError::WrongEpoch)
     );
 
     // Positive case
-    bob_group
-        .process_message(backend, MlsMessageIn::from(original_message))
-        .expect("Unexpected error.");
+    let processed_msg = bob_group
+        .process_message(backend, original_message.clone().into())
+        .unwrap();
+
+    if let ProcessedMessageContent::StagedCommitMessage(staged_commit) =
+        processed_msg.into_content()
+    {
+        bob_group.merge_staged_commit(*staged_commit).unwrap();
+    } else {
+        unreachable!();
+    }
+
+    // Processing a commit twice should fail i.e. an epoch can only be used once in a commit message
+    let process_twice = bob_group.process_message(backend, original_message.into());
+    assert_eq!(
+        process_twice.unwrap_err(),
+        ProcessMessageError::ValidationError(ValidationError::WrongEpoch)
+    );
 }
 
 // ValSem004 Sender: Member: check the member exists
