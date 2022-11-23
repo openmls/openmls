@@ -438,9 +438,7 @@ impl MlsGroupTestSetup {
             .read()
             .expect("An unexpected error occurred.");
         let mut groups = self.groups.write().expect("An unexpected error occurred.");
-        let group_id = GroupId::from_slice(&groups.len().to_string().into_bytes());
-
-        group_creator.create_group(group_id.clone(), self.default_mgc.clone(), ciphersuite)?;
+        let group_id = group_creator.create_group(self.default_mgc.clone(), ciphersuite)?;
         let creator_groups = group_creator
             .groups
             .read()

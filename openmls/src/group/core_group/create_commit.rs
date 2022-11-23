@@ -209,7 +209,7 @@ impl CoreGroup {
             backend,
             // It is ok to a library error here, because we know the MlsPlaintext contains a
             // Commit
-            &MlsPlaintextCommitContent::try_from(&mls_plaintext)
+            &ConfirmedTranscriptHashInput::try_from(&mls_plaintext)
                 .map_err(|_| LibraryError::custom("MlsPlaintext did not contain a commit"))?,
             &self.interim_transcript_hash,
         )?;
@@ -352,7 +352,7 @@ impl CoreGroup {
         let provisional_interim_transcript_hash = update_interim_transcript_hash(
             ciphersuite,
             backend,
-            &MlsPlaintextCommitAuthData::from(&confirmation_tag),
+            &InterimTranscriptHashInput::from(&confirmation_tag),
             &confirmed_transcript_hash,
         )?;
 

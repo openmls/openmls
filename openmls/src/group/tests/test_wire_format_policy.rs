@@ -41,7 +41,7 @@ fn create_group(
         .use_ratchet_tree_extension(true)
         .build();
 
-    MlsGroup::new(
+    MlsGroup::new_with_group_id(
         backend,
         &mls_group_config,
         group_id,

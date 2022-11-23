@@ -116,7 +116,7 @@ fn test_welcome_ciphersuite_mismatch(
         .expect("An unexpected error occurred.");
 
     // === Alice creates a group  and adds Bob ===
-    let mut alice_group = MlsGroup::new(
+    let mut alice_group = MlsGroup::new_with_group_id(
         backend,
         &mls_group_config,
         group_id,

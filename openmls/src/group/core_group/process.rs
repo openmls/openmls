@@ -19,7 +19,7 @@ impl CoreGroup {
     ///  - ValSem007
     ///  - ValSem009
     ///  - ValSem112
-    ///  - ValSem246
+    ///  - ValSem245
     pub(crate) fn parse_message(
         &mut self,
         backend: &impl OpenMlsCryptoProvider,
@@ -56,9 +56,9 @@ impl CoreGroup {
         // Extract the credential if the sender is a member or a new member.
         // Checks the following semantic validation:
         //  - ValSem112
-        //  - ValSem246
-        //  - Prepares ValSem247 by setting the right credential. The remainder
-        //    of ValSem247 is validated as part of ValSem010.
+        //  - ValSem245
+        //  - Prepares ValSem246 by setting the right credential. The remainder
+        //    of ValSem246 is validated as part of ValSem010.
         // External senders are not supported yet #106/#151.
         let credential = decrypted_message.credential(
             self.treesync(),
@@ -102,8 +102,7 @@ impl CoreGroup {
     ///  - ValSem242
     ///  - ValSem243
     ///  - ValSem244
-    ///  - ValSem245
-    ///  - ValSem247 (as part of ValSem010)
+    ///  - ValSem246 (as part of ValSem010)
     pub(crate) fn process_unverified_message(
         &self,
         unverified_message: UnverifiedMessage,
@@ -134,7 +133,7 @@ impl CoreGroup {
             UnverifiedContextMessage::Group(unverified_message) => {
                 // Checks the following semantic validation:
                 //  - ValSem010
-                //  - ValSem247 (as part of ValSem010)
+                //  - ValSem246 (as part of ValSem010)
                 let verified_member_message = unverified_message
                     .into_verified(backend, signature_key)
                     .map_err(|_| UnverifiedMessageError::InvalidSignature)?;
@@ -179,7 +178,6 @@ impl CoreGroup {
                         //  - ValSem242
                         //  - ValSem243
                         //  - ValSem244
-                        //  - ValSem245
                         let staged_commit = self.stage_commit(
                             verified_member_message.plaintext(),
                             proposal_store,

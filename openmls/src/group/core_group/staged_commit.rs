@@ -48,7 +48,6 @@ impl CoreGroup {
     ///  - ValSem242
     ///  - ValSem243
     ///  - ValSem244
-    ///  - ValSem245
     /// Returns an error if the given commit was sent by the owner of this
     /// group.
     pub(crate) fn stage_commit(
@@ -142,11 +141,10 @@ impl CoreGroup {
             Sender::NewMemberCommit => {
                 // ValSem240: External Commit, inline Proposals: There MUST be at least one ExternalInit proposal.
                 // ValSem241: External Commit, inline Proposals: There MUST be at most one ExternalInit proposal.
-                // ValSem242: External Commit, inline Proposals: There MUST NOT be any Add proposals.
-                // ValSem243: External Commit, inline Proposals: There MUST NOT be any Update proposals.
-                // ValSem244: External Commit, inline Remove Proposal: The identity and the endpoint_id of the removed
+                // ValSem242: External Commit must only cover inline proposal in allowlist (ExternalInit, Remove, PreSharedKey)
+                // ValSem243: External Commit, inline Remove Proposal: The identity and the endpoint_id of the removed
                 //            leaf are identical to the ones in the path KeyPackage.
-                // ValSem245: External Commit, referenced Proposals: There MUST NOT be any ExternalInit proposals.
+                // ValSem244: External Commit, referenced Proposals: There MUST NOT be any ExternalInit proposals.
                 self.validate_external_commit(&proposal_queue, commit_update_key_package.as_ref())?;
                 // Since there are no update proposals in an External Commit we have no public keys to return
                 HashSet::new()
@@ -271,7 +269,7 @@ impl CoreGroup {
             ciphersuite,
             backend,
             // It is ok to use return a library error here, because we know the MlsPlaintext contains a Commit
-            &MlsPlaintextCommitContent::try_from(mls_plaintext)
+            &ConfirmedTranscriptHashInput::try_from(mls_plaintext)
                 .map_err(|_| LibraryError::custom("Could not convert commit content"))?,
             &self.interim_transcript_hash,
         )?;
@@ -306,7 +304,7 @@ impl CoreGroup {
             .epoch_secrets(backend)
             .map_err(|_| LibraryError::custom("Using the key schedule in the wrong state"))?;
 
-        let mls_plaintext_commit_auth_data = MlsPlaintextCommitAuthData::try_from(mls_plaintext)
+        let mls_plaintext_commit_auth_data = InterimTranscriptHashInput::try_from(mls_plaintext)
             .map_err(|_| {
                 log::error!("Confirmation tag is missing in commit. This should be unreachable because we verified the tag before.");
                 StageCommitError::ConfirmationTagMissing
