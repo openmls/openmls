@@ -204,14 +204,14 @@ impl CoreGroup {
         )?;
 
         // Calculate the confirmed transcript hash
-        let confirmed_transcript_hash = update_confirmed_transcript_hash(
+        let confirmed_transcript_hash = compute_confirmed_transcript_hash(
             ciphersuite,
             backend,
+            &self.interim_transcript_hash,
             // It is ok to a library error here, because we know the MlsPlaintext contains a
             // Commit
             &ConfirmedTranscriptHashInput::try_from(&mls_plaintext)
                 .map_err(|_| LibraryError::custom("MlsPlaintext did not contain a commit"))?,
-            &self.interim_transcript_hash,
         )?;
 
         // Calculate tree hash
@@ -349,11 +349,11 @@ impl CoreGroup {
             None
         };
 
-        let provisional_interim_transcript_hash = update_interim_transcript_hash(
+        let provisional_interim_transcript_hash = compute_interim_transcript_hash(
             ciphersuite,
             backend,
-            &InterimTranscriptHashInput::from(&confirmation_tag),
             &confirmed_transcript_hash,
+            &InterimTranscriptHashInput::from(&confirmation_tag),
         )?;
 
         let (provisional_group_epoch_secrets, provisional_message_secrets) =

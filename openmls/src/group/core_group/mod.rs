@@ -709,38 +709,38 @@ impl CoreGroup {
 
 // Helper functions
 
-pub(crate) fn update_confirmed_transcript_hash(
+pub(crate) fn compute_confirmed_transcript_hash(
     ciphersuite: Ciphersuite,
     backend: &impl OpenMlsCryptoProvider,
-    mls_plaintext_commit_content: &ConfirmedTranscriptHashInput,
     interim_transcript_hash: &[u8],
+    confirmed_transcript_hash_input: &ConfirmedTranscriptHashInput,
 ) -> Result<Vec<u8>, LibraryError> {
-    let commit_content_bytes = mls_plaintext_commit_content
+    let confirmed_transcript_hash_input = confirmed_transcript_hash_input
         .tls_serialize_detached()
         .map_err(LibraryError::missing_bound_check)?;
     backend
         .crypto()
         .hash(
             ciphersuite.hash_algorithm(),
-            &[interim_transcript_hash, &commit_content_bytes].concat(),
+            &[interim_transcript_hash, &confirmed_transcript_hash_input].concat(),
         )
         .map_err(LibraryError::unexpected_crypto_error)
 }
 
-pub(crate) fn update_interim_transcript_hash(
+pub(crate) fn compute_interim_transcript_hash(
     ciphersuite: Ciphersuite,
     backend: &impl OpenMlsCryptoProvider,
-    mls_plaintext_commit_auth_data: &InterimTranscriptHashInput,
     confirmed_transcript_hash: &[u8],
+    interim_transcript_hash_input: &InterimTranscriptHashInput,
 ) -> Result<Vec<u8>, LibraryError> {
-    let commit_auth_data_bytes = mls_plaintext_commit_auth_data
+    let interim_transcript_hash_input = interim_transcript_hash_input
         .tls_serialize_detached()
         .map_err(LibraryError::missing_bound_check)?;
     backend
         .crypto()
         .hash(
             ciphersuite.hash_algorithm(),
-            &[confirmed_transcript_hash, &commit_auth_data_bytes].concat(),
+            &[confirmed_transcript_hash, &interim_transcript_hash_input].concat(),
         )
         .map_err(LibraryError::unexpected_crypto_error)
 }

@@ -97,11 +97,11 @@ pub fn generate_test_vector(ciphersuite: Ciphersuite) -> TranscriptTestVector {
     )
     .expect("An unexpected error occurred.");
 
-    let confirmed_transcript_hash_after = update_confirmed_transcript_hash(
+    let confirmed_transcript_hash_after = compute_confirmed_transcript_hash(
         ciphersuite,
         &crypto,
-        &ConfirmedTranscriptHashInput::try_from(&commit).expect("An unexpected error occurred."),
         &interim_transcript_hash_before,
+        &ConfirmedTranscriptHashInput::try_from(&commit).expect("An unexpected error occurred."),
     )
     .expect("Error updating confirmed transcript hash");
     let confirmation_tag = confirmation_key
@@ -109,11 +109,11 @@ pub fn generate_test_vector(ciphersuite: Ciphersuite) -> TranscriptTestVector {
         .expect("Could not compute confirmation tag.");
     commit.set_confirmation_tag(confirmation_tag);
 
-    let interim_transcript_hash_after = update_interim_transcript_hash(
+    let interim_transcript_hash_after = compute_interim_transcript_hash(
         ciphersuite,
         &crypto,
-        &InterimTranscriptHashInput::try_from(&commit).expect("An unexpected error occurred."),
         &confirmed_transcript_hash_after,
+        &InterimTranscriptHashInput::try_from(&commit).expect("An unexpected error occurred."),
     )
     .expect("Error updating interim transcript hash");
     commit
@@ -280,11 +280,11 @@ pub fn run_test_vector(
     }
 
     // Compute new transcript hashes.
-    let my_confirmed_transcript_hash_after = update_confirmed_transcript_hash(
+    let my_confirmed_transcript_hash_after = compute_confirmed_transcript_hash(
         ciphersuite,
         backend,
-        &ConfirmedTranscriptHashInput::try_from(&commit).expect("An unexpected error occurred."),
         &interim_transcript_hash_before,
+        &ConfirmedTranscriptHashInput::try_from(&commit).expect("An unexpected error occurred."),
     )
     .expect("Error updating confirmed transcript hash");
     if my_confirmed_transcript_hash_after != confirmed_transcript_hash_after {
@@ -299,11 +299,11 @@ pub fn run_test_vector(
 
     let interim_transcript_hash_after = hex_to_bytes(&test_vector.interim_transcript_hash_after);
 
-    let my_interim_transcript_hash_after = update_interim_transcript_hash(
+    let my_interim_transcript_hash_after = compute_interim_transcript_hash(
         ciphersuite,
         backend,
-        &InterimTranscriptHashInput::try_from(&commit).expect("An unexpected error occurred."),
         &my_confirmed_transcript_hash_after,
+        &InterimTranscriptHashInput::try_from(&commit).expect("An unexpected error occurred."),
     )
     .expect("Error updating interim transcript hash");
     if my_interim_transcript_hash_after != interim_transcript_hash_after {

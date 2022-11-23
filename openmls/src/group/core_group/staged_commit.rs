@@ -265,13 +265,13 @@ impl CoreGroup {
         let mut provisional_epoch = self.group_context.epoch();
         provisional_epoch.increment();
 
-        let confirmed_transcript_hash = update_confirmed_transcript_hash(
+        let confirmed_transcript_hash = compute_confirmed_transcript_hash(
             ciphersuite,
             backend,
+            &self.interim_transcript_hash,
             // It is ok to use return a library error here, because we know the MlsPlaintext contains a Commit
             &ConfirmedTranscriptHashInput::try_from(mls_plaintext)
                 .map_err(|_| LibraryError::custom("Could not convert commit content"))?,
-            &self.interim_transcript_hash,
         )?;
 
         let provisional_group_context = GroupContext::new(
@@ -310,11 +310,11 @@ impl CoreGroup {
                 StageCommitError::ConfirmationTagMissing
             })?;
 
-        let interim_transcript_hash = update_interim_transcript_hash(
+        let interim_transcript_hash = compute_interim_transcript_hash(
             ciphersuite,
             backend,
-            &mls_plaintext_commit_auth_data,
             &confirmed_transcript_hash,
+            &mls_plaintext_commit_auth_data,
         )?;
 
         // Verify confirmation tag

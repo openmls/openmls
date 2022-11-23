@@ -190,11 +190,11 @@ impl CoreGroup {
             .confirmation_key()
             .tag(backend, group_context.confirmed_transcript_hash())
             .map_err(LibraryError::unexpected_crypto_error)?;
-        let interim_transcript_hash = update_interim_transcript_hash(
+        let interim_transcript_hash = compute_interim_transcript_hash(
             ciphersuite,
             backend,
-            &InterimTranscriptHashInput::from(&confirmation_tag),
             group_context.confirmed_transcript_hash(),
+            &InterimTranscriptHashInput::from(&confirmation_tag),
         )?;
 
         // Verify confirmation tag
