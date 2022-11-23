@@ -629,21 +629,17 @@ impl MlsClient for MlsClientImpl {
 
         let message = MlsMessageIn::tls_deserialize(&mut unprotect_request.ciphertext.as_slice())
             .map_err(|_| Status::aborted("failed to deserialize ciphertext"))?;
-        let unverified_message = interop_group
-            .group
-            .parse_message(message, &self.crypto_provider)
-            .map_err(into_status)?;
         let processed_message = interop_group
             .group
-            .process_unverified_message(unverified_message, None, &self.crypto_provider)
+            .process_message(&self.crypto_provider, message)
             .map_err(into_status)?;
-        let application_data = match processed_message {
-            ProcessedMessage::ApplicationMessage(application_message) => {
+        let application_data = match processed_message.into_content() {
+            ProcessedMessageContent::ApplicationMessage(application_message) => {
                 application_message.into_bytes()
             }
-            ProcessedMessage::ProposalMessage(_) => unreachable!(),
-            ProcessedMessage::ExternalJoinProposalMessage(_) => unreachable!(),
-            ProcessedMessage::StagedCommitMessage(_) => unreachable!(),
+            ProcessedMessageContent::ProposalMessage(_) => unreachable!(),
+            ProcessedMessageContent::ExternalJoinProposalMessage(_) => unreachable!(),
+            ProcessedMessageContent::StagedCommitMessage(_) => unreachable!(),
         };
 
         Ok(Response::new(UnprotectResponse { application_data }))
@@ -784,21 +780,17 @@ impl MlsClient for MlsClientImpl {
         for proposal in &commit_request.by_reference {
             let message = MlsMessageIn::tls_deserialize(&mut proposal.as_slice())
                 .map_err(|_| Status::aborted("failed to deserialize ciphertext"))?;
-            let unverified_message = interop_group
-                .group
-                .parse_message(message, &self.crypto_provider)
-                .map_err(into_status)?;
             let processed_message = interop_group
                 .group
-                .process_unverified_message(unverified_message, None, &self.crypto_provider)
+                .process_message(&self.crypto_provider, message)
                 .map_err(into_status)?;
-            match processed_message {
-                ProcessedMessage::ApplicationMessage(_) => unreachable!(),
-                ProcessedMessage::ProposalMessage(proposal) => {
+            match processed_message.into_content() {
+                ProcessedMessageContent::ApplicationMessage(_) => unreachable!(),
+                ProcessedMessageContent::ProposalMessage(proposal) => {
                     interop_group.group.store_pending_proposal(*proposal);
                 }
-                ProcessedMessage::ExternalJoinProposalMessage(_) => unreachable!(),
-                ProcessedMessage::StagedCommitMessage(_) => unreachable!(),
+                ProcessedMessageContent::ExternalJoinProposalMessage(_) => unreachable!(),
+                ProcessedMessageContent::StagedCommitMessage(_) => unreachable!(),
             }
         }
 
@@ -839,39 +831,31 @@ impl MlsClient for MlsClientImpl {
         for proposal in &handle_commit_request.proposal {
             let message = MlsMessageIn::tls_deserialize(&mut proposal.as_slice())
                 .map_err(|_| Status::aborted("failed to deserialize ciphertext"))?;
-            let unverified_message = interop_group
-                .group
-                .parse_message(message, &self.crypto_provider)
-                .map_err(into_status)?;
             let processed_message = interop_group
                 .group
-                .process_unverified_message(unverified_message, None, &self.crypto_provider)
+                .process_message(&self.crypto_provider, message)
                 .map_err(into_status)?;
-            match processed_message {
-                ProcessedMessage::ApplicationMessage(_) => unreachable!(),
-                ProcessedMessage::ProposalMessage(proposal) => {
+            match processed_message.into_content() {
+                ProcessedMessageContent::ApplicationMessage(_) => unreachable!(),
+                ProcessedMessageContent::ProposalMessage(proposal) => {
                     interop_group.group.store_pending_proposal(*proposal);
                 }
-                ProcessedMessage::ExternalJoinProposalMessage(_) => unreachable!(),
-                ProcessedMessage::StagedCommitMessage(_) => unreachable!(),
+                ProcessedMessageContent::ExternalJoinProposalMessage(_) => unreachable!(),
+                ProcessedMessageContent::StagedCommitMessage(_) => unreachable!(),
             }
         }
 
         let message = MlsMessageIn::tls_deserialize(&mut handle_commit_request.commit.as_slice())
             .map_err(|_| Status::aborted("failed to deserialize ciphertext"))?;
-        let unverified_message = interop_group
-            .group
-            .parse_message(message, &self.crypto_provider)
-            .map_err(into_status)?;
         let processed_message = interop_group
             .group
-            .process_unverified_message(unverified_message, None, &self.crypto_provider)
+            .process_message(&self.crypto_provider, message)
             .map_err(into_status)?;
-        match processed_message {
-            ProcessedMessage::ApplicationMessage(_) => unreachable!(),
-            ProcessedMessage::ProposalMessage(_) => unreachable!(),
-            ProcessedMessage::ExternalJoinProposalMessage(_) => unreachable!(),
-            ProcessedMessage::StagedCommitMessage(_) => {
+        match processed_message.into_content() {
+            ProcessedMessageContent::ApplicationMessage(_) => unreachable!(),
+            ProcessedMessageContent::ProposalMessage(_) => unreachable!(),
+            ProcessedMessageContent::ExternalJoinProposalMessage(_) => unreachable!(),
+            ProcessedMessageContent::StagedCommitMessage(_) => {
                 interop_group
                     .group
                     .merge_pending_commit()
