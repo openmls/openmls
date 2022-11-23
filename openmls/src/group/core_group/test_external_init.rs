@@ -7,7 +7,7 @@ use crate::{
     key_packages::KeyPackageBundle,
     messages::{
         proposals::{ProposalOrRef, ProposalType},
-        ConfirmationTag, GroupInfoTBS,
+        ConfirmationTag, GroupInfo, GroupInfoTBS,
     },
     test_utils::*,
 };
@@ -111,34 +111,8 @@ fn test_external_init(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProv
     )
     .expect("An unexpected error occurred.");
 
-    let group_info = {
-        let mut extensions = group_alice.other_extensions();
-        let external_pub = group_alice
-            .group_epoch_secrets()
-            .external_secret()
-            .derive_external_keypair(backend.crypto(), ciphersuite)
-            .public;
-        extensions.push(Extension::ExternalPub(ExternalPubExtension::new(
-            HpkePublicKey::from(external_pub),
-        )));
-
-        // Create to-be-signed group info.
-        let group_info_tbs = GroupInfoTBS::new(
-            group_alice.group_context.clone(),
-            &extensions,
-            create_commit_result
-                .commit
-                .confirmation_tag()
-                .unwrap()
-                .clone(),
-            group_bob.own_leaf_index(),
-        );
-
-        // Sign to-be-signed group info.
-        group_info_tbs
-            .sign(backend, &alice_credential_bundle)
-            .unwrap()
-    };
+    let group_info =
+        create_group_info(backend, ciphersuite, &group_alice, &alice_credential_bundle);
 
     let proposal_store = ProposalStore::new();
     let params = CreateCommitParams::builder()
@@ -211,30 +185,8 @@ fn test_external_init(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProv
     // Now we assume that Bob somehow lost his group state and wants to add
     // themselves back through an external commit.
 
-    let group_info = {
-        let mut extensions = group_alice.other_extensions();
-        let external_pub = group_alice
-            .group_epoch_secrets()
-            .external_secret()
-            .derive_external_keypair(backend.crypto(), ciphersuite)
-            .public;
-        extensions.push(Extension::ExternalPub(ExternalPubExtension::new(
-            HpkePublicKey::from(external_pub),
-        )));
-
-        // Create to-be-signed group info.
-        let group_info_tbs = GroupInfoTBS::new(
-            group_alice.group_context.clone(),
-            &extensions,
-            ConfirmationTag::dummy(),
-            1,
-        );
-
-        // Sign to-be-signed group info.
-        group_info_tbs
-            .sign(backend, &alice_credential_bundle)
-            .unwrap()
-    };
+    let group_info =
+        create_group_info(backend, ciphersuite, &group_alice, &alice_credential_bundle);
     let nodes_option = group_alice.treesync().export_nodes();
 
     let proposal_store = ProposalStore::new();
@@ -343,30 +295,8 @@ fn test_external_init_single_member_group(
     )
     .expect("An unexpected error occurred.");
 
-    let group_info = {
-        let mut extensions = group_alice.other_extensions();
-        let external_pub = group_alice
-            .group_epoch_secrets()
-            .external_secret()
-            .derive_external_keypair(backend.crypto(), ciphersuite)
-            .public;
-        extensions.push(Extension::ExternalPub(ExternalPubExtension::new(
-            HpkePublicKey::from(external_pub),
-        )));
-
-        // Create to-be-signed group info.
-        let group_info_tbs = GroupInfoTBS::new(
-            group_alice.group_context.clone(),
-            &extensions,
-            ConfirmationTag::dummy(),
-            1,
-        );
-
-        // Sign to-be-signed group info.
-        group_info_tbs
-            .sign(backend, &alice_credential_bundle)
-            .unwrap()
-    };
+    let group_info =
+        create_group_info(backend, ciphersuite, &group_alice, &alice_credential_bundle);
     let nodes_option = group_alice.treesync().export_nodes();
 
     let proposal_store = ProposalStore::new();
@@ -406,4 +336,34 @@ fn test_external_init_single_member_group(
         group_charly.treesync().export_nodes(),
         group_alice.treesync().export_nodes()
     );
+}
+
+fn create_group_info(
+    backend: &impl OpenMlsCryptoProvider,
+    ciphersuite: Ciphersuite,
+    group_alice: &CoreGroup,
+    alice_credential_bundle: &CredentialBundle,
+) -> GroupInfo {
+    let mut extensions = group_alice.other_extensions();
+    let external_pub = group_alice
+        .group_epoch_secrets()
+        .external_secret()
+        .derive_external_keypair(backend.crypto(), ciphersuite)
+        .public;
+    extensions.push(Extension::ExternalPub(ExternalPubExtension::new(
+        HpkePublicKey::from(external_pub),
+    )));
+
+    // Create to-be-signed group info.
+    let group_info_tbs = GroupInfoTBS::new(
+        group_alice.group_context.clone(),
+        &extensions,
+        ConfirmationTag::dummy(),
+        group_alice.own_leaf_index(),
+    );
+
+    // Sign to-be-signed group info.
+    group_info_tbs
+        .sign(backend, &alice_credential_bundle)
+        .unwrap()
 }
