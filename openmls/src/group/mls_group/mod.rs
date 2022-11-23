@@ -127,21 +127,20 @@ pub enum MlsGroupState {
     Inactive,
 }
 
-/// A `MlsGroup` represents an MLS group with
-/// a high-level API. The API exposes
+/// A `MlsGroup` represents an MLS group with a high-level API. The API exposes
 /// high level functions to manage a group by adding/removing members, get the
 /// current member list, etc.
 ///
 /// The API is modeled such that it can serve as a direct interface to the
 /// Delivery Service. Functions that modify the public state of the group will
-/// return a `Vec<MLSMessageOut>` that can be sent to the Delivery
-/// Service directly. Conversely, incoming messages from the Delivery Service
-/// can be fed into [parse_message()](`MlsGroup::parse_message()`).
+/// return a `Vec<MLSMessageOut>` that can be sent to the Delivery Service
+/// directly. Conversely, incoming messages from the Delivery Service can be fed
+/// into [process_message()](`MlsGroup::process_message()`).
 ///
-/// An `MlsGroup` has an internal queue of pending proposals that builds up
-/// as new messages are processed. When creating proposals, those messages are
-/// not automatically appended to this queue, instead they have to be processed
-/// again through [parse_message()](`MlsGroup::parse_message()`). This
+/// An `MlsGroup` has an internal queue of pending proposals that builds up as
+/// new messages are processed. When creating proposals, those messages are not
+/// automatically appended to this queue, instead they have to be processed
+/// again through [process_message()](`MlsGroup::process_message()`). This
 /// allows the Delivery Service to reject them (e.g. if they reference the wrong
 /// epoch).
 ///

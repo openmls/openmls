@@ -2,28 +2,29 @@
 
 use std::mem;
 
-use core_group::{
-    create_commit_params::CreateCommitParams, proposals::QueuedProposal,
-    staged_commit::StagedCommit,
-};
+use core_group::{create_commit_params::CreateCommitParams, staged_commit::StagedCommit};
 use tls_codec::Serialize;
 
-use super::{errors::UnverifiedMessageError, *};
+use super::{errors::ProcessMessageError, *};
 
 impl MlsGroup {
-    /// Parses incoming messages from the DS.
-    /// Checks for syntactic errors and makes some semantic checks as well.
-    /// If the input is an encrypted message, it will be decrypted.
-    /// Returns an [`UnverifiedMessage`] that can be inspected and later processed in
-    /// [`Self::process_unverified_message()`].
-    pub fn parse_message(
+    /// Parses incoming messages from the DS. Checks for syntactic errors and
+    /// makes some semantic checks as well. If the input is an encrypted
+    /// message, it will be decrypted. This processing function does syntactic
+    /// and semantic validation of the message. It returns a [ProcessedMessage]
+    /// enum.
+    ///
+    /// # Errors:
+    /// Returns an [`ProcessMessageError`] when the validation checks fail
+    /// with the exact reason of the failure.
+    pub fn process_message(
         &mut self,
-        message: MlsMessageIn,
         backend: &impl OpenMlsCryptoProvider,
-    ) -> Result<UnverifiedMessage, ParseMessageError> {
+        message: MlsMessageIn,
+    ) -> Result<ProcessedMessage, ProcessMessageError> {
         // Make sure we are still a member of the group
         if !self.is_active() {
-            return Err(ParseMessageError::GroupStateError(
+            return Err(ProcessMessageError::GroupStateError(
                 MlsGroupStateError::UseAfterEviction,
             ));
         }
@@ -37,7 +38,7 @@ impl MlsGroup {
                 .incoming()
                 .is_compatible_with(message.wire_format())
         {
-            return Err(ParseMessageError::IncompatibleWireFormat);
+            return Err(ProcessMessageError::IncompatibleWireFormat);
         }
 
         // Since the state of the group might be changed, arm the state flag
@@ -46,27 +47,12 @@ impl MlsGroup {
         // Parse the message
         let sender_ratchet_configuration =
             self.configuration().sender_ratchet_configuration().clone();
-        self.group
-            .parse_message(backend, message, &sender_ratchet_configuration)
-            .map_err(ParseMessageError::from)
-    }
-
-    /// This processing function does most of the semantic verifications.
-    /// It returns a [ProcessedMessage] enum.
-    /// Returns an [`UnverifiedMessageError`] when the validation checks fail
-    /// with the exact reason of the failure.
-    pub fn process_unverified_message(
-        &self,
-        unverified_message: UnverifiedMessage,
-        signature_key: Option<&OpenMlsSignaturePublicKey>,
-        backend: &impl OpenMlsCryptoProvider,
-    ) -> Result<ProcessedMessage, UnverifiedMessageError> {
-        self.group.process_unverified_message(
-            unverified_message,
-            signature_key,
+        self.group.process_message(
+            backend,
+            message,
+            &sender_ratchet_configuration,
             &self.proposal_store,
             &self.own_kpbs,
-            backend,
         )
     }
 
