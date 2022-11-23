@@ -78,9 +78,11 @@ impl CoreGroup {
                 .find(|ext| matches!(ext, Extension::ExternalPub(_)))
                 .ok_or(ExternalCommitError::MissingExternalPub)?
                 .as_external_pub_extension()
-                .map_err(|_| LibraryError::custom(
-                    "We found an `ExternalPub` so `as_external_pub_extension` must not fail.",
-                ))?;
+                .map_err(|_| {
+                    LibraryError::custom(
+                        "We found an `ExternalPub` so `as_external_pub_extension` must not fail.",
+                    )
+                })?;
 
             ext.external_pub()
         };
