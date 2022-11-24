@@ -33,16 +33,20 @@ mod test_past_secrets;
 #[cfg(test)]
 mod test_proposals;
 
+use tls_codec::Deserialize as TlsDeserialize;
+
 #[cfg(test)]
 use super::errors::CreateGroupContextExtProposalError;
 
 use crate::{
+    ciphersuite::signable::Signable,
     credentials::*,
     error::LibraryError,
     extensions::errors::*,
     framing::*,
     group::*,
     key_packages::{errors::KeyPackageExtensionSupportError, *},
+    messages::VerifiableGroupInfo,
     messages::{proposals::*, *},
     schedule::{message_secrets::*, psk::*, *},
     tree::{secret_tree::SecretTreeError, sender_ratchet::SenderRatchetConfiguration},
@@ -523,6 +527,48 @@ impl CoreGroup {
             .exporter_secret()
             .derive_exported_secret(self.ciphersuite(), backend, label, context, key_length)
             .map_err(LibraryError::unexpected_crypto_error)?)
+    }
+
+    pub(crate) fn export_group_info(
+        &self,
+        backend: &impl OpenMlsCryptoProvider,
+        credential_bundle: &CredentialBundle,
+    ) -> VerifiableGroupInfo {
+        let extensions = {
+            let ratchet_tree_extension =
+                Extension::RatchetTree(RatchetTreeExtension::new(self.treesync().export_nodes()));
+
+            let external_pub_extension = {
+                let external_pub = self
+                    .group_epoch_secrets()
+                    .external_secret()
+                    .derive_external_keypair(backend.crypto(), self.ciphersuite)
+                    .public;
+                Extension::ExternalPub(ExternalPubExtension::new(HpkePublicKey::from(external_pub)))
+            };
+
+            vec![ratchet_tree_extension, external_pub_extension]
+        };
+
+        // Create to-be-signed group info.
+        let group_info_tbs = GroupInfoTBS::new(
+            self.group_context.clone(),
+            &extensions,
+            self.message_secrets()
+                .confirmation_key()
+                .tag(backend, self.context().confirmed_transcript_hash())
+                .unwrap(),
+            self.own_leaf_index(),
+        );
+
+        // Sign to-be-signed group info.
+        let group_info = group_info_tbs.sign(backend, credential_bundle).unwrap();
+
+        // Now, let's serialize and ...
+        let serialized = group_info.tls_serialize_detached().unwrap();
+
+        // ... deserialize the group info to simulate a transmission over the wire.
+        VerifiableGroupInfo::tls_deserialize(&mut serialized.as_slice()).unwrap()
     }
 
     /// Returns the epoch authenticator

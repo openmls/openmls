@@ -1,4 +1,4 @@
-use crate::{group::errors::ExporterError, schedule::EpochAuthenticator};
+use crate::{group::errors::ExporterError, schedule::EpochAuthenticator, messages::VerifiableGroupInfo};
 
 use super::*;
 
@@ -46,5 +46,14 @@ impl MlsGroup {
     /// is available for that epoch,  `None` is returned.
     pub fn get_past_resumption_psk(&self, epoch: GroupEpoch) -> Option<&ResumptionPsk> {
         self.resumption_psk_store.get(epoch)
+    }
+
+    // TODO: No `credential_bundle` required? Everything should be in `LeafNode`?
+    pub fn export_group_info(
+        &self,
+        backend: &impl OpenMlsCryptoProvider,
+        credential_bundle: &CredentialBundle,
+    ) -> VerifiableGroupInfo {
+        self.group.export_group_info(backend, credential_bundle)
     }
 }
