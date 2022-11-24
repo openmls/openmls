@@ -9,7 +9,7 @@ use crate::{
     key_packages::KeyPackageBundle,
     messages::{
         proposals::{ProposalOrRef, ProposalType},
-        VerifiableGroupInfo, GroupInfoTBS,
+        GroupInfoTBS, VerifiableGroupInfo,
     },
     test_utils::*,
 };
