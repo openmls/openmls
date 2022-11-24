@@ -273,19 +273,18 @@ fn test_valsem201(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
     };
 
     let add_proposal = || {
-        let debbie_credential = generate_credential_bundle(
-            "Debbie".into(),
+        let dave_credential = generate_credential_bundle(
+            "Dave".into(),
             CredentialType::Basic,
             ciphersuite.signature_algorithm(),
             backend,
         )
         .unwrap();
-        let debbie_key_package =
-            generate_key_package_bundle(&[ciphersuite], &debbie_credential, vec![], backend)
-                .unwrap();
+        let dave_key_package =
+            generate_key_package_bundle(&[ciphersuite], &dave_credential, vec![], backend).unwrap();
 
         queued(Proposal::Add(AddProposal {
-            key_package: debbie_key_package,
+            key_package: dave_key_package,
         }))
     };
 
