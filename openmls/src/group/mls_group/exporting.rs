@@ -48,7 +48,8 @@ impl MlsGroup {
         self.resumption_psk_store.get(epoch)
     }
 
-    // TODO: No `credential_bundle` required? Everything should be in `LeafNode`?
+    /// Export a group info object for this group.
+    /// TODO: No `credential_bundle` required? Everything should be in `LeafNode`?
     pub fn export_group_info(
         &self,
         backend: &impl OpenMlsCryptoProvider,
