@@ -140,7 +140,7 @@ impl Proposal {
         self.proposal_type() == proposal_type
     }
 
-    /// Indicates whether a [Commit](crate::prelude::Commit) containing this [Proposal] requires a path
+    /// Indicates whether a [Commit](crate::prelude::Commit) containing this [Proposal] requires a path.
     pub fn is_path_required(&self) -> bool {
         match self {
             Self::Add(_) | Self::PreSharedKey(_) | Self::ReInit(_) | Self::AppAck(_) => false,
