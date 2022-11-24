@@ -344,7 +344,7 @@ fn test_valsem201(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
         (vec![remove_proposal(), add_proposal()], true),
         // path_required + path_required = path_required
         (vec![update_proposal(), remove_proposal()], true),
-        // TODO: this should work if GCE proposals were implemented
+        // TODO: #566 this should work if GCE proposals validation were implemented
         // (vec![add_proposal(), gce_proposal()], true),
     ];
 
@@ -401,13 +401,7 @@ fn test_valsem201(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
         // cleanup & restore for next iteration
         alice_group.clear_pending_proposals();
         alice_group.clear_pending_commit();
-        #[allow(deprecated)]
-        {
-            // restore to previous epoch to erase merged commit
-            bob_group = serde_json::from_slice::<SerializedMlsGroup>(&previous_bob_group)
-                .unwrap()
-                .into_mls_group();
-        }
+        bob_group.clear_pending_commit();
     }
 }
 
