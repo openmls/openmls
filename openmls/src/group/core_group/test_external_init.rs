@@ -5,7 +5,7 @@ use crate::{
     credentials::{CredentialBundle, CredentialType},
     extensions::{Extension, ExternalPubExtension},
     framing::{FramingParameters, WireFormat},
-    group::GroupId,
+    group::{errors::ExternalCommitError, GroupId},
     key_packages::KeyPackageBundle,
     messages::{
         proposals::{ProposalOrRef, ProposalType},
@@ -118,6 +118,7 @@ fn test_external_init(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProv
         ciphersuite,
         &group_alice,
         &charly_credential_bundle,
+        false,
     );
 
     let proposal_store = ProposalStore::new();
@@ -186,7 +187,13 @@ fn test_external_init(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProv
     // Now we assume that Bob somehow lost his group state and wants to add
     // themselves back through an external commit.
 
-    let group_info = create_group_info(backend, ciphersuite, &group_alice, &bob_credential_bundle);
+    let group_info = create_group_info(
+        backend,
+        ciphersuite,
+        &group_alice,
+        &bob_credential_bundle,
+        false,
+    );
     let nodes_option = group_alice.treesync().export_nodes();
 
     let proposal_store = ProposalStore::new();
@@ -295,6 +302,7 @@ fn test_external_init_single_member_group(
         ciphersuite,
         &group_alice,
         &charly_credential_bundle,
+        false,
     );
     let nodes_option = group_alice.treesync().export_nodes();
 
@@ -332,11 +340,115 @@ fn test_external_init_single_member_group(
     );
 }
 
+#[apply(ciphersuites_and_backends)]
+fn test_external_init_broken_signature(
+    ciphersuite: Ciphersuite,
+    backend: &impl OpenMlsCryptoProvider,
+) {
+    // Basic group setup.
+    let group_aad = b"Alice's test group";
+    let framing_parameters = FramingParameters::new(group_aad, WireFormat::MlsPlaintext);
+
+    // Define credential bundles
+    let alice_credential_bundle = CredentialBundle::new(
+        "Alice".into(),
+        CredentialType::Basic,
+        ciphersuite.signature_algorithm(),
+        backend,
+    )
+    .expect("An unexpected error occurred.");
+    let bob_credential_bundle = CredentialBundle::new(
+        "Bob".into(),
+        CredentialType::Basic,
+        ciphersuite.signature_algorithm(),
+        backend,
+    )
+    .expect("An unexpected error occurred.");
+
+    // Generate KeyPackages
+    let alice_key_package_bundle = KeyPackageBundle::new(
+        &[ciphersuite],
+        &alice_credential_bundle,
+        backend,
+        Vec::new(),
+    )
+    .expect("An unexpected error occurred.");
+
+    let bob_key_package_bundle =
+        KeyPackageBundle::new(&[ciphersuite], &bob_credential_bundle, backend, Vec::new())
+            .expect("An unexpected error occurred.");
+    let bob_key_package = bob_key_package_bundle.key_package();
+
+    // === Alice creates a group ===
+    let group_id = GroupId::random(backend);
+
+    let mut group_alice = CoreGroup::builder(group_id, alice_key_package_bundle)
+        .build(backend)
+        .expect("An unexpected error occurred.");
+
+    // === Alice adds Bob ===
+    let bob_add_proposal = group_alice
+        .create_add_proposal(
+            framing_parameters,
+            &alice_credential_bundle,
+            bob_key_package.clone(),
+            backend,
+        )
+        .expect("Could not create proposal.");
+    let proposal_store = ProposalStore::from_queued_proposal(
+        QueuedProposal::from_mls_plaintext(ciphersuite, backend, bob_add_proposal)
+            .expect("Could not create QueuedProposal."),
+    );
+    let params = CreateCommitParams::builder()
+        .framing_parameters(framing_parameters)
+        .credential_bundle(&alice_credential_bundle)
+        .proposal_store(&proposal_store)
+        .build();
+    let create_commit_result = group_alice
+        .create_commit(params, backend)
+        .expect("Error creating commit");
+
+    group_alice
+        .merge_commit(create_commit_result.staged_commit)
+        .expect("error merging commit");
+
+    // Now set up charly and try to init externally.
+    // Define credential bundles
+    let charly_credential_bundle = CredentialBundle::new(
+        "Charly".into(),
+        CredentialType::Basic,
+        ciphersuite.signature_algorithm(),
+        backend,
+    )
+    .expect("An unexpected error occurred.");
+
+    let group_info = create_group_info(
+        backend,
+        ciphersuite,
+        &group_alice,
+        &charly_credential_bundle,
+        true,
+    );
+
+    let proposal_store = ProposalStore::new();
+    let params = CreateCommitParams::builder()
+        .framing_parameters(framing_parameters)
+        .credential_bundle(&charly_credential_bundle)
+        .proposal_store(&proposal_store)
+        .build();
+    assert_eq!(
+        ExternalCommitError::InvalidPublicGroupStateSignature,
+        CoreGroup::join_by_external_commit(backend, params, None, group_info)
+            .expect_err("Signature was corrupted. This should have failed.")
+    );
+}
+
 fn create_group_info(
     backend: &impl OpenMlsCryptoProvider,
     ciphersuite: Ciphersuite,
     group: &CoreGroup,
     credential: &CredentialBundle,
+    break_signature: bool,
 ) -> VerifiableGroupInfo {
     let mut extensions = group.other_extensions();
     let external_pub = group
@@ -364,7 +476,14 @@ fn create_group_info(
     let group_info = group_info_tbs.sign(backend, credential).unwrap();
 
     // Now, let's serialize and ...
-    let serialized = group_info.tls_serialize_detached().unwrap();
+    let mut serialized = group_info.tls_serialize_detached().unwrap();
+
+    if break_signature {
+        let len = serialized.len();
+
+        // Induce a bit-flip.
+        serialized[len - 1] ^= 1;
+    }
 
     // ... deserialize the group info to simulate a transmission over the wire.
     VerifiableGroupInfo::tls_deserialize(&mut serialized.as_slice()).unwrap()
