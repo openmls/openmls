@@ -3,7 +3,7 @@ use crate::{
         core_group::create_commit_params::CreateCommitParams,
         errors::{CoreGroupBuildError, ExternalCommitError, WelcomeError},
     },
-    messages::GroupInfo,
+    messages::VerifiableGroupInfo,
 };
 
 use super::*;
@@ -153,7 +153,7 @@ impl MlsGroup {
     pub fn join_by_external_commit(
         backend: &impl OpenMlsCryptoProvider,
         tree_option: Option<&[Option<Node>]>,
-        group_info: GroupInfo,
+        group_info: VerifiableGroupInfo,
         mls_group_config: &MlsGroupConfig,
         aad: &[u8],
         credential_bundle: &CredentialBundle,

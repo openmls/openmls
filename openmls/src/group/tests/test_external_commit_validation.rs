@@ -14,7 +14,7 @@ use crate::{
     credentials::{errors::*, *},
     framing::*,
     group::{errors::*, *},
-    messages::{proposals::*, GroupInfo, GroupInfoTBS},
+    messages::{proposals::*, GroupInfoTBS, VerifiableGroupInfo},
 };
 
 use super::utils::{generate_credential_bundle, generate_key_package_bundle};
@@ -544,7 +544,8 @@ fn test_valsem243(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
                 .expect("Error serializing signature key."),
         )
         .expect("An unexpected error occurred.");
-    let group_info = create_group_info(backend, ciphersuite, &alice_group, &bob_credential_bundle);
+    let group_info =
+        create_group_info(backend, ciphersuite, &alice_group, &alice_credential_bundle);
     let alice_external_commit = MlsGroup::join_by_external_commit(
         backend,
         Some(&tree_option),
@@ -848,11 +849,11 @@ fn test_pure_ciphertest(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoPr
 fn create_group_info(
     backend: &impl OpenMlsCryptoProvider,
     ciphersuite: Ciphersuite,
-    alice_group: &MlsGroup,
-    bob_credential_bundle: &CredentialBundle,
-) -> GroupInfo {
-    let mut extensions = alice_group.group().other_extensions();
-    let external_pub = alice_group
+    group: &MlsGroup,
+    credential: &CredentialBundle,
+) -> VerifiableGroupInfo {
+    let mut extensions = group.group().other_extensions();
+    let external_pub = group
         .group()
         .group_epoch_secrets()
         .external_secret()
@@ -864,22 +865,23 @@ fn create_group_info(
 
     // Create to-be-signed group info.
     let group_info_tbs = GroupInfoTBS::new(
-        alice_group.export_group_context().clone(),
+        group.export_group_context().clone(),
         &extensions,
-        alice_group
+        group
             .group()
             .message_secrets()
             .confirmation_key()
-            .tag(
-                backend,
-                alice_group.group().context().confirmed_transcript_hash(),
-            )
+            .tag(backend, group.group().context().confirmed_transcript_hash())
             .unwrap(),
-        alice_group.own_leaf_index(),
+        group.own_leaf_index(),
     );
 
     // Sign to-be-signed group info.
-    group_info_tbs
-        .sign(backend, &bob_credential_bundle)
-        .unwrap()
+    let group_info = group_info_tbs.sign(backend, credential).unwrap();
+
+    // Now, let's serialize and ...
+    let serialized = group_info.tls_serialize_detached().unwrap();
+
+    // ... deserialize the group info to simulate a transmission over the wire.
+    VerifiableGroupInfo::tls_deserialize(&mut serialized.as_slice()).unwrap()
 }

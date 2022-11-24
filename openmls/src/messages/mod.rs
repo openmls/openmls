@@ -250,7 +250,7 @@ impl Signable for GroupInfoTBS {
 ///     opaque signature<V>;
 /// } GroupInfo;
 /// ```
-pub struct GroupInfo {
+pub(crate) struct GroupInfo {
     payload: GroupInfoTBS,
     signature: Signature,
 }
@@ -311,6 +311,42 @@ impl SignedStruct<GroupInfoTBS> for GroupInfo {
     fn from_payload(payload: GroupInfoTBS, signature: Signature) -> Self {
         Self { payload, signature }
     }
+}
+
+#[derive(TlsDeserialize, TlsSerialize, TlsSize)]
+pub struct VerifiableGroupInfo {
+    payload: GroupInfoTBS,
+    signature: Signature,
+}
+
+impl Verifiable for VerifiableGroupInfo {
+    fn unsigned_payload(&self) -> Result<Vec<u8>, tls_codec::Error> {
+        self.payload.tls_serialize_detached()
+    }
+
+    fn signature(&self) -> &Signature {
+        &self.signature
+    }
+
+    fn label(&self) -> &str {
+        "GroupInfoTBS"
+    }
+}
+
+impl VerifiedStruct<VerifiableGroupInfo> for GroupInfo {
+    type SealingType = private_mod::Seal;
+
+    fn from_verifiable(v: VerifiableGroupInfo, _seal: Self::SealingType) -> Self {
+        Self {
+            payload: v.payload,
+            signature: v.signature,
+        }
+    }
+}
+
+mod private_mod {
+    #[derive(Default)]
+    pub struct Seal;
 }
 
 /// PathSecret

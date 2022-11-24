@@ -1,4 +1,5 @@
 use crate::{
+    ciphersuite::signable::Verifiable,
     group::errors::ExternalCommitError,
     messages::proposals::{ExternalInitProposal, Proposal},
     treesync::{errors::TreeSyncFromNodesError, node::Node},
@@ -25,8 +26,12 @@ impl CoreGroup {
         backend: &impl OpenMlsCryptoProvider,
         params: CreateCommitParams,
         tree_option: Option<&[Option<Node>]>,
-        group_info: GroupInfo,
+        group_info: VerifiableGroupInfo,
     ) -> Result<ExternalCommitResult, ExternalCommitError> {
+        let group_info: GroupInfo =
+            Verifiable::verify(group_info, backend, params.credential_bundle().credential())
+                .map_err(|_| ExternalCommitError::InvalidPublicGroupStateSignature)?;
+
         let ciphersuite = group_info.group_context().ciphersuite();
         if group_info.group_context().protocol_version() != ProtocolVersion::Mls10 {
             return Err(ExternalCommitError::UnsupportedMlsVersion);
