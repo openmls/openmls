@@ -681,9 +681,6 @@ pub enum MessagesTestVectorError {
     /// Welcome encodings don't match.
     #[error("Welcome encodings don't match.")]
     WelcomeEncodingMismatch,
-    /// PublicGroupState encodings don't match.
-    #[error("PublicGroupState encodings don't match.")]
-    PublicGroupStateEncodingMismatch,
     /// AddProposal encodings don't match.
     #[error("AddProposal encodings don't match.")]
     AddProposalEncodingMismatch,

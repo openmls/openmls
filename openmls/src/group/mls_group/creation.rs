@@ -148,7 +148,7 @@ impl MlsGroup {
     /// the external commit was rejected due to an epoch change, the
     /// [`MlsGroup`] instance has to be discarded and a new one has to be
     /// created using this function based on the latest `ratchet_tree` and
-    /// public group state. For more information on the external init process,
+    /// group info. For more information on the external init process,
     /// please see Section 11.2.1 in the MLS specification.
     pub fn join_by_external_commit(
         backend: &impl OpenMlsCryptoProvider,

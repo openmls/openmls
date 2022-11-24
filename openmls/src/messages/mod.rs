@@ -1,7 +1,7 @@
 //! # Messages
 //!
 //! This module contains the types and implementations for Commit & Welcome messages,
-//! as well as Proposals & the public group state used for External Commits.
+//! as well as Proposals & the group info used for External Commits.
 
 use crate::{
     ciphersuite::hash_ref::KeyPackageRef,

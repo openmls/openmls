@@ -15,7 +15,7 @@ pub(crate) type ExternalCommitResult = (CoreGroup, CreateCommitResult);
 
 impl CoreGroup {
     /// Join a group without the help of an internal member. This function
-    /// requires a `PublicGroupState`, as well as the corresponding public tree
+    /// requires a [GroupInfo], as well as the corresponding public tree
     /// `nodes`. After the group state is initialized, this function creates an
     /// `ExternalInit` proposal and commits it along with the given proposals by
     /// reference and by value.
