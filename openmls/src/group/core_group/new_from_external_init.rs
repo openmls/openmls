@@ -30,7 +30,7 @@ impl CoreGroup {
     ) -> Result<ExternalCommitResult, ExternalCommitError> {
         let group_info: GroupInfo =
             Verifiable::verify(group_info, backend, params.credential_bundle().credential())
-                .map_err(|_| ExternalCommitError::InvalidPublicGroupStateSignature)?;
+                .map_err(|_| ExternalCommitError::InvalidGroupInfoSignature)?;
 
         let ciphersuite = group_info.group_context().ciphersuite();
         if group_info.group_context().protocol_version() != ProtocolVersion::Mls10 {

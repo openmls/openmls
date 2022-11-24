@@ -437,7 +437,7 @@ fn test_external_init_broken_signature(
         .proposal_store(&proposal_store)
         .build();
     assert_eq!(
-        ExternalCommitError::InvalidPublicGroupStateSignature,
+        ExternalCommitError::InvalidGroupInfoSignature,
         CoreGroup::join_by_external_commit(backend, params, None, group_info)
             .expect_err("Signature was corrupted. This should have failed.")
     );
