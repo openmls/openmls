@@ -374,24 +374,6 @@ pub(crate) struct UnverifiedExternalMessage {
     _plaintext: VerifiableMlsAuthContent,
 }
 
-impl UnverifiedExternalMessage {
-    /// Verifies the signature on an [UnverifiedExternalMessage] and returns a [VerifiedExternalMessage] if the
-    /// verification is successful.
-    /// This function implements the following checks:
-    ///  - ValSem010
-    pub(crate) fn _into_verified(
-        self,
-        backend: &impl OpenMlsCryptoProvider,
-        signature_key: &OpenMlsSignaturePublicKey,
-    ) -> Result<VerifiedExternalMessage, ValidationError> {
-        // ValSem010
-        self._plaintext
-            .verify_with_key(backend, signature_key)
-            .map(|plaintext| VerifiedExternalMessage { plaintext })
-            .map_err(|_| ValidationError::InvalidSignature)
-    }
-}
-
 /// Member message, where all semantic checks on the framing have been successfully performed.
 pub(crate) struct VerifiedMemberMessage {
     plaintext: MlsPlaintext,

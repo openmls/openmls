@@ -142,32 +142,23 @@ impl CoreGroup {
                     .map_err(|_| ProcessMessageError::InvalidSignature)?
                     .take_plaintext();
 
-                Ok(match plaintext.content() {
-                    MlsContentBody::Application(application_message) => ProcessedMessage::new(
-                        group_id,
-                        epoch,
-                        plaintext.sender().clone(),
-                        plaintext.authenticated_data().to_owned(),
+                let sender = plaintext.sender().clone();
+                let authenticated_data = plaintext.authenticated_data().to_owned();
+
+                let content = match &plaintext.content() {
+                    MlsContentBody::Application(application_message) => {
                         ProcessedMessageContent::ApplicationMessage(ApplicationMessage::new(
-                            application_message.as_slice().to_vec(),
-                        )),
-                        Some(credential),
+                            application_message.as_slice().to_owned(),
+                        ))
+                    }
+                    MlsContentBody::Proposal(_) => ProcessedMessageContent::ProposalMessage(
+                        Box::new(QueuedProposal::from_mls_plaintext(
+                            self.ciphersuite(),
+                            backend,
+                            plaintext,
+                        )?),
                     ),
-                    MlsContentBody::Proposal(_proposal) => ProcessedMessage::new(
-                        group_id,
-                        epoch,
-                        plaintext.sender().clone(),
-                        plaintext.authenticated_data().to_owned(),
-                        ProcessedMessageContent::ProposalMessage(Box::new(
-                            QueuedProposal::from_mls_plaintext(
-                                self.ciphersuite(),
-                                backend,
-                                plaintext,
-                            )?,
-                        )),
-                        Some(credential),
-                    ),
-                    MlsContentBody::Commit(_commit) => {
+                    MlsContentBody::Commit(_) => {
                         //  - ValSem100
                         //  - ValSem101
                         //  - ValSem102
@@ -196,16 +187,18 @@ impl CoreGroup {
                         //  - ValSem244
                         let staged_commit =
                             self.stage_commit(&plaintext, proposal_store, own_kpbs, backend)?;
-                        ProcessedMessage::new(
-                            group_id,
-                            epoch,
-                            plaintext.sender().clone(),
-                            plaintext.authenticated_data().to_owned(),
-                            ProcessedMessageContent::StagedCommitMessage(Box::new(staged_commit)),
-                            Some(credential),
-                        )
+                        ProcessedMessageContent::StagedCommitMessage(Box::new(staged_commit))
                     }
-                })
+                };
+
+                Ok(ProcessedMessage::new(
+                    group_id,
+                    epoch,
+                    sender,
+                    authenticated_data,
+                    content,
+                    Some(credential),
+                ))
             }
             UnverifiedContextMessage::External(_external_message) => {
                 // We don't support messages from external senders yet
@@ -218,49 +211,46 @@ impl CoreGroup {
                 let verified_new_member_message = unverified_new_member_message
                     .into_verified(backend)
                     .map_err(|_| ProcessMessageError::InvalidSignature)?;
-                Ok(match verified_new_member_message.plaintext().content() {
-                    MlsContentBody::Proposal(_proposal) => ProcessedMessage::new(
-                        group_id,
-                        epoch,
-                        verified_new_member_message.plaintext().sender().clone(),
-                        verified_new_member_message
-                            .plaintext()
-                            .authenticated_data()
-                            .to_owned(),
+                let sender = verified_new_member_message.plaintext().sender().clone();
+                let authenticated_data = verified_new_member_message
+                    .plaintext()
+                    .authenticated_data()
+                    .to_owned();
+
+                let content = match verified_new_member_message.plaintext().content() {
+                    MlsContentBody::Proposal(_) => {
                         ProcessedMessageContent::ExternalJoinProposalMessage(Box::new(
                             QueuedProposal::from_mls_plaintext(
                                 self.ciphersuite(),
                                 backend,
                                 verified_new_member_message.take_plaintext(),
                             )?,
-                        )),
-                        Some(credential),
-                    ),
-                    MlsContentBody::Commit(_commit) => {
+                        ))
+                    }
+                    MlsContentBody::Commit(_) => {
                         let staged_commit = self.stage_commit(
                             verified_new_member_message.plaintext(),
                             proposal_store,
                             own_kpbs,
                             backend,
                         )?;
-                        ProcessedMessage::new(
-                            group_id,
-                            epoch,
-                            verified_new_member_message.plaintext().sender().clone(),
-                            verified_new_member_message
-                                .plaintext()
-                                .authenticated_data()
-                                .to_owned(),
-                            ProcessedMessageContent::StagedCommitMessage(Box::new(staged_commit)),
-                            Some(credential),
-                        )
+                        ProcessedMessageContent::StagedCommitMessage(Box::new(staged_commit))
                     }
                     _ => {
                         return Err(ProcessMessageError::LibraryError(LibraryError::custom(
                             "Implementation error",
                         )))
                     }
-                })
+                };
+
+                Ok(ProcessedMessage::new(
+                    group_id,
+                    epoch,
+                    sender,
+                    authenticated_data,
+                    content,
+                    Some(credential),
+                ))
             }
         }
     }

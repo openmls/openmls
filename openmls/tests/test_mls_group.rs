@@ -215,8 +215,6 @@ fn mls_group_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoPr
             .expect("Expected a credential.")
             .clone();
 
-        //let sender = processed_message
-
         // Check that we received the correct message
         if let ProcessedMessageContent::ApplicationMessage(application_message) =
             processed_message.into_content()
