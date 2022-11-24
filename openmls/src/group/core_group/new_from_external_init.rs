@@ -93,7 +93,7 @@ impl CoreGroup {
         };
 
         let (init_secret, kem_output) =
-            InitSecret::from_public_group_state(backend, &group_info, external_pub.as_slice())
+            InitSecret::from_group_info(backend, &group_info, external_pub.as_slice())
                 .map_err(|_| ExternalCommitError::UnsupportedCiphersuite)?;
 
         // The `EpochSecrets` we create here are essentially zero, with the

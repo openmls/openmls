@@ -289,9 +289,8 @@ impl InitSecret {
         })
     }
 
-    /// Create an `InitSecret` and the corresponding `kem_output` from a public
-    /// group state.
-    pub(crate) fn from_public_group_state(
+    /// Create an `InitSecret` and the corresponding `kem_output` from a group info.
+    pub(crate) fn from_group_info(
         backend: &impl OpenMlsCryptoProvider,
         group_info: &GroupInfo,
         external_pub: &[u8],
