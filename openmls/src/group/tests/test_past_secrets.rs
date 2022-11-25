@@ -9,7 +9,7 @@ use rstest_reuse::{self, *};
 
 use crate::{
     credentials::{CredentialBundle, CredentialType},
-    framing::{MessageDecryptionError, ProcessedMessage},
+    framing::{MessageDecryptionError, ProcessedMessageContent},
     group::{errors::*, *},
     key_packages::KeyPackageBundle,
 };
@@ -153,15 +153,13 @@ fn test_past_secrets_in_group(ciphersuite: Ciphersuite, backend: &impl OpenMlsCr
         // Bob processes all update commits
 
         for update_commit in update_commits {
-            let unverified_message = bob_group
-                .parse_message(update_commit.into(), backend)
-                .expect("An unexpected error occurred.");
-
             let bob_processed_message = bob_group
-                .process_unverified_message(unverified_message, None, backend)
+                .process_message(backend, update_commit.into())
                 .expect("An unexpected error occurred.");
 
-            if let ProcessedMessage::StagedCommitMessage(staged_commit) = bob_processed_message {
+            if let ProcessedMessageContent::StagedCommitMessage(staged_commit) =
+                bob_processed_message.into_content()
+            {
                 bob_group
                     .merge_staged_commit(*staged_commit)
                     .expect("Could not merge StagedCommit");
@@ -175,11 +173,11 @@ fn test_past_secrets_in_group(ciphersuite: Ciphersuite, backend: &impl OpenMlsCr
         // The first messages should fail
         for application_message in application_messages.iter().take(max_epochs / 2) {
             let err = bob_group
-                .parse_message(application_message.clone().into(), backend)
+                .process_message(backend, application_message.clone().into())
                 .expect_err("An unexpected error occurred.");
             assert_eq!(
                 err,
-                ParseMessageError::ValidationError(ValidationError::UnableToDecrypt(
+                ProcessMessageError::ValidationError(ValidationError::UnableToDecrypt(
                     MessageDecryptionError::AeadError
                 ),)
             );
@@ -187,15 +185,12 @@ fn test_past_secrets_in_group(ciphersuite: Ciphersuite, backend: &impl OpenMlsCr
 
         // The last messages should not fail
         for application_message in application_messages.iter().skip(max_epochs / 2) {
-            let unverified_message = bob_group
-                .parse_message(application_message.clone().into(), backend)
-                .expect("An unexpected error occurred.");
-
             let bob_processed_message = bob_group
-                .process_unverified_message(unverified_message, None, backend)
+                .process_message(backend, application_message.clone().into())
                 .expect("An unexpected error occurred.");
 
-            if let ProcessedMessage::ApplicationMessage(application_message) = bob_processed_message
+            if let ProcessedMessageContent::ApplicationMessage(application_message) =
+                bob_processed_message.into_content()
             {
                 assert_eq!(application_message.into_bytes(), &[1, 2, 3]);
             } else {

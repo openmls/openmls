@@ -12,7 +12,7 @@ use crate::{
     ciphersuite::{hash_ref::ProposalRef, signable::Signable},
     credentials::*,
     framing::{
-        MlsContentBody, MlsMessageIn, MlsMessageOut, MlsPlaintext, ProcessedMessage, Sender,
+        MlsContentBody, MlsMessageIn, MlsMessageOut, MlsPlaintext, ProcessedMessageContent, Sender,
         VerifiableMlsAuthContent,
     },
     group::{errors::*, *},
@@ -334,17 +334,13 @@ fn test_valsem100(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
     let update_message_in = MlsMessageIn::from(verifiable_plaintext);
 
     // Have bob process the resulting plaintext
-    let unverified_message = bob_group
-        .parse_message(update_message_in, backend)
-        .expect("Could not parse message.");
-
     let err = bob_group
-        .process_unverified_message(unverified_message, None, backend)
-        .expect_err("Could process unverified message despite modified public key in path.");
+        .process_message(backend, update_message_in)
+        .expect_err("Could process message despite modified public key in path.");
 
     assert_eq!(
         err,
-        UnverifiedMessageError::InvalidCommit(StageCommitError::ProposalValidationError(
+        ProcessMessageError::InvalidCommit(StageCommitError::ProposalValidationError(
             ProposalValidationError::DuplicateIdentityAddProposal
         ))
     );
@@ -354,11 +350,8 @@ fn test_valsem100(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
             .expect("Could not deserialize message.");
 
     // Positive case
-    let unverified_message = bob_group
-        .parse_message(MlsMessageIn::from(original_update_plaintext), backend)
-        .expect("Could not parse message.");
     bob_group
-        .process_unverified_message(unverified_message, None, backend)
+        .process_message(backend, MlsMessageIn::from(original_update_plaintext))
         .expect("Unexpected error.");
 }
 
@@ -488,17 +481,13 @@ fn test_valsem101(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
     let update_message_in = MlsMessageIn::from(verifiable_plaintext);
 
     // Have bob process the resulting plaintext
-    let unverified_message = bob_group
-        .parse_message(update_message_in, backend)
-        .expect("Could not parse message.");
-
     let err = bob_group
-        .process_unverified_message(unverified_message, None, backend)
-        .expect_err("Could process unverified message despite modified public key in path.");
+        .process_message(backend, update_message_in)
+        .expect_err("Could process message despite modified public key in path.");
 
     assert_eq!(
         err,
-        UnverifiedMessageError::InvalidCommit(StageCommitError::ProposalValidationError(
+        ProcessMessageError::InvalidCommit(StageCommitError::ProposalValidationError(
             ProposalValidationError::DuplicateSignatureKeyAddProposal
         ))
     );
@@ -508,11 +497,8 @@ fn test_valsem101(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
             .expect("Could not deserialize message.");
 
     // Positive case
-    let unverified_message = bob_group
-        .parse_message(MlsMessageIn::from(original_update_plaintext), backend)
-        .expect("Could not parse message.");
     bob_group
-        .process_unverified_message(unverified_message, None, backend)
+        .process_message(backend, MlsMessageIn::from(original_update_plaintext))
         .expect("Unexpected error.");
 }
 
@@ -649,17 +635,13 @@ fn test_valsem102(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
     let update_message_in = MlsMessageIn::from(verifiable_plaintext);
 
     // Have bob process the resulting plaintext
-    let unverified_message = bob_group
-        .parse_message(update_message_in, backend)
-        .expect("Could not parse message.");
-
     let err = bob_group
-        .process_unverified_message(unverified_message, None, backend)
-        .expect_err("Could process unverified message despite modified public key in path.");
+        .process_message(backend, update_message_in)
+        .expect_err("Could process message despite modified public key in path.");
 
     assert_eq!(
         err,
-        UnverifiedMessageError::InvalidCommit(StageCommitError::ProposalValidationError(
+        ProcessMessageError::InvalidCommit(StageCommitError::ProposalValidationError(
             ProposalValidationError::DuplicatePublicKeyAddProposal
         ))
     );
@@ -669,11 +651,8 @@ fn test_valsem102(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
             .expect("Could not deserialize message.");
 
     // Positive case
-    let unverified_message = bob_group
-        .parse_message(MlsMessageIn::from(original_update_plaintext), backend)
-        .expect("Could not parse message.");
     bob_group
-        .process_unverified_message(unverified_message, None, backend)
+        .process_message(backend, MlsMessageIn::from(original_update_plaintext))
         .expect("Unexpected error.");
 }
 
@@ -761,17 +740,13 @@ fn test_valsem103(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
     let update_message_in = MlsMessageIn::from(verifiable_plaintext);
 
     // Have bob process the resulting plaintext
-    let unverified_message = bob_group
-        .parse_message(update_message_in, backend)
-        .expect("Could not parse message.");
-
     let err = bob_group
-        .process_unverified_message(unverified_message, None, backend)
-        .expect_err("Could process unverified message despite modified public key in path.");
+        .process_message(backend, update_message_in)
+        .expect_err("Could process message despite modified public key in path.");
 
     assert_eq!(
         err,
-        UnverifiedMessageError::InvalidCommit(StageCommitError::ProposalValidationError(
+        ProcessMessageError::InvalidCommit(StageCommitError::ProposalValidationError(
             ProposalValidationError::ExistingIdentityAddProposal
         ))
     );
@@ -781,11 +756,8 @@ fn test_valsem103(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
             .expect("Could not deserialize message.");
 
     // Positive case
-    let unverified_message = bob_group
-        .parse_message(MlsMessageIn::from(original_update_plaintext), backend)
-        .expect("Could not parse message.");
     bob_group
-        .process_unverified_message(unverified_message, None, backend)
+        .process_message(backend, MlsMessageIn::from(original_update_plaintext))
         .expect("Unexpected error.");
 }
 
@@ -933,17 +905,13 @@ fn test_valsem104(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
     let update_message_in = MlsMessageIn::from(verifiable_plaintext);
 
     // Have bob process the resulting plaintext
-    let unverified_message = bob_group
-        .parse_message(update_message_in, backend)
-        .expect("Could not parse message.");
-
     let err = bob_group
-        .process_unverified_message(unverified_message, None, backend)
-        .expect_err("Could process unverified message despite modified public key in path.");
+        .process_message(backend, update_message_in)
+        .expect_err("Could process message despite modified public key in path.");
 
     assert_eq!(
         err,
-        UnverifiedMessageError::InvalidCommit(StageCommitError::ProposalValidationError(
+        ProcessMessageError::InvalidCommit(StageCommitError::ProposalValidationError(
             ProposalValidationError::ExistingSignatureKeyAddProposal
         ))
     );
@@ -953,11 +921,8 @@ fn test_valsem104(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
             .expect("Could not deserialize message.");
 
     // Positive case
-    let unverified_message = bob_group
-        .parse_message(MlsMessageIn::from(original_update_plaintext), backend)
-        .expect("Could not parse message.");
     bob_group
-        .process_unverified_message(unverified_message, None, backend)
+        .process_message(backend, MlsMessageIn::from(original_update_plaintext))
         .expect("Unexpected error.");
 }
 
@@ -1101,17 +1066,13 @@ fn test_valsem105(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
     let update_message_in = MlsMessageIn::from(verifiable_plaintext);
 
     // Have bob process the resulting plaintext
-    let unverified_message = bob_group
-        .parse_message(update_message_in, backend)
-        .expect("Could not parse message.");
-
     let err = bob_group
-        .process_unverified_message(unverified_message, None, backend)
-        .expect_err("Could process unverified message despite modified public key in path.");
+        .process_message(backend, update_message_in)
+        .expect_err("Could process message despite modified public key in path.");
 
     assert_eq!(
         err,
-        UnverifiedMessageError::InvalidCommit(StageCommitError::ProposalValidationError(
+        ProcessMessageError::InvalidCommit(StageCommitError::ProposalValidationError(
             ProposalValidationError::ExistingPublicKeyAddProposal
         ))
     );
@@ -1121,11 +1082,8 @@ fn test_valsem105(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
             .expect("Could not deserialize message.");
 
     // Positive case
-    let unverified_message = bob_group
-        .parse_message(MlsMessageIn::from(original_update_plaintext), backend)
-        .expect("Could not parse message.");
     bob_group
-        .process_unverified_message(unverified_message, None, backend)
+        .process_message(backend, MlsMessageIn::from(original_update_plaintext))
         .expect("Unexpected error.");
 }
 
@@ -1336,27 +1294,21 @@ fn test_valsem106(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
             }
 
             // Have bob process the resulting plaintext
-            let unverified_message = bob_group
-                .parse_message(update_message_in, backend)
-                .expect("Could not parse message.");
-
             let err = bob_group
-                .process_unverified_message(unverified_message, None, backend)
-                .expect_err("Could process unverified message despite injected add proposal.");
+                .process_message(backend, update_message_in)
+                .expect_err("Could process message despite injected add proposal.");
 
             let expected_error = match key_package_version {
                 // We get an error even if the key package is valid. This is
                 // because Bob would expect the encrypted path in the commit to
                 // be longer due to the included Add proposal. Since we added
                 // the Add artificially, we thus have a path length mismatch.
-                KeyPackageTestVersion::ValidTestCase => UnverifiedMessageError::InvalidCommit(
+                KeyPackageTestVersion::ValidTestCase => ProcessMessageError::InvalidCommit(
                     StageCommitError::UpdatePathError(ApplyUpdatePathError::PathLengthMismatch),
                 ),
-                _ => UnverifiedMessageError::InvalidCommit(
-                    StageCommitError::ProposalValidationError(
-                        ProposalValidationError::InsufficientCapabilities,
-                    ),
-                ),
+                _ => ProcessMessageError::InvalidCommit(StageCommitError::ProposalValidationError(
+                    ProposalValidationError::InsufficientCapabilities,
+                )),
             };
 
             assert_eq!(err, expected_error);
@@ -1366,11 +1318,8 @@ fn test_valsem106(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
                     .expect("Could not deserialize message.");
 
             // Positive case
-            let unverified_message = bob_group
-                .parse_message(MlsMessageIn::from(original_update_plaintext), backend)
-                .expect("Could not parse message.");
             bob_group
-                .process_unverified_message(unverified_message, None, backend)
+                .process_message(backend, MlsMessageIn::from(original_update_plaintext))
                 .expect("Unexpected error.");
         }
 
@@ -1554,17 +1503,13 @@ fn test_valsem108(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
     let update_message_in = MlsMessageIn::from(verifiable_plaintext);
 
     // Have bob process the resulting plaintext
-    let unverified_message = bob_group
-        .parse_message(update_message_in, backend)
-        .expect("Could not parse message.");
-
     let err = bob_group
-        .process_unverified_message(unverified_message, None, backend)
-        .expect_err("Could process unverified message despite modified public key in path.");
+        .process_message(backend, update_message_in)
+        .expect_err("Could process message despite modified public key in path.");
 
     assert_eq!(
         err,
-        UnverifiedMessageError::InvalidCommit(StageCommitError::ProposalValidationError(
+        ProcessMessageError::InvalidCommit(StageCommitError::ProposalValidationError(
             ProposalValidationError::UnknownMemberRemoval
         ))
     );
@@ -1574,11 +1519,8 @@ fn test_valsem108(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
             .expect("Could not deserialize message.");
 
     // Positive case
-    let unverified_message = bob_group
-        .parse_message(MlsMessageIn::from(original_update_plaintext), backend)
-        .expect("Could not parse message.");
     bob_group
-        .process_unverified_message(unverified_message, None, backend)
+        .process_message(backend, MlsMessageIn::from(original_update_plaintext))
         .expect("Unexpected error.");
 }
 
@@ -1630,13 +1572,10 @@ fn test_valsem109(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
         .expect("error while creating remove proposal");
 
     // Have Alice process this proposal.
-    let unverified_message = alice_group
-        .parse_message(update_proposal.into(), backend)
-        .expect("error parsing message");
-
-    if let ProcessedMessage::ProposalMessage(proposal) = alice_group
-        .process_unverified_message(unverified_message, None, backend)
+    if let ProcessedMessageContent::ProposalMessage(proposal) = alice_group
+        .process_message(backend, update_proposal.into())
         .expect("error processing proposal")
+        .into_content()
     {
         alice_group.store_pending_proposal(*proposal)
     } else {
@@ -1696,17 +1635,13 @@ fn test_valsem109(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
     let update_message_in = MlsMessageIn::from(verifiable_plaintext);
 
     // Have bob process the resulting plaintext
-    let unverified_message = bob_group
-        .parse_message(update_message_in, backend)
-        .expect("Could not parse message.");
-
     let err = bob_group
-        .process_unverified_message(unverified_message, None, backend)
-        .expect_err("Could process unverified message despite modified public key in path.");
+        .process_message(backend, update_message_in)
+        .expect_err("Could process message despite modified public key in path.");
 
     assert_eq!(
         err,
-        UnverifiedMessageError::InvalidCommit(StageCommitError::ProposalValidationError(
+        ProcessMessageError::InvalidCommit(StageCommitError::ProposalValidationError(
             ProposalValidationError::UpdateProposalIdentityMismatch
         ))
     );
@@ -1716,11 +1651,8 @@ fn test_valsem109(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
             .expect("Could not deserialize message.");
 
     // Positive case
-    let unverified_message = bob_group
-        .parse_message(MlsMessageIn::from(original_update_plaintext), backend)
-        .expect("Could not parse message.");
     bob_group
-        .process_unverified_message(unverified_message, None, backend)
+        .process_message(backend, MlsMessageIn::from(original_update_plaintext))
         .expect("Unexpected error.");
 }
 
@@ -1786,13 +1718,10 @@ fn test_valsem110(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
         .expect("error while creating remove proposal");
 
     // Have Alice process this proposal.
-    let unverified_message = alice_group
-        .parse_message(update_proposal.into(), backend)
-        .expect("error parsing message");
-
-    if let ProcessedMessage::ProposalMessage(proposal) = alice_group
-        .process_unverified_message(unverified_message, None, backend)
+    if let ProcessedMessageContent::ProposalMessage(proposal) = alice_group
+        .process_message(backend, update_proposal.into())
         .expect("error processing proposal")
+        .into_content()
     {
         alice_group.store_pending_proposal(*proposal)
     } else {
@@ -1852,17 +1781,13 @@ fn test_valsem110(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
     let update_message_in = MlsMessageIn::from(verifiable_plaintext);
 
     // Have bob process the resulting plaintext
-    let unverified_message = bob_group
-        .parse_message(update_message_in, backend)
-        .expect("Could not parse message.");
-
     let err = bob_group
-        .process_unverified_message(unverified_message, None, backend)
-        .expect_err("Could process unverified message despite modified public key in path.");
+        .process_message(backend, update_message_in)
+        .expect_err("Could process message despite modified public key in path.");
 
     assert_eq!(
         err,
-        UnverifiedMessageError::InvalidCommit(StageCommitError::ProposalValidationError(
+        ProcessMessageError::InvalidCommit(StageCommitError::ProposalValidationError(
             ProposalValidationError::ExistingPublicKeyUpdateProposal
         ))
     );
@@ -1872,11 +1797,8 @@ fn test_valsem110(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
             .expect("Could not deserialize message.");
 
     // Positive case
-    let unverified_message = bob_group
-        .parse_message(MlsMessageIn::from(original_update_plaintext), backend)
-        .expect("Could not parse message.");
     bob_group
-        .process_unverified_message(unverified_message, None, backend)
+        .process_message(backend, MlsMessageIn::from(original_update_plaintext))
         .expect("Unexpected error.");
 }
 
@@ -1958,17 +1880,13 @@ fn test_valsem111(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
     let update_message_in = MlsMessageIn::from(verifiable_plaintext);
 
     // Have bob process the resulting plaintext
-    let unverified_message = bob_group
-        .parse_message(update_message_in, backend)
-        .expect("Could not parse message.");
-
     let err = bob_group
-        .process_unverified_message(unverified_message, None, backend)
-        .expect_err("Could process unverified message despite modified public key in path.");
+        .process_message(backend, update_message_in)
+        .expect_err("Could process message despite modified public key in path.");
 
     assert_eq!(
         err,
-        UnverifiedMessageError::InvalidCommit(StageCommitError::ProposalValidationError(
+        ProcessMessageError::InvalidCommit(StageCommitError::ProposalValidationError(
             ProposalValidationError::CommitterIncludedOwnUpdate
         ))
     );
@@ -2021,17 +1939,13 @@ fn test_valsem111(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
     let update_message_in = MlsMessageIn::from(verifiable_plaintext);
 
     // Have bob process the resulting plaintext
-    let unverified_message = bob_group
-        .parse_message(update_message_in, backend)
-        .expect("Could not parse message.");
-
     let err = bob_group
-        .process_unverified_message(unverified_message, None, backend)
-        .expect_err("Could process unverified message despite modified public key in path.");
+        .process_message(backend, update_message_in)
+        .expect_err("Could process message despite modified public key in path.");
 
     assert_eq!(
         err,
-        UnverifiedMessageError::InvalidCommit(StageCommitError::ProposalValidationError(
+        ProcessMessageError::InvalidCommit(StageCommitError::ProposalValidationError(
             ProposalValidationError::CommitterIncludedOwnUpdate
         ))
     );
@@ -2041,11 +1955,8 @@ fn test_valsem111(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
             .expect("Could not deserialize message.");
 
     // Positive case
-    let unverified_message = bob_group
-        .parse_message(MlsMessageIn::from(original_update_plaintext), backend)
-        .expect("Could not parse message.");
     bob_group
-        .process_unverified_message(unverified_message, None, backend)
+        .process_message(backend, MlsMessageIn::from(original_update_plaintext))
         .expect("Unexpected error.");
 }
 
@@ -2095,12 +2006,12 @@ fn test_valsem112(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
 
     // Have bob process the resulting plaintext
     let err = bob_group
-        .parse_message(update_message_in, backend)
-        .expect_err("Could parse unverified message despite modified public key in path.");
+        .process_message(backend, update_message_in)
+        .expect_err("Could parse message despite modified public key in path.");
 
     assert_eq!(
         err,
-        ParseMessageError::ValidationError(ValidationError::NotACommit)
+        ProcessMessageError::ValidationError(ValidationError::NotACommit)
     );
 
     // We can't test with sender type External, since that currently panics
@@ -2108,10 +2019,7 @@ fn test_valsem112(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
     // TODO This test should thus be extended when fixing #106.
 
     // Positive case
-    let unverified_message = bob_group
-        .parse_message(MlsMessageIn::from(original_plaintext), backend)
-        .expect("Could not parse message.");
     bob_group
-        .process_unverified_message(unverified_message, None, backend)
+        .process_message(backend, MlsMessageIn::from(original_plaintext))
         .expect("Unexpected error.");
 }
