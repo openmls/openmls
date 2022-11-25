@@ -161,19 +161,17 @@ impl Client {
                 group_state.clear_pending_commit();
             }
             // Process the message.
-            let unverified_message = group_state.parse_message(message.clone(), &self.crypto)?;
-            let processed_message =
-                group_state.process_unverified_message(unverified_message, None, &self.crypto)?;
+            let processed_message = group_state.process_message(&self.crypto, message.clone())?;
 
-            match processed_message {
-                ProcessedMessage::ApplicationMessage(_) => {}
-                ProcessedMessage::ProposalMessage(staged_proposal) => {
+            match processed_message.into_content() {
+                ProcessedMessageContent::ApplicationMessage(_) => {}
+                ProcessedMessageContent::ProposalMessage(staged_proposal) => {
                     group_state.store_pending_proposal(*staged_proposal);
                 }
-                ProcessedMessage::ExternalJoinProposalMessage(staged_proposal) => {
+                ProcessedMessageContent::ExternalJoinProposalMessage(staged_proposal) => {
                     group_state.store_pending_proposal(*staged_proposal);
                 }
-                ProcessedMessage::StagedCommitMessage(staged_commit) => {
+                ProcessedMessageContent::StagedCommitMessage(staged_commit) => {
                     group_state.merge_staged_commit(*staged_commit)?;
                 }
             }

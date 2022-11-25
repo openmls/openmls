@@ -53,9 +53,9 @@ pub enum ClientError {
     FailedToJoinGroup(#[from] WelcomeError),
     #[error(transparent)]
     TlsCodecError(#[from] tls_codec::Error),
-    /// See [`UnverifiedMessageError`] for more details.
+    /// See [`ProcessMessageError`] for more details.
     #[error(transparent)]
-    UnverifiedMessageError(#[from] UnverifiedMessageError),
+    ProcessMessageError(#[from] ProcessMessageError),
     /// See [`MlsGroupStateError`] for more details.
     #[error(transparent)]
     MlsGroupStateError(#[from] MlsGroupStateError),
@@ -83,9 +83,6 @@ pub enum ClientError {
     /// See [`ProposeSelfUpdateError`] for more details.
     #[error(transparent)]
     ProposeSelfUpdateError(#[from] ProposeSelfUpdateError),
-    /// See [`ParseMessageError`] for more details.
-    #[error(transparent)]
-    ParseMessageError(#[from] ParseMessageError),
     /// See [`LibraryError`] for more details.
     #[error(transparent)]
     LibraryError(#[from] LibraryError),

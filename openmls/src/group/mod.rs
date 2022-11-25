@@ -4,6 +4,7 @@
 
 mod group_context;
 
+#[cfg(any(feature = "test-utils", test))]
 use crate::ciphersuite::*;
 use crate::extensions::*;
 use crate::utils::*;

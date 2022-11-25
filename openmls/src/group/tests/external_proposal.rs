@@ -1,19 +1,19 @@
-use openmls_rust_crypto::OpenMlsRustCrypto;
-
 use rstest::*;
 use rstest_reuse::{self, *};
+use tls_codec::Serialize;
 
 use crate::{
     credentials::*,
     framing::*,
-    group::errors::*,
-    group::*,
+    group::{errors::*, *},
     messages::{
         external_proposals::*,
         proposals::{AddProposal, Proposal, ProposalType},
     },
 };
 
+use openmls_rust_crypto::OpenMlsRustCrypto;
+use openmls_traits::key_store::OpenMlsKeyStore;
 use openmls_traits::types::Ciphersuite;
 
 use super::utils::*;
@@ -151,27 +151,12 @@ fn external_add_proposal_should_succeed(
             matches!(proposal.mls_message.body, MlsMessageBody::Plaintext(ref msg) if verify_proposal(msg))
         );
 
-        // Alice & Bob process the proposal
-        let parsed = alice_group
-            .parse_message(proposal.clone().into(), backend)
-            .unwrap();
-
-        // message verification should fail with an invalid signature key i.e. != Charlie's one
-        let (_, attacker_key) = SignatureKeypair::new(ciphersuite.signature_algorithm(), backend)
-            .unwrap()
-            .into_tuple();
-        assert!(matches!(
-            alice_group
-                .process_unverified_message(parsed.clone(), Some(&attacker_key), backend)
-                .unwrap_err(),
-            UnverifiedMessageError::InvalidSignature
-        ));
         let msg = alice_group
-            .process_unverified_message(parsed, None, backend)
+            .process_message(backend, proposal.clone().into())
             .unwrap();
 
-        match msg {
-            ProcessedMessage::ExternalJoinProposalMessage(proposal) => {
+        match msg.into_content() {
+            ProcessedMessageContent::ExternalJoinProposalMessage(proposal) => {
                 assert!(matches!(proposal.sender(), Sender::NewMemberProposal));
                 assert!(matches!(
                     proposal.proposal(),
@@ -182,13 +167,10 @@ fn external_add_proposal_should_succeed(
             _ => unreachable!(),
         }
 
-        let parsed = bob_group.parse_message(proposal.into(), backend).unwrap();
-        let msg = bob_group
-            .process_unverified_message(parsed, None, backend)
-            .unwrap();
+        let msg = bob_group.process_message(backend, proposal.into()).unwrap();
 
-        match msg {
-            ProcessedMessage::ExternalJoinProposalMessage(proposal) => {
+        match msg.into_content() {
+            ProcessedMessageContent::ExternalJoinProposalMessage(proposal) => {
                 bob_group.store_pending_proposal(*proposal)
             }
             _ => unreachable!(),
@@ -200,12 +182,9 @@ fn external_add_proposal_should_succeed(
         assert_eq!(alice_group.members().unwrap().len(), 3);
 
         // Bob will also process the commit
-        let parsed = bob_group.parse_message(commit.into(), backend).unwrap();
-        let msg = bob_group
-            .process_unverified_message(parsed, None, backend)
-            .unwrap();
-        match msg {
-            ProcessedMessage::StagedCommitMessage(commit) => {
+        let msg = bob_group.process_message(backend, commit.into()).unwrap();
+        match msg.into_content() {
+            ProcessedMessageContent::StagedCommitMessage(commit) => {
                 bob_group.merge_staged_commit(*commit).unwrap()
             }
             _ => unreachable!(),
@@ -265,14 +244,11 @@ fn external_add_proposal_should_be_signed_by_key_package_it_references(
     .unwrap();
 
     // fails because the message was not signed by the same credential as the one in the Add proposal
-    let invalid_msg = alice_group
-        .parse_message(invalid_proposal.into(), backend)
-        .unwrap();
     assert!(matches!(
         alice_group
-            .process_unverified_message(invalid_msg, None, backend)
+            .process_message(backend, invalid_proposal.into())
             .unwrap_err(),
-        UnverifiedMessageError::InvalidSignature
+        ProcessMessageError::InvalidSignature
     ));
 }
 
@@ -295,12 +271,43 @@ fn new_member_proposal_sender_should_be_reserved_for_join_proposals(
         backend,
     )
     .unwrap();
+
+    let any_credential_bundle: CredentialBundle = backend
+        .key_store()
+        .read(
+            &any_credential
+                .signature_key()
+                .tls_serialize_detached()
+                .expect("Could not serialize signature key."),
+        )
+        .expect("Could not read signature key from key store.");
+
     let any_kp =
         generate_key_package_bundle(&[ciphersuite], &any_credential, vec![], backend).unwrap();
-    let add_proposal = alice_group.propose_add_member(backend, &any_kp).unwrap();
-    if let MlsMessageBody::Plaintext(mut plaintext) = add_proposal.mls_message.body {
-        plaintext.set_sender(Sender::NewMemberProposal);
-        assert!(bob_group.parse_message(plaintext.into(), backend).is_ok());
+
+    let join_proposal = JoinProposal::new(
+        any_kp,
+        alice_group.group_id().clone(),
+        alice_group.epoch(),
+        &any_credential_bundle,
+        backend,
+    )
+    .unwrap();
+
+    if let MlsMessageBody::Plaintext(plaintext) = &join_proposal.mls_message.body {
+        // Make sure it's an add proposal...
+        assert!(matches!(
+            plaintext.content(),
+            MlsContentBody::Proposal(Proposal::Add(_))
+        ));
+
+        // ... and that it has the right sender type
+        assert!(matches!(plaintext.sender(), Sender::NewMemberProposal));
+
+        // Finally check that the message can be processed without errors
+        assert!(bob_group
+            .process_message(backend, join_proposal.into())
+            .is_ok());
     } else {
         panic!()
     };
@@ -312,9 +319,9 @@ fn new_member_proposal_sender_should_be_reserved_for_join_proposals(
         plaintext.set_sender(Sender::NewMemberProposal);
         assert!(matches!(
             bob_group
-                .parse_message(plaintext.into(), backend)
+                .process_message(backend, plaintext.into())
                 .unwrap_err(),
-            ParseMessageError::ValidationError(ValidationError::NotAnExternalAddProposal)
+            ProcessMessageError::ValidationError(ValidationError::NotAnExternalAddProposal)
         ));
     } else {
         panic!()
@@ -327,9 +334,9 @@ fn new_member_proposal_sender_should_be_reserved_for_join_proposals(
         plaintext.set_sender(Sender::NewMemberProposal);
         assert!(matches!(
             bob_group
-                .parse_message(plaintext.into(), backend)
+                .process_message(backend, plaintext.into())
                 .unwrap_err(),
-            ParseMessageError::ValidationError(ValidationError::NotAnExternalAddProposal)
+            ProcessMessageError::ValidationError(ValidationError::NotAnExternalAddProposal)
         ));
     } else {
         panic!()
