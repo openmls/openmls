@@ -372,6 +372,8 @@ If the group configuration does not use the ratchet tree extension, the ratchet 
     )
     .expect(&quot;Error joining group from Welcome&quot;);
 </code></pre>
+<p>Pay attention not to forward a Welcome message to a client before its associated commit has been accepted by the 
+Delivery Service. Otherwise, you would end up with an invalid MLS group instance.</p>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="adding-members-to-a-group"><a class="header" href="#adding-members-to-a-group">Adding members to a group</a></h1>
 <h2 id="immediate-operation"><a class="header" href="#immediate-operation">Immediate operation</a></h2>
 <p>Members can be added to the group atomically with the <code>.add_members()</code> function. The application needs to fetch the corresponding key packages from every new member from the Delivery Service first.</p>
@@ -1162,6 +1164,9 @@ prepared diff.</p>
 committer is stored in the diff. It exists alongside the key material of the
 ratchet tree before the commit until the client merges the diff, upon which the
 key material in the original ratchet tree is dropped.</p>
+<p>Because the client cannot know if the commit it creates will conflict with another commit created by another client
+for the same epoch, it MUST wait for the acknowledgement from the Delivery Service before merging the diff and dropping
+the previous ratchet tree.</p>
 <h3 id="commit-processing"><a class="header" href="#commit-processing">Commit Processing</a></h3>
 <p>Upon receiving a commit from another group member, the client processes the
 commit until they have a <code>StagedCommit</code>, which in turn contains a ratchet tree
