@@ -24,7 +24,8 @@ fn test_insert_unmerged_leaf() {
     assert_eq!(parent_node.unmerged_leaves(), &[1, 3, 5, 7, 9]);
 }
 
-// Verify that we cannot successfully deserialize a ParentNode that has an unsorted list of unmerged leaves.
+// Verify that we cannot successfully deserialize a ParentNode that has an
+// unsorted list of unmerged leaves.
 #[test]
 fn test_deserialize_unsorted_unmerged_leaves() {
     let public_key: HpkePublicKey = Vec::new().into();
@@ -44,7 +45,8 @@ fn test_deserialize_unsorted_unmerged_leaves() {
     assert!(matches!(err, tls_codec::Error::DecodingError(_)));
 }
 
-// Verify that we can successfully deserialize a ParentNode that has a sorted list of unmerged leaves.
+// Verify that we can successfully deserialize a ParentNode that has a sorted
+// list of unmerged leaves.
 #[test]
 fn test_deserialize_sorted_unmerged_leaves() {
     let public_key: HpkePublicKey = Vec::new().into();
@@ -61,6 +63,7 @@ fn test_deserialize_sorted_unmerged_leaves() {
     let deserialized_parent_node =
         ParentNode::tls_deserialize(&mut serialized_parent_node.as_slice()).unwrap();
 
-    // We expect the deserialized parent node to have the same unmerged leaves as the original one
+    // We expect the deserialized parent node to have the same unmerged leaves
+    // as the original one
     assert_eq!(deserialized_parent_node.unmerged_leaves(), &[1, 3, 5, 7, 9]);
 }
