@@ -107,14 +107,17 @@ pub enum ExtensionType {
     /// The capabilities extension indicates what protocol versions, ciphersuites,
     /// protocol extensions, and non-default proposal types are supported by a
     /// client.
+    /// TODO(#819): This extension will be deleted.
     Capabilities = 0xff00,
 
     /// The lifetime extension represents the times between which clients will
     /// consider a KeyPackage valid.
+    /// TODO(#819): This extension will be deleted.
     Lifetime = 0xff01,
 
     /// The parent hash extension carries information to authenticate the
     /// structure of the tree, as described below.
+    /// TODO(#819): This extension will be deleted.
     ParentHash = 0xff02,
 }
 
@@ -187,12 +190,15 @@ pub enum Extension {
     ExternalPub(ExternalPubExtension),
 
     /// A [`CapabilitiesExtension`]
+    /// TODO(#819): This extension will be deleted.
     Capabilities(CapabilitiesExtension),
 
     /// A [`LifetimeExtension`]
+    /// TODO(#819): This extension will be deleted.
     Lifetime(LifetimeExtension),
 
     /// A [`ParentHashExtension`]
+    /// TODO(#819): This extension will be deleted.
     ParentHash(ParentHashExtension),
 }
 
