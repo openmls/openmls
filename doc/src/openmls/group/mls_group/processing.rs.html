@@ -158,46 +158,33 @@
 <span id="158">158</span>
 <span id="159">159</span>
 <span id="160">160</span>
-<span id="161">161</span>
-<span id="162">162</span>
-<span id="163">163</span>
-<span id="164">164</span>
-<span id="165">165</span>
-<span id="166">166</span>
-<span id="167">167</span>
-<span id="168">168</span>
-<span id="169">169</span>
-<span id="170">170</span>
-<span id="171">171</span>
-<span id="172">172</span>
-<span id="173">173</span>
-<span id="174">174</span>
 </pre><pre class="rust"><code><span class="doccomment">//! Processing functions of an [`MlsGroup`] for incoming messages.
 
 </span><span class="kw">use </span>std::mem;
 
-<span class="kw">use </span>core_group::{
-    create_commit_params::CreateCommitParams, proposals::QueuedProposal,
-    staged_commit::StagedCommit,
-};
+<span class="kw">use </span>core_group::{create_commit_params::CreateCommitParams, staged_commit::StagedCommit};
 <span class="kw">use </span>tls_codec::Serialize;
 
-<span class="kw">use super</span>::{errors::UnverifiedMessageError, <span class="kw-2">*</span>};
+<span class="kw">use super</span>::{errors::ProcessMessageError, <span class="kw-2">*</span>};
 
 <span class="kw">impl </span>MlsGroup {
-    <span class="doccomment">/// Parses incoming messages from the DS.
-    /// Checks for syntactic errors and makes some semantic checks as well.
-    /// If the input is an encrypted message, it will be decrypted.
-    /// Returns an [`UnverifiedMessage`] that can be inspected and later processed in
-    /// [`Self::process_unverified_message()`].
-    </span><span class="kw">pub fn </span>parse_message(
+    <span class="doccomment">/// Parses incoming messages from the DS. Checks for syntactic errors and
+    /// makes some semantic checks as well. If the input is an encrypted
+    /// message, it will be decrypted. This processing function does syntactic
+    /// and semantic validation of the message. It returns a [ProcessedMessage]
+    /// enum.
+    ///
+    /// # Errors:
+    /// Returns an [`ProcessMessageError`] when the validation checks fail
+    /// with the exact reason of the failure.
+    </span><span class="kw">pub fn </span>process_message(
         <span class="kw-2">&amp;mut </span><span class="self">self</span>,
-        message: MlsMessageIn,
         backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;UnverifiedMessage, ParseMessageError&gt; {
+        message: MlsMessageIn,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;ProcessedMessage, ProcessMessageError&gt; {
         <span class="comment">// Make sure we are still a member of the group
         </span><span class="kw">if </span>!<span class="self">self</span>.is_active() {
-            <span class="kw">return </span><span class="prelude-val">Err</span>(ParseMessageError::GroupStateError(
+            <span class="kw">return </span><span class="prelude-val">Err</span>(ProcessMessageError::GroupStateError(
                 MlsGroupStateError::UseAfterEviction,
             ));
         }
@@ -211,7 +198,7 @@
                 .incoming()
                 .is_compatible_with(message.wire_format())
         {
-            <span class="kw">return </span><span class="prelude-val">Err</span>(ParseMessageError::IncompatibleWireFormat);
+            <span class="kw">return </span><span class="prelude-val">Err</span>(ProcessMessageError::IncompatibleWireFormat);
         }
 
         <span class="comment">// Since the state of the group might be changed, arm the state flag
@@ -220,27 +207,12 @@
         <span class="comment">// Parse the message
         </span><span class="kw">let </span>sender_ratchet_configuration =
             <span class="self">self</span>.configuration().sender_ratchet_configuration().clone();
-        <span class="self">self</span>.group
-            .parse_message(backend, message, <span class="kw-2">&amp;</span>sender_ratchet_configuration)
-            .map_err(ParseMessageError::from)
-    }
-
-    <span class="doccomment">/// This processing function does most of the semantic verifications.
-    /// It returns a [ProcessedMessage] enum.
-    /// Returns an [`UnverifiedMessageError`] when the validation checks fail
-    /// with the exact reason of the failure.
-    </span><span class="kw">pub fn </span>process_unverified_message(
-        <span class="kw-2">&amp;</span><span class="self">self</span>,
-        unverified_message: UnverifiedMessage,
-        signature_key: <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>OpenMlsSignaturePublicKey&gt;,
-        backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;ProcessedMessage, UnverifiedMessageError&gt; {
-        <span class="self">self</span>.group.process_unverified_message(
-            unverified_message,
-            signature_key,
+        <span class="self">self</span>.group.process_message(
+            backend,
+            message,
+            <span class="kw-2">&amp;</span>sender_ratchet_configuration,
             <span class="kw-2">&amp;</span><span class="self">self</span>.proposal_store,
             <span class="kw-2">&amp;</span><span class="self">self</span>.own_kpbs,
-            backend,
         )
     }
 

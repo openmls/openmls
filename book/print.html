@@ -401,14 +401,11 @@ proposals are crafted by outsiders, they are always plaintext messages.</p>
 </code></pre>
 <p>It is then up to the group members to validate the proposal and commit it.
 Note that in this scenario it is up to the application to define a proper authorization policy to grant the sender. </p>
-<pre><code class="language-rust no_run noplayground">    let unverified_message = alice_group
-        .parse_message(proposal.into(), backend)
-        .expect(&quot;Could not parse message.&quot;);
-    let alice_processed_message = alice_group
-        .process_unverified_message(unverified_message, None, backend)
-        .expect(&quot;Could not process unverified message.&quot;);
-    match alice_processed_message {
-        ProcessedMessage::ExternalJoinProposalMessage(proposal) =&gt; {
+<pre><code class="language-rust no_run noplayground">    let alice_processed_message = alice_group
+        .process_message(backend, proposal.into())
+        .expect(&quot;Could not process message.&quot;);
+    match alice_processed_message.into_content() {
+        ProcessedMessageContent::ExternalJoinProposalMessage(proposal) =&gt; {
             alice_group.store_pending_proposal(*proposal);
             let (_commit, welcome) = alice_group
                 .commit_to_pending_proposals(backend)
@@ -445,7 +442,9 @@ Even though members were removed in this operation, the Commit message could pot
 <p>In this case, the function returns an <code>MlsMessageOut</code> that needs to be fanned out to existing group members.</p>
 <h2 id="getting-removed-from-a-group"><a class="header" href="#getting-removed-from-a-group">Getting removed from a group</a></h2>
 <p>A member is removed from a group if another member commits to a remove proposal targeting the member's leaf. Once the to-be-removed member merges that commit via <code>merge_staged_commit()</code>, all other proposals in that commit will still be applied, but the group will be marked as inactive afterward. The group remains usable, e.g., to examine the membership list after the final commit was processed, but it won't be possible to create or process new messages.</p>
-<pre><code class="language-rust no_run noplayground">    if let ProcessedMessage::StagedCommitMessage(staged_commit) = bob_processed_message {
+<pre><code class="language-rust no_run noplayground">    if let ProcessedMessageContent::StagedCommitMessage(staged_commit) =
+        bob_processed_message.into_content()
+    {
         let remove_proposal = staged_commit
             .remove_proposals()
             .next()
@@ -547,35 +546,33 @@ If the Commit message also covers Add Proposals previously received in the epoch
         MlsMessageIn::try_from_bytes(&amp;bytes).expect(&quot;Could not deserialize message.&quot;);
 </code></pre>
 <p>If the message is malformed, the function will fail with an error.</p>
-<h2 id="parsing-messages"><a class="header" href="#parsing-messages">Parsing messages</a></h2>
-<p>In the next step, the incoming message needs to be parsed. If the message was encrypted, it will be decrypted automatically:</p>
-<pre><code class="language-rust no_run noplayground">    let unverified_message = bob_group
-        .parse_message(mls_message_in, backend)
-        .expect(&quot;Could not parse message.&quot;);
-</code></pre>
-<p>Parsing can fail if, e.g., decrypting the message fails. The exact reason for failure is returned in the error value.</p>
 <h2 id="processing-messages"><a class="header" href="#processing-messages">Processing messages</a></h2>
-<p>In the next step, the unverified message needs to be processed. This step performs all remaining validity checks and verifies the message's signature. Optionally, a signature key can be provided to verify the message's signature. This can be used when processing external messages. By default, the sender's credential is used to verify the signature.</p>
+<p>In the next step, the message needs to be processed. If the message was
+encrypted, it will be decrypted automatically. This step performs all syntactic
+and semantic validation checks and verifies the message's signature:</p>
 <pre><code class="language-rust no_run noplayground">    let processed_message = bob_group
-        .process_unverified_message(
-            unverified_message,
-            None, // No external signature key
-            backend,
-        )
-        .expect(&quot;Could not process unverified message.&quot;);
+        .process_message(backend, mls_message_in)
+        .expect(&quot;Could not process message.&quot;);
 </code></pre>
 <h2 id="interpreting-the-processed-message"><a class="header" href="#interpreting-the-processed-message">Interpreting the processed message</a></h2>
-<p>In the last step, the message is ready for inspection. There are 3 different kinds of messages:</p>
+<p>In the last step, the message is ready for inspection. The <code>ProcessedMessage</code>
+obtained in the previous step exposes header fields such as group ID, epoch,
+sender, and authenticated data. It also exposes the message's content. There are
+3 different content types:</p>
 <h3 id="application-messages"><a class="header" href="#application-messages">Application messages</a></h3>
 <p>Application messages simply return the original byte slice:</p>
-<pre><code class="language-rust no_run noplayground">    if let ProcessedMessage::ApplicationMessage(application_message) = processed_message {
+<pre><code class="language-rust no_run noplayground">    if let ProcessedMessageContent::ApplicationMessage(application_message) =
+        processed_message.into_content()
+    {
         // Check the message
         assert_eq!(application_message.into_bytes(), b&quot;Hi, I'm Alice!&quot;);
     }
 </code></pre>
 <h3 id="proposals"><a class="header" href="#proposals">Proposals</a></h3>
 <p>Standalone proposals are returned as a <code>QueuedProposal</code>, indicating that they are pending proposals. The proposal can be inspected through the <code>.proposal()</code> function. After inspection, applications should store the pending proposal in the proposal store of the group:</p>
-<pre><code class="language-rust no_run noplayground">    if let ProcessedMessage::ProposalMessage(staged_proposal) = charlie_processed_message {
+<pre><code class="language-rust no_run noplayground">    if let ProcessedMessageContent::ProposalMessage(staged_proposal) =
+        charlie_processed_message.into_content()
+    {
         // In the case we received an Add Proposal
         if let Proposal::Add(add_proposal) = staged_proposal.proposal() {
             // Check that Bob was added
@@ -595,7 +592,9 @@ If the Commit message also covers Add Proposals previously received in the epoch
 </code></pre>
 <h3 id="commit-messages"><a class="header" href="#commit-messages">Commit messages</a></h3>
 <p>Commit messages are returned as <code>StagedCommit</code> objects. The proposals they cover can be inspected through different functions, depending on the proposal type. After the application has inspected the <code>StagedCommit</code> and approved all the proposals it covers, the <code>StagedCommit</code> can be merged in the current group state by calling the <code>.merge_staged_commit()</code> function. For more details, see the <code>StagedCommit</code> documentation.</p>
-<pre><code class="language-rust no_run noplayground">    if let ProcessedMessage::StagedCommitMessage(staged_commit) = alice_processed_message {
+<pre><code class="language-rust no_run noplayground">    if let ProcessedMessageContent::StagedCommitMessage(staged_commit) =
+        alice_processed_message.into_content()
+    {
         // We expect a remove proposal
         let remove = staged_commit
             .remove_proposals()
@@ -627,7 +626,9 @@ If the Commit message also covers Add Proposals previously received in the epoch
 <li>Another member was removed from the group (by a member or a pre-configured sender, but not by us)</li>
 </ul>
 <p>Since all remove operations only appear as a <code>QueuedRemoveProposal</code>, the <code>RemoveOperation</code> enum can be constructed from the remove proposal and the current group state to reflect the scenarios listed above.</p>
-<pre><code class="language-rust no_run noplayground">    if let ProcessedMessage::StagedCommitMessage(staged_commit) = bob_processed_message {
+<pre><code class="language-rust no_run noplayground">    if let ProcessedMessageContent::StagedCommitMessage(staged_commit) =
+        bob_processed_message.into_content()
+    {
         let remove_proposal = staged_commit
             .remove_proposals()
             .next()
@@ -1031,7 +1032,7 @@ Further syntax checks are applied for the latter case once the message is decryp
 <h3 id="commit-message-validation"><a class="header" href="#commit-message-validation">Commit message validation</a></h3>
 <div class="table-wrapper"><table><thead><tr><th>ValidationStep</th><th>Description</th><th>Implemented</th><th>Tested</th><th>Test File</th></tr></thead><tbody>
 <tr><td><code>ValSem200</code></td><td>Commit must not cover inline self Remove proposal</td><td>✅</td><td>✅</td><td><code>openmls/src/group/tests/test_commit_validation.rs</code></td></tr>
-<tr><td><code>ValSem201</code></td><td>Path must be present, if Commit contains Removes or Updates</td><td>✅</td><td>✅</td><td><code>openmls/src/group/tests/test_commit_validation.rs</code></td></tr>
+<tr><td><code>ValSem201</code></td><td>Path must be present, if at least one proposal requires a path</td><td>✅</td><td>✅</td><td><code>openmls/src/group/tests/test_commit_validation.rs</code></td></tr>
 <tr><td><code>ValSem202</code></td><td>Path must be the right length</td><td>✅</td><td>✅</td><td><code>openmls/src/group/tests/test_commit_validation.rs</code></td></tr>
 <tr><td><code>ValSem203</code></td><td>Path secrets must decrypt correctly</td><td>✅</td><td>✅</td><td><code>openmls/src/group/tests/test_commit_validation.rs</code></td></tr>
 <tr><td><code>ValSem204</code></td><td>Public keys from Path must be verified and match the private keys from the direct path</td><td>✅</td><td>✅</td><td><code>openmls/src/group/tests/test_commit_validation.rs</code></td></tr>

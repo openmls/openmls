@@ -72,14 +72,12 @@
 <span id="72">72</span>
 <span id="73">73</span>
 <span id="74">74</span>
-<span id="75">75</span>
 </pre><pre class="rust"><code><span class="doccomment">//! # Message framing
 //!
 //! This module contains framing-related operations for MLS messages, including validation operations.
 //!
 //!  - [`MlsMessageIn`]/[`MlsMessageOut`]: Unified message type for incoming &amp; outgoing MLS messages
 //!  - [`ApplicationMessage`]: Application message received through a [`ProcessedMessage`]
-//!  - [`UnverifiedMessage`]: Partially checked and potentially decrypted message (if it was originally encrypted)
 
 </span><span class="kw">use </span><span class="kw">crate</span>::ciphersuite::<span class="kw-2">*</span>;
 <span class="kw">use </span><span class="kw">crate</span>::credentials::<span class="kw-2">*</span>;

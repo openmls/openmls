@@ -192,7 +192,7 @@ Further syntax checks are applied for the latter case once the message is decryp
 <h3 id="commit-message-validation"><a class="header" href="#commit-message-validation">Commit message validation</a></h3>
 <div class="table-wrapper"><table><thead><tr><th>ValidationStep</th><th>Description</th><th>Implemented</th><th>Tested</th><th>Test File</th></tr></thead><tbody>
 <tr><td><code>ValSem200</code></td><td>Commit must not cover inline self Remove proposal</td><td>✅</td><td>✅</td><td><code>openmls/src/group/tests/test_commit_validation.rs</code></td></tr>
-<tr><td><code>ValSem201</code></td><td>Path must be present, if Commit contains Removes or Updates</td><td>✅</td><td>✅</td><td><code>openmls/src/group/tests/test_commit_validation.rs</code></td></tr>
+<tr><td><code>ValSem201</code></td><td>Path must be present, if at least one proposal requires a path</td><td>✅</td><td>✅</td><td><code>openmls/src/group/tests/test_commit_validation.rs</code></td></tr>
 <tr><td><code>ValSem202</code></td><td>Path must be the right length</td><td>✅</td><td>✅</td><td><code>openmls/src/group/tests/test_commit_validation.rs</code></td></tr>
 <tr><td><code>ValSem203</code></td><td>Path secrets must decrypt correctly</td><td>✅</td><td>✅</td><td><code>openmls/src/group/tests/test_commit_validation.rs</code></td></tr>
 <tr><td><code>ValSem204</code></td><td>Public keys from Path must be verified and match the private keys from the direct path</td><td>✅</td><td>✅</td><td><code>openmls/src/group/tests/test_commit_validation.rs</code></td></tr>

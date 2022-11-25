@@ -186,9 +186,6 @@
 <span id="186">186</span>
 <span id="187">187</span>
 <span id="188">188</span>
-<span id="189">189</span>
-<span id="190">190</span>
-<span id="191">191</span>
 </pre><pre class="rust"><code><span class="kw">use </span>std::collections::HashSet;
 
 <span class="kw">use </span>openmls_traits::OpenMlsCryptoProvider;
@@ -247,8 +244,6 @@
         key_package_bundles: <span class="kw-2">&amp;</span>[KeyPackageBundle],
     ) -&gt; <span class="prelude-ty">Result</span>&lt;ApplyProposalsValues, ApplyProposalsError&gt; {
         <span class="macro">log::debug!</span>(<span class="string">&quot;Applying proposal&quot;</span>);
-        <span class="kw">let </span><span class="kw-2">mut </span>has_updates = <span class="bool-val">false</span>;
-        <span class="kw">let </span><span class="kw-2">mut </span>has_removes = <span class="bool-val">false</span>;
         <span class="kw">let </span><span class="kw-2">mut </span>self_removed = <span class="bool-val">false</span>;
         <span class="kw">let </span><span class="kw-2">mut </span>external_init_secret_option = <span class="prelude-val">None</span>;
 
@@ -280,7 +275,6 @@
 
         <span class="comment">// Process updates first
         </span><span class="kw">for </span>queued_proposal <span class="kw">in </span>proposal_queue.filtered_by_type(ProposalType::Update) {
-            has_updates = <span class="bool-val">true</span>;
             <span class="kw">if let </span>Proposal::Update(update_proposal) = queued_proposal.proposal() {
                 <span class="comment">// Check if this is our own update.
                 </span><span class="kw">let </span>sender = queued_proposal.sender();
@@ -311,7 +305,6 @@
 
         <span class="comment">// Process removes
         </span><span class="kw">for </span>queued_proposal <span class="kw">in </span>proposal_queue.filtered_by_type(ProposalType::Remove) {
-            has_removes = <span class="bool-val">true</span>;
             <span class="kw">if let </span>Proposal::Remove(remove_proposal) = queued_proposal.proposal() {
                 <span class="comment">// Check if we got removed from the group
                 </span><span class="kw">if </span>remove_proposal.removed() == <span class="self">self</span>.own_leaf_index() {
@@ -359,15 +352,16 @@
 
         <span class="kw">let </span>presharedkeys = PreSharedKeys { psks: psks.into() };
 
-        <span class="comment">// This flag determines if the commit requires a path. A path is
-        // required if the commit is empty, i.e. if it doesn&#39;t contain any
-        // proposals or if it is a &quot;full&quot; commit. A commit is full if it refers
-        // to proposal types other than Add, PreSharedKey and/or ReInit
-        // proposals.
-        </span><span class="kw">let </span>path_required = has_updates
-            || has_removes
-            <span class="comment">// The fact that this is some implies that there&#39;s an external init
-            // proposal.
+        <span class="kw">let </span>proposals_require_path = proposal_queue
+            .queued_proposals()
+            .any(|p| p.proposal().is_path_required());
+
+        <span class="comment">// This flag determines if the commit requires a path. A path is required if:
+        // * none of the proposals require a path
+        // * (or) it is an external commit
+        // * (or) the commit is empty which implicitly means it&#39;s a self-update
+        </span><span class="kw">let </span>path_required = proposals_require_path
+            <span class="comment">// The fact that this is some implies that there&#39;s an external init proposal.
             </span>|| external_init_secret_option.is_some()
             || proposal_queue.is_empty();
 

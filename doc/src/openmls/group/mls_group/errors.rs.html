@@ -274,14 +274,6 @@
 <span id="274">274</span>
 <span id="275">275</span>
 <span id="276">276</span>
-<span id="277">277</span>
-<span id="278">278</span>
-<span id="279">279</span>
-<span id="280">280</span>
-<span id="281">281</span>
-<span id="282">282</span>
-<span id="283">283</span>
-<span id="284">284</span>
 </pre><pre class="rust"><code><span class="doccomment">//! # MlsGroup errors
 //!
 //! This module defines the public errors that can be returned from all calls
@@ -346,9 +338,9 @@
     </span>NoPendingCommit,
 }
 
-<span class="doccomment">/// Parse message error
+<span class="doccomment">/// Process message error
 </span><span class="attribute">#[derive(Error, Debug, PartialEq, Clone)]
-</span><span class="kw">pub enum </span>ParseMessageError {
+</span><span class="kw">pub enum </span>ProcessMessageError {
     <span class="doccomment">/// See [`LibraryError`] for more details.
     </span><span class="attribute">#[error(transparent)]
     </span>LibraryError(<span class="attribute">#[from] </span>LibraryError),
@@ -361,14 +353,6 @@
     <span class="doccomment">/// See [`MlsGroupStateError`] for more details.
     </span><span class="attribute">#[error(transparent)]
     </span>GroupStateError(<span class="attribute">#[from] </span>MlsGroupStateError),
-}
-
-<span class="doccomment">/// Unverified message error
-</span><span class="attribute">#[derive(Error, Debug, PartialEq, Clone)]
-</span><span class="kw">pub enum </span>UnverifiedMessageError {
-    <span class="doccomment">/// See [`LibraryError`] for more details.
-    </span><span class="attribute">#[error(transparent)]
-    </span>LibraryError(<span class="attribute">#[from] </span>LibraryError),
     <span class="doccomment">/// The message is from an epoch too far in the past.
     </span><span class="attribute">#[error(<span class="string">&quot;The message is from an epoch too far in the past.&quot;</span>)]
     </span>NoPastEpochData,

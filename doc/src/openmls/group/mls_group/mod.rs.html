@@ -415,7 +415,6 @@
 <span id="415">415</span>
 <span id="416">416</span>
 <span id="417">417</span>
-<span id="418">418</span>
 </pre><pre class="rust"><code><span class="doccomment">//! MLS Group
 //!
 //! This module contains [`MlsGroup`] and its submodules.
@@ -545,21 +544,20 @@
     </span>Inactive,
 }
 
-<span class="doccomment">/// A `MlsGroup` represents an MLS group with
-/// a high-level API. The API exposes
+<span class="doccomment">/// A `MlsGroup` represents an MLS group with a high-level API. The API exposes
 /// high level functions to manage a group by adding/removing members, get the
 /// current member list, etc.
 ///
 /// The API is modeled such that it can serve as a direct interface to the
 /// Delivery Service. Functions that modify the public state of the group will
-/// return a `Vec&lt;MLSMessageOut&gt;` that can be sent to the Delivery
-/// Service directly. Conversely, incoming messages from the Delivery Service
-/// can be fed into [parse_message()](`MlsGroup::parse_message()`).
+/// return a `Vec&lt;MLSMessageOut&gt;` that can be sent to the Delivery Service
+/// directly. Conversely, incoming messages from the Delivery Service can be fed
+/// into [process_message()](`MlsGroup::process_message()`).
 ///
-/// An `MlsGroup` has an internal queue of pending proposals that builds up
-/// as new messages are processed. When creating proposals, those messages are
-/// not automatically appended to this queue, instead they have to be processed
-/// again through [parse_message()](`MlsGroup::parse_message()`). This
+/// An `MlsGroup` has an internal queue of pending proposals that builds up as
+/// new messages are processed. When creating proposals, those messages are not
+/// automatically appended to this queue, instead they have to be processed
+/// again through [process_message()](`MlsGroup::process_message()`). This
 /// allows the Delivery Service to reject them (e.g. if they reference the wrong
 /// epoch).
 ///
@@ -579,7 +577,7 @@
     </span>group: CoreGroup,
     <span class="comment">// A [ProposalStore] that stores incoming proposals from the DS within one epoch.
     // The store is emptied after every epoch change.
-    </span>proposal_store: ProposalStore,
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) proposal_store: ProposalStore,
     <span class="comment">// Own `KeyPackageBundle`s that were created for update proposals and that
     // are needed in case an update proposal is commited by another group
     // member. The vector is emptied after every epoch change.
@@ -776,7 +774,7 @@
     }
 
     <span class="doccomment">/// Group framing parameters
-    </span><span class="kw">fn </span>framing_parameters(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; FramingParameters {
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>framing_parameters(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; FramingParameters {
         FramingParameters::new(
             <span class="kw-2">&amp;</span><span class="self">self</span>.aad,
             <span class="self">self</span>.mls_group_config.wire_format_policy().outgoing(),

@@ -496,6 +496,31 @@
 <span id="496">496</span>
 <span id="497">497</span>
 <span id="498">498</span>
+<span id="499">499</span>
+<span id="500">500</span>
+<span id="501">501</span>
+<span id="502">502</span>
+<span id="503">503</span>
+<span id="504">504</span>
+<span id="505">505</span>
+<span id="506">506</span>
+<span id="507">507</span>
+<span id="508">508</span>
+<span id="509">509</span>
+<span id="510">510</span>
+<span id="511">511</span>
+<span id="512">512</span>
+<span id="513">513</span>
+<span id="514">514</span>
+<span id="515">515</span>
+<span id="516">516</span>
+<span id="517">517</span>
+<span id="518">518</span>
+<span id="519">519</span>
+<span id="520">520</span>
+<span id="521">521</span>
+<span id="522">522</span>
+<span id="523">523</span>
 </pre><pre class="rust"><code><span class="doccomment">//! # Validation steps for incoming messages
 //!
 //! ```text
@@ -531,6 +556,7 @@
 //! V
 //! ProcessedMessage (Application, Proposal, ExternalProposal, Commit, External Commit)
 //! ```
+</span><span class="comment">// TODO #106/#151: Update the above diagram
 
 </span><span class="kw">use crate</span>::{group::errors::ValidationError, tree::index::SecretTreeLeafIndex, treesync::TreeSync};
 <span class="kw">use </span>core_group::{proposals::QueuedProposal, staged_commit::StagedCommit};
@@ -712,10 +738,9 @@
 /// Use this to inspect the [`Credential`] of the message sender
 /// and the optional `aad` if the original message was encrypted.
 </span><span class="attribute">#[derive(Debug, Clone)]
-</span><span class="kw">pub struct </span>UnverifiedMessage {
+</span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct </span>UnverifiedMessage {
     plaintext: VerifiableMlsAuthContent,
     credential: <span class="prelude-ty">Option</span>&lt;Credential&gt;,
-    aad_option: <span class="prelude-ty">Option</span>&lt;Vec&lt;u8&gt;&gt;,
 }
 
 <span class="kw">impl </span>UnverifiedMessage {
@@ -727,28 +752,12 @@
         UnverifiedMessage {
             plaintext: decrypted_message.plaintext,
             credential,
-            aad_option: <span class="prelude-val">None</span>,
         }
     }
 
     <span class="doccomment">/// Returns the epoch.
-    </span><span class="kw">pub fn </span>epoch(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; GroupEpoch {
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>epoch(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; GroupEpoch {
         <span class="self">self</span>.plaintext.epoch()
-    }
-
-    <span class="doccomment">/// Returns the AAD.
-    </span><span class="kw">pub fn </span>aad(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span><span class="prelude-ty">Option</span>&lt;Vec&lt;u8&gt;&gt; {
-        <span class="kw-2">&amp;</span><span class="self">self</span>.aad_option
-    }
-
-    <span class="doccomment">/// Returns the sender.
-    </span><span class="kw">pub fn </span>sender(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>Sender {
-        <span class="self">self</span>.plaintext.sender()
-    }
-
-    <span class="doccomment">/// Return the credential if there is one.
-    </span><span class="kw">pub fn </span>credential(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>Credential&gt; {
-        <span class="self">self</span>.credential.as_ref()
     }
 
     <span class="doccomment">/// Decomposes an [UnverifiedMessage] into its parts.
@@ -836,21 +845,19 @@
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>into_verified(
         <span class="self">self</span>,
         backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider,
-        signature_key: <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>OpenMlsSignaturePublicKey&gt;,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;VerifiedMemberMessage, ValidationError&gt; {
-        <span class="comment">// If a signature key is provided it will be used,
-        // otherwise we take the key from the credential
-        </span><span class="kw">let </span>verified_member_message = <span class="kw">if let </span><span class="prelude-val">Some</span>(signature_public_key) = signature_key {
-            <span class="comment">// ValSem010
-            </span><span class="self">self</span>.plaintext
-                .verify_with_key(backend, signature_public_key)
-        } <span class="kw">else </span>{
-            <span class="comment">// ValSem010
-            </span><span class="self">self</span>.plaintext.verify(backend, <span class="kw-2">&amp;</span><span class="self">self</span>.credential)
-        }
-        .map(|plaintext| VerifiedMemberMessage { plaintext })
-        .map_err(|<span class="kw">_</span>| ValidationError::InvalidSignature)<span class="question-mark">?</span>;
+        <span class="comment">// ValSem010
+        </span><span class="kw">let </span>verified_member_message = <span class="self">self
+            </span>.plaintext
+            .verify(backend, <span class="kw-2">&amp;</span><span class="self">self</span>.credential)
+            .map(|plaintext| VerifiedMemberMessage { plaintext })
+            .map_err(|<span class="kw">_</span>| ValidationError::InvalidSignature)<span class="question-mark">?</span>;
         <span class="prelude-val">Ok</span>(verified_member_message)
+    }
+
+    <span class="doccomment">/// Returns the credential.
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>credential(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>Credential {
+        <span class="kw-2">&amp;</span><span class="self">self</span>.credential
     }
 }
 
@@ -868,45 +875,26 @@
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>into_verified(
         <span class="self">self</span>,
         backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider,
-        signature_key: <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>OpenMlsSignaturePublicKey&gt;,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;VerifiedExternalMessage, ValidationError&gt; {
-        <span class="comment">// If a signature key is provided it will be used, otherwise we take it from the credential
-        </span><span class="kw">let </span>verified_external_message = <span class="kw">if let </span><span class="prelude-val">Some</span>(signature_public_key) = signature_key {
-            <span class="comment">// ValSem010
-            </span><span class="self">self</span>.plaintext
-                .verify_with_key(backend, signature_public_key)
-        } <span class="kw">else </span>{
-            <span class="comment">// ValSem010
-            </span><span class="self">self</span>.plaintext.verify(backend, <span class="kw-2">&amp;</span><span class="self">self</span>.credential)
-        }
-        .map(|plaintext| VerifiedExternalMessage { plaintext })
-        .map_err(|<span class="kw">_</span>| ValidationError::InvalidSignature)<span class="question-mark">?</span>;
+        <span class="comment">// ValSem010
+        </span><span class="kw">let </span>verified_external_message = <span class="self">self
+            </span>.plaintext
+            .verify(backend, <span class="kw-2">&amp;</span><span class="self">self</span>.credential)
+            .map(|plaintext| VerifiedExternalMessage { plaintext })
+            .map_err(|<span class="kw">_</span>| ValidationError::InvalidSignature)<span class="question-mark">?</span>;
         <span class="prelude-val">Ok</span>(verified_external_message)
+    }
+
+    <span class="doccomment">/// Returns the credential.
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>credential(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>Credential {
+        <span class="kw-2">&amp;</span><span class="self">self</span>.credential
     }
 }
 
 <span class="comment">// TODO #151/#106: We don&#39;t support external senders yet
 </span><span class="doccomment">/// Part of [UnverifiedContextMessage].
 </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct </span>UnverifiedExternalMessage {
-    plaintext: VerifiableMlsAuthContent,
-}
-
-<span class="kw">impl </span>UnverifiedExternalMessage {
-    <span class="doccomment">/// Verifies the signature on an [UnverifiedExternalMessage] and returns a [VerifiedExternalMessage] if the
-    /// verification is successful.
-    /// This function implements the following checks:
-    ///  - ValSem010
-    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>into_verified(
-        <span class="self">self</span>,
-        backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider,
-        signature_key: <span class="kw-2">&amp;</span>OpenMlsSignaturePublicKey,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;VerifiedExternalMessage, ValidationError&gt; {
-        <span class="comment">// ValSem010
-        </span><span class="self">self</span>.plaintext
-            .verify_with_key(backend, signature_key)
-            .map(|plaintext| VerifiedExternalMessage { plaintext })
-            .map_err(|<span class="kw">_</span>| ValidationError::InvalidSignature)
-    }
+    _plaintext: VerifiableMlsAuthContent,
 }
 
 <span class="doccomment">/// Member message, where all semantic checks on the framing have been successfully performed.
@@ -915,11 +903,6 @@
 }
 
 <span class="kw">impl </span>VerifiedMemberMessage {
-    <span class="doccomment">/// Returns a reference to the inner [MlsPlaintext].
-    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>plaintext(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>MlsPlaintext {
-        <span class="kw-2">&amp;</span><span class="self">self</span>.plaintext
-    }
-
     <span class="doccomment">/// Consumes the message and returns the inner [MlsPlaintext].
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>take_plaintext(<span class="self">self</span>) -&gt; MlsPlaintext {
         <span class="self">self</span>.plaintext
@@ -945,11 +928,78 @@
 }
 
 <span class="doccomment">/// A message that has passed all syntax and semantics checks.
+</span><span class="attribute">#[derive(Debug)]
+</span><span class="kw">pub struct </span>ProcessedMessage {
+    group_id: GroupId,
+    epoch: GroupEpoch,
+    sender: Sender,
+    authenticated_data: Vec&lt;u8&gt;,
+    content: ProcessedMessageContent,
+    credential: <span class="prelude-ty">Option</span>&lt;Credential&gt;,
+}
+
+<span class="kw">impl </span>ProcessedMessage {
+    <span class="doccomment">/// Create a new `ProcessedMessage`.
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>new(
+        group_id: GroupId,
+        epoch: GroupEpoch,
+        sender: Sender,
+        authenticated_data: Vec&lt;u8&gt;,
+        content: ProcessedMessageContent,
+        credential: <span class="prelude-ty">Option</span>&lt;Credential&gt;,
+    ) -&gt; <span class="self">Self </span>{
+        <span class="self">Self </span>{
+            group_id,
+            epoch,
+            sender,
+            authenticated_data,
+            content,
+            credential,
+        }
+    }
+
+    <span class="doccomment">/// Returns the group ID of the message.
+    </span><span class="kw">pub fn </span>group_id(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>GroupId {
+        <span class="kw-2">&amp;</span><span class="self">self</span>.group_id
+    }
+
+    <span class="doccomment">/// Returns the epoch of the message.
+    </span><span class="kw">pub fn </span>epoch(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; GroupEpoch {
+        <span class="self">self</span>.epoch
+    }
+
+    <span class="doccomment">/// Returns the sender of the message.
+    </span><span class="kw">pub fn </span>sender(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>Sender {
+        <span class="kw-2">&amp;</span><span class="self">self</span>.sender
+    }
+
+    <span class="doccomment">/// Returns the authenticated data of the message.
+    </span><span class="kw">pub fn </span>authenticated_data(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>[u8] {
+        <span class="kw-2">&amp;</span><span class="self">self</span>.authenticated_data
+    }
+
+    <span class="doccomment">/// Returns the content of the message.
+    </span><span class="kw">pub fn </span>content(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>ProcessedMessageContent {
+        <span class="kw-2">&amp;</span><span class="self">self</span>.content
+    }
+
+    <span class="doccomment">/// Returns the content of the message and consumes the message.
+    </span><span class="kw">pub fn </span>into_content(<span class="self">self</span>) -&gt; ProcessedMessageContent {
+        <span class="self">self</span>.content
+    }
+
+    <span class="doccomment">/// Returns the credential of the message if present.
+    </span><span class="kw">pub fn </span>credential(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>Credential&gt; {
+        <span class="self">self</span>.credential.as_ref()
+    }
+}
+
+<span class="doccomment">/// Content of a processed message.
 ///
-/// See the variants&#39; documentation for more information.
+/// See the content variants&#39; documentation for more information.
 /// [`StagedCommit`] and [`QueuedProposal`] can be inspected for authorization purposes.
 </span><span class="attribute">#[derive(Debug)]
-</span><span class="kw">pub enum </span>ProcessedMessage {
+</span><span class="kw">pub enum </span>ProcessedMessageContent {
     <span class="doccomment">/// An application message.
     ///
     /// The [`ApplicationMessage`] contains a vector of bytes that can be used right-away.

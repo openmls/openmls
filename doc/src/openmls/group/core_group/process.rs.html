@@ -261,9 +261,82 @@
 <span id="261">261</span>
 <span id="262">262</span>
 <span id="263">263</span>
+<span id="264">264</span>
+<span id="265">265</span>
+<span id="266">266</span>
+<span id="267">267</span>
+<span id="268">268</span>
+<span id="269">269</span>
+<span id="270">270</span>
+<span id="271">271</span>
+<span id="272">272</span>
+<span id="273">273</span>
+<span id="274">274</span>
+<span id="275">275</span>
+<span id="276">276</span>
+<span id="277">277</span>
+<span id="278">278</span>
+<span id="279">279</span>
+<span id="280">280</span>
+<span id="281">281</span>
+<span id="282">282</span>
+<span id="283">283</span>
+<span id="284">284</span>
+<span id="285">285</span>
+<span id="286">286</span>
+<span id="287">287</span>
+<span id="288">288</span>
+<span id="289">289</span>
+<span id="290">290</span>
+<span id="291">291</span>
+<span id="292">292</span>
+<span id="293">293</span>
+<span id="294">294</span>
+<span id="295">295</span>
+<span id="296">296</span>
+<span id="297">297</span>
+<span id="298">298</span>
+<span id="299">299</span>
+<span id="300">300</span>
+<span id="301">301</span>
+<span id="302">302</span>
+<span id="303">303</span>
+<span id="304">304</span>
+<span id="305">305</span>
+<span id="306">306</span>
+<span id="307">307</span>
+<span id="308">308</span>
+<span id="309">309</span>
+<span id="310">310</span>
+<span id="311">311</span>
+<span id="312">312</span>
+<span id="313">313</span>
+<span id="314">314</span>
+<span id="315">315</span>
+<span id="316">316</span>
+<span id="317">317</span>
+<span id="318">318</span>
+<span id="319">319</span>
+<span id="320">320</span>
+<span id="321">321</span>
+<span id="322">322</span>
+<span id="323">323</span>
+<span id="324">324</span>
+<span id="325">325</span>
+<span id="326">326</span>
+<span id="327">327</span>
+<span id="328">328</span>
+<span id="329">329</span>
+<span id="330">330</span>
+<span id="331">331</span>
+<span id="332">332</span>
+<span id="333">333</span>
+<span id="334">334</span>
+<span id="335">335</span>
+<span id="336">336</span>
 </pre><pre class="rust"><code><span class="kw">use </span>core_group::{proposals::QueuedProposal, staged_commit::StagedCommit};
 
-<span class="kw">use </span><span class="kw">crate</span>::group::{errors::ValidationError, mls_group::errors::UnverifiedMessageError};
+<span class="kw">use </span><span class="kw">crate</span>::group::{errors::ValidationError, mls_group::errors::ProcessMessageError};
 
 <span class="kw">use super</span>::{proposals::ProposalStore, <span class="kw-2">*</span>};
 
@@ -369,17 +442,16 @@
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>process_unverified_message(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         unverified_message: UnverifiedMessage,
-        signature_key: <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>OpenMlsSignaturePublicKey&gt;,
         proposal_store: <span class="kw-2">&amp;</span>ProposalStore,
         own_kpbs: <span class="kw-2">&amp;</span>[KeyPackageBundle],
         backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;ProcessedMessage, UnverifiedMessageError&gt; {
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;ProcessedMessage, ProcessMessageError&gt; {
         <span class="comment">// Add the context to the message and verify the membership tag if necessary.
         // If the message is older than the current epoch, we need to fetch the correct secret tree first.
         </span><span class="kw">let </span>message_secrets = <span class="self">self
             </span>.message_secrets_for_epoch(unverified_message.epoch())
             .map_err(|e| <span class="kw">match </span>e {
-                SecretTreeError::TooDistantInThePast =&gt; UnverifiedMessageError::NoPastEpochData,
+                SecretTreeError::TooDistantInThePast =&gt; ProcessMessageError::NoPastEpochData,
                 <span class="kw">_ </span>=&gt; LibraryError::custom(<span class="string">&quot;Unexpected return value&quot;</span>).into(),
             })<span class="question-mark">?</span>;
 
@@ -390,31 +462,39 @@
             message_secrets,
             backend,
         )
-        .map_err(|<span class="kw">_</span>| UnverifiedMessageError::InvalidMembershipTag)<span class="question-mark">?</span>;
+        .map_err(|<span class="kw">_</span>| ProcessMessageError::InvalidMembershipTag)<span class="question-mark">?</span>;
+
+        <span class="kw">let </span>group_id = <span class="self">self</span>.group_id().clone();
+        <span class="kw">let </span>epoch = <span class="self">self</span>.group_context.epoch();
 
         <span class="kw">match </span>context_plaintext {
             UnverifiedContextMessage::Group(unverified_message) =&gt; {
+                <span class="kw">let </span>credential = unverified_message.credential().clone();
                 <span class="comment">// Checks the following semantic validation:
                 //  - ValSem010
                 //  - ValSem246 (as part of ValSem010)
-                </span><span class="kw">let </span>verified_member_message = unverified_message
-                    .into_verified(backend, signature_key)
-                    .map_err(|<span class="kw">_</span>| UnverifiedMessageError::InvalidSignature)<span class="question-mark">?</span>;
+                </span><span class="kw">let </span>plaintext = unverified_message
+                    .into_verified(backend)
+                    .map_err(|<span class="kw">_</span>| ProcessMessageError::InvalidSignature)<span class="question-mark">?
+                    </span>.take_plaintext();
 
-                <span class="prelude-val">Ok</span>(<span class="kw">match </span>verified_member_message.plaintext().content() {
+                <span class="kw">let </span>sender = plaintext.sender().clone();
+                <span class="kw">let </span>authenticated_data = plaintext.authenticated_data().to_owned();
+
+                <span class="kw">let </span>content = <span class="kw">match </span><span class="kw-2">&amp;</span>plaintext.content() {
                     MlsContentBody::Application(application_message) =&gt; {
-                        ProcessedMessage::ApplicationMessage(ApplicationMessage::new(
-                            application_message.as_slice().to_vec(),
+                        ProcessedMessageContent::ApplicationMessage(ApplicationMessage::new(
+                            application_message.as_slice().to_owned(),
                         ))
                     }
-                    MlsContentBody::Proposal(_proposal) =&gt; ProcessedMessage::ProposalMessage(
+                    MlsContentBody::Proposal(<span class="kw">_</span>) =&gt; ProcessedMessageContent::ProposalMessage(
                         Box::new(QueuedProposal::from_mls_plaintext(
                             <span class="self">self</span>.ciphersuite(),
                             backend,
-                            verified_member_message.take_plaintext(),
+                            plaintext,
                         )<span class="question-mark">?</span>),
                     ),
-                    MlsContentBody::Commit(_commit) =&gt; {
+                    MlsContentBody::Commit(<span class="kw">_</span>) =&gt; {
                         <span class="comment">//  - ValSem100
                         //  - ValSem101
                         //  - ValSem102
@@ -441,62 +521,128 @@
                         //  - ValSem242
                         //  - ValSem243
                         //  - ValSem244
-                        </span><span class="kw">let </span>staged_commit = <span class="self">self</span>.stage_commit(
-                            verified_member_message.plaintext(),
-                            proposal_store,
-                            own_kpbs,
-                            backend,
-                        )<span class="question-mark">?</span>;
-                        ProcessedMessage::StagedCommitMessage(Box::new(staged_commit))
+                        </span><span class="kw">let </span>staged_commit =
+                            <span class="self">self</span>.stage_commit(<span class="kw-2">&amp;</span>plaintext, proposal_store, own_kpbs, backend)<span class="question-mark">?</span>;
+                        ProcessedMessageContent::StagedCommitMessage(Box::new(staged_commit))
                     }
-                })
-            }
-            UnverifiedContextMessage::External(external_message) =&gt; {
-                <span class="comment">// Signature verification
-                </span><span class="kw">if let </span><span class="prelude-val">Some</span>(signature_public_key) = signature_key {
-                    <span class="kw">let </span>_verified_external_message = external_message
-                        .into_verified(backend, signature_public_key)
-                        .map_err(|<span class="kw">_</span>| UnverifiedMessageError::InvalidSignature)<span class="question-mark">?</span>;
-                } <span class="kw">else </span>{
-                    <span class="kw">return </span><span class="prelude-val">Err</span>(UnverifiedMessageError::MissingSignatureKey);
-                }
+                };
 
+                <span class="prelude-val">Ok</span>(ProcessedMessage::new(
+                    group_id,
+                    epoch,
+                    sender,
+                    authenticated_data,
+                    content,
+                    <span class="prelude-val">Some</span>(credential),
+                ))
+            }
+            UnverifiedContextMessage::External(_external_message) =&gt; {
                 <span class="comment">// We don&#39;t support messages from external senders yet
                 // TODO #151/#106
                 </span><span class="macro">todo!</span>()
             }
-            UnverifiedContextMessage::NewMember(external_message) =&gt; {
+            UnverifiedContextMessage::NewMember(unverified_new_member_message) =&gt; {
+                <span class="kw">let </span>credential = unverified_new_member_message.credential().clone();
                 <span class="comment">// Signature verification
-                </span><span class="kw">let </span>verified_external_message = external_message
-                    .into_verified(backend, signature_key)
-                    .map_err(|<span class="kw">_</span>| UnverifiedMessageError::InvalidSignature)<span class="question-mark">?</span>;
-                <span class="prelude-val">Ok</span>(<span class="kw">match </span>verified_external_message.plaintext().content() {
-                    MlsContentBody::Proposal(_proposal) =&gt; {
-                        ProcessedMessage::ExternalJoinProposalMessage(Box::new(
+                </span><span class="kw">let </span>verified_new_member_message = unverified_new_member_message
+                    .into_verified(backend)
+                    .map_err(|<span class="kw">_</span>| ProcessMessageError::InvalidSignature)<span class="question-mark">?</span>;
+                <span class="kw">let </span>sender = verified_new_member_message.plaintext().sender().clone();
+                <span class="kw">let </span>authenticated_data = verified_new_member_message
+                    .plaintext()
+                    .authenticated_data()
+                    .to_owned();
+
+                <span class="kw">let </span>content = <span class="kw">match </span>verified_new_member_message.plaintext().content() {
+                    MlsContentBody::Proposal(<span class="kw">_</span>) =&gt; {
+                        ProcessedMessageContent::ExternalJoinProposalMessage(Box::new(
                             QueuedProposal::from_mls_plaintext(
                                 <span class="self">self</span>.ciphersuite(),
                                 backend,
-                                verified_external_message.take_plaintext(),
+                                verified_new_member_message.take_plaintext(),
                             )<span class="question-mark">?</span>,
                         ))
                     }
-                    MlsContentBody::Commit(_commit) =&gt; {
+                    MlsContentBody::Commit(<span class="kw">_</span>) =&gt; {
                         <span class="kw">let </span>staged_commit = <span class="self">self</span>.stage_commit(
-                            verified_external_message.plaintext(),
+                            verified_new_member_message.plaintext(),
                             proposal_store,
                             own_kpbs,
                             backend,
                         )<span class="question-mark">?</span>;
-                        ProcessedMessage::StagedCommitMessage(Box::new(staged_commit))
+                        ProcessedMessageContent::StagedCommitMessage(Box::new(staged_commit))
                     }
                     <span class="kw">_ </span>=&gt; {
-                        <span class="kw">return </span><span class="prelude-val">Err</span>(UnverifiedMessageError::LibraryError(LibraryError::custom(
+                        <span class="kw">return </span><span class="prelude-val">Err</span>(ProcessMessageError::LibraryError(LibraryError::custom(
                             <span class="string">&quot;Implementation error&quot;</span>,
                         )))
                     }
-                })
+                };
+
+                <span class="prelude-val">Ok</span>(ProcessedMessage::new(
+                    group_id,
+                    epoch,
+                    sender,
+                    authenticated_data,
+                    content,
+                    <span class="prelude-val">Some</span>(credential),
+                ))
             }
         }
+    }
+
+    <span class="doccomment">/// This function is used to parse messages from the DS. It checks for
+    /// syntactic errors and does semantic validation as well. If the input is a
+    /// [MlsCiphertext] message, it will be decrypted. It returns a
+    /// [ProcessedMessage] enum. Checks the following semantic validation:
+    ///  - ValSem002
+    ///  - ValSem003
+    ///  - ValSem004
+    ///  - ValSem005
+    ///  - ValSem006
+    ///  - ValSem007
+    ///  - ValSem008
+    ///  - ValSem009
+    ///  - ValSem010
+    ///  - ValSem100
+    ///  - ValSem101
+    ///  - ValSem102
+    ///  - ValSem103
+    ///  - ValSem104
+    ///  - ValSem105
+    ///  - ValSem106
+    ///  - ValSem107
+    ///  - ValSem108
+    ///  - ValSem109
+    ///  - ValSem110
+    ///  - ValSem111
+    ///  - ValSem112
+    ///  - ValSem200
+    ///  - ValSem201
+    ///  - ValSem202: Path must be the right length
+    ///  - ValSem203: Path secrets must decrypt correctly
+    ///  - ValSem204: Public keys from Path must be verified and match the
+    ///               private keys from the direct path
+    ///  - ValSem205
+    ///  - ValSem240
+    ///  - ValSem241
+    ///  - ValSem242
+    ///  - ValSem243
+    ///  - ValSem244
+    ///  - ValSem245
+    ///  - ValSem246 (as part of ValSem010)
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>process_message(
+        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
+        backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider,
+        message: MlsMessageIn,
+        sender_ratchet_configuration: <span class="kw-2">&amp;</span>SenderRatchetConfiguration,
+        proposal_store: <span class="kw-2">&amp;</span>ProposalStore,
+        own_kpbs: <span class="kw-2">&amp;</span>[KeyPackageBundle],
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;ProcessedMessage, ProcessMessageError&gt; {
+        <span class="kw">let </span>unverified_message = <span class="self">self
+            </span>.parse_message(backend, message, sender_ratchet_configuration)
+            .map_err(ProcessMessageError::from)<span class="question-mark">?</span>;
+        <span class="self">self</span>.process_unverified_message(unverified_message, proposal_store, own_kpbs, backend)
     }
 
     <span class="doccomment">/// Merge a [StagedCommit] into the group after inspection

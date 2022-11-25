@@ -152,7 +152,9 @@ Even though members were removed in this operation, the Commit message could pot
 <p>In this case, the function returns an <code>MlsMessageOut</code> that needs to be fanned out to existing group members.</p>
 <h2 id="getting-removed-from-a-group"><a class="header" href="#getting-removed-from-a-group">Getting removed from a group</a></h2>
 <p>A member is removed from a group if another member commits to a remove proposal targeting the member's leaf. Once the to-be-removed member merges that commit via <code>merge_staged_commit()</code>, all other proposals in that commit will still be applied, but the group will be marked as inactive afterward. The group remains usable, e.g., to examine the membership list after the final commit was processed, but it won't be possible to create or process new messages.</p>
-<pre><code class="language-rust no_run noplayground">    if let ProcessedMessage::StagedCommitMessage(staged_commit) = bob_processed_message {
+<pre><code class="language-rust no_run noplayground">    if let ProcessedMessageContent::StagedCommitMessage(staged_commit) =
+        bob_processed_message.into_content()
+    {
         let remove_proposal = staged_commit
             .remove_proposals()
             .next()

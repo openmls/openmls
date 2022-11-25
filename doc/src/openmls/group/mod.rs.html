@@ -122,13 +122,15 @@
 <span id="122">122</span>
 <span id="123">123</span>
 <span id="124">124</span>
+<span id="125">125</span>
 </pre><pre class="rust"><code><span class="doccomment">//! Group API for MLS
 //!
 //! This module contains the API to interact with groups.
 
 </span><span class="kw">mod </span>group_context;
 
-<span class="kw">use </span><span class="kw">crate</span>::ciphersuite::<span class="kw-2">*</span>;
+<span class="attribute">#[cfg(any(feature = <span class="string">&quot;test-utils&quot;</span>, test))]
+</span><span class="kw">use </span><span class="kw">crate</span>::ciphersuite::<span class="kw-2">*</span>;
 <span class="kw">use </span><span class="kw">crate</span>::extensions::<span class="kw-2">*</span>;
 <span class="kw">use </span><span class="kw">crate</span>::utils::<span class="kw-2">*</span>;
 
