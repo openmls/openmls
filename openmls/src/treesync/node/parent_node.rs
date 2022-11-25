@@ -173,7 +173,20 @@ impl ParentNode {
 
     /// Add a [`LeafIndex`] to the node's list of unmerged leaves.
     pub(in crate::treesync) fn add_unmerged_leaf(&mut self, leaf_index: LeafIndex) {
-        self.unmerged_leaves.push(leaf_index)
+        // The list of unmerged leaves must be sorted. This is enforced upon
+        // deserialization. We can therefore safely insert the new leaf at the
+        // correct position.
+        let position = self
+            .unmerged_leaves
+            .binary_search(&leaf_index)
+            .unwrap_or_else(|e| e);
+        self.unmerged_leaves.insert(position, leaf_index);
+    }
+
+    /// Set the list of unmerged leaves.
+    #[cfg(test)]
+    pub(in crate::treesync) fn set_unmerged_leaves(&mut self, unmerged_leaves: Vec<u32>) {
+        self.unmerged_leaves = unmerged_leaves;
     }
 
     /// Compute the parent hash value of this node.

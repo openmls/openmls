@@ -113,6 +113,15 @@ impl tls_codec::Deserialize for ParentNode {
         let public_key = HpkePublicKey::tls_deserialize(bytes)?;
         let parent_hash = VLBytes::tls_deserialize(bytes)?;
         let unmerged_leaves = Vec::tls_deserialize(bytes)?;
+
+        // Make sure the list of unmerged leaves is sorted and doesn't contain
+        // duplicates.
+        if !unmerged_leaves.windows(2).all(|e| e[0] < e[1]) {
+            return Err(tls_codec::Error::DecodingError(
+                "Unmerged leaves not sorted".into(),
+            ));
+        }
+
         Ok(Self::new(public_key, parent_hash, unmerged_leaves))
     }
 }
