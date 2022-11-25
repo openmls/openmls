@@ -20,10 +20,11 @@ use super::utils::{generate_credential_bundle, generate_key_package_bundle};
 // Test setup values
 struct ValidationTestSetup {
     alice_group: MlsGroup,
+    bob_group: MlsGroup,
     _alice_credential: Credential,
     _bob_credential: Credential,
     _alice_key_package: KeyPackage,
-    bob_key_package: KeyPackage,
+    _bob_key_package: KeyPackage,
 }
 
 // Validation test setup
@@ -66,7 +67,7 @@ fn validation_test_setup(
         .build();
 
     // === Alice creates a group ===
-    let alice_group = MlsGroup::new_with_group_id(
+    let mut alice_group = MlsGroup::new_with_group_id(
         backend,
         &mls_group_config,
         group_id,
@@ -77,12 +78,30 @@ fn validation_test_setup(
     )
     .expect("An unexpected error occurred.");
 
+    // === Alice adds Bob & Bob joins ===
+    let (_message, welcome) = alice_group
+        .add_members(backend, &[bob_key_package.clone()])
+        .expect("Could not add member.");
+
+    alice_group
+        .merge_pending_commit()
+        .expect("error merging pending commit");
+
+    let bob_group = MlsGroup::new_from_welcome(
+        backend,
+        &mls_group_config,
+        welcome,
+        Some(alice_group.export_ratchet_tree()),
+    )
+    .expect("error creating bob's group from welcome");
+
     ValidationTestSetup {
         alice_group,
+        bob_group,
         _alice_credential: alice_credential,
         _bob_credential: bob_credential,
         _alice_key_package: alice_key_package,
-        bob_key_package,
+        _bob_key_package: bob_key_package,
     }
 }
 
@@ -92,15 +111,16 @@ fn test_valsem001(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
     // Test with MlsPlaintext
     let ValidationTestSetup {
         mut alice_group,
+        bob_group: _,
         _alice_credential: _,
         _bob_credential: _,
         _alice_key_package: _,
-        bob_key_package,
+        _bob_key_package: _,
     } = validation_test_setup(PURE_PLAINTEXT_WIRE_FORMAT_POLICY, ciphersuite, backend);
 
     let (message, _welcome) = alice_group
-        .add_members(backend, &[bob_key_package])
-        .expect("Could not add member.");
+        .self_update(backend, None)
+        .expect("Could not self-update.");
 
     let mut serialized_message = message
         .tls_serialize_detached()
@@ -125,15 +145,16 @@ fn test_valsem001(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
     // Test with MlsCiphertext
     let ValidationTestSetup {
         mut alice_group,
+        bob_group: _,
         _alice_credential: _,
         _bob_credential: _,
         _alice_key_package: _,
-        bob_key_package,
+        _bob_key_package: _,
     } = validation_test_setup(PURE_CIPHERTEXT_WIRE_FORMAT_POLICY, ciphersuite, backend);
 
     let (message, _welcome) = alice_group
-        .add_members(backend, &[bob_key_package])
-        .expect("Could not add member.");
+        .self_update(backend, None)
+        .expect("Could not self-update.");
 
     let mut serialized_message = message
         .tls_serialize_detached()
@@ -160,15 +181,16 @@ fn test_valsem001(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
 fn test_valsem002(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
     let ValidationTestSetup {
         mut alice_group,
+        mut bob_group,
         _alice_credential: _,
         _bob_credential: _,
         _alice_key_package: _,
-        bob_key_package,
+        _bob_key_package: _,
     } = validation_test_setup(PURE_PLAINTEXT_WIRE_FORMAT_POLICY, ciphersuite, backend);
 
     let (message, _welcome) = alice_group
-        .add_members(backend, &[bob_key_package])
-        .expect("Could not add member.");
+        .self_update(backend, None)
+        .expect("Could not self-update.");
 
     let serialized_message = message
         .tls_serialize_detached()
@@ -184,18 +206,18 @@ fn test_valsem002(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
 
     let message_in = MlsMessageIn::from(plaintext);
 
-    let err = alice_group
-        .parse_message(message_in, backend)
+    let err = bob_group
+        .process_message(backend, message_in)
         .expect_err("Could parse message despite wrong group ID.");
 
     assert_eq!(
         err,
-        ParseMessageError::ValidationError(ValidationError::WrongGroupId)
+        ProcessMessageError::ValidationError(ValidationError::WrongGroupId)
     );
 
     // Positive case
-    alice_group
-        .parse_message(MlsMessageIn::from(original_message), backend)
+    bob_group
+        .process_message(backend, MlsMessageIn::from(original_message))
         .expect("Unexpected error.");
 }
 
@@ -204,46 +226,29 @@ fn test_valsem002(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
 fn test_valsem003(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
     let ValidationTestSetup {
         mut alice_group,
+        mut bob_group,
         _alice_credential: _,
         _bob_credential: _,
         _alice_key_package: _,
-        bob_key_package,
+        _bob_key_package: _,
     } = validation_test_setup(PURE_PLAINTEXT_WIRE_FORMAT_POLICY, ciphersuite, backend);
 
-    // Alice can't process her own commits, so we'll have to add Bob.
-    let (_message, welcome) = alice_group
-        .add_members(backend, &[bob_key_package])
-        .expect("Could not add member.");
-
-    alice_group
-        .merge_pending_commit()
-        .expect("error merging pending commit");
-
-    let mls_group_config = MlsGroupConfig::builder()
-        .wire_format_policy(PURE_PLAINTEXT_WIRE_FORMAT_POLICY)
-        .build();
-
-    let mut bob_group = MlsGroup::new_from_welcome(
-        backend,
-        &mls_group_config,
-        welcome,
-        Some(alice_group.export_ratchet_tree()),
-    )
-    .expect("error creating bob's group from welcome");
-
-    // Now that we added bob, Alice needs to create a new message that Bob can process.
+    // Alice needs to create a new message that Bob can process.
     let (message, _welcome) = alice_group
         .self_update(backend, None)
         .expect("Could not self update.");
 
-    let unverified_message = bob_group
-        .parse_message(message.into(), backend)
-        .expect("Could not parse message.");
-    let processed_message = bob_group
-        .process_unverified_message(unverified_message, None, backend)
-        .expect("Could not process unverified message.");
+    alice_group
+        .merge_pending_commit()
+        .expect("Could not merge commit.");
 
-    if let ProcessedMessage::StagedCommitMessage(staged_commit) = processed_message {
+    let processed_message = bob_group
+        .process_message(backend, message.into())
+        .expect("Could not process message.");
+
+    if let ProcessedMessageContent::StagedCommitMessage(staged_commit) =
+        processed_message.into_content()
+    {
         bob_group
             .merge_staged_commit(*staged_commit)
             .expect("Could not merge Commit message.");
@@ -252,7 +257,7 @@ fn test_valsem003(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
     }
 
     // Do a second Commit to increase the epoch number
-    let (message, _welcome) = bob_group
+    let (message, _welcome) = alice_group
         .self_update(backend, None)
         .expect("Could not add member.");
 
@@ -272,12 +277,12 @@ fn test_valsem003(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
     let message_in = MlsMessageIn::from(plaintext.clone());
 
     let err = bob_group
-        .parse_message(message_in, backend)
+        .process_message(backend, message_in)
         .expect_err("Could parse message despite wrong epoch.");
 
     assert_eq!(
         err,
-        ParseMessageError::ValidationError(ValidationError::WrongEpoch)
+        ProcessMessageError::ValidationError(ValidationError::WrongEpoch)
     );
 
     // Set the epoch too low
@@ -286,17 +291,17 @@ fn test_valsem003(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
     let message_in = MlsMessageIn::from(plaintext);
 
     let err = bob_group
-        .parse_message(message_in, backend)
+        .process_message(backend, message_in)
         .expect_err("Could parse message despite wrong epoch.");
 
     assert_eq!(
         err,
-        ParseMessageError::ValidationError(ValidationError::WrongEpoch)
+        ProcessMessageError::ValidationError(ValidationError::WrongEpoch)
     );
 
     // Positive case
     bob_group
-        .parse_message(MlsMessageIn::from(original_message), backend)
+        .process_message(backend, MlsMessageIn::from(original_message))
         .expect("Unexpected error.");
 }
 
@@ -305,15 +310,16 @@ fn test_valsem003(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
 fn test_valsem004(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
     let ValidationTestSetup {
         mut alice_group,
+        mut bob_group,
         _alice_credential: _,
         _bob_credential: _,
         _alice_key_package: _,
-        bob_key_package,
+        _bob_key_package: _,
     } = validation_test_setup(PURE_PLAINTEXT_WIRE_FORMAT_POLICY, ciphersuite, backend);
 
     let (message, _welcome) = alice_group
-        .add_members(backend, &[bob_key_package])
-        .expect("Could not add member.");
+        .self_update(backend, None)
+        .expect("Could not self-update.");
 
     let serialized_message = message
         .tls_serialize_detached()
@@ -330,18 +336,18 @@ fn test_valsem004(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
 
     let message_in = MlsMessageIn::from(plaintext);
 
-    let err = alice_group
-        .parse_message(message_in, backend)
+    let err = bob_group
+        .process_message(backend, message_in)
         .expect_err("Could parse message despite wrong sender.");
 
     assert_eq!(
         err,
-        ParseMessageError::ValidationError(ValidationError::UnknownMember)
+        ProcessMessageError::ValidationError(ValidationError::UnknownMember)
     );
 
     // Positive case
-    alice_group
-        .parse_message(MlsMessageIn::from(original_message), backend)
+    bob_group
+        .process_message(backend, MlsMessageIn::from(original_message))
         .expect("Unexpected error.");
 }
 
@@ -350,15 +356,16 @@ fn test_valsem004(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
 fn test_valsem005(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
     let ValidationTestSetup {
         mut alice_group,
+        mut bob_group,
         _alice_credential: _,
         _bob_credential: _,
         _alice_key_package: _,
-        bob_key_package,
+        _bob_key_package: _,
     } = validation_test_setup(PURE_PLAINTEXT_WIRE_FORMAT_POLICY, ciphersuite, backend);
 
     let (message, _welcome) = alice_group
-        .add_members(backend, &[bob_key_package])
-        .expect("Could not add member.");
+        .self_update(backend, None)
+        .expect("Could not self-update.");
 
     let serialized_message = message
         .tls_serialize_detached()
@@ -374,18 +381,18 @@ fn test_valsem005(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
 
     let message_in = MlsMessageIn::from(plaintext);
 
-    let err = alice_group
-        .parse_message(message_in, backend)
+    let err = bob_group
+        .process_message(backend, message_in)
         .expect_err("Could parse message despite unencrypted application message.");
 
     assert_eq!(
         err,
-        ParseMessageError::ValidationError(ValidationError::UnencryptedApplicationMessage)
+        ProcessMessageError::ValidationError(ValidationError::UnencryptedApplicationMessage)
     );
 
     // Positive case
-    alice_group
-        .parse_message(MlsMessageIn::from(original_message), backend)
+    bob_group
+        .process_message(backend, MlsMessageIn::from(original_message))
         .expect("Unexpected error.");
 }
 
@@ -394,19 +401,12 @@ fn test_valsem005(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
 fn test_valsem006(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
     let ValidationTestSetup {
         mut alice_group,
+        mut bob_group,
         _alice_credential: _,
         _bob_credential: _,
         _alice_key_package: _,
-        bob_key_package,
+        _bob_key_package: _,
     } = validation_test_setup(PURE_CIPHERTEXT_WIRE_FORMAT_POLICY, ciphersuite, backend);
-
-    let (_message, welcome) = alice_group
-        .add_members(backend, &[bob_key_package])
-        .expect("Could not add member.");
-
-    alice_group
-        .merge_pending_commit()
-        .expect("An unexpected error occurred.");
 
     let message = alice_group
         .create_message(backend, &[1, 2, 3])
@@ -425,30 +425,20 @@ fn test_valsem006(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
 
     let message_in = MlsMessageIn::from(ciphertext);
 
-    let ratchet_tree = alice_group.export_ratchet_tree();
-
-    let mls_group_config = MlsGroupConfig::builder()
-        .wire_format_policy(PURE_CIPHERTEXT_WIRE_FORMAT_POLICY)
-        .build();
-
-    let mut bob_group =
-        MlsGroup::new_from_welcome(backend, &mls_group_config, welcome, Some(ratchet_tree))
-            .expect("An unexpected error occurred.");
-
     let err = bob_group
-        .parse_message(message_in, backend)
+        .process_message(backend, message_in)
         .expect_err("Could parse message despite garbled ciphertext.");
 
     assert_eq!(
         err,
-        ParseMessageError::ValidationError(ValidationError::UnableToDecrypt(
+        ProcessMessageError::ValidationError(ValidationError::UnableToDecrypt(
             MessageDecryptionError::AeadError
         ))
     );
 
     // Positive case
     bob_group
-        .parse_message(MlsMessageIn::from(original_message), backend)
+        .process_message(backend, MlsMessageIn::from(original_message))
         .expect("Unexpected error.");
 }
 
@@ -457,15 +447,16 @@ fn test_valsem006(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
 fn test_valsem007(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
     let ValidationTestSetup {
         mut alice_group,
+        mut bob_group,
         _alice_credential: _,
         _bob_credential: _,
         _alice_key_package: _,
-        bob_key_package,
+        _bob_key_package: _,
     } = validation_test_setup(PURE_PLAINTEXT_WIRE_FORMAT_POLICY, ciphersuite, backend);
 
     let (message, _welcome) = alice_group
-        .add_members(backend, &[bob_key_package])
-        .expect("Could not add member.");
+        .self_update(backend, None)
+        .expect("Could not self-update.");
 
     let serialized_message = message
         .tls_serialize_detached()
@@ -481,18 +472,18 @@ fn test_valsem007(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
 
     let message_in = MlsMessageIn::from(plaintext);
 
-    let err = alice_group
-        .parse_message(message_in, backend)
+    let err = bob_group
+        .process_message(backend, message_in)
         .expect_err("Could parse message despite missing membership tag.");
 
     assert_eq!(
         err,
-        ParseMessageError::ValidationError(ValidationError::MissingMembershipTag)
+        ProcessMessageError::ValidationError(ValidationError::MissingMembershipTag)
     );
 
     // Positive case
-    alice_group
-        .parse_message(MlsMessageIn::from(original_message), backend)
+    bob_group
+        .process_message(backend, MlsMessageIn::from(original_message))
         .expect("Unexpected error.");
 }
 
@@ -501,37 +492,17 @@ fn test_valsem007(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
 fn test_valsem008(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
     let ValidationTestSetup {
         mut alice_group,
+        mut bob_group,
         _alice_credential: _,
         _bob_credential: _,
         _alice_key_package: _,
-        bob_key_package,
+        _bob_key_package: _,
     } = validation_test_setup(PURE_PLAINTEXT_WIRE_FORMAT_POLICY, ciphersuite, backend);
 
-    // Alice can't process her own commits, so we'll have to add Bob.
-    let (_message, welcome) = alice_group
-        .add_members(backend, &[bob_key_package])
-        .expect("Could not add member.");
-
-    alice_group
-        .merge_pending_commit()
-        .expect("error merging pending commit");
-
-    let mls_group_config = MlsGroupConfig::builder()
-        .wire_format_policy(PURE_PLAINTEXT_WIRE_FORMAT_POLICY)
-        .build();
-
-    let mut bob_group = MlsGroup::new_from_welcome(
-        backend,
-        &mls_group_config,
-        welcome,
-        Some(alice_group.export_ratchet_tree()),
-    )
-    .expect("error creating bob's group from welcome");
-
-    // Now that we added bob, Alice needs to create a new message that Bob can process.
+    // Alice needs to create a new message that Bob can process.
     let (message, _welcome) = alice_group
         .self_update(backend, None)
-        .expect("Could not self update.");
+        .expect("Could not self-update.");
 
     let serialized_message = message
         .tls_serialize_detached()
@@ -550,22 +521,15 @@ fn test_valsem008(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
 
     let message_in = MlsMessageIn::from(plaintext);
 
-    let unverified_message = bob_group
-        .parse_message(message_in, backend)
-        .expect("Could not parse message.");
-
     let err = bob_group
-        .process_unverified_message(unverified_message, None, backend)
-        .expect_err("Could process unverified message despite wrong membership tag.");
+        .process_message(backend, message_in)
+        .expect_err("Could process message despite wrong membership tag.");
 
-    assert_eq!(err, UnverifiedMessageError::InvalidMembershipTag);
+    assert_eq!(err, ProcessMessageError::InvalidMembershipTag);
 
     // Positive case
-    let unverified_message = bob_group
-        .parse_message(MlsMessageIn::from(original_message), backend)
-        .expect("Could not parse message.");
     bob_group
-        .process_unverified_message(unverified_message, None, backend)
+        .process_message(backend, MlsMessageIn::from(original_message))
         .expect("Unexpected error.");
 }
 
@@ -574,15 +538,16 @@ fn test_valsem008(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
 fn test_valsem009(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
     let ValidationTestSetup {
         mut alice_group,
+        mut bob_group,
         _alice_credential: _,
         _bob_credential: _,
         _alice_key_package: _,
-        bob_key_package,
+        _bob_key_package: _,
     } = validation_test_setup(PURE_PLAINTEXT_WIRE_FORMAT_POLICY, ciphersuite, backend);
 
     let (message, _welcome) = alice_group
-        .add_members(backend, &[bob_key_package])
-        .expect("Could not add member.");
+        .self_update(backend, None)
+        .expect("Could not self-update.");
 
     let serialized_message = message
         .tls_serialize_detached()
@@ -598,18 +563,18 @@ fn test_valsem009(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
 
     let message_in = MlsMessageIn::from(plaintext);
 
-    let err = alice_group
-        .parse_message(message_in, backend)
+    let err = bob_group
+        .process_message(backend, message_in)
         .expect_err("Could parse message despite missing confirmation tag.");
 
     assert_eq!(
         err,
-        ParseMessageError::ValidationError(ValidationError::MissingConfirmationTag)
+        ProcessMessageError::ValidationError(ValidationError::MissingConfirmationTag)
     );
 
     // Positive case
-    alice_group
-        .parse_message(MlsMessageIn::from(original_message), backend)
+    bob_group
+        .process_message(backend, MlsMessageIn::from(original_message))
         .expect("Unexpected error.");
 }
 
@@ -618,34 +583,14 @@ fn test_valsem009(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
 fn test_valsem010(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
     let ValidationTestSetup {
         mut alice_group,
+        mut bob_group,
         _alice_credential: _,
         _bob_credential: _,
         _alice_key_package: _,
-        bob_key_package,
+        _bob_key_package: _,
     } = validation_test_setup(PURE_PLAINTEXT_WIRE_FORMAT_POLICY, ciphersuite, backend);
 
-    // Alice can't process her own commits, so we'll have to add Bob.
-    let (_message, welcome) = alice_group
-        .add_members(backend, &[bob_key_package])
-        .expect("Could not add member.");
-
-    alice_group
-        .merge_pending_commit()
-        .expect("error merging pending commit");
-
-    let mls_group_config = MlsGroupConfig::builder()
-        .wire_format_policy(PURE_PLAINTEXT_WIRE_FORMAT_POLICY)
-        .build();
-
-    let mut bob_group = MlsGroup::new_from_welcome(
-        backend,
-        &mls_group_config,
-        welcome,
-        Some(alice_group.export_ratchet_tree()),
-    )
-    .expect("error creating bob's group from welcome");
-
-    // Now that we added bob, Alice needs to create a new message that Bob can process.
+    // Alice needs to create a new message that Bob can process.
     let (message, _welcome) = alice_group
         .self_update(backend, None)
         .expect("Could not self update.");
@@ -703,21 +648,14 @@ fn test_valsem010(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
 
     let message_in = MlsMessageIn::from(plaintext);
 
-    let unverified_message = bob_group
-        .parse_message(message_in, backend)
-        .expect("Could not parse message.");
-
     let err = bob_group
-        .process_unverified_message(unverified_message, None, backend)
-        .expect_err("Could process unverified message despite wrong signature.");
+        .process_message(backend, message_in)
+        .expect_err("Could process message despite wrong signature.");
 
-    assert_eq!(err, UnverifiedMessageError::InvalidSignature);
+    assert_eq!(err, ProcessMessageError::InvalidSignature);
 
     // Positive case
-    let unverified_message = bob_group
-        .parse_message(MlsMessageIn::from(original_message), backend)
-        .expect("Could not parse message.");
     bob_group
-        .process_unverified_message(unverified_message, None, backend)
+        .process_message(backend, MlsMessageIn::from(original_message))
         .expect("Unexpected error.");
 }

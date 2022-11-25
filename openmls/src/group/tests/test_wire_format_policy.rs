@@ -101,7 +101,7 @@ fn test_wire_policy_positive(ciphersuite: Ciphersuite, backend: &impl OpenMlsCry
         let mut alice_group = create_group(ciphersuite, backend, *wire_format_policy);
         let message = receive_message(ciphersuite, backend, &mut alice_group);
         alice_group
-            .parse_message(message.into(), backend)
+            .process_message(backend, message.into())
             .expect("An unexpected error occurred.");
     }
 }
@@ -124,8 +124,8 @@ fn test_wire_policy_negative(ciphersuite: Ciphersuite, backend: &impl OpenMlsCry
         let mut alice_group = create_group(ciphersuite, backend, wire_format_policy);
         let message = receive_message(ciphersuite, backend, &mut alice_group);
         let err = alice_group
-            .parse_message(message.into(), backend)
+            .process_message(backend, message.into())
             .expect_err("An unexpected error occurred.");
-        assert_eq!(err, ParseMessageError::IncompatibleWireFormat);
+        assert_eq!(err, ProcessMessageError::IncompatibleWireFormat);
     }
 }

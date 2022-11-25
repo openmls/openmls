@@ -370,13 +370,12 @@ async fn test_group() {
     assert!(messages.is_empty());
 
     // Decrypt the message on Client1
-    let unverified_message = group
-        .parse_message(mls_message, crypto)
-        .expect("Could not parse message.");
     let processed_message = group
-        .process_unverified_message(unverified_message, None, crypto)
+        .process_message(crypto, mls_message)
         .expect("Could not process unverified message.");
-    if let ProcessedMessage::ApplicationMessage(application_message) = processed_message {
+    if let ProcessedMessageContent::ApplicationMessage(application_message) =
+        processed_message.into_content()
+    {
         assert_eq!(client2_message, &application_message.into_bytes()[..]);
     } else {
         panic!("Expected application message");

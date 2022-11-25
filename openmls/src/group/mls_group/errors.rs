@@ -62,9 +62,9 @@ pub enum MlsGroupStateError {
     NoPendingCommit,
 }
 
-/// Parse message error
+/// Process message error
 #[derive(Error, Debug, PartialEq, Clone)]
-pub enum ParseMessageError {
+pub enum ProcessMessageError {
     /// See [`LibraryError`] for more details.
     #[error(transparent)]
     LibraryError(#[from] LibraryError),
@@ -77,14 +77,6 @@ pub enum ParseMessageError {
     /// See [`MlsGroupStateError`] for more details.
     #[error(transparent)]
     GroupStateError(#[from] MlsGroupStateError),
-}
-
-/// Unverified message error
-#[derive(Error, Debug, PartialEq, Clone)]
-pub enum UnverifiedMessageError {
-    /// See [`LibraryError`] for more details.
-    #[error(transparent)]
-    LibraryError(#[from] LibraryError),
     /// The message is from an epoch too far in the past.
     #[error("The message is from an epoch too far in the past.")]
     NoPastEpochData,

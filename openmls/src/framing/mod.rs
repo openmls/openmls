@@ -4,7 +4,6 @@
 //!
 //!  - [`MlsMessageIn`]/[`MlsMessageOut`]: Unified message type for incoming & outgoing MLS messages
 //!  - [`ApplicationMessage`]: Application message received through a [`ProcessedMessage`]
-//!  - [`UnverifiedMessage`]: Partially checked and potentially decrypted message (if it was originally encrypted)
 
 use crate::ciphersuite::*;
 use crate::credentials::*;

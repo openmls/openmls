@@ -8,9 +8,6 @@ use tls_codec::{Deserialize, Serialize};
 use rstest::*;
 use rstest_reuse::{self, *};
 
-#[allow(deprecated)]
-use crate::group::mls_group::ser::SerializedMlsGroup;
-
 use crate::{
     ciphersuite::signable::{Signable, Verifiable},
     credentials::*,
@@ -229,25 +226,18 @@ fn test_valsem200(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
     // Have Bob try to process the commit.
     let message_in = MlsMessageIn::from(verifiable_plaintext);
 
-    let unverified_message = bob_group
-        .parse_message(message_in, backend)
-        .expect("Could not parse message.");
-
-    let err: UnverifiedMessageError = bob_group
-        .process_unverified_message(unverified_message, None, backend)
+    let err = bob_group
+        .process_message(backend, message_in)
         .expect_err("Could process unverified message despite self remove.");
 
     assert_eq!(
         err,
-        UnverifiedMessageError::InvalidCommit(StageCommitError::AttemptedSelfRemoval)
+        ProcessMessageError::InvalidCommit(StageCommitError::AttemptedSelfRemoval)
     );
 
     // Positive case
-    let unverified_message = bob_group
-        .parse_message(MlsMessageIn::from(original_plaintext), backend)
-        .expect("Could not parse message.");
     bob_group
-        .process_unverified_message(unverified_message, None, backend)
+        .process_message(backend, MlsMessageIn::from(original_plaintext))
         .expect("Unexpected error.");
 }
 
@@ -382,21 +372,15 @@ fn test_valsem201(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
         // verify that a path is indeed required when the commit is received
         if is_path_required {
             let commit_wo_path = erase_path(backend, commit.clone(), &alice_group);
-            let unverified_message = bob_group.parse_message(commit_wo_path, backend).unwrap();
-            let processed_msg =
-                bob_group.process_unverified_message(unverified_message, None, backend);
+            let processed_msg = bob_group.process_message(backend, commit_wo_path);
             assert_eq!(
                 processed_msg.unwrap_err(),
-                UnverifiedMessageError::InvalidCommit(StageCommitError::RequiredPathNotFound)
+                ProcessMessageError::InvalidCommit(StageCommitError::RequiredPathNotFound)
             );
         }
 
         // Positive case
-        let previous_bob_group = serde_json::to_vec(&bob_group).unwrap();
-        let unverified_message = bob_group.parse_message(commit.into(), backend).unwrap();
-        assert!(bob_group
-            .process_unverified_message(unverified_message, None, backend)
-            .is_ok());
+        assert!(bob_group.process_message(backend, commit.into(),).is_ok());
 
         // cleanup & restore for next iteration
         alice_group.clear_pending_proposals();
@@ -546,17 +530,13 @@ fn test_valsem202(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
 
     let update_message_in = MlsMessageIn::from(verifiable_plaintext);
 
-    let unverified_message = bob_group
-        .parse_message(update_message_in, backend)
-        .expect("Could not parse message.");
-
     let err = bob_group
-        .process_unverified_message(unverified_message, None, backend)
+        .process_message(backend, update_message_in)
         .expect_err("Could process unverified message despite path length mismatch.");
 
     assert_eq!(
         err,
-        UnverifiedMessageError::InvalidCommit(StageCommitError::UpdatePathError(
+        ProcessMessageError::InvalidCommit(StageCommitError::UpdatePathError(
             ApplyUpdatePathError::PathLengthMismatch
         ))
     );
@@ -566,11 +546,8 @@ fn test_valsem202(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
             .expect("Could not deserialize message.");
 
     // Positive case
-    let unverified_message = bob_group
-        .parse_message(MlsMessageIn::from(original_update_plaintext), backend)
-        .expect("Could not parse message.");
     bob_group
-        .process_unverified_message(unverified_message, None, backend)
+        .process_message(backend, MlsMessageIn::from(original_update_plaintext))
         .expect("Unexpected error.");
 }
 
@@ -658,17 +635,13 @@ fn test_valsem203(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
 
     let update_message_in = MlsMessageIn::from(verifiable_plaintext);
 
-    let unverified_message = bob_group
-        .parse_message(update_message_in, backend)
-        .expect("Could not parse message.");
-
     let err = bob_group
-        .process_unverified_message(unverified_message, None, backend)
+        .process_message(backend, update_message_in)
         .expect_err("Could process unverified message despite scrambled ciphertexts.");
 
     assert_eq!(
         err,
-        UnverifiedMessageError::InvalidCommit(StageCommitError::UpdatePathError(
+        ProcessMessageError::InvalidCommit(StageCommitError::UpdatePathError(
             ApplyUpdatePathError::UnableToDecrypt
         ))
     );
@@ -678,11 +651,8 @@ fn test_valsem203(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
             .expect("Could not deserialize message.");
 
     // Positive case
-    let unverified_message = bob_group
-        .parse_message(MlsMessageIn::from(original_update_plaintext), backend)
-        .expect("Could not parse message.");
     bob_group
-        .process_unverified_message(unverified_message, None, backend)
+        .process_message(backend, MlsMessageIn::from(original_update_plaintext))
         .expect("Unexpected error.");
 }
 
@@ -770,17 +740,13 @@ fn test_valsem204(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
 
     let update_message_in = MlsMessageIn::from(verifiable_plaintext);
 
-    let unverified_message = bob_group
-        .parse_message(update_message_in, backend)
-        .expect("Could not parse message.");
-
     let err = bob_group
-        .process_unverified_message(unverified_message, None, backend)
+        .process_message(backend, update_message_in)
         .expect_err("Could process unverified message despite modified public key in path.");
 
     assert_eq!(
         err,
-        UnverifiedMessageError::InvalidCommit(StageCommitError::UpdatePathError(
+        ProcessMessageError::InvalidCommit(StageCommitError::UpdatePathError(
             ApplyUpdatePathError::PathMismatch
         ))
     );
@@ -790,11 +756,8 @@ fn test_valsem204(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
             .expect("Could not deserialize message.");
 
     // Positive case
-    let unverified_message = bob_group
-        .parse_message(MlsMessageIn::from(original_update_plaintext), backend)
-        .expect("Could not parse message.");
     bob_group
-        .process_unverified_message(unverified_message, None, backend)
+        .process_message(backend, MlsMessageIn::from(original_update_plaintext))
         .expect("Unexpected error.");
 }
 
@@ -863,24 +826,17 @@ fn test_valsem205(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
 
     let update_message_in = MlsMessageIn::from(verifiable_plaintext);
 
-    let unverified_message = bob_group
-        .parse_message(update_message_in, backend)
-        .expect("Could not parse message.");
-
     let err = bob_group
-        .process_unverified_message(unverified_message, None, backend)
+        .process_message(backend, update_message_in)
         .expect_err("Could process unverified message despite confirmation tag mismatch.");
 
     assert_eq!(
         err,
-        UnverifiedMessageError::InvalidCommit(StageCommitError::ConfirmationTagMismatch)
+        ProcessMessageError::InvalidCommit(StageCommitError::ConfirmationTagMismatch)
     );
 
     // Positive case
-    let unverified_message = bob_group
-        .parse_message(MlsMessageIn::from(original_plaintext), backend)
-        .expect("Could not parse message.");
     bob_group
-        .process_unverified_message(unverified_message, None, backend)
+        .process_message(backend, MlsMessageIn::from(original_plaintext))
         .expect("Unexpected error.");
 }

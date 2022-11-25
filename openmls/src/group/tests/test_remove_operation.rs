@@ -113,15 +113,12 @@ fn test_remove_operation_variants(ciphersuite: Ciphersuite, backend: &impl OpenM
 
                 // Alice & Charlie store the pending proposal
                 for group in [&mut alice_group, &mut charlie_group] {
-                    let unverified_message = group
-                        .parse_message(message.clone().into(), backend)
-                        .expect("Could not parse message.");
                     let processed_message = group
-                        .process_unverified_message(unverified_message, None, backend)
-                        .expect("Could not process unverified message.");
+                        .process_message(backend, message.clone().into())
+                        .expect("Could not process message.");
 
-                    match processed_message {
-                        ProcessedMessage::ProposalMessage(proposal) => {
+                    match processed_message.into_content() {
+                        ProcessedMessageContent::ProposalMessage(proposal) => {
                             group.store_pending_proposal(*proposal);
                         }
                         _ => unreachable!(),
@@ -172,15 +169,12 @@ fn test_remove_operation_variants(ciphersuite: Ciphersuite, backend: &impl OpenM
 
         // === Remove operation from Bob's perspective ===
 
-        let unverified_message = bob_group
-            .parse_message(message.clone().into(), backend)
-            .expect("Could not parse message.");
         let bob_processed_message = bob_group
-            .process_unverified_message(unverified_message, None, backend)
-            .expect("Could not process unverified message.");
+            .process_message(backend, message.clone().into())
+            .expect("Could not process message.");
 
-        match bob_processed_message {
-            ProcessedMessage::StagedCommitMessage(bob_staged_commit) => {
+        match bob_processed_message.into_content() {
+            ProcessedMessageContent::StagedCommitMessage(bob_staged_commit) => {
                 let remove_proposal = bob_staged_commit
                     .remove_proposals()
                     .next()
@@ -226,15 +220,12 @@ fn test_remove_operation_variants(ciphersuite: Ciphersuite, backend: &impl OpenM
 
         // === Remove operation from Charlie's perspective ===
 
-        let unverified_message = charlie_group
-            .parse_message(message.into(), backend)
-            .expect("Could not parse message.");
         let charlie_processed_message = charlie_group
-            .process_unverified_message(unverified_message, None, backend)
-            .expect("Could not process unverified message.");
+            .process_message(backend, message.into())
+            .expect("Could not process message.");
 
-        match charlie_processed_message {
-            ProcessedMessage::StagedCommitMessage(charlie_staged_commit) => {
+        match charlie_processed_message.into_content() {
+            ProcessedMessageContent::StagedCommitMessage(charlie_staged_commit) => {
                 let remove_proposal = charlie_staged_commit
                     .remove_proposals()
                     .next()
