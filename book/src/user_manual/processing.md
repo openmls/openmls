@@ -12,19 +12,11 @@ Incoming messages can be deserialized from byte slices into an `MlsMessageIn`:
 
 If the message is malformed, the function will fail with an error.
 
-## Parsing messages
-
-In the next step, the incoming message needs to be parsed. If the message was encrypted, it will be decrypted automatically:
-
-```rust,no_run,noplayground
-{{#include ../../../openmls/tests/book_code.rs:parse_message}}
-```
-
-Parsing can fail if, e.g., decrypting the message fails. The exact reason for failure is returned in the error value.
-
 ## Processing messages
 
-In the next step, the unverified message needs to be processed. This step performs all remaining validity checks and verifies the message's signature. Optionally, a signature key can be provided to verify the message's signature. This can be used when processing external messages. By default, the sender's credential is used to verify the signature.
+In the next step, the message needs to be processed. If the message was
+encrypted, it will be decrypted automatically. This step performs all syntactic
+and semantic validation checks and verifies the message's signature:
 
 ```rust,no_run,noplayground
 {{#include ../../../openmls/tests/book_code.rs:process_message}}
@@ -32,7 +24,10 @@ In the next step, the unverified message needs to be processed. This step perfor
 
 ## Interpreting the processed message
 
-In the last step, the message is ready for inspection. There are 3 different kinds of messages:
+In the last step, the message is ready for inspection. The `ProcessedMessage`
+obtained in the previous step exposes header fields such as group ID, epoch,
+sender, and authenticated data. It also exposes the message's content. There are
+3 different content types:
 
 ### Application messages
 

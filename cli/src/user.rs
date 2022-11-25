@@ -163,19 +163,7 @@ impl User {
                     };
                     let mut mls_group = group.mls_group.borrow_mut();
 
-                    let unverified_message = match mls_group.parse_message(message, &self.crypto) {
-                        Ok(msg) => msg,
-                        Err(e) => {
-                            log::error!("Error parsing message: {:?} -  Dropping message.", e);
-                            continue;
-                        }
-                    };
-
-                    let processed_message = match mls_group.process_unverified_message(
-                        unverified_message,
-                        None,
-                        &self.crypto,
-                    ) {
+                    let processed_message = match mls_group.process_message(&self.crypto, message) {
                         Ok(msg) => msg,
                         Err(e) => {
                             log::error!(
@@ -186,8 +174,8 @@ impl User {
                         }
                     };
 
-                    match processed_message {
-                        ProcessedMessage::ApplicationMessage(application_message) => {
+                    match processed_message.into_content() {
+                        ProcessedMessageContent::ApplicationMessage(application_message) => {
                             let application_message =
                                 String::from_utf8(application_message.into_bytes()).unwrap();
                             if group_name.is_none()
@@ -197,13 +185,15 @@ impl User {
                             }
                             group.conversation.add(application_message);
                         }
-                        ProcessedMessage::ProposalMessage(_proposal_ptr) => {
+                        ProcessedMessageContent::ProposalMessage(_proposal_ptr) => {
                             // intentionally left blank.
                         }
-                        ProcessedMessage::ExternalJoinProposalMessage(_external_proposal_ptr) => {
+                        ProcessedMessageContent::ExternalJoinProposalMessage(
+                            _external_proposal_ptr,
+                        ) => {
                             // intentionally left blank.
                         }
-                        ProcessedMessage::StagedCommitMessage(commit_ptr) => {
+                        ProcessedMessageContent::StagedCommitMessage(commit_ptr) => {
                             mls_group
                                 .merge_staged_commit(*commit_ptr)
                                 .expect("Failed to merge staged commit!");

@@ -205,13 +205,12 @@ fn remover(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
         Err(e) => panic!("Could not add member to group: {:?}", e),
     };
 
-    let unverified_message = alice_group
-        .parse_message(queued_messages.into(), backend)
-        .expect("Could not parse message.");
     let alice_processed_message = alice_group
-        .process_unverified_message(unverified_message, None, backend)
-        .expect("Could not process unverified message.");
-    if let ProcessedMessage::StagedCommitMessage(staged_commit) = alice_processed_message {
+        .process_message(backend, queued_messages.into())
+        .expect("Could not process messages.");
+    if let ProcessedMessageContent::StagedCommitMessage(staged_commit) =
+        alice_processed_message.into_content()
+    {
         alice_group
             .merge_staged_commit(*staged_commit)
             .expect("Could not merge StagedCommit");
@@ -237,15 +236,14 @@ fn remover(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
         .propose_remove_member(backend, 1)
         .expect("Could not propose removal");
 
-    let unverified_message = charlie_group
-        .parse_message(queued_messages.into(), backend)
-        .expect("Could not parse message.");
     let charlie_processed_message = charlie_group
-        .process_unverified_message(unverified_message, None, backend)
-        .expect("Could not process unverified message.");
+        .process_message(backend, queued_messages.into())
+        .expect("Could not process messages.");
 
     // Check that we received the correct proposals
-    if let ProcessedMessage::ProposalMessage(staged_proposal) = charlie_processed_message {
+    if let ProcessedMessageContent::ProposalMessage(staged_proposal) =
+        charlie_processed_message.into_content()
+    {
         if let Proposal::Remove(ref remove_proposal) = staged_proposal.proposal() {
             // Check that Bob was removed
             assert_eq!(remove_proposal.removed(), 1);
@@ -398,7 +396,7 @@ fn test_invalid_plaintext(ciphersuite: Ciphersuite) {
         .expect_err("No error when distributing message with invalid signature.");
 
     assert_eq!(
-        ClientError::UnverifiedMessageError(UnverifiedMessageError::InvalidMembershipTag),
+        ClientError::ProcessMessageError(ProcessMessageError::InvalidMembershipTag),
         error
     );
 
@@ -417,7 +415,7 @@ fn test_invalid_plaintext(ciphersuite: Ciphersuite) {
         .expect_err("No error when distributing message with invalid signature.");
 
     assert_eq!(
-        ClientError::ParseMessageError(ParseMessageError::ValidationError(
+        ClientError::ProcessMessageError(ProcessMessageError::ValidationError(
             ValidationError::UnknownMember
         )),
         error
@@ -477,17 +475,14 @@ fn test_pending_commit_logic(ciphersuite: Ciphersuite, backend: &impl OpenMlsCry
         .propose_add_member(backend, &bob_key_package)
         .expect("error creating self-update proposal");
 
-    let unverified_message = alice_group
-        .parse_message(proposal.into(), backend)
-        .expect("An unexpected error occurred.");
-    assert!(alice_group.pending_commit().is_none());
-
     let alice_processed_message = alice_group
-        .process_unverified_message(unverified_message, None, backend)
-        .expect("An unexpected error occurred.");
+        .process_message(backend, proposal.into())
+        .expect("Could not process messages.");
     assert!(alice_group.pending_commit().is_none());
 
-    if let ProcessedMessage::ProposalMessage(staged_proposal) = alice_processed_message {
+    if let ProcessedMessageContent::ProposalMessage(staged_proposal) =
+        alice_processed_message.into_content()
+    {
         alice_group.store_pending_proposal(*staged_proposal);
     } else {
         unreachable!("Expected a StagedCommit.");
@@ -599,17 +594,14 @@ fn test_pending_commit_logic(ciphersuite: Ciphersuite, backend: &impl OpenMlsCry
         .self_update(backend, None)
         .expect("error creating self-update commit");
 
-    let unverified_message = alice_group
-        .parse_message(msg.into(), backend)
-        .expect("An unexpected error occurred.");
-    assert!(alice_group.pending_commit().is_some());
-
     let alice_processed_message = alice_group
-        .process_unverified_message(unverified_message, None, backend)
-        .expect("An unexpected error occurred.");
+        .process_message(backend, msg.into())
+        .expect("Could not process messages.");
     assert!(alice_group.pending_commit().is_some());
 
-    if let ProcessedMessage::StagedCommitMessage(staged_commit) = alice_processed_message {
+    if let ProcessedMessageContent::StagedCommitMessage(staged_commit) =
+        alice_processed_message.into_content()
+    {
         alice_group
             .merge_staged_commit(*staged_commit)
             .expect("Could not merge StagedCommit");

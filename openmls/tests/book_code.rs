@@ -321,25 +321,17 @@ fn book_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvide
         MlsMessageIn::try_from_bytes(&bytes).expect("Could not deserialize message.");
     // ANCHOR_END: mls_message_in_from_bytes
 
-    // ANCHOR: parse_message
-    let unverified_message = bob_group
-        .parse_message(mls_message_in, backend)
-        .expect("Could not parse message.");
-    // ANCHOR_END: parse_message
-
     // ANCHOR: process_message
     let processed_message = bob_group
-        .process_unverified_message(
-            unverified_message,
-            None, // No external signature key
-            backend,
-        )
-        .expect("Could not process unverified message.");
+        .process_message(backend, mls_message_in)
+        .expect("Could not process message.");
     // ANCHOR_END: process_message
 
     // Check that we received the correct message
     // ANCHOR: inspect_application_message
-    if let ProcessedMessage::ApplicationMessage(application_message) = processed_message {
+    if let ProcessedMessageContent::ApplicationMessage(application_message) =
+        processed_message.into_content()
+    {
         // Check the message
         assert_eq!(application_message.into_bytes(), b"Hi, I'm Alice!");
     }
@@ -358,15 +350,14 @@ fn book_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvide
         .expect("Could not update own key package.");
     // ANCHOR_END: self_update
 
-    let unverified_message = alice_group
-        .parse_message(mls_message_out.into(), backend)
-        .expect("Could not parse message.");
     let alice_processed_message = alice_group
-        .process_unverified_message(unverified_message, None, backend)
-        .expect("Could not process unverified message.");
+        .process_message(backend, mls_message_out.into())
+        .expect("Could not process message.");
 
     // Check that we received the correct message
-    if let ProcessedMessage::StagedCommitMessage(staged_commit) = alice_processed_message {
+    if let ProcessedMessageContent::StagedCommitMessage(staged_commit) =
+        alice_processed_message.into_content()
+    {
         let update = staged_commit
             .commit_update_key_package()
             .expect("Expected a KeyPackage.");
@@ -410,15 +401,14 @@ fn book_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvide
         .expect("Could not create update proposal.");
     // ANCHOR_END: propose_self_update
 
-    let unverified_message = bob_group
-        .parse_message(mls_message_out.into(), backend)
-        .expect("Could not parse message.");
     let bob_processed_message = bob_group
-        .process_unverified_message(unverified_message, None, backend)
-        .expect("Could not process unverified message.");
+        .process_message(backend, mls_message_out.into())
+        .expect("Could not process message.");
 
     // Check that we received the correct proposals
-    if let ProcessedMessage::ProposalMessage(staged_proposal) = bob_processed_message {
+    if let ProcessedMessageContent::ProposalMessage(staged_proposal) =
+        bob_processed_message.into_content()
+    {
         if let Proposal::Update(ref update_proposal) = staged_proposal.proposal() {
             // Check that Alice updated
             assert_eq!(
@@ -450,15 +440,14 @@ fn book_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvide
     // Suppress warning
     let _welcome_option = welcome_option;
 
-    let unverified_message = bob_group
-        .parse_message(mls_message_out.into(), backend)
-        .expect("Could not parse message.");
     let bob_processed_message = bob_group
-        .process_unverified_message(unverified_message, None, backend)
-        .expect("Could not process unverified message.");
+        .process_message(backend, mls_message_out.into())
+        .expect("Could not process message.");
 
     // Check that we received the correct message
-    if let ProcessedMessage::StagedCommitMessage(staged_commit) = bob_processed_message {
+    if let ProcessedMessageContent::StagedCommitMessage(staged_commit) =
+        bob_processed_message.into_content()
+    {
         let update = staged_commit
             .commit_update_key_package()
             .expect("Expected a KeyPackage.");
@@ -498,18 +487,17 @@ fn book_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvide
         Err(e) => panic!("Could not add member to group: {:?}", e),
     };
 
-    let unverified_message = alice_group
-        .parse_message(queued_message.into(), backend)
-        .expect("Could not parse message.");
     let alice_processed_message = alice_group
-        .process_unverified_message(unverified_message, None, backend)
-        .expect("Could not process unverified message.");
+        .process_message(backend, queued_message.into())
+        .expect("Could not process message.");
     bob_group
         .merge_pending_commit()
         .expect("error merging pending commit");
 
     // Merge Commit
-    if let ProcessedMessage::StagedCommitMessage(staged_commit) = alice_processed_message {
+    if let ProcessedMessageContent::StagedCommitMessage(staged_commit) =
+        alice_processed_message.into_content()
+    {
         alice_group
             .merge_staged_commit(*staged_commit)
             .expect("Could not merge StagedCommit");
@@ -550,18 +538,12 @@ fn book_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvide
         .create_message(backend, message_charlie)
         .expect("Error creating application message");
 
-    let unverified_message = alice_group
-        .parse_message(queued_message.clone().into(), backend)
-        .expect("Could not parse message.");
     let _alice_processed_message = alice_group
-        .process_unverified_message(unverified_message, None, backend)
-        .expect("Could not process unverified message.");
-    let unverified_message = bob_group
-        .parse_message(queued_message.into(), backend)
-        .expect("Could not parse message.");
+        .process_message(backend, queued_message.clone().into())
+        .expect("Could not process message.");
     let _bob_processed_message = bob_group
-        .process_unverified_message(unverified_message, None, backend)
-        .expect("Could not process unverified message.");
+        .process_message(backend, queued_message.into())
+        .expect("Could not process message.");
 
     // === Charlie updates and commits ===
     let (queued_message, welcome_option) = match charlie_group.self_update(backend, None) {
@@ -569,24 +551,20 @@ fn book_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvide
         Err(e) => panic!("Error performing self-update: {:?}", e),
     };
 
-    let unverified_message = alice_group
-        .parse_message(queued_message.clone().into(), backend)
-        .expect("Could not parse message.");
     let alice_processed_message = alice_group
-        .process_unverified_message(unverified_message, None, backend)
-        .expect("Could not process unverified message.");
-    let unverified_message = bob_group
-        .parse_message(queued_message.into(), backend)
-        .expect("Could not parse message.");
+        .process_message(backend, queued_message.clone().into())
+        .expect("Could not process message.");
     let bob_processed_message = bob_group
-        .process_unverified_message(unverified_message, None, backend)
-        .expect("Could not process unverified message.");
+        .process_message(backend, queued_message.into())
+        .expect("Could not process message.");
     charlie_group
         .merge_pending_commit()
         .expect("error merging pending commit");
 
     // Merge Commit
-    if let ProcessedMessage::StagedCommitMessage(staged_commit) = alice_processed_message {
+    if let ProcessedMessageContent::StagedCommitMessage(staged_commit) =
+        alice_processed_message.into_content()
+    {
         alice_group
             .merge_staged_commit(*staged_commit)
             .expect("Could not merge StagedCommit");
@@ -595,7 +573,9 @@ fn book_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvide
     }
 
     // Merge Commit
-    if let ProcessedMessage::StagedCommitMessage(staged_commit) = bob_processed_message {
+    if let ProcessedMessageContent::StagedCommitMessage(staged_commit) =
+        bob_processed_message.into_content()
+    {
         bob_group
             .merge_staged_commit(*staged_commit)
             .expect("Could not merge StagedCommit");
@@ -659,18 +639,18 @@ fn book_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvide
     // Check that Bob's group is still active
     assert!(bob_group.is_active());
 
-    let unverified_message = alice_group
-        .parse_message(mls_message_out.clone().into(), backend)
-        .expect("Could not parse message.");
+    let alice_processed_message = alice_group
+        .process_message(backend, mls_message_out.clone().into())
+        .expect("Could not process message.");
 
     // Check that alice can use the member list to check if the message is
     // actually from Charlie.
     let alice_members = alice_group
         .members()
         .expect("Library error getting group member list");
-    let sender_credential = unverified_message
+    let sender_credential = alice_processed_message
         .credential()
-        .expect("Couldn't retrieve credential from unverified message.");
+        .expect("Couldn't retrieve credential from message.");
 
     assert!(alice_members.iter().any(
         |Member {
@@ -683,15 +663,9 @@ fn book_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvide
 
     assert_eq!(sender_credential, &charlie_credential);
 
-    let alice_processed_message = alice_group
-        .process_unverified_message(unverified_message, None, backend)
-        .expect("Could not process unverified message.");
-    let unverified_message = bob_group
-        .parse_message(mls_message_out.into(), backend)
-        .expect("Could not parse message.");
     let bob_processed_message = bob_group
-        .process_unverified_message(unverified_message, None, backend)
-        .expect("Could not process unverified message.");
+        .process_message(backend, mls_message_out.into())
+        .expect("Could not process message.");
     let charlies_leaf_index = charlie_group.own_leaf_index();
     charlie_group
         .merge_pending_commit()
@@ -699,7 +673,9 @@ fn book_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvide
 
     // Check that we receive the correct proposal for Alice
     // ANCHOR: inspect_staged_commit
-    if let ProcessedMessage::StagedCommitMessage(staged_commit) = alice_processed_message {
+    if let ProcessedMessageContent::StagedCommitMessage(staged_commit) =
+        alice_processed_message.into_content()
+    {
         // We expect a remove proposal
         let remove = staged_commit
             .remove_proposals()
@@ -728,7 +704,9 @@ fn book_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvide
     // Check that we receive the correct proposal for Bob
     // ANCHOR: remove_operation
     // ANCHOR: getting_removed
-    if let ProcessedMessage::StagedCommitMessage(staged_commit) = bob_processed_message {
+    if let ProcessedMessageContent::StagedCommitMessage(staged_commit) =
+        bob_processed_message.into_content()
+    {
         let remove_proposal = staged_commit
             .remove_proposals()
             .next()
@@ -811,15 +789,14 @@ fn book_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvide
         .expect("Could not create proposal to remove Charlie.");
     // ANCHOR_END: propose_remove
 
-    let unverified_message = charlie_group
-        .parse_message(mls_message_out.into(), backend)
-        .expect("Could not parse message.");
     let charlie_processed_message = charlie_group
-        .process_unverified_message(unverified_message, None, backend)
-        .expect("Could not process unverified message.");
+        .process_message(backend, mls_message_out.into())
+        .expect("Could not process message.");
 
     // Check that we received the correct proposals
-    if let ProcessedMessage::ProposalMessage(staged_proposal) = charlie_processed_message {
+    if let ProcessedMessageContent::ProposalMessage(staged_proposal) =
+        charlie_processed_message.into_content()
+    {
         if let Proposal::Remove(ref remove_proposal) = staged_proposal.proposal() {
             // Check that Charlie was removed
             assert_eq!(remove_proposal.removed(), charlie_group.own_leaf_index());
@@ -845,16 +822,15 @@ fn book_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvide
         .expect("Could not create proposal to add Bob");
     // ANCHOR_END: propose_add
 
-    let unverified_message = charlie_group
-        .parse_message(mls_message_out.into(), backend)
-        .expect("Could not parse message.");
     let charlie_processed_message = charlie_group
-        .process_unverified_message(unverified_message, None, backend)
-        .expect("Could not process unverified message.");
+        .process_message(backend, mls_message_out.into())
+        .expect("Could not process message.");
 
     // Check that we received the correct proposals
     // ANCHOR: inspect_add_proposal
-    if let ProcessedMessage::ProposalMessage(staged_proposal) = charlie_processed_message {
+    if let ProcessedMessageContent::ProposalMessage(staged_proposal) =
+        charlie_processed_message.into_content()
+    {
         // In the case we received an Add Proposal
         if let Proposal::Add(add_proposal) = staged_proposal.proposal() {
             // Check that Bob was added
@@ -881,12 +857,9 @@ fn book_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvide
         .commit_to_pending_proposals(backend)
         .expect("Could not flush proposals");
 
-    let unverified_message = charlie_group
-        .parse_message(queued_message.into(), backend)
-        .expect("Could not parse message.");
     let charlie_processed_message = charlie_group
-        .process_unverified_message(unverified_message, None, backend)
-        .expect("Could not process unverified message.");
+        .process_message(backend, queued_message.into())
+        .expect("Could not process message.");
 
     // Merge Commit
     alice_group
@@ -894,7 +867,9 @@ fn book_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvide
         .expect("error merging pending commit");
 
     // Merge Commit
-    if let ProcessedMessage::StagedCommitMessage(staged_commit) = charlie_processed_message {
+    if let ProcessedMessageContent::StagedCommitMessage(staged_commit) =
+        charlie_processed_message.into_content()
+    {
         charlie_group
             .merge_staged_commit(*staged_commit)
             .expect("Could not merge StagedCommit");
@@ -964,36 +939,36 @@ fn book_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvide
     let queued_message = alice_group
         .create_message(backend, message_alice)
         .expect("Error creating application message");
-    let unverified_message = bob_group
-        .parse_message(queued_message.into(), backend)
-        .expect("Could not parse message.");
+
+    let bob_processed_message = bob_group
+        .process_message(backend, queued_message.into())
+        .expect("Could not process message.");
 
     // Get sender information
-    // As provided by the `unverified_message`
-    let sender_cred_from_msg = unverified_message
+    // As provided by the processed message
+    let sender_cred_from_msg = bob_processed_message
         .credential()
         .expect("Expected a credential.")
         .clone();
 
     // As provided by looking up the sender manually via the `member()` function
     // ANCHOR: member_lookup
-    let sender_cred_from_group = if let Sender::Member(sender_index) = unverified_message.sender() {
-        bob_group
-            .member(*sender_index)
-            .expect("Could not find sender in group.")
-            .credential()
-            .clone()
-    } else {
-        unreachable!("Expected sender type to be `Member`.")
-    };
+    let sender_cred_from_group =
+        if let Sender::Member(sender_index) = bob_processed_message.sender() {
+            bob_group
+                .member(*sender_index)
+                .expect("Could not find sender in group.")
+                .credential()
+                .clone()
+        } else {
+            unreachable!("Expected sender type to be `Member`.")
+        };
     // ANCHOR_END: member_lookup
 
-    let bob_processed_message = bob_group
-        .process_unverified_message(unverified_message, None, backend)
-        .expect("Could not process unverified message.");
-
     // Check that we received the correct message
-    if let ProcessedMessage::ApplicationMessage(application_message) = bob_processed_message {
+    if let ProcessedMessageContent::ApplicationMessage(application_message) =
+        bob_processed_message.into_content()
+    {
         // Check the message
         assert_eq!(application_message.into_bytes(), message_alice);
         // Check that Alice sent the message
@@ -1014,15 +989,14 @@ fn book_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvide
         .expect("Could not leave group");
     // ANCHOR_END: leaving
 
-    let unverified_message = alice_group
-        .parse_message(queued_message.into(), backend)
-        .expect("Could not parse message.");
     let alice_processed_message = alice_group
-        .process_unverified_message(unverified_message, None, backend)
-        .expect("Could not process unverified message.");
+        .process_message(backend, queued_message.into())
+        .expect("Could not process message.");
 
     // Store proposal
-    if let ProcessedMessage::ProposalMessage(staged_proposal) = alice_processed_message {
+    if let ProcessedMessageContent::ProposalMessage(staged_proposal) =
+        alice_processed_message.into_content()
+    {
         // Store proposal
         alice_group.store_pending_proposal(*staged_proposal);
     } else {
@@ -1069,15 +1043,14 @@ fn book_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvide
         .merge_pending_commit()
         .expect("Could not merge Commit.");
 
-    let unverified_message = bob_group
-        .parse_message(queued_message.into(), backend)
-        .expect("Could not parse message.");
     let bob_processed_message = bob_group
-        .process_unverified_message(unverified_message, None, backend)
-        .expect("Could not process unverified message.");
+        .process_message(backend, queued_message.into())
+        .expect("Could not process message.");
 
     // Check that we received the correct proposals
-    if let ProcessedMessage::StagedCommitMessage(staged_commit) = bob_processed_message {
+    if let ProcessedMessageContent::StagedCommitMessage(staged_commit) =
+        bob_processed_message.into_content()
+    {
         let remove = staged_commit
             .remove_proposals()
             .next()
@@ -1145,14 +1118,11 @@ fn book_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvide
     // ANCHOR_END: external_join_proposal
 
     // ANCHOR: decrypt_external_join_proposal
-    let unverified_message = alice_group
-        .parse_message(proposal.into(), backend)
-        .expect("Could not parse message.");
     let alice_processed_message = alice_group
-        .process_unverified_message(unverified_message, None, backend)
-        .expect("Could not process unverified message.");
-    match alice_processed_message {
-        ProcessedMessage::ExternalJoinProposalMessage(proposal) => {
+        .process_message(backend, proposal.into())
+        .expect("Could not process message.");
+    match alice_processed_message.into_content() {
+        ProcessedMessageContent::ExternalJoinProposalMessage(proposal) => {
             alice_group.store_pending_proposal(*proposal);
             let (_commit, welcome) = alice_group
                 .commit_to_pending_proposals(backend)
