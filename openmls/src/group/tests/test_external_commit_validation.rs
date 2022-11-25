@@ -14,7 +14,7 @@ use crate::{
     credentials::{errors::*, *},
     framing::*,
     group::{errors::*, *},
-    messages::{proposals::*, GroupInfoTBS, VerifiableGroupInfo},
+    messages::{proposals::*, VerifiableGroupInfo},
 };
 
 use super::utils::{generate_credential_bundle, generate_key_package_bundle};
@@ -87,13 +87,16 @@ fn validation_test_setup(
 
     // Bob wants to commit externally.
 
-    let group_info = create_group_info(backend, ciphersuite, &alice_group, &bob_credential_bundle);
+    let verifiable_group_info = alice_group
+        .export_group_info(backend)
+        .unwrap()
+        .into_verifiable_group_info();
     let tree_option = alice_group.export_ratchet_tree();
 
     let (_bob_group, message) = MlsGroup::join_by_external_commit(
         backend,
         Some(&tree_option),
-        group_info,
+        verifiable_group_info,
         alice_group.configuration(),
         &[],
         &bob_credential_bundle,
@@ -332,13 +335,15 @@ fn test_valsem242(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
         gce_proposal(),
     ];
     for proposal in deny_list {
-        let group_info =
-            create_group_info(backend, ciphersuite, &alice_group, &bob_credential_bundle);
+        let verifiable_group_info = alice_group
+            .export_group_info(backend)
+            .unwrap()
+            .into_verifiable_group_info();
 
         let (_bob_group, message) = MlsGroup::join_by_external_commit(
             backend,
             None,
-            group_info,
+            verifiable_group_info,
             alice_group.configuration(),
             &[],
             &bob_credential_bundle,
@@ -423,13 +428,16 @@ fn test_valsem243(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
 
     // Bob wants to commit externally.
 
-    let group_info = create_group_info(backend, ciphersuite, &alice_group, &bob_credential_bundle);
+    let verifiable_group_info = alice_group
+        .export_group_info(backend)
+        .unwrap()
+        .into_verifiable_group_info();
     let tree_option = alice_group.export_ratchet_tree();
 
     let (_bob_group, message) = MlsGroup::join_by_external_commit(
         backend,
         Some(&tree_option),
-        group_info,
+        verifiable_group_info,
         alice_group.configuration(),
         &[],
         &bob_credential_bundle,
@@ -517,12 +525,14 @@ fn test_valsem243(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
                 .expect("Error serializing signature key."),
         )
         .expect("An unexpected error occurred.");
-    let group_info =
-        create_group_info(backend, ciphersuite, &alice_group, &alice_credential_bundle);
+    let verifiable_group_info = alice_group
+        .export_group_info(backend)
+        .unwrap()
+        .into_verifiable_group_info();
     let alice_external_commit = MlsGroup::join_by_external_commit(
         backend,
         Some(&tree_option),
-        group_info,
+        verifiable_group_info,
         alice_group.configuration(),
         &[],
         &alice_credential_bundle,
@@ -781,12 +791,15 @@ fn test_pure_ciphertest(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoPr
     // Bob wants to commit externally.
 
     // Have Alice export everything that bob needs.
-    let group_info = create_group_info(backend, ciphersuite, &alice_group, &bob_credential_bundle);
+    let verifiable_group_info = alice_group
+        .export_group_info(backend)
+        .unwrap()
+        .into_verifiable_group_info();
 
     let (_bob_group, message) = MlsGroup::join_by_external_commit(
         backend,
         None,
-        group_info,
+        verifiable_group_info,
         alice_group.configuration(),
         &[],
         &bob_credential_bundle,
@@ -797,44 +810,4 @@ fn test_pure_ciphertest(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoPr
 
     // Would fail if handshake message processing did not distinguish external messages
     assert!(alice_group.process_message(backend, message.into()).is_ok());
-}
-
-fn create_group_info(
-    backend: &impl OpenMlsCryptoProvider,
-    ciphersuite: Ciphersuite,
-    group: &MlsGroup,
-    credential: &CredentialBundle,
-) -> VerifiableGroupInfo {
-    let mut extensions = group.group().other_extensions();
-    let external_pub = group
-        .group()
-        .group_epoch_secrets()
-        .external_secret()
-        .derive_external_keypair(backend.crypto(), ciphersuite)
-        .public;
-    extensions.push(Extension::ExternalPub(ExternalPubExtension::new(
-        HpkePublicKey::from(external_pub),
-    )));
-
-    // Create to-be-signed group info.
-    let group_info_tbs = GroupInfoTBS::new(
-        group.export_group_context().clone(),
-        &extensions,
-        group
-            .group()
-            .message_secrets()
-            .confirmation_key()
-            .tag(backend, group.group().context().confirmed_transcript_hash())
-            .unwrap(),
-        group.own_leaf_index(),
-    );
-
-    // Sign to-be-signed group info.
-    let group_info = group_info_tbs.sign(backend, credential).unwrap();
-
-    // Now, let's serialize and ...
-    let serialized = group_info.tls_serialize_detached().unwrap();
-
-    // ... deserialize the group info to simulate a transmission over the wire.
-    VerifiableGroupInfo::tls_deserialize(&mut serialized.as_slice()).unwrap()
 }

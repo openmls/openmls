@@ -291,6 +291,19 @@ impl GroupInfo {
     ) -> Result<Self, LibraryError> {
         self.payload.sign(backend, credential_bundle)
     }
+
+    #[cfg(test)]
+    pub(crate) fn into_verifiable_group_info(self) -> VerifiableGroupInfo {
+        VerifiableGroupInfo {
+            payload: GroupInfoTBS {
+                group_context: self.payload.group_context,
+                extensions: self.payload.extensions,
+                confirmation_tag: self.payload.confirmation_tag,
+                signer: self.payload.signer,
+            },
+            signature: self.signature,
+        }
+    }
 }
 
 impl Verifiable for GroupInfo {
@@ -323,6 +336,29 @@ impl SignedStruct<GroupInfoTBS> for GroupInfo {
 pub struct VerifiableGroupInfo {
     payload: GroupInfoTBS,
     signature: Signature,
+}
+
+impl VerifiableGroupInfo {
+    /// Get ciphersuite of the verifiable group info.
+    pub(crate) fn ciphersuite(&self) -> Ciphersuite {
+        self.payload.group_context.ciphersuite()
+    }
+
+    /// Get signer of the verifiable group info.
+    pub(crate) fn signer(&self) -> u32 {
+        self.payload.signer
+    }
+
+    /// Get extensions of the verifiable group info.
+    pub(crate) fn extensions(&self) -> &[Extension] {
+        self.payload.extensions.as_slice()
+    }
+
+    /// Break the signature for testing purposes.
+    #[cfg(test)]
+    pub(crate) fn break_signature(&mut self) {
+        self.signature.modify(b"");
+    }
 }
 
 impl Verifiable for VerifiableGroupInfo {

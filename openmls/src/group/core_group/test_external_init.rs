@@ -113,13 +113,10 @@ fn test_external_init(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProv
     )
     .expect("An unexpected error occurred.");
 
-    let group_info = create_group_info(
-        backend,
-        ciphersuite,
-        &group_alice,
-        &charly_credential_bundle,
-        false,
-    );
+    let verifiable_group_info = group_alice
+        .export_group_info(backend, &alice_credential_bundle)
+        .unwrap()
+        .into_verifiable_group_info();
 
     let proposal_store = ProposalStore::new();
     let params = CreateCommitParams::builder()
@@ -128,7 +125,7 @@ fn test_external_init(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProv
         .proposal_store(&proposal_store)
         .build();
     let (mut group_charly, create_commit_result) =
-        CoreGroup::join_by_external_commit(backend, params, None, group_info)
+        CoreGroup::join_by_external_commit(backend, params, None, verifiable_group_info)
             .expect("Error initializing group externally.");
 
     // Have alice and bob process the commit resulting from external init.
@@ -187,13 +184,10 @@ fn test_external_init(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProv
     // Now we assume that Bob somehow lost his group state and wants to add
     // themselves back through an external commit.
 
-    let group_info = create_group_info(
-        backend,
-        ciphersuite,
-        &group_alice,
-        &bob_credential_bundle,
-        false,
-    );
+    let verifiable_group_info = group_alice
+        .export_group_info(backend, &alice_credential_bundle)
+        .unwrap()
+        .into_verifiable_group_info();
     let nodes_option = group_alice.treesync().export_nodes();
 
     let proposal_store = ProposalStore::new();
@@ -202,9 +196,13 @@ fn test_external_init(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProv
         .credential_bundle(&bob_credential_bundle)
         .proposal_store(&proposal_store)
         .build();
-    let (mut new_group_bob, create_commit_result) =
-        CoreGroup::join_by_external_commit(backend, params, Some(&nodes_option), group_info)
-            .expect("Error initializing group externally.");
+    let (mut new_group_bob, create_commit_result) = CoreGroup::join_by_external_commit(
+        backend,
+        params,
+        Some(&nodes_option),
+        verifiable_group_info,
+    )
+    .expect("Error initializing group externally.");
 
     // Let's make sure there's a remove in the commit.
     let contains_remove = match create_commit_result.commit.content() {
@@ -297,13 +295,10 @@ fn test_external_init_single_member_group(
     )
     .expect("An unexpected error occurred.");
 
-    let group_info = create_group_info(
-        backend,
-        ciphersuite,
-        &group_alice,
-        &charly_credential_bundle,
-        false,
-    );
+    let verifiable_group_info = group_alice
+        .export_group_info(backend, &alice_credential_bundle)
+        .unwrap()
+        .into_verifiable_group_info();
     let nodes_option = group_alice.treesync().export_nodes();
 
     let proposal_store = ProposalStore::new();
@@ -312,9 +307,13 @@ fn test_external_init_single_member_group(
         .credential_bundle(&charly_credential_bundle)
         .proposal_store(&proposal_store)
         .build();
-    let (mut group_charly, create_commit_result) =
-        CoreGroup::join_by_external_commit(backend, params, Some(&nodes_option), group_info)
-            .expect("Error initializing group externally.");
+    let (mut group_charly, create_commit_result) = CoreGroup::join_by_external_commit(
+        backend,
+        params,
+        Some(&nodes_option),
+        verifiable_group_info,
+    )
+    .expect("Error initializing group externally.");
 
     // Have alice and bob process the commit resulting from external init.
     let proposal_store = ProposalStore::default();
@@ -422,13 +421,14 @@ fn test_external_init_broken_signature(
     )
     .expect("An unexpected error occurred.");
 
-    let group_info = create_group_info(
-        backend,
-        ciphersuite,
-        &group_alice,
-        &charly_credential_bundle,
-        true,
-    );
+    let verifiable_group_info = {
+        let mut verifiable_group_info = group_alice
+            .export_group_info(backend, &alice_credential_bundle)
+            .unwrap()
+            .into_verifiable_group_info();
+        verifiable_group_info.break_signature();
+        verifiable_group_info
+    };
 
     let proposal_store = ProposalStore::new();
     let params = CreateCommitParams::builder()
@@ -438,53 +438,7 @@ fn test_external_init_broken_signature(
         .build();
     assert_eq!(
         ExternalCommitError::InvalidGroupInfoSignature,
-        CoreGroup::join_by_external_commit(backend, params, None, group_info)
+        CoreGroup::join_by_external_commit(backend, params, None, verifiable_group_info)
             .expect_err("Signature was corrupted. This should have failed.")
     );
-}
-
-fn create_group_info(
-    backend: &impl OpenMlsCryptoProvider,
-    ciphersuite: Ciphersuite,
-    group: &CoreGroup,
-    credential: &CredentialBundle,
-    break_signature: bool,
-) -> VerifiableGroupInfo {
-    let mut extensions = group.other_extensions();
-    let external_pub = group
-        .group_epoch_secrets()
-        .external_secret()
-        .derive_external_keypair(backend.crypto(), ciphersuite)
-        .public;
-    extensions.push(Extension::ExternalPub(ExternalPubExtension::new(
-        HpkePublicKey::from(external_pub),
-    )));
-
-    // Create to-be-signed group info.
-    let group_info_tbs = GroupInfoTBS::new(
-        group.group_context.clone(),
-        &extensions,
-        group
-            .message_secrets()
-            .confirmation_key()
-            .tag(backend, group.context().confirmed_transcript_hash())
-            .unwrap(),
-        group.own_leaf_index(),
-    );
-
-    // Sign to-be-signed group info.
-    let group_info = group_info_tbs.sign(backend, credential).unwrap();
-
-    // Now, let's serialize and ...
-    let mut serialized = group_info.tls_serialize_detached().unwrap();
-
-    if break_signature {
-        let len = serialized.len();
-
-        // Induce a bit-flip.
-        serialized[len - 1] ^= 1;
-    }
-
-    // ... deserialize the group info to simulate a transmission over the wire.
-    VerifiableGroupInfo::tls_deserialize(&mut serialized.as_slice()).unwrap()
 }

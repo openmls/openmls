@@ -28,15 +28,6 @@ impl CoreGroup {
         tree_option: Option<&[Option<Node>]>,
         group_info: VerifiableGroupInfo,
     ) -> Result<ExternalCommitResult, ExternalCommitError> {
-        let group_info: GroupInfo =
-            Verifiable::verify(group_info, backend, params.credential_bundle().credential())
-                .map_err(|_| ExternalCommitError::InvalidGroupInfoSignature)?;
-
-        let ciphersuite = group_info.group_context().ciphersuite();
-        if group_info.group_context().protocol_version() != ProtocolVersion::Mls10 {
-            return Err(ExternalCommitError::UnsupportedMlsVersion);
-        }
-
         // Build the ratchet tree
 
         // Set nodes either from the extension or from the `nodes_option`.
@@ -58,6 +49,8 @@ impl CoreGroup {
             },
         };
 
+        let ciphersuite = group_info.ciphersuite();
+
         // Create a RatchetTree from the given nodes. We have to do this before
         // verifying the PGS, since we need to find the Credential to verify the
         // signature against.
@@ -70,8 +63,24 @@ impl CoreGroup {
             },
         )?;
 
+        let group_info: GroupInfo = {
+            let group_info_signer_leaf = treesync
+                .leaf(group_info.signer())
+                .map_err(|_| ExternalCommitError::UnknownSender)?
+                .ok_or(ExternalCommitError::UnknownSender)?
+                .key_package()
+                .credential();
+
+            Verifiable::verify(group_info, backend, group_info_signer_leaf)
+                .map_err(|_| ExternalCommitError::InvalidGroupInfoSignature)?
+        };
+
         if treesync.tree_hash() != group_info.group_context().tree_hash() {
             return Err(ExternalCommitError::TreeHashMismatch);
+        }
+
+        if group_info.group_context().protocol_version() != ProtocolVersion::Mls10 {
+            return Err(ExternalCommitError::UnsupportedMlsVersion);
         }
 
         // Obtain external_pub from GroupInfo extensions.
