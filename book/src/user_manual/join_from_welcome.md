@@ -6,3 +6,6 @@ If the group configuration does not use the ratchet tree extension, the ratchet 
 ```rust,no_run,noplayground
 {{#include ../../../openmls/tests/book_code.rs:bob_joins_with_welcome}}
 ```
+
+Pay attention not to forward a Welcome message to a client before its associated commit has been accepted by the 
+Delivery Service. Otherwise, you would end up with an invalid MLS group instance.
