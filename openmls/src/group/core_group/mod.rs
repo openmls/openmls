@@ -39,7 +39,7 @@ use tls_codec::Deserialize as TlsDeserialize;
 use super::errors::CreateGroupContextExtProposalError;
 
 use crate::{
-    ciphersuite::signable::Signable,
+    ciphersuite::{signable::Signable, HpkePublicKey},
     credentials::*,
     error::LibraryError,
     extensions::errors::*,

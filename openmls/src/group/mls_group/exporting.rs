@@ -1,4 +1,6 @@
-use crate::{group::errors::ExporterError, schedule::EpochAuthenticator, messages::VerifiableGroupInfo};
+use crate::{
+    group::errors::ExporterError, messages::VerifiableGroupInfo, schedule::EpochAuthenticator,
+};
 
 use super::*;
 
