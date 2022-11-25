@@ -33,8 +33,6 @@ mod test_past_secrets;
 #[cfg(test)]
 mod test_proposals;
 
-use tls_codec::Deserialize as TlsDeserialize;
-
 #[cfg(test)]
 use super::errors::CreateGroupContextExtProposalError;
 
@@ -533,7 +531,7 @@ impl CoreGroup {
         &self,
         backend: &impl OpenMlsCryptoProvider,
         credential_bundle: &CredentialBundle,
-    ) -> VerifiableGroupInfo {
+    ) -> Result<GroupInfo, LibraryError> {
         let extensions = {
             let ratchet_tree_extension =
                 Extension::RatchetTree(RatchetTreeExtension::new(self.treesync().export_nodes()));
@@ -557,18 +555,12 @@ impl CoreGroup {
             self.message_secrets()
                 .confirmation_key()
                 .tag(backend, self.context().confirmed_transcript_hash())
-                .unwrap(),
+                .map_err(LibraryError::unexpected_crypto_error)?,
             self.own_leaf_index(),
         );
 
         // Sign to-be-signed group info.
-        let group_info = group_info_tbs.sign(backend, credential_bundle).unwrap();
-
-        // Now, let's serialize and ...
-        let serialized = group_info.tls_serialize_detached().unwrap();
-
-        // ... deserialize the group info to simulate a transmission over the wire.
-        VerifiableGroupInfo::tls_deserialize(&mut serialized.as_slice()).unwrap()
+        group_info_tbs.sign(backend, credential_bundle)
     }
 
     /// Returns the epoch authenticator

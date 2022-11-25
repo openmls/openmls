@@ -1,6 +1,6 @@
-use crate::{
-    group::errors::ExporterError, messages::VerifiableGroupInfo, schedule::EpochAuthenticator,
-};
+use tls_codec::Serialize;
+
+use crate::{group::errors::ExporterError, messages::GroupInfo, schedule::EpochAuthenticator};
 
 use super::*;
 
@@ -51,12 +51,24 @@ impl MlsGroup {
     }
 
     /// Export a group info object for this group.
-    /// TODO: No `credential_bundle` required? Everything should be in `LeafNode`?
     pub fn export_group_info(
         &self,
         backend: &impl OpenMlsCryptoProvider,
-        credential_bundle: &CredentialBundle,
-    ) -> VerifiableGroupInfo {
-        self.group.export_group_info(backend, credential_bundle)
+    ) -> Result<GroupInfo, ExportGroupInfoError> {
+        match self.credential() {
+            Ok(credential) => {
+                let credential_bundle: CredentialBundle = backend
+                    .key_store()
+                    .read(
+                        &credential
+                            .signature_key()
+                            .tls_serialize_detached()
+                            .map_err(LibraryError::missing_bound_check)?,
+                    )
+                    .ok_or(ExportGroupInfoError::NoMatchingCredentialBundle)?;
+                Ok(self.group.export_group_info(backend, &credential_bundle)?)
+            }
+            Err(e) => Err(e.into()),
+        }
     }
 }

@@ -1,3 +1,5 @@
+use tls_codec::{Deserialize, Serialize};
+
 use crate::{credentials::*, key_packages::*, messages::*, test_utils::*};
 
 /// Tests the creation of an [UnverifiedGroupInfo] and verifies it was correctly signed.
@@ -24,8 +26,14 @@ fn export_group_info(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvi
             .build(backend)
             .unwrap();
 
-    let verifiable_group_info: VerifiableGroupInfo =
-        group_alice.export_group_info(backend, &alice_credential_bundle);
+    let group_info: GroupInfo = group_alice
+        .export_group_info(backend, &alice_credential_bundle)
+        .unwrap();
+
+    let verifiable_group_info = {
+        let serialized = group_info.tls_serialize_detached().unwrap();
+        VerifiableGroupInfo::tls_deserialize(&mut serialized.as_slice()).unwrap()
+    };
 
     let _: GroupInfo = verifiable_group_info
         .verify(backend, alice_credential_bundle.credential())

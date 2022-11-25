@@ -250,7 +250,7 @@ impl Signable for GroupInfoTBS {
 ///     opaque signature<V>;
 /// } GroupInfo;
 /// ```
-pub(crate) struct GroupInfo {
+pub struct GroupInfo {
     payload: GroupInfoTBS,
     signature: Signature,
 }
