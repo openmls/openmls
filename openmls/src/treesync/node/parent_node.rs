@@ -7,6 +7,7 @@ use openmls_traits::{
 };
 use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
+use thiserror::*;
 use tls_codec::VLBytes;
 
 use crate::{
@@ -25,7 +26,7 @@ use crate::{
 pub struct ParentNode {
     pub(super) public_key: HpkePublicKey,
     pub(super) parent_hash: VLBytes,
-    pub(super) unmerged_leaves: Vec<LeafIndex>,
+    pub(super) unmerged_leaves: UnmergedLeaves,
     private_key_option: Option<HpkePrivateKey>,
 }
 
@@ -42,7 +43,7 @@ impl From<HpkePublicKey> for ParentNode {
         Self {
             public_key,
             parent_hash: vec![].into(),
-            unmerged_leaves: vec![],
+            unmerged_leaves: UnmergedLeaves::new(),
             private_key_option: None,
         }
     }
@@ -95,7 +96,7 @@ impl ParentNode {
     pub(super) fn new(
         public_key: HpkePublicKey,
         parent_hash: VLBytes,
-        unmerged_leaves: Vec<u32>,
+        unmerged_leaves: UnmergedLeaves,
     ) -> Self {
         Self {
             public_key,
@@ -168,25 +169,12 @@ impl ParentNode {
 
     /// Get the list of unmerged leaves.
     pub(in crate::treesync) fn unmerged_leaves(&self) -> &[LeafIndex] {
-        self.unmerged_leaves.as_slice()
+        self.unmerged_leaves.list()
     }
 
     /// Add a [`LeafIndex`] to the node's list of unmerged leaves.
     pub(in crate::treesync) fn add_unmerged_leaf(&mut self, leaf_index: LeafIndex) {
-        // The list of unmerged leaves must be sorted. This is enforced upon
-        // deserialization. We can therefore safely insert the new leaf at the
-        // correct position.
-        let position = self
-            .unmerged_leaves
-            .binary_search(&leaf_index)
-            .unwrap_or_else(|e| e);
-        self.unmerged_leaves.insert(position, leaf_index);
-    }
-
-    /// Set the list of unmerged leaves.
-    #[cfg(test)]
-    pub(in crate::treesync) fn set_unmerged_leaves(&mut self, unmerged_leaves: Vec<u32>) {
-        self.unmerged_leaves = unmerged_leaves;
+        self.unmerged_leaves.add(leaf_index);
     }
 
     /// Compute the parent hash value of this node.
@@ -221,5 +209,54 @@ impl ParentNode {
             unmerged_leaves: self.unmerged_leaves.clone(),
             private_key_option: None,
         }
+    }
+}
+
+/// A helper struct that maintains a sorted list of unmerged leaves.
+#[derive(Debug, Eq, PartialEq, Clone, Serialize, Deserialize)]
+pub(in crate::treesync) struct UnmergedLeaves {
+    list: Vec<LeafIndex>,
+}
+
+impl UnmergedLeaves {
+    pub(in crate::treesync) fn new() -> Self {
+        Self { list: Vec::new() }
+    }
+
+    pub(in crate::treesync) fn add(&mut self, leaf_index: LeafIndex) {
+        // The list of unmerged leaves must be sorted. This is enforced upon
+        // deserialization. We can therefore safely insert the new leaf at the
+        // correct position.
+        let position = self.list.binary_search(&leaf_index).unwrap_or_else(|e| e);
+        self.list.insert(position, leaf_index);
+    }
+
+    pub(in crate::treesync) fn list(&self) -> &[LeafIndex] {
+        self.list.as_slice()
+    }
+
+    /// Set the list of unmerged leaves.
+    #[cfg(test)]
+    pub(in crate::treesync) fn set_list(&mut self, list: Vec<LeafIndex>) {
+        self.list = list;
+    }
+}
+
+#[derive(Error, Debug)]
+pub(in crate::treesync) enum UnmergedLeavesError {
+    /// The list of leaves is not sorted.
+    #[error("The list of leaves is not sorted.")]
+    NotSorted,
+}
+
+impl TryFrom<Vec<LeafIndex>> for UnmergedLeaves {
+    type Error = UnmergedLeavesError;
+
+    fn try_from(list: Vec<LeafIndex>) -> Result<Self, Self::Error> {
+        // The list of unmerged leaves must be sorted.
+        if !list.windows(2).all(|e| e[0] < e[1]) {
+            return Err(UnmergedLeavesError::NotSorted);
+        }
+        Ok(Self { list })
     }
 }

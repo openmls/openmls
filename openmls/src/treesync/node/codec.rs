@@ -2,7 +2,11 @@ use tls_codec::{TlsDeserialize, TlsSerialize, TlsSize, VLBytes};
 
 use crate::{ciphersuite::HpkePublicKey, key_packages::KeyPackage};
 
-use super::{leaf_node::LeafNode, parent_node::ParentNode, Node};
+use super::{
+    leaf_node::LeafNode,
+    parent_node::{ParentNode, UnmergedLeaves, UnmergedLeavesError},
+    Node,
+};
 
 /// Node type. Can be either `Leaf` or `Parent`.
 #[derive(PartialEq, Clone, Copy, Debug, TlsSerialize, TlsDeserialize, TlsSize)]
@@ -112,16 +116,34 @@ impl tls_codec::Deserialize for ParentNode {
     {
         let public_key = HpkePublicKey::tls_deserialize(bytes)?;
         let parent_hash = VLBytes::tls_deserialize(bytes)?;
-        let unmerged_leaves = Vec::tls_deserialize(bytes)?;
-
-        // Make sure the list of unmerged leaves is sorted and doesn't contain
-        // duplicates.
-        if !unmerged_leaves.windows(2).all(|e| e[0] < e[1]) {
-            return Err(tls_codec::Error::DecodingError(
-                "Unmerged leaves not sorted".into(),
-            ));
-        }
+        let unmerged_leaves = UnmergedLeaves::tls_deserialize(bytes)?;
 
         Ok(Self::new(public_key, parent_hash, unmerged_leaves))
+    }
+}
+
+impl tls_codec::Size for UnmergedLeaves {
+    fn tls_serialized_len(&self) -> usize {
+        self.list().tls_serialized_len()
+    }
+}
+
+impl tls_codec::Serialize for UnmergedLeaves {
+    fn tls_serialize<W: std::io::Write>(&self, writer: &mut W) -> Result<usize, tls_codec::Error> {
+        self.list().tls_serialize(writer)
+    }
+}
+
+impl tls_codec::Deserialize for UnmergedLeaves {
+    fn tls_deserialize<R: std::io::Read>(bytes: &mut R) -> Result<Self, tls_codec::Error>
+    where
+        Self: Sized,
+    {
+        let list = Vec::tls_deserialize(bytes)?;
+        Self::try_from(list).map_err(|e| match e {
+            UnmergedLeavesError::NotSorted => {
+                tls_codec::Error::DecodingError("Unmerged leaves not sorted".into())
+            }
+        })
     }
 }
