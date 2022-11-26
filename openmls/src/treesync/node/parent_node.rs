@@ -8,7 +8,7 @@ use openmls_traits::{
 use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
 use thiserror::*;
-use tls_codec::VLBytes;
+use tls_codec::{TlsSerialize, TlsSize, VLBytes};
 
 use crate::{
     binary_tree::LeafIndex,
@@ -213,7 +213,7 @@ impl ParentNode {
 }
 
 /// A helper struct that maintains a sorted list of unmerged leaves.
-#[derive(Debug, Eq, PartialEq, Clone, Serialize, Deserialize)]
+#[derive(Debug, Eq, PartialEq, Clone, Serialize, Deserialize, TlsSize, TlsSerialize)]
 pub(in crate::treesync) struct UnmergedLeaves {
     list: Vec<LeafIndex>,
 }

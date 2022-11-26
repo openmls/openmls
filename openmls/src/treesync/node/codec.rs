@@ -122,18 +122,6 @@ impl tls_codec::Deserialize for ParentNode {
     }
 }
 
-impl tls_codec::Size for UnmergedLeaves {
-    fn tls_serialized_len(&self) -> usize {
-        self.list().tls_serialized_len()
-    }
-}
-
-impl tls_codec::Serialize for UnmergedLeaves {
-    fn tls_serialize<W: std::io::Write>(&self, writer: &mut W) -> Result<usize, tls_codec::Error> {
-        self.list().tls_serialize(writer)
-    }
-}
-
 impl tls_codec::Deserialize for UnmergedLeaves {
     fn tls_deserialize<R: std::io::Read>(bytes: &mut R) -> Result<Self, tls_codec::Error>
     where
