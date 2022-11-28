@@ -4,7 +4,7 @@ use tls_codec::{Deserialize, Serialize, Size, TlsByteVecU32, TlsSliceU32};
 
 use crate::extensions::{
     ApplicationIdExtension, CapabilitiesExtension, Extension, ExtensionType, ExternalPubExtension,
-    ExternalSenderExtension, LifetimeExtension, ParentHashExtension, RatchetTreeExtension,
+    ExternalSendersExtension, LifetimeExtension, ParentHashExtension, RatchetTreeExtension,
     RequiredCapabilitiesExtension,
 };
 
@@ -77,7 +77,7 @@ impl Deserialize for Extension {
                 Extension::ExternalPub(ExternalPubExtension::tls_deserialize(&mut extension_data)?)
             }
             ExtensionType::ExternalSenders => Extension::ExternalSenders(
-                ExternalSenderExtension::tls_deserialize(&mut extension_data)?,
+                ExternalSendersExtension::tls_deserialize(&mut extension_data)?,
             ),
             ExtensionType::Capabilities => Extension::Capabilities(
                 CapabilitiesExtension::tls_deserialize(&mut extension_data)?,

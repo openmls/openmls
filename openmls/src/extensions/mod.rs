@@ -45,7 +45,7 @@ pub mod errors;
 pub use application_id_extension::ApplicationIdExtension;
 pub use capabilities_extension::CapabilitiesExtension;
 pub use external_pub_extension::ExternalPubExtension;
-pub use external_sender_extension::ExternalSenderExtension;
+pub use external_sender_extension::ExternalSendersExtension;
 pub use life_time_extension::LifetimeExtension;
 pub use parent_hash_extension::ParentHashExtension;
 pub use ratchet_tree_extension::RatchetTreeExtension;
@@ -194,7 +194,7 @@ pub enum Extension {
     ExternalPub(ExternalPubExtension),
 
     /// A [`ExternalPubExtension`]
-    ExternalSenders(ExternalSenderExtension),
+    ExternalSenders(ExternalSendersExtension),
 
     /// A [`CapabilitiesExtension`]
     /// TODO(#819): This extension will be deleted.
@@ -260,16 +260,16 @@ impl Extension {
         }
     }
 
-    /// Get a reference to this extension as [`ExternalSenderExtension`].
+    /// Get a reference to this extension as [`ExternalSendersExtension`].
     /// Returns an [`ExtensionError::InvalidExtensionType`] error if called on an
-    /// [`Extension`] that's not a [`ExternalSenderExtension`].
+    /// [`Extension`] that's not a [`ExternalSendersExtension`].
     pub fn as_external_senders_extension(
         &self,
-    ) -> Result<&ExternalSenderExtension, ExtensionError> {
+    ) -> Result<&ExternalSendersExtension, ExtensionError> {
         match self {
             Self::ExternalSenders(e) => Ok(e),
             _ => Err(ExtensionError::InvalidExtensionType(
-                "This is not an ExternalSenderExtension".into(),
+                "This is not an ExternalSendersExtension".into(),
             )),
         }
     }
