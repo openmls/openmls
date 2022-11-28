@@ -64,12 +64,6 @@ impl Deserialize for Extension {
         // Now deserialize the extension itself from the extension data.
         let mut extension_data = extension_data.as_slice();
         Ok(match extension_type {
-            ExtensionType::Reserved => {
-                return Err(tls_codec::Error::DecodingError(format!(
-                    "{:?} is not a valid extension type",
-                    extension_type
-                )))
-            }
             ExtensionType::ApplicationId => Extension::ApplicationId(
                 ApplicationIdExtension::tls_deserialize(&mut extension_data)?,
             ),

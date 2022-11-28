@@ -69,6 +69,8 @@ mod test_extensions;
 /// | 0x0004           | external_pub             | GI         | Y           | RFC XXXX  |
 /// | 0x0005           | external_senders         | GC         | Y           | RFC XXXX  |
 /// | 0xff00  - 0xffff | Reserved for Private Use | N/A        | N/A         | RFC XXXX  |
+///
+/// Note: OpenMLS does not provide a `Reserved` variant in [ExtensionType].
 #[derive(
     Debug,
     Copy,
@@ -86,9 +88,6 @@ mod test_extensions;
 )]
 #[repr(u16)]
 pub enum ExtensionType {
-    /// Reserved. This must not be used.
-    Reserved = 0,
-
     /// The application id extension allows applications to add an explicit,
     /// application-defined identifier to a KeyPackage.
     ApplicationId = 1,
@@ -134,7 +133,6 @@ impl TryFrom<u16> for ExtensionType {
     /// Note that this returns a [`tls_codec::Error`](`tls_codec::Error`).
     fn try_from(a: u16) -> Result<Self, Self::Error> {
         match a {
-            0 => Ok(ExtensionType::Reserved),
             1 => Ok(ExtensionType::ApplicationId),
             2 => Ok(ExtensionType::RatchetTree),
             3 => Ok(ExtensionType::RequiredCapabilities),
@@ -155,8 +153,7 @@ impl ExtensionType {
     /// Check whether an [`ExtensionType`] is supported or not.
     pub fn is_supported(&self) -> bool {
         match self {
-            ExtensionType::Reserved
-            | ExtensionType::ApplicationId
+            ExtensionType::ApplicationId
             | ExtensionType::RatchetTree
             | ExtensionType::RequiredCapabilities
             | ExtensionType::ExternalPub
