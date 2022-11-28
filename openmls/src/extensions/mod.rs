@@ -150,7 +150,7 @@ impl ExtensionType {
             | ExtensionType::ExternalPub
             | ExtensionType::ExternalSenders
             | ExtensionType::Capabilities
-            | ExtensionType::Lifetime=> true,
+            | ExtensionType::Lifetime => true,
         }
     }
 }
