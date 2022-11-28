@@ -531,12 +531,14 @@ impl CoreGroup {
         &self,
         backend: &impl OpenMlsCryptoProvider,
         credential_bundle: &CredentialBundle,
+        with_ratchet_tree: bool,
     ) -> Result<GroupInfo, LibraryError> {
         let extensions = {
-            let ratchet_tree_extension =
-                Extension::RatchetTree(RatchetTreeExtension::new(self.treesync().export_nodes()));
+            let ratchet_tree_extension = || {
+                Extension::RatchetTree(RatchetTreeExtension::new(self.treesync().export_nodes()))
+            };
 
-            let external_pub_extension = {
+            let external_pub_extension = || {
                 let external_pub = self
                     .group_epoch_secrets()
                     .external_secret()
@@ -545,7 +547,11 @@ impl CoreGroup {
                 Extension::ExternalPub(ExternalPubExtension::new(HpkePublicKey::from(external_pub)))
             };
 
-            vec![ratchet_tree_extension, external_pub_extension]
+            if with_ratchet_tree {
+                vec![ratchet_tree_extension(), external_pub_extension()]
+            } else {
+                vec![external_pub_extension()]
+            }
         };
 
         // Create to-be-signed group info.

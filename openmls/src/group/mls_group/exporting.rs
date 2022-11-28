@@ -54,6 +54,7 @@ impl MlsGroup {
     pub fn export_group_info(
         &self,
         backend: &impl OpenMlsCryptoProvider,
+        with_ratchet_tree: bool,
     ) -> Result<GroupInfo, ExportGroupInfoError> {
         match self.credential() {
             Ok(credential) => {
@@ -66,7 +67,9 @@ impl MlsGroup {
                             .map_err(LibraryError::missing_bound_check)?,
                     )
                     .ok_or(ExportGroupInfoError::NoMatchingCredentialBundle)?;
-                Ok(self.group.export_group_info(backend, &credential_bundle)?)
+                Ok(self
+                    .group
+                    .export_group_info(backend, &credential_bundle, with_ratchet_tree)?)
             }
             Err(e) => Err(e.into()),
         }

@@ -108,7 +108,7 @@ fn test_external_init(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProv
 
     // Have Alice export everything that Charly needs.
     let verifiable_group_info = group_alice
-        .export_group_info(backend, &alice_credential_bundle)
+        .export_group_info(backend, &alice_credential_bundle, true)
         .unwrap()
         .into_verifiable_group_info();
 
@@ -180,7 +180,7 @@ fn test_external_init(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProv
 
     // Have Alice export everything that Bob needs.
     let verifiable_group_info = group_alice
-        .export_group_info(backend, &alice_credential_bundle)
+        .export_group_info(backend, &alice_credential_bundle, false)
         .unwrap()
         .into_verifiable_group_info();
     let nodes_option = group_alice.treesync().export_nodes();
@@ -292,7 +292,7 @@ fn test_external_init_single_member_group(
 
     // Have Alice export everything that Charly needs.
     let verifiable_group_info = group_alice
-        .export_group_info(backend, &alice_credential_bundle)
+        .export_group_info(backend, &alice_credential_bundle, false)
         .unwrap()
         .into_verifiable_group_info();
     let nodes_option = group_alice.treesync().export_nodes();
@@ -419,7 +419,7 @@ fn test_external_init_broken_signature(
 
     let verifiable_group_info = {
         let mut verifiable_group_info = group_alice
-            .export_group_info(backend, &alice_credential_bundle)
+            .export_group_info(backend, &alice_credential_bundle, true)
             .unwrap()
             .into_verifiable_group_info();
         verifiable_group_info.break_signature();

@@ -89,7 +89,7 @@ fn validation_test_setup(
 
     // Have Alice export everything that bob needs.
     let verifiable_group_info = alice_group
-        .export_group_info(backend)
+        .export_group_info(backend, false)
         .unwrap()
         .into_verifiable_group_info();
     let tree_option = alice_group.export_ratchet_tree();
@@ -337,7 +337,7 @@ fn test_valsem242(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
     ];
     for proposal in deny_list {
         let verifiable_group_info = alice_group
-            .export_group_info(backend)
+            .export_group_info(backend, true)
             .unwrap()
             .into_verifiable_group_info();
 
@@ -431,7 +431,7 @@ fn test_valsem243(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
 
     // Have Alice export everything that bob needs.
     let verifiable_group_info = alice_group
-        .export_group_info(backend)
+        .export_group_info(backend, false)
         .unwrap()
         .into_verifiable_group_info();
     let tree_option = alice_group.export_ratchet_tree();
@@ -790,7 +790,7 @@ fn test_pure_ciphertest(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoPr
 
     // Have Alice export everything that bob needs.
     let verifiable_group_info = alice_group
-        .export_group_info(backend)
+        .export_group_info(backend, true)
         .unwrap()
         .into_verifiable_group_info();
 

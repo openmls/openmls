@@ -28,7 +28,7 @@ fn export_group_info(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvi
             .unwrap();
 
     let group_info: GroupInfo = group_alice
-        .export_group_info(backend, &alice_credential_bundle)
+        .export_group_info(backend, &alice_credential_bundle, true)
         .unwrap();
 
     let verifiable_group_info = {
