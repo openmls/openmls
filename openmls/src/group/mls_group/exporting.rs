@@ -59,7 +59,7 @@ impl MlsGroup {
     pub fn export_public_group_state(
         &self,
         backend: &impl OpenMlsCryptoProvider,
-    ) -> Result<PublicGroupState, ExportPublicGroupStateError> {
+    ) -> Result<PublicGroupState, ExportGroupInfoError> {
         match self.credential() {
             Ok(credential) => {
                 let credential_bundle: CredentialBundle = backend
@@ -70,7 +70,7 @@ impl MlsGroup {
                             .tls_serialize_detached()
                             .map_err(LibraryError::missing_bound_check)?,
                     )
-                    .ok_or(ExportPublicGroupStateError::NoMatchingCredentialBundle)?;
+                    .ok_or(ExportGroupInfoError::NoMatchingCredentialBundle)?;
                 Ok(self
                     .group
                     .export_public_group_state(backend, &credential_bundle)?)
