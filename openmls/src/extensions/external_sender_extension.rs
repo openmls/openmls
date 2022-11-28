@@ -29,7 +29,7 @@ pub struct ExternalSender {
 /// ```
 // TODO(884): Remove `#[allow(unused)]` when #884 is closed.
 #[allow(unused)]
-pub type ExternalSenderExtension = Vec<ExternalSender>;
+pub type ExternalSendersExtension = Vec<ExternalSender>;
 
 #[cfg(test)]
 mod test {
