@@ -4,7 +4,7 @@ use tls_codec::{Deserialize, Serialize, Size, TlsByteVecU32, TlsSliceU32};
 
 use crate::extensions::{
     ApplicationIdExtension, CapabilitiesExtension, Extension, ExtensionType, ExternalPubExtension,
-    ExternalSendersExtension, LifetimeExtension, ParentHashExtension, RatchetTreeExtension,
+    ExternalSendersExtension, LifetimeExtension, RatchetTreeExtension,
     RequiredCapabilitiesExtension,
 };
 
