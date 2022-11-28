@@ -14,7 +14,7 @@ use crate::{
     group::*,
     key_packages::{KeyPackage, KeyPackageBundle, KeyPackageBundlePayload},
     messages::{proposals::*, Welcome},
-    schedule::ResumptionPsk,
+    schedule::ResumptionPskSecret,
     treesync::Node,
 };
 use openmls_traits::{key_store::OpenMlsKeyStore, types::Ciphersuite, OpenMlsCryptoProvider};

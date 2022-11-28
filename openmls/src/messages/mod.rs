@@ -9,7 +9,7 @@ use crate::{
     error::LibraryError,
     extensions::*,
     group::*,
-    schedule::JoinerSecret,
+    schedule::{psk::PreSharedKeyId, JoinerSecret},
     treesync::treekem::UpdatePath,
     versions::ProtocolVersion,
 };
@@ -37,7 +37,7 @@ mod tests;
 #[cfg(test)]
 use crate::credentials::CredentialBundle;
 #[cfg(any(feature = "test-utils", test))]
-use crate::schedule::psk::{ExternalPsk, PreSharedKeyId, Psk};
+use crate::schedule::psk::{ExternalPsk, Psk};
 
 // Public types
 
