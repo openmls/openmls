@@ -287,10 +287,6 @@ impl<'a> TreeSyncDiff<'a> {
         backend: &impl OpenMlsCryptoProvider,
         ciphersuite: Ciphersuite,
         group_id: GroupId,
-        // (new_own_leaf_ref, mut new_own_leaf): (
-        //     Option<&mut OpenMlsLeafNode>,
-        //     Option<OpenMlsLeafNode>,
-        // ),
         credential_bundle: &CredentialBundle,
     ) -> Result<UpdatePathResult, LibraryError> {
         debug_assert!(self.own_leaf().is_ok(), "Tree diff is missing own leaf");
@@ -302,9 +298,7 @@ impl<'a> TreeSyncDiff<'a> {
             .own_leaf_mut()
             .map_err(|_| LibraryError::custom("Didn't find own leaf in diff."))?
             .leaf_secret()
-            .ok_or(LibraryError::custom(
-                "No leaf secret found for update path.",
-            ))?
+            .ok_or_else(|| LibraryError::custom("No leaf secret found for update path."))?
             .clone();
 
         let (path, update_path_nodes, commit_secret) =
@@ -316,20 +310,7 @@ impl<'a> TreeSyncDiff<'a> {
         self.own_leaf_mut()
             .map_err(|_| LibraryError::custom("Didn't find own leaf in diff."))?
             .update_parent_hash(&parent_hash, group_id, credential_bundle, backend)?;
-        // let key_package_bundle = leaf_node.sign(backend, credential_bundle)?;
 
-        // let key_package = key_package_bundle.key_package().clone();
-        // let node = Node::LeafNode(OpenMlsLeafNode::new_from_bundle(key_package_bundle));
-
-        // XXX: The leaf is a mutable reference and therefore doesn't need updating in the diff.
-        // // Replace the leaf.
-        // self.diff
-        //     .replace_leaf(
-        //         self.own_leaf_index,
-        //         Node::LeafNode(leaf_node.clone()).into(),
-        //     )
-        //     // We assume the own leaf is in the tree
-        //     .map_err(|_| LibraryError::custom("Own leaf not in tree"))?;
         Ok((update_path_nodes, commit_secret))
     }
 

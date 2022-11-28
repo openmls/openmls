@@ -1,9 +1,5 @@
 //! This module contains the [`LeafNode`] struct and its implementation.
-use openmls_traits::{
-    crypto::OpenMlsCrypto,
-    types::{Ciphersuite, HpkeKeyPair},
-    OpenMlsCryptoProvider,
-};
+use openmls_traits::{crypto::OpenMlsCrypto, types::Ciphersuite, OpenMlsCryptoProvider};
 use serde::{Deserialize, Serialize};
 use tls_codec::{
     Deserialize as TlsDeserializeTrait, Serialize as TlsSerializeTrait, TlsDeserialize,
@@ -490,7 +486,7 @@ impl LeafNode {
 //     }
 // }
 
-const LEAF_NODE_SIGNATURE_LABEL: &'static str = "LeafNodeTBS";
+const LEAF_NODE_SIGNATURE_LABEL: &str = "LeafNodeTBS";
 
 impl Signable for LeafNodeTbs {
     type SignedOutput = LeafNode;
@@ -527,7 +523,7 @@ impl<'a> Verifiable for VerifiableLeafNodeTbs<'a> {
     }
 
     fn signature(&self) -> &Signature {
-        &self.signature
+        self.signature
     }
 
     fn label(&self) -> &str {
@@ -687,7 +683,7 @@ impl OpenMlsLeafNode {
         let tree_info = self.update_tree_info(group_id)?;
         // TODO: If we could take out the leaf_node without cloning, this would all be nicer.
         let mut leaf_node_tbs = LeafNodeTbs::from(self.leaf_node.clone(), tree_info);
-        leaf_node_tbs.payload.encryption_key = new_encryption_key.1.clone().into();
+        leaf_node_tbs.payload.encryption_key = new_encryption_key.1.clone();
 
         // Update credential
         // TODO: #133 ValSem109 check that the identity is the same.
@@ -770,9 +766,11 @@ impl OpenMlsLeafNode {
                     leaf_index,
                 })
             })
-            .ok_or(LibraryError::custom(
-                "TreeInfoTbs for Update can't be created without a leaf index.",
-            ))
+            .ok_or_else(|| {
+                LibraryError::custom(
+                    "TreeInfoTbs for Update can't be created without a leaf index.",
+                )
+            })
     }
 
     /// Return a reference to the `private_key` corresponding to the
@@ -831,7 +829,7 @@ impl OpenMlsLeafNode {
                 group_id,
                 leaf_index: self
                     .leaf_index
-                    .ok_or(LibraryError::custom("Missing leaf index in own leaf"))?,
+                    .ok_or_else(|| LibraryError::custom("Missing leaf index in own leaf"))?,
             }),
         );
         self.leaf_node = tbs.sign(backend, credential_bundle)?;
@@ -877,8 +875,8 @@ impl OpenMlsLeafNode {
 
     /// Replace the public key in the leaf node and re-sign.
     #[cfg(any(feature = "test-utils", test))]
-    pub fn key_pair(&self) -> HpkeKeyPair {
-        HpkeKeyPair {
+    pub fn key_pair(&self) -> openmls_traits::types::HpkeKeyPair {
+        openmls_traits::types::HpkeKeyPair {
             private: self.private_key.as_ref().unwrap().clone().into(),
             public: self.encryption_key().clone().into(),
         }

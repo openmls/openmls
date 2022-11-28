@@ -8,7 +8,16 @@ use crate::treesync::node::Node;
 /// The ratchet tree extension contains a list of (optional) [`Node`]s that
 /// represent the public state of the tree in an MLS group.
 #[derive(
-    PartialEq, Clone, Debug, Default, Serialize, Deserialize, TlsSerialize, TlsDeserialize, TlsSize,
+    PartialEq,
+    Eq,
+    Clone,
+    Debug,
+    Default,
+    Serialize,
+    Deserialize,
+    TlsSerialize,
+    TlsDeserialize,
+    TlsSize,
 )]
 pub struct RatchetTreeExtension {
     tree: Vec<Option<Node>>,

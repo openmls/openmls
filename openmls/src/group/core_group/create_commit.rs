@@ -142,7 +142,7 @@ impl CoreGroup {
             )
             .map_err(|_| LibraryError::custom("Unexpected KeyPackage error"))?;
 
-            let mut leaf_node: OpenMlsLeafNode = key_package_bundle.clone().into();
+            let mut leaf_node: OpenMlsLeafNode = key_package_bundle.into();
             leaf_node.set_leaf_index(own_leaf_index);
             diff.add_leaf(leaf_node)
                 .map_err(|_| LibraryError::custom("Tree full: cannot add more members"))?;
@@ -172,13 +172,12 @@ impl CoreGroup {
                     )?;
                     diff.clear_tree_hash()?;
                 }
-                
+
                 // Derive and apply an update path based on the previously
                 // generated new leaf.
                 let (plain_path, commit_secret) = diff.apply_own_update_path(
                     backend,
                     ciphersuite,
-                    // (new_own_leaf_ref, new_own_leaf),
                     self.group_id().clone(),
                     params.credential_bundle(),
                 )?;
@@ -453,48 +452,4 @@ impl CoreGroup {
         };
         Ok(leaf_index)
     }
-
-    // /// Helper function that prepares the tree diff (adding a new node for
-    // /// external commits) for use in a commit depending on the [`CommitType`].
-    // fn prepare_kpb_and_diff(
-    //     &self,
-    //     backend: &impl OpenMlsCryptoProvider,
-    //     params: &CreateCommitParams,
-    //     diff: &mut TreeSyncDiff,
-    // ) -> Result<&OpenMlsLeafNode, LibraryError> {
-    //     if params.commit_type() == CommitType::External {
-    //         // Generate a KeyPackageBundle to generate a payload from for later
-    //         // path generation.
-    //         let key_package_bundle = KeyPackageBundle::new(
-    //             &[self.ciphersuite()],
-    //             params.credential_bundle(),
-    //             backend,
-    //             vec![],
-    //         )
-    //         .map_err(|_| LibraryError::custom("Unexpected KeyPackage error"))?;
-
-    //         diff.add_leaf(key_package_bundle.key_package().leaf_node().clone().into())
-    //             .map_err(|_| LibraryError::custom("Tree full: cannot add more members"))?;
-    //         diff.own_leaf()
-    //             .map_err(|_| LibraryError::custom("Expected own leaf"))
-    //     } else {
-    //         self.treesync()
-    //             .own_leaf_node()
-    //             .map_err(|_| LibraryError::custom("Expected own leaf"))?
-    //             .rekey(
-    //                 self.group_id(),
-    //                 self.ciphersuite,
-    //                 ProtocolVersion::default(), // XXX: openmls/openmls#1065
-    //                 params.credential_bundle(),
-    //                 backend,
-    //             );
-    //         Ok(None)
-    //     }
-    //     // else {
-    //     //     self.treesync()
-    //     //         .own_leaf_node()
-    //     //         .map_err(|_| LibraryError::custom("Expected own leaf"))?
-    //     // };
-    //     // Create a new leaf node by rekeying.
-    // }
 }

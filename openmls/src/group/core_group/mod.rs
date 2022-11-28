@@ -180,6 +180,7 @@ impl CoreGroupBuilder {
         self
     }
     /// Set extensions for the own leaf in the group.
+    #[cfg(test)]
     pub fn with_extensions(mut self, extensions: Vec<Extension>) -> Self {
         self.own_leaf_extensions = extensions;
         self

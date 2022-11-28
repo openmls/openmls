@@ -186,7 +186,7 @@ impl AddProposal {
 /// An Update proposal is a similar mechanism to Add with the distinction that it is the
 /// sender's leaf node in the tree which would be updated with a new [`LeafNode`].
 #[derive(
-    Debug, PartialEq, Clone, Serialize, Deserialize, TlsDeserialize, TlsSerialize, TlsSize,
+    Debug, PartialEq, Eq, Clone, Serialize, Deserialize, TlsDeserialize, TlsSerialize, TlsSize,
 )]
 pub struct UpdateProposal {
     pub(crate) leaf_node: LeafNode,

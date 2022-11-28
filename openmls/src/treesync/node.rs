@@ -14,7 +14,7 @@ pub(crate) mod leaf_node;
 pub(crate) mod parent_node;
 
 /// Container enum for leaf and parent nodes.
-#[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
+#[derive(Debug, PartialEq, Eq, Clone, Serialize, Deserialize)]
 #[allow(missing_docs)]
 pub enum Node {
     LeafNode(OpenMlsLeafNode),

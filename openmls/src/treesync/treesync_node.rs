@@ -75,11 +75,6 @@ impl TreeSyncNode {
         &mut self.node
     }
 
-    /// Return a reference to the contained optional `tree_hash`.
-    pub(in crate::treesync) fn tree_hash(&self) -> &Option<Vec<u8>> {
-        &self.tree_hash
-    }
-
     /// Replace the current `tree_hash` with `None`.
     pub(in crate::treesync) fn erase_tree_hash(&mut self) {
         self.tree_hash = None

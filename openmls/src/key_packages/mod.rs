@@ -164,6 +164,7 @@ impl From<KeyPackage> for KeyPackageTBS {
 
 impl KeyPackageTBS {
     /// Remove an extension from the KeyPackage.
+    #[cfg(any(feature = "test-utils", test))]
     pub(crate) fn remove_extension(&mut self, extension_type: ExtensionType) {
         self.extensions
             .retain(|e| e.extension_type() != extension_type);
@@ -569,11 +570,10 @@ impl KeyPackageBundle {
         let ciphersuite = ciphersuites.iter().find(|&&c| {
             SignatureScheme::from(c) == credential_bundle.credential().signature_scheme()
         });
-        let ciphersuite = ciphersuite
-            .ok_or(KeyPackageBundleNewError::CiphersuiteSignatureSchemeMismatch)?
-            .clone();
+        let ciphersuite =
+            ciphersuite.ok_or(KeyPackageBundleNewError::CiphersuiteSignatureSchemeMismatch)?;
 
-        let leaf_secret = Secret::random(ciphersuite, backend, version)
+        let leaf_secret = Secret::random(*ciphersuite, backend, version)
             .map_err(LibraryError::unexpected_crypto_error)?;
         Self::new_from_leaf_secret(
             ciphersuites,
@@ -617,9 +617,8 @@ impl KeyPackageBundle {
         let ciphersuite = ciphersuites.iter().find(|&&c| {
             SignatureScheme::from(c) == credential_bundle.credential().signature_scheme()
         });
-        let ciphersuite = ciphersuite
-            .ok_or(KeyPackageBundleNewError::CiphersuiteSignatureSchemeMismatch)?
-            .clone();
+        let ciphersuite =
+            *ciphersuite.ok_or(KeyPackageBundleNewError::CiphersuiteSignatureSchemeMismatch)?;
 
         // Detect duplicate extensions an return an error in case there is are any.
         let extensions_length = extensions.len();

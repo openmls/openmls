@@ -322,7 +322,7 @@ impl PlaintextSecret {
 /// } UpdatePath;
 /// ```
 #[derive(
-    Debug, PartialEq, Clone, Serialize, Deserialize, TlsSerialize, TlsDeserialize, TlsSize,
+    Debug, PartialEq, Eq, Clone, Serialize, Deserialize, TlsSerialize, TlsDeserialize, TlsSize,
 )]
 pub struct UpdatePath {
     leaf_node: LeafNode,

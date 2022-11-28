@@ -324,11 +324,10 @@ impl UnverifiedGroupMessage {
         backend: &impl OpenMlsCryptoProvider,
     ) -> Result<VerifiedMemberMessage, ValidationError> {
         // ValSem010
-        let verified_member_message = self
-            .plaintext
+        self.plaintext
             .verify(backend, &self.credential)
             .map(|plaintext| VerifiedMemberMessage { plaintext })
-            .map_err(|_| ValidationError::InvalidSignature);
+            .map_err(|_| ValidationError::InvalidSignature)
         // XXX: We have tests checking for errors here. But really we should
         //      rewrite them.
         // debug_assert!(
@@ -336,7 +335,6 @@ impl UnverifiedGroupMessage {
         //     "Verifying signature on UnverifiedGroupMessage failed with {:?}",
         //     verified_member_message
         // );
-        Ok(verified_member_message?)
     }
 
     /// Returns the credential.
