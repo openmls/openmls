@@ -334,3 +334,107 @@ fn test_external_init_single_member_group(
         group_alice.treesync().export_nodes()
     );
 }
+
+#[apply(ciphersuites_and_backends)]
+fn test_external_init_broken_signature(
+    ciphersuite: Ciphersuite,
+    backend: &impl OpenMlsCryptoProvider,
+) {
+    // Basic group setup.
+    let group_aad = b"Alice's test group";
+    let framing_parameters = FramingParameters::new(group_aad, WireFormat::MlsPlaintext);
+
+    // Define credential bundles
+    let alice_credential_bundle = CredentialBundle::new(
+        "Alice".into(),
+        CredentialType::Basic,
+        ciphersuite.signature_algorithm(),
+        backend,
+    )
+    .expect("An unexpected error occurred.");
+    let bob_credential_bundle = CredentialBundle::new(
+        "Bob".into(),
+        CredentialType::Basic,
+        ciphersuite.signature_algorithm(),
+        backend,
+    )
+    .expect("An unexpected error occurred.");
+
+    // Generate KeyPackages
+    let alice_key_package_bundle = KeyPackageBundle::new(
+        &[ciphersuite],
+        &alice_credential_bundle,
+        backend,
+        Vec::new(),
+    )
+    .expect("An unexpected error occurred.");
+
+    let bob_key_package_bundle =
+        KeyPackageBundle::new(&[ciphersuite], &bob_credential_bundle, backend, Vec::new())
+            .expect("An unexpected error occurred.");
+    let bob_key_package = bob_key_package_bundle.key_package();
+
+    // === Alice creates a group ===
+    let group_id = GroupId::random(backend);
+
+    let mut group_alice = CoreGroup::builder(group_id, alice_key_package_bundle)
+        .build(backend)
+        .expect("An unexpected error occurred.");
+
+    // === Alice adds Bob ===
+    let bob_add_proposal = group_alice
+        .create_add_proposal(
+            framing_parameters,
+            &alice_credential_bundle,
+            bob_key_package.clone(),
+            backend,
+        )
+        .expect("Could not create proposal.");
+    let proposal_store = ProposalStore::from_queued_proposal(
+        QueuedProposal::from_mls_plaintext(ciphersuite, backend, bob_add_proposal)
+            .expect("Could not create QueuedProposal."),
+    );
+    let params = CreateCommitParams::builder()
+        .framing_parameters(framing_parameters)
+        .credential_bundle(&alice_credential_bundle)
+        .proposal_store(&proposal_store)
+        .build();
+    let create_commit_result = group_alice
+        .create_commit(params, backend)
+        .expect("Error creating commit");
+
+    group_alice
+        .merge_commit(create_commit_result.staged_commit)
+        .expect("error merging commit");
+
+    // Now set up charly and try to init externally.
+    // Define credential bundles
+    let charly_credential_bundle = CredentialBundle::new(
+        "Charly".into(),
+        CredentialType::Basic,
+        ciphersuite.signature_algorithm(),
+        backend,
+    )
+    .expect("An unexpected error occurred.");
+
+    let verifiable_group_info = {
+        let mut verifiable_group_info = group_alice
+            .export_group_info(backend, &alice_credential_bundle)
+            .unwrap()
+            .into_verifiable_group_info();
+        verifiable_group_info.break_signature();
+        verifiable_group_info
+    };
+
+    let proposal_store = ProposalStore::new();
+    let params = CreateCommitParams::builder()
+        .framing_parameters(framing_parameters)
+        .credential_bundle(&charly_credential_bundle)
+        .proposal_store(&proposal_store)
+        .build();
+    assert_eq!(
+        ExternalCommitError::InvalidGroupInfoSignature,
+        CoreGroup::join_by_external_commit(backend, params, None, verifiable_group_info)
+            .expect_err("Signature was corrupted. This should have failed.")
+    );
+}
