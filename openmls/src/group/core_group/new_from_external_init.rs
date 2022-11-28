@@ -84,7 +84,7 @@ impl CoreGroup {
             .credential();
         let pgs: PublicGroupState = verifiable_public_group_state
             .verify(backend, pgs_signer_credential)
-            .map_err(|_| ExternalCommitError::InvalidPublicGroupStateSignature)?;
+            .map_err(|_| ExternalCommitError::InvalidGroupInfoSignature)?;
 
         let (init_secret, kem_output) = InitSecret::from_public_group_state(backend, &pgs)
             .map_err(|_| ExternalCommitError::UnsupportedCiphersuite)?;

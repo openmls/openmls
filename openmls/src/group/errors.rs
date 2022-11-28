@@ -102,9 +102,9 @@ pub enum ExternalCommitError {
     /// Sender not found in tree.
     #[error("Sender not found in tree.")]
     UnknownSender,
-    /// The signature over the given public group state is invalid.
-    #[error("The signature over the given public group state is invalid.")]
-    InvalidPublicGroupStateSignature,
+    /// The signature over the given group info is invalid.
+    #[error("The signature over the given group info is invalid.")]
+    InvalidGroupInfoSignature,
     /// A duplicate ratchet tree was found.
     #[error("A duplicate ratchet tree was found.")]
     DuplicateRatchetTreeExtension,
