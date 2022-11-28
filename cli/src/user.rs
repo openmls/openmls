@@ -244,10 +244,12 @@ impl User {
             &self.crypto,
             &group_config,
             GroupId::from_slice(group_id),
+            LifetimeExtension::default(),
             kpb.key_package()
                 .hash_ref(self.crypto.crypto())
                 .expect("Failed to hash KeyPackage.")
                 .as_slice(),
+            &self.identity.borrow().credential,
         )
         .expect("Failed to create MlsGroup");
         mls_group.set_aad(group_aad.as_slice());

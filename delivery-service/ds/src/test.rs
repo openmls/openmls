@@ -194,7 +194,7 @@ async fn test_group() {
     let mut client_ids = Vec::new();
     for client_name in clients.iter() {
         let ciphersuite = Ciphersuite::MLS_128_DHKEMX25519_AES128GCM_SHA256_Ed25519;
-        let credential_bundle = generate_credential(
+        let credential = generate_credential(
             client_name.as_bytes().to_vec(),
             CredentialType::Basic,
             SignatureScheme::from(ciphersuite),
@@ -202,7 +202,7 @@ async fn test_group() {
         )
         .unwrap();
         let client_key_package =
-            generate_key_package(&[ciphersuite], &credential_bundle, vec![], crypto).unwrap();
+            generate_key_package(&[ciphersuite], &credential, vec![], crypto).unwrap();
         let client_data = ClientInfo::new(
             client_name.to_string(),
             vec![(
@@ -215,8 +215,8 @@ async fn test_group() {
             )],
         );
         key_package_bundles.push(client_key_package);
-        client_ids.push(credential_bundle.identity().to_vec());
-        credentials.push(credential_bundle);
+        client_ids.push(credential.identity().to_vec());
+        credentials.push(credential);
         let req = test::TestRequest::post()
             .uri("/clients/register")
             .set_payload(Bytes::copy_from_slice(
@@ -230,15 +230,26 @@ async fn test_group() {
     // Client1 creates MyFirstGroup
     let group_id = GroupId::from_slice(b"MyFirstGroup");
     let group_ciphersuite = key_package_bundles[0].ciphersuite();
+    let credential_bundle = crypto
+        .key_store()
+        .read(
+            &credentials[0]
+                .signature_key()
+                .tls_serialize_detached()
+                .expect("Error serializing signature key"),
+        )
+        .expect("An unexpected error occurred.");
     let mut group = MlsGroup::new_with_group_id(
         crypto,
         &mls_group_config,
         group_id,
+        LifetimeExtension::default(),
         key_package_bundles
             .remove(0)
             .hash_ref(crypto.crypto())
             .expect("Could not hash KeyPackage.")
             .as_slice(),
+        &credential_bundle,
     )
     .expect("An unexpected error occurred.");
 
