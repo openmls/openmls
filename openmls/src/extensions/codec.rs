@@ -4,7 +4,8 @@ use tls_codec::{Deserialize, Serialize, Size, TlsByteVecU32, TlsSliceU32};
 
 use crate::extensions::{
     ApplicationIdExtension, CapabilitiesExtension, Extension, ExtensionType, ExternalPubExtension,
-    LifetimeExtension, ParentHashExtension, RatchetTreeExtension, RequiredCapabilitiesExtension,
+    ExternalSenderExtension, LifetimeExtension, ParentHashExtension, RatchetTreeExtension,
+    RequiredCapabilitiesExtension,
 };
 
 impl Size for Extension {
@@ -17,6 +18,7 @@ impl Size for Extension {
                 Extension::RatchetTree(e) => e.tls_serialized_len(),
                 Extension::RequiredCapabilities(e) => e.tls_serialized_len(),
                 Extension::ExternalPub(e) => e.tls_serialized_len(),
+                Extension::ExternalSenders(e) => e.tls_serialized_len(),
                 Extension::Capabilities(e) => e.tls_serialized_len(),
                 Extension::Lifetime(e) => e.tls_serialized_len(),
                 Extension::ParentHash(e) => e.tls_serialized_len(),
@@ -38,6 +40,7 @@ impl Serialize for Extension {
             Extension::RatchetTree(e) => e.tls_serialize(&mut extension_data),
             Extension::RequiredCapabilities(e) => e.tls_serialize(&mut extension_data),
             Extension::ExternalPub(e) => e.tls_serialize(&mut extension_data),
+            Extension::ExternalSenders(e) => e.tls_serialize(&mut extension_data),
             Extension::Capabilities(e) => e.tls_serialize(&mut extension_data),
             Extension::Lifetime(e) => e.tls_serialize(&mut extension_data),
             Extension::ParentHash(e) => e.tls_serialize(&mut extension_data),
@@ -79,6 +82,9 @@ impl Deserialize for Extension {
             ExtensionType::ExternalPub => {
                 Extension::ExternalPub(ExternalPubExtension::tls_deserialize(&mut extension_data)?)
             }
+            ExtensionType::ExternalSenders => Extension::ExternalSenders(
+                ExternalSenderExtension::tls_deserialize(&mut extension_data)?,
+            ),
             ExtensionType::Capabilities => Extension::Capabilities(
                 CapabilitiesExtension::tls_deserialize(&mut extension_data)?,
             ),

@@ -45,6 +45,7 @@ pub mod errors;
 pub use application_id_extension::ApplicationIdExtension;
 pub use capabilities_extension::CapabilitiesExtension;
 pub use external_pub_extension::ExternalPubExtension;
+pub use external_sender_extension::ExternalSenderExtension;
 pub use life_time_extension::LifetimeExtension;
 pub use parent_hash_extension::ParentHashExtension;
 pub use ratchet_tree_extension::RatchetTreeExtension;
@@ -104,6 +105,10 @@ pub enum ExtensionType {
     /// with an ExternalPub extension present in its extensions field.
     ExternalPub = 4,
 
+    /// Group context extension that contains the credentials and signature keys
+    /// of senders that are permitted to send external proposals to the group.
+    ExternalSenders = 5,
+
     /// The capabilities extension indicates what protocol versions, ciphersuites,
     /// protocol extensions, and non-default proposal types are supported by a
     /// client.
@@ -134,6 +139,7 @@ impl TryFrom<u16> for ExtensionType {
             2 => Ok(ExtensionType::RatchetTree),
             3 => Ok(ExtensionType::RequiredCapabilities),
             4 => Ok(ExtensionType::ExternalPub),
+            5 => Ok(ExtensionType::ExternalSenders),
             0xff00 => Ok(ExtensionType::Capabilities),
             0xff01 => Ok(ExtensionType::Lifetime),
             0xff02 => Ok(ExtensionType::ParentHash),
@@ -154,6 +160,7 @@ impl ExtensionType {
             | ExtensionType::RatchetTree
             | ExtensionType::RequiredCapabilities
             | ExtensionType::ExternalPub
+            | ExtensionType::ExternalSenders
             | ExtensionType::Capabilities
             | ExtensionType::Lifetime
             | ExtensionType::ParentHash => true,
@@ -188,6 +195,9 @@ pub enum Extension {
 
     /// A [`ExternalPubExtension`]
     ExternalPub(ExternalPubExtension),
+
+    /// A [`ExternalPubExtension`]
+    ExternalSenders(ExternalSenderExtension),
 
     /// A [`CapabilitiesExtension`]
     /// TODO(#819): This extension will be deleted.
@@ -253,6 +263,20 @@ impl Extension {
         }
     }
 
+    /// Get a reference to this extension as [`ExternalSenderExtension`].
+    /// Returns an [`ExtensionError::InvalidExtensionType`] error if called on an
+    /// [`Extension`] that's not a [`ExternalSenderExtension`].
+    pub fn as_external_senders_extension(
+        &self,
+    ) -> Result<&ExternalSenderExtension, ExtensionError> {
+        match self {
+            Self::ExternalSenders(e) => Ok(e),
+            _ => Err(ExtensionError::InvalidExtensionType(
+                "This is not an ExternalSenderExtension".into(),
+            )),
+        }
+    }
+
     /// Get a reference to this extension as [`CapabilitiesExtension`].
     /// Returns an [`ExtensionError::InvalidExtensionType`] error if called on an
     /// [`Extension`] that's not a [`CapabilitiesExtension`].
@@ -297,6 +321,7 @@ impl Extension {
             Extension::RatchetTree(_) => ExtensionType::RatchetTree,
             Extension::RequiredCapabilities(_) => ExtensionType::RequiredCapabilities,
             Extension::ExternalPub(_) => ExtensionType::ExternalPub,
+            Extension::ExternalSenders(_) => ExtensionType::ExternalSenders,
             Extension::Capabilities(_) => ExtensionType::Capabilities,
             Extension::Lifetime(_) => ExtensionType::Lifetime,
             Extension::ParentHash(_) => ExtensionType::ParentHash,

@@ -1,3 +1,4 @@
+use serde::{Deserialize, Serialize};
 use tls_codec::{TlsDeserialize, TlsSerialize, TlsSize};
 
 use crate::ciphersuite::SignaturePublicKey;
@@ -12,8 +13,10 @@ use crate::credentials::Credential;
 ///   Credential credential;
 /// } ExternalSender;
 /// ```
-#[derive(PartialEq, Eq, Debug, TlsSerialize, TlsDeserialize, TlsSize)]
-pub(crate) struct ExternalSender {
+#[derive(
+    Clone, PartialEq, Eq, Debug, Serialize, Deserialize, TlsSerialize, TlsDeserialize, TlsSize,
+)]
+pub struct ExternalSender {
     signature_key: SignaturePublicKey,
     credential: Credential,
 }
@@ -26,7 +29,7 @@ pub(crate) struct ExternalSender {
 /// ```
 // TODO(884): Remove `#[allow(unused)]` when #884 is closed.
 #[allow(unused)]
-pub(crate) type ExternalSenderExtension = Vec<ExternalSender>;
+pub type ExternalSenderExtension = Vec<ExternalSender>;
 
 #[cfg(test)]
 mod test {
