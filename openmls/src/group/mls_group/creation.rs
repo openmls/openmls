@@ -3,7 +3,7 @@ use crate::{
         core_group::create_commit_params::CreateCommitParams,
         errors::{CoreGroupBuildError, ExternalCommitError, WelcomeError},
     },
-    messages::public_group_state::VerifiablePublicGroupState,
+    messages::VerifiableGroupInfo,
 };
 
 use super::*;
@@ -148,12 +148,12 @@ impl MlsGroup {
     /// the external commit was rejected due to an epoch change, the
     /// [`MlsGroup`] instance has to be discarded and a new one has to be
     /// created using this function based on the latest `ratchet_tree` and
-    /// public group state. For more information on the external init process,
+    /// group info. For more information on the external init process,
     /// please see Section 11.2.1 in the MLS specification.
     pub fn join_by_external_commit(
         backend: &impl OpenMlsCryptoProvider,
         tree_option: Option<&[Option<Node>]>,
-        verifiable_public_group_state: VerifiablePublicGroupState,
+        verifiable_group_info: VerifiableGroupInfo,
         mls_group_config: &MlsGroupConfig,
         aad: &[u8],
         credential_bundle: &CredentialBundle,
@@ -174,7 +174,7 @@ impl MlsGroup {
             backend,
             params,
             tree_option,
-            verifiable_public_group_state,
+            verifiable_group_info,
         )?;
         group.set_max_past_epochs(mls_group_config.max_past_epochs);
 

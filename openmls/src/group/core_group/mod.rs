@@ -37,14 +37,15 @@ mod test_proposals;
 use super::errors::CreateGroupContextExtProposalError;
 
 use crate::{
-    ciphersuite::signable::*,
+    ciphersuite::{signable::Signable, HpkePublicKey},
     credentials::*,
     error::LibraryError,
     extensions::errors::*,
     framing::*,
     group::*,
     key_packages::{errors::KeyPackageExtensionSupportError, *},
-    messages::{proposals::*, public_group_state::*, *},
+    messages::VerifiableGroupInfo,
+    messages::{proposals::*, *},
     schedule::{message_secrets::*, psk::*, *},
     tree::{secret_tree::SecretTreeError, sender_ratchet::SenderRatchetConfiguration},
     treesync::*,
@@ -526,6 +527,42 @@ impl CoreGroup {
             .map_err(LibraryError::unexpected_crypto_error)?)
     }
 
+    pub(crate) fn export_group_info(
+        &self,
+        backend: &impl OpenMlsCryptoProvider,
+        credential_bundle: &CredentialBundle,
+    ) -> Result<GroupInfo, LibraryError> {
+        let extensions = {
+            let ratchet_tree_extension =
+                Extension::RatchetTree(RatchetTreeExtension::new(self.treesync().export_nodes()));
+
+            let external_pub_extension = {
+                let external_pub = self
+                    .group_epoch_secrets()
+                    .external_secret()
+                    .derive_external_keypair(backend.crypto(), self.ciphersuite)
+                    .public;
+                Extension::ExternalPub(ExternalPubExtension::new(HpkePublicKey::from(external_pub)))
+            };
+
+            vec![ratchet_tree_extension, external_pub_extension]
+        };
+
+        // Create to-be-signed group info.
+        let group_info_tbs = GroupInfoTBS::new(
+            self.group_context.clone(),
+            &extensions,
+            self.message_secrets()
+                .confirmation_key()
+                .tag(backend, self.context().confirmed_transcript_hash())
+                .map_err(LibraryError::unexpected_crypto_error)?,
+            self.own_leaf_index(),
+        );
+
+        // Sign to-be-signed group info.
+        group_info_tbs.sign(backend, credential_bundle)
+    }
+
     /// Returns the epoch authenticator
     pub(crate) fn epoch_authenticator(&self) -> &EpochAuthenticator {
         self.group_epoch_secrets().epoch_authenticator()
@@ -574,15 +611,6 @@ impl CoreGroup {
         self.group_context.group_id()
     }
 
-    /// Get the groups extensions.
-    /// Right now this is limited to the ratchet tree extension which is built
-    /// on the fly when calling this function.
-    pub(crate) fn other_extensions(&self) -> Vec<Extension> {
-        vec![Extension::RatchetTree(RatchetTreeExtension::new(
-            self.treesync().export_nodes(),
-        ))]
-    }
-
     /// Get the group context extensions.
     pub(crate) fn group_context_extensions(&self) -> &[Extension] {
         self.group_context.extensions()
@@ -591,17 +619,6 @@ impl CoreGroup {
     /// Get the required capabilities extension of this group.
     pub(crate) fn required_capabilities(&self) -> Option<&RequiredCapabilitiesExtension> {
         self.group_context.required_capabilities()
-    }
-
-    /// Export the `PublicGroupState`
-    pub(crate) fn export_public_group_state(
-        &self,
-        backend: &impl OpenMlsCryptoProvider,
-        credential_bundle: &CredentialBundle,
-    ) -> Result<PublicGroupState, LibraryError> {
-        let pgs_tbs = PublicGroupStateTbs::new(backend, self)?;
-        // XXX: #719 removes the PublicGroupState
-        pgs_tbs.sign(backend, credential_bundle)
     }
 
     /// Returns `true` if the group uses the ratchet tree extension anf `false
@@ -697,16 +714,6 @@ impl CoreGroup {
     #[cfg(any(feature = "test-utils", test))]
     pub(crate) fn message_secrets_test_mut(&mut self) -> &mut MessageSecrets {
         self.message_secrets_store.message_secrets_mut()
-    }
-
-    /// Current interim transcript hash of the group
-    pub(crate) fn interim_transcript_hash(&self) -> &[u8] {
-        &self.interim_transcript_hash
-    }
-
-    /// Current confirmed transcript hash of the group
-    pub(crate) fn confirmed_transcript_hash(&self) -> &[u8] {
-        self.group_context.confirmed_transcript_hash()
     }
 
     #[cfg(any(feature = "test-utils", test))]

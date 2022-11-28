@@ -1,18 +1,14 @@
 use crate::{
     credentials::{CredentialBundle, CredentialType},
     framing::{FramingParameters, WireFormat},
-    group::GroupId,
+    group::{errors::ExternalCommitError, GroupId},
     key_packages::KeyPackageBundle,
-    messages::{
-        proposals::{ProposalOrRef, ProposalType},
-        public_group_state::VerifiablePublicGroupState,
-    },
+    messages::proposals::{ProposalOrRef, ProposalType},
     test_utils::*,
 };
 
 use openmls_rust_crypto::OpenMlsRustCrypto;
 use openmls_traits::{types::Ciphersuite, OpenMlsCryptoProvider};
-use tls_codec::{Deserialize, Serialize};
 
 use super::{
     create_commit_params::CreateCommitParams,
@@ -111,14 +107,10 @@ fn test_external_init(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProv
     .expect("An unexpected error occurred.");
 
     // Have Alice export everything that Charly needs.
-    let pgs_encoded: Vec<u8> = group_alice
-        .export_public_group_state(backend, &alice_credential_bundle)
-        .expect("Error exporting PGS")
-        .tls_serialize_detached()
-        .expect("Error serializing PGS");
-    let verifiable_public_group_state =
-        VerifiablePublicGroupState::tls_deserialize(&mut pgs_encoded.as_slice())
-            .expect("Error deserializing PGS");
+    let verifiable_group_info = group_alice
+        .export_group_info(backend, &alice_credential_bundle)
+        .unwrap()
+        .into_verifiable_group_info();
 
     let proposal_store = ProposalStore::new();
     let params = CreateCommitParams::builder()
@@ -127,7 +119,7 @@ fn test_external_init(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProv
         .proposal_store(&proposal_store)
         .build();
     let (mut group_charly, create_commit_result) =
-        CoreGroup::join_by_external_commit(backend, params, None, verifiable_public_group_state)
+        CoreGroup::join_by_external_commit(backend, params, None, verifiable_group_info)
             .expect("Error initializing group externally.");
 
     // Have alice and bob process the commit resulting from external init.
@@ -187,14 +179,10 @@ fn test_external_init(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProv
     // themselves back through an external commit.
 
     // Have Alice export everything that Bob needs.
-    let pgs_encoded: Vec<u8> = group_alice
-        .export_public_group_state(backend, &alice_credential_bundle)
-        .expect("Error exporting PGS")
-        .tls_serialize_detached()
-        .expect("Error serializing PGS");
-    let verifiable_public_group_state =
-        VerifiablePublicGroupState::tls_deserialize(&mut pgs_encoded.as_slice())
-            .expect("Error deserializing PGS");
+    let verifiable_group_info = group_alice
+        .export_group_info(backend, &alice_credential_bundle)
+        .unwrap()
+        .into_verifiable_group_info();
     let nodes_option = group_alice.treesync().export_nodes();
 
     let proposal_store = ProposalStore::new();
@@ -207,7 +195,7 @@ fn test_external_init(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProv
         backend,
         params,
         Some(&nodes_option),
-        verifiable_public_group_state,
+        verifiable_group_info,
     )
     .expect("Error initializing group externally.");
 
@@ -303,14 +291,10 @@ fn test_external_init_single_member_group(
     .expect("An unexpected error occurred.");
 
     // Have Alice export everything that Charly needs.
-    let pgs_encoded: Vec<u8> = group_alice
-        .export_public_group_state(backend, &alice_credential_bundle)
-        .expect("Error exporting PGS")
-        .tls_serialize_detached()
-        .expect("Error serializing PGS");
-    let verifiable_public_group_state =
-        VerifiablePublicGroupState::tls_deserialize(&mut pgs_encoded.as_slice())
-            .expect("Error deserializing PGS");
+    let verifiable_group_info = group_alice
+        .export_group_info(backend, &alice_credential_bundle)
+        .unwrap()
+        .into_verifiable_group_info();
     let nodes_option = group_alice.treesync().export_nodes();
 
     let proposal_store = ProposalStore::new();
@@ -323,7 +307,7 @@ fn test_external_init_single_member_group(
         backend,
         params,
         Some(&nodes_option),
-        verifiable_public_group_state,
+        verifiable_group_info,
     )
     .expect("Error initializing group externally.");
 

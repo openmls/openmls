@@ -1,9 +1,6 @@
 use tls_codec::Serialize;
 
-use crate::{
-    group::errors::ExporterError, messages::public_group_state::PublicGroupState,
-    schedule::EpochAuthenticator,
-};
+use crate::{group::errors::ExporterError, messages::GroupInfo, schedule::EpochAuthenticator};
 
 use super::*;
 
@@ -53,13 +50,11 @@ impl MlsGroup {
         self.resumption_psk_store.get(epoch)
     }
 
-    // === Export public group state ===
-
-    /// Exports the public group state.
-    pub fn export_public_group_state(
+    /// Export a group info object for this group.
+    pub fn export_group_info(
         &self,
         backend: &impl OpenMlsCryptoProvider,
-    ) -> Result<PublicGroupState, ExportGroupInfoError> {
+    ) -> Result<GroupInfo, ExportGroupInfoError> {
         match self.credential() {
             Ok(credential) => {
                 let credential_bundle: CredentialBundle = backend
@@ -71,9 +66,7 @@ impl MlsGroup {
                             .map_err(LibraryError::missing_bound_check)?,
                     )
                     .ok_or(ExportGroupInfoError::NoMatchingCredentialBundle)?;
-                Ok(self
-                    .group
-                    .export_public_group_state(backend, &credential_bundle)?)
+                Ok(self.group.export_group_info(backend, &credential_bundle)?)
             }
             Err(e) => Err(e.into()),
         }
