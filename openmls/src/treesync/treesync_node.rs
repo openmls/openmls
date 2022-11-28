@@ -10,7 +10,7 @@ use crate::{
     error::LibraryError,
 };
 
-use super::{errors::NodeError, hashes::TreeHashInput, node::leaf_node::LeafNode, Node};
+use super::{errors::NodeError, hashes::TreeHashInput, Node};
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[cfg_attr(test, derive(PartialEq))]
@@ -59,9 +59,7 @@ impl TreeSyncNode {
     pub(in crate::treesync) fn node_without_private_key(&self) -> Option<Node> {
         if let Some(node) = self.node() {
             match node {
-                Node::LeafNode(leaf_node) => {
-                    Node::LeafNode(LeafNode::new(leaf_node.key_package().clone()))
-                }
+                Node::LeafNode(leaf_node) => Node::LeafNode(leaf_node.clone_public()),
                 Node::ParentNode(parent_node) => {
                     Node::ParentNode(parent_node.clone_without_private_key())
                 }
@@ -97,22 +95,25 @@ impl TreeSyncNode {
         left_hash: Vec<u8>,
         right_hash: Vec<u8>,
     ) -> Result<Vec<u8>, LibraryError> {
-        // If there's a cached tree hash, use that one.
-        if let Some(hash) = self.tree_hash() {
-            return Ok(hash.clone());
-        };
+        // // If there's a cached tree hash, use that one.
+        // TODO[FK]: Do we want to keep caching?
+        // if let Some(hash) = self.tree_hash() {
+        //     return Ok(hash.clone());
+        // };
         // Otherwise compute it.
         // Check if I'm a leaf node.
         let hash = if let Some(leaf_index) = leaf_index_option {
-            let key_package_option = match self.node.as_ref() {
-                Some(node) => Some(
-                    node.as_leaf_node()
-                        .map_err(|_| LibraryError::custom("Expected a leaf node"))?,
-                ),
-                None => None,
+            let leaf_node = self.node.as_ref().map(|node| node.as_leaf_node());
+            let leaf_node = if let Some(result) = leaf_node {
+                result
+                    .as_ref()
+                    .map_err(|_| LibraryError::custom("Expected a leaf node"))?;
+                result.ok()
+            } else {
+                None
             }
-            .map(|leaf_node| leaf_node.key_package());
-            let hash_input = TreeHashInput::new_leaf(&leaf_index, key_package_option);
+            .map(|l| &l.leaf_node);
+            let hash_input = TreeHashInput::new_leaf(&leaf_index, leaf_node);
             hash_input.hash(backend, ciphersuite)?
         } else {
             let parent_node_option = match self.node.as_ref() {

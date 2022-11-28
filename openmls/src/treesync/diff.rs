@@ -25,7 +25,7 @@ use std::{collections::HashSet, convert::TryFrom};
 use super::{
     errors::*,
     node::{
-        leaf_node::LeafNode,
+        leaf_node::{LeafNode, OpenMlsLeafNode},
         parent_node::{ParentNode, PathDerivationResult, PlainUpdatePathNode},
         Node,
     },
@@ -37,16 +37,15 @@ use crate::{
     binary_tree::{
         array_representation::diff::NodeId, LeafIndex, MlsBinaryTreeDiff, StagedMlsBinaryTreeDiff,
     },
-    ciphersuite::{signable::Signable, HpkePrivateKey, HpkePublicKey, Secret},
+    ciphersuite::{HpkePrivateKey, HpkePublicKey, Secret},
     credentials::CredentialBundle,
     error::LibraryError,
-    extensions::ExtensionType,
-    key_packages::{KeyPackage, KeyPackageBundlePayload},
+    group::GroupId,
     messages::PathSecret,
     schedule::CommitSecret,
 };
 
-pub(crate) type UpdatePathResult = (KeyPackage, Vec<PlainUpdatePathNode>, CommitSecret);
+pub(crate) type UpdatePathResult = (Vec<PlainUpdatePathNode>, CommitSecret);
 
 /// The [`StagedTreeSyncDiff`] can be created from a [`TreeSyncDiff`], examined
 /// and later merged into a [`TreeSync`] instance.
@@ -127,10 +126,10 @@ impl<'a> TreeSyncDiff<'a> {
     /// Returns an error if the target leaf is blank or outside of the tree.
     pub(crate) fn update_leaf(
         &mut self,
-        leaf_node: impl Into<LeafNode>,
+        leaf_node: OpenMlsLeafNode,
         leaf_index: LeafIndex,
     ) -> Result<(), TreeSyncDiffError> {
-        let node = Node::LeafNode(leaf_node.into());
+        let node = Node::LeafNode(leaf_node);
         self.diff.replace_leaf(leaf_index, node.into())?;
         // This effectively wipes the tree hashes in the direct path.
         self.diff
@@ -171,8 +170,11 @@ impl<'a> TreeSyncDiff<'a> {
     /// path.
     ///
     /// Returns the LeafIndex of the new leaf.
-    pub(crate) fn add_leaf(&mut self, leaf_node: KeyPackage) -> Result<LeafIndex, TreeSyncAddLeaf> {
-        let node = Node::LeafNode(LeafNode::new(leaf_node));
+    pub(crate) fn add_leaf(
+        &mut self,
+        leaf_node: OpenMlsLeafNode,
+    ) -> Result<LeafIndex, TreeSyncAddLeaf> {
+        let node = Node::LeafNode(leaf_node);
         // Find a free leaf and fill it with the new key package.
         let leaf_index = self.free_leaf_index()?;
         // If the free leaf index is within the tree, put the new leaf there,
@@ -210,6 +212,23 @@ impl<'a> TreeSyncDiff<'a> {
             tsn.erase_tree_hash();
         }
         Ok(leaf_index)
+    }
+
+    /// Clear the tree hash (root and own leaf index).
+    pub(crate) fn clear_tree_hash(&mut self) -> Result<(), LibraryError> {
+        self.diff
+            .node_mut(self.diff.root())
+            .map_err(|_| LibraryError::custom("Root was not in tree."))?
+            .erase_tree_hash();
+        self.diff
+            .node_mut(
+                self.diff
+                    .leaf(self.own_leaf_index())
+                    .map_err(|_| LibraryError::custom("Node was not in tree."))?,
+            )
+            .map_err(|_| LibraryError::custom("Node was not in tree."))?
+            .erase_tree_hash();
+        Ok(())
     }
 
     /// Set the `own_leaf_index` to `leaf_index`. This has to be used with
@@ -255,22 +274,38 @@ impl<'a> TreeSyncDiff<'a> {
         ParentNode::derive_path(backend, ciphersuite, path_secret, path_length)
     }
 
-    /// Given a [`KeyPackageBundlePayload`], use it to create a new path and
+    /// Given a new [`OpenMlsLeafNode`], use it to create a new path and
     /// apply it to this diff. The given [`CredentialBundle`] reference is used
-    /// to sign the [`KeyPackageBundlePayload`] after updating its parent hash.
+    /// to sign the [`OpenMlsLeafNode`] after updating its parent hash.
     ///
     /// Returns the [`CommitSecret`] and the path resulting from the path
     /// derivation, as well as the [`KeyPackage`].
     ///
-    /// Returns an error if the own leaf is not in the tree
+    /// Returns an error if the own leaf is not in the tree.
     pub(crate) fn apply_own_update_path(
         &mut self,
         backend: &impl OpenMlsCryptoProvider,
         ciphersuite: Ciphersuite,
-        mut key_package_bundle_payload: KeyPackageBundlePayload,
+        group_id: GroupId,
+        // (new_own_leaf_ref, mut new_own_leaf): (
+        //     Option<&mut OpenMlsLeafNode>,
+        //     Option<OpenMlsLeafNode>,
+        // ),
         credential_bundle: &CredentialBundle,
     ) -> Result<UpdatePathResult, LibraryError> {
-        let leaf_secret = key_package_bundle_payload.leaf_secret().clone();
+        debug_assert!(self.own_leaf().is_ok(), "Tree diff is missing own leaf");
+        debug_assert!(
+            self.own_leaf().unwrap().leaf_secret().is_some(),
+            "Own leaf is missing leaf secret"
+        );
+        let leaf_secret = self
+            .own_leaf_mut()
+            .map_err(|_| LibraryError::custom("Didn't find own leaf in diff."))?
+            .leaf_secret()
+            .ok_or(LibraryError::custom(
+                "No leaf secret found for update path.",
+            ))?
+            .clone();
 
         let (path, update_path_nodes, commit_secret) =
             self.derive_path_from_leaf_secret(backend, ciphersuite, leaf_secret)?;
@@ -278,18 +313,24 @@ impl<'a> TreeSyncDiff<'a> {
         let parent_hash =
             self.process_update_path(backend, ciphersuite, self.own_leaf_index, path)?;
 
-        key_package_bundle_payload.update_parent_hash(&parent_hash);
-        let key_package_bundle = key_package_bundle_payload.sign(backend, credential_bundle)?;
+        self.own_leaf_mut()
+            .map_err(|_| LibraryError::custom("Didn't find own leaf in diff."))?
+            .update_parent_hash(&parent_hash, group_id, credential_bundle, backend)?;
+        // let key_package_bundle = leaf_node.sign(backend, credential_bundle)?;
 
-        let key_package = key_package_bundle.key_package().clone();
-        let node = Node::LeafNode(LeafNode::new_from_bundle(key_package_bundle));
+        // let key_package = key_package_bundle.key_package().clone();
+        // let node = Node::LeafNode(OpenMlsLeafNode::new_from_bundle(key_package_bundle));
 
-        // Replace the leaf.
-        self.diff
-            .replace_leaf(self.own_leaf_index, node.into())
-            // We assume the own leaf is in the tree
-            .map_err(|_| LibraryError::custom("Own leaf not in tree"))?;
-        Ok((key_package, update_path_nodes, commit_secret))
+        // XXX: The leaf is a mutable reference and therefore doesn't need updating in the diff.
+        // // Replace the leaf.
+        // self.diff
+        //     .replace_leaf(
+        //         self.own_leaf_index,
+        //         Node::LeafNode(leaf_node.clone()).into(),
+        //     )
+        //     // We assume the own leaf is in the tree
+        //     .map_err(|_| LibraryError::custom("Own leaf not in tree"))?;
+        Ok((update_path_nodes, commit_secret))
     }
 
     /// Set the given path as the direct path of the `sender_leaf_index` and
@@ -304,26 +345,24 @@ impl<'a> TreeSyncDiff<'a> {
         backend: &impl OpenMlsCryptoProvider,
         ciphersuite: Ciphersuite,
         sender_leaf_index: LeafIndex,
-        key_package: KeyPackage,
+        leaf_node: LeafNode,
         path: Vec<ParentNode>,
     ) -> Result<(), ApplyUpdatePathError> {
         let parent_hash =
             self.process_update_path(backend, ciphersuite, sender_leaf_index, path)?;
 
         // Verify the parent hash.
-        let phe = key_package
-            .extension_with_type(ExtensionType::ParentHash)
+        let leaf_node_parent_hash = leaf_node
+            .parent_hash()
             .ok_or(ApplyUpdatePathError::MissingParentHash)?;
-        let key_package_parent_hash = phe
-            .as_parent_hash_extension()
-            .map_err(|_| LibraryError::custom("no parent hash extension"))?
-            .parent_hash();
-        if key_package_parent_hash != parent_hash {
+        if leaf_node_parent_hash != parent_hash {
             return Err(ApplyUpdatePathError::ParentHashMismatch);
         };
 
-        // Replace the leaf.
-        let node = Node::LeafNode(LeafNode::new(key_package));
+        // Update the `encryption_key` in the leaf.
+        let mut leaf: OpenMlsLeafNode = leaf_node.into();
+        leaf.set_leaf_index(sender_leaf_index);
+        let node = Node::LeafNode(leaf);
         self.diff
             .replace_leaf(sender_leaf_index, node.into())
             // We assume the sender leaf is in the tree
@@ -680,7 +719,7 @@ impl<'a> TreeSyncDiff<'a> {
                         parent_node.parent_hash(),
                         &right_child_resolution,
                     )?;
-                    if let Some(left_child_parent_hash) = left_child.parent_hash()? {
+                    if let Some(left_child_parent_hash) = left_child.parent_hash() {
                         if node_hash == left_child_parent_hash {
                             // If the hashes match, we continue with the next node.
                             continue;
@@ -724,7 +763,7 @@ impl<'a> TreeSyncDiff<'a> {
                         parent_node.parent_hash(),
                         &left_child_resolution,
                     )?;
-                    if let Some(right_child_parent_hash) = right_child.parent_hash()? {
+                    if let Some(right_child_parent_hash) = right_child.parent_hash() {
                         if node_hash == right_child_parent_hash {
                             // If the hashes match, we continue with the next node.
                             continue;
@@ -750,7 +789,6 @@ impl<'a> TreeSyncDiff<'a> {
         ciphersuite: Ciphersuite,
     ) -> Result<StagedTreeSyncDiff, LibraryError> {
         let new_tree_hash = self.compute_tree_hashes(backend, ciphersuite)?;
-        debug_assert!(self.verify_parent_hashes(backend, ciphersuite).is_ok());
         Ok(StagedTreeSyncDiff {
             own_leaf_index: self.own_leaf_index,
             diff: self.diff.into(),
@@ -778,14 +816,15 @@ impl<'a> TreeSyncDiff<'a> {
                 leaf.compute_tree_hash(backend, ciphersuite, Some(leaf_index), vec![], vec![])?;
             return Ok(tree_hash);
         }
-        // Return early if there's already a cached tree hash.
-        let node = self
-            .diff
-            .node(node_id)
-            .map_err(|_| LibraryError::custom("Expected node to be in tree"))?;
-        if let Some(tree_hash) = node.tree_hash() {
-            return Ok(tree_hash.to_vec());
-        }
+        // // Return early if there's already a cached tree hash.
+        // TODO[FK]: Do we want to keep caching?
+        // let node = self
+        //     .diff
+        //     .node(node_id)
+        //     .map_err(|_| LibraryError::custom("Expected node to be in tree"))?;
+        // if let Some(tree_hash) = node.tree_hash() {
+        //     return Ok(tree_hash.to_vec());
+        // }
         // Compute left hash.
         let left_child = self
             .diff
@@ -815,11 +854,21 @@ impl<'a> TreeSyncDiff<'a> {
     }
 
     /// Return a reference to our own leaf.
-    pub(crate) fn own_leaf(&self) -> Result<&LeafNode, TreeSyncDiffError> {
+    pub(crate) fn own_leaf(&self) -> Result<&OpenMlsLeafNode, TreeSyncDiffError> {
         let leaf_id = self.diff.leaf(self.own_leaf_index)?;
         let node = self.diff.node(leaf_id)?;
         match node.node() {
             Some(node) => Ok(node.as_leaf_node()?),
+            None => Err(LibraryError::custom("Node was empty.").into()),
+        }
+    }
+
+    /// Return a mutable reference to our own leaf.
+    pub(crate) fn own_leaf_mut(&mut self) -> Result<&mut OpenMlsLeafNode, TreeSyncDiffError> {
+        let leaf_id = self.diff.leaf(self.own_leaf_index)?;
+        let node = self.diff.node_mut(leaf_id)?;
+        match node.node_mut() {
+            Some(node) => Ok(node.as_leaf_node_mut()?),
             None => Err(LibraryError::custom("Node was empty.").into()),
         }
     }

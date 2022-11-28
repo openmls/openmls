@@ -20,13 +20,17 @@ impl MlsGroup {
     pub fn new(
         backend: &impl OpenMlsCryptoProvider,
         mls_group_config: &MlsGroupConfig,
+        life_time: LifetimeExtension,
         key_package_hash: &[u8],
+        credential_bundle: &CredentialBundle,
     ) -> Result<Self, NewGroupError> {
         Self::new_with_group_id(
             backend,
             mls_group_config,
             GroupId::random(backend),
+            life_time,
             key_package_hash,
+            credential_bundle,
         )
     }
 
@@ -40,7 +44,9 @@ impl MlsGroup {
         backend: &impl OpenMlsCryptoProvider,
         mls_group_config: &MlsGroupConfig,
         group_id: GroupId,
+        life_time: LifetimeExtension,
         key_package_hash: &[u8],
+        credential_bundle: &CredentialBundle,
     ) -> Result<Self, NewGroupError> {
         // TODO #751
         let kph = key_package_hash.to_vec();
@@ -59,7 +65,7 @@ impl MlsGroup {
             .with_config(group_config)
             .with_required_capabilities(mls_group_config.required_capabilities.clone())
             .with_max_past_epoch_secrets(mls_group_config.max_past_epochs)
-            .build(backend)
+            .build(credential_bundle, life_time, backend)
             .map_err(|e| match e {
                 CoreGroupBuildError::LibraryError(e) => e.into(),
                 CoreGroupBuildError::UnsupportedProposalType => {
@@ -82,7 +88,7 @@ impl MlsGroup {
             mls_group_config: mls_group_config.clone(),
             group,
             proposal_store: ProposalStore::new(),
-            own_kpbs: vec![],
+            own_leaf_nodes: vec![],
             aad: vec![],
             resumption_psk_store,
             group_state: MlsGroupState::Operational,
@@ -129,7 +135,7 @@ impl MlsGroup {
             mls_group_config: mls_group_config.clone(),
             group,
             proposal_store: ProposalStore::new(),
-            own_kpbs: vec![],
+            own_leaf_nodes: vec![],
             aad: vec![],
             resumption_psk_store,
             group_state: MlsGroupState::Operational,
@@ -182,7 +188,7 @@ impl MlsGroup {
             mls_group_config: mls_group_config.clone(),
             group,
             proposal_store: ProposalStore::new(),
-            own_kpbs: vec![],
+            own_leaf_nodes: vec![],
             aad: vec![],
             resumption_psk_store,
             group_state: MlsGroupState::PendingCommit(Box::new(PendingCommitState::External(

@@ -2,7 +2,7 @@
 //! https://openmls.tech/book/message_validation.html#semantic-validation-of-message-framing
 
 use openmls_rust_crypto::OpenMlsRustCrypto;
-use openmls_traits::{types::Ciphersuite, OpenMlsCryptoProvider};
+use openmls_traits::{key_store::OpenMlsKeyStore, types::Ciphersuite, OpenMlsCryptoProvider};
 use tls_codec::{Deserialize, Serialize};
 
 use rstest::*;
@@ -67,14 +67,26 @@ fn validation_test_setup(
         .build();
 
     // === Alice creates a group ===
+    let alice_credential_bundle = backend
+        .key_store()
+        .read(
+            &alice_credential
+                .signature_key()
+                .tls_serialize_detached()
+                .expect("Error serializing signature key."),
+        )
+        .expect("An unexpected error occurred.");
+
     let mut alice_group = MlsGroup::new_with_group_id(
         backend,
         &mls_group_config,
         group_id,
+        LifetimeExtension::default(),
         alice_key_package
             .hash_ref(backend.crypto())
             .expect("Could not hash KeyPackage.")
             .as_slice(),
+        &alice_credential_bundle,
     )
     .expect("An unexpected error occurred.");
 

@@ -79,14 +79,26 @@ fn validation_test_setup(
         .build();
 
     // === Alice creates a group ===
+    let alice_credential_bundle = backend
+        .key_store()
+        .read(
+            &alice_credential
+                .signature_key()
+                .tls_serialize_detached()
+                .expect("Error serializing signature key."),
+        )
+        .expect("An unexpected error occurred.");
+
     let mut alice_group = MlsGroup::new_with_group_id(
         backend,
         &mls_group_config,
         group_id,
+        LifetimeExtension::default(),
         alice_key_package
             .hash_ref(backend.crypto())
             .expect("Could not hash KeyPackage.")
             .as_slice(),
+        &alice_credential_bundle,
     )
     .expect("An unexpected error occurred.");
 
@@ -296,13 +308,12 @@ fn test_valsem201(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
         queued(Proposal::PreSharedKey(PreSharedKeyProposal::new(psk_id)))
     };
 
-    let update_proposal = || {
-        let key_package = alice_group
-            .member(alice_group.own_leaf_index())
-            .unwrap()
-            .clone();
-        queued(Proposal::Update(UpdateProposal { key_package }))
-    };
+    let update_proposal = queued(Proposal::Update(UpdateProposal {
+        leaf_node: alice_group
+            .own_leaf()
+            .expect("Unable to get own leaf")
+            .clone(),
+    }));
 
     let remove_proposal = || {
         queued(Proposal::Remove(RemoveProposal {
@@ -325,7 +336,7 @@ fn test_valsem201(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
     let cases = vec![
         (vec![add_proposal()], false),
         (vec![psk_proposal()], false),
-        (vec![update_proposal()], true),
+        (vec![update_proposal.clone()], true),
         (vec![remove_proposal()], true),
         (vec![gce_proposal()], true),
         // !path_required + !path_required = !path_required
@@ -333,7 +344,7 @@ fn test_valsem201(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
         // path_required + !path_required = path_required
         (vec![remove_proposal(), add_proposal()], true),
         // path_required + path_required = path_required
-        (vec![update_proposal(), remove_proposal()], true),
+        (vec![update_proposal, remove_proposal()], true),
         // TODO: #566 this should work if GCE proposals validation were implemented
         // (vec![add_proposal(), gce_proposal()], true),
     ];
@@ -380,7 +391,12 @@ fn test_valsem201(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
         }
 
         // Positive case
-        assert!(bob_group.process_message(backend, commit.into(),).is_ok());
+        let process_message_result = bob_group.process_message(backend, commit.into());
+        assert!(
+            process_message_result.is_ok(),
+            "{:?}",
+            process_message_result
+        );
 
         // cleanup & restore for next iteration
         alice_group.clear_pending_proposals();

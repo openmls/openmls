@@ -1,3 +1,4 @@
+use openmls_rust_crypto::OpenMlsRustCrypto;
 use rstest::*;
 use rstest_reuse::{self, *};
 use tls_codec::Serialize;
@@ -12,9 +13,7 @@ use crate::{
     },
 };
 
-use openmls_rust_crypto::OpenMlsRustCrypto;
-use openmls_traits::key_store::OpenMlsKeyStore;
-use openmls_traits::types::Ciphersuite;
+use openmls_traits::{key_store::OpenMlsKeyStore, types::Ciphersuite};
 
 use super::utils::*;
 
@@ -54,7 +53,19 @@ fn new_test_group(
         .hash_ref(backend.crypto())
         .expect("Could not hash KeyPackage.");
 
-    MlsGroup::new_with_group_id(backend, &mls_group_config, group_id, kpr.as_slice()).unwrap()
+    let credential_bundle: CredentialBundle = backend
+        .key_store()
+        .read(&credential.signature_key().tls_serialize_detached().unwrap())
+        .unwrap();
+    MlsGroup::new_with_group_id(
+        backend,
+        &mls_group_config,
+        group_id,
+        LifetimeExtension::default(),
+        kpr.as_slice(),
+        &credential_bundle,
+    )
+    .unwrap()
 }
 
 // Validation test setup

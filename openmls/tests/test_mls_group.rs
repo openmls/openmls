@@ -1,7 +1,6 @@
 use openmls::{prelude::*, test_utils::*, *};
 
 use lazy_static::lazy_static;
-use openmls_rust_crypto::OpenMlsRustCrypto;
 use openmls_traits::{key_store::OpenMlsKeyStore, types::SignatureScheme, OpenMlsCryptoProvider};
 use std::fs::File;
 
@@ -120,14 +119,26 @@ fn mls_group_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoPr
             .build();
 
         // === Alice creates a group ===
+        let alice_credential_bundle = backend
+            .key_store()
+            .read(
+                &alice_credential
+                    .signature_key()
+                    .tls_serialize_detached()
+                    .expect("Error serializing signature key."),
+            )
+            .expect("An unexpected error occurred.");
+
         let mut alice_group = MlsGroup::new_with_group_id(
             backend,
             &mls_group_config,
             group_id,
+            LifetimeExtension::default(),
             alice_key_package
                 .hash_ref(backend.crypto())
                 .expect("Could not hash KeyPackage.")
                 .as_slice(),
+            &alice_credential_bundle,
         )
         .expect("An unexpected error occurred.");
 
@@ -305,10 +316,7 @@ fn mls_group_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoPr
         {
             if let Proposal::Update(ref update_proposal) = staged_proposal.proposal() {
                 // Check that Alice updated
-                assert_eq!(
-                    update_proposal.key_package().credential(),
-                    &alice_credential
-                );
+                assert_eq!(update_proposal.leaf_node().credential(), &alice_credential);
                 // Store proposal
                 alice_group.store_pending_proposal(*staged_proposal.clone());
             } else {
@@ -972,14 +980,26 @@ fn test_empty_input_errors(ciphersuite: Ciphersuite, backend: &impl OpenMlsCrypt
     let mls_group_config = MlsGroupConfig::test_default();
 
     // === Alice creates a group ===
+    let alice_credential_bundle = backend
+        .key_store()
+        .read(
+            &alice_credential
+                .signature_key()
+                .tls_serialize_detached()
+                .expect("Error serializing signature key."),
+        )
+        .expect("An unexpected error occurred.");
+
     let mut alice_group = MlsGroup::new_with_group_id(
         backend,
         &mls_group_config,
         group_id,
+        LifetimeExtension::default(),
         alice_key_package
             .hash_ref(backend.crypto())
             .expect("Could not hash KeyPackage.")
             .as_slice(),
+        &alice_credential_bundle,
     )
     .expect("An unexpected error occurred.");
 
@@ -1040,14 +1060,26 @@ fn mls_group_ratchet_tree_extension(
             .build();
 
         // === Alice creates a group ===
+        let alice_credential_bundle = backend
+            .key_store()
+            .read(
+                &alice_credential
+                    .signature_key()
+                    .tls_serialize_detached()
+                    .expect("Error serializing signature key."),
+            )
+            .expect("An unexpected error occurred.");
+
         let mut alice_group = MlsGroup::new_with_group_id(
             backend,
             &mls_group_config,
             group_id.clone(),
+            LifetimeExtension::default(),
             alice_key_package
                 .hash_ref(backend.crypto())
                 .expect("Could not hash KeyPackage.")
                 .as_slice(),
+            &alice_credential_bundle,
         )
         .expect("An unexpected error occurred.");
 
@@ -1093,14 +1125,26 @@ fn mls_group_ratchet_tree_extension(
         let mls_group_config = MlsGroupConfig::test_default();
 
         // === Alice creates a group ===
+        let alice_credential_bundle = backend
+            .key_store()
+            .read(
+                &alice_credential
+                    .signature_key()
+                    .tls_serialize_detached()
+                    .expect("Error serializing signature key."),
+            )
+            .expect("An unexpected error occurred.");
+
         let mut alice_group = MlsGroup::new_with_group_id(
             backend,
             &mls_group_config,
             group_id,
+            LifetimeExtension::default(),
             alice_key_package
                 .hash_ref(backend.crypto())
                 .expect("Could not hash KeyPackage.")
                 .as_slice(),
+            &alice_credential_bundle,
         )
         .expect("An unexpected error occurred.");
 

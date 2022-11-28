@@ -19,7 +19,6 @@ use crate::{
     binary_tree::{LeafIndex, OutOfBoundsError},
     ciphersuite::{hash_ref::KeyPackageRef, HpkePublicKey},
     error::LibraryError,
-    key_packages::KeyPackage,
     messages::{proposals::AddProposal, EncryptedGroupSecrets, GroupSecrets, PathSecret},
     schedule::{psk::PreSharedKeys, CommitSecret, JoinerSecret},
     versions::ProtocolVersion,
@@ -28,14 +27,14 @@ use crate::{
 use super::{
     diff::TreeSyncDiff,
     node::parent_node::{ParentNode, PlainUpdatePathNode},
-    ApplyUpdatePathError,
+    ApplyUpdatePathError, LeafNode,
 };
 
 impl<'a> TreeSyncDiff<'a> {
     /// Encrypt the given `path` to the nodes in the copath resolution of the
     /// owner of this [`TreeSyncDiff`]. The `group_context` is used in the
     /// encryption of the nodes, while the `exclusion_list` is used to filter
-    /// target leaves from the encryption targets. The given [`KeyPackage`] is
+    /// target leaves from the encryption targets. The given [`LeafNode`] is
     /// included in the resulting [`UpdatePath`].
     ///
     /// Returns the encrypted path (i.e. an [`UpdatePath`] instance).
@@ -48,8 +47,7 @@ impl<'a> TreeSyncDiff<'a> {
         path: &[PlainUpdatePathNode],
         group_context: &[u8],
         exclusion_list: &HashSet<&LeafIndex>,
-        leaf_key_package: KeyPackage,
-    ) -> Result<UpdatePath, LibraryError> {
+    ) -> Result<Vec<UpdatePathNode>, LibraryError> {
         let copath_resolutions = self.copath_resolutions(self.own_leaf_index(), exclusion_list)?;
 
         // There should be as many copath resolutions.
@@ -62,10 +60,7 @@ impl<'a> TreeSyncDiff<'a> {
             .map(|(node, resolution)| node.encrypt(backend, ciphersuite, resolution, group_context))
             .collect::<Vec<UpdatePathNode>>();
 
-        Ok(UpdatePath {
-            leaf_key_package,
-            nodes,
-        })
+        Ok(nodes)
     }
 
     /// Decrypt an [`UpdatePath`] originating from the given
@@ -173,7 +168,7 @@ pub(crate) struct DecryptPathParams<'a> {
     pub(crate) group_context: &'a [u8],
 }
 
-/// 7.7. Update Paths
+/// 8.6. Update Paths
 ///
 /// ```text
 /// struct {
@@ -318,11 +313,11 @@ impl PlaintextSecret {
     }
 }
 
-/// 7.7. Update Paths
+/// 8.6. Update Paths
 ///
 /// ```text
 /// struct {
-///     KeyPackage leaf_key_package;
+///     LeafNode leaf_node;
 ///     UpdatePathNode nodes<V>;
 /// } UpdatePath;
 /// ```
@@ -330,20 +325,25 @@ impl PlaintextSecret {
     Debug, PartialEq, Clone, Serialize, Deserialize, TlsSerialize, TlsDeserialize, TlsSize,
 )]
 pub struct UpdatePath {
-    leaf_key_package: KeyPackage,
+    leaf_node: LeafNode,
     nodes: Vec<UpdatePathNode>,
 }
 
 impl UpdatePath {
-    /// Return the `leaf_key_package` of this [`UpdatePath`].
-    pub(crate) fn leaf_key_package(&self) -> &KeyPackage {
-        &self.leaf_key_package
+    /// Generate a new update path.
+    pub(crate) fn new(leaf_node: LeafNode, nodes: Vec<UpdatePathNode>) -> Self {
+        Self { leaf_node, nodes }
+    }
+
+    /// Return the `leaf_node` of this [`UpdatePath`].
+    pub(crate) fn leaf_node(&self) -> &LeafNode {
+        &self.leaf_node
     }
 
     /// Consume the [`UpdatePath`] and return its individual parts: A
-    /// [`KeyPackage`] and a vector of [`UpdatePathNode`] instances.
-    pub(crate) fn into_parts(self) -> (KeyPackage, Vec<UpdatePathNode>) {
-        (self.leaf_key_package, self.nodes)
+    /// [`LeafNode`] and a vector of [`UpdatePathNode`] instances.
+    pub(crate) fn into_parts(self) -> (LeafNode, Vec<UpdatePathNode>) {
+        (self.leaf_node, self.nodes)
     }
 
     #[cfg(test)]
@@ -360,8 +360,8 @@ impl UpdatePath {
 
     #[cfg(test)]
     /// Set the path key package.
-    pub fn set_leaf_key_package(&mut self, key_package: KeyPackage) {
-        self.leaf_key_package = key_package
+    pub fn set_leaf_node(&mut self, leaf_node: LeafNode) {
+        self.leaf_node = leaf_node
     }
 
     #[cfg(test)]

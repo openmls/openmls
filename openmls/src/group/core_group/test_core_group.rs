@@ -39,7 +39,11 @@ fn test_core_group_persistence(ciphersuite: Ciphersuite, backend: &impl OpenMlsC
 
     // Alice creates a group
     let alice_group = CoreGroup::builder(GroupId::random(backend), alice_key_package_bundle)
-        .build(backend)
+        .build(
+            &alice_credential_bundle,
+            LifetimeExtension::default(),
+            backend,
+        )
         .expect("Error creating group.");
 
     let mut file_out = tempfile::NamedTempFile::new().expect("Could not create file");
@@ -204,7 +208,11 @@ fn test_update_path(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvid
 
     // === Alice creates a group ===
     let mut alice_group = CoreGroup::builder(GroupId::random(backend), alice_key_package_bundle)
-        .build(backend)
+        .build(
+            &alice_credential_bundle,
+            LifetimeExtension::default(),
+            backend,
+        )
         .expect("Error creating group.");
 
     // === Alice adds Bob ===
@@ -267,7 +275,10 @@ fn test_update_path(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvid
         .create_update_proposal(
             framing_parameters,
             &bob_credential_bundle,
-            bob_update_key_package_bundle.key_package().clone(),
+            bob_update_key_package_bundle
+                .key_package()
+                .leaf_node()
+                .clone(),
             backend,
         )
         .expect("Could not create proposal.");
@@ -409,7 +420,11 @@ fn test_psks(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
         .expect("An unexpected error occured.");
     let mut alice_group = CoreGroup::builder(GroupId::random(backend), alice_key_package_bundle)
         .with_psk(vec![preshared_key_id.clone()])
-        .build(backend)
+        .build(
+            &alice_credential_bundle,
+            LifetimeExtension::default(),
+            backend,
+        )
         .expect("Error creating group.");
 
     // === Alice creates a PSK proposal ===
@@ -478,7 +493,10 @@ fn test_psks(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
         .create_update_proposal(
             framing_parameters,
             &bob_credential_bundle,
-            bob_update_key_package_bundle.key_package().clone(),
+            bob_update_key_package_bundle
+                .key_package()
+                .leaf_node()
+                .clone(),
             backend,
         )
         .expect("Could not create proposal.");
@@ -536,7 +554,11 @@ fn test_staged_commit_creation(ciphersuite: Ciphersuite, backend: &impl OpenMlsC
 
     // === Alice creates a group ===
     let mut alice_group = CoreGroup::builder(GroupId::random(backend), alice_key_package_bundle)
-        .build(backend)
+        .build(
+            &alice_credential_bundle,
+            LifetimeExtension::default(),
+            backend,
+        )
         .expect("Error creating group.");
 
     // === Alice adds Bob ===
@@ -616,7 +638,11 @@ fn test_own_commit_processing(ciphersuite: Ciphersuite, backend: &impl OpenMlsCr
 
     // === Alice creates a group ===
     let alice_group = CoreGroup::builder(GroupId::random(backend), alice_key_package_bundle)
-        .build(backend)
+        .build(
+            &alice_credential_bundle,
+            LifetimeExtension::default(),
+            backend,
+        )
         .expect("Error creating group.");
 
     let proposal_store = ProposalStore::default();
@@ -676,7 +702,11 @@ fn test_proposal_application_after_self_was_removed(
     let (_, charlie_kpb) = setup_client("Charlie", ciphersuite, backend);
 
     let mut alice_group = CoreGroup::builder(GroupId::random(backend), alice_kpb)
-        .build(backend)
+        .build(
+            &alice_credential_bundle,
+            LifetimeExtension::default(),
+            backend,
+        )
         .expect("Error creating CoreGroup.");
 
     // Adding Bob

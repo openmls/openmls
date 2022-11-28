@@ -101,6 +101,12 @@ pub(crate) enum TreeSyncError {
     /// An extension type is not supported by a leaf in the tree.
     #[error("An extension type is not supported by a leaf in the tree.")]
     UnsupportedExtension,
+    /// A capability is not supported by a leaf in the tree.
+    #[error("A capability is not supported by a leaf in the tree.")]
+    UnsupportedCapabilities,
+    /// A proposal is not supported by a leaf in the tree.
+    #[error("A proposal is not supported by a leaf in the tree.")]
+    UnsupportedProposal,
 }
 
 /// TreeSync set path error

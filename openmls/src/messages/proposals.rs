@@ -11,6 +11,7 @@ use crate::{
     extensions::Extension,
     group::GroupId,
     key_packages::*,
+    prelude::LeafNode,
     schedule::psk::*,
     versions::ProtocolVersion,
 };
@@ -38,7 +39,18 @@ use tls_codec::{
 /// | 0x0007           | app_ack                  | Y           | RFC XXXX  |
 /// | 0xff00  - 0xffff | Reserved for Private Use | N/A         | RFC XXXX  |
 #[derive(
-    PartialEq, Eq, Clone, Copy, Debug, TlsSerialize, TlsDeserialize, TlsSize, Serialize, Deserialize,
+    PartialEq,
+    Eq,
+    PartialOrd,
+    Ord,
+    Clone,
+    Copy,
+    Debug,
+    TlsSerialize,
+    TlsDeserialize,
+    TlsSize,
+    Serialize,
+    Deserialize,
 )]
 #[repr(u16)]
 #[allow(missing_docs)]
@@ -172,18 +184,18 @@ impl AddProposal {
 /// Update Proposal.
 ///
 /// An Update proposal is a similar mechanism to Add with the distinction that it is the
-/// sender's leaf KeyPackage in the tree which would be updated with a new KeyPackage.
+/// sender's leaf node in the tree which would be updated with a new [`LeafNode`].
 #[derive(
     Debug, PartialEq, Clone, Serialize, Deserialize, TlsDeserialize, TlsSerialize, TlsSize,
 )]
 pub struct UpdateProposal {
-    pub(crate) key_package: KeyPackage,
+    pub(crate) leaf_node: LeafNode,
 }
 
 impl UpdateProposal {
     /// Returns a reference to the key package in the proposal.
-    pub fn key_package(&self) -> &KeyPackage {
-        &self.key_package
+    pub fn leaf_node(&self) -> &LeafNode {
+        &self.leaf_node
     }
 }
 

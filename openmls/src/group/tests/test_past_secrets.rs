@@ -103,10 +103,12 @@ fn test_past_secrets_in_group(ciphersuite: Ciphersuite, backend: &impl OpenMlsCr
             backend,
             &mls_group_config,
             group_id,
+            LifetimeExtension::default(),
             alice_key_package
                 .hash_ref(backend.crypto())
                 .expect("Could not hash KeyPackage.")
                 .as_slice(),
+            &alice_credential_bundle,
         )
         .expect("An unexpected error occurred.");
 

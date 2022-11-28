@@ -86,15 +86,26 @@ fn test_mls_group_persistence(ciphersuite: Ciphersuite, backend: &impl OpenMlsCr
     let mls_group_config = MlsGroupConfig::test_default();
 
     // === Alice creates a group ===
+    let alice_credential_bundle = backend
+        .key_store()
+        .read(
+            &alice_credential
+                .signature_key()
+                .tls_serialize_detached()
+                .expect("Error serializing signature key."),
+        )
+        .expect("An unexpected error occurred.");
 
     let mut alice_group = MlsGroup::new_with_group_id(
         backend,
         &mls_group_config,
         group_id,
+        LifetimeExtension::default(),
         alice_key_package
             .hash_ref(backend.crypto())
             .expect("Could not hash KeyPackage.")
             .as_slice(),
+        &alice_credential_bundle,
     )
     .expect("An unexpected error occurred.");
 
@@ -171,14 +182,26 @@ fn remover(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
     let mls_group_config = MlsGroupConfig::default();
 
     // === Alice creates a group ===
+    let alice_credential_bundle = backend
+        .key_store()
+        .read(
+            &alice_credential
+                .signature_key()
+                .tls_serialize_detached()
+                .expect("Error serializing signature key."),
+        )
+        .expect("An unexpected error occurred.");
+
     let mut alice_group = MlsGroup::new_with_group_id(
         backend,
         &mls_group_config,
         group_id,
+        LifetimeExtension::default(),
         alice_key_package
             .hash_ref(backend.crypto())
             .expect("Could not hash KeyPackage.")
             .as_slice(),
+        &alice_credential_bundle,
     )
     .expect("An unexpected error occurred.");
 
@@ -310,14 +333,26 @@ fn export_secret(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider)
     let mls_group_config = MlsGroupConfig::test_default();
 
     // === Alice creates a group ===
+    let alice_credential_bundle = backend
+        .key_store()
+        .read(
+            &alice_credential
+                .signature_key()
+                .tls_serialize_detached()
+                .expect("Error serializing signature key."),
+        )
+        .expect("An unexpected error occurred.");
+
     let alice_group = MlsGroup::new_with_group_id(
         backend,
         &mls_group_config,
         group_id,
+        LifetimeExtension::default(),
         alice_key_package
             .hash_ref(backend.crypto())
             .expect("Could not hash KeyPackage.")
             .as_slice(),
+        &alice_credential_bundle,
     )
     .expect("An unexpected error occurred.");
 
@@ -456,14 +491,26 @@ fn test_pending_commit_logic(ciphersuite: Ciphersuite, backend: &impl OpenMlsCry
     let mls_group_config = MlsGroupConfig::test_default();
 
     // === Alice creates a group ===
+    let alice_credential_bundle = backend
+        .key_store()
+        .read(
+            &alice_credential
+                .signature_key()
+                .tls_serialize_detached()
+                .expect("Error serializing signature key."),
+        )
+        .expect("An unexpected error occurred.");
+
     let mut alice_group = MlsGroup::new_with_group_id(
         backend,
         &mls_group_config,
         group_id,
+        LifetimeExtension::default(),
         alice_key_package
             .hash_ref(backend.crypto())
             .expect("Could not hash KeyPackage.")
             .as_slice(),
+        &alice_credential_bundle,
     )
     .expect("An unexpected error occurred.");
 

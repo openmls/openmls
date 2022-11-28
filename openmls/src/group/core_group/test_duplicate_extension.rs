@@ -5,7 +5,6 @@ use crate::{
     credentials::*, group::core_group::create_commit_params::CreateCommitParams,
     group::errors::WelcomeError, messages::GroupSecrets, schedule::KeySchedule, test_utils::*,
 };
-use openmls_rust_crypto::OpenMlsRustCrypto;
 use openmls_traits::crypto::OpenMlsCrypto;
 use openmls_traits::OpenMlsCryptoProvider;
 use tls_codec::Deserialize;
@@ -57,7 +56,11 @@ fn duplicate_ratchet_tree_extension(
 
     let mut alice_group = CoreGroup::builder(GroupId::random(backend), alice_key_package_bundle)
         .with_config(config)
-        .build(backend)
+        .build(
+            &alice_credential_bundle,
+            LifetimeExtension::default(),
+            backend,
+        )
         .expect("Error creating group.");
 
     // === Alice adds Bob ===

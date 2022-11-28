@@ -26,7 +26,9 @@ use serde::{Deserialize, Serialize};
 
 use crate::{
     binary_tree::{LeafIndex, MlsBinaryTree, MlsBinaryTreeError},
+    credentials::CredentialBundle,
     error::LibraryError,
+    extensions::{Extension, LifetimeExtension},
     framing::SenderError,
     group::Member,
     key_packages::KeyPackageBundle,
@@ -36,6 +38,7 @@ use crate::{
 
 use self::{
     diff::{StagedTreeSyncDiff, TreeSyncDiff},
+    node::leaf_node::{Capabilities, LeafNodeSource, OpenMlsLeafNode},
     treesync_node::{TreeSyncNode, TreeSyncNodeError},
 };
 
@@ -87,11 +90,30 @@ impl TreeSync {
     pub(crate) fn new(
         backend: &impl OpenMlsCryptoProvider,
         key_package_bundle: KeyPackageBundle,
+        credential_bundle: &CredentialBundle,
+        life_time: LifetimeExtension,
+        capabilities: Capabilities,
+        extensions: Vec<Extension>,
     ) -> Result<(Self, CommitSecret), LibraryError> {
         let key_package = key_package_bundle.key_package();
         // We generate our own leaf without a private key for now. The private
         // key is set in the `from_nodes` constructor below.
-        let node = Node::LeafNode(LeafNode::new(key_package.clone()));
+        let mut leaf = OpenMlsLeafNode::new(
+            key_package_bundle.key_package().hpke_init_key().clone(),
+            credential_bundle.credential().signature_key().clone(),
+            credential_bundle.credential().clone(),
+            // Creation of a group is considered to be from a key package.
+            LeafNodeSource::KeyPackage(life_time),
+            backend,
+            credential_bundle,
+        )?;
+        leaf.set_leaf_index(0);
+        leaf.add_capabilities(capabilities);
+        extensions
+            .into_iter()
+            .for_each(|extension| leaf.add_extensions(extension));
+
+        let node = Node::LeafNode(leaf);
         let path_secret: PathSecret = key_package_bundle.leaf_secret().clone().into();
         let commit_secret: CommitSecret = path_secret
             .derive_path_secret(backend, key_package.ciphersuite())?
@@ -206,18 +228,18 @@ impl TreeSync {
                 Some(node) => {
                     let mut node = node.clone();
                     if let Node::LeafNode(ref mut leaf_node) = node {
+                        let leaf_index = u32::try_from(node_index / 2)
+                            .map_err(|_| LibraryError::custom("Architecture error"))?;
                         if leaf_node.public_key() == own_key_package.hpke_init_key() {
                             // Check if there's a duplicate
                             if let Some(private_key) = private_key.take() {
-                                own_index_option = Some(
-                                    u32::try_from(node_index / 2)
-                                        .map_err(|_| LibraryError::custom("Architecture error"))?,
-                                );
+                                own_index_option = Some(leaf_index);
                                 leaf_node.set_private_key(private_key);
                             } else {
                                 return Err(PublicTreeError::DuplicateKeyPackage.into());
                             }
                         }
+                        leaf_node.set_leaf_index(leaf_index);
                     }
                     node.into()
                 }
@@ -371,8 +393,8 @@ impl TreeSync {
                 if let Ok(leaf_node) = node.as_leaf_node() {
                     (
                         leaf_node.public_key(),
-                        leaf_node.key_package().credential().signature_key(),
-                        leaf_node.key_package().credential().identity(),
+                        leaf_node.leaf_node.credential().signature_key(),
+                        leaf_node.leaf_node.credential().identity(),
                     )
                 } else {
                     return Err(LibraryError::custom("The tree is broken."));
@@ -404,7 +426,7 @@ impl TreeSync {
                     node.as_leaf_node()
                         .and_then(|leaf_node| {
                             leaf_node
-                                .key_package()
+                                .leaf_node()
                                 .check_extension_support(extensions)
                                 .map_err(|_| {
                                     NodeError::LibraryError(LibraryError::custom(
@@ -441,9 +463,19 @@ impl TreeSync {
     ///
     /// This function should not fail and only returns a [`Result`], because it
     /// might throw a [LibraryError](TreeSyncError::LibraryError).
-    pub(crate) fn own_leaf_node(&self) -> Result<&LeafNode, TreeSyncError> {
+    pub(crate) fn own_leaf_node(&self) -> Result<&OpenMlsLeafNode, TreeSyncError> {
         // Our own leaf should be inside of the tree and never blank.
         self.leaf(self.own_leaf_index)?
+            .ok_or_else(|| LibraryError::custom("Own leaf is outside of the tree").into())
+    }
+
+    /// Returns the [`LeafNode`] of this client.
+    ///
+    /// This function should not fail and only returns a [`Result`], because it
+    /// might throw a [LibraryError](TreeSyncError::LibraryError).
+    pub(crate) fn own_leaf_node_mut(&mut self) -> Result<&mut OpenMlsLeafNode, TreeSyncError> {
+        // Our own leaf should be inside of the tree and never blank.
+        self.leaf_mut(self.own_leaf_index)?
             .ok_or_else(|| LibraryError::custom("Own leaf is outside of the tree").into())
     }
 
@@ -451,10 +483,28 @@ impl TreeSync {
     /// leaf is blank.
     ///
     /// Returns an error if the leaf is outside of the tree.
-    pub(crate) fn leaf(&self, leaf_index: LeafIndex) -> Result<Option<&LeafNode>, TreeSyncError> {
+    pub(crate) fn leaf(
+        &self,
+        leaf_index: LeafIndex,
+    ) -> Result<Option<&OpenMlsLeafNode>, TreeSyncError> {
         let tsn = self.tree.leaf(leaf_index)?;
         Ok(match tsn.node() {
             Some(node) => Some(node.as_leaf_node()?),
+            None => None,
+        })
+    }
+
+    /// Return a mutable reference to the leaf at the given `LeafIndex` or
+    /// `None` if the leaf is blank.
+    ///
+    /// Returns an error if the leaf is outside of the tree.
+    pub(crate) fn leaf_mut(
+        &mut self,
+        leaf_index: LeafIndex,
+    ) -> Result<Option<&mut OpenMlsLeafNode>, TreeSyncError> {
+        let tsn = self.tree.leaf_mut(leaf_index)?;
+        Ok(match tsn.node_mut() {
+            Some(node) => Some(node.as_leaf_node_mut()?),
             None => None,
         })
     }

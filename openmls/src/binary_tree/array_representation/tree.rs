@@ -184,6 +184,17 @@ impl<T: Clone + Debug> ABinaryTree<T> {
             .get(node_index)
             .ok_or(ABinaryTreeError::OutOfBounds)
     }
+
+    /// Return a mutable reference to the leaf at the given `LeafIndex`.
+    ///
+    /// Returns an error if the leaf is outside of the tree.
+    pub(crate) fn leaf_mut(&mut self, leaf_index: LeafIndex) -> Result<&mut T, ABinaryTreeError> {
+        let node_index = usize::try_from(to_node_index(leaf_index))
+            .map_err(|_| LibraryError::custom("Architecture not supported"))?;
+        self.nodes
+            .get_mut(node_index)
+            .ok_or(ABinaryTreeError::OutOfBounds)
+    }
 }
 
 /// Binary Tree error

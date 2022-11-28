@@ -168,6 +168,16 @@ fn book_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvide
     )
     .expect("An unexpected error occurred.");
 
+    let alice_credential_bundle = backend
+        .key_store()
+        .read(
+            &alice_credential
+                .signature_key()
+                .tls_serialize_detached()
+                .expect("Error serializing signature key."),
+        )
+        .expect("An unexpected error occurred.");
+
     // Generate KeyPackages
     let alice_key_package = generate_key_package_bundle(&[ciphersuite], &alice_credential, backend)
         .expect("An unexpected error occurred.");
@@ -191,10 +201,12 @@ fn book_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvide
     let mut alice_group = MlsGroup::new(
         backend,
         &mls_group_config,
+        LifetimeExtension::default(),
         alice_key_package
             .hash_ref(backend.crypto())
             .expect("Could not hash KeyPackage.")
             .as_slice(),
+        &alice_credential_bundle,
     )
     .expect("An unexpected error occurred.");
     // ANCHOR_END: alice_create_group
@@ -214,10 +226,12 @@ fn book_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvide
             backend,
             &mls_group_config,
             group_id,
+            LifetimeExtension::default(),
             alice_key_package
                 .hash_ref(backend.crypto())
                 .expect("Could not hash KeyPackage.")
                 .as_slice(),
+            &alice_credential_bundle,
         )
         .expect("An unexpected error occurred.");
         // ANCHOR_END: alice_create_group_with_group_id
@@ -411,10 +425,7 @@ fn book_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvide
     {
         if let Proposal::Update(ref update_proposal) = staged_proposal.proposal() {
             // Check that Alice updated
-            assert_eq!(
-                update_proposal.key_package().credential(),
-                &alice_credential
-            );
+            assert_eq!(update_proposal.leaf_node().credential(), &alice_credential);
             // Store proposal
             alice_group.store_pending_proposal(*staged_proposal.clone());
         } else {
@@ -958,7 +969,6 @@ fn book_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvide
             bob_group
                 .member(*sender_index)
                 .expect("Could not find sender in group.")
-                .credential()
                 .clone()
         } else {
             unreachable!("Expected sender type to be `Member`.")
@@ -1224,6 +1234,15 @@ fn test_empty_input_errors(ciphersuite: Ciphersuite, backend: &impl OpenMlsCrypt
         backend,
     )
     .expect("An unexpected error occurred.");
+    let alice_credential_bundle = backend
+        .key_store()
+        .read(
+            &alice_credential
+                .signature_key()
+                .tls_serialize_detached()
+                .expect("Error serializing signature key."),
+        )
+        .expect("An unexpected error occurred.");
 
     // Generate KeyPackages
     let alice_key_package = generate_key_package_bundle(&[ciphersuite], &alice_credential, backend)
@@ -1237,10 +1256,12 @@ fn test_empty_input_errors(ciphersuite: Ciphersuite, backend: &impl OpenMlsCrypt
         backend,
         &mls_group_config,
         group_id,
+        LifetimeExtension::default(),
         alice_key_package
             .hash_ref(backend.crypto())
             .expect("Could not hash KeyPackage.")
             .as_slice(),
+        &alice_credential_bundle,
     )
     .expect("An unexpected error occurred.");
 

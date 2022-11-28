@@ -48,7 +48,11 @@ fn test_pgs(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
 
     // Alice creates a group
     let mut group_alice = CoreGroup::builder(GroupId::random(backend), alice_key_package_bundle)
-        .build(backend)
+        .build(
+            &alice_credential_bundle,
+            LifetimeExtension::default(),
+            backend,
+        )
         .expect("Could not create group.");
 
     // Alice adds Bob

@@ -1,10 +1,11 @@
 //! This module tests the different values for `WireFormatPolicy`
 
 use openmls_rust_crypto::OpenMlsRustCrypto;
-use openmls_traits::{types::Ciphersuite, OpenMlsCryptoProvider};
+use openmls_traits::{key_store::OpenMlsKeyStore, types::Ciphersuite, OpenMlsCryptoProvider};
 
 use rstest::*;
 use rstest_reuse::{self, *};
+use tls_codec::Serialize;
 
 use crate::{
     credentials::*,
@@ -31,6 +32,16 @@ fn create_group(
     )
     .expect("An unexpected error occurred.");
 
+    let credential_bundle = backend
+        .key_store()
+        .read(
+            &credential
+                .signature_key()
+                .tls_serialize_detached()
+                .expect("error serializing credential"),
+        )
+        .expect("error retrieving credential bundle");
+
     // Generate KeyPackages
     let key_package = generate_key_package_bundle(&[ciphersuite], &credential, vec![], backend)
         .expect("An unexpected error occurred.");
@@ -45,10 +56,12 @@ fn create_group(
         backend,
         &mls_group_config,
         group_id,
+        LifetimeExtension::default(),
         key_package
             .hash_ref(backend.crypto())
             .expect("Could not hash KeyPackage.")
             .as_slice(),
+        &credential_bundle,
     )
     .expect("An unexpected error occurred.")
 }
