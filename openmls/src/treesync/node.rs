@@ -1,5 +1,5 @@
 //! This module contains types and methods around the [`Node`] enum. The
-//! variants of the enum are [`LeafNode`] and [`ParentNode`], both of which are
+//! variants of the enum are `LeafNode` and [`ParentNode`], both of which are
 //! defined in the respective [`leaf_node`] and [`parent_node`] submodules.
 use serde::{Deserialize, Serialize};
 

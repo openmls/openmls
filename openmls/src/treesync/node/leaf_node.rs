@@ -367,7 +367,7 @@ impl LeafNode {
     }
 
     /// Create a new [`LeafNode`].
-    /// This first creates a [`LeadNodeTbs`] and returns the result of signing
+    /// This first creates a `LeadNodeTbs` and returns the result of signing
     /// it.
     pub fn new(
         encryption_key: HpkePublicKey,
