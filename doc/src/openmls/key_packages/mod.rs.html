@@ -1556,7 +1556,7 @@
             .iter()
             .any(|e| e.extension_type() == ExtensionType::Lifetime)
         {
-            extensions.push(Extension::LifeTime(LifetimeExtension::default()));
+            extensions.push(Extension::Lifetime(LifetimeExtension::default()));
         }
         <span class="kw">let </span>key_package = KeyPackage::new(
             ciphersuites[<span class="number">0</span>],

@@ -76,7 +76,11 @@
 <span id="76">76</span>
 <span id="77">77</span>
 <span id="78">78</span>
-</pre><pre class="rust"><code><span class="kw">use </span>tls_codec::{TlsDeserialize, TlsSerialize, TlsSize};
+<span id="79">79</span>
+<span id="80">80</span>
+<span id="81">81</span>
+</pre><pre class="rust"><code><span class="kw">use </span>serde::{Deserialize, Serialize};
+<span class="kw">use </span>tls_codec::{TlsDeserialize, TlsSerialize, TlsSize};
 
 <span class="kw">use </span><span class="kw">crate</span>::ciphersuite::SignaturePublicKey;
 <span class="kw">use </span><span class="kw">crate</span>::credentials::Credential;
@@ -90,8 +94,10 @@
 ///   Credential credential;
 /// } ExternalSender;
 /// ```
-</span><span class="attribute">#[derive(PartialEq, Eq, Debug, TlsSerialize, TlsDeserialize, TlsSize)]
-</span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct </span>ExternalSender {
+</span><span class="attribute">#[derive(
+    Clone, PartialEq, Eq, Debug, Serialize, Deserialize, TlsSerialize, TlsDeserialize, TlsSize,
+)]
+</span><span class="kw">pub struct </span>ExternalSender {
     signature_key: SignaturePublicKey,
     credential: Credential,
 }
@@ -104,7 +110,7 @@
 /// ```
 </span><span class="comment">// TODO(884): Remove `#[allow(unused)]` when #884 is closed.
 </span><span class="attribute">#[allow(unused)]
-</span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">type </span>ExternalSenderExtension = Vec&lt;ExternalSender&gt;;
+</span><span class="kw">pub type </span>ExternalSendersExtension = Vec&lt;ExternalSender&gt;;
 
 <span class="attribute">#[cfg(test)]
 </span><span class="kw">mod </span>test {

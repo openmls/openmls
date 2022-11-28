@@ -154,7 +154,7 @@
 <p>Clients must specify at least one ciphersuite and not advertise ciphersuites they do not support.</p>
 <p>Clients should specify all extensions they support. Mandatory extensions, like the <code>LifetimeExtension</code> can be specified here with specific values. Mandatory extensions are created on the fly with default values if no extensions are specified. See the documentation of extensions for more details.</p>
 <pre><code class="language-rust no_run noplayground">    // Define extensions
-    let extensions = vec![Extension::LifeTime(LifetimeExtension::new(
+    let extensions = vec![Extension::Lifetime(LifetimeExtension::new(
         60 * 60 * 24 * 90, // Maximum lifetime of 90 days, expressed in seconds
     ))];
 
