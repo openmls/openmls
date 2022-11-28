@@ -21,7 +21,7 @@ use crate::{
     error::LibraryError,
     key_packages::KeyPackage,
     messages::{proposals::AddProposal, EncryptedGroupSecrets, GroupSecrets, PathSecret},
-    schedule::{psk::PreSharedKeys, CommitSecret, JoinerSecret},
+    schedule::{psk::PreSharedKeyId, CommitSecret, JoinerSecret},
     versions::ProtocolVersion,
 };
 
@@ -260,7 +260,7 @@ impl PlaintextSecret {
         joiner_secret: &JoinerSecret,
         invited_members: Vec<(LeafIndex, AddProposal)>,
         plain_path_option: Option<&[PlainUpdatePathNode]>,
-        presharedkeys: &PreSharedKeys,
+        presharedkeys: &[PreSharedKeyId],
         backend: &impl OpenMlsCryptoProvider,
     ) -> Result<Vec<Self>, LibraryError> {
         let mut plaintext_secrets = vec![];

@@ -236,22 +236,6 @@ impl PreSharedKeyId {
     }
 }
 
-/// `PreSharedKeys` is a vector of `PreSharedKeyID`s.
-/// struct {
-///     PreSharedKeyID psks<0..2^16-1>;
-/// } PreSharedKeys;
-#[derive(TlsDeserialize, TlsSerialize, TlsSize)]
-pub struct PreSharedKeys {
-    pub(crate) psks: TlsVecU16<PreSharedKeyId>,
-}
-
-impl PreSharedKeys {
-    /// Return the `PreSharedKeyID`s
-    pub fn psks(&self) -> &[PreSharedKeyId] {
-        self.psks.as_slice()
-    }
-}
-
 /// `PskLabel` is used in the final concatentation of PSKs before they are
 /// injected in the key schedule. struct {
 ///     PreSharedKeyID id;

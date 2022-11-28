@@ -121,7 +121,7 @@ fn duplicate_ratchet_tree_extension(
     let joiner_secret = group_secrets.joiner_secret;
 
     // Prepare the PskSecret
-    let psk_secret = PskSecret::new(ciphersuite, backend, group_secrets.psks.psks())
+    let psk_secret = PskSecret::new(ciphersuite, backend, &group_secrets.psks)
         .expect("An unexpected error occurred.");
 
     // Create key schedule
