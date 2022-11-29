@@ -7,12 +7,14 @@ use openmls_traits::{key_store::OpenMlsKeyStore, types::Ciphersuite, OpenMlsCryp
 use tls_codec::{Deserialize, Serialize};
 
 use crate::{
-    ciphersuite::signable::{Signable, Verifiable},
+    ciphersuite::{
+        hash_ref::ProposalRef,
+        signable::{Signable, Verifiable},
+    },
     credentials::{errors::*, *},
     framing::*,
     group::{errors::*, *},
     messages::{proposals::*, public_group_state::VerifiablePublicGroupState},
-    prelude::hash_ref::ProposalRef,
 };
 use rstest::*;
 use rstest_reuse::{self, *};
