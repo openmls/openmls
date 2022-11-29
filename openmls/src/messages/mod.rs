@@ -318,10 +318,10 @@ impl SignedStruct<GroupInfoTBS> for GroupInfo {
 }
 
 /// A type that represents a group info of which the signature has not been verified.
-/// It implements the [Verifiable] trait and can be turned into a group info by calling
+/// It implements the [`Verifiable`] trait and can be turned into a group info by calling
 /// `verify(...)` with the [`Credential`](crate::credentials::Credential) corresponding to the
 /// [`CredentialBundle`](crate::credentials::CredentialBundle) of the signer. When receiving a
-/// serialized group info, it can only be deserialized into a [VerifiableGroupInfo], which can
+/// serialized group info, it can only be deserialized into a [`VerifiableGroupInfo`], which can
 /// then be turned into a group info as described above.
 #[derive(Clone, TlsDeserialize, TlsSerialize, TlsSize)]
 pub struct VerifiableGroupInfo {
@@ -362,7 +362,7 @@ impl Verifiable for VerifiableGroupInfo {
     }
 
     fn label(&self) -> &str {
-        "GroupInfoTBS"
+        SIGNATURE_GROUP_INFO_LABEL
     }
 }
 
