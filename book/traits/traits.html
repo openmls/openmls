@@ -5,7 +5,6 @@
         <meta charset="UTF-8">
         <title>Traits - OpenMLS Book</title>
         <!-- Custom HTML head -->
-        <meta content="text/html; charset=utf-8" http-equiv="Content-Type">
         <meta name="description" content="">
         <meta name="viewport" content="width=device-width, initial-scale=1">
         <meta name="theme-color" content="#ffffff" />
@@ -28,13 +27,13 @@
     </head>
     <body>
         <!-- Provide site root to javascript -->
-        <script type="text/javascript">
+        <script>
             var path_to_root = "../";
             var default_theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? "navy" : "light";
         </script>
 
         <!-- Work around some values being stored in localStorage wrapped in quotes -->
-        <script type="text/javascript">
+        <script>
             try {
                 var theme = localStorage.getItem('mdbook-theme');
                 var sidebar = localStorage.getItem('mdbook-sidebar');
@@ -50,7 +49,7 @@
         </script>
 
         <!-- Set the theme before any content is loaded, prevents flash -->
-        <script type="text/javascript">
+        <script>
             var theme;
             try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
             if (theme === null || theme === undefined) { theme = default_theme; }
@@ -62,7 +61,7 @@
         </script>
 
         <!-- Hide / unhide sidebar before it is displayed -->
-        <script type="text/javascript">
+        <script>
             var html = document.querySelector('html');
             var sidebar = 'hidden';
             if (document.body.clientWidth >= 1080) {
@@ -93,7 +92,7 @@
                             <i class="fa fa-paint-brush"></i>
                         </button>
                         <ul id="theme-list" class="theme-popup" aria-label="Themes" role="menu">
-                            <li role="none"><button role="menuitem" class="theme" id="light">Light (default)</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="light">Light</button></li>
                             <li role="none"><button role="menuitem" class="theme" id="rust">Rust</button></li>
                             <li role="none"><button role="menuitem" class="theme" id="coal">Coal</button></li>
                             <li role="none"><button role="menuitem" class="theme" id="navy">Navy</button></li>
@@ -124,7 +123,7 @@
                     </div>
                 </div>
                 <!-- Apply ARIA attributes after the sidebar and the sidebar toggle button are added to the DOM -->
-                <script type="text/javascript">
+                <script>
                     document.getElementById('sidebar-toggle').setAttribute('aria-expanded', sidebar === 'visible');
                     document.getElementById('sidebar').setAttribute('aria-hidden', sidebar !== 'visible');
                     Array.from(document.querySelectorAll('#sidebar a')).forEach(function(link) {
@@ -172,8 +171,7 @@ randomness and store it in an array or vector.</p>
 
     /// Fill a vector of length `len` with bytes.
     fn random_vec(&amp;self, len: usize) -&gt; Result&lt;Vec&lt;u8&gt;, Self::Error&gt;;
-}
-</code></pre>
+}</code></pre>
 <h3 id="openmlscrypto"><a class="header" href="#openmlscrypto">OpenMlsCrypto</a></h3>
 <p>This trait defines all cryptographic functions required by OpenMLS. In particular:</p>
 <ul>
@@ -183,8 +181,7 @@ randomness and store it in an array or vector.</p>
 <li>Signatures</li>
 <li>HPKE</li>
 </ul>
-<pre><code class="language-rust no_run noplayground">pub trait OpenMlsCrypto {
-</code></pre>
+<pre><code class="language-rust no_run noplayground">pub trait OpenMlsCrypto {</code></pre>
 <h3 id="openmlskeystore"><a class="header" href="#openmlskeystore">OpenMlsKeyStore</a></h3>
 <p>This trait defines a CRUD API for a key store that is used to store long-term
 key material from OpenMLS.</p>
@@ -216,8 +213,7 @@ pub trait OpenMlsKeyStore: Send + Sync {
     ///
     /// Returns an error if storing fails.
     fn delete(&amp;self, k: &amp;[u8]) -&gt; Result&lt;(), Self::Error&gt;;
-}
-</code></pre>
+}</code></pre>
 <p><strong>NOTE:</strong> Right now, key material must be extracted from the key store.
 This will most likely change in the future.</p>
 <h3 id="openmlscryptoprovider"><a class="header" href="#openmlscryptoprovider">OpenMlsCryptoProvider</a></h3>
@@ -237,8 +233,7 @@ Some OpenMLS APIs require only one of the sub-traits, though.</p>
 
     /// Get the key store provider.
     fn key_store(&amp;self) -&gt; &amp;Self::KeyStoreProvider;
-}
-</code></pre>
+}</code></pre>
 <h2 id="implementation-notes"><a class="header" href="#implementation-notes">Implementation Notes</a></h2>
 <p>It is not necessary to implement all sub-traits if one functionality is missing.
 Suppose you want to use a persisting key store. In that case, it is sufficient to do a new implementation of the key store trait and combine it with one of the provided crypto and randomness trait implementations.</p>
@@ -269,15 +264,15 @@ Suppose you want to use a persisting key store. In that case, it is sufficient t
 
         </div>
 
-        <script type="text/javascript">
+        <script>
             window.playground_copyable = true;
         </script>
-        <script src="../elasticlunr.min.js" type="text/javascript" charset="utf-8"></script>
-        <script src="../mark.min.js" type="text/javascript" charset="utf-8"></script>
-        <script src="../searcher.js" type="text/javascript" charset="utf-8"></script>
-        <script src="../clipboard.min.js" type="text/javascript" charset="utf-8"></script>
-        <script src="../highlight.js" type="text/javascript" charset="utf-8"></script>
-        <script src="../book.js" type="text/javascript" charset="utf-8"></script>
+        <script src="../elasticlunr.min.js"></script>
+        <script src="../mark.min.js"></script>
+        <script src="../searcher.js"></script>
+        <script src="../clipboard.min.js"></script>
+        <script src="../highlight.js"></script>
+        <script src="../book.js"></script>
 
         <!-- Custom JS scripts -->
     </body>
