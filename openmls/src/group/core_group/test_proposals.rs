@@ -6,7 +6,9 @@ use super::CoreGroup;
 use crate::{
     ciphersuite::{hash_ref::ProposalRef, Secret},
     credentials::{CredentialBundle, CredentialType},
-    extensions::{ApplicationIdExtension, Extension, ExtensionType, RequiredCapabilitiesExtension},
+    extensions::{
+        ApplicationIdExtension, Extension, ExtensionType, Extensions, RequiredCapabilitiesExtension,
+    },
     framing::sender::Sender,
     framing::{FramingParameters, MlsPlaintext, WireFormat},
     group::{
@@ -32,9 +34,13 @@ fn setup_client(
         backend,
     )
     .expect("An unexpected error occurred.");
-    let key_package_bundle =
-        KeyPackageBundle::new(&[ciphersuite], &credential_bundle, backend, Vec::new())
-            .expect("An unexpected error occurred.");
+    let key_package_bundle = KeyPackageBundle::new(
+        &[ciphersuite],
+        &credential_bundle,
+        backend,
+        Extensions::empty(),
+    )
+    .expect("An unexpected error occurred.");
     (credential_bundle, key_package_bundle)
 }
 
@@ -56,7 +62,7 @@ fn proposal_queue_functions(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryp
         &[ciphersuite],
         &alice_credential_bundle,
         backend,
-        Vec::new(),
+        Extensions::empty(),
     )
     .expect("An unexpected error occurred.");
     let alice_update_key_package = alice_update_key_package_bundle.key_package();
@@ -68,7 +74,7 @@ fn proposal_queue_functions(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryp
         0,
         vec![],
         vec![],
-        &[],
+        Extensions::empty(),
     );
 
     // Let's create some proposals
@@ -196,7 +202,7 @@ fn proposal_queue_order(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoPr
         &[ciphersuite],
         &alice_credential_bundle,
         backend,
-        Vec::new(),
+        Extensions::empty(),
     )
     .expect("An unexpected error occurred.");
     let alice_update_key_package = alice_update_key_package_bundle.key_package();
@@ -208,7 +214,7 @@ fn proposal_queue_order(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoPr
         0,
         vec![],
         vec![],
-        &[],
+        Extensions::empty(),
     );
 
     // Let's create some proposals
@@ -373,7 +379,7 @@ fn test_group_context_extensions(ciphersuite: Ciphersuite, backend: &impl OpenMl
         &[ciphersuite],
         &bob_credential_bundle,
         backend,
-        vec![Extension::ApplicationId(ApplicationIdExtension::default())],
+        Extensions::single(Extension::ApplicationId(ApplicationIdExtension::default())),
     )
     .expect("An unexpected error occurred.");
     let bob_key_package = bob_key_package_bundle.key_package();
@@ -454,7 +460,7 @@ fn test_group_context_extension_proposal_fails(
         &[ciphersuite],
         &bob_credential_bundle,
         backend,
-        vec![Extension::ApplicationId(ApplicationIdExtension::default())],
+        Extensions::single(Extension::ApplicationId(ApplicationIdExtension::default())),
     )
     .expect("An unexpected error occurred.");
     let bob_key_package = bob_key_package_bundle.key_package();
@@ -573,14 +579,14 @@ fn test_group_context_extension_proposal(
         &[ciphersuite],
         &bob_credential_bundle,
         backend,
-        vec![Extension::ApplicationId(ApplicationIdExtension::default())],
+        Extensions::single(Extension::ApplicationId(ApplicationIdExtension::default())),
     )
     .expect("An unexpected error occurred.");
     let alice_key_package_bundle = KeyPackageBundle::new(
         &[ciphersuite],
         &alice_credential_bundle,
         backend,
-        vec![Extension::ApplicationId(ApplicationIdExtension::default())],
+        Extensions::single(Extension::ApplicationId(ApplicationIdExtension::default())),
     )
     .expect("An unexpected error occurred.");
     let bob_key_package = bob_key_package_bundle.key_package();
@@ -640,7 +646,7 @@ fn test_group_context_extension_proposal(
         .create_group_context_ext_proposal(
             framing_parameters,
             &alice_credential_bundle,
-            &[required_application_id],
+            Extensions::single(required_application_id),
             backend,
         )
         .expect("Error creating gce proposal.");

@@ -4,7 +4,6 @@ use tls_codec::Deserialize;
 
 use crate::{
     ciphersuite::{hash_ref::HashReference, signable::Verifiable},
-    extensions::ExtensionType,
     group::{core_group::*, errors::WelcomeError},
     schedule::errors::PskError,
     treesync::{errors::TreeSyncFromNodesError, node::Node},
@@ -88,13 +87,7 @@ impl CoreGroup {
 
         // Make sure that we can support the required capabilities in the group info.
         let group_context_extensions = group_info.group_context().extensions();
-        let required_capabilities = group_context_extensions
-            .iter()
-            .find(|&extension| extension.extension_type() == ExtensionType::RequiredCapabilities);
-        if let Some(required_capabilities) = required_capabilities {
-            let required_capabilities = required_capabilities
-                .as_required_capabilities_extension()
-                .map_err(|_| LibraryError::custom("Expected required capabilities extension"))?;
+        if let Some(required_capabilities) = group_context_extensions.required_capabilities() {
             required_capabilities
                 .check_support()
                 .map_err(|_| WelcomeError::UnsupportedCapability)?;
@@ -115,12 +108,7 @@ impl CoreGroup {
         // this group. Note that this is not strictly necessary. But there's
         // currently no other mechanism to enable the extension.
         let (nodes, enable_ratchet_tree_extension) =
-            match try_nodes_from_extensions(group_info.extensions()).map_err(|e| match e {
-                ExtensionError::DuplicateRatchetTreeExtension => {
-                    WelcomeError::DuplicateRatchetTreeExtension
-                }
-                _ => LibraryError::custom("Unexpected extension error").into(),
-            })? {
+            match try_nodes_from_extensions(group_info.extensions()) {
                 Some(nodes) => (nodes, true),
                 None => match nodes_option {
                     Some(n) => (n, false),
@@ -164,7 +152,7 @@ impl CoreGroup {
                 .group_context()
                 .confirmed_transcript_hash()
                 .to_vec(),
-            group_context_extensions,
+            group_context_extensions.clone(),
         );
 
         let serialized_group_context = group_context

@@ -115,13 +115,17 @@ fn ratchet_tree_extension(ciphersuite: Ciphersuite, backend: &impl OpenMlsCrypto
         &[ciphersuite],
         &alice_credential_bundle,
         backend,
-        Vec::new(),
+        Extensions::empty(),
     )
     .expect("An unexpected error occurred.");
 
-    let bob_key_package_bundle =
-        KeyPackageBundle::new(&[ciphersuite], &bob_credential_bundle, backend, Vec::new())
-            .expect("An unexpected error occurred.");
+    let bob_key_package_bundle = KeyPackageBundle::new(
+        &[ciphersuite],
+        &bob_credential_bundle,
+        backend,
+        Extensions::empty(),
+    )
+    .expect("An unexpected error occurred.");
     let bob_key_package = bob_key_package_bundle.key_package();
 
     let config = CoreGroupConfig {
@@ -192,13 +196,17 @@ fn ratchet_tree_extension(ciphersuite: Ciphersuite, backend: &impl OpenMlsCrypto
         &[ciphersuite],
         &alice_credential_bundle,
         backend,
-        Vec::new(),
+        Extensions::empty(),
     )
     .expect("An unexpected error occurred.");
 
-    let bob_key_package_bundle =
-        KeyPackageBundle::new(&[ciphersuite], &bob_credential_bundle, backend, Vec::new())
-            .expect("An unexpected error occurred.");
+    let bob_key_package_bundle = KeyPackageBundle::new(
+        &[ciphersuite],
+        &bob_credential_bundle,
+        backend,
+        Extensions::empty(),
+    )
+    .expect("An unexpected error occurred.");
     let bob_key_package = bob_key_package_bundle.key_package();
 
     let config = CoreGroupConfig {

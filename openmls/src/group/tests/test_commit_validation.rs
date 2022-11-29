@@ -60,17 +60,29 @@ fn validation_test_setup(
     .expect("An unexpected error occurred.");
 
     // Generate KeyPackages
-    let alice_key_package =
-        generate_key_package_bundle(&[ciphersuite], &alice_credential, vec![], backend)
-            .expect("An unexpected error occurred.");
+    let alice_key_package = generate_key_package_bundle(
+        &[ciphersuite],
+        &alice_credential,
+        Extensions::empty(),
+        backend,
+    )
+    .expect("An unexpected error occurred.");
 
-    let bob_key_package =
-        generate_key_package_bundle(&[ciphersuite], &bob_credential, vec![], backend)
-            .expect("An unexpected error occurred.");
+    let bob_key_package = generate_key_package_bundle(
+        &[ciphersuite],
+        &bob_credential,
+        Extensions::empty(),
+        backend,
+    )
+    .expect("An unexpected error occurred.");
 
-    let charlie_key_package =
-        generate_key_package_bundle(&[ciphersuite], &charlie_credential, vec![], backend)
-            .expect("An unexpected error occurred.");
+    let charlie_key_package = generate_key_package_bundle(
+        &[ciphersuite],
+        &charlie_credential,
+        Extensions::empty(),
+        backend,
+    )
+    .expect("An unexpected error occurred.");
 
     // Define the MlsGroup configuration
 
@@ -270,8 +282,13 @@ fn test_valsem201(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
             backend,
         )
         .unwrap();
-        let dave_key_package =
-            generate_key_package_bundle(&[ciphersuite], &dave_credential, vec![], backend).unwrap();
+        let dave_key_package = generate_key_package_bundle(
+            &[ciphersuite],
+            &dave_credential,
+            Extensions::empty(),
+            backend,
+        )
+        .unwrap();
 
         queued(Proposal::Add(AddProposal {
             key_package: dave_key_package,
@@ -311,7 +328,9 @@ fn test_valsem201(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
 
     let gce_proposal = || {
         queued(Proposal::GroupContextExtensions(
-            GroupContextExtensionProposal::new(alice_group.group().group_context_extensions()),
+            GroupContextExtensionProposal::new(
+                alice_group.group().group_context_extensions().clone(),
+            ),
         ))
     };
 

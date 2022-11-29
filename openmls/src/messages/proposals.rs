@@ -8,7 +8,7 @@
 use crate::{
     ciphersuite::hash_ref::{make_proposal_ref, KeyPackageRef, ProposalRef},
     error::LibraryError,
-    extensions::Extension,
+    extensions::Extensions,
     group::GroupId,
     key_packages::*,
     prelude::LeafNode,
@@ -252,7 +252,7 @@ pub struct ReInitProposal {
     pub(crate) group_id: GroupId,
     pub(crate) version: ProtocolVersion,
     pub(crate) ciphersuite: Ciphersuite,
-    pub(crate) extensions: Vec<Extension>,
+    pub(crate) extensions: Extensions,
 }
 
 /// ExternalInit Proposal.
@@ -304,16 +304,14 @@ pub struct AppAckProposal {
     Debug, PartialEq, Eq, Clone, Serialize, Deserialize, TlsDeserialize, TlsSerialize, TlsSize,
 )]
 pub struct GroupContextExtensionProposal {
-    extensions: Vec<Extension>,
+    extensions: Extensions,
 }
 
 impl GroupContextExtensionProposal {
     /// Create a new [`GroupContextExtensionProposal`].
     #[cfg(test)]
-    pub(crate) fn new(extensions: &[Extension]) -> Self {
-        Self {
-            extensions: extensions.into(),
-        }
+    pub(crate) fn new(extensions: Extensions) -> Self {
+        Self { extensions }
     }
 }
 

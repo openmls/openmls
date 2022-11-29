@@ -14,8 +14,13 @@ fn key_package_generation(ciphersuite: Ciphersuite, backend: &impl OpenMlsCrypto
         backend,
     )
     .expect("An unexpected error occurred.");
-    let kpb = KeyPackageBundle::new(&[ciphersuite], &credential_bundle, backend, Vec::new())
-        .expect("An unexpected error occurred.");
+    let kpb = KeyPackageBundle::new(
+        &[ciphersuite],
+        &credential_bundle,
+        backend,
+        Extensions::empty(),
+    )
+    .expect("An unexpected error occurred.");
 
     // After creation, the signature should be ok.
     assert!(kpb.key_package().verify(backend).is_ok());
@@ -26,12 +31,8 @@ fn key_package_generation(ciphersuite: Ciphersuite, backend: &impl OpenMlsCrypto
         // The capabilities extension must be present and valid.
         // It's added automatically.
         let capabilities_extension = extensions
-            .iter()
-            .find(|e| e.extension_type() == ExtensionType::Capabilities)
+            .capabilities()
             .expect("Capabilities extension is missing in key package");
-        let capabilities_extension = capabilities_extension
-            .as_capabilities_extension()
-            .expect("An unexpected error occurred.");
 
         // Only the single ciphersuite is set.
         assert_eq!(1, capabilities_extension.ciphersuites().len());
@@ -54,9 +55,11 @@ fn key_package_generation(ciphersuite: Ciphersuite, backend: &impl OpenMlsCrypto
     // Add and retrieve a key package ID.
     let key_id = [1, 2, 3, 4, 5, 6, 7];
     let mut kpb_unsigned: KeyPackageBundlePayload = kpb.into();
-    kpb_unsigned.add_extension(Extension::ApplicationId(ApplicationIdExtension::new(
-        &key_id,
-    )));
+    kpb_unsigned
+        .extensions_mut()
+        .add_or_replace(Extension::ApplicationId(ApplicationIdExtension::new(
+            &key_id,
+        )));
 
     // After re-signing the package it is valid.
     let kpb = kpb_unsigned
@@ -64,14 +67,11 @@ fn key_package_generation(ciphersuite: Ciphersuite, backend: &impl OpenMlsCrypto
         .expect("An unexpected error occurred.");
     assert!(kpb.key_package().verify(backend).is_ok());
 
-    // Get the key ID extension.
-    let extensions = kpb.key_package().extensions();
-    let key_id_extension = extensions
-        .iter()
-        .find(|e| e.extension_type() == ExtensionType::ApplicationId)
-        .expect("Key ID extension is missing in key package");
-    let key_id_extension = key_id_extension
-        .as_application_id_extension()
-        .expect("An unexpected error occurred.");
-    assert_eq!(&key_id, key_id_extension.as_slice());
+    // Get the application ID extension.
+    let application_id_extension = kpb
+        .key_package()
+        .extensions()
+        .application_id()
+        .expect("Application ID extension is missing in key package");
+    assert_eq!(&key_id, application_id_extension.as_slice());
 }

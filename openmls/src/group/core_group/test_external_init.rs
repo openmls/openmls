@@ -1,5 +1,6 @@
 use crate::{
     credentials::{CredentialBundle, CredentialType},
+    extensions::Extensions,
     framing::{FramingParameters, WireFormat},
     group::{errors::ExternalCommitError, GroupId},
     key_packages::KeyPackageBundle,
@@ -43,13 +44,17 @@ fn test_external_init(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProv
         &[ciphersuite],
         &alice_credential_bundle,
         backend,
-        Vec::new(),
+        Extensions::empty(),
     )
     .expect("An unexpected error occurred.");
 
-    let bob_key_package_bundle =
-        KeyPackageBundle::new(&[ciphersuite], &bob_credential_bundle, backend, Vec::new())
-            .expect("An unexpected error occurred.");
+    let bob_key_package_bundle = KeyPackageBundle::new(
+        &[ciphersuite],
+        &bob_credential_bundle,
+        backend,
+        Extensions::empty(),
+    )
+    .expect("An unexpected error occurred.");
     let bob_key_package = bob_key_package_bundle.key_package();
 
     // === Alice creates a group ===
@@ -269,7 +274,7 @@ fn test_external_init_single_member_group(
         &[ciphersuite],
         &alice_credential_bundle,
         backend,
-        Vec::new(),
+        Extensions::empty(),
     )
     .expect("An unexpected error occurred.");
 
@@ -365,13 +370,17 @@ fn test_external_init_broken_signature(
         &[ciphersuite],
         &alice_credential_bundle,
         backend,
-        Vec::new(),
+        Extensions::empty(),
     )
     .expect("An unexpected error occurred.");
 
-    let bob_key_package_bundle =
-        KeyPackageBundle::new(&[ciphersuite], &bob_credential_bundle, backend, Vec::new())
-            .expect("An unexpected error occurred.");
+    let bob_key_package_bundle = KeyPackageBundle::new(
+        &[ciphersuite],
+        &bob_credential_bundle,
+        backend,
+        Extensions::empty(),
+    )
+    .expect("An unexpected error occurred.");
     let bob_key_package = bob_key_package_bundle.key_package();
 
     // === Alice creates a group ===

@@ -90,9 +90,9 @@ fn generate_key_package_bundle(
 ) -> Result<KeyPackage, KeyPackageBundleNewError> {
     // ANCHOR: create_key_package_bundle
     // Define extensions
-    let extensions = vec![Extension::Lifetime(LifetimeExtension::new(
+    let extensions = Extensions::single(Extension::Lifetime(LifetimeExtension::new(
         60 * 60 * 24 * 90, // Maximum lifetime of 90 days, expressed in seconds
-    ))];
+    )));
 
     // Fetch the credential bundle from the key store
     let credential_bundle = backend

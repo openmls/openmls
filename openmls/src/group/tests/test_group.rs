@@ -36,7 +36,7 @@ fn create_commit_optional_path(ciphersuite: Ciphersuite, backend: &impl OpenMlsC
 
     // Mandatory extensions, will be fixed in #164
     let lifetime_extension = Extension::Lifetime(LifetimeExtension::new(60));
-    let mandatory_extensions: Vec<Extension> = vec![lifetime_extension];
+    let mandatory_extensions: Extensions = Extensions::single(lifetime_extension);
 
     // Generate KeyPackages
     let alice_key_package_bundle = KeyPackageBundle::new(
@@ -225,16 +225,20 @@ fn basic_group_setup(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvi
     .expect("An unexpected error occurred.");
 
     // Generate KeyPackages
-    let bob_key_package_bundle =
-        KeyPackageBundle::new(&[ciphersuite], &bob_credential_bundle, backend, Vec::new())
-            .expect("An unexpected error occurred.");
+    let bob_key_package_bundle = KeyPackageBundle::new(
+        &[ciphersuite],
+        &bob_credential_bundle,
+        backend,
+        Extensions::empty(),
+    )
+    .expect("An unexpected error occurred.");
     let bob_key_package = bob_key_package_bundle.key_package();
 
     let alice_key_package_bundle = KeyPackageBundle::new(
         &[ciphersuite],
         &alice_credential_bundle,
         backend,
-        Vec::new(),
+        Extensions::empty(),
     )
     .expect("An unexpected error occurred.");
 
@@ -312,7 +316,8 @@ fn group_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvid
         None,
     ));
     let lifetime_extension = Extension::Lifetime(LifetimeExtension::new(60));
-    let mandatory_extensions: Vec<Extension> = vec![capabilities_extension, lifetime_extension];
+    let mandatory_extensions: Extensions =
+        Extensions::multi(vec![capabilities_extension, lifetime_extension]).unwrap();
 
     // Generate KeyPackages
     let alice_key_package_bundle = KeyPackageBundle::new(

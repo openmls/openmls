@@ -4,6 +4,7 @@ use rstest_reuse::apply;
 
 use crate::{
     credentials::{CredentialBundle, CredentialType},
+    extensions::Extensions,
     key_packages::KeyPackageBundle,
     treesync::{node::Node, TreeSync},
 };
@@ -21,8 +22,8 @@ fn test_free_leaf_computation(ciphersuite: Ciphersuite, backend: &impl OpenMlsCr
     )
     .expect("error creating credential_bundle");
 
-    let kpb_0 =
-        KeyPackageBundle::new(&[ciphersuite], &cb_0, backend, vec![]).expect("error creating kpb");
+    let kpb_0 = KeyPackageBundle::new(&[ciphersuite], &cb_0, backend, Extensions::empty())
+        .expect("error creating kpb");
 
     let cb_3 = CredentialBundle::new(
         "leaf3".as_bytes().to_vec(),
@@ -31,8 +32,8 @@ fn test_free_leaf_computation(ciphersuite: Ciphersuite, backend: &impl OpenMlsCr
         backend,
     )
     .expect("error creating credential_bundle");
-    let kpb_3 =
-        KeyPackageBundle::new(&[ciphersuite], &cb_3, backend, vec![]).expect("error creating kpb");
+    let kpb_3 = KeyPackageBundle::new(&[ciphersuite], &cb_3, backend, Extensions::empty())
+        .expect("error creating kpb");
 
     // Build a rudimentary tree with two populated and two empty leaf nodes.
     let nodes: Vec<Option<Node>> = vec![
@@ -60,8 +61,8 @@ fn test_free_leaf_computation(ciphersuite: Ciphersuite, backend: &impl OpenMlsCr
         backend,
     )
     .expect("error creating credential_bundle");
-    let kpb_2 =
-        KeyPackageBundle::new(&[ciphersuite], &cb_2, backend, vec![]).expect("error creating kpb");
+    let kpb_2 = KeyPackageBundle::new(&[ciphersuite], &cb_2, backend, Extensions::empty())
+        .expect("error creating kpb");
 
     let mut diff = tree.empty_diff().expect("error creating empty diff");
     let free_leaf_index = diff

@@ -22,7 +22,7 @@
 //! - [`LifetimeExtension`] (KeyPackage extension)
 
 use serde::{Deserialize, Serialize};
-use std::{convert::TryFrom, fmt::Debug};
+use std::{collections::HashSet, convert::TryFrom, fmt::Debug};
 use tls_codec::*;
 
 // Private
@@ -195,6 +195,183 @@ pub enum Extension {
     Lifetime(LifetimeExtension),
 }
 
+/// A list of extensions with unique extension types.
+#[derive(
+    Debug, Clone, PartialEq, Eq, Serialize, Deserialize, TlsSize, TlsSerialize, TlsDeserialize,
+)]
+pub struct Extensions {
+    inner: Vec<Extension>,
+}
+
+impl Extensions {
+    /// Create an extension list that is empty.
+    pub fn empty() -> Self {
+        Self { inner: Vec::new() }
+    }
+
+    /// Create an extension list that contains a single extension.
+    pub fn single(extension: Extension) -> Self {
+        Self {
+            inner: vec![extension],
+        }
+    }
+
+    /// Create an extension list that contains multiple extensions.
+    ///
+    /// This function will fail when the list of extensions contains duplicate extension types.
+    pub fn multi(extensions: Vec<Extension>) -> Result<Self, &'static str> {
+        extensions.try_into()
+    }
+
+    // ---------------------------------------------------------------------------------------------
+
+    /// Add an extension to the extension list.
+    ///
+    /// Returns an error when there already is an extension with the same extension type.
+    pub fn add(&mut self, extension: Extension) -> Result<(), &'static str> {
+        if !self.contains(extension.extension_type()) {
+            self.inner.push(extension);
+            Ok(())
+        } else {
+            Err("Cannot add duplicate extension.")
+        }
+    }
+
+    /// Add an extension to the extension list (or silently replace an existing one.)
+    pub fn add_or_replace(&mut self, extension: Extension) {
+        let _ = self.remove(extension.extension_type());
+        self.add(extension).unwrap();
+    }
+
+    /// Remove an extension from the extension list.
+    ///
+    /// Returns an error when there is no extension with the given extension type.
+    pub fn remove(&mut self, extension_type: ExtensionType) -> Result<(), &'static str> {
+        if self.contains(extension_type) {
+            self.inner.retain(|e| e.extension_type() != extension_type);
+            Ok(())
+        } else {
+            Err("Cannot remove non-existent extension.")
+        }
+    }
+
+    /// Replace an extension in the extension list.
+    ///
+    /// Returns an error when there is no extension with the given extension type.
+    #[cfg(any(feature = "test-utils", test))]
+    pub fn replace(&mut self, extension: Extension) -> Result<(), &'static str> {
+        if self.contains(extension.extension_type()) {
+            self.remove(extension.extension_type()).unwrap();
+            self.add(extension).unwrap();
+            Ok(())
+        } else {
+            Err("Cannot replace non-existent extension.")
+        }
+    }
+
+    // ---------------------------------------------------------------------------------------------
+
+    /// Return true if the extension list contains the extension with the given type.
+    pub fn contains(&self, extension_type: ExtensionType) -> bool {
+        self.inner
+            .iter()
+            .any(|e| e.extension_type() == extension_type)
+    }
+
+    /// Check that the candidate extension list is valid.
+    ///
+    /// Valid means:
+    ///
+    /// * Does not contain duplicate extension types (ValSem012)
+    pub fn validate(candidate: &[Extension]) -> bool {
+        // We use a [`HashSet`] to identify duplicate extension types by ...
+        let mut hash_map = HashSet::new();
+
+        for extension_type in candidate.iter().map(Extension::extension_type) {
+            // ... trying to insert every element ...
+            if !hash_map.insert(extension_type) {
+                // ... and returning false if an element of the same extension type was inserted before.
+                return false;
+            }
+        }
+
+        return true;
+    }
+}
+
+impl TryFrom<Vec<Extension>> for Extensions {
+    type Error = &'static str;
+
+    fn try_from(value: Vec<Extension>) -> Result<Self, Self::Error> {
+        if Extensions::validate(&value) {
+            Ok(Self { inner: value })
+        } else {
+            Err("List of extensions must not contain duplicate extension types.")
+        }
+    }
+}
+
+impl Extensions {
+    /// Get a reference to the inner value.
+    pub fn inner(&self) -> &Vec<Extension> {
+        &self.inner
+    }
+
+    /// Get a reference to the [`ApplicationIdExtension`] if there is any.
+    pub fn application_id(&self) -> Option<&ApplicationIdExtension> {
+        // Safety: `.unwrap()` is safe here.
+        self.inner
+            .iter()
+            .find(|e| e.extension_type() == ExtensionType::ApplicationId)
+            .map(|e| e.as_application_id_extension().unwrap())
+    }
+
+    /// Get a reference to the [`RatchetTreeExtension`] if there is any.
+    pub fn ratchet_tree(&self) -> Option<&RatchetTreeExtension> {
+        // Safety: `.unwrap()` is safe here.
+        self.inner
+            .iter()
+            .find(|e| e.extension_type() == ExtensionType::RatchetTree)
+            .map(|e| e.as_ratchet_tree_extension().unwrap())
+    }
+
+    /// Get a reference to the [`RequiredCapabilitiesExtension`] if there is any.
+    pub fn required_capabilities(&self) -> Option<&RequiredCapabilitiesExtension> {
+        // Safety: `.unwrap()` is safe here.
+        self.inner
+            .iter()
+            .find(|e| e.extension_type() == ExtensionType::RequiredCapabilities)
+            .map(|e| e.as_required_capabilities_extension().unwrap())
+    }
+
+    /// Get a reference to the [`ExternalPubExtension`] if there is any.
+    pub fn external_pub(&self) -> Option<&ExternalPubExtension> {
+        // Safety: `.unwrap()` is safe here.
+        self.inner
+            .iter()
+            .find(|e| e.extension_type() == ExtensionType::ExternalPub)
+            .map(|e| e.as_external_pub_extension().unwrap())
+    }
+
+    /// Get a reference to the [`CapabilitiesExtension`] if there is any.
+    pub fn capabilities(&self) -> Option<&CapabilitiesExtension> {
+        // Safety: `.unwrap()` is safe here.
+        self.inner
+            .iter()
+            .find(|e| e.extension_type() == ExtensionType::Capabilities)
+            .map(|e| e.as_capabilities_extension().unwrap())
+    }
+
+    /// Get a reference to the [`LifetimeExtension`] if there is any.
+    pub fn lifetime(&self) -> Option<&LifetimeExtension> {
+        // Safety: `.unwrap()` is safe here.
+        self.inner
+            .iter()
+            .find(|e| e.extension_type() == ExtensionType::Lifetime)
+            .map(|e| e.as_lifetime_extension().unwrap())
+    }
+}
+
 impl Extension {
     /// Get a reference to this extension as [`ApplicationIdExtension`].
     /// Returns an [`ExtensionError::InvalidExtensionType`] if called on an
@@ -313,31 +490,88 @@ impl Ord for Extension {
     }
 }
 
-/// This function tries to extract a vector of nodes from the given slice of
-/// [`Extension`]s.
+/// This function tries to extract a vector of nodes from the given [`Extensions`].
 ///
-/// Returns the vector of nodes if it finds one and `None` otherwise. Returns an
-/// error if there is either no [`RatchetTreeExtension`] or more than one.
+/// Returns the vector of nodes if it finds one and `None` otherwise.
 pub(crate) fn try_nodes_from_extensions(
-    other_extensions: &[Extension],
-) -> Result<Option<Vec<Option<Node>>>, ExtensionError> {
-    let mut ratchet_tree_extensions = other_extensions
-        .iter()
-        .filter(|e| e.extension_type() == ExtensionType::RatchetTree);
-
-    let nodes = match ratchet_tree_extensions.next() {
-        Some(e) => Some(e.as_ratchet_tree_extension()?.as_slice().into()),
+    other_extensions: &Extensions,
+) -> Option<Vec<Option<Node>>> {
+    match other_extensions.ratchet_tree() {
+        Some(e) => Some(e.as_slice().into()),
         None => None,
-    };
+    }
+}
 
-    if ratchet_tree_extensions.next().is_some() {
-        // Throw an error if there is more than one ratchet tree extension.
-        // This shouldn't be the case anyway, because extensions are checked
-        // for uniqueness when decoding them. We have to see if this makes
-        // problems later as it's not something required by the spec right
-        // now (Note issue #530 of the MLS spec.).
-        return Err(ExtensionError::DuplicateRatchetTreeExtension);
-    };
+#[cfg(test)]
+mod test {
+    use crate::extensions::*;
 
-    Ok(nodes)
+    #[test]
+    fn valsem012_add() {
+        let mut extensions = Extensions::empty();
+        extensions
+            .add(Extension::Lifetime(LifetimeExtension::new(42)))
+            .unwrap();
+        assert!(extensions
+            .add(Extension::Lifetime(LifetimeExtension::new(1337)))
+            .is_err());
+    }
+
+    #[test]
+    fn valsem012_multi_and_try_from() {
+        let tests = [
+            (vec![], true),
+            (vec![Extension::Lifetime(LifetimeExtension::new(0))], true),
+            (
+                vec![
+                    Extension::Lifetime(LifetimeExtension::new(0)),
+                    Extension::Lifetime(LifetimeExtension::new(1)),
+                ],
+                false,
+            ),
+            (
+                vec![
+                    Extension::Lifetime(LifetimeExtension::new(0)),
+                    Extension::Lifetime(LifetimeExtension::new(1)),
+                    Extension::Lifetime(LifetimeExtension::new(2)),
+                ],
+                false,
+            ),
+            (
+                vec![
+                    Extension::Lifetime(LifetimeExtension::new(0)),
+                    Extension::Capabilities(CapabilitiesExtension::default()),
+                ],
+                true,
+            ),
+            (
+                vec![
+                    Extension::Lifetime(LifetimeExtension::new(0)),
+                    Extension::Lifetime(LifetimeExtension::new(1)),
+                    Extension::Capabilities(CapabilitiesExtension::default()),
+                ],
+                false,
+            ),
+            (
+                vec![
+                    Extension::Lifetime(LifetimeExtension::new(0)),
+                    Extension::Capabilities(CapabilitiesExtension::default()),
+                    Extension::Capabilities(CapabilitiesExtension::default()),
+                ],
+                false,
+            ),
+        ];
+
+        for (test, expected) in tests.into_iter() {
+            match Extensions::multi(test.clone()) {
+                Ok(_) => assert!(expected),
+                Err(_) => assert!(!expected),
+            }
+
+            match Extensions::try_from(test) {
+                Ok(_) => assert!(expected),
+                Err(_) => assert!(!expected),
+            }
+        }
+    }
 }

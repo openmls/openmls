@@ -33,7 +33,7 @@ fn test_core_group_persistence(ciphersuite: Ciphersuite, backend: &impl OpenMlsC
         &[ciphersuite],
         &alice_credential_bundle,
         backend,
-        Vec::new(),
+        Extensions::empty(),
     )
     .expect("An unexpected error occurred.");
 
@@ -77,7 +77,7 @@ fn test_failed_groupinfo_decryption(
     let group_id = GroupId::random(backend);
     let tree_hash = vec![1, 2, 3, 4, 5, 6, 7, 8, 9];
     let confirmed_transcript_hash = vec![1, 1, 1];
-    let extensions = Vec::new();
+    let extensions = Extensions::empty();
     let confirmation_tag = ConfirmationTag(Mac {
         mac_value: vec![1, 2, 3, 4, 5, 6, 7, 8, 9].into(),
     });
@@ -90,9 +90,13 @@ fn test_failed_groupinfo_decryption(
     )
     .expect("An unexpected error occurred.");
 
-    let key_package_bundle =
-        KeyPackageBundle::new(&[ciphersuite], &alice_credential_bundle, backend, vec![])
-            .expect("An unexpected error occurred.");
+    let key_package_bundle = KeyPackageBundle::new(
+        &[ciphersuite],
+        &alice_credential_bundle,
+        backend,
+        Extensions::empty(),
+    )
+    .expect("An unexpected error occurred.");
 
     let group_info_tbs = {
         let group_context = GroupContext::new(
@@ -101,10 +105,10 @@ fn test_failed_groupinfo_decryption(
             epoch,
             tree_hash,
             confirmed_transcript_hash,
-            &Vec::new(),
+            Extensions::empty(),
         );
 
-        GroupInfoTBS::new(group_context, &extensions, confirmation_tag, 0)
+        GroupInfoTBS::new(group_context, extensions, confirmation_tag, 0)
     };
 
     // Generate key and nonce for the symmetric cipher.
@@ -194,13 +198,17 @@ fn test_update_path(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvid
         &[ciphersuite],
         &alice_credential_bundle,
         backend,
-        Vec::new(),
+        Extensions::empty(),
     )
     .expect("An unexpected error occurred.");
 
-    let bob_key_package_bundle =
-        KeyPackageBundle::new(&[ciphersuite], &bob_credential_bundle, backend, Vec::new())
-            .expect("An unexpected error occurred.");
+    let bob_key_package_bundle = KeyPackageBundle::new(
+        &[ciphersuite],
+        &bob_credential_bundle,
+        backend,
+        Extensions::empty(),
+    )
+    .expect("An unexpected error occurred.");
     let bob_key_package = bob_key_package_bundle.key_package();
 
     // === Alice creates a group ===
@@ -260,9 +268,13 @@ fn test_update_path(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvid
     .expect("An unexpected error occurred.");
 
     // === Bob updates and commits ===
-    let bob_update_key_package_bundle =
-        KeyPackageBundle::new(&[ciphersuite], &bob_credential_bundle, backend, Vec::new())
-            .expect("An unexpected error occurred.");
+    let bob_update_key_package_bundle = KeyPackageBundle::new(
+        &[ciphersuite],
+        &bob_credential_bundle,
+        backend,
+        Extensions::empty(),
+    )
+    .expect("An unexpected error occurred.");
 
     let update_proposal_bob = group_bob
         .create_update_proposal(
@@ -383,13 +395,17 @@ fn test_psks(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
         &[ciphersuite],
         &alice_credential_bundle,
         backend,
-        Vec::new(),
+        Extensions::empty(),
     )
     .expect("An unexpected error occurred.");
 
-    let bob_key_package_bundle =
-        KeyPackageBundle::new(&[ciphersuite], &bob_credential_bundle, backend, Vec::new())
-            .expect("An unexpected error occurred.");
+    let bob_key_package_bundle = KeyPackageBundle::new(
+        &[ciphersuite],
+        &bob_credential_bundle,
+        backend,
+        Extensions::empty(),
+    )
+    .expect("An unexpected error occurred.");
     let bob_key_package = bob_key_package_bundle.key_package();
 
     // === Alice creates a group with a PSK ===
@@ -474,9 +490,13 @@ fn test_psks(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
     .expect("Could not create new group from Welcome");
 
     // === Bob updates and commits ===
-    let bob_update_key_package_bundle =
-        KeyPackageBundle::new(&[ciphersuite], &bob_credential_bundle, backend, Vec::new())
-            .expect("An unexpected error occurred.");
+    let bob_update_key_package_bundle = KeyPackageBundle::new(
+        &[ciphersuite],
+        &bob_credential_bundle,
+        backend,
+        Extensions::empty(),
+    )
+    .expect("An unexpected error occurred.");
 
     let update_proposal_bob = group_bob
         .create_update_proposal(
@@ -532,13 +552,17 @@ fn test_staged_commit_creation(ciphersuite: Ciphersuite, backend: &impl OpenMlsC
         &[ciphersuite],
         &alice_credential_bundle,
         backend,
-        Vec::new(),
+        Extensions::empty(),
     )
     .expect("An unexpected error occurred.");
 
-    let bob_key_package_bundle =
-        KeyPackageBundle::new(&[ciphersuite], &bob_credential_bundle, backend, Vec::new())
-            .expect("An unexpected error occurred.");
+    let bob_key_package_bundle = KeyPackageBundle::new(
+        &[ciphersuite],
+        &bob_credential_bundle,
+        backend,
+        Extensions::empty(),
+    )
+    .expect("An unexpected error occurred.");
     let bob_key_package = bob_key_package_bundle.key_package();
 
     // === Alice creates a group ===
@@ -617,7 +641,7 @@ fn test_own_commit_processing(ciphersuite: Ciphersuite, backend: &impl OpenMlsCr
         &[ciphersuite],
         &alice_credential_bundle,
         backend,
-        Vec::new(),
+        Extensions::empty(),
     )
     .expect("An unexpected error occurred.");
 
@@ -657,9 +681,13 @@ fn setup_client(
         backend,
     )
     .expect("An unexpected error occurred.");
-    let key_package_bundle =
-        KeyPackageBundle::new(&[ciphersuite], &credential_bundle, backend, Vec::new())
-            .expect("An unexpected error occurred.");
+    let key_package_bundle = KeyPackageBundle::new(
+        &[ciphersuite],
+        &credential_bundle,
+        backend,
+        Extensions::empty(),
+    )
+    .expect("An unexpected error occurred.");
     (credential_bundle, key_package_bundle)
 }
 

@@ -111,8 +111,8 @@ pub(crate) fn setup(config: TestSetupConfig, backend: &impl OpenMlsCryptoProvide
                     None,
                 ));
                 let lifetime_extension = Extension::Lifetime(LifetimeExtension::new(60));
-                let mandatory_extensions: Vec<Extension> =
-                    vec![capabilities_extension, lifetime_extension];
+                let mandatory_extensions: Extensions =
+                    Extensions::multi(vec![capabilities_extension, lifetime_extension]).unwrap();
                 let key_package_bundle: KeyPackageBundle = KeyPackageBundle::new(
                     &[ciphersuite],
                     &credential_bundle,
@@ -363,7 +363,7 @@ pub(super) fn generate_credential_bundle(
 pub(super) fn generate_key_package_bundle(
     ciphersuites: &[Ciphersuite],
     credential: &Credential,
-    extensions: Vec<Extension>,
+    extensions: Extensions,
     backend: &impl OpenMlsCryptoProvider,
 ) -> Result<KeyPackage, KeyPackageBundleNewError> {
     let credential_bundle = backend

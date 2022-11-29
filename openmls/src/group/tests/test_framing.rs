@@ -133,7 +133,7 @@ fn bad_padding(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
             1,
             vec![],
             vec![],
-            &[],
+            Extensions::empty(),
         );
 
         let plaintext = {

@@ -109,7 +109,8 @@ fn test_update_proposal_encoding(backend: &impl OpenMlsCryptoProvider) {
             None,
         ));
         let lifetime_extension = Extension::Lifetime(LifetimeExtension::new(60));
-        let mandatory_extensions: Vec<Extension> = vec![capabilities_extension, lifetime_extension];
+        let mandatory_extensions: Extensions =
+            Extensions::multi(vec![capabilities_extension, lifetime_extension]).unwrap();
 
         let key_package_bundle = KeyPackageBundle::new(
             &[group_state.ciphersuite()],
@@ -174,7 +175,8 @@ fn test_add_proposal_encoding(backend: &impl OpenMlsCryptoProvider) {
             None,
         ));
         let lifetime_extension = Extension::Lifetime(LifetimeExtension::new(60));
-        let mandatory_extensions: Vec<Extension> = vec![capabilities_extension, lifetime_extension];
+        let mandatory_extensions: Extensions =
+            Extensions::multi(vec![capabilities_extension, lifetime_extension]).unwrap();
 
         let key_package_bundle = KeyPackageBundle::new(
             &[group_state.ciphersuite()],
@@ -293,7 +295,8 @@ fn test_commit_encoding(backend: &impl OpenMlsCryptoProvider) {
             None,
         ));
         let lifetime_extension = Extension::Lifetime(LifetimeExtension::new(60));
-        let mandatory_extensions: Vec<Extension> = vec![capabilities_extension, lifetime_extension];
+        let mandatory_extensions: Extensions =
+            Extensions::multi(vec![capabilities_extension, lifetime_extension]).unwrap();
 
         let alice_key_package_bundle = KeyPackageBundle::new(
             &[group_state.ciphersuite()],

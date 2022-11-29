@@ -17,7 +17,7 @@ fn export_group_info(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvi
         &[ciphersuite],
         &alice_credential_bundle,
         backend,
-        Vec::new(),
+        Extensions::empty(),
     )
     .unwrap();
 

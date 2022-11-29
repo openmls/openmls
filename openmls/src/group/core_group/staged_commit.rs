@@ -310,7 +310,7 @@ impl CoreGroup {
             provisional_epoch,
             diff.compute_tree_hashes(backend, ciphersuite)?,
             confirmed_transcript_hash.clone(),
-            self.group_context.extensions(),
+            self.group_context.extensions().clone(),
         );
 
         // Prepare the PskSecret

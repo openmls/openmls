@@ -64,9 +64,13 @@ pub fn generate_test_vector(ciphersuite: Ciphersuite) -> MessagesTestVector {
         &crypto,
     )
     .expect("An unexpected error occurred.");
-    let key_package_bundle =
-        KeyPackageBundle::new(&[ciphersuite_name], &credential_bundle, &crypto, Vec::new())
-            .expect("An unexpected error occurred.");
+    let key_package_bundle = KeyPackageBundle::new(
+        &[ciphersuite_name],
+        &credential_bundle,
+        &crypto,
+        Extensions::empty(),
+    )
+    .expect("An unexpected error occurred.");
     let capabilities = CapabilitiesExtension::default();
     let lifetime = LifetimeExtension::default();
 
@@ -92,16 +96,16 @@ pub fn generate_test_vector(ciphersuite: Ciphersuite) -> MessagesTestVector {
                 .rand()
                 .random_vec(ciphersuite.hash_length())
                 .expect("An unexpected error occurred."),
-            &[Extension::RequiredCapabilities(
+            Extensions::single(Extension::RequiredCapabilities(
                 RequiredCapabilitiesExtension::default(),
-            )],
+            )),
         );
 
         GroupInfoTBS::new(
             group_context,
-            &[Extension::RatchetTree(RatchetTreeExtension::new(
+            Extensions::single(Extension::RatchetTree(RatchetTreeExtension::new(
                 ratchet_tree.clone(),
-            ))],
+            ))),
             ConfirmationTag(Mac {
                 mac_value: crypto
                     .rand()
@@ -119,16 +123,20 @@ pub fn generate_test_vector(ciphersuite: Ciphersuite) -> MessagesTestVector {
         GroupSecrets::random_encoded(ciphersuite, &crypto, ProtocolVersion::default());
 
     // Create a proposal to update the user's KeyPackage
-    let key_package_bundle =
-        KeyPackageBundle::new(&[ciphersuite_name], &credential_bundle, &crypto, Vec::new())
-            .expect("An unexpected error occurred.");
+    let key_package_bundle = KeyPackageBundle::new(
+        &[ciphersuite_name],
+        &credential_bundle,
+        &crypto,
+        Extensions::empty(),
+    )
+    .expect("An unexpected error occurred.");
     let key_package = key_package_bundle.key_package();
     let update_proposal = UpdateProposal {
         leaf_node: LeafNode::new(
             key_package.hpke_init_key().clone(),
             &credential_bundle,
             LeafNodeSource::Update,
-            vec![],
+            Extensions::empty(),
             &crypto,
         )
         .unwrap(),
@@ -146,7 +154,7 @@ pub fn generate_test_vector(ciphersuite: Ciphersuite) -> MessagesTestVector {
         &[ciphersuite_name],
         &joiner_credential_bundle,
         &crypto,
-        Vec::new(),
+        Extensions::empty(),
     )
     .expect("An unexpected error occurred.");
     let add_proposal = AddProposal {
@@ -176,9 +184,9 @@ pub fn generate_test_vector(ciphersuite: Ciphersuite) -> MessagesTestVector {
         group_id: group.group_id().clone(),
         version: ProtocolVersion::Mls10,
         ciphersuite: ciphersuite_name,
-        extensions: vec![Extension::RatchetTree(RatchetTreeExtension::new(
+        extensions: Extensions::single(Extension::RatchetTree(RatchetTreeExtension::new(
             ratchet_tree.clone(),
-        ))],
+        ))),
     };
     // We don't support external init proposals yet.
     let external_init_proposal = tls_codec::TlsByteVecU16::new(Vec::new());

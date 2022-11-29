@@ -39,7 +39,7 @@ fn generate_key_package_bundle(
     key_store: &impl OpenMlsCryptoProvider,
     ciphersuites: &[Ciphersuite],
     credential: &Credential,
-    extensions: Vec<Extension>,
+    extensions: Extensions,
 ) -> Result<KeyPackage, KeyPackageBundleNewError> {
     let credential_bundle = key_store
         .key_store()
@@ -78,9 +78,13 @@ fn test_mls_group_persistence(ciphersuite: Ciphersuite, backend: &impl OpenMlsCr
     .expect("An unexpected error occurred.");
 
     // Generate KeyPackages
-    let alice_key_package =
-        generate_key_package_bundle(backend, &[ciphersuite], &alice_credential, vec![])
-            .expect("An unexpected error occurred.");
+    let alice_key_package = generate_key_package_bundle(
+        backend,
+        &[ciphersuite],
+        &alice_credential,
+        Extensions::empty(),
+    )
+    .expect("An unexpected error occurred.");
 
     // Define the MlsGroup configuration
     let mls_group_config = MlsGroupConfig::test_default();
@@ -154,17 +158,29 @@ fn remover(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
     .expect("An unexpected error occurred.");
 
     // Generate KeyPackages
-    let alice_key_package =
-        generate_key_package_bundle(backend, &[ciphersuite], &alice_credential, vec![])
-            .expect("An unexpected error occurred.");
+    let alice_key_package = generate_key_package_bundle(
+        backend,
+        &[ciphersuite],
+        &alice_credential,
+        Extensions::empty(),
+    )
+    .expect("An unexpected error occurred.");
 
-    let bob_key_package =
-        generate_key_package_bundle(backend, &[ciphersuite], &bob_credential, vec![])
-            .expect("An unexpected error occurred.");
+    let bob_key_package = generate_key_package_bundle(
+        backend,
+        &[ciphersuite],
+        &bob_credential,
+        Extensions::empty(),
+    )
+    .expect("An unexpected error occurred.");
 
-    let charlie_key_package =
-        generate_key_package_bundle(backend, &[ciphersuite], &charlie_credential, vec![])
-            .expect("An unexpected error occurred.");
+    let charlie_key_package = generate_key_package_bundle(
+        backend,
+        &[ciphersuite],
+        &charlie_credential,
+        Extensions::empty(),
+    )
+    .expect("An unexpected error occurred.");
 
     // Define the MlsGroup configuration
     let mls_group_config = MlsGroupConfig::default();
@@ -301,9 +317,13 @@ fn export_secret(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider)
     .expect("An unexpected error occurred.");
 
     // Generate KeyPackages
-    let alice_key_package =
-        generate_key_package_bundle(backend, &[ciphersuite], &alice_credential, vec![])
-            .expect("An unexpected error occurred.");
+    let alice_key_package = generate_key_package_bundle(
+        backend,
+        &[ciphersuite],
+        &alice_credential,
+        Extensions::empty(),
+    )
+    .expect("An unexpected error occurred.");
 
     // Define the MlsGroup configuration
     let mls_group_config = MlsGroupConfig::test_default();
@@ -443,13 +463,21 @@ fn test_pending_commit_logic(ciphersuite: Ciphersuite, backend: &impl OpenMlsCry
     .expect("An unexpected error occurred.");
 
     // Generate KeyPackages
-    let alice_key_package =
-        generate_key_package_bundle(backend, &[ciphersuite], &alice_credential, vec![])
-            .expect("An unexpected error occurred.");
+    let alice_key_package = generate_key_package_bundle(
+        backend,
+        &[ciphersuite],
+        &alice_credential,
+        Extensions::empty(),
+    )
+    .expect("An unexpected error occurred.");
 
-    let bob_key_package =
-        generate_key_package_bundle(backend, &[ciphersuite], &bob_credential, vec![])
-            .expect("An unexpected error occurred.");
+    let bob_key_package = generate_key_package_bundle(
+        backend,
+        &[ciphersuite],
+        &bob_credential,
+        Extensions::empty(),
+    )
+    .expect("An unexpected error occurred.");
 
     // Define the MlsGroup configuration
     let mls_group_config = MlsGroupConfig::test_default();

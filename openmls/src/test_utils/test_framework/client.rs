@@ -48,8 +48,9 @@ impl Client {
             .credentials
             .get(&ciphersuites[0])
             .ok_or(ClientError::CiphersuiteNotSupported)?;
-        let mandatory_extensions: Vec<Extension> =
-            vec![Extension::Lifetime(LifetimeExtension::new(157788000))]; // 5 years
+        let mandatory_extensions: Extensions =
+            Extensions::multi(vec![Extension::Lifetime(LifetimeExtension::new(157788000))])
+                .unwrap(); // 5 years
         let credential_bundle: CredentialBundle = self
             .crypto
             .key_store()
@@ -88,8 +89,9 @@ impl Client {
             .credentials
             .get(&ciphersuite)
             .ok_or(ClientError::CiphersuiteNotSupported)?;
-        let mandatory_extensions: Vec<Extension> =
-            vec![Extension::Lifetime(LifetimeExtension::new(157788000))]; // 5 years
+        let mandatory_extensions: Extensions =
+            Extensions::multi(vec![Extension::Lifetime(LifetimeExtension::new(157788000))])
+                .unwrap(); // 5 years
         let credential_bundle: CredentialBundle = self
             .crypto
             .key_store()

@@ -138,7 +138,7 @@ impl CoreGroup {
                 &[self.ciphersuite()],
                 params.credential_bundle(),
                 backend,
-                vec![],
+                Extensions::empty(),
             )
             .map_err(|_| LibraryError::custom("Unexpected KeyPackage error"))?;
 
@@ -254,7 +254,7 @@ impl CoreGroup {
             provisional_epoch,
             tree_hash.clone(),
             confirmed_transcript_hash.clone(),
-            self.group_context.extensions(),
+            self.group_context.extensions().clone(),
         );
 
         let joiner_secret = JoinerSecret::new(
@@ -317,12 +317,12 @@ impl CoreGroup {
         // Check if new members were added and, if so, create welcome messages
         let welcome_option = if !plaintext_secrets.is_empty() {
             // Create the ratchet tree extension if necessary
-            let other_extensions: Vec<Extension> = if self.use_ratchet_tree_extension {
-                vec![Extension::RatchetTree(RatchetTreeExtension::new(
+            let other_extensions = if self.use_ratchet_tree_extension {
+                Extensions::single(Extension::RatchetTree(RatchetTreeExtension::new(
                     diff.export_nodes()?,
-                ))]
+                )))
             } else {
-                Vec::new()
+                Extensions::empty()
             };
             // Create to-be-signed group info.
             let group_info_tbs = {
@@ -332,12 +332,12 @@ impl CoreGroup {
                     provisional_group_context.epoch(),
                     tree_hash,
                     confirmed_transcript_hash.clone(),
-                    self.group_context_extensions(),
+                    self.group_context_extensions().clone(),
                 );
 
                 GroupInfoTBS::new(
                     group_context,
-                    &other_extensions,
+                    other_extensions,
                     confirmation_tag.clone(),
                     diff.own_leaf_index(),
                 )

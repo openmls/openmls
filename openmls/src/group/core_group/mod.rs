@@ -25,8 +25,6 @@ mod test_core_group;
 #[cfg(test)]
 mod test_create_commit_params;
 #[cfg(test)]
-mod test_duplicate_extension;
-#[cfg(test)]
 mod test_external_init;
 #[cfg(test)]
 mod test_past_secrets;
@@ -238,7 +236,8 @@ impl CoreGroupBuilder {
             }
             _ => LibraryError::custom("Unexpected ExtensionError").into(),
         })?;
-        let required_capabilities = &[Extension::RequiredCapabilities(required_capabilities)];
+        let required_capabilities =
+            Extensions::single(Extension::RequiredCapabilities(required_capabilities));
 
         let group_context = GroupContext::create_initial_group_context(
             ciphersuite,
@@ -423,16 +422,12 @@ impl CoreGroup {
         &self,
         framing_parameters: FramingParameters,
         credential_bundle: &CredentialBundle,
-        extensions: &[Extension],
+        extensions: Extensions,
         backend: &impl OpenMlsCryptoProvider,
     ) -> Result<MlsPlaintext, CreateGroupContextExtProposalError> {
         // Ensure that the group supports all the extensions that are wanted.
 
-        let required_extension = extensions
-            .iter()
-            .find(|extension| extension.extension_type() == ExtensionType::RequiredCapabilities);
-        if let Some(required_extension) = required_extension {
-            let required_capabilities = required_extension.as_required_capabilities_extension()?;
+        if let Some(required_capabilities) = extensions.required_capabilities() {
             // Ensure we support all the capabilities.
             required_capabilities.check_support()?;
             self.treesync()
@@ -579,16 +574,16 @@ impl CoreGroup {
             };
 
             if with_ratchet_tree {
-                vec![ratchet_tree_extension(), external_pub_extension()]
+                Extensions::multi(vec![ratchet_tree_extension(), external_pub_extension()]).unwrap()
             } else {
-                vec![external_pub_extension()]
+                Extensions::single(external_pub_extension())
             }
         };
 
         // Create to-be-signed group info.
         let group_info_tbs = GroupInfoTBS::new(
             self.group_context.clone(),
-            &extensions,
+            extensions,
             self.message_secrets()
                 .confirmation_key()
                 .tag(backend, self.context().confirmed_transcript_hash())
@@ -649,13 +644,13 @@ impl CoreGroup {
     }
 
     /// Get the group context extensions.
-    pub(crate) fn group_context_extensions(&self) -> &[Extension] {
+    pub(crate) fn group_context_extensions(&self) -> &Extensions {
         self.group_context.extensions()
     }
 
     /// Get the required capabilities extension of this group.
     pub(crate) fn required_capabilities(&self) -> Option<&RequiredCapabilitiesExtension> {
-        self.group_context.required_capabilities()
+        self.group_context.extensions().required_capabilities()
     }
 
     /// Returns `true` if the group uses the ratchet tree extension anf `false

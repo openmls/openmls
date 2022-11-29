@@ -8,6 +8,7 @@ use tls_codec::{Deserialize, Serialize};
 
 use crate::{
     ciphersuite::signable::{Signable, Verifiable},
+    extensions::Extensions,
     framing::*,
     group::{
         core_group::{
@@ -42,7 +43,7 @@ fn codec_plaintext(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvide
         1,
         vec![],
         vec![],
-        &[],
+        Extensions::empty(),
     );
 
     let serialized_context = group_context
@@ -91,7 +92,7 @@ fn codec_ciphertext(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvid
         1,
         vec![],
         vec![],
-        &[],
+        Extensions::empty(),
     );
 
     let serialized_context = group_context
@@ -170,7 +171,7 @@ fn wire_format_checks(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProv
         1,
         vec![],
         vec![],
-        &[],
+        Extensions::empty(),
     );
 
     let serialized_context = group_context
@@ -314,7 +315,7 @@ fn membership_tag(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
         1,
         vec![],
         vec![],
-        &[],
+        Extensions::empty(),
     );
     let membership_key = MembershipKey::from_secret(
         Secret::random(ciphersuite, backend, None /* MLS version */)
@@ -388,16 +389,20 @@ fn unknown_sender(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
     .expect("An unexpected error occurred.");
 
     // Generate KeyPackages
-    let bob_key_package_bundle =
-        KeyPackageBundle::new(&[ciphersuite], &bob_credential_bundle, backend, Vec::new())
-            .expect("An unexpected error occurred.");
+    let bob_key_package_bundle = KeyPackageBundle::new(
+        &[ciphersuite],
+        &bob_credential_bundle,
+        backend,
+        Extensions::empty(),
+    )
+    .expect("An unexpected error occurred.");
     let bob_key_package = bob_key_package_bundle.key_package();
 
     let charlie_key_package_bundle = KeyPackageBundle::new(
         &[ciphersuite],
         &charlie_credential_bundle,
         backend,
-        Vec::new(),
+        Extensions::empty(),
     )
     .expect("An unexpected error occurred.");
     let charlie_key_package = charlie_key_package_bundle.key_package();
@@ -406,7 +411,7 @@ fn unknown_sender(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
         &[ciphersuite],
         &alice_credential_bundle,
         backend,
-        Vec::new(),
+        Extensions::empty(),
     )
     .expect("An unexpected error occurred.");
 
@@ -588,16 +593,20 @@ fn confirmation_tag_presence(ciphersuite: Ciphersuite, backend: &impl OpenMlsCry
     .expect("An unexpected error occurred.");
 
     // Generate KeyPackages
-    let bob_key_package_bundle =
-        KeyPackageBundle::new(&[ciphersuite], &bob_credential_bundle, backend, Vec::new())
-            .expect("An unexpected error occurred.");
+    let bob_key_package_bundle = KeyPackageBundle::new(
+        &[ciphersuite],
+        &bob_credential_bundle,
+        backend,
+        Extensions::empty(),
+    )
+    .expect("An unexpected error occurred.");
     let bob_key_package = bob_key_package_bundle.key_package();
 
     let alice_key_package_bundle = KeyPackageBundle::new(
         &[ciphersuite],
         &alice_credential_bundle,
         backend,
-        Vec::new(),
+        Extensions::empty(),
     )
     .expect("An unexpected error occurred.");
 
@@ -692,16 +701,20 @@ fn invalid_plaintext_signature(ciphersuite: Ciphersuite, backend: &impl OpenMlsC
     .expect("An unexpected error occurred.");
 
     // Generate KeyPackages
-    let bob_key_package_bundle =
-        KeyPackageBundle::new(&[ciphersuite], &bob_credential_bundle, backend, Vec::new())
-            .expect("An unexpected error occurred.");
+    let bob_key_package_bundle = KeyPackageBundle::new(
+        &[ciphersuite],
+        &bob_credential_bundle,
+        backend,
+        Extensions::empty(),
+    )
+    .expect("An unexpected error occurred.");
     let bob_key_package = bob_key_package_bundle.key_package();
 
     let alice_key_package_bundle = KeyPackageBundle::new(
         &[ciphersuite],
         &alice_credential_bundle,
         backend,
-        Vec::new(),
+        Extensions::empty(),
     )
     .expect("An unexpected error occurred.");
 

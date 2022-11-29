@@ -1,6 +1,7 @@
 use std::io::Read;
 
 use openmls_traits::types::Ciphersuite;
+use tls_codec::Error;
 
 use crate::key_packages::*;
 use crate::versions::ProtocolVersion;
@@ -41,7 +42,10 @@ impl tls_codec::Deserialize for KeyPackage {
         let hpke_init_key = HpkePublicKey::tls_deserialize(bytes)?;
         let leaf_node = LeafNode::tls_deserialize(bytes)?;
         let credential = Credential::tls_deserialize(bytes)?;
-        let extensions = Vec::<Extension>::tls_deserialize(bytes)?;
+        // This checks for duplicate extensions.
+        let extensions = Vec::<Extension>::tls_deserialize(bytes)?
+            .try_into()
+            .map_err(|_| Error::InvalidInput)?;
         let signature = Signature::tls_deserialize(bytes)?;
         let payload = KeyPackageTBS {
             protocol_version,
