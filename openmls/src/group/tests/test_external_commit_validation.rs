@@ -926,7 +926,7 @@ fn test_valsem248(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
     let verifiable_plaintext: VerifiableMlsAuthContent =
         VerifiableMlsAuthContent::from_plaintext(signed_plaintext, None);
 
-    // Have alice process the commit resulting from external init.
+    // Have Alice process the commit resulting from external init.
     let message_in = MlsMessageIn::from(verifiable_plaintext);
 
     let unverified_message = alice_group.parse_message(message_in, backend).unwrap();
