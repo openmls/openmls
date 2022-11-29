@@ -340,7 +340,7 @@ pub enum ExternalCommitValidationError {
     #[error("The remove proposal referenced a non-existing member.")]
     UnknownMemberRemoval,
     /// External commit contains referenced proposal
-    #[error("Found a referenced proposal.")]
+    #[error("Found a referenced proposal in an External Commit.")]
     ReferencedProposal,
 }
 
