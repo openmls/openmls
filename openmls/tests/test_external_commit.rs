@@ -24,7 +24,7 @@ fn test_external_commit(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoPr
             backend
                 .key_store()
                 .store(&index, &alice_cb)
-                .expect("Storage of signature public key failed.");
+                .expect("Storing of signature public key failed.");
 
             alice_cb
         };
