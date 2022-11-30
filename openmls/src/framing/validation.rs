@@ -150,7 +150,7 @@ impl DecryptedMessage {
                     .leaf(*leaf_index)
                     .map_err(|_| ValidationError::UnknownMember)?
                 {
-                    Some(sender_leaf) => Ok(sender_leaf.key_package().credential().clone()),
+                    Some(sender_leaf) => Ok(sender_leaf.credential().clone()),
                     None => {
                         // This might not actually be an error but the sender's
                         // key package changed. Let's check old leaves we still
@@ -167,7 +167,7 @@ impl DecryptedMessage {
                                 .leaf(*index)
                                 .map_err(|_| ValidationError::UnknownMember)?
                             {
-                                Some(node) => Ok(node.key_package().credential().clone()),
+                                Some(node) => Ok(node.credential().clone()),
                                 None => Err(ValidationError::UnknownMember),
                             }
                         } else {
@@ -183,7 +183,7 @@ impl DecryptedMessage {
                 match self.plaintext().content() {
                     MlsContentBody::Commit(Commit { path, .. }) => path
                         .as_ref()
-                        .map(|p| p.leaf_key_package().credential().clone())
+                        .map(|p| p.leaf_node().credential().clone())
                         .ok_or(ValidationError::NoPath),
                     _ => Err(ValidationError::NotACommit),
                 }
@@ -324,12 +324,17 @@ impl UnverifiedGroupMessage {
         backend: &impl OpenMlsCryptoProvider,
     ) -> Result<VerifiedMemberMessage, ValidationError> {
         // ValSem010
-        let verified_member_message = self
-            .plaintext
+        self.plaintext
             .verify(backend, &self.credential)
             .map(|plaintext| VerifiedMemberMessage { plaintext })
-            .map_err(|_| ValidationError::InvalidSignature)?;
-        Ok(verified_member_message)
+            .map_err(|_| ValidationError::InvalidSignature)
+        // XXX: We have tests checking for errors here. But really we should
+        //      rewrite them.
+        // debug_assert!(
+        //     verified_member_message.is_ok(),
+        //     "Verifying signature on UnverifiedGroupMessage failed with {:?}",
+        //     verified_member_message
+        // );
     }
 
     /// Returns the credential.
@@ -375,6 +380,7 @@ pub(crate) struct UnverifiedExternalMessage {
 }
 
 /// Member message, where all semantic checks on the framing have been successfully performed.
+#[derive(Debug)]
 pub(crate) struct VerifiedMemberMessage {
     plaintext: MlsPlaintext,
 }

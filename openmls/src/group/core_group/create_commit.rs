@@ -5,7 +5,7 @@ use crate::{
     group::{core_group::*, errors::CreateCommitError},
     treesync::{
         diff::TreeSyncDiff,
-        node::parent_node::PlainUpdatePathNode,
+        node::{leaf_node::OpenMlsLeafNode, parent_node::PlainUpdatePathNode},
         treekem::{PlaintextSecret, UpdatePath},
     },
     versions::ProtocolVersion,
@@ -121,7 +121,7 @@ impl CoreGroup {
             .apply_proposals(&mut diff, backend, &proposal_queue, &[])
             .map_err(|e| match e {
                 crate::group::errors::ApplyProposalsError::LibraryError(e) => e.into(),
-                crate::group::errors::ApplyProposalsError::MissingKeyPackageBundle => {
+                crate::group::errors::ApplyProposalsError::MissingLeafNode => {
                     CreateCommitError::OwnKeyNotFound
                 }
             })?;
@@ -129,10 +129,24 @@ impl CoreGroup {
             return Err(CreateCommitError::CannotRemoveSelf);
         }
 
-        // Generate the [`KeyPackageBundlePayload`]. If we're doing an external
-        // commit, this is also the place, where we're adding ourselves to the
-        // tree.
-        let key_package_bundle_payload = self.prepare_kpb_payload(backend, &params, &mut diff)?;
+        // Update keys in the leaf.
+        if params.commit_type() == CommitType::External {
+            // If this is an external commit we add a fresh leaf to the diff.
+            // Generate a KeyPackageBundle to generate a payload from for later
+            // path generation.
+            let key_package_bundle = KeyPackageBundle::new(
+                &[self.ciphersuite()],
+                params.credential_bundle(),
+                backend,
+                vec![],
+            )
+            .map_err(|_| LibraryError::custom("Unexpected KeyPackage error"))?;
+
+            let mut leaf_node: OpenMlsLeafNode = key_package_bundle.into();
+            leaf_node.set_leaf_index(own_leaf_index);
+            diff.add_leaf(leaf_node)
+                .map_err(|_| LibraryError::custom("Tree full: cannot add more members"))?;
+        }
 
         let serialized_group_context = self
             .group_context
@@ -144,12 +158,27 @@ impl CoreGroup {
                 || contains_own_updates
                 || params.force_self_update()
             {
+                if params.commit_type() != CommitType::External {
+                    // If we're in the tree, we rekey our existing leaf.
+                    let own_diff_leaf = diff
+                        .own_leaf_mut()
+                        .map_err(|_| LibraryError::custom("Unable to get own leaf from diff"))?;
+                    own_diff_leaf.rekey(
+                        self.group_id(),
+                        self.ciphersuite,
+                        ProtocolVersion::default(), // XXX: openmls/openmls#1065
+                        params.credential_bundle(),
+                        backend,
+                    )?;
+                    diff.clear_tree_hash()?;
+                }
+
                 // Derive and apply an update path based on the previously
-                // generated KeyPackageBundle.
-                let (key_package, plain_path, commit_secret) = diff.apply_own_update_path(
+                // generated new leaf.
+                let (plain_path, commit_secret) = diff.apply_own_update_path(
                     backend,
                     ciphersuite,
-                    key_package_bundle_payload,
+                    self.group_id().clone(),
                     params.credential_bundle(),
                 )?;
 
@@ -160,8 +189,9 @@ impl CoreGroup {
                     &plain_path,
                     &serialized_group_context,
                     &apply_proposals_values.exclusion_list(),
-                    key_package,
                 )?;
+                let leaf_node = diff.own_leaf().map_err(|_| LibraryError::custom("Couldn't find own leaf"))?.clone();
+                let encrypted_path = UpdatePath::new(leaf_node.into(),  encrypted_path);
                 PathProcessingResult {
                     commit_secret: Some(commit_secret),
                     encrypted_path: Some(encrypted_path),
@@ -178,10 +208,10 @@ impl CoreGroup {
         };
 
         // Keep a copy of the update path key package
-        let commit_update_key_package = path_processing_result
+        let commit_update_leaf_node = path_processing_result
             .encrypted_path
             .as_ref()
-            .map(|update| update.leaf_key_package().clone());
+            .map(|update| update.leaf_node().clone());
 
         // Create commit message
         let commit = Commit {
@@ -370,7 +400,7 @@ impl CoreGroup {
         let staged_commit = StagedCommit::new(
             proposal_queue,
             StagedCommitState::GroupMember(Box::new(staged_commit_state)),
-            commit_update_key_package,
+            commit_update_leaf_node,
         );
 
         Ok(CreateCommitResult {
@@ -418,41 +448,5 @@ impl CoreGroup {
             free_leaf_index
         };
         Ok(leaf_index)
-    }
-
-    /// Helper function that prepares the [`KeyPackageBundlePayload`] for use in
-    /// a commit depending on the [`CommitType`].
-    fn prepare_kpb_payload(
-        &self,
-        backend: &impl OpenMlsCryptoProvider,
-        params: &CreateCommitParams,
-        diff: &mut TreeSyncDiff,
-    ) -> Result<KeyPackageBundlePayload, LibraryError> {
-        let key_package = if params.commit_type() == CommitType::External {
-            // Generate a KeyPackageBundle to generate a payload from for later
-            // path generation.
-            let key_package_bundle = KeyPackageBundle::new(
-                &[self.ciphersuite()],
-                params.credential_bundle(),
-                backend,
-                vec![],
-            )
-            .map_err(|_| LibraryError::custom("Unexpected KeyPackage error"))?;
-
-            diff.add_leaf(key_package_bundle.key_package().clone())
-                .map_err(|_| LibraryError::custom("Tree full: cannot add more members"))?;
-            diff.own_leaf()
-                .map_err(|_| LibraryError::custom("Expected own leaf"))?
-                .key_package()
-        } else {
-            self.treesync()
-                .own_leaf_node()
-                .map_err(|_| LibraryError::custom("Expected own leaf"))?
-                .key_package()
-        };
-        // Create a new key package bundle payload from the existing key
-        // package.
-        KeyPackageBundlePayload::from_rekeyed_key_package(key_package, backend)
-            .map_err(LibraryError::unexpected_crypto_error)
     }
 }

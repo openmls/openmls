@@ -35,7 +35,7 @@ use openmls_rust_crypto::OpenMlsRustCrypto;
 use openmls_traits::{
     crypto::OpenMlsCrypto,
     key_store::OpenMlsKeyStore,
-    types::{Ciphersuite, SignatureScheme},
+    types::{Ciphersuite, HpkeKeyPair, SignatureScheme},
     OpenMlsCryptoProvider,
 };
 use rayon::prelude::*;
@@ -498,7 +498,7 @@ impl MlsGroupTestSetup {
         action_type: ActionType,
         group: &mut Group,
         client_id: &[u8],
-        key_package_bundle_option: Option<KeyPackageBundle>,
+        key_pair: Option<KeyPackageBundle>,
     ) -> Result<(), SetupError> {
         let clients = self.clients.read().expect("An unexpected error occurred.");
         let client = clients
@@ -507,7 +507,7 @@ impl MlsGroupTestSetup {
             .read()
             .expect("An unexpected error occurred.");
         let (messages, welcome_option) =
-            client.self_update(action_type, &group.group_id, key_package_bundle_option)?;
+            client.self_update(action_type, &group.group_id, key_pair)?;
         self.distribute_to_members(&client.identity, group, &messages)?;
         if let Some(welcome) = welcome_option {
             self.deliver_welcome(welcome, group)?;
