@@ -413,11 +413,7 @@ fn unknown_sender(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
 
     // Alice creates a group
     let mut group_alice = CoreGroup::builder(GroupId::random(backend), alice_key_package_bundle)
-        .build(
-            &alice_credential_bundle,
-            LifetimeExtension::default(),
-            backend,
-        )
+        .build(&alice_credential_bundle, backend)
         .expect("Error creating group.");
 
     // Alice adds Bob
@@ -608,11 +604,7 @@ fn confirmation_tag_presence(ciphersuite: Ciphersuite, backend: &impl OpenMlsCry
 
     // Alice creates a group
     let mut group_alice = CoreGroup::builder(GroupId::random(backend), alice_key_package_bundle)
-        .build(
-            &alice_credential_bundle,
-            LifetimeExtension::default(),
-            backend,
-        )
+        .build(&alice_credential_bundle, backend)
         .expect("Error creating group.");
 
     // Alice adds Bob
@@ -716,11 +708,7 @@ fn invalid_plaintext_signature(ciphersuite: Ciphersuite, backend: &impl OpenMlsC
 
     // Alice creates a group
     let mut group_alice = CoreGroup::builder(GroupId::random(backend), alice_key_package_bundle)
-        .build(
-            &alice_credential_bundle,
-            LifetimeExtension::default(),
-            backend,
-        )
+        .build(&alice_credential_bundle, backend)
         .expect("Error creating group.");
 
     // Alice adds Bob so that there is someone to process the broken commits.

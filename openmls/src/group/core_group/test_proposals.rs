@@ -307,7 +307,6 @@ fn test_required_unsupported_proposals(
         .with_required_capabilities(required_capabilities)
         .build(
             &alice_credential_bundle,
-            LifetimeExtension::default(),
             backend)
         .expect_err(
             "CoreGroup creation must fail because AppAck proposals aren't supported in OpenMLS yet.",
@@ -346,11 +345,7 @@ fn test_required_extension_key_package_mismatch(
 
     let alice_group = CoreGroup::builder(GroupId::random(backend), alice_key_package_bundle)
         .with_required_capabilities(required_capabilities)
-        .build(
-            &alice_credential_bundle,
-            LifetimeExtension::default(),
-            backend,
-        )
+        .build(&alice_credential_bundle, backend)
         .expect("Error creating CoreGroup.");
 
     let e = alice_group
@@ -395,11 +390,7 @@ fn test_group_context_extensions(ciphersuite: Ciphersuite, backend: &impl OpenMl
 
     let mut alice_group = CoreGroup::builder(GroupId::random(backend), alice_key_package_bundle)
         .with_required_capabilities(required_capabilities)
-        .build(
-            &alice_credential_bundle,
-            LifetimeExtension::default(),
-            backend,
-        )
+        .build(&alice_credential_bundle, backend)
         .expect("Error creating CoreGroup.");
 
     let bob_add_proposal = alice_group
@@ -480,11 +471,7 @@ fn test_group_context_extension_proposal_fails(
 
     let mut alice_group = CoreGroup::builder(GroupId::random(backend), alice_key_package_bundle)
         .with_required_capabilities(required_capabilities)
-        .build(
-            &alice_credential_bundle,
-            LifetimeExtension::default(),
-            backend,
-        )
+        .build(&alice_credential_bundle, backend)
         .expect("Error creating CoreGroup.");
 
     // Alice tries to add a required capability she doesn't support herself.
@@ -595,11 +582,7 @@ fn test_group_context_extension_proposal(
     let bob_key_package = bob_key_package_bundle.key_package();
 
     let mut alice_group = CoreGroup::builder(GroupId::random(backend), alice_key_package_bundle)
-        .build(
-            &alice_credential_bundle,
-            LifetimeExtension::default(),
-            backend,
-        )
+        .build(&alice_credential_bundle, backend)
         .expect("Error creating CoreGroup.");
 
     // Adding Bob

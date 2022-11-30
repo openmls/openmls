@@ -76,7 +76,7 @@ pub fn generate_test_vector(ciphersuite: Ciphersuite) -> MessagesTestVector {
     // Let's create a group
     let mut group = CoreGroup::builder(GroupId::random(&crypto), key_package_bundle)
         .with_max_past_epoch_secrets(2)
-        .build(&credential_bundle, LifetimeExtension::default(), &crypto)
+        .build(&credential_bundle, &crypto)
         .expect("Could not create group.");
 
     let ratchet_tree: Vec<Option<Node>> = group.treesync().export_nodes();

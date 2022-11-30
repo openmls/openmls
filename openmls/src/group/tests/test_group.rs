@@ -68,11 +68,7 @@ fn create_commit_optional_path(ciphersuite: Ciphersuite, backend: &impl OpenMlsC
 
     // Alice creates a group
     let mut group_alice = CoreGroup::builder(GroupId::random(backend), alice_key_package_bundle)
-        .build(
-            &alice_credential_bundle,
-            LifetimeExtension::default(),
-            backend,
-        )
+        .build(&alice_credential_bundle, backend)
         .expect("Error creating CoreGroup.");
 
     // Alice proposes to add Bob with forced self-update
@@ -244,11 +240,7 @@ fn basic_group_setup(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvi
 
     // Alice creates a group
     let group_alice = CoreGroup::builder(GroupId::random(backend), alice_key_package_bundle)
-        .build(
-            &alice_credential_bundle,
-            LifetimeExtension::default(),
-            backend,
-        )
+        .build(&alice_credential_bundle, backend)
         .expect("Error creating CoreGroup.");
 
     // Alice adds Bob
@@ -342,11 +334,7 @@ fn group_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvid
 
     // === Alice creates a group ===
     let mut group_alice = CoreGroup::builder(GroupId::random(backend), alice_key_package_bundle)
-        .build(
-            &alice_credential_bundle,
-            LifetimeExtension::default(),
-            backend,
-        )
+        .build(&alice_credential_bundle, backend)
         .expect("Error creating CoreGroup.");
 
     // === Alice adds Bob ===

@@ -139,6 +139,7 @@ pub(crate) struct CoreGroupBuilder {
     version: Option<ProtocolVersion>,
     required_capabilities: Option<RequiredCapabilitiesExtension>,
     max_past_epochs: usize,
+    life_time: Option<LifetimeExtension>,
 }
 
 impl CoreGroupBuilder {
@@ -153,6 +154,7 @@ impl CoreGroupBuilder {
             required_capabilities: None,
             max_past_epochs: 0,
             own_leaf_extensions: vec![],
+            life_time: None,
         }
     }
     /// Set the [`CoreGroupConfig`] of the [`CoreGroup`].
@@ -179,6 +181,11 @@ impl CoreGroupBuilder {
         self.max_past_epochs = max_past_epochs;
         self
     }
+    /// Set the [`LifetimeExtension`] for the own leaf in the group.
+    pub fn with_lifetime(mut self, life_time: LifetimeExtension) -> Self {
+        self.life_time = Some(life_time);
+        self
+    }
     /// Set extensions for the own leaf in the group.
     #[cfg(test)]
     pub fn with_extensions(mut self, extensions: Vec<Extension>) -> Self {
@@ -195,7 +202,6 @@ impl CoreGroupBuilder {
     pub(crate) fn build(
         self,
         credential_bundle: &CredentialBundle,
-        life_time: LifetimeExtension,
         backend: &impl OpenMlsCryptoProvider,
     ) -> Result<CoreGroup, CoreGroupBuildError> {
         let ciphersuite = self.key_package_bundle.key_package().ciphersuite();
@@ -212,7 +218,7 @@ impl CoreGroupBuilder {
             backend,
             self.key_package_bundle,
             credential_bundle,
-            life_time,
+            self.life_time.unwrap_or_default(),
             Capabilities::new(
                 Some(&[version]),     // TODO: Allow more versions
                 Some(&[ciphersuite]), // TODO: allow more ciphersuites

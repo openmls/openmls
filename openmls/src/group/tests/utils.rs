@@ -168,11 +168,7 @@ pub(crate) fn setup(config: TestSetupConfig, backend: &impl OpenMlsCryptoProvide
             initial_key_package_bundle,
         )
         .with_config(group_config.config)
-        .build(
-            initial_credential_bundle,
-            LifetimeExtension::default(),
-            backend,
-        )
+        .build(initial_credential_bundle, backend)
         .expect("Error creating new CoreGroup");
         let mut proposal_list = Vec::new();
         let group_aad = b"";

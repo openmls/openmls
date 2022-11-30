@@ -155,7 +155,7 @@ fn group(
             .expect("An unexpected error occurred.");
     (
         CoreGroup::builder(GroupId::random(backend), key_package_bundle)
-            .build(&credential_bundle, LifetimeExtension::default(), backend)
+            .build(&credential_bundle, backend)
             .expect("Error creating CoreGroup"),
         credential_bundle,
     )
@@ -180,7 +180,7 @@ fn receiver_group(
         KeyPackageBundle::new(&[ciphersuite], &credential_bundle, backend, Vec::new())
             .expect("An unexpected error occurred.");
     CoreGroup::builder(group_id.clone(), key_package_bundle)
-        .build(&credential_bundle, LifetimeExtension::default(), backend)
+        .build(&credential_bundle, backend)
         .expect("Error creating CoreGroup")
 }
 

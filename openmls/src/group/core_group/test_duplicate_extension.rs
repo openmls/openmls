@@ -56,11 +56,7 @@ fn duplicate_ratchet_tree_extension(
 
     let mut alice_group = CoreGroup::builder(GroupId::random(backend), alice_key_package_bundle)
         .with_config(config)
-        .build(
-            &alice_credential_bundle,
-            LifetimeExtension::default(),
-            backend,
-        )
+        .build(&alice_credential_bundle, backend)
         .expect("Error creating group.");
 
     // === Alice adds Bob ===
