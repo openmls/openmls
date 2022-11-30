@@ -194,6 +194,21 @@
 <span id="194">194</span>
 <span id="195">195</span>
 <span id="196">196</span>
+<span id="197">197</span>
+<span id="198">198</span>
+<span id="199">199</span>
+<span id="200">200</span>
+<span id="201">201</span>
+<span id="202">202</span>
+<span id="203">203</span>
+<span id="204">204</span>
+<span id="205">205</span>
+<span id="206">206</span>
+<span id="207">207</span>
+<span id="208">208</span>
+<span id="209">209</span>
+<span id="210">210</span>
+<span id="211">211</span>
 </pre><pre class="rust"><code><span class="kw">use crate</span>::{
     group::{
         core_group::create_commit_params::CreateCommitParams,
@@ -201,6 +216,7 @@
     },
     messages::public_group_state::VerifiablePublicGroupState,
 };
+<span class="kw">use </span>tls_codec::Serialize;
 
 <span class="kw">use super</span>::<span class="kw-2">*</span>;
 
@@ -248,6 +264,19 @@
             .key_store()
             .delete(<span class="kw-2">&amp;</span>kph)
             .map_err(|<span class="kw">_</span>| NewGroupError::KeyStoreDeletionError)<span class="question-mark">?</span>;
+        <span class="kw">let </span>credential_bundle: CredentialBundle = backend
+            .key_store()
+            .read(
+                <span class="kw-2">&amp;</span>key_package_bundle
+                    .key_package()
+                    .credential()
+                    .signature_key()
+                    .tls_serialize_detached()
+                    .map_err(|<span class="kw">_</span>| {
+                        LibraryError::custom(<span class="string">&quot;Unable to serialize signature public key&quot;</span>)
+                    })<span class="question-mark">?</span>,
+            )
+            .ok_or(NewGroupError::NoMatchingCredentialBundle)<span class="question-mark">?</span>;
         <span class="kw">let </span>group_config = CoreGroupConfig {
             add_ratchet_tree_extension: mls_group_config.use_ratchet_tree_extension,
         };
@@ -255,7 +284,8 @@
             .with_config(group_config)
             .with_required_capabilities(mls_group_config.required_capabilities.clone())
             .with_max_past_epoch_secrets(mls_group_config.max_past_epochs)
-            .build(backend)
+            .with_lifetime(mls_group_config.lifetime().clone())
+            .build(<span class="kw-2">&amp;</span>credential_bundle, backend)
             .map_err(|e| <span class="kw">match </span>e {
                 CoreGroupBuildError::LibraryError(e) =&gt; e.into(),
                 CoreGroupBuildError::UnsupportedProposalType =&gt; {
@@ -278,7 +308,7 @@
             mls_group_config: mls_group_config.clone(),
             group,
             proposal_store: ProposalStore::new(),
-            own_kpbs: <span class="macro">vec!</span>[],
+            own_leaf_nodes: <span class="macro">vec!</span>[],
             aad: <span class="macro">vec!</span>[],
             resumption_psk_store,
             group_state: MlsGroupState::Operational,
@@ -325,7 +355,7 @@
             mls_group_config: mls_group_config.clone(),
             group,
             proposal_store: ProposalStore::new(),
-            own_kpbs: <span class="macro">vec!</span>[],
+            own_leaf_nodes: <span class="macro">vec!</span>[],
             aad: <span class="macro">vec!</span>[],
             resumption_psk_store,
             group_state: MlsGroupState::Operational,
@@ -378,7 +408,7 @@
             mls_group_config: mls_group_config.clone(),
             group,
             proposal_store: ProposalStore::new(),
-            own_kpbs: <span class="macro">vec!</span>[],
+            own_leaf_nodes: <span class="macro">vec!</span>[],
             aad: <span class="macro">vec!</span>[],
             resumption_psk_store,
             group_state: MlsGroupState::PendingCommit(Box::new(PendingCommitState::External(

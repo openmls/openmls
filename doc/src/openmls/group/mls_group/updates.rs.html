@@ -127,16 +127,66 @@
 <span id="127">127</span>
 <span id="128">128</span>
 <span id="129">129</span>
+<span id="130">130</span>
+<span id="131">131</span>
+<span id="132">132</span>
+<span id="133">133</span>
+<span id="134">134</span>
+<span id="135">135</span>
+<span id="136">136</span>
+<span id="137">137</span>
+<span id="138">138</span>
+<span id="139">139</span>
+<span id="140">140</span>
+<span id="141">141</span>
+<span id="142">142</span>
+<span id="143">143</span>
+<span id="144">144</span>
+<span id="145">145</span>
+<span id="146">146</span>
+<span id="147">147</span>
+<span id="148">148</span>
+<span id="149">149</span>
+<span id="150">150</span>
+<span id="151">151</span>
+<span id="152">152</span>
+<span id="153">153</span>
+<span id="154">154</span>
+<span id="155">155</span>
+<span id="156">156</span>
+<span id="157">157</span>
+<span id="158">158</span>
+<span id="159">159</span>
+<span id="160">160</span>
+<span id="161">161</span>
+<span id="162">162</span>
+<span id="163">163</span>
+<span id="164">164</span>
+<span id="165">165</span>
+<span id="166">166</span>
+<span id="167">167</span>
+<span id="168">168</span>
+<span id="169">169</span>
+<span id="170">170</span>
+<span id="171">171</span>
+<span id="172">172</span>
+<span id="173">173</span>
+<span id="174">174</span>
+<span id="175">175</span>
+<span id="176">176</span>
 </pre><pre class="rust"><code><span class="kw">use </span>core_group::create_commit_params::CreateCommitParams;
+<span class="kw">use </span>openmls_traits::types::HpkeKeyPair;
 <span class="kw">use </span>tls_codec::Serialize;
+
+<span class="kw">use </span><span class="kw">crate</span>::versions::ProtocolVersion;
 
 <span class="kw">use super</span>::<span class="kw-2">*</span>;
 
 <span class="kw">impl </span>MlsGroup {
     <span class="doccomment">/// Updates the own leaf node.
     ///
-    /// A [`KeyPackageBundle`](crate::key_packages::KeyPackageBundle) can optionally
-    /// be provided. If not, a new one will be created on the fly.
+    /// An [`HpkeKeyPair`] can optionally be provided.
+    /// If not, a new one will be created on the fly.
     ///
     /// If successful, it returns a tuple of [`MlsMessageOut`] and an optional [`Welcome`].
     /// The [Welcome] is [Some] when the queue of pending proposals contained add proposals.
@@ -145,7 +195,7 @@
     </span><span class="kw">pub fn </span>self_update(
         <span class="kw-2">&amp;mut </span><span class="self">self</span>,
         backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider,
-        key_package_bundle_option: <span class="prelude-ty">Option</span>&lt;KeyPackageBundle&gt;,
+        key_pair: <span class="prelude-ty">Option</span>&lt;HpkeKeyPair&gt;,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(MlsMessageOut, <span class="prelude-ty">Option</span>&lt;Welcome&gt;), SelfUpdateError&gt; {
         <span class="self">self</span>.is_operational()<span class="question-mark">?</span>;
 
@@ -162,10 +212,25 @@
 
         <span class="comment">// Create Commit over all proposals. If a `KeyPackageBundle` was passed
         // in, use it to create an update proposal by value. TODO #751
-        </span><span class="kw">let </span>create_commit_result = <span class="kw">match </span>key_package_bundle_option {
-            <span class="prelude-val">Some</span>(kpb) =&gt; {
+        </span><span class="kw">let </span>create_commit_result = <span class="kw">match </span>key_pair {
+            <span class="prelude-val">Some</span>(key_pair) =&gt; {
+                <span class="kw">let </span>group_id = <span class="self">self</span>.group_id().clone();
+                <span class="kw">let </span><span class="kw-2">mut </span>own_leaf = <span class="self">self
+                    </span>.group
+                    .treesync()
+                    .own_leaf_node()
+                    .map_err(|<span class="kw">_</span>| {
+                        LibraryError::custom(<span class="string">&quot;The tree is broken. Couldn&#39;t find own leaf.&quot;</span>)
+                    })<span class="question-mark">?
+                    </span>.clone();
+                own_leaf.update_encryption_key(
+                    (<span class="kw-2">&amp;</span>key_pair.private.into(), <span class="kw-2">&amp;</span>key_pair.public.into()),
+                    <span class="kw-2">&amp;</span>credential_bundle,
+                    group_id,
+                    backend,
+                )<span class="question-mark">?</span>;
                 <span class="kw">let </span>update_proposal = Proposal::Update(UpdateProposal {
-                    key_package: kpb.key_package().clone(),
+                    leaf_node: own_leaf.leaf_node().clone(),
                 });
                 <span class="kw">let </span>params = CreateCommitParams::builder()
                     .framing_parameters(<span class="self">self</span>.framing_parameters())
@@ -205,11 +270,17 @@
     </span><span class="kw">pub fn </span>propose_self_update(
         <span class="kw-2">&amp;mut </span><span class="self">self</span>,
         backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider,
-        key_package_bundle_option: <span class="prelude-ty">Option</span>&lt;KeyPackageBundle&gt;,
+        key_package_bundle: <span class="prelude-ty">Option</span>&lt;KeyPackageBundle&gt;,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;MlsMessageOut, ProposeSelfUpdateError&gt; {
         <span class="self">self</span>.is_operational()<span class="question-mark">?</span>;
 
-        <span class="kw">let </span>credential = <span class="self">self</span>.credential()<span class="question-mark">?</span>;
+        <span class="kw">let </span>credential = <span class="kw">if let </span><span class="prelude-val">Some</span>(kp) = <span class="kw-2">&amp;</span>key_package_bundle {
+            <span class="comment">// If there&#39;s a key pair use the credential in there.
+            </span>kp.key_package().credential()
+        } <span class="kw">else </span>{
+            <span class="comment">// Use the old credential.
+            </span><span class="self">self</span>.credential()<span class="question-mark">?
+        </span>};
         <span class="kw">let </span>credential_bundle: CredentialBundle = backend
             .key_store()
             .read(
@@ -220,28 +291,51 @@
             )
             .ok_or(ProposeSelfUpdateError::NoMatchingCredentialBundle)<span class="question-mark">?</span>;
 
+        <span class="kw">let </span>old_credential = <span class="self">self</span>.credential()<span class="question-mark">?</span>;
+        <span class="kw">let </span>old_credential_bundle: CredentialBundle = backend
+            .key_store()
+            .read(
+                <span class="kw-2">&amp;</span>old_credential
+                    .signature_key()
+                    .tls_serialize_detached()
+                    .map_err(LibraryError::missing_bound_check)<span class="question-mark">?</span>,
+            )
+            .ok_or(ProposeSelfUpdateError::NoMatchingCredentialBundle)<span class="question-mark">?</span>;
+
         <span class="kw">let </span>tree = <span class="self">self</span>.group.treesync();
-        <span class="kw">let </span>existing_key_package = tree
+
+        <span class="comment">// Here we clone our own leaf to rekey it such that we don&#39;t change the
+        // tree.
+        // The new leaf node will be applied later when the proposal is commited.
+        </span><span class="kw">let </span><span class="kw-2">mut </span>rekeyed_own_leaf = tree
             .own_leaf_node()
-            .map_err(|<span class="kw">_</span>| LibraryError::custom(<span class="string">&quot;Expected own leaf to exist&quot;</span>))<span class="question-mark">?
-            </span>.key_package();
-        <span class="kw">let </span>key_package_bundle = <span class="kw">match </span>key_package_bundle_option {
-            <span class="prelude-val">Some</span>(kpb) =&gt; kpb,
-            <span class="prelude-val">None </span>=&gt; {
-                KeyPackageBundlePayload::from_rekeyed_key_package(existing_key_package, backend)
-                    .map_err(LibraryError::unexpected_crypto_error)<span class="question-mark">?
-                    </span>.sign(backend, <span class="kw-2">&amp;</span>credential_bundle)<span class="question-mark">?
-            </span>}
-        };
+            .map_err(|<span class="kw">_</span>| LibraryError::custom(<span class="string">&quot;The tree is broken. Couldn&#39;t find own leaf.&quot;</span>))<span class="question-mark">?
+            </span>.clone();
+        <span class="kw">if let </span><span class="prelude-val">Some</span>(key_pair) = key_package_bundle {
+            rekeyed_own_leaf.update_encryption_key(
+                key_pair.key_pair(),
+                <span class="kw-2">&amp;</span>credential_bundle,
+                <span class="self">self</span>.group_id().clone(),
+                backend,
+            )<span class="question-mark">?
+        </span>} <span class="kw">else </span>{
+            rekeyed_own_leaf.rekey(
+                <span class="self">self</span>.group_id(),
+                <span class="self">self</span>.ciphersuite(),
+                ProtocolVersion::default(), <span class="comment">// XXX: openmls/openmls#1065
+                </span><span class="kw-2">&amp;</span>credential_bundle,
+                backend,
+            )<span class="question-mark">?
+        </span>};
 
         <span class="kw">let </span>update_proposal = <span class="self">self</span>.group.create_update_proposal(
             <span class="self">self</span>.framing_parameters(),
-            <span class="kw-2">&amp;</span>credential_bundle,
-            key_package_bundle.key_package().clone(),
+            <span class="kw-2">&amp;</span>old_credential_bundle,
+            rekeyed_own_leaf.leaf_node().clone(),
             backend,
         )<span class="question-mark">?</span>;
 
-        <span class="self">self</span>.own_kpbs.push(key_package_bundle);
+        <span class="self">self</span>.own_leaf_nodes.push(rekeyed_own_leaf);
         <span class="self">self</span>.proposal_store.add(QueuedProposal::from_mls_plaintext(
             <span class="self">self</span>.ciphersuite(),
             backend,

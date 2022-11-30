@@ -521,6 +521,12 @@
 <span id="521">521</span>
 <span id="522">522</span>
 <span id="523">523</span>
+<span id="524">524</span>
+<span id="525">525</span>
+<span id="526">526</span>
+<span id="527">527</span>
+<span id="528">528</span>
+<span id="529">529</span>
 </pre><pre class="rust"><code><span class="doccomment">//! # Validation steps for incoming messages
 //!
 //! ```text
@@ -673,7 +679,7 @@
                     .leaf(<span class="kw-2">*</span>leaf_index)
                     .map_err(|<span class="kw">_</span>| ValidationError::UnknownMember)<span class="question-mark">?
                 </span>{
-                    <span class="prelude-val">Some</span>(sender_leaf) =&gt; <span class="prelude-val">Ok</span>(sender_leaf.key_package().credential().clone()),
+                    <span class="prelude-val">Some</span>(sender_leaf) =&gt; <span class="prelude-val">Ok</span>(sender_leaf.credential().clone()),
                     <span class="prelude-val">None </span>=&gt; {
                         <span class="comment">// This might not actually be an error but the sender&#39;s
                         // key package changed. Let&#39;s check old leaves we still
@@ -690,7 +696,7 @@
                                 .leaf(<span class="kw-2">*</span>index)
                                 .map_err(|<span class="kw">_</span>| ValidationError::UnknownMember)<span class="question-mark">?
                             </span>{
-                                <span class="prelude-val">Some</span>(node) =&gt; <span class="prelude-val">Ok</span>(node.key_package().credential().clone()),
+                                <span class="prelude-val">Some</span>(node) =&gt; <span class="prelude-val">Ok</span>(node.credential().clone()),
                                 <span class="prelude-val">None </span>=&gt; <span class="prelude-val">Err</span>(ValidationError::UnknownMember),
                             }
                         } <span class="kw">else </span>{
@@ -706,7 +712,7 @@
                 </span><span class="kw">match </span><span class="self">self</span>.plaintext().content() {
                     MlsContentBody::Commit(Commit { path, .. }) =&gt; path
                         .as_ref()
-                        .map(|p| p.leaf_key_package().credential().clone())
+                        .map(|p| p.leaf_node().credential().clone())
                         .ok_or(ValidationError::NoPath),
                     <span class="kw">_ </span>=&gt; <span class="prelude-val">Err</span>(ValidationError::NotACommit),
                 }
@@ -847,13 +853,18 @@
         backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;VerifiedMemberMessage, ValidationError&gt; {
         <span class="comment">// ValSem010
-        </span><span class="kw">let </span>verified_member_message = <span class="self">self
-            </span>.plaintext
+        </span><span class="self">self</span>.plaintext
             .verify(backend, <span class="kw-2">&amp;</span><span class="self">self</span>.credential)
             .map(|plaintext| VerifiedMemberMessage { plaintext })
-            .map_err(|<span class="kw">_</span>| ValidationError::InvalidSignature)<span class="question-mark">?</span>;
-        <span class="prelude-val">Ok</span>(verified_member_message)
-    }
+            .map_err(|<span class="kw">_</span>| ValidationError::InvalidSignature)
+        <span class="comment">// XXX: We have tests checking for errors here. But really we should
+        //      rewrite them.
+        // debug_assert!(
+        //     verified_member_message.is_ok(),
+        //     &quot;Verifying signature on UnverifiedGroupMessage failed with {:?}&quot;,
+        //     verified_member_message
+        // );
+    </span>}
 
     <span class="doccomment">/// Returns the credential.
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>credential(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>Credential {
@@ -898,6 +909,7 @@
 }
 
 <span class="doccomment">/// Member message, where all semantic checks on the framing have been successfully performed.
+</span><span class="attribute">#[derive(Debug)]
 </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct </span>VerifiedMemberMessage {
     plaintext: MlsPlaintext,
 }

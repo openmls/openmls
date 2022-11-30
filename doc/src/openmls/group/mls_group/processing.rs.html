@@ -212,7 +212,7 @@
             message,
             <span class="kw-2">&amp;</span>sender_ratchet_configuration,
             <span class="kw-2">&amp;</span><span class="self">self</span>.proposal_store,
-            <span class="kw-2">&amp;</span><span class="self">self</span>.own_kpbs,
+            <span class="kw-2">&amp;</span><span class="self">self</span>.own_leaf_nodes,
         )
     }
 
@@ -292,7 +292,7 @@
             .add(<span class="self">self</span>.group.context().epoch(), resumption_psk.clone());
 
         <span class="comment">// Delete own KeyPackageBundles
-        </span><span class="self">self</span>.own_kpbs.clear();
+        </span><span class="self">self</span>.own_leaf_nodes.clear();
 
         <span class="comment">// Delete a potential pending commit
         </span><span class="self">self</span>.clear_pending_commit();

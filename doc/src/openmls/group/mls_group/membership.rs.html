@@ -375,12 +375,25 @@
 <span id="375">375</span>
 <span id="376">376</span>
 <span id="377">377</span>
+<span id="378">378</span>
+<span id="379">379</span>
+<span id="380">380</span>
+<span id="381">381</span>
+<span id="382">382</span>
+<span id="383">383</span>
+<span id="384">384</span>
+<span id="385">385</span>
+<span id="386">386</span>
+<span id="387">387</span>
+<span id="388">388</span>
 </pre><pre class="rust"><code><span class="doccomment">//! MLS group membership
 //!
 //! This module contains membership-related operations and exposes [`RemoveOperation`].
 
 </span><span class="kw">use </span>core_group::create_commit_params::CreateCommitParams;
 <span class="kw">use </span>tls_codec::Serialize;
+
+<span class="kw">use </span><span class="kw">crate</span>::prelude::LeafNode;
 
 <span class="kw">use super</span>::{
     errors::{AddMembersError, LeaveGroupError, RemoveMembersError},
@@ -461,6 +474,15 @@
         </span><span class="self">self</span>.flag_state_change();
 
         <span class="prelude-val">Ok</span>((mls_messages, welcome))
+    }
+
+    <span class="doccomment">/// Returns a reference to the own [`LeafNode`].
+    </span><span class="kw">pub fn </span>own_leaf(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="kw-2">&amp;</span>LeafNode, LibraryError&gt; {
+        <span class="self">self</span>.group
+            .treesync()
+            .own_leaf_node()
+            .map(|l| l.leaf_node())
+            .map_err(|<span class="kw">_</span>| LibraryError::custom(<span class="string">&quot;There&#39;s no own leaf in this group.&quot;</span>))
     }
 
     <span class="doccomment">/// Removes members from the group.
@@ -674,9 +696,9 @@
         <span class="self">self</span>.group.treesync().full_leave_members()
     }
 
-    <span class="doccomment">/// Returns the [`KeyPackage`] of a member corresponding to the given
+    <span class="doccomment">/// Returns the [`Credential`] of a member corresponding to the given
     /// leaf index. Returns `None` if the member can not be found in this group.
-    </span><span class="kw">pub fn </span>member(<span class="kw-2">&amp;</span><span class="self">self</span>, leaf_index: u32) -&gt; <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>KeyPackage&gt; {
+    </span><span class="kw">pub fn </span>member(<span class="kw-2">&amp;</span><span class="self">self</span>, leaf_index: u32) -&gt; <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>Credential&gt; {
         <span class="self">self</span>.group
             .treesync()
             <span class="comment">// Besides from returning an error if the member can&#39;t be found,
@@ -684,7 +706,7 @@
             // sub-32 bit architecture. As a result, it should be safe to just
             // return `None` instead of propagating an error.
             </span>.leaf(leaf_index)
-            .map(|leaf| leaf.map(|l| l.key_package()))
+            .map(|leaf| leaf.map(|l| l.credential()))
             .ok()
             .flatten()
     }

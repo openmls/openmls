@@ -176,6 +176,15 @@
 <span id="176">176</span>
 <span id="177">177</span>
 <span id="178">178</span>
+<span id="179">179</span>
+<span id="180">180</span>
+<span id="181">181</span>
+<span id="182">182</span>
+<span id="183">183</span>
+<span id="184">184</span>
+<span id="185">185</span>
+<span id="186">186</span>
+<span id="187">187</span>
 </pre><pre class="rust"><code><span class="attribute">#![doc = <span class="macro">include_str!</span>(<span class="string">&quot;../README.md&quot;</span>)]
 </span><span class="doccomment">//! ## Quick Start
 //! For a quick start to learn how OpenMLS works here&#39;s the basic code to set
@@ -273,6 +282,15 @@
 //!     .expect(&quot;An unexpected error occurred.&quot;);
 //!
 //! // Now Sasha starts a new group ...
+//! // First, fetch the credential bundle from the key store
+//! let sasha_credential_id = sasha_credential
+//!     .signature_key()
+//!     .tls_serialize_detached()
+//!     .expect(&quot;Error serializing signature key.&quot;);
+//! let sasha_credential_bundle: CredentialBundle = backend
+//!     .key_store()
+//!     .read(&amp;sasha_credential_id)
+//!     .expect(&quot;An unexpected error occurred.&quot;);
 //! let mut sasha_group = MlsGroup::new(
 //!     backend,
 //!     &amp;MlsGroupConfig::default(),

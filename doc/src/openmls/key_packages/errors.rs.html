@@ -65,6 +65,9 @@
 <span id="65">65</span>
 <span id="66">66</span>
 <span id="67">67</span>
+<span id="68">68</span>
+<span id="69">69</span>
+<span id="70">70</span>
 </pre><pre class="rust"><code><span class="doccomment">//! # Key Package errors
 //!
 //! `KeyPackageError` are thrown on errors handling `KeyPackage`s and
@@ -80,12 +83,15 @@
     <span class="doccomment">/// See [`LibraryError`] for more details.
     </span><span class="attribute">#[error(transparent)]
     </span>LibraryError(<span class="attribute">#[from] </span>LibraryError),
-    <span class="doccomment">/// The lifetime extension of the key package is not valid.
-    </span><span class="attribute">#[error(<span class="string">&quot;The lifetime extension of the key package is not valid.&quot;</span>)]
-    </span>InvalidLifetimeExtension,
-    <span class="doccomment">/// A mandatory extension is missing in the key package.
-    </span><span class="attribute">#[error(<span class="string">&quot;A mandatory extension is missing in the key package.&quot;</span>)]
-    </span>MandatoryExtensionsMissing,
+    <span class="doccomment">/// The lifetime of the leaf node is not valid.
+    </span><span class="attribute">#[error(<span class="string">&quot;The lifetime of the leaf node is not valid.&quot;</span>)]
+    </span>InvalidLifetime,
+    <span class="doccomment">/// The lifetime of the leaf node is missing.
+    </span><span class="attribute">#[error(<span class="string">&quot;The lifetime of the leaf node is missing.&quot;</span>)]
+    </span>MissingLifetime,
+    <span class="doccomment">/// A key package extension is not supported in the leaf&#39;s capabilities.
+    </span><span class="attribute">#[error(<span class="string">&quot;A key package extension is not supported in the leaf&#39;s capabilities.&quot;</span>)]
+    </span>UnsupportedExtension,
     <span class="doccomment">/// The key package signature is not valid.
     </span><span class="attribute">#[error(<span class="string">&quot;The key package signature is not valid.&quot;</span>)]
     </span>InvalidSignature,

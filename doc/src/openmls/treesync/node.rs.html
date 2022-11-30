@@ -93,21 +93,14 @@
 <span id="93">93</span>
 <span id="94">94</span>
 <span id="95">95</span>
-<span id="96">96</span>
-<span id="97">97</span>
-<span id="98">98</span>
 </pre><pre class="rust"><code><span class="doccomment">//! This module contains types and methods around the [`Node`] enum. The
-//! variants of the enum are [`LeafNode`] and [`ParentNode`], both of which are
+//! variants of the enum are `LeafNode` and [`ParentNode`], both of which are
 //! defined in the respective [`leaf_node`] and [`parent_node`] submodules.
 </span><span class="kw">use </span>serde::{Deserialize, Serialize};
 
-<span class="kw">use crate</span>::{
-    ciphersuite::{HpkePrivateKey, HpkePublicKey},
-    error::LibraryError,
-    extensions::ExtensionType::ParentHash,
-};
+<span class="kw">use </span><span class="kw">crate</span>::ciphersuite::{HpkePrivateKey, HpkePublicKey};
 
-<span class="kw">use </span><span class="self">self</span>::{leaf_node::LeafNode, parent_node::ParentNode};
+<span class="kw">use </span><span class="self">self</span>::{leaf_node::OpenMlsLeafNode, parent_node::ParentNode};
 
 <span class="kw">use </span><span class="kw">super</span>::NodeError;
 
@@ -116,18 +109,18 @@
 <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">mod </span>parent_node;
 
 <span class="doccomment">/// Container enum for leaf and parent nodes.
-</span><span class="attribute">#[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
+</span><span class="attribute">#[derive(Debug, PartialEq, Eq, Clone, Serialize, Deserialize)]
 #[allow(missing_docs)]
 </span><span class="kw">pub enum </span>Node {
-    LeafNode(LeafNode),
+    LeafNode(OpenMlsLeafNode),
     ParentNode(ParentNode),
 }
 
 <span class="kw">impl </span>Node {
-    <span class="doccomment">/// Obtain a reference to the [`LeafNode`] inside this [`Node`] instance.
+    <span class="doccomment">/// Obtain a reference to the [`OpenMlsLeafNode`] inside this [`Node`] instance.
     ///
     /// Returns an error if this [`Node`] instance is actually a [`ParentNode`].
-    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>as_leaf_node(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="kw-2">&amp;</span>LeafNode, NodeError&gt; {
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>as_leaf_node(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="kw-2">&amp;</span>OpenMlsLeafNode, NodeError&gt; {
         <span class="kw">if let </span>Node::LeafNode(ln) = <span class="self">self </span>{
             <span class="prelude-val">Ok</span>(ln)
         } <span class="kw">else </span>{
@@ -137,7 +130,7 @@
 
     <span class="doccomment">/// Obtain a reference to the [`ParentNode`] inside this [`Node`] instance.
     ///
-    /// Returns an error if this [`Node`] instance is actually a [`LeafNode`].
+    /// Returns an error if this [`Node`] instance is actually a [`OpenMlsLeafNode`].
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>as_parent_node(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="kw-2">&amp;</span>ParentNode, NodeError&gt; {
         <span class="kw">if let </span>Node::ParentNode(<span class="kw-2">ref </span>node) = <span class="self">self </span>{
             <span class="prelude-val">Ok</span>(node)
@@ -149,12 +142,24 @@
     <span class="doccomment">/// Obtain a mutable reference to the [`ParentNode`] inside this [`Node`]
     /// instance.
     ///
-    /// Returns an error if this [`Node`] instance is actually a [`LeafNode`].
+    /// Returns an error if this [`Node`] instance is actually a [`OpenMlsLeafNode`].
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>as_parent_node_mut(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="kw-2">&amp;mut </span>ParentNode, NodeError&gt; {
         <span class="kw">if let </span>Node::ParentNode(<span class="kw-2">ref mut </span>node) = <span class="self">self </span>{
             <span class="prelude-val">Ok</span>(node)
         } <span class="kw">else </span>{
             <span class="prelude-val">Err</span>(NodeError::AsParentError)
+        }
+    }
+
+    <span class="doccomment">/// Obtain a mutable reference to the [`OpenMlsLeafNode`] inside this
+    /// [`Node`] instance.
+    ///
+    /// Returns an error if this [`Node`] instance is actually a [`ParentNode`].
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>as_leaf_node_mut(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="kw-2">&amp;mut </span>OpenMlsLeafNode, NodeError&gt; {
+        <span class="kw">if let </span>Node::LeafNode(ln) = <span class="self">self </span>{
+            <span class="prelude-val">Ok</span>(ln)
+        } <span class="kw">else </span>{
+            <span class="prelude-val">Err</span>(NodeError::AsLeafError)
         }
     }
 
@@ -175,23 +180,12 @@
     }
 
     <span class="doccomment">/// Returns the parent hash of a given node. Returns [`None`] if the node is
-    /// a [`LeafNode`] without a [`crate::extensions::ParentHashExtension`].
-    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>parent_hash(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>[u8]&gt;, LibraryError&gt; {
-        <span class="kw">let </span>parent_hash = <span class="kw">match </span><span class="self">self </span>{
-            Node::LeafNode(ln) =&gt; {
-                <span class="kw">let </span>kp = ln.key_package();
-                <span class="kw">if let </span><span class="prelude-val">Some</span>(extension) = kp.extension_with_type(ParentHash) {
-                    <span class="kw">let </span>parent_hash_extension = extension
-                        .as_parent_hash_extension()
-                        .map_err(|<span class="kw">_</span>| LibraryError::custom(<span class="string">&quot;Wrong extension type&quot;</span>))<span class="question-mark">?</span>;
-                    parent_hash_extension.parent_hash()
-                } <span class="kw">else </span>{
-                    <span class="kw">return </span><span class="prelude-val">Ok</span>(<span class="prelude-val">None</span>);
-                }
-            }
-            Node::ParentNode(pn) =&gt; pn.parent_hash(),
-        };
-        <span class="prelude-val">Ok</span>(<span class="prelude-val">Some</span>(parent_hash))
+    /// a [`OpenMlsLeafNode`] without a [`crate::extensions::ParentHashExtension`].
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>parent_hash(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>[u8]&gt; {
+        <span class="kw">match </span><span class="self">self </span>{
+            Node::LeafNode(ln) =&gt; ln.leaf_node.parent_hash(),
+            Node::ParentNode(pn) =&gt; <span class="prelude-val">Some</span>(pn.parent_hash()),
+        }
     }
 }
 </code></pre></div>

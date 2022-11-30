@@ -186,6 +186,7 @@
 <span id="186">186</span>
 <span id="187">187</span>
 <span id="188">188</span>
+<span id="189">189</span>
 </pre><pre class="rust"><code><span class="kw">use </span>std::collections::HashSet;
 
 <span class="kw">use </span>openmls_traits::OpenMlsCryptoProvider;
@@ -195,10 +196,9 @@
     error::LibraryError,
     framing::Sender,
     group::errors::ApplyProposalsError,
-    key_packages::KeyPackageBundle,
     messages::proposals::{AddProposal, Proposal, ProposalType},
     schedule::InitSecret,
-    treesync::{diff::TreeSyncDiff, node::leaf_node::LeafNode},
+    treesync::{diff::TreeSyncDiff, node::leaf_node::OpenMlsLeafNode},
 };
 
 <span class="kw">use super</span>::<span class="kw-2">*</span>;
@@ -231,7 +231,7 @@
 <span class="doccomment">/// Applies a list of proposals from a Commit to the tree.
 /// `proposal_queue` is the queue of proposals received or sent in the
 /// current epoch `updates_key_package_bundles` is the list of own
-/// KeyPackageBundles corresponding to updates or commits sent in the
+/// [`OpenMlsLeafNode`]s corresponding to updates or commits sent in the
 /// current epoch.
 ///
 /// Returns an error if the proposals have not been validated before.
@@ -241,7 +241,7 @@
         diff: <span class="kw-2">&amp;mut </span>TreeSyncDiff,
         backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider,
         proposal_queue: <span class="kw-2">&amp;</span>ProposalQueue,
-        key_package_bundles: <span class="kw-2">&amp;</span>[KeyPackageBundle],
+        leaf_nodes: <span class="kw-2">&amp;</span>[OpenMlsLeafNode],
     ) -&gt; <span class="prelude-ty">Result</span>&lt;ApplyProposalsValues, ApplyProposalsError&gt; {
         <span class="macro">log::debug!</span>(<span class="string">&quot;Applying proposal&quot;</span>);
         <span class="kw">let </span><span class="kw-2">mut </span>self_removed = <span class="bool-val">false</span>;
@@ -285,18 +285,18 @@
                     <span class="comment">// This should not happen with validated proposals
                     </span><span class="kw">_ </span>=&gt; <span class="kw">return </span><span class="prelude-val">Err</span>(LibraryError::custom(<span class="string">&quot;Update proposal from non-member&quot;</span>).into()),
                 };
-                <span class="kw">let </span>leaf_node: LeafNode = <span class="kw">if </span>sender_index == <span class="self">self</span>.tree.own_leaf_index() {
-                    <span class="kw">let </span>own_kpb = <span class="kw">match </span>key_package_bundles
+                <span class="kw">let </span>leaf_node: OpenMlsLeafNode = <span class="kw">if </span>sender_index == <span class="self">self</span>.tree.own_leaf_index() {
+                    <span class="kw">let </span>own_leaf_node = <span class="kw">match </span>leaf_nodes
                         .iter()
-                        .find(|<span class="kw-2">&amp;</span>kpb| kpb.key_package() == update_proposal.key_package())
+                        .find(|<span class="kw-2">&amp;</span>leaf_node| leaf_node.leaf_node() == update_proposal.leaf_node())
                     {
-                        <span class="prelude-val">Some</span>(kpb) =&gt; kpb,
-                        <span class="comment">// We lost the KeyPackageBundle apparently
-                        </span><span class="prelude-val">None </span>=&gt; <span class="kw">return </span><span class="prelude-val">Err</span>(ApplyProposalsError::MissingKeyPackageBundle),
+                        <span class="prelude-val">Some</span>(leaf_node) =&gt; leaf_node,
+                        <span class="comment">// We lost the LeafNode apparently
+                        </span><span class="prelude-val">None </span>=&gt; <span class="kw">return </span><span class="prelude-val">Err</span>(ApplyProposalsError::MissingLeafNode),
                     };
-                    LeafNode::new_from_bundle(own_kpb.clone())
+                    own_leaf_node.clone()
                 } <span class="kw">else </span>{
-                    LeafNode::new(update_proposal.key_package().clone())
+                    update_proposal.leaf_node().clone().into()
                 };
                 diff.update_leaf(leaf_node, sender_index)
                     .map_err(|<span class="kw">_</span>| LibraryError::custom(<span class="string">&quot;Update proposal from non-member&quot;</span>))<span class="question-mark">?</span>;
@@ -331,8 +331,10 @@
         <span class="comment">// Extract KeyPackages from proposals
         </span><span class="kw">let </span><span class="kw-2">mut </span>invitation_list = Vec::new();
         <span class="kw">for </span>add_proposal <span class="kw">in </span>add_proposals {
+            <span class="comment">// XXX: There are too many clones here.
+            </span><span class="kw">let </span>leaf_node = add_proposal.key_package.leaf_node();
             <span class="kw">let </span>leaf_index = diff
-                .add_leaf(add_proposal.key_package().clone())
+                .add_leaf(leaf_node.clone().into())
                 <span class="comment">// TODO #810
                 </span>.map_err(|<span class="kw">_</span>| LibraryError::custom(<span class="string">&quot;Tree full: cannot add more members&quot;</span>))<span class="question-mark">?</span>;
             invitation_list.push((leaf_index, add_proposal.clone()))

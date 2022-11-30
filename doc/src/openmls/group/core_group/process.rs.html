@@ -334,9 +334,15 @@
 <span id="334">334</span>
 <span id="335">335</span>
 <span id="336">336</span>
+<span id="337">337</span>
+<span id="338">338</span>
+<span id="339">339</span>
 </pre><pre class="rust"><code><span class="kw">use </span>core_group::{proposals::QueuedProposal, staged_commit::StagedCommit};
 
-<span class="kw">use </span><span class="kw">crate</span>::group::{errors::ValidationError, mls_group::errors::ProcessMessageError};
+<span class="kw">use crate</span>::{
+    group::{errors::ValidationError, mls_group::errors::ProcessMessageError},
+    treesync::node::leaf_node::OpenMlsLeafNode,
+};
 
 <span class="kw">use super</span>::{proposals::ProposalStore, <span class="kw-2">*</span>};
 
@@ -443,7 +449,7 @@
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         unverified_message: UnverifiedMessage,
         proposal_store: <span class="kw-2">&amp;</span>ProposalStore,
-        own_kpbs: <span class="kw-2">&amp;</span>[KeyPackageBundle],
+        own_leaf_nodes: <span class="kw-2">&amp;</span>[OpenMlsLeafNode],
         backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;ProcessedMessage, ProcessMessageError&gt; {
         <span class="comment">// Add the context to the message and verify the membership tag if necessary.
@@ -522,7 +528,7 @@
                         //  - ValSem243
                         //  - ValSem244
                         </span><span class="kw">let </span>staged_commit =
-                            <span class="self">self</span>.stage_commit(<span class="kw-2">&amp;</span>plaintext, proposal_store, own_kpbs, backend)<span class="question-mark">?</span>;
+                            <span class="self">self</span>.stage_commit(<span class="kw-2">&amp;</span>plaintext, proposal_store, own_leaf_nodes, backend)<span class="question-mark">?</span>;
                         ProcessedMessageContent::StagedCommitMessage(Box::new(staged_commit))
                     }
                 };
@@ -567,7 +573,7 @@
                         <span class="kw">let </span>staged_commit = <span class="self">self</span>.stage_commit(
                             verified_new_member_message.plaintext(),
                             proposal_store,
-                            own_kpbs,
+                            own_leaf_nodes,
                             backend,
                         )<span class="question-mark">?</span>;
                         ProcessedMessageContent::StagedCommitMessage(Box::new(staged_commit))
@@ -637,7 +643,7 @@
         message: MlsMessageIn,
         sender_ratchet_configuration: <span class="kw-2">&amp;</span>SenderRatchetConfiguration,
         proposal_store: <span class="kw-2">&amp;</span>ProposalStore,
-        own_kpbs: <span class="kw-2">&amp;</span>[KeyPackageBundle],
+        own_kpbs: <span class="kw-2">&amp;</span>[OpenMlsLeafNode],
     ) -&gt; <span class="prelude-ty">Result</span>&lt;ProcessedMessage, ProcessMessageError&gt; {
         <span class="kw">let </span>unverified_message = <span class="self">self
             </span>.parse_message(backend, message, sender_ratchet_configuration)

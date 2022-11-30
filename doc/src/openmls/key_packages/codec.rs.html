@@ -60,6 +60,8 @@
 <span id="60">60</span>
 <span id="61">61</span>
 <span id="62">62</span>
+<span id="63">63</span>
+<span id="64">64</span>
 </pre><pre class="rust"><code><span class="kw">use </span>std::io::Read;
 
 <span class="kw">use </span>openmls_traits::types::Ciphersuite;
@@ -101,13 +103,15 @@
         <span class="kw">let </span>protocol_version = ProtocolVersion::tls_deserialize(bytes)<span class="question-mark">?</span>;
         <span class="kw">let </span>ciphersuite = Ciphersuite::tls_deserialize(bytes)<span class="question-mark">?</span>;
         <span class="kw">let </span>hpke_init_key = HpkePublicKey::tls_deserialize(bytes)<span class="question-mark">?</span>;
+        <span class="kw">let </span>leaf_node = LeafNode::tls_deserialize(bytes)<span class="question-mark">?</span>;
         <span class="kw">let </span>credential = Credential::tls_deserialize(bytes)<span class="question-mark">?</span>;
         <span class="kw">let </span>extensions = Vec::&lt;Extension&gt;::tls_deserialize(bytes)<span class="question-mark">?</span>;
         <span class="kw">let </span>signature = Signature::tls_deserialize(bytes)<span class="question-mark">?</span>;
         <span class="kw">let </span>payload = KeyPackageTBS {
             protocol_version,
             ciphersuite,
-            hpke_init_key,
+            init_key: hpke_init_key,
+            leaf_node,
             credential,
             extensions,
         };

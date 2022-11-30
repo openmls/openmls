@@ -413,8 +413,6 @@
 <span id="413">413</span>
 <span id="414">414</span>
 <span id="415">415</span>
-<span id="416">416</span>
-<span id="417">417</span>
 </pre><pre class="rust"><code><span class="doccomment">//! MLS Group
 //!
 //! This module contains [`MlsGroup`] and its submodules.
@@ -424,15 +422,14 @@
     staged_commit::StagedCommit,
 };
 <span class="kw">use crate</span>::{
-    ciphersuite::signable::Signable,
     credentials::{Credential, CredentialBundle},
     error::LibraryError,
     framing::<span class="kw-2">*</span>,
     group::<span class="kw-2">*</span>,
-    key_packages::{KeyPackage, KeyPackageBundle, KeyPackageBundlePayload},
+    key_packages::{KeyPackage, KeyPackageBundle},
     messages::{proposals::<span class="kw-2">*</span>, Welcome},
     schedule::ResumptionPsk,
-    treesync::Node,
+    treesync::{node::leaf_node::OpenMlsLeafNode, Node},
 };
 <span class="kw">use </span>openmls_traits::{key_store::OpenMlsKeyStore, types::Ciphersuite, OpenMlsCryptoProvider};
 <span class="kw">use </span>std::io::{Error, Read, Write};
@@ -578,10 +575,10 @@
     <span class="comment">// A [ProposalStore] that stores incoming proposals from the DS within one epoch.
     // The store is emptied after every epoch change.
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) proposal_store: ProposalStore,
-    <span class="comment">// Own `KeyPackageBundle`s that were created for update proposals and that
-    // are needed in case an update proposal is commited by another group
+    <span class="comment">// Own [`OpenMlsLeafNode`]s that were created for update proposals and that
+    // are needed in case an update proposal is committed by another group
     // member. The vector is emptied after every epoch change.
-    </span>own_kpbs: Vec&lt;KeyPackageBundle&gt;,
+    </span>own_leaf_nodes: Vec&lt;OpenMlsLeafNode&gt;,
     <span class="comment">// The AAD that is used for all outgoing handshake messages. The AAD can be set through
     // `set_aad()`.
     </span>aad: Vec&lt;u8&gt;,
@@ -648,8 +645,7 @@
         <span class="prelude-val">Ok</span>(tree
             .own_leaf_node()
             .map_err(|<span class="kw">_</span>| LibraryError::custom(<span class="string">&quot;Own leaf node missing&quot;</span>))<span class="question-mark">?
-            </span>.key_package()
-            .credential())
+            </span>.credential())
     }
 
     <span class="doccomment">/// Get the identity of the client&#39;s [`Credential`] owning this group.

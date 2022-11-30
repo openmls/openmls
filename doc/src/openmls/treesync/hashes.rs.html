@@ -156,8 +156,6 @@
 <span id="156">156</span>
 <span id="157">157</span>
 <span id="158">158</span>
-<span id="159">159</span>
-<span id="160">160</span>
 </pre><pre class="rust"><code><span class="doccomment">//! This module contains helper structs and functions related to parent hashing
 //! and tree hashing.
 </span><span class="kw">use </span>openmls_traits::{crypto::OpenMlsCrypto, types::Ciphersuite, OpenMlsCryptoProvider};
@@ -165,8 +163,7 @@
 
 <span class="kw">use crate</span>::{binary_tree::LeafIndex, ciphersuite::HpkePublicKey, error::LibraryError};
 
-<span class="kw">use </span><span class="kw">super</span>::node::parent_node::ParentNode;
-<span class="kw">use </span><span class="kw">crate</span>::key_packages::KeyPackage;
+<span class="kw">use super</span>::{node::parent_node::ParentNode, LeafNode};
 
 <span class="doccomment">/// Helper struct that can be serialized in the course of parent hash
 /// computation.
@@ -246,11 +243,11 @@
 
 <span class="kw">impl</span>&lt;<span class="lifetime">&#39;a</span>&gt; TreeHashInput&lt;<span class="lifetime">&#39;a</span>&gt; {
     <span class="doccomment">/// Create a new [`TreeHashInput`] instance from a leaf node.
-    </span><span class="kw">pub</span>(<span class="kw">super</span>) <span class="kw">fn </span>new_leaf(leaf_index: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>LeafIndex, key_package: <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>KeyPackage&gt;) -&gt; <span class="self">Self </span>{
+    </span><span class="kw">pub</span>(<span class="kw">super</span>) <span class="kw">fn </span>new_leaf(leaf_index: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>LeafIndex, leaf_node: <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>LeafNode&gt;) -&gt; <span class="self">Self </span>{
         <span class="self">Self </span>{
             node_type: NodeType::Leaf(LeafNodeHashInput {
                 leaf_index,
-                key_package,
+                leaf_node,
             }),
         }
     }
@@ -298,8 +295,7 @@
 </span><span class="attribute">#[derive(TlsSerialize, TlsSize)]
 </span><span class="kw">struct </span>LeafNodeHashInput&lt;<span class="lifetime">&#39;a</span>&gt; {
     leaf_index: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>LeafIndex,
-    <span class="comment">// TODO #819: Replace this with a LeafNode
-    </span>key_package: <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>KeyPackage&gt;,
+    leaf_node: <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>LeafNode&gt;,
 }
 
 <span class="doccomment">/// Helper struct that can be serialized in the course of tree hash computation.

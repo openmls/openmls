@@ -76,7 +76,7 @@
     mls_group_config: MlsGroupConfig,
     group: CoreGroup,
     proposal_store: ProposalStore,
-    own_kpbs: Vec&lt;KeyPackageBundle&gt;,
+    own_leaf_nodes: Vec&lt;OpenMlsLeafNode&gt;,
     aad: Vec&lt;u8&gt;,
     resumption_psk_store: ResumptionPskStore,
     group_state: MlsGroupState,
@@ -89,7 +89,7 @@
             mls_group_config: <span class="self">self</span>.mls_group_config,
             group: <span class="self">self</span>.group,
             proposal_store: <span class="self">self</span>.proposal_store,
-            own_kpbs: <span class="self">self</span>.own_kpbs,
+            own_leaf_nodes: <span class="self">self</span>.own_leaf_nodes,
             aad: <span class="self">self</span>.aad,
             resumption_psk_store: <span class="self">self</span>.resumption_psk_store,
             group_state: <span class="self">self</span>.group_state,
@@ -107,7 +107,7 @@
         state.serialize_field(<span class="string">&quot;mls_group_config&quot;</span>, <span class="kw-2">&amp;</span><span class="self">self</span>.mls_group_config)<span class="question-mark">?</span>;
         state.serialize_field(<span class="string">&quot;group&quot;</span>, <span class="kw-2">&amp;</span><span class="self">self</span>.group)<span class="question-mark">?</span>;
         state.serialize_field(<span class="string">&quot;proposal_store&quot;</span>, <span class="kw-2">&amp;</span><span class="self">self</span>.proposal_store)<span class="question-mark">?</span>;
-        state.serialize_field(<span class="string">&quot;own_kpbs&quot;</span>, <span class="kw-2">&amp;</span><span class="self">self</span>.own_kpbs)<span class="question-mark">?</span>;
+        state.serialize_field(<span class="string">&quot;own_leaf_nodes&quot;</span>, <span class="kw-2">&amp;</span><span class="self">self</span>.own_leaf_nodes)<span class="question-mark">?</span>;
         state.serialize_field(<span class="string">&quot;aad&quot;</span>, <span class="kw-2">&amp;</span><span class="self">self</span>.aad)<span class="question-mark">?</span>;
         state.serialize_field(<span class="string">&quot;resumption_psk_store&quot;</span>, <span class="kw-2">&amp;</span><span class="self">self</span>.resumption_psk_store)<span class="question-mark">?</span>;
         state.serialize_field(<span class="string">&quot;group_state&quot;</span>, <span class="kw-2">&amp;</span><span class="self">self</span>.group_state)<span class="question-mark">?</span>;

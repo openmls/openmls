@@ -453,12 +453,6 @@
 <span id="453">453</span>
 <span id="454">454</span>
 <span id="455">455</span>
-<span id="456">456</span>
-<span id="457">457</span>
-<span id="458">458</span>
-<span id="459">459</span>
-<span id="460">460</span>
-<span id="461">461</span>
 </pre><pre class="rust"><code><span class="kw">use </span>openmls_traits::OpenMlsCryptoProvider;
 
 <span class="kw">use crate</span>::{
@@ -466,7 +460,7 @@
     group::{core_group::<span class="kw-2">*</span>, errors::CreateCommitError},
     treesync::{
         diff::TreeSyncDiff,
-        node::parent_node::PlainUpdatePathNode,
+        node::{leaf_node::OpenMlsLeafNode, parent_node::PlainUpdatePathNode},
         treekem::{PlaintextSecret, UpdatePath},
     },
     versions::ProtocolVersion,
@@ -582,7 +576,7 @@
             </span>.apply_proposals(<span class="kw-2">&amp;mut </span>diff, backend, <span class="kw-2">&amp;</span>proposal_queue, <span class="kw-2">&amp;</span>[])
             .map_err(|e| <span class="kw">match </span>e {
                 <span class="kw">crate</span>::group::errors::ApplyProposalsError::LibraryError(e) =&gt; e.into(),
-                <span class="kw">crate</span>::group::errors::ApplyProposalsError::MissingKeyPackageBundle =&gt; {
+                <span class="kw">crate</span>::group::errors::ApplyProposalsError::MissingLeafNode =&gt; {
                     CreateCommitError::OwnKeyNotFound
                 }
             })<span class="question-mark">?</span>;
@@ -590,10 +584,24 @@
             <span class="kw">return </span><span class="prelude-val">Err</span>(CreateCommitError::CannotRemoveSelf);
         }
 
-        <span class="comment">// Generate the [`KeyPackageBundlePayload`]. If we&#39;re doing an external
-        // commit, this is also the place, where we&#39;re adding ourselves to the
-        // tree.
-        </span><span class="kw">let </span>key_package_bundle_payload = <span class="self">self</span>.prepare_kpb_payload(backend, <span class="kw-2">&amp;</span>params, <span class="kw-2">&amp;mut </span>diff)<span class="question-mark">?</span>;
+        <span class="comment">// Update keys in the leaf.
+        </span><span class="kw">if </span>params.commit_type() == CommitType::External {
+            <span class="comment">// If this is an external commit we add a fresh leaf to the diff.
+            // Generate a KeyPackageBundle to generate a payload from for later
+            // path generation.
+            </span><span class="kw">let </span>key_package_bundle = KeyPackageBundle::new(
+                <span class="kw-2">&amp;</span>[<span class="self">self</span>.ciphersuite()],
+                params.credential_bundle(),
+                backend,
+                <span class="macro">vec!</span>[],
+            )
+            .map_err(|<span class="kw">_</span>| LibraryError::custom(<span class="string">&quot;Unexpected KeyPackage error&quot;</span>))<span class="question-mark">?</span>;
+
+            <span class="kw">let </span><span class="kw-2">mut </span>leaf_node: OpenMlsLeafNode = key_package_bundle.into();
+            leaf_node.set_leaf_index(own_leaf_index);
+            diff.add_leaf(leaf_node)
+                .map_err(|<span class="kw">_</span>| LibraryError::custom(<span class="string">&quot;Tree full: cannot add more members&quot;</span>))<span class="question-mark">?</span>;
+        }
 
         <span class="kw">let </span>serialized_group_context = <span class="self">self
             </span>.group_context
@@ -605,12 +613,27 @@
                 || contains_own_updates
                 || params.force_self_update()
             {
+                <span class="kw">if </span>params.commit_type() != CommitType::External {
+                    <span class="comment">// If we&#39;re in the tree, we rekey our existing leaf.
+                    </span><span class="kw">let </span>own_diff_leaf = diff
+                        .own_leaf_mut()
+                        .map_err(|<span class="kw">_</span>| LibraryError::custom(<span class="string">&quot;Unable to get own leaf from diff&quot;</span>))<span class="question-mark">?</span>;
+                    own_diff_leaf.rekey(
+                        <span class="self">self</span>.group_id(),
+                        <span class="self">self</span>.ciphersuite,
+                        ProtocolVersion::default(), <span class="comment">// XXX: openmls/openmls#1065
+                        </span>params.credential_bundle(),
+                        backend,
+                    )<span class="question-mark">?</span>;
+                    diff.clear_tree_hash()<span class="question-mark">?</span>;
+                }
+
                 <span class="comment">// Derive and apply an update path based on the previously
-                // generated KeyPackageBundle.
-                </span><span class="kw">let </span>(key_package, plain_path, commit_secret) = diff.apply_own_update_path(
+                // generated new leaf.
+                </span><span class="kw">let </span>(plain_path, commit_secret) = diff.apply_own_update_path(
                     backend,
                     ciphersuite,
-                    key_package_bundle_payload,
+                    <span class="self">self</span>.group_id().clone(),
                     params.credential_bundle(),
                 )<span class="question-mark">?</span>;
 
@@ -621,8 +644,9 @@
                     <span class="kw-2">&amp;</span>plain_path,
                     <span class="kw-2">&amp;</span>serialized_group_context,
                     <span class="kw-2">&amp;</span>apply_proposals_values.exclusion_list(),
-                    key_package,
                 )<span class="question-mark">?</span>;
+                <span class="kw">let </span>leaf_node = diff.own_leaf().map_err(|<span class="kw">_</span>| LibraryError::custom(<span class="string">&quot;Couldn&#39;t find own leaf&quot;</span>))<span class="question-mark">?</span>.clone();
+                <span class="kw">let </span>encrypted_path = UpdatePath::new(leaf_node.into(),  encrypted_path);
                 PathProcessingResult {
                     commit_secret: <span class="prelude-val">Some</span>(commit_secret),
                     encrypted_path: <span class="prelude-val">Some</span>(encrypted_path),
@@ -639,10 +663,10 @@
         };
 
         <span class="comment">// Keep a copy of the update path key package
-        </span><span class="kw">let </span>commit_update_key_package = path_processing_result
+        </span><span class="kw">let </span>commit_update_leaf_node = path_processing_result
             .encrypted_path
             .as_ref()
-            .map(|update| update.leaf_key_package().clone());
+            .map(|update| update.leaf_node().clone());
 
         <span class="comment">// Create commit message
         </span><span class="kw">let </span>commit = Commit {
@@ -834,7 +858,7 @@
         <span class="kw">let </span>staged_commit = StagedCommit::new(
             proposal_queue,
             StagedCommitState::GroupMember(Box::new(staged_commit_state)),
-            commit_update_key_package,
+            commit_update_leaf_node,
         );
 
         <span class="prelude-val">Ok</span>(CreateCommitResult {
@@ -882,42 +906,6 @@
             free_leaf_index
         };
         <span class="prelude-val">Ok</span>(leaf_index)
-    }
-
-    <span class="doccomment">/// Helper function that prepares the [`KeyPackageBundlePayload`] for use in
-    /// a commit depending on the [`CommitType`].
-    </span><span class="kw">fn </span>prepare_kpb_payload(
-        <span class="kw-2">&amp;</span><span class="self">self</span>,
-        backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider,
-        params: <span class="kw-2">&amp;</span>CreateCommitParams,
-        diff: <span class="kw-2">&amp;mut </span>TreeSyncDiff,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;KeyPackageBundlePayload, LibraryError&gt; {
-        <span class="kw">let </span>key_package = <span class="kw">if </span>params.commit_type() == CommitType::External {
-            <span class="comment">// Generate a KeyPackageBundle to generate a payload from for later
-            // path generation.
-            </span><span class="kw">let </span>key_package_bundle = KeyPackageBundle::new(
-                <span class="kw-2">&amp;</span>[<span class="self">self</span>.ciphersuite()],
-                params.credential_bundle(),
-                backend,
-                <span class="macro">vec!</span>[],
-            )
-            .map_err(|<span class="kw">_</span>| LibraryError::custom(<span class="string">&quot;Unexpected KeyPackage error&quot;</span>))<span class="question-mark">?</span>;
-
-            diff.add_leaf(key_package_bundle.key_package().clone())
-                .map_err(|<span class="kw">_</span>| LibraryError::custom(<span class="string">&quot;Tree full: cannot add more members&quot;</span>))<span class="question-mark">?</span>;
-            diff.own_leaf()
-                .map_err(|<span class="kw">_</span>| LibraryError::custom(<span class="string">&quot;Expected own leaf&quot;</span>))<span class="question-mark">?
-                </span>.key_package()
-        } <span class="kw">else </span>{
-            <span class="self">self</span>.treesync()
-                .own_leaf_node()
-                .map_err(|<span class="kw">_</span>| LibraryError::custom(<span class="string">&quot;Expected own leaf&quot;</span>))<span class="question-mark">?
-                </span>.key_package()
-        };
-        <span class="comment">// Create a new key package bundle payload from the existing key
-        // package.
-        </span>KeyPackageBundlePayload::from_rekeyed_key_package(key_package, backend)
-            .map_err(LibraryError::unexpected_crypto_error)
     }
 }
 </code></pre></div>

@@ -400,7 +400,6 @@
     binary_tree::{LeafIndex, OutOfBoundsError},
     ciphersuite::{hash_ref::KeyPackageRef, HpkePublicKey},
     error::LibraryError,
-    key_packages::KeyPackage,
     messages::{proposals::AddProposal, EncryptedGroupSecrets, GroupSecrets, PathSecret},
     schedule::{psk::PreSharedKeys, CommitSecret, JoinerSecret},
     versions::ProtocolVersion,
@@ -409,14 +408,14 @@
 <span class="kw">use super</span>::{
     diff::TreeSyncDiff,
     node::parent_node::{ParentNode, PlainUpdatePathNode},
-    ApplyUpdatePathError,
+    ApplyUpdatePathError, LeafNode,
 };
 
 <span class="kw">impl</span>&lt;<span class="lifetime">&#39;a</span>&gt; TreeSyncDiff&lt;<span class="lifetime">&#39;a</span>&gt; {
     <span class="doccomment">/// Encrypt the given `path` to the nodes in the copath resolution of the
     /// owner of this [`TreeSyncDiff`]. The `group_context` is used in the
     /// encryption of the nodes, while the `exclusion_list` is used to filter
-    /// target leaves from the encryption targets. The given [`KeyPackage`] is
+    /// target leaves from the encryption targets. The given [`LeafNode`] is
     /// included in the resulting [`UpdatePath`].
     ///
     /// Returns the encrypted path (i.e. an [`UpdatePath`] instance).
@@ -429,8 +428,7 @@
         path: <span class="kw-2">&amp;</span>[PlainUpdatePathNode],
         group_context: <span class="kw-2">&amp;</span>[u8],
         exclusion_list: <span class="kw-2">&amp;</span>HashSet&lt;<span class="kw-2">&amp;</span>LeafIndex&gt;,
-        leaf_key_package: KeyPackage,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;UpdatePath, LibraryError&gt; {
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;Vec&lt;UpdatePathNode&gt;, LibraryError&gt; {
         <span class="kw">let </span>copath_resolutions = <span class="self">self</span>.copath_resolutions(<span class="self">self</span>.own_leaf_index(), exclusion_list)<span class="question-mark">?</span>;
 
         <span class="comment">// There should be as many copath resolutions.
@@ -443,10 +441,7 @@
             .map(|(node, resolution)| node.encrypt(backend, ciphersuite, resolution, group_context))
             .collect::&lt;Vec&lt;UpdatePathNode&gt;&gt;();
 
-        <span class="prelude-val">Ok</span>(UpdatePath {
-            leaf_key_package,
-            nodes,
-        })
+        <span class="prelude-val">Ok</span>(nodes)
     }
 
     <span class="doccomment">/// Decrypt an [`UpdatePath`] originating from the given
@@ -554,7 +549,7 @@
     <span class="kw">pub</span>(<span class="kw">crate</span>) group_context: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8],
 }
 
-<span class="doccomment">/// 7.7. Update Paths
+<span class="doccomment">/// 8.6. Update Paths
 ///
 /// ```text
 /// struct {
@@ -699,32 +694,37 @@
     }
 }
 
-<span class="doccomment">/// 7.7. Update Paths
+<span class="doccomment">/// 8.6. Update Paths
 ///
 /// ```text
 /// struct {
-///     KeyPackage leaf_key_package;
+///     LeafNode leaf_node;
 ///     UpdatePathNode nodes&lt;V&gt;;
 /// } UpdatePath;
 /// ```
 </span><span class="attribute">#[derive(
-    Debug, PartialEq, Clone, Serialize, Deserialize, TlsSerialize, TlsDeserialize, TlsSize,
+    Debug, PartialEq, Eq, Clone, Serialize, Deserialize, TlsSerialize, TlsDeserialize, TlsSize,
 )]
 </span><span class="kw">pub struct </span>UpdatePath {
-    leaf_key_package: KeyPackage,
+    leaf_node: LeafNode,
     nodes: Vec&lt;UpdatePathNode&gt;,
 }
 
 <span class="kw">impl </span>UpdatePath {
-    <span class="doccomment">/// Return the `leaf_key_package` of this [`UpdatePath`].
-    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>leaf_key_package(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>KeyPackage {
-        <span class="kw-2">&amp;</span><span class="self">self</span>.leaf_key_package
+    <span class="doccomment">/// Generate a new update path.
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>new(leaf_node: LeafNode, nodes: Vec&lt;UpdatePathNode&gt;) -&gt; <span class="self">Self </span>{
+        <span class="self">Self </span>{ leaf_node, nodes }
+    }
+
+    <span class="doccomment">/// Return the `leaf_node` of this [`UpdatePath`].
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>leaf_node(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>LeafNode {
+        <span class="kw-2">&amp;</span><span class="self">self</span>.leaf_node
     }
 
     <span class="doccomment">/// Consume the [`UpdatePath`] and return its individual parts: A
-    /// [`KeyPackage`] and a vector of [`UpdatePathNode`] instances.
-    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>into_parts(<span class="self">self</span>) -&gt; (KeyPackage, Vec&lt;UpdatePathNode&gt;) {
-        (<span class="self">self</span>.leaf_key_package, <span class="self">self</span>.nodes)
+    /// [`LeafNode`] and a vector of [`UpdatePathNode`] instances.
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>into_parts(<span class="self">self</span>) -&gt; (LeafNode, Vec&lt;UpdatePathNode&gt;) {
+        (<span class="self">self</span>.leaf_node, <span class="self">self</span>.nodes)
     }
 
     <span class="attribute">#[cfg(test)]
@@ -741,8 +741,8 @@
 
     <span class="attribute">#[cfg(test)]
     </span><span class="doccomment">/// Set the path key package.
-    </span><span class="kw">pub fn </span>set_leaf_key_package(<span class="kw-2">&amp;mut </span><span class="self">self</span>, key_package: KeyPackage) {
-        <span class="self">self</span>.leaf_key_package = key_package
+    </span><span class="kw">pub fn </span>set_leaf_node(<span class="kw-2">&amp;mut </span><span class="self">self</span>, leaf_node: LeafNode) {
+        <span class="self">self</span>.leaf_node = leaf_node
     }
 
     <span class="attribute">#[cfg(test)]

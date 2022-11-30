@@ -594,9 +594,9 @@
     <span class="doccomment">/// stage_commit was called with an MlsPlaintext that is not a Commit.
     </span><span class="attribute">#[error(<span class="string">&quot;stage_commit was called with an MlsPlaintext that is not a Commit.&quot;</span>)]
     </span>WrongPlaintextContentType,
-    <span class="doccomment">/// Unable to verify the key package signature.
-    </span><span class="attribute">#[error(<span class="string">&quot;Unable to verify the key package signature.&quot;</span>)]
-    </span>PathKeyPackageVerificationFailure,
+    <span class="doccomment">/// Unable to verify the leaf node signature.
+    </span><span class="attribute">#[error(<span class="string">&quot;Unable to verify the leaf node signature.&quot;</span>)]
+    </span>PathLeafNodeVerificationFailure,
     <span class="doccomment">/// Unable to determine commit path.
     </span><span class="attribute">#[error(<span class="string">&quot;Unable to determine commit path.&quot;</span>)]
     </span>RequiredPathNotFound,
@@ -873,9 +873,9 @@
     <span class="doccomment">/// See [`LibraryError`] for more details.
     </span><span class="attribute">#[error(transparent)]
     </span>LibraryError(<span class="attribute">#[from] </span>LibraryError),
-    <span class="doccomment">/// Own KeyPackageBundle was not found in the key store.
-    </span><span class="attribute">#[error(<span class="string">&quot;Own KeyPackageBundle was not found in the key store.&quot;</span>)]
-    </span>MissingKeyPackageBundle,
+    <span class="doccomment">/// Own LeafNode was not found in the key store.
+    </span><span class="attribute">#[error(<span class="string">&quot;Own LeafNode was not found in the key store.&quot;</span>)]
+    </span>MissingLeafNode,
 }
 
 <span class="comment">// Core group build error

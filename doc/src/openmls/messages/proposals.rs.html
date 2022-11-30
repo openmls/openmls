@@ -379,6 +379,18 @@
 <span id="379">379</span>
 <span id="380">380</span>
 <span id="381">381</span>
+<span id="382">382</span>
+<span id="383">383</span>
+<span id="384">384</span>
+<span id="385">385</span>
+<span id="386">386</span>
+<span id="387">387</span>
+<span id="388">388</span>
+<span id="389">389</span>
+<span id="390">390</span>
+<span id="391">391</span>
+<span id="392">392</span>
+<span id="393">393</span>
 </pre><pre class="rust"><code><span class="doccomment">//! # Proposals
 //!
 //! This module defines all the different types of Proposals.
@@ -392,6 +404,7 @@
     extensions::Extension,
     group::GroupId,
     key_packages::<span class="kw-2">*</span>,
+    prelude::LeafNode,
     schedule::psk::<span class="kw-2">*</span>,
     versions::ProtocolVersion,
 };
@@ -419,7 +432,18 @@
 /// | 0x0007           | app_ack                  | Y           | RFC XXXX  |
 /// | 0xff00  - 0xffff | Reserved for Private Use | N/A         | RFC XXXX  |
 </span><span class="attribute">#[derive(
-    PartialEq, Eq, Clone, Copy, Debug, TlsSerialize, TlsDeserialize, TlsSize, Serialize, Deserialize,
+    PartialEq,
+    Eq,
+    PartialOrd,
+    Ord,
+    Clone,
+    Copy,
+    Debug,
+    TlsSerialize,
+    TlsDeserialize,
+    TlsSize,
+    Serialize,
+    Deserialize,
 )]
 #[repr(u16)]
 #[allow(missing_docs)]
@@ -553,18 +577,18 @@
 <span class="doccomment">/// Update Proposal.
 ///
 /// An Update proposal is a similar mechanism to Add with the distinction that it is the
-/// sender&#39;s leaf KeyPackage in the tree which would be updated with a new KeyPackage.
+/// sender&#39;s leaf node in the tree which would be updated with a new [`LeafNode`].
 </span><span class="attribute">#[derive(
-    Debug, PartialEq, Clone, Serialize, Deserialize, TlsDeserialize, TlsSerialize, TlsSize,
+    Debug, PartialEq, Eq, Clone, Serialize, Deserialize, TlsDeserialize, TlsSerialize, TlsSize,
 )]
 </span><span class="kw">pub struct </span>UpdateProposal {
-    <span class="kw">pub</span>(<span class="kw">crate</span>) key_package: KeyPackage,
+    <span class="kw">pub</span>(<span class="kw">crate</span>) leaf_node: LeafNode,
 }
 
 <span class="kw">impl </span>UpdateProposal {
     <span class="doccomment">/// Returns a reference to the key package in the proposal.
-    </span><span class="kw">pub fn </span>key_package(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>KeyPackage {
-        <span class="kw-2">&amp;</span><span class="self">self</span>.key_package
+    </span><span class="kw">pub fn </span>leaf_node(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>LeafNode {
+        <span class="kw-2">&amp;</span><span class="self">self</span>.leaf_node
     }
 }
 

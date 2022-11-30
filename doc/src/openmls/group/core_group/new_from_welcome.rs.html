@@ -233,6 +233,7 @@
 <span id="233">233</span>
 <span id="234">234</span>
 <span id="235">235</span>
+<span id="236">236</span>
 </pre><pre class="rust"><code><span class="kw">use </span>log::debug;
 <span class="kw">use </span>openmls_traits::crypto::OpenMlsCrypto;
 <span class="kw">use </span>tls_codec::Deserialize;
@@ -379,15 +380,15 @@
             TreeSyncFromNodesError::PublicTreeError(e) =&gt; WelcomeError::PublicTreeError(e),
         })<span class="question-mark">?</span>;
 
-        <span class="kw">let </span>signer_key_package = tree
+        <span class="kw">let </span>signer_credential = tree
             .leaf(group_info.signer())
             .map_err(|<span class="kw">_</span>| WelcomeError::UnknownSender)<span class="question-mark">?
             </span>.ok_or(WelcomeError::UnknownSender)<span class="question-mark">?
-            </span>.key_package();
+            </span>.credential();
 
         <span class="comment">// Verify GroupInfo signature
         </span>group_info
-            .verify_no_out(backend, signer_key_package.credential())
+            .verify_no_out(backend, signer_credential)
             .map_err(|<span class="kw">_</span>| WelcomeError::InvalidGroupInfoSignature)<span class="question-mark">?</span>;
 
         <span class="comment">// Compute state
@@ -437,6 +438,7 @@
             <span class="macro">log::error!</span>(<span class="string">&quot;Confirmation tag mismatch&quot;</span>);
             <span class="macro">log_crypto!</span>(trace, <span class="string">&quot;  Got:      {:x?}&quot;</span>, confirmation_tag);
             <span class="macro">log_crypto!</span>(trace, <span class="string">&quot;  Expected: {:x?}&quot;</span>, group_info.confirmation_tag());
+            <span class="macro">debug_assert!</span>(<span class="bool-val">false</span>, <span class="string">&quot;Confirmation tag mismatch&quot;</span>);
             <span class="prelude-val">Err</span>(WelcomeError::ConfirmationTagMismatch)
         } <span class="kw">else </span>{
             <span class="kw">let </span>message_secrets_store = MessageSecretsStore::new_with_secret(<span class="number">0</span>, message_secrets);

@@ -801,38 +801,6 @@
 <span id="801">801</span>
 <span id="802">802</span>
 <span id="803">803</span>
-<span id="804">804</span>
-<span id="805">805</span>
-<span id="806">806</span>
-<span id="807">807</span>
-<span id="808">808</span>
-<span id="809">809</span>
-<span id="810">810</span>
-<span id="811">811</span>
-<span id="812">812</span>
-<span id="813">813</span>
-<span id="814">814</span>
-<span id="815">815</span>
-<span id="816">816</span>
-<span id="817">817</span>
-<span id="818">818</span>
-<span id="819">819</span>
-<span id="820">820</span>
-<span id="821">821</span>
-<span id="822">822</span>
-<span id="823">823</span>
-<span id="824">824</span>
-<span id="825">825</span>
-<span id="826">826</span>
-<span id="827">827</span>
-<span id="828">828</span>
-<span id="829">829</span>
-<span id="830">830</span>
-<span id="831">831</span>
-<span id="832">832</span>
-<span id="833">833</span>
-<span id="834">834</span>
-<span id="835">835</span>
 </pre><pre class="rust"><code><span class="doccomment">//! # Key Packages
 //!
 //! Key packages are pre-published public keys that provide some information
@@ -917,8 +885,8 @@
     error::LibraryError,
     extensions::{
         errors::ExtensionError, CapabilitiesExtension, Extension, ExtensionType, LifetimeExtension,
-        ParentHashExtension, RequiredCapabilitiesExtension,
     },
+    treesync::LeafNode,
     versions::ProtocolVersion,
 };
 <span class="kw">use </span>log::error;
@@ -928,7 +896,9 @@
     OpenMlsCryptoProvider,
 };
 <span class="kw">use </span>serde::{Deserialize, Serialize};
-<span class="kw">use </span>tls_codec::{Deserialize <span class="kw">as </span>TlsDeserializeTrait, Serialize <span class="kw">as </span>TlsSerializeTrait, TlsSize};
+<span class="kw">use </span>tls_codec::{
+    Deserialize <span class="kw">as </span>TlsDeserializeTrait, Serialize <span class="kw">as </span>TlsSerializeTrait, TlsSize, VLBytes,
+};
 
 <span class="comment">// Private
 </span><span class="kw">mod </span>codec;
@@ -960,16 +930,18 @@
 </span><span class="kw">struct </span>KeyPackageTBS {
     protocol_version: ProtocolVersion,
     ciphersuite: Ciphersuite,
-    hpke_init_key: HpkePublicKey,
-    credential: Credential,
-    extensions: Vec&lt;Extension&gt;,
+    init_key: HpkePublicKey,
+    leaf_node: LeafNode,
+    credential: Credential, <span class="comment">// TODO[FK]: remove
+    </span>extensions: Vec&lt;Extension&gt;,
 }
 
 <span class="kw">impl </span>tls_codec::Serialize <span class="kw">for </span>KeyPackageTBS {
     <span class="kw">fn </span>tls_serialize&lt;W: std::io::Write&gt;(<span class="kw-2">&amp;</span><span class="self">self</span>, writer: <span class="kw-2">&amp;mut </span>W) -&gt; <span class="prelude-ty">Result</span>&lt;usize, tls_codec::Error&gt; {
         <span class="kw">let </span><span class="kw-2">mut </span>written = <span class="self">self</span>.protocol_version.tls_serialize(writer)<span class="question-mark">?</span>;
         written += <span class="self">self</span>.ciphersuite.tls_serialize(writer)<span class="question-mark">?</span>;
-        written += <span class="self">self</span>.hpke_init_key.tls_serialize(writer)<span class="question-mark">?</span>;
+        written += <span class="self">self</span>.init_key.tls_serialize(writer)<span class="question-mark">?</span>;
+        written += <span class="self">self</span>.leaf_node.tls_serialize(writer)<span class="question-mark">?</span>;
         written += <span class="self">self</span>.credential.tls_serialize(writer)<span class="question-mark">?</span>;
         <span class="self">self</span>.extensions.tls_serialize(writer).map(|l| l + written)
     }
@@ -994,17 +966,8 @@
 }
 
 <span class="kw">impl </span>KeyPackageTBS {
-    <span class="kw">fn </span>from_key_package(kp: <span class="kw-2">&amp;</span>KeyPackage, hpke_init_key: HpkePublicKey) -&gt; <span class="self">Self </span>{
-        <span class="self">Self </span>{
-            protocol_version: kp.payload.protocol_version,
-            ciphersuite: kp.payload.ciphersuite,
-            hpke_init_key,
-            credential: kp.payload.credential.clone(),
-            extensions: kp.payload.extensions.clone(),
-        }
-    }
-
     <span class="doccomment">/// Remove an extension from the KeyPackage.
+    </span><span class="attribute">#[cfg(any(feature = <span class="string">&quot;test-utils&quot;</span>, test))]
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>remove_extension(<span class="kw-2">&amp;mut </span><span class="self">self</span>, extension_type: ExtensionType) {
         <span class="self">self</span>.extensions
             .retain(|e| e.extension_type() != extension_type);
@@ -1026,7 +989,7 @@
     <span class="doccomment">/// Replace the public key in the KeyPackage.
     </span><span class="attribute">#[cfg(any(feature = <span class="string">&quot;test-utils&quot;</span>, test))]
     </span><span class="kw">pub fn </span>set_public_key(<span class="kw-2">&amp;mut </span><span class="self">self</span>, public_key: HpkePublicKey) {
-        <span class="self">self</span>.hpke_init_key = public_key
+        <span class="self">self</span>.init_key = public_key
     }
     <span class="doccomment">/// Replace the version in the KeyPackage.
     </span><span class="attribute">#[cfg(any(feature = <span class="string">&quot;test-utils&quot;</span>, test))]
@@ -1085,51 +1048,38 @@
     }
 }
 
-<span class="doccomment">/// Mandatory extensions for key packages.
-</span><span class="kw">const </span>MANDATORY_EXTENSIONS: [ExtensionType; <span class="number">2</span>] =
-    [ExtensionType::Capabilities, ExtensionType::Lifetime];
-
 <span class="comment">// Public `KeyPackage` functions.
 </span><span class="kw">impl </span>KeyPackage {
     <span class="doccomment">/// Verify that this key package is valid:
     /// * verify that the signature on this key package is valid
-    /// * verify that all mandatory extensions are present
+    /// * verify that all extensions are supported by the leaf node
     /// * make sure that the lifetime is valid
     /// Returns `Ok(())` if all checks succeed and `KeyPackageError` otherwise
     </span><span class="kw">pub fn </span>verify(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(), KeyPackageVerifyError&gt; {
-        <span class="comment">//  First make sure that all mandatory extensions are present.
-        </span><span class="kw">let </span><span class="kw-2">mut </span>mandatory_extensions_found = MANDATORY_EXTENSIONS.to_vec();
-        <span class="kw">for </span>extension <span class="kw">in </span><span class="self">self</span>.payload.extensions.iter() {
-            <span class="kw">if let </span><span class="prelude-val">Some</span>(p) = mandatory_extensions_found
-                .iter()
-                .position(|<span class="kw-2">&amp;</span>e| e == extension.extension_type())
+        <span class="comment">// Extension included in the extensions or leaf_node.extensions fields
+        // MUST be included in the leaf_node.capabilities field.
+        </span><span class="kw">for </span>extension <span class="kw">in </span><span class="self">self</span>.payload.extensions.iter() {
+            <span class="kw">if </span>!<span class="self">self
+                </span>.payload
+                .leaf_node
+                .supports_extension(<span class="kw-2">&amp;</span>extension.extension_type())
             {
-                <span class="kw">let _ </span>= mandatory_extensions_found.remove(p);
-            }
-            <span class="comment">// Make sure the lifetime is valid.
-            </span><span class="kw">if </span>extension.extension_type() == ExtensionType::Lifetime {
-                <span class="kw">match </span>extension.as_lifetime_extension() {
-                    <span class="prelude-val">Ok</span>(e) =&gt; {
-                        <span class="kw">if </span>!e.is_valid() {
-                            <span class="macro">log::error!</span>(<span class="string">&quot;Invalid lifetime extension in key package.&quot;</span>);
-                            <span class="kw">return </span><span class="prelude-val">Err</span>(KeyPackageVerifyError::InvalidLifetimeExtension);
-                        }
-                    }
-                    <span class="prelude-val">Err</span>(<span class="kw">_</span>) =&gt; {
-                        <span class="macro">log::error!</span>(<span class="string">&quot;as_lifetime_extension failed while verifying a key package.&quot;</span>);
-                        <span class="kw">return </span><span class="prelude-val">Err</span>(LibraryError::custom(<span class="string">&quot;Expected a lifetime extension&quot;</span>).into());
-                    }
-                }
+                <span class="kw">return </span><span class="prelude-val">Err</span>(KeyPackageVerifyError::UnsupportedExtension);
             }
         }
 
-        <span class="comment">// Make sure we found all mandatory extensions.
-        </span><span class="kw">if </span>!mandatory_extensions_found.is_empty() {
-            <span class="macro">log::error!</span>(<span class="string">&quot;This key package is missing mandatory extensions.&quot;</span>);
-            <span class="kw">return </span><span class="prelude-val">Err</span>(KeyPackageVerifyError::MandatoryExtensionsMissing);
+        <span class="comment">// Ensure validity of the life time extension in the leaf node.
+        </span><span class="kw">if let </span><span class="prelude-val">Some</span>(life_time) = <span class="self">self</span>.payload.leaf_node.life_time() {
+            <span class="kw">if </span>!life_time.is_valid() {
+                <span class="kw">return </span><span class="prelude-val">Err</span>(KeyPackageVerifyError::InvalidLifetime);
+            }
+        } <span class="kw">else </span>{
+            <span class="comment">// This assumes that we only verify key packages with leaf nodes
+            // that were created for the key package.
+            </span><span class="kw">return </span><span class="prelude-val">Err</span>(KeyPackageVerifyError::MissingLifetime);
         }
 
         <span class="comment">// Verify the signature on this key package.
@@ -1180,23 +1130,6 @@
         <span class="kw-2">&amp;</span><span class="self">self</span>.payload.credential
     }
 
-    <span class="doccomment">/// Check that all extensions that are required, are supported by this key
-    /// package.
-    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>validate_required_capabilities&lt;<span class="lifetime">&#39;a</span>&gt;(
-        <span class="kw-2">&amp;</span><span class="self">self</span>,
-        required_capabilities: <span class="kw">impl </span>Into&lt;<span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>RequiredCapabilitiesExtension&gt;&gt;,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;(), KeyPackageExtensionSupportError&gt; {
-        <span class="kw">if let </span><span class="prelude-val">Some</span>(required_capabilities) = required_capabilities.into() {
-            <span class="kw">let </span>my_extension_types = <span class="self">self</span>.extensions().iter().map(|e| e.extension_type());
-            <span class="kw">for </span>required_extension <span class="kw">in </span>required_capabilities.extensions() {
-                <span class="kw">if </span>!my_extension_types.clone().any(|e| <span class="kw-2">&amp;</span>e == required_extension) {
-                    <span class="kw">return </span><span class="prelude-val">Err</span>(KeyPackageExtensionSupportError::UnsupportedExtension);
-                }
-            }
-        }
-        <span class="prelude-val">Ok</span>(())
-    }
-
     <span class="doccomment">/// Compute the [`KeyPackageRef`] of this [`KeyPackage`].
     /// The [`KeyPackageRef`] is used to identify a new member that should get
     /// added to a group.
@@ -1227,16 +1160,37 @@
         backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider,
         hpke_init_key: HpkePublicKey,
         credential_bundle: <span class="kw-2">&amp;</span>CredentialBundle,
-        extensions: Vec&lt;Extension&gt;,
+        <span class="comment">// TODO: #819: properly handle extensions (what&#39;s going where?)
+        </span><span class="kw-2">mut </span>extensions: Vec&lt;Extension&gt;,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, KeyPackageNewError&gt; {
         <span class="kw">if </span>SignatureScheme::from(ciphersuite) != credential_bundle.credential().signature_scheme() {
             <span class="kw">return </span><span class="prelude-val">Err</span>(KeyPackageNewError::CiphersuiteSignatureSchemeMismatch);
         }
+        <span class="kw">let </span>life_time = extensions
+            .iter()
+            .position(|e| e.extension_type() == ExtensionType::Lifetime);
+        <span class="kw">let </span>lifetime: LifetimeExtension = <span class="kw">if let </span><span class="prelude-val">Some</span>(index) = life_time {
+            <span class="kw">let </span>extension = extensions.remove(index);
+            extension
+                .as_lifetime_extension()
+                .map_err(|<span class="kw">_</span>| LibraryError::custom(<span class="string">&quot;&quot;</span>))<span class="question-mark">?
+                </span>.clone()
+        } <span class="kw">else </span>{
+            LifetimeExtension::default()
+        };
+        <span class="kw">let </span>leaf_node = LeafNode::from_init_key(
+            hpke_init_key.clone(),
+            credential_bundle,
+            lifetime,
+            extensions.clone(),
+            backend,
+        )<span class="question-mark">?</span>;
         <span class="kw">let </span>key_package = KeyPackageTBS {
             <span class="comment">// TODO: #34 Take from global config.
             </span>protocol_version: ProtocolVersion::default(),
             ciphersuite,
-            hpke_init_key,
+            init_key: hpke_init_key,
+            leaf_node,
             credential: credential_bundle.credential().clone(),
             extensions,
         };
@@ -1259,12 +1213,22 @@
 
     <span class="doccomment">/// Get a reference to the HPKE init key.
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>hpke_init_key(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>HpkePublicKey {
-        <span class="kw-2">&amp;</span><span class="self">self</span>.payload.hpke_init_key
+        <span class="kw-2">&amp;</span><span class="self">self</span>.payload.init_key
     }
 
     <span class="doccomment">/// Get the `ProtocolVersion`.
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>protocol_version(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; ProtocolVersion {
         <span class="self">self</span>.payload.protocol_version
+    }
+
+    <span class="doccomment">/// Get the [`LeafNode`] reference.
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>leaf_node(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>LeafNode {
+        <span class="kw-2">&amp;</span><span class="self">self</span>.payload.leaf_node
+    }
+
+    <span class="doccomment">/// Get the [`LeafNode`].
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>take_leaf_node(<span class="self">self</span>) -&gt; LeafNode {
+        <span class="self">self</span>.payload.leaf_node
     }
 }
 
@@ -1284,62 +1248,11 @@
 }
 
 <span class="kw">impl </span>KeyPackageBundlePayload {
-    <span class="doccomment">/// Replace the init key in the `KeyPackage` with a random one and return a
-    /// `KeyPackageBundlePayload` with the corresponding secret values.
-    /// To get a key package bundle sign the `KeyPackageBundlePayload`.
-    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>from_rekeyed_key_package(
-        key_package: <span class="kw-2">&amp;</span>KeyPackage,
-        backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, CryptoError&gt; {
-        <span class="kw">let </span>leaf_secret = Secret::random(
-            key_package.ciphersuite(),
-            backend,
-            key_package.protocol_version(),
-        )<span class="question-mark">?</span>;
-        <span class="self">Self</span>::from_key_package_and_leaf_secret(leaf_secret, key_package, backend)
-    }
-
-    <span class="doccomment">/// Creates a new `KeyPackageBundlePayload` from a given `KeyPackage` and a leaf
-    /// secret.
-    /// To get a key package bundle sign the `KeyPackageBundlePayload`.
-    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>from_key_package_and_leaf_secret(
-        leaf_secret: Secret,
-        key_package: <span class="kw-2">&amp;</span>KeyPackage,
-        backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, CryptoError&gt; {
-        <span class="kw">let </span>leaf_node_secret = derive_leaf_node_secret(<span class="kw-2">&amp;</span>leaf_secret, backend);
-        <span class="kw">let </span>key_pair = backend.crypto().derive_hpke_keypair(
-            key_package.ciphersuite().hpke_config(),
-            leaf_node_secret<span class="question-mark">?</span>.as_slice(),
-        );
-        <span class="kw">let </span>key_package_payload =
-            KeyPackageTBS::from_key_package(key_package, key_pair.public.into());
-        <span class="prelude-val">Ok</span>(<span class="self">Self </span>{
-            key_package_tbs: key_package_payload,
-            private_key: key_pair.private.into(),
-            leaf_secret,
-        })
-    }
-
-    <span class="doccomment">/// Update the parent hash extension of this key package.
-    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>update_parent_hash(<span class="kw-2">&amp;mut </span><span class="self">self</span>, parent_hash: <span class="kw-2">&amp;</span>[u8]) {
-        <span class="self">self</span>.key_package_tbs
-            .remove_extension(ExtensionType::ParentHash);
-        <span class="kw">let </span>extension = Extension::ParentHash(ParentHashExtension::new(parent_hash));
-        <span class="self">self</span>.key_package_tbs.extensions.push(extension);
-    }
-
     <span class="doccomment">/// Add (or replace) an extension to the KeyPackage.
     </span><span class="attribute">#[cfg(any(feature = <span class="string">&quot;test-utils&quot;</span>, test))]
     </span><span class="kw">pub fn </span>add_extension(<span class="kw-2">&amp;mut </span><span class="self">self</span>, extension: Extension) {
         <span class="self">self</span>.key_package_tbs.add_extension(extension)
     }
-
-    <span class="doccomment">/// Get a reference to the `leaf_secret`.
-    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>leaf_secret(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>Secret {
-        <span class="kw-2">&amp;</span><span class="self">self</span>.leaf_secret
-    }
-
     <span class="doccomment">/// Replace the credential in the KeyPackage.
     </span><span class="attribute">#[cfg(any(feature = <span class="string">&quot;test-utils&quot;</span>, test))]
     </span><span class="kw">pub fn </span>set_credential(<span class="kw-2">&amp;mut </span><span class="self">self</span>, credential: Credential) {
@@ -1457,14 +1370,13 @@
             <span class="kw">return </span><span class="prelude-val">Err</span>(error);
         }
 
-        <span class="kw">if </span>SignatureScheme::from(ciphersuites[<span class="number">0</span>])
-            != credential_bundle.credential().signature_scheme()
-        {
-            <span class="kw">return </span><span class="prelude-val">Err</span>(KeyPackageBundleNewError::CiphersuiteSignatureSchemeMismatch);
-        }
+        <span class="kw">let </span>ciphersuite = ciphersuites.iter().find(|&amp;&amp;c| {
+            SignatureScheme::from(c) == credential_bundle.credential().signature_scheme()
+        });
+        <span class="kw">let </span>ciphersuite =
+            ciphersuite.ok_or(KeyPackageBundleNewError::CiphersuiteSignatureSchemeMismatch)<span class="question-mark">?</span>;
 
-        <span class="kw">let </span>ciphersuite = ciphersuites[<span class="number">0</span>];
-        <span class="kw">let </span>leaf_secret = Secret::random(ciphersuite, backend, version)
+        <span class="kw">let </span>leaf_secret = Secret::random(<span class="kw-2">*</span>ciphersuite, backend, version)
             .map_err(LibraryError::unexpected_crypto_error)<span class="question-mark">?</span>;
         <span class="self">Self</span>::new_from_leaf_secret(
             ciphersuites,
@@ -1504,6 +1416,12 @@
             );
             <span class="kw">return </span><span class="prelude-val">Err</span>(error);
         }
+
+        <span class="kw">let </span>ciphersuite = ciphersuites.iter().find(|&amp;&amp;c| {
+            SignatureScheme::from(c) == credential_bundle.credential().signature_scheme()
+        });
+        <span class="kw">let </span>ciphersuite =
+            <span class="kw-2">*</span>ciphersuite.ok_or(KeyPackageBundleNewError::CiphersuiteSignatureSchemeMismatch)<span class="question-mark">?</span>;
 
         <span class="comment">// Detect duplicate extensions an return an error in case there is are any.
         </span><span class="kw">let </span>extensions_length = extensions.len();
@@ -1559,7 +1477,7 @@
             extensions.push(Extension::Lifetime(LifetimeExtension::default()));
         }
         <span class="kw">let </span>key_package = KeyPackage::new(
-            ciphersuites[<span class="number">0</span>],
+            ciphersuite,
             backend,
             key_pair.public.into(),
             credential_bundle,
@@ -1581,6 +1499,19 @@
     <span class="doccomment">/// Get a reference to the public part of this bundle, i.e. the [`KeyPackage`].
     </span><span class="kw">pub fn </span>key_package(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>KeyPackage {
         <span class="kw-2">&amp;</span><span class="self">self</span>.key_package
+    }
+
+    <span class="doccomment">/// Get a reference to the HPKE key pair.
+    </span><span class="kw">pub fn </span>key_pair(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; (<span class="kw-2">&amp;</span>VLBytes, <span class="kw-2">&amp;</span>HpkePublicKey) {
+        (<span class="kw-2">&amp;</span><span class="self">self</span>.private_key, <span class="self">self</span>.key_package.hpke_init_key())
+    }
+
+    <span class="doccomment">/// Get a reference to the HPKE key pair.
+    </span><span class="kw">pub fn </span>hpke_key_pair(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; HpkeKeyPair {
+        HpkeKeyPair {
+            private: <span class="self">self</span>.private_key.clone().into(),
+            public: <span class="self">self</span>.key_package.hpke_init_key().as_slice().to_vec(),
+        }
     }
 
     <span class="doccomment">/// Separates the bundle into the [`KeyPackage`] and the HPKE private key and
@@ -1657,6 +1588,11 @@
 </span><span class="kw">impl </span>KeyPackageBundle {
     <span class="kw">pub fn </span>set_ciphersuite(<span class="kw-2">&amp;mut </span><span class="self">self</span>, ciphersuite: Ciphersuite) {
         <span class="self">self</span>.key_package.payload.set_ciphersuite(ciphersuite);
+    }
+
+    <span class="doccomment">/// Replace the public key in the KeyPackage.
+    </span><span class="kw">pub fn </span>set_public_key(<span class="kw-2">&amp;mut </span><span class="self">self</span>, public_key: HpkePublicKey) {
+        <span class="self">self</span>.key_package.payload.init_key = public_key
     }
 }
 

@@ -468,6 +468,31 @@
 <span id="468">468</span>
 <span id="469">469</span>
 <span id="470">470</span>
+<span id="471">471</span>
+<span id="472">472</span>
+<span id="473">473</span>
+<span id="474">474</span>
+<span id="475">475</span>
+<span id="476">476</span>
+<span id="477">477</span>
+<span id="478">478</span>
+<span id="479">479</span>
+<span id="480">480</span>
+<span id="481">481</span>
+<span id="482">482</span>
+<span id="483">483</span>
+<span id="484">484</span>
+<span id="485">485</span>
+<span id="486">486</span>
+<span id="487">487</span>
+<span id="488">488</span>
+<span id="489">489</span>
+<span id="490">490</span>
+<span id="491">491</span>
+<span id="492">492</span>
+<span id="493">493</span>
+<span id="494">494</span>
+<span id="495">495</span>
 </pre><pre class="rust"><code><span class="doccomment">//! This module implements the ratchet tree component of MLS.
 //!
 //! It exposes the [`Node`] enum that can contain either a [`LeafNode`] or a [`ParentNode`].
@@ -496,7 +521,9 @@
 
 <span class="kw">use crate</span>::{
     binary_tree::{LeafIndex, MlsBinaryTree, MlsBinaryTreeError},
+    credentials::CredentialBundle,
     error::LibraryError,
+    extensions::{Extension, LifetimeExtension},
     framing::SenderError,
     group::Member,
     key_packages::KeyPackageBundle,
@@ -506,6 +533,7 @@
 
 <span class="kw">use </span><span class="self">self</span>::{
     diff::{StagedTreeSyncDiff, TreeSyncDiff},
+    node::leaf_node::{Capabilities, LeafNodeSource, OpenMlsLeafNode},
     treesync_node::{TreeSyncNode, TreeSyncNodeError},
 };
 
@@ -557,11 +585,30 @@
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>new(
         backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider,
         key_package_bundle: KeyPackageBundle,
+        credential_bundle: <span class="kw-2">&amp;</span>CredentialBundle,
+        life_time: LifetimeExtension,
+        capabilities: Capabilities,
+        extensions: Vec&lt;Extension&gt;,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(<span class="self">Self</span>, CommitSecret), LibraryError&gt; {
         <span class="kw">let </span>key_package = key_package_bundle.key_package();
         <span class="comment">// We generate our own leaf without a private key for now. The private
         // key is set in the `from_nodes` constructor below.
-        </span><span class="kw">let </span>node = Node::LeafNode(LeafNode::new(key_package.clone()));
+        </span><span class="kw">let </span><span class="kw-2">mut </span>leaf = OpenMlsLeafNode::new(
+            key_package_bundle.key_package().hpke_init_key().clone(),
+            credential_bundle.credential().signature_key().clone(),
+            credential_bundle.credential().clone(),
+            <span class="comment">// Creation of a group is considered to be from a key package.
+            </span>LeafNodeSource::KeyPackage(life_time),
+            backend,
+            credential_bundle,
+        )<span class="question-mark">?</span>;
+        leaf.set_leaf_index(<span class="number">0</span>);
+        leaf.add_capabilities(capabilities);
+        extensions
+            .into_iter()
+            .for_each(|extension| leaf.add_extensions(extension));
+
+        <span class="kw">let </span>node = Node::LeafNode(leaf);
         <span class="kw">let </span>path_secret: PathSecret = key_package_bundle.leaf_secret().clone().into();
         <span class="kw">let </span>commit_secret: CommitSecret = path_secret
             .derive_path_secret(backend, key_package.ciphersuite())<span class="question-mark">?
@@ -676,18 +723,18 @@
                 <span class="prelude-val">Some</span>(node) =&gt; {
                     <span class="kw">let </span><span class="kw-2">mut </span>node = node.clone();
                     <span class="kw">if let </span>Node::LeafNode(<span class="kw-2">ref mut </span>leaf_node) = node {
+                        <span class="kw">let </span>leaf_index = u32::try_from(node_index / <span class="number">2</span>)
+                            .map_err(|<span class="kw">_</span>| LibraryError::custom(<span class="string">&quot;Architecture error&quot;</span>))<span class="question-mark">?</span>;
                         <span class="kw">if </span>leaf_node.public_key() == own_key_package.hpke_init_key() {
                             <span class="comment">// Check if there&#39;s a duplicate
                             </span><span class="kw">if let </span><span class="prelude-val">Some</span>(private_key) = private_key.take() {
-                                own_index_option = <span class="prelude-val">Some</span>(
-                                    u32::try_from(node_index / <span class="number">2</span>)
-                                        .map_err(|<span class="kw">_</span>| LibraryError::custom(<span class="string">&quot;Architecture error&quot;</span>))<span class="question-mark">?</span>,
-                                );
+                                own_index_option = <span class="prelude-val">Some</span>(leaf_index);
                                 leaf_node.set_private_key(private_key);
                             } <span class="kw">else </span>{
                                 <span class="kw">return </span><span class="prelude-val">Err</span>(PublicTreeError::DuplicateKeyPackage.into());
                             }
                         }
+                        leaf_node.set_leaf_index(leaf_index);
                     }
                     node.into()
                 }
@@ -841,8 +888,8 @@
                 </span><span class="kw">if let </span><span class="prelude-val">Ok</span>(leaf_node) = node.as_leaf_node() {
                     (
                         leaf_node.public_key(),
-                        leaf_node.key_package().credential().signature_key(),
-                        leaf_node.key_package().credential().identity(),
+                        leaf_node.leaf_node.credential().signature_key(),
+                        leaf_node.leaf_node.credential().identity(),
                     )
                 } <span class="kw">else </span>{
                     <span class="kw">return </span><span class="prelude-val">Err</span>(LibraryError::custom(<span class="string">&quot;The tree is broken.&quot;</span>));
@@ -874,7 +921,7 @@
                     node.as_leaf_node()
                         .and_then(|leaf_node| {
                             leaf_node
-                                .key_package()
+                                .leaf_node()
                                 .check_extension_support(extensions)
                                 .map_err(|<span class="kw">_</span>| {
                                     NodeError::LibraryError(LibraryError::custom(
@@ -911,7 +958,7 @@
     ///
     /// This function should not fail and only returns a [`Result`], because it
     /// might throw a [LibraryError](TreeSyncError::LibraryError).
-    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>own_leaf_node(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="kw-2">&amp;</span>LeafNode, TreeSyncError&gt; {
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>own_leaf_node(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="kw-2">&amp;</span>OpenMlsLeafNode, TreeSyncError&gt; {
         <span class="comment">// Our own leaf should be inside of the tree and never blank.
         </span><span class="self">self</span>.leaf(<span class="self">self</span>.own_leaf_index)<span class="question-mark">?
             </span>.ok_or_else(|| LibraryError::custom(<span class="string">&quot;Own leaf is outside of the tree&quot;</span>).into())
@@ -921,7 +968,10 @@
     /// leaf is blank.
     ///
     /// Returns an error if the leaf is outside of the tree.
-    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>leaf(<span class="kw-2">&amp;</span><span class="self">self</span>, leaf_index: LeafIndex) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>LeafNode&gt;, TreeSyncError&gt; {
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>leaf(
+        <span class="kw-2">&amp;</span><span class="self">self</span>,
+        leaf_index: LeafIndex,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>OpenMlsLeafNode&gt;, TreeSyncError&gt; {
         <span class="kw">let </span>tsn = <span class="self">self</span>.tree.leaf(leaf_index)<span class="question-mark">?</span>;
         <span class="prelude-val">Ok</span>(<span class="kw">match </span>tsn.node() {
             <span class="prelude-val">Some</span>(node) =&gt; <span class="prelude-val">Some</span>(node.as_leaf_node()<span class="question-mark">?</span>),

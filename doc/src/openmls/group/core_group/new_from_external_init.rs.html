@@ -162,6 +162,11 @@
 <span id="162">162</span>
 <span id="163">163</span>
 <span id="164">164</span>
+<span id="165">165</span>
+<span id="166">166</span>
+<span id="167">167</span>
+<span id="168">168</span>
+<span id="169">169</span>
 </pre><pre class="rust"><code><span class="kw">use crate</span>::{
     ciphersuite::signable::Verifiable,
     group::errors::ExternalCommitError,
@@ -244,8 +249,7 @@
             .map_err(|<span class="kw">_</span>| ExternalCommitError::UnknownSender)<span class="question-mark">?</span>;
         <span class="kw">let </span>pgs_signer_credential = pgs_signer_leaf
             .ok_or(ExternalCommitError::UnknownSender)<span class="question-mark">?
-            </span>.key_package()
-            .credential();
+            </span>.credential();
         <span class="kw">let </span>pgs: PublicGroupState = verifiable_public_group_state
             .verify(backend, pgs_signer_credential)
             .map_err(|<span class="kw">_</span>| ExternalCommitError::InvalidPublicGroupStateSignature)<span class="question-mark">?</span>;
@@ -319,11 +323,17 @@
             .build();
 
         <span class="comment">// Immediately create the commit to add ourselves to the group.
-        </span><span class="kw">let </span>create_commit_result = group
-            .create_commit(params, backend)
-            .map_err(|<span class="kw">_</span>| ExternalCommitError::CommitError)<span class="question-mark">?</span>;
+        </span><span class="kw">let </span>create_commit_result = group.create_commit(params, backend);
+        <span class="macro">debug_assert!</span>(
+            create_commit_result.is_ok(),
+            <span class="string">&quot;Error creating commit {:?}&quot;</span>,
+            create_commit_result
+        );
 
-        <span class="prelude-val">Ok</span>((group, create_commit_result))
+        <span class="prelude-val">Ok</span>((
+            group,
+            create_commit_result.map_err(|<span class="kw">_</span>| ExternalCommitError::CommitError)<span class="question-mark">?</span>,
+        ))
     }
 }
 </code></pre></div>
