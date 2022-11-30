@@ -1,8 +1,8 @@
 use tls_codec::{TlsDeserialize, TlsSerialize, TlsSize, VLBytes};
 
-use crate::{ciphersuite::HpkePublicKey, key_packages::KeyPackage};
+use crate::ciphersuite::HpkePublicKey;
 
-use super::{leaf_node::LeafNode, parent_node::ParentNode, Node};
+use super::{leaf_node::OpenMlsLeafNode, parent_node::ParentNode, Node};
 
 /// Node type. Can be either `Leaf` or `Parent`.
 #[derive(PartialEq, Clone, Copy, Debug, TlsSerialize, TlsDeserialize, TlsSize)]
@@ -43,39 +43,10 @@ impl tls_codec::Deserialize for Node {
     fn tls_deserialize<R: std::io::Read>(bytes: &mut R) -> Result<Self, tls_codec::Error> {
         let node_type = MlsNodeType::tls_deserialize(bytes)?;
         let node = match node_type {
-            MlsNodeType::Leaf => Node::LeafNode(LeafNode::tls_deserialize(bytes)?),
+            MlsNodeType::Leaf => Node::LeafNode(OpenMlsLeafNode::tls_deserialize(bytes)?),
             MlsNodeType::Parent => Node::ParentNode(ParentNode::tls_deserialize(bytes)?),
         };
         Ok(node)
-    }
-}
-
-// Implementations for `LeafNode`
-
-impl tls_codec::Deserialize for LeafNode {
-    fn tls_deserialize<R: std::io::Read>(bytes: &mut R) -> Result<Self, tls_codec::Error>
-    where
-        Self: Sized,
-    {
-        let key_package = KeyPackage::tls_deserialize(bytes)?;
-        Ok(key_package.into())
-    }
-}
-
-impl tls_codec::Size for LeafNode {
-    fn tls_serialized_len(&self) -> usize {
-        self.key_package().tls_serialized_len()
-    }
-}
-impl tls_codec::Size for &LeafNode {
-    fn tls_serialized_len(&self) -> usize {
-        self.key_package().tls_serialized_len()
-    }
-}
-
-impl tls_codec::Serialize for &LeafNode {
-    fn tls_serialize<W: std::io::Write>(&self, writer: &mut W) -> Result<usize, tls_codec::Error> {
-        self.key_package().tls_serialize(writer)
     }
 }
 

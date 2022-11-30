@@ -4,7 +4,11 @@
 use std::{collections::HashMap, sync::RwLock};
 
 use openmls_rust_crypto::OpenMlsRustCrypto;
-use openmls_traits::{key_store::OpenMlsKeyStore, types::Ciphersuite, OpenMlsCryptoProvider};
+use openmls_traits::{
+    key_store::OpenMlsKeyStore,
+    types::{Ciphersuite, HpkeKeyPair},
+    OpenMlsCryptoProvider,
+};
 use tls_codec::Serialize;
 
 use crate::{
@@ -192,25 +196,24 @@ impl Client {
 
     /// Have the client either propose or commit (depending on the
     /// `action_type`) a self update in the group with the given group id.
-    /// Optionally, a `KeyPackageBundle` can be provided, which the client will
+    /// Optionally, a `HpkeKeyPair` can be provided, which the client will
     /// update their leaf with. Returns an error if no group with the given
     /// group id can be found or if an error occurs while creating the update.
     pub fn self_update(
         &self,
         action_type: ActionType,
         group_id: &GroupId,
-        key_package_bundle_option: Option<KeyPackageBundle>,
+        key_pair: Option<KeyPackageBundle>,
     ) -> Result<(MlsMessageOut, Option<Welcome>), ClientError> {
         let mut groups = self.groups.write().expect("An unexpected error occurred.");
         let group = groups
             .get_mut(group_id)
             .ok_or(ClientError::NoMatchingGroup)?;
         let action_results = match action_type {
-            ActionType::Commit => group.self_update(&self.crypto, key_package_bundle_option)?,
-            ActionType::Proposal => (
-                group.propose_self_update(&self.crypto, key_package_bundle_option)?,
-                None,
-            ),
+            ActionType::Commit => {
+                group.self_update(&self.crypto, key_pair.map(|kpb| kpb.hpke_key_pair()))?
+            }
+            ActionType::Proposal => (group.propose_self_update(&self.crypto, key_pair)?, None),
         };
         Ok(action_results)
     }

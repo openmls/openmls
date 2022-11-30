@@ -20,7 +20,6 @@
 //! - [`ExternalPubExtension`] (GroupInfo extension)
 //! - [`CapabilitiesExtension`] (KeyPackage extension)
 //! - [`LifetimeExtension`] (KeyPackage extension)
-//! - [`ParentHashExtension`] (KeyPackage extension)
 
 use serde::{Deserialize, Serialize};
 use std::{convert::TryFrom, fmt::Debug};
@@ -33,7 +32,6 @@ mod codec;
 mod external_pub_extension;
 mod external_sender_extension;
 mod life_time_extension;
-mod parent_hash_extension;
 mod ratchet_tree_extension;
 mod required_capabilities;
 use errors::*;
@@ -47,7 +45,6 @@ pub use capabilities_extension::CapabilitiesExtension;
 pub use external_pub_extension::ExternalPubExtension;
 pub use external_sender_extension::ExternalSendersExtension;
 pub use life_time_extension::LifetimeExtension;
-pub use parent_hash_extension::ParentHashExtension;
 pub use ratchet_tree_extension::RatchetTreeExtension;
 pub use required_capabilities::RequiredCapabilitiesExtension;
 
@@ -118,11 +115,6 @@ pub enum ExtensionType {
     /// consider a KeyPackage valid.
     /// TODO(#819): This extension will be deleted.
     Lifetime = 0xff01,
-
-    /// The parent hash extension carries information to authenticate the
-    /// structure of the tree, as described below.
-    /// TODO(#819): This extension will be deleted.
-    ParentHash = 0xff02,
 }
 
 impl TryFrom<u16> for ExtensionType {
@@ -140,7 +132,6 @@ impl TryFrom<u16> for ExtensionType {
             5 => Ok(ExtensionType::ExternalSenders),
             0xff00 => Ok(ExtensionType::Capabilities),
             0xff01 => Ok(ExtensionType::Lifetime),
-            0xff02 => Ok(ExtensionType::ParentHash),
             _ => Err(tls_codec::Error::DecodingError(format!(
                 "{} is an unkown extension type",
                 a
@@ -159,8 +150,7 @@ impl ExtensionType {
             | ExtensionType::ExternalPub
             | ExtensionType::ExternalSenders
             | ExtensionType::Capabilities
-            | ExtensionType::Lifetime
-            | ExtensionType::ParentHash => true,
+            | ExtensionType::Lifetime => true,
         }
     }
 }
@@ -203,10 +193,6 @@ pub enum Extension {
     /// A [`LifetimeExtension`]
     /// TODO(#819): This extension will be deleted.
     Lifetime(LifetimeExtension),
-
-    /// A [`ParentHashExtension`]
-    /// TODO(#819): This extension will be deleted.
-    ParentHash(ParentHashExtension),
 }
 
 impl Extension {
@@ -298,18 +284,6 @@ impl Extension {
         }
     }
 
-    /// Get a reference to this extension as [`ParentHashExtension`].
-    /// Returns an [`ExtensionError::InvalidExtensionType`] error if called on an
-    /// [`Extension`] that's not a [`ParentHashExtension`].
-    pub fn as_parent_hash_extension(&self) -> Result<&ParentHashExtension, ExtensionError> {
-        match self {
-            Self::ParentHash(e) => Ok(e),
-            _ => Err(ExtensionError::InvalidExtensionType(
-                "This is not a ParentHashExtension".into(),
-            )),
-        }
-    }
-
     /// Returns the [`ExtensionType`]
     #[inline]
     pub const fn extension_type(&self) -> ExtensionType {
@@ -321,7 +295,6 @@ impl Extension {
             Extension::ExternalSenders(_) => ExtensionType::ExternalSenders,
             Extension::Capabilities(_) => ExtensionType::Capabilities,
             Extension::Lifetime(_) => ExtensionType::Lifetime,
-            Extension::ParentHash(_) => ExtensionType::ParentHash,
         }
     }
 }

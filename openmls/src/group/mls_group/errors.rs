@@ -20,6 +20,9 @@ pub enum NewGroupError {
     /// No matching KeyPackageBundle was found in the key store.
     #[error("No matching KeyPackageBundle was found in the key store.")]
     NoMatchingKeyPackageBundle,
+    /// No matching CredentialBundle was found in the key store.
+    #[error("No matching CredentialBundle was found in the key store.")]
+    NoMatchingCredentialBundle,
     /// Failed to delete the KeyPackageBundle from the key store.
     #[error("Failed to delete the KeyPackageBundle from the key store.")]
     KeyStoreDeletionError,

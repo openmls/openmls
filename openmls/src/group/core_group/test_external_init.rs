@@ -60,7 +60,7 @@ fn test_external_init(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProv
     let group_id = GroupId::random(backend);
 
     let mut group_alice = CoreGroup::builder(group_id, alice_key_package_bundle)
-        .build(backend)
+        .build(&alice_credential_bundle, backend)
         .expect("An unexpected error occurred.");
 
     // === Alice adds Bob ===
@@ -289,7 +289,7 @@ fn test_external_init_single_member_group(
     let group_id = GroupId::random(backend);
 
     let mut group_alice = CoreGroup::builder(group_id, alice_key_package_bundle)
-        .build(backend)
+        .build(&alice_credential_bundle, backend)
         .expect("An unexpected error occurred.");
 
     // Now set up charly and try to init externally.

@@ -80,7 +80,6 @@ impl CoreGroup {
             .map_err(|_| ExternalCommitError::UnknownSender)?;
         let pgs_signer_credential = pgs_signer_leaf
             .ok_or(ExternalCommitError::UnknownSender)?
-            .key_package()
             .credential();
         let pgs: PublicGroupState = verifiable_public_group_state
             .verify(backend, pgs_signer_credential)
@@ -155,10 +154,16 @@ impl CoreGroup {
             .build();
 
         // Immediately create the commit to add ourselves to the group.
-        let create_commit_result = group
-            .create_commit(params, backend)
-            .map_err(|_| ExternalCommitError::CommitError)?;
+        let create_commit_result = group.create_commit(params, backend);
+        debug_assert!(
+            create_commit_result.is_ok(),
+            "Error creating commit {:?}",
+            create_commit_result
+        );
 
-        Ok((group, create_commit_result))
+        Ok((
+            group,
+            create_commit_result.map_err(|_| ExternalCommitError::CommitError)?,
+        ))
     }
 }

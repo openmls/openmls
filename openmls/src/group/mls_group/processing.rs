@@ -52,7 +52,7 @@ impl MlsGroup {
             message,
             &sender_ratchet_configuration,
             &self.proposal_store,
-            &self.own_kpbs,
+            &self.own_leaf_nodes,
         )
     }
 
@@ -132,7 +132,7 @@ impl MlsGroup {
             .add(self.group.context().epoch(), resumption_psk.clone());
 
         // Delete own KeyPackageBundles
-        self.own_kpbs.clear();
+        self.own_leaf_nodes.clear();
 
         // Delete a potential pending commit
         self.clear_pending_commit();

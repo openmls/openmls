@@ -51,6 +51,8 @@ pub struct MlsGroupConfig {
     pub(crate) required_capabilities: RequiredCapabilitiesExtension,
     /// Sender ratchet configuration
     pub(crate) sender_ratchet_configuration: SenderRatchetConfiguration,
+    /// Lifetime of the own leaf node
+    pub(crate) lifetime: LifetimeExtension,
 }
 
 impl MlsGroupConfig {
@@ -87,6 +89,11 @@ impl MlsGroupConfig {
     /// Returns the [`MlsGroupConfig`] sender ratchet configuration.
     pub fn sender_ratchet_configuration(&self) -> &SenderRatchetConfiguration {
         &self.sender_ratchet_configuration
+    }
+
+    /// Returns the [`MlsGroupConfig`] lifetime configuration.
+    pub fn lifetime(&self) -> &LifetimeExtension {
+        &self.lifetime
     }
 
     #[cfg(any(feature = "test-utils", test))]
@@ -159,6 +166,12 @@ impl MlsGroupConfigBuilder {
         sender_ratchet_configuration: SenderRatchetConfiguration,
     ) -> Self {
         self.config.sender_ratchet_configuration = sender_ratchet_configuration;
+        self
+    }
+
+    /// Sets the `lifetime` property of the MlsGroupConfig.
+    pub fn lifetime(mut self, lifetime: LifetimeExtension) -> Self {
+        self.config.lifetime = lifetime;
         self
     }
 
