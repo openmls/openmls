@@ -67,16 +67,6 @@ fn validation_test_setup(
         .build();
 
     // === Alice creates a group ===
-    let alice_credential_bundle = backend
-        .key_store()
-        .read(
-            &alice_credential
-                .signature_key()
-                .tls_serialize_detached()
-                .expect("Error serializing signature key."),
-        )
-        .expect("An unexpected error occurred.");
-
     let mut alice_group = MlsGroup::new_with_group_id(
         backend,
         &mls_group_config,
@@ -86,7 +76,6 @@ fn validation_test_setup(
             .hash_ref(backend.crypto())
             .expect("Could not hash KeyPackage.")
             .as_slice(),
-        &alice_credential_bundle,
     )
     .expect("An unexpected error occurred.");
 

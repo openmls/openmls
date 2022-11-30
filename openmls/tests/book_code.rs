@@ -168,16 +168,6 @@ fn book_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvide
     )
     .expect("An unexpected error occurred.");
 
-    let alice_credential_bundle = backend
-        .key_store()
-        .read(
-            &alice_credential
-                .signature_key()
-                .tls_serialize_detached()
-                .expect("Error serializing signature key."),
-        )
-        .expect("An unexpected error occurred.");
-
     // Generate KeyPackages
     let alice_key_package = generate_key_package_bundle(&[ciphersuite], &alice_credential, backend)
         .expect("An unexpected error occurred.");
@@ -206,7 +196,6 @@ fn book_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvide
             .hash_ref(backend.crypto())
             .expect("Could not hash KeyPackage.")
             .as_slice(),
-        &alice_credential_bundle,
     )
     .expect("An unexpected error occurred.");
     // ANCHOR_END: alice_create_group
@@ -231,7 +220,6 @@ fn book_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvide
                 .hash_ref(backend.crypto())
                 .expect("Could not hash KeyPackage.")
                 .as_slice(),
-            &alice_credential_bundle,
         )
         .expect("An unexpected error occurred.");
         // ANCHOR_END: alice_create_group_with_group_id
@@ -1234,15 +1222,6 @@ fn test_empty_input_errors(ciphersuite: Ciphersuite, backend: &impl OpenMlsCrypt
         backend,
     )
     .expect("An unexpected error occurred.");
-    let alice_credential_bundle = backend
-        .key_store()
-        .read(
-            &alice_credential
-                .signature_key()
-                .tls_serialize_detached()
-                .expect("Error serializing signature key."),
-        )
-        .expect("An unexpected error occurred.");
 
     // Generate KeyPackages
     let alice_key_package = generate_key_package_bundle(&[ciphersuite], &alice_credential, backend)
@@ -1261,7 +1240,6 @@ fn test_empty_input_errors(ciphersuite: Ciphersuite, backend: &impl OpenMlsCrypt
             .hash_ref(backend.crypto())
             .expect("Could not hash KeyPackage.")
             .as_slice(),
-        &alice_credential_bundle,
     )
     .expect("An unexpected error occurred.");
 

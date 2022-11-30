@@ -59,16 +59,6 @@ fn test_remove_operation_variants(ciphersuite: Ciphersuite, backend: &impl OpenM
         let mls_group_config = MlsGroupConfig::default();
 
         // === Alice creates a group ===
-        let alice_credential_bundle = backend
-            .key_store()
-            .read(
-                &alice_credential
-                    .signature_key()
-                    .tls_serialize_detached()
-                    .expect("error serializing credential"),
-            )
-            .expect("error retrieving credential bundle");
-
         let mut alice_group = MlsGroup::new_with_group_id(
             backend,
             &mls_group_config,
@@ -78,7 +68,6 @@ fn test_remove_operation_variants(ciphersuite: Ciphersuite, backend: &impl OpenM
                 .hash_ref(backend.crypto())
                 .expect("Could not hash KeyPackage.")
                 .as_slice(),
-            &alice_credential_bundle,
         )
         .expect("An unexpected error occurred.");
 

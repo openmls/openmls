@@ -112,7 +112,6 @@
 //!         .hash_ref(backend.crypto())
 //!         .expect("Could not hash KeyPackage.")
 //!         .as_slice(),
-//!     &sasha_credential_bundle
 //! )
 //! .expect("An unexpected error occurred.");
 //!

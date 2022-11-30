@@ -5,6 +5,7 @@ use crate::{
     },
     messages::public_group_state::VerifiablePublicGroupState,
 };
+use tls_codec::Serialize;
 
 use super::*;
 
@@ -22,7 +23,6 @@ impl MlsGroup {
         mls_group_config: &MlsGroupConfig,
         life_time: LifetimeExtension,
         key_package_hash: &[u8],
-        credential_bundle: &CredentialBundle,
     ) -> Result<Self, NewGroupError> {
         Self::new_with_group_id(
             backend,
@@ -30,7 +30,6 @@ impl MlsGroup {
             GroupId::random(backend),
             life_time,
             key_package_hash,
-            credential_bundle,
         )
     }
 
@@ -46,7 +45,6 @@ impl MlsGroup {
         group_id: GroupId,
         life_time: LifetimeExtension,
         key_package_hash: &[u8],
-        credential_bundle: &CredentialBundle,
     ) -> Result<Self, NewGroupError> {
         // TODO #751
         let kph = key_package_hash.to_vec();
@@ -58,6 +56,19 @@ impl MlsGroup {
             .key_store()
             .delete(&kph)
             .map_err(|_| NewGroupError::KeyStoreDeletionError)?;
+        let credential_bundle: CredentialBundle = backend
+            .key_store()
+            .read(
+                &key_package_bundle
+                    .key_package()
+                    .credential()
+                    .signature_key()
+                    .tls_serialize_detached()
+                    .map_err(|_| {
+                        LibraryError::custom("Unable to serialize signature public key")
+                    })?,
+            )
+            .ok_or(NewGroupError::NoMatchingCredentialBundle)?;
         let group_config = CoreGroupConfig {
             add_ratchet_tree_extension: mls_group_config.use_ratchet_tree_extension,
         };
@@ -65,7 +76,7 @@ impl MlsGroup {
             .with_config(group_config)
             .with_required_capabilities(mls_group_config.required_capabilities.clone())
             .with_max_past_epoch_secrets(mls_group_config.max_past_epochs)
-            .build(credential_bundle, life_time, backend)
+            .build(&credential_bundle, life_time, backend)
             .map_err(|e| match e {
                 CoreGroupBuildError::LibraryError(e) => e.into(),
                 CoreGroupBuildError::UnsupportedProposalType => {

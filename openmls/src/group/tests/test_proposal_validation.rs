@@ -82,7 +82,6 @@ fn create_group_with_members(
             .hash_ref(backend.crypto())
             .expect("Could not hash KeyPackage.")
             .as_slice(),
-        &alice_credential_bundle,
     )
     .expect("An unexpected error occurred.");
 
@@ -112,16 +111,6 @@ fn new_test_group(
     )
     .unwrap();
 
-    let credential_bundle = backend
-        .key_store()
-        .read(
-            &credential
-                .signature_key()
-                .tls_serialize_detached()
-                .expect("error serializing credential"),
-        )
-        .expect("error retrieving credential bundle");
-
     // Generate KeyPackages
     let key_package =
         generate_key_package_bundle(&[ciphersuite], &credential, vec![], backend).unwrap();
@@ -141,7 +130,6 @@ fn new_test_group(
         group_id,
         LifetimeExtension::default(),
         kpr.as_slice(),
-        &credential_bundle,
     )
     .unwrap()
 }

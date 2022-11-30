@@ -117,7 +117,6 @@ impl Client {
             &mls_group_config,
             LifetimeExtension::default(),
             key_package.hash_ref(self.crypto.crypto())?.as_slice(),
-            &credential_bundle,
         )?;
         let group_id = group_state.group_id().clone();
         self.groups

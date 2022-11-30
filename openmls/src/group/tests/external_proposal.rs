@@ -63,7 +63,6 @@ fn new_test_group(
         group_id,
         LifetimeExtension::default(),
         kpr.as_slice(),
-        &credential_bundle,
     )
     .unwrap()
 }

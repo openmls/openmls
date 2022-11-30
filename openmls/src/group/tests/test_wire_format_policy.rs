@@ -32,16 +32,6 @@ fn create_group(
     )
     .expect("An unexpected error occurred.");
 
-    let credential_bundle = backend
-        .key_store()
-        .read(
-            &credential
-                .signature_key()
-                .tls_serialize_detached()
-                .expect("error serializing credential"),
-        )
-        .expect("error retrieving credential bundle");
-
     // Generate KeyPackages
     let key_package = generate_key_package_bundle(&[ciphersuite], &credential, vec![], backend)
         .expect("An unexpected error occurred.");
@@ -61,7 +51,6 @@ fn create_group(
             .hash_ref(backend.crypto())
             .expect("Could not hash KeyPackage.")
             .as_slice(),
-        &credential_bundle,
     )
     .expect("An unexpected error occurred.")
 }
