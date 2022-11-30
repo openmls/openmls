@@ -174,7 +174,7 @@ fn validation_test_setup(
 
 fn insert_proposal_and_resign(
     backend: &impl OpenMlsCryptoProvider,
-    proposal_or_ref: ProposalOrRef,
+    mut proposal_or_ref: Vec<ProposalOrRef>,
     mut plaintext: MlsPlaintext,
     original_plaintext: &MlsPlaintext,
     committer_group: &MlsGroup,
@@ -185,7 +185,7 @@ fn insert_proposal_and_resign(
         panic!("Unexpected content type.");
     };
 
-    commit_content.proposals.push(proposal_or_ref);
+    commit_content.proposals.append(&mut proposal_or_ref);
 
     plaintext.set_content(MlsContentBody::Commit(commit_content));
 
@@ -213,6 +213,8 @@ enum KeyUniqueness {
     PositiveDifferentKey,
     /// Negative Case: the proposals have the same key.
     NegativeSameKey,
+    /// Positive Case: the proposals have the same key but it has remove so its valid
+    PositiveSameKeyWithRemove,
 }
 
 /// ValSem100:
@@ -303,7 +305,7 @@ fn test_valsem100(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
 
     let verifiable_plaintext = insert_proposal_and_resign(
         backend,
-        ProposalOrRef::Proposal(second_add_proposal),
+        vec![ProposalOrRef::Proposal(second_add_proposal)],
         plaintext,
         &original_plaintext,
         &alice_group,
@@ -367,6 +369,7 @@ fn test_valsem101(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
                     SignatureKeypair::new(ciphersuite.signature_algorithm(), backend)
                         .expect("failed to generate signature keypair");
             }
+            KeyUniqueness::PositiveSameKeyWithRemove => unreachable!(),
         }
 
         let bob_credential_bundle =
@@ -403,6 +406,7 @@ fn test_valsem101(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
             KeyUniqueness::PositiveDifferentKey => {
                 let _ = res.expect("failed to add users with different signature keypairs!");
             }
+            KeyUniqueness::PositiveSameKeyWithRemove => unreachable!(),
         }
     }
 
@@ -452,7 +456,7 @@ fn test_valsem101(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
 
     let verifiable_plaintext = insert_proposal_and_resign(
         backend,
-        ProposalOrRef::Proposal(second_add_proposal),
+        vec![ProposalOrRef::Proposal(second_add_proposal)],
         plaintext,
         &original_plaintext,
         &alice_group,
@@ -533,6 +537,7 @@ fn test_valsem102(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
                 // don't need to do anything since the keys are already
                 // different.
             }
+            KeyUniqueness::PositiveSameKeyWithRemove => unreachable!(),
         }
 
         let bob_key_package = bob_key_package_bundle.key_package().clone();
@@ -558,6 +563,7 @@ fn test_valsem102(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
             KeyUniqueness::PositiveDifferentKey => {
                 let _ = res.expect("failed to add users with different HPKE init keys!");
             }
+            KeyUniqueness::PositiveSameKeyWithRemove => unreachable!(),
         }
     }
 
@@ -608,7 +614,7 @@ fn test_valsem102(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
 
     let verifiable_plaintext = insert_proposal_and_resign(
         backend,
-        ProposalOrRef::Proposal(second_add_proposal),
+        vec![ProposalOrRef::Proposal(second_add_proposal)],
         plaintext,
         &original_plaintext,
         &alice_group,
@@ -643,10 +649,17 @@ fn test_valsem102(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
 /// Identity in proposals must be unique among existing group members
 #[apply(ciphersuites_and_backends)]
 fn test_valsem103(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
-    for (alice_id, bob_id) in [
-        ("42", "42"), // Negative Case: Alice and Bob have same identity
-        ("42", "24"), // Positive Case: Alice and Bob have different identity
+    for alice_and_bob_share_identities in [
+        KeyUniqueness::PositiveDifferentKey,
+        KeyUniqueness::NegativeSameKey,
+        KeyUniqueness::PositiveSameKeyWithRemove,
     ] {
+        let (alice_id, bob_id, target_id) = match alice_and_bob_share_identities {
+            KeyUniqueness::NegativeSameKey => ("Alice", "Bob", "Alice"), // Negative Case: Alice and Bob have same identity
+            KeyUniqueness::PositiveDifferentKey => ("Alice", "Bob", "Charlie"), // Positive Case: Alice and Bob have different identity
+            KeyUniqueness::PositiveSameKeyWithRemove => ("Alice", "Bob", "Bob"), // Positive Case: Alice and Bob has same keys but Bob has a remove proposal
+        };
+
         // 0. Initialize Alice and Bob
         let (_, alice_key_package_bundle) = generate_credential_bundle_and_key_package_bundle(
             alice_id.into(),
@@ -656,92 +669,183 @@ fn test_valsem103(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
         let (_bob_credential_bundle, bob_key_package_bundle) =
             generate_credential_bundle_and_key_package_bundle(bob_id.into(), ciphersuite, backend);
         let bob_key_package = bob_key_package_bundle.key_package().clone();
+        let (_target_credential_bundle, target_key_package_bundle) =
+            generate_credential_bundle_and_key_package_bundle(
+                target_id.into(),
+                ciphersuite,
+                backend,
+            );
+        let target_key_package = target_key_package_bundle.key_package().clone();
 
         // 1. Alice creates a group and tries to add Bob to it
-        let res = create_group_with_members(alice_key_package_bundle, &[bob_key_package], backend);
+        let mut alice_group = MlsGroup::new_with_group_id(
+            backend,
+            &MlsGroupConfig::default(),
+            GroupId::from_slice(b"Alice's Friends"),
+            alice_key_package_bundle
+                .key_package()
+                .hash_ref(backend.crypto())
+                .expect("Could not hash KeyPackage.")
+                .as_slice(),
+        )
+        .unwrap();
 
-        if alice_id == bob_id {
-            // Negative Case: we should output an error
-            let err = res.expect_err(
-                "was able to add a user with the same identity as someone in the group!",
-            );
-            assert_eq!(
-                err,
-                AddMembersError::CreateCommitError(CreateCommitError::ProposalValidationError(
-                    ProposalValidationError::ExistingIdentityAddProposal
-                ))
-            );
-        } else {
-            // Positive Case: we should succeed
-            let _ = res
-                .expect("failed to add a user with an identity distinct from anyone in the group!");
+        match alice_and_bob_share_identities {
+            KeyUniqueness::NegativeSameKey => {
+                // Negative Case: we should output an error
+                let err = alice_group
+                    .add_members(backend, &[bob_key_package, target_key_package])
+                    .expect_err(
+                        "was able to add a user with the same identity as someone in the group!",
+                    );
+                assert_eq!(
+                    err,
+                    AddMembersError::CreateCommitError(CreateCommitError::ProposalValidationError(
+                        ProposalValidationError::ExistingIdentityAddProposal
+                    ))
+                );
+            }
+            KeyUniqueness::PositiveDifferentKey => {
+                // Positive Case: we should succeed
+                alice_group
+                    .add_members(backend, &[bob_key_package, target_key_package])
+                    .expect(
+                        "failed to add a user with an identity distinct from anyone in the group!",
+                    );
+            }
+            KeyUniqueness::PositiveSameKeyWithRemove => {
+                // Positice Case: we should succeed
+                // Find Bob's index in the group
+                alice_group
+                    .add_members(backend, &[bob_key_package])
+                    .unwrap();
+                alice_group.merge_pending_commit().unwrap();
+                let bob_index = alice_group
+                    .members()
+                    .find_map(|member| {
+                        if member.identity == target_id.as_bytes() {
+                            Some(member.index)
+                        } else {
+                            None
+                        }
+                    })
+                    .unwrap();
+                alice_group
+                    .propose_remove_member(backend, bob_index)
+                    .unwrap();
+                alice_group
+                    .add_members(backend, &[target_key_package])
+                    .expect(
+                    "failed to add a user with the same identity as someone in the group (with a remove proposal)!",
+                );
+            }
         }
     }
 
-    // We now test if ValSem103 is also performed when a client receives a
-    // commit. Before we can test reception of (invalid) proposals, we set up a
-    // new group with Alice and Bob.
-    let ProposalValidationTestSetup {
-        mut alice_group,
-        mut bob_group,
-    } = validation_test_setup(PURE_PLAINTEXT_WIRE_FORMAT_POLICY, ciphersuite, backend);
+    for alice_and_bob_share_identities in [
+        KeyUniqueness::NegativeSameKey,
+        KeyUniqueness::PositiveSameKeyWithRemove,
+    ] {
+        // We now test if ValSem103 is also performed when a client receives a
+        // commit. Before we can test reception of (invalid) proposals, we set up a
+        // new group with Alice and Bob.
+        let ProposalValidationTestSetup {
+            mut alice_group,
+            mut bob_group,
+        } = validation_test_setup(PURE_PLAINTEXT_WIRE_FORMAT_POLICY, ciphersuite, backend);
 
-    // We now have alice create a commit. Then we artificially add an Add
-    // proposal with an existing identity (Bob).
-    let (_bob_credential_bundle, bob_key_package_bundle) =
-        generate_credential_bundle_and_key_package_bundle("Bob".into(), ciphersuite, backend);
-    let bob_key_package = bob_key_package_bundle.key_package().clone();
+        // We now have alice create a commit. Then we artificially add an Add
+        // proposal with an existing identity (Bob).
+        let (_bob_credential_bundle, bob_key_package_bundle) =
+            generate_credential_bundle_and_key_package_bundle("Bob".into(), ciphersuite, backend);
+        let bob_key_package = bob_key_package_bundle.key_package().clone();
 
-    // Create the Commit.
-    let serialized_update = alice_group
-        .self_update(backend, None)
-        .expect("Error creating self-update")
-        .tls_serialize_detached()
-        .expect("Could not serialize message.");
+        // Create the Commit.
+        let serialized_update = alice_group
+            .self_update(backend, None)
+            .expect("Error creating self-update")
+            .tls_serialize_detached()
+            .expect("Could not serialize message.");
 
-    let plaintext = MlsMessageIn::tls_deserialize(&mut serialized_update.as_slice())
-        .expect("Could not deserialize message.")
-        .into_plaintext()
-        .expect("Message was not a plaintext.");
+        let plaintext = MlsMessageIn::tls_deserialize(&mut serialized_update.as_slice())
+            .expect("Could not deserialize message.")
+            .into_plaintext()
+            .expect("Message was not a plaintext.");
+        // Keep the original plaintext for positive test later.
+        let original_plaintext = plaintext.clone();
 
-    // Keep the original plaintext for positive test later.
-    let original_plaintext = plaintext.clone();
+        let proposals = match alice_and_bob_share_identities {
+            KeyUniqueness::NegativeSameKey => {
+                let add_proposal = ProposalOrRef::Proposal(Proposal::Add(AddProposal {
+                    key_package: bob_key_package,
+                }));
+                vec![add_proposal]
+            }
+            KeyUniqueness::PositiveSameKeyWithRemove => {
+                let add_proposal = ProposalOrRef::Proposal(Proposal::Add(AddProposal {
+                    key_package: bob_key_package,
+                }));
+                // find bob's index
+                let bob_index = alice_group
+                    .members()
+                    .find_map(|member| {
+                        if member.identity == b"Bob" {
+                            Some(member.index)
+                        } else {
+                            None
+                        }
+                    })
+                    .unwrap();
+                let remove_proposal = ProposalOrRef::Proposal(Proposal::Remove(RemoveProposal {
+                    removed: bob_index,
+                }));
+                vec![add_proposal, remove_proposal]
+            }
+            KeyUniqueness::PositiveDifferentKey => unreachable!(),
+        };
 
-    let add_proposal = Proposal::Add(AddProposal {
-        key_package: bob_key_package,
-    });
+        // Artificially add a proposal trying to add (another) Bob.
+        let verifiable_plaintext = insert_proposal_and_resign(
+            backend,
+            proposals,
+            plaintext,
+            &original_plaintext,
+            &alice_group,
+        );
 
-    // Artificially add a proposal trying to add (another) Bob.
-    let verifiable_plaintext = insert_proposal_and_resign(
-        backend,
-        ProposalOrRef::Proposal(add_proposal),
-        plaintext,
-        &original_plaintext,
-        &alice_group,
-    );
+        match alice_and_bob_share_identities {
+            KeyUniqueness::NegativeSameKey => {
+                // Have bob process the resulting plaintext
+                let err = bob_group
+                    .process_message(backend, verifiable_plaintext.into())
+                    .expect_err("Could process message despite modified public key in path.");
 
-    let update_message_in = MlsMessageIn::from(verifiable_plaintext);
+                assert_eq!(
+                    err,
+                    ProcessMessageError::InvalidCommit(StageCommitError::ProposalValidationError(
+                        ProposalValidationError::ExistingIdentityAddProposal
+                    ))
+                );
+            }
+            KeyUniqueness::PositiveSameKeyWithRemove => {
+                bob_group
+                    .process_message(backend, verifiable_plaintext.into())
+                    .expect(
+                        "Could not process message despite having a remove proposal in the commit",
+                    );
+            }
+            KeyUniqueness::PositiveDifferentKey => unreachable!(),
+        }
 
-    // Have bob process the resulting plaintext
-    let err = bob_group
-        .process_message(backend, update_message_in)
-        .expect_err("Could process message despite modified public key in path.");
+        let original_update_plaintext =
+            MlsMessageIn::tls_deserialize(&mut serialized_update.as_slice())
+                .expect("Could not deserialize message.");
 
-    assert_eq!(
-        err,
-        ProcessMessageError::InvalidCommit(StageCommitError::ProposalValidationError(
-            ProposalValidationError::ExistingIdentityAddProposal
-        ))
-    );
-
-    let original_update_plaintext =
-        MlsMessageIn::tls_deserialize(&mut serialized_update.as_slice())
-            .expect("Could not deserialize message.");
-
-    // Positive case
-    bob_group
-        .process_message(backend, original_update_plaintext)
-        .expect("Unexpected error.");
+        // Positive case
+        bob_group
+            .process_message(backend, original_update_plaintext)
+            .expect("Unexpected error.");
+    }
 }
 
 /// ValSem104:
@@ -753,28 +857,31 @@ fn test_valsem104(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
     for alice_and_bob_share_keys in [
         KeyUniqueness::NegativeSameKey,
         KeyUniqueness::PositiveDifferentKey,
+        KeyUniqueness::PositiveSameKeyWithRemove,
     ] {
         // 0. Initialize Alice and Bob
-        let (alice_signature_keypair, bob_signature_keypair) = match alice_and_bob_share_keys {
-            KeyUniqueness::NegativeSameKey => {
-                let shared_signature_keypair =
-                    SignatureKeypair::new(ciphersuite.signature_algorithm(), backend)
-                        .expect("failed to generate signature keypair");
-                (
-                    shared_signature_keypair.clone(),
-                    shared_signature_keypair.clone(),
-                )
+        let new_kp = || SignatureKeypair::new(ciphersuite.signature_algorithm(), backend).unwrap();
+        let shared_signature_keypair = new_kp();
+        let [alice_credential_bundle, bob_credential_bundle, target_credential_bundle] =
+            match alice_and_bob_share_keys {
+                KeyUniqueness::NegativeSameKey => [
+                    ("Alice", shared_signature_keypair.clone()),
+                    ("Bob", new_kp()),
+                    ("Charlie", shared_signature_keypair.clone()),
+                ],
+                KeyUniqueness::PositiveDifferentKey => [
+                    ("Alice", new_kp()),
+                    ("Bob", new_kp()),
+                    ("Charlie", new_kp()),
+                ],
+                KeyUniqueness::PositiveSameKeyWithRemove => [
+                    ("Alice", new_kp()),
+                    ("Bob", shared_signature_keypair.clone()),
+                    ("Charlie", shared_signature_keypair.clone()),
+                ],
             }
-            KeyUniqueness::PositiveDifferentKey => (
-                SignatureKeypair::new(ciphersuite.signature_algorithm(), backend)
-                    .expect("failed to generate signature keypair"),
-                SignatureKeypair::new(ciphersuite.signature_algorithm(), backend)
-                    .expect("failed to generate signature keypair"),
-            ),
-        };
+            .map(|(name, keypair)| CredentialBundle::from_parts(name.into(), keypair));
 
-        let alice_credential_bundle =
-            CredentialBundle::from_parts("Alice".into(), alice_signature_keypair);
         let alice_credential = alice_credential_bundle.credential().clone();
         backend
             .key_store()
@@ -786,9 +893,6 @@ fn test_valsem104(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
                 &alice_credential_bundle,
             )
             .expect("An unexpected error occurred.");
-
-        let bob_credential_bundle =
-            CredentialBundle::from_parts("Bob".into(), bob_signature_keypair);
 
         let alice_key_package_bundle =
             KeyPackageBundle::new(&[ciphersuite], &alice_credential_bundle, backend, vec![])
@@ -810,12 +914,28 @@ fn test_valsem104(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
                 .expect("failed to generate key package");
         let bob_key_package = bob_key_package_bundle.key_package().clone();
 
+        let target_key_package_bundle =
+            KeyPackageBundle::new(&[ciphersuite], &target_credential_bundle, backend, vec![])
+                .expect("failed to generate key package");
+        let target_key_package = target_key_package_bundle.key_package().clone();
+
         // 1. Alice creates a group and tries to add Bob to it
-        let res = create_group_with_members(alice_key_package_bundle, &[bob_key_package], backend);
+        let mut alice_group = MlsGroup::new_with_group_id(
+            backend,
+            &MlsGroupConfig::default(),
+            GroupId::from_slice(b"Alice's Friends"),
+            alice_key_package_bundle
+                .key_package()
+                .hash_ref(backend.crypto())
+                .expect("Could not hash KeyPackage.")
+                .as_slice(),
+        )
+        .unwrap();
 
         match alice_and_bob_share_keys {
             KeyUniqueness::NegativeSameKey => {
-                let err = res
+                let err = alice_group
+                    .add_members(backend, &[bob_key_package, target_key_package])
                     .expect_err("was able to add user with same signature key as a group member!");
                 assert_eq!(
                     err,
@@ -825,90 +945,157 @@ fn test_valsem104(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
                 );
             }
             KeyUniqueness::PositiveDifferentKey => {
-                let _ = res.expect("failed to add user with different signature keypair!");
+                alice_group
+                    .add_members(backend, &[bob_key_package, target_key_package])
+                    .expect("failed to add user with different signature keypair!");
+            }
+            KeyUniqueness::PositiveSameKeyWithRemove => {
+                alice_group
+                    .add_members(backend, &[bob_key_package.clone()])
+                    .unwrap();
+                alice_group.merge_pending_commit().unwrap();
+                let bob_index = alice_group
+                    .members()
+                    .find_map(|member| {
+                        if member.identity == b"Bob" {
+                            Some(member.index)
+                        } else {
+                            None
+                        }
+                    })
+                    .unwrap();
+                alice_group
+                    .propose_remove_member(backend, bob_index)
+                    .unwrap();
+                alice_group
+                    .add_members(backend, &[target_key_package])
+                    .expect(
+                    "failed to add a user with the same identity as someone in the group (with a remove proposal)!",
+                );
             }
         }
     }
 
-    // Before we can test reception of (invalid) proposals, we set up a new
-    // group with Alice and Bob.
-    let ProposalValidationTestSetup {
-        mut alice_group,
-        mut bob_group,
-    } = validation_test_setup(PURE_PLAINTEXT_WIRE_FORMAT_POLICY, ciphersuite, backend);
+    for alice_and_bob_share_keys in [
+        KeyUniqueness::NegativeSameKey,
+        KeyUniqueness::PositiveSameKeyWithRemove,
+    ] {
+        // Before we can test reception of (invalid) proposals, we set up a new
+        // group with Alice and Bob.
+        let ProposalValidationTestSetup {
+            mut alice_group,
+            mut bob_group,
+        } = validation_test_setup(PURE_PLAINTEXT_WIRE_FORMAT_POLICY, ciphersuite, backend);
 
-    // We now have alice create a commit. Then we artificially add an Add
-    // proposal with a different identity, but with the same signature public
-    // key as Bob.
-    // Create the Commit.
-    let serialized_update = alice_group
-        .self_update(backend, None)
-        .expect("Error creating self-update")
-        .tls_serialize_detached()
-        .expect("Could not serialize message.");
+        // We now have alice create a commit. Then we artificially add an Add
+        // proposal with a different identity, but with the same signature public
+        // key as Bob.
+        // Create the Commit.
+        let serialized_update = alice_group
+            .self_update(backend, None)
+            .expect("Error creating self-update")
+            .tls_serialize_detached()
+            .expect("Could not serialize message.");
 
-    let plaintext = MlsMessageIn::tls_deserialize(&mut serialized_update.as_slice())
-        .expect("Could not deserialize message.")
-        .into_plaintext()
-        .expect("Message was not a plaintext.");
+        let plaintext = MlsMessageIn::tls_deserialize(&mut serialized_update.as_slice())
+            .expect("Could not deserialize message.")
+            .into_plaintext()
+            .expect("Message was not a plaintext.");
 
-    // Keep the original plaintext for positive test later.
-    let original_plaintext = plaintext.clone();
+        // Keep the original plaintext for positive test later.
+        let original_plaintext = plaintext.clone();
 
-    let bob_credential_bundle = backend
-        .key_store()
-        .read::<CredentialBundle>(
-            &bob_group
-                .credential()
-                .expect("error retrieving credential from group")
-                .signature_key()
-                .tls_serialize_detached()
-                .expect("Error serializing signature key."),
-        )
-        .expect("An unexpected error occurred.");
+        let bob_credential_bundle = backend
+            .key_store()
+            .read::<CredentialBundle>(
+                &bob_group
+                    .credential()
+                    .expect("error retrieving credential from group")
+                    .signature_key()
+                    .tls_serialize_detached()
+                    .expect("Error serializing signature key."),
+            )
+            .expect("An unexpected error occurred.");
 
-    // Create the credential bundle using a copy of Bob's key pair.
-    let dave_credential_bundle =
-        CredentialBundle::from_parts("Dave".into(), bob_credential_bundle.key_pair());
+        // Create the credential bundle using a copy of Bob's key pair.
+        let dave_credential_bundle =
+            CredentialBundle::from_parts("Dave".into(), bob_credential_bundle.key_pair());
 
-    let kpb = KeyPackageBundle::new(&[ciphersuite], &dave_credential_bundle, backend, vec![])
-        .expect("error creating kpb");
+        let kpb = KeyPackageBundle::new(&[ciphersuite], &dave_credential_bundle, backend, vec![])
+            .expect("error creating kpb");
 
-    let add_proposal = Proposal::Add(AddProposal {
-        key_package: kpb.key_package().clone(),
-    });
+        let proposals = match alice_and_bob_share_keys {
+            KeyUniqueness::NegativeSameKey => {
+                let add_proposal = ProposalOrRef::Proposal(Proposal::Add(AddProposal {
+                    key_package: kpb.key_package().clone(),
+                }));
+                vec![add_proposal]
+            }
+            KeyUniqueness::PositiveSameKeyWithRemove => {
+                let add_proposal = ProposalOrRef::Proposal(Proposal::Add(AddProposal {
+                    key_package: kpb.key_package().clone(),
+                }));
+                // find bob's index
+                let bob_index = alice_group
+                    .members()
+                    .find_map(|member| {
+                        if member.identity == b"Bob" {
+                            Some(member.index)
+                        } else {
+                            None
+                        }
+                    })
+                    .unwrap();
+                let remove_proposal = ProposalOrRef::Proposal(Proposal::Remove(RemoveProposal {
+                    removed: bob_index,
+                }));
+                vec![add_proposal, remove_proposal]
+            }
+            KeyUniqueness::PositiveDifferentKey => unreachable!(),
+        };
 
-    // Artificially add a proposal trying to add (another) Bob.
-    let verifiable_plaintext = insert_proposal_and_resign(
-        backend,
-        ProposalOrRef::Proposal(add_proposal),
-        plaintext,
-        &original_plaintext,
-        &alice_group,
-    );
+        // Artificially add a proposal trying to add (another) Bob.
+        let verifiable_plaintext = insert_proposal_and_resign(
+            backend,
+            proposals,
+            plaintext,
+            &original_plaintext,
+            &alice_group,
+        );
 
-    let update_message_in = MlsMessageIn::from(verifiable_plaintext);
+        match alice_and_bob_share_keys {
+            KeyUniqueness::NegativeSameKey => {
+                // Have bob process the resulting plaintext
+                let err = bob_group
+                    .process_message(backend, verifiable_plaintext.into())
+                    .expect_err("Could process message despite modified public key in path.");
 
-    // Have bob process the resulting plaintext
-    let err = bob_group
-        .process_message(backend, update_message_in)
-        .expect_err("Could process message despite modified public key in path.");
+                assert_eq!(
+                    err,
+                    ProcessMessageError::InvalidCommit(StageCommitError::ProposalValidationError(
+                        ProposalValidationError::ExistingSignatureKeyAddProposal
+                    ))
+                );
+            }
+            KeyUniqueness::PositiveSameKeyWithRemove => {
+                bob_group
+                    .process_message(backend, verifiable_plaintext.into())
+                    .expect(
+                        "Could not process message despite having a remove proposal in the commit",
+                    );
+            }
+            KeyUniqueness::PositiveDifferentKey => unreachable!(),
+        }
 
-    assert_eq!(
-        err,
-        ProcessMessageError::InvalidCommit(StageCommitError::ProposalValidationError(
-            ProposalValidationError::ExistingSignatureKeyAddProposal
-        ))
-    );
+        let original_update_plaintext =
+            MlsMessageIn::tls_deserialize(&mut serialized_update.as_slice())
+                .expect("Could not deserialize message.");
 
-    let original_update_plaintext =
-        MlsMessageIn::tls_deserialize(&mut serialized_update.as_slice())
-            .expect("Could not deserialize message.");
-
-    // Positive case
-    bob_group
-        .process_message(backend, original_update_plaintext)
-        .expect("Unexpected error.");
+        // Positive case
+        bob_group
+            .process_message(backend, original_update_plaintext)
+            .expect("Unexpected error.");
+    }
 }
 
 /// ValSem105:
@@ -956,6 +1143,7 @@ fn test_valsem105(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
                 // don't need to do anything since the keys are already
                 // different.
             }
+            KeyUniqueness::PositiveSameKeyWithRemove => unreachable!(),
         }
 
         let alice_key_package = alice_key_package_bundle.key_package().clone();
@@ -988,6 +1176,7 @@ fn test_valsem105(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
             KeyUniqueness::PositiveDifferentKey => {
                 let _ = res.expect("failed to add user with different HPKE init key!");
             }
+            KeyUniqueness::PositiveSameKeyWithRemove => unreachable!(),
         }
     }
 
@@ -1044,7 +1233,7 @@ fn test_valsem105(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
     // public key.
     let verifiable_plaintext = insert_proposal_and_resign(
         backend,
-        ProposalOrRef::Proposal(add_proposal),
+        vec![ProposalOrRef::Proposal(add_proposal)],
         plaintext,
         &original_plaintext,
         &alice_group,
@@ -1255,7 +1444,7 @@ fn test_valsem106(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
             // Artificially add the proposal.
             let verifiable_plaintext = insert_proposal_and_resign(
                 backend,
-                proposal_or_ref,
+                vec![proposal_or_ref],
                 plaintext.clone(),
                 &original_plaintext,
                 &alice_group,
@@ -1481,7 +1670,7 @@ fn test_valsem108(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
     // group.
     let verifiable_plaintext = insert_proposal_and_resign(
         backend,
-        ProposalOrRef::Proposal(remove_proposal),
+        vec![ProposalOrRef::Proposal(remove_proposal)],
         plaintext,
         &original_plaintext,
         &alice_group,
@@ -1620,7 +1809,7 @@ fn test_valsem109(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
     // Artificially add the proposal.
     let verifiable_plaintext = insert_proposal_and_resign(
         backend,
-        ProposalOrRef::Proposal(update_proposal),
+        vec![ProposalOrRef::Proposal(update_proposal)],
         plaintext,
         &original_plaintext,
         &alice_group,
@@ -1768,11 +1957,7 @@ fn test_valsem110(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
     // Artificially add the proposal.
     let verifiable_plaintext = insert_proposal_and_resign(
         backend,
-        ProposalOrRef::Proposal(update_proposal),
-        // ProposalOrRef::Reference(
-        //     ProposalRef::from_proposal(ciphersuite, backend, &update_proposal)
-        //         .expect("error creating hash reference"),
-        // ),
+        vec![ProposalOrRef::Proposal(update_proposal)],
         plaintext,
         &original_plaintext,
         &alice_group,
@@ -1875,7 +2060,7 @@ fn test_valsem111(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
     // Let's insert the proposal into the commit.
     let verifiable_plaintext = insert_proposal_and_resign(
         backend,
-        ProposalOrRef::Proposal(update_proposal.clone()),
+        vec![ProposalOrRef::Proposal(update_proposal.clone())],
         plaintext,
         &original_plaintext,
         &alice_group,
@@ -1933,10 +2118,10 @@ fn test_valsem111(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
     // Artificially add the proposal.
     let verifiable_plaintext = insert_proposal_and_resign(
         backend,
-        ProposalOrRef::Reference(
+        vec![ProposalOrRef::Reference(
             ProposalRef::from_proposal(ciphersuite, backend, &update_proposal)
                 .expect("error creating hash reference"),
-        ),
+        )],
         plaintext,
         &original_plaintext,
         &alice_group,
