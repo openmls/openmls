@@ -290,125 +290,25 @@
 <span id="290">290</span>
 <span id="291">291</span>
 <span id="292">292</span>
-<span id="293">293</span>
-<span id="294">294</span>
-<span id="295">295</span>
-<span id="296">296</span>
-<span id="297">297</span>
-<span id="298">298</span>
-<span id="299">299</span>
-<span id="300">300</span>
-<span id="301">301</span>
-<span id="302">302</span>
-<span id="303">303</span>
-<span id="304">304</span>
-<span id="305">305</span>
-<span id="306">306</span>
-<span id="307">307</span>
-<span id="308">308</span>
-<span id="309">309</span>
-<span id="310">310</span>
-<span id="311">311</span>
-<span id="312">312</span>
-<span id="313">313</span>
-<span id="314">314</span>
-<span id="315">315</span>
-<span id="316">316</span>
-<span id="317">317</span>
-<span id="318">318</span>
-<span id="319">319</span>
-<span id="320">320</span>
-<span id="321">321</span>
-<span id="322">322</span>
-<span id="323">323</span>
-<span id="324">324</span>
-<span id="325">325</span>
-<span id="326">326</span>
-<span id="327">327</span>
-<span id="328">328</span>
-<span id="329">329</span>
-<span id="330">330</span>
-<span id="331">331</span>
-<span id="332">332</span>
-<span id="333">333</span>
-<span id="334">334</span>
-<span id="335">335</span>
-<span id="336">336</span>
-<span id="337">337</span>
-<span id="338">338</span>
-<span id="339">339</span>
-<span id="340">340</span>
-<span id="341">341</span>
-<span id="342">342</span>
-<span id="343">343</span>
-<span id="344">344</span>
-<span id="345">345</span>
-<span id="346">346</span>
-<span id="347">347</span>
-<span id="348">348</span>
-<span id="349">349</span>
-<span id="350">350</span>
-<span id="351">351</span>
-<span id="352">352</span>
-<span id="353">353</span>
-<span id="354">354</span>
-<span id="355">355</span>
-<span id="356">356</span>
-<span id="357">357</span>
-<span id="358">358</span>
-<span id="359">359</span>
-<span id="360">360</span>
-<span id="361">361</span>
-<span id="362">362</span>
-<span id="363">363</span>
-</pre><pre class="rust"><code><span class="doccomment">//! # Pre shared keys.
-//! ```text
-//! enum {
-//!     reserved(0),
-//!     external(1),
-//!     reinit(2),
-//!     branch(3),
-//!     (255)
-//!   } PSKType;
-//!
-//!   struct {
-//!     PSKType psktype;
-//!     select (PreSharedKeyID.psktype) {
-//!       case external:
-//!         opaque psk_id&lt;0..255&gt;;
-//!
-//!       case reinit:
-//!         opaque psk_group_id&lt;0..255&gt;;
-//!         uint64 psk_epoch;
-//!
-//!       case branch:
-//!         opaque psk_group_id&lt;0..255&gt;;
-//!         uint64 psk_epoch;
-//!     }
-//!     opaque psk_nonce&lt;0..255&gt;;
-//!   } PreSharedKeyID;
-//!
-//!   struct {
-//!       PreSharedKeyID psks&lt;0..2^16-1&gt;;
-//!   } PreSharedKeys;
-//! ```
+</pre><pre class="rust"><code><span class="doccomment">//! # Preshared keys.
 
 </span><span class="kw">use super</span>::<span class="kw-2">*</span>;
 <span class="kw">use </span><span class="kw">crate</span>::group::{GroupEpoch, GroupId};
 <span class="kw">use </span>openmls_traits::{key_store::OpenMlsKeyStore, random::OpenMlsRand, OpenMlsCryptoProvider};
 <span class="kw">use </span>serde::{Deserialize, Serialize};
-<span class="kw">use </span>std::convert::TryFrom;
-<span class="kw">use </span>tls_codec::{Serialize <span class="kw">as </span>TlsSerializeTrait, TlsByteVecU8, TlsVecU16};
+<span class="kw">use </span>tls_codec::{Serialize <span class="kw">as </span>TlsSerializeTrait, VLBytes};
 
-<span class="doccomment">/// Type of PSK.
-/// ```text
+<span class="doccomment">/// ResumptionPSKUsage
+///
+/// ```c
+/// // draft-ietf-mls-protocol-16
 /// enum {
 ///   reserved(0),
-///   external(1),
+///   application(1),
 ///   reinit(2),
 ///   branch(3),
 ///   (255)
-/// } PSKType;
+/// } ResumptionPSKUsage;
 /// ```
 </span><span class="attribute">#[derive(
     Debug,
@@ -425,32 +325,10 @@
 )]
 #[repr(u8)]
 #[allow(missing_docs)]
-</span><span class="kw">pub enum </span>PskType {
-    External = <span class="number">1</span>,
+</span><span class="kw">pub enum </span>ResumptionPskUsage {
+    Application = <span class="number">1</span>,
     Reinit = <span class="number">2</span>,
     Branch = <span class="number">3</span>,
-}
-
-<span class="kw">impl </span>TryFrom&lt;u8&gt; <span class="kw">for </span>PskType {
-    <span class="kw">type </span>Error = <span class="kw-2">&amp;</span><span class="lifetime">&#39;static </span>str;
-    <span class="kw">fn </span>try_from(value: u8) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, <span class="self">Self</span>::Error&gt; {
-        <span class="kw">match </span>value {
-            <span class="number">1 </span>=&gt; <span class="prelude-val">Ok</span>(PskType::External),
-            <span class="number">2 </span>=&gt; <span class="prelude-val">Ok</span>(PskType::Reinit),
-            <span class="number">3 </span>=&gt; <span class="prelude-val">Ok</span>(PskType::Branch),
-            <span class="kw">_ </span>=&gt; <span class="prelude-val">Err</span>(<span class="string">&quot;Unknown PSK type.&quot;</span>),
-        }
-    }
-}
-
-<span class="kw">impl </span>From&lt;<span class="kw-2">&amp;</span>Psk&gt; <span class="kw">for </span>PskType {
-    <span class="kw">fn </span>from(psk: <span class="kw-2">&amp;</span>Psk) -&gt; <span class="self">Self </span>{
-        <span class="kw">match </span>psk {
-            Psk::External(<span class="kw">_</span>) =&gt; PskType::External,
-            Psk::Reinit(<span class="kw">_</span>) =&gt; PskType::Reinit,
-            Psk::Branch(<span class="kw">_</span>) =&gt; PskType::Branch,
-        }
-    }
 }
 
 <span class="doccomment">/// External PSK.
@@ -458,7 +336,7 @@
     Debug, PartialEq, Eq, Clone, Hash, Serialize, Deserialize, TlsDeserialize, TlsSerialize, TlsSize,
 )]
 </span><span class="kw">pub struct </span>ExternalPsk {
-    psk_id: TlsByteVecU8,
+    psk_id: VLBytes,
 }
 
 <span class="kw">impl </span>ExternalPsk {
@@ -468,6 +346,7 @@
             psk_id: psk_id.into(),
         }
     }
+
     <span class="doccomment">/// Return the PSK ID
     </span><span class="kw">pub fn </span>psk_id(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>[u8] {
         <span class="self">self</span>.psk_id.as_slice()
@@ -493,40 +372,37 @@
         <span class="kw-2">&amp;</span><span class="self">self</span>.secret
     }
 }
-<span class="doccomment">/// ReInit PSK.
+
+<span class="doccomment">/// Resumption PSK.
 </span><span class="attribute">#[derive(
-    Debug, PartialEq, Eq, Clone, Hash, Serialize, Deserialize, TlsDeserialize, TlsSerialize, TlsSize,
+    Debug, PartialEq, Eq, Clone, Serialize, Deserialize, TlsDeserialize, TlsSerialize, TlsSize,
 )]
-</span><span class="kw">pub struct </span>ReinitPsk {
+</span><span class="kw">pub struct </span>ResumptionPsk {
+    <span class="kw">pub</span>(<span class="kw">crate</span>) usage: ResumptionPskUsage,
     <span class="kw">pub</span>(<span class="kw">crate</span>) psk_group_id: GroupId,
     <span class="kw">pub</span>(<span class="kw">crate</span>) psk_epoch: GroupEpoch,
 }
 
-<span class="kw">impl </span>ReinitPsk {
+<span class="kw">impl </span>ResumptionPsk {
+    <span class="doccomment">/// Create a new `ResumptionPsk`
+    </span><span class="kw">pub fn </span>new(usage: ResumptionPskUsage, psk_group_id: GroupId, psk_epoch: GroupEpoch) -&gt; <span class="self">Self </span>{
+        <span class="self">Self </span>{
+            usage,
+            psk_group_id,
+            psk_epoch,
+        }
+    }
+
+    <span class="doccomment">/// Return the usage
+    </span><span class="kw">pub fn </span>usage(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; ResumptionPskUsage {
+        <span class="self">self</span>.usage
+    }
+
     <span class="doccomment">/// Return the `GroupId`
     </span><span class="kw">pub fn </span>psk_group_id(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>GroupId {
         <span class="kw-2">&amp;</span><span class="self">self</span>.psk_group_id
     }
-    <span class="doccomment">/// Return the `GroupEpoch`
-    </span><span class="kw">pub fn </span>psk_epoch(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; GroupEpoch {
-        <span class="self">self</span>.psk_epoch
-    }
-}
 
-<span class="doccomment">/// Branch PSK
-</span><span class="attribute">#[derive(
-    Debug, PartialEq, Eq, Clone, Hash, Serialize, Deserialize, TlsDeserialize, TlsSerialize, TlsSize,
-)]
-</span><span class="kw">pub struct </span>BranchPsk {
-    <span class="kw">pub</span>(<span class="kw">crate</span>) psk_group_id: GroupId,
-    <span class="kw">pub</span>(<span class="kw">crate</span>) psk_epoch: GroupEpoch,
-}
-
-<span class="kw">impl </span>BranchPsk {
-    <span class="doccomment">/// Return the `GroupId`
-    </span><span class="kw">pub fn </span>psk_group_id(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>GroupId {
-        <span class="kw-2">&amp;</span><span class="self">self</span>.psk_group_id
-    }
     <span class="doccomment">/// Return the `GroupEpoch`
     </span><span class="kw">pub fn </span>psk_epoch(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; GroupEpoch {
         <span class="self">self</span>.psk_epoch
@@ -534,39 +410,40 @@
 }
 
 <span class="doccomment">/// PSK enum that can contain the different PSK types
-</span><span class="attribute">#[derive(Debug, PartialEq, Eq, Clone, Hash, Serialize, Deserialize)]
+</span><span class="attribute">#[derive(
+    Debug, PartialEq, Eq, Clone, Serialize, Deserialize, TlsSerialize, TlsDeserialize, TlsSize,
+)]
 #[allow(missing_docs)]
+#[repr(u8)]
 </span><span class="kw">pub enum </span>Psk {
-    External(ExternalPsk),
-    Reinit(ReinitPsk),
-    Branch(BranchPsk),
+    <span class="attribute">#[tls_codec(discriminant = <span class="number">1</span>)]
+    </span>External(ExternalPsk),
+    Resumption(ResumptionPsk),
 }
 
 <span class="doccomment">/// A `PreSharedKeyID` is used to uniquely identify the PSKs that get injected
 /// in the key schedule.
-/// ```text
+///
+/// ```c
+/// // draft-ietf-mls-protocol-16
 /// struct {
 ///   PSKType psktype;
 ///   select (PreSharedKeyID.psktype) {
-///     case external:
-///       opaque psk_id&lt;0..255&gt;;
-///
-///     case reinit:
-///       opaque psk_group_id&lt;0..255&gt;;
-///       uint64 psk_epoch;
-///
-///     case branch:
-///       opaque psk_group_id&lt;0..255&gt;;
-///       uint64 psk_epoch;
-///   }
-///   opaque psk_nonce&lt;0..255&gt;;
+///   case external:
+///     opaque psk_id&lt;V&gt;;
+///   case resumption:
+///     ResumptionPSKUsage usage;
+///     opaque psk_group_id&lt;V&gt;;
+///     uint64 psk_epoch;
+///   opaque psk_nonce&lt;V&gt;;
 /// } PreSharedKeyID;
 /// ```
-</span><span class="attribute">#[derive(Debug, PartialEq, Eq, Clone, Hash, Serialize, Deserialize)]
+</span><span class="attribute">#[derive(
+    Debug, PartialEq, Eq, Clone, Serialize, Deserialize, TlsDeserialize, TlsSerialize, TlsSize,
+)]
 </span><span class="kw">pub struct </span>PreSharedKeyId {
-    <span class="kw">pub</span>(<span class="kw">crate</span>) psk_type: PskType,
     <span class="kw">pub</span>(<span class="kw">crate</span>) psk: Psk,
-    <span class="kw">pub</span>(<span class="kw">crate</span>) psk_nonce: TlsByteVecU8,
+    <span class="kw">pub</span>(<span class="kw">crate</span>) psk_nonce: VLBytes,
 }
 
 <span class="kw">impl </span>PreSharedKeyId {
@@ -577,7 +454,6 @@
         psk: Psk,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, CryptoError&gt; {
         <span class="prelude-val">Ok</span>(<span class="self">Self </span>{
-            psk_type: PskType::from(<span class="kw-2">&amp;</span>psk),
             psk,
             psk_nonce: rand
                 .random_vec(ciphersuite.hash_length())
@@ -585,33 +461,15 @@
                 </span>.into(),
         })
     }
-    <span class="doccomment">/// Return the type of the PSK
-    </span><span class="kw">pub fn </span>psktype(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>PskType {
-        <span class="kw-2">&amp;</span><span class="self">self</span>.psk_type
-    }
+
     <span class="doccomment">/// Return the PSK
     </span><span class="kw">pub fn </span>psk(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>Psk {
         <span class="kw-2">&amp;</span><span class="self">self</span>.psk
     }
+
     <span class="doccomment">/// Return the PSK nonce
     </span><span class="kw">pub fn </span>psk_nonce(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>[u8] {
         <span class="self">self</span>.psk_nonce.as_slice()
-    }
-}
-
-<span class="doccomment">/// `PreSharedKeys` is a vector of `PreSharedKeyID`s.
-/// struct {
-///     PreSharedKeyID psks&lt;0..2^16-1&gt;;
-/// } PreSharedKeys;
-</span><span class="attribute">#[derive(TlsDeserialize, TlsSerialize, TlsSize)]
-</span><span class="kw">pub struct </span>PreSharedKeys {
-    <span class="kw">pub</span>(<span class="kw">crate</span>) psks: TlsVecU16&lt;PreSharedKeyId&gt;,
-}
-
-<span class="kw">impl </span>PreSharedKeys {
-    <span class="doccomment">/// Return the `PreSharedKeyID`s
-    </span><span class="kw">pub fn </span>psks(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>[PreSharedKeyId] {
-        <span class="self">self</span>.psks.as_slice()
     }
 }
 

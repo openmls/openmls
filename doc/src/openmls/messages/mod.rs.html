@@ -502,8 +502,6 @@
 <span id="502">502</span>
 <span id="503">503</span>
 <span id="504">504</span>
-<span id="505">505</span>
-<span id="506">506</span>
 </pre><pre class="rust"><code><span class="doccomment">//! # Messages
 //!
 //! This module contains the types and implementations for Commit &amp; Welcome messages,
@@ -515,7 +513,7 @@
     error::LibraryError,
     extensions::<span class="kw-2">*</span>,
     group::<span class="kw-2">*</span>,
-    schedule::{psk::PreSharedKeys, JoinerSecret},
+    schedule::{psk::PreSharedKeyId, JoinerSecret},
     treesync::treekem::UpdatePath,
     versions::ProtocolVersion,
 };
@@ -543,7 +541,7 @@
 <span class="attribute">#[cfg(test)]
 </span><span class="kw">use </span><span class="kw">crate</span>::credentials::CredentialBundle;
 <span class="attribute">#[cfg(any(feature = <span class="string">&quot;test-utils&quot;</span>, test))]
-</span><span class="kw">use </span><span class="kw">crate</span>::schedule::psk::{ExternalPsk, PreSharedKeyId, Psk};
+</span><span class="kw">use </span><span class="kw">crate</span>::schedule::psk::{ExternalPsk, Psk};
 
 <span class="comment">// Public types
 
@@ -939,14 +937,14 @@
 </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct </span>GroupSecrets {
     <span class="kw">pub</span>(<span class="kw">crate</span>) joiner_secret: JoinerSecret,
     <span class="kw">pub</span>(<span class="kw">crate</span>) path_secret: <span class="prelude-ty">Option</span>&lt;PathSecret&gt;,
-    <span class="kw">pub</span>(<span class="kw">crate</span>) psks: PreSharedKeys,
+    <span class="kw">pub</span>(<span class="kw">crate</span>) psks: Vec&lt;PreSharedKeyId&gt;,
 }
 
 <span class="attribute">#[derive(TlsSerialize, TlsSize)]
 </span><span class="kw">struct </span>EncodedGroupSecrets&lt;<span class="lifetime">&#39;a</span>&gt; {
     <span class="kw">pub</span>(<span class="kw">crate</span>) joiner_secret: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>JoinerSecret,
     <span class="kw">pub</span>(<span class="kw">crate</span>) path_secret: <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>PathSecret&gt;,
-    <span class="kw">pub</span>(<span class="kw">crate</span>) psks: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>PreSharedKeys,
+    <span class="kw">pub</span>(<span class="kw">crate</span>) psks: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[PreSharedKeyId],
 }
 
 <span class="kw">impl </span>GroupSecrets {
@@ -954,7 +952,7 @@
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>new_encoded&lt;<span class="lifetime">&#39;a</span>&gt;(
         joiner_secret: <span class="kw-2">&amp;</span>JoinerSecret,
         path_secret: <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>PathSecret&gt;,
-        psks: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>PreSharedKeys,
+        psks: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[PreSharedKeyId],
     ) -&gt; <span class="prelude-ty">Result</span>&lt;Vec&lt;u8&gt;, tls_codec::Error&gt; {
         EncodedGroupSecrets {
             joiner_secret,
@@ -996,9 +994,7 @@
             )),
         )
         .expect(<span class="string">&quot;An unexpected error occurred.&quot;</span>);
-        <span class="kw">let </span>psks = PreSharedKeys {
-            psks: <span class="macro">vec!</span>[psk_id].into(),
-        };
+        <span class="kw">let </span>psks = <span class="macro">vec!</span>[psk_id];
 
         GroupSecrets::new_encoded(
             <span class="kw-2">&amp;</span>JoinerSecret::random(ciphersuite, backend, version),

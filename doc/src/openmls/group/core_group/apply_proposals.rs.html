@@ -185,8 +185,6 @@
 <span id="185">185</span>
 <span id="186">186</span>
 <span id="187">187</span>
-<span id="188">188</span>
-<span id="189">189</span>
 </pre><pre class="rust"><code><span class="kw">use </span>std::collections::HashSet;
 
 <span class="kw">use </span>openmls_traits::OpenMlsCryptoProvider;
@@ -208,7 +206,7 @@
     <span class="kw">pub</span>(<span class="kw">crate</span>) path_required: bool,
     <span class="kw">pub</span>(<span class="kw">crate</span>) self_removed: bool,
     <span class="kw">pub</span>(<span class="kw">crate</span>) invitation_list: Vec&lt;(LeafIndex, AddProposal)&gt;,
-    <span class="kw">pub</span>(<span class="kw">crate</span>) presharedkeys: PreSharedKeys,
+    <span class="kw">pub</span>(<span class="kw">crate</span>) presharedkeys: Vec&lt;PreSharedKeyId&gt;,
     <span class="kw">pub</span>(<span class="kw">crate</span>) external_init_secret_option: <span class="prelude-ty">Option</span>&lt;InitSecret&gt;,
 }
 
@@ -341,7 +339,7 @@
         }
 
         <span class="comment">// Process PSK proposals
-        </span><span class="kw">let </span>psks: Vec&lt;PreSharedKeyId&gt; = proposal_queue
+        </span><span class="kw">let </span>presharedkeys: Vec&lt;PreSharedKeyId&gt; = proposal_queue
             .filtered_by_type(ProposalType::Presharedkey)
             .filter_map(|queued_proposal| {
                 <span class="kw">if let </span>Proposal::PreSharedKey(psk_proposal) = queued_proposal.proposal() {
@@ -351,8 +349,6 @@
                 </span>}
             })
             .collect();
-
-        <span class="kw">let </span>presharedkeys = PreSharedKeys { psks: psks.into() };
 
         <span class="kw">let </span>proposals_require_path = proposal_queue
             .queued_proposals()

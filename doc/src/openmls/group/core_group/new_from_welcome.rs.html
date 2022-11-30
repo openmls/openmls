@@ -233,7 +233,6 @@
 <span id="233">233</span>
 <span id="234">234</span>
 <span id="235">235</span>
-<span id="236">236</span>
 </pre><pre class="rust"><code><span class="kw">use </span>log::debug;
 <span class="kw">use </span>openmls_traits::crypto::OpenMlsCrypto;
 <span class="kw">use </span>tls_codec::Deserialize;
@@ -295,13 +294,12 @@
         <span class="kw">let </span>joiner_secret = group_secrets.joiner_secret;
 
         <span class="comment">// Prepare the PskSecret
-        </span><span class="kw">let </span>psk_secret = PskSecret::new(ciphersuite, backend, group_secrets.psks.psks()).map_err(
-            |e| <span class="kw">match </span>e {
+        </span><span class="kw">let </span>psk_secret =
+            PskSecret::new(ciphersuite, backend, <span class="kw-2">&amp;</span>group_secrets.psks).map_err(|e| <span class="kw">match </span>e {
                 PskError::LibraryError(e) =&gt; e.into(),
                 PskError::TooManyKeys =&gt; WelcomeError::PskTooManyKeys,
                 PskError::KeyNotFound =&gt; WelcomeError::PskNotFound,
-            },
-        )<span class="question-mark">?</span>;
+            })<span class="question-mark">?</span>;
 
         <span class="comment">// Create key schedule
         </span><span class="kw">let </span><span class="kw-2">mut </span>key_schedule = KeySchedule::init(ciphersuite, backend, joiner_secret, psk_secret)<span class="question-mark">?</span>;

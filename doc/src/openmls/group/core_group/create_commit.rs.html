@@ -450,9 +450,6 @@
 <span id="450">450</span>
 <span id="451">451</span>
 <span id="452">452</span>
-<span id="453">453</span>
-<span id="454">454</span>
-<span id="455">455</span>
 </pre><pre class="rust"><code><span class="kw">use </span>openmls_traits::OpenMlsCryptoProvider;
 
 <span class="kw">use crate</span>::{
@@ -731,11 +728,8 @@
         )<span class="question-mark">?</span>;
 
         <span class="comment">// Prepare the PskSecret
-        </span><span class="kw">let </span>psk_secret = PskSecret::new(
-            ciphersuite,
-            backend,
-            apply_proposals_values.presharedkeys.psks(),
-        )<span class="question-mark">?</span>;
+        </span><span class="kw">let </span>psk_secret =
+            PskSecret::new(ciphersuite, backend, <span class="kw-2">&amp;</span>apply_proposals_values.presharedkeys)<span class="question-mark">?</span>;
 
         <span class="comment">// Create key schedule
         </span><span class="kw">let </span><span class="kw-2">mut </span>key_schedule = KeySchedule::init(ciphersuite, backend, joiner_secret, psk_secret)<span class="question-mark">?</span>;

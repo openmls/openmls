@@ -1257,7 +1257,7 @@
 </pre><pre class="rust"><code><span class="doccomment">//! # Key schedule
 //!
 //! This module contains the types and implementations for key schedule operations.
-//! It exposes the [`EpochAuthenticator`] &amp; [`ResumptionPsk`].
+//! It exposes the [`EpochAuthenticator`] &amp; [`ResumptionPskSecret`].
 
 </span><span class="comment">// Internal documentation
 //
@@ -1391,8 +1391,7 @@
 <span class="kw">use </span>tls_codec::{TlsDeserialize, TlsSerialize, TlsSize};
 
 <span class="comment">// Public
-</span><span class="kw">pub mod </span>codec;
-<span class="kw">pub mod </span>errors;
+</span><span class="kw">pub mod </span>errors;
 
 <span class="comment">// Crate
 </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">mod </span>message_secrets;
@@ -1411,14 +1410,15 @@
 
 <span class="comment">// Public types
 
-</span><span class="doccomment">/// A group secret that can be used among members to prove that a member was part of a group in a given epoch.
+</span><span class="doccomment">/// A group secret that can be used among members to prove that a member was
+/// part of a group in a given epoch.
 </span><span class="attribute">#[derive(Clone, Debug, Serialize, Deserialize)]
 #[cfg_attr(test, derive(PartialEq))]
-</span><span class="kw">pub struct </span>ResumptionPsk {
+</span><span class="kw">pub struct </span>ResumptionPskSecret {
     secret: Secret,
 }
 
-<span class="kw">impl </span>ResumptionPsk {
+<span class="kw">impl </span>ResumptionPskSecret {
     <span class="doccomment">/// Derive an `ResumptionPsk` from an `EpochSecret`.
     </span><span class="kw">fn </span>new(
         backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider,
@@ -2275,7 +2275,7 @@
     external_secret: ExternalSecret,
     confirmation_key: ConfirmationKey,
     membership_key: MembershipKey,
-    resumption_psk: ResumptionPsk,
+    resumption_psk: ResumptionPskSecret,
 }
 
 <span class="kw">impl </span>std::fmt::Debug <span class="kw">for </span>EpochSecrets {
@@ -2343,7 +2343,7 @@
 
     <span class="doccomment">/// External secret
     </span><span class="attribute">#[cfg(any(feature = <span class="string">&quot;test-utils&quot;</span>, test))]
-    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>resumption_psk(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>ResumptionPsk {
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>resumption_psk(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>ResumptionPskSecret {
         <span class="kw-2">&amp;</span><span class="self">self</span>.resumption_psk
     }
 
@@ -2382,7 +2382,7 @@
         <span class="kw">let </span>external_secret = ExternalSecret::new(backend, <span class="kw-2">&amp;</span>epoch_secret)<span class="question-mark">?</span>;
         <span class="kw">let </span>confirmation_key = ConfirmationKey::new(backend, <span class="kw-2">&amp;</span>epoch_secret)<span class="question-mark">?</span>;
         <span class="kw">let </span>membership_key = MembershipKey::new(backend, <span class="kw-2">&amp;</span>epoch_secret)<span class="question-mark">?</span>;
-        <span class="kw">let </span>resumption_psk = ResumptionPsk::new(backend, <span class="kw-2">&amp;</span>epoch_secret)<span class="question-mark">?</span>;
+        <span class="kw">let </span>resumption_psk = ResumptionPskSecret::new(backend, <span class="kw-2">&amp;</span>epoch_secret)<span class="question-mark">?</span>;
 
         <span class="macro">log::trace!</span>(<span class="string">&quot;  Computing init secret.&quot;</span>);
         <span class="kw">let </span>init_secret = InitSecret::new(backend, epoch_secret)<span class="question-mark">?</span>;
@@ -2457,7 +2457,7 @@
     exporter_secret: ExporterSecret,
     epoch_authenticator: EpochAuthenticator,
     external_secret: ExternalSecret,
-    resumption_psk: ResumptionPsk,
+    resumption_psk: ResumptionPskSecret,
 }
 
 <span class="kw">impl </span>std::fmt::Debug <span class="kw">for </span>GroupEpochSecrets {
@@ -2506,7 +2506,7 @@
     }
 
     <span class="doccomment">/// External secret
-    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>resumption_psk(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>ResumptionPsk {
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>resumption_psk(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>ResumptionPskSecret {
         <span class="kw-2">&amp;</span><span class="self">self</span>.resumption_psk
     }
 }

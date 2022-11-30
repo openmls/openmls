@@ -509,9 +509,6 @@
 <span id="509">509</span>
 <span id="510">510</span>
 <span id="511">511</span>
-<span id="512">512</span>
-<span id="513">513</span>
-<span id="514">514</span>
 </pre><pre class="rust"><code><span class="kw">use </span><span class="kw">crate</span>::treesync::errors::TreeSyncAddLeaf;
 <span class="kw">use </span><span class="kw">crate</span>::treesync::node::leaf_node::{
     LeafNodeTbs, OpenMlsLeafNode, TreeInfoTbs, VerifiableLeafNodeTbs,
@@ -827,11 +824,8 @@
         );
 
         <span class="comment">// Prepare the PskSecret
-        </span><span class="kw">let </span>psk_secret = PskSecret::new(
-            ciphersuite,
-            backend,
-            apply_proposals_values.presharedkeys.psks(),
-        )<span class="question-mark">?</span>;
+        </span><span class="kw">let </span>psk_secret =
+            PskSecret::new(ciphersuite, backend, <span class="kw-2">&amp;</span>apply_proposals_values.presharedkeys)<span class="question-mark">?</span>;
 
         <span class="comment">// Create key schedule
         </span><span class="kw">let </span><span class="kw-2">mut </span>key_schedule = KeySchedule::init(ciphersuite, backend, joiner_secret, psk_secret)<span class="question-mark">?</span>;

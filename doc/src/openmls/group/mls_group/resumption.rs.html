@@ -53,7 +53,7 @@
 #[cfg_attr(test, derive(PartialEq))]
 </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct </span>ResumptionPskStore {
     number_of_secrets: usize,
-    resumption_psk: Vec&lt;(GroupEpoch, ResumptionPsk)&gt;,
+    resumption_psk: Vec&lt;(GroupEpoch, ResumptionPskSecret)&gt;,
     cursor: usize,
 }
 
@@ -68,7 +68,7 @@
     }
 
     <span class="doccomment">/// Adds a new entry to the store.
-    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>add(<span class="kw-2">&amp;mut </span><span class="self">self</span>, epoch: GroupEpoch, resumption_psk: ResumptionPsk) {
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>add(<span class="kw-2">&amp;mut </span><span class="self">self</span>, epoch: GroupEpoch, resumption_psk: ResumptionPskSecret) {
         <span class="kw">if </span><span class="self">self</span>.number_of_secrets == <span class="number">0 </span>{
             <span class="kw">return</span>;
         }
@@ -85,7 +85,7 @@
 
     <span class="doccomment">/// Searches an entry for a given epoch number and if found, returns the
     /// corresponding resumption psk.
-    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>get(<span class="kw-2">&amp;</span><span class="self">self</span>, epoch: GroupEpoch) -&gt; <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>ResumptionPsk&gt; {
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>get(<span class="kw-2">&amp;</span><span class="self">self</span>, epoch: GroupEpoch) -&gt; <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>ResumptionPskSecret&gt; {
         <span class="self">self</span>.resumption_psk
             .iter()
             .find(|<span class="kw-2">&amp;</span>(e, _s)| e == <span class="kw-2">&amp;</span>epoch)

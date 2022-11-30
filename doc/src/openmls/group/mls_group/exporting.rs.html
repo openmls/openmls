@@ -123,14 +123,14 @@
         <span class="self">self</span>.group.epoch_authenticator()
     }
 
-    <span class="doccomment">/// Returns the resumption psk of the current epoch.
-    </span><span class="kw">pub fn </span>resumption_psk(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>ResumptionPsk {
-        <span class="self">self</span>.group.resumption_psk()
+    <span class="doccomment">/// Returns the resumption PSK secret of the current epoch.
+    </span><span class="kw">pub fn </span>resumption_psk_secret(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>ResumptionPskSecret {
+        <span class="self">self</span>.group.resumption_psk_secret()
     }
 
     <span class="doccomment">/// Returns a resumption psk for a given epoch. If no resumption psk
     /// is available for that epoch,  `None` is returned.
-    </span><span class="kw">pub fn </span>get_past_resumption_psk(<span class="kw-2">&amp;</span><span class="self">self</span>, epoch: GroupEpoch) -&gt; <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>ResumptionPsk&gt; {
+    </span><span class="kw">pub fn </span>get_past_resumption_psk(<span class="kw-2">&amp;</span><span class="self">self</span>, epoch: GroupEpoch) -&gt; <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>ResumptionPskSecret&gt; {
         <span class="self">self</span>.resumption_psk_store.get(epoch)
     }
 
