@@ -585,11 +585,6 @@ impl CoreGroup {
         &self.tree
     }
 
-    /// Returns a mutable reference the ratchet tree
-    pub(crate) fn treesync_mut(&mut self) -> &mut TreeSync {
-        &mut self.tree
-    }
-
     /// Get the ciphersuite implementation used in this group.
     pub(crate) fn ciphersuite(&self) -> Ciphersuite {
         self.ciphersuite

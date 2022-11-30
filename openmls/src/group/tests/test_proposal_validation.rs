@@ -1590,24 +1590,11 @@ fn test_valsem109(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
         .store(&credential_id, &new_cb)
         .expect("An unexpected error occurred.");
 
-    // let new_kp = backend.crypto().derive_hpke_keypair(
-    //     ciphersuite.hpke_config(),
-    //     Secret::random(ciphersuite, backend, ProtocolVersion::Mls10)
-    //         .unwrap()
-    //         .as_slice(),
-    // );
     let bob_leaf = bob_group
         .group()
         .treesync()
         .own_leaf_node()
         .expect("error getting own leaf node");
-    // let mut update_kpb_payload =
-    //     KeyPackageBundlePayload::from_rekeyed_key_package(&bob_kp, backend, &new_cb)
-    //         .expect("error creating kpb payload");
-    // update_kpb_payload.set_credential(new_cb.credential().clone());
-    // let update_kpb = update_kpb_payload
-    //     .sign(backend, &new_cb)
-    //     .expect("error signing kpb");
     let update_kpb = KeyPackageBundle::new(bob_leaf.ciphersuites(), &new_cb, backend, vec![])
         .expect("Error creating new key package bundle");
 
@@ -1751,13 +1738,6 @@ fn test_valsem110(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
         )
         .unwrap();
 
-    // update_leaf_node.set_public_key(
-    //     alice_leaf_node.encryption_key().clone(),
-    //     backend,
-    //     &bob_credential_bundle,
-    // );
-    // let broken_key_pair = update_leaf_node.key_pair();
-
     let mut update_kpb = KeyPackageBundle::new(
         bob_leaf_node.ciphersuites(),
         &bob_credential_bundle,
@@ -1766,10 +1746,6 @@ fn test_valsem110(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
     )
     .expect("Error creating new key package bundle");
     update_kpb.set_public_key(bob_leaf_node.encryption_key().clone());
-
-    // let broken_key_pair = update_kpb_payload
-    //     .sign(backend, &bob_credential_bundle)
-    //     .expect("error signing kpb");
 
     // We first go the manual route
     let update_proposal = bob_group

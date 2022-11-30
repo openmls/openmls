@@ -39,9 +39,14 @@ impl MlsGroup {
         let create_commit_result = match key_pair {
             Some(key_pair) => {
                 let group_id = self.group_id().clone();
-                let own_leaf = self.group.treesync_mut().own_leaf_node_mut().map_err(|_| {
-                    LibraryError::custom("The tree is broken. Couldn't find own leaf.")
-                })?;
+                let mut own_leaf = self
+                    .group
+                    .treesync()
+                    .own_leaf_node()
+                    .map_err(|_| {
+                        LibraryError::custom("The tree is broken. Couldn't find own leaf.")
+                    })?
+                    .clone();
                 own_leaf.update_encryption_key(
                     (&key_pair.private.into(), &key_pair.public.into()),
                     &credential_bundle,

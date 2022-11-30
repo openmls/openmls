@@ -469,16 +469,6 @@ impl TreeSync {
             .ok_or_else(|| LibraryError::custom("Own leaf is outside of the tree").into())
     }
 
-    /// Returns the [`LeafNode`] of this client.
-    ///
-    /// This function should not fail and only returns a [`Result`], because it
-    /// might throw a [LibraryError](TreeSyncError::LibraryError).
-    pub(crate) fn own_leaf_node_mut(&mut self) -> Result<&mut OpenMlsLeafNode, TreeSyncError> {
-        // Our own leaf should be inside of the tree and never blank.
-        self.leaf_mut(self.own_leaf_index)?
-            .ok_or_else(|| LibraryError::custom("Own leaf is outside of the tree").into())
-    }
-
     /// Return a reference to the leaf at the given `LeafIndex` or `None` if the
     /// leaf is blank.
     ///
