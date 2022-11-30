@@ -117,7 +117,7 @@ impl ResumptionPsk {
     }
 }
 
-// PSK enum that can contain the different PSK types
+/// PSK enum that can contain the different PSK types
 #[derive(
     Debug, PartialEq, Eq, Clone, Serialize, Deserialize, TlsSerialize, TlsDeserialize, TlsSize,
 )]
