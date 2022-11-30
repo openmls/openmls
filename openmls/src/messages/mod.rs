@@ -330,17 +330,23 @@ pub struct VerifiableGroupInfo {
 }
 
 impl VerifiableGroupInfo {
-    /// Get ciphersuite of the verifiable group info.
+    /// Get (unverified) ciphersuite of the verifiable group info.
+    ///
+    /// Note: This method should only be used when necessary to verify the group info signature.
     pub(crate) fn ciphersuite(&self) -> Ciphersuite {
         self.payload.group_context.ciphersuite()
     }
 
-    /// Get signer of the verifiable group info.
+    /// Get (unverified) signer of the verifiable group info.
+    ///
+    /// Note: This method should only be used when necessary to verify the group info signature.
     pub(crate) fn signer(&self) -> u32 {
         self.payload.signer
     }
 
-    /// Get extensions of the verifiable group info.
+    /// Get (unverified) extensions of the verifiable group info.
+    ///
+    /// Note: This method should only be used when necessary to verify the group info signature.
     pub(crate) fn extensions(&self) -> &[Extension] {
         self.payload.extensions.as_slice()
     }
