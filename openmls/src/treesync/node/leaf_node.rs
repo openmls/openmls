@@ -45,6 +45,7 @@ pub struct Capabilities {
 
 // FIXME: deduplicate with CapabilitiesExtension.
 
+/// All extensions defined in the MLS spec are considered "default" by the spec.
 fn default_extensions() -> Vec<ExtensionType> {
     vec![
         ExtensionType::Capabilities,
@@ -53,6 +54,7 @@ fn default_extensions() -> Vec<ExtensionType> {
     ]
 }
 
+/// All proposals defined in the MLS spec are considered "default" by the spec.
 fn default_proposals() -> Vec<ProposalType> {
     vec![
         ProposalType::Add,
@@ -113,11 +115,11 @@ impl Capabilities {
             },
             extensions: match extensions {
                 Some(e) => e.into(),
-                None => default_extensions(),
+                None => vec![],
             },
             proposals: match proposals {
                 Some(p) => p.into(),
-                None => default_proposals(),
+                None => vec![],
             },
             credentials: match credentials {
                 Some(c) => c.into(),
@@ -413,6 +415,7 @@ impl LeafNode {
             .extensions
             .iter()
             .any(|et| et == extension_type)
+            || default_extensions().iter().any(|et| et == extension_type)
     }
 
     /// Returns `true` if the [`ProposalType`] is supported by this leaf node.
@@ -422,6 +425,7 @@ impl LeafNode {
             .proposals
             .iter()
             .any(|pt| pt == proposal_type)
+            || default_proposals().iter().any(|pt| pt == proposal_type)
     }
 
     /// Check that all extensions that are required, are supported by this leaf
@@ -475,16 +479,6 @@ impl LeafNode {
         &self.signature
     }
 }
-
-// // When comparing leaf nodes we ignore the key package reference.
-// // Sometimes it's not set yet. This might be remedied in #731.
-// // Note that the key package reference is computed deterministically from the
-// // key package such that there no additional value in comparing it.
-// impl PartialEq for LeafNode {
-//     fn eq(&self, other: &Self) -> bool {
-//         self.key_package == other.key_package && self.private_key_option == other.private_key_option
-//     }
-// }
 
 const LEAF_NODE_SIGNATURE_LABEL: &str = "LeafNodeTBS";
 
@@ -576,7 +570,7 @@ pub struct OpenMlsLeafNode {
     pub(in crate::treesync) leaf_node: LeafNode,
     private_key: Option<HpkePrivateKey>,
     leaf_index: Option<u32>,
-    leaf_secret: Option<Secret>,
+    leaf_secret: Option<Secret>, // TODO: #1131 Ensure that this is dropped.
 }
 
 impl From<LeafNode> for OpenMlsLeafNode {
@@ -749,7 +743,7 @@ impl OpenMlsLeafNode {
         )
     }
 
-    /// Update the [`TreeInfoTbs`] for this leaf.
+    /// Create the [`TreeInfoTbs`] for an update for this leaf.
     fn update_tree_info(&self, group_id: GroupId) -> Result<TreeInfoTbs, LibraryError> {
         debug_assert!(
             self.leaf_index.is_some(),

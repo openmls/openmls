@@ -474,24 +474,27 @@ fn test_group_context_extension_proposal_fails(
         .build(&alice_credential_bundle, backend)
         .expect("Error creating CoreGroup.");
 
-    // Alice tries to add a required capability she doesn't support herself.
+    // TODO: openmls/openmls#1130 add a test for unsupported required capabilities.
+    //       We can't test this right now because we don't have a capability
+    //       that is not a "default" proposal or extension.
+    // // Alice tries to add a required capability she doesn't support herself.
     let required_application_id = Extension::RequiredCapabilities(
         RequiredCapabilitiesExtension::new(&[ExtensionType::ApplicationId], &[]),
     );
-    let e = alice_group.create_group_context_ext_proposal(
-        framing_parameters,
-        &alice_credential_bundle,
-        &[required_application_id.clone()],
-        backend,
-    ).expect_err("Alice was able to create a gce proposal with a required extensions she doesn't support.");
-    assert_eq!(
-        e,
-        CreateGroupContextExtProposalError::TreeSyncError(
-            crate::treesync::errors::TreeSyncError::UnsupportedExtension
-        )
-    );
-
-    // Well, this failed luckily.
+    // let e = alice_group.create_group_context_ext_proposal(
+    //     framing_parameters,
+    //     &alice_credential_bundle,
+    //     &[required_application_id.clone()],
+    //     backend,
+    // ).expect_err("Alice was able to create a gce proposal with a required extensions she doesn't support.");
+    // assert_eq!(
+    //     e,
+    //     CreateGroupContextExtProposalError::TreeSyncError(
+    //         crate::treesync::errors::TreeSyncError::UnsupportedExtension
+    //     )
+    // );
+    //
+    // // Well, this failed luckily.
 
     // Adding Bob
     let bob_add_proposal = alice_group
@@ -535,22 +538,23 @@ fn test_group_context_extension_proposal_fails(
     )
     .expect("Error joining group.");
 
-    // Now Bob wants the ApplicationId extension to be required.
-    // This should fail because Alice doesn't support it.
-    let e = bob_group
-        .create_group_context_ext_proposal(
-            framing_parameters,
-            &alice_credential_bundle,
-            &[required_application_id],
-            backend,
-        )
-        .expect_err("Bob was able to create a gce proposal for an extension not supported by all other parties.");
-    assert_eq!(
-        e,
-        CreateGroupContextExtProposalError::TreeSyncError(
-            crate::treesync::errors::TreeSyncError::UnsupportedExtension
-        )
-    );
+    // TODO: openmls/openmls#1130 re-enable
+    // // Now Bob wants the ApplicationId extension to be required.
+    // // This should fail because Alice doesn't support it.
+    // let e = bob_group
+    //     .create_group_context_ext_proposal(
+    //         framing_parameters,
+    //         &alice_credential_bundle,
+    //         &[required_application_id],
+    //         backend,
+    //     )
+    //     .expect_err("Bob was able to create a gce proposal for an extension not supported by all other parties.");
+    // assert_eq!(
+    //     e,
+    //     CreateGroupContextExtProposalError::TreeSyncError(
+    //         crate::treesync::errors::TreeSyncError::UnsupportedExtension
+    //     )
+    // );
 }
 
 #[apply(ciphersuites_and_backends)]
