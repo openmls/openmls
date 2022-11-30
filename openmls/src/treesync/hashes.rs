@@ -5,8 +5,7 @@ use tls_codec::{Serialize, TlsSerialize, TlsSize, TlsSliceU32, TlsSliceU8, VLByt
 
 use crate::{binary_tree::LeafIndex, ciphersuite::HpkePublicKey, error::LibraryError};
 
-use super::node::parent_node::ParentNode;
-use crate::key_packages::KeyPackage;
+use super::{node::parent_node::ParentNode, LeafNode};
 
 /// Helper struct that can be serialized in the course of parent hash
 /// computation.
@@ -86,11 +85,11 @@ pub(super) struct TreeHashInput<'a> {
 
 impl<'a> TreeHashInput<'a> {
     /// Create a new [`TreeHashInput`] instance from a leaf node.
-    pub(super) fn new_leaf(leaf_index: &'a LeafIndex, key_package: Option<&'a KeyPackage>) -> Self {
+    pub(super) fn new_leaf(leaf_index: &'a LeafIndex, leaf_node: Option<&'a LeafNode>) -> Self {
         Self {
             node_type: NodeType::Leaf(LeafNodeHashInput {
                 leaf_index,
-                key_package,
+                leaf_node,
             }),
         }
     }
@@ -138,8 +137,7 @@ impl<'a> TreeHashInput<'a> {
 #[derive(TlsSerialize, TlsSize)]
 struct LeafNodeHashInput<'a> {
     leaf_index: &'a LeafIndex,
-    // TODO #819: Replace this with a LeafNode
-    key_package: Option<&'a KeyPackage>,
+    leaf_node: Option<&'a LeafNode>,
 }
 
 /// Helper struct that can be serialized in the course of tree hash computation.

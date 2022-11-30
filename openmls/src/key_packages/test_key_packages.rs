@@ -90,7 +90,8 @@ fn key_package_id_extension(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryp
         vec![Extension::Lifetime(LifetimeExtension::new(60))],
     )
     .expect("An unexpected error occurred.");
-    assert!(kpb.key_package().verify(backend).is_ok());
+    let verification = kpb.key_package().verify(backend);
+    assert!(verification.is_ok());
     let mut kpb = kpb.unsigned();
 
     // Add an ID to the key package.

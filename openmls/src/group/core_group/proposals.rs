@@ -519,7 +519,7 @@ impl<'a> QueuedRemoveProposal<'a> {
 }
 
 /// A queued Update proposal
-#[derive(PartialEq, Debug)]
+#[derive(PartialEq, Eq, Debug)]
 pub struct QueuedUpdateProposal<'a> {
     update_proposal: &'a UpdateProposal,
     sender: &'a Sender,

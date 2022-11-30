@@ -5,9 +5,20 @@
 //! for more description on the test vectors.
 
 use crate::{
-    ciphersuite::signable::Signable, credentials::*, framing::*, group::*, key_packages::*,
-    messages::proposals::*, messages::*, prelude_test::signable::Verifiable, schedule::psk::*,
-    test_utils::*, tree::sender_ratchet::*, treesync::node::Node, versions::ProtocolVersion,
+    ciphersuite::signable::Signable,
+    credentials::*,
+    framing::*,
+    group::*,
+    key_packages::*,
+    messages::proposals::*,
+    messages::*,
+    prelude::LeafNode,
+    prelude_test::signable::Verifiable,
+    schedule::psk::*,
+    test_utils::*,
+    tree::sender_ratchet::*,
+    treesync::node::{leaf_node::LeafNodeSource, Node},
+    versions::ProtocolVersion,
 };
 
 use openmls_rust_crypto::OpenMlsRustCrypto;
@@ -62,7 +73,7 @@ pub fn generate_test_vector(ciphersuite: Ciphersuite) -> MessagesTestVector {
     // Let's create a group
     let mut group = CoreGroup::builder(GroupId::random(&crypto), key_package_bundle)
         .with_max_past_epoch_secrets(2)
-        .build(&crypto)
+        .build(&credential_bundle, &crypto)
         .expect("Could not create group.");
 
     let ratchet_tree: Vec<Option<Node>> = group.treesync().export_nodes();
@@ -113,7 +124,14 @@ pub fn generate_test_vector(ciphersuite: Ciphersuite) -> MessagesTestVector {
             .expect("An unexpected error occurred.");
     let key_package = key_package_bundle.key_package();
     let update_proposal = UpdateProposal {
-        key_package: key_package.clone(),
+        leaf_node: LeafNode::new(
+            key_package.hpke_init_key().clone(),
+            &credential_bundle,
+            LeafNodeSource::Update,
+            vec![],
+            &crypto,
+        )
+        .unwrap(),
     };
 
     // Create proposal to add a user
@@ -233,7 +251,6 @@ pub fn generate_test_vector(ciphersuite: Ciphersuite) -> MessagesTestVector {
         .treesync()
         .own_leaf_node()
         .expect("An unexpected error occurred.")
-        .key_package()
         .credential();
     if !verifiable_mls_plaintext_application.has_context() {
         verifiable_mls_plaintext_application.set_context(

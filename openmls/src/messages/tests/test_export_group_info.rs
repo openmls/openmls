@@ -24,7 +24,7 @@ fn export_group_info(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvi
     // Alice creates a group
     let group_alice: CoreGroup =
         CoreGroup::builder(GroupId::random(backend), alice_key_package_bundle)
-            .build(backend)
+            .build(&alice_credential_bundle, backend)
             .unwrap();
 
     let group_info: GroupInfo = group_alice

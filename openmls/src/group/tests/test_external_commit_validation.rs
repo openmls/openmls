@@ -310,7 +310,7 @@ fn test_valsem242(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
         )
         .unwrap();
         ProposalOrRef::Proposal(Proposal::Update(UpdateProposal {
-            key_package: bob_key_package,
+            leaf_node: bob_key_package.leaf_node().clone(),
         }))
     };
 
@@ -711,7 +711,7 @@ fn test_valsem246(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
             .expect("An unexpected error occurred.");
 
     if let Some(ref mut path) = content.path {
-        path.set_leaf_key_package(bob_new_key_package)
+        path.set_leaf_node(bob_new_key_package.leaf_node().clone())
     }
 
     plaintext.set_content_body(MlsContentBody::Commit(content));
@@ -756,7 +756,7 @@ fn test_valsem246(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
         .path()
         .as_ref()
         .expect("no path in external commit")
-        .leaf_key_package()
+        .leaf_node()
         .credential();
     assert_eq!(path_credential, bob_credential_bundle.credential());
 

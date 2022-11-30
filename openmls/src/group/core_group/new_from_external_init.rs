@@ -68,7 +68,6 @@ impl CoreGroup {
                 .leaf(verifiable_group_info.signer())
                 .map_err(|_| ExternalCommitError::UnknownSender)?
                 .ok_or(ExternalCommitError::UnknownSender)?
-                .key_package()
                 .credential();
 
             verifiable_group_info
@@ -180,10 +179,16 @@ impl CoreGroup {
             .build();
 
         // Immediately create the commit to add ourselves to the group.
-        let create_commit_result = group
-            .create_commit(params, backend)
-            .map_err(|_| ExternalCommitError::CommitError)?;
+        let create_commit_result = group.create_commit(params, backend);
+        debug_assert!(
+            create_commit_result.is_ok(),
+            "Error creating commit {:?}",
+            create_commit_result
+        );
 
-        Ok((group, create_commit_result))
+        Ok((
+            group,
+            create_commit_result.map_err(|_| ExternalCommitError::CommitError)?,
+        ))
     }
 }

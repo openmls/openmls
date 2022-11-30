@@ -1,7 +1,6 @@
 use openmls::{prelude::*, test_utils::*, *};
 
 use lazy_static::lazy_static;
-use openmls_rust_crypto::OpenMlsRustCrypto;
 use openmls_traits::{key_store::OpenMlsKeyStore, types::SignatureScheme, OpenMlsCryptoProvider};
 use std::fs::File;
 
@@ -305,10 +304,7 @@ fn mls_group_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoPr
         {
             if let Proposal::Update(ref update_proposal) = staged_proposal.proposal() {
                 // Check that Alice updated
-                assert_eq!(
-                    update_proposal.key_package().credential(),
-                    &alice_credential
-                );
+                assert_eq!(update_proposal.leaf_node().credential(), &alice_credential);
                 // Store proposal
                 alice_group.store_pending_proposal(*staged_proposal.clone());
             } else {
@@ -447,11 +443,17 @@ fn mls_group_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoPr
             .process_message(backend, queued_message.clone().into())
             .expect("Could not process message.");
 
+        let charlies_new_key_pair = backend.crypto().derive_hpke_keypair(
+            ciphersuite.hpke_config(),
+            &backend.rand().random_vec(7).unwrap(),
+        );
+
         // === Charlie updates and commits ===
-        let (queued_message, welcome_option) = match charlie_group.self_update(backend, None) {
-            Ok(qm) => qm,
-            Err(e) => panic!("Error performing self-update: {:?}", e),
-        };
+        let (queued_message, welcome_option) =
+            match charlie_group.self_update(backend, Some(charlies_new_key_pair)) {
+                Ok(qm) => qm,
+                Err(e) => panic!("Error performing self-update: {:?}", e),
+            };
 
         let alice_processed_message = alice_group
             .process_message(backend, queued_message.clone().into())
