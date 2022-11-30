@@ -71,7 +71,8 @@ impl CoreGroup {
                 .key_package()
                 .credential();
 
-            Verifiable::verify(verifiable_group_info, backend, group_info_signer_leaf)
+            verifiable_group_info
+                .verify(backend, group_info_signer_leaf)
                 .map_err(|_| ExternalCommitError::InvalidGroupInfoSignature)?
         };
 
