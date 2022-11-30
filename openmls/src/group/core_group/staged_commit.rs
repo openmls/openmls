@@ -1,8 +1,8 @@
+use crate::ciphersuite::signable::Verifiable;
 use crate::treesync::errors::TreeSyncAddLeaf;
 use crate::treesync::node::leaf_node::{
     LeafNodeTbs, OpenMlsLeafNode, TreeInfoTbs, VerifiableLeafNodeTbs,
 };
-use crate::ciphersuite::signable::Verifiable;
 use crate::treesync::{diff::StagedTreeSyncDiff, treekem::DecryptPathParams};
 
 use super::proposals::{
