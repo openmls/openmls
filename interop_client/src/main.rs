@@ -424,9 +424,7 @@ impl MlsClient for MlsClientImpl {
             &self.crypto_provider,
             &mls_group_config,
             GroupId::from_slice(&create_group_request.group_id),
-            LifetimeExtension::default(),
             kp_hash.as_slice(),
-            &credential_bundle,
         )
         .map_err(into_status)?;
 

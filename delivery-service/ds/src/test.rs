@@ -230,26 +230,15 @@ async fn test_group() {
     // Client1 creates MyFirstGroup
     let group_id = GroupId::from_slice(b"MyFirstGroup");
     let group_ciphersuite = key_package_bundles[0].ciphersuite();
-    let credential_bundle = crypto
-        .key_store()
-        .read(
-            &credentials[0]
-                .signature_key()
-                .tls_serialize_detached()
-                .expect("Error serializing signature key"),
-        )
-        .expect("An unexpected error occurred.");
     let mut group = MlsGroup::new_with_group_id(
         crypto,
         &mls_group_config,
         group_id,
-        LifetimeExtension::default(),
         key_package_bundles
             .remove(0)
             .hash_ref(crypto.crypto())
             .expect("Could not hash KeyPackage.")
             .as_slice(),
-        &credential_bundle,
     )
     .expect("An unexpected error occurred.");
 
