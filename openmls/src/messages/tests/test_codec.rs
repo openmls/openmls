@@ -4,7 +4,7 @@ use tls_codec::{Deserialize, Serialize};
 use crate::{
     group::GroupId,
     messages::{PreSharedKeyProposal, ProtocolVersion, ReInitProposal},
-    schedule::psk::{BranchPsk, ExternalPsk, PreSharedKeyId, Psk, PskType, ReinitPsk},
+    schedule::psk::{ExternalPsk, PreSharedKeyId, Psk, ResumptionPsk, ResumptionPskUsage},
     test_utils::*,
 };
 
@@ -12,27 +12,26 @@ use crate::{
 /// other PSK-related structs
 #[apply(backends)]
 fn test_pre_shared_key_proposal_codec(backend: &impl OpenMlsCryptoProvider) {
-    // ReInit
-    let psk = PreSharedKeyId {
-        psk_type: PskType::Reinit,
-        psk: Psk::Reinit(ReinitPsk {
-            psk_group_id: GroupId::random(backend),
-            psk_epoch: 1234.into(),
-        }),
-        psk_nonce: vec![1, 2, 3].into(),
-    };
-    let orig = PreSharedKeyProposal::new(psk);
-    let encoded = orig
-        .tls_serialize_detached()
-        .expect("An unexpected error occurred.");
-    let decoded = PreSharedKeyProposal::tls_deserialize(&mut encoded.as_slice())
-        .expect("An unexpected error occurred.");
-    assert_eq!(decoded, orig);
-
     // External
     let psk = PreSharedKeyId {
-        psk_type: PskType::External,
-        psk: Psk::External(ExternalPsk::new(vec![4, 5, 6])),
+        psk: Psk::External(ExternalPsk::new(vec![1, 2, 3])),
+        psk_nonce: vec![4, 5, 6].into(),
+    };
+    let orig = PreSharedKeyProposal::new(psk);
+    let encoded = orig
+        .tls_serialize_detached()
+        .expect("An unexpected error occurred.");
+    let decoded = PreSharedKeyProposal::tls_deserialize(&mut encoded.as_slice())
+        .expect("An unexpected error occurred.");
+    assert_eq!(decoded, orig);
+
+    // Resumption/Application
+    let psk = PreSharedKeyId {
+        psk: Psk::Resumption(ResumptionPsk::new(
+            ResumptionPskUsage::Application,
+            GroupId::random(backend),
+            1234.into(),
+        )),
         psk_nonce: vec![1, 2, 3].into(),
     };
     let orig = PreSharedKeyProposal::new(psk);
@@ -43,13 +42,30 @@ fn test_pre_shared_key_proposal_codec(backend: &impl OpenMlsCryptoProvider) {
         .expect("An unexpected error occurred.");
     assert_eq!(decoded, orig);
 
-    // Branch
+    // Resumption/Reinit
     let psk = PreSharedKeyId {
-        psk_type: PskType::Branch,
-        psk: Psk::Branch(BranchPsk {
-            psk_group_id: GroupId::random(backend),
-            psk_epoch: 1234.into(),
-        }),
+        psk: Psk::Resumption(ResumptionPsk::new(
+            ResumptionPskUsage::Reinit,
+            GroupId::random(backend),
+            1234.into(),
+        )),
+        psk_nonce: vec![1, 2, 3].into(),
+    };
+    let orig = PreSharedKeyProposal::new(psk);
+    let encoded = orig
+        .tls_serialize_detached()
+        .expect("An unexpected error occurred.");
+    let decoded = PreSharedKeyProposal::tls_deserialize(&mut encoded.as_slice())
+        .expect("An unexpected error occurred.");
+    assert_eq!(decoded, orig);
+
+    // Resumption/Branch
+    let psk = PreSharedKeyId {
+        psk: Psk::Resumption(ResumptionPsk::new(
+            ResumptionPskUsage::Branch,
+            GroupId::random(backend),
+            1234.into(),
+        )),
         psk_nonce: vec![1, 2, 3].into(),
     };
     let orig = PreSharedKeyProposal::new(psk);

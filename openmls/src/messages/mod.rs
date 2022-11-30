@@ -9,7 +9,7 @@ use crate::{
     error::LibraryError,
     extensions::*,
     group::*,
-    schedule::{psk::PreSharedKeys, JoinerSecret},
+    schedule::{psk::PreSharedKeyId, JoinerSecret},
     treesync::treekem::UpdatePath,
     versions::ProtocolVersion,
 };
@@ -36,7 +36,7 @@ mod tests;
 #[cfg(test)]
 use crate::credentials::CredentialBundle;
 #[cfg(any(feature = "test-utils", test))]
-use crate::schedule::psk::{ExternalPsk, PreSharedKeyId, Psk};
+use crate::schedule::psk::{ExternalPsk, Psk};
 
 // Public types
 
@@ -516,14 +516,14 @@ pub(crate) enum PathSecretError {
 pub(crate) struct GroupSecrets {
     pub(crate) joiner_secret: JoinerSecret,
     pub(crate) path_secret: Option<PathSecret>,
-    pub(crate) psks: PreSharedKeys,
+    pub(crate) psks: Vec<PreSharedKeyId>,
 }
 
 #[derive(TlsSerialize, TlsSize)]
 struct EncodedGroupSecrets<'a> {
     pub(crate) joiner_secret: &'a JoinerSecret,
     pub(crate) path_secret: Option<&'a PathSecret>,
-    pub(crate) psks: &'a PreSharedKeys,
+    pub(crate) psks: &'a [PreSharedKeyId],
 }
 
 impl GroupSecrets {
@@ -531,7 +531,7 @@ impl GroupSecrets {
     pub(crate) fn new_encoded<'a>(
         joiner_secret: &JoinerSecret,
         path_secret: Option<&'a PathSecret>,
-        psks: &'a PreSharedKeys,
+        psks: &'a [PreSharedKeyId],
     ) -> Result<Vec<u8>, tls_codec::Error> {
         EncodedGroupSecrets {
             joiner_secret,
@@ -573,9 +573,7 @@ impl GroupSecrets {
             )),
         )
         .expect("An unexpected error occurred.");
-        let psks = PreSharedKeys {
-            psks: vec![psk_id].into(),
-        };
+        let psks = vec![psk_id];
 
         GroupSecrets::new_encoded(
             &JoinerSecret::random(ciphersuite, backend, version),

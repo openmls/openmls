@@ -39,14 +39,14 @@ impl MlsGroup {
         self.group.epoch_authenticator()
     }
 
-    /// Returns the resumption psk of the current epoch.
-    pub fn resumption_psk(&self) -> &ResumptionPsk {
-        self.group.resumption_psk()
+    /// Returns the resumption PSK secret of the current epoch.
+    pub fn resumption_psk_secret(&self) -> &ResumptionPskSecret {
+        self.group.resumption_psk_secret()
     }
 
     /// Returns a resumption psk for a given epoch. If no resumption psk
     /// is available for that epoch,  `None` is returned.
-    pub fn get_past_resumption_psk(&self, epoch: GroupEpoch) -> Option<&ResumptionPsk> {
+    pub fn get_past_resumption_psk(&self, epoch: GroupEpoch) -> Option<&ResumptionPskSecret> {
         self.resumption_psk_store.get(epoch)
     }
 
