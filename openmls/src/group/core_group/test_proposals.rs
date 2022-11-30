@@ -491,7 +491,7 @@ fn test_group_context_extension_proposal_fails(
         )
     );
 
-    // // Well, this failed luckily.
+    // Well, this failed luckily.
 
     // Adding Bob
     let bob_add_proposal = alice_group
