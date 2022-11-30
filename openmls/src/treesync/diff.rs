@@ -770,6 +770,7 @@ impl<'a> TreeSyncDiff<'a> {
         ciphersuite: Ciphersuite,
     ) -> Result<StagedTreeSyncDiff, LibraryError> {
         let new_tree_hash = self.compute_tree_hashes(backend, ciphersuite)?;
+        debug_assert!(self.verify_parent_hashes(backend, ciphersuite).is_ok());
         Ok(StagedTreeSyncDiff {
             own_leaf_index: self.own_leaf_index,
             diff: self.diff.into(),
