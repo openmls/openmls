@@ -1,0 +1,172 @@
+# OpenMLS testing proposition
+
+The purpose of this document is to improve tests in openmls and try to agree on a common standard for writing them.
+
+## Current status
+
+Here are some factual remarks about the current state of tests.
+
+1. erratic: no clear pattern emerges. It looks like tests have been piled up at different times by different persons.
+   There are very few unit tests, some integration tests in `src/` and some other integration tests in `tests/`
+2. too verbose: some domain are of course complex and hard to test, but some simpler ones require thousands of lines to
+   get tested
+3. not idiomatic: one of the recommended way to write tests in Rust is to write unit tests in the same file as the
+   sources in order to have access to private members. Integration tests (in `tests/`) are more high level and
+   especially
+   used for verifying the public API
+4. Not enough factorization: it is not uncommon to have a file redefining its own set of helpers. A lot of those helpers
+   are duplicated all across the codebase
+5. some tests actually test more than one thing. It makes them harder to write/understand. Also harder to debug when
+   they
+   fail (in which iteration am I ?). This results mostly from the test setup being verbose which incentivizes reuse
+
+## Goals
+
+This proposition aims at:
+
+1. Write less verbose tests and quicker
+2. Share a common pattern for writing tests
+3. Have finer grained tests and be quicker to troubleshoot the cause of a failing test
+4. Be idiomatic to welcome easier external contributions
+
+## Rules
+
+To achieve these goals, here are the "rules"/recommendations to set up:
+
+1. Any test expected to fail by altering a valid input should also keep this valid input and verify that, contrary to
+   the
+   tampered one, it succeeds.
+2. All errors should be namely asserted i.e. `assert!(result.is_err())` is prohibited. When matching an error, one
+   should `assert!(matches!(result.unwrap_err(), MlsError::MyError))` because errors are not supposed to impl Eq (it can
+   impose hard to fulfill constraints on the data they wrap)
+3. Do not use `.expect("...")` but only use `.unwrap()`. The former adds too much overhead for too little value. Another
+   argument [here](https://twitter.com/timClicks/status/1584676737572487169).
+4. It is okay (recommended) to `use crate::prelude::*;` in all test mod (to debate ?)
+5. Have a public test framework in each top level mod inside `src/{module}/test_utils(.rs)`. Avoid scattered utils,
+   factorize them.
+6. Each test should test one and only one thing. It should not iterate over multiple cases.
+7. test method names should
+    1. follow the template `should_{expected_behaviour}_when_{state_tested}`
+       e.g. `should_succeed_when_...` & `should_fail_when_...` and use natural language
+    2. not be prefixed by `test_`
+    3. `ValSem` should not be in the test method name but kept in comment
+8. There should not be a `test-utils` feature (best effort). All those helpers should be `#[cfg(test)]` instead and used
+   only in unit tests
+9. Utilities shouldn't unwrap Results to give a chance, depending on the context, to assert an error. Hence, they should
+   all start with `try_` e.g. I might sometimes expect `try_talk_to` to fail even if most of the time I don't.
+10. When it comes to testing MlsGroup, the following utilities would help a lot. More to be added...
+    1. `MlsGroup::try_init(case: &TestCase, client: &str) -> Result(MlsGroup, CredentialBundle)` e.g.
+        ```rust
+        let (mut alice_group, ..) = MlsGroup::try_init(&case, "Alice").unwrap();
+        ```
+    2. `MlsGroup::try_invite<const N: usize>(&mut self, case: &TestCase, others: &mut [&str ; N]) -> Result<[(MlsGroup, CredentialBundle) ; N]>` e.g.
+       ```rust
+       let (mut alice_group, ..) = MlsGroup::try_init(&case, "Alice").unwrap();
+       let [(mut bob_group, ..), (mut charly_group, ..)] = alice_group.try_invite(&case, ["Bob", "Charly"]).unwrap();
+       ```
+    3. `MlsGroup::try_talk_to<const N: usize>(&mut self, case: &TestCase, others: &mut [MlsGroup ; N])` e.g.
+       ```rust
+       let (mut alice_group, ..) = MlsGroup::try_init(&case, "Alice").unwrap();
+       let [(mut bob_group, ..), (mut charly_group, ..)] = alice_group.try_invite(&case, ["Bob", "Charly"]).unwrap();
+       assert!(alice_group.try_talk_to(&case, &mut [bob_group, charly_group]).is_ok());
+       ```
+11. Fixtures: in order for being more flexible, they could just require a single `case` variable. It would look like
+    this:
+    ```rust
+    pub struct TestCase<T: OpenMlsCryptoProvider = OpenMlsRustCrypto> {
+        pub ciphersuite: Ciphersuite,
+        pub backend: T,
+        pub cfg: MlsGroupConfig,
+    }
+
+    #[apply(mls_test)]
+    fn should_bla_when_blabla(case: TestCase) {
+        let (mut alice_group, ..) = MlsGroup::try_init(&case, "Alice").unwrap();
+        let [(mut bob_group, ..), (mut charly_group, ..)] = alice_group.try_invite(&case, ["Bob", "Charly"]).unwrap();
+        assert!(alice_group.try_talk_to(&case, &mut [bob_group, charly_group]).is_ok());
+    }
+    ```
+    1. Does it make sense to keep the backend in fixtures ? I don't see openmls supporting anything else other
+       than `MemoryKeyStore`. Also should we keep evercrypt as an option or discontinue it ?
+    2. `MlsGroupConfig` is introduced to tune the `WireFormatPolicy` to make sure everything also works
+       in `PURE_CIPHERTEXT` mode.
+12. Test file layout
+    * Do not hesitate nesting your tests within mod. They provide better readability. They can be collapsed/expanded.
+      Rule of thumb could be `1 method = 1 mod` but it can be otherwise.
+    * Imports should live in the top `tests` mod to avoid duplicates. Nested mods should not have anything other
+      than `use super::*;`
+    * Within a nested mod you can avoid repeating the mod name e.g.
+      ~~`method_a_should_bla_when_blabla`~~ -> `should_bla_when_blabla`
+
+```rust
+impl MyStruct {
+    pub fn method_a() {}
+    // snip
+    fn method_z() {}
+}
+
+// No `#[cfg(features = "test-utils")]`
+
+#[test]
+mod tests {
+    use super::*;
+    use crate::prelude::*; // if required
+
+    mod a {
+        use super::*; // <- no other imports here. 
+        // If one is required, add it to tests mod. This avoids duplicates.
+
+        #[test]
+        fn should_bla_when_blabla_1() {}
+
+        // snip
+        #[test]
+        fn should_bla_when_blabla_n() {}
+    }
+
+    // snip
+
+    mod z {
+        use super::*;
+
+        #[test]
+        fn should_bla_when_blabla_1() {}
+
+        // snip
+        #[test]
+        fn should_bla_when_blabla_n() {}
+    }
+}
+```
+
+* Crate layout
+    * unit tests in `src` in the file they relate to
+    * a `test_utils` mod should live in each top level mod. It should be declared with `#[cfg(test)]` in parent `mod.rs`
+    * Those test utils should contain all the reusable helpers to write unit tests in all the other inner files.
+    * Those test utils are public and can be used by other top level mods e.g. `z` can use `a`'s utils
+
+```text
+src
+├── a
+│ ├── mod.rs <- unit tests here
+│ └── test_utils.rs <- public helpers for unit tests #[cfg(test)]
+│ -- snip --
+├── z
+│ ├── mod.rs
+│ └── test_utils.rs
+tests <- integration tests with public api only
+├── a.rs
+│ -- snip --
+└── z.rs
+```
+
+## Bonus
+
+* We could use mutation testing to "test out tests". A good crate available for doing that
+  is [mutagen](https://github.com/llogiq/mutagen). After annotating all the methods in the [`tree` mod](src/tree) it
+  gives the [following result](https://github.com/beltram/openmls/blob/mutation/openmls/MUTATION.txt) with ~= 1/3 of
+  mutants surviving i.e. not rightfully tested
+* If WASM is a target we could already use [wasm-bindgen-test](https://crates.io/crates/wasm-bindgen-test) macros on all
+  tests methods (no async migration required at that point, only a few things to fix: rayon, time, rng)
+* Use [nextest](https://crates.io/crates/cargo-nextest) to execute test in the CI because it is faster (19s vs 30s for
+  cargo test)
