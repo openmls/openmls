@@ -33,6 +33,7 @@
 //! V
 //! ProcessedMessage (Application, Proposal, ExternalProposal, Commit, External Commit)
 //! ```
+// TODO #106/#151: Update the above diagram
 
 use crate::{group::errors::ValidationError, tree::index::SecretTreeLeafIndex, treesync::TreeSync};
 use core_group::{proposals::QueuedProposal, staged_commit::StagedCommit};
@@ -149,7 +150,7 @@ impl DecryptedMessage {
                     .leaf(*leaf_index)
                     .map_err(|_| ValidationError::UnknownMember)?
                 {
-                    Some(sender_leaf) => Ok(sender_leaf.key_package().credential().clone()),
+                    Some(sender_leaf) => Ok(sender_leaf.credential().clone()),
                     None => {
                         // This might not actually be an error but the sender's
                         // key package changed. Let's check old leaves we still
@@ -166,7 +167,7 @@ impl DecryptedMessage {
                                 .leaf(*index)
                                 .map_err(|_| ValidationError::UnknownMember)?
                             {
-                                Some(node) => Ok(node.key_package().credential().clone()),
+                                Some(node) => Ok(node.credential().clone()),
                                 None => Err(ValidationError::UnknownMember),
                             }
                         } else {
@@ -182,7 +183,7 @@ impl DecryptedMessage {
                 match self.plaintext().content() {
                     MlsContentBody::Commit(Commit { path, .. }) => path
                         .as_ref()
-                        .map(|p| p.leaf_key_package().credential().clone())
+                        .map(|p| p.leaf_node().credential().clone())
                         .ok_or(ValidationError::NoPath),
                     _ => Err(ValidationError::NotACommit),
                 }
@@ -214,10 +215,9 @@ impl DecryptedMessage {
 /// Use this to inspect the [`Credential`] of the message sender
 /// and the optional `aad` if the original message was encrypted.
 #[derive(Debug, Clone)]
-pub struct UnverifiedMessage {
+pub(crate) struct UnverifiedMessage {
     plaintext: VerifiableMlsAuthContent,
     credential: Option<Credential>,
-    aad_option: Option<Vec<u8>>,
 }
 
 impl UnverifiedMessage {
@@ -229,28 +229,12 @@ impl UnverifiedMessage {
         UnverifiedMessage {
             plaintext: decrypted_message.plaintext,
             credential,
-            aad_option: None,
         }
     }
 
     /// Returns the epoch.
-    pub fn epoch(&self) -> GroupEpoch {
+    pub(crate) fn epoch(&self) -> GroupEpoch {
         self.plaintext.epoch()
-    }
-
-    /// Returns the AAD.
-    pub fn aad(&self) -> &Option<Vec<u8>> {
-        &self.aad_option
-    }
-
-    /// Returns the sender.
-    pub fn sender(&self) -> &Sender {
-        self.plaintext.sender()
-    }
-
-    /// Return the credential if there is one.
-    pub fn credential(&self) -> Option<&Credential> {
-        self.credential.as_ref()
     }
 
     /// Decomposes an [UnverifiedMessage] into its parts.
@@ -338,21 +322,24 @@ impl UnverifiedGroupMessage {
     pub(crate) fn into_verified(
         self,
         backend: &impl OpenMlsCryptoProvider,
-        signature_key: Option<&OpenMlsSignaturePublicKey>,
     ) -> Result<VerifiedMemberMessage, ValidationError> {
-        // If a signature key is provided it will be used,
-        // otherwise we take the key from the credential
-        let verified_member_message = if let Some(signature_public_key) = signature_key {
-            // ValSem010
-            self.plaintext
-                .verify_with_key(backend, signature_public_key)
-        } else {
-            // ValSem010
-            self.plaintext.verify(backend, &self.credential)
-        }
-        .map(|plaintext| VerifiedMemberMessage { plaintext })
-        .map_err(|_| ValidationError::InvalidSignature)?;
-        Ok(verified_member_message)
+        // ValSem010
+        self.plaintext
+            .verify(backend, &self.credential)
+            .map(|plaintext| VerifiedMemberMessage { plaintext })
+            .map_err(|_| ValidationError::InvalidSignature)
+        // XXX: We have tests checking for errors here. But really we should
+        //      rewrite them.
+        // debug_assert!(
+        //     verified_member_message.is_ok(),
+        //     "Verifying signature on UnverifiedGroupMessage failed with {:?}",
+        //     verified_member_message
+        // );
+    }
+
+    /// Returns the credential.
+    pub(crate) fn credential(&self) -> &Credential {
+        &self.credential
     }
 }
 
@@ -370,58 +357,35 @@ impl UnverifiedNewMemberMessage {
     pub(crate) fn into_verified(
         self,
         backend: &impl OpenMlsCryptoProvider,
-        signature_key: Option<&OpenMlsSignaturePublicKey>,
     ) -> Result<VerifiedExternalMessage, ValidationError> {
-        // If a signature key is provided it will be used, otherwise we take it from the credential
-        let verified_external_message = if let Some(signature_public_key) = signature_key {
-            // ValSem010
-            self.plaintext
-                .verify_with_key(backend, signature_public_key)
-        } else {
-            // ValSem010
-            self.plaintext.verify(backend, &self.credential)
-        }
-        .map(|plaintext| VerifiedExternalMessage { plaintext })
-        .map_err(|_| ValidationError::InvalidSignature)?;
+        // ValSem010
+        let verified_external_message = self
+            .plaintext
+            .verify(backend, &self.credential)
+            .map(|plaintext| VerifiedExternalMessage { plaintext })
+            .map_err(|_| ValidationError::InvalidSignature)?;
         Ok(verified_external_message)
+    }
+
+    /// Returns the credential.
+    pub(crate) fn credential(&self) -> &Credential {
+        &self.credential
     }
 }
 
 // TODO #151/#106: We don't support external senders yet
 /// Part of [UnverifiedContextMessage].
 pub(crate) struct UnverifiedExternalMessage {
-    plaintext: VerifiableMlsAuthContent,
-}
-
-impl UnverifiedExternalMessage {
-    /// Verifies the signature on an [UnverifiedExternalMessage] and returns a [VerifiedExternalMessage] if the
-    /// verification is successful.
-    /// This function implements the following checks:
-    ///  - ValSem010
-    pub(crate) fn into_verified(
-        self,
-        backend: &impl OpenMlsCryptoProvider,
-        signature_key: &OpenMlsSignaturePublicKey,
-    ) -> Result<VerifiedExternalMessage, ValidationError> {
-        // ValSem010
-        self.plaintext
-            .verify_with_key(backend, signature_key)
-            .map(|plaintext| VerifiedExternalMessage { plaintext })
-            .map_err(|_| ValidationError::InvalidSignature)
-    }
+    _plaintext: VerifiableMlsAuthContent,
 }
 
 /// Member message, where all semantic checks on the framing have been successfully performed.
+#[derive(Debug)]
 pub(crate) struct VerifiedMemberMessage {
     plaintext: MlsPlaintext,
 }
 
 impl VerifiedMemberMessage {
-    /// Returns a reference to the inner [MlsPlaintext].
-    pub(crate) fn plaintext(&self) -> &MlsPlaintext {
-        &self.plaintext
-    }
-
     /// Consumes the message and returns the inner [MlsPlaintext].
     pub(crate) fn take_plaintext(self) -> MlsPlaintext {
         self.plaintext
@@ -447,11 +411,78 @@ impl VerifiedExternalMessage {
 }
 
 /// A message that has passed all syntax and semantics checks.
+#[derive(Debug)]
+pub struct ProcessedMessage {
+    group_id: GroupId,
+    epoch: GroupEpoch,
+    sender: Sender,
+    authenticated_data: Vec<u8>,
+    content: ProcessedMessageContent,
+    credential: Option<Credential>,
+}
+
+impl ProcessedMessage {
+    /// Create a new `ProcessedMessage`.
+    pub(crate) fn new(
+        group_id: GroupId,
+        epoch: GroupEpoch,
+        sender: Sender,
+        authenticated_data: Vec<u8>,
+        content: ProcessedMessageContent,
+        credential: Option<Credential>,
+    ) -> Self {
+        Self {
+            group_id,
+            epoch,
+            sender,
+            authenticated_data,
+            content,
+            credential,
+        }
+    }
+
+    /// Returns the group ID of the message.
+    pub fn group_id(&self) -> &GroupId {
+        &self.group_id
+    }
+
+    /// Returns the epoch of the message.
+    pub fn epoch(&self) -> GroupEpoch {
+        self.epoch
+    }
+
+    /// Returns the sender of the message.
+    pub fn sender(&self) -> &Sender {
+        &self.sender
+    }
+
+    /// Returns the authenticated data of the message.
+    pub fn authenticated_data(&self) -> &[u8] {
+        &self.authenticated_data
+    }
+
+    /// Returns the content of the message.
+    pub fn content(&self) -> &ProcessedMessageContent {
+        &self.content
+    }
+
+    /// Returns the content of the message and consumes the message.
+    pub fn into_content(self) -> ProcessedMessageContent {
+        self.content
+    }
+
+    /// Returns the credential of the message if present.
+    pub fn credential(&self) -> Option<&Credential> {
+        self.credential.as_ref()
+    }
+}
+
+/// Content of a processed message.
 ///
-/// See the variants' documentation for more information.
+/// See the content variants' documentation for more information.
 /// [`StagedCommit`] and [`QueuedProposal`] can be inspected for authorization purposes.
 #[derive(Debug)]
-pub enum ProcessedMessage {
+pub enum ProcessedMessageContent {
     /// An application message.
     ///
     /// The [`ApplicationMessage`] contains a vector of bytes that can be used right-away.

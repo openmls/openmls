@@ -5,6 +5,7 @@ use crate::{
     },
     messages::public_group_state::VerifiablePublicGroupState,
 };
+use tls_codec::Serialize;
 
 use super::*;
 
@@ -52,6 +53,19 @@ impl MlsGroup {
             .key_store()
             .delete(&kph)
             .map_err(|_| NewGroupError::KeyStoreDeletionError)?;
+        let credential_bundle: CredentialBundle = backend
+            .key_store()
+            .read(
+                &key_package_bundle
+                    .key_package()
+                    .credential()
+                    .signature_key()
+                    .tls_serialize_detached()
+                    .map_err(|_| {
+                        LibraryError::custom("Unable to serialize signature public key")
+                    })?,
+            )
+            .ok_or(NewGroupError::NoMatchingCredentialBundle)?;
         let group_config = CoreGroupConfig {
             add_ratchet_tree_extension: mls_group_config.use_ratchet_tree_extension,
         };
@@ -59,7 +73,8 @@ impl MlsGroup {
             .with_config(group_config)
             .with_required_capabilities(mls_group_config.required_capabilities.clone())
             .with_max_past_epoch_secrets(mls_group_config.max_past_epochs)
-            .build(backend)
+            .with_lifetime(mls_group_config.lifetime().clone())
+            .build(&credential_bundle, backend)
             .map_err(|e| match e {
                 CoreGroupBuildError::LibraryError(e) => e.into(),
                 CoreGroupBuildError::UnsupportedProposalType => {
@@ -82,7 +97,7 @@ impl MlsGroup {
             mls_group_config: mls_group_config.clone(),
             group,
             proposal_store: ProposalStore::new(),
-            own_kpbs: vec![],
+            own_leaf_nodes: vec![],
             aad: vec![],
             resumption_psk_store,
             group_state: MlsGroupState::Operational,
@@ -129,7 +144,7 @@ impl MlsGroup {
             mls_group_config: mls_group_config.clone(),
             group,
             proposal_store: ProposalStore::new(),
-            own_kpbs: vec![],
+            own_leaf_nodes: vec![],
             aad: vec![],
             resumption_psk_store,
             group_state: MlsGroupState::Operational,
@@ -182,7 +197,7 @@ impl MlsGroup {
             mls_group_config: mls_group_config.clone(),
             group,
             proposal_store: ProposalStore::new(),
-            own_kpbs: vec![],
+            own_leaf_nodes: vec![],
             aad: vec![],
             resumption_psk_store,
             group_state: MlsGroupState::PendingCommit(Box::new(PendingCommitState::External(

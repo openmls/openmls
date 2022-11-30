@@ -194,7 +194,7 @@ async fn test_group() {
     let mut client_ids = Vec::new();
     for client_name in clients.iter() {
         let ciphersuite = Ciphersuite::MLS_128_DHKEMX25519_AES128GCM_SHA256_Ed25519;
-        let credential_bundle = generate_credential(
+        let credential = generate_credential(
             client_name.as_bytes().to_vec(),
             CredentialType::Basic,
             SignatureScheme::from(ciphersuite),
@@ -202,7 +202,7 @@ async fn test_group() {
         )
         .unwrap();
         let client_key_package =
-            generate_key_package(&[ciphersuite], &credential_bundle, vec![], crypto).unwrap();
+            generate_key_package(&[ciphersuite], &credential, vec![], crypto).unwrap();
         let client_data = ClientInfo::new(
             client_name.to_string(),
             vec![(
@@ -215,8 +215,8 @@ async fn test_group() {
             )],
         );
         key_package_bundles.push(client_key_package);
-        client_ids.push(credential_bundle.identity().to_vec());
-        credentials.push(credential_bundle);
+        client_ids.push(credential.identity().to_vec());
+        credentials.push(credential);
         let req = test::TestRequest::post()
             .uri("/clients/register")
             .set_payload(Bytes::copy_from_slice(
@@ -370,13 +370,12 @@ async fn test_group() {
     assert!(messages.is_empty());
 
     // Decrypt the message on Client1
-    let unverified_message = group
-        .parse_message(mls_message, crypto)
-        .expect("Could not parse message.");
     let processed_message = group
-        .process_unverified_message(unverified_message, None, crypto)
+        .process_message(crypto, mls_message)
         .expect("Could not process unverified message.");
-    if let ProcessedMessage::ApplicationMessage(application_message) = processed_message {
+    if let ProcessedMessageContent::ApplicationMessage(application_message) =
+        processed_message.into_content()
+    {
         assert_eq!(client2_message, &application_message.into_bytes()[..]);
     } else {
         panic!("Expected application message");

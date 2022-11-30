@@ -1,6 +1,9 @@
 use core_group::{proposals::QueuedProposal, staged_commit::StagedCommit};
 
-use crate::group::{errors::ValidationError, mls_group::errors::UnverifiedMessageError};
+use crate::{
+    group::{errors::ValidationError, mls_group::errors::ProcessMessageError},
+    treesync::node::leaf_node::OpenMlsLeafNode,
+};
 
 use super::{proposals::ProposalStore, *};
 
@@ -107,17 +110,16 @@ impl CoreGroup {
     pub(crate) fn process_unverified_message(
         &self,
         unverified_message: UnverifiedMessage,
-        signature_key: Option<&OpenMlsSignaturePublicKey>,
         proposal_store: &ProposalStore,
-        own_kpbs: &[KeyPackageBundle],
+        own_leaf_nodes: &[OpenMlsLeafNode],
         backend: &impl OpenMlsCryptoProvider,
-    ) -> Result<ProcessedMessage, UnverifiedMessageError> {
+    ) -> Result<ProcessedMessage, ProcessMessageError> {
         // Add the context to the message and verify the membership tag if necessary.
         // If the message is older than the current epoch, we need to fetch the correct secret tree first.
         let message_secrets = self
             .message_secrets_for_epoch(unverified_message.epoch())
             .map_err(|e| match e {
-                SecretTreeError::TooDistantInThePast => UnverifiedMessageError::NoPastEpochData,
+                SecretTreeError::TooDistantInThePast => ProcessMessageError::NoPastEpochData,
                 _ => LibraryError::custom("Unexpected return value").into(),
             })?;
 
@@ -128,31 +130,39 @@ impl CoreGroup {
             message_secrets,
             backend,
         )
-        .map_err(|_| UnverifiedMessageError::InvalidMembershipTag)?;
+        .map_err(|_| ProcessMessageError::InvalidMembershipTag)?;
+
+        let group_id = self.group_id().clone();
+        let epoch = self.group_context.epoch();
 
         match context_plaintext {
             UnverifiedContextMessage::Group(unverified_message) => {
+                let credential = unverified_message.credential().clone();
                 // Checks the following semantic validation:
                 //  - ValSem010
                 //  - ValSem246 (as part of ValSem010)
-                let verified_member_message = unverified_message
-                    .into_verified(backend, signature_key)
-                    .map_err(|_| UnverifiedMessageError::InvalidSignature)?;
+                let plaintext = unverified_message
+                    .into_verified(backend)
+                    .map_err(|_| ProcessMessageError::InvalidSignature)?
+                    .take_plaintext();
 
-                Ok(match verified_member_message.plaintext().content() {
+                let sender = plaintext.sender().clone();
+                let authenticated_data = plaintext.authenticated_data().to_owned();
+
+                let content = match &plaintext.content() {
                     MlsContentBody::Application(application_message) => {
-                        ProcessedMessage::ApplicationMessage(ApplicationMessage::new(
-                            application_message.as_slice().to_vec(),
+                        ProcessedMessageContent::ApplicationMessage(ApplicationMessage::new(
+                            application_message.as_slice().to_owned(),
                         ))
                     }
-                    MlsContentBody::Proposal(_proposal) => ProcessedMessage::ProposalMessage(
+                    MlsContentBody::Proposal(_) => ProcessedMessageContent::ProposalMessage(
                         Box::new(QueuedProposal::from_mls_plaintext(
                             self.ciphersuite(),
                             backend,
-                            verified_member_message.take_plaintext(),
+                            plaintext,
                         )?),
                     ),
-                    MlsContentBody::Commit(_commit) => {
+                    MlsContentBody::Commit(_) => {
                         //  - ValSem100
                         //  - ValSem101
                         //  - ValSem102
@@ -179,62 +189,128 @@ impl CoreGroup {
                         //  - ValSem242
                         //  - ValSem243
                         //  - ValSem244
-                        let staged_commit = self.stage_commit(
-                            verified_member_message.plaintext(),
-                            proposal_store,
-                            own_kpbs,
-                            backend,
-                        )?;
-                        ProcessedMessage::StagedCommitMessage(Box::new(staged_commit))
+                        let staged_commit =
+                            self.stage_commit(&plaintext, proposal_store, own_leaf_nodes, backend)?;
+                        ProcessedMessageContent::StagedCommitMessage(Box::new(staged_commit))
                     }
-                })
-            }
-            UnverifiedContextMessage::External(external_message) => {
-                // Signature verification
-                if let Some(signature_public_key) = signature_key {
-                    let _verified_external_message = external_message
-                        .into_verified(backend, signature_public_key)
-                        .map_err(|_| UnverifiedMessageError::InvalidSignature)?;
-                } else {
-                    return Err(UnverifiedMessageError::MissingSignatureKey);
-                }
+                };
 
+                Ok(ProcessedMessage::new(
+                    group_id,
+                    epoch,
+                    sender,
+                    authenticated_data,
+                    content,
+                    Some(credential),
+                ))
+            }
+            UnverifiedContextMessage::External(_external_message) => {
                 // We don't support messages from external senders yet
                 // TODO #151/#106
                 todo!()
             }
-            UnverifiedContextMessage::NewMember(external_message) => {
+            UnverifiedContextMessage::NewMember(unverified_new_member_message) => {
+                let credential = unverified_new_member_message.credential().clone();
                 // Signature verification
-                let verified_external_message = external_message
-                    .into_verified(backend, signature_key)
-                    .map_err(|_| UnverifiedMessageError::InvalidSignature)?;
-                Ok(match verified_external_message.plaintext().content() {
-                    MlsContentBody::Proposal(_proposal) => {
-                        ProcessedMessage::ExternalJoinProposalMessage(Box::new(
+                let verified_new_member_message = unverified_new_member_message
+                    .into_verified(backend)
+                    .map_err(|_| ProcessMessageError::InvalidSignature)?;
+                let sender = verified_new_member_message.plaintext().sender().clone();
+                let authenticated_data = verified_new_member_message
+                    .plaintext()
+                    .authenticated_data()
+                    .to_owned();
+
+                let content = match verified_new_member_message.plaintext().content() {
+                    MlsContentBody::Proposal(_) => {
+                        ProcessedMessageContent::ExternalJoinProposalMessage(Box::new(
                             QueuedProposal::from_mls_plaintext(
                                 self.ciphersuite(),
                                 backend,
-                                verified_external_message.take_plaintext(),
+                                verified_new_member_message.take_plaintext(),
                             )?,
                         ))
                     }
-                    MlsContentBody::Commit(_commit) => {
+                    MlsContentBody::Commit(_) => {
                         let staged_commit = self.stage_commit(
-                            verified_external_message.plaintext(),
+                            verified_new_member_message.plaintext(),
                             proposal_store,
-                            own_kpbs,
+                            own_leaf_nodes,
                             backend,
                         )?;
-                        ProcessedMessage::StagedCommitMessage(Box::new(staged_commit))
+                        ProcessedMessageContent::StagedCommitMessage(Box::new(staged_commit))
                     }
                     _ => {
-                        return Err(UnverifiedMessageError::LibraryError(LibraryError::custom(
+                        return Err(ProcessMessageError::LibraryError(LibraryError::custom(
                             "Implementation error",
                         )))
                     }
-                })
+                };
+
+                Ok(ProcessedMessage::new(
+                    group_id,
+                    epoch,
+                    sender,
+                    authenticated_data,
+                    content,
+                    Some(credential),
+                ))
             }
         }
+    }
+
+    /// This function is used to parse messages from the DS. It checks for
+    /// syntactic errors and does semantic validation as well. If the input is a
+    /// [MlsCiphertext] message, it will be decrypted. It returns a
+    /// [ProcessedMessage] enum. Checks the following semantic validation:
+    ///  - ValSem002
+    ///  - ValSem003
+    ///  - ValSem004
+    ///  - ValSem005
+    ///  - ValSem006
+    ///  - ValSem007
+    ///  - ValSem008
+    ///  - ValSem009
+    ///  - ValSem010
+    ///  - ValSem100
+    ///  - ValSem101
+    ///  - ValSem102
+    ///  - ValSem103
+    ///  - ValSem104
+    ///  - ValSem105
+    ///  - ValSem106
+    ///  - ValSem107
+    ///  - ValSem108
+    ///  - ValSem109
+    ///  - ValSem110
+    ///  - ValSem111
+    ///  - ValSem112
+    ///  - ValSem200
+    ///  - ValSem201
+    ///  - ValSem202: Path must be the right length
+    ///  - ValSem203: Path secrets must decrypt correctly
+    ///  - ValSem204: Public keys from Path must be verified and match the
+    ///               private keys from the direct path
+    ///  - ValSem205
+    ///  - ValSem240
+    ///  - ValSem241
+    ///  - ValSem242
+    ///  - ValSem243
+    ///  - ValSem244
+    ///  - ValSem245
+    ///  - ValSem246 (as part of ValSem010)
+    pub(crate) fn process_message(
+        &mut self,
+        backend: &impl OpenMlsCryptoProvider,
+        message: MlsMessageIn,
+        sender_ratchet_configuration: &SenderRatchetConfiguration,
+        proposal_store: &ProposalStore,
+        own_kpbs: &[OpenMlsLeafNode],
+    ) -> Result<ProcessedMessage, ProcessMessageError> {
+        let unverified_message = self
+            .parse_message(backend, message, sender_ratchet_configuration)
+            .map_err(ProcessMessageError::from)?;
+        self.process_unverified_message(unverified_message, proposal_store, own_kpbs, backend)
     }
 
     /// Merge a [StagedCommit] into the group after inspection

@@ -1,4 +1,7 @@
 use crate::treesync::errors::TreeSyncAddLeaf;
+use crate::treesync::node::leaf_node::{
+    LeafNodeTbs, OpenMlsLeafNode, TreeInfoTbs, VerifiableLeafNodeTbs,
+};
 use crate::treesync::{diff::StagedTreeSyncDiff, treekem::DecryptPathParams};
 
 use super::proposals::{
@@ -54,7 +57,7 @@ impl CoreGroup {
         &self,
         mls_plaintext: &MlsPlaintext,
         proposal_store: &ProposalStore,
-        own_key_packages: &[KeyPackageBundle],
+        own_leaf_nodes: &[OpenMlsLeafNode],
         backend: &impl OpenMlsCryptoProvider,
     ) -> Result<StagedCommit, StageCommitError> {
         // Extract the sender of the Commit message
@@ -104,10 +107,10 @@ impl CoreGroup {
             FromCommittedProposalsError::SelfRemoval => StageCommitError::AttemptedSelfRemoval,
         })?;
 
-        let commit_update_key_package = commit
+        let commit_update_leaf_node = commit
             .path()
             .as_ref()
-            .map(|update_path| update_path.leaf_key_package().clone());
+            .map(|update_path| update_path.leaf_node().clone());
 
         // Validate the staged proposals by doing the following checks:
         // ValSem100
@@ -145,8 +148,7 @@ impl CoreGroup {
                 // ValSem243: External Commit, inline Remove Proposal: The identity and the endpoint_id of the removed
                 //            leaf are identical to the ones in the path KeyPackage.
                 // ValSem244: External Commit, referenced Proposals: There MUST NOT be any ExternalInit proposals.
-                // ValSem248: External Commit, There MUST NOT be any referenced proposals.
-                self.validate_external_commit(&proposal_queue, commit_update_key_package.as_ref())?;
+                self.validate_external_commit(&proposal_queue, commit_update_leaf_node.as_ref())?;
                 // Since there are no update proposals in an External Commit we have no public keys to return
                 HashSet::new()
             }
@@ -156,7 +158,7 @@ impl CoreGroup {
         let mut diff = self.treesync().empty_diff()?;
 
         let apply_proposals_values = self
-            .apply_proposals(&mut diff, backend, &proposal_queue, own_key_packages)
+            .apply_proposals(&mut diff, backend, &proposal_queue, own_leaf_nodes)
             .map_err(|_| StageCommitError::OwnKeyNotFound)?;
 
         // Now we can actually look at the public keys as they might have changed.
@@ -180,28 +182,50 @@ impl CoreGroup {
             return Ok(StagedCommit::new(
                 proposal_queue,
                 StagedCommitState::SelfRemoved(Box::new(staged_diff)),
-                commit_update_key_package,
+                commit_update_leaf_node,
             ));
         }
 
         // Determine if Commit has a path
         let commit_secret = if let Some(path) = commit.path.clone() {
-            // Verify KeyPackage and MlsPlaintext membership tag
+            // Verify the leaf node and MlsPlaintext membership tag
             // Note that the signature must have been verified already.
             // TODO #106: Support external members
-            let kp = path.leaf_key_package();
-            if kp.verify(backend).is_err() {
-                return Err(StageCommitError::PathKeyPackageVerificationFailure);
+            let leaf_node = path.leaf_node();
+            // TODO: The clone here is unnecessary. But the leaf node structs are
+            //       already too complex. This should be cleaned up in a follow
+            //       up.
+            let tbs = LeafNodeTbs::from(
+                leaf_node.clone(),
+                TreeInfoTbs::commit(self.group_id().clone(), sender_index),
+            );
+            let verifiable_leaf_node = VerifiableLeafNodeTbs {
+                tbs: &tbs,
+                signature: leaf_node.signature(),
+            };
+            if verifiable_leaf_node
+                .verify_no_out(backend, leaf_node.credential())
+                .is_err()
+            {
+                debug_assert!(
+                    false,
+                    "Verification failed of leaf node in commit path.\n\
+                     Leaf node identity: {:?} ({})",
+                    leaf_node.credential().identity(),
+                    String::from_utf8(leaf_node.credential().identity().to_vec())
+                        .unwrap_or_default()
+                );
+                return Err(StageCommitError::PathLeafNodeVerificationFailure);
             }
             let serialized_context = self
                 .group_context
                 .tls_serialize_detached()
                 .map_err(LibraryError::missing_bound_check)?;
 
-            let (key_package, update_path_nodes) = path.into_parts();
+            let (leaf_node, update_path_nodes) = path.into_parts();
 
             // Make sure that the new path key package is valid
-            self.validate_path_key_package(sender_index, &key_package, public_key_set, sender)?;
+            self.validate_path_key_package(sender_index, &leaf_node, public_key_set, sender)?;
 
             // If the committer is a `NewMemberCommit`, we have to add the leaf to
             // the tree before we can apply or even decrypt an update path.
@@ -210,11 +234,15 @@ impl CoreGroup {
             // there are no blanks and the new member extended the tree to
             // fit in.
             if apply_proposals_values.external_init_secret_option.is_some() {
+                // TODO: Can we do without the clone here?
+                //       The leaf node is always replaced in apply_received_update_path
+                //       below, which isn't necessary. This should be refactored.
                 let sender_leaf_index =
-                    diff.add_leaf(key_package.clone()).map_err(|e| match e {
-                        TreeSyncAddLeaf::LibraryError(e) => e.into(),
-                        TreeSyncAddLeaf::TreeFull => StageCommitError::TooManyNewMembers,
-                    })?;
+                    diff.add_leaf(leaf_node.clone().into())
+                        .map_err(|e| match e {
+                            TreeSyncAddLeaf::LibraryError(e) => e.into(),
+                            TreeSyncAddLeaf::TreeFull => StageCommitError::TooManyNewMembers,
+                        })?;
                 // The new member should have the same index as the claimed sender index.
                 if sender_leaf_index != sender_index {
                     return Err(StageCommitError::InconsistentSenderIndex);
@@ -238,7 +266,7 @@ impl CoreGroup {
                 backend,
                 ciphersuite,
                 sender_index,
-                key_package,
+                leaf_node,
                 plain_path,
             )?;
             commit_secret
@@ -328,6 +356,9 @@ impl CoreGroup {
             log::error!("Confirmation tag mismatch");
             log_crypto!(trace, "  Got:      {:x?}", received_confirmation_tag);
             log_crypto!(trace, "  Expected: {:x?}", own_confirmation_tag);
+            // TODO: We have tests expecting this error.
+            //       They need to be rewritten.
+            // debug_assert!(false, "Confirmation tag mismatch");
             return Err(StageCommitError::ConfirmationTagMismatch);
         }
 
@@ -354,7 +385,7 @@ impl CoreGroup {
         Ok(StagedCommit::new(
             proposal_queue,
             staged_commit_state,
-            commit_update_key_package,
+            commit_update_leaf_node,
         ))
     }
 
@@ -403,7 +434,7 @@ pub(crate) enum StagedCommitState {
 pub struct StagedCommit {
     staged_proposal_queue: ProposalQueue,
     state: StagedCommitState,
-    commit_update_key_package: Option<KeyPackage>,
+    commit_update_leaf_node: Option<LeafNode>,
 }
 
 impl StagedCommit {
@@ -412,12 +443,12 @@ impl StagedCommit {
     pub(crate) fn new(
         staged_proposal_queue: ProposalQueue,
         state: StagedCommitState,
-        commit_update_key_package: Option<KeyPackage>,
+        commit_update_leaf_node: Option<LeafNode>,
     ) -> Self {
         StagedCommit {
             staged_proposal_queue,
             state,
-            commit_update_key_package,
+            commit_update_leaf_node,
         }
     }
 
@@ -441,10 +472,10 @@ impl StagedCommit {
         self.staged_proposal_queue.psk_proposals()
     }
 
-    /// Returns an optional key package from the Commit's update path.
-    /// A key package is returned for full and empty Commits, but not for partial Commits.
-    pub fn commit_update_key_package(&self) -> Option<&KeyPackage> {
-        self.commit_update_key_package.as_ref()
+    /// Returns an optional leaf node from the Commit's update path.
+    /// A leaf node is returned for full and empty Commits, but not for partial Commits.
+    pub fn commit_update_key_package(&self) -> Option<&LeafNode> {
+        self.commit_update_leaf_node.as_ref()
     }
 
     /// Returns `true` if the member was removed through a proposal covered by this Commit message

@@ -245,6 +245,8 @@ pub type KemOutput = Vec<u8>;
     Copy,
     PartialEq,
     Eq,
+    PartialOrd,
+    Ord,
     Hash,
     Serialize,
     Deserialize,

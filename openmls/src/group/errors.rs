@@ -131,9 +131,9 @@ pub enum StageCommitError {
     /// stage_commit was called with an MlsPlaintext that is not a Commit.
     #[error("stage_commit was called with an MlsPlaintext that is not a Commit.")]
     WrongPlaintextContentType,
-    /// Unable to verify the key package signature.
-    #[error("Unable to verify the key package signature.")]
-    PathKeyPackageVerificationFailure,
+    /// Unable to verify the leaf node signature.
+    #[error("Unable to verify the leaf node signature.")]
+    PathLeafNodeVerificationFailure,
     /// Unable to determine commit path.
     #[error("Unable to determine commit path.")]
     RequiredPathNotFound,
@@ -413,9 +413,9 @@ pub(crate) enum ApplyProposalsError {
     /// See [`LibraryError`] for more details.
     #[error(transparent)]
     LibraryError(#[from] LibraryError),
-    /// Own KeyPackageBundle was not found in the key store.
-    #[error("Own KeyPackageBundle was not found in the key store.")]
-    MissingKeyPackageBundle,
+    /// Own LeafNode was not found in the key store.
+    #[error("Own LeafNode was not found in the key store.")]
+    MissingLeafNode,
 }
 
 // Core group build error

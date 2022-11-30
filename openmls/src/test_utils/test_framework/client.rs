@@ -4,7 +4,11 @@
 use std::{collections::HashMap, sync::RwLock};
 
 use openmls_rust_crypto::OpenMlsRustCrypto;
-use openmls_traits::{key_store::OpenMlsKeyStore, types::Ciphersuite, OpenMlsCryptoProvider};
+use openmls_traits::{
+    key_store::OpenMlsKeyStore,
+    types::{Ciphersuite, HpkeKeyPair},
+    OpenMlsCryptoProvider,
+};
 use tls_codec::Serialize;
 
 use crate::{
@@ -45,7 +49,7 @@ impl Client {
             .get(&ciphersuites[0])
             .ok_or(ClientError::CiphersuiteNotSupported)?;
         let mandatory_extensions: Vec<Extension> =
-            vec![Extension::LifeTime(LifetimeExtension::new(157788000))]; // 5 years
+            vec![Extension::Lifetime(LifetimeExtension::new(157788000))]; // 5 years
         let credential_bundle: CredentialBundle = self
             .crypto
             .key_store()
@@ -85,7 +89,7 @@ impl Client {
             .get(&ciphersuite)
             .ok_or(ClientError::CiphersuiteNotSupported)?;
         let mandatory_extensions: Vec<Extension> =
-            vec![Extension::LifeTime(LifetimeExtension::new(157788000))]; // 5 years
+            vec![Extension::Lifetime(LifetimeExtension::new(157788000))]; // 5 years
         let credential_bundle: CredentialBundle = self
             .crypto
             .key_store()
@@ -161,19 +165,17 @@ impl Client {
                 group_state.clear_pending_commit();
             }
             // Process the message.
-            let unverified_message = group_state.parse_message(message.clone(), &self.crypto)?;
-            let processed_message =
-                group_state.process_unverified_message(unverified_message, None, &self.crypto)?;
+            let processed_message = group_state.process_message(&self.crypto, message.clone())?;
 
-            match processed_message {
-                ProcessedMessage::ApplicationMessage(_) => {}
-                ProcessedMessage::ProposalMessage(staged_proposal) => {
+            match processed_message.into_content() {
+                ProcessedMessageContent::ApplicationMessage(_) => {}
+                ProcessedMessageContent::ProposalMessage(staged_proposal) => {
                     group_state.store_pending_proposal(*staged_proposal);
                 }
-                ProcessedMessage::ExternalJoinProposalMessage(staged_proposal) => {
+                ProcessedMessageContent::ExternalJoinProposalMessage(staged_proposal) => {
                     group_state.store_pending_proposal(*staged_proposal);
                 }
-                ProcessedMessage::StagedCommitMessage(staged_commit) => {
+                ProcessedMessageContent::StagedCommitMessage(staged_commit) => {
                     group_state.merge_staged_commit(*staged_commit)?;
                 }
             }
@@ -194,25 +196,24 @@ impl Client {
 
     /// Have the client either propose or commit (depending on the
     /// `action_type`) a self update in the group with the given group id.
-    /// Optionally, a `KeyPackageBundle` can be provided, which the client will
+    /// Optionally, a `HpkeKeyPair` can be provided, which the client will
     /// update their leaf with. Returns an error if no group with the given
     /// group id can be found or if an error occurs while creating the update.
     pub fn self_update(
         &self,
         action_type: ActionType,
         group_id: &GroupId,
-        key_package_bundle_option: Option<KeyPackageBundle>,
+        key_pair: Option<KeyPackageBundle>,
     ) -> Result<(MlsMessageOut, Option<Welcome>), ClientError> {
         let mut groups = self.groups.write().expect("An unexpected error occurred.");
         let group = groups
             .get_mut(group_id)
             .ok_or(ClientError::NoMatchingGroup)?;
         let action_results = match action_type {
-            ActionType::Commit => group.self_update(&self.crypto, key_package_bundle_option)?,
-            ActionType::Proposal => (
-                group.propose_self_update(&self.crypto, key_package_bundle_option)?,
-                None,
-            ),
+            ActionType::Commit => {
+                group.self_update(&self.crypto, key_pair.map(|kpb| kpb.hpke_key_pair()))?
+            }
+            ActionType::Proposal => (group.propose_self_update(&self.crypto, key_pair)?, None),
         };
         Ok(action_results)
     }

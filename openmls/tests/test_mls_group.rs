@@ -1,7 +1,6 @@
 use openmls::{prelude::*, test_utils::*, *};
 
 use lazy_static::lazy_static;
-use openmls_rust_crypto::OpenMlsRustCrypto;
 use openmls_traits::{key_store::OpenMlsKeyStore, types::SignatureScheme, OpenMlsCryptoProvider};
 use std::fs::File;
 
@@ -207,19 +206,18 @@ fn mls_group_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoPr
             .create_message(backend, message_alice)
             .expect("Error creating application message");
 
-        let unverified_message = bob_group
-            .parse_message(queued_message.clone().into(), backend)
-            .expect("Could not parse message.");
-        let sender = unverified_message
+        let processed_message = bob_group
+            .process_message(backend, queued_message.clone().into())
+            .expect("Could not process message.");
+        let sender = processed_message
             .credential()
             .expect("Expected a credential.")
             .clone();
-        let processed_message = bob_group
-            .process_unverified_message(unverified_message, None, backend)
-            .expect("Could not process unverified message.");
 
         // Check that we received the correct message
-        if let ProcessedMessage::ApplicationMessage(application_message) = processed_message {
+        if let ProcessedMessageContent::ApplicationMessage(application_message) =
+            processed_message.into_content()
+        {
             // Check the message
             assert_eq!(application_message.into_bytes(), message_alice);
             // Check that Alice sent the message
@@ -239,15 +237,14 @@ fn mls_group_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoPr
             Err(e) => panic!("Error performing self-update: {:?}", e),
         };
 
-        let unverified_message = alice_group
-            .parse_message(queued_message.clone().into(), backend)
-            .expect("Could not parse message.");
         let alice_processed_message = alice_group
-            .process_unverified_message(unverified_message, None, backend)
-            .expect("Could not process unverified message.");
+            .process_message(backend, queued_message.clone().into())
+            .expect("Could not process message.");
 
         // Check that we received the correct message
-        if let ProcessedMessage::StagedCommitMessage(staged_commit) = alice_processed_message {
+        if let ProcessedMessageContent::StagedCommitMessage(staged_commit) =
+            alice_processed_message.into_content()
+        {
             let update_kp = staged_commit
                 .commit_update_key_package()
                 .expect("Expected a KeyPackage.")
@@ -297,21 +294,17 @@ fn mls_group_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoPr
             Err(e) => panic!("Error performing self-update: {:?}", e),
         };
 
-        let unverified_message = bob_group
-            .parse_message(queued_message.clone().into(), backend)
-            .expect("Could not parse message.");
         let bob_processed_message = bob_group
-            .process_unverified_message(unverified_message, None, backend)
-            .expect("Could not process unverified message.");
+            .process_message(backend, queued_message.clone().into())
+            .expect("Could not process message.");
 
         // Check that we received the correct proposals
-        if let ProcessedMessage::ProposalMessage(staged_proposal) = bob_processed_message {
+        if let ProcessedMessageContent::ProposalMessage(staged_proposal) =
+            bob_processed_message.into_content()
+        {
             if let Proposal::Update(ref update_proposal) = staged_proposal.proposal() {
                 // Check that Alice updated
-                assert_eq!(
-                    update_proposal.key_package().credential(),
-                    &alice_credential
-                );
+                assert_eq!(update_proposal.leaf_node().credential(), &alice_credential);
                 // Store proposal
                 alice_group.store_pending_proposal(*staged_proposal.clone());
             } else {
@@ -335,15 +328,14 @@ fn mls_group_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoPr
                 Err(e) => panic!("Error performing self-update: {:?}", e),
             };
 
-        let unverified_message = bob_group
-            .parse_message(queued_message.clone().into(), backend)
-            .expect("Could not parse message.");
         let bob_processed_message = bob_group
-            .process_unverified_message(unverified_message, None, backend)
-            .expect("Could not process unverified message.");
+            .process_message(backend, queued_message.clone().into())
+            .expect("Could not process message.");
 
         // Check that we received the correct message
-        if let ProcessedMessage::StagedCommitMessage(staged_commit) = bob_processed_message {
+        if let ProcessedMessageContent::StagedCommitMessage(staged_commit) =
+            bob_processed_message.into_content()
+        {
             let update_kp = staged_commit
                 .commit_update_key_package()
                 .expect("Expected a KeyPackage.")
@@ -394,18 +386,17 @@ fn mls_group_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoPr
             Err(e) => panic!("Could not add member to group: {:?}", e),
         };
 
-        let unverified_message = alice_group
-            .parse_message(queued_message.clone().into(), backend)
-            .expect("Could not parse message.");
         let alice_processed_message = alice_group
-            .process_unverified_message(unverified_message, None, backend)
-            .expect("Could not process unverified message.");
+            .process_message(backend, queued_message.clone().into())
+            .expect("Could not process message.");
         bob_group
             .merge_pending_commit()
             .expect("error merging pending commit");
 
         // Merge Commit
-        if let ProcessedMessage::StagedCommitMessage(staged_commit) = alice_processed_message {
+        if let ProcessedMessageContent::StagedCommitMessage(staged_commit) =
+            alice_processed_message.into_content()
+        {
             alice_group
                 .merge_staged_commit(*staged_commit)
                 .expect("Could not merge StagedCommit");
@@ -445,43 +436,39 @@ fn mls_group_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoPr
             .create_message(backend, message_charlie)
             .expect("Error creating application message");
 
-        let unverified_message = alice_group
-            .parse_message(queued_message.clone().into(), backend)
-            .expect("Could not parse message.");
         let _alice_processed_message = alice_group
-            .process_unverified_message(unverified_message, None, backend)
-            .expect("Could not process unverified message.");
-        let unverified_message = bob_group
-            .parse_message(queued_message.clone().into(), backend)
-            .expect("Could not parse message.");
+            .process_message(backend, queued_message.clone().into())
+            .expect("Could not process message.");
         let _bob_processed_message = bob_group
-            .process_unverified_message(unverified_message, None, backend)
-            .expect("Could not process unverified message.");
+            .process_message(backend, queued_message.clone().into())
+            .expect("Could not process message.");
+
+        let charlies_new_key_pair = backend.crypto().derive_hpke_keypair(
+            ciphersuite.hpke_config(),
+            &backend.rand().random_vec(7).unwrap(),
+        );
 
         // === Charlie updates and commits ===
-        let (queued_message, welcome_option) = match charlie_group.self_update(backend, None) {
-            Ok(qm) => qm,
-            Err(e) => panic!("Error performing self-update: {:?}", e),
-        };
+        let (queued_message, welcome_option) =
+            match charlie_group.self_update(backend, Some(charlies_new_key_pair)) {
+                Ok(qm) => qm,
+                Err(e) => panic!("Error performing self-update: {:?}", e),
+            };
 
-        let unverified_message = alice_group
-            .parse_message(queued_message.clone().into(), backend)
-            .expect("Could not parse message.");
         let alice_processed_message = alice_group
-            .process_unverified_message(unverified_message, None, backend)
-            .expect("Could not process unverified message.");
-        let unverified_message = bob_group
-            .parse_message(queued_message.clone().into(), backend)
-            .expect("Could not parse message.");
+            .process_message(backend, queued_message.clone().into())
+            .expect("Could not process message.");
         let bob_processed_message = bob_group
-            .process_unverified_message(unverified_message, None, backend)
-            .expect("Could not process unverified message.");
+            .process_message(backend, queued_message.clone().into())
+            .expect("Could not process message.");
         charlie_group
             .merge_pending_commit()
             .expect("error merging pending commit");
 
         // Merge Commit
-        if let ProcessedMessage::StagedCommitMessage(staged_commit) = alice_processed_message {
+        if let ProcessedMessageContent::StagedCommitMessage(staged_commit) =
+            alice_processed_message.into_content()
+        {
             alice_group
                 .merge_staged_commit(*staged_commit)
                 .expect("Could not merge StagedCommit");
@@ -490,7 +477,9 @@ fn mls_group_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoPr
         }
 
         // Merge Commit
-        if let ProcessedMessage::StagedCommitMessage(staged_commit) = bob_processed_message {
+        if let ProcessedMessageContent::StagedCommitMessage(staged_commit) =
+            bob_processed_message.into_content()
+        {
             bob_group
                 .merge_staged_commit(*staged_commit)
                 .expect("Could not merge StagedCommit");
@@ -530,24 +519,20 @@ fn mls_group_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoPr
         // Check that Bob's group is still active
         assert!(bob_group.is_active());
 
-        let unverified_message = alice_group
-            .parse_message(queued_message.clone().into(), backend)
-            .expect("Could not parse message.");
         let alice_processed_message = alice_group
-            .process_unverified_message(unverified_message, None, backend)
-            .expect("Could not process unverified message.");
-        let unverified_message = bob_group
-            .parse_message(queued_message.clone().into(), backend)
-            .expect("Could not parse message.");
+            .process_message(backend, queued_message.clone().into())
+            .expect("Could not process message.");
         let bob_processed_message = bob_group
-            .process_unverified_message(unverified_message, None, backend)
-            .expect("Could not process unverified message.");
+            .process_message(backend, queued_message.clone().into())
+            .expect("Could not process message.");
         charlie_group
             .merge_pending_commit()
             .expect("error merging pending commit");
 
         // Check that we receive the correct proposal for Alice
-        if let ProcessedMessage::StagedCommitMessage(staged_commit) = alice_processed_message {
+        if let ProcessedMessageContent::StagedCommitMessage(staged_commit) =
+            alice_processed_message.into_content()
+        {
             let remove = staged_commit
                 .remove_proposals()
                 .next()
@@ -568,7 +553,9 @@ fn mls_group_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoPr
         }
 
         // Check that we receive the correct proposal for Alice
-        if let ProcessedMessage::StagedCommitMessage(staged_commit) = bob_processed_message {
+        if let ProcessedMessageContent::StagedCommitMessage(staged_commit) =
+            bob_processed_message.into_content()
+        {
             let remove = staged_commit
                 .remove_proposals()
                 .next()
@@ -633,15 +620,14 @@ fn mls_group_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoPr
             .propose_remove_member(backend, charlie_group.own_leaf_index())
             .expect("Could not create proposal to remove Charlie");
 
-        let unverified_message = charlie_group
-            .parse_message(queued_message.clone().into(), backend)
-            .expect("Could not parse message.");
         let charlie_processed_message = charlie_group
-            .process_unverified_message(unverified_message, None, backend)
-            .expect("Could not process unverified message.");
+            .process_message(backend, queued_message.clone().into())
+            .expect("Could not process message.");
 
         // Check that we received the correct proposals
-        if let ProcessedMessage::ProposalMessage(staged_proposal) = charlie_processed_message {
+        if let ProcessedMessageContent::ProposalMessage(staged_proposal) =
+            charlie_processed_message.into_content()
+        {
             if let Proposal::Remove(ref remove_proposal) = staged_proposal.proposal() {
                 // Check that Charlie was removed
                 assert_eq!(remove_proposal.removed(), members[1].index);
@@ -665,15 +651,14 @@ fn mls_group_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoPr
             .propose_add_member(backend, &bob_key_package)
             .expect("Could not create proposal to add Bob");
 
-        let unverified_message = charlie_group
-            .parse_message(queued_message.clone().into(), backend)
-            .expect("Could not parse message.");
         let charlie_processed_message = charlie_group
-            .process_unverified_message(unverified_message, None, backend)
-            .expect("Could not process unverified message.");
+            .process_message(backend, queued_message.clone().into())
+            .expect("Could not process message.");
 
         // Check that we received the correct proposals
-        if let ProcessedMessage::ProposalMessage(staged_proposal) = charlie_processed_message {
+        if let ProcessedMessageContent::ProposalMessage(staged_proposal) =
+            charlie_processed_message.into_content()
+        {
             if let Proposal::Add(add_proposal) = staged_proposal.proposal() {
                 // Check that Bob was added
                 assert_eq!(add_proposal.key_package().credential(), &bob_credential);
@@ -697,12 +682,9 @@ fn mls_group_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoPr
             .commit_to_pending_proposals(backend)
             .expect("Could not flush proposals");
 
-        let unverified_message = charlie_group
-            .parse_message(queued_message.clone().into(), backend)
-            .expect("Could not parse message.");
         let charlie_processed_message = charlie_group
-            .process_unverified_message(unverified_message, None, backend)
-            .expect("Could not process unverified message.");
+            .process_message(backend, queued_message.clone().into())
+            .expect("Could not process message.");
 
         // Merge Commit
         alice_group
@@ -710,7 +692,9 @@ fn mls_group_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoPr
             .expect("error merging pending commit");
 
         // Merge Commit
-        if let ProcessedMessage::StagedCommitMessage(staged_commit) = charlie_processed_message {
+        if let ProcessedMessageContent::StagedCommitMessage(staged_commit) =
+            charlie_processed_message.into_content()
+        {
             charlie_group
                 .merge_staged_commit(*staged_commit)
                 .expect("Could not merge StagedCommit");
@@ -780,19 +764,19 @@ fn mls_group_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoPr
         let queued_message = alice_group
             .create_message(backend, message_alice)
             .expect("Error creating application message");
-        let unverified_message = bob_group
-            .parse_message(queued_message.clone().into(), backend)
-            .expect("Could not parse message.");
-        let sender = unverified_message
+
+        let bob_processed_message = bob_group
+            .process_message(backend, queued_message.clone().into())
+            .expect("Could not process message.");
+        let sender = bob_processed_message
             .credential()
             .expect("Expected a credential.")
             .clone();
-        let bob_processed_message = bob_group
-            .process_unverified_message(unverified_message, None, backend)
-            .expect("Could not process unverified message.");
 
         // Check that we received the correct message
-        if let ProcessedMessage::ApplicationMessage(application_message) = bob_processed_message {
+        if let ProcessedMessageContent::ApplicationMessage(application_message) =
+            bob_processed_message.into_content()
+        {
             // Check the message
             assert_eq!(application_message.into_bytes(), message_alice);
             // Check that Alice sent the message
@@ -810,15 +794,14 @@ fn mls_group_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoPr
             .leave_group(backend)
             .expect("Could not leave group");
 
-        let unverified_message = alice_group
-            .parse_message(queued_message.clone().into(), backend)
-            .expect("Could not parse message.");
         let alice_processed_message = alice_group
-            .process_unverified_message(unverified_message, None, backend)
-            .expect("Could not process unverified message.");
+            .process_message(backend, queued_message.clone().into())
+            .expect("Could not process message.");
 
         // Store proposal
-        if let ProcessedMessage::ProposalMessage(staged_proposal) = alice_processed_message {
+        if let ProcessedMessageContent::ProposalMessage(staged_proposal) =
+            alice_processed_message.into_content()
+        {
             // Store proposal
             alice_group.store_pending_proposal(*staged_proposal);
         } else {
@@ -861,15 +844,14 @@ fn mls_group_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoPr
             .merge_pending_commit()
             .expect("Could not merge Commit.");
 
-        let unverified_message = bob_group
-            .parse_message(queued_message.clone().into(), backend)
-            .expect("Could not parse message.");
         let bob_processed_message = bob_group
-            .process_unverified_message(unverified_message, None, backend)
-            .expect("Could not process unverified message.");
+            .process_message(backend, queued_message.clone().into())
+            .expect("Could not process message.");
 
         // Check that we received the correct proposals
-        if let ProcessedMessage::StagedCommitMessage(staged_commit) = bob_processed_message {
+        if let ProcessedMessageContent::StagedCommitMessage(staged_commit) =
+            bob_processed_message.into_content()
+        {
             let remove = staged_commit
                 .remove_proposals()
                 .next()

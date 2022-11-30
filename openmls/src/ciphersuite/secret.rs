@@ -4,7 +4,7 @@ use super::*;
 /// A struct to contain secrets. This is to provide better visibility into where
 /// and how secrets are used and to avoid passing secrets in their raw
 /// representation.
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize, Eq)]
 pub(crate) struct Secret {
     pub(in crate::ciphersuite) ciphersuite: Ciphersuite,
     pub(in crate::ciphersuite) value: Vec<u8>,
@@ -91,6 +91,19 @@ impl Secret {
     ) -> Self {
         Secret {
             value: bytes.to_vec(),
+            mls_version,
+            ciphersuite,
+        }
+    }
+
+    /// Create a new secret from a byte vector.
+    pub(crate) fn from_vec(
+        value: Vec<u8>,
+        mls_version: ProtocolVersion,
+        ciphersuite: Ciphersuite,
+    ) -> Self {
+        Secret {
+            value,
             mls_version,
             ciphersuite,
         }

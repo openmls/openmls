@@ -20,6 +20,9 @@ pub enum NewGroupError {
     /// No matching KeyPackageBundle was found in the key store.
     #[error("No matching KeyPackageBundle was found in the key store.")]
     NoMatchingKeyPackageBundle,
+    /// No matching CredentialBundle was found in the key store.
+    #[error("No matching CredentialBundle was found in the key store.")]
+    NoMatchingCredentialBundle,
     /// Failed to delete the KeyPackageBundle from the key store.
     #[error("Failed to delete the KeyPackageBundle from the key store.")]
     KeyStoreDeletionError,
@@ -62,9 +65,9 @@ pub enum MlsGroupStateError {
     NoPendingCommit,
 }
 
-/// Parse message error
+/// Process message error
 #[derive(Error, Debug, PartialEq, Clone)]
-pub enum ParseMessageError {
+pub enum ProcessMessageError {
     /// See [`LibraryError`] for more details.
     #[error(transparent)]
     LibraryError(#[from] LibraryError),
@@ -77,14 +80,6 @@ pub enum ParseMessageError {
     /// See [`MlsGroupStateError`] for more details.
     #[error(transparent)]
     GroupStateError(#[from] MlsGroupStateError),
-}
-
-/// Unverified message error
-#[derive(Error, Debug, PartialEq, Clone)]
-pub enum UnverifiedMessageError {
-    /// See [`LibraryError`] for more details.
-    #[error(transparent)]
-    LibraryError(#[from] LibraryError),
     /// The message is from an epoch too far in the past.
     #[error("The message is from an epoch too far in the past.")]
     NoPastEpochData,
