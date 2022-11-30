@@ -5,6 +5,8 @@
 use core_group::create_commit_params::CreateCommitParams;
 use tls_codec::Serialize;
 
+use crate::prelude::LeafNode;
+
 use super::{
     errors::{AddMembersError, LeaveGroupError, RemoveMembersError},
     *,
@@ -84,6 +86,15 @@ impl MlsGroup {
         self.flag_state_change();
 
         Ok((mls_messages, welcome))
+    }
+
+    /// Returns a reference to the own [`LeafNode`].
+    pub fn own_leaf(&self) -> Result<&LeafNode, LibraryError> {
+        self.group
+            .treesync()
+            .own_leaf_node()
+            .map(|l| l.leaf_node())
+            .map_err(|_| LibraryError::custom("There's no own leaf in this group."))
     }
 
     /// Removes members from the group.
@@ -297,9 +308,9 @@ impl MlsGroup {
         self.group.treesync().full_leave_members()
     }
 
-    /// Returns the [`KeyPackage`] of a member corresponding to the given
+    /// Returns the [`Credential`] of a member corresponding to the given
     /// leaf index. Returns `None` if the member can not be found in this group.
-    pub fn member(&self, leaf_index: u32) -> Option<&KeyPackage> {
+    pub fn member(&self, leaf_index: u32) -> Option<&Credential> {
         self.group
             .treesync()
             // Besides from returning an error if the member can't be found,
@@ -307,7 +318,7 @@ impl MlsGroup {
             // sub-32 bit architecture. As a result, it should be safe to just
             // return `None` instead of propagating an error.
             .leaf(leaf_index)
-            .map(|leaf| leaf.map(|l| l.key_package()))
+            .map(|leaf| leaf.map(|l| l.credential()))
             .ok()
             .flatten()
     }

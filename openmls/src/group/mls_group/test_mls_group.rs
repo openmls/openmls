@@ -86,7 +86,6 @@ fn test_mls_group_persistence(ciphersuite: Ciphersuite, backend: &impl OpenMlsCr
     let mls_group_config = MlsGroupConfig::test_default();
 
     // === Alice creates a group ===
-
     let mut alice_group = MlsGroup::new_with_group_id(
         backend,
         &mls_group_config,

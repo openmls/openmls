@@ -24,7 +24,7 @@ use crate::{
 /// key corresponding to the public key.
 #[derive(Debug, Eq, PartialEq, Clone, Serialize, Deserialize)]
 pub struct ParentNode {
-    pub(super) public_key: HpkePublicKey,
+    pub(super) encryption_key: HpkePublicKey,
     pub(super) parent_hash: VLBytes,
     pub(super) unmerged_leaves: UnmergedLeaves,
     private_key_option: Option<HpkePrivateKey>,
@@ -41,7 +41,7 @@ impl From<(HpkePublicKey, HpkePrivateKey)> for ParentNode {
 impl From<HpkePublicKey> for ParentNode {
     fn from(public_key: HpkePublicKey) -> Self {
         Self {
-            public_key,
+            encryption_key: public_key,
             parent_hash: vec![].into(),
             unmerged_leaves: UnmergedLeaves::new(),
             private_key_option: None,
@@ -99,7 +99,7 @@ impl ParentNode {
         unmerged_leaves: UnmergedLeaves,
     ) -> Self {
         Self {
-            public_key,
+            encryption_key: public_key,
             parent_hash,
             unmerged_leaves,
             private_key_option: None,
@@ -118,7 +118,7 @@ impl ParentNode {
         path_length: usize,
     ) -> Result<PathDerivationResult, LibraryError> {
         let mut next_path_secret = path_secret;
-        let mut path_secrets = Vec::new();
+        let mut path_secrets = Vec::with_capacity(path_length);
 
         for _ in 0..path_length {
             let path_secret = next_path_secret;
@@ -154,7 +154,7 @@ impl ParentNode {
 
     /// Return a reference to the `public_key` of this node.
     pub(crate) fn public_key(&self) -> &HpkePublicKey {
-        &self.public_key
+        &self.encryption_key
     }
 
     /// Return a reference to the potential `private_key` of this node.
@@ -186,7 +186,7 @@ impl ParentNode {
         original_child_resolution: &[HpkePublicKey],
     ) -> Result<Vec<u8>, LibraryError> {
         let parent_hash_input =
-            ParentHashInput::new(&self.public_key, parent_hash, original_child_resolution);
+            ParentHashInput::new(&self.encryption_key, parent_hash, original_child_resolution);
         parent_hash_input.hash(backend, ciphersuite)
     }
 
@@ -204,7 +204,7 @@ impl ParentNode {
     /// private key material.
     pub(in crate::treesync) fn clone_without_private_key(&self) -> Self {
         Self {
-            public_key: self.public_key().clone(),
+            encryption_key: self.public_key().clone(),
             parent_hash: self.parent_hash.clone(),
             unmerged_leaves: self.unmerged_leaves.clone(),
             private_key_option: None,

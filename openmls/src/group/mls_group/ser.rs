@@ -18,7 +18,7 @@ pub struct SerializedMlsGroup {
     mls_group_config: MlsGroupConfig,
     group: CoreGroup,
     proposal_store: ProposalStore,
-    own_kpbs: Vec<KeyPackageBundle>,
+    own_leaf_nodes: Vec<OpenMlsLeafNode>,
     aad: Vec<u8>,
     resumption_psk_store: ResumptionPskStore,
     group_state: MlsGroupState,
@@ -31,7 +31,7 @@ impl SerializedMlsGroup {
             mls_group_config: self.mls_group_config,
             group: self.group,
             proposal_store: self.proposal_store,
-            own_kpbs: self.own_kpbs,
+            own_leaf_nodes: self.own_leaf_nodes,
             aad: self.aad,
             resumption_psk_store: self.resumption_psk_store,
             group_state: self.group_state,
@@ -49,7 +49,7 @@ impl Serialize for MlsGroup {
         state.serialize_field("mls_group_config", &self.mls_group_config)?;
         state.serialize_field("group", &self.group)?;
         state.serialize_field("proposal_store", &self.proposal_store)?;
-        state.serialize_field("own_kpbs", &self.own_kpbs)?;
+        state.serialize_field("own_leaf_nodes", &self.own_leaf_nodes)?;
         state.serialize_field("aad", &self.aad)?;
         state.serialize_field("resumption_psk_store", &self.resumption_psk_store)?;
         state.serialize_field("group_state", &self.group_state)?;
