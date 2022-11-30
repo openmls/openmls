@@ -107,7 +107,6 @@
 //! let mut sasha_group = MlsGroup::new(
 //!     backend,
 //!     &MlsGroupConfig::default(),
-//!     LifetimeExtension::default(),
 //!     sasha_key_package
 //!         .hash_ref(backend.crypto())
 //!         .expect("Could not hash KeyPackage.")

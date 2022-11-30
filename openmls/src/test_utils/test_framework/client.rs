@@ -115,7 +115,6 @@ impl Client {
         let group_state = MlsGroup::new(
             &self.crypto,
             &mls_group_config,
-            LifetimeExtension::default(),
             key_package.hash_ref(self.crypto.crypto())?.as_slice(),
         )?;
         let group_id = group_state.group_id().clone();

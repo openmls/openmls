@@ -191,7 +191,6 @@ fn book_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvide
     let mut alice_group = MlsGroup::new(
         backend,
         &mls_group_config,
-        LifetimeExtension::default(),
         alice_key_package
             .hash_ref(backend.crypto())
             .expect("Could not hash KeyPackage.")
@@ -215,7 +214,6 @@ fn book_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvide
             backend,
             &mls_group_config,
             group_id,
-            LifetimeExtension::default(),
             alice_key_package
                 .hash_ref(backend.crypto())
                 .expect("Could not hash KeyPackage.")
@@ -1235,7 +1233,6 @@ fn test_empty_input_errors(ciphersuite: Ciphersuite, backend: &impl OpenMlsCrypt
         backend,
         &mls_group_config,
         group_id,
-        LifetimeExtension::default(),
         alice_key_package
             .hash_ref(backend.crypto())
             .expect("Could not hash KeyPackage.")

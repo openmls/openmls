@@ -71,7 +71,6 @@ fn validation_test_setup(
         backend,
         &mls_group_config,
         group_id,
-        LifetimeExtension::default(),
         alice_key_package
             .hash_ref(backend.crypto())
             .expect("Could not hash KeyPackage.")

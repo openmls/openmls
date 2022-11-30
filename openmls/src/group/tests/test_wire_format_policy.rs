@@ -45,7 +45,6 @@ fn create_group(
         backend,
         &mls_group_config,
         group_id,
-        LifetimeExtension::default(),
         key_package
             .hash_ref(backend.crypto())
             .expect("Could not hash KeyPackage.")

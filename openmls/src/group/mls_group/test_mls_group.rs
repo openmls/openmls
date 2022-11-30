@@ -90,7 +90,6 @@ fn test_mls_group_persistence(ciphersuite: Ciphersuite, backend: &impl OpenMlsCr
         backend,
         &mls_group_config,
         group_id,
-        LifetimeExtension::default(),
         alice_key_package
             .hash_ref(backend.crypto())
             .expect("Could not hash KeyPackage.")
@@ -175,7 +174,6 @@ fn remover(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
         backend,
         &mls_group_config,
         group_id,
-        LifetimeExtension::default(),
         alice_key_package
             .hash_ref(backend.crypto())
             .expect("Could not hash KeyPackage.")
@@ -315,7 +313,6 @@ fn export_secret(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider)
         backend,
         &mls_group_config,
         group_id,
-        LifetimeExtension::default(),
         alice_key_package
             .hash_ref(backend.crypto())
             .expect("Could not hash KeyPackage.")
@@ -462,7 +459,6 @@ fn test_pending_commit_logic(ciphersuite: Ciphersuite, backend: &impl OpenMlsCry
         backend,
         &mls_group_config,
         group_id,
-        LifetimeExtension::default(),
         alice_key_package
             .hash_ref(backend.crypto())
             .expect("Could not hash KeyPackage.")

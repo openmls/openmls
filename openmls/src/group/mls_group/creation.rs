@@ -21,14 +21,12 @@ impl MlsGroup {
     pub fn new(
         backend: &impl OpenMlsCryptoProvider,
         mls_group_config: &MlsGroupConfig,
-        life_time: LifetimeExtension,
         key_package_hash: &[u8],
     ) -> Result<Self, NewGroupError> {
         Self::new_with_group_id(
             backend,
             mls_group_config,
             GroupId::random(backend),
-            life_time,
             key_package_hash,
         )
     }
@@ -43,7 +41,6 @@ impl MlsGroup {
         backend: &impl OpenMlsCryptoProvider,
         mls_group_config: &MlsGroupConfig,
         group_id: GroupId,
-        life_time: LifetimeExtension,
         key_package_hash: &[u8],
     ) -> Result<Self, NewGroupError> {
         // TODO #751
@@ -76,7 +73,7 @@ impl MlsGroup {
             .with_config(group_config)
             .with_required_capabilities(mls_group_config.required_capabilities.clone())
             .with_max_past_epoch_secrets(mls_group_config.max_past_epochs)
-            .with_lifetime(life_time)
+            .with_lifetime(mls_group_config.lifetime().clone())
             .build(&credential_bundle, backend)
             .map_err(|e| match e {
                 CoreGroupBuildError::LibraryError(e) => e.into(),

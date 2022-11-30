@@ -123,7 +123,6 @@ fn mls_group_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoPr
             backend,
             &mls_group_config,
             group_id,
-            LifetimeExtension::default(),
             alice_key_package
                 .hash_ref(backend.crypto())
                 .expect("Could not hash KeyPackage.")
@@ -979,7 +978,6 @@ fn test_empty_input_errors(ciphersuite: Ciphersuite, backend: &impl OpenMlsCrypt
         backend,
         &mls_group_config,
         group_id,
-        LifetimeExtension::default(),
         alice_key_package
             .hash_ref(backend.crypto())
             .expect("Could not hash KeyPackage.")
@@ -1048,7 +1046,6 @@ fn mls_group_ratchet_tree_extension(
             backend,
             &mls_group_config,
             group_id.clone(),
-            LifetimeExtension::default(),
             alice_key_package
                 .hash_ref(backend.crypto())
                 .expect("Could not hash KeyPackage.")
@@ -1102,7 +1099,6 @@ fn mls_group_ratchet_tree_extension(
             backend,
             &mls_group_config,
             group_id,
-            LifetimeExtension::default(),
             alice_key_package
                 .hash_ref(backend.crypto())
                 .expect("Could not hash KeyPackage.")

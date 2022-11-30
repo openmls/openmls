@@ -75,7 +75,6 @@ fn create_group_with_members(
         backend,
         &MlsGroupConfig::default(),
         GroupId::from_slice(b"Alice's Friends"),
-        LifetimeExtension::default(),
         alice_key_package_bundle
             .key_package()
             .hash_ref(backend.crypto())
@@ -123,14 +122,7 @@ fn new_test_group(
         .hash_ref(backend.crypto())
         .expect("Could not hash KeyPackage.");
 
-    MlsGroup::new_with_group_id(
-        backend,
-        &mls_group_config,
-        group_id,
-        LifetimeExtension::default(),
-        kpr.as_slice(),
-    )
-    .unwrap()
+    MlsGroup::new_with_group_id(backend, &mls_group_config, group_id, kpr.as_slice()).unwrap()
 }
 
 // Validation test setup

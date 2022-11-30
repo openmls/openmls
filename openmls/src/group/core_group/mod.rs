@@ -139,7 +139,7 @@ pub(crate) struct CoreGroupBuilder {
     version: Option<ProtocolVersion>,
     required_capabilities: Option<RequiredCapabilitiesExtension>,
     max_past_epochs: usize,
-    life_time: Option<LifetimeExtension>,
+    lifetime: Option<LifetimeExtension>,
 }
 
 impl CoreGroupBuilder {
@@ -154,7 +154,7 @@ impl CoreGroupBuilder {
             required_capabilities: None,
             max_past_epochs: 0,
             own_leaf_extensions: vec![],
-            life_time: None,
+            lifetime: None,
         }
     }
     /// Set the [`CoreGroupConfig`] of the [`CoreGroup`].
@@ -182,8 +182,8 @@ impl CoreGroupBuilder {
         self
     }
     /// Set the [`LifetimeExtension`] for the own leaf in the group.
-    pub fn with_lifetime(mut self, life_time: LifetimeExtension) -> Self {
-        self.life_time = Some(life_time);
+    pub fn with_lifetime(mut self, lifetime: LifetimeExtension) -> Self {
+        self.lifetime = Some(lifetime);
         self
     }
     /// Set extensions for the own leaf in the group.
@@ -218,7 +218,7 @@ impl CoreGroupBuilder {
             backend,
             self.key_package_bundle,
             credential_bundle,
-            self.life_time.unwrap_or_default(),
+            self.lifetime.unwrap_or_default(),
             Capabilities::new(
                 Some(&[version]),     // TODO: Allow more versions
                 Some(&[ciphersuite]), // TODO: allow more ciphersuites

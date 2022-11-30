@@ -1,7 +1,6 @@
 use crate::{
     ciphersuite::{hash_ref::KeyPackageRef, signable::Signable, AeadKey, AeadNonce, Mac, Secret},
     credentials::{errors::CredentialError, CredentialBundle, CredentialType},
-    extensions::LifetimeExtension,
     group::{errors::WelcomeError, GroupId, MlsGroup, MlsGroupConfig},
     key_packages::KeyPackageBundle,
     messages::{
@@ -121,7 +120,6 @@ fn test_welcome_ciphersuite_mismatch(
         backend,
         &mls_group_config,
         group_id,
-        LifetimeExtension::default(),
         alice_kp
             .hash_ref(backend.crypto())
             .expect("Could not hash KeyPackage.")

@@ -61,7 +61,6 @@ fn test_remove_operation_variants(ciphersuite: Ciphersuite, backend: &impl OpenM
             backend,
             &mls_group_config,
             group_id,
-            LifetimeExtension::default(),
             alice_key_package
                 .hash_ref(backend.crypto())
                 .expect("Could not hash KeyPackage.")
