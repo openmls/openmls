@@ -562,8 +562,8 @@ impl CoreGroup {
         self.group_epoch_secrets().epoch_authenticator()
     }
 
-    /// Returns the resumption psk
-    pub(crate) fn resumption_psk(&self) -> &ResumptionPsk {
+    /// Returns the resumption PSK secret
+    pub(crate) fn resumption_psk_secret(&self) -> &ResumptionPskSecret {
         self.group_epoch_secrets().resumption_psk()
     }
 

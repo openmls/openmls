@@ -313,11 +313,8 @@ impl CoreGroup {
         );
 
         // Prepare the PskSecret
-        let psk_secret = PskSecret::new(
-            ciphersuite,
-            backend,
-            apply_proposals_values.presharedkeys.psks(),
-        )?;
+        let psk_secret =
+            PskSecret::new(ciphersuite, backend, &apply_proposals_values.presharedkeys)?;
 
         // Create key schedule
         let mut key_schedule = KeySchedule::init(ciphersuite, backend, joiner_secret, psk_secret)?;

@@ -1,7 +1,7 @@
 //! # Key schedule
 //!
 //! This module contains the types and implementations for key schedule operations.
-//! It exposes the [`EpochAuthenticator`] & [`ResumptionPsk`].
+//! It exposes the [`EpochAuthenticator`] & [`ResumptionPskSecret`].
 
 // Internal documentation
 //
@@ -135,7 +135,6 @@ use serde::{Deserialize, Serialize};
 use tls_codec::{TlsDeserialize, TlsSerialize, TlsSize};
 
 // Public
-pub mod codec;
 pub mod errors;
 
 // Crate
@@ -155,14 +154,15 @@ mod unit_tests;
 
 // Public types
 
-/// A group secret that can be used among members to prove that a member was part of a group in a given epoch.
+/// A group secret that can be used among members to prove that a member was
+/// part of a group in a given epoch.
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[cfg_attr(test, derive(PartialEq))]
-pub struct ResumptionPsk {
+pub struct ResumptionPskSecret {
     secret: Secret,
 }
 
-impl ResumptionPsk {
+impl ResumptionPskSecret {
     /// Derive an `ResumptionPsk` from an `EpochSecret`.
     fn new(
         backend: &impl OpenMlsCryptoProvider,
@@ -1019,7 +1019,7 @@ pub(crate) struct EpochSecrets {
     external_secret: ExternalSecret,
     confirmation_key: ConfirmationKey,
     membership_key: MembershipKey,
-    resumption_psk: ResumptionPsk,
+    resumption_psk: ResumptionPskSecret,
 }
 
 impl std::fmt::Debug for EpochSecrets {
@@ -1087,7 +1087,7 @@ impl EpochSecrets {
 
     /// External secret
     #[cfg(any(feature = "test-utils", test))]
-    pub(crate) fn resumption_psk(&self) -> &ResumptionPsk {
+    pub(crate) fn resumption_psk(&self) -> &ResumptionPskSecret {
         &self.resumption_psk
     }
 
@@ -1126,7 +1126,7 @@ impl EpochSecrets {
         let external_secret = ExternalSecret::new(backend, &epoch_secret)?;
         let confirmation_key = ConfirmationKey::new(backend, &epoch_secret)?;
         let membership_key = MembershipKey::new(backend, &epoch_secret)?;
-        let resumption_psk = ResumptionPsk::new(backend, &epoch_secret)?;
+        let resumption_psk = ResumptionPskSecret::new(backend, &epoch_secret)?;
 
         log::trace!("  Computing init secret.");
         let init_secret = InitSecret::new(backend, epoch_secret)?;
@@ -1201,7 +1201,7 @@ pub(crate) struct GroupEpochSecrets {
     exporter_secret: ExporterSecret,
     epoch_authenticator: EpochAuthenticator,
     external_secret: ExternalSecret,
-    resumption_psk: ResumptionPsk,
+    resumption_psk: ResumptionPskSecret,
 }
 
 impl std::fmt::Debug for GroupEpochSecrets {
@@ -1250,7 +1250,7 @@ impl GroupEpochSecrets {
     }
 
     /// External secret
-    pub(crate) fn resumption_psk(&self) -> &ResumptionPsk {
+    pub(crate) fn resumption_psk(&self) -> &ResumptionPskSecret {
         &self.resumption_psk
     }
 }

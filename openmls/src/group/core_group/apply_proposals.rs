@@ -19,7 +19,7 @@ pub(crate) struct ApplyProposalsValues {
     pub(crate) path_required: bool,
     pub(crate) self_removed: bool,
     pub(crate) invitation_list: Vec<(LeafIndex, AddProposal)>,
-    pub(crate) presharedkeys: PreSharedKeys,
+    pub(crate) presharedkeys: Vec<PreSharedKeyId>,
     pub(crate) external_init_secret_option: Option<InitSecret>,
 }
 
@@ -152,7 +152,7 @@ impl CoreGroup {
         }
 
         // Process PSK proposals
-        let psks: Vec<PreSharedKeyId> = proposal_queue
+        let presharedkeys: Vec<PreSharedKeyId> = proposal_queue
             .filtered_by_type(ProposalType::Presharedkey)
             .filter_map(|queued_proposal| {
                 if let Proposal::PreSharedKey(psk_proposal) = queued_proposal.proposal() {
@@ -162,8 +162,6 @@ impl CoreGroup {
                 }
             })
             .collect();
-
-        let presharedkeys = PreSharedKeys { psks: psks.into() };
 
         let proposals_require_path = proposal_queue
             .queued_proposals()

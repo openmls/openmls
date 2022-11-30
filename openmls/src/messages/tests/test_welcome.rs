@@ -157,7 +157,7 @@ fn test_welcome_ciphersuite_mismatch(
     let joiner_secret = group_secrets.joiner_secret;
 
     // Prepare the PskSecret
-    let psk_secret = PskSecret::new(ciphersuite, backend, group_secrets.psks.psks())
+    let psk_secret = PskSecret::new(ciphersuite, backend, &group_secrets.psks)
         .expect("Could not create PskSecret.");
 
     // Create key schedule
