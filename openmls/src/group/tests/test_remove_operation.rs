@@ -3,8 +3,6 @@
 use super::utils::{generate_credential_bundle, generate_key_package_bundle};
 use crate::{credentials::*, framing::*, group::*, test_utils::*, *};
 use openmls_rust_crypto::OpenMlsRustCrypto;
-use openmls_traits::key_store::OpenMlsKeyStore;
-use tls_codec::Serialize;
 
 // Tests the differen variants of the RemoveOperation enum.
 #[apply(ciphersuites_and_backends)]

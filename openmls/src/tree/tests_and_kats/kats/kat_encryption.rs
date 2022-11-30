@@ -141,8 +141,6 @@ fn group(
     ciphersuite: Ciphersuite,
     backend: &impl OpenMlsCryptoProvider,
 ) -> (CoreGroup, CredentialBundle) {
-    use crate::extensions::LifetimeExtension;
-
     let credential_bundle = CredentialBundle::new(
         "Kreator".into(),
         CredentialType::Basic,
@@ -167,8 +165,6 @@ fn receiver_group(
     backend: &impl OpenMlsCryptoProvider,
     group_id: &GroupId,
 ) -> CoreGroup {
-    use crate::extensions::LifetimeExtension;
-
     let credential_bundle = CredentialBundle::new(
         "Receiver".into(),
         CredentialType::Basic,

@@ -53,10 +53,6 @@ fn new_test_group(
         .hash_ref(backend.crypto())
         .expect("Could not hash KeyPackage.");
 
-    let credential_bundle: CredentialBundle = backend
-        .key_store()
-        .read(&credential.signature_key().tls_serialize_detached().unwrap())
-        .unwrap();
     MlsGroup::new_with_group_id(
         backend,
         &mls_group_config,

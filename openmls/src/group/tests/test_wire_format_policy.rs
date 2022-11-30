@@ -1,11 +1,10 @@
 //! This module tests the different values for `WireFormatPolicy`
 
 use openmls_rust_crypto::OpenMlsRustCrypto;
-use openmls_traits::{key_store::OpenMlsKeyStore, types::Ciphersuite, OpenMlsCryptoProvider};
+use openmls_traits::{types::Ciphersuite, OpenMlsCryptoProvider};
 
 use rstest::*;
 use rstest_reuse::{self, *};
-use tls_codec::Serialize;
 
 use crate::{
     credentials::*,

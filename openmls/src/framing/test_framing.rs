@@ -8,7 +8,6 @@ use tls_codec::{Deserialize, Serialize};
 
 use crate::{
     ciphersuite::signable::{Signable, Verifiable},
-    extensions::LifetimeExtension,
     framing::*,
     group::{
         core_group::{

@@ -484,21 +484,6 @@ impl TreeSync {
         })
     }
 
-    /// Return a mutable reference to the leaf at the given `LeafIndex` or
-    /// `None` if the leaf is blank.
-    ///
-    /// Returns an error if the leaf is outside of the tree.
-    pub(crate) fn leaf_mut(
-        &mut self,
-        leaf_index: LeafIndex,
-    ) -> Result<Option<&mut OpenMlsLeafNode>, TreeSyncError> {
-        let tsn = self.tree.leaf_mut(leaf_index)?;
-        Ok(match tsn.node_mut() {
-            Some(node) => Some(node.as_leaf_node_mut()?),
-            None => None,
-        })
-    }
-
     /// Returns a [`TreeSyncError`] if the `leaf_index` is not a leaf in this
     /// tree or empty.
     pub(crate) fn leaf_is_in_tree(&self, leaf_index: LeafIndex) -> Result<(), TreeSyncError> {

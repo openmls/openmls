@@ -67,7 +67,6 @@ fn generate_credential_bundle_and_key_package_bundle(
 
 /// Helper function to create a group and try to add `members` to it.
 fn create_group_with_members(
-    alice_credential_bundle: CredentialBundle,
     alice_key_package_bundle: KeyPackageBundle,
     member_key_packages: &[KeyPackage],
     backend: &impl OpenMlsCryptoProvider,
@@ -257,7 +256,7 @@ fn test_valsem100(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
         ("42", "42"), // Negative Case: Bob and Charlie have same identity
         ("42", "24"), // Positive Case: Bob and Charlie have different identity
     ] {
-        let (alice_credential_bundle, alice_key_package_bundle) =
+        let (_, alice_key_package_bundle) =
             generate_credential_bundle_and_key_package_bundle("Alice".into(), ciphersuite, backend);
 
         // 0. Initialize Bob and Charlie
@@ -275,7 +274,6 @@ fn test_valsem100(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
 
         // 1. Alice creates a group and tries to add Bob and Charlie to it
         let res = create_group_with_members(
-            alice_credential_bundle,
             alice_key_package_bundle,
             &[bob_key_package, charlie_key_package],
             backend,
@@ -375,7 +373,7 @@ fn test_valsem101(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
         KeyUniqueness::PositiveDifferentKey,
     ] {
         // 0. Initialize Alice
-        let (alice_credential_bundle, alice_key_package_bundle) =
+        let (_, alice_key_package_bundle) =
             generate_credential_bundle_and_key_package_bundle("Alice".into(), ciphersuite, backend);
 
         // 1. Initialize Bob and Charlie
@@ -417,7 +415,6 @@ fn test_valsem101(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
 
         // 1. Alice creates a group and tries to add Bob and Charlie to it
         let res = create_group_with_members(
-            alice_credential_bundle,
             alice_key_package_bundle,
             &[bob_key_package, charlie_key_package],
             backend,
@@ -523,7 +520,7 @@ fn test_valsem102(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
         KeyUniqueness::PositiveDifferentKey,
     ] {
         // 0. Initialize Alice, Bob, and Charlie
-        let (alice_credential_bundle, alice_key_package_bundle) =
+        let (_, alice_key_package_bundle) =
             generate_credential_bundle_and_key_package_bundle("Alice".into(), ciphersuite, backend);
         let (bob_credential_bundle, mut bob_key_package_bundle) =
             generate_credential_bundle_and_key_package_bundle("Bob".into(), ciphersuite, backend);
@@ -571,7 +568,6 @@ fn test_valsem102(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
 
         // 1. Alice creates a group and tries to add Bob and Charlie to it
         let res = create_group_with_members(
-            alice_credential_bundle,
             alice_key_package_bundle,
             &[bob_key_package, charlie_key_package],
             backend,
@@ -678,23 +674,17 @@ fn test_valsem103(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
         ("42", "24"), // Positive Case: Alice and Bob have different identity
     ] {
         // 0. Initialize Alice and Bob
-        let (alice_credential_bundle, alice_key_package_bundle) =
-            generate_credential_bundle_and_key_package_bundle(
-                alice_id.into(),
-                ciphersuite,
-                backend,
-            );
+        let (_, alice_key_package_bundle) = generate_credential_bundle_and_key_package_bundle(
+            alice_id.into(),
+            ciphersuite,
+            backend,
+        );
         let (_bob_credential_bundle, bob_key_package_bundle) =
             generate_credential_bundle_and_key_package_bundle(bob_id.into(), ciphersuite, backend);
         let bob_key_package = bob_key_package_bundle.key_package().clone();
 
         // 1. Alice creates a group and tries to add Bob to it
-        let res = create_group_with_members(
-            alice_credential_bundle,
-            alice_key_package_bundle,
-            &[bob_key_package],
-            backend,
-        );
+        let res = create_group_with_members(alice_key_package_bundle, &[bob_key_package], backend);
 
         if alice_id == bob_id {
             // Negative Case: we should output an error
@@ -845,12 +835,7 @@ fn test_valsem104(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
         let bob_key_package = bob_key_package_bundle.key_package().clone();
 
         // 1. Alice creates a group and tries to add Bob to it
-        let res = create_group_with_members(
-            alice_credential_bundle,
-            alice_key_package_bundle,
-            &[bob_key_package],
-            backend,
-        );
+        let res = create_group_with_members(alice_key_package_bundle, &[bob_key_package], backend);
 
         match alice_and_bob_share_keys {
             KeyUniqueness::NegativeSameKey => {
@@ -1009,12 +994,7 @@ fn test_valsem105(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
         let bob_key_package = bob_key_package_bundle.key_package().clone();
 
         // 1. Alice creates a group and tries to add Bob to it
-        let res = create_group_with_members(
-            alice_credential_bundle,
-            alice_key_package_bundle,
-            &[bob_key_package],
-            backend,
-        );
+        let res = create_group_with_members(alice_key_package_bundle, &[bob_key_package], backend);
 
         match alice_and_bob_share_keys {
             KeyUniqueness::NegativeSameKey => {

@@ -1,4 +1,4 @@
-use crate::{extensions::LifetimeExtension, test_utils::*};
+use crate::test_utils::*;
 use openmls_rust_crypto::OpenMlsRustCrypto;
 use openmls_traits::{types::Ciphersuite, OpenMlsCryptoProvider};
 
@@ -478,9 +478,9 @@ fn test_group_context_extension_proposal_fails(
     //       We can't test this right now because we don't have a capability
     //       that is not a "default" proposal or extension.
     // // Alice tries to add a required capability she doesn't support herself.
-    let required_application_id = Extension::RequiredCapabilities(
-        RequiredCapabilitiesExtension::new(&[ExtensionType::ApplicationId], &[]),
-    );
+    // let required_application_id = Extension::RequiredCapabilities(
+    //     RequiredCapabilitiesExtension::new(&[ExtensionType::ApplicationId], &[]),
+    // );
     // let e = alice_group.create_group_context_ext_proposal(
     //     framing_parameters,
     //     &alice_credential_bundle,
@@ -528,7 +528,7 @@ fn test_group_context_extension_proposal_fails(
         .expect("error merging pending commit");
     let ratchet_tree = alice_group.treesync().export_nodes();
 
-    let bob_group = CoreGroup::new_from_welcome(
+    let _bob_group = CoreGroup::new_from_welcome(
         create_commit_result
             .welcome_option
             .expect("An unexpected error occurred."),

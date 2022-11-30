@@ -1,6 +1,5 @@
 use crate::{
     credentials::{CredentialBundle, CredentialType},
-    extensions::LifetimeExtension,
     framing::{FramingParameters, WireFormat},
     group::GroupId,
     key_packages::KeyPackageBundle,
