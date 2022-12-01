@@ -6,6 +6,9 @@ use openmls_rust_crypto::OpenMlsRustCrypto;
 use openmls_traits::{key_store::OpenMlsKeyStore, types::Ciphersuite, OpenMlsCryptoProvider};
 use tls_codec::{Deserialize, Serialize};
 
+use rstest::*;
+use rstest_reuse::{self, *};
+
 use crate::{
     ciphersuite::{
         hash_ref::ProposalRef,
@@ -16,8 +19,6 @@ use crate::{
     group::{errors::*, *},
     messages::{proposals::*, public_group_state::VerifiablePublicGroupState},
 };
-use rstest::*;
-use rstest_reuse::{self, *};
 
 use super::utils::{generate_credential_bundle, generate_key_package_bundle};
 
@@ -181,27 +182,20 @@ fn test_valsem240(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
     // Have alice process the commit resulting from external init.
     let message_in = MlsMessageIn::from(verifiable_plaintext);
 
-    let unverified_message = alice_group
-        .parse_message(message_in, backend)
-        .expect("Could not parse message.");
-
     let err = alice_group
-        .process_unverified_message(unverified_message, None, backend)
-        .expect_err("Could process unverified message despite missing external init proposal.");
+        .process_message(backend, message_in)
+        .expect_err("Could process message despite missing external init proposal.");
 
     assert_eq!(
         err,
-        UnverifiedMessageError::InvalidCommit(StageCommitError::ExternalCommitValidation(
+        ProcessMessageError::InvalidCommit(StageCommitError::ExternalCommitValidation(
             ExternalCommitValidationError::NoExternalInitProposals
         ))
     );
 
     // Positive case
-    let unverified_message = alice_group
-        .parse_message(MlsMessageIn::from(original_plaintext), backend)
-        .expect("Could not parse message.");
     alice_group
-        .process_unverified_message(unverified_message, None, backend)
+        .process_message(backend, MlsMessageIn::from(original_plaintext))
         .expect("Unexpected error.");
 }
 
@@ -253,29 +247,20 @@ fn test_valsem241(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
     // Have alice process the commit resulting from external init.
     let message_in = MlsMessageIn::from(verifiable_plaintext);
 
-    let unverified_message = alice_group
-        .parse_message(message_in, backend)
-        .expect("Could not parse message.");
-
     let err = alice_group
-        .process_unverified_message(unverified_message, None, backend)
-        .expect_err(
-            "Could process unverified message despite second ext. init proposal in commit.",
-        );
+        .process_message(backend, message_in)
+        .expect_err("Could process message despite second ext. init proposal in commit.");
 
     assert_eq!(
         err,
-        UnverifiedMessageError::InvalidCommit(StageCommitError::ExternalCommitValidation(
+        ProcessMessageError::InvalidCommit(StageCommitError::ExternalCommitValidation(
             ExternalCommitValidationError::MultipleExternalInitProposals
         ))
     );
 
     // Positive case
-    let unverified_message = alice_group
-        .parse_message(MlsMessageIn::from(original_plaintext), backend)
-        .expect("Could not parse message.");
     alice_group
-        .process_unverified_message(unverified_message, None, backend)
+        .process_message(backend, MlsMessageIn::from(original_plaintext))
         .expect("Unexpected error.");
 }
 
@@ -332,7 +317,7 @@ fn test_valsem242(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
         )
         .unwrap();
         ProposalOrRef::Proposal(Proposal::Update(UpdateProposal {
-            key_package: bob_key_package,
+            leaf_node: bob_key_package.leaf_node().clone(),
         }))
     };
 
@@ -405,25 +390,18 @@ fn test_valsem242(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
 
         let verifiable_plaintext = VerifiableMlsAuthContent::from_plaintext(signed_plaintext, None);
 
-        let unverified_msg = alice_group
-            .parse_message(verifiable_plaintext.into(), backend)
-            .unwrap();
-
-        let processed_msg = alice_group.process_unverified_message(unverified_msg, None, backend);
+        let processed_msg = alice_group.process_message(backend, verifiable_plaintext.into());
 
         assert_eq!(
             processed_msg.unwrap_err(),
-            UnverifiedMessageError::InvalidCommit(StageCommitError::ExternalCommitValidation(
+            ProcessMessageError::InvalidCommit(StageCommitError::ExternalCommitValidation(
                 ExternalCommitValidationError::InvalidInlineProposals
             ))
         );
 
         // Positive case
-        let unverified_message = alice_group
-            .parse_message(original_plaintext.into(), backend)
-            .unwrap();
         alice_group
-            .process_unverified_message(unverified_message, None, backend)
+            .process_message(backend, original_plaintext.into())
             .unwrap();
     }
 }
@@ -538,17 +516,13 @@ fn test_valsem243(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
     // Have alice process the commit resulting from external init.
     let message_in = MlsMessageIn::from(verifiable_plaintext);
 
-    let unverified_message = alice_group
-        .parse_message(message_in, backend)
-        .expect("Could not parse message.");
-
-    let err = alice_group
-        .process_unverified_message(unverified_message, None, backend)
-        .expect_err("Could process unverified message despite the remove proposal targeting the wrong group member.");
+    let err = alice_group.process_message(backend, message_in).expect_err(
+        "Could process message despite the remove proposal targeting the wrong group member.",
+    );
 
     assert_eq!(
         err,
-        UnverifiedMessageError::InvalidCommit(StageCommitError::ExternalCommitValidation(
+        ProcessMessageError::InvalidCommit(StageCommitError::ExternalCommitValidation(
             ExternalCommitValidationError::InvalidRemoveProposal
         ))
     );
@@ -577,11 +551,8 @@ fn test_valsem243(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
     assert!(alice_external_commit.is_ok());
 
     // Positive case
-    let unverified_message = alice_group
-        .parse_message(MlsMessageIn::from(original_plaintext), backend)
-        .expect("Could not parse message.");
     alice_group
-        .process_unverified_message(unverified_message, None, backend)
+        .process_message(backend, MlsMessageIn::from(original_plaintext))
         .expect("Unexpected error.");
 }
 
@@ -640,26 +611,21 @@ fn test_valsem244(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
     // Have Alice process the commit resulting from external init.
     let message_in = MlsMessageIn::from(verifiable_plaintext);
 
-    let unverified_message = alice_group.parse_message(message_in, backend).unwrap();
-
     let err = alice_group
-        .process_unverified_message(unverified_message, None, backend)
+        .process_message(backend, message_in)
         .unwrap_err();
 
     assert_eq!(
         err,
-        UnverifiedMessageError::InvalidCommit(StageCommitError::ExternalCommitValidation(
+        ProcessMessageError::InvalidCommit(StageCommitError::ExternalCommitValidation(
             ExternalCommitValidationError::ReferencedProposal
         ))
     );
 
     // Positive case
-    let unverified_message = alice_group
-        .parse_message(MlsMessageIn::from(original_plaintext), backend)
-        .expect("Could not parse message.");
     alice_group
-        .process_unverified_message(unverified_message, None, backend)
-        .expect("Unexpected error.");
+        .process_message(backend, MlsMessageIn::from(original_plaintext))
+        .unwrap();
 }
 
 // ValSem245: External Commit: MUST contain a path.
@@ -706,20 +672,17 @@ fn test_valsem245(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
     let message_in = MlsMessageIn::from(verifiable_plaintext);
 
     let err = alice_group
-        .parse_message(message_in, backend)
-        .expect_err("Could process unverified message despite missing path.");
+        .process_message(backend, message_in)
+        .expect_err("Could process message despite missing path.");
 
     assert_eq!(
         err,
-        ParseMessageError::ValidationError(ValidationError::NoPath)
+        ProcessMessageError::ValidationError(ValidationError::NoPath)
     );
 
     // Positive case
-    let unverified_message = alice_group
-        .parse_message(MlsMessageIn::from(original_plaintext), backend)
-        .expect("Could not parse message.");
     alice_group
-        .process_unverified_message(unverified_message, None, backend)
+        .process_message(backend, MlsMessageIn::from(original_plaintext))
         .expect("Unexpected error.");
 }
 
@@ -757,7 +720,7 @@ fn test_valsem246(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
             .expect("An unexpected error occurred.");
 
     if let Some(ref mut path) = content.path {
-        path.set_leaf_key_package(bob_new_key_package)
+        path.set_leaf_node(bob_new_key_package.leaf_node().clone())
     }
 
     plaintext.set_content_body(MlsContentBody::Commit(content));
@@ -783,17 +746,13 @@ fn test_valsem246(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
     // Have alice process the commit resulting from external init.
     let message_in = MlsMessageIn::from(verifiable_plaintext);
 
-    let unverified_message = alice_group
-        .parse_message(message_in, backend)
-        .expect("Could not parse message.");
-
     let err = alice_group
-        .process_unverified_message(unverified_message, None, backend)
-        .expect_err("Could process unverified message despite wrong signature.");
+        .process_message(backend, message_in)
+        .expect_err("Could process message despite wrong signature.");
 
     // This shows that signature verification fails if the signature is not done
     // using the credential in the path.
-    assert_eq!(err, UnverifiedMessageError::InvalidSignature);
+    assert_eq!(err, ProcessMessageError::InvalidSignature);
 
     // This shows that the credential in the original path key package is actually bob's credential.
     let content = if let MlsContentBody::Commit(commit) = original_plaintext.content() {
@@ -806,7 +765,7 @@ fn test_valsem246(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
         .path()
         .as_ref()
         .expect("no path in external commit")
-        .leaf_key_package()
+        .leaf_node()
         .credential();
     assert_eq!(path_credential, bob_credential_bundle.credential());
 
@@ -820,11 +779,8 @@ fn test_valsem246(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
     // This shows it again, since ValSem010 ensures that the signature is
     // correct (which it only is, if alice is using the credential in the path
     // key package).
-    let unverified_message = alice_group
-        .parse_message(MlsMessageIn::from(original_plaintext), backend)
-        .expect("Could not parse message.");
     alice_group
-        .process_unverified_message(unverified_message, None, backend)
+        .process_message(backend, MlsMessageIn::from(original_plaintext))
         .expect("Unexpected error.");
 }
 
@@ -863,6 +819,5 @@ fn test_pure_ciphertest(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoPr
     assert_eq!(message.wire_format(), WireFormat::MlsPlaintext);
 
     // Would fail if handshake message processing did not distinguish external messages
-    assert!(alice_group.parse_message(message.into(), backend).is_ok());
+    assert!(alice_group.process_message(backend, message.into()).is_ok());
 }
-
