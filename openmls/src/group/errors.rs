@@ -90,6 +90,9 @@ pub enum ExternalCommitError {
     /// No ratchet tree available to build initial tree.
     #[error("No ratchet tree available to build initial tree.")]
     MissingRatchetTree,
+    /// No external_pub extension available to join group by external commit.
+    #[error("No external_pub extension available to join group by external commit.")]
+    MissingExternalPub,
     /// The computed tree hash does not match the one in the GroupInfo.
     #[error("The computed tree hash does not match the one in the GroupInfo.")]
     TreeHashMismatch,
@@ -102,9 +105,9 @@ pub enum ExternalCommitError {
     /// Sender not found in tree.
     #[error("Sender not found in tree.")]
     UnknownSender,
-    /// The signature over the given public group state is invalid.
-    #[error("The signature over the given public group state is invalid.")]
-    InvalidPublicGroupStateSignature,
+    /// The signature over the given group info is invalid.
+    #[error("The signature over the given group info is invalid.")]
+    InvalidGroupInfoSignature,
     /// A duplicate ratchet tree was found.
     #[error("A duplicate ratchet tree was found.")]
     DuplicateRatchetTreeExtension,

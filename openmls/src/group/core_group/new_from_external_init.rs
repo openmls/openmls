@@ -1,10 +1,7 @@
 use crate::{
     ciphersuite::signable::Verifiable,
     group::errors::ExternalCommitError,
-    messages::{
-        proposals::{ExternalInitProposal, Proposal},
-        public_group_state::{PublicGroupState, VerifiablePublicGroupState},
-    },
+    messages::proposals::{ExternalInitProposal, Proposal},
     treesync::{errors::TreeSyncFromNodesError, node::Node},
 };
 
@@ -18,7 +15,7 @@ pub(crate) type ExternalCommitResult = (CoreGroup, CreateCommitResult);
 
 impl CoreGroup {
     /// Join a group without the help of an internal member. This function
-    /// requires a `PublicGroupState`, as well as the corresponding public tree
+    /// requires a [GroupInfo], as well as the corresponding public tree
     /// `nodes`. After the group state is initialized, this function creates an
     /// `ExternalInit` proposal and commits it along with the given proposals by
     /// reference and by value.
@@ -29,12 +26,9 @@ impl CoreGroup {
         backend: &impl OpenMlsCryptoProvider,
         params: CreateCommitParams,
         tree_option: Option<&[Option<Node>]>,
-        verifiable_public_group_state: VerifiablePublicGroupState,
+        verifiable_group_info: VerifiableGroupInfo,
     ) -> Result<ExternalCommitResult, ExternalCommitError> {
-        let ciphersuite = verifiable_public_group_state.ciphersuite();
-        if verifiable_public_group_state.version() != ProtocolVersion::Mls10 {
-            return Err(ExternalCommitError::UnsupportedMlsVersion);
-        }
+        let ciphersuite = verifiable_group_info.ciphersuite();
 
         // Build the ratchet tree
 
@@ -42,10 +36,8 @@ impl CoreGroup {
         // If we got a ratchet tree extension in the welcome, we enable it for
         // this group. Note that this is not strictly necessary. But there's
         // currently no other mechanism to enable the extension.
-        let extension_tree_option = try_nodes_from_extensions(
-            verifiable_public_group_state.other_extensions(),
-        )
-        .map_err(|e| match e {
+        let extension_tree_option = try_nodes_from_extensions(verifiable_group_info.extensions())
+            .map_err(|e| match e {
             ExtensionError::DuplicateRatchetTreeExtension => {
                 ExternalCommitError::DuplicateRatchetTreeExtension
             }
@@ -71,31 +63,47 @@ impl CoreGroup {
             },
         )?;
 
-        if treesync.tree_hash() != verifiable_public_group_state.tree_hash() {
+        let group_info: GroupInfo = {
+            let group_info_signer_leaf = treesync
+                .leaf(verifiable_group_info.signer())
+                .map_err(|_| ExternalCommitError::UnknownSender)?
+                .ok_or(ExternalCommitError::UnknownSender)?
+                .credential();
+
+            verifiable_group_info
+                .verify(backend, group_info_signer_leaf)
+                .map_err(|_| ExternalCommitError::InvalidGroupInfoSignature)?
+        };
+
+        if treesync.tree_hash() != group_info.group_context().tree_hash() {
             return Err(ExternalCommitError::TreeHashMismatch);
         }
 
-        let pgs_signer_leaf = treesync
-            .leaf(verifiable_public_group_state.signer())
-            .map_err(|_| ExternalCommitError::UnknownSender)?;
-        let pgs_signer_credential = pgs_signer_leaf
-            .ok_or(ExternalCommitError::UnknownSender)?
-            .credential();
-        let pgs: PublicGroupState = verifiable_public_group_state
-            .verify(backend, pgs_signer_credential)
-            .map_err(|_| ExternalCommitError::InvalidPublicGroupStateSignature)?;
+        if group_info.group_context().protocol_version() != ProtocolVersion::Mls10 {
+            return Err(ExternalCommitError::UnsupportedMlsVersion);
+        }
 
-        let (init_secret, kem_output) = InitSecret::from_public_group_state(backend, &pgs)
-            .map_err(|_| ExternalCommitError::UnsupportedCiphersuite)?;
+        // Obtain external_pub from GroupInfo extensions.
+        // TODO(#720): Check for duplicates.
+        let external_pub = {
+            let ext = group_info
+                .extensions()
+                .iter()
+                .find(|ext| matches!(ext, Extension::ExternalPub(_)))
+                .ok_or(ExternalCommitError::MissingExternalPub)?
+                .as_external_pub_extension()
+                .map_err(|_| {
+                    LibraryError::custom(
+                        "We found an `ExternalPub` so `as_external_pub_extension` must not fail.",
+                    )
+                })?;
 
-        let group_context = GroupContext::new(
-            ciphersuite,
-            pgs.group_id,
-            pgs.epoch,
-            pgs.tree_hash.as_slice().to_vec(),
-            pgs.confirmed_transcript_hash.into(),
-            pgs.group_context_extensions.as_slice(),
-        );
+            ext.external_pub()
+        };
+
+        let (init_secret, kem_output) =
+            InitSecret::from_group_info(backend, &group_info, external_pub.as_slice())
+                .map_err(|_| ExternalCommitError::UnsupportedCiphersuite)?;
 
         // The `EpochSecrets` we create here are essentially zero, with the
         // exception of the `InitSecret`, which is all we need here for the
@@ -103,7 +111,8 @@ impl CoreGroup {
         let epoch_secrets = EpochSecrets::with_init_secret(backend, init_secret)
             .map_err(LibraryError::unexpected_crypto_error)?;
         let (group_epoch_secrets, message_secrets) = epoch_secrets.split_secrets(
-            group_context
+            group_info
+                .group_context()
                 .tls_serialize_detached()
                 .map_err(LibraryError::missing_bound_check)?,
             treesync
@@ -116,14 +125,30 @@ impl CoreGroup {
         );
         let message_secrets_store = MessageSecretsStore::new_with_secret(0, message_secrets);
 
+        let interim_transcript_hash = {
+            if group_info.group_context().epoch() == GroupEpoch::from(0) {
+                vec![]
+            } else {
+                // New members compute the interim transcript hash using
+                // the confirmation_tag field of the GroupInfo struct.
+                update_interim_transcript_hash(
+                    ciphersuite,
+                    backend,
+                    &InterimTranscriptHashInput::from(group_info.confirmation_tag()),
+                    group_info.group_context().confirmed_transcript_hash(),
+                )
+                .unwrap()
+            }
+        };
+
         // Prepare interim transcript hash
         let group = CoreGroup {
             ciphersuite,
-            group_context,
+            group_context: group_info.group_context().clone(),
             tree: treesync,
-            interim_transcript_hash: pgs.interim_transcript_hash.into(),
+            interim_transcript_hash,
             use_ratchet_tree_extension: enable_ratchet_tree_extension,
-            mls_version: pgs.version,
+            mls_version: group_info.group_context().protocol_version(),
             group_epoch_secrets,
             message_secrets_store,
         };
