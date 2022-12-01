@@ -13,7 +13,7 @@ use crate::{
     group::*,
     key_packages::{KeyPackage, KeyPackageBundle},
     messages::{proposals::*, Welcome},
-    schedule::ResumptionPsk,
+    schedule::ResumptionPskSecret,
     treesync::{node::leaf_node::OpenMlsLeafNode, Node},
 };
 use openmls_traits::{key_store::OpenMlsKeyStore, types::Ciphersuite, OpenMlsCryptoProvider};

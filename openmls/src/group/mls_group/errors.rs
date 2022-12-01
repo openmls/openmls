@@ -250,9 +250,9 @@ pub enum CommitToPendingProposalsError {
     GroupStateError(#[from] MlsGroupStateError),
 }
 
-/// Export public group state error
+/// Errors that can happen when exporting a group info object.
 #[derive(Error, Debug, PartialEq, Clone)]
-pub enum ExportPublicGroupStateError {
+pub enum ExportGroupInfoError {
     /// See [`LibraryError`] for more details.
     #[error(transparent)]
     LibraryError(#[from] LibraryError),

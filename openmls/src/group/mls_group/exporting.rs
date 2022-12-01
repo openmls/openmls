@@ -1,9 +1,6 @@
 use tls_codec::Serialize;
 
-use crate::{
-    group::errors::ExporterError, messages::public_group_state::PublicGroupState,
-    schedule::EpochAuthenticator,
-};
+use crate::{group::errors::ExporterError, messages::GroupInfo, schedule::EpochAuthenticator};
 
 use super::*;
 
@@ -42,24 +39,23 @@ impl MlsGroup {
         self.group.epoch_authenticator()
     }
 
-    /// Returns the resumption psk of the current epoch.
-    pub fn resumption_psk(&self) -> &ResumptionPsk {
-        self.group.resumption_psk()
+    /// Returns the resumption PSK secret of the current epoch.
+    pub fn resumption_psk_secret(&self) -> &ResumptionPskSecret {
+        self.group.resumption_psk_secret()
     }
 
     /// Returns a resumption psk for a given epoch. If no resumption psk
     /// is available for that epoch,  `None` is returned.
-    pub fn get_past_resumption_psk(&self, epoch: GroupEpoch) -> Option<&ResumptionPsk> {
+    pub fn get_past_resumption_psk(&self, epoch: GroupEpoch) -> Option<&ResumptionPskSecret> {
         self.resumption_psk_store.get(epoch)
     }
 
-    // === Export public group state ===
-
-    /// Exports the public group state.
-    pub fn export_public_group_state(
+    /// Export a group info object for this group.
+    pub fn export_group_info(
         &self,
         backend: &impl OpenMlsCryptoProvider,
-    ) -> Result<PublicGroupState, ExportPublicGroupStateError> {
+        with_ratchet_tree: bool,
+    ) -> Result<GroupInfo, ExportGroupInfoError> {
         match self.credential() {
             Ok(credential) => {
                 let credential_bundle: CredentialBundle = backend
@@ -70,10 +66,10 @@ impl MlsGroup {
                             .tls_serialize_detached()
                             .map_err(LibraryError::missing_bound_check)?,
                     )
-                    .ok_or(ExportPublicGroupStateError::NoMatchingCredentialBundle)?;
+                    .ok_or(ExportGroupInfoError::NoMatchingCredentialBundle)?;
                 Ok(self
                     .group
-                    .export_public_group_state(backend, &credential_bundle)?)
+                    .export_group_info(backend, &credential_bundle, with_ratchet_tree)?)
             }
             Err(e) => Err(e.into()),
         }
