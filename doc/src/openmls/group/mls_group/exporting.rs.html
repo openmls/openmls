@@ -75,16 +75,9 @@
 <span id="75">75</span>
 <span id="76">76</span>
 <span id="77">77</span>
-<span id="78">78</span>
-<span id="79">79</span>
-<span id="80">80</span>
-<span id="81">81</span>
 </pre><pre class="rust"><code><span class="kw">use </span>tls_codec::Serialize;
 
-<span class="kw">use crate</span>::{
-    group::errors::ExporterError, messages::public_group_state::PublicGroupState,
-    schedule::EpochAuthenticator,
-};
+<span class="kw">use crate</span>::{group::errors::ExporterError, messages::GroupInfo, schedule::EpochAuthenticator};
 
 <span class="kw">use super</span>::<span class="kw-2">*</span>;
 
@@ -134,13 +127,12 @@
         <span class="self">self</span>.resumption_psk_store.get(epoch)
     }
 
-    <span class="comment">// === Export public group state ===
-
-    </span><span class="doccomment">/// Exports the public group state.
-    </span><span class="kw">pub fn </span>export_public_group_state(
+    <span class="doccomment">/// Export a group info object for this group.
+    </span><span class="kw">pub fn </span>export_group_info(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;PublicGroupState, ExportPublicGroupStateError&gt; {
+        with_ratchet_tree: bool,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;GroupInfo, ExportGroupInfoError&gt; {
         <span class="kw">match </span><span class="self">self</span>.credential() {
             <span class="prelude-val">Ok</span>(credential) =&gt; {
                 <span class="kw">let </span>credential_bundle: CredentialBundle = backend
@@ -151,10 +143,10 @@
                             .tls_serialize_detached()
                             .map_err(LibraryError::missing_bound_check)<span class="question-mark">?</span>,
                     )
-                    .ok_or(ExportPublicGroupStateError::NoMatchingCredentialBundle)<span class="question-mark">?</span>;
+                    .ok_or(ExportGroupInfoError::NoMatchingCredentialBundle)<span class="question-mark">?</span>;
                 <span class="prelude-val">Ok</span>(<span class="self">self
                     </span>.group
-                    .export_public_group_state(backend, <span class="kw-2">&amp;</span>credential_bundle)<span class="question-mark">?</span>)
+                    .export_group_info(backend, <span class="kw-2">&amp;</span>credential_bundle, with_ratchet_tree)<span class="question-mark">?</span>)
             }
             <span class="prelude-val">Err</span>(e) =&gt; <span class="prelude-val">Err</span>(e.into()),
         }

@@ -529,9 +529,9 @@
     </span>GroupStateError(<span class="attribute">#[from] </span>MlsGroupStateError),
 }
 
-<span class="doccomment">/// Export public group state error
+<span class="doccomment">/// Errors that can happen when exporting a group info object.
 </span><span class="attribute">#[derive(Error, Debug, PartialEq, Clone)]
-</span><span class="kw">pub enum </span>ExportPublicGroupStateError {
+</span><span class="kw">pub enum </span>ExportGroupInfoError {
     <span class="doccomment">/// See [`LibraryError`] for more details.
     </span><span class="attribute">#[error(transparent)]
     </span>LibraryError(<span class="attribute">#[from] </span>LibraryError),

@@ -167,13 +167,35 @@
 <span id="167">167</span>
 <span id="168">168</span>
 <span id="169">169</span>
+<span id="170">170</span>
+<span id="171">171</span>
+<span id="172">172</span>
+<span id="173">173</span>
+<span id="174">174</span>
+<span id="175">175</span>
+<span id="176">176</span>
+<span id="177">177</span>
+<span id="178">178</span>
+<span id="179">179</span>
+<span id="180">180</span>
+<span id="181">181</span>
+<span id="182">182</span>
+<span id="183">183</span>
+<span id="184">184</span>
+<span id="185">185</span>
+<span id="186">186</span>
+<span id="187">187</span>
+<span id="188">188</span>
+<span id="189">189</span>
+<span id="190">190</span>
+<span id="191">191</span>
+<span id="192">192</span>
+<span id="193">193</span>
+<span id="194">194</span>
 </pre><pre class="rust"><code><span class="kw">use crate</span>::{
     ciphersuite::signable::Verifiable,
     group::errors::ExternalCommitError,
-    messages::{
-        proposals::{ExternalInitProposal, Proposal},
-        public_group_state::{PublicGroupState, VerifiablePublicGroupState},
-    },
+    messages::proposals::{ExternalInitProposal, Proposal},
     treesync::{errors::TreeSyncFromNodesError, node::Node},
 };
 
@@ -187,7 +209,7 @@
 
 <span class="kw">impl </span>CoreGroup {
     <span class="doccomment">/// Join a group without the help of an internal member. This function
-    /// requires a `PublicGroupState`, as well as the corresponding public tree
+    /// requires a [GroupInfo], as well as the corresponding public tree
     /// `nodes`. After the group state is initialized, this function creates an
     /// `ExternalInit` proposal and commits it along with the given proposals by
     /// reference and by value.
@@ -198,12 +220,9 @@
         backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider,
         params: CreateCommitParams,
         tree_option: <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>[<span class="prelude-ty">Option</span>&lt;Node&gt;]&gt;,
-        verifiable_public_group_state: VerifiablePublicGroupState,
+        verifiable_group_info: VerifiableGroupInfo,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;ExternalCommitResult, ExternalCommitError&gt; {
-        <span class="kw">let </span>ciphersuite = verifiable_public_group_state.ciphersuite();
-        <span class="kw">if </span>verifiable_public_group_state.version() != ProtocolVersion::Mls10 {
-            <span class="kw">return </span><span class="prelude-val">Err</span>(ExternalCommitError::UnsupportedMlsVersion);
-        }
+        <span class="kw">let </span>ciphersuite = verifiable_group_info.ciphersuite();
 
         <span class="comment">// Build the ratchet tree
 
@@ -211,10 +230,8 @@
         // If we got a ratchet tree extension in the welcome, we enable it for
         // this group. Note that this is not strictly necessary. But there&#39;s
         // currently no other mechanism to enable the extension.
-        </span><span class="kw">let </span>extension_tree_option = try_nodes_from_extensions(
-            verifiable_public_group_state.other_extensions(),
-        )
-        .map_err(|e| <span class="kw">match </span>e {
+        </span><span class="kw">let </span>extension_tree_option = try_nodes_from_extensions(verifiable_group_info.extensions())
+            .map_err(|e| <span class="kw">match </span>e {
             ExtensionError::DuplicateRatchetTreeExtension =&gt; {
                 ExternalCommitError::DuplicateRatchetTreeExtension
             }
@@ -240,31 +257,47 @@
             },
         )<span class="question-mark">?</span>;
 
-        <span class="kw">if </span>treesync.tree_hash() != verifiable_public_group_state.tree_hash() {
+        <span class="kw">let </span>group_info: GroupInfo = {
+            <span class="kw">let </span>group_info_signer_leaf = treesync
+                .leaf(verifiable_group_info.signer())
+                .map_err(|<span class="kw">_</span>| ExternalCommitError::UnknownSender)<span class="question-mark">?
+                </span>.ok_or(ExternalCommitError::UnknownSender)<span class="question-mark">?
+                </span>.credential();
+
+            verifiable_group_info
+                .verify(backend, group_info_signer_leaf)
+                .map_err(|<span class="kw">_</span>| ExternalCommitError::InvalidGroupInfoSignature)<span class="question-mark">?
+        </span>};
+
+        <span class="kw">if </span>treesync.tree_hash() != group_info.group_context().tree_hash() {
             <span class="kw">return </span><span class="prelude-val">Err</span>(ExternalCommitError::TreeHashMismatch);
         }
 
-        <span class="kw">let </span>pgs_signer_leaf = treesync
-            .leaf(verifiable_public_group_state.signer())
-            .map_err(|<span class="kw">_</span>| ExternalCommitError::UnknownSender)<span class="question-mark">?</span>;
-        <span class="kw">let </span>pgs_signer_credential = pgs_signer_leaf
-            .ok_or(ExternalCommitError::UnknownSender)<span class="question-mark">?
-            </span>.credential();
-        <span class="kw">let </span>pgs: PublicGroupState = verifiable_public_group_state
-            .verify(backend, pgs_signer_credential)
-            .map_err(|<span class="kw">_</span>| ExternalCommitError::InvalidPublicGroupStateSignature)<span class="question-mark">?</span>;
+        <span class="kw">if </span>group_info.group_context().protocol_version() != ProtocolVersion::Mls10 {
+            <span class="kw">return </span><span class="prelude-val">Err</span>(ExternalCommitError::UnsupportedMlsVersion);
+        }
 
-        <span class="kw">let </span>(init_secret, kem_output) = InitSecret::from_public_group_state(backend, <span class="kw-2">&amp;</span>pgs)
-            .map_err(|<span class="kw">_</span>| ExternalCommitError::UnsupportedCiphersuite)<span class="question-mark">?</span>;
+        <span class="comment">// Obtain external_pub from GroupInfo extensions.
+        // TODO(#720): Check for duplicates.
+        </span><span class="kw">let </span>external_pub = {
+            <span class="kw">let </span>ext = group_info
+                .extensions()
+                .iter()
+                .find(|ext| <span class="macro">matches!</span>(ext, Extension::ExternalPub(<span class="kw">_</span>)))
+                .ok_or(ExternalCommitError::MissingExternalPub)<span class="question-mark">?
+                </span>.as_external_pub_extension()
+                .map_err(|<span class="kw">_</span>| {
+                    LibraryError::custom(
+                        <span class="string">&quot;We found an `ExternalPub` so `as_external_pub_extension` must not fail.&quot;</span>,
+                    )
+                })<span class="question-mark">?</span>;
 
-        <span class="kw">let </span>group_context = GroupContext::new(
-            ciphersuite,
-            pgs.group_id,
-            pgs.epoch,
-            pgs.tree_hash.as_slice().to_vec(),
-            pgs.confirmed_transcript_hash.into(),
-            pgs.group_context_extensions.as_slice(),
-        );
+            ext.external_pub()
+        };
+
+        <span class="kw">let </span>(init_secret, kem_output) =
+            InitSecret::from_group_info(backend, <span class="kw-2">&amp;</span>group_info, external_pub.as_slice())
+                .map_err(|<span class="kw">_</span>| ExternalCommitError::UnsupportedCiphersuite)<span class="question-mark">?</span>;
 
         <span class="comment">// The `EpochSecrets` we create here are essentially zero, with the
         // exception of the `InitSecret`, which is all we need here for the
@@ -272,7 +305,8 @@
         </span><span class="kw">let </span>epoch_secrets = EpochSecrets::with_init_secret(backend, init_secret)
             .map_err(LibraryError::unexpected_crypto_error)<span class="question-mark">?</span>;
         <span class="kw">let </span>(group_epoch_secrets, message_secrets) = epoch_secrets.split_secrets(
-            group_context
+            group_info
+                .group_context()
                 .tls_serialize_detached()
                 .map_err(LibraryError::missing_bound_check)<span class="question-mark">?</span>,
             treesync
@@ -285,14 +319,30 @@
         );
         <span class="kw">let </span>message_secrets_store = MessageSecretsStore::new_with_secret(<span class="number">0</span>, message_secrets);
 
+        <span class="kw">let </span>interim_transcript_hash = {
+            <span class="kw">if </span>group_info.group_context().epoch() == GroupEpoch::from(<span class="number">0</span>) {
+                <span class="macro">vec!</span>[]
+            } <span class="kw">else </span>{
+                <span class="comment">// New members compute the interim transcript hash using
+                // the confirmation_tag field of the GroupInfo struct.
+                </span>update_interim_transcript_hash(
+                    ciphersuite,
+                    backend,
+                    <span class="kw-2">&amp;</span>InterimTranscriptHashInput::from(group_info.confirmation_tag()),
+                    group_info.group_context().confirmed_transcript_hash(),
+                )
+                .unwrap()
+            }
+        };
+
         <span class="comment">// Prepare interim transcript hash
         </span><span class="kw">let </span>group = CoreGroup {
             ciphersuite,
-            group_context,
+            group_context: group_info.group_context().clone(),
             tree: treesync,
-            interim_transcript_hash: pgs.interim_transcript_hash.into(),
+            interim_transcript_hash,
             use_ratchet_tree_extension: enable_ratchet_tree_extension,
-            mls_version: pgs.version,
+            mls_version: group_info.group_context().protocol_version(),
             group_epoch_secrets,
             message_secrets_store,
         };

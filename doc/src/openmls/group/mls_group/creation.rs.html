@@ -214,7 +214,7 @@
         core_group::create_commit_params::CreateCommitParams,
         errors::{CoreGroupBuildError, ExternalCommitError, WelcomeError},
     },
-    messages::public_group_state::VerifiablePublicGroupState,
+    messages::VerifiableGroupInfo,
 };
 <span class="kw">use </span>tls_codec::Serialize;
 
@@ -374,12 +374,12 @@
     /// the external commit was rejected due to an epoch change, the
     /// [`MlsGroup`] instance has to be discarded and a new one has to be
     /// created using this function based on the latest `ratchet_tree` and
-    /// public group state. For more information on the external init process,
+    /// group info. For more information on the external init process,
     /// please see Section 11.2.1 in the MLS specification.
     </span><span class="kw">pub fn </span>join_by_external_commit(
         backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider,
         tree_option: <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>[<span class="prelude-ty">Option</span>&lt;Node&gt;]&gt;,
-        verifiable_public_group_state: VerifiablePublicGroupState,
+        verifiable_group_info: VerifiableGroupInfo,
         mls_group_config: <span class="kw-2">&amp;</span>MlsGroupConfig,
         aad: <span class="kw-2">&amp;</span>[u8],
         credential_bundle: <span class="kw-2">&amp;</span>CredentialBundle,
@@ -400,7 +400,7 @@
             backend,
             params,
             tree_option,
-            verifiable_public_group_state,
+            verifiable_group_info,
         )<span class="question-mark">?</span>;
         group.set_max_past_epochs(mls_group_config.max_past_epochs);
 

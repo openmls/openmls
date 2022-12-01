@@ -1382,7 +1382,7 @@
     ciphersuite::{AeadKey, AeadNonce, HpkePrivateKey, Mac, Secret},
     error::LibraryError,
     framing::{MembershipTag, MlsContentTbm},
-    messages::{public_group_state::PublicGroupState, ConfirmationTag, PathSecret},
+    messages::{ConfirmationTag, GroupInfo, PathSecret},
     tree::secret_tree::SecretTree,
     versions::ProtocolVersion,
 };
@@ -1545,17 +1545,17 @@
         })
     }
 
-    <span class="doccomment">/// Create an `InitSecret` and the corresponding `kem_output` from a public
-    /// group state.
-    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>from_public_group_state(
+    <span class="doccomment">/// Create an `InitSecret` and the corresponding `kem_output` from a group info.
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>from_group_info(
         backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider,
-        public_group_state: <span class="kw-2">&amp;</span>PublicGroupState,
+        group_info: <span class="kw-2">&amp;</span>GroupInfo,
+        external_pub: <span class="kw-2">&amp;</span>[u8],
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(<span class="self">Self</span>, Vec&lt;u8&gt;), KeyScheduleError&gt; {
-        <span class="kw">let </span>ciphersuite = public_group_state.ciphersuite;
-        <span class="kw">let </span>version = public_group_state.version;
+        <span class="kw">let </span>ciphersuite = group_info.group_context().ciphersuite();
+        <span class="kw">let </span>version = group_info.group_context().protocol_version();
         <span class="kw">let </span>(kem_output, raw_init_secret) = backend.crypto().hpke_setup_sender_and_export(
             ciphersuite.hpke_config(),
-            public_group_state.external_pub.as_slice(),
+            external_pub,
             <span class="kw-2">&amp;</span>[],
             hpke_info_from_version(version).as_bytes(),
             ciphersuite.hash_length(),
