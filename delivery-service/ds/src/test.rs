@@ -207,7 +207,7 @@ async fn test_group() {
         )
         .unwrap();
         let client_key_package =
-            generate_key_package(&[ciphersuite], &credential, vec![], crypto).unwrap();
+            generate_key_package(&[ciphersuite], &credential, Extensions::empty(), crypto).unwrap();
         let client_data = ClientInfo::new(
             client_name.to_string(),
             vec![(

@@ -404,7 +404,7 @@ impl MlsClient for MlsClientImpl {
             &[ciphersuite],
             &credential_bundle,
             &self.crypto_provider,
-            vec![],
+            Extensions::empty(),
         )
         .unwrap();
         let kp_hash = key_package_bundle
@@ -460,7 +460,7 @@ impl MlsClient for MlsClientImpl {
             &[*ciphersuite],
             &credential_bundle,
             &self.crypto_provider,
-            vec![],
+            Extensions::empty(),
         )
         .unwrap();
         let key_package = key_package_bundle.key_package().clone();
@@ -695,7 +695,7 @@ impl MlsClient for MlsClientImpl {
             &[interop_group.group.ciphersuite()],
             &interop_group.credential_bundle,
             &self.crypto_provider,
-            vec![],
+            Extensions::empty(),
         )
         .unwrap();
         let mls_group_config = MlsGroupConfig::builder()
