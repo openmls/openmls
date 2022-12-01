@@ -59,13 +59,12 @@ impl CoreGroup {
         let joiner_secret = group_secrets.joiner_secret;
 
         // Prepare the PskSecret
-        let psk_secret = PskSecret::new(ciphersuite, backend, group_secrets.psks.psks()).map_err(
-            |e| match e {
+        let psk_secret =
+            PskSecret::new(ciphersuite, backend, &group_secrets.psks).map_err(|e| match e {
                 PskError::LibraryError(e) => e.into(),
                 PskError::TooManyKeys => WelcomeError::PskTooManyKeys,
                 PskError::KeyNotFound => WelcomeError::PskNotFound,
-            },
-        )?;
+            })?;
 
         // Create key schedule
         let mut key_schedule = KeySchedule::init(ciphersuite, backend, joiner_secret, psk_secret)?;
@@ -144,15 +143,15 @@ impl CoreGroup {
             TreeSyncFromNodesError::PublicTreeError(e) => WelcomeError::PublicTreeError(e),
         })?;
 
-        let signer_key_package = tree
+        let signer_credential = tree
             .leaf(group_info.signer())
             .map_err(|_| WelcomeError::UnknownSender)?
             .ok_or(WelcomeError::UnknownSender)?
-            .key_package();
+            .credential();
 
         // Verify GroupInfo signature
         group_info
-            .verify_no_out(backend, signer_key_package.credential())
+            .verify_no_out(backend, signer_credential)
             .map_err(|_| WelcomeError::InvalidGroupInfoSignature)?;
 
         // Compute state
@@ -202,6 +201,7 @@ impl CoreGroup {
             log::error!("Confirmation tag mismatch");
             log_crypto!(trace, "  Got:      {:x?}", confirmation_tag);
             log_crypto!(trace, "  Expected: {:x?}", group_info.confirmation_tag());
+            debug_assert!(false, "Confirmation tag mismatch");
             Err(WelcomeError::ConfirmationTagMismatch)
         } else {
             let message_secrets_store = MessageSecretsStore::new_with_secret(0, message_secrets);

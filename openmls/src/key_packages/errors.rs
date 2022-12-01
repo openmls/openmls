@@ -13,12 +13,15 @@ pub enum KeyPackageVerifyError {
     /// See [`LibraryError`] for more details.
     #[error(transparent)]
     LibraryError(#[from] LibraryError),
-    /// The lifetime extension of the key package is not valid.
-    #[error("The lifetime extension of the key package is not valid.")]
-    InvalidLifetimeExtension,
-    /// A mandatory extension is missing in the key package.
-    #[error("A mandatory extension is missing in the key package.")]
-    MandatoryExtensionsMissing,
+    /// The lifetime of the leaf node is not valid.
+    #[error("The lifetime of the leaf node is not valid.")]
+    InvalidLifetime,
+    /// The lifetime of the leaf node is missing.
+    #[error("The lifetime of the leaf node is missing.")]
+    MissingLifetime,
+    /// A key package extension is not supported in the leaf's capabilities.
+    #[error("A key package extension is not supported in the leaf's capabilities.")]
+    UnsupportedExtension,
     /// The key package signature is not valid.
     #[error("The key package signature is not valid.")]
     InvalidSignature,

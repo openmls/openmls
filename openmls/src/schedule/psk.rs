@@ -1,51 +1,22 @@
-//! # Pre shared keys.
-//! ```text
-//! enum {
-//!     reserved(0),
-//!     external(1),
-//!     reinit(2),
-//!     branch(3),
-//!     (255)
-//!   } PSKType;
-//!
-//!   struct {
-//!     PSKType psktype;
-//!     select (PreSharedKeyID.psktype) {
-//!       case external:
-//!         opaque psk_id<0..255>;
-//!
-//!       case reinit:
-//!         opaque psk_group_id<0..255>;
-//!         uint64 psk_epoch;
-//!
-//!       case branch:
-//!         opaque psk_group_id<0..255>;
-//!         uint64 psk_epoch;
-//!     }
-//!     opaque psk_nonce<0..255>;
-//!   } PreSharedKeyID;
-//!
-//!   struct {
-//!       PreSharedKeyID psks<0..2^16-1>;
-//!   } PreSharedKeys;
-//! ```
+//! # Preshared keys.
 
 use super::*;
 use crate::group::{GroupEpoch, GroupId};
 use openmls_traits::{key_store::OpenMlsKeyStore, random::OpenMlsRand, OpenMlsCryptoProvider};
 use serde::{Deserialize, Serialize};
-use std::convert::TryFrom;
-use tls_codec::{Serialize as TlsSerializeTrait, TlsByteVecU8, TlsVecU16};
+use tls_codec::{Serialize as TlsSerializeTrait, VLBytes};
 
-/// Type of PSK.
-/// ```text
+/// ResumptionPSKUsage
+///
+/// ```c
+/// // draft-ietf-mls-protocol-16
 /// enum {
 ///   reserved(0),
-///   external(1),
+///   application(1),
 ///   reinit(2),
 ///   branch(3),
 ///   (255)
-/// } PSKType;
+/// } ResumptionPSKUsage;
 /// ```
 #[derive(
     Debug,
@@ -62,32 +33,10 @@ use tls_codec::{Serialize as TlsSerializeTrait, TlsByteVecU8, TlsVecU16};
 )]
 #[repr(u8)]
 #[allow(missing_docs)]
-pub enum PskType {
-    External = 1,
+pub enum ResumptionPskUsage {
+    Application = 1,
     Reinit = 2,
     Branch = 3,
-}
-
-impl TryFrom<u8> for PskType {
-    type Error = &'static str;
-    fn try_from(value: u8) -> Result<Self, Self::Error> {
-        match value {
-            1 => Ok(PskType::External),
-            2 => Ok(PskType::Reinit),
-            3 => Ok(PskType::Branch),
-            _ => Err("Unknown PSK type."),
-        }
-    }
-}
-
-impl From<&Psk> for PskType {
-    fn from(psk: &Psk) -> Self {
-        match psk {
-            Psk::External(_) => PskType::External,
-            Psk::Reinit(_) => PskType::Reinit,
-            Psk::Branch(_) => PskType::Branch,
-        }
-    }
 }
 
 /// External PSK.
@@ -95,7 +44,7 @@ impl From<&Psk> for PskType {
     Debug, PartialEq, Eq, Clone, Hash, Serialize, Deserialize, TlsDeserialize, TlsSerialize, TlsSize,
 )]
 pub struct ExternalPsk {
-    psk_id: TlsByteVecU8,
+    psk_id: VLBytes,
 }
 
 impl ExternalPsk {
@@ -105,6 +54,7 @@ impl ExternalPsk {
             psk_id: psk_id.into(),
         }
     }
+
     /// Return the PSK ID
     pub fn psk_id(&self) -> &[u8] {
         self.psk_id.as_slice()
@@ -130,40 +80,37 @@ impl PskBundle {
         &self.secret
     }
 }
-/// ReInit PSK.
+
+/// Resumption PSK.
 #[derive(
-    Debug, PartialEq, Eq, Clone, Hash, Serialize, Deserialize, TlsDeserialize, TlsSerialize, TlsSize,
+    Debug, PartialEq, Eq, Clone, Serialize, Deserialize, TlsDeserialize, TlsSerialize, TlsSize,
 )]
-pub struct ReinitPsk {
+pub struct ResumptionPsk {
+    pub(crate) usage: ResumptionPskUsage,
     pub(crate) psk_group_id: GroupId,
     pub(crate) psk_epoch: GroupEpoch,
 }
 
-impl ReinitPsk {
+impl ResumptionPsk {
+    /// Create a new `ResumptionPsk`
+    pub fn new(usage: ResumptionPskUsage, psk_group_id: GroupId, psk_epoch: GroupEpoch) -> Self {
+        Self {
+            usage,
+            psk_group_id,
+            psk_epoch,
+        }
+    }
+
+    /// Return the usage
+    pub fn usage(&self) -> ResumptionPskUsage {
+        self.usage
+    }
+
     /// Return the `GroupId`
     pub fn psk_group_id(&self) -> &GroupId {
         &self.psk_group_id
     }
-    /// Return the `GroupEpoch`
-    pub fn psk_epoch(&self) -> GroupEpoch {
-        self.psk_epoch
-    }
-}
 
-/// Branch PSK
-#[derive(
-    Debug, PartialEq, Eq, Clone, Hash, Serialize, Deserialize, TlsDeserialize, TlsSerialize, TlsSize,
-)]
-pub struct BranchPsk {
-    pub(crate) psk_group_id: GroupId,
-    pub(crate) psk_epoch: GroupEpoch,
-}
-
-impl BranchPsk {
-    /// Return the `GroupId`
-    pub fn psk_group_id(&self) -> &GroupId {
-        &self.psk_group_id
-    }
     /// Return the `GroupEpoch`
     pub fn psk_epoch(&self) -> GroupEpoch {
         self.psk_epoch
@@ -171,39 +118,40 @@ impl BranchPsk {
 }
 
 /// PSK enum that can contain the different PSK types
-#[derive(Debug, PartialEq, Eq, Clone, Hash, Serialize, Deserialize)]
+#[derive(
+    Debug, PartialEq, Eq, Clone, Serialize, Deserialize, TlsSerialize, TlsDeserialize, TlsSize,
+)]
 #[allow(missing_docs)]
+#[repr(u8)]
 pub enum Psk {
+    #[tls_codec(discriminant = 1)]
     External(ExternalPsk),
-    Reinit(ReinitPsk),
-    Branch(BranchPsk),
+    Resumption(ResumptionPsk),
 }
 
 /// A `PreSharedKeyID` is used to uniquely identify the PSKs that get injected
 /// in the key schedule.
-/// ```text
+///
+/// ```c
+/// // draft-ietf-mls-protocol-16
 /// struct {
 ///   PSKType psktype;
 ///   select (PreSharedKeyID.psktype) {
-///     case external:
-///       opaque psk_id<0..255>;
-///
-///     case reinit:
-///       opaque psk_group_id<0..255>;
-///       uint64 psk_epoch;
-///
-///     case branch:
-///       opaque psk_group_id<0..255>;
-///       uint64 psk_epoch;
-///   }
-///   opaque psk_nonce<0..255>;
+///   case external:
+///     opaque psk_id<V>;
+///   case resumption:
+///     ResumptionPSKUsage usage;
+///     opaque psk_group_id<V>;
+///     uint64 psk_epoch;
+///   opaque psk_nonce<V>;
 /// } PreSharedKeyID;
 /// ```
-#[derive(Debug, PartialEq, Eq, Clone, Hash, Serialize, Deserialize)]
+#[derive(
+    Debug, PartialEq, Eq, Clone, Serialize, Deserialize, TlsDeserialize, TlsSerialize, TlsSize,
+)]
 pub struct PreSharedKeyId {
-    pub(crate) psk_type: PskType,
     pub(crate) psk: Psk,
-    pub(crate) psk_nonce: TlsByteVecU8,
+    pub(crate) psk_nonce: VLBytes,
 }
 
 impl PreSharedKeyId {
@@ -214,7 +162,6 @@ impl PreSharedKeyId {
         psk: Psk,
     ) -> Result<Self, CryptoError> {
         Ok(Self {
-            psk_type: PskType::from(&psk),
             psk,
             psk_nonce: rand
                 .random_vec(ciphersuite.hash_length())
@@ -222,33 +169,15 @@ impl PreSharedKeyId {
                 .into(),
         })
     }
-    /// Return the type of the PSK
-    pub fn psktype(&self) -> &PskType {
-        &self.psk_type
-    }
+
     /// Return the PSK
     pub fn psk(&self) -> &Psk {
         &self.psk
     }
+
     /// Return the PSK nonce
     pub fn psk_nonce(&self) -> &[u8] {
         self.psk_nonce.as_slice()
-    }
-}
-
-/// `PreSharedKeys` is a vector of `PreSharedKeyID`s.
-/// struct {
-///     PreSharedKeyID psks<0..2^16-1>;
-/// } PreSharedKeys;
-#[derive(TlsDeserialize, TlsSerialize, TlsSize)]
-pub struct PreSharedKeys {
-    pub(crate) psks: TlsVecU16<PreSharedKeyId>,
-}
-
-impl PreSharedKeys {
-    /// Return the `PreSharedKeyID`s
-    pub fn psks(&self) -> &[PreSharedKeyId] {
-        self.psks.as_slice()
     }
 }
 

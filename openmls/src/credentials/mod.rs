@@ -55,7 +55,18 @@ pub mod errors;
 ///
 /// This enum contains variants for the different Credential Types.
 #[derive(
-    Copy, Clone, Debug, PartialEq, Eq, Serialize, Deserialize, TlsDeserialize, TlsSerialize, TlsSize,
+    Copy,
+    Clone,
+    Debug,
+    PartialEq,
+    Eq,
+    PartialOrd,
+    Ord,
+    Serialize,
+    Deserialize,
+    TlsDeserialize,
+    TlsSerialize,
+    TlsSize,
 )]
 #[repr(u16)]
 pub enum CredentialType {

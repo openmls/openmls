@@ -90,7 +90,7 @@ fn generate_key_package_bundle(
 ) -> Result<KeyPackage, KeyPackageBundleNewError> {
     // ANCHOR: create_key_package_bundle
     // Define extensions
-    let extensions = vec![Extension::LifeTime(LifetimeExtension::new(
+    let extensions = vec![Extension::Lifetime(LifetimeExtension::new(
         60 * 60 * 24 * 90, // Maximum lifetime of 90 days, expressed in seconds
     ))];
 
@@ -411,10 +411,7 @@ fn book_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvide
     {
         if let Proposal::Update(ref update_proposal) = staged_proposal.proposal() {
             // Check that Alice updated
-            assert_eq!(
-                update_proposal.key_package().credential(),
-                &alice_credential
-            );
+            assert_eq!(update_proposal.leaf_node().credential(), &alice_credential);
             // Store proposal
             alice_group.store_pending_proposal(*staged_proposal.clone());
         } else {
@@ -958,7 +955,6 @@ fn book_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvide
             bob_group
                 .member(*sender_index)
                 .expect("Could not find sender in group.")
-                .credential()
                 .clone()
         } else {
             unreachable!("Expected sender type to be `Member`.")

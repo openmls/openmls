@@ -95,6 +95,15 @@
 //!     .expect("An unexpected error occurred.");
 //!
 //! // Now Sasha starts a new group ...
+//! // First, fetch the credential bundle from the key store
+//! let sasha_credential_id = sasha_credential
+//!     .signature_key()
+//!     .tls_serialize_detached()
+//!     .expect("Error serializing signature key.");
+//! let sasha_credential_bundle: CredentialBundle = backend
+//!     .key_store()
+//!     .read(&sasha_credential_id)
+//!     .expect("An unexpected error occurred.");
 //! let mut sasha_group = MlsGroup::new(
 //!     backend,
 //!     &MlsGroupConfig::default(),

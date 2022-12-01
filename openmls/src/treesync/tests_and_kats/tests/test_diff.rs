@@ -36,13 +36,17 @@ fn test_free_leaf_computation(ciphersuite: Ciphersuite, backend: &impl OpenMlsCr
 
     // Build a rudimentary tree with two populated and two empty leaf nodes.
     let nodes: Vec<Option<Node>> = vec![
-        Some(Node::LeafNode(kpb_0.key_package().clone().into())), // Leaf 0
+        Some(Node::LeafNode(
+            kpb_0.key_package().leaf_node().clone().into(),
+        )), // Leaf 0
         None,
         None, // Leaf 1
         None,
         None, // Leaf 2
         None,
-        Some(Node::LeafNode(kpb_3.key_package().clone().into())), // Leaf 3
+        Some(Node::LeafNode(
+            kpb_3.key_package().leaf_node().clone().into(),
+        )), // Leaf 3
     ];
     let tree =
         TreeSync::from_nodes(backend, ciphersuite, &nodes, kpb_0).expect("error generating tree");
@@ -64,7 +68,7 @@ fn test_free_leaf_computation(ciphersuite: Ciphersuite, backend: &impl OpenMlsCr
         .free_leaf_index()
         .expect("error computing free leaf index");
     let added_leaf_index = diff
-        .add_leaf(kpb_2.key_package().clone())
+        .add_leaf(kpb_2.key_package().leaf_node().clone().into())
         .expect("error adding leaf");
     assert_eq!(free_leaf_index, 1u32);
     assert_eq!(free_leaf_index, added_leaf_index);

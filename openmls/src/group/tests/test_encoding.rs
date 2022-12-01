@@ -108,7 +108,7 @@ fn test_update_proposal_encoding(backend: &impl OpenMlsCryptoProvider) {
             None,
             None,
         ));
-        let lifetime_extension = Extension::LifeTime(LifetimeExtension::new(60));
+        let lifetime_extension = Extension::Lifetime(LifetimeExtension::new(60));
         let mandatory_extensions: Vec<Extension> = vec![capabilities_extension, lifetime_extension];
 
         let key_package_bundle = KeyPackageBundle::new(
@@ -123,7 +123,7 @@ fn test_update_proposal_encoding(backend: &impl OpenMlsCryptoProvider) {
             .create_update_proposal(
                 framing_parameters,
                 credential_bundle,
-                key_package_bundle.key_package().clone(),
+                key_package_bundle.key_package().leaf_node().clone(),
                 backend,
             )
             .expect("Could not create proposal.");
@@ -173,7 +173,7 @@ fn test_add_proposal_encoding(backend: &impl OpenMlsCryptoProvider) {
             None,
             None,
         ));
-        let lifetime_extension = Extension::LifeTime(LifetimeExtension::new(60));
+        let lifetime_extension = Extension::Lifetime(LifetimeExtension::new(60));
         let mandatory_extensions: Vec<Extension> = vec![capabilities_extension, lifetime_extension];
 
         let key_package_bundle = KeyPackageBundle::new(
@@ -211,7 +211,6 @@ fn test_add_proposal_encoding(backend: &impl OpenMlsCryptoProvider) {
             .treesync()
             .own_leaf_node()
             .expect("An unexpected error occurred.")
-            .key_package()
             .credential();
         let add_decoded = verifiable_plaintext
             .verify(backend, credential)
@@ -260,7 +259,6 @@ fn test_remove_proposal_encoding(backend: &impl OpenMlsCryptoProvider) {
             .treesync()
             .own_leaf_node()
             .expect("An unexpected error occurred.")
-            .key_package()
             .credential();
         let remove_decoded = verifiable_plaintext
             .verify(backend, credential)
@@ -294,7 +292,7 @@ fn test_commit_encoding(backend: &impl OpenMlsCryptoProvider) {
             None,
             None,
         ));
-        let lifetime_extension = Extension::LifeTime(LifetimeExtension::new(60));
+        let lifetime_extension = Extension::Lifetime(LifetimeExtension::new(60));
         let mandatory_extensions: Vec<Extension> = vec![capabilities_extension, lifetime_extension];
 
         let alice_key_package_bundle = KeyPackageBundle::new(
@@ -312,7 +310,7 @@ fn test_commit_encoding(backend: &impl OpenMlsCryptoProvider) {
             .create_update_proposal(
                 framing_parameters,
                 alice_credential_bundle,
-                alice_key_package_bundle.key_package().clone(),
+                alice_key_package_bundle.key_package().leaf_node().clone(),
                 backend,
             )
             .expect("Could not create proposal.");
@@ -371,7 +369,6 @@ fn test_commit_encoding(backend: &impl OpenMlsCryptoProvider) {
             .treesync()
             .own_leaf_node()
             .expect("An unexpected error occurred.")
-            .key_package()
             .credential();
         let commit_decoded = verifiable_plaintext
             .verify(backend, credential)
