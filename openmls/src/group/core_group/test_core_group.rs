@@ -39,7 +39,7 @@ fn test_core_group_persistence(ciphersuite: Ciphersuite, backend: &impl OpenMlsC
 
     // Alice creates a group
     let alice_group = CoreGroup::builder(GroupId::random(backend), alice_key_package_bundle)
-        .with_extensions(vec![])
+        .with_extensions(Extensions::empty())
         .build(&alice_credential_bundle, backend)
         .expect("Error creating group.");
 

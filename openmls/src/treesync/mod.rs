@@ -28,7 +28,7 @@ use crate::{
     binary_tree::{LeafIndex, MlsBinaryTree, MlsBinaryTreeError},
     credentials::CredentialBundle,
     error::LibraryError,
-    extensions::{Extension, LifetimeExtension},
+    extensions::{Extensions, LifetimeExtension},
     framing::SenderError,
     group::Member,
     key_packages::KeyPackageBundle,
@@ -93,7 +93,7 @@ impl TreeSync {
         credential_bundle: &CredentialBundle,
         life_time: LifetimeExtension,
         capabilities: Capabilities,
-        extensions: Vec<Extension>,
+        extensions: Extensions,
     ) -> Result<(Self, CommitSecret), LibraryError> {
         let key_package = key_package_bundle.key_package();
         // We generate our own leaf without a private key for now. The private
@@ -109,9 +109,7 @@ impl TreeSync {
         )?;
         leaf.set_leaf_index(0);
         leaf.add_capabilities(capabilities);
-        extensions
-            .into_iter()
-            .for_each(|extension| leaf.add_extensions(extension));
+        leaf.set_extensions(extensions);
 
         let node = Node::LeafNode(leaf);
         let path_secret: PathSecret = key_package_bundle.leaf_secret().clone().into();

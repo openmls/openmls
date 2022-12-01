@@ -131,7 +131,7 @@ pub(crate) struct CoreGroup {
 /// Builder for [`CoreGroup`].
 pub(crate) struct CoreGroupBuilder {
     key_package_bundle: KeyPackageBundle,
-    own_leaf_extensions: Vec<Extension>,
+    own_leaf_extensions: Extensions,
     group_id: GroupId,
     config: Option<CoreGroupConfig>,
     psk_ids: Vec<PreSharedKeyId>,
@@ -152,7 +152,7 @@ impl CoreGroupBuilder {
             version: None,
             required_capabilities: None,
             max_past_epochs: 0,
-            own_leaf_extensions: vec![],
+            own_leaf_extensions: Extensions::empty(),
             lifetime: None,
         }
     }
@@ -187,7 +187,7 @@ impl CoreGroupBuilder {
     }
     /// Set extensions for the own leaf in the group.
     #[cfg(test)]
-    pub fn with_extensions(mut self, extensions: Vec<Extension>) -> Self {
+    pub fn with_extensions(mut self, extensions: Extensions) -> Self {
         self.own_leaf_extensions = extensions;
         self
     }

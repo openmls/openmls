@@ -13,9 +13,7 @@ use crate::{
     },
     credentials::{Credential, CredentialBundle, CredentialType},
     error::LibraryError,
-    extensions::{
-        Extension, ExtensionType, Extensions, LifetimeExtension, RequiredCapabilitiesExtension,
-    },
+    extensions::{ExtensionType, Extensions, LifetimeExtension, RequiredCapabilitiesExtension},
     group::GroupId,
     key_packages::KeyPackageBundle,
     messages::proposals::ProposalType,
@@ -647,11 +645,8 @@ impl OpenMlsLeafNode {
     /// Add new extension to this leaf node.
     /// The `new_extension` is add to the existing [`Extension`]s. If the
     /// [`Extension`] exists, it is overridden.
-    pub(crate) fn add_extensions(&mut self, new_extension: Extension) {
-        self.leaf_node
-            .payload
-            .extensions
-            .add_or_replace(new_extension);
+    pub(crate) fn set_extensions(&mut self, new_extensions: Extensions) {
+        self.leaf_node.payload.extensions = new_extensions;
     }
 
     /// Return a reference to the `encryption_key` of this [`LeafNode`].

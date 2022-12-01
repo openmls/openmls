@@ -336,10 +336,7 @@ impl KeyPackage {
             return Err(KeyPackageNewError::CiphersuiteSignatureSchemeMismatch);
         }
 
-        let lifetime = extensions
-            .lifetime()
-            .map(Clone::clone)
-            .unwrap_or(LifetimeExtension::default());
+        let lifetime = extensions.lifetime().map(Clone::clone).unwrap_or_default();
         let leaf_node = LeafNode::from_init_key(
             hpke_init_key.clone(),
             credential_bundle,
