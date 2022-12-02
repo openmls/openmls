@@ -44,13 +44,13 @@ fn test_remove_operation_variants(ciphersuite: Ciphersuite, backend: &impl OpenM
 
         // Generate KeyPackages
         let alice_key_package =
-            generate_key_package_bundle(&[ciphersuite], &alice_credential, vec![], backend)
+            generate_key_package_bundle(ciphersuite, &alice_credential, vec![], backend)
                 .expect("An unexpected error occurred.");
         let bob_key_package =
-            generate_key_package_bundle(&[ciphersuite], &bob_credential, vec![], backend)
+            generate_key_package_bundle(ciphersuite, &bob_credential, vec![], backend)
                 .expect("An unexpected error occurred.");
         let charlie_key_package =
-            generate_key_package_bundle(&[ciphersuite], &charlie_credential, vec![], backend)
+            generate_key_package_bundle(ciphersuite, &charlie_credential, vec![], backend)
                 .expect("An unexpected error occurred.");
 
         // Define the MlsGroup configuration

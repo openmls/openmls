@@ -97,6 +97,7 @@ impl Secret {
     }
 
     /// Create a new secret from a byte vector.
+    #[cfg(test)]
     pub(crate) fn from_vec(
         value: Vec<u8>,
         mls_version: ProtocolVersion,

@@ -29,7 +29,7 @@ fn setup(
     )
     .expect("An unexpected error occurred.");
     let key_package_bundle =
-        KeyPackageBundle::new(&[ciphersuite], &credential_bundle, backend, vec![])
+        KeyPackageBundle::new(ciphersuite, &credential_bundle, backend, vec![])
             .expect("An unexpected error occurred.");
     let own_index = LeafIndex::from(0u32);
     let direct_path = generate_path_u8(len);

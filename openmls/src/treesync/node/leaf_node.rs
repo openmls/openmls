@@ -571,6 +571,8 @@ pub struct OpenMlsLeafNode {
     private_key: Option<HpkePrivateKey>,
     leaf_index: Option<u32>,
     leaf_secret: Option<Secret>, // TODO: #1131 Ensure that this is dropped.
+    ciphersuite: Option<Ciphersuite>, // The ciphersuite used in this leaf node.
+    protocol_version: Option<ProtocolVersion>,
 }
 
 impl From<LeafNode> for OpenMlsLeafNode {
@@ -580,6 +582,8 @@ impl From<LeafNode> for OpenMlsLeafNode {
             private_key: None,
             leaf_index: None,
             leaf_secret: None,
+            ciphersuite: None,
+            protocol_version: None,
         }
     }
 }
@@ -590,7 +594,9 @@ impl From<KeyPackageBundle> for OpenMlsLeafNode {
             leaf_node: kpb.key_package.leaf_node().clone(),
             private_key: Some(kpb.private_key),
             leaf_index: None,
-            leaf_secret: Some(kpb.leaf_secret),
+            leaf_secret: None,
+            ciphersuite: Some(kpb.key_package.ciphersuite()),
+            protocol_version: Some(kpb.key_package.protocol_version()),
         }
     }
 }
@@ -600,6 +606,7 @@ impl OpenMlsLeafNode {
     fn from(
         leaf_node_tbs: LeafNodeTbs,
         credential_bundle: &CredentialBundle,
+        ciphersuite: Ciphersuite,
         backend: &impl OpenMlsCryptoProvider,
     ) -> Result<Self, LibraryError> {
         let leaf_node = leaf_node_tbs.sign(backend, credential_bundle)?;
@@ -608,6 +615,8 @@ impl OpenMlsLeafNode {
             private_key: None,
             leaf_index: None,
             leaf_secret: None,
+            ciphersuite: Some(ciphersuite),
+            protocol_version: None,
         })
     }
 
@@ -623,6 +632,7 @@ impl OpenMlsLeafNode {
         leaf_node_source: LeafNodeSource,
         backend: &impl OpenMlsCryptoProvider,
         credential_bundle: &CredentialBundle,
+        ciphersuite: Ciphersuite,
     ) -> Result<Self, LibraryError> {
         let leaf_node_tbs = LeafNodeTbs::new(
             encryption_key,
@@ -632,7 +642,7 @@ impl OpenMlsLeafNode {
             leaf_node_source,
             Vec::new(),
         )?;
-        Self::from(leaf_node_tbs, credential_bundle, backend)
+        Self::from(leaf_node_tbs, credential_bundle, ciphersuite, backend)
     }
 
     /// Add new capabilities to this leaf node.
@@ -798,6 +808,8 @@ impl OpenMlsLeafNode {
             private_key: None,
             leaf_index: None,
             leaf_secret: None,
+            ciphersuite: None,
+            protocol_version: None,
         }
     }
 
@@ -882,15 +894,18 @@ impl OpenMlsLeafNode {
     }
 
     /// Generate a leaf from a [`KeyPackageBundle`] and the leaf index.
-    pub fn from_key_package_bundel(kpb: KeyPackageBundle, leaf_index: u32) -> Self {
-        let (key_package, (private_key, leaf_secret)) = kpb.into_parts();
+    #[cfg(test)]
+    pub fn from_key_package_bundle(kpb: KeyPackageBundle, leaf_index: u32) -> Self {
+        let (key_package, private_key) = kpb.into_parts();
         let ciphersuite = key_package.ciphersuite();
         let version = key_package.protocol_version();
         Self {
             leaf_node: key_package.take_leaf_node(),
             private_key: Some(private_key.into()),
             leaf_index: Some(leaf_index),
-            leaf_secret: Some(Secret::from_vec(leaf_secret, version, ciphersuite)),
+            leaf_secret: None,
+            ciphersuite: Some(ciphersuite),
+            protocol_version: Some(version),
         }
     }
 

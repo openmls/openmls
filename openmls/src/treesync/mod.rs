@@ -26,6 +26,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::{
     binary_tree::{LeafIndex, MlsBinaryTree, MlsBinaryTreeError},
+    ciphersuite::Secret,
     credentials::CredentialBundle,
     error::LibraryError,
     extensions::{Extension, LifetimeExtension},
@@ -99,13 +100,14 @@ impl TreeSync {
         // We generate our own leaf without a private key for now. The private
         // key is set in the `from_nodes` constructor below.
         let mut leaf = OpenMlsLeafNode::new(
-            key_package_bundle.key_package().hpke_init_key().clone(),
+            key_package.hpke_init_key().clone(),
             credential_bundle.credential().signature_key().clone(),
             credential_bundle.credential().clone(),
             // Creation of a group is considered to be from a key package.
             LeafNodeSource::KeyPackage(life_time),
             backend,
             credential_bundle,
+            key_package.ciphersuite(),
         )?;
         leaf.set_leaf_index(0);
         leaf.add_capabilities(capabilities);
@@ -114,7 +116,13 @@ impl TreeSync {
             .for_each(|extension| leaf.add_extensions(extension));
 
         let node = Node::LeafNode(leaf);
-        let path_secret: PathSecret = key_package_bundle.leaf_secret().clone().into();
+        let path_secret: PathSecret = Secret::random(
+            key_package.ciphersuite(),
+            backend,
+            key_package.protocol_version(),
+        )
+        .map_err(LibraryError::unexpected_crypto_error)?
+        .into();
         let commit_secret: CommitSecret = path_secret
             .derive_path_secret(backend, key_package.ciphersuite())?
             .into();

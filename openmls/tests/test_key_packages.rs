@@ -14,7 +14,7 @@ fn key_package_generation(ciphersuite: Ciphersuite, backend: &impl OpenMlsCrypto
         backend,
     )
     .expect("An unexpected error occurred.");
-    let kpb = KeyPackageBundle::new(&[ciphersuite], &credential_bundle, backend, Vec::new())
+    let kpb = KeyPackageBundle::new(ciphersuite, &credential_bundle, backend, Vec::new())
         .expect("An unexpected error occurred.");
 
     // After creation, the signature should be ok.

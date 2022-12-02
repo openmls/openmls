@@ -57,7 +57,7 @@ fn validation_test_setup(
 
     // Generate KeyPackages
     let alice_key_package =
-        generate_key_package_bundle(&[ciphersuite], &alice_credential, vec![], backend)
+        generate_key_package_bundle(ciphersuite, &alice_credential, vec![], backend)
             .expect("An unexpected error occurred.");
 
     // Define the MlsGroup configuration
@@ -275,7 +275,7 @@ fn test_valsem242(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
     // tree. If that is not the case, we'll get a general proposal validation
     // error before we get the external commit specific one.
     let bob_key_package = generate_key_package_bundle(
-        &[ciphersuite],
+        ciphersuite,
         bob_credential_bundle.credential(),
         vec![],
         backend,
@@ -296,8 +296,7 @@ fn test_valsem242(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
         )
         .unwrap();
         let charlie_key_package =
-            generate_key_package_bundle(&[ciphersuite], &charlie_credential, vec![], backend)
-                .unwrap();
+            generate_key_package_bundle(ciphersuite, &charlie_credential, vec![], backend).unwrap();
 
         ProposalOrRef::Proposal(Proposal::Add(AddProposal {
             key_package: charlie_key_package,
@@ -306,7 +305,7 @@ fn test_valsem242(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
 
     let update_proposal = || {
         let bob_key_package = generate_key_package_bundle(
-            &[ciphersuite],
+            ciphersuite,
             bob_credential_bundle.credential(),
             vec![],
             backend,
@@ -415,7 +414,7 @@ fn test_valsem243(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
     // proposal to remove his former self.
 
     let bob_key_package = generate_key_package_bundle(
-        &[ciphersuite],
+        ciphersuite,
         bob_credential_bundle.credential(),
         vec![],
         backend,
@@ -708,7 +707,7 @@ fn test_valsem246(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
 
     // Generate KeyPackage
     let bob_new_key_package =
-        generate_key_package_bundle(&[ciphersuite], &bob_new_credential, vec![], backend)
+        generate_key_package_bundle(ciphersuite, &bob_new_credential, vec![], backend)
             .expect("An unexpected error occurred.");
 
     if let Some(ref mut path) = content.path {

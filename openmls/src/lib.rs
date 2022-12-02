@@ -88,10 +88,10 @@
 //! // in MLS
 //!
 //! // Generate KeyPackages
-//! let sasha_key_package = generate_key_package_bundle(&[ciphersuite], &sasha_credential, backend)
+//! let sasha_key_package = generate_key_package_bundle(ciphersuite, &sasha_credential, backend)
 //!     .expect("An unexpected error occurred.");
 //!
-//! let maxim_key_package = generate_key_package_bundle(&[ciphersuite], &maxim_credential, backend)
+//! let maxim_key_package = generate_key_package_bundle(ciphersuite, &maxim_credential, backend)
 //!     .expect("An unexpected error occurred.");
 //!
 //! // Now Sasha starts a new group ...

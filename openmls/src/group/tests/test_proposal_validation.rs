@@ -50,7 +50,7 @@ fn generate_credential_bundle_and_key_package_bundle(
         )
         .expect("An unexpected error occurred.");
 
-    let key_package = generate_key_package_bundle(&[ciphersuite], &credential, vec![], backend)
+    let key_package = generate_key_package_bundle(ciphersuite, &credential, vec![], backend)
         .expect("Failed to generate KeyPackage.");
     let key_package_bundle = backend
         .key_store()
@@ -111,7 +111,7 @@ fn new_test_group(
 
     // Generate KeyPackages
     let key_package =
-        generate_key_package_bundle(&[ciphersuite], &credential, vec![], backend).unwrap();
+        generate_key_package_bundle(ciphersuite, &credential, vec![], backend).unwrap();
 
     // Define the MlsGroup configuration
     let mls_group_config = MlsGroupConfig::builder()
@@ -143,7 +143,7 @@ fn validation_test_setup(
     .expect("An unexpected error occurred.");
 
     let bob_key_package =
-        generate_key_package_bundle(&[ciphersuite], &bob_credential, vec![], backend)
+        generate_key_package_bundle(ciphersuite, &bob_credential, vec![], backend)
             .expect("An unexpected error occurred.");
 
     let (_message, welcome) = alice_group
@@ -397,11 +397,11 @@ fn test_valsem101(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
             CredentialBundle::from_parts("Charlie".into(), charlie_signature_keypair);
 
         let bob_key_package_bundle =
-            KeyPackageBundle::new(&[ciphersuite], &bob_credential_bundle, backend, vec![])
+            KeyPackageBundle::new(ciphersuite, &bob_credential_bundle, backend, vec![])
                 .expect("failed to generate key package");
         let bob_key_package = bob_key_package_bundle.key_package().clone();
         let charlie_key_package_bundle =
-            KeyPackageBundle::new(&[ciphersuite], &charlie_credential_bundle, backend, vec![])
+            KeyPackageBundle::new(ciphersuite, &charlie_credential_bundle, backend, vec![])
                 .expect("failed to generate key package");
         let charlie_key_package = charlie_key_package_bundle.key_package().clone();
 
@@ -532,22 +532,11 @@ fn test_valsem102(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
                 )
                 .expect("failed to generate random leaf secret");
 
-                bob_key_package_bundle = KeyPackageBundle::new_from_leaf_secret(
-                    &[ciphersuite],
-                    backend,
-                    &bob_credential_bundle,
-                    vec![],
-                    shared_leaf_secret.clone(),
-                )
-                .expect("failed to generate key package");
-                charlie_key_package_bundle = KeyPackageBundle::new_from_leaf_secret(
-                    &[ciphersuite],
-                    backend,
-                    &charlie_credential_bundle,
-                    vec![],
-                    shared_leaf_secret.clone(),
-                )
-                .expect("failed to generate key package");
+                bob_key_package_bundle =
+                    KeyPackageBundle::new(ciphersuite, &bob_credential_bundle, backend, vec![])
+                        .expect("failed to generate key package");
+                charlie_key_package_bundle = bob_key_package_bundle
+                    .clone_with_new_credential(&charlie_credential_bundle, backend);
             }
             KeyUniqueness::PositiveDifferentKey => {
                 // don't need to do anything since the keys are already
@@ -807,7 +796,7 @@ fn test_valsem104(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
             CredentialBundle::from_parts("Bob".into(), bob_signature_keypair);
 
         let alice_key_package_bundle =
-            KeyPackageBundle::new(&[ciphersuite], &alice_credential_bundle, backend, vec![])
+            KeyPackageBundle::new(ciphersuite, &alice_credential_bundle, backend, vec![])
                 .expect("failed to generate key package");
         let alice_key_package = alice_key_package_bundle.key_package().clone();
         backend
@@ -822,7 +811,7 @@ fn test_valsem104(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
             .expect("An unexpected error occurred.");
 
         let bob_key_package_bundle =
-            KeyPackageBundle::new(&[ciphersuite], &bob_credential_bundle, backend, vec![])
+            KeyPackageBundle::new(ciphersuite, &bob_credential_bundle, backend, vec![])
                 .expect("failed to generate key package");
         let bob_key_package = bob_key_package_bundle.key_package().clone();
 
@@ -885,7 +874,7 @@ fn test_valsem104(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
     let dave_credential_bundle =
         CredentialBundle::from_parts("Dave".into(), bob_credential_bundle.key_pair());
 
-    let kpb = KeyPackageBundle::new(&[ciphersuite], &dave_credential_bundle, backend, vec![])
+    let kpb = KeyPackageBundle::new(ciphersuite, &dave_credential_bundle, backend, vec![])
         .expect("error creating kpb");
 
     let add_proposal = Proposal::Add(AddProposal {
@@ -949,22 +938,11 @@ fn test_valsem105(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
                 )
                 .expect("failed to generate random leaf secret");
 
-                alice_key_package_bundle = KeyPackageBundle::new_from_leaf_secret(
-                    &[ciphersuite],
-                    backend,
-                    &alice_credential_bundle,
-                    vec![],
-                    shared_leaf_secret.clone(),
-                )
-                .expect("failed to generate key package");
-                bob_key_package_bundle = KeyPackageBundle::new_from_leaf_secret(
-                    &[ciphersuite],
-                    backend,
-                    &bob_credential_bundle,
-                    vec![],
-                    shared_leaf_secret.clone(),
-                )
-                .expect("failed to generate key package");
+                alice_key_package_bundle =
+                    KeyPackageBundle::new(ciphersuite, &alice_credential_bundle, backend, vec![])
+                        .expect("failed to generate key package");
+                bob_key_package_bundle = alice_key_package_bundle
+                    .clone_with_new_credential(&bob_credential_bundle, backend);
             }
             KeyUniqueness::PositiveDifferentKey => {
                 // don't need to do anything since the keys are already
@@ -1567,7 +1545,7 @@ fn test_valsem109(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
         .treesync()
         .own_leaf_node()
         .expect("error getting own leaf node");
-    let update_kpb = KeyPackageBundle::new(bob_leaf.ciphersuites(), &new_cb, backend, vec![])
+    let update_kpb = KeyPackageBundle::new(bob_leaf.ciphersuites()[0], &new_cb, backend, vec![])
         .expect("Error creating new key package bundle");
 
     // We first go the manual route
@@ -1620,7 +1598,7 @@ fn test_valsem109(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
     // Keep the original plaintext for positive test later.
     let original_plaintext = plaintext.clone();
 
-    let kpb = KeyPackageBundle::new(&[ciphersuite], &new_cb, backend, vec![])
+    let kpb = KeyPackageBundle::new(ciphersuite, &new_cb, backend, vec![])
         .expect("Error creating key package");
 
     let update_proposal = Proposal::Update(UpdateProposal {
@@ -1711,7 +1689,7 @@ fn test_valsem110(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
         .unwrap();
 
     let mut update_kpb = KeyPackageBundle::new(
-        bob_leaf_node.ciphersuites(),
+        bob_leaf_node.ciphersuites()[0],
         &bob_credential_bundle,
         backend,
         vec![],
@@ -1832,7 +1810,7 @@ fn test_valsem111(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
 
     // We begin by creating an update proposal for alice.
     let update_kp = generate_key_package_bundle(
-        &[ciphersuite],
+        ciphersuite,
         alice_group.credential().expect("error fetching credential"),
         vec![],
         backend,

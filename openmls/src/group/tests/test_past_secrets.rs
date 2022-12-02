@@ -63,7 +63,7 @@ fn test_past_secrets_in_group(ciphersuite: Ciphersuite, backend: &impl OpenMlsCr
         // Generate KeyPackages
 
         let alice_key_package_bundle =
-            KeyPackageBundle::new(&[ciphersuite], &alice_credential_bundle, backend, vec![])
+            KeyPackageBundle::new(ciphersuite, &alice_credential_bundle, backend, vec![])
                 .expect("An unexpected error occurred.");
         let alice_key_package = alice_key_package_bundle.key_package().clone();
         backend
@@ -78,7 +78,7 @@ fn test_past_secrets_in_group(ciphersuite: Ciphersuite, backend: &impl OpenMlsCr
             .expect("An unexpected error occurred.");
 
         let bob_key_package_bundle =
-            KeyPackageBundle::new(&[ciphersuite], &bob_credential_bundle, backend, vec![])
+            KeyPackageBundle::new(ciphersuite, &bob_credential_bundle, backend, vec![])
                 .expect("An unexpected error occurred.");
         let bob_key_package = bob_key_package_bundle.key_package().clone();
         backend

@@ -39,16 +39,12 @@ fn test_external_init(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProv
     .expect("An unexpected error occurred.");
 
     // Generate KeyPackages
-    let alice_key_package_bundle = KeyPackageBundle::new(
-        &[ciphersuite],
-        &alice_credential_bundle,
-        backend,
-        Vec::new(),
-    )
-    .expect("An unexpected error occurred.");
+    let alice_key_package_bundle =
+        KeyPackageBundle::new(ciphersuite, &alice_credential_bundle, backend, Vec::new())
+            .expect("An unexpected error occurred.");
 
     let bob_key_package_bundle =
-        KeyPackageBundle::new(&[ciphersuite], &bob_credential_bundle, backend, Vec::new())
+        KeyPackageBundle::new(ciphersuite, &bob_credential_bundle, backend, Vec::new())
             .expect("An unexpected error occurred.");
     let bob_key_package = bob_key_package_bundle.key_package();
 
@@ -265,13 +261,9 @@ fn test_external_init_single_member_group(
     .expect("An unexpected error occurred.");
 
     // Generate KeyPackages
-    let alice_key_package_bundle = KeyPackageBundle::new(
-        &[ciphersuite],
-        &alice_credential_bundle,
-        backend,
-        Vec::new(),
-    )
-    .expect("An unexpected error occurred.");
+    let alice_key_package_bundle =
+        KeyPackageBundle::new(ciphersuite, &alice_credential_bundle, backend, Vec::new())
+            .expect("An unexpected error occurred.");
 
     // === Alice creates a group ===
     let group_id = GroupId::random(backend);
@@ -361,16 +353,12 @@ fn test_external_init_broken_signature(
     .expect("An unexpected error occurred.");
 
     // Generate KeyPackages
-    let alice_key_package_bundle = KeyPackageBundle::new(
-        &[ciphersuite],
-        &alice_credential_bundle,
-        backend,
-        Vec::new(),
-    )
-    .expect("An unexpected error occurred.");
+    let alice_key_package_bundle =
+        KeyPackageBundle::new(ciphersuite, &alice_credential_bundle, backend, Vec::new())
+            .expect("An unexpected error occurred.");
 
     let bob_key_package_bundle =
-        KeyPackageBundle::new(&[ciphersuite], &bob_credential_bundle, backend, Vec::new())
+        KeyPackageBundle::new(ciphersuite, &bob_credential_bundle, backend, Vec::new())
             .expect("An unexpected error occurred.");
     let bob_key_package = bob_key_package_bundle.key_package();
 

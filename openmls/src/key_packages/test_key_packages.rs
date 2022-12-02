@@ -17,7 +17,7 @@ fn generate_key_package(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoPr
     // Generate a valid KeyPackage.
     let lifetime_extension = Extension::Lifetime(LifetimeExtension::new(60));
     let kpb = KeyPackageBundle::new(
-        &[ciphersuite],
+        ciphersuite,
         &credential_bundle,
         backend,
         vec![lifetime_extension],
@@ -29,7 +29,7 @@ fn generate_key_package(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoPr
     // Now we add an invalid lifetime.
     let lifetime_extension = Extension::Lifetime(LifetimeExtension::new(0));
     let kpb = KeyPackageBundle::new(
-        &[ciphersuite],
+        ciphersuite,
         &credential_bundle,
         backend,
         vec![lifetime_extension],
@@ -41,7 +41,7 @@ fn generate_key_package(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoPr
     // Now with two lifetime extensions, the key package should be invalid.
     let lifetime_extension = Extension::Lifetime(LifetimeExtension::new(60));
     let kpb = KeyPackageBundle::new(
-        &[ciphersuite],
+        ciphersuite,
         &credential_bundle,
         backend,
         vec![lifetime_extension.clone(), lifetime_extension],
@@ -58,7 +58,7 @@ fn decryption_key_index_computation(
     let credential_bundle =
         CredentialBundle::new(id, CredentialType::Basic, ciphersuite.into(), backend)
             .expect("An unexpected error occurred.");
-    let mut kpb = KeyPackageBundle::new(&[ciphersuite], &credential_bundle, backend, Vec::new())
+    let mut kpb = KeyPackageBundle::new(ciphersuite, &credential_bundle, backend, Vec::new())
         .expect("An unexpected error occurred.")
         .unsigned();
 
@@ -84,7 +84,7 @@ fn key_package_id_extension(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryp
         CredentialBundle::new(id, CredentialType::Basic, ciphersuite.into(), backend)
             .expect("An unexpected error occurred.");
     let kpb = KeyPackageBundle::new(
-        &[ciphersuite],
+        ciphersuite,
         &credential_bundle,
         backend,
         vec![Extension::Lifetime(LifetimeExtension::new(60))],
@@ -127,7 +127,7 @@ fn test_mismatch(backend: &impl OpenMlsCryptoProvider) {
     .expect("Could not create credential bundle");
 
     assert_eq!(
-        KeyPackageBundle::new(&[ciphersuite_name], &credential_bundle, backend, vec![],),
+        KeyPackageBundle::new(ciphersuite_name, &credential_bundle, backend, vec![],),
         Err(KeyPackageBundleNewError::CiphersuiteSignatureSchemeMismatch)
     );
 
@@ -144,7 +144,5 @@ fn test_mismatch(backend: &impl OpenMlsCryptoProvider) {
     )
     .expect("Could not create credential bundle");
 
-    assert!(
-        KeyPackageBundle::new(&[ciphersuite_name], &credential_bundle, backend, vec![]).is_ok()
-    );
+    assert!(KeyPackageBundle::new(ciphersuite_name, &credential_bundle, backend, vec![]).is_ok());
 }
