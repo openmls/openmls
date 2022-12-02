@@ -19,21 +19,29 @@ name = "welcome_decode"
 path = "fuzz_targets/welcome_decode.rs"
 test = false
 doc = false
+harness = false
+bench = false
 
 [[bin]]
 name = "key_package_decode"
 path = "fuzz_targets/key_package_decode.rs"
 test = false
 doc = false
+harness = false
+bench = false
 
 [[bin]]
 name = "mls_message_decode"
 path = "fuzz_targets/mls_message_decode.rs"
 test = false
 doc = false
+harness = false
+bench = false
 
 [[bin]]
 name = "proposal_decode"
 path = "fuzz_targets/proposal_decode.rs"
 test = false
 doc = false
+harness = false
+bench = false
