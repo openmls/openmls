@@ -332,9 +332,6 @@ pub enum ExternalCommitValidationError {
     /// Remove proposal targets the wrong group member.
     #[error("Remove proposal targets the wrong group member.")]
     InvalidRemoveProposal,
-    /// Found an ExternalInit proposal among the referenced proposals.
-    #[error("Found an ExternalInit proposal among the referenced proposals.")]
-    ReferencedExternalInitProposal,
     // TODO #803: this seems unused
     /// External Commit has to contain a path.
     #[error("External Commit has to contain a path.")]

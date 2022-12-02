@@ -601,6 +601,8 @@ fn test_valsem244(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
     // Have Alice process the commit resulting from external init.
     let message_in = MlsMessageIn::from(verifiable_plaintext);
 
+    // Expect error because the message can't be processed due to the external
+    // commit including an external init proposal by reference.
     let err = alice_group
         .process_message(backend, message_in)
         .unwrap_err();
