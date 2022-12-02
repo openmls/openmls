@@ -14,7 +14,7 @@ fn test_store_key_package_bundle(ciphersuite: Ciphersuite, backend: &impl OpenMl
     )
     .unwrap();
     let key_package_bundle = KeyPackageBundle::new(
-        &[ciphersuite],
+        ciphersuite,
         &credential_bundle,
         backend,
         Lifetime::default(),

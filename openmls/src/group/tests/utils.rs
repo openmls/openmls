@@ -106,7 +106,7 @@ pub(crate) fn setup(config: TestSetupConfig, backend: &impl OpenMlsCryptoProvide
             for _ in 0..KEY_PACKAGE_COUNT {
                 let lifetime = Lifetime::new(60);
                 let key_package_bundle: KeyPackageBundle = KeyPackageBundle::new(
-                    &[ciphersuite],
+                    ciphersuite,
                     &credential_bundle,
                     backend,
                     lifetime,
@@ -354,7 +354,7 @@ pub(super) fn generate_credential_bundle(
 
 // Helper function to generate a KeyPackageBundle
 pub(super) fn generate_key_package_bundle(
-    ciphersuites: &[Ciphersuite],
+    ciphersuite: Ciphersuite,
     credential: &Credential,
     extensions: Vec<Extension>,
     backend: &impl OpenMlsCryptoProvider,
@@ -369,7 +369,7 @@ pub(super) fn generate_key_package_bundle(
         )
         .expect("An unexpected error occurred.");
     let kpb = KeyPackageBundle::new(
-        ciphersuites,
+        ciphersuite,
         &credential_bundle,
         backend,
         Lifetime::default(),

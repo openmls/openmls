@@ -64,7 +64,7 @@ pub fn generate_test_vector(ciphersuite: Ciphersuite) -> MessagesTestVector {
     )
     .expect("An unexpected error occurred.");
     let key_package_bundle = KeyPackageBundle::new(
-        &[ciphersuite_name],
+        ciphersuite_name,
         &credential_bundle,
         &crypto,
         Lifetime::default(),
@@ -123,7 +123,7 @@ pub fn generate_test_vector(ciphersuite: Ciphersuite) -> MessagesTestVector {
 
     // Create a proposal to update the user's KeyPackage
     let key_package_bundle = KeyPackageBundle::new(
-        &[ciphersuite_name],
+        ciphersuite_name,
         &credential_bundle,
         &crypto,
         Lifetime::default(),
@@ -151,7 +151,7 @@ pub fn generate_test_vector(ciphersuite: Ciphersuite) -> MessagesTestVector {
     )
     .expect("An unexpected error occurred.");
     let joiner_key_package_bundle = KeyPackageBundle::new(
-        &[ciphersuite_name],
+        ciphersuite_name,
         &joiner_credential_bundle,
         &crypto,
         Lifetime::default(),

@@ -401,7 +401,7 @@ impl MlsClient for MlsClientImpl {
         )
         .unwrap();
         let key_package_bundle = KeyPackageBundle::new(
-            &[ciphersuite],
+            ciphersuite,
             &credential_bundle,
             &self.crypto_provider,
             vec![],
@@ -457,7 +457,7 @@ impl MlsClient for MlsClientImpl {
         )
         .unwrap();
         let key_package_bundle = KeyPackageBundle::new(
-            &[*ciphersuite],
+            *ciphersuite,
             &credential_bundle,
             &self.crypto_provider,
             vec![],
@@ -692,7 +692,7 @@ impl MlsClient for MlsClientImpl {
             .get_mut(update_proposal_request.state_id as usize)
             .ok_or_else(|| tonic::Status::new(tonic::Code::InvalidArgument, "unknown state_id"))?;
         let key_package_bundle = KeyPackageBundle::new(
-            &[interop_group.group.ciphersuite()],
+            interop_group.group.ciphersuite(),
             &interop_group.credential_bundle,
             &self.crypto_provider,
             vec![],

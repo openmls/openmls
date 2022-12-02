@@ -36,7 +36,7 @@ fn duplicate_ratchet_tree_extension(
 
     // Generate KeyPackages
     let alice_key_package_bundle = KeyPackageBundle::new(
-        &[ciphersuite],
+        ciphersuite,
         &alice_credential_bundle,
         backend,
         Lifetime::default(),
@@ -45,7 +45,7 @@ fn duplicate_ratchet_tree_extension(
     .expect("An unexpected error occurred.");
 
     let bob_key_package_bundle = KeyPackageBundle::new(
-        &[ciphersuite],
+        ciphersuite,
         &bob_credential_bundle,
         backend,
         Lifetime::default(),

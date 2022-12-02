@@ -78,7 +78,7 @@ fn ratchet_tree_extension(ciphersuite: Ciphersuite, backend: &impl OpenMlsCrypto
 
     // Generate KeyPackages
     let alice_key_package_bundle = KeyPackageBundle::new(
-        &[ciphersuite],
+        ciphersuite,
         &alice_credential_bundle,
         backend,
         Lifetime::default(),
@@ -87,7 +87,7 @@ fn ratchet_tree_extension(ciphersuite: Ciphersuite, backend: &impl OpenMlsCrypto
     .expect("An unexpected error occurred.");
 
     let bob_key_package_bundle = KeyPackageBundle::new(
-        &[ciphersuite],
+        ciphersuite,
         &bob_credential_bundle,
         backend,
         Lifetime::default(),
@@ -161,7 +161,7 @@ fn ratchet_tree_extension(ciphersuite: Ciphersuite, backend: &impl OpenMlsCrypto
 
     // Generate KeyPackages
     let alice_key_package_bundle = KeyPackageBundle::new(
-        &[ciphersuite],
+        ciphersuite,
         &alice_credential_bundle,
         backend,
         Lifetime::default(),
@@ -170,7 +170,7 @@ fn ratchet_tree_extension(ciphersuite: Ciphersuite, backend: &impl OpenMlsCrypto
     .expect("An unexpected error occurred.");
 
     let bob_key_package_bundle = KeyPackageBundle::new(
-        &[ciphersuite],
+        ciphersuite,
         &bob_credential_bundle,
         backend,
         Lifetime::default(),

@@ -38,7 +38,7 @@
 //!
 //! // A helper to create key package bundles.
 //! fn generate_key_package_bundle(
-//!     ciphersuites: &[Ciphersuite],
+//!     ciphersuite: Ciphersuite,
 //!     credential: &Credential,
 //!     backend: &impl OpenMlsCryptoProvider,
 //! ) -> Result<KeyPackage, KeyPackageBundleNewError> {
@@ -54,7 +54,7 @@
 //!
 //!     // Create the key package bundle
 //!     let key_package_bundle =
-//!         KeyPackageBundle::new(ciphersuites, &credential_bundle, backend, Lifetime::default(), vec![])?;
+//!         KeyPackageBundle::new(ciphersuite, &credential_bundle, backend, Lifetime::default(), vec![])?;
 //!
 //!     // Store it in the key store
 //!     let key_package_id = key_package_bundle.key_package()
@@ -88,10 +88,10 @@
 //! // in MLS
 //!
 //! // Generate KeyPackages
-//! let sasha_key_package = generate_key_package_bundle(&[ciphersuite], &sasha_credential, backend)
+//! let sasha_key_package = generate_key_package_bundle(ciphersuite, &sasha_credential, backend)
 //!     .expect("An unexpected error occurred.");
 //!
-//! let maxim_key_package = generate_key_package_bundle(&[ciphersuite], &maxim_credential, backend)
+//! let maxim_key_package = generate_key_package_bundle(ciphersuite, &maxim_credential, backend)
 //!     .expect("An unexpected error occurred.");
 //!
 //! // Now Sasha starts a new group ...

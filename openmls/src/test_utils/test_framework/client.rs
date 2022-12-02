@@ -60,7 +60,7 @@ impl Client {
             )
             .ok_or(ClientError::NoMatchingCredential)?;
         let kpb = KeyPackageBundle::new(
-            ciphersuites,
+            ciphersuites[0],
             &credential_bundle,
             &self.crypto,
             lifetime,
@@ -100,7 +100,7 @@ impl Client {
             )
             .ok_or(ClientError::NoMatchingCredential)?;
         let kpb = KeyPackageBundle::new(
-            &[ciphersuite],
+            ciphersuite,
             &credential_bundle,
             &self.crypto,
             lifetime,

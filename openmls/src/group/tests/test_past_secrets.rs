@@ -63,7 +63,7 @@ fn test_past_secrets_in_group(ciphersuite: Ciphersuite, backend: &impl OpenMlsCr
         // Generate KeyPackages
 
         let alice_key_package_bundle = KeyPackageBundle::new(
-            &[ciphersuite],
+            ciphersuite,
             &alice_credential_bundle,
             backend,
             Lifetime::default(),
@@ -83,7 +83,7 @@ fn test_past_secrets_in_group(ciphersuite: Ciphersuite, backend: &impl OpenMlsCr
             .expect("An unexpected error occurred.");
 
         let bob_key_package_bundle = KeyPackageBundle::new(
-            &[ciphersuite],
+            ciphersuite,
             &bob_credential_bundle,
             backend,
             Lifetime::default(),

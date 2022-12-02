@@ -389,7 +389,7 @@ fn unknown_sender(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
 
     // Generate KeyPackages
     let bob_key_package_bundle = KeyPackageBundle::new(
-        &[ciphersuite],
+        ciphersuite,
         &bob_credential_bundle,
         backend,
         Lifetime::default(),
@@ -399,7 +399,7 @@ fn unknown_sender(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
     let bob_key_package = bob_key_package_bundle.key_package();
 
     let charlie_key_package_bundle = KeyPackageBundle::new(
-        &[ciphersuite],
+        ciphersuite,
         &charlie_credential_bundle,
         backend,
         Lifetime::default(),
@@ -409,7 +409,7 @@ fn unknown_sender(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
     let charlie_key_package = charlie_key_package_bundle.key_package();
 
     let alice_key_package_bundle = KeyPackageBundle::new(
-        &[ciphersuite],
+        ciphersuite,
         &alice_credential_bundle,
         backend,
         Lifetime::default(),
@@ -596,7 +596,7 @@ fn confirmation_tag_presence(ciphersuite: Ciphersuite, backend: &impl OpenMlsCry
 
     // Generate KeyPackages
     let bob_key_package_bundle = KeyPackageBundle::new(
-        &[ciphersuite],
+        ciphersuite,
         &bob_credential_bundle,
         backend,
         Lifetime::default(),
@@ -606,7 +606,7 @@ fn confirmation_tag_presence(ciphersuite: Ciphersuite, backend: &impl OpenMlsCry
     let bob_key_package = bob_key_package_bundle.key_package();
 
     let alice_key_package_bundle = KeyPackageBundle::new(
-        &[ciphersuite],
+        ciphersuite,
         &alice_credential_bundle,
         backend,
         Lifetime::default(),
@@ -706,7 +706,7 @@ fn invalid_plaintext_signature(ciphersuite: Ciphersuite, backend: &impl OpenMlsC
 
     // Generate KeyPackages
     let bob_key_package_bundle = KeyPackageBundle::new(
-        &[ciphersuite],
+        ciphersuite,
         &bob_credential_bundle,
         backend,
         Lifetime::default(),
@@ -716,7 +716,7 @@ fn invalid_plaintext_signature(ciphersuite: Ciphersuite, backend: &impl OpenMlsC
     let bob_key_package = bob_key_package_bundle.key_package();
 
     let alice_key_package_bundle = KeyPackageBundle::new(
-        &[ciphersuite],
+        ciphersuite,
         &alice_credential_bundle,
         backend,
         Lifetime::default(),

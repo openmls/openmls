@@ -105,7 +105,7 @@ fn test_update_proposal_encoding(backend: &impl OpenMlsCryptoProvider) {
         let lifetime = Lifetime::new(60);
 
         let key_package_bundle = KeyPackageBundle::new(
-            &[group_state.ciphersuite()],
+            group_state.ciphersuite(),
             credential_bundle,
             backend,
             lifetime,
@@ -164,7 +164,7 @@ fn test_add_proposal_encoding(backend: &impl OpenMlsCryptoProvider) {
         let lifetime = Lifetime::new(60);
 
         let key_package_bundle = KeyPackageBundle::new(
-            &[group_state.ciphersuite()],
+            group_state.ciphersuite(),
             credential_bundle,
             backend,
             lifetime,
@@ -277,7 +277,7 @@ fn test_commit_encoding(backend: &impl OpenMlsCryptoProvider) {
         let lifetime = Lifetime::new(60);
 
         let alice_key_package_bundle = KeyPackageBundle::new(
-            &[group_state.ciphersuite()],
+            group_state.ciphersuite(),
             alice_credential_bundle,
             backend,
             lifetime,

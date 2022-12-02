@@ -40,7 +40,7 @@ fn test_external_init(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProv
 
     // Generate KeyPackages
     let alice_key_package_bundle = KeyPackageBundle::new(
-        &[ciphersuite],
+        ciphersuite,
         &alice_credential_bundle,
         backend,
         Lifetime::default(),
@@ -49,7 +49,7 @@ fn test_external_init(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProv
     .expect("An unexpected error occurred.");
 
     let bob_key_package_bundle = KeyPackageBundle::new(
-        &[ciphersuite],
+        ciphersuite,
         &bob_credential_bundle,
         backend,
         Lifetime::default(),
@@ -272,7 +272,7 @@ fn test_external_init_single_member_group(
 
     // Generate KeyPackages
     let alice_key_package_bundle = KeyPackageBundle::new(
-        &[ciphersuite],
+        ciphersuite,
         &alice_credential_bundle,
         backend,
         Lifetime::default(),
@@ -369,7 +369,7 @@ fn test_external_init_broken_signature(
 
     // Generate KeyPackages
     let alice_key_package_bundle = KeyPackageBundle::new(
-        &[ciphersuite],
+        ciphersuite,
         &alice_credential_bundle,
         backend,
         Lifetime::default(),
@@ -378,7 +378,7 @@ fn test_external_init_broken_signature(
     .expect("An unexpected error occurred.");
 
     let bob_key_package_bundle = KeyPackageBundle::new(
-        &[ciphersuite],
+        ciphersuite,
         &bob_credential_bundle,
         backend,
         Lifetime::default(),

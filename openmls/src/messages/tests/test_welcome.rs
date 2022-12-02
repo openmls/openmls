@@ -85,7 +85,7 @@ fn test_welcome_ciphersuite_mismatch(
 
     // Create key package bundles and store them in the key store
     let alice_kpb = KeyPackageBundle::new(
-        &[ciphersuite],
+        ciphersuite,
         &alice_credential_bundle,
         backend,
         Lifetime::default(),
@@ -106,7 +106,7 @@ fn test_welcome_ciphersuite_mismatch(
         .expect("An unexpected error occurred.");
 
     let bob_kpb = KeyPackageBundle::new(
-        &[ciphersuite],
+        ciphersuite,
         &bob_credential_bundle,
         backend,
         Lifetime::default(),

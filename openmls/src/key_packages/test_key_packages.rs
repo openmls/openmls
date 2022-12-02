@@ -16,27 +16,15 @@ fn generate_key_package(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoPr
 
     // Generate a valid KeyPackage.
     let lifetime = Lifetime::new(60);
-    let kpb = KeyPackageBundle::new(
-        &[ciphersuite],
-        &credential_bundle,
-        backend,
-        lifetime,
-        vec![],
-    )
-    .expect("An unexpected error occurred.");
+    let kpb = KeyPackageBundle::new(ciphersuite, &credential_bundle, backend, lifetime, vec![])
+        .expect("An unexpected error occurred.");
     std::thread::sleep(std::time::Duration::from_millis(1));
     assert!(kpb.key_package().verify(backend).is_ok());
 
     // Now we add an invalid lifetime.
     let lifetime = Lifetime::new(0);
-    let kpb = KeyPackageBundle::new(
-        &[ciphersuite],
-        &credential_bundle,
-        backend,
-        lifetime,
-        vec![],
-    )
-    .expect("An unexpected error occurred.");
+    let kpb = KeyPackageBundle::new(ciphersuite, &credential_bundle, backend, lifetime, vec![])
+        .expect("An unexpected error occurred.");
     std::thread::sleep(std::time::Duration::from_millis(1));
     assert!(kpb.key_package().verify(backend).is_err());
 }
@@ -51,7 +39,7 @@ fn decryption_key_index_computation(
         CredentialBundle::new(id, CredentialType::Basic, ciphersuite.into(), backend)
             .expect("An unexpected error occurred.");
     let kpb = KeyPackageBundle::new(
-        &[ciphersuite],
+        ciphersuite,
         &credential_bundle,
         backend,
         Lifetime::default(),
@@ -91,7 +79,7 @@ fn test_mismatch(backend: &impl OpenMlsCryptoProvider) {
 
     assert_eq!(
         KeyPackageBundle::new(
-            &[ciphersuite_name],
+            ciphersuite_name,
             &credential_bundle,
             backend,
             Lifetime::default(),
@@ -114,7 +102,7 @@ fn test_mismatch(backend: &impl OpenMlsCryptoProvider) {
     .expect("Could not create credential bundle");
 
     assert!(KeyPackageBundle::new(
-        &[ciphersuite_name],
+        ciphersuite_name,
         &credential_bundle,
         backend,
         Lifetime::default(),

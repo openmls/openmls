@@ -149,7 +149,7 @@ fn group(
     )
     .expect("An unexpected error occurred.");
     let key_package_bundle = KeyPackageBundle::new(
-        &[ciphersuite],
+        ciphersuite,
         &credential_bundle,
         backend,
         Lifetime::default(),
@@ -178,7 +178,7 @@ fn receiver_group(
     )
     .expect("An unexpected error occurred.");
     let key_package_bundle = KeyPackageBundle::new(
-        &[ciphersuite],
+        ciphersuite,
         &credential_bundle,
         backend,
         Lifetime::default(),

@@ -33,7 +33,7 @@ fn setup_client(
     )
     .expect("An unexpected error occurred.");
     let key_package_bundle = KeyPackageBundle::new(
-        &[ciphersuite],
+        ciphersuite,
         &credential_bundle,
         backend,
         Lifetime::default(),
@@ -58,7 +58,7 @@ fn proposal_queue_functions(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryp
 
     let bob_key_package = bob_key_package_bundle.key_package();
     let alice_update_key_package_bundle = KeyPackageBundle::new(
-        &[ciphersuite],
+        ciphersuite,
         &alice_credential_bundle,
         backend,
         Lifetime::default(),
@@ -199,7 +199,7 @@ fn proposal_queue_order(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoPr
 
     let bob_key_package = bob_key_package_bundle.key_package();
     let alice_update_key_package_bundle = KeyPackageBundle::new(
-        &[ciphersuite],
+        ciphersuite,
         &alice_credential_bundle,
         backend,
         Lifetime::default(),
@@ -376,7 +376,7 @@ fn test_group_context_extensions(ciphersuite: Ciphersuite, backend: &impl OpenMl
     let (bob_credential_bundle, _) = setup_client("Bob", ciphersuite, backend);
 
     let bob_key_package_bundle = KeyPackageBundle::new(
-        &[ciphersuite],
+        ciphersuite,
         &bob_credential_bundle,
         backend,
         Lifetime::default(),
@@ -458,7 +458,7 @@ fn test_group_context_extension_proposal_fails(
     let (bob_credential_bundle, _) = setup_client("Bob", ciphersuite, backend);
 
     let bob_key_package_bundle = KeyPackageBundle::new(
-        &[ciphersuite],
+        ciphersuite,
         &bob_credential_bundle,
         backend,
         Lifetime::default(),
@@ -578,7 +578,7 @@ fn test_group_context_extension_proposal(
     let (bob_credential_bundle, _) = setup_client("Bob", ciphersuite, backend);
 
     let bob_key_package_bundle = KeyPackageBundle::new(
-        &[ciphersuite],
+        ciphersuite,
         &bob_credential_bundle,
         backend,
         Lifetime::default(),
@@ -586,7 +586,7 @@ fn test_group_context_extension_proposal(
     )
     .expect("An unexpected error occurred.");
     let alice_key_package_bundle = KeyPackageBundle::new(
-        &[ciphersuite],
+        ciphersuite,
         &alice_credential_bundle,
         backend,
         Lifetime::default(),

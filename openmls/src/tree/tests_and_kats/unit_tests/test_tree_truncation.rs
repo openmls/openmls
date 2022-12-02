@@ -31,7 +31,7 @@ fn test_trim(backend: &impl OpenMlsCryptoProvider) {
             )
             .expect("An unexpected error occurred.");
             let key_package_bundle =
-                KeyPackageBundle::new(&[ciphersuite], &credential_bundle, backend, vec![])
+                KeyPackageBundle::new(ciphersuite, &credential_bundle, backend, vec![])
                     .expect("An unexpected error occurred.");
 
             // We build a leaf node from the key packages
