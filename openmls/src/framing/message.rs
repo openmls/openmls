@@ -28,7 +28,7 @@ use crate::error::LibraryError;
 ///     // ... continued in [MlsMessageBody] ...
 /// } MLSMessage;
 /// ```
-#[derive(PartialEq, Debug, Clone)]
+#[derive(PartialEq, Debug, Clone, TlsSerialize, TlsSize, TlsDeserialize)]
 pub(crate) struct MlsMessage {
     pub(crate) body: MlsMessageBody,
 }
@@ -66,7 +66,7 @@ pub(crate) struct MlsMessage {
 pub(crate) enum MlsMessageBody {
     /// Plaintext message
     #[tls_codec(discriminant = 1)]
-    Plaintext(VerifiableMlsAuthContent),
+    Plaintext(MlsPlaintext),
 
     /// Ciphertext message
     #[tls_codec(discriminant = 2)]
@@ -181,6 +181,26 @@ impl MlsMessageIn {
     pub fn to_bytes(&self) -> Result<Vec<u8>, MlsMessageError> {
         self.mls_message.to_bytes()
     }
+
+    /// Returns an [`MlsPlaintext`] if the [`MlsMessageIn`] contains one. Otherwise returns `None`.
+    #[cfg(test)]
+    pub(crate) fn into_plaintext(self) -> Option<MlsPlaintext> {
+        if let MlsMessageBody::Plaintext(pt) = self.mls_message.body {
+            Some(pt)
+        } else {
+            None
+        }
+    }
+
+    /// Returns an [`MlsCiphertext`] if the [`MlsMessageIn`] contains one. Otherwise returns `None`.
+    #[cfg(test)]
+    pub(crate) fn into_ciphertext(self) -> Option<MlsCiphertext> {
+        if let MlsMessageBody::Ciphertext(ct) = self.mls_message.body {
+            Some(ct)
+        } else {
+            None
+        }
+    }
 }
 
 /// Unified message type for outgoing MLS messages.
@@ -189,20 +209,9 @@ pub struct MlsMessageOut {
     pub(crate) mls_message: MlsMessage,
 }
 
-impl From<VerifiableMlsAuthContent> for MlsMessageOut {
-    fn from(plaintext: VerifiableMlsAuthContent) -> Self {
-        let body = MlsMessageBody::Plaintext(plaintext);
-
-        Self {
-            mls_message: MlsMessage { body },
-        }
-    }
-}
-
 impl From<MlsPlaintext> for MlsMessageOut {
     fn from(plaintext: MlsPlaintext) -> Self {
-        let body =
-            MlsMessageBody::Plaintext(VerifiableMlsAuthContent::from_plaintext(plaintext, None));
+        let body = MlsMessageBody::Plaintext(plaintext);
 
         Self {
             mls_message: MlsMessage { body },
@@ -268,8 +277,8 @@ impl From<MlsMessageOut> for MlsMessageIn {
 }
 
 #[cfg(any(feature = "test-utils", test))]
-impl From<VerifiableMlsAuthContent> for MlsMessageIn {
-    fn from(plaintext: VerifiableMlsAuthContent) -> Self {
+impl From<MlsPlaintext> for MlsMessageIn {
+    fn from(plaintext: MlsPlaintext) -> Self {
         let body = MlsMessageBody::Plaintext(plaintext);
 
         Self {
