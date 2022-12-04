@@ -1,9 +1,6 @@
 use openmls_traits::{types::Ciphersuite, OpenMlsCryptoProvider};
 use std::io::Write;
-use tls_codec::{
-    Deserialize, Serialize, Size, TlsByteVecU32, TlsByteVecU8, TlsDeserialize, TlsSerialize,
-    TlsSize,
-};
+use tls_codec::{Deserialize, Serialize, Size, TlsDeserialize, TlsSerialize, TlsSize};
 
 use super::codec::deserialize_ciphertext_content;
 
@@ -32,15 +29,14 @@ use super::*;
 ///     opaque ciphertext<V>;
 /// } MLSCiphertext;
 /// ```
-#[derive(Debug, PartialEq, Clone, TlsSerialize, TlsSize)]
+#[derive(Debug, PartialEq, Clone, TlsSerialize, TlsSize, TlsDeserialize)]
 pub(crate) struct MlsCiphertext {
-    wire_format: WireFormat,
     group_id: GroupId,
     epoch: GroupEpoch,
     content_type: ContentType,
     authenticated_data: VLBytes,
-    encrypted_sender_data: TlsByteVecU8,
-    ciphertext: TlsByteVecU32,
+    encrypted_sender_data: VLBytes,
+    ciphertext: VLBytes,
 }
 
 pub(crate) struct MlsMessageHeader {
@@ -50,17 +46,16 @@ pub(crate) struct MlsMessageHeader {
 }
 
 impl MlsCiphertext {
+    #[cfg(test)]
     pub(crate) fn new(
-        wire_format: WireFormat,
         group_id: GroupId,
         epoch: GroupEpoch,
         content_type: ContentType,
         authenticated_data: VLBytes,
-        encrypted_sender_data: TlsByteVecU8,
-        ciphertext: TlsByteVecU32,
+        encrypted_sender_data: VLBytes,
+        ciphertext: VLBytes,
     ) -> Self {
         Self {
-            wire_format,
             group_id,
             epoch,
             content_type,
@@ -70,27 +65,99 @@ impl MlsCiphertext {
         }
     }
 
-    /// Try to create a new `MlsCiphertext` from an `MlsPlaintext`
+    /// Try to create a new `MlsCiphertext` from an `MlsAuthContent`.
     pub(crate) fn try_from_plaintext(
-        mls_plaintext: &MlsPlaintext,
+        mls_plaintext: &MlsAuthContent,
+        ciphersuite: Ciphersuite,
+        backend: &impl OpenMlsCryptoProvider,
+        message_secrets: &mut MessageSecrets,
+        padding_size: usize,
+    ) -> Result<MlsCiphertext, MessageEncryptionError> {
+        log::debug!("MlsCiphertext::try_from_plaintext");
+        log::trace!("  ciphersuite: {}", ciphersuite);
+        // Check the message has the correct wire format
+        if mls_plaintext.wire_format() != WireFormat::MlsCiphertext {
+            return Err(MessageEncryptionError::WrongWireFormat);
+        }
+        Self::encrypt_content(
+            None,
+            mls_plaintext,
+            ciphersuite,
+            backend,
+            message_secrets,
+            padding_size,
+        )
+    }
+
+    #[cfg(test)]
+    pub(crate) fn encrypt_without_check(
+        mls_plaintext: &MlsAuthContent,
+        ciphersuite: Ciphersuite,
+        backend: &impl OpenMlsCryptoProvider,
+        message_secrets: &mut MessageSecrets,
+        padding_size: usize,
+    ) -> Result<MlsCiphertext, MessageEncryptionError> {
+        Self::encrypt_content(
+            None,
+            mls_plaintext,
+            ciphersuite,
+            backend,
+            message_secrets,
+            padding_size,
+        )
+    }
+
+    #[cfg(any(feature = "test-utils", test))]
+    pub(crate) fn encrypt_with_different_header(
+        mls_plaintext: &MlsAuthContent,
         ciphersuite: Ciphersuite,
         backend: &impl OpenMlsCryptoProvider,
         header: MlsMessageHeader,
         message_secrets: &mut MessageSecrets,
         padding_size: usize,
     ) -> Result<MlsCiphertext, MessageEncryptionError> {
-        log::debug!("MlsCiphertext::try_from_plaintext");
-        log::trace!("  ciphersuite: {}", ciphersuite);
-        // Check the plaintext has the correct wire format
-        if mls_plaintext.wire_format() != WireFormat::MlsCiphertext {
-            return Err(MessageEncryptionError::WrongWireFormat);
-        }
+        Self::encrypt_content(
+            Some(header),
+            mls_plaintext,
+            ciphersuite,
+            backend,
+            message_secrets,
+            padding_size,
+        )
+    }
+
+    /// Internal function to encrypt content. The extra message header is only used
+    /// for tests. Otherwise, the data from the given `MlsAuthContent` is used.
+    fn encrypt_content(
+        test_header: Option<MlsMessageHeader>,
+        mls_plaintext: &MlsAuthContent,
+        ciphersuite: Ciphersuite,
+        backend: &impl OpenMlsCryptoProvider,
+        message_secrets: &mut MessageSecrets,
+        padding_size: usize,
+    ) -> Result<MlsCiphertext, MessageEncryptionError> {
+        let sender_index = if let Some(index) = mls_plaintext.sender().as_member() {
+            index
+        } else {
+            return Err(MessageEncryptionError::SenderError(SenderError::NotAMember));
+        };
+        // Take the provided header only if one is given and if this is indeed a test.
+        let header = match test_header {
+            Some(header) if cfg!(any(feature = "test-utils", test)) => header,
+            _ => MlsMessageHeader {
+                group_id: mls_plaintext.group_id().clone(),
+                epoch: mls_plaintext.epoch(),
+                sender: sender_index.into(),
+            },
+        };
         // Serialize the content AAD
         let mls_ciphertext_content_aad = MlsCiphertextContentAad {
             group_id: header.group_id.clone(),
             epoch: header.epoch,
             content_type: mls_plaintext.content().content_type(),
-            authenticated_data: TlsByteSliceU32(mls_plaintext.authenticated_data()),
+            authenticated_data: TlsByteSliceU32(
+                mls_plaintext.tbs.content.authenticated_data.as_slice(),
+            ),
         };
         let mls_ciphertext_content_aad_bytes = mls_ciphertext_content_aad
             .tls_serialize_detached()
@@ -99,7 +166,8 @@ impl MlsCiphertext {
         let secret_type = SecretType::from(&mls_plaintext.content().content_type());
         let (generation, (ratchet_key, ratchet_nonce)) = message_secrets
             .secret_tree_mut()
-            .secret_for_encryption(ciphersuite, backend, header.sender, secret_type)?;
+            // Even in tests we want to use the real sender index, so we have a key to encrypt.
+            .secret_for_encryption(ciphersuite, backend, sender_index.into(), secret_type)?;
         // Sample reuse guard uniformly at random.
         let reuse_guard: ReuseGuard =
             ReuseGuard::try_from_random(backend).map_err(LibraryError::unexpected_crypto_error)?;
@@ -140,13 +208,9 @@ impl MlsCiphertext {
         let mls_sender_data_aad_bytes = mls_sender_data_aad
             .tls_serialize_detached()
             .map_err(LibraryError::missing_bound_check)?;
-        let leaf_index = mls_plaintext
-            .sender()
-            .as_member()
-            .ok_or(MessageEncryptionError::SenderError(SenderError::NotAMember))?;
         let sender_data = MlsSenderData::from_sender(
             // XXX: #106 This will fail for messages with a non-member sender.
-            leaf_index,
+            header.sender.into(),
             generation,
             reuse_guard,
         );
@@ -162,11 +226,10 @@ impl MlsCiphertext {
             )
             .map_err(LibraryError::unexpected_crypto_error)?;
         Ok(MlsCiphertext {
-            wire_format: WireFormat::MlsCiphertext,
-            group_id: header.group_id,
+            group_id: header.group_id.clone(),
             epoch: header.epoch,
             content_type: mls_plaintext.content().content_type(),
-            authenticated_data: mls_plaintext.authenticated_data().into(),
+            authenticated_data: mls_plaintext.tbs.content.authenticated_data.clone(),
             encrypted_sender_data: encrypted_sender_data.into(),
             ciphertext: ciphertext.into(),
         })
@@ -180,10 +243,6 @@ impl MlsCiphertext {
         ciphersuite: Ciphersuite,
     ) -> Result<MlsSenderData, MessageDecryptionError> {
         log::debug!("Decrypting MlsCiphertext");
-        // Check the ciphertext has the correct wire format
-        if self.wire_format != WireFormat::MlsCiphertext {
-            return Err(MessageDecryptionError::WrongWireFormat);
-        }
         // Derive key from the key schedule using the ciphertext.
         let sender_data_key = message_secrets
             .sender_data_secret()
@@ -259,7 +318,7 @@ impl MlsCiphertext {
     }
 
     /// This function decrypts an [`MlsCiphertext`] into an [`VerifiableMlsAuthContent`].
-    /// In order to get an [`MlsPlaintext`] the result must be verified.
+    /// In order to get an [`MlsContent`] the result must be verified.
     pub(crate) fn to_plaintext(
         &self,
         ciphersuite: Ciphersuite,
@@ -299,15 +358,15 @@ impl MlsCiphertext {
 
         let verifiable = VerifiableMlsAuthContent::new(
             MlsContentTbs::new(
-                self.wire_format,
+                WireFormat::MlsCiphertext,
                 self.group_id.clone(),
                 self.epoch,
                 sender,
                 self.authenticated_data.clone(),
                 mls_ciphertext_content.content,
-            ),
+            )
+            .with_context(message_secrets.serialized_context().to_vec()),
             mls_ciphertext_content.auth,
-            None, /* MlsCiphertexts don't carry along the membership tag. */
         );
         Ok(verifiable)
     }
@@ -320,12 +379,12 @@ impl MlsCiphertext {
 
     /// Encodes the `MLSCiphertextContent` struct with padding.
     fn encode_padded_ciphertext_content_detached(
-        mls_plaintext: &MlsPlaintext,
+        mls_plaintext: &MlsAuthContent,
         padding_size: usize,
         mac_len: usize,
     ) -> Result<Vec<u8>, tls_codec::Error> {
         let plaintext_length = mls_plaintext.content().serialized_len_without_type()
-            + mls_plaintext.auth().tls_serialized_len();
+            + mls_plaintext.auth.tls_serialized_len();
 
         let padding_length = if padding_size > 0 {
             // Calculate padding block size.
@@ -343,7 +402,7 @@ impl MlsCiphertext {
         // The `content` field is serialized without the `content_type`, which
         // is not part of the struct as per MLS spec.
         mls_plaintext.content().serialize_without_type(buffer)?;
-        mls_plaintext.auth().tls_serialize(buffer)?;
+        mls_plaintext.auth.tls_serialize(buffer)?;
         // Note: The `tls_codec::Serialize` implementation for `&[u8]` prepends the length.
         // We do not want this here and thus use the "raw" `write_all` method.
         buffer
@@ -372,12 +431,6 @@ impl MlsCiphertext {
     /// Get the `content_type` in the `MlsCiphertext`.
     pub(crate) fn content_type(&self) -> ContentType {
         self.content_type
-    }
-
-    /// Set the wire format.
-    #[cfg(test)]
-    pub(super) fn set_wire_format(&mut self, wire_format: WireFormat) {
-        self.wire_format = wire_format;
     }
 
     /// Set the ciphertext.

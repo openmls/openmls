@@ -137,36 +137,6 @@ fn deserialize_content_auth_data<R: Read>(
     })
 }
 
-impl Deserialize for MlsCiphertext {
-    fn tls_deserialize<R: Read>(bytes: &mut R) -> Result<Self, tls_codec::Error> {
-        let wire_format = WireFormat::tls_deserialize(bytes)?;
-        let group_id = GroupId::tls_deserialize(bytes)?;
-        let epoch = GroupEpoch::tls_deserialize(bytes)?;
-        let content_type = ContentType::tls_deserialize(bytes)?;
-        let authenticated_data = VLBytes::tls_deserialize(bytes)?;
-        let encrypted_sender_data = TlsByteVecU8::tls_deserialize(bytes)?;
-        let ciphertext = TlsByteVecU32::tls_deserialize(bytes)?;
-
-        // ValSem001: Check the wire format
-        if wire_format != WireFormat::MlsCiphertext {
-            return Err(tls_codec::Error::DecodingError(
-                "Wrong wire format.".to_string(),
-            ));
-        }
-
-        let mls_ciphertext = MlsCiphertext::new(
-            wire_format,
-            group_id,
-            epoch,
-            content_type,
-            authenticated_data,
-            encrypted_sender_data,
-            ciphertext,
-        );
-
-        Ok(mls_ciphertext)
-    }
-}
 
 // TODO(#1053): Replace with `derive(TlsSerialize)`.
 impl Serialize for MlsMessage {
