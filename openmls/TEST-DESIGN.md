@@ -39,7 +39,9 @@ To achieve these goals, here are the "rules"/recommendations to set up:
 2. All errors should be namely asserted i.e. `assert!(result.is_err())` is prohibited. When matching an error, one
    should `assert!(matches!(result.unwrap_err(), MlsError::MyError))` because errors are not supposed to impl Eq (it can
    impose hard to fulfill constraints on the data they wrap)
-3. Do not use `.expect("...")` but only use `.unwrap()`. The former adds too much overhead for too little value. Another
+3. Prefer `.unwrap()` over `.expect("...")`. The latter adds overhead and most of the time does not add enough debugging
+   information. If, on the opposite, an `.expect(...)` can help a developer troubleshooting a failing test with a very
+   complex setup which this `expect` message could help understanding then go for it ! Another
    argument [here](https://twitter.com/timClicks/status/1584676737572487169).
 4. It is okay (recommended) to `use crate::prelude::*;` in all test mod (to debate ?)
 5. Have a public test framework in each top level mod inside `src/{module}/test_utils(.rs)`. Avoid scattered utils,
