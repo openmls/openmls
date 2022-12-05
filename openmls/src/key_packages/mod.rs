@@ -733,3 +733,211 @@ pub(crate) fn derive_leaf_node_secret(
 ) -> Result<Secret, CryptoError> {
     leaf_secret.derive_secret(backend, "node")
 }
+
+/// A builder for [`KeyPackageBundle`].
+pub struct KeyPackageBundleBuilder {
+    version: Option<ProtocolVersion>,
+    ciphersuites: Option<Vec<Ciphersuite>>,
+    extensions: Option<Extensions>,
+    keypair: Option<HpkeKeyPair>,
+    leaf_secret: Option<Secret>,
+}
+
+impl KeyPackageBundleBuilder {
+    /// Create a new [`KeyPackageBundleBuilder`].
+    pub fn new() -> Self {
+        Self {
+            version: None,
+            ciphersuites: None,
+            extensions: None,
+            keypair: None,
+            leaf_secret: None,
+        }
+    }
+
+    /// Set the version that should be used in the [`KeyPackage`].
+    /// Note: A subsequent call will replace the previous value.
+    pub fn version(self, version: ProtocolVersion) -> Self {
+        Self {
+            version: Some(version),
+            ..self
+        }
+    }
+
+    /// Set the ciphersuites that should be used in the [`KeyPackage`].
+    /// Note: A subsequent call will replace the previous value.
+    pub fn ciphersuites(self, ciphersuites: Vec<Ciphersuite>) -> Self {
+        Self {
+            ciphersuites: Some(ciphersuites),
+            ..self
+        }
+    }
+
+    /// Set the extensions that should be used in the [`KeyPackage`].
+    /// Note: A subsequent call will replace the previous value.
+    pub fn extensions(self, extensions: Extensions) -> Self {
+        Self {
+            extensions: Some(extensions),
+            ..self
+        }
+    }
+
+    /// Set the keypair that should be used in the [`KeyPackage`].
+    /// Note: A subsequent call will replace the previous value.
+    pub fn keypair(self, keypair: HpkeKeyPair) -> Self {
+        Self {
+            keypair: Some(keypair),
+            ..self
+        }
+    }
+
+    pub(crate) fn leaf_secret(self, leaf_secret: Secret) -> Self {
+        Self {
+            leaf_secret: Some(leaf_secret),
+            ..self
+        }
+    }
+
+    /// Build a [`KeyPackageBundle`].
+    /// This method will validate the provided values and
+    /// return an error when the configuration is invalid.
+    pub fn build(
+        self,
+        backend: &impl OpenMlsCryptoProvider,
+        credential_bundle: CredentialBundle,
+    ) -> Result<KeyPackageBundle, KeyPackageBundleNewError> {
+        // Destructure into components (moving the values).
+        let Self {
+            version,
+            ciphersuites,
+            extensions,
+            keypair,
+            leaf_secret,
+        } = self;
+
+        let version = version.unwrap_or_default();
+
+        let ciphersuites = match ciphersuites {
+            Some(ciphersuites) => ciphersuites,
+            None => {
+                // TODO:
+                //      * Do we want a default at all?
+                //      * Do we want these values as default?
+                let ciphersuites = ciphersuites.unwrap_or_else(|| {
+                    vec![
+                        Ciphersuite::MLS_128_DHKEMX25519_AES128GCM_SHA256_Ed25519,
+                        Ciphersuite::MLS_128_DHKEMP256_AES128GCM_SHA256_P256,
+                        Ciphersuite::MLS_128_DHKEMX25519_CHACHA20POLY1305_SHA256_Ed25519,
+                    ]
+                });
+
+                if ciphersuites.is_empty() {
+                    let error = KeyPackageBundleNewError::NoCiphersuitesSupplied;
+                    error!(
+                        "Error creating new KeyPackageBundle: No Ciphersuites specified {:?}",
+                        error
+                    );
+                    return Err(error);
+                }
+
+                ciphersuites
+            }
+        };
+
+        let ciphersuite = {
+            let ciphersuite = ciphersuites.iter().find(|&&c| {
+                SignatureScheme::from(c) == credential_bundle.credential().signature_scheme()
+            });
+
+            ciphersuite.ok_or(KeyPackageBundleNewError::CiphersuiteSignatureSchemeMismatch)?
+        };
+
+        let extensions = match extensions {
+            Some(extensions) => extensions,
+            None => {
+                let mut extensions = extensions.unwrap_or_default();
+
+                // First, check if one of the input extensions is a capabilities
+                // extension. If there is, check if one of the extensions is a
+                // capabilities extensions and if the contained ciphersuites are the
+                // same as the ciphersuites passed as input. If that is not the case,
+                // return an error. If none of the extensions is a capabilities
+                // extension, create one that supports the given ciphersuites and that
+                // is otherwise default.
+
+                match extensions.capabilities() {
+                    Some(capabilities) => {
+                        if capabilities.ciphersuites() != ciphersuites {
+                            let error = KeyPackageBundleNewError::CiphersuiteMismatch;
+                            error!(
+                        "Error creating new KeyPackageBundle: Invalid Capabilities Extensions {:?}",
+                        error
+                    );
+                            return Err(error);
+                        }
+                    }
+                    None => {
+                        extensions.add_or_replace(Extension::Capabilities(
+                            CapabilitiesExtension::new(None, Some(&ciphersuites), None, None),
+                        ));
+                    }
+                };
+
+                // Check if there is a lifetime extension. If not, add one that is at
+                // least valid.
+                if !extensions.contains(ExtensionType::Lifetime) {
+                    extensions.add_or_replace(Extension::Lifetime(LifetimeExtension::default()));
+                }
+
+                extensions
+            }
+        };
+
+        let keypair = match keypair {
+            Some(keypair) => keypair,
+            None => {
+                // # Safety
+                //
+                // We have checked before that `ciphersuites` is not empty.
+                // Thus, it is guaranteed to have a first element.
+                let ciphersuite = ciphersuites.first().unwrap();
+
+                let leaf_secret = Secret::random(*ciphersuite, backend, version)
+                    .map_err(LibraryError::unexpected_crypto_error)?;
+
+                let leaf_node_secret = derive_leaf_node_secret(&leaf_secret, backend)
+                    .map_err(LibraryError::unexpected_crypto_error)?;
+
+                backend
+                    .crypto()
+                    .derive_hpke_keypair(ciphersuite.hpke_config(), leaf_node_secret.as_slice())
+            }
+        };
+
+        let key_package = KeyPackage::new(
+            *ciphersuite,
+            backend,
+            keypair.public.into(),
+            &credential_bundle,
+            extensions,
+        )
+        .map_err(|e| match e {
+            KeyPackageNewError::LibraryError(e) => e.into(),
+            KeyPackageNewError::CiphersuiteSignatureSchemeMismatch => {
+                KeyPackageBundleNewError::CiphersuiteSignatureSchemeMismatch
+            }
+        })?;
+
+        let leaf_secret = match leaf_secret {
+            Some(leaf_secret) => leaf_secret,
+            None => Secret::random(*ciphersuite, backend, version)
+                .map_err(LibraryError::unexpected_crypto_error)?,
+        };
+
+        Ok(KeyPackageBundle {
+            key_package,
+            private_key: keypair.private.into(),
+            leaf_secret,
+        })
+    }
+}
