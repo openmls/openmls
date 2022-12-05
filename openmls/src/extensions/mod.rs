@@ -311,6 +311,12 @@ impl TryFrom<Vec<Extension>> for Extensions {
     }
 }
 
+impl Default for Extensions {
+    fn default() -> Self {
+        Self::empty()
+    }
+}
+
 impl Extensions {
     /// Get a reference to the inner value.
     pub fn inner(&self) -> &Vec<Extension> {
