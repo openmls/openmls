@@ -14,13 +14,11 @@ fn key_package_generation(ciphersuite: Ciphersuite, backend: &impl OpenMlsCrypto
         backend,
     )
     .expect("An unexpected error occurred.");
-    let kpb = KeyPackageBundle::new(
-        &[ciphersuite],
-        &credential_bundle,
-        backend,
-        Extensions::empty(),
-    )
-    .expect("An unexpected error occurred.");
+
+    let kpb = KeyPackageBundleBuilder::new()
+        .ciphersuites(vec![ciphersuite])
+        .build(backend, credential_bundle.clone())
+        .expect("An unexpected error occurred.");
 
     // After creation, the signature should be ok.
     assert!(kpb.key_package().verify(backend).is_ok());
