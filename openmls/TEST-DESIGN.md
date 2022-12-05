@@ -172,3 +172,4 @@ tests <- integration tests with public api only
   tests methods (no async migration required at that point, only a few things to fix: rayon, time, rng)
 * Use [nextest](https://crates.io/crates/cargo-nextest) to execute test in the CI because it is faster (19s vs 30s for
   cargo test)
+* Implement (derive) [arbitrary](https://crates.io/crates/arbitrary) for every type and use structured fuzzing
