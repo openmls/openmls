@@ -38,20 +38,20 @@ The following is a list of the individual semantic validation steps performed by
 
 ### Semantic validation of message framing
 
-| ValidationStep | Description                                                 | Implemented | Tested | Test File                                            |
-| -------------- | ----------------------------------------------------------- | ----------- | ------ | ---------------------------------------------------- |
-| `ValSem001`    | Wire format                                                 | ✅          | ✅     | `openmls/src/group/tests/test_framing_validation.rs` |
-| `ValSem002`    | Group id                                                    | ✅          | ✅     | `openmls/src/group/tests/test_framing_validation.rs` |
-| `ValSem003`    | Epoch                                                       | ✅          | ✅     | `openmls/src/group/tests/test_framing_validation.rs` |
-| `ValSem004`    | Sender: Member: check the sender points to a non-blank leaf | ✅          | ✅     | `openmls/src/group/tests/test_framing_validation.rs` |
-| `ValSem005`    | Application messages must use ciphertext                    | ✅          | ✅     | `openmls/src/group/tests/test_framing_validation.rs` |
-| `ValSem006`    | Ciphertext: decryption needs to work                        | ✅          | ✅     | `openmls/src/group/tests/test_framing_validation.rs` |
-| `ValSem007`    | Membership tag presence                                     | ✅          | ✅     | `openmls/src/group/tests/test_framing_validation.rs` |
-| `ValSem008`    | Membership tag verification                                 | ✅          | ✅     | `openmls/src/group/tests/test_framing_validation.rs` |
-| `ValSem009`    | Confirmation tag presence                                   | ✅          | ✅     | `openmls/src/group/tests/test_framing_validation.rs` |
-| `ValSem010`    | Signature verification                                      | ✅          | ✅     | `openmls/src/group/tests/test_framing_validation.rs` |
-| `ValSem011`    | MLSCiphertextContent padding must be all-zero               | ✅          | ✅     | `openmls/src/group/tests/test_framing.rs`            |
-| `ValSem012`    | Extension types in list must be unique                      | ✅          | ✅     | `openmls/src/extensions/mod.rs`                      |
+| ValidationStep | Description                                                                                        | Implemented | Tested | Test File                                            |
+| -------------- | -------------------------------------------------------------------------------------------------- | ----------- | ------ | ---------------------------------------------------- |
+| `ValSem001`    | Wire format                                                                                        | ✅          | ✅     | `openmls/src/group/tests/test_framing_validation.rs` |
+| `ValSem002`    | Group id                                                                                           | ✅          | ✅     | `openmls/src/group/tests/test_framing_validation.rs` |
+| `ValSem003`    | Epoch                                                                                              | ✅          | ✅     | `openmls/src/group/tests/test_framing_validation.rs` |
+| `ValSem004`    | Sender: Member: check the sender points to a non-blank leaf                                        | ✅          | ✅     | `openmls/src/group/tests/test_framing_validation.rs` |
+| `ValSem005`    | Application messages must use ciphertext                                                           | ✅          | ✅     | `openmls/src/group/tests/test_framing_validation.rs` |
+| `ValSem006`    | Ciphertext: decryption needs to work                                                               | ✅          | ✅     | `openmls/src/group/tests/test_framing_validation.rs` |
+| `ValSem007`    | Membership tag presence                                                                            | ✅          | ✅     | `openmls/src/group/tests/test_framing_validation.rs` |
+| `ValSem008`    | Membership tag verification                                                                        | ✅          | ✅     | `openmls/src/group/tests/test_framing_validation.rs` |
+| `ValSem009`    | Confirmation tag presence                                                                          | ✅          | ✅     | `openmls/src/group/tests/test_framing_validation.rs` |
+| `ValSem010`    | Signature verification                                                                             | ✅          | ✅     | `openmls/src/group/tests/test_framing_validation.rs` |
+| `ValSem011`    | MLSCiphertextContent padding must be all-zero                                                      | ✅          | ✅     | `openmls/src/group/tests/test_framing.rs`            |
+| `ValSem012`    | Any field containing a list of extensions MUST NOT have more than one extension of any given type. | ✅          | ✅     | `openmls/src/extensions/mod.rs`                      |
 
 ### Semantic validation of proposals covered by a Commit
 
