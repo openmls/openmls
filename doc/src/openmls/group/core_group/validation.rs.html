@@ -449,13 +449,6 @@
 <span id="449">449</span>
 <span id="450">450</span>
 <span id="451">451</span>
-<span id="452">452</span>
-<span id="453">453</span>
-<span id="454">454</span>
-<span id="455">455</span>
-<span id="456">456</span>
-<span id="457">457</span>
-<span id="458">458</span>
 </pre><pre class="rust"><code><span class="doccomment">//! This module contains validation functions for incoming messages
 //! as defined in &lt;https://github.com/openmls/openmls/wiki/Message-validation&gt;
 
@@ -851,29 +844,22 @@
     ///  - ValSem242: External Commit must only cover inline proposal in allowlist (ExternalInit, Remove, PreSharedKey)
     ///  - ValSem243: External Commit, inline Remove Proposal: The identity and the endpoint_id of the removed
     ///               leaf are identical to the ones in the path KeyPackage.
-    ///  - ValSem244: External Commit, referenced Proposals: There MUST NOT be any ExternalInit proposals.
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>validate_external_commit(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         proposal_queue: <span class="kw-2">&amp;</span>ProposalQueue,
         path_leaf_node: <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>LeafNode&gt;,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(), ExternalCommitValidationError&gt; {
-        <span class="kw">let </span><span class="kw-2">mut </span>external_init_proposals =
-            proposal_queue.filtered_by_type(ProposalType::ExternalInit);
-        <span class="comment">// ValSem240: External Commit, inline Proposals: There MUST be at least one ExternalInit proposal.
-        </span><span class="kw">if let </span><span class="prelude-val">Some</span>(external_init_proposal) = external_init_proposals.next() {
-            <span class="comment">// ValSem244: External Commit, referenced Proposals: There MUST NOT be any ExternalInit proposals.
-            </span><span class="kw">if </span>external_init_proposal.proposal_or_ref_type() == ProposalOrRefType::Reference {
-                <span class="kw">return </span><span class="prelude-val">Err</span>(ExternalCommitValidationError::ReferencedExternalInitProposal);
-            }
-        } <span class="kw">else </span>{
-            <span class="kw">return </span><span class="prelude-val">Err</span>(ExternalCommitValidationError::NoExternalInitProposals);
-        };
-
-        <span class="comment">// ValSem241: External Commit, inline Proposals: There MUST be at most one ExternalInit proposal.
-        </span><span class="kw">if </span>external_init_proposals.next().is_some() {
-            <span class="comment">// ValSem244: External Commit, referenced Proposals: There MUST NOT be any ExternalInit proposals.
+        <span class="kw">let </span>count_external_init_proposals = proposal_queue
+            .filtered_by_type(ProposalType::ExternalInit)
+            .count();
+        <span class="kw">if </span>count_external_init_proposals == <span class="number">0 </span>{
+            <span class="comment">// ValSem240: External Commit, inline Proposals: There MUST be at least one ExternalInit proposal.
+            </span><span class="kw">return </span><span class="prelude-val">Err</span>(ExternalCommitValidationError::NoExternalInitProposals);
+        } <span class="kw">else if </span>count_external_init_proposals &gt; <span class="number">1 </span>{
+            <span class="comment">// ValSem241: External Commit, inline Proposals: There MUST be at most one ExternalInit proposal.
             </span><span class="kw">return </span><span class="prelude-val">Err</span>(ExternalCommitValidationError::MultipleExternalInitProposals);
         }
+
         <span class="comment">// ValSem242: External Commit must only cover inline proposal in allowlist (ExternalInit, Remove, PreSharedKey)
         </span><span class="kw">let </span>contains_denied_proposal = proposal_queue.queued_proposals().any(|p| {
             <span class="kw">let </span>is_inline = p.proposal_or_ref_type() == ProposalOrRefType::Proposal;

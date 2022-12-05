@@ -510,6 +510,17 @@
 <span id="510">510</span>
 <span id="511">511</span>
 <span id="512">512</span>
+<span id="513">513</span>
+<span id="514">514</span>
+<span id="515">515</span>
+<span id="516">516</span>
+<span id="517">517</span>
+<span id="518">518</span>
+<span id="519">519</span>
+<span id="520">520</span>
+<span id="521">521</span>
+<span id="522">522</span>
+<span id="523">523</span>
 </pre><pre class="rust"><code><span class="kw">use </span><span class="kw">crate</span>::ciphersuite::signable::Verifiable;
 <span class="kw">use </span><span class="kw">crate</span>::treesync::errors::TreeSyncAddLeaf;
 <span class="kw">use </span><span class="kw">crate</span>::treesync::node::leaf_node::{
@@ -605,6 +616,18 @@
             .confirmation_tag()
             .ok_or(StageCommitError::ConfirmationTagMissing)<span class="question-mark">?</span>;
 
+        <span class="comment">// ValSem244: External Commit, There MUST NOT be any referenced proposals.
+        </span><span class="kw">if </span><span class="kw-2">*</span>sender == Sender::NewMemberCommit
+            &amp;&amp; commit
+                .proposals
+                .iter()
+                .any(|proposal| <span class="macro">matches!</span>(proposal, ProposalOrRef::Reference(<span class="kw">_</span>)))
+        {
+            <span class="kw">return </span><span class="prelude-val">Err</span>(StageCommitError::ExternalCommitValidation(
+                ExternalCommitValidationError::ReferencedProposal,
+            ));
+        }
+
         <span class="comment">// Build a queue with all proposals from the Commit and check that we have all
         // of the proposals by reference locally
         </span><span class="kw">let </span>proposal_queue = ProposalQueue::from_committed_proposals(
@@ -660,7 +683,6 @@
                 // ValSem242: External Commit must only cover inline proposal in allowlist (ExternalInit, Remove, PreSharedKey)
                 // ValSem243: External Commit, inline Remove Proposal: The identity and the endpoint_id of the removed
                 //            leaf are identical to the ones in the path KeyPackage.
-                // ValSem244: External Commit, referenced Proposals: There MUST NOT be any ExternalInit proposals.
                 </span><span class="self">self</span>.validate_external_commit(<span class="kw-2">&amp;</span>proposal_queue, commit_update_leaf_node.as_ref())<span class="question-mark">?</span>;
                 <span class="comment">// Since there are no update proposals in an External Commit we have no public keys to return
                 </span>HashSet::new()

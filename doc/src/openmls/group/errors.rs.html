@@ -798,9 +798,6 @@
     <span class="doccomment">/// Remove proposal targets the wrong group member.
     </span><span class="attribute">#[error(<span class="string">&quot;Remove proposal targets the wrong group member.&quot;</span>)]
     </span>InvalidRemoveProposal,
-    <span class="doccomment">/// Found an ExternalInit proposal among the referenced proposals.
-    </span><span class="attribute">#[error(<span class="string">&quot;Found an ExternalInit proposal among the referenced proposals.&quot;</span>)]
-    </span>ReferencedExternalInitProposal,
     <span class="comment">// TODO #803: this seems unused
     </span><span class="doccomment">/// External Commit has to contain a path.
     </span><span class="attribute">#[error(<span class="string">&quot;External Commit has to contain a path.&quot;</span>)]
@@ -808,6 +805,9 @@
     <span class="doccomment">/// The remove proposal referenced a non-existing member.
     </span><span class="attribute">#[error(<span class="string">&quot;The remove proposal referenced a non-existing member.&quot;</span>)]
     </span>UnknownMemberRemoval,
+    <span class="doccomment">/// External commit contains referenced proposal
+    </span><span class="attribute">#[error(<span class="string">&quot;Found a referenced proposal in an External Commit.&quot;</span>)]
+    </span>ReferencedProposal,
 }
 
 <span class="comment">// === Crate errors ===
