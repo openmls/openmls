@@ -10,7 +10,10 @@ use rstest::*;
 use rstest_reuse::{self, *};
 
 use crate::{
-    ciphersuite::signable::{Signable, Verifiable},
+    ciphersuite::{
+        hash_ref::ProposalRef,
+        signable::{Signable, Verifiable},
+    },
     credentials::{errors::*, *},
     framing::*,
     group::{errors::*, *},
@@ -543,7 +546,7 @@ fn test_valsem243(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
         .expect("Unexpected error.");
 }
 
-// ValSem244: External Commit, referenced Proposals: There MUST NOT be any ExternalInit proposals.
+// ValSem244: External Commit must not include any proposals by reference
 #[apply(ciphersuites_and_backends)]
 fn test_valsem244(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
     // Test with MlsPlaintext
@@ -560,24 +563,25 @@ fn test_valsem244(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
         panic!("Unexpected content type.");
     };
 
-    // Add an extra external init proposal by reference.
-    // First create an external init proposal.
-    let second_ext_init_prop = Proposal::ExternalInit(ExternalInitProposal::from(vec![1, 2, 3]));
-
-    let queued_proposal = QueuedProposal::from_proposal_and_sender(
-        ciphersuite,
+    // Add an Add proposal by reference
+    let bob_key_package = generate_key_package_bundle(
+        &[ciphersuite],
+        bob_credential_bundle.credential(),
+        vec![],
         backend,
-        second_ext_init_prop,
-        &Sender::Member(alice_group.own_leaf_index()),
     )
-    .expect("error creating queued proposal");
+    .unwrap();
 
-    // Add it to Alice's proposal store
-    alice_group.store_pending_proposal(queued_proposal.clone());
+    let add_proposal = Proposal::Add(AddProposal {
+        key_package: bob_key_package,
+    });
 
-    let proposal_reference = ProposalOrRef::Reference(queued_proposal.proposal_reference());
+    let proposal_ref = ProposalRef::from_proposal(ciphersuite, backend, &add_proposal).unwrap();
 
-    content.proposals.push(proposal_reference);
+    // Add an Add proposal to the external commit.
+    let add_proposal_ref = ProposalOrRef::Reference(proposal_ref);
+
+    content.proposals.push(add_proposal_ref);
 
     plaintext.set_content_body(MlsContentBody::Commit(content));
 
@@ -586,37 +590,34 @@ fn test_valsem244(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
         .payload()
         .clone()
         .sign(backend, &bob_credential_bundle)
-        .expect("Error signing modified payload.");
+        .unwrap();
 
     // Set old confirmation tag
-    signed_plaintext.set_confirmation_tag(
-        original_plaintext
-            .confirmation_tag()
-            .expect("no confirmation tag on original message")
-            .clone(),
-    );
+    signed_plaintext.set_confirmation_tag(original_plaintext.confirmation_tag().unwrap().clone());
 
     let verifiable_plaintext: VerifiableMlsAuthContent =
         VerifiableMlsAuthContent::from_plaintext(signed_plaintext, None);
 
-    // Have alice process the commit resulting from external init.
+    // Have Alice process the commit resulting from external init.
     let message_in = MlsMessageIn::from(verifiable_plaintext);
 
+    // Expect error because the message can't be processed due to the external
+    // commit including an external init proposal by reference.
     let err = alice_group
         .process_message(backend, message_in)
-        .expect_err("Could process message despite the external commit including an external init proposal by reference.");
+        .unwrap_err();
 
     assert_eq!(
         err,
         ProcessMessageError::InvalidCommit(StageCommitError::ExternalCommitValidation(
-            ExternalCommitValidationError::MultipleExternalInitProposals
+            ExternalCommitValidationError::ReferencedProposal
         ))
     );
 
     // Positive case
     alice_group
         .process_message(backend, MlsMessageIn::from(original_plaintext))
-        .expect("Unexpected error.");
+        .unwrap();
 }
 
 // ValSem245: External Commit: MUST contain a path.
