@@ -461,17 +461,203 @@ pub(crate) struct MlsContentAuthData {
     pub(super) confirmation_tag: Option<ConfirmationTag>,
 }
 
-#[cfg(test)]
-impl MlsContentAuthData {
-    pub fn new(signature: Signature, confirmation_tag: impl Into<Option<ConfirmationTag>>) -> Self {
+#[derive(PartialEq, Debug, Clone, TlsSerialize, TlsSize)]
+pub(crate) struct MlsAuthContent {
+    pub(super) tbs: MlsContentTbs,
+    pub(super) auth: MlsContentAuthData,
+}
+
+impl MlsAuthContent {
+    /// Convenience function for creating a [`VerifiableMlsAuthContent`].
+    #[inline]
+    fn new_and_sign(
+        framing_parameters: FramingParameters,
+        sender: Sender,
+        body: MlsContentBody,
+        credential_bundle: &CredentialBundle,
+        context: &GroupContext,
+        backend: &impl OpenMlsCryptoProvider,
+    ) -> Result<Self, LibraryError> {
+        let mut content_tbs = MlsContentTbs::new(
+            framing_parameters.wire_format(),
+            context.group_id().clone(),
+            context.epoch(),
+            sender.clone(),
+            framing_parameters.aad().into(),
+            body,
+        );
+
+        if matches!(sender, Sender::NewMemberCommit | Sender::Member(_)) {
+            let serialized_context = context
+                .tls_serialize_detached()
+                .map_err(LibraryError::missing_bound_check)?;
+            content_tbs = content_tbs.with_context(serialized_context);
+        }
+
+        content_tbs.sign(backend, credential_bundle)
+    }
+
+    /// This constructor builds an `MlsAuthContent` containing an application
+    /// message. The sender type is always `SenderType::Member`.
+    pub(crate) fn new_application(
+        sender_leaf_index: u32,
+        authenticated_data: &[u8],
+        application_message: &[u8],
+        credential_bundle: &CredentialBundle,
+        context: &GroupContext,
+        backend: &impl OpenMlsCryptoProvider,
+    ) -> Result<Self, LibraryError> {
+        let framing_parameters =
+            FramingParameters::new(authenticated_data, WireFormat::MlsCiphertext);
+        Self::new_and_sign(
+            framing_parameters,
+            Sender::Member(sender_leaf_index),
+            MlsContentBody::Application(application_message.into()),
+            credential_bundle,
+            context,
+            backend,
+        )
+    }
+
+    /// This constructor builds an `MlsPlaintext` containing a Proposal.
+    /// The sender type is always `SenderType::Member`.
+    pub(crate) fn member_proposal(
+        framing_parameters: FramingParameters,
+        sender_leaf_index: u32,
+        proposal: Proposal,
+        credential_bundle: &CredentialBundle,
+        context: &GroupContext,
+        backend: &impl OpenMlsCryptoProvider,
+    ) -> Result<Self, LibraryError> {
+        Self::new_and_sign(
+            framing_parameters,
+            Sender::Member(sender_leaf_index),
+            MlsContentBody::Proposal(proposal),
+            credential_bundle,
+            context,
+            backend,
+        )
+    }
+
+    /// This constructor builds an `MlsPlaintext` containing an External Proposal.
+    /// The sender is [Sender::NewMemberProposal].
+    // TODO #151/#106: We don't support preconfigured senders yet
+    pub(crate) fn new_external_proposal(
+        proposal: Proposal,
+        credential_bundle: &CredentialBundle,
+        group_id: GroupId,
+        epoch: GroupEpoch,
+        backend: &impl OpenMlsCryptoProvider,
+    ) -> Result<Self, LibraryError> {
+        let body = MlsContentBody::Proposal(proposal);
+
+        let content_tbs = MlsContentTbs::new(
+            WireFormat::MlsPlaintext,
+            group_id,
+            epoch,
+            Sender::NewMemberProposal,
+            vec![].into(),
+            body,
+        );
+
+        content_tbs.sign(backend, credential_bundle)
+    }
+
+    /// This constructor builds an `MlsPlaintext` containing a Commit. If the
+    /// given `CommitType` is `Member`, the `SenderType` is `Member` as well. If
+    /// it's an `External` commit, the `SenderType` is `NewMemberCommit`. If it is an
+    /// `External` commit, the context is not signed along with the rest of the
+    /// commit.
+    pub(crate) fn commit(
+        framing_parameters: FramingParameters,
+        sender: Sender,
+        commit: Commit,
+        credential_bundle: &CredentialBundle,
+        context: &GroupContext,
+        backend: &impl OpenMlsCryptoProvider,
+    ) -> Result<Self, LibraryError> {
+        Self::new_and_sign(
+            framing_parameters,
+            sender,
+            MlsContentBody::Commit(commit),
+            credential_bundle,
+            context,
+            backend,
+        )
+    }
+
+    /// Get the signature.
+    pub(crate) fn signature(&self) -> &Signature {
+        &self.auth.signature
+    }
+
+    /// Get the signature.
+    pub(crate) fn confirmation_tag(&self) -> Option<&ConfirmationTag> {
+        self.auth.confirmation_tag.as_ref()
+    }
+
+    /// Set the confirmation tag.
+    pub(crate) fn set_confirmation_tag(&mut self, tag: ConfirmationTag) {
+        self.auth.confirmation_tag = Some(tag)
+    }
+
+    /// Get the content body of the message.
+    pub(crate) fn content(&self) -> &MlsContentBody {
+        &self.tbs.content.body
+    }
+
+    /// Get the wire format.
+    pub(crate) fn wire_format(&self) -> WireFormat {
+        self.tbs.wire_format
+    }
+
+    pub(crate) fn authenticated_data(&self) -> &[u8] {
+        self.tbs.content.authenticated_data()
+    }
+
+    /// Get the group id as [`GroupId`].
+    pub(crate) fn group_id(&self) -> &GroupId {
+        &self.tbs.content.group_id
+    }
+
+    /// Get the epoch.
+    pub(crate) fn epoch(&self) -> GroupEpoch {
+        self.tbs.epoch()
+    }
+
+    /// Get the [`Sender`].
+    pub fn sender(&self) -> &Sender {
+        &self.tbs.content.sender
+    }
+
+    #[cfg(test)]
+    pub fn test_signature(&self) -> &Signature {
+        &self.auth.signature
+    }
+
+    #[cfg(test)]
+    pub(super) fn unset_confirmation_tag(&mut self) {
+        self.auth.confirmation_tag = None;
+    }
+}
+
+#[cfg(any(feature = "test-utils", test))]
+impl From<VerifiableMlsAuthContent> for MlsAuthContent {
+    fn from(v: VerifiableMlsAuthContent) -> Self {
         Self {
-            signature,
-            confirmation_tag: confirmation_tag.into(),
+            tbs: v.tbs,
+            auth: v.auth,
         }
     }
 }
 
-#[derive(PartialEq, Debug, Clone)]
+impl From<MlsAuthContent> for MlsContent {
+    fn from(mls_auth_content: MlsAuthContent) -> Self {
+        mls_auth_content.tbs.content
+    }
+}
+
+#[derive(PartialEq, Debug, Clone, TlsSerialize, TlsSize)]
 pub(crate) struct VerifiableMlsAuthContent {
     pub(super) tbs: MlsContentTbs,
     pub(super) auth: MlsContentAuthData,
@@ -746,20 +932,14 @@ impl VerifiedStruct<VerifiableMlsAuthContent> for MlsPlaintext {
     type SealingType = private_mod::Seal;
 }
 
-impl SignedStruct<MlsContentTbs> for MlsPlaintext {
+impl SignedStruct<MlsContentTbs> for MlsAuthContent {
     fn from_payload(tbs: MlsContentTbs, signature: Signature) -> Self {
         let auth = MlsContentAuthData {
             signature,
             // Tags must always be added after the signature
             confirmation_tag: None,
         };
-        Self {
-            wire_format: tbs.wire_format,
-            content: tbs.content,
-            auth,
-            // Tags must always be added after the signature
-            membership_tag: None,
-        }
+        Self { tbs, auth }
     }
 }
 
