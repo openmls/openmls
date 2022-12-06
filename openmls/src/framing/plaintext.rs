@@ -661,22 +661,13 @@ impl From<MlsAuthContent> for MlsContent {
 pub(crate) struct VerifiableMlsAuthContent {
     pub(super) tbs: MlsContentTbs,
     pub(super) auth: MlsContentAuthData,
-    pub(super) membership_tag: Option<MembershipTag>,
 }
 
 impl VerifiableMlsAuthContent {
     /// Create a new [`VerifiableMlsAuthContent`] from a [`MlsContentTbs`] and
     /// a [`Signature`].
-    pub(crate) fn new(
-        tbs: MlsContentTbs,
-        auth: MlsContentAuthData,
-        membership_tag: impl Into<Option<MembershipTag>>,
-    ) -> Self {
-        Self {
-            tbs,
-            auth,
-            membership_tag: membership_tag.into(),
-        }
+    pub(crate) fn new(tbs: MlsContentTbs, auth: MlsContentAuthData) -> Self {
+        Self { tbs, auth }
     }
 
     /// Create a [`VerifiableMlsAuthContent`] from an [`MlsPlaintext`] and the
@@ -694,62 +685,12 @@ impl VerifiableMlsAuthContent {
         Self {
             tbs,
             auth: mls_plaintext.auth,
-            membership_tag: mls_plaintext.membership_tag,
         }
-    }
-
-    /// Verify the membership tag of an `UnverifiedMlsPlaintext` sent from a
-    /// group member. Returns `Ok(())` if successful or `VerificationError`
-    /// otherwise. Note, that the context must have been set before calling this
-    /// function.
-    // TODO #133: Include this in the validation
-    pub(crate) fn verify_membership(
-        &self,
-        backend: &impl OpenMlsCryptoProvider,
-        membership_key: &MembershipKey,
-    ) -> Result<(), ValidationError> {
-        log::debug!("Verifying membership tag.");
-        log_crypto!(trace, "  Membership key: {:x?}", membership_key);
-        log_crypto!(trace, "  Serialized context: {:x?}", serialized_context);
-        let tbs_payload = self
-            .tbs
-            .tls_serialize_detached()
-            .map_err(LibraryError::missing_bound_check)?;
-        let tbm_payload = MlsContentTbm::new(&tbs_payload, &self.auth)?;
-        let expected_membership_tag = &membership_key.tag(backend, tbm_payload)?;
-
-        // Verify the membership tag
-        if let Some(membership_tag) = &self.membership_tag {
-            // TODO #133: make this a constant-time comparison
-            if membership_tag != expected_membership_tag {
-                return Err(ValidationError::InvalidMembershipTag);
-            }
-        } else {
-            return Err(ValidationError::MissingMembershipTag);
-        }
-        Ok(())
     }
 
     /// Get the [`Sender`].
     pub fn sender(&self) -> &Sender {
         &self.tbs.content.sender
-    }
-
-    /// Set the sender.
-    #[cfg(test)]
-    pub(crate) fn set_sender(&mut self, sender: Sender) {
-        self.tbs.content.sender = sender;
-    }
-
-    /// Get the group id as [`GroupId`].
-    pub(crate) fn group_id(&self) -> &GroupId {
-        &self.tbs.content.group_id
-    }
-
-    /// Set the group id.
-    #[cfg(test)]
-    pub(crate) fn set_group_id(&mut self, group_id: GroupId) {
-        self.tbs.content.group_id = group_id;
     }
 
     /// Set the serialized context before verifying the signature.
@@ -768,18 +709,6 @@ impl VerifiableMlsAuthContent {
         self.tbs.epoch()
     }
 
-    /// Set the epoch.
-    #[cfg(test)]
-    pub(crate) fn set_epoch(&mut self, epoch: u64) {
-        self.tbs.content.epoch = epoch.into();
-    }
-
-    /// Get the underlying MlsPlaintext data of the tbs object.
-    #[cfg(test)]
-    pub(crate) fn payload(&self) -> &MlsContentTbs {
-        &self.tbs
-    }
-
     /// Get the content of the message.
     pub(crate) fn content(&self) -> &MlsContentBody {
         &self.tbs.content.body
@@ -790,62 +719,14 @@ impl VerifiableMlsAuthContent {
         self.tbs.wire_format
     }
 
-    /// Get the membership tag.
-    pub(crate) fn membership_tag(&self) -> &Option<MembershipTag> {
-        &self.membership_tag
-    }
-
-    /// Set the membership tag.
-    #[cfg(test)]
-    pub(crate) fn set_membership_tag(&mut self, tag: MembershipTag) {
-        self.membership_tag = Some(tag);
-    }
-
-    /// Unset the membership tag.
-    #[cfg(test)]
-    pub(crate) fn unset_membership_tag(&mut self) {
-        self.membership_tag = None;
-    }
-
     /// Get the confirmation tag.
     pub(crate) fn confirmation_tag(&self) -> Option<&ConfirmationTag> {
         self.auth.confirmation_tag.as_ref()
     }
 
-    /// Set the confirmation tag.
-    #[cfg(test)]
-    pub(crate) fn set_confirmation_tag(&mut self, confirmation_tag: Option<ConfirmationTag>) {
-        self.auth.confirmation_tag = confirmation_tag;
-    }
-
     /// Get the content type
     pub(crate) fn content_type(&self) -> ContentType {
         self.tbs.content.body.content_type()
-    }
-
-    /// Set the content.
-    #[cfg(test)]
-    pub(crate) fn set_content_body(&mut self, body: MlsContentBody) {
-        self.tbs.content.body = body;
-    }
-
-    /// Get the signature.
-    #[cfg(test)]
-    pub(crate) fn signature(&self) -> &Signature {
-        &self.auth.signature
-    }
-
-    /// Set the signature.
-    #[cfg(test)]
-    pub(crate) fn set_signature(&mut self, signature: Signature) {
-        self.auth.signature = signature;
-    }
-
-    #[cfg(test)]
-    pub(crate) fn invalidate_signature(&mut self) {
-        let mut modified_signature = self.signature().as_slice().to_vec();
-        modified_signature[0] ^= 0xFF;
-        self.auth.signature.modify(&modified_signature);
     }
 }
 
@@ -919,13 +800,11 @@ mod private_mod {
     pub(crate) struct Seal;
 }
 
-impl VerifiedStruct<VerifiableMlsAuthContent> for MlsPlaintext {
+impl VerifiedStruct<VerifiableMlsAuthContent> for MlsAuthContent {
     fn from_verifiable(v: VerifiableMlsAuthContent, _seal: Self::SealingType) -> Self {
         Self {
-            wire_format: v.tbs.wire_format,
-            content: v.tbs.content,
+            tbs: v.tbs,
             auth: v.auth,
-            membership_tag: v.membership_tag,
         }
     }
 
