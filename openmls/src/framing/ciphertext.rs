@@ -155,9 +155,7 @@ impl MlsCiphertext {
             group_id: header.group_id.clone(),
             epoch: header.epoch,
             content_type: mls_plaintext.content().content_type(),
-            authenticated_data: TlsByteSliceU32(
-                mls_plaintext.tbs.content.authenticated_data.as_slice(),
-            ),
+            authenticated_data: TlsByteSliceU32(mls_plaintext.authenticated_data()),
         };
         let mls_ciphertext_content_aad_bytes = mls_ciphertext_content_aad
             .tls_serialize_detached()
@@ -229,7 +227,7 @@ impl MlsCiphertext {
             group_id: header.group_id.clone(),
             epoch: header.epoch,
             content_type: mls_plaintext.content().content_type(),
-            authenticated_data: mls_plaintext.tbs.content.authenticated_data.clone(),
+            authenticated_data: mls_plaintext.authenticated_data().into(),
             encrypted_sender_data: encrypted_sender_data.into(),
             ciphertext: ciphertext.into(),
         })

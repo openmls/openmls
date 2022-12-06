@@ -77,15 +77,9 @@ pub enum ProcessMessageError {
     /// See [`MlsGroupStateError`] for more details.
     #[error(transparent)]
     GroupStateError(#[from] MlsGroupStateError),
-    /// The message is from an epoch too far in the past.
-    #[error("The message is from an epoch too far in the past.")]
-    NoPastEpochData,
     /// The message's signature is invalid.
     #[error("The message's signature is invalid.")]
     InvalidSignature,
-    /// The message's membership tag is invalid.
-    #[error("The message's membership tag is invalid.")]
-    InvalidMembershipTag,
     /// A signature key was not provided for an external message.
     #[error("A signature key was not provided for an external message.")]
     MissingSignatureKey,

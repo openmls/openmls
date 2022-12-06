@@ -252,6 +252,9 @@ pub enum ValidationError {
     /// Could not decrypt the message
     #[error(transparent)]
     UnableToDecrypt(#[from] MessageDecryptionError),
+    /// The message is from an epoch too far in the past.
+    #[error("The message is from an epoch too far in the past.")]
+    NoPastEpochData,
 }
 
 /// Proposal validation error

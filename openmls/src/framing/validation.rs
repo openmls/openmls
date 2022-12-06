@@ -240,11 +240,6 @@ impl UnverifiedMessage {
         }
     }
 
-    /// Returns the epoch.
-    pub(crate) fn epoch(&self) -> GroupEpoch {
-        self.plaintext.epoch()
-    }
-
     /// Decomposes an [UnverifiedMessage] into its parts.
     pub(crate) fn into_parts(self) -> (VerifiableMlsAuthContent, Option<Credential>) {
         (self.plaintext, self.credential)
@@ -369,12 +364,12 @@ pub(crate) struct UnverifiedExternalMessage {
 
 /// Member message, where all semantic checks on the framing have been successfully performed.
 pub(crate) struct VerifiedMemberMessage {
-    plaintext: MlsPlaintext,
+    plaintext: MlsAuthContent,
 }
 
 impl VerifiedMemberMessage {
     /// Consumes the message and returns the inner [MlsPlaintext].
-    pub(crate) fn take_plaintext(self) -> MlsPlaintext {
+    pub(crate) fn take_plaintext(self) -> MlsAuthContent {
         self.plaintext
     }
 }
@@ -382,17 +377,17 @@ impl VerifiedMemberMessage {
 /// External message, where all semantic checks on the framing have been successfully performed.
 /// Note: External messages are not fully supported yet #106
 pub(crate) struct VerifiedExternalMessage {
-    plaintext: MlsPlaintext,
+    plaintext: MlsAuthContent,
 }
 
 impl VerifiedExternalMessage {
-    /// Returns a reference to the inner [MlsPlaintext].
-    pub(crate) fn plaintext(&self) -> &MlsPlaintext {
+    /// Returns a reference to the inner [MlsContent].
+    pub(crate) fn plaintext(&self) -> &MlsAuthContent {
         &self.plaintext
     }
 
     /// Consumes the message and returns the inner [MlsPlaintext].
-    pub(crate) fn take_plaintext(self) -> MlsPlaintext {
+    pub(crate) fn take_plaintext(self) -> MlsAuthContent {
         self.plaintext
     }
 }

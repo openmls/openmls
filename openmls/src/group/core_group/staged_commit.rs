@@ -52,7 +52,7 @@ impl CoreGroup {
     /// group.
     pub(crate) fn stage_commit(
         &self,
-        mls_plaintext: &MlsPlaintext,
+        mls_content: &MlsAuthContent,
         proposal_store: &ProposalStore,
         own_key_packages: &[KeyPackageBundle],
         backend: &impl OpenMlsCryptoProvider,
@@ -61,17 +61,17 @@ impl CoreGroup {
         let ciphersuite = self.ciphersuite();
 
         // Verify epoch
-        if mls_plaintext.epoch() != self.group_context.epoch() {
+        if mls_content.epoch() != self.group_context.epoch() {
             log::error!(
                 "Epoch mismatch. Got {:?}, expected {:?}",
-                mls_plaintext.epoch(),
+                mls_content.epoch(),
                 self.group_context.epoch()
             );
             return Err(StageCommitError::EpochMismatch);
         }
 
         // Check that the sender is another member of the group
-        let sender = mls_plaintext.sender();
+        let sender = mls_content.sender();
 
         if let Sender::Member(member) = sender {
             if *member == self.own_leaf_index() {
@@ -80,14 +80,10 @@ impl CoreGroup {
         }
 
         // Extract Commit & Confirmation Tag from MlsPlaintext
-        let commit = match mls_plaintext.content() {
+        let commit = match mls_content.content() {
             MlsContentBody::Commit(commit) => commit,
             _ => return Err(StageCommitError::WrongPlaintextContentType),
         };
-
-        let received_confirmation_tag = mls_plaintext
-            .confirmation_tag()
-            .ok_or(StageCommitError::ConfirmationTagMissing)?;
 
         // Build a queue with all proposals from the Commit and check that we have all
         // of the proposals by reference locally
@@ -269,7 +265,7 @@ impl CoreGroup {
             ciphersuite,
             backend,
             // It is ok to use return a library error here, because we know the MlsPlaintext contains a Commit
-            &ConfirmedTranscriptHashInput::try_from(mls_plaintext)
+            &ConfirmedTranscriptHashInput::try_from(mls_content)
                 .map_err(|_| LibraryError::custom("Could not convert commit content"))?,
             &self.interim_transcript_hash,
         )?;
@@ -304,7 +300,10 @@ impl CoreGroup {
             .epoch_secrets(backend)
             .map_err(|_| LibraryError::custom("Using the key schedule in the wrong state"))?;
 
-        let mls_plaintext_commit_auth_data = InterimTranscriptHashInput::try_from(mls_plaintext)
+        let received_confirmation_tag = mls_content
+            .confirmation_tag()
+            .ok_or(StageCommitError::ConfirmationTagMissing)?;
+        let mls_plaintext_commit_auth_data = InterimTranscriptHashInput::try_from(received_confirmation_tag)
             .map_err(|_| {
                 log::error!("Confirmation tag is missing in commit. This should be unreachable because we verified the tag before.");
                 StageCommitError::ConfirmationTagMissing

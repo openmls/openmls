@@ -53,12 +53,12 @@ pub(crate) struct MlsPlaintext {
     Debug, PartialEq, Clone, Serialize, Deserialize, TlsSerialize, TlsDeserialize, TlsSize,
 )]
 pub(crate) struct MlsContent {
-    pub(crate) group_id: GroupId,
-    pub(crate) epoch: GroupEpoch,
-    pub(crate) sender: Sender,
-    pub(crate) authenticated_data: VLBytes,
+    pub(super) group_id: GroupId,
+    pub(super) epoch: GroupEpoch,
+    pub(super) sender: Sender,
+    pub(super) authenticated_data: VLBytes,
 
-    pub(crate) body: MlsContentBody,
+    pub(super) body: MlsContentBody,
 }
 
 /// ```c
@@ -612,7 +612,7 @@ impl MlsAuthContent {
     }
 
     pub(crate) fn authenticated_data(&self) -> &[u8] {
-        self.tbs.content.authenticated_data()
+        self.tbs.content.authenticated_data.as_slice()
     }
 
     /// Get the group id as [`GroupId`].
@@ -840,20 +840,15 @@ pub(crate) struct ConfirmedTranscriptHashInput<'a> {
     pub(super) signature: &'a Signature,
 }
 
-impl<'a> TryFrom<&'a MlsPlaintext> for ConfirmedTranscriptHashInput<'a> {
-    type Error = &'static str;
-
-    fn try_from(mls_plaintext: &'a MlsPlaintext) -> Result<Self, Self::Error> {
-        if !matches!(
-            mls_plaintext.content.body.content_type(),
-            ContentType::Commit
-        ) {
+impl<'a> ConfirmedTranscriptHashInput<'a> {
+    pub(crate) fn try_from(mls_content: &'a MlsAuthContent) -> Result<Self, &'static str> {
+        if !matches!(mls_content.content().content_type(), ContentType::Commit) {
             return Err("MlsPlaintext needs to contain a Commit.");
         }
         Ok(ConfirmedTranscriptHashInput {
-            wire_format: mls_plaintext.wire_format,
-            mls_content: &mls_plaintext.content,
-            signature: &mls_plaintext.auth.signature,
+            wire_format: mls_content.wire_format(),
+            mls_content: &mls_content.tbs.content,
+            signature: mls_content.signature(),
         })
     }
 }

@@ -120,23 +120,10 @@ impl CoreGroup {
         own_kpbs: &[KeyPackageBundle],
         backend: &impl OpenMlsCryptoProvider,
     ) -> Result<ProcessedMessage, ProcessMessageError> {
-        // Add the context to the message and verify the membership tag if necessary.
-        // If the message is older than the current epoch, we need to fetch the correct secret tree first.
-        let message_secrets = self
-            .message_secrets_for_epoch(unverified_message.epoch())
-            .map_err(|e| match e {
-                SecretTreeError::TooDistantInThePast => ProcessMessageError::NoPastEpochData,
-                _ => LibraryError::custom("Unexpected return value").into(),
-            })?;
-
         // Checks the following semantic validation:
         //  - ValSem008
-        let context_plaintext = UnverifiedContextMessage::from_unverified_message(
-            unverified_message,
-            message_secrets,
-            backend,
-        )
-        .map_err(|_| ProcessMessageError::InvalidMembershipTag)?;
+        let context_plaintext =
+            UnverifiedContextMessage::from_unverified_message(unverified_message)?;
 
         let group_id = self.group_id().clone();
         let epoch = self.group_context.epoch();
@@ -238,6 +225,7 @@ impl CoreGroup {
                         ))
                     }
                     MlsContentBody::Commit(_) => {
+                        // We throw a library error here, because a missing confirmation tag should be found during deserialization.
                         let staged_commit = self.stage_commit(
                             verified_new_member_message.plaintext(),
                             proposal_store,
