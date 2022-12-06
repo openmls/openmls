@@ -1564,7 +1564,7 @@ fn test_valsem109(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
 
     // We first go the manual route
     let update_proposal = bob_group
-        .propose_self_update(backend, Some(update_kpb.clone()))
+        .propose_self_update(backend, Some(update_kpb))
         .expect("error while creating remove proposal");
 
     // Have Alice process this proposal.

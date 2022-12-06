@@ -247,11 +247,6 @@ pub fn generate_test_vector(ciphersuite: Ciphersuite) -> MessagesTestVector {
         )
         .expect("An unexpected error occurred.");
     // Sets the context implicitly.
-    let credential = group
-        .treesync()
-        .own_leaf_node()
-        .expect("An unexpected error occurred.")
-        .credential();
     if !verifiable_mls_plaintext_application.has_context() {
         verifiable_mls_plaintext_application.set_context(
             group

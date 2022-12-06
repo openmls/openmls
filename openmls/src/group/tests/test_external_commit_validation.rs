@@ -10,13 +10,10 @@ use rstest::*;
 use rstest_reuse::{self, *};
 
 use crate::{
-    ciphersuite::{
-        hash_ref::ProposalRef,
-        signable::{Signable, Verifiable},
-    },
+    ciphersuite::{hash_ref::ProposalRef, signable::Verifiable},
     credentials::{errors::*, *},
     framing::*,
-    group::{errors::*, *},
+    group::{errors::*, tests::utils::resign_external_commit, *},
     messages::proposals::*,
 };
 

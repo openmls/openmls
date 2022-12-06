@@ -9,7 +9,7 @@ use rstest::*;
 use rstest_reuse::{self, *};
 
 use crate::{
-    ciphersuite::signable::{Signable, Verifiable},
+    ciphersuite::signable::Signable,
     credentials::*,
     framing::*,
     group::{errors::*, *},
@@ -368,7 +368,15 @@ fn test_valsem201(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
             panic!()
         };
 
-        let commit = VerifiableMlsAuthContent::from_plaintext(commit, None);
+        let mut commit: MlsPlaintext = commit.into();
+        let membership_key = alice_group.group().message_secrets().membership_key();
+        let serialized_context = alice_group
+            .export_group_context()
+            .tls_serialize_detached()
+            .unwrap();
+        commit
+            .set_membership_tag(backend, &serialized_context, membership_key)
+            .unwrap();
         // verify that a path is indeed required when the commit is received
         if is_path_required {
             let commit_wo_path = erase_path(backend, commit.clone(), &alice_group);
@@ -396,7 +404,7 @@ fn test_valsem201(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
 
 fn erase_path(
     backend: &impl OpenMlsCryptoProvider,
-    mut plaintext: VerifiableMlsAuthContent,
+    mut plaintext: MlsPlaintext,
     alice_group: &MlsGroup,
 ) -> MlsMessageIn {
     // Keep the original plaintext for positive test later.
@@ -413,35 +421,7 @@ fn erase_path(
 
     let plaintext = resign_message(alice_group, plaintext, &original_plaintext, backend);
 
-    let serialized_context = alice_group
-        .export_group_context()
-        .tls_serialize_detached()
-        .expect("error serializing context");
-    plaintext.set_context(serialized_context.clone());
-
-    // We have to re-sign, since we changed the content.
-    let mut signed_plaintext: MlsPlaintext = plaintext
-        .payload()
-        .clone()
-        .sign(backend, &alice_credential_bundle)
-        .expect("Error signing modified payload.");
-
-    // Set old confirmation tag
-    signed_plaintext.set_confirmation_tag(
-        original_plaintext
-            .confirmation_tag()
-            .expect("no confirmation tag on original message")
-            .clone()
-            .into(),
-    );
-
-    let membership_key = alice_group.group().message_secrets().membership_key();
-
-    signed_plaintext
-        .set_membership_tag(backend, &serialized_context, membership_key)
-        .expect("error refreshing membership tag");
-
-    VerifiableMlsAuthContent::from_plaintext(signed_plaintext, None).into()
+    plaintext.into()
 }
 
 // ValSem202: Path must be the right length
