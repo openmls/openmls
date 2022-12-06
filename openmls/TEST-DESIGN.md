@@ -25,7 +25,7 @@ Here are some factual remarks about the current state of tests.
 
 This proposition aims at:
 
-1. Write less verbose tests and quicker
+1. Write less test code
 2. Share a common pattern for writing tests
 3. Have finer grained tests and be quicker to troubleshoot the cause of a failing test
 4. Be idiomatic to welcome easier external contributions
