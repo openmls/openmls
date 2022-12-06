@@ -415,7 +415,7 @@ fn encode_tbs<'a>(
 ) -> Result<Vec<u8>, tls_codec::Error> {
     let mut out = Vec::new();
     codec::serialize_plaintext_tbs(
-        plaintext.wire_format,
+        WireFormat::MlsPlaintext,
         &plaintext.content,
         serialized_context,
         &mut out,
@@ -500,7 +500,7 @@ impl VerifiableMlsAuthContent {
         serialized_context: impl Into<Option<Vec<u8>>>,
     ) -> Self {
         let tbs = MlsContentTbs {
-            wire_format: mls_plaintext.wire_format,
+            wire_format: WireFormat::MlsPlaintext,
             content: mls_plaintext.content,
             serialized_context: serialized_context.into(),
         };
@@ -664,7 +664,7 @@ impl VerifiableMlsAuthContent {
 }
 
 impl Signable for MlsContentTbs {
-    type SignedOutput = MlsPlaintext;
+    type SignedOutput = MlsAuthContent;
 
     fn unsigned_payload(&self) -> Result<Vec<u8>, tls_codec::Error> {
         self.tls_serialize_detached()
@@ -700,6 +700,7 @@ impl MlsContentTbs {
             serialized_context: None,
         }
     }
+
     /// Adds a serialized context to MlsContentTbs.
     /// This consumes the original struct and can be used as a builder function.
     pub(crate) fn with_context(mut self, serialized_context: Vec<u8>) -> Self {
