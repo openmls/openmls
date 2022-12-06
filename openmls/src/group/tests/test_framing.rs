@@ -178,13 +178,10 @@ fn bad_padding(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
 
         message_secrets.replace_secret_tree(sender_secret_tree);
 
-        let tampered_ciphertext = {
-            let header = MlsMessageHeader {
-                group_id: group_context.group_id().clone(),
-                epoch: group_context.epoch(),
-                sender: SecretTreeLeafIndex(0),
-            };
+        let group_id = group_context.group_id().clone();
+        let epoch = group_context.epoch();
 
+        let tampered_ciphertext = {
             let leaf_index = match plaintext.sender() {
                 Sender::Member(leaf_index) => *leaf_index,
                 _ => panic!("Unexpected match."),
@@ -192,8 +189,8 @@ fn bad_padding(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
 
             let mls_ciphertext_content_aad_bytes = {
                 let mls_ciphertext_content_aad = MlsCiphertextContentAad {
-                    group_id: header.group_id.clone(),
-                    epoch: header.epoch,
+                    group_id: group_id.clone(),
+                    epoch,
                     content_type: plaintext.content().content_type(),
                     authenticated_data: TlsByteSliceU32(plaintext.authenticated_data()),
                 };
@@ -205,7 +202,7 @@ fn bad_padding(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
             let secret_type = SecretType::from(&plaintext.content().content_type());
             let (generation, (ratchet_key, ratchet_nonce)) = message_secrets
                 .secret_tree_mut()
-                .secret_for_encryption(ciphersuite, backend, header.sender, secret_type)
+                .secret_for_encryption(ciphersuite, backend, SecretTreeLeafIndex(0), secret_type)
                 .unwrap();
 
             // Sample reuse guard uniformly at random.
@@ -280,9 +277,10 @@ fn bad_padding(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
                 .unwrap();
             // Compute sender data nonce by xoring reuse guard and key schedule
             // nonce as per spec.
+
             let mls_sender_data_aad = MlsSenderDataAad::test_new(
-                header.group_id.clone(),
-                header.epoch,
+                group_id.clone(),
+                epoch,
                 plaintext.content().content_type(),
             );
             // Serialize the sender data AAD
@@ -299,9 +297,8 @@ fn bad_padding(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
                 .unwrap();
 
             MlsCiphertext::new(
-                WireFormat::MlsCiphertext,
-                header.group_id,
-                header.epoch,
+                group_id,
+                epoch,
                 plaintext.content().content_type(),
                 plaintext.authenticated_data().into(),
                 encrypted_sender_data.into(),

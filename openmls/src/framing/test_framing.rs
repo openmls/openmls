@@ -4,10 +4,12 @@ use rstest::*;
 use rstest_reuse::{self, *};
 
 use openmls_rust_crypto::OpenMlsRustCrypto;
+use signable::Verifiable;
 use tls_codec::{Deserialize, Serialize};
 
 use crate::{
-    ciphersuite::signable::{Signable, Verifiable},
+    ciphersuite::signable::Signable,
+    credentials::errors::CredentialError,
     framing::*,
     group::{
         core_group::{
@@ -57,19 +59,23 @@ fn codec_plaintext(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvide
         MlsContentBody::Application(vec![4, 5, 6].into()),
     )
     .with_context(serialized_context.clone());
-    let orig: MlsPlaintext = signature_input
+    let mut orig: MlsPlaintext = signature_input
         .sign(backend, &credential_bundle)
-        .expect("Signing failed.");
+        .expect("Signing failed.")
+        .into();
+
+    let membership_key = MembershipKey::from_secret(
+        Secret::random(ciphersuite, backend, None /* MLS version */)
+            .expect("Not enough randomness."),
+    );
+    orig.set_membership_tag(backend, &serialized_context, &membership_key)
+        .expect("Error setting membership tag.");
 
     let enc = orig
         .tls_serialize_detached()
         .expect("An unexpected error occurred.");
-    let mut copy = VerifiableMlsAuthContent::tls_deserialize(&mut enc.as_slice())
-        .expect("An unexpected error occurred.");
-    copy.set_context(serialized_context);
-    let copy = copy
-        .verify(backend, credential_bundle.credential())
-        .expect("An unexpected error occurred.");
+    let copy =
+        MlsPlaintext::tls_deserialize(&mut enc.as_slice()).expect("An unexpected error occurred.");
     assert_eq!(orig, copy);
     assert!(!orig.is_handshake_message());
 }
@@ -84,7 +90,7 @@ fn codec_ciphertext(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvid
         backend,
     )
     .expect("An unexpected error occurred.");
-    let sender = Sender::build_member(987543210);
+    let sender = Sender::build_member(0);
     let group_context = GroupContext::new(
         ciphersuite,
         GroupId::from_slice(&[5, 5, 5]),
@@ -106,7 +112,7 @@ fn codec_ciphertext(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvid
         MlsContentBody::Application(vec![4, 5, 6].into()),
     )
     .with_context(serialized_context);
-    let plaintext: MlsPlaintext = signature_input
+    let plaintext = signature_input
         .sign(backend, &credential_bundle)
         .expect("Signing failed.");
 
@@ -128,14 +134,14 @@ fn codec_ciphertext(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvid
 
     let mut message_secrets = MessageSecrets::random(ciphersuite, backend, 0);
 
-    let orig = MlsCiphertext::try_from_plaintext(
+    let orig = MlsCiphertext::encrypt_with_different_header(
         &plaintext,
         ciphersuite,
         backend,
         MlsMessageHeader {
             group_id: group_context.group_id().clone(),
             epoch: group_context.epoch(),
-            sender: SecretTreeLeafIndex(0),
+            sender: SecretTreeLeafIndex(987543210),
         },
         &mut message_secrets,
         0,
@@ -334,41 +340,41 @@ fn membership_tag(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
         Secret::random(ciphersuite, backend, None /* MLS version */)
             .expect("Not enough randomness."),
     );
-    let mut mls_plaintext = MlsPlaintext::new_application(
+    let mut mls_plaintext: MlsPlaintext = MlsAuthContent::new_application(
         987543210,
         &[1, 2, 3],
         &[4, 5, 6],
         &credential_bundle,
         &group_context,
-        &membership_key,
         backend,
     )
-    .expect("An unexpected error occurred.");
+    .expect("An unexpected error occurred.")
+    .into();
+
     let serialized_context: Vec<u8> = group_context
         .tls_serialize_detached()
         .expect("An unexpected error occurred.");
 
-    let verifiable_mls_plaintext =
-        VerifiableMlsAuthContent::from_plaintext(mls_plaintext.clone(), serialized_context.clone());
+    mls_plaintext
+        .set_membership_tag(backend, &serialized_context, &membership_key)
+        .expect("Error setting membership tag.");
 
     println!(
         "Membership tag error: {:?}",
-        verifiable_mls_plaintext.verify_membership(backend, &membership_key)
+        mls_plaintext.verify_membership(backend, &membership_key, &serialized_context)
     );
 
     // Verify signature & membership tag
-    assert!(verifiable_mls_plaintext
-        .verify_membership(backend, &membership_key)
+    assert!(mls_plaintext
+        .verify_membership(backend, &membership_key, &serialized_context)
         .is_ok());
 
     // Change the content of the plaintext message
     mls_plaintext.set_content(MlsContentBody::Application(vec![7, 8, 9].into()));
-    let verifiable_mls_plaintext =
-        VerifiableMlsAuthContent::from_plaintext(mls_plaintext.clone(), serialized_context);
 
     // Expect the signature & membership tag verification to fail
-    assert!(verifiable_mls_plaintext
-        .verify_membership(backend, &membership_key)
+    assert!(mls_plaintext
+        .verify_membership(backend, &membership_key, &serialized_context)
         .is_err());
 }
 
@@ -536,27 +542,24 @@ fn unknown_sender(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
 
     // Alice sends a message with a sender that is outside of the group
     // Expected result: SenderError::UnknownSender
-    let bogus_sender_message = MlsPlaintext::new_application(
-        987543210,
+    let bogus_sender_message = MlsAuthContent::new_application(
+        0,
         &[],
         &[1, 2, 3],
         &alice_credential_bundle,
         group_alice.context(),
-        &MembershipKey::from_secret(
-            Secret::random(ciphersuite, backend, None).expect("Not enough randomness."),
-        ),
         backend,
     )
     .expect("Could not create new MlsPlaintext.");
 
-    let enc_message = MlsCiphertext::try_from_plaintext(
+    let enc_message = MlsCiphertext::encrypt_with_different_header(
         &bogus_sender_message,
         ciphersuite,
         backend,
         MlsMessageHeader {
             group_id: group_alice.group_id().clone(),
             epoch: group_alice.context().epoch(),
-            sender: SecretTreeLeafIndex(0u32),
+            sender: SecretTreeLeafIndex(987543210u32),
         },
         group_alice.message_secrets_test_mut(),
         0,

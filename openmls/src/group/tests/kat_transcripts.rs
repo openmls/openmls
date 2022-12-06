@@ -84,7 +84,7 @@ pub fn generate_test_vector(ciphersuite: Ciphersuite) -> TranscriptTestVector {
         .expect("An unexpected error occurred.");
     let framing_parameters = FramingParameters::new(&aad, WireFormat::MlsPlaintext);
     let sender = Sender::build_member(7); // XXX: use random, valid sender
-    let mut commit = MlsPlaintext::commit(
+    let mut commit = MlsAuthContent::commit(
         framing_parameters,
         sender,
         Commit {
@@ -107,15 +107,17 @@ pub fn generate_test_vector(ciphersuite: Ciphersuite) -> TranscriptTestVector {
     let confirmation_tag = confirmation_key
         .tag(&crypto, &confirmed_transcript_hash_after)
         .expect("Could not compute confirmation tag.");
-    commit.set_confirmation_tag(confirmation_tag);
+    commit.set_confirmation_tag(confirmation_tag.clone());
 
     let interim_transcript_hash_after = update_interim_transcript_hash(
         ciphersuite,
         &crypto,
-        &InterimTranscriptHashInput::try_from(&commit).expect("An unexpected error occurred."),
+        &InterimTranscriptHashInput::try_from(&confirmation_tag)
+            .expect("An unexpected error occurred."),
         &confirmed_transcript_hash_after,
     )
     .expect("Error updating interim transcript hash");
+    let mut commit: MlsPlaintext = commit.into();
     commit
         .set_membership_tag(
             &crypto,
@@ -209,8 +211,8 @@ pub fn run_test_vector(
 
     // Check membership and confirmation tags.
     let commit_bytes = hex_to_bytes(&test_vector.commit);
-    let mut commit = VerifiableMlsAuthContent::tls_deserialize(&mut commit_bytes.as_slice())
-        .expect("Error decoding commit");
+    let commit =
+        MlsPlaintext::tls_deserialize(&mut commit_bytes.as_slice()).expect("Error decoding commit");
     let context = GroupContext::new(
         ciphersuite,
         group_id,
@@ -220,36 +222,37 @@ pub fn run_test_vector(
         &[], // extensions
     );
     let expected_group_context = hex_to_bytes(&test_vector.group_context);
+    let serialized_context = context
+        .tls_serialize_detached()
+        .expect("An unexpected error occurred.");
     if context
         .tls_serialize_detached()
         .expect("An unexpected error occurred.")
         != expected_group_context
     {
         log::error!("  Group context mismatch");
-        log::debug!(
-            "    Computed: {:x?}",
-            context
-                .tls_serialize_detached()
-                .expect("An unexpected error occurred.")
-        );
+        log::debug!("    Computed: {:x?}", serialized_context);
         log::debug!("    Expected: {:x?}", expected_group_context);
         if cfg!(test) {
             panic!("Group context mismatch");
         }
         return Err(TranscriptTestVectorError::GroupContextMismatch);
     }
-    commit.set_context(
-        context
-            .tls_serialize_detached()
-            .expect("An unexpected error occurred."),
-    );
-    if commit.verify_membership(backend, &membership_key).is_err() {
+    if commit
+        .verify_membership(backend, &membership_key, &serialized_context)
+        .is_err()
+    {
         if cfg!(test) {
             panic!("Invalid membership tag");
         }
         return Err(TranscriptTestVectorError::MembershipTagVerificationError);
     }
-    let commit: MlsPlaintext = commit
+    let commit = VerifiableMlsAuthContent::from_plaintext(commit, serialized_context);
+    let confirmation_tag = commit
+        .confirmation_tag()
+        .cloned()
+        .expect("Confirmation tag is missing");
+    let content: MlsAuthContent = commit
         .verify(backend, &credential)
         .expect("Invalid signature on MlsPlaintext commit");
 
@@ -260,19 +263,10 @@ pub fn run_test_vector(
     let my_confirmation_tag = confirmation_key
         .tag(backend, &confirmed_transcript_hash_after)
         .expect("Could not compute confirmation tag.");
-    if &my_confirmation_tag
-        != commit
-            .confirmation_tag()
-            .expect("Confirmation tag is missing")
-    {
+    if my_confirmation_tag != confirmation_tag {
         log::error!("  Confirmation tag mismatch");
         log::debug!("    Computed: {:x?}", my_confirmation_tag);
-        log::debug!(
-            "    Expected: {:x?}",
-            commit
-                .confirmation_tag()
-                .expect("An unexpected error occurred.")
-        );
+        log::debug!("    Expected: {:x?}", confirmation_tag);
         if cfg!(test) {
             panic!("Invalid confirmation tag");
         }
@@ -283,7 +277,7 @@ pub fn run_test_vector(
     let my_confirmed_transcript_hash_after = update_confirmed_transcript_hash(
         ciphersuite,
         backend,
-        &ConfirmedTranscriptHashInput::try_from(&commit).expect("An unexpected error occurred."),
+        &ConfirmedTranscriptHashInput::try_from(&content).expect("An unexpected error occurred."),
         &interim_transcript_hash_before,
     )
     .expect("Error updating confirmed transcript hash");
@@ -302,7 +296,8 @@ pub fn run_test_vector(
     let my_interim_transcript_hash_after = update_interim_transcript_hash(
         ciphersuite,
         backend,
-        &InterimTranscriptHashInput::try_from(&commit).expect("An unexpected error occurred."),
+        &InterimTranscriptHashInput::try_from(&my_confirmation_tag)
+            .expect("An unexpected error occurred."),
         &my_confirmed_transcript_hash_after,
     )
     .expect("Error updating interim transcript hash");

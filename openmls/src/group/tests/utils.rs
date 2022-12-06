@@ -410,3 +410,88 @@ pub(super) fn get_credential_bundle(
         .expect("An unexpected error occurred.");
     Ok(cb)
 }
+
+#[cfg(test)]
+pub(crate) fn resign_message(
+    alice_group: &MlsGroup,
+    plaintext: MlsPlaintext,
+    original_plaintext: &MlsPlaintext,
+    backend: &impl OpenMlsCryptoProvider,
+) -> MlsPlaintext {
+    use prelude::signable::Signable;
+
+    let alice_credential_bundle = backend
+        .key_store()
+        .read(
+            &alice_group
+                .credential()
+                .expect("error retrieving credential")
+                .signature_key()
+                .tls_serialize_detached()
+                .expect("error serializing credential"),
+        )
+        .expect("error retrieving credential bundle");
+    let serialized_context = alice_group
+        .export_group_context()
+        .tls_serialize_detached()
+        .expect("error serializing context");
+
+    // We have to re-sign, since we changed the content.
+    let tbs: MlsContentTbs = plaintext.into();
+    let mut signed_plaintext: MlsAuthContent = tbs
+        .with_context(serialized_context.clone())
+        .sign(backend, &alice_credential_bundle)
+        .expect("Error signing modified payload.");
+
+    // Set old confirmation tag
+    signed_plaintext.set_confirmation_tag(
+        original_plaintext
+            .confirmation_tag()
+            .expect("no confirmation tag on original message")
+            .clone(),
+    );
+
+    let mut signed_plaintext: MlsPlaintext = signed_plaintext.into();
+
+    let membership_key = alice_group.group().message_secrets().membership_key();
+
+    signed_plaintext
+        .set_membership_tag(backend, &serialized_context, membership_key)
+        .expect("error refreshing membership tag");
+    signed_plaintext
+}
+
+#[cfg(test)]
+pub(crate) fn resign_external_commit(
+    bob_credential_bundle: &CredentialBundle,
+    plaintext: MlsPlaintext,
+    original_plaintext: &MlsPlaintext,
+    serialized_context: Vec<u8>,
+    backend: &impl OpenMlsCryptoProvider,
+) -> MlsPlaintext {
+    let serialized_context = Some(serialized_context);
+    // We have to re-sign, since we changed the content.
+
+    use prelude::signable::Signable;
+    let tbs: MlsContentTbs = plaintext.into();
+    let mut signed_plaintext: MlsAuthContent = if let Some(context) = serialized_context {
+        tbs.with_context(context)
+            .sign(backend, bob_credential_bundle)
+            .expect("Error signing modified payload.")
+    } else {
+        tbs.sign(backend, bob_credential_bundle)
+            .expect("Error signing modified payload.")
+    };
+
+    // Set old confirmation tag
+    signed_plaintext.set_confirmation_tag(
+        original_plaintext
+            .confirmation_tag()
+            .expect("no confirmation tag on original message")
+            .clone(),
+    );
+
+    let signed_plaintext: MlsPlaintext = signed_plaintext.into();
+
+    signed_plaintext
+}

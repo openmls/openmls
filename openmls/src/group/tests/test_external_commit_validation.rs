@@ -10,11 +10,11 @@ use rstest::*;
 use rstest_reuse::{self, *};
 
 use crate::{
-    ciphersuite::signable::{Signable, Verifiable},
     credentials::{errors::*, *},
     framing::*,
-    group::{errors::*, *},
+    group::{errors::*, tests::utils::resign_external_commit, *},
     messages::{proposals::*, public_group_state::VerifiablePublicGroupState},
+    prelude_test::signable::Verifiable,
 };
 
 use super::utils::{generate_credential_bundle, generate_key_package_bundle};
@@ -23,8 +23,8 @@ use super::utils::{generate_credential_bundle, generate_key_package_bundle};
 struct ECValidationTestSetup {
     alice_group: MlsGroup,
     bob_credential_bundle: CredentialBundle,
-    plaintext: VerifiableMlsAuthContent,
-    original_plaintext: VerifiableMlsAuthContent,
+    plaintext: MlsPlaintext,
+    original_plaintext: MlsPlaintext,
 }
 
 // Validation test setup
@@ -112,8 +112,10 @@ fn validation_test_setup(
         .tls_serialize_detached()
         .expect("Could not serialize message.");
 
-    let message = VerifiableMlsAuthContent::tls_deserialize(&mut serialized_message.as_slice())
-        .expect("Could not deserialize message.");
+    let message = MlsMessageIn::tls_deserialize(&mut serialized_message.as_slice())
+        .expect("Could not deserialize message.")
+        .into_plaintext()
+        .expect("Message was not a plaintext.");
 
     assert!(matches!(message.sender(), Sender::NewMemberCommit));
 
@@ -156,28 +158,21 @@ fn test_valsem240(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
 
     content.proposals.remove(proposal_position);
 
-    plaintext.set_content_body(MlsContentBody::Commit(content));
+    plaintext.set_content(MlsContentBody::Commit(content));
 
-    // We have to re-sign, since we changed the content.
-    let mut signed_plaintext: MlsPlaintext = plaintext
-        .payload()
-        .clone()
-        .sign(backend, &bob_credential_bundle)
-        .expect("Error signing modified payload.");
-
-    // Set old confirmation tag
-    signed_plaintext.set_confirmation_tag(
-        original_plaintext
-            .confirmation_tag()
-            .expect("no confirmation tag on original message")
-            .clone(),
+    let signed_plaintext = resign_external_commit(
+        &bob_credential_bundle,
+        plaintext,
+        &original_plaintext,
+        alice_group
+            .export_group_context()
+            .tls_serialize_detached()
+            .expect("error serializing context"),
+        backend,
     );
 
-    let verifiable_plaintext: VerifiableMlsAuthContent =
-        VerifiableMlsAuthContent::from_plaintext(signed_plaintext, None);
-
     // Have alice process the commit resulting from external init.
-    let message_in = MlsMessageIn::from(verifiable_plaintext);
+    let message_in = MlsMessageIn::from(signed_plaintext);
 
     let err = alice_group
         .process_message(backend, message_in)
@@ -221,28 +216,21 @@ fn test_valsem241(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
 
     content.proposals.push(second_ext_init_prop);
 
-    plaintext.set_content_body(MlsContentBody::Commit(content));
+    plaintext.set_content(MlsContentBody::Commit(content));
 
     // We have to re-sign, since we changed the content.
-    let mut signed_plaintext: MlsPlaintext = plaintext
-        .payload()
-        .clone()
-        .sign(backend, &bob_credential_bundle)
-        .expect("Error signing modified payload.");
-
-    // Set old confirmation tag
-    signed_plaintext.set_confirmation_tag(
-        original_plaintext
-            .confirmation_tag()
-            .expect("no confirmation tag on original message")
-            .clone(),
+    let signed_plaintext = resign_external_commit(
+        &bob_credential_bundle,
+        plaintext,
+        &original_plaintext,
+        alice_group
+            .export_group_context()
+            .tls_serialize_detached()
+            .expect("error serializing context"),
+        backend,
     );
-
-    let verifiable_plaintext: VerifiableMlsAuthContent =
-        VerifiableMlsAuthContent::from_plaintext(signed_plaintext, None);
-
     // Have alice process the commit resulting from external init.
-    let message_in = MlsMessageIn::from(verifiable_plaintext);
+    let message_in = MlsMessageIn::from(signed_plaintext);
 
     let err = alice_group
         .process_message(backend, message_in)
@@ -358,8 +346,10 @@ fn test_valsem242(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
         .unwrap();
 
         let serialized_message = message.tls_serialize_detached().unwrap();
-        let mut plaintext =
-            VerifiableMlsAuthContent::tls_deserialize(&mut serialized_message.as_slice()).unwrap();
+        let mut plaintext = MlsMessageIn::tls_deserialize(&mut serialized_message.as_slice())
+            .expect("Could not deserialize message.")
+            .into_plaintext()
+            .expect("Message was not a plaintext.");
 
         assert!(matches!(plaintext.sender(), Sender::NewMemberCommit));
         assert!(matches!(plaintext.content_type(), ContentType::Commit));
@@ -372,22 +362,21 @@ fn test_valsem242(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
             panic!("Unexpected content type.");
         };
         commit.proposals.push(proposal);
-        plaintext.set_content_body(MlsContentBody::Commit(commit.clone()));
+        plaintext.set_content(MlsContentBody::Commit(commit.clone()));
 
         // We have to re-sign, since we changed the content.
-        let mut signed_plaintext = plaintext
-            .payload()
-            .clone()
-            .sign(backend, &bob_credential_bundle)
-            .unwrap();
+        let signed_plaintext = resign_external_commit(
+            &bob_credential_bundle,
+            plaintext,
+            &original_plaintext,
+            alice_group
+                .export_group_context()
+                .tls_serialize_detached()
+                .expect("error serializing context"),
+            backend,
+        );
 
-        // Set old confirmation tag
-        signed_plaintext
-            .set_confirmation_tag(original_plaintext.confirmation_tag().unwrap().clone());
-
-        let verifiable_plaintext = VerifiableMlsAuthContent::from_plaintext(signed_plaintext, None);
-
-        let processed_msg = alice_group.process_message(backend, verifiable_plaintext.into());
+        let processed_msg = alice_group.process_message(backend, signed_plaintext.into());
 
         assert_eq!(
             processed_msg.unwrap_err(),
@@ -460,9 +449,10 @@ fn test_valsem243(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
         .tls_serialize_detached()
         .expect("Could not serialize message.");
 
-    let mut plaintext =
-        VerifiableMlsAuthContent::tls_deserialize(&mut serialized_message.as_slice())
-            .expect("Could not deserialize message.");
+    let mut plaintext = MlsMessageIn::tls_deserialize(&mut serialized_message.as_slice())
+        .expect("Could not deserialize message.")
+        .into_plaintext()
+        .expect("Message was not a plaintext.");
 
     let original_plaintext = plaintext.clone();
 
@@ -490,28 +480,22 @@ fn test_valsem243(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
 
     content.proposals.push(remove_proposal);
 
-    plaintext.set_content_body(MlsContentBody::Commit(content));
+    plaintext.set_content(MlsContentBody::Commit(content));
 
     // We have to re-sign, since we changed the content.
-    let mut signed_plaintext: MlsPlaintext = plaintext
-        .payload()
-        .clone()
-        .sign(backend, &bob_credential_bundle)
-        .expect("Error signing modified payload.");
-
-    // Set old confirmation tag
-    signed_plaintext.set_confirmation_tag(
-        original_plaintext
-            .confirmation_tag()
-            .expect("no confirmation tag on original message")
-            .clone(),
+    let signed_plaintext = resign_external_commit(
+        &bob_credential_bundle,
+        plaintext,
+        &original_plaintext,
+        alice_group
+            .export_group_context()
+            .tls_serialize_detached()
+            .expect("error serializing context"),
+        backend,
     );
 
-    let verifiable_plaintext: VerifiableMlsAuthContent =
-        VerifiableMlsAuthContent::from_plaintext(signed_plaintext, None);
-
     // Have alice process the commit resulting from external init.
-    let message_in = MlsMessageIn::from(verifiable_plaintext);
+    let message_in = MlsMessageIn::from(signed_plaintext);
 
     let err = alice_group.process_message(backend, message_in).expect_err(
         "Could process message despite the remove proposal targeting the wrong group member.",
@@ -589,28 +573,22 @@ fn test_valsem244(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
 
     content.proposals.push(proposal_reference);
 
-    plaintext.set_content_body(MlsContentBody::Commit(content));
+    plaintext.set_content(MlsContentBody::Commit(content));
 
     // We have to re-sign, since we changed the content.
-    let mut signed_plaintext: MlsPlaintext = plaintext
-        .payload()
-        .clone()
-        .sign(backend, &bob_credential_bundle)
-        .expect("Error signing modified payload.");
-
-    // Set old confirmation tag
-    signed_plaintext.set_confirmation_tag(
-        original_plaintext
-            .confirmation_tag()
-            .expect("no confirmation tag on original message")
-            .clone(),
+    let signed_plaintext = resign_external_commit(
+        &bob_credential_bundle,
+        plaintext,
+        &original_plaintext,
+        alice_group
+            .export_group_context()
+            .tls_serialize_detached()
+            .expect("error serializing context"),
+        backend,
     );
 
-    let verifiable_plaintext: VerifiableMlsAuthContent =
-        VerifiableMlsAuthContent::from_plaintext(signed_plaintext, None);
-
     // Have alice process the commit resulting from external init.
-    let message_in = MlsMessageIn::from(verifiable_plaintext);
+    let message_in = MlsMessageIn::from(signed_plaintext);
 
     let err = alice_group
         .process_message(backend, message_in)
@@ -649,28 +627,22 @@ fn test_valsem245(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
     // Remove the path from the commit
     content.path = None;
 
-    plaintext.set_content_body(MlsContentBody::Commit(content));
+    plaintext.set_content(MlsContentBody::Commit(content));
 
     // We have to re-sign, since we changed the content.
-    let mut signed_plaintext: MlsPlaintext = plaintext
-        .payload()
-        .clone()
-        .sign(backend, &bob_credential_bundle)
-        .expect("Error signing modified payload.");
-
-    // Set old confirmation tag
-    signed_plaintext.set_confirmation_tag(
-        original_plaintext
-            .confirmation_tag()
-            .expect("no confirmation tag on original message")
-            .clone(),
+    let signed_plaintext = resign_external_commit(
+        &bob_credential_bundle,
+        plaintext,
+        &original_plaintext,
+        alice_group
+            .export_group_context()
+            .tls_serialize_detached()
+            .expect("error serializing context"),
+        backend,
     );
 
-    let verifiable_plaintext: VerifiableMlsAuthContent =
-        VerifiableMlsAuthContent::from_plaintext(signed_plaintext, None);
-
     // Have alice process the commit resulting from external init.
-    let message_in = MlsMessageIn::from(verifiable_plaintext);
+    let message_in = MlsMessageIn::from(signed_plaintext);
 
     let err = alice_group
         .process_message(backend, message_in)
@@ -724,28 +696,22 @@ fn test_valsem246(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
         path.set_leaf_key_package(bob_new_key_package)
     }
 
-    plaintext.set_content_body(MlsContentBody::Commit(content));
+    plaintext.set_content(MlsContentBody::Commit(content));
 
     // We have to re-sign, since we changed the content.
-    let mut signed_plaintext: MlsPlaintext = plaintext
-        .payload()
-        .clone()
-        .sign(backend, &bob_credential_bundle)
-        .expect("Error signing modified payload.");
-
-    // Set old confirmation tag
-    signed_plaintext.set_confirmation_tag(
-        original_plaintext
-            .confirmation_tag()
-            .expect("no confirmation tag on original message")
-            .clone(),
+    let signed_plaintext = resign_external_commit(
+        &bob_credential_bundle,
+        plaintext,
+        &original_plaintext,
+        alice_group
+            .export_group_context()
+            .tls_serialize_detached()
+            .expect("error serializing context"),
+        backend,
     );
 
-    let verifiable_plaintext: VerifiableMlsAuthContent =
-        VerifiableMlsAuthContent::from_plaintext(signed_plaintext, None);
-
     // Have alice process the commit resulting from external init.
-    let message_in = MlsMessageIn::from(verifiable_plaintext);
+    let message_in = MlsMessageIn::from(signed_plaintext);
 
     let err = alice_group
         .process_message(backend, message_in)
@@ -771,9 +737,17 @@ fn test_valsem246(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
     assert_eq!(path_credential, bob_credential_bundle.credential());
 
     // This shows that the message is actually signed using this credential.
-    let verification_result: Result<MlsPlaintext, CredentialError> = original_plaintext
-        .clone()
-        .verify(backend, bob_credential_bundle.credential());
+    let auth_content = VerifiableMlsAuthContent::from_plaintext(
+        original_plaintext.clone(),
+        Some(
+            alice_group
+                .export_group_context()
+                .tls_serialize_detached()
+                .expect("error serializing context"),
+        ),
+    );
+    let verification_result: Result<MlsAuthContent, CredentialError> =
+        auth_content.verify(backend, bob_credential_bundle.credential());
     assert!(verification_result.is_ok());
 
     // Positive case

@@ -196,9 +196,10 @@ fn test_valsem002(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
         .tls_serialize_detached()
         .expect("Could not serialize message.");
 
-    let mut plaintext =
-        VerifiableMlsAuthContent::tls_deserialize(&mut serialized_message.as_slice())
-            .expect("Could not deserialize message.");
+    let mut plaintext = MlsMessageIn::tls_deserialize(&mut serialized_message.as_slice())
+        .expect("Could not deserialize message.")
+        .into_plaintext()
+        .expect("Message was not a plaintext.");
 
     let original_message = plaintext.clone();
 
@@ -265,9 +266,10 @@ fn test_valsem003(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
         .tls_serialize_detached()
         .expect("Could not serialize message.");
 
-    let mut plaintext =
-        VerifiableMlsAuthContent::tls_deserialize(&mut serialized_message.as_slice())
-            .expect("Could not deserialize message.");
+    let mut plaintext = MlsMessageIn::tls_deserialize(&mut serialized_message.as_slice())
+        .expect("Could not deserialize message.")
+        .into_plaintext()
+        .expect("Message was not a plaintext.");
 
     let original_message = plaintext.clone();
 
@@ -325,14 +327,28 @@ fn test_valsem004(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
         .tls_serialize_detached()
         .expect("Could not serialize message.");
 
-    let mut plaintext =
-        VerifiableMlsAuthContent::tls_deserialize(&mut serialized_message.as_slice())
-            .expect("Could not deserialize message.");
+    let mut plaintext = MlsMessageIn::tls_deserialize(&mut serialized_message.as_slice())
+        .expect("Could not deserialize message.")
+        .into_plaintext()
+        .expect("Message was not a plaintext.");
 
     let original_message = plaintext.clone();
 
     let random_sender = Sender::build_member(987);
     plaintext.set_sender(random_sender);
+
+    // The membership tag is checked before the sender, so we need to re-calculate it and set it
+    plaintext
+        .set_membership_tag(
+            backend,
+            &alice_group
+                .group()
+                .context()
+                .tls_serialize_detached()
+                .expect("Could not serialize the group context."),
+            alice_group.group().message_secrets().membership_key(),
+        )
+        .expect("Error setting membership tag.");
 
     let message_in = MlsMessageIn::from(plaintext);
 
@@ -371,13 +387,27 @@ fn test_valsem005(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
         .tls_serialize_detached()
         .expect("Could not serialize message.");
 
-    let mut plaintext =
-        VerifiableMlsAuthContent::tls_deserialize(&mut serialized_message.as_slice())
-            .expect("Could not deserialize message.");
+    let mut plaintext = MlsMessageIn::tls_deserialize(&mut serialized_message.as_slice())
+        .expect("Could not deserialize message.")
+        .into_plaintext()
+        .expect("Message was not a plaintext.");
 
     let original_message = plaintext.clone();
 
-    plaintext.set_content_body(MlsContentBody::Application(vec![1, 2, 3].into()));
+    plaintext.set_content(MlsContentBody::Application(vec![1, 2, 3].into()));
+
+    // The membership tag is checked before verifying content encryption, so we need to re-calculate it and set it
+    plaintext
+        .set_membership_tag(
+            backend,
+            &alice_group
+                .group()
+                .context()
+                .tls_serialize_detached()
+                .expect("Could not serialize the group context."),
+            alice_group.group().message_secrets().membership_key(),
+        )
+        .expect("Error setting membership tag.");
 
     let message_in = MlsMessageIn::from(plaintext);
 
@@ -416,8 +446,10 @@ fn test_valsem006(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
         .tls_serialize_detached()
         .expect("Could not serialize message.");
 
-    let mut ciphertext = MlsCiphertext::tls_deserialize(&mut serialized_message.as_slice())
-        .expect("Could not deserialize message.");
+    let mut ciphertext = MlsMessageIn::tls_deserialize(&mut serialized_message.as_slice())
+        .expect("Could not deserialize message.")
+        .into_ciphertext()
+        .expect("Message was not a plaintext.");
 
     let original_message = ciphertext.clone();
 
@@ -462,9 +494,10 @@ fn test_valsem007(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
         .tls_serialize_detached()
         .expect("Could not serialize message.");
 
-    let mut plaintext =
-        VerifiableMlsAuthContent::tls_deserialize(&mut serialized_message.as_slice())
-            .expect("Could not deserialize message.");
+    let mut plaintext = MlsMessageIn::tls_deserialize(&mut serialized_message.as_slice())
+        .expect("Could not deserialize message.")
+        .into_plaintext()
+        .expect("Message was not a plaintext.");
 
     let original_message = plaintext.clone();
 
@@ -508,13 +541,14 @@ fn test_valsem008(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
         .tls_serialize_detached()
         .expect("Could not serialize message.");
 
-    let mut plaintext =
-        VerifiableMlsAuthContent::tls_deserialize(&mut serialized_message.as_slice())
-            .expect("Could not deserialize message.");
+    let mut plaintext = MlsMessageIn::tls_deserialize(&mut serialized_message.as_slice())
+        .expect("Could not deserialize message.")
+        .into_plaintext()
+        .expect("Message was not a plaintext.");
 
     let original_message = plaintext.clone();
 
-    plaintext.set_membership_tag(MembershipTag(
+    plaintext.set_membership_tag_test(MembershipTag(
         Mac::new(backend, &Secret::default(), &[1, 2, 3])
             .expect("Could not compute membership tag."),
     ));
@@ -525,7 +559,10 @@ fn test_valsem008(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
         .process_message(backend, message_in)
         .expect_err("Could process message despite wrong membership tag.");
 
-    assert_eq!(err, ProcessMessageError::InvalidMembershipTag);
+    assert_eq!(
+        err,
+        ProcessMessageError::ValidationError(ValidationError::InvalidMembershipTag)
+    );
 
     // Positive case
     bob_group
@@ -553,13 +590,27 @@ fn test_valsem009(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
         .tls_serialize_detached()
         .expect("Could not serialize message.");
 
-    let mut plaintext =
-        VerifiableMlsAuthContent::tls_deserialize(&mut serialized_message.as_slice())
-            .expect("Could not deserialize message.");
+    let mut plaintext = MlsMessageIn::tls_deserialize(&mut serialized_message.as_slice())
+        .expect("Could not deserialize message.")
+        .into_plaintext()
+        .expect("Message was not a plaintext.");
 
     let original_message = plaintext.clone();
 
     plaintext.set_confirmation_tag(None);
+
+    // The membership tag covers the confirmation tag, so we need to re-calculate it and set it
+    plaintext
+        .set_membership_tag(
+            backend,
+            &alice_group
+                .group()
+                .context()
+                .tls_serialize_detached()
+                .expect("Could not serialize the group context."),
+            alice_group.group().message_secrets().membership_key(),
+        )
+        .expect("Error setting membership tag.");
 
     let message_in = MlsMessageIn::from(plaintext);
 
@@ -599,52 +650,28 @@ fn test_valsem010(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
         .tls_serialize_detached()
         .expect("Could not serialize message.");
 
-    let mut plaintext =
-        VerifiableMlsAuthContent::tls_deserialize(&mut serialized_message.as_slice())
-            .expect("Could not deserialize message.");
+    let mut plaintext = MlsMessageIn::tls_deserialize(&mut serialized_message.as_slice())
+        .expect("Could not deserialize message.")
+        .into_plaintext()
+        .expect("Message was not a plaintext.");
 
     let original_message = plaintext.clone();
 
-    let confirmation_tag = Some(
-        plaintext
-            .confirmation_tag()
-            .expect("Expected confirmation tag.")
-            .clone(),
-    );
-
-    // Create fake signature
-    let mut signature = plaintext.signature().clone();
-    signature.modify(&[1, 2, 3]);
+    // Invalidate signature
+    plaintext.invalidate_signature();
 
     // The membership tag covers the signature, so we need to re-calculate it and set it
-
-    // Set the serialized group context
-    plaintext.set_context(
-        alice_group
-            .group()
-            .context()
-            .tls_serialize_detached()
-            .expect("Could not serialize the group context."),
-    );
-    let tbs_payload = plaintext
-        .payload()
-        .tls_serialize_detached()
-        .expect("Could not serialize Tbs.");
-    let auth_data = MlsContentAuthData::new(signature.clone(), confirmation_tag);
-    let tbm_payload =
-        MlsContentTbm::new(&tbs_payload, &auth_data).expect("Could not create MlsContentTbm.");
-    let new_membership_tag = alice_group
-        .group()
-        .message_secrets()
-        .membership_key()
-        .tag(backend, tbm_payload)
-        .expect("Could not create membership tag.");
-
-    // Set the fake signature
-    plaintext.set_signature(signature);
-
-    // Set the new membership tag
-    plaintext.set_membership_tag(new_membership_tag);
+    plaintext
+        .set_membership_tag(
+            backend,
+            &alice_group
+                .group()
+                .context()
+                .tls_serialize_detached()
+                .expect("Could not serialize the group context."),
+            alice_group.group().message_secrets().membership_key(),
+        )
+        .expect("Error setting membership tag.");
 
     let message_in = MlsMessageIn::from(plaintext);
 

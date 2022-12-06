@@ -6,13 +6,13 @@
 
 use crate::{
     ciphersuite::signable::Signable, credentials::*, framing::*, group::*, key_packages::*,
-    messages::proposals::*, messages::public_group_state::*, messages::*,
-    prelude_test::signable::Verifiable, schedule::psk::*, test_utils::*, tree::sender_ratchet::*,
-    treesync::node::Node, versions::ProtocolVersion,
+    messages::proposals::*, messages::public_group_state::*, messages::*, schedule::psk::*,
+    test_utils::*, tree::sender_ratchet::*, treesync::node::Node, versions::ProtocolVersion,
 };
 
 use openmls_rust_crypto::OpenMlsRustCrypto;
 use openmls_traits::{random::OpenMlsRand, types::SignatureScheme, OpenMlsCryptoProvider};
+use rand::{rngs::OsRng, RngCore};
 use serde::{self, Deserialize, Serialize};
 use thiserror::Error;
 use tls_codec::{Deserialize as TlsDeserialize, Serialize as TlsSerialize, TlsSliceU32, TlsVecU32};
@@ -175,7 +175,7 @@ pub fn generate_test_vector(ciphersuite: Ciphersuite) -> MessagesTestVector {
 
     let framing_parameters = FramingParameters::new(b"aad", WireFormat::MlsCiphertext);
 
-    let add_proposal_pt = group
+    let add_proposal_content = group
         .create_add_proposal(
             framing_parameters,
             &credential_bundle,
@@ -185,7 +185,7 @@ pub fn generate_test_vector(ciphersuite: Ciphersuite) -> MessagesTestVector {
         .expect("An unexpected error occurred.");
 
     let mut proposal_store = ProposalStore::from_queued_proposal(
-        QueuedProposal::from_mls_plaintext(ciphersuite, &crypto, add_proposal_pt.clone())
+        QueuedProposal::from_mls_plaintext(ciphersuite, &crypto, add_proposal_content.clone())
             .expect("An unexpected error occurred."),
     );
     let params = CreateCommitParams::builder()
@@ -235,12 +235,6 @@ pub fn generate_test_vector(ciphersuite: Ciphersuite) -> MessagesTestVector {
         )
         .expect("An unexpected error occurred.");
     // Sets the context implicitly.
-    let credential = group
-        .treesync()
-        .own_leaf_node()
-        .expect("An unexpected error occurred.")
-        .key_package()
-        .credential();
     if !verifiable_mls_plaintext_application.has_context() {
         verifiable_mls_plaintext_application.set_context(
             group
@@ -249,16 +243,27 @@ pub fn generate_test_vector(ciphersuite: Ciphersuite) -> MessagesTestVector {
                 .expect("Anunexpected error occured."),
         );
     }
-    let mls_plaintext_application: MlsPlaintext = verifiable_mls_plaintext_application
-        .verify(&crypto, credential)
-        .expect("Could not verify MlsPlaintext.");
+    let mls_content_application: MlsAuthContent = verifiable_mls_plaintext_application.into();
 
     let encryption_target = match random_u32() % 3 {
         0 => create_commit_result.commit.clone(),
-        1 => add_proposal_pt.clone(),
-        2 => mls_plaintext_application.clone(),
+        1 => add_proposal_content.clone(),
+        2 => mls_content_application.clone(),
         _ => panic!("Modulo 3 of u32 shouldn't give us anything larger than 2"),
     };
+
+    let mut mac_value = vec![0u8; group.ciphersuite().hash_length()];
+    OsRng.fill_bytes(&mut mac_value);
+    let random_membership_tag = MembershipTag(Mac {
+        mac_value: mac_value.into(),
+    });
+
+    let mut application_pt: MlsPlaintext = mls_content_application.into();
+    application_pt.set_membership_tag_test(random_membership_tag.clone());
+    let mut proposal_pt: MlsPlaintext = add_proposal_content.into();
+    proposal_pt.set_membership_tag_test(random_membership_tag.clone());
+    let mut commit_pt: MlsPlaintext = create_commit_result.commit.into();
+    commit_pt.set_membership_tag_test(random_membership_tag);
 
     let mls_ciphertext = group
         .encrypt(encryption_target, random_u8() as usize, &crypto)
@@ -347,18 +352,17 @@ pub fn generate_test_vector(ciphersuite: Ciphersuite) -> MessagesTestVector {
         ), /* serialized Commit */
 
         mls_plaintext_application: bytes_to_hex(
-            &mls_plaintext_application
+            &application_pt
                 .tls_serialize_detached()
                 .expect("An unexpected error occurred."),
         ), /* serialized MLSPlaintext(ApplicationData) */
         mls_plaintext_proposal: bytes_to_hex(
-            &add_proposal_pt
+            &proposal_pt
                 .tls_serialize_detached()
                 .expect("An unexpected error occurred."),
         ), /* serialized MLSPlaintext(Proposal(*)) */
         mls_plaintext_commit: bytes_to_hex(
-            &create_commit_result
-                .commit
+            &commit_pt
                 .tls_serialize_detached()
                 .expect("An unexpected error occurred."),
         ), /* serialized MLSPlaintext(Commit) */
@@ -615,7 +619,7 @@ pub fn run_test_vector(tv: MessagesTestVector) -> Result<(), MessagesTestVectorE
     // Fake the wire format so we can deserialize
     tv_mls_plaintext_application[0] = WireFormat::MlsPlaintext as u8;
     let my_mls_plaintext_application =
-        VerifiableMlsAuthContent::tls_deserialize(&mut tv_mls_plaintext_application.as_slice())
+        MlsPlaintext::tls_deserialize(&mut tv_mls_plaintext_application.as_slice())
             .expect("An unexpected error occurred.")
             .tls_serialize_detached()
             .expect("An unexpected error occurred.");
@@ -634,7 +638,7 @@ pub fn run_test_vector(tv: MessagesTestVector) -> Result<(), MessagesTestVectorE
     // Fake the wire format so we can deserialize
     tv_mls_plaintext_proposal[0] = WireFormat::MlsPlaintext as u8;
     let my_mls_plaintext_proposal =
-        VerifiableMlsAuthContent::tls_deserialize(&mut tv_mls_plaintext_proposal.as_slice())
+        MlsPlaintext::tls_deserialize(&mut tv_mls_plaintext_proposal.as_slice())
             .expect("An unexpected error occurred.")
             .tls_serialize_detached()
             .expect("An unexpected error occurred.");
@@ -653,7 +657,7 @@ pub fn run_test_vector(tv: MessagesTestVector) -> Result<(), MessagesTestVectorE
     // Fake the wire format so we can deserialize
     tv_mls_plaintext_commit[0] = WireFormat::MlsPlaintext as u8;
     let my_mls_plaintext_commit =
-        VerifiableMlsAuthContent::tls_deserialize(&mut tv_mls_plaintext_commit.as_slice())
+        MlsPlaintext::tls_deserialize(&mut tv_mls_plaintext_commit.as_slice())
             .expect("An unexpected error occurred.")
             .tls_serialize_detached()
             .expect("An unexpected error occurred.");
