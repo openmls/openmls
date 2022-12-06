@@ -1,6 +1,6 @@
 # OpenMLS testing proposition
 
-The purpose of this document is to improve tests in openmls and try to agree on a common standard for writing them.
+The purpose of this document is to define a testing infrastructure and guidelines how to write test.
 
 ## Current status
 
