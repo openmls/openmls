@@ -52,7 +52,8 @@ To achieve these goals, here are the "rules"/recommendations to set up:
     1. follow the template `should_{expected_behaviour}_when_{state_tested}`
        e.g. `should_succeed_when_...` & `should_fail_when_...` and use natural language
     2. not be prefixed by `test_`
-    3. `ValSem` should not be in the test method name but kept in comment
+   3. `ValSem` should not be in the test method name but kept in comment (will be fixed
+      by [#1126](https://github.com/openmls/openmls/issues/1126))
 8. There should not be a `test-utils` feature (best effort). All those helpers should be `#[cfg(test)]` instead and used
    only in unit tests
 9. Utilities shouldn't unwrap Results to give a chance, depending on the context, to assert an error. Hence, they should
