@@ -6,8 +6,9 @@ The purpose of this document is to improve tests in openmls and try to agree on 
 
 Here are some factual remarks about the current state of tests.
 
-1. erratic: no clear pattern emerges. It looks like tests have been piled up at different times by different persons.
-   There are very few unit tests, some integration tests in `src/` and some other integration tests in `tests/`
+1. erratic: no clear pattern emerges. It looks like tests have been piled up at different times by different persons
+   without shared, well-established rules. There are very few unit tests, some integration tests in `src/` and some
+   other integration tests in `tests/`
 2. too verbose: some domain are of course complex and hard to test, but some simpler ones require thousands of lines to
    get tested
 3. not idiomatic: one of the recommended way to write tests in Rust is to write unit tests in the same file as the
