@@ -1,57 +1,46 @@
-use tls_codec::{Deserialize, Serialize, Size, TlsByteVecU32, TlsByteVecU8};
+use tls_codec::{Deserialize, Serialize, Size};
 
 use super::*;
 use std::io::{Read, Write};
 
-impl Deserialize for VerifiableMlsAuthContent {
+impl Deserialize for MlsPlaintext {
     fn tls_deserialize<R: Read>(bytes: &mut R) -> Result<Self, tls_codec::Error> {
-        let wire_format = WireFormat::tls_deserialize(bytes)?;
+        println!("starting to decode pt");
         let content: MlsContent = MlsContent::tls_deserialize(bytes)?;
         let auth = deserialize_content_auth_data(bytes, content.body.content_type())?;
-        let membership_tag = Option::<MembershipTag>::tls_deserialize(bytes)?;
+        let membership_tag = if content.sender.is_member() {
+            Some(MembershipTag::tls_deserialize(bytes)?)
+        } else {
+            None
+        };
 
-        // ValSem001: Check the wire format
-        if wire_format != WireFormat::MlsPlaintext {
-            return Err(tls_codec::Error::DecodingError(
-                "Wrong wire format.".to_string(),
-            ));
-        }
-
-        let verifiable = VerifiableMlsAuthContent::new(
-            MlsContentTbs::new(
-                wire_format,
-                content.group_id,
-                content.epoch,
-                content.sender,
-                content.authenticated_data,
-                content.body,
-            ),
-            auth,
-            membership_tag,
-        );
-
-        Ok(verifiable)
+        Ok(MlsPlaintext::new(content, auth, membership_tag))
     }
 }
 
-impl Size for VerifiableMlsAuthContent {
+impl Size for MlsPlaintext {
     #[inline]
     fn tls_serialized_len(&self) -> usize {
-        self.tbs.wire_format.tls_serialized_len()
-            + self.tbs.content.tls_serialized_len()
+        self.content.tls_serialized_len()
             + self.auth.tls_serialized_len()
-            + self.membership_tag.tls_serialized_len()
+            + if let Some(membership_tag) = &self.membership_tag {
+                membership_tag.tls_serialized_len()
+            } else {
+                0
+            }
     }
 }
 
-impl Serialize for VerifiableMlsAuthContent {
+impl Serialize for MlsPlaintext {
     fn tls_serialize<W: Write>(&self, writer: &mut W) -> Result<usize, tls_codec::Error> {
-        let mut written = self.tbs.wire_format.tls_serialize(writer)?;
-        written += self.tbs.content.tls_serialize(writer)?;
+        let mut written = self.content.tls_serialize(writer)?;
         written += self.auth.tls_serialize(writer)?;
-        self.membership_tag
-            .tls_serialize(writer)
-            .map(|l| l + written)
+        written += if let Some(membership_tag) = &self.membership_tag {
+            membership_tag.tls_serialize(writer)?
+        } else {
+            0
+        };
+        Ok(written)
     }
 }
 
