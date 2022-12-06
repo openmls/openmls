@@ -1512,10 +1512,10 @@
     }
 
     <span class="doccomment">/// Get the message secrets. Either from the secrets store or from the group.
-    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>message_secrets_mut&lt;<span class="lifetime">&#39;secret</span>, <span class="lifetime">&#39;group</span>: <span class="lifetime">&#39;secret</span>&gt;(
-        <span class="kw-2">&amp;</span><span class="lifetime">&#39;group </span><span class="kw-2">mut </span><span class="self">self</span>,
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>message_secrets_mut(
+        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
         epoch: GroupEpoch,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;secret </span><span class="kw-2">mut </span>MessageSecrets, SecretTreeError&gt; {
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="kw-2">&amp;mut </span>MessageSecrets, SecretTreeError&gt; {
         <span class="kw">if </span>epoch &lt; <span class="self">self</span>.context().epoch() {
             <span class="self">self</span>.message_secrets_store
                 .secrets_for_epoch_mut(epoch)
@@ -1526,10 +1526,10 @@
     }
 
     <span class="doccomment">/// Get the message secrets. Either from the secrets store or from the group.
-    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>message_secrets_for_epoch&lt;<span class="lifetime">&#39;secret</span>, <span class="lifetime">&#39;group</span>: <span class="lifetime">&#39;secret</span>&gt;(
-        <span class="kw-2">&amp;</span><span class="lifetime">&#39;group </span><span class="self">self</span>,
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>message_secrets_for_epoch(
+        <span class="kw-2">&amp;</span><span class="self">self</span>,
         epoch: GroupEpoch,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;secret </span>MessageSecrets, SecretTreeError&gt; {
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="kw-2">&amp;</span>MessageSecrets, SecretTreeError&gt; {
         <span class="kw">if </span>epoch &lt; <span class="self">self</span>.context().epoch() {
             <span class="self">self</span>.message_secrets_store
                 .secrets_for_epoch(epoch)
@@ -1544,10 +1544,10 @@
     ///
     /// Note that the leaves vector is empty for message secrets of the current
     /// epoch. The caller can use treesync in this case.
-    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>message_secrets_and_leaves_mut&lt;<span class="lifetime">&#39;secret</span>, <span class="lifetime">&#39;group</span>: <span class="lifetime">&#39;secret</span>&gt;(
-        <span class="kw-2">&amp;</span><span class="lifetime">&#39;group </span><span class="kw-2">mut </span><span class="self">self</span>,
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>message_secrets_and_leaves_mut(
+        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
         epoch: GroupEpoch,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;(<span class="kw-2">&amp;</span><span class="lifetime">&#39;secret </span><span class="kw-2">mut </span>MessageSecrets, <span class="kw-2">&amp;</span>[Member]), MessageDecryptionError&gt; {
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;(<span class="kw-2">&amp;mut </span>MessageSecrets, <span class="kw-2">&amp;</span>[Member]), MessageDecryptionError&gt; {
         <span class="kw">if </span>epoch &lt; <span class="self">self</span>.context().epoch() {
             <span class="self">self</span>.message_secrets_store
                 .secrets_and_leaves_for_epoch_mut(epoch)
