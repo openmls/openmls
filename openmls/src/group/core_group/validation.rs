@@ -52,7 +52,6 @@ impl CoreGroup {
     /// Checks the following semantic validation:
     ///  - ValSem004
     ///  - ValSem005
-    ///  - ValSem007
     ///  - ValSem009
     pub(crate) fn validate_plaintext(
         &self,
@@ -81,17 +80,6 @@ impl CoreGroup {
             } else if !plaintext.sender().is_member() {
                 return Err(ValidationError::NonMemberApplicationMessage);
             }
-        }
-
-        // ValSem007
-        // If the sender is of type member and the message was not an MlsCiphertext,
-        // the member has to prove its ownership by adding a membership tag.
-        // The membership tag is checkecked in ValSem008.
-        if plaintext.sender().is_member()
-            && plaintext.wire_format() != WireFormat::MlsCiphertext
-            && plaintext.membership_tag().is_none()
-        {
-            return Err(ValidationError::MissingMembershipTag);
         }
 
         // ValSem009

@@ -59,48 +59,63 @@ pub(crate) struct DecryptedMessage {
 impl DecryptedMessage {
     /// Constructs a [DecryptedMessage] from a [VerifiableMlsAuthContent].
     pub(crate) fn from_inbound_plaintext(
-        inbound_message: MlsMessageIn,
+        plaintext: MlsPlaintext,
+        message_secrets: &MessageSecrets,
+        backend: &impl OpenMlsCryptoProvider,
     ) -> Result<Self, ValidationError> {
-        if let MlsMessageBody::Plaintext(plaintext) = inbound_message.mls_message.body {
-            Self::from_plaintext(plaintext)
-        } else {
-            Err(ValidationError::WrongWireFormat)
+        if plaintext.sender().is_member() {
+            // Verify the membership tag. This needs to be done explicitly for MlsPlaintext messages,
+            // it is implicit for MlsCiphertext messages (because the encryption can only be known by members).
+            // ValSem007 Membership tag presence
+            // ValSem008
+            plaintext.verify_membership(
+                backend,
+                message_secrets.membership_key(),
+                message_secrets.serialized_context(),
+            )?;
         }
+
+        let context = if matches!(
+            plaintext.sender(),
+            Sender::NewMemberCommit | Sender::Member(_)
+        ) {
+            Some(message_secrets.serialized_context().to_vec())
+        } else {
+            None
+        };
+
+        Self::from_plaintext(VerifiableMlsAuthContent::from_plaintext(plaintext, context))
     }
 
     /// Constructs a [DecryptedMessage] from a [MlsCiphertext] by attempting to decrypt it
     /// to a [VerifiableMlsAuthContent] first.
     pub(crate) fn from_inbound_ciphertext(
-        inbound_message: MlsMessageIn,
+        ciphertext: MlsCiphertext,
         backend: &impl OpenMlsCryptoProvider,
         group: &mut CoreGroup,
         sender_ratchet_configuration: &SenderRatchetConfiguration,
     ) -> Result<Self, ValidationError> {
         // This will be refactored with #265.
-        if let MlsMessageBody::Ciphertext(ciphertext) = inbound_message.mls_message.body {
-            let ciphersuite = group.ciphersuite();
-            // TODO: #819 The old leaves should not be needed any more.
-            //       Revisit when the transition is further along.
-            let (message_secrets, _old_leaves) = group
-                .message_secrets_and_leaves_mut(ciphertext.epoch())
-                .map_err(|_| MessageDecryptionError::AeadError)?;
-            let sender_data = ciphertext.sender_data(message_secrets, backend, ciphersuite)?;
-            let sender_index = SecretTreeLeafIndex(sender_data.leaf_index);
-            let message_secrets = group
-                .message_secrets_mut(ciphertext.epoch())
-                .map_err(|_| MessageDecryptionError::AeadError)?;
-            let plaintext = ciphertext.to_plaintext(
-                ciphersuite,
-                backend,
-                message_secrets,
-                sender_index,
-                sender_ratchet_configuration,
-                sender_data,
-            )?;
-            Self::from_plaintext(plaintext)
-        } else {
-            Err(ValidationError::WrongWireFormat)
-        }
+        let ciphersuite = group.ciphersuite();
+        // TODO: #819 The old leaves should not be needed any more.
+        //       Revisit when the transition is further along.
+        let (message_secrets, _old_leaves) = group
+            .message_secrets_and_leaves_mut(ciphertext.epoch())
+            .map_err(|_| MessageDecryptionError::AeadError)?;
+        let sender_data = ciphertext.sender_data(message_secrets, backend, ciphersuite)?;
+        let sender_index = SecretTreeLeafIndex(sender_data.leaf_index);
+        let message_secrets = group
+            .message_secrets_mut(ciphertext.epoch())
+            .map_err(|_| MessageDecryptionError::AeadError)?;
+        let plaintext = ciphertext.to_plaintext(
+            ciphersuite,
+            backend,
+            message_secrets,
+            sender_index,
+            sender_ratchet_configuration,
+            sender_data,
+        )?;
+        Self::from_plaintext(plaintext)
     }
 
     // Internal constructor function. Does the following checks:
@@ -108,13 +123,6 @@ impl DecryptedMessage {
     // - Membership tag must be present for member messages, if the original incoming message was not an MlsCiphertext
     // - Ensures application messages were originally MlsCiphertext messages
     fn from_plaintext(plaintext: VerifiableMlsAuthContent) -> Result<Self, ValidationError> {
-        // ValSem007
-        if plaintext.sender().is_member()
-            && plaintext.wire_format() != WireFormat::MlsCiphertext
-            && plaintext.membership_tag().is_none()
-        {
-            return Err(ValidationError::MissingMembershipTag);
-        }
         // ValSem009
         if plaintext.content_type() == ContentType::Commit && plaintext.confirmation_tag().is_none()
         {
@@ -265,30 +273,16 @@ impl UnverifiedContextMessage {
     ///  - ValSem008
     pub(crate) fn from_unverified_message(
         unverified_message: UnverifiedMessage,
-        message_secrets: &MessageSecrets,
-        backend: &impl OpenMlsCryptoProvider,
-    ) -> Result<Self, ValidationError> {
+    ) -> Result<Self, LibraryError> {
         // Decompose UnverifiedMessage
-        let (mut plaintext, credential_option) = unverified_message.into_parts();
-
-        if plaintext.sender().is_member() {
-            // Add serialized context to plaintext. This is needed for signature & membership verification.
-            plaintext.set_context(message_secrets.serialized_context().to_vec());
-            // Verify the membership tag. This needs to be done explicitly for MlsPlaintext messages,
-            // it is implicit for MlsCiphertext messages (because the encryption can only be known by members).
-            if plaintext.wire_format() != WireFormat::MlsCiphertext {
-                // ValSem008
-                plaintext.verify_membership(backend, message_secrets.membership_key())?;
-            }
-        }
+        let (plaintext, credential_option) = unverified_message.into_parts();
         match plaintext.sender() {
             Sender::Member(_) => {
                 Ok(UnverifiedContextMessage::Group(UnverifiedGroupMessage {
                     plaintext,
                     // If the message type is `Member` it always contains credentials
-                    credential: credential_option.ok_or_else(|| {
-                        ValidationError::from(LibraryError::custom("Expected credential"))
-                    })?,
+                    credential: credential_option
+                        .ok_or_else(|| LibraryError::custom("Expected credential"))?,
                 }))
             }
             // TODO #151/#106: We don't support external senders yet
@@ -298,9 +292,8 @@ impl UnverifiedContextMessage {
                     UnverifiedNewMemberMessage {
                         plaintext,
                         // If the message type is `NewMemberCommit` or `NewMemberProposal` it always contains credentials
-                        credential: credential_option.ok_or_else(|| {
-                            ValidationError::from(LibraryError::custom("Expected credential"))
-                        })?,
+                        credential: credential_option
+                            .ok_or_else(|| LibraryError::custom("Expected credential"))?,
                     },
                 ))
             }

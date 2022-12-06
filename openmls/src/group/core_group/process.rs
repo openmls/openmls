@@ -31,14 +31,25 @@ impl CoreGroup {
         //  - ValSem003
         self.validate_framing(&message)?;
 
+        let epoch = message.epoch();
+
         // Checks the following semantic validation:
         //  - ValSem006
-        let decrypted_message = match message.wire_format() {
-            WireFormat::MlsPlaintext => DecryptedMessage::from_inbound_plaintext(message)?,
-            WireFormat::MlsCiphertext => {
+        //  - ValSem007 MembershipTag presence
+        let decrypted_message = match message.mls_message.body {
+            MlsMessageBody::Plaintext(plaintext) => {
+                // If the message is older than the current epoch, we need to fetch the correct secret tree first.
+                let message_secrets =
+                    self.message_secrets_for_epoch(epoch).map_err(|e| match e {
+                        SecretTreeError::TooDistantInThePast => ValidationError::NoPastEpochData,
+                        _ => LibraryError::custom("Unexpected return value").into(),
+                    })?;
+                DecryptedMessage::from_inbound_plaintext(plaintext, message_secrets, backend)?
+            }
+            MlsMessageBody::Ciphertext(ciphertext) => {
                 // If the message is older than the current epoch, we need to fetch the correct secret tree first
                 DecryptedMessage::from_inbound_ciphertext(
-                    message,
+                    ciphertext,
                     backend,
                     self,
                     sender_ratchet_configuration,
@@ -49,7 +60,6 @@ impl CoreGroup {
         // Checks the following semantic validation:
         //  - ValSem004
         //  - ValSem005
-        //  - ValSem007
         //  - ValSem009
         self.validate_plaintext(decrypted_message.plaintext())?;
 
