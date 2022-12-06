@@ -393,29 +393,22 @@ impl CoreGroup {
     ///  - ValSem242: External Commit must only cover inline proposal in allowlist (ExternalInit, Remove, PreSharedKey)
     ///  - ValSem243: External Commit, inline Remove Proposal: The identity and the endpoint_id of the removed
     ///               leaf are identical to the ones in the path KeyPackage.
-    ///  - ValSem244: External Commit, referenced Proposals: There MUST NOT be any ExternalInit proposals.
     pub(crate) fn validate_external_commit(
         &self,
         proposal_queue: &ProposalQueue,
         path_leaf_node: Option<&LeafNode>,
     ) -> Result<(), ExternalCommitValidationError> {
-        let mut external_init_proposals =
-            proposal_queue.filtered_by_type(ProposalType::ExternalInit);
-        // ValSem240: External Commit, inline Proposals: There MUST be at least one ExternalInit proposal.
-        if let Some(external_init_proposal) = external_init_proposals.next() {
-            // ValSem244: External Commit, referenced Proposals: There MUST NOT be any ExternalInit proposals.
-            if external_init_proposal.proposal_or_ref_type() == ProposalOrRefType::Reference {
-                return Err(ExternalCommitValidationError::ReferencedExternalInitProposal);
-            }
-        } else {
+        let count_external_init_proposals = proposal_queue
+            .filtered_by_type(ProposalType::ExternalInit)
+            .count();
+        if count_external_init_proposals == 0 {
+            // ValSem240: External Commit, inline Proposals: There MUST be at least one ExternalInit proposal.
             return Err(ExternalCommitValidationError::NoExternalInitProposals);
-        };
-
-        // ValSem241: External Commit, inline Proposals: There MUST be at most one ExternalInit proposal.
-        if external_init_proposals.next().is_some() {
-            // ValSem244: External Commit, referenced Proposals: There MUST NOT be any ExternalInit proposals.
+        } else if count_external_init_proposals > 1 {
+            // ValSem241: External Commit, inline Proposals: There MUST be at most one ExternalInit proposal.
             return Err(ExternalCommitValidationError::MultipleExternalInitProposals);
         }
+
         // ValSem242: External Commit must only cover inline proposal in allowlist (ExternalInit, Remove, PreSharedKey)
         let contains_denied_proposal = proposal_queue.queued_proposals().any(|p| {
             let is_inline = p.proposal_or_ref_type() == ProposalOrRefType::Proposal;

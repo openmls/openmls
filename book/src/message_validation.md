@@ -89,6 +89,6 @@ The following is a list of the individual semantic validation steps performed by
 | `ValSem241`    | External Commit must cover at most one inline ExternalInit proposal                               | ✅           | ✅      | `openmls/src/group/tests/test_external_commit_validation.rs` |
 | `ValSem242`    | External Commit must only cover inline proposal in allowlist (ExternalInit, Remove, PreSharedKey) | ✅           | ✅      | `openmls/src/group/tests/test_external_commit_validation.rs` |
 | `ValSem243`    | Identity of inline Remove proposal target and external committer must be the same                 | ✅           | ✅      | `openmls/src/group/tests/test_external_commit_validation.rs` |
-| `ValSem244`    | External Commit must not cover any ExternalInit proposals by reference                            | ✅           | ✅      | `openmls/src/group/tests/test_external_commit_validation.rs` |
+| `ValSem244`    | External Commit must not include any proposals by reference                                       | ✅           | ✅      | `openmls/src/group/tests/test_external_commit_validation.rs` |
 | `ValSem245`    | External Commit must contain a path                                                               | ✅           | ✅      | `openmls/src/group/tests/test_external_commit_validation.rs` |
 | `ValSem246`    | External Commit signature must be verified using the credential in the path KeyPackage            | ✅           | ✅      | `openmls/src/group/tests/test_external_commit_validation.rs` |
