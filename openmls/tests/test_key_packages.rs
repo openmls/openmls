@@ -49,15 +49,6 @@ fn key_package_generation(ciphersuite: Ciphersuite, backend: &impl OpenMlsCrypto
             ],
             capabilities_extension.extensions()
         );
-
-        // Get the lifetime extension. It's added automatically.
-        let lifetime_extension = extensions
-            .iter()
-            .find(|e| e.extension_type() == ExtensionType::Lifetime)
-            .expect("Lifetime extension is missing in key package");
-        let _lifetime_extension = lifetime_extension
-            .as_lifetime_extension()
-            .expect("An unexpected error occurred.");
     }
 
     // Add and retrieve a key package ID.

@@ -106,7 +106,7 @@ fn test_update_proposal_encoding(backend: &impl OpenMlsCryptoProvider) {
             None,
             None,
         ));
-        let lifetime_extension = Extension::LifeTime(LifetimeExtension::new(60));
+        let lifetime_extension = Extension::Lifetime(LifetimeExtension::new(60));
         let mandatory_extensions: Vec<Extension> = vec![capabilities_extension, lifetime_extension];
 
         let key_package_bundle = KeyPackageBundle::new(
@@ -121,7 +121,7 @@ fn test_update_proposal_encoding(backend: &impl OpenMlsCryptoProvider) {
             .create_update_proposal(
                 framing_parameters,
                 credential_bundle,
-                key_package_bundle.key_package().clone(),
+                key_package_bundle.key_package().leaf_node().clone(),
                 backend,
             )
             .expect("Could not create proposal.")
@@ -171,7 +171,7 @@ fn test_add_proposal_encoding(backend: &impl OpenMlsCryptoProvider) {
             None,
             None,
         ));
-        let lifetime_extension = Extension::LifeTime(LifetimeExtension::new(60));
+        let lifetime_extension = Extension::Lifetime(LifetimeExtension::new(60));
         let mandatory_extensions: Vec<Extension> = vec![capabilities_extension, lifetime_extension];
 
         let key_package_bundle = KeyPackageBundle::new(
@@ -204,7 +204,28 @@ fn test_add_proposal_encoding(backend: &impl OpenMlsCryptoProvider) {
         let add_encoded = add
             .tls_serialize_detached()
             .expect("Could not encode proposal.");
+<<<<<<< HEAD
         let add_decoded = MlsPlaintext::tls_deserialize(&mut add_encoded.as_slice())
+=======
+        let mut verifiable_plaintext =
+            VerifiableMlsAuthContent::tls_deserialize(&mut add_encoded.as_slice())
+                .expect("An unexpected error occurred.");
+
+        verifiable_plaintext.set_context(
+            group_state
+                .context()
+                .tls_serialize_detached()
+                .expect("An unexpected error occurred."),
+        );
+
+        let credential = group_state
+            .treesync()
+            .own_leaf_node()
+            .expect("An unexpected error occurred.")
+            .credential();
+        let add_decoded = verifiable_plaintext
+            .verify(backend, credential)
+>>>>>>> main
             .expect("An unexpected error occurred.");
 
         assert_eq!(add, add_decoded);
@@ -246,7 +267,28 @@ fn test_remove_proposal_encoding(backend: &impl OpenMlsCryptoProvider) {
         let remove_encoded = remove
             .tls_serialize_detached()
             .expect("Could not encode proposal.");
+<<<<<<< HEAD
         let remove_decoded = MlsPlaintext::tls_deserialize(&mut remove_encoded.as_slice())
+=======
+        let mut verifiable_plaintext =
+            VerifiableMlsAuthContent::tls_deserialize(&mut remove_encoded.as_slice())
+                .expect("An unexpected error occurred.");
+
+        verifiable_plaintext.set_context(
+            group_state
+                .context()
+                .tls_serialize_detached()
+                .expect("An unexpected error occurred."),
+        );
+
+        let credential = group_state
+            .treesync()
+            .own_leaf_node()
+            .expect("An unexpected error occurred.")
+            .credential();
+        let remove_decoded = verifiable_plaintext
+            .verify(backend, credential)
+>>>>>>> main
             .expect("An unexpected error occurred.");
 
         assert_eq!(remove, remove_decoded);
@@ -277,7 +319,7 @@ fn test_commit_encoding(backend: &impl OpenMlsCryptoProvider) {
             None,
             None,
         ));
-        let lifetime_extension = Extension::LifeTime(LifetimeExtension::new(60));
+        let lifetime_extension = Extension::Lifetime(LifetimeExtension::new(60));
         let mandatory_extensions: Vec<Extension> = vec![capabilities_extension, lifetime_extension];
 
         let alice_key_package_bundle = KeyPackageBundle::new(
@@ -295,7 +337,7 @@ fn test_commit_encoding(backend: &impl OpenMlsCryptoProvider) {
             .create_update_proposal(
                 framing_parameters,
                 alice_credential_bundle,
-                alice_key_package_bundle.key_package().clone(),
+                alice_key_package_bundle.key_package().leaf_node().clone(),
                 backend,
             )
             .expect("Could not create proposal.");
@@ -349,7 +391,28 @@ fn test_commit_encoding(backend: &impl OpenMlsCryptoProvider) {
             .tls_serialize_detached()
             .expect("An unexpected error occurred.");
 
+<<<<<<< HEAD
         let commit_decoded = MlsPlaintext::tls_deserialize(&mut commit_encoded.as_slice())
+=======
+        let mut verifiable_plaintext =
+            VerifiableMlsAuthContent::tls_deserialize(&mut commit_encoded.as_slice())
+                .expect("An unexpected error occurred.");
+
+        verifiable_plaintext.set_context(
+            group_state
+                .context()
+                .tls_serialize_detached()
+                .expect("An unexpected error occurred."),
+        );
+
+        let credential = group_state
+            .treesync()
+            .own_leaf_node()
+            .expect("An unexpected error occurred.")
+            .credential();
+        let commit_decoded = verifiable_plaintext
+            .verify(backend, credential)
+>>>>>>> main
             .expect("An unexpected error occurred.");
 
         assert_eq!(commit, commit_decoded);

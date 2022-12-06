@@ -5,9 +5,19 @@
 //! for more description on the test vectors.
 
 use crate::{
-    ciphersuite::signable::Signable, credentials::*, framing::*, group::*, key_packages::*,
-    messages::proposals::*, messages::public_group_state::*, messages::*, schedule::psk::*,
-    test_utils::*, tree::sender_ratchet::*, treesync::node::Node, versions::ProtocolVersion,
+    ciphersuite::signable::Signable,
+    credentials::*,
+    framing::*,
+    group::*,
+    key_packages::*,
+    messages::proposals::*,
+    messages::*,
+    prelude::LeafNode,
+    schedule::psk::*,
+    test_utils::*,
+    tree::sender_ratchet::*,
+    treesync::node::{leaf_node::LeafNodeSource, Node},
+    versions::ProtocolVersion,
 };
 
 use openmls_rust_crypto::OpenMlsRustCrypto;
@@ -27,8 +37,6 @@ pub struct MessagesTestVector {
     group_info: String,    /* serialized GroupInfo */
     group_secrets: String, /* serialized GroupSecrets */
     welcome: String,       /* serialized Welcome */
-
-    public_group_state: String, /* serialized PublicGroupState */
 
     add_proposal: String,            /* serialized Add */
     update_proposal: String,         /* serialized Update */
@@ -65,7 +73,7 @@ pub fn generate_test_vector(ciphersuite: Ciphersuite) -> MessagesTestVector {
     // Let's create a group
     let mut group = CoreGroup::builder(GroupId::random(&crypto), key_package_bundle)
         .with_max_past_epoch_secrets(2)
-        .build(&crypto)
+        .build(&credential_bundle, &crypto)
         .expect("Could not create group.");
 
     let ratchet_tree: Vec<Option<Node>> = group.treesync().export_nodes();
@@ -109,9 +117,6 @@ pub fn generate_test_vector(ciphersuite: Ciphersuite) -> MessagesTestVector {
         .expect("An unexpected error occurred.");
     let group_secrets =
         GroupSecrets::random_encoded(ciphersuite, &crypto, ProtocolVersion::default());
-    let public_group_state = group
-        .export_public_group_state(&crypto, &credential_bundle)
-        .expect("An unexpected error occurred.");
 
     // Create a proposal to update the user's KeyPackage
     let key_package_bundle =
@@ -119,7 +124,14 @@ pub fn generate_test_vector(ciphersuite: Ciphersuite) -> MessagesTestVector {
             .expect("An unexpected error occurred.");
     let key_package = key_package_bundle.key_package();
     let update_proposal = UpdateProposal {
-        key_package: key_package.clone(),
+        leaf_node: LeafNode::new(
+            key_package.hpke_init_key().clone(),
+            &credential_bundle,
+            LeafNodeSource::Update,
+            vec![],
+            &crypto,
+        )
+        .unwrap(),
     };
 
     // Create proposal to add a user
@@ -235,6 +247,11 @@ pub fn generate_test_vector(ciphersuite: Ciphersuite) -> MessagesTestVector {
         )
         .expect("An unexpected error occurred.");
     // Sets the context implicitly.
+    let credential = group
+        .treesync()
+        .own_leaf_node()
+        .expect("An unexpected error occurred.")
+        .credential();
     if !verifiable_mls_plaintext_application.has_context() {
         verifiable_mls_plaintext_application.set_context(
             group
@@ -302,12 +319,6 @@ pub fn generate_test_vector(ciphersuite: Ciphersuite) -> MessagesTestVector {
                 .tls_serialize_detached()
                 .expect("An unexpected error occurred."),
         ), /* serialized Welcome */
-
-        public_group_state: bytes_to_hex(
-            &public_group_state
-                .tls_serialize_detached()
-                .expect("An unexpected error occurred."),
-        ), /* serialized PublicGroupState */
 
         add_proposal: bytes_to_hex(
             &add_proposal
@@ -513,23 +524,6 @@ pub fn run_test_vector(tv: MessagesTestVector) -> Result<(), MessagesTestVectorE
         return Err(MessagesTestVectorError::WelcomeEncodingMismatch);
     }
 
-    // PublicGroupState
-    let tv_public_group_state = hex_to_bytes(&tv.public_group_state);
-    let my_public_group_state =
-        VerifiablePublicGroupState::tls_deserialize(&mut tv_public_group_state.as_slice())
-            .expect("An unexpected error occurred.")
-            .tls_serialize_detached()
-            .expect("An unexpected error occurred.");
-    if tv_public_group_state != my_public_group_state {
-        log::error!("  PublicGroupState encoding mismatch");
-        log::debug!("    Encoded: {:x?}", my_public_group_state);
-        log::debug!("    Expected: {:x?}", tv_public_group_state);
-        if cfg!(test) {
-            panic!("PublicGroupState encoding mismatch");
-        }
-        return Err(MessagesTestVectorError::PublicGroupStateEncodingMismatch);
-    }
-
     // AddProposal
     let tv_add_proposal = hex_to_bytes(&tv.add_proposal);
     let my_add_proposal = AddProposal::tls_deserialize(&mut tv_add_proposal.as_slice())
@@ -714,9 +708,6 @@ pub enum MessagesTestVectorError {
     /// Welcome encodings don't match.
     #[error("Welcome encodings don't match.")]
     WelcomeEncodingMismatch,
-    /// PublicGroupState encodings don't match.
-    #[error("PublicGroupState encodings don't match.")]
-    PublicGroupStateEncodingMismatch,
     /// AddProposal encodings don't match.
     #[error("AddProposal encodings don't match.")]
     AddProposalEncodingMismatch,

@@ -6,6 +6,7 @@ use crate::{
     key_packages::*,
     test_utils::*,
     tree::sender_ratchet::SenderRatchetConfiguration,
+    treesync::node::leaf_node::OpenMlsLeafNode,
     *,
 };
 use openmls_rust_crypto::OpenMlsRustCrypto;
@@ -34,7 +35,7 @@ fn create_commit_optional_path(ciphersuite: Ciphersuite, backend: &impl OpenMlsC
     .expect("An unexpected error occurred.");
 
     // Mandatory extensions, will be fixed in #164
-    let lifetime_extension = Extension::LifeTime(LifetimeExtension::new(60));
+    let lifetime_extension = Extension::Lifetime(LifetimeExtension::new(60));
     let mandatory_extensions: Vec<Extension> = vec![lifetime_extension];
 
     // Generate KeyPackages
@@ -67,7 +68,7 @@ fn create_commit_optional_path(ciphersuite: Ciphersuite, backend: &impl OpenMlsC
 
     // Alice creates a group
     let mut group_alice = CoreGroup::builder(GroupId::random(backend), alice_key_package_bundle)
-        .build(backend)
+        .build(&alice_credential_bundle, backend)
         .expect("Error creating CoreGroup.");
 
     // Alice proposes to add Bob with forced self-update
@@ -167,7 +168,7 @@ fn create_commit_optional_path(ciphersuite: Ciphersuite, backend: &impl OpenMlsC
         .create_update_proposal(
             framing_parameters,
             &alice_credential_bundle,
-            alice_update_key_package.clone(),
+            alice_update_key_package.leaf_node().clone(),
             backend,
         )
         .expect("Could not create proposal.");
@@ -239,7 +240,7 @@ fn basic_group_setup(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvi
 
     // Alice creates a group
     let group_alice = CoreGroup::builder(GroupId::random(backend), alice_key_package_bundle)
-        .build(backend)
+        .build(&alice_credential_bundle, backend)
         .expect("Error creating CoreGroup.");
 
     // Alice adds Bob
@@ -310,7 +311,7 @@ fn group_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvid
         None,
         None,
     ));
-    let lifetime_extension = Extension::LifeTime(LifetimeExtension::new(60));
+    let lifetime_extension = Extension::Lifetime(LifetimeExtension::new(60));
     let mandatory_extensions: Vec<Extension> = vec![capabilities_extension, lifetime_extension];
 
     // Generate KeyPackages
@@ -333,7 +334,7 @@ fn group_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvid
 
     // === Alice creates a group ===
     let mut group_alice = CoreGroup::builder(GroupId::random(backend), alice_key_package_bundle)
-        .build(backend)
+        .build(&alice_credential_bundle, backend)
         .expect("Error creating CoreGroup.");
 
     // === Alice adds Bob ===
@@ -420,7 +421,6 @@ fn group_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvid
         .treesync()
         .own_leaf_node()
         .expect("An unexpected error occurred.")
-        .key_package()
         .credential();
     let mls_plaintext_bob: MlsAuthContent = verifiable_plaintext
         .verify(backend, credential)
@@ -443,7 +443,10 @@ fn group_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvid
         .create_update_proposal(
             framing_parameters,
             &bob_credential_bundle,
-            bob_update_key_package_bundle.key_package().clone(),
+            bob_update_key_package_bundle
+                .key_package()
+                .leaf_node()
+                .clone(),
             backend,
         )
         .expect("Could not create proposal.");
@@ -504,7 +507,10 @@ fn group_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvid
         .create_update_proposal(
             framing_parameters,
             &alice_credential_bundle,
-            alice_update_key_package_bundle.key_package().clone(),
+            alice_update_key_package_bundle
+                .key_package()
+                .leaf_node()
+                .clone(),
             backend,
         )
         .expect("Could not create proposal.");
@@ -559,7 +565,10 @@ fn group_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvid
         .create_update_proposal(
             framing_parameters,
             &bob_credential_bundle,
-            bob_update_key_package_bundle.key_package().clone(),
+            bob_update_key_package_bundle
+                .key_package()
+                .leaf_node()
+                .clone(),
             backend,
         )
         .expect("Could not create proposal.");
@@ -597,7 +606,10 @@ fn group_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvid
         .stage_commit(
             &create_commit_result.commit,
             &proposal_store,
-            &[bob_update_key_package_bundle],
+            &[OpenMlsLeafNode::from_key_package_bundel(
+                bob_update_key_package_bundle,
+                group_bob.own_leaf_index(),
+            )],
             backend,
         )
         .expect("Error applying commit (Bob)");
@@ -662,7 +674,7 @@ fn group_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvid
         _ => panic!("Wrong content type"),
     };
     assert!(!commit.has_path());
-    // Make sure the is a Welcome message for Charlie
+    // Make sure this is a Welcome message for Charlie
     assert!(create_commit_result.welcome_option.is_some());
 
     let staged_commit = group_alice
@@ -730,7 +742,6 @@ fn group_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvid
         .treesync()
         .own_leaf_node()
         .expect("An unexpected error occurred.")
-        .key_package()
         .credential();
 
     let mls_plaintext_alice: MlsAuthContent = verifiable_plaintext
@@ -761,7 +772,6 @@ fn group_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvid
         .treesync()
         .own_leaf_node()
         .expect("An unexpected error occurred.")
-        .key_package()
         .credential();
     let mls_plaintext_bob: MlsAuthContent = verifiable_plaintext
         .verify(backend, credential)
@@ -784,7 +794,10 @@ fn group_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvid
         .create_update_proposal(
             framing_parameters,
             &charlie_credential_bundle,
-            charlie_update_key_package_bundle.key_package().clone(),
+            charlie_update_key_package_bundle
+                .key_package()
+                .leaf_node()
+                .clone(),
             backend,
         )
         .expect("Could not create proposal.");

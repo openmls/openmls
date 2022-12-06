@@ -432,7 +432,7 @@ fn unknown_sender(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
 
     // Alice creates a group
     let mut group_alice = CoreGroup::builder(GroupId::random(backend), alice_key_package_bundle)
-        .build(backend)
+        .build(&alice_credential_bundle, backend)
         .expect("Error creating group.");
 
     // Alice adds Bob
@@ -463,6 +463,16 @@ fn unknown_sender(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
     group_alice
         .merge_commit(create_commit_result.staged_commit)
         .expect("error merging pending commit");
+
+    let _group_bob = CoreGroup::new_from_welcome(
+        create_commit_result
+            .welcome_option
+            .expect("An unexpected error occurred."),
+        Some(group_alice.treesync().export_nodes()),
+        bob_key_package_bundle,
+        backend,
+    )
+    .expect("Bob: Error creating group from Welcome");
 
     // Alice adds Charlie
 
@@ -610,7 +620,7 @@ fn confirmation_tag_presence(ciphersuite: Ciphersuite, backend: &impl OpenMlsCry
 
     // Alice creates a group
     let mut group_alice = CoreGroup::builder(GroupId::random(backend), alice_key_package_bundle)
-        .build(backend)
+        .build(&alice_credential_bundle, backend)
         .expect("Error creating group.");
 
     // Alice adds Bob
@@ -714,7 +724,7 @@ fn invalid_plaintext_signature(ciphersuite: Ciphersuite, backend: &impl OpenMlsC
 
     // Alice creates a group
     let mut group_alice = CoreGroup::builder(GroupId::random(backend), alice_key_package_bundle)
-        .build(backend)
+        .build(&alice_credential_bundle, backend)
         .expect("Error creating group.");
 
     // Alice adds Bob so that there is someone to process the broken commits.

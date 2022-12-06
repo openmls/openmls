@@ -96,10 +96,13 @@ fn generate(
         PreSharedKeyId::new(
             ciphersuite,
             crypto.rand(),
-            Psk::Branch(BranchPsk {
-                psk_group_id: GroupId::random(&crypto),
-                psk_epoch: epoch.into(),
-            }),
+            Psk::Resumption(
+                ResumptionPsk::new(
+                    ResumptionPskUsage::Branch,
+                    GroupId::random(&crypto),
+                    epoch.into()
+                )
+            ),
         ).expect("An unexpected error occurred.");
         let psk = PskSecret::random(ciphersuite, &crypto);
         psk_ids.push(psk_id.clone());

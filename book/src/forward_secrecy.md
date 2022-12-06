@@ -24,6 +24,10 @@ committer is stored in the diff. It exists alongside the key material of the
 ratchet tree before the commit until the client merges the diff, upon which the
 key material in the original ratchet tree is dropped.
 
+Because the client cannot know if the commit it creates will conflict with another commit created by another client
+for the same epoch, it MUST wait for the acknowledgement from the Delivery Service before merging the diff and dropping
+the previous ratchet tree.
+
 ### Commit Processing
 
 Upon receiving a commit from another group member, the client processes the

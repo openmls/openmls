@@ -37,17 +37,18 @@ mod test_proposals;
 use super::errors::CreateGroupContextExtProposalError;
 
 use crate::{
-    ciphersuite::signable::*,
+    ciphersuite::{signable::Signable, HpkePublicKey},
     credentials::*,
     error::LibraryError,
     extensions::errors::*,
     framing::*,
     group::*,
-    key_packages::{errors::KeyPackageExtensionSupportError, *},
-    messages::{proposals::*, public_group_state::*, *},
+    key_packages::*,
+    messages::VerifiableGroupInfo,
+    messages::{proposals::*, *},
     schedule::{message_secrets::*, psk::*, *},
     tree::{secret_tree::SecretTreeError, sender_ratchet::SenderRatchetConfiguration},
-    treesync::*,
+    treesync::{node::leaf_node::Capabilities, *},
     versions::ProtocolVersion,
 };
 
@@ -132,12 +133,14 @@ pub(crate) struct CoreGroup {
 /// Builder for [`CoreGroup`].
 pub(crate) struct CoreGroupBuilder {
     key_package_bundle: KeyPackageBundle,
+    own_leaf_extensions: Vec<Extension>,
     group_id: GroupId,
     config: Option<CoreGroupConfig>,
     psk_ids: Vec<PreSharedKeyId>,
     version: Option<ProtocolVersion>,
     required_capabilities: Option<RequiredCapabilitiesExtension>,
     max_past_epochs: usize,
+    lifetime: Option<LifetimeExtension>,
 }
 
 impl CoreGroupBuilder {
@@ -151,6 +154,8 @@ impl CoreGroupBuilder {
             version: None,
             required_capabilities: None,
             max_past_epochs: 0,
+            own_leaf_extensions: vec![],
+            lifetime: None,
         }
     }
     /// Set the [`CoreGroupConfig`] of the [`CoreGroup`].
@@ -177,6 +182,17 @@ impl CoreGroupBuilder {
         self.max_past_epochs = max_past_epochs;
         self
     }
+    /// Set the [`LifetimeExtension`] for the own leaf in the group.
+    pub fn with_lifetime(mut self, lifetime: LifetimeExtension) -> Self {
+        self.lifetime = Some(lifetime);
+        self
+    }
+    /// Set extensions for the own leaf in the group.
+    #[cfg(test)]
+    pub fn with_extensions(mut self, extensions: Vec<Extension>) -> Self {
+        self.own_leaf_extensions = extensions;
+        self
+    }
 
     /// Build the [`CoreGroup`].
     /// Any values that haven't been set in the builder are set to their default
@@ -186,17 +202,35 @@ impl CoreGroupBuilder {
     /// [`OpenMlsCryptoProvider`].
     pub(crate) fn build(
         self,
+        credential_bundle: &CredentialBundle,
         backend: &impl OpenMlsCryptoProvider,
     ) -> Result<CoreGroup, CoreGroupBuildError> {
         let ciphersuite = self.key_package_bundle.key_package().ciphersuite();
         let config = self.config.unwrap_or_default();
-        let required_capabilities = self.required_capabilities.unwrap_or_default();
+        let capabilities = self
+            .required_capabilities
+            .as_ref()
+            .map(|re| re.extensions());
         let version = self.version.unwrap_or_default();
 
         debug!("Created group {:x?}", self.group_id);
         trace!(" >>> with {:?}, {:?}", ciphersuite, config);
-        let (tree, commit_secret) = TreeSync::new(backend, self.key_package_bundle)?;
+        let (tree, commit_secret) = TreeSync::new(
+            backend,
+            self.key_package_bundle,
+            credential_bundle,
+            self.lifetime.unwrap_or_default(),
+            Capabilities::new(
+                Some(&[version]),     // TODO: Allow more versions
+                Some(&[ciphersuite]), // TODO: allow more ciphersuites
+                capabilities,
+                None,
+                None,
+            ),
+            self.own_leaf_extensions,
+        )?;
 
+        let required_capabilities = self.required_capabilities.unwrap_or_default();
         required_capabilities.check_support().map_err(|e| match e {
             ExtensionError::UnsupportedProposalType => CoreGroupBuildError::UnsupportedProposalType,
             ExtensionError::UnsupportedExtensionType => {
@@ -284,12 +318,9 @@ impl CoreGroup {
         backend: &impl OpenMlsCryptoProvider,
     ) -> Result<MlsAuthContent, CreateAddProposalError> {
         joiner_key_package
+            .leaf_node()
             .validate_required_capabilities(self.required_capabilities())
-            .map_err(|e| match e {
-                KeyPackageExtensionSupportError::UnsupportedExtension => {
-                    CreateAddProposalError::UnsupportedExtensions
-                }
-            })?;
+            .map_err(|_| CreateAddProposalError::UnsupportedExtensions)?;
         let add_proposal = AddProposal {
             key_package: joiner_key_package,
         };
@@ -313,10 +344,12 @@ impl CoreGroup {
         &self,
         framing_parameters: FramingParameters,
         credential_bundle: &CredentialBundle,
-        key_package: KeyPackage,
+        // XXX: There's no need to own this. The [`UpdateProposal`] should
+        //      operate on a reference to make this more efficient.
+        leaf_node: LeafNode,
         backend: &impl OpenMlsCryptoProvider,
     ) -> Result<MlsAuthContent, LibraryError> {
-        let update_proposal = UpdateProposal { key_package };
+        let update_proposal = UpdateProposal { leaf_node };
         let proposal = Proposal::Update(update_proposal);
         MlsAuthContent::member_proposal(
             framing_parameters,
@@ -401,9 +434,8 @@ impl CoreGroup {
             self.treesync()
                 .own_leaf_node()
                 .map_err(|_| LibraryError::custom("Expected own leaf"))?
-                .key_package()
                 .validate_required_capabilities(required_capabilities)?;
-            // Ensure that all other key packages support all the required
+            // Ensure that all other leaf nodes support all the required
             // extensions as well.
             self.treesync()
                 .check_extension_support(required_capabilities.extensions())?;
@@ -515,13 +547,55 @@ impl CoreGroup {
             .map_err(LibraryError::unexpected_crypto_error)?)
     }
 
+    pub(crate) fn export_group_info(
+        &self,
+        backend: &impl OpenMlsCryptoProvider,
+        credential_bundle: &CredentialBundle,
+        with_ratchet_tree: bool,
+    ) -> Result<GroupInfo, LibraryError> {
+        let extensions = {
+            let ratchet_tree_extension = || {
+                Extension::RatchetTree(RatchetTreeExtension::new(self.treesync().export_nodes()))
+            };
+
+            let external_pub_extension = || {
+                let external_pub = self
+                    .group_epoch_secrets()
+                    .external_secret()
+                    .derive_external_keypair(backend.crypto(), self.ciphersuite)
+                    .public;
+                Extension::ExternalPub(ExternalPubExtension::new(HpkePublicKey::from(external_pub)))
+            };
+
+            if with_ratchet_tree {
+                vec![ratchet_tree_extension(), external_pub_extension()]
+            } else {
+                vec![external_pub_extension()]
+            }
+        };
+
+        // Create to-be-signed group info.
+        let group_info_tbs = GroupInfoTBS::new(
+            self.group_context.clone(),
+            &extensions,
+            self.message_secrets()
+                .confirmation_key()
+                .tag(backend, self.context().confirmed_transcript_hash())
+                .map_err(LibraryError::unexpected_crypto_error)?,
+            self.own_leaf_index(),
+        );
+
+        // Sign to-be-signed group info.
+        group_info_tbs.sign(backend, credential_bundle)
+    }
+
     /// Returns the epoch authenticator
     pub(crate) fn epoch_authenticator(&self) -> &EpochAuthenticator {
         self.group_epoch_secrets().epoch_authenticator()
     }
 
-    /// Returns the resumption psk
-    pub(crate) fn resumption_psk(&self) -> &ResumptionPsk {
+    /// Returns the resumption PSK secret
+    pub(crate) fn resumption_psk_secret(&self) -> &ResumptionPskSecret {
         self.group_epoch_secrets().resumption_psk()
     }
 
@@ -538,7 +612,7 @@ impl CoreGroup {
         writer.write_all(&serialized_core_group.into_bytes())
     }
 
-    /// Returns the ratchet tree
+    /// Returns a reference to the ratchet tree
     pub(crate) fn treesync(&self) -> &TreeSync {
         &self.tree
     }
@@ -563,15 +637,6 @@ impl CoreGroup {
         self.group_context.group_id()
     }
 
-    /// Get the groups extensions.
-    /// Right now this is limited to the ratchet tree extension which is built
-    /// on the fly when calling this function.
-    pub(crate) fn other_extensions(&self) -> Vec<Extension> {
-        vec![Extension::RatchetTree(RatchetTreeExtension::new(
-            self.treesync().export_nodes(),
-        ))]
-    }
-
     /// Get the group context extensions.
     pub(crate) fn group_context_extensions(&self) -> &[Extension] {
         self.group_context.extensions()
@@ -580,17 +645,6 @@ impl CoreGroup {
     /// Get the required capabilities extension of this group.
     pub(crate) fn required_capabilities(&self) -> Option<&RequiredCapabilitiesExtension> {
         self.group_context.required_capabilities()
-    }
-
-    /// Export the `PublicGroupState`
-    pub(crate) fn export_public_group_state(
-        &self,
-        backend: &impl OpenMlsCryptoProvider,
-        credential_bundle: &CredentialBundle,
-    ) -> Result<PublicGroupState, LibraryError> {
-        let pgs_tbs = PublicGroupStateTbs::new(backend, self)?;
-        // XXX: #719 removes the PublicGroupState
-        pgs_tbs.sign(backend, credential_bundle)
     }
 
     /// Returns `true` if the group uses the ratchet tree extension anf `false
@@ -613,7 +667,7 @@ impl CoreGroup {
         self.treesync()
             .own_leaf_node()
             .ok()
-            .map(|node| node.key_package().credential().identity())
+            .map(|node| node.credential().identity())
     }
 
     /// Get a reference to the group epoch secrets from the group
@@ -686,16 +740,6 @@ impl CoreGroup {
     #[cfg(any(feature = "test-utils", test))]
     pub(crate) fn message_secrets_test_mut(&mut self) -> &mut MessageSecrets {
         self.message_secrets_store.message_secrets_mut()
-    }
-
-    /// Current interim transcript hash of the group
-    pub(crate) fn interim_transcript_hash(&self) -> &[u8] {
-        &self.interim_transcript_hash
-    }
-
-    /// Current confirmed transcript hash of the group
-    pub(crate) fn confirmed_transcript_hash(&self) -> &[u8] {
-        self.group_context.confirmed_transcript_hash()
     }
 
     #[cfg(any(feature = "test-utils", test))]

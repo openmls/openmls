@@ -6,7 +6,7 @@ use super::*;
 #[cfg_attr(test, derive(PartialEq))]
 pub(crate) struct ResumptionPskStore {
     number_of_secrets: usize,
-    resumption_psk: Vec<(GroupEpoch, ResumptionPsk)>,
+    resumption_psk: Vec<(GroupEpoch, ResumptionPskSecret)>,
     cursor: usize,
 }
 
@@ -21,7 +21,7 @@ impl ResumptionPskStore {
     }
 
     /// Adds a new entry to the store.
-    pub(crate) fn add(&mut self, epoch: GroupEpoch, resumption_psk: ResumptionPsk) {
+    pub(crate) fn add(&mut self, epoch: GroupEpoch, resumption_psk: ResumptionPskSecret) {
         if self.number_of_secrets == 0 {
             return;
         }
@@ -38,7 +38,7 @@ impl ResumptionPskStore {
 
     /// Searches an entry for a given epoch number and if found, returns the
     /// corresponding resumption psk.
-    pub(crate) fn get(&self, epoch: GroupEpoch) -> Option<&ResumptionPsk> {
+    pub(crate) fn get(&self, epoch: GroupEpoch) -> Option<&ResumptionPskSecret> {
         self.resumption_psk
             .iter()
             .find(|&(e, _s)| e == &epoch)

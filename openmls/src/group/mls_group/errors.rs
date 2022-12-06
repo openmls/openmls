@@ -20,6 +20,9 @@ pub enum NewGroupError {
     /// No matching KeyPackageBundle was found in the key store.
     #[error("No matching KeyPackageBundle was found in the key store.")]
     NoMatchingKeyPackageBundle,
+    /// No matching CredentialBundle was found in the key store.
+    #[error("No matching CredentialBundle was found in the key store.")]
+    NoMatchingCredentialBundle,
     /// Failed to delete the KeyPackageBundle from the key store.
     #[error("Failed to delete the KeyPackageBundle from the key store.")]
     KeyStoreDeletionError,
@@ -241,9 +244,9 @@ pub enum CommitToPendingProposalsError {
     GroupStateError(#[from] MlsGroupStateError),
 }
 
-/// Export public group state error
+/// Errors that can happen when exporting a group info object.
 #[derive(Error, Debug, PartialEq, Clone)]
-pub enum ExportPublicGroupStateError {
+pub enum ExportGroupInfoError {
     /// See [`LibraryError`] for more details.
     #[error(transparent)]
     LibraryError(#[from] LibraryError),

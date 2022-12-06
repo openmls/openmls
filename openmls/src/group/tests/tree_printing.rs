@@ -50,9 +50,11 @@ pub(crate) fn print_tree(group: &CoreGroup, message: &str) {
                 Node::LeafNode(leaf_node) => {
                     print!("\tL");
                     let key_bytes = leaf_node.public_key().as_slice();
-                    let parent_hash_bytes =
-                        node.parent_hash().expect("An unexpected error occurred.");
-                    (key_bytes, parent_hash_bytes.unwrap_or_default())
+                    let parent_hash_bytes = node
+                        .parent_hash()
+                        .map(|b| bytes_to_hex(b))
+                        .unwrap_or("An unexpected error occurred.".to_string());
+                    (key_bytes, parent_hash_bytes)
                 }
                 Node::ParentNode(parent_node) => {
                     if root(tree_size) == i as u32 {
@@ -61,14 +63,16 @@ pub(crate) fn print_tree(group: &CoreGroup, message: &str) {
                         print!("\tP");
                     }
                     let key_bytes = parent_node.public_key().as_slice();
-                    let parent_hash_bytes =
-                        node.parent_hash().expect("An unexpected error occurred.");
-                    (key_bytes, parent_hash_bytes.unwrap_or_default())
+                    let parent_hash_string = node
+                        .parent_hash()
+                        .map(|b| bytes_to_hex(b))
+                        .expect("An unexpected error occurred.");
+                    (key_bytes, parent_hash_string)
                 }
             };
             print!("\tPK: {}", bytes_to_hex(key_bytes));
 
-            print!("\tPH: {}", bytes_to_hex(parent_hash_bytes));
+            print!("\tPH: {}", parent_hash_bytes);
             print!("\t| ");
             for _ in 0..level * factor {
                 print!(" ");

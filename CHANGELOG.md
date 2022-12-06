@@ -12,6 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - [#1058](https://github.com/openmls/openmls/pull/1058): Rename resumption_secret to resumption_psk
 - [#900:](https://github.com/openmls/openmls/pull/900) Expose SerializedMlsGroup until issue [#245](https://github.com/openmls/openmls/issues/245) is done
 - [#1117](https://github.com/openmls/openmls/pull/1117): Remove signature key indirection
+- [#1123](https://github.com/openmls/openmls/pull/1123): Rename ResumptionPsk to ResumptionPskSecret and resumption_psk to resumption_psk_secret
 
 ## 0.4.1 (2022-06-07)
 

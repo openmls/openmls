@@ -7,15 +7,14 @@ use super::{
     staged_commit::StagedCommit,
 };
 use crate::{
-    ciphersuite::signable::Signable,
     credentials::{Credential, CredentialBundle},
     error::LibraryError,
     framing::*,
     group::*,
-    key_packages::{KeyPackage, KeyPackageBundle, KeyPackageBundlePayload},
+    key_packages::{KeyPackage, KeyPackageBundle},
     messages::{proposals::*, Welcome},
-    schedule::ResumptionPsk,
-    treesync::Node,
+    schedule::ResumptionPskSecret,
+    treesync::{node::leaf_node::OpenMlsLeafNode, Node},
 };
 use openmls_traits::{key_store::OpenMlsKeyStore, types::Ciphersuite, OpenMlsCryptoProvider};
 use std::io::{Error, Read, Write};
@@ -160,11 +159,11 @@ pub struct MlsGroup {
     group: CoreGroup,
     // A [ProposalStore] that stores incoming proposals from the DS within one epoch.
     // The store is emptied after every epoch change.
-    proposal_store: ProposalStore,
-    // Own `KeyPackageBundle`s that were created for update proposals and that
-    // are needed in case an update proposal is commited by another group
+    pub(crate) proposal_store: ProposalStore,
+    // Own [`OpenMlsLeafNode`]s that were created for update proposals and that
+    // are needed in case an update proposal is committed by another group
     // member. The vector is emptied after every epoch change.
-    own_kpbs: Vec<KeyPackageBundle>,
+    own_leaf_nodes: Vec<OpenMlsLeafNode>,
     // The AAD that is used for all outgoing handshake messages. The AAD can be set through
     // `set_aad()`.
     aad: Vec<u8>,
@@ -231,7 +230,6 @@ impl MlsGroup {
         Ok(tree
             .own_leaf_node()
             .map_err(|_| LibraryError::custom("Own leaf node missing"))?
-            .key_package()
             .credential())
     }
 
@@ -372,7 +370,7 @@ impl MlsGroup {
     }
 
     /// Group framing parameters
-    fn framing_parameters(&self) -> FramingParameters {
+    pub(crate) fn framing_parameters(&self) -> FramingParameters {
         FramingParameters::new(
             &self.aad,
             self.mls_group_config.wire_format_policy().outgoing(),

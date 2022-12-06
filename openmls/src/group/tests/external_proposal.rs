@@ -1,3 +1,4 @@
+use openmls_rust_crypto::OpenMlsRustCrypto;
 use rstest::*;
 use rstest_reuse::{self, *};
 use tls_codec::Serialize;
@@ -12,9 +13,7 @@ use crate::{
     },
 };
 
-use openmls_rust_crypto::OpenMlsRustCrypto;
-use openmls_traits::key_store::OpenMlsKeyStore;
-use openmls_traits::types::Ciphersuite;
+use openmls_traits::{key_store::OpenMlsKeyStore, types::Ciphersuite};
 
 use super::utils::*;
 

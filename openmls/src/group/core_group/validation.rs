@@ -10,10 +10,11 @@ use crate::{
     group::errors::ExternalCommitValidationError,
     group::errors::ValidationError,
     messages::proposals::{Proposal, ProposalOrRefType, ProposalType},
+    treesync::node::leaf_node::LeafNode,
 };
 
 use super::{
-    proposals::ProposalQueue, ContentType, CoreGroup, KeyPackage, Member, MlsMessageIn,
+    proposals::ProposalQueue, ContentType, CoreGroup, Member, MlsMessageIn,
     ProposalValidationError, VerifiableMlsAuthContent, WireFormat,
 };
 
@@ -316,23 +317,21 @@ impl CoreGroup {
                 .leaf(sender_leaf_index)
                 .map_err(|_| ProposalValidationError::UnknownMember)?
             {
-                let existing_key_package = leaf_node.key_package();
                 // ValSem109
                 // Identity must be unchanged between existing member and new proposal
                 if update_proposal
                     .update_proposal()
-                    .key_package()
+                    .leaf_node()
                     .credential()
                     .identity()
-                    != existing_key_package.credential().identity()
+                    != leaf_node.credential().identity()
                 {
                     return Err(ProposalValidationError::UpdateProposalIdentityMismatch);
                 }
-                // FIXME: #819 The update proposal will hold the leaf.
                 let encryption_key = update_proposal
                     .update_proposal()
-                    .key_package()
-                    .hpke_init_key()
+                    .leaf_node()
+                    .encryption_key()
                     .as_slice();
                 // ValSem110
                 // HPKE init key must be unique among existing members
@@ -353,7 +352,7 @@ impl CoreGroup {
     pub(super) fn validate_path_key_package(
         &self,
         sender: u32,
-        key_package: &KeyPackage,
+        leaf_node: &LeafNode,
         public_key_set: HashSet<Vec<u8>>,
         proposal_sender: &Sender,
     ) -> Result<(), ProposalValidationError> {
@@ -363,11 +362,11 @@ impl CoreGroup {
         }) = members.iter().find(|Member { index, .. }| index == &sender)
         {
             // ValSem109
-            if key_package.credential().identity() != identity {
+            if leaf_node.credential().identity() != identity {
                 return Err(ProposalValidationError::UpdateProposalIdentityMismatch);
             }
             // ValSem110
-            if public_key_set.contains(key_package.hpke_init_key().as_slice()) {
+            if public_key_set.contains(leaf_node.encryption_key().as_slice()) {
                 return Err(ProposalValidationError::ExistingPublicKeyUpdateProposal);
             }
         } else if proposal_sender.is_member() {
@@ -382,29 +381,22 @@ impl CoreGroup {
     ///  - ValSem242: External Commit must only cover inline proposal in allowlist (ExternalInit, Remove, PreSharedKey)
     ///  - ValSem243: External Commit, inline Remove Proposal: The identity and the endpoint_id of the removed
     ///               leaf are identical to the ones in the path KeyPackage.
-    ///  - ValSem244: External Commit, referenced Proposals: There MUST NOT be any ExternalInit proposals.
     pub(crate) fn validate_external_commit(
         &self,
         proposal_queue: &ProposalQueue,
-        path_key_package_option: Option<&KeyPackage>,
+        path_leaf_node: Option<&LeafNode>,
     ) -> Result<(), ExternalCommitValidationError> {
-        let mut external_init_proposals =
-            proposal_queue.filtered_by_type(ProposalType::ExternalInit);
-        // ValSem240: External Commit, inline Proposals: There MUST be at least one ExternalInit proposal.
-        if let Some(external_init_proposal) = external_init_proposals.next() {
-            // ValSem244: External Commit, referenced Proposals: There MUST NOT be any ExternalInit proposals.
-            if external_init_proposal.proposal_or_ref_type() == ProposalOrRefType::Reference {
-                return Err(ExternalCommitValidationError::ReferencedExternalInitProposal);
-            }
-        } else {
+        let count_external_init_proposals = proposal_queue
+            .filtered_by_type(ProposalType::ExternalInit)
+            .count();
+        if count_external_init_proposals == 0 {
+            // ValSem240: External Commit, inline Proposals: There MUST be at least one ExternalInit proposal.
             return Err(ExternalCommitValidationError::NoExternalInitProposals);
-        };
-
-        // ValSem241: External Commit, inline Proposals: There MUST be at most one ExternalInit proposal.
-        if external_init_proposals.next().is_some() {
-            // ValSem244: External Commit, referenced Proposals: There MUST NOT be any ExternalInit proposals.
+        } else if count_external_init_proposals > 1 {
+            // ValSem241: External Commit, inline Proposals: There MUST be at most one ExternalInit proposal.
             return Err(ExternalCommitValidationError::MultipleExternalInitProposals);
         }
+
         // ValSem242: External Commit must only cover inline proposal in allowlist (ExternalInit, Remove, PreSharedKey)
         let contains_denied_proposal = proposal_queue.queued_proposals().any(|p| {
             let is_inline = p.proposal_or_ref_type() == ProposalOrRefType::Proposal;
@@ -424,15 +416,17 @@ impl CoreGroup {
                 if let Proposal::Remove(remove_proposal) = proposal.proposal() {
                     let removed_leaf = remove_proposal.removed();
 
-                    if let Some(path_key_package) = path_key_package_option {
-                        // ValSem243: External Commit, inline Remove Proposal: The identity and the endpoint_id of the removed leaf are identical to the ones in the path KeyPackage.
-                        let leaf = self
+                    if let Some(new_leaf) = path_leaf_node {
+                        // ValSem243: External Commit, inline Remove Proposal:
+                        //            The identity and the endpoint_id of the
+                        //            removed leaf are identical to the ones
+                        //            in the path leaf node.
+                        let removed_leaf = self
                             .treesync()
                             .leaf(removed_leaf)
                             .map_err(|_| ExternalCommitValidationError::UnknownMemberRemoval)?
                             .ok_or(ExternalCommitValidationError::UnknownMemberRemoval)?;
-                        if leaf.key_package().credential().identity()
-                            != path_key_package.credential().identity()
+                        if removed_leaf.credential().identity() != new_leaf.credential().identity()
                         {
                             return Err(ExternalCommitValidationError::InvalidRemoveProposal);
                         }

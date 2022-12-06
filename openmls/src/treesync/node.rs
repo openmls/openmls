@@ -1,15 +1,11 @@
 //! This module contains types and methods around the [`Node`] enum. The
-//! variants of the enum are [`LeafNode`] and [`ParentNode`], both of which are
+//! variants of the enum are `LeafNode` and [`ParentNode`], both of which are
 //! defined in the respective [`leaf_node`] and [`parent_node`] submodules.
 use serde::{Deserialize, Serialize};
 
-use crate::{
-    ciphersuite::{HpkePrivateKey, HpkePublicKey},
-    error::LibraryError,
-    extensions::ExtensionType::ParentHash,
-};
+use crate::ciphersuite::{HpkePrivateKey, HpkePublicKey};
 
-use self::{leaf_node::LeafNode, parent_node::ParentNode};
+use self::{leaf_node::OpenMlsLeafNode, parent_node::ParentNode};
 
 use super::NodeError;
 
@@ -18,18 +14,18 @@ pub(crate) mod leaf_node;
 pub(crate) mod parent_node;
 
 /// Container enum for leaf and parent nodes.
-#[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
+#[derive(Debug, PartialEq, Eq, Clone, Serialize, Deserialize)]
 #[allow(missing_docs)]
 pub enum Node {
-    LeafNode(LeafNode),
+    LeafNode(OpenMlsLeafNode),
     ParentNode(ParentNode),
 }
 
 impl Node {
-    /// Obtain a reference to the [`LeafNode`] inside this [`Node`] instance.
+    /// Obtain a reference to the [`OpenMlsLeafNode`] inside this [`Node`] instance.
     ///
     /// Returns an error if this [`Node`] instance is actually a [`ParentNode`].
-    pub(crate) fn as_leaf_node(&self) -> Result<&LeafNode, NodeError> {
+    pub(crate) fn as_leaf_node(&self) -> Result<&OpenMlsLeafNode, NodeError> {
         if let Node::LeafNode(ln) = self {
             Ok(ln)
         } else {
@@ -39,7 +35,7 @@ impl Node {
 
     /// Obtain a reference to the [`ParentNode`] inside this [`Node`] instance.
     ///
-    /// Returns an error if this [`Node`] instance is actually a [`LeafNode`].
+    /// Returns an error if this [`Node`] instance is actually a [`OpenMlsLeafNode`].
     pub(crate) fn as_parent_node(&self) -> Result<&ParentNode, NodeError> {
         if let Node::ParentNode(ref node) = self {
             Ok(node)
@@ -51,12 +47,24 @@ impl Node {
     /// Obtain a mutable reference to the [`ParentNode`] inside this [`Node`]
     /// instance.
     ///
-    /// Returns an error if this [`Node`] instance is actually a [`LeafNode`].
+    /// Returns an error if this [`Node`] instance is actually a [`OpenMlsLeafNode`].
     pub(crate) fn as_parent_node_mut(&mut self) -> Result<&mut ParentNode, NodeError> {
         if let Node::ParentNode(ref mut node) = self {
             Ok(node)
         } else {
             Err(NodeError::AsParentError)
+        }
+    }
+
+    /// Obtain a mutable reference to the [`OpenMlsLeafNode`] inside this
+    /// [`Node`] instance.
+    ///
+    /// Returns an error if this [`Node`] instance is actually a [`ParentNode`].
+    pub(crate) fn as_leaf_node_mut(&mut self) -> Result<&mut OpenMlsLeafNode, NodeError> {
+        if let Node::LeafNode(ln) = self {
+            Ok(ln)
+        } else {
+            Err(NodeError::AsLeafError)
         }
     }
 
@@ -77,22 +85,11 @@ impl Node {
     }
 
     /// Returns the parent hash of a given node. Returns [`None`] if the node is
-    /// a [`LeafNode`] without a [`crate::extensions::ParentHashExtension`].
-    pub(crate) fn parent_hash(&self) -> Result<Option<&[u8]>, LibraryError> {
-        let parent_hash = match self {
-            Node::LeafNode(ln) => {
-                let kp = ln.key_package();
-                if let Some(extension) = kp.extension_with_type(ParentHash) {
-                    let parent_hash_extension = extension
-                        .as_parent_hash_extension()
-                        .map_err(|_| LibraryError::custom("Wrong extension type"))?;
-                    parent_hash_extension.parent_hash()
-                } else {
-                    return Ok(None);
-                }
-            }
-            Node::ParentNode(pn) => pn.parent_hash(),
-        };
-        Ok(Some(parent_hash))
+    /// a [`OpenMlsLeafNode`] without a [`crate::extensions::ParentHashExtension`].
+    pub(crate) fn parent_hash(&self) -> Option<&[u8]> {
+        match self {
+            Node::LeafNode(ln) => ln.leaf_node.parent_hash(),
+            Node::ParentNode(pn) => Some(pn.parent_hash()),
+        }
     }
 }

@@ -110,7 +110,7 @@ pub(crate) fn setup(config: TestSetupConfig, backend: &impl OpenMlsCryptoProvide
                     None,
                     None,
                 ));
-                let lifetime_extension = Extension::LifeTime(LifetimeExtension::new(60));
+                let lifetime_extension = Extension::Lifetime(LifetimeExtension::new(60));
                 let mandatory_extensions: Vec<Extension> =
                     vec![capabilities_extension, lifetime_extension];
                 let key_package_bundle: KeyPackageBundle = KeyPackageBundle::new(
@@ -168,7 +168,7 @@ pub(crate) fn setup(config: TestSetupConfig, backend: &impl OpenMlsCryptoProvide
             initial_key_package_bundle,
         )
         .with_config(group_config.config)
-        .build(backend)
+        .build(initial_credential_bundle, backend)
         .expect("Error creating new CoreGroup");
         let mut proposal_list = Vec::new();
         let group_aad = b"";

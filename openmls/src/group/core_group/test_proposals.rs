@@ -15,7 +15,7 @@ use crate::{
         proposals::{ProposalQueue, ProposalStore, QueuedProposal},
         GroupContext, GroupId,
     },
-    key_packages::{errors::KeyPackageExtensionSupportError, KeyPackageBundle},
+    key_packages::KeyPackageBundle,
     messages::proposals::{AddProposal, Proposal, ProposalOrRef, ProposalType},
 };
 
@@ -276,7 +276,7 @@ fn test_required_unsupported_proposals(
     ciphersuite: Ciphersuite,
     backend: &impl OpenMlsCryptoProvider,
 ) {
-    let (_alice_credential_bundle, alice_key_package_bundle) =
+    let (alice_credential_bundle, alice_key_package_bundle) =
         setup_client("Alice", ciphersuite, backend);
 
     // Set required capabilities
@@ -287,7 +287,9 @@ fn test_required_unsupported_proposals(
     // This must fail because we don't actually support AppAck proposals
     let e = CoreGroup::builder(GroupId::random(backend), alice_key_package_bundle)
         .with_required_capabilities(required_capabilities)
-        .build(backend)
+        .build(
+            &alice_credential_bundle,
+            backend)
         .expect_err(
             "CoreGroup creation must fail because AppAck proposals aren't supported in OpenMLS yet.",
         );
@@ -325,7 +327,7 @@ fn test_required_extension_key_package_mismatch(
 
     let alice_group = CoreGroup::builder(GroupId::random(backend), alice_key_package_bundle)
         .with_required_capabilities(required_capabilities)
-        .build(backend)
+        .build(&alice_credential_bundle, backend)
         .expect("Error creating CoreGroup.");
 
     let e = alice_group
@@ -370,7 +372,7 @@ fn test_group_context_extensions(ciphersuite: Ciphersuite, backend: &impl OpenMl
 
     let mut alice_group = CoreGroup::builder(GroupId::random(backend), alice_key_package_bundle)
         .with_required_capabilities(required_capabilities)
-        .build(backend)
+        .build(&alice_credential_bundle, backend)
         .expect("Error creating CoreGroup.");
 
     let bob_add_proposal = alice_group
@@ -451,28 +453,30 @@ fn test_group_context_extension_proposal_fails(
 
     let mut alice_group = CoreGroup::builder(GroupId::random(backend), alice_key_package_bundle)
         .with_required_capabilities(required_capabilities)
-        .build(backend)
+        .build(&alice_credential_bundle, backend)
         .expect("Error creating CoreGroup.");
 
-    // Alice tries to add a required capability she doesn't support herself.
-    let required_key_id = Extension::RequiredCapabilities(RequiredCapabilitiesExtension::new(
-        &[ExtensionType::ApplicationId],
-        &[],
-    ));
-    let e = alice_group.create_group_context_ext_proposal(
-        framing_parameters,
-        &alice_credential_bundle,
-        &[required_key_id.clone()],
-        backend,
-    ).expect_err("Alice was able to create a gce proposal with a required extensions she doesn't support.");
-    assert_eq!(
-        e,
-        CreateGroupContextExtProposalError::KeyPackageExtensionSupport(
-            KeyPackageExtensionSupportError::UnsupportedExtension
-        )
-    );
-
-    // Well, this failed luckily.
+    // TODO: openmls/openmls#1130 add a test for unsupported required capabilities.
+    //       We can't test this right now because we don't have a capability
+    //       that is not a "default" proposal or extension.
+    // // Alice tries to add a required capability she doesn't support herself.
+    // let required_application_id = Extension::RequiredCapabilities(
+    //     RequiredCapabilitiesExtension::new(&[ExtensionType::ApplicationId], &[]),
+    // );
+    // let e = alice_group.create_group_context_ext_proposal(
+    //     framing_parameters,
+    //     &alice_credential_bundle,
+    //     &[required_application_id.clone()],
+    //     backend,
+    // ).expect_err("Alice was able to create a gce proposal with a required extensions she doesn't support.");
+    // assert_eq!(
+    //     e,
+    //     CreateGroupContextExtProposalError::TreeSyncError(
+    //         crate::treesync::errors::TreeSyncError::UnsupportedExtension
+    //     )
+    // );
+    //
+    // // Well, this failed luckily.
 
     // Adding Bob
     let bob_add_proposal = alice_group
@@ -506,7 +510,7 @@ fn test_group_context_extension_proposal_fails(
         .expect("error merging pending commit");
     let ratchet_tree = alice_group.treesync().export_nodes();
 
-    let bob_group = CoreGroup::new_from_welcome(
+    let _bob_group = CoreGroup::new_from_welcome(
         create_commit_result
             .welcome_option
             .expect("An unexpected error occurred."),
@@ -516,22 +520,23 @@ fn test_group_context_extension_proposal_fails(
     )
     .expect("Error joining group.");
 
-    // Now Bob wants the KeyId extension to be required.
-    // This should fail because Alice doesn't support it.
-    let e = bob_group
-        .create_group_context_ext_proposal(
-            framing_parameters,
-            &alice_credential_bundle,
-            &[required_key_id],
-            backend,
-        )
-        .expect_err("Bob was able to create a gce proposal for an extension not supported by all other parties.");
-    assert_eq!(
-        e,
-        CreateGroupContextExtProposalError::TreeSyncError(
-            crate::treesync::errors::TreeSyncError::UnsupportedExtension
-        )
-    );
+    // TODO: openmls/openmls#1130 re-enable
+    // // Now Bob wants the ApplicationId extension to be required.
+    // // This should fail because Alice doesn't support it.
+    // let e = bob_group
+    //     .create_group_context_ext_proposal(
+    //         framing_parameters,
+    //         &alice_credential_bundle,
+    //         &[required_application_id],
+    //         backend,
+    //     )
+    //     .expect_err("Bob was able to create a gce proposal for an extension not supported by all other parties.");
+    // assert_eq!(
+    //     e,
+    //     CreateGroupContextExtProposalError::TreeSyncError(
+    //         crate::treesync::errors::TreeSyncError::UnsupportedExtension
+    //     )
+    // );
 }
 
 #[apply(ciphersuites_and_backends)]
@@ -562,19 +567,8 @@ fn test_group_context_extension_proposal(
     .expect("An unexpected error occurred.");
     let bob_key_package = bob_key_package_bundle.key_package();
 
-    // Set required capabilities
-    let extensions = &[ExtensionType::Capabilities];
-    let proposals = &[
-        ProposalType::GroupContextExtensions,
-        ProposalType::Add,
-        ProposalType::Remove,
-        ProposalType::Update,
-    ];
-    let required_capabilities = RequiredCapabilitiesExtension::new(extensions, proposals);
-
     let mut alice_group = CoreGroup::builder(GroupId::random(backend), alice_key_package_bundle)
-        .with_required_capabilities(required_capabilities)
-        .build(backend)
+        .build(&alice_credential_bundle, backend)
         .expect("Error creating CoreGroup.");
 
     // Adding Bob
@@ -621,15 +615,14 @@ fn test_group_context_extension_proposal(
     .expect("Error joining group.");
 
     // Alice adds a required capability.
-    let required_key_id = Extension::RequiredCapabilities(RequiredCapabilitiesExtension::new(
-        &[ExtensionType::ApplicationId],
-        &[],
-    ));
+    let required_application_id = Extension::RequiredCapabilities(
+        RequiredCapabilitiesExtension::new(&[ExtensionType::ApplicationId], &[]),
+    );
     let gce_proposal = alice_group
         .create_group_context_ext_proposal(
             framing_parameters,
             &alice_credential_bundle,
-            &[required_key_id],
+            &[required_application_id],
             backend,
         )
         .expect("Error creating gce proposal.");

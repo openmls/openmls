@@ -10,11 +10,14 @@ use rstest::*;
 use rstest_reuse::{self, *};
 
 use crate::{
+    ciphersuite::{
+        hash_ref::ProposalRef,
+        signable::{Signable, Verifiable},
+    },
     credentials::{errors::*, *},
     framing::*,
-    group::{errors::*, tests::utils::resign_external_commit, *},
-    messages::{proposals::*, public_group_state::VerifiablePublicGroupState},
-    prelude_test::signable::Verifiable,
+    group::{errors::*, *},
+    messages::proposals::*,
 };
 
 use super::utils::{generate_credential_bundle, generate_key_package_bundle};
@@ -88,20 +91,16 @@ fn validation_test_setup(
     // Bob wants to commit externally.
 
     // Have Alice export everything that bob needs.
-    let pgs_encoded: Vec<u8> = alice_group
-        .export_public_group_state(backend)
-        .expect("Error exporting PGS")
-        .tls_serialize_detached()
-        .expect("Error serializing PGS");
-    let verifiable_public_group_state =
-        VerifiablePublicGroupState::tls_deserialize(&mut pgs_encoded.as_slice())
-            .expect("Error deserializing PGS");
+    let verifiable_group_info = alice_group
+        .export_group_info(backend, false)
+        .unwrap()
+        .into_verifiable_group_info();
     let tree_option = alice_group.export_ratchet_tree();
 
     let (_bob_group, message) = MlsGroup::join_by_external_commit(
         backend,
         Some(&tree_option),
-        verifiable_public_group_state,
+        verifiable_group_info,
         alice_group.configuration(),
         &[],
         &bob_credential_bundle,
@@ -302,7 +301,7 @@ fn test_valsem242(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
         )
         .unwrap();
         ProposalOrRef::Proposal(Proposal::Update(UpdateProposal {
-            key_package: bob_key_package,
+            leaf_node: bob_key_package.leaf_node().clone(),
         }))
     };
 
@@ -328,17 +327,15 @@ fn test_valsem242(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
         gce_proposal(),
     ];
     for proposal in deny_list {
-        let pgs_encoded: Vec<u8> = alice_group
-            .export_public_group_state(backend)
+        let verifiable_group_info = alice_group
+            .export_group_info(backend, true)
             .unwrap()
-            .tls_serialize_detached()
-            .unwrap();
-        let pgs = VerifiablePublicGroupState::tls_deserialize(&mut pgs_encoded.as_slice()).unwrap();
+            .into_verifiable_group_info();
 
         let (_bob_group, message) = MlsGroup::join_by_external_commit(
             backend,
             None,
-            pgs,
+            verifiable_group_info,
             alice_group.configuration(),
             &[],
             &bob_credential_bundle,
@@ -425,20 +422,16 @@ fn test_valsem243(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
     // Bob wants to commit externally.
 
     // Have Alice export everything that bob needs.
-    let pgs_encoded: Vec<u8> = alice_group
-        .export_public_group_state(backend)
-        .expect("Error exporting PGS")
-        .tls_serialize_detached()
-        .expect("Error serializing PGS");
-    let verifiable_public_group_state =
-        VerifiablePublicGroupState::tls_deserialize(&mut pgs_encoded.as_slice())
-            .expect("Error deserializing PGS");
+    let verifiable_group_info = alice_group
+        .export_group_info(backend, false)
+        .unwrap()
+        .into_verifiable_group_info();
     let tree_option = alice_group.export_ratchet_tree();
 
     let (_bob_group, message) = MlsGroup::join_by_external_commit(
         backend,
         Some(&tree_option),
-        verifiable_public_group_state.clone(),
+        verifiable_group_info.clone(),
         alice_group.configuration(),
         &[],
         &bob_credential_bundle,
@@ -524,7 +517,7 @@ fn test_valsem243(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
     let alice_external_commit = MlsGroup::join_by_external_commit(
         backend,
         Some(&tree_option),
-        verifiable_public_group_state,
+        verifiable_group_info,
         alice_group.configuration(),
         &[],
         &alice_credential_bundle,
@@ -537,7 +530,7 @@ fn test_valsem243(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
         .expect("Unexpected error.");
 }
 
-// ValSem244: External Commit, referenced Proposals: There MUST NOT be any ExternalInit proposals.
+// ValSem244: External Commit must not include any proposals by reference
 #[apply(ciphersuites_and_backends)]
 fn test_valsem244(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
     // Test with MlsPlaintext
@@ -554,24 +547,25 @@ fn test_valsem244(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
         panic!("Unexpected content type.");
     };
 
-    // Add an extra external init proposal by reference.
-    // First create an external init proposal.
-    let second_ext_init_prop = Proposal::ExternalInit(ExternalInitProposal::from(vec![1, 2, 3]));
-
-    let queued_proposal = QueuedProposal::from_proposal_and_sender(
-        ciphersuite,
+    // Add an Add proposal by reference
+    let bob_key_package = generate_key_package_bundle(
+        &[ciphersuite],
+        bob_credential_bundle.credential(),
+        vec![],
         backend,
-        second_ext_init_prop,
-        &Sender::Member(alice_group.own_leaf_index()),
     )
-    .expect("error creating queued proposal");
+    .unwrap();
 
-    // Add it to Alice's proposal store
-    alice_group.store_pending_proposal(queued_proposal.clone());
+    let add_proposal = Proposal::Add(AddProposal {
+        key_package: bob_key_package,
+    });
 
-    let proposal_reference = ProposalOrRef::Reference(queued_proposal.proposal_reference());
+    let proposal_ref = ProposalRef::from_proposal(ciphersuite, backend, &add_proposal).unwrap();
 
-    content.proposals.push(proposal_reference);
+    // Add an Add proposal to the external commit.
+    let add_proposal_ref = ProposalOrRef::Reference(proposal_ref);
+
+    content.proposals.push(add_proposal_ref);
 
     plaintext.set_content(MlsContentBody::Commit(content));
 
@@ -590,21 +584,23 @@ fn test_valsem244(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
     // Have alice process the commit resulting from external init.
     let message_in = MlsMessageIn::from(signed_plaintext);
 
+    // Expect error because the message can't be processed due to the external
+    // commit including an external init proposal by reference.
     let err = alice_group
         .process_message(backend, message_in)
-        .expect_err("Could process message despite the external commit including an external init proposal by reference.");
+        .unwrap_err();
 
     assert_eq!(
         err,
         ProcessMessageError::InvalidCommit(StageCommitError::ExternalCommitValidation(
-            ExternalCommitValidationError::MultipleExternalInitProposals
+            ExternalCommitValidationError::ReferencedProposal
         ))
     );
 
     // Positive case
     alice_group
         .process_message(backend, MlsMessageIn::from(original_plaintext))
-        .expect("Unexpected error.");
+        .unwrap();
 }
 
 // ValSem245: External Commit: MUST contain a path.
@@ -693,7 +689,7 @@ fn test_valsem246(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
             .expect("An unexpected error occurred.");
 
     if let Some(ref mut path) = content.path {
-        path.set_leaf_key_package(bob_new_key_package)
+        path.set_leaf_node(bob_new_key_package.leaf_node().clone())
     }
 
     plaintext.set_content(MlsContentBody::Commit(content));
@@ -732,7 +728,7 @@ fn test_valsem246(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
         .path()
         .as_ref()
         .expect("no path in external commit")
-        .leaf_key_package()
+        .leaf_node()
         .credential();
     assert_eq!(path_credential, bob_credential_bundle.credential());
 
@@ -773,18 +769,15 @@ fn test_pure_ciphertest(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoPr
     // Bob wants to commit externally.
 
     // Have Alice export everything that bob needs.
-    let pgs_encoded: Vec<u8> = alice_group
-        .export_public_group_state(backend)
-        .expect("Error exporting PGS")
-        .tls_serialize_detached()
-        .expect("Error serializing PGS");
-    let pgs = VerifiablePublicGroupState::tls_deserialize(&mut pgs_encoded.as_slice())
-        .expect("Error deserializing PGS");
+    let verifiable_group_info = alice_group
+        .export_group_info(backend, true)
+        .unwrap()
+        .into_verifiable_group_info();
 
     let (_bob_group, message) = MlsGroup::join_by_external_commit(
         backend,
         None,
-        pgs,
+        verifiable_group_info,
         alice_group.configuration(),
         &[],
         &bob_credential_bundle,

@@ -1,6 +1,9 @@
 use core_group::{proposals::QueuedProposal, staged_commit::StagedCommit};
 
-use crate::group::{errors::ValidationError, mls_group::errors::ProcessMessageError};
+use crate::{
+    group::{errors::ValidationError, mls_group::errors::ProcessMessageError},
+    treesync::node::leaf_node::OpenMlsLeafNode,
+};
 
 use super::{proposals::ProposalStore, *};
 
@@ -117,7 +120,7 @@ impl CoreGroup {
         &self,
         unverified_message: UnverifiedMessage,
         proposal_store: &ProposalStore,
-        own_kpbs: &[KeyPackageBundle],
+        own_leaf_nodes: &[OpenMlsLeafNode],
         backend: &impl OpenMlsCryptoProvider,
     ) -> Result<ProcessedMessage, ProcessMessageError> {
         // Checks the following semantic validation:
@@ -183,7 +186,7 @@ impl CoreGroup {
                         //  - ValSem243
                         //  - ValSem244
                         let staged_commit =
-                            self.stage_commit(&plaintext, proposal_store, own_kpbs, backend)?;
+                            self.stage_commit(&plaintext, proposal_store, own_leaf_nodes, backend)?;
                         ProcessedMessageContent::StagedCommitMessage(Box::new(staged_commit))
                     }
                 };
@@ -229,7 +232,7 @@ impl CoreGroup {
                         let staged_commit = self.stage_commit(
                             verified_new_member_message.plaintext(),
                             proposal_store,
-                            own_kpbs,
+                            own_leaf_nodes,
                             backend,
                         )?;
                         ProcessedMessageContent::StagedCommitMessage(Box::new(staged_commit))
@@ -299,7 +302,7 @@ impl CoreGroup {
         message: MlsMessageIn,
         sender_ratchet_configuration: &SenderRatchetConfiguration,
         proposal_store: &ProposalStore,
-        own_kpbs: &[KeyPackageBundle],
+        own_kpbs: &[OpenMlsLeafNode],
     ) -> Result<ProcessedMessage, ProcessMessageError> {
         let unverified_message = self
             .parse_message(backend, message, sender_ratchet_configuration)

@@ -3,8 +3,9 @@ use crate::{
         core_group::create_commit_params::CreateCommitParams,
         errors::{CoreGroupBuildError, ExternalCommitError, WelcomeError},
     },
-    messages::public_group_state::VerifiablePublicGroupState,
+    messages::VerifiableGroupInfo,
 };
+use tls_codec::Serialize;
 
 use super::*;
 
@@ -52,6 +53,19 @@ impl MlsGroup {
             .key_store()
             .delete(&kph)
             .map_err(|_| NewGroupError::KeyStoreDeletionError)?;
+        let credential_bundle: CredentialBundle = backend
+            .key_store()
+            .read(
+                &key_package_bundle
+                    .key_package()
+                    .credential()
+                    .signature_key()
+                    .tls_serialize_detached()
+                    .map_err(|_| {
+                        LibraryError::custom("Unable to serialize signature public key")
+                    })?,
+            )
+            .ok_or(NewGroupError::NoMatchingCredentialBundle)?;
         let group_config = CoreGroupConfig {
             add_ratchet_tree_extension: mls_group_config.use_ratchet_tree_extension,
         };
@@ -59,7 +73,8 @@ impl MlsGroup {
             .with_config(group_config)
             .with_required_capabilities(mls_group_config.required_capabilities.clone())
             .with_max_past_epoch_secrets(mls_group_config.max_past_epochs)
-            .build(backend)
+            .with_lifetime(mls_group_config.lifetime().clone())
+            .build(&credential_bundle, backend)
             .map_err(|e| match e {
                 CoreGroupBuildError::LibraryError(e) => e.into(),
                 CoreGroupBuildError::UnsupportedProposalType => {
@@ -82,7 +97,7 @@ impl MlsGroup {
             mls_group_config: mls_group_config.clone(),
             group,
             proposal_store: ProposalStore::new(),
-            own_kpbs: vec![],
+            own_leaf_nodes: vec![],
             aad: vec![],
             resumption_psk_store,
             group_state: MlsGroupState::Operational,
@@ -129,7 +144,7 @@ impl MlsGroup {
             mls_group_config: mls_group_config.clone(),
             group,
             proposal_store: ProposalStore::new(),
-            own_kpbs: vec![],
+            own_leaf_nodes: vec![],
             aad: vec![],
             resumption_psk_store,
             group_state: MlsGroupState::Operational,
@@ -148,12 +163,12 @@ impl MlsGroup {
     /// the external commit was rejected due to an epoch change, the
     /// [`MlsGroup`] instance has to be discarded and a new one has to be
     /// created using this function based on the latest `ratchet_tree` and
-    /// public group state. For more information on the external init process,
+    /// group info. For more information on the external init process,
     /// please see Section 11.2.1 in the MLS specification.
     pub fn join_by_external_commit(
         backend: &impl OpenMlsCryptoProvider,
         tree_option: Option<&[Option<Node>]>,
-        verifiable_public_group_state: VerifiablePublicGroupState,
+        verifiable_group_info: VerifiableGroupInfo,
         mls_group_config: &MlsGroupConfig,
         aad: &[u8],
         credential_bundle: &CredentialBundle,
@@ -174,7 +189,7 @@ impl MlsGroup {
             backend,
             params,
             tree_option,
-            verifiable_public_group_state,
+            verifiable_group_info,
         )?;
         group.set_max_past_epochs(mls_group_config.max_past_epochs);
 
@@ -182,7 +197,7 @@ impl MlsGroup {
             mls_group_config: mls_group_config.clone(),
             group,
             proposal_store: ProposalStore::new(),
-            own_kpbs: vec![],
+            own_leaf_nodes: vec![],
             aad: vec![],
             resumption_psk_store,
             group_state: MlsGroupState::PendingCommit(Box::new(PendingCommitState::External(
