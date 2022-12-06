@@ -37,44 +37,41 @@ To achieve these goals, here are the "rules"/recommendations to set up:
 1. Any test expected to fail by altering a valid input should also keep this valid input and verify that, contrary to
    the
    tampered one, it succeeds.
-2. All errors should be namely asserted i.e. `assert!(result.is_err())` is prohibited. When matching an error, one
-   should `assert!(matches!(result.unwrap_err(), MlsError::MyError))` because errors are not supposed to impl Eq (it can
-   impose hard to fulfill constraints on the data they wrap)
-3. Prefer `.unwrap()` over `.expect("...")`. The latter adds overhead and most of the time does not add enough debugging
+2. Prefer `.unwrap()` over `.expect("...")`. The latter adds overhead and most of the time does not add enough debugging
    information. If, on the opposite, an `.expect(...)` can help a developer troubleshooting a failing test with a very
    complex setup which this `expect` message could help understanding then go for it ! Another
    argument [here](https://twitter.com/timClicks/status/1584676737572487169).
-4. It is okay (recommended) to `use crate::prelude::*;` in all test mod (to debate ?)
-5. Have a public test framework in each top level mod inside `src/{module}/test_utils(.rs)`. Avoid scattered utils,
+3. It is okay (recommended) to `use crate::prelude::*;` in all test mod (to debate ?)
+4. Have a public test framework in each top level mod inside `src/{module}/test_utils(.rs)`. Avoid scattered utils,
    factorize them.
-6. Each test should test one and only one thing. It should not iterate over multiple cases.
-7. test method names should
+5. Each test should test one and only one thing. It should not iterate over multiple cases.
+6. test method names should
     1. follow the template `should_{expected_behaviour}_when_{state_tested}`
        e.g. `should_succeed_when_...` & `should_fail_when_...` and use natural language
     2. not be prefixed by `test_`
    3. `ValSem` should not be in the test method name but kept in comment (will be fixed
       by [#1126](https://github.com/openmls/openmls/issues/1126))
-8. There should not be a `test-utils` feature (best effort). All those helpers should be `#[cfg(test)]` instead and used
+7. There should not be a `test-utils` feature (best effort). All those helpers should be `#[cfg(test)]` instead and used
    only in unit tests
-9. Utilities shouldn't unwrap Results to give a chance, depending on the context, to assert an error. Hence, they should
+8. Utilities shouldn't unwrap Results to give a chance, depending on the context, to assert an error. Hence, they should
    all start with `try_` e.g. I might sometimes expect `try_talk_to` to fail even if most of the time I don't.
-10. When it comes to testing MlsGroup, the following utilities would help a lot. More to be added...
-    1. `MlsGroup::try_init(case: &TestCase, client: &str) -> Result(MlsGroup, CredentialBundle)` e.g.
-        ```rust
-        let (mut alice_group, ..) = MlsGroup::try_init(&case, "Alice").unwrap();
-        ```
-    2. `MlsGroup::try_invite<const N: usize>(&mut self, case: &TestCase, others: &mut [&str ; N]) -> Result<[(MlsGroup, CredentialBundle) ; N]>` e.g.
+9. When it comes to testing MlsGroup, the following utilities would help a lot. More to be added...
+   1. `MlsGroup::try_init(case: &TestCase, client: &str) -> Result(MlsGroup, CredentialBundle)` e.g.
        ```rust
        let (mut alice_group, ..) = MlsGroup::try_init(&case, "Alice").unwrap();
-       let [(mut bob_group, ..), (mut charly_group, ..)] = alice_group.try_invite(&case, ["Bob", "Charly"]).unwrap();
        ```
-    3. `MlsGroup::try_talk_to<const N: usize>(&mut self, case: &TestCase, others: &mut [MlsGroup ; N])` e.g.
-       ```rust
-       let (mut alice_group, ..) = MlsGroup::try_init(&case, "Alice").unwrap();
-       let [(mut bob_group, ..), (mut charly_group, ..)] = alice_group.try_invite(&case, ["Bob", "Charly"]).unwrap();
-       assert!(alice_group.try_talk_to(&case, &mut [bob_group, charly_group]).is_ok());
-       ```
-11. Fixtures: in order for being more flexible, they could just require a single `case` variable. It would look like
+   2. `MlsGroup::try_invite<const N: usize>(&mut self, case: &TestCase, others: &mut [&str ; N]) -> Result<[(MlsGroup, CredentialBundle) ; N]>` e.g.
+      ```rust
+      let (mut alice_group, ..) = MlsGroup::try_init(&case, "Alice").unwrap();
+      let [(mut bob_group, ..), (mut charly_group, ..)] = alice_group.try_invite(&case, ["Bob", "Charly"]).unwrap();
+      ```
+   3. `MlsGroup::try_talk_to<const N: usize>(&mut self, case: &TestCase, others: &mut [MlsGroup ; N])` e.g.
+      ```rust
+      let (mut alice_group, ..) = MlsGroup::try_init(&case, "Alice").unwrap();
+      let [(mut bob_group, ..), (mut charly_group, ..)] = alice_group.try_invite(&case, ["Bob", "Charly"]).unwrap();
+      assert!(alice_group.try_talk_to(&case, &mut [bob_group, charly_group]).is_ok());
+      ```
+10. Fixtures: in order for being more flexible, they could just require a single `case` variable. It would look like
     this:
     ```rust
     pub struct TestCase<T: OpenMlsCryptoProvider = OpenMlsRustCrypto> {
@@ -94,7 +91,7 @@ To achieve these goals, here are the "rules"/recommendations to set up:
        than `MemoryKeyStore`. Also should we keep evercrypt as an option or discontinue it ?
     2. `MlsGroupConfig` is introduced to tune the `WireFormatPolicy` to make sure everything also works
        in `PURE_CIPHERTEXT` mode.
-12. Test file layout
+11. Test file layout
     * Do not hesitate nesting your tests within mod. They provide better readability. They can be collapsed/expanded.
       Rule of thumb could be `1 method = 1 mod` but it can be otherwise.
     * Imports should live in the top `tests` mod to avoid duplicates. Nested mods should not have anything other
