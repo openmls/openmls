@@ -156,54 +156,7 @@ fn codec_ciphertext(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvid
 #[apply(ciphersuites_and_backends)]
 fn wire_format_checks(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
     let configuration = &SenderRatchetConfiguration::default();
-    let credential_bundle = CredentialBundle::new(
-        vec![7, 8, 9],
-        CredentialType::Basic,
-        ciphersuite.signature_algorithm(),
-        backend,
-    )
-    .expect("An unexpected error occurred.");
-    let sender = Sender::build_member(987543210);
-    let group_context = GroupContext::new(
-        ciphersuite,
-        GroupId::from_slice(&[5, 5, 5]),
-        1,
-        vec![],
-        vec![],
-        &[],
-    );
-
-    let serialized_context = group_context
-        .tls_serialize_detached()
-        .expect("An unexpected error occurred.");
-    let signature_input = MlsContentTbs::new(
-        WireFormat::MlsCiphertext,
-        GroupId::random(backend),
-        1,
-        sender,
-        vec![1, 2, 3].into(),
-        MlsContentBody::Application(vec![4, 5, 6].into()),
-    )
-    .with_context(serialized_context);
-    let mut plaintext: MlsPlaintext = signature_input
-        .sign(backend, &credential_bundle)
-        .expect("Signing failed.");
-
-    let mut key_schedule = KeySchedule::init(
-        ciphersuite,
-        backend,
-        JoinerSecret::random(ciphersuite, backend, ProtocolVersion::default()),
-        None, // PSK
-    )
-    .expect("Could not create KeySchedule.");
-
-    let serialized_group_context = group_context
-        .tls_serialize_detached()
-        .expect("Could not serialize group context.");
-
-    key_schedule
-        .add_context(backend, &serialized_group_context)
-        .expect("Could not add context to key schedule");
+    let (plaintext, _credential) = create_content(ciphersuite, WireFormat::MlsCiphertext, backend);
 
     let mut message_secrets = MessageSecrets::random(ciphersuite, backend, 0);
     let encryption_secret_bytes = backend
@@ -227,13 +180,13 @@ fn wire_format_checks(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProv
     message_secrets.replace_secret_tree(sender_secret_tree);
 
     let sender_index = SecretTreeLeafIndex(0);
-    let mut ciphertext = MlsCiphertext::try_from_plaintext(
+    let ciphertext = MlsCiphertext::encrypt_with_different_header(
         &plaintext,
         ciphersuite,
         backend,
         MlsMessageHeader {
-            group_id: group_context.group_id().clone(),
-            epoch: group_context.epoch(),
+            group_id: plaintext.group_id().clone(),
+            epoch: plaintext.epoch(),
             sender: sender_index,
         },
         &mut message_secrets,
@@ -264,39 +217,100 @@ fn wire_format_checks(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProv
         WireFormat::MlsCiphertext
     );
 
-    // Try to decrypt a ciphertext with the wrong wire format
+    // Create and encrypt content with the wrong wire format
+    let (plaintext, credential) = create_content(ciphersuite, WireFormat::MlsPlaintext, backend);
 
-    ciphertext.set_wire_format(WireFormat::MlsPlaintext);
+    let receiver_secret_tree = message_secrets.replace_secret_tree(sender_secret_tree);
+    // Bypass wire format check during encryption
+    let ciphertext = MlsCiphertext::encrypt_without_check(
+        &plaintext,
+        ciphersuite,
+        backend,
+        &mut message_secrets,
+        0,
+    )
+    .expect("Could not encrypt MlsPlaintext.");
+
+    // Try to process a ciphertext with the wrong wire format
+    let sender_secret_tree = message_secrets.replace_secret_tree(receiver_secret_tree);
+
+    let sender_data = ciphertext
+        .sender_data(&message_secrets, backend, ciphersuite)
+        .expect("Could not decrypt sender data.");
+    let verifiable_plaintext = ciphertext
+        .to_plaintext(
+            ciphersuite,
+            backend,
+            &mut message_secrets,
+            sender_index,
+            configuration,
+            sender_data,
+        )
+        .expect("Could not decrypt MlsCiphertext.");
+
+    // We expect the signature to fail since the original content was signed with a different wire format.
+    let result: Result<MlsAuthContent, CredentialError> =
+        verifiable_plaintext.verify(backend, &credential);
 
     assert_eq!(
-        ciphertext
-            .sender_data(&message_secrets, backend, ciphersuite)
-            .expect_err("Could decrypt despite wrong wire format."),
-        MessageDecryptionError::WrongWireFormat
+        result.expect_err("Verification successful despite wrong wire format."),
+        CredentialError::InvalidSignature
     );
 
     message_secrets.replace_secret_tree(sender_secret_tree);
 
     // Try to encrypt an MlsPlaintext with the wrong wire format
-
-    plaintext.set_wire_format(WireFormat::MlsPlaintext);
-
     assert_eq!(
         MlsCiphertext::try_from_plaintext(
             &plaintext,
             ciphersuite,
             backend,
-            MlsMessageHeader {
-                group_id: group_context.group_id().clone(),
-                epoch: group_context.epoch(),
-                sender: sender_index,
-            },
             &mut message_secrets,
             0,
         )
         .expect_err("Could encrypt despite wrong wire format."),
         MessageEncryptionError::WrongWireFormat
     );
+}
+
+fn create_content(
+    ciphersuite: Ciphersuite,
+    wire_format: WireFormat,
+    backend: &impl OpenMlsCryptoProvider,
+) -> (MlsAuthContent, Credential) {
+    let credential_bundle = CredentialBundle::new(
+        vec![7, 8, 9],
+        CredentialType::Basic,
+        ciphersuite.signature_algorithm(),
+        backend,
+    )
+    .expect("An unexpected error occurred.");
+    let sender = Sender::build_member(0);
+    let group_context = GroupContext::new(
+        ciphersuite,
+        GroupId::from_slice(&[5, 5, 5]),
+        1,
+        vec![],
+        vec![],
+        &[],
+    );
+    let serialized_context = group_context
+        .tls_serialize_detached()
+        .expect("An unexpected error occurred.");
+    let signature_input = MlsContentTbs::new(
+        wire_format,
+        GroupId::random(backend),
+        1,
+        sender,
+        vec![1, 2, 3].into(),
+        MlsContentBody::Application(vec![4, 5, 6].into()),
+    )
+    .with_context(serialized_context);
+
+    let content = signature_input
+        .sign(backend, &credential_bundle)
+        .expect("Signing failed.");
+    (content, credential_bundle.credential().clone())
 }
 
 #[apply(ciphersuites_and_backends)]
