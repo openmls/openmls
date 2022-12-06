@@ -699,10 +699,10 @@ impl CoreGroup {
     }
 
     /// Get the message secrets. Either from the secrets store or from the group.
-    pub(crate) fn message_secrets_mut<'secret, 'group: 'secret>(
-        &'group mut self,
+    pub(crate) fn message_secrets_mut(
+        &mut self,
         epoch: GroupEpoch,
-    ) -> Result<&'secret mut MessageSecrets, SecretTreeError> {
+    ) -> Result<&mut MessageSecrets, SecretTreeError> {
         if epoch < self.context().epoch() {
             self.message_secrets_store
                 .secrets_for_epoch_mut(epoch)
@@ -713,10 +713,10 @@ impl CoreGroup {
     }
 
     /// Get the message secrets. Either from the secrets store or from the group.
-    pub(crate) fn message_secrets_for_epoch<'secret, 'group: 'secret>(
-        &'group self,
+    pub(crate) fn message_secrets_for_epoch(
+        &self,
         epoch: GroupEpoch,
-    ) -> Result<&'secret MessageSecrets, SecretTreeError> {
+    ) -> Result<&MessageSecrets, SecretTreeError> {
         if epoch < self.context().epoch() {
             self.message_secrets_store
                 .secrets_for_epoch(epoch)
@@ -731,10 +731,10 @@ impl CoreGroup {
     ///
     /// Note that the leaves vector is empty for message secrets of the current
     /// epoch. The caller can use treesync in this case.
-    pub(crate) fn message_secrets_and_leaves_mut<'secret, 'group: 'secret>(
-        &'group mut self,
+    pub(crate) fn message_secrets_and_leaves_mut(
+        &mut self,
         epoch: GroupEpoch,
-    ) -> Result<(&'secret mut MessageSecrets, &[Member]), MessageDecryptionError> {
+    ) -> Result<(&mut MessageSecrets, &[Member]), MessageDecryptionError> {
         if epoch < self.context().epoch() {
             self.message_secrets_store
                 .secrets_and_leaves_for_epoch_mut(epoch)
