@@ -98,68 +98,71 @@ To achieve these goals, here are the "rules"/recommendations to set up:
       than `use super::*;`
     * Within a nested mod you can avoid repeating the mod name e.g.
       ~~`method_a_should_bla_when_blabla`~~ -> `should_bla_when_blabla`
-
-```rust
-impl MyStruct {
-    pub fn method_a() {}
-    // snip
-    fn method_z() {}
-}
-
-// No `#[cfg(features = "test-utils")]`
-
-#[test]
-mod tests {
-    use super::*;
-    use crate::prelude::*; // if required
-
-    mod a {
-        use super::*; // <- no other imports here. 
-        // If one is required, add it to tests mod. This avoids duplicates.
-
-        #[test]
-        fn should_bla_when_blabla_1() {}
-
+    ```rust
+    impl MyStruct {
+        pub fn method_a() {}
         // snip
-        #[test]
-        fn should_bla_when_blabla_n() {}
+        fn method_z() {}
     }
-
-    // snip
-
-    mod z {
+    
+    // No `#[cfg(features = "test-utils")]`
+    
+    #[test]
+    mod tests {
         use super::*;
-
-        #[test]
-        fn should_bla_when_blabla_1() {}
-
+        use crate::prelude::*; // if required
+    
+        mod a {
+            use super::*; // <- no other imports here. 
+            // If one is required, add it to tests mod. This avoids duplicates.
+    
+            #[test]
+            fn should_bla_when_blabla_1() {}
+    
+            // snip
+            #[test]
+            fn should_bla_when_blabla_n() {}
+        }
+    
         // snip
-        #[test]
-        fn should_bla_when_blabla_n() {}
+    
+        mod z {
+            use super::*;
+    
+            #[test]
+            fn should_bla_when_blabla_1() {}
+    
+            // snip
+            #[test]
+            fn should_bla_when_blabla_n() {}
+        }
     }
-}
-```
+    ```
 
-* Crate layout
+12. Crate layout
     * unit tests in `src` in the file they relate to
     * a `test_utils` mod should live in each top level mod. It should be declared with `#[cfg(test)]` in parent `mod.rs`
     * Those test utils should contain all the reusable helpers to write unit tests in all the other inner files.
     * Those test utils are public and can be used by other top level mods e.g. `z` can use `a`'s utils
+    ```text
+    src
+    ├── a
+    │ ├── mod.rs <- unit tests here
+    │ └── test_utils.rs <- public helpers for unit tests #[cfg(test)]
+    │ -- snip --
+    ├── z
+    │ ├── mod.rs
+    │ └── test_utils.rs
+    tests <- integration tests with public api only
+    ├── a.rs
+    │ -- snip --
+    └── z.rs
+    ```
 
-```text
-src
-├── a
-│ ├── mod.rs <- unit tests here
-│ └── test_utils.rs <- public helpers for unit tests #[cfg(test)]
-│ -- snip --
-├── z
-│ ├── mod.rs
-│ └── test_utils.rs
-tests <- integration tests with public api only
-├── a.rs
-│ -- snip --
-└── z.rs
-```
+13. Integration tests live in `./tests` folder. 
+    1. There should be one mod per source mod. 
+    2. Integration tests should only use the public API.
+    3. They could be used as examples in the book
 
 ## Bonus
 
