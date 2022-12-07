@@ -331,7 +331,6 @@ fn test_required_extension_key_package_mismatch(
 
     // Set required capabilities
     let extensions = &[
-        ExtensionType::Capabilities,
         ExtensionType::RequiredCapabilities,
         ExtensionType::ApplicationId,
     ];
@@ -379,7 +378,7 @@ fn test_group_context_extensions(ciphersuite: Ciphersuite, backend: &impl OpenMl
     let bob_key_package = bob_key_package_bundle.key_package();
 
     // Set required capabilities
-    let extensions = &[ExtensionType::Capabilities, ExtensionType::ApplicationId];
+    let extensions = &[ExtensionType::ApplicationId];
     let proposals = &[
         ProposalType::GroupContextExtensions,
         ProposalType::Add,
@@ -460,7 +459,7 @@ fn test_group_context_extension_proposal_fails(
     let bob_key_package = bob_key_package_bundle.key_package();
 
     // Set required capabilities
-    let extensions = &[ExtensionType::Capabilities];
+    let extensions = &[];
     let proposals = &[
         ProposalType::GroupContextExtensions,
         ProposalType::Add,
