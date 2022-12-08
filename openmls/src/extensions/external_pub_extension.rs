@@ -37,7 +37,7 @@ mod test {
     use super::*;
     use crate::{
         credentials::{CredentialBundle, CredentialType},
-        key_packages::KeyPackageBundle,
+        key_packages::{KeyPackageBundle, Lifetime},
     };
 
     #[test]
@@ -61,6 +61,7 @@ mod test {
                         &[Ciphersuite::MLS_128_DHKEMX25519_CHACHA20POLY1305_SHA256_Ed25519],
                         &credential_bundle,
                         &backend,
+                        Lifetime::default(),
                         vec![],
                     )
                     .unwrap();

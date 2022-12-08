@@ -32,11 +32,11 @@ fn key_package_id() {
 #[test]
 fn lifetime() {
     // A freshly created extensions must be valid.
-    let ext = LifetimeExtension::default();
+    let ext = Lifetime::default();
     assert!(ext.is_valid());
 
     // An extension without lifetime is invalid (waiting for 1 second).
-    let ext = LifetimeExtension::new(0);
+    let ext = Lifetime::new(0);
     std::thread::sleep(std::time::Duration::from_secs(1));
     assert!(!ext.is_valid());
 
@@ -44,11 +44,11 @@ fn lifetime() {
     let serialized = ext
         .tls_serialize_detached()
         .expect("error encoding life time extension");
-    let ext_deserialized = LifetimeExtension::tls_deserialize(&mut serialized.as_slice())
+    let ext_deserialized = Lifetime::tls_deserialize(&mut serialized.as_slice())
         .expect_err("Didn't get an error deserializing invalid life time extension");
     assert_eq!(
         ext_deserialized,
-        tls_codec::Error::DecodingError("Invalid".to_string()),
+        tls_codec::Error::DecodingError("Invalid lifetime".to_string()),
     );
 }
 
@@ -81,13 +81,19 @@ fn ratchet_tree_extension(ciphersuite: Ciphersuite, backend: &impl OpenMlsCrypto
         &[ciphersuite],
         &alice_credential_bundle,
         backend,
+        Lifetime::default(),
         Vec::new(),
     )
     .expect("An unexpected error occurred.");
 
-    let bob_key_package_bundle =
-        KeyPackageBundle::new(&[ciphersuite], &bob_credential_bundle, backend, Vec::new())
-            .expect("An unexpected error occurred.");
+    let bob_key_package_bundle = KeyPackageBundle::new(
+        &[ciphersuite],
+        &bob_credential_bundle,
+        backend,
+        Lifetime::default(),
+        Vec::new(),
+    )
+    .expect("An unexpected error occurred.");
     let bob_key_package = bob_key_package_bundle.key_package();
 
     let config = CoreGroupConfig {
@@ -158,13 +164,19 @@ fn ratchet_tree_extension(ciphersuite: Ciphersuite, backend: &impl OpenMlsCrypto
         &[ciphersuite],
         &alice_credential_bundle,
         backend,
+        Lifetime::default(),
         Vec::new(),
     )
     .expect("An unexpected error occurred.");
 
-    let bob_key_package_bundle =
-        KeyPackageBundle::new(&[ciphersuite], &bob_credential_bundle, backend, Vec::new())
-            .expect("An unexpected error occurred.");
+    let bob_key_package_bundle = KeyPackageBundle::new(
+        &[ciphersuite],
+        &bob_credential_bundle,
+        backend,
+        Lifetime::default(),
+        Vec::new(),
+    )
+    .expect("An unexpected error occurred.");
     let bob_key_package = bob_key_package_bundle.key_package();
 
     let config = CoreGroupConfig {

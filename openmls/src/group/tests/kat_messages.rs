@@ -63,10 +63,15 @@ pub fn generate_test_vector(ciphersuite: Ciphersuite) -> MessagesTestVector {
         &crypto,
     )
     .expect("An unexpected error occurred.");
-    let key_package_bundle =
-        KeyPackageBundle::new(&[ciphersuite_name], &credential_bundle, &crypto, Vec::new())
-            .expect("An unexpected error occurred.");
-    let lifetime = LifetimeExtension::default();
+    let key_package_bundle = KeyPackageBundle::new(
+        &[ciphersuite_name],
+        &credential_bundle,
+        &crypto,
+        Lifetime::default(),
+        Vec::new(),
+    )
+    .expect("An unexpected error occurred.");
+    let lifetime = Lifetime::default();
 
     // Let's create a group
     let mut group = CoreGroup::builder(GroupId::random(&crypto), key_package_bundle)
@@ -117,9 +122,14 @@ pub fn generate_test_vector(ciphersuite: Ciphersuite) -> MessagesTestVector {
         GroupSecrets::random_encoded(ciphersuite, &crypto, ProtocolVersion::default());
 
     // Create a proposal to update the user's KeyPackage
-    let key_package_bundle =
-        KeyPackageBundle::new(&[ciphersuite_name], &credential_bundle, &crypto, Vec::new())
-            .expect("An unexpected error occurred.");
+    let key_package_bundle = KeyPackageBundle::new(
+        &[ciphersuite_name],
+        &credential_bundle,
+        &crypto,
+        Lifetime::default(),
+        Vec::new(),
+    )
+    .expect("An unexpected error occurred.");
     let key_package = key_package_bundle.key_package();
     let update_proposal = UpdateProposal {
         leaf_node: LeafNode::new(
@@ -144,6 +154,7 @@ pub fn generate_test_vector(ciphersuite: Ciphersuite) -> MessagesTestVector {
         &[ciphersuite_name],
         &joiner_credential_bundle,
         &crypto,
+        Lifetime::default(),
         Vec::new(),
     )
     .expect("An unexpected error occurred.");
@@ -408,7 +419,7 @@ pub fn run_test_vector(tv: MessagesTestVector) -> Result<(), MessagesTestVectorE
 
     // Lifetime
     let tv_lifetime = hex_to_bytes(&tv.lifetime);
-    let my_lifetime = LifetimeExtension::tls_deserialize(&mut tv_lifetime.as_slice())
+    let my_lifetime = Lifetime::tls_deserialize(&mut tv_lifetime.as_slice())
         .expect("An unexpected error occurred.")
         .tls_serialize_detached()
         .expect("An unexpected error occurred.");

@@ -140,7 +140,7 @@ pub(crate) struct CoreGroupBuilder {
     version: Option<ProtocolVersion>,
     required_capabilities: Option<RequiredCapabilitiesExtension>,
     max_past_epochs: usize,
-    lifetime: Option<LifetimeExtension>,
+    lifetime: Option<Lifetime>,
 }
 
 impl CoreGroupBuilder {
@@ -158,17 +158,20 @@ impl CoreGroupBuilder {
             lifetime: None,
         }
     }
+
     /// Set the [`CoreGroupConfig`] of the [`CoreGroup`].
     pub(crate) fn with_config(mut self, config: CoreGroupConfig) -> Self {
         self.config = Some(config);
         self
     }
+
     /// Set the [`Vec<PreSharedKeyId>`] of the [`CoreGroup`].
     #[cfg(test)]
     pub(crate) fn with_psk(mut self, psk_ids: Vec<PreSharedKeyId>) -> Self {
         self.psk_ids = psk_ids;
         self
     }
+
     /// Set the [`RequiredCapabilitiesExtension`] of the [`CoreGroup`].
     pub(crate) fn with_required_capabilities(
         mut self,
@@ -177,16 +180,19 @@ impl CoreGroupBuilder {
         self.required_capabilities = Some(required_capabilities);
         self
     }
+
     /// Set the number of past epochs the group should keep secrets.
     pub fn with_max_past_epoch_secrets(mut self, max_past_epochs: usize) -> Self {
         self.max_past_epochs = max_past_epochs;
         self
     }
-    /// Set the [`LifetimeExtension`] for the own leaf in the group.
-    pub fn with_lifetime(mut self, lifetime: LifetimeExtension) -> Self {
+
+    /// Set the [`Lifetime`] for the own leaf in the group.
+    pub fn with_lifetime(mut self, lifetime: Lifetime) -> Self {
         self.lifetime = Some(lifetime);
         self
     }
+
     /// Set extensions for the own leaf in the group.
     #[cfg(test)]
     pub fn with_extensions(mut self, extensions: Vec<Extension>) -> Self {

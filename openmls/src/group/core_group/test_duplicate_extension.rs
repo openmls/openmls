@@ -39,13 +39,19 @@ fn duplicate_ratchet_tree_extension(
         &[ciphersuite],
         &alice_credential_bundle,
         backend,
+        Lifetime::default(),
         Vec::new(),
     )
     .expect("An unexpected error occurred.");
 
-    let bob_key_package_bundle =
-        KeyPackageBundle::new(&[ciphersuite], &bob_credential_bundle, backend, Vec::new())
-            .expect("An unexpected error occurred.");
+    let bob_key_package_bundle = KeyPackageBundle::new(
+        &[ciphersuite],
+        &bob_credential_bundle,
+        backend,
+        Lifetime::default(),
+        Vec::new(),
+    )
+    .expect("An unexpected error occurred.");
     let bob_key_package = bob_key_package_bundle.key_package();
 
     let config = CoreGroupConfig {

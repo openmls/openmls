@@ -138,6 +138,7 @@ impl CoreGroup {
                 &[self.ciphersuite()],
                 params.credential_bundle(),
                 backend,
+                Lifetime::default(),
                 vec![],
             )
             .map_err(|_| LibraryError::custom("Unexpected KeyPackage error"))?;

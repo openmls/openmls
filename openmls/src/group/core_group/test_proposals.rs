@@ -15,7 +15,7 @@ use crate::{
         proposals::{ProposalQueue, ProposalStore, QueuedProposal},
         GroupContext, GroupId,
     },
-    key_packages::KeyPackageBundle,
+    key_packages::{KeyPackageBundle, Lifetime},
     messages::proposals::{AddProposal, Proposal, ProposalOrRef, ProposalType},
     schedule::MembershipKey,
 };
@@ -32,9 +32,14 @@ fn setup_client(
         backend,
     )
     .expect("An unexpected error occurred.");
-    let key_package_bundle =
-        KeyPackageBundle::new(&[ciphersuite], &credential_bundle, backend, Vec::new())
-            .expect("An unexpected error occurred.");
+    let key_package_bundle = KeyPackageBundle::new(
+        &[ciphersuite],
+        &credential_bundle,
+        backend,
+        Lifetime::default(),
+        Vec::new(),
+    )
+    .expect("An unexpected error occurred.");
     (credential_bundle, key_package_bundle)
 }
 
@@ -56,6 +61,7 @@ fn proposal_queue_functions(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryp
         &[ciphersuite],
         &alice_credential_bundle,
         backend,
+        Lifetime::default(),
         Vec::new(),
     )
     .expect("An unexpected error occurred.");
@@ -196,6 +202,7 @@ fn proposal_queue_order(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoPr
         &[ciphersuite],
         &alice_credential_bundle,
         backend,
+        Lifetime::default(),
         Vec::new(),
     )
     .expect("An unexpected error occurred.");
@@ -372,6 +379,7 @@ fn test_group_context_extensions(ciphersuite: Ciphersuite, backend: &impl OpenMl
         &[ciphersuite],
         &bob_credential_bundle,
         backend,
+        Lifetime::default(),
         vec![Extension::ApplicationId(ApplicationIdExtension::default())],
     )
     .expect("An unexpected error occurred.");
@@ -453,6 +461,7 @@ fn test_group_context_extension_proposal_fails(
         &[ciphersuite],
         &bob_credential_bundle,
         backend,
+        Lifetime::default(),
         vec![Extension::ApplicationId(ApplicationIdExtension::default())],
     )
     .expect("An unexpected error occurred.");
@@ -572,6 +581,7 @@ fn test_group_context_extension_proposal(
         &[ciphersuite],
         &bob_credential_bundle,
         backend,
+        Lifetime::default(),
         vec![Extension::ApplicationId(ApplicationIdExtension::default())],
     )
     .expect("An unexpected error occurred.");
@@ -579,6 +589,7 @@ fn test_group_context_extension_proposal(
         &[ciphersuite],
         &alice_credential_bundle,
         backend,
+        Lifetime::default(),
         vec![Extension::ApplicationId(ApplicationIdExtension::default())],
     )
     .expect("An unexpected error occurred.");
