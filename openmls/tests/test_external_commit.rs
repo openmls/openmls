@@ -30,9 +30,10 @@ fn test_external_commit(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoPr
         };
 
         let alice_kph = {
-            let alice_kpb =
-                KeyPackageBundle::new(ciphersuite, &alice_cb, backend, Lifetime::default(), vec![])
-                    .expect("Creation of key package bundle failed.");
+            let alice_kpb = KeyPackageBundle::builder()
+                .ciphersuite(ciphersuite)
+                .build(backend, alice_cb.clone())
+                .expect("Creation of key package bundle failed.");
 
             let alice_kph = alice_kpb
                 .key_package()

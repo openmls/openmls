@@ -51,13 +51,8 @@ fn test_tree_hash(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
             backend,
         )
         .expect("An unexpected error occurred.");
-        KeyPackageBundle::new(
-            &[ciphersuite],
-            &credential_bundle,
-            backend,
-            Vec::new(),
-        )
-        .expect("An unexpected error occurred.")
+        KeyPackageBundle::build().ciphersuite(
+            &[ciphersuite]).lifetime(Vec::new()).build(backend, &credential_bundle)
     }
 
     let kbp = create_identity(b"Tree creator", ciphersuite, backend);

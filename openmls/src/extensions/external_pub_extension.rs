@@ -37,7 +37,7 @@ mod test {
     use super::*;
     use crate::{
         credentials::{CredentialBundle, CredentialType},
-        key_packages::{KeyPackageBundle, Lifetime},
+        key_packages::KeyPackageBundle,
     };
 
     #[test]
@@ -57,14 +57,12 @@ mod test {
                     )
                     .expect("Creation of credential bundle failed.");
 
-                    let kpb = KeyPackageBundle::new(
-                        Ciphersuite::MLS_128_DHKEMX25519_CHACHA20POLY1305_SHA256_Ed25519,
-                        &credential_bundle,
-                        &backend,
-                        Lifetime::default(),
-                        vec![],
-                    )
-                    .unwrap();
+                    let kpb = KeyPackageBundle::builder()
+                        .ciphersuite(
+                            Ciphersuite::MLS_128_DHKEMX25519_CHACHA20POLY1305_SHA256_Ed25519,
+                        )
+                        .build(&backend, credential_bundle.clone())
+                        .unwrap();
 
                     kpb.key_package().hpke_init_key().clone()
                 };

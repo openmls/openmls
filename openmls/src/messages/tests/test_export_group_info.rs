@@ -13,14 +13,10 @@ fn export_group_info(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvi
     )
     .unwrap();
 
-    let alice_key_package_bundle = KeyPackageBundle::new(
-        ciphersuite,
-        &alice_credential_bundle,
-        backend,
-        Lifetime::default(),
-        Vec::new(),
-    )
-    .unwrap();
+    let alice_key_package_bundle = KeyPackageBundle::builder()
+        .ciphersuite(ciphersuite)
+        .build(backend, alice_credential_bundle.clone())
+        .unwrap();
 
     // Alice creates a group
     let group_alice: CoreGroup =

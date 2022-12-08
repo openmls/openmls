@@ -106,8 +106,10 @@ fn generate_key_package_bundle(
         .expect("An unexpected error occurred.");
 
     // Create the key package bundle
-    let key_package_bundle =
-        KeyPackageBundle::new(ciphersuite, &credential_bundle, backend, lifetime, vec![])?;
+    let key_package_bundle = KeyPackageBundle::builder()
+        .ciphersuite(ciphersuite)
+        .lifetime(lifetime)
+        .build(backend, credential_bundle)?;
     // ANCHOR_END: create_key_package_bundle
     // ANCHOR: store_key_package_bundle
     let key_package = key_package_bundle.key_package().clone();

@@ -400,13 +400,10 @@ impl MlsClient for MlsClientImpl {
             &self.crypto_provider,
         )
         .unwrap();
-        let key_package_bundle = KeyPackageBundle::new(
-            ciphersuite,
-            &credential_bundle,
-            &self.crypto_provider,
-            vec![],
-        )
-        .unwrap();
+        let key_package_bundle = KeyPackageBundle::builder()
+            .ciphersuite(ciphersuite)
+            .build(&self.crypto_provider, credential_bundle.clone())
+            .unwrap();
         let kp_hash = key_package_bundle
             .key_package()
             .hash_ref(self.crypto_provider.crypto())
@@ -456,13 +453,10 @@ impl MlsClient for MlsClientImpl {
             &self.crypto_provider,
         )
         .unwrap();
-        let key_package_bundle = KeyPackageBundle::new(
-            *ciphersuite,
-            &credential_bundle,
-            &self.crypto_provider,
-            vec![],
-        )
-        .unwrap();
+        let key_package_bundle = KeyPackageBundle::builder()
+            .ciphersuite(*ciphersuite)
+            .build(&self.crypto_provider, credential_bundle.clone())
+            .unwrap();
         let key_package = key_package_bundle.key_package().clone();
         let mut transaction_id_map = self.transaction_id_map.lock().unwrap();
         let transaction_id = transaction_id_map.len() as u32;
@@ -691,13 +685,13 @@ impl MlsClient for MlsClientImpl {
         let interop_group = groups
             .get_mut(update_proposal_request.state_id as usize)
             .ok_or_else(|| tonic::Status::new(tonic::Code::InvalidArgument, "unknown state_id"))?;
-        let key_package_bundle = KeyPackageBundle::new(
-            interop_group.group.ciphersuite(),
-            &interop_group.credential_bundle,
-            &self.crypto_provider,
-            vec![],
-        )
-        .unwrap();
+        let key_package_bundle = KeyPackageBundle::builder()
+            .ciphersuite(interop_group.group.ciphersuite())
+            .build(
+                &self.crypto_provider,
+                interop_group.credential_bundle.clone(),
+            )
+            .unwrap();
         let mls_group_config = MlsGroupConfig::builder()
             .use_ratchet_tree_extension(true)
             .wire_format_policy(interop_group.wire_format_policy)

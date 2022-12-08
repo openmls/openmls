@@ -15,15 +15,19 @@ fn generate_key_package(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoPr
     .expect("An unexpected error occurred.");
 
     // Generate a valid KeyPackage.
-    let lifetime = Lifetime::new(60);
-    let kpb = KeyPackageBundle::new(ciphersuite, &credential_bundle, backend, lifetime, vec![])
+    let kpb = KeyPackageBundle::builder()
+        .ciphersuite(ciphersuite)
+        .lifetime(Lifetime::new(60))
+        .build(backend, credential_bundle.clone())
         .expect("An unexpected error occurred.");
     std::thread::sleep(std::time::Duration::from_millis(1));
     assert!(kpb.key_package().verify(backend).is_ok());
 
     // Now we add an invalid lifetime.
-    let lifetime = Lifetime::new(0);
-    let kpb = KeyPackageBundle::new(ciphersuite, &credential_bundle, backend, lifetime, vec![])
+    let kpb = KeyPackageBundle::builder()
+        .ciphersuite(ciphersuite)
+        .lifetime(Lifetime::new(0))
+        .build(backend, credential_bundle)
         .expect("An unexpected error occurred.");
     std::thread::sleep(std::time::Duration::from_millis(1));
     assert!(kpb.key_package().verify(backend).is_err());
@@ -38,15 +42,11 @@ fn decryption_key_index_computation(
     let credential_bundle =
         CredentialBundle::new(id, CredentialType::Basic, ciphersuite.into(), backend)
             .expect("An unexpected error occurred.");
-    let kpb = KeyPackageBundle::new(
-        ciphersuite,
-        &credential_bundle,
-        backend,
-        Lifetime::default(),
-        Vec::new(),
-    )
-    .expect("An unexpected error occurred.")
-    .unsigned();
+    let kpb = KeyPackageBundle::builder()
+        .ciphersuite(ciphersuite)
+        .build(backend, credential_bundle.clone())
+        .expect("An unexpected error occurred.")
+        .unsigned();
 
     let kpb = kpb
         .sign(backend, &credential_bundle)
@@ -78,13 +78,9 @@ fn test_mismatch(backend: &impl OpenMlsCryptoProvider) {
     .expect("Could not create credential bundle");
 
     assert_eq!(
-        KeyPackageBundle::new(
-            ciphersuite_name,
-            &credential_bundle,
-            backend,
-            Lifetime::default(),
-            vec![],
-        ),
+        KeyPackageBundle::builder()
+            .ciphersuite(ciphersuite_name)
+            .build(backend, credential_bundle),
         Err(KeyPackageBundleNewError::CiphersuiteSignatureSchemeMismatch)
     );
 
@@ -101,12 +97,8 @@ fn test_mismatch(backend: &impl OpenMlsCryptoProvider) {
     )
     .expect("Could not create credential bundle");
 
-    assert!(KeyPackageBundle::new(
-        ciphersuite_name,
-        &credential_bundle,
-        backend,
-        Lifetime::default(),
-        vec![]
-    )
-    .is_ok());
+    assert!(KeyPackageBundle::builder()
+        .ciphersuite(ciphersuite_name)
+        .build(backend, credential_bundle)
+        .is_ok());
 }

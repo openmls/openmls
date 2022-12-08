@@ -13,14 +13,10 @@ fn test_store_key_package_bundle(ciphersuite: Ciphersuite, backend: &impl OpenMl
         backend,
     )
     .unwrap();
-    let key_package_bundle = KeyPackageBundle::new(
-        ciphersuite,
-        &credential_bundle,
-        backend,
-        Lifetime::default(),
-        vec![],
-    )
-    .expect("Error generating new key package bundle.");
+    let key_package_bundle = KeyPackageBundle::builder()
+        .ciphersuite(ciphersuite)
+        .build(backend, credential_bundle)
+        .expect("Error generating new key package bundle.");
 
     // In order to store something in the key store we need to define an ID.
     // Here we simply take the key package reference.

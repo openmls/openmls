@@ -104,14 +104,11 @@ fn test_update_proposal_encoding(backend: &impl OpenMlsCryptoProvider) {
 
         let lifetime = Lifetime::new(60);
 
-        let key_package_bundle = KeyPackageBundle::new(
-            group_state.ciphersuite(),
-            credential_bundle,
-            backend,
-            lifetime,
-            vec![],
-        )
-        .expect("An unexpected error occurred.");
+        let key_package_bundle = KeyPackageBundle::builder()
+            .ciphersuite(group_state.ciphersuite())
+            .lifetime(lifetime)
+            .build(backend, credential_bundle.clone())
+            .expect("An unexpected error occurred.");
 
         let update = group_state
             .create_update_proposal(
@@ -163,14 +160,11 @@ fn test_add_proposal_encoding(backend: &impl OpenMlsCryptoProvider) {
 
         let lifetime = Lifetime::new(60);
 
-        let key_package_bundle = KeyPackageBundle::new(
-            group_state.ciphersuite(),
-            credential_bundle,
-            backend,
-            lifetime,
-            vec![],
-        )
-        .expect("An unexpected error occurred.");
+        let key_package_bundle = KeyPackageBundle::builder()
+            .ciphersuite(group_state.ciphersuite())
+            .lifetime(lifetime)
+            .build(backend, credential_bundle.clone())
+            .expect("An unexpected error occurred.");
 
         // Adds
         let add = group_state
@@ -276,14 +270,11 @@ fn test_commit_encoding(backend: &impl OpenMlsCryptoProvider) {
 
         let lifetime = Lifetime::new(60);
 
-        let alice_key_package_bundle = KeyPackageBundle::new(
-            group_state.ciphersuite(),
-            alice_credential_bundle,
-            backend,
-            lifetime,
-            vec![],
-        )
-        .expect("An unexpected error occurred.");
+        let alice_key_package_bundle = KeyPackageBundle::builder()
+            .ciphersuite(group_state.ciphersuite())
+            .lifetime(lifetime)
+            .build(backend, alice_credential_bundle.clone())
+            .expect("An unexpected error occurred.");
 
         // Create a few proposals to put into the commit
 

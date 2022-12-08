@@ -63,14 +63,10 @@ pub fn generate_test_vector(ciphersuite: Ciphersuite) -> MessagesTestVector {
         &crypto,
     )
     .expect("An unexpected error occurred.");
-    let key_package_bundle = KeyPackageBundle::new(
-        ciphersuite_name,
-        &credential_bundle,
-        &crypto,
-        Lifetime::default(),
-        Vec::new(),
-    )
-    .expect("An unexpected error occurred.");
+    let key_package_bundle = KeyPackageBundle::builder()
+        .ciphersuite(ciphersuite_name)
+        .build(&crypto, credential_bundle.clone())
+        .expect("An unexpected error occurred.");
     let lifetime = Lifetime::default();
 
     // Let's create a group
@@ -122,14 +118,10 @@ pub fn generate_test_vector(ciphersuite: Ciphersuite) -> MessagesTestVector {
         GroupSecrets::random_encoded(ciphersuite, &crypto, ProtocolVersion::default());
 
     // Create a proposal to update the user's KeyPackage
-    let key_package_bundle = KeyPackageBundle::new(
-        ciphersuite_name,
-        &credential_bundle,
-        &crypto,
-        Lifetime::default(),
-        Vec::new(),
-    )
-    .expect("An unexpected error occurred.");
+    let key_package_bundle = KeyPackageBundle::builder()
+        .ciphersuite(ciphersuite_name)
+        .build(&crypto, credential_bundle.clone())
+        .expect("An unexpected error occurred.");
     let key_package = key_package_bundle.key_package();
     let update_proposal = UpdateProposal {
         leaf_node: LeafNode::new(
@@ -150,14 +142,10 @@ pub fn generate_test_vector(ciphersuite: Ciphersuite) -> MessagesTestVector {
         &crypto,
     )
     .expect("An unexpected error occurred.");
-    let joiner_key_package_bundle = KeyPackageBundle::new(
-        ciphersuite_name,
-        &joiner_credential_bundle,
-        &crypto,
-        Lifetime::default(),
-        Vec::new(),
-    )
-    .expect("An unexpected error occurred.");
+    let joiner_key_package_bundle = KeyPackageBundle::builder()
+        .ciphersuite(ciphersuite_name)
+        .build(&crypto, joiner_credential_bundle.clone())
+        .expect("An unexpected error occurred.");
     let add_proposal = AddProposal {
         key_package: joiner_key_package_bundle.key_package().clone(),
     };

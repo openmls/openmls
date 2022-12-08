@@ -2,7 +2,7 @@ use crate::{
     credentials::{CredentialBundle, CredentialType},
     framing::{FramingParameters, WireFormat},
     group::{errors::ExternalCommitError, GroupId},
-    key_packages::{KeyPackageBundle, Lifetime},
+    key_packages::KeyPackageBundle,
     messages::proposals::{ProposalOrRef, ProposalType},
     test_utils::*,
 };
@@ -39,23 +39,15 @@ fn test_external_init(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProv
     .expect("An unexpected error occurred.");
 
     // Generate KeyPackages
-    let alice_key_package_bundle = KeyPackageBundle::new(
-        ciphersuite,
-        &alice_credential_bundle,
-        backend,
-        Lifetime::default(),
-        Vec::new(),
-    )
-    .expect("An unexpected error occurred.");
+    let alice_key_package_bundle = KeyPackageBundle::builder()
+        .ciphersuite(ciphersuite)
+        .build(backend, alice_credential_bundle.clone())
+        .expect("An unexpected error occurred.");
 
-    let bob_key_package_bundle = KeyPackageBundle::new(
-        ciphersuite,
-        &bob_credential_bundle,
-        backend,
-        Lifetime::default(),
-        Vec::new(),
-    )
-    .expect("An unexpected error occurred.");
+    let bob_key_package_bundle = KeyPackageBundle::builder()
+        .ciphersuite(ciphersuite)
+        .build(backend, bob_credential_bundle.clone())
+        .expect("An unexpected error occurred.");
     let bob_key_package = bob_key_package_bundle.key_package();
 
     // === Alice creates a group ===
@@ -271,14 +263,10 @@ fn test_external_init_single_member_group(
     .expect("An unexpected error occurred.");
 
     // Generate KeyPackages
-    let alice_key_package_bundle = KeyPackageBundle::new(
-        ciphersuite,
-        &alice_credential_bundle,
-        backend,
-        Lifetime::default(),
-        Vec::new(),
-    )
-    .expect("An unexpected error occurred.");
+    let alice_key_package_bundle = KeyPackageBundle::builder()
+        .ciphersuite(ciphersuite)
+        .build(backend, alice_credential_bundle.clone())
+        .expect("An unexpected error occurred.");
 
     // === Alice creates a group ===
     let group_id = GroupId::random(backend);
@@ -368,23 +356,15 @@ fn test_external_init_broken_signature(
     .expect("An unexpected error occurred.");
 
     // Generate KeyPackages
-    let alice_key_package_bundle = KeyPackageBundle::new(
-        ciphersuite,
-        &alice_credential_bundle,
-        backend,
-        Lifetime::default(),
-        Vec::new(),
-    )
-    .expect("An unexpected error occurred.");
+    let alice_key_package_bundle = KeyPackageBundle::builder()
+        .ciphersuite(ciphersuite)
+        .build(backend, alice_credential_bundle.clone())
+        .expect("An unexpected error occurred.");
 
-    let bob_key_package_bundle = KeyPackageBundle::new(
-        ciphersuite,
-        &bob_credential_bundle,
-        backend,
-        Lifetime::default(),
-        Vec::new(),
-    )
-    .expect("An unexpected error occurred.");
+    let bob_key_package_bundle = KeyPackageBundle::builder()
+        .ciphersuite(ciphersuite)
+        .build(backend, bob_credential_bundle)
+        .expect("An unexpected error occurred.");
     let bob_key_package = bob_key_package_bundle.key_package();
 
     // === Alice creates a group ===

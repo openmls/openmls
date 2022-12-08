@@ -45,13 +45,9 @@ fn generate_key_package_bundle(
                 .expect("Error serializing signature key."),
         )
         .expect("An unexpected error occurred.");
-    let kpb = KeyPackageBundle::new(
-        ciphersuite,
-        &credential_bundle,
-        backend,
-        Lifetime::default(),
-        extensions,
-    )?;
+    let kpb = KeyPackageBundle::builder()
+        .ciphersuite(ciphersuite)
+        .build(backend, credential_bundle)?;
     let kp = kpb.key_package().clone();
     backend
         .key_store()

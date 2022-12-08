@@ -105,14 +105,11 @@ pub(crate) fn setup(config: TestSetupConfig, backend: &impl OpenMlsCryptoProvide
             let mut key_packages = Vec::new();
             for _ in 0..KEY_PACKAGE_COUNT {
                 let lifetime = Lifetime::new(60);
-                let key_package_bundle: KeyPackageBundle = KeyPackageBundle::new(
-                    ciphersuite,
-                    &credential_bundle,
-                    backend,
-                    lifetime,
-                    vec![],
-                )
-                .expect("An unexpected error occurred.");
+                let key_package_bundle: KeyPackageBundle = KeyPackageBundle::builder()
+                    .ciphersuite(ciphersuite)
+                    .lifetime(lifetime)
+                    .build(backend, credential_bundle.clone())
+                    .expect("An unexpected error occurred.");
                 key_packages.push(key_package_bundle.key_package().clone());
                 key_package_bundles.push(key_package_bundle);
             }
@@ -368,13 +365,9 @@ pub(super) fn generate_key_package_bundle(
                 .expect("Error serializing signature key."),
         )
         .expect("An unexpected error occurred.");
-    let kpb = KeyPackageBundle::new(
-        ciphersuite,
-        &credential_bundle,
-        backend,
-        Lifetime::default(),
-        extensions,
-    )?;
+    let kpb = KeyPackageBundle::builder()
+        .ciphersuite(ciphersuite)
+        .build(backend, credential_bundle)?;
     let kp = kpb.key_package().clone();
     backend
         .key_store()

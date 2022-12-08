@@ -56,8 +56,10 @@ impl Identity {
             crypto,
         )
         .unwrap();
-        let key_package_bundle =
-            KeyPackageBundle::new(ciphersuite, &credential_bundle, crypto, vec![]).unwrap();
+        let key_package_bundle = KeyPackageBundle::builder()
+            .ciphersuite(ciphersuite)
+            .build(crypto, credential_bundle.clone())
+            .unwrap();
 
         store_key_package_bundle_in_keystore(crypto, &key_package_bundle);
         store_credential_bundle_in_keystore(crypto, &credential_bundle);
@@ -71,8 +73,10 @@ impl Identity {
     /// The function returns the old `KeyPackageBundle`.
     pub fn update(&mut self, crypto: &OpenMlsRustCrypto) -> KeyPackageBundle {
         let ciphersuite = self.kpb.key_package().ciphersuite();
-        let key_package_bundle =
-            KeyPackageBundle::new(ciphersuite, &self.credential, crypto, vec![]).unwrap();
+        let key_package_bundle = KeyPackageBundle::builder()
+            .ciphersuite(ciphersuite)
+            .build(crypto, self.credential.clone())
+            .unwrap();
 
         store_key_package_bundle_in_keystore(crypto, &key_package_bundle);
 

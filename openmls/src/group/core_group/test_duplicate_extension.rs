@@ -35,23 +35,15 @@ fn duplicate_ratchet_tree_extension(
     .expect("An unexpected error occurred.");
 
     // Generate KeyPackages
-    let alice_key_package_bundle = KeyPackageBundle::new(
-        ciphersuite,
-        &alice_credential_bundle,
-        backend,
-        Lifetime::default(),
-        Vec::new(),
-    )
-    .expect("An unexpected error occurred.");
+    let alice_key_package_bundle = KeyPackageBundle::builder()
+        .ciphersuite(ciphersuite)
+        .build(backend, alice_credential_bundle.clone())
+        .expect("An unexpected error occurred.");
 
-    let bob_key_package_bundle = KeyPackageBundle::new(
-        ciphersuite,
-        &bob_credential_bundle,
-        backend,
-        Lifetime::default(),
-        Vec::new(),
-    )
-    .expect("An unexpected error occurred.");
+    let bob_key_package_bundle = KeyPackageBundle::builder()
+        .ciphersuite(ciphersuite)
+        .build(backend, bob_credential_bundle.clone())
+        .expect("An unexpected error occurred.");
     let bob_key_package = bob_key_package_bundle.key_package();
 
     let config = CoreGroupConfig {

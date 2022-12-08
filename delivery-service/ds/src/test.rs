@@ -30,7 +30,6 @@ fn generate_credential(
 fn generate_key_package(
     ciphersuites: &[Ciphersuite],
     credential: &Credential,
-    extensions: Vec<Extension>,
     crypto_backend: &impl OpenMlsCryptoProvider,
 ) -> Result<KeyPackage, KeyPackageBundleNewError> {
     let credential_bundle = crypto_backend
@@ -42,12 +41,9 @@ fn generate_key_package(
                 .expect("Error serializing signature key"),
         )
         .expect("An unexpected error occurred.");
-    let kpb = KeyPackageBundle::new(
-        ciphersuites[0],
-        &credential_bundle,
-        crypto_backend,
-        extensions,
-    )?;
+    let kpb = KeyPackageBundle::builder()
+        .ciphersuite(ciphersuites[0])
+        .build(crypto_backend, credential_bundle)?;
     let kp = kpb.key_package().clone();
     crypto_backend
         .key_store()
@@ -107,7 +103,7 @@ async fn test_list_clients() {
     .unwrap();
     let client_id = credential_bundle.identity().to_vec();
     let client_key_package =
-        generate_key_package(&[ciphersuite], &credential_bundle, vec![], crypto).unwrap();
+        generate_key_package(&[ciphersuite], &credential_bundle, crypto).unwrap();
     let client_key_package = vec![(
         client_key_package
             .hash_ref(crypto.crypto())
@@ -206,8 +202,7 @@ async fn test_group() {
             crypto,
         )
         .unwrap();
-        let client_key_package =
-            generate_key_package(&[ciphersuite], &credential, vec![], crypto).unwrap();
+        let client_key_package = generate_key_package(&[ciphersuite], &credential, crypto).unwrap();
         let client_data = ClientInfo::new(
             client_name.to_string(),
             vec![(

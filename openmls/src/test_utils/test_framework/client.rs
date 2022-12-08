@@ -48,7 +48,6 @@ impl Client {
             .credentials
             .get(&ciphersuites[0])
             .ok_or(ClientError::CiphersuiteNotSupported)?;
-        let lifetime = Lifetime::new(157788000);
         let credential_bundle: CredentialBundle = self
             .crypto
             .key_store()
@@ -59,14 +58,11 @@ impl Client {
                     .expect("Error serializing signature key."),
             )
             .ok_or(ClientError::NoMatchingCredential)?;
-        let kpb = KeyPackageBundle::new(
-            ciphersuites[0],
-            &credential_bundle,
-            &self.crypto,
-            lifetime,
-            vec![],
-        )
-        .expect("An unexpected error occurred.");
+        let kpb = KeyPackageBundle::builder()
+            .ciphersuite(ciphersuites[0])
+            .lifetime(Lifetime::new(157788000))
+            .build(&self.crypto, credential_bundle.clone())
+            .expect("An unexpected error occurred.");
         let kp = kpb.key_package().clone();
         self.crypto
             .key_store()
@@ -88,7 +84,6 @@ impl Client {
             .credentials
             .get(&ciphersuite)
             .ok_or(ClientError::CiphersuiteNotSupported)?;
-        let lifetime = Lifetime::new(157788000); // 5 years
         let credential_bundle: CredentialBundle = self
             .crypto
             .key_store()
@@ -99,14 +94,13 @@ impl Client {
                     .expect("Error serializing signature key."),
             )
             .ok_or(ClientError::NoMatchingCredential)?;
-        let kpb = KeyPackageBundle::new(
-            ciphersuite,
-            &credential_bundle,
-            &self.crypto,
-            lifetime,
-            vec![],
-        )
-        .expect("An unexpected error occurred.");
+        let kpb = KeyPackageBundle::builder()
+            .ciphersuite(ciphersuite)
+            .lifetime(
+                Lifetime::new(157788000), // 5 years
+            )
+            .build(&self.crypto, credential_bundle.clone())
+            .expect("An unexpected error occurred.");
         let key_package = kpb.key_package().clone();
         self.crypto
             .key_store()

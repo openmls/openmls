@@ -11,7 +11,7 @@ use crate::{
     credentials::{CredentialBundle, CredentialType},
     framing::{MessageDecryptionError, ProcessedMessageContent},
     group::{errors::*, *},
-    key_packages::{KeyPackageBundle, Lifetime},
+    key_packages::KeyPackageBundle,
 };
 
 #[apply(ciphersuites_and_backends)]
@@ -62,14 +62,10 @@ fn test_past_secrets_in_group(ciphersuite: Ciphersuite, backend: &impl OpenMlsCr
 
         // Generate KeyPackages
 
-        let alice_key_package_bundle = KeyPackageBundle::new(
-            ciphersuite,
-            &alice_credential_bundle,
-            backend,
-            Lifetime::default(),
-            vec![],
-        )
-        .expect("An unexpected error occurred.");
+        let alice_key_package_bundle = KeyPackageBundle::builder()
+            .ciphersuite(ciphersuite)
+            .build(backend, alice_credential_bundle)
+            .expect("An unexpected error occurred.");
         let alice_key_package = alice_key_package_bundle.key_package().clone();
         backend
             .key_store()
@@ -82,14 +78,10 @@ fn test_past_secrets_in_group(ciphersuite: Ciphersuite, backend: &impl OpenMlsCr
             )
             .expect("An unexpected error occurred.");
 
-        let bob_key_package_bundle = KeyPackageBundle::new(
-            ciphersuite,
-            &bob_credential_bundle,
-            backend,
-            Lifetime::default(),
-            vec![],
-        )
-        .expect("An unexpected error occurred.");
+        let bob_key_package_bundle = KeyPackageBundle::builder()
+            .ciphersuite(ciphersuite)
+            .build(backend, bob_credential_bundle)
+            .expect("An unexpected error occurred.");
         let bob_key_package = bob_key_package_bundle.key_package().clone();
         backend
             .key_store()

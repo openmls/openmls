@@ -54,7 +54,7 @@
 //!
 //!     // Create the key package bundle
 //!     let key_package_bundle =
-//!         KeyPackageBundle::new(ciphersuite, &credential_bundle, backend, Lifetime::default(), vec![])?;
+//!         KeyPackageBundle::builder().ciphersuite(ciphersuite).build(backend, credential_bundle)?;
 //!
 //!     // Store it in the key store
 //!     let key_package_id = key_package_bundle.key_package()
