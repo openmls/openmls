@@ -178,18 +178,14 @@ impl CoreGroup {
             let capabilities = add_proposal
                 .add_proposal()
                 .key_package()
-                .extension_with_type(ExtensionType::Capabilities)
-                .ok_or(ProposalValidationError::InsufficientCapabilities)?
-                .as_capabilities_extension()
-                .map_err(|_| {
-                    // Mismatches between Extensions and ExtensionTypes should be
-                    // caught when constructing KeyPackages.
-                    ProposalValidationError::LibraryError(LibraryError::custom(
-                        "ExtensionType didn't match extension content.",
-                    ))
-                })?;
-            if !capabilities.ciphersuites().contains(&self.ciphersuite())
-                || !capabilities.versions().contains(&self.version())
+                .leaf_node()
+                .capabilities();
+            if !capabilities
+                .ciphersuites()
+                .contains(&self.group_context.ciphersuite())
+                || !capabilities
+                    .versions()
+                    .contains(&self.group_context.protocol_version())
             {
                 log::error!("Tried to commit an Add proposal, where either the group's `Ciphersuite` or the group's `ProtocolVersion` is not in the `KeyPackage`'s `Capabilities`.");
                 return Err(ProposalValidationError::InsufficientCapabilities);

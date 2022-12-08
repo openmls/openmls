@@ -62,7 +62,6 @@ fn decryption_key_index_computation(
         .expect("An unexpected error occurred.")
         .unsigned();
 
-    kpb.add_extension(Extension::Lifetime(LifetimeExtension::new(60)));
     let kpb = kpb
         .sign(backend, &credential_bundle)
         .expect("An unexpected error occurred.");
@@ -75,40 +74,6 @@ fn decryption_key_index_computation(
     let kp =
         KeyPackage::tls_deserialize(&mut enc.as_slice()).expect("An unexpected error occurred.");
     assert_eq!(kpb.key_package, kp);
-}
-
-#[apply(ciphersuites_and_backends)]
-fn key_package_id_extension(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
-    let id = vec![1, 2, 3];
-    let credential_bundle =
-        CredentialBundle::new(id, CredentialType::Basic, ciphersuite.into(), backend)
-            .expect("An unexpected error occurred.");
-    let kpb = KeyPackageBundle::new(
-        &[ciphersuite],
-        &credential_bundle,
-        backend,
-        vec![Extension::Lifetime(LifetimeExtension::new(60))],
-    )
-    .expect("An unexpected error occurred.");
-    let verification = kpb.key_package().verify(backend);
-    assert!(verification.is_ok());
-    let mut kpb = kpb.unsigned();
-
-    // Add an ID to the key package.
-    let id = [1, 2, 3, 4];
-    kpb.add_extension(Extension::ApplicationId(ApplicationIdExtension::new(&id)));
-
-    // Sign it to make it valid.
-    let kpb = kpb
-        .sign(backend, &credential_bundle)
-        .expect("An unexpected error occurred.");
-    assert!(kpb.key_package().verify(backend).is_ok());
-
-    // Check ID
-    assert_eq!(
-        &id[..],
-        kpb.key_package().application_id().expect("No key ID")
-    );
 }
 
 #[apply(backends)]

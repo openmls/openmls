@@ -1089,8 +1089,7 @@ fn test_valsem105(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
 #[derive(Debug)]
 enum KeyPackageTestVersion {
     WrongCiphersuite,
-    UnsupportedVersion,
-    UnsupportedCiphersuite,
+    WrongVersion,
     ValidTestCase,
 }
 
@@ -1134,8 +1133,7 @@ fn test_valsem106(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
     // We begin with the creation of KeyPackages
     for key_package_version in [
         KeyPackageTestVersion::WrongCiphersuite,
-        KeyPackageTestVersion::UnsupportedVersion,
-        KeyPackageTestVersion::UnsupportedCiphersuite,
+        KeyPackageTestVersion::WrongVersion,
         KeyPackageTestVersion::ValidTestCase,
     ] {
         let (charlie_credential_bundle, charlie_key_package_bundle) =
@@ -1155,25 +1153,10 @@ fn test_valsem106(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
         };
         match key_package_version {
             KeyPackageTestVersion::WrongCiphersuite => {
-                test_kpb_payload.set_ciphersuite(wrong_ciphersuite)
+                test_kpb_payload.set_ciphersuite(wrong_ciphersuite);
             }
-            KeyPackageTestVersion::UnsupportedVersion => {
-                test_kpb_payload.add_extension(Extension::Capabilities(CapabilitiesExtension::new(
-                    Some(&[ProtocolVersion::Mls10Draft11]),
-                    // None gives you the default ciphersuites/extensions/proposals.
-                    None,
-                    None,
-                    None,
-                )))
-            }
-            KeyPackageTestVersion::UnsupportedCiphersuite => {
-                test_kpb_payload.add_extension(Extension::Capabilities(CapabilitiesExtension::new(
-                    None,
-                    // None gives you the default ciphersuites/extensions/proposals.
-                    Some(&[wrong_ciphersuite]),
-                    None,
-                    None,
-                )))
+            KeyPackageTestVersion::WrongVersion => {
+                test_kpb_payload.set_version(ProtocolVersion::Mls10Draft11);
             }
             KeyPackageTestVersion::ValidTestCase => (),
         };

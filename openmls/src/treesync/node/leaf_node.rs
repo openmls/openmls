@@ -177,6 +177,32 @@ impl Capabilities {
         self.credentials.sort();
         self.credentials.dedup();
     }
+
+    /// Check if this [`Capabilities`] supports all the capabilities
+    /// required by the given [`RequiredCapabilities`] extension. Returns
+    /// `true` if that is the case and `false` otherwise.
+    pub fn supports_required_capabilities(
+        &self,
+        required_capabilities: &RequiredCapabilitiesExtension,
+    ) -> bool {
+        // Check if all required extensions are supported.
+        if required_capabilities
+            .extensions()
+            .iter()
+            .any(|e| !self.extensions().contains(e))
+        {
+            return false;
+        }
+        // Check if all required proposals are supported.
+        if required_capabilities
+            .proposals()
+            .iter()
+            .any(|p| !self.proposals().contains(p))
+        {
+            return false;
+        }
+        true
+    }
 }
 
 impl Default for Capabilities {
@@ -400,6 +426,11 @@ impl LeafNode {
         &self.payload.credential
     }
 
+    /// Returns the `capabilities`.
+    pub fn capabilities(&self) -> &Capabilities {
+        &self.payload.capabilities
+    }
+
     /// Returns the `parent_hash` as byte slice or `None`.
     pub fn parent_hash(&self) -> Option<&[u8]> {
         match &self.payload.leaf_node_source {
@@ -451,7 +482,6 @@ impl LeafNode {
 
     /// Check whether the this leaf node supports all the required extensions
     /// in the provided list.
-    #[cfg(test)]
     pub(crate) fn check_extension_support(
         &self,
         extensions: &[ExtensionType],

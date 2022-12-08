@@ -100,8 +100,10 @@ impl CoreGroup {
                 .map_err(|_| WelcomeError::UnsupportedCapability)?;
             // Also check that our key package actually supports the extensions.
             // Per spec the sender must have checked this. But you never know.
+            // TODO: What extensions? Key Package extensions or Lead Node extensions?
             key_package_bundle
                 .key_package()
+                .leaf_node()
                 .check_extension_support(required_capabilities.extensions())
                 .map_err(|_| WelcomeError::UnsupportedExtensions)?
         }

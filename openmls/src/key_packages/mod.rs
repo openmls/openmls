@@ -80,9 +80,7 @@ use crate::{
     },
     credentials::*,
     error::LibraryError,
-    extensions::{
-        errors::ExtensionError, CapabilitiesExtension, Extension, ExtensionType, LifetimeExtension,
-    },
+    extensions::{Extension, ExtensionType, LifetimeExtension},
     treesync::LeafNode,
     versions::ProtocolVersion,
 };
@@ -163,20 +161,6 @@ impl From<KeyPackage> for KeyPackageTBS {
 }
 
 impl KeyPackageTBS {
-    /// Remove an extension from the KeyPackage.
-    #[cfg(any(feature = "test-utils", test))]
-    pub(crate) fn remove_extension(&mut self, extension_type: ExtensionType) {
-        self.extensions
-            .retain(|e| e.extension_type() != extension_type);
-    }
-
-    /// Add (or replace) an extension to the KeyPackage.
-    #[cfg(any(feature = "test-utils", test))]
-    fn add_extension(&mut self, extension: Extension) {
-        self.remove_extension(extension.extension_type());
-        self.extensions.push(extension);
-    }
-
     /// Replace the credential in the KeyPackage.
     #[cfg(any(feature = "test-utils", test))]
     pub fn set_credential(&mut self, credential: Credential) {
@@ -256,18 +240,6 @@ impl KeyPackage {
         &self,
         backend: &impl OpenMlsCryptoProvider,
     ) -> Result<(), KeyPackageVerifyError> {
-        // Extension included in the extensions or leaf_node.extensions fields
-        // MUST be included in the leaf_node.capabilities field.
-        for extension in self.payload.extensions.iter() {
-            if !self
-                .payload
-                .leaf_node
-                .supports_extension(&extension.extension_type())
-            {
-                return Err(KeyPackageVerifyError::UnsupportedExtension);
-            }
-        }
-
         // Ensure validity of the life time extension in the leaf node.
         if let Some(life_time) = self.payload.leaf_node.life_time() {
             if !life_time.is_valid() {
@@ -284,42 +256,6 @@ impl KeyPackage {
             log::error!("Key package signature is invalid.");
             KeyPackageVerifyError::InvalidSignature
         })
-    }
-
-    /// Get the application ID of this key package as byte slice.
-    /// See [`ApplicationIdExtension`](`crate::extensions::ApplicationIdExtension`)
-    /// for more details on the application ID extension.
-    ///
-    ///
-    /// Returns a [`ExtensionError`] if no application ID extension is present.
-    pub fn application_id(&self) -> Result<&[u8], ExtensionError> {
-        if let Some(key_id_ext) = self.extension_with_type(ExtensionType::ApplicationId) {
-            return Ok(key_id_ext.as_application_id_extension()?.as_slice());
-        } else {
-            Err(ExtensionError::InvalidExtensionType(
-                "Tried to get a key ID extension".into(),
-            ))
-        }
-    }
-
-    /// Get a reference to the extensions of this key package.
-    pub fn extensions(&self) -> &[Extension] {
-        self.payload.extensions.as_slice()
-    }
-
-    /// Check whether the this key package supports all the required extensions
-    /// in the provided list.
-    pub fn check_extension_support(
-        &self,
-        required_extensions: &[ExtensionType],
-    ) -> Result<(), KeyPackageExtensionSupportError> {
-        let my_extension_types = self.extensions().iter().map(|ext| ext.extension_type());
-        for required in required_extensions.iter() {
-            if !my_extension_types.clone().any(|e| &e == required) {
-                return Err(KeyPackageExtensionSupportError::UnsupportedExtension);
-            }
-        }
-        Ok(())
     }
 
     /// Get a reference to the [`Credential`].
@@ -389,7 +325,7 @@ impl KeyPackage {
             init_key: hpke_init_key,
             leaf_node,
             credential: credential_bundle.credential().clone(),
-            extensions,
+            extensions: vec![],
         };
         Ok(key_package.sign(backend, credential_bundle)?)
     }
@@ -397,17 +333,6 @@ impl KeyPackage {
 
 /// Crate visible `KeyPackage` functions.
 impl KeyPackage {
-    /// Get a reference to the extension of `extension_type`.
-    /// Returns `Some(extension)` if present and `None` if the extension is not
-    /// present.
-    pub(crate) fn extension_with_type(&self, extension_type: ExtensionType) -> Option<&Extension> {
-        self.payload
-            .extensions
-            .as_slice()
-            .iter()
-            .find(|&e| e.extension_type() == extension_type)
-    }
-
     /// Get a reference to the HPKE init key.
     pub(crate) fn hpke_init_key(&self) -> &HpkePublicKey {
         &self.payload.init_key
@@ -443,11 +368,6 @@ pub(crate) struct KeyPackageBundlePayload {
 }
 
 impl KeyPackageBundlePayload {
-    /// Add (or replace) an extension to the KeyPackage.
-    #[cfg(any(feature = "test-utils", test))]
-    pub fn add_extension(&mut self, extension: Extension) {
-        self.key_package_tbs.add_extension(extension)
-    }
     /// Replace the credential in the KeyPackage.
     #[cfg(any(feature = "test-utils", test))]
     pub fn set_credential(&mut self, credential: Credential) {
@@ -627,46 +547,6 @@ impl KeyPackageBundle {
             return Err(error);
         }
 
-        // First, check if one of the input extensions is a capabilities
-        // extension. If there is, check if one of the extensions is a
-        // capabilities extensions and if the contained ciphersuites are the
-        // same as the ciphersuites passed as input. If that is not the case,
-        // return an error. If none of the extensions is a capabilities
-        // extension, create one that supports the given ciphersuites and that
-        // is otherwise default.
-
-        match extensions
-            .iter()
-            .find(|e| e.extension_type() == ExtensionType::Capabilities)
-        {
-            Some(extension) => {
-                let capabilities_extension = extension.as_capabilities_extension()?;
-                if capabilities_extension.ciphersuites() != ciphersuites {
-                    let error = KeyPackageBundleNewError::CiphersuiteMismatch;
-                    error!(
-                        "Error creating new KeyPackageBundle: Invalid Capabilities Extensions {:?}",
-                        error
-                    );
-                    return Err(error);
-                }
-            }
-
-            None => extensions.push(Extension::Capabilities(CapabilitiesExtension::new(
-                None,
-                Some(ciphersuites),
-                None,
-                None,
-            ))),
-        };
-
-        // Check if there is a lifetime extension. If not, add one that is at
-        // least valid.
-        if !extensions
-            .iter()
-            .any(|e| e.extension_type() == ExtensionType::Lifetime)
-        {
-            extensions.push(Extension::Lifetime(LifetimeExtension::default()));
-        }
         let key_package = KeyPackage::new(
             ciphersuite,
             backend,
