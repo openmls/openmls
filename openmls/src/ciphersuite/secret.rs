@@ -96,19 +96,6 @@ impl Secret {
         }
     }
 
-    /// Create a new secret from a byte vector.
-    pub(crate) fn from_vec(
-        value: Vec<u8>,
-        mls_version: ProtocolVersion,
-        ciphersuite: Ciphersuite,
-    ) -> Self {
-        Secret {
-            value,
-            mls_version,
-            ciphersuite,
-        }
-    }
-
     /// HKDF extract where `self` is `salt`.
     pub(crate) fn hkdf_extract<'a>(
         &self,

@@ -866,9 +866,7 @@ impl OpenMlsLeafNode {
 
     /// Generate a leaf from a [`KeyPackageBundle`] and the leaf index.
     pub fn from_key_package_bundel(kpb: KeyPackageBundle, leaf_index: u32) -> Self {
-        let (key_package, (private_key, leaf_secret)) = kpb.into_parts();
-        let ciphersuite = key_package.ciphersuite();
-        let version = key_package.protocol_version();
+        let (key_package, private_key) = kpb.into_parts();
         Self {
             leaf_node: key_package.take_leaf_node(),
             private_key: Some(private_key.into()),
