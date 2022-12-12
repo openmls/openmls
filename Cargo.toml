@@ -1,0 +1,18 @@
+[workspace]
+members = [
+    "openmls",
+    "traits",
+    "openmls_rust_crypto",
+    "fuzz",
+    "cli",
+    "interop_client",
+    "memory_keystore",
+    "evercrypt_backend",
+    "delivery-service/ds",
+    "delivery-service/ds-lib"
+]
+resolver = "2"
+
+# Patching unreleased crates
+[patch.crates-io.tls_codec]
+git = "https://github.com/RustCrypto/formats.git"

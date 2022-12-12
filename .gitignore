@@ -6,6 +6,12 @@ delivery-service/ds/target
 **/Cargo.lock
 *.code-workspace
 /test_vectors/
+fuzz/corpus
+fuzz/artifacts
+.cargo/
 
 # CLion IDE
 .idea
+*.iws
+*.iml
+*.ipr

@@ -11,6 +11,7 @@ Before contributing, please read the [Code of Conduct](https://github.com/openml
 
 - [Working with this repository](#working-with-this-repository)
   - [Prioritisation](#prioritisation)
+  - [Patches](#patches)
 - [Pull Requests](#pull-requests)
   - [PR & Commit Guidelines](#pr--commit-guidelines)
   - [PR Template](#pr-template)
@@ -43,6 +44,23 @@ Issue priorities are reflected with labels.
 | P2    | pick up next                             |
 | P3    | low-priority item                        |
 | P4    | wontfix unless someone contributes a fix |
+
+### Patches
+
+Sometimes, you have to work on another crate (e.g. [hpke-rs](https://crates.io/crates/hpke-rs)) alongside openmls. The 
+recommended way to proceed while developing locally is to patch openmls by adding the following to the root [Cargo.toml](./Cargo.toml): 
+```toml
+[patch.crates-io.hpke-rs]
+path = "../hpke-rs" # local path to the project
+```
+Once you are done with your changes and feel it's ready to be submitted, you will have to make your patch point to a
+remote branch in order for the CI to succeed:
+```toml
+[patch.crates-io.hpke-rs]
+git = "https://github.com/my-fork/hpke-rs"
+branch = "fix/123"
+package = "hpke-rs"
+```
 
 ## Pull Requests
 
