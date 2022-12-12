@@ -6,7 +6,7 @@ edition = "2018"
 description = "Types to interact with the OpenMLS DS."
 
 [dependencies]
-tls_codec = { version = "0.2.0", features = ["derive", "serde_serialize"] }
+tls_codec = { version = "0.2.0", features = ["derive", "serde"] }
 openmls = { path = "../../openmls", features = ["test-utils"] }
 openmls_traits = { path = "../../traits" }
 openmls_rust_crypto = { path = "../../openmls_rust_crypto" }
