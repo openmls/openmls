@@ -10,7 +10,8 @@ reqwest = { version = "0.11", features = ["blocking", "json"] }
 base64 = "0.13"
 log = "0.4"
 pretty_env_logger = "0.4"
-tls_codec = { version = "0.2.0", features = ["derive", "serde_serialize"] }
+termion = "1.5"
+tls_codec = "0.2.0"
 
 openmls = { path = "../openmls", features = ["test-utils"] }
 ds-lib = { path = "../delivery-service/ds-lib" }
@@ -18,7 +19,6 @@ openmls_traits = { path = "../traits" }
 openmls_rust_crypto = { path = "../openmls_rust_crypto" }
 openmls_memory_keystore = { path = "../memory_keystore" }
 
-[dependencies.termion]
-version = "1.5"
-git = "https://gitlab.redox-os.org/Jezza/termion.git"
-branch = "windows-support"
+# Patching unreleased crates
+[patch.crates-io]
+tls_codec = { git = "https://github.com/RustCrypto/formats.git", features = ["derive", "serde_serialize"] }

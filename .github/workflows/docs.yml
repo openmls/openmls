@@ -21,4 +21,4 @@ jobs:
         uses: actions-rs/cargo@v1
         with:
           command: doc
-          args: -p openmls --message-format json
+          args: --manifest-path openmls/Cargo.toml --message-format json

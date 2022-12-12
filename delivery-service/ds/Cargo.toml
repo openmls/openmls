@@ -18,10 +18,14 @@ serde = {version = "1.0", features = ["derive"]}
 uuid = { version = "0.8", features = ["serde", "v4"] }
 clap = "2.33"
 base64 = "0.13"
-tls_codec = { version = "0.2.0", features = ["derive", "serde_serialize"] }
+tls_codec = "0.2.0"
 
 openmls = { path = "../../openmls" }
 
 ds-lib = { path = "../ds-lib/" }
 openmls_rust_crypto = { path = "../../openmls_rust_crypto" }
 openmls_traits = { path = "../../traits" }
+
+# Patching unreleased crates
+[patch.crates-io]
+tls_codec = { git = "https://github.com/RustCrypto/formats.git", features = ["derive", "serde_serialize"] }

@@ -31,6 +31,10 @@ jobs:
         with:
           ref: ${{ github.event.pull_request.head.sha }}
       - name: Test DS lib
-        run: cargo test --verbose -p ds-lib
+        run: |
+          cd delivery-service/ds-lib
+          cargo test --verbose
       - name: Test DS
-        run: cargo test --verbose -p mls-ds
+        run: |
+          cd delivery-service/ds
+          cargo test --verbose

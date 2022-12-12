@@ -14,6 +14,10 @@ concurrency:
 env:
   CARGO_TERM_COLOR: always
 
+defaults:
+  run:
+    working-directory: openmls
+
 name: Cargo format check
 jobs:
   checks:
