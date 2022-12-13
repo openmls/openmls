@@ -34,9 +34,8 @@ This proposition aims at:
 
 To achieve these goals, here are the "rules"/recommendations to set up:
 
-1. Any test expected to fail by altering a valid input should also keep this valid input and verify that, contrary to
-   the
-   tampered one, it succeeds.
+1. Any test expected to fail by altering a valid input SHOULD also keep this valid input and verify that, contrary to
+   the tampered one, it succeeds.
 2. Prefer `.unwrap()` over `.expect("...")`. The latter adds overhead and most of the time does not add enough debugging
    information. If, on the opposite, an `.expect(...)` can help a developer troubleshooting a failing test with a very
    complex setup which this `expect` message could help understanding then go for it ! Another
@@ -44,16 +43,16 @@ To achieve these goals, here are the "rules"/recommendations to set up:
 3. It is okay (recommended) to `use crate::prelude::*;` in all test mod (to debate ?)
 4. Have a public test framework in each top level mod inside `src/{module}/test_utils(.rs)`. Avoid scattered utils,
    factorize them.
-5. Each test should test one and only one thing. It should not iterate over multiple cases.
-6. test method names should
+5. Each test SHOULD test one and only one thing. It SHOULD not iterate over multiple cases.
+6. test method names SHOULD
     1. follow the template `should_{expected_behaviour}_when_{state_tested}`
        e.g. `should_succeed_when_...` & `should_fail_when_...` and use natural language
     2. not be prefixed by `test_`
-   3. `ValSem` should not be in the test method name but kept in comment (will be fixed
+   3. `ValSem` SHOULD not be in the test method name but kept in comment (will be fixed
       by [#1126](https://github.com/openmls/openmls/issues/1126))
-7. There should not be a `test-utils` feature (best effort). All those helpers should be `#[cfg(test)]` instead and used
+7. There SHOULD not be a `test-utils` feature (best effort). All those helpers SHOULD be `#[cfg(test)]` instead and used
    only in unit tests
-8. Utilities shouldn't unwrap Results to give a chance, depending on the context, to assert an error. Hence, they should
+8. Utilities SHOULD NOT unwrap Results to give a chance, depending on the context, to assert an error. Hence, they should
    all start with `try_` e.g. I might sometimes expect `try_talk_to` to fail even if most of the time I don't.
 9. When it comes to testing MlsGroup, the following utilities would help a lot. More to be added...
    1. `MlsGroup::try_init(case: &TestCase, client: &str) -> Result(MlsGroup, CredentialBundle)` e.g.
@@ -88,13 +87,13 @@ To achieve these goals, here are the "rules"/recommendations to set up:
     }
     ```
     1. Does it make sense to keep the backend in fixtures ? I don't see openmls supporting anything else other
-       than `MemoryKeyStore`. Also should we keep evercrypt as an option or discontinue it ?
+       than `MemoryKeyStore`.
     2. `MlsGroupConfig` is introduced to tune the `WireFormatPolicy` to make sure everything also works
        in `PURE_CIPHERTEXT` mode.
 11. Test file layout
     * Do not hesitate nesting your tests within mod. They provide better readability. They can be collapsed/expanded.
       Rule of thumb could be `1 method = 1 mod` but it can be otherwise.
-    * Imports should live in the top `tests` mod to avoid duplicates. Nested mods should not have anything other
+    * Imports SHOULD live in the top `tests` mod to avoid duplicates. Nested mods SHOULD not have anything other
       than `use super::*;`
     * Within a nested mod you can avoid repeating the mod name e.g.
       ~~`method_a_should_bla_when_blabla`~~ -> `should_bla_when_blabla`
@@ -141,8 +140,8 @@ To achieve these goals, here are the "rules"/recommendations to set up:
 
 12. Crate layout
     * unit tests in `src` in the file they relate to
-    * a `test_utils` mod should live in each top level mod. It should be declared with `#[cfg(test)]` in parent `mod.rs`
-    * Those test utils should contain all the reusable helpers to write unit tests in all the other inner files.
+    * a `test_utils` mod SHOULD live in each top level mod. It SHOULD be declared with `#[cfg(test)]` in parent `mod.rs`
+    * Those test utils SHOULD contain all the reusable helpers to write unit tests in all the other inner files.
     * Those test utils are public and can be used by other top level mods e.g. `z` can use `a`'s utils
     ```text
     src
@@ -160,8 +159,8 @@ To achieve these goals, here are the "rules"/recommendations to set up:
     ```
 
 13. Integration tests live in `./tests` folder. 
-    1. There should be one mod per source mod. 
-    2. Integration tests should only use the public API.
+    1. There SHOULD be one mod per source mod. 
+    2. Integration tests SHOULD only use the public API.
     3. They could be used as examples in the book
 
 ## Bonus
