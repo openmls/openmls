@@ -252,7 +252,7 @@ impl<'a> TreeSyncDiff<'a> {
         Ok(())
     }
 
-    /// Derive a new direct path for our own leaf
+    /// Derive a new direct path for our own leaf.
     ///
     /// Returns an error if the own leaf is not in the tree
     fn derive_path(
