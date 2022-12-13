@@ -4,17 +4,13 @@ on:
   - push
   - pull_request_target
 
-defaults:
-  run:
-    working-directory: openmls
-
 jobs:
   clippy_check:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
       - run: rustup component add clippy
       - uses: actions-rs/clippy-check@v1
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
-          args: --manifest-path openmls/Cargo.toml --tests
+          args: -p openmls --tests -- -D warnings

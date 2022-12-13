@@ -16,10 +16,6 @@ on:
 env:
   CARGO_TERM_COLOR: always
 
-defaults:
-  run:
-    working-directory: openmls
-
 jobs:
   benchmarks:
     strategy:
@@ -35,4 +31,4 @@ jobs:
         with:
           ref: ${{ github.event.pull_request.head.sha }}
       - name: Benchmarks
-        run: cargo bench --verbose
+        run: cargo bench -p openmls --verbose

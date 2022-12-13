@@ -15,7 +15,7 @@ uuid = { version = "1.0", features = ["v4"] }
 serde = { version = "^1.0", features = ["derive"] }
 serde_json = "^1.0"
 log = { version = "0.4", features = ["std"] }
-tls_codec = { version = "0.2.0", features = ["derive", "serde_serialize", "mls"] }
+tls_codec = { version = "0.2.0", features = ["derive", "serde", "mls"] }
 # Only required for tests.
 rand = { version = "0.8", optional = true }
 # The js feature is required for wasm.
@@ -58,7 +58,3 @@ features = ["test-utils", "evercrypt"]
 [[bench]]
 name = "benchmark"
 harness = false
-
-# Patching unreleased crates
-[patch.crates-io]
-tls_codec = { git = "https://github.com/RustCrypto/formats.git", features = ["derive", "serde_serialize", "mls"] }
