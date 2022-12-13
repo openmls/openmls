@@ -16,10 +16,6 @@ concurrency:
 env:
   CARGO_TERM_COLOR: always
 
-defaults:
-  run:
-    working-directory: openmls
-
 jobs:
   tests:
     strategy:
@@ -35,11 +31,9 @@ jobs:
         with:
           ref: ${{ github.event.pull_request.head.sha }}
       - name: Tests debug build
-        run: |
-          cargo test --verbose
+        run: cargo test -p openmls --verbose
       - name: Tests release build
-        run: |
-          cargo test --verbose --release
+        run: cargo test -p openmls --verbose --release
         # Test 32 bit builds on windows
       - name: Install rust target
         if: matrix.os == 'windows-latest'
@@ -52,8 +46,8 @@ jobs:
       - name: Tests 32bit windows debug & release build
         if: matrix.os == 'windows-latest'
         run: |
-          cargo test --verbose --target i686-pc-windows-msvc
-          cargo test --verbose --release --target i686-pc-windows-msvc
+          cargo test -p openmls --verbose --target i686-pc-windows-msvc
+          cargo test -p openmls --verbose --release --target i686-pc-windows-msvc
         # Test 32 bit builds on linux
       - name: Install rust target
         if: matrix.os == 'ubuntu-latest'
@@ -67,5 +61,5 @@ jobs:
         if: matrix.os == 'ubuntu-latest'
         run: |
           sudo apt update && sudo apt install gcc-multilib
-          cargo test --verbose --target i686-unknown-linux-gnu
-          cargo test --verbose --release --target i686-unknown-linux-gnu
+          cargo test -p openmls --verbose --target i686-unknown-linux-gnu
+          cargo test -p openmls --verbose --release --target i686-unknown-linux-gnu

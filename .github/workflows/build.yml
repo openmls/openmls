@@ -18,10 +18,6 @@ on:
 env:
   CARGO_TERM_COLOR: always
 
-defaults:
-  run:
-    working-directory: openmls
-
 jobs:
   build:
     strategy:
@@ -62,6 +58,6 @@ jobs:
           override: true
           target: ${{ matrix.arch }}
       - name: Build debug
-        run: cargo build --verbose --target ${{ matrix.arch }}
+        run: cargo build --verbose --target ${{ matrix.arch }} -p openmls
       - name: Build release
-        run: cargo build --release --verbose --target ${{ matrix.arch }}
+        run: cargo build --release --verbose --target ${{ matrix.arch }} -p openmls

@@ -4,10 +4,6 @@ on:
   - push
   - pull_request_target
 
-defaults:
-  run:
-    working-directory: openmls
-
 jobs:
   check:
     name: coverage
@@ -30,7 +26,7 @@ jobs:
         uses: actions-rs/tarpaulin@v0.1
         with:
           timeout: "500"
-          args: "--manifest-path openmls/Cargo.toml --force-clean"
+          args: "--force-clean"
 
       - name: Upload to codecov.io
         uses: codecov/codecov-action@v2

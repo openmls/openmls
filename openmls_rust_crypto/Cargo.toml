@@ -19,7 +19,7 @@ chacha20poly1305 = { version = "0.9" }
 hmac = { version = "0.12" }
 ed25519-dalek = { version = "1.0" }
 rand-07 = {version = "0.7", package = "rand" } # only needed because of ed25519-dalek
-p256 = { version = "0.10" }
+p256 = { version = "0.11" }
 hkdf = { version = "0.12" }
 rand = "0.8"
 rand_chacha = { version = "0.3" }
@@ -27,7 +27,3 @@ hpke = { version = "0.1.0", package = "hpke-rs", default-features = false, featu
 hpke-rs-crypto = { version = "0.1.1" }
 hpke-rs-rust-crypto = { version = "0.1.1" }
 thiserror = "1.0"
-
-[patch.crates-io]
-openmls_traits = { path = "../traits" }
-openmls_memory_keystore = { path = "../memory_keystore" }
