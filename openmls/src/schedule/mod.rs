@@ -181,11 +181,7 @@ impl ResumptionPskSecret {
 /// A secret that can be used among members to make sure everyone has the same
 /// group state.
 #[derive(Debug, Serialize, Deserialize)]
-<<<<<<< HEAD
-#[cfg_attr(test, derive(PartialEq, Eq))]
-=======
 #[cfg_attr(test, derive(Eq, PartialEq))]
->>>>>>> main
 pub struct EpochAuthenticator {
     secret: Secret,
 }
