@@ -24,10 +24,10 @@ jobs:
         run: |
           cd openmls
           cargo doc --no-deps
-          touch target/doc/.nojekyll
+          touch ../target/doc/.nojekyll
           cd ..
           mkdir temp_docs
-          mv openmls/target/doc temp_docs
+          mv target/doc temp_docs
           cd book
           mdbook build
           cd ..
