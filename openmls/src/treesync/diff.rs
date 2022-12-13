@@ -252,17 +252,18 @@ impl<'a> TreeSyncDiff<'a> {
         Ok(())
     }
 
-    /// Derive a new direct path for our own leaf from the given `leaf_secret`.
+    /// Derive a new direct path for our own leaf.
     ///
     /// Returns an error if the own leaf is not in the tree
-    fn derive_path_from_leaf_secret(
+    fn derive_path(
         &self,
         backend: &impl OpenMlsCryptoProvider,
         ciphersuite: Ciphersuite,
-        leaf_secret: Secret,
     ) -> Result<PathDerivationResult, LibraryError> {
-        let leaf_path_secret = PathSecret::from(leaf_secret);
-        let path_secret = leaf_path_secret.derive_path_secret(backend, ciphersuite)?;
+        let path_secret = PathSecret::from(
+            Secret::random(ciphersuite, backend, None)
+                .map_err(LibraryError::unexpected_crypto_error)?,
+        );
 
         let path_length = self
             .diff
@@ -290,19 +291,8 @@ impl<'a> TreeSyncDiff<'a> {
         credential_bundle: &CredentialBundle,
     ) -> Result<UpdatePathResult, LibraryError> {
         debug_assert!(self.own_leaf().is_ok(), "Tree diff is missing own leaf");
-        debug_assert!(
-            self.own_leaf().unwrap().leaf_secret().is_some(),
-            "Own leaf is missing leaf secret"
-        );
-        let leaf_secret = self
-            .own_leaf_mut()
-            .map_err(|_| LibraryError::custom("Didn't find own leaf in diff."))?
-            .leaf_secret()
-            .ok_or_else(|| LibraryError::custom("No leaf secret found for update path."))?
-            .clone();
 
-        let (path, update_path_nodes, commit_secret) =
-            self.derive_path_from_leaf_secret(backend, ciphersuite, leaf_secret)?;
+        let (path, update_path_nodes, commit_secret) = self.derive_path(backend, ciphersuite)?;
 
         let parent_hash =
             self.process_update_path(backend, ciphersuite, self.own_leaf_index, path)?;
