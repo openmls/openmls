@@ -736,8 +736,6 @@ impl KeyPackageBundle {
         }
 
         let ciphersuite = ciphersuites[0];
-        // let leaf_node_secret = derive_leaf_node_secret(&leaf_secret, backend)
-        //     .map_err(LibraryError::unexpected_crypto_error)?;
         let keypair = backend
             .crypto()
             .derive_hpke_keypair(ciphersuite.hpke_config(), leaf_secret.as_slice());
