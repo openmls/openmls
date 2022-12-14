@@ -32,7 +32,7 @@ fn create_group(
     .expect("An unexpected error occurred.");
 
     // Generate KeyPackages
-    let key_package = generate_key_package_bundle(ciphersuite, &credential, vec![], backend)
+    let key_package = generate_key_package_bundle(ciphersuite, &credential, backend)
         .expect("An unexpected error occurred.");
 
     // Define the MlsGroup configuration
@@ -69,9 +69,8 @@ fn receive_message(
     .expect("An unexpected error occurred.");
 
     // Generate KeyPackages
-    let bob_key_package =
-        generate_key_package_bundle(ciphersuite, &bob_credential, vec![], backend)
-            .expect("An unexpected error occurred.");
+    let bob_key_package = generate_key_package_bundle(ciphersuite, &bob_credential, backend)
+        .expect("An unexpected error occurred.");
 
     let (_message, welcome) = alice_group
         .add_members(backend, &[bob_key_package])

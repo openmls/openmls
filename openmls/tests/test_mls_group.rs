@@ -33,7 +33,6 @@ fn generate_credential_bundle(
 fn generate_key_package_bundle(
     ciphersuite: Ciphersuite,
     credential: &Credential,
-    extensions: Vec<Extension>,
     backend: &impl OpenMlsCryptoProvider,
 ) -> Result<KeyPackage, KeyPackageBundleNewError> {
     let credential_bundle = backend
@@ -107,12 +106,11 @@ fn mls_group_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoPr
 
         // Generate KeyPackages
         let alice_key_package =
-            generate_key_package_bundle(ciphersuite, &alice_credential, vec![], backend)
+            generate_key_package_bundle(ciphersuite, &alice_credential, backend)
                 .expect("An unexpected error occurred.");
 
-        let bob_key_package =
-            generate_key_package_bundle(ciphersuite, &bob_credential, vec![], backend)
-                .expect("An unexpected error occurred.");
+        let bob_key_package = generate_key_package_bundle(ciphersuite, &bob_credential, backend)
+            .expect("An unexpected error occurred.");
 
         // Define the MlsGroup configuration
 
@@ -379,7 +377,7 @@ fn mls_group_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoPr
 
         // === Bob adds Charlie ===
         let charlie_key_package =
-            generate_key_package_bundle(ciphersuite, &charlie_credential, vec![], backend)
+            generate_key_package_bundle(ciphersuite, &charlie_credential, backend)
                 .expect("An unexpected error occurred.");
 
         let (queued_message, welcome) = match bob_group.add_members(backend, &[charlie_key_package])
@@ -613,9 +611,8 @@ fn mls_group_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoPr
         // === Alice removes Charlie and re-adds Bob ===
 
         // Create a new KeyPackageBundle for Bob
-        let bob_key_package =
-            generate_key_package_bundle(ciphersuite, &bob_credential, vec![], backend)
-                .expect("An unexpected error occurred.");
+        let bob_key_package = generate_key_package_bundle(ciphersuite, &bob_credential, backend)
+            .expect("An unexpected error occurred.");
 
         // Create RemoveProposal and process it
         let queued_message = alice_group
@@ -893,9 +890,8 @@ fn mls_group_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoPr
         // === Save the group state ===
 
         // Create a new KeyPackageBundle for Bob
-        let bob_key_package =
-            generate_key_package_bundle(ciphersuite, &bob_credential, vec![], backend)
-                .expect("An unexpected error occurred.");
+        let bob_key_package = generate_key_package_bundle(ciphersuite, &bob_credential, backend)
+            .expect("An unexpected error occurred.");
 
         // Add Bob to the group
         let (_queued_message, welcome) = alice_group
@@ -968,9 +964,8 @@ fn test_empty_input_errors(ciphersuite: Ciphersuite, backend: &impl OpenMlsCrypt
     .expect("An unexpected error occurred.");
 
     // Generate KeyPackages
-    let alice_key_package =
-        generate_key_package_bundle(ciphersuite, &alice_credential, vec![], backend)
-            .expect("An unexpected error occurred.");
+    let alice_key_package = generate_key_package_bundle(ciphersuite, &alice_credential, backend)
+        .expect("An unexpected error occurred.");
 
     // Define the MlsGroup configuration
     let mls_group_config = MlsGroupConfig::test_default();
@@ -1031,12 +1026,11 @@ fn mls_group_ratchet_tree_extension(
 
         // Generate KeyPackages
         let alice_key_package =
-            generate_key_package_bundle(ciphersuite, &alice_credential, vec![], backend)
+            generate_key_package_bundle(ciphersuite, &alice_credential, backend)
                 .expect("An unexpected error occurred.");
 
-        let bob_key_package =
-            generate_key_package_bundle(ciphersuite, &bob_credential, vec![], backend)
-                .expect("An unexpected error occurred.");
+        let bob_key_package = generate_key_package_bundle(ciphersuite, &bob_credential, backend)
+            .expect("An unexpected error occurred.");
 
         let mls_group_config = MlsGroupConfig::builder()
             .wire_format_policy(*wire_format_policy)
@@ -1087,12 +1081,11 @@ fn mls_group_ratchet_tree_extension(
 
         // Generate KeyPackages
         let alice_key_package =
-            generate_key_package_bundle(ciphersuite, &alice_credential, vec![], backend)
+            generate_key_package_bundle(ciphersuite, &alice_credential, backend)
                 .expect("An unexpected error occurred.");
 
-        let bob_key_package =
-            generate_key_package_bundle(ciphersuite, &bob_credential, vec![], backend)
-                .expect("An unexpected error occurred.");
+        let bob_key_package = generate_key_package_bundle(ciphersuite, &bob_credential, backend)
+            .expect("An unexpected error occurred.");
 
         let mls_group_config = MlsGroupConfig::test_default();
 

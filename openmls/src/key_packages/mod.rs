@@ -470,7 +470,6 @@ impl KeyPackageBundle {
         backend: &impl OpenMlsCryptoProvider,
         credential_bundle: &CredentialBundle,
         lifetime: Lifetime,
-        extensions: Vec<Extension>,
         leaf_secret: Secret,
     ) -> Result<Self, KeyPackageBundleNewError> {
         let keypair = backend

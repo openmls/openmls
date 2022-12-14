@@ -50,7 +50,7 @@ fn generate_credential_bundle_and_key_package_bundle(
         )
         .expect("An unexpected error occurred.");
 
-    let key_package = generate_key_package_bundle(ciphersuite, &credential, vec![], backend)
+    let key_package = generate_key_package_bundle(ciphersuite, &credential, backend)
         .expect("Failed to generate KeyPackage.");
     let key_package_bundle = backend
         .key_store()
@@ -110,8 +110,7 @@ fn new_test_group(
     .unwrap();
 
     // Generate KeyPackages
-    let key_package =
-        generate_key_package_bundle(ciphersuite, &credential, vec![], backend).unwrap();
+    let key_package = generate_key_package_bundle(ciphersuite, &credential, backend).unwrap();
 
     // Define the MlsGroup configuration
     let mls_group_config = MlsGroupConfig::builder()
@@ -142,9 +141,8 @@ fn validation_test_setup(
     )
     .expect("An unexpected error occurred.");
 
-    let bob_key_package =
-        generate_key_package_bundle(ciphersuite, &bob_credential, vec![], backend)
-            .expect("An unexpected error occurred.");
+    let bob_key_package = generate_key_package_bundle(ciphersuite, &bob_credential, backend)
+        .expect("An unexpected error occurred.");
 
     let (_message, welcome) = alice_group
         .add_members(backend, &[bob_key_package])
@@ -539,7 +537,6 @@ fn test_valsem102(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
                     backend,
                     &bob_credential_bundle,
                     Lifetime::default(),
-                    vec![],
                     shared_leaf_secret.clone(),
                 )
                 .expect("failed to generate key package");
@@ -548,7 +545,6 @@ fn test_valsem102(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
                     backend,
                     &charlie_credential_bundle,
                     Lifetime::default(),
-                    vec![],
                     shared_leaf_secret.clone(),
                 )
                 .expect("failed to generate key package");
@@ -962,7 +958,6 @@ fn test_valsem105(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
                     backend,
                     &alice_credential_bundle,
                     Lifetime::default(),
-                    vec![],
                     shared_leaf_secret.clone(),
                 )
                 .expect("failed to generate key package");
@@ -971,7 +966,6 @@ fn test_valsem105(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
                     backend,
                     &bob_credential_bundle,
                     Lifetime::default(),
-                    vec![],
                     shared_leaf_secret.clone(),
                 )
                 .expect("failed to generate key package");
@@ -1828,7 +1822,6 @@ fn test_valsem111(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
     let update_kp = generate_key_package_bundle(
         ciphersuite,
         alice_group.credential().expect("error fetching credential"),
-        vec![],
         backend,
     )
     .expect("error creating kpb");
