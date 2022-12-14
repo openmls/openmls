@@ -589,7 +589,7 @@ impl tls_codec::Deserialize for Lifetime {
                 not_after
             );
             return Err(tls_codec::Error::DecodingError(
-                format!("Invalid lifetime",),
+                "Invalid lifetime".to_string(),
             ));
         }
         Ok(out)

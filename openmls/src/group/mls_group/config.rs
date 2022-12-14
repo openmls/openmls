@@ -92,8 +92,8 @@ impl MlsGroupConfig {
     }
 
     /// Returns the [`MlsGroupConfig`] lifetime configuration.
-    pub fn lifetime(&self) -> &Lifetime {
-        &self.lifetime
+    pub fn lifetime(&self) -> Lifetime {
+        self.lifetime
     }
 
     #[cfg(any(feature = "test-utils", test))]
