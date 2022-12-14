@@ -35,11 +35,10 @@ fn test_core_group_persistence(ciphersuite: Ciphersuite, backend: &impl OpenMlsC
         .expect("An unexpected error occurred.");
 
     // Alice creates a group
-    let alice_group =
-        CoreGroup::builder(GroupId::random(backend), alice_key_package_bundle.clone())
-            .with_extensions(vec![])
-            .build(&alice_credential_bundle, backend)
-            .expect("Error creating group.");
+    let alice_group = CoreGroup::builder(GroupId::random(backend), alice_key_package_bundle)
+        .with_extensions(vec![])
+        .build(&alice_credential_bundle, backend)
+        .expect("Error creating group.");
 
     let mut file_out = tempfile::NamedTempFile::new().expect("Could not create file");
     alice_group
