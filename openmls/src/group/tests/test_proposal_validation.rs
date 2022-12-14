@@ -1549,13 +1549,8 @@ fn test_valsem109(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
         .store(&credential_id, &new_cb)
         .expect("An unexpected error occurred.");
 
-    let bob_leaf = bob_group
-        .group()
-        .treesync()
-        .own_leaf_node()
-        .expect("error getting own leaf node");
     let update_kpb = KeyPackageBundle::builder()
-        .ciphersuite(bob_leaf.ciphersuites()[0])
+        .ciphersuite(ciphersuite)
         .build(backend, new_cb.clone())
         .expect("Error creating new key package bundle");
 
@@ -1702,7 +1697,7 @@ fn test_valsem110(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
         .unwrap();
 
     let mut update_kpb = KeyPackageBundle::builder()
-        .ciphersuite(bob_leaf_node.ciphersuites()[0])
+        .ciphersuite(ciphersuite)
         .build(backend, bob_credential_bundle)
         .expect("Error creating new key package bundle");
     update_kpb.set_public_key(bob_leaf_node.encryption_key().clone());
