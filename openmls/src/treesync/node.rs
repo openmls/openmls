@@ -16,6 +16,7 @@ pub(crate) mod parent_node;
 /// Container enum for leaf and parent nodes.
 #[derive(Debug, PartialEq, Eq, Clone, Serialize, Deserialize)]
 #[allow(missing_docs)]
+#[allow(clippy::large_enum_variant)]
 pub enum Node {
     LeafNode(OpenMlsLeafNode),
     ParentNode(ParentNode),
