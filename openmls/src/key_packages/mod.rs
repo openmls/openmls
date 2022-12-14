@@ -309,7 +309,7 @@ impl KeyPackage {
             hpke_init_key.clone(),
             credential_bundle,
             lifetime,
-            extensions.clone(),
+            extensions,
             backend,
         )?;
         let key_package = KeyPackageTBS {

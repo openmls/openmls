@@ -144,7 +144,7 @@ pub fn generate_test_vector(ciphersuite: Ciphersuite) -> MessagesTestVector {
     .expect("An unexpected error occurred.");
     let joiner_key_package_bundle = KeyPackageBundle::builder()
         .ciphersuite(ciphersuite_name)
-        .build(&crypto, joiner_credential_bundle.clone())
+        .build(&crypto, joiner_credential_bundle)
         .expect("An unexpected error occurred.");
     let add_proposal = AddProposal {
         key_package: joiner_key_package_bundle.key_package().clone(),

@@ -159,7 +159,7 @@ fn ratchet_tree_extension(ciphersuite: Ciphersuite, backend: &impl OpenMlsCrypto
 
     let bob_key_package_bundle = KeyPackageBundle::builder()
         .ciphersuite(ciphersuite)
-        .build(backend, bob_credential_bundle.clone())
+        .build(backend, bob_credential_bundle)
         .expect("An unexpected error occurred.");
     let bob_key_package = bob_key_package_bundle.key_package();
 

@@ -61,7 +61,7 @@ impl Client {
         let kpb = KeyPackageBundle::builder()
             .ciphersuite(ciphersuites[0])
             .lifetime(Lifetime::new(157788000))
-            .build(&self.crypto, credential_bundle.clone())
+            .build(&self.crypto, credential_bundle)
             .expect("An unexpected error occurred.");
         let kp = kpb.key_package().clone();
         self.crypto
@@ -99,7 +99,7 @@ impl Client {
             .lifetime(
                 Lifetime::new(157788000), // 5 years
             )
-            .build(&self.crypto, credential_bundle.clone())
+            .build(&self.crypto, credential_bundle)
             .expect("An unexpected error occurred.");
         let key_package = kpb.key_package().clone();
         self.crypto
