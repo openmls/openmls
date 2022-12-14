@@ -604,6 +604,12 @@ pub struct KeyPackageBundleBuilder {
     keypair: Option<HpkeKeyPair>,
 }
 
+impl Default for KeyPackageBundleBuilder {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl KeyPackageBundleBuilder {
     /// Create a new [`KeyPackageBundleBuilder`].
     pub fn new() -> Self {
