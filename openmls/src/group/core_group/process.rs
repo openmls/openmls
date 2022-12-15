@@ -45,7 +45,10 @@ impl CoreGroup {
                 let message_secrets =
                     self.message_secrets_for_epoch(epoch).map_err(|e| match e {
                         SecretTreeError::TooDistantInThePast => ValidationError::NoPastEpochData,
-                        _ => LibraryError::custom("Unexpected return value").into(),
+                        _ => LibraryError::custom(
+                            "Unexpected error while retrieving message secrets for epoch.",
+                        )
+                        .into(),
                     })?;
                 DecryptedMessage::from_inbound_plaintext(plaintext, message_secrets, backend)?
             }
