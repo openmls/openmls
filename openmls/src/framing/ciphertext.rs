@@ -66,6 +66,9 @@ impl MlsCiphertext {
     }
 
     /// Try to create a new `MlsCiphertext` from an `MlsAuthContent`.
+    ///
+    /// TODO #1148: Refactor theses constructors to avoid test code in main and
+    /// to avoid validation using a special feature flag.
     pub(crate) fn try_from_plaintext(
         mls_plaintext: &MlsAuthContent,
         ciphersuite: Ciphersuite,
