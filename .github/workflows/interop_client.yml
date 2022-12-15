@@ -1,26 +1,26 @@
-name: Interop Client Build
-
-on:
-  push:
-    branches:
-      - main
-  pull_request:
-    branches:
-      - main
-  workflow_dispatch:
-
-concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
-
-env:
-  CARGO_TERM_COLOR: always
-
-defaults:
-  run:
-    working-directory: interop_client
-
-# TODO #1149: Re-activating this workflow.
+# TODO #1149: Re-activate this workflow.
+#name: Interop Client Build
+#
+#on:
+#  push:
+#    branches:
+#      - main
+#  pull_request:
+#    branches:
+#      - main
+#  workflow_dispatch:
+#
+#concurrency:
+#  group: ${{ github.workflow }}-${{ github.ref }}
+#  cancel-in-progress: true
+#
+#env:
+#  CARGO_TERM_COLOR: always
+#
+#defaults:
+#  run:
+#    working-directory: interop_client
+#
 #jobs:
 #  tests:
 #    runs-on: ubuntu-latest
