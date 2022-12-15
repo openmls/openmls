@@ -77,14 +77,3 @@ pub enum MlsMessageError {
     #[error("The message could not be decoded.")]
     UnableToDecode,
 }
-
-/// Error when fetching credential from non-member message
-#[derive(Error, Debug, PartialEq, Clone)]
-pub enum NonMemberCredentialError {
-    /// See [`LibraryError`] for more details.
-    #[error(transparent)]
-    LibraryError(#[from] LibraryError),
-    /// .
-    #[error("The message could not be decoded.")]
-    UnableToDecode,
-}
