@@ -26,6 +26,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::{
     binary_tree::{LeafIndex, MlsBinaryTree, MlsBinaryTreeError},
+    ciphersuite::Secret,
     credentials::CredentialBundle,
     error::LibraryError,
     extensions::{Extension, LifetimeExtension},
@@ -114,7 +115,9 @@ impl TreeSync {
             .for_each(|extension| leaf.add_extensions(extension));
 
         let node = Node::LeafNode(leaf);
-        let path_secret: PathSecret = key_package_bundle.leaf_secret().clone().into();
+        let path_secret: PathSecret = Secret::random(key_package.ciphersuite(), backend, None)
+            .map_err(LibraryError::unexpected_crypto_error)?
+            .into();
         let commit_secret: CommitSecret = path_secret
             .derive_path_secret(backend, key_package.ciphersuite())?
             .into();
