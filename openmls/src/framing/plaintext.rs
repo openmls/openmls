@@ -131,7 +131,7 @@ impl MlsContentBody {
     }
 }
 
-// XXX This pierces the abstraction boundary and should be removed.
+// TODO #979: This pierces the abstraction boundary and should be removed.
 impl From<MlsPlaintext> for MlsContentBody {
     fn from(plaintext: MlsPlaintext) -> Self {
         plaintext.content.body
