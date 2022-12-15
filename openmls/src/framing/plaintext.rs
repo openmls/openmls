@@ -199,11 +199,7 @@ impl MlsPlaintext {
 
 impl From<VerifiableMlsAuthContent> for MlsPlaintext {
     fn from(v: VerifiableMlsAuthContent) -> Self {
-        Self {
-            content: v.tbs.content,
-            auth: v.auth,
-            membership_tag: None,
-        }
+        v.auth_content.into()
     }
 }
 
@@ -453,6 +449,26 @@ pub(crate) struct MlsContentAuthData {
     pub(super) confirmation_tag: Option<ConfirmationTag>,
 }
 
+/// 6 Message Framing
+///
+/// ```c
+/// // draft-ietf-mls-protocol-16
+///
+/// struct {
+///     WireFormat wire_format;
+///     MLSContent content;
+///     MLSContentAuthData auth;
+/// } MLSAuthenticatedContent;
+/// ```
+///
+/// Note that [`MlsAuthContent`] doesn't correspond exactly to the
+/// MLSAuthenticatedContent from the MLS specification, as the [`MlsContentTbs`]
+/// contains additional information to ease processing.
+///
+/// TODO #1051: Serialization is only needed for KAT generation at this point.
+/// If we want to serialize a spec-compliant MLSAuthenticatedContent, we have to
+/// manually ignore the extra fields in the TBS (i.e. context and later
+/// ProtocolVersion).
 #[derive(PartialEq, Debug, Clone, TlsSerialize, TlsSize)]
 pub(crate) struct MlsAuthContent {
     pub(super) tbs: MlsContentTbs,
@@ -636,10 +652,7 @@ impl MlsAuthContent {
 #[cfg(any(feature = "test-utils", test))]
 impl From<VerifiableMlsAuthContent> for MlsAuthContent {
     fn from(v: VerifiableMlsAuthContent) -> Self {
-        Self {
-            tbs: v.tbs,
-            auth: v.auth,
-        }
+        v.auth_content
     }
 }
 
@@ -649,17 +662,23 @@ impl From<MlsAuthContent> for MlsContent {
     }
 }
 
+/// Wrapper struct around [`MlsAuthContent`] to enforce signature verification
+/// before content can be accessed.
+///
+/// TODO #979: Currently, the abstraction boundary between
+/// VerifiableMlsAuthContent and its content is not properly enforced.
 #[derive(PartialEq, Debug, Clone, TlsSerialize, TlsSize)]
 pub(crate) struct VerifiableMlsAuthContent {
-    pub(super) tbs: MlsContentTbs,
-    pub(super) auth: MlsContentAuthData,
+    pub(super) auth_content: MlsAuthContent,
 }
 
 impl VerifiableMlsAuthContent {
     /// Create a new [`VerifiableMlsAuthContent`] from a [`MlsContentTbs`] and
     /// a [`Signature`].
     pub(crate) fn new(tbs: MlsContentTbs, auth: MlsContentAuthData) -> Self {
-        Self { tbs, auth }
+        Self {
+            auth_content: MlsAuthContent { tbs, auth },
+        }
     }
 
     /// Create a [`VerifiableMlsAuthContent`] from an [`MlsPlaintext`] and the
@@ -674,51 +693,48 @@ impl VerifiableMlsAuthContent {
             serialized_context: serialized_context.into(),
         };
 
-        Self {
-            tbs,
-            auth: mls_plaintext.auth,
-        }
+        Self::new(tbs, mls_plaintext.auth)
     }
 
     /// Get the [`Sender`].
     pub fn sender(&self) -> &Sender {
-        &self.tbs.content.sender
+        &self.auth_content.tbs.content.sender
     }
 
     /// Set the serialized context before verifying the signature.
     pub(crate) fn set_context(&mut self, serialized_context: Vec<u8>) {
-        self.tbs.serialized_context = Some(serialized_context);
+        self.auth_content.tbs.serialized_context = Some(serialized_context);
     }
 
     /// Set the serialized context before verifying the signature.
     #[cfg(any(feature = "test-utils", test))]
     pub(crate) fn has_context(&self) -> bool {
-        self.tbs.serialized_context.is_some()
+        self.auth_content.tbs.serialized_context.is_some()
     }
 
     /// Get the epoch.
     pub(crate) fn epoch(&self) -> GroupEpoch {
-        self.tbs.epoch()
+        self.auth_content.tbs.epoch()
     }
 
     /// Get the content of the message.
     pub(crate) fn content(&self) -> &MlsContentBody {
-        &self.tbs.content.body
+        &self.auth_content.tbs.content.body
     }
 
     /// Get the wire format.
     pub(crate) fn wire_format(&self) -> WireFormat {
-        self.tbs.wire_format
+        self.auth_content.tbs.wire_format
     }
 
     /// Get the confirmation tag.
     pub(crate) fn confirmation_tag(&self) -> Option<&ConfirmationTag> {
-        self.auth.confirmation_tag.as_ref()
+        self.auth_content.auth.confirmation_tag.as_ref()
     }
 
     /// Get the content type
     pub(crate) fn content_type(&self) -> ContentType {
-        self.tbs.content.body.content_type()
+        self.auth_content.tbs.content.body.content_type()
     }
 }
 
@@ -775,11 +791,11 @@ impl MlsContentTbs {
 
 impl Verifiable for VerifiableMlsAuthContent {
     fn unsigned_payload(&self) -> Result<Vec<u8>, tls_codec::Error> {
-        self.tbs.tls_serialize_detached()
+        self.auth_content.tbs.tls_serialize_detached()
     }
 
     fn signature(&self) -> &Signature {
-        &self.auth.signature
+        &self.auth_content.auth.signature
     }
 
     fn label(&self) -> &str {
@@ -794,10 +810,7 @@ mod private_mod {
 
 impl VerifiedStruct<VerifiableMlsAuthContent> for MlsAuthContent {
     fn from_verifiable(v: VerifiableMlsAuthContent, _seal: Self::SealingType) -> Self {
-        Self {
-            tbs: v.tbs,
-            auth: v.auth,
-        }
+        v.auth_content
     }
 
     type SealingType = private_mod::Seal;
