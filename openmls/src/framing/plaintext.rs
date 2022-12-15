@@ -251,8 +251,9 @@ impl MlsPlaintext {
         serialized_context: &[u8],
         membership_key: &MembershipKey,
     ) -> Result<(), LibraryError> {
-        let tbs_payload =
-            encode_tbs(self, serialized_context).map_err(LibraryError::missing_bound_check)?;
+        let tbs_payload = self
+            .encode_tbs(serialized_context)
+            .map_err(LibraryError::missing_bound_check)?;
         let tbm_payload = MlsContentTbm::new(&tbs_payload, &self.auth)?;
         let membership_tag = membership_key.tag(backend, tbm_payload)?;
 
@@ -274,8 +275,9 @@ impl MlsPlaintext {
         log::debug!("Verifying membership tag.");
         log_crypto!(trace, "  Membership key: {:x?}", membership_key);
         log_crypto!(trace, "  Serialized context: {:x?}", serialized_context);
-        let tbs_payload =
-            encode_tbs(self, serialized_context).map_err(LibraryError::missing_bound_check)?;
+        let tbs_payload = self
+            .encode_tbs(serialized_context)
+            .map_err(LibraryError::missing_bound_check)?;
         let tbm_payload = MlsContentTbm::new(&tbs_payload, &self.auth)?;
         let expected_membership_tag = &membership_key.tag(backend, tbm_payload)?;
 
@@ -299,6 +301,20 @@ impl MlsPlaintext {
     /// Get the [`GroupId`].
     pub(crate) fn group_id(&self) -> &GroupId {
         &self.content.group_id
+    }
+
+    fn encode_tbs<'a>(
+        &self,
+        serialized_context: impl Into<Option<&'a [u8]>>,
+    ) -> Result<Vec<u8>, tls_codec::Error> {
+        let mut out = Vec::new();
+        codec::serialize_plaintext_tbs(
+            WireFormat::MlsPlaintext,
+            &self.content,
+            serialized_context,
+            &mut out,
+        )?;
+        Ok(out)
     }
 
     #[cfg(any(feature = "test-utils", test))]
@@ -397,20 +413,6 @@ pub(crate) struct MlsContentTbs {
     pub(super) wire_format: WireFormat,
     pub(super) content: MlsContent,
     pub(super) serialized_context: Option<Vec<u8>>,
-}
-
-fn encode_tbs<'a>(
-    plaintext: &MlsPlaintext,
-    serialized_context: impl Into<Option<&'a [u8]>>,
-) -> Result<Vec<u8>, tls_codec::Error> {
-    let mut out = Vec::new();
-    codec::serialize_plaintext_tbs(
-        WireFormat::MlsPlaintext,
-        &plaintext.content,
-        serialized_context,
-        &mut out,
-    )?;
-    Ok(out)
 }
 
 #[cfg(test)]
