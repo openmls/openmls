@@ -52,7 +52,7 @@ pub(super) fn serialize_plaintext_tbs<'a, W: Write>(
     let mut written = wire_format.tls_serialize(buffer)?;
     written += content.tls_serialize(buffer)?;
     written += if let Some(serialized_context) = serialized_context.into() {
-        // Only a member a new member joining via commit should have a context.
+        // Only members and new members joining via commit should have a context.
         debug_assert!(matches!(
             content.sender,
             Sender::Member(_) | Sender::NewMemberCommit
