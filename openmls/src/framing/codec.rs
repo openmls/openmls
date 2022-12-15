@@ -5,7 +5,6 @@ use std::io::{Read, Write};
 
 impl Deserialize for MlsPlaintext {
     fn tls_deserialize<R: Read>(bytes: &mut R) -> Result<Self, tls_codec::Error> {
-        println!("starting to decode pt");
         let content: MlsContent = MlsContent::tls_deserialize(bytes)?;
         let auth = deserialize_content_auth_data(bytes, content.body.content_type())?;
         let membership_tag = if content.sender.is_member() {
