@@ -138,44 +138,32 @@ impl From<MlsPlaintext> for MlsContentBody {
     }
 }
 
-// This block only has pub(super) getters.
+#[cfg(test)]
 impl MlsPlaintext {
-    #[cfg(test)]
     pub fn set_confirmation_tag(&mut self, confirmation_tag: Option<ConfirmationTag>) {
         self.auth.confirmation_tag = confirmation_tag;
     }
 
-    #[cfg(test)]
     pub fn unset_membership_tag(&mut self) {
         self.membership_tag = None;
     }
 
-    #[cfg(any(feature = "test-utils", test))]
-    pub fn set_membership_tag_test(&mut self, membership_tag: MembershipTag) {
-        self.membership_tag = Some(membership_tag);
-    }
-
-    #[cfg(test)]
     pub fn set_content(&mut self, content: MlsContentBody) {
         self.content.body = content;
     }
 
-    #[cfg(test)]
     pub fn set_epoch(&mut self, epoch: u64) {
         self.content.epoch = epoch.into();
     }
 
-    #[cfg(test)]
     pub fn content(&self) -> &MlsContentBody {
         &self.content.body
     }
 
-    #[cfg(test)]
     pub fn confirmation_tag(&self) -> Option<&ConfirmationTag> {
         self.auth.confirmation_tag.as_ref()
     }
 
-    #[cfg(test)]
     pub(crate) fn invalidate_signature(&mut self) {
         let mut modified_signature = self.auth.signature.as_slice().to_vec();
         modified_signature[0] ^= 0xFF;
@@ -183,15 +171,18 @@ impl MlsPlaintext {
     }
 
     /// Set the sender.
-    #[cfg(test)]
     pub(crate) fn set_sender(&mut self, sender: Sender) {
         self.content.sender = sender;
     }
 
     /// Set the group id.
-    #[cfg(test)]
     pub(crate) fn set_group_id(&mut self, group_id: GroupId) {
         self.content.group_id = group_id;
+    }
+
+    /// Returns `true` if this is a handshake message and `false` otherwise.
+    pub(crate) fn is_handshake_message(&self) -> bool {
+        self.content_type().is_handshake_message()
     }
 
     // TODO: #727 - Remove if not needed.
@@ -300,12 +291,6 @@ impl MlsPlaintext {
         Ok(())
     }
 
-    /// Returns `true` if this is a handshake message and `false` otherwise.
-    #[cfg(test)]
-    pub(crate) fn is_handshake_message(&self) -> bool {
-        self.content_type().is_handshake_message()
-    }
-
     /// Get the group epoch.
     pub(crate) fn epoch(&self) -> GroupEpoch {
         self.content.epoch
@@ -314,6 +299,11 @@ impl MlsPlaintext {
     /// Get the [`GroupId`].
     pub(crate) fn group_id(&self) -> &GroupId {
         &self.content.group_id
+    }
+
+    #[cfg(any(feature = "test-utils", test))]
+    pub fn set_membership_tag_test(&mut self, membership_tag: MembershipTag) {
+        self.membership_tag = Some(membership_tag);
     }
 
     // TODO: #727 - Remove if not needed.
