@@ -123,8 +123,6 @@ impl CoreGroup {
         own_leaf_nodes: &[OpenMlsLeafNode],
         backend: &impl OpenMlsCryptoProvider,
     ) -> Result<ProcessedMessage, ProcessMessageError> {
-        // Checks the following semantic validation:
-        //  - ValSem008
         let context_plaintext =
             UnverifiedContextMessage::from_unverified_message(unverified_message)?;
 

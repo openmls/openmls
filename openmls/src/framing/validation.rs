@@ -263,9 +263,7 @@ pub(crate) enum UnverifiedContextMessage {
 }
 
 impl UnverifiedContextMessage {
-    /// Constructs an [UnverifiedContextMessage] from an [UnverifiedMessage] and adds the serialized group context.
-    /// This function implements the following checks:
-    ///  - ValSem008
+    /// Constructs an [UnverifiedContextMessage] from an [UnverifiedMessage].
     pub(crate) fn from_unverified_message(
         unverified_message: UnverifiedMessage,
     ) -> Result<Self, LibraryError> {
