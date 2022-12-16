@@ -47,11 +47,7 @@ pub struct Capabilities {
 
 /// All extensions defined in the MLS spec are considered "default" by the spec.
 fn default_extensions() -> Vec<ExtensionType> {
-    vec![
-        ExtensionType::Capabilities,
-        ExtensionType::Lifetime,
-        ExtensionType::ApplicationId,
-    ]
+    vec![ExtensionType::Lifetime, ExtensionType::ApplicationId]
 }
 
 /// All proposals defined in the MLS spec are considered "default" by the spec.
