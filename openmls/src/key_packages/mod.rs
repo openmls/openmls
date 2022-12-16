@@ -80,9 +80,7 @@ use crate::{
     },
     credentials::*,
     error::LibraryError,
-    extensions::{
-        errors::ExtensionError, CapabilitiesExtension, Extension, ExtensionType, LifetimeExtension,
-    },
+    extensions::{errors::ExtensionError, Extension, ExtensionType, LifetimeExtension},
     treesync::LeafNode,
     versions::ProtocolVersion,
 };
@@ -636,38 +634,6 @@ impl KeyPackageBundle {
             );
             return Err(error);
         }
-
-        // First, check if one of the input extensions is a capabilities
-        // extension. If there is, check if one of the extensions is a
-        // capabilities extensions and if the contained ciphersuites are the
-        // same as the ciphersuites passed as input. If that is not the case,
-        // return an error. If none of the extensions is a capabilities
-        // extension, create one that supports the given ciphersuites and that
-        // is otherwise default.
-
-        match extensions
-            .iter()
-            .find(|e| e.extension_type() == ExtensionType::Capabilities)
-        {
-            Some(extension) => {
-                let capabilities_extension = extension.as_capabilities_extension()?;
-                if capabilities_extension.ciphersuites() != ciphersuites {
-                    let error = KeyPackageBundleNewError::CiphersuiteMismatch;
-                    error!(
-                        "Error creating new KeyPackageBundle: Invalid Capabilities Extensions {:?}",
-                        error
-                    );
-                    return Err(error);
-                }
-            }
-
-            None => extensions.push(Extension::Capabilities(CapabilitiesExtension::new(
-                None,
-                Some(ciphersuites),
-                None,
-                None,
-            ))),
-        };
 
         // Check if there is a lifetime extension. If not, add one that is at
         // least valid.
