@@ -357,17 +357,17 @@ impl KeyPackage {
         backend: &impl OpenMlsCryptoProvider,
         hpke_init_key: HpkePublicKey,
         credential_bundle: &CredentialBundle,
-        // TODO: #819: properly handle extensions (what's going where?)
-        mut extensions: Vec<Extension>,
+        // TODO: #819: Handle key package extensions (and refactor API).
+        mut leaf_node_extensions: Vec<Extension>,
     ) -> Result<Self, KeyPackageNewError> {
         if SignatureScheme::from(ciphersuite) != credential_bundle.credential().signature_scheme() {
             return Err(KeyPackageNewError::CiphersuiteSignatureSchemeMismatch);
         }
-        let life_time = extensions
+        let life_time = leaf_node_extensions
             .iter()
             .position(|e| e.extension_type() == ExtensionType::Lifetime);
         let lifetime: LifetimeExtension = if let Some(index) = life_time {
-            let extension = extensions.remove(index);
+            let extension = leaf_node_extensions.remove(index);
             extension
                 .as_lifetime_extension()
                 .map_err(|_| LibraryError::custom(""))?
@@ -379,7 +379,7 @@ impl KeyPackage {
             hpke_init_key.clone(),
             credential_bundle,
             lifetime,
-            extensions.clone(),
+            leaf_node_extensions,
             backend,
         )?;
         let key_package = KeyPackageTBS {
@@ -389,7 +389,7 @@ impl KeyPackage {
             init_key: hpke_init_key,
             leaf_node,
             credential: credential_bundle.credential().clone(),
-            extensions,
+            extensions: vec![],
         };
         Ok(key_package.sign(backend, credential_bundle)?)
     }
@@ -467,6 +467,16 @@ impl KeyPackageBundlePayload {
     #[cfg(any(feature = "test-utils", test))]
     pub fn set_ciphersuite(&mut self, ciphersuite: Ciphersuite) {
         self.key_package_tbs.set_ciphersuite(ciphersuite)
+    }
+    /// Get the [`LeafNode`].
+    #[cfg(any(feature = "test-utils", test))]
+    pub fn leaf_node(&self) -> &LeafNode {
+        &self.key_package_tbs.leaf_node
+    }
+    /// Set the [`LeafNode`].
+    #[cfg(any(feature = "test-utils", test))]
+    pub fn set_leaf_node(&mut self, leaf_node: LeafNode) {
+        self.key_package_tbs.leaf_node = leaf_node;
     }
 }
 

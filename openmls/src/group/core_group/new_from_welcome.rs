@@ -102,8 +102,9 @@ impl CoreGroup {
             // Per spec the sender must have checked this. But you never know.
             key_package_bundle
                 .key_package()
-                .check_extension_support(required_capabilities.extensions())
-                .map_err(|_| WelcomeError::UnsupportedExtensions)?
+                .leaf_node()
+                .validate_required_capabilities(required_capabilities)
+                .map_err(|_| WelcomeError::UnsupportedCapability)?
         }
 
         let path_secret_option = group_secrets.path_secret;
