@@ -133,9 +133,21 @@ impl Capabilities {
         &self.versions
     }
 
+    /// Set the versions list.
+    #[cfg(test)]
+    pub fn set_versions(&mut self, versions: Vec<ProtocolVersion>) {
+        self.versions = versions;
+    }
+
     /// Get a reference to the list of ciphersuites in this extension.
     pub fn ciphersuites(&self) -> &[Ciphersuite] {
         &self.ciphersuites
+    }
+
+    /// Set the ciphersuites list.
+    #[cfg(test)]
+    pub fn set_ciphersuites(&mut self, ciphersuites: Vec<Ciphersuite>) {
+        self.ciphersuites = ciphersuites;
     }
 
     /// Get a reference to the list of supported extensions.
@@ -176,6 +188,32 @@ impl Capabilities {
         self.credentials.append(&mut new_capabilities.credentials);
         self.credentials.sort();
         self.credentials.dedup();
+    }
+
+    /// Check if these [`Capabilities`] support all the capabilities
+    /// required by the given [`RequiredCapabilities`] extension. Returns
+    /// `true` if that is the case and `false` otherwise.
+    pub(crate) fn supports_required_capabilities(
+        &self,
+        required_capabilities: &RequiredCapabilitiesExtension,
+    ) -> bool {
+        // Check if all required extensions are supported.
+        if required_capabilities
+            .extensions()
+            .iter()
+            .any(|e| !self.extensions().contains(e))
+        {
+            return false;
+        }
+        // Check if all required proposals are supported.
+        if required_capabilities
+            .proposals()
+            .iter()
+            .any(|p| !self.proposals().contains(p))
+        {
+            return false;
+        }
+        true
     }
 }
 
@@ -478,6 +516,17 @@ impl LeafNode {
     pub fn signature(&self) -> &Signature {
         &self.signature
     }
+
+    /// Return a reference to [`Capabilities`].
+    pub(crate) fn capabilities(&self) -> &Capabilities {
+        &self.payload.capabilities
+    }
+
+    /// Return a mutable reference to [`Capabilities`].
+    #[cfg(test)]
+    pub fn capabilities_mut(&mut self) -> &mut Capabilities {
+        &mut self.payload.capabilities
+    }
 }
 
 const LEAF_NODE_SIGNATURE_LABEL: &str = "LeafNodeTBS";
@@ -570,7 +619,6 @@ pub struct OpenMlsLeafNode {
     pub(in crate::treesync) leaf_node: LeafNode,
     private_key: Option<HpkePrivateKey>,
     leaf_index: Option<u32>,
-    leaf_secret: Option<Secret>, // TODO: #1131 Ensure that this is dropped.
 }
 
 impl From<LeafNode> for OpenMlsLeafNode {
@@ -579,7 +627,6 @@ impl From<LeafNode> for OpenMlsLeafNode {
             leaf_node,
             private_key: None,
             leaf_index: None,
-            leaf_secret: None,
         }
     }
 }
@@ -590,7 +637,6 @@ impl From<KeyPackageBundle> for OpenMlsLeafNode {
             leaf_node: kpb.key_package.leaf_node().clone(),
             private_key: Some(kpb.private_key),
             leaf_index: None,
-            leaf_secret: Some(kpb.leaf_secret),
         }
     }
 }
@@ -607,7 +653,6 @@ impl OpenMlsLeafNode {
             leaf_node,
             private_key: None,
             leaf_index: None,
-            leaf_secret: None,
         })
     }
 
@@ -730,11 +775,6 @@ impl OpenMlsLeafNode {
             .crypto()
             .derive_hpke_keypair(ciphersuite.hpke_config(), encryption_secret.as_slice());
 
-        // Update the leaf secret.
-        let leaf_secret = Secret::random(ciphersuite, backend, protocol_version)
-            .map_err(LibraryError::unexpected_crypto_error)?;
-        self.leaf_secret = Some(leaf_secret);
-
         self.update_encryption_key(
             (&key_pair.private.into(), &key_pair.public.into()),
             credential_bundle,
@@ -797,7 +837,6 @@ impl OpenMlsLeafNode {
             leaf_node: self.leaf_node.clone(),
             private_key: None,
             leaf_index: None,
-            leaf_secret: None,
         }
     }
 
@@ -829,13 +868,6 @@ impl OpenMlsLeafNode {
         self.leaf_node = tbs.sign(backend, credential_bundle)?;
 
         Ok(())
-    }
-
-    /// Get the leaf secret.
-    ///
-    /// Can be `None`.
-    pub(crate) fn leaf_secret(&self) -> Option<&Secret> {
-        self.leaf_secret.as_ref()
     }
 
     /// Check that all extensions that are required, are supported by this leaf
@@ -883,14 +915,11 @@ impl OpenMlsLeafNode {
 
     /// Generate a leaf from a [`KeyPackageBundle`] and the leaf index.
     pub fn from_key_package_bundel(kpb: KeyPackageBundle, leaf_index: u32) -> Self {
-        let (key_package, (private_key, leaf_secret)) = kpb.into_parts();
-        let ciphersuite = key_package.ciphersuite();
-        let version = key_package.protocol_version();
+        let (key_package, private_key) = kpb.into_parts();
         Self {
             leaf_node: key_package.take_leaf_node(),
             private_key: Some(private_key.into()),
             leaf_index: Some(leaf_index),
-            leaf_secret: Some(Secret::from_vec(leaf_secret, version, ciphersuite)),
         }
     }
 

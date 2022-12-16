@@ -89,7 +89,7 @@ use crate::{
 use log::error;
 use openmls_traits::{
     crypto::OpenMlsCrypto,
-    types::{Ciphersuite, CryptoError, HpkeKeyPair, SignatureScheme},
+    types::{Ciphersuite, HpkeKeyPair, SignatureScheme},
     OpenMlsCryptoProvider,
 };
 use serde::{Deserialize, Serialize};
@@ -357,17 +357,17 @@ impl KeyPackage {
         backend: &impl OpenMlsCryptoProvider,
         hpke_init_key: HpkePublicKey,
         credential_bundle: &CredentialBundle,
-        // TODO: #819: properly handle extensions (what's going where?)
-        mut extensions: Vec<Extension>,
+        // TODO: #819: Handle key package extensions (and refactor API).
+        mut leaf_node_extensions: Vec<Extension>,
     ) -> Result<Self, KeyPackageNewError> {
         if SignatureScheme::from(ciphersuite) != credential_bundle.credential().signature_scheme() {
             return Err(KeyPackageNewError::CiphersuiteSignatureSchemeMismatch);
         }
-        let life_time = extensions
+        let life_time = leaf_node_extensions
             .iter()
             .position(|e| e.extension_type() == ExtensionType::Lifetime);
         let lifetime: LifetimeExtension = if let Some(index) = life_time {
-            let extension = extensions.remove(index);
+            let extension = leaf_node_extensions.remove(index);
             extension
                 .as_lifetime_extension()
                 .map_err(|_| LibraryError::custom(""))?
@@ -379,7 +379,7 @@ impl KeyPackage {
             hpke_init_key.clone(),
             credential_bundle,
             lifetime,
-            extensions.clone(),
+            leaf_node_extensions,
             backend,
         )?;
         let key_package = KeyPackageTBS {
@@ -389,7 +389,7 @@ impl KeyPackage {
             init_key: hpke_init_key,
             leaf_node,
             credential: credential_bundle.credential().clone(),
-            extensions,
+            extensions: vec![],
         };
         Ok(key_package.sign(backend, credential_bundle)?)
     }
@@ -434,14 +434,12 @@ impl KeyPackage {
 pub struct KeyPackageBundlePayload {
     key_package_tbs: KeyPackageTBS,
     private_key: HpkePrivateKey,
-    leaf_secret: Secret,
 }
 
 #[cfg(not(any(feature = "test-utils", test)))]
 pub(crate) struct KeyPackageBundlePayload {
     key_package_tbs: KeyPackageTBS,
     private_key: HpkePrivateKey,
-    leaf_secret: Secret,
 }
 
 impl KeyPackageBundlePayload {
@@ -470,6 +468,16 @@ impl KeyPackageBundlePayload {
     pub fn set_ciphersuite(&mut self, ciphersuite: Ciphersuite) {
         self.key_package_tbs.set_ciphersuite(ciphersuite)
     }
+    /// Get the [`LeafNode`].
+    #[cfg(any(feature = "test-utils", test))]
+    pub fn leaf_node(&self) -> &LeafNode {
+        &self.key_package_tbs.leaf_node
+    }
+    /// Set the [`LeafNode`].
+    #[cfg(any(feature = "test-utils", test))]
+    pub fn set_leaf_node(&mut self, leaf_node: LeafNode) {
+        self.key_package_tbs.leaf_node = leaf_node;
+    }
 }
 
 impl Signable for KeyPackageBundlePayload {
@@ -490,7 +498,6 @@ impl SignedStruct<KeyPackageBundlePayload> for KeyPackageBundle {
         Self {
             key_package,
             private_key: payload.private_key,
-            leaf_secret: payload.leaf_secret,
         }
     }
 }
@@ -502,7 +509,6 @@ impl SignedStruct<KeyPackageBundlePayload> for KeyPackageBundle {
 pub struct KeyPackageBundle {
     pub(crate) key_package: KeyPackage,
     pub(crate) private_key: HpkePrivateKey,
-    pub(crate) leaf_secret: Secret,
 }
 
 impl From<KeyPackageBundle> for KeyPackageBundlePayload {
@@ -510,7 +516,6 @@ impl From<KeyPackageBundle> for KeyPackageBundlePayload {
         Self {
             key_package_tbs: kpb.key_package.into(),
             private_key: kpb.private_key,
-            leaf_secret: kpb.leaf_secret,
         }
     }
 }
@@ -603,7 +608,6 @@ impl KeyPackageBundle {
         credential_bundle: &CredentialBundle,
         mut extensions: Vec<Extension>,
         key_pair: HpkeKeyPair,
-        leaf_secret: Secret,
     ) -> Result<Self, KeyPackageBundleNewError> {
         if ciphersuites.is_empty() {
             let error = KeyPackageBundleNewError::NoCiphersuitesSupplied;
@@ -689,7 +693,6 @@ impl KeyPackageBundle {
         Ok(KeyPackageBundle {
             key_package,
             private_key: key_pair.private.into(),
-            leaf_secret,
         })
     }
 
@@ -711,16 +714,10 @@ impl KeyPackageBundle {
         }
     }
 
-    /// Separates the bundle into the [`KeyPackage`] and the HPKE private key and
-    /// leaf secret as raw byte vectors.
-    pub fn into_parts(self) -> (KeyPackage, (Vec<u8>, Vec<u8>)) {
-        (
-            self.key_package,
-            (
-                self.private_key.as_slice().to_vec(),
-                self.leaf_secret.as_slice().to_vec(),
-            ),
-        )
+    /// Separates the bundle into the [`KeyPackage`] and the HPKE private key
+    /// as raw byte vectors.
+    pub fn into_parts(self) -> (KeyPackage, Vec<u8>) {
+        (self.key_package, self.private_key.as_slice().to_vec())
     }
 
     /// Get the unsigned payload version of this key package bundle for modificaiton.
@@ -749,18 +746,15 @@ impl KeyPackageBundle {
         }
 
         let ciphersuite = ciphersuites[0];
-        let leaf_node_secret = derive_leaf_node_secret(&leaf_secret, backend)
-            .map_err(LibraryError::unexpected_crypto_error)?;
         let keypair = backend
             .crypto()
-            .derive_hpke_keypair(ciphersuite.hpke_config(), leaf_node_secret.as_slice());
+            .derive_hpke_keypair(ciphersuite.hpke_config(), leaf_secret.as_slice());
         Self::new_with_keypair(
             ciphersuites,
             backend,
             credential_bundle,
             extensions,
             keypair,
-            leaf_secret,
         )
     }
 
@@ -772,11 +766,6 @@ impl KeyPackageBundle {
     /// Get a reference to the `HpkePrivateKey`.
     pub(crate) fn private_key(&self) -> &HpkePrivateKey {
         &self.private_key
-    }
-
-    /// Get a reference to the leaf secret associated with this bundle.
-    pub(crate) fn leaf_secret(&self) -> &Secret {
-        &self.leaf_secret
     }
 }
 
@@ -791,13 +780,4 @@ impl KeyPackageBundle {
     pub fn set_public_key(&mut self, public_key: HpkePublicKey) {
         self.key_package.payload.init_key = public_key
     }
-}
-
-/// This function derives the leaf_node_secret from the leaf_secret as
-/// described in 5.4 Ratchet Tree Evolution
-pub(crate) fn derive_leaf_node_secret(
-    leaf_secret: &Secret,
-    backend: &impl OpenMlsCryptoProvider,
-) -> Result<Secret, CryptoError> {
-    leaf_secret.derive_secret(backend, "node")
 }
