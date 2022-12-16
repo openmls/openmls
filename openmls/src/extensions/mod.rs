@@ -27,7 +27,6 @@ use tls_codec::*;
 
 // Private
 mod application_id_extension;
-mod capabilities_extension;
 mod codec;
 mod external_pub_extension;
 mod external_sender_extension;
@@ -41,7 +40,6 @@ pub mod errors;
 
 // Public re-exports
 pub use application_id_extension::ApplicationIdExtension;
-pub use capabilities_extension::CapabilitiesExtension;
 pub use external_pub_extension::ExternalPubExtension;
 pub use external_sender_extension::ExternalSendersExtension;
 pub use life_time_extension::LifetimeExtension;
@@ -105,12 +103,6 @@ pub enum ExtensionType {
     /// of senders that are permitted to send external proposals to the group.
     ExternalSenders = 5,
 
-    /// The capabilities extension indicates what protocol versions, ciphersuites,
-    /// protocol extensions, and non-default proposal types are supported by a
-    /// client.
-    /// TODO(#819): This extension will be deleted.
-    Capabilities = 0xff00,
-
     /// The lifetime extension represents the times between which clients will
     /// consider a KeyPackage valid.
     /// TODO(#819): This extension will be deleted.
@@ -130,7 +122,6 @@ impl TryFrom<u16> for ExtensionType {
             3 => Ok(ExtensionType::RequiredCapabilities),
             4 => Ok(ExtensionType::ExternalPub),
             5 => Ok(ExtensionType::ExternalSenders),
-            0xff00 => Ok(ExtensionType::Capabilities),
             0xff01 => Ok(ExtensionType::Lifetime),
             _ => Err(tls_codec::Error::DecodingError(format!(
                 "{} is an unkown extension type",
@@ -149,7 +140,6 @@ impl ExtensionType {
             | ExtensionType::RequiredCapabilities
             | ExtensionType::ExternalPub
             | ExtensionType::ExternalSenders
-            | ExtensionType::Capabilities
             | ExtensionType::Lifetime => true,
         }
     }
@@ -185,10 +175,6 @@ pub enum Extension {
 
     /// A [`ExternalPubExtension`]
     ExternalSenders(ExternalSendersExtension),
-
-    /// A [`CapabilitiesExtension`]
-    /// TODO(#819): This extension will be deleted.
-    Capabilities(CapabilitiesExtension),
 
     /// A [`LifetimeExtension`]
     /// TODO(#819): This extension will be deleted.
@@ -260,18 +246,6 @@ impl Extension {
         }
     }
 
-    /// Get a reference to this extension as [`CapabilitiesExtension`].
-    /// Returns an [`ExtensionError::InvalidExtensionType`] error if called on an
-    /// [`Extension`] that's not a [`CapabilitiesExtension`].
-    pub fn as_capabilities_extension(&self) -> Result<&CapabilitiesExtension, ExtensionError> {
-        match self {
-            Self::Capabilities(e) => Ok(e),
-            _ => Err(ExtensionError::InvalidExtensionType(
-                "This is not a CapabilitiesExtension".into(),
-            )),
-        }
-    }
-
     /// Get a reference to this extension as [`LifetimeExtension`].
     /// Returns an [`ExtensionError::InvalidExtensionType`] if called on an
     /// [`Extension`] that's not a [`LifetimeExtension`].
@@ -293,7 +267,6 @@ impl Extension {
             Extension::RequiredCapabilities(_) => ExtensionType::RequiredCapabilities,
             Extension::ExternalPub(_) => ExtensionType::ExternalPub,
             Extension::ExternalSenders(_) => ExtensionType::ExternalSenders,
-            Extension::Capabilities(_) => ExtensionType::Capabilities,
             Extension::Lifetime(_) => ExtensionType::Lifetime,
         }
     }
