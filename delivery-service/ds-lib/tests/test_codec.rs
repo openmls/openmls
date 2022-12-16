@@ -16,8 +16,14 @@ fn test_client_info() {
         crypto,
     )
     .unwrap();
-    let client_key_package_bundle =
-        KeyPackageBundle::new(&[ciphersuite], &credential_bundle, crypto, Lifetime::default(), vec![]).unwrap();
+    let client_key_package_bundle = KeyPackageBundle::new(
+        &[ciphersuite],
+        &credential_bundle,
+        crypto,
+        Lifetime::default(),
+        vec![],
+    )
+    .unwrap();
     let client_key_package = vec![(
         client_key_package_bundle
             .key_package()
