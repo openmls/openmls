@@ -18,7 +18,6 @@
 //! - [`RatchetTreeExtension`] (GroupInfo extension)
 //! - [`RequiredCapabilitiesExtension`] (GroupContext extension)
 //! - [`ExternalPubExtension`] (GroupInfo extension)
-//! - [`CapabilitiesExtension`] (KeyPackage extension)
 //! - [`LifetimeExtension`] (KeyPackage extension)
 
 use serde::{Deserialize, Serialize};
