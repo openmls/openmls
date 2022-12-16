@@ -404,6 +404,7 @@ impl MlsClient for MlsClientImpl {
             &[ciphersuite],
             &credential_bundle,
             &self.crypto_provider,
+            Lifetime::default(),
             vec![],
         )
         .unwrap();
@@ -460,6 +461,7 @@ impl MlsClient for MlsClientImpl {
             &[*ciphersuite],
             &credential_bundle,
             &self.crypto_provider,
+            Lifetime::default(),
             vec![],
         )
         .unwrap();
@@ -695,6 +697,7 @@ impl MlsClient for MlsClientImpl {
             &[interop_group.group.ciphersuite()],
             &interop_group.credential_bundle,
             &self.crypto_provider,
+            Lifetime::default(),
             vec![],
         )
         .unwrap();
