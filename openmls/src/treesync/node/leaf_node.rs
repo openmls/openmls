@@ -518,7 +518,7 @@ impl LeafNode {
     }
 
     /// Return a reference to [`Capabilities`].
-    pub fn capabilities(&self) -> &Capabilities {
+    pub(crate) fn capabilities(&self) -> &Capabilities {
         &self.payload.capabilities
     }
 
