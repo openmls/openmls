@@ -13,9 +13,9 @@ use crate::{
     },
     credentials::{Credential, CredentialBundle, CredentialType},
     error::LibraryError,
-    extensions::{Extension, ExtensionType, LifetimeExtension, RequiredCapabilitiesExtension},
+    extensions::{Extension, ExtensionType, RequiredCapabilitiesExtension},
     group::GroupId,
-    key_packages::KeyPackageBundle,
+    key_packages::{KeyPackageBundle, Lifetime},
     messages::proposals::ProposalType,
     treesync::errors::TreeSyncError,
     versions::ProtocolVersion,
@@ -47,7 +47,7 @@ pub struct Capabilities {
 
 /// All extensions defined in the MLS spec are considered "default" by the spec.
 fn default_extensions() -> Vec<ExtensionType> {
-    vec![ExtensionType::Lifetime, ExtensionType::ApplicationId]
+    vec![ExtensionType::ApplicationId]
 }
 
 /// All proposals defined in the MLS spec are considered "default" by the spec.
@@ -233,7 +233,7 @@ pub type ParentHash = VLBytes;
 #[repr(u8)]
 pub enum LeafNodeSource {
     #[tls_codec(discriminant = 1)]
-    KeyPackage(LifetimeExtension), // FIXME: remove extension and put Lifetime here
+    KeyPackage(Lifetime),
     Update,
     Commit(ParentHash),
 }
@@ -385,7 +385,7 @@ impl LeafNode {
     pub(crate) fn from_init_key(
         init_key: HpkePublicKey,
         credential_bundle: &CredentialBundle,
-        lifetime: LifetimeExtension,
+        lifetime: Lifetime,
         extensions: Vec<Extension>,
         backend: &impl OpenMlsCryptoProvider,
     ) -> Result<Self, LibraryError> {
@@ -498,10 +498,10 @@ impl LeafNode {
         Ok(())
     }
 
-    /// Returns the [`LifeTimeExtension`] if present.
+    /// Returns the [`LifeTime`] if present.
     /// `None` otherwise.
-    pub(crate) fn life_time(&self) -> Option<&LifetimeExtension> {
-        if let LeafNodeSource::KeyPackage(life_time) = &self.payload.leaf_node_source {
+    pub(crate) fn life_time(&self) -> Option<Lifetime> {
+        if let LeafNodeSource::KeyPackage(life_time) = self.payload.leaf_node_source {
             Some(life_time)
         } else {
             None

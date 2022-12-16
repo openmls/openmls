@@ -73,7 +73,7 @@ impl MlsGroup {
             .with_config(group_config)
             .with_required_capabilities(mls_group_config.required_capabilities.clone())
             .with_max_past_epoch_secrets(mls_group_config.max_past_epochs)
-            .with_lifetime(mls_group_config.lifetime().clone())
+            .with_lifetime(mls_group_config.lifetime())
             .build(&credential_bundle, backend)
             .map_err(|e| match e {
                 CoreGroupBuildError::LibraryError(e) => e.into(),

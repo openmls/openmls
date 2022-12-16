@@ -35,15 +35,15 @@ fn create_commit_optional_path(ciphersuite: Ciphersuite, backend: &impl OpenMlsC
     .expect("An unexpected error occurred.");
 
     // Mandatory extensions, will be fixed in #164
-    let lifetime_extension = Extension::Lifetime(LifetimeExtension::new(60));
-    let mandatory_extensions: Vec<Extension> = vec![lifetime_extension];
+    let lifetime = Lifetime::new(60);
 
     // Generate KeyPackages
     let alice_key_package_bundle = KeyPackageBundle::new(
         &[ciphersuite],
         &alice_credential_bundle,
         backend,
-        mandatory_extensions.clone(),
+        lifetime,
+        vec![],
     )
     .expect("An unexpected error occurred.");
 
@@ -51,7 +51,8 @@ fn create_commit_optional_path(ciphersuite: Ciphersuite, backend: &impl OpenMlsC
         &[ciphersuite],
         &bob_credential_bundle,
         backend,
-        mandatory_extensions.clone(),
+        lifetime,
+        vec![],
     )
     .expect("An unexpected error occurred.");
     let bob_key_package = bob_key_package_bundle.key_package();
@@ -60,7 +61,8 @@ fn create_commit_optional_path(ciphersuite: Ciphersuite, backend: &impl OpenMlsC
         &[ciphersuite],
         &alice_credential_bundle,
         backend,
-        mandatory_extensions,
+        lifetime,
+        vec![],
     )
     .expect("An unexpected error occurred.");
     let alice_update_key_package = alice_update_key_package_bundle.key_package();
@@ -225,15 +227,21 @@ fn basic_group_setup(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvi
     .expect("An unexpected error occurred.");
 
     // Generate KeyPackages
-    let bob_key_package_bundle =
-        KeyPackageBundle::new(&[ciphersuite], &bob_credential_bundle, backend, Vec::new())
-            .expect("An unexpected error occurred.");
+    let bob_key_package_bundle = KeyPackageBundle::new(
+        &[ciphersuite],
+        &bob_credential_bundle,
+        backend,
+        Lifetime::default(),
+        Vec::new(),
+    )
+    .expect("An unexpected error occurred.");
     let bob_key_package = bob_key_package_bundle.key_package();
 
     let alice_key_package_bundle = KeyPackageBundle::new(
         &[ciphersuite],
         &alice_credential_bundle,
         backend,
+        Lifetime::default(),
         Vec::new(),
     )
     .expect("An unexpected error occurred.");
@@ -305,15 +313,15 @@ fn group_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvid
     .expect("An unexpected error occurred.");
 
     // Mandatory extensions
-    let lifetime_extension = Extension::Lifetime(LifetimeExtension::new(60));
-    let mandatory_extensions: Vec<Extension> = vec![lifetime_extension];
+    let lifetime = Lifetime::new(60);
 
     // Generate KeyPackages
     let alice_key_package_bundle = KeyPackageBundle::new(
         &[ciphersuite],
         &alice_credential_bundle,
         backend,
-        mandatory_extensions.clone(),
+        lifetime,
+        vec![],
     )
     .expect("An unexpected error occurred.");
 
@@ -321,7 +329,8 @@ fn group_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvid
         &[ciphersuite],
         &bob_credential_bundle,
         backend,
-        mandatory_extensions.clone(),
+        lifetime,
+        vec![],
     )
     .expect("An unexpected error occurred.");
     let bob_key_package = bob_key_package_bundle.key_package();
@@ -429,7 +438,8 @@ fn group_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvid
         &[ciphersuite],
         &bob_credential_bundle,
         backend,
-        mandatory_extensions.clone(),
+        lifetime,
+        vec![],
     )
     .expect("Could not create key package bundle.");
 
@@ -493,7 +503,8 @@ fn group_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvid
         &[ciphersuite],
         &alice_credential_bundle,
         backend,
-        mandatory_extensions.clone(),
+        lifetime,
+        vec![],
     )
     .expect("Could not create key package bundle.");
 
@@ -551,7 +562,8 @@ fn group_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvid
         &[ciphersuite],
         &bob_credential_bundle,
         backend,
-        mandatory_extensions.clone(),
+        lifetime,
+        vec![],
     )
     .expect("Could not create key package bundle.");
 
@@ -630,7 +642,8 @@ fn group_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvid
         &[ciphersuite],
         &charlie_credential_bundle,
         backend,
-        mandatory_extensions.clone(),
+        lifetime,
+        vec![],
     )
     .expect("Could not create key package bundle.");
     let charlie_key_package = charlie_key_package_bundle.key_package().clone();
@@ -780,7 +793,8 @@ fn group_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvid
         &[ciphersuite],
         &charlie_credential_bundle,
         backend,
-        mandatory_extensions,
+        lifetime,
+        vec![],
     )
     .expect("Could not create key package bundle.");
 

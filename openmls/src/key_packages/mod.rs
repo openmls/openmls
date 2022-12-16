@@ -42,7 +42,7 @@
 //! )
 //! .expect("Error creating credential.");
 //! let key_package_bundle =
-//!     KeyPackageBundle::new(&[ciphersuite], &credential_bundle, &backend, vec![])
+//!     KeyPackageBundle::new(&[ciphersuite], &credential_bundle, &backend, Lifetime::default(), vec![])
 //!         .expect("Error creating key package bundle.");
 //! ```
 //!
@@ -72,6 +72,11 @@
 //!
 //! See [`KeyPackage`] for more details on how to use key packages.
 
+use std::{
+    io::Read,
+    time::{SystemTime, UNIX_EPOCH},
+};
+
 use crate::{
     ciphersuite::{
         hash_ref::{make_key_package_ref, KeyPackageRef},
@@ -80,7 +85,7 @@ use crate::{
     },
     credentials::*,
     error::LibraryError,
-    extensions::{errors::ExtensionError, Extension, ExtensionType, LifetimeExtension},
+    extensions::{errors::ExtensionError, Extension, ExtensionType},
     treesync::LeafNode,
     versions::ProtocolVersion,
 };
@@ -92,7 +97,8 @@ use openmls_traits::{
 };
 use serde::{Deserialize, Serialize};
 use tls_codec::{
-    Deserialize as TlsDeserializeTrait, Serialize as TlsSerializeTrait, TlsSize, VLBytes,
+    Deserialize as TlsDeserializeTrait, Serialize as TlsSerializeTrait, TlsSerialize, TlsSize,
+    VLBytes,
 };
 
 // Private
@@ -355,24 +361,13 @@ impl KeyPackage {
         backend: &impl OpenMlsCryptoProvider,
         hpke_init_key: HpkePublicKey,
         credential_bundle: &CredentialBundle,
+        lifetime: Lifetime,
         // TODO: #819: Handle key package extensions (and refactor API).
-        mut leaf_node_extensions: Vec<Extension>,
+        leaf_node_extensions: Vec<Extension>,
     ) -> Result<Self, KeyPackageNewError> {
         if SignatureScheme::from(ciphersuite) != credential_bundle.credential().signature_scheme() {
             return Err(KeyPackageNewError::CiphersuiteSignatureSchemeMismatch);
         }
-        let life_time = leaf_node_extensions
-            .iter()
-            .position(|e| e.extension_type() == ExtensionType::Lifetime);
-        let lifetime: LifetimeExtension = if let Some(index) = life_time {
-            let extension = leaf_node_extensions.remove(index);
-            extension
-                .as_lifetime_extension()
-                .map_err(|_| LibraryError::custom(""))?
-                .clone()
-        } else {
-            LifetimeExtension::default()
-        };
         let leaf_node = LeafNode::from_init_key(
             hpke_init_key.clone(),
             credential_bundle,
@@ -533,6 +528,7 @@ impl KeyPackageBundle {
         ciphersuites: &[Ciphersuite],
         credential_bundle: &CredentialBundle,
         backend: &impl OpenMlsCryptoProvider,
+        lifetime: Lifetime,
         extensions: Vec<Extension>,
     ) -> Result<Self, KeyPackageBundleNewError> {
         Self::new_with_version(
@@ -540,6 +536,7 @@ impl KeyPackageBundle {
             ciphersuites,
             backend,
             credential_bundle,
+            lifetime,
             extensions,
         )
     }
@@ -559,6 +556,7 @@ impl KeyPackageBundle {
         ciphersuites: &[Ciphersuite],
         backend: &impl OpenMlsCryptoProvider,
         credential_bundle: &CredentialBundle,
+        lifetime: Lifetime,
         extensions: Vec<Extension>,
     ) -> Result<Self, KeyPackageBundleNewError> {
         if ciphersuites.is_empty() {
@@ -582,6 +580,7 @@ impl KeyPackageBundle {
             ciphersuites,
             backend,
             credential_bundle,
+            lifetime,
             extensions,
             leaf_secret,
         )
@@ -604,7 +603,8 @@ impl KeyPackageBundle {
         ciphersuites: &[Ciphersuite],
         backend: &impl OpenMlsCryptoProvider,
         credential_bundle: &CredentialBundle,
-        mut extensions: Vec<Extension>,
+        lifetime: Lifetime,
+        extensions: Vec<Extension>,
         key_pair: HpkeKeyPair,
     ) -> Result<Self, KeyPackageBundleNewError> {
         if ciphersuites.is_empty() {
@@ -622,32 +622,12 @@ impl KeyPackageBundle {
         let ciphersuite =
             *ciphersuite.ok_or(KeyPackageBundleNewError::CiphersuiteSignatureSchemeMismatch)?;
 
-        // Detect duplicate extensions an return an error in case there is are any.
-        let extensions_length = extensions.len();
-        extensions.sort();
-        extensions.dedup();
-        if extensions_length != extensions.len() {
-            let error = KeyPackageBundleNewError::DuplicateExtension;
-            error!(
-                "Error creating new KeyPackageBundle: Duplicate Extension {:?}",
-                error
-            );
-            return Err(error);
-        }
-
-        // Check if there is a lifetime extension. If not, add one that is at
-        // least valid.
-        if !extensions
-            .iter()
-            .any(|e| e.extension_type() == ExtensionType::Lifetime)
-        {
-            extensions.push(Extension::Lifetime(LifetimeExtension::default()));
-        }
         let key_package = KeyPackage::new(
             ciphersuite,
             backend,
             key_pair.public.into(),
             credential_bundle,
+            lifetime,
             extensions,
         )
         .map_err(|e| match e {
@@ -699,6 +679,7 @@ impl KeyPackageBundle {
         ciphersuites: &[Ciphersuite],
         backend: &impl OpenMlsCryptoProvider,
         credential_bundle: &CredentialBundle,
+        lifetime: Lifetime,
         extensions: Vec<Extension>,
         leaf_secret: Secret,
     ) -> Result<Self, KeyPackageBundleNewError> {
@@ -719,6 +700,7 @@ impl KeyPackageBundle {
             ciphersuites,
             backend,
             credential_bundle,
+            lifetime,
             extensions,
             keypair,
         )
@@ -745,5 +727,92 @@ impl KeyPackageBundle {
     /// Replace the public key in the KeyPackage.
     pub fn set_public_key(&mut self, public_key: HpkePublicKey) {
         self.key_package.payload.init_key = public_key
+    }
+}
+
+/// This value is used as the default lifetime if no default  lifetime is configured.
+/// The value is in seconds and amounts to 3 * 28 Days, i.e. about 3 months.
+const DEFAULT_KEY_PACKAGE_LIFETIME_SECONDS: u64 = 60 * 60 * 24 * 28 * 3;
+
+/// This value is used as the default amount of time (in seconds) the lifetime
+/// of a `KeyPackage` is extended into the past to allow for skewed clocks. The
+/// value is in seconds and amounts to 1h.
+const DEFAULT_KEY_PACKAGE_LIFETIME_MARGIN_SECONDS: u64 = 60 * 60;
+
+/// The lifetime extension represents the times between which clients will
+/// consider a KeyPackage valid. This time is represented as an absolute time,
+/// measured in seconds since the Unix epoch (1970-01-01T00:00:00Z).
+/// A client MUST NOT use the data in a KeyPackage for any processing before
+/// the not_before date, or after the not_after date.
+///
+/// Applications MUST define a maximum total lifetime that is acceptable for a
+/// KeyPackage, and reject any KeyPackage where the total lifetime is longer
+/// than this duration.This extension MUST always be present in a KeyPackage.
+///
+/// ```c
+/// // draft-ietf-mls-protocol-16
+/// struct {
+///     uint64 not_before;
+///     uint64 not_after;
+/// } Lifetime;
+/// ```
+#[derive(PartialEq, Eq, Copy, Clone, Debug, Serialize, Deserialize, TlsSerialize, TlsSize)]
+pub struct Lifetime {
+    not_before: u64,
+    not_after: u64,
+}
+
+impl Lifetime {
+    /// Create a new lifetime with lifetime `t` (in seconds).
+    /// Note that the lifetime is extended 1h into the past to adapt to skewed
+    /// clocks, i.e. `not_before` is set to now - 1h.
+    pub fn new(t: u64) -> Self {
+        let lifetime_margin: u64 = DEFAULT_KEY_PACKAGE_LIFETIME_MARGIN_SECONDS;
+        let now = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .expect("SystemTime before UNIX EPOCH!")
+            .as_secs();
+        let not_before = now - lifetime_margin;
+        let not_after = now + t;
+        Self {
+            not_before,
+            not_after,
+        }
+    }
+
+    /// Returns true if this lifetime is valid.
+    pub(crate) fn is_valid(&self) -> bool {
+        let now = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .expect("SystemTime before UNIX EPOCH!")
+            .as_secs();
+        self.not_before < now && now < self.not_after
+    }
+}
+
+impl Default for Lifetime {
+    fn default() -> Self {
+        Lifetime::new(DEFAULT_KEY_PACKAGE_LIFETIME_SECONDS)
+    }
+}
+
+// Deserialize manually in order to do additional validity checks.
+impl tls_codec::Deserialize for Lifetime {
+    fn tls_deserialize<R: Read>(bytes: &mut R) -> Result<Self, tls_codec::Error> {
+        let not_before = u64::tls_deserialize(bytes)?;
+        let not_after = u64::tls_deserialize(bytes)?;
+        let out = Self {
+            not_before,
+            not_after,
+        };
+        if !out.is_valid() {
+            log::trace!(
+                "Lifetime expired!\n\tnot before: {:?} - not_after: {:?}",
+                not_before,
+                not_after
+            );
+            return Err(tls_codec::Error::DecodingError("Invalid lifetime".into()));
+        }
+        Ok(out)
     }
 }

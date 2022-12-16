@@ -140,7 +140,7 @@ pub(crate) struct CoreGroupBuilder {
     version: Option<ProtocolVersion>,
     required_capabilities: Option<RequiredCapabilitiesExtension>,
     max_past_epochs: usize,
-    lifetime: Option<LifetimeExtension>,
+    lifetime: Option<Lifetime>,
 }
 
 impl CoreGroupBuilder {
@@ -182,8 +182,8 @@ impl CoreGroupBuilder {
         self.max_past_epochs = max_past_epochs;
         self
     }
-    /// Set the [`LifetimeExtension`] for the own leaf in the group.
-    pub fn with_lifetime(mut self, lifetime: LifetimeExtension) -> Self {
+    /// Set the [`Lifetime`] for the own leaf in the group.
+    pub fn with_lifetime(mut self, lifetime: Lifetime) -> Self {
         self.lifetime = Some(lifetime);
         self
     }

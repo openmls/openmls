@@ -2,7 +2,7 @@ use crate::{
     ciphersuite::{hash_ref::KeyPackageRef, signable::Signable, AeadKey, AeadNonce, Mac, Secret},
     credentials::{errors::CredentialError, CredentialBundle, CredentialType},
     group::{errors::WelcomeError, GroupId, MlsGroup, MlsGroupConfig},
-    key_packages::KeyPackageBundle,
+    key_packages::{KeyPackageBundle, Lifetime},
     messages::{
         ConfirmationTag, EncryptedGroupSecrets, GroupInfo, GroupInfoTBS, GroupSecrets, Welcome,
     },
@@ -84,9 +84,14 @@ fn test_welcome_ciphersuite_mismatch(
     .expect("Could not create credential bundle.");
 
     // Create key package bundles and store them in the key store
-    let alice_kpb =
-        KeyPackageBundle::new(&[ciphersuite], &alice_credential_bundle, backend, vec![])
-            .expect("Could not create KeyPackageBundle for Alice.");
+    let alice_kpb = KeyPackageBundle::new(
+        &[ciphersuite],
+        &alice_credential_bundle,
+        backend,
+        Lifetime::default(),
+        vec![],
+    )
+    .expect("Could not create KeyPackageBundle for Alice.");
     let alice_kp = alice_kpb.key_package().clone();
 
     backend
@@ -100,8 +105,14 @@ fn test_welcome_ciphersuite_mismatch(
         )
         .expect("An unexpected error occurred.");
 
-    let bob_kpb = KeyPackageBundle::new(&[ciphersuite], &bob_credential_bundle, backend, vec![])
-        .expect("Could not create KeyPackageBundle for Bob.");
+    let bob_kpb = KeyPackageBundle::new(
+        &[ciphersuite],
+        &bob_credential_bundle,
+        backend,
+        Lifetime::default(),
+        vec![],
+    )
+    .expect("Could not create KeyPackageBundle for Bob.");
     let bob_kp = bob_kpb.key_package().clone();
 
     backend
