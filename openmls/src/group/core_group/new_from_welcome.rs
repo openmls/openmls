@@ -181,8 +181,7 @@ impl CoreGroup {
 
         let (group_epoch_secrets, message_secrets) = epoch_secrets.split_secrets(
             serialized_group_context,
-            tree.leaf_count()
-                .map_err(|_| LibraryError::custom("The tree was too big"))?,
+            tree.leaf_count(),
             tree.own_leaf_index(),
         );
 

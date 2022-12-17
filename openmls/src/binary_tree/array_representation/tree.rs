@@ -87,16 +87,16 @@ impl<T: Clone + Debug> ABinaryTree<T> {
     }
 
     /// Return the number of nodes in the tree.
-    pub(in crate::binary_tree) fn size(&self) -> Result<NodeIndex, LibraryError> {
-        let tree_size =
-            u32::try_from(self.nodes.len()).map_err(|_| LibraryError::custom("Tree is too big"))?;
-        Ok(tree_size)
+    pub(in crate::binary_tree) fn size(&self) -> NodeIndex {
+        // We can cast the size to a NodeIndex, because the maximum size of a
+        // tree is 2^32.
+        self.nodes.len() as NodeIndex
     }
 
     /// Return the number of leaves in the tree.
-    pub(crate) fn leaf_count(&self) -> Result<TreeSize, LibraryError> {
+    pub(crate) fn leaf_count(&self) -> TreeSize {
         // This works, because the tree always has at least one leaf.
-        Ok(((self.size()? - 1) / 2) + 1)
+        ((self.size() - 1) / 2) + 1
     }
 
     /// Return a vector of leaves sorted according to their position in the tree
@@ -105,7 +105,7 @@ impl<T: Clone + Debug> ABinaryTree<T> {
     /// [`LibraryError`](ABinaryTreeError::LibraryError).
     pub(crate) fn leaves(&self) -> Result<Vec<&T>, LibraryError> {
         let mut leaf_references = Vec::new();
-        for leaf_index in 0..self.leaf_count()? {
+        for leaf_index in 0..self.leaf_count() {
             let node_ref = self
                 .nodes
                 .get(to_node_index(leaf_index) as usize)
@@ -139,10 +139,10 @@ impl<T: Clone + Debug> ABinaryTree<T> {
         for (node_index, diff_node) in diff.diff().into_iter() {
             match node_index {
                 // If the node would extend the tree, push it to the vector of nodes.
-                node_index if node_index == self.size()? => self.nodes.push(diff_node),
+                node_index if node_index == self.size() => self.nodes.push(diff_node),
                 // If the node index points too far outside of the tree,
                 // something has gone wrong.
-                node_index if node_index > self.size()? => {
+                node_index if node_index > self.size() => {
                     return Err(LibraryError::custom("Node is outside the tree"))
                 }
                 // If the node_index points to somewhere within the size of the

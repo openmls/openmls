@@ -17,7 +17,7 @@
 //! [`LibraryError`](ABinaryTreeDiffError::LibraryError).
 
 use serde::{Deserialize, Serialize};
-use std::{collections::BTreeMap, convert::TryFrom, fmt::Debug};
+use std::{collections::BTreeMap, fmt::Debug};
 use thiserror::Error;
 
 use crate::{
@@ -100,15 +100,13 @@ pub(crate) struct AbDiff<'a, T: Clone + Debug> {
     size: TreeSize,
 }
 
-impl<'a, T: Clone + Debug> TryFrom<&'a ABinaryTree<T>> for AbDiff<'a, T> {
-    type Error = ABinaryTreeDiffError;
-
-    fn try_from(tree: &'a ABinaryTree<T>) -> Result<AbDiff<'a, T>, ABinaryTreeDiffError> {
-        Ok(AbDiff {
+impl<'a, T: Clone + Debug> From<&'a ABinaryTree<T>> for AbDiff<'a, T> {
+    fn from(tree: &'a ABinaryTree<T>) -> AbDiff<'a, T> {
+        AbDiff {
             original_tree: tree,
             diff: BTreeMap::new(),
-            size: tree.size()?,
-        })
+            size: tree.size(),
+        }
     }
 }
 
@@ -527,7 +525,7 @@ impl<'a, T: Clone + Debug> AbDiff<'a, T> {
             return Err(ABinaryTreeDiffError::TreeTooSmall);
         }
         let removed = self.diff.remove(&(self.tree_size() - 1));
-        if self.tree_size() > self.original_tree.size()? {
+        if self.tree_size() > self.original_tree.size() {
             // If the diff extended the tree, there should be a node to remove
             // here.
             debug_assert!(removed.is_some());

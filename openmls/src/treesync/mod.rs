@@ -353,8 +353,8 @@ impl TreeSync {
     ///
     /// This function should not fail and only returns a [`Result`], because it
     /// might throw a [LibraryError](TreeSyncError::LibraryError).
-    pub(crate) fn leaf_count(&self) -> Result<LeafIndex, TreeSyncError> {
-        Ok(self.tree.leaf_count()?)
+    pub(crate) fn leaf_count(&self) -> LeafIndex {
+        self.tree.leaf_count()
     }
 
     /// Returns a list of [`LeafIndex`]es containing only full nodes.

@@ -20,8 +20,8 @@ fn test_tree_basics() {
     let tree1 = MlsBinaryTree::new(nodes.clone()).expect("Error when creating tree from nodes.");
 
     // Test size reporting
-    assert_eq!(tree1.size().expect("error computing size"), 3);
-    assert_eq!(tree1.leaf_count().expect("error computing leaf count"), 2);
+    assert_eq!(tree1.size(), 3);
+    assert_eq!(tree1.leaf_count(), 2);
 
     // Test tree creation: Too many nodes (only in cases where usize is 64 bit).
     #[cfg(target_pointer_width = "64")]
