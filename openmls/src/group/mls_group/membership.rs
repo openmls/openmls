@@ -313,10 +313,7 @@ impl MlsGroup {
     pub fn member(&self, leaf_index: u32) -> Option<&Credential> {
         self.group
             .treesync()
-            // Besides from returning an error if the member can't be found,
-            // this will only return an error in case OpenMLS is compiled with a
-            // sub-32 bit architecture. As a result, it should be safe to just
-            // return `None` instead of propagating an error.
+            // This will return an error if the member can't be found.
             .leaf(leaf_index)
             .map(|leaf| leaf.map(|l| l.credential()))
             .ok()

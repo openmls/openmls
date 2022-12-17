@@ -231,8 +231,7 @@ impl TreeSync {
                 Some(node) => {
                     let mut node = node.clone();
                     if let Node::LeafNode(ref mut leaf_node) = node {
-                        let leaf_index = u32::try_from(node_index / 2)
-                            .map_err(|_| LibraryError::custom("Architecture error"))?;
+                        let leaf_index = (node_index / 2) as u32;
                         if leaf_node.public_key() == own_key_package.hpke_init_key() {
                             // Check if there's a duplicate
                             if let Some(private_key) = private_key.take() {
