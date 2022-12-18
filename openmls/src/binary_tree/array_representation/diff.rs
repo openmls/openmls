@@ -16,7 +16,6 @@
 //! return a [`Result`] since they may throw a
 //! [`LibraryError`](ABinaryTreeDiffError::LibraryError).
 
-use itertools::Itertools;
 use serde::{Deserialize, Serialize};
 use std::{collections::BTreeMap, fmt::Debug};
 use thiserror::Error;
@@ -173,21 +172,63 @@ impl<'a, T: Clone + Debug> AbDiff<'a, T> {
     /// Returns an iterator over a tuple of the leaf index and a reference to a
     /// leaf, sorted according to their position in the tree from left to right.
     pub(crate) fn leaves(&self) -> impl Iterator<Item = (LeafIndex, &T)> {
-        let original_leaves = self.original_tree.leaves();
-        let diff_leaves = self.diff.iter().filter_map(|(index, leaf)| {
-            if index % 2 == 0 {
-                Some((*index / 2, leaf))
-            } else {
-                None
-            }
-        });
+        let mut original_leaves = self.original_tree.leaves().peekable();
+        let mut diff_leaves = self
+            .diff
+            .iter()
+            .filter_map(|(index, leaf)| {
+                if index % 2 == 0 {
+                    Some((*index / 2, leaf))
+                } else {
+                    None
+                }
+            })
+            .peekable();
 
-        // Only keep the leaves from the original tree if they are not in the
-        // diff.
-        diff_leaves
-            .chain(original_leaves)
-            .unique_by(|(index, _)| *index)
-            .sorted_by(|(left, _), (right, _)| Ord::cmp(left, right))
+        let mut combined = Vec::new();
+
+        loop {
+            // Combine the original leaves with the leaves from the diff. Since
+            // both iterators are sorted, we can just iterate over them and
+            // don't need additional sorting. If one of the iterators is
+            // exhausted, we just add the remaining leaves from the other
+            // iterator. We also make sure that we don't add leaves from the
+            // original leaves that are also in the diff.
+
+            let next = match (original_leaves.peek(), diff_leaves.peek()) {
+                // The original tree has a leaf that is not in the diff.
+                (Some((original_index, _)), Some((diff_index, _)))
+                    if original_index < diff_index =>
+                {
+                    original_leaves.next()
+                }
+                // The original tree and the diff have the same leaf. We only
+                // need to add the leaf from the diff and drop the leaf from the
+                // original tree.
+                (Some((original_index, _)), Some((diff_index, _)))
+                    if original_index == diff_index =>
+                {
+                    original_leaves.next();
+                    diff_leaves.next()
+                }
+                // The diff has a leaf that is not in the original tree.
+                (Some((_, _)), Some((_, _))) => diff_leaves.next(),
+                // We are out of diff leaves, so we just add the remaining
+                // original leaves.
+                (Some((_, _)), None) => original_leaves.next(),
+                // We are out of original leaves, so we just add the remaining
+                // diff leaves.
+                (None, Some((_, _))) => diff_leaves.next(),
+                // We are out of both leaves, so we are done.
+                (None, None) => break,
+            };
+
+            if let Some((index, leaf)) = next {
+                combined.push((index, leaf));
+            }
+        }
+
+        combined.into_iter()
     }
 
     // Functions related to the direct paths of leaves
