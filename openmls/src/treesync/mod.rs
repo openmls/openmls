@@ -144,14 +144,11 @@ impl TreeSync {
     ///
     /// Returns an error if the merging process of the underlying
     /// [`MlsBinaryTree`] fails.
-    pub(crate) fn merge_diff(
-        &mut self,
-        tree_sync_diff: StagedTreeSyncDiff,
-    ) -> Result<(), LibraryError> {
+    pub(crate) fn merge_diff(&mut self, tree_sync_diff: StagedTreeSyncDiff) {
         let (own_leaf_index, diff, new_tree_hash) = tree_sync_diff.into_parts();
         self.own_leaf_index = own_leaf_index;
         self.tree_hash = new_tree_hash;
-        self.tree.merge_diff(diff)
+        self.tree.merge_diff(diff);
     }
 
     /// Create an empty diff based on this [`TreeSync`] instance all operations
@@ -200,7 +197,7 @@ impl TreeSync {
                     }
                 })?;
             let staged_diff = diff.into_staged_diff(backend, ciphersuite)?;
-            tree_sync.merge_diff(staged_diff)?;
+            tree_sync.merge_diff(staged_diff);
             Some(commit_secret)
         } else {
             None
@@ -319,7 +316,8 @@ impl TreeSync {
         // tree hashes and poulates the tree hash caches.
         let staged_diff = diff.into_staged_diff(backend, ciphersuite)?;
         // Merge the diff.
-        self.merge_diff(staged_diff)
+        self.merge_diff(staged_diff);
+        Ok(())
     }
 
     /// Verify the parent hashes of all parent nodes in the tree.

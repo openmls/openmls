@@ -238,9 +238,7 @@ fn mls_group_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoPr
             assert_eq!(update_kp.credential(), &bob_credential);
 
             // Merge staged Commit
-            alice_group
-                .merge_staged_commit(*staged_commit)
-                .expect("Could not merge Commit.");
+            alice_group.merge_staged_commit(*staged_commit);
 
             // Check Bob's new key package
             let members = alice_group.members().collect::<Vec<Member>>();
@@ -326,9 +324,7 @@ fn mls_group_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoPr
             // Check that Alice updated
             assert_eq!(update_kp.credential(), &alice_credential);
 
-            bob_group
-                .merge_staged_commit(*staged_commit)
-                .expect("Could not merge StagedCommit");
+            bob_group.merge_staged_commit(*staged_commit);
 
             // Check Alice's new key package
             let members = bob_group.members().collect::<Vec<Member>>();
@@ -378,9 +374,7 @@ fn mls_group_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoPr
         if let ProcessedMessageContent::StagedCommitMessage(staged_commit) =
             alice_processed_message.into_content()
         {
-            alice_group
-                .merge_staged_commit(*staged_commit)
-                .expect("Could not merge StagedCommit");
+            alice_group.merge_staged_commit(*staged_commit);
         } else {
             unreachable!("Expected a StagedCommit.");
         }
@@ -448,9 +442,7 @@ fn mls_group_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoPr
         if let ProcessedMessageContent::StagedCommitMessage(staged_commit) =
             alice_processed_message.into_content()
         {
-            alice_group
-                .merge_staged_commit(*staged_commit)
-                .expect("Could not merge StagedCommit");
+            alice_group.merge_staged_commit(*staged_commit);
         } else {
             unreachable!("Expected a StagedCommit.");
         }
@@ -459,9 +451,7 @@ fn mls_group_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoPr
         if let ProcessedMessageContent::StagedCommitMessage(staged_commit) =
             bob_processed_message.into_content()
         {
-            bob_group
-                .merge_staged_commit(*staged_commit)
-                .expect("Could not merge StagedCommit");
+            bob_group.merge_staged_commit(*staged_commit);
         } else {
             unreachable!("Expected a StagedCommit.");
         }
@@ -524,9 +514,7 @@ fn mls_group_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoPr
             );
 
             // Merge staged Commit
-            alice_group
-                .merge_staged_commit(*staged_commit)
-                .expect("Could not merge Commit.");
+            alice_group.merge_staged_commit(*staged_commit);
         } else {
             unreachable!("Expected a StagedCommit.");
         }
@@ -547,9 +535,7 @@ fn mls_group_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoPr
             );
 
             // Merge staged Commit
-            bob_group
-                .merge_staged_commit(*staged_commit)
-                .expect("Could not merge Commit.");
+            bob_group.merge_staged_commit(*staged_commit);
         } else {
             unreachable!("Expected a StagedCommit.");
         }
@@ -666,9 +652,7 @@ fn mls_group_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoPr
         if let ProcessedMessageContent::StagedCommitMessage(staged_commit) =
             charlie_processed_message.into_content()
         {
-            charlie_group
-                .merge_staged_commit(*staged_commit)
-                .expect("Could not merge StagedCommit");
+            charlie_group.merge_staged_commit(*staged_commit);
         } else {
             unreachable!("Expected a StagedCommit.");
         }
@@ -810,9 +794,7 @@ fn mls_group_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoPr
 
             assert!(staged_commit.self_removed());
             // Merge staged Commit
-            bob_group
-                .merge_staged_commit(*staged_commit)
-                .expect("Could not merge Commit.");
+            bob_group.merge_staged_commit(*staged_commit);
         } else {
             unreachable!("Expected a StagedCommit.");
         }

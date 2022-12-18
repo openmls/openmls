@@ -96,8 +96,7 @@ fn test_node_references() {
 
     let diff = tree.empty_diff().expect("error creating empty diff");
     let staged_diff = diff.into();
-    tree.merge_diff(staged_diff)
-        .expect("error while merging empty diff.");
+    tree.merge_diff(staged_diff);
 
     assert_eq!(tree, original_tree);
 
@@ -188,7 +187,7 @@ fn test_node_references() {
 
     // Diff merging
     let staged_diff = diff.into();
-    tree.merge_diff(staged_diff).expect("error merging diff");
+    tree.merge_diff(staged_diff);
 
     let new_tree =
         MlsBinaryTree::new(vec![2, 0, 4]).expect("Error when creating a one-node binary tree.");
@@ -255,8 +254,7 @@ fn test_diff_merging() {
     assert_eq!(leaves.len(), diff.leaf_count() as usize);
 
     let staged_diff = diff.into();
-    tree.merge_diff(staged_diff)
-        .expect("error when merging large diff");
+    tree.merge_diff(staged_diff);
 
     // Verify that the tree has changed post-merge.
     let leaves: Vec<(u32, &u32)> = tree.leaves().collect();
@@ -275,8 +273,7 @@ fn test_diff_merging() {
     }
 
     let staged_diff = diff.into();
-    tree.merge_diff(staged_diff)
-        .expect("error when merging large diff");
+    tree.merge_diff(staged_diff);
 
     assert_eq!(tree, original_tree);
 }
@@ -518,9 +515,7 @@ fn test_direct_path_manipulation() {
     // Merging and creating a new, empty diff to ensure that the changes persist
     // on merge.
     let staged_diff = lt_diff.into();
-    large_tree
-        .merge_diff(staged_diff)
-        .expect("error merging diff");
+    large_tree.merge_diff(staged_diff);
     let empty_diff = large_tree.empty_diff().expect("error creating empty diff");
     let direct_path = empty_diff
         .direct_path(0)

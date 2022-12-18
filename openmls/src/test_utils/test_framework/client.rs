@@ -176,7 +176,7 @@ impl Client {
                     group_state.store_pending_proposal(*staged_proposal);
                 }
                 ProcessedMessageContent::StagedCommitMessage(staged_commit) => {
-                    group_state.merge_staged_commit(*staged_commit)?;
+                    group_state.merge_staged_commit(*staged_commit);
                 }
             }
         }

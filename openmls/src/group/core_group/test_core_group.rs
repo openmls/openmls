@@ -783,13 +783,9 @@ fn test_proposal_application_after_self_was_removed(
             backend,
         )
         .expect("error staging commit");
-    bob_group
-        .merge_commit(staged_commit)
-        .expect("error merging commit");
+    bob_group.merge_commit(staged_commit);
 
-    alice_group
-        .merge_commit(remove_add_commit_result.staged_commit)
-        .expect("error merging pending commit");
+    alice_group.merge_commit(remove_add_commit_result.staged_commit);
 
     let ratchet_tree = alice_group.treesync().export_nodes();
 

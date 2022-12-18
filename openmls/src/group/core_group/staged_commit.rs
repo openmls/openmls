@@ -403,14 +403,11 @@ impl CoreGroup {
     ///
     /// This function should not fail and only returns a [`Result`], because it
     /// might throw a `LibraryError`.
-    pub(crate) fn merge_commit(
-        &mut self,
-        staged_commit: StagedCommit,
-    ) -> Result<Option<MessageSecrets>, LibraryError> {
+    pub(crate) fn merge_commit(&mut self, staged_commit: StagedCommit) -> Option<MessageSecrets> {
         match staged_commit.state {
             StagedCommitState::SelfRemoved(staged_diff) => {
-                self.tree.merge_diff(*staged_diff)?;
-                Ok(None)
+                self.tree.merge_diff(*staged_diff);
+                None
             }
             StagedCommitState::GroupMember(state) => {
                 self.group_context = state.group_context;
@@ -425,8 +422,8 @@ impl CoreGroup {
 
                 self.interim_transcript_hash = state.interim_transcript_hash;
 
-                self.tree.merge_diff(state.staged_diff)?;
-                Ok(Some(message_secrets))
+                self.tree.merge_diff(state.staged_diff);
+                Some(message_secrets)
             }
         }
     }

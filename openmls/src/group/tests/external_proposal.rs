@@ -184,7 +184,7 @@ fn external_add_proposal_should_succeed(
         let msg = bob_group.process_message(backend, commit.into()).unwrap();
         match msg.into_content() {
             ProcessedMessageContent::StagedCommitMessage(commit) => {
-                bob_group.merge_staged_commit(*commit).unwrap()
+                bob_group.merge_staged_commit(*commit)
             }
             _ => unreachable!(),
         }

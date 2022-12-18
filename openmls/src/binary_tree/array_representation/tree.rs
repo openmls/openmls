@@ -128,30 +128,26 @@ impl<T: Clone + Debug> ABinaryTree<T> {
     ///
     /// This function should not fail and only returns a [`Result`], because it
     /// might throw a [LibraryError](ABinaryTreeError::LibraryError).
-    pub(crate) fn merge_diff(&mut self, diff: StagedAbDiff<T>) -> Result<(), LibraryError> {
+    pub(crate) fn merge_diff(&mut self, diff: StagedAbDiff<T>) {
         // If the size of the diff is smaller than the tree, truncate the tree
         // to the size of the diff.
         self.nodes.truncate(diff.tree_size() as usize);
 
         // Iterate over the BTreeMap in order of indices.
         for (node_index, diff_node) in diff.diff().into_iter() {
-            match node_index {
-                // If the node would extend the tree, push it to the vector of nodes.
-                node_index if node_index == self.size() => self.nodes.push(diff_node),
-                // If the node index points too far outside of the tree,
-                // something has gone wrong.
-                node_index if node_index > self.size() => {
-                    return Err(LibraryError::custom("Node is outside the tree"))
-                }
+            // Assert that the node index is within the range of the tree.
+            debug_assert!(node_index <= self.size());
+
+            // If the node would extend the tree, push it to the vector of nodes.
+            if node_index == self.size() {
+                self.nodes.push(diff_node);
+            } else {
                 // If the node_index points to somewhere within the size of the
                 // tree, do a swap-remove.
-                node_index => {
-                    // Perform swap-remove.
-                    self.nodes[node_index as usize] = diff_node;
-                }
+                // Perform swap-remove.
+                self.nodes[node_index as usize] = diff_node;
             }
         }
-        Ok(())
     }
 
     /// Export the nodes of the tree in the array representation.
