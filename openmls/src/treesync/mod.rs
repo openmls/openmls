@@ -156,9 +156,8 @@ impl TreeSync {
     ///
     /// This function should not fail and only returns a [`Result`], because it
     /// might throw a [LibraryError](TreeSyncError::LibraryError).
-    pub(crate) fn empty_diff(&self) -> Result<TreeSyncDiff, LibraryError> {
-        self.try_into()
-            .map_err(|_| LibraryError::custom("Could not create empty tree sync diff"))
+    pub(crate) fn empty_diff(&self) -> TreeSyncDiff {
+        self.into()
     }
 
     /// Create a new [`TreeSync`] instance from a given slice of `Option<Node>`,
@@ -187,7 +186,7 @@ impl TreeSync {
         // Populate the tree with secrets and derive a commit secret if a path
         // secret is given.
         let commit_secret = if let Some(path_secret) = path_secret_option.into() {
-            let mut diff = tree_sync.empty_diff()?;
+            let mut diff = tree_sync.empty_diff();
             let commit_secret = diff
                 .set_path_secrets(backend, ciphersuite, path_secret, sender_index)
                 .map_err(|e| match e {
@@ -300,9 +299,9 @@ impl TreeSync {
     /// tree. This is either the left-most blank node or, if there are no blank
     /// leaves, the leaf count, since adding a member would extend the tree by
     /// one leaf.
-    pub(crate) fn free_leaf_index(&self) -> Result<LeafIndex, TreeSyncError> {
-        let diff = self.empty_diff()?;
-        Ok(diff.free_leaf_index())
+    pub(crate) fn free_leaf_index(&self) -> LeafIndex {
+        let diff = self.empty_diff();
+        diff.free_leaf_index()
     }
 
     /// Populate the parent hash caches of all nodes in the tree.
@@ -311,7 +310,7 @@ impl TreeSync {
         backend: &impl OpenMlsCryptoProvider,
         ciphersuite: Ciphersuite,
     ) -> Result<(), LibraryError> {
-        let diff = self.empty_diff()?;
+        let diff = self.empty_diff();
         // Make the diff into a staged diff. This implicitly computes the
         // tree hashes and poulates the tree hash caches.
         let staged_diff = diff.into_staged_diff(backend, ciphersuite)?;
@@ -342,7 +341,7 @@ impl TreeSync {
         // implements `TreeLike`. We choose the less complex version for now.
         // Should this turn out to cause too much computational overhead, we
         // should reconsider and choose the alternative sketched above
-        let diff = self.empty_diff()?;
+        let diff = self.empty_diff();
         // No need to merge the diff, since we didn't actually modify any state.
         diff.verify_parent_hashes(backend, ciphersuite)
     }

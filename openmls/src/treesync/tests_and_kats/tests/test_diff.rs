@@ -63,7 +63,7 @@ fn test_free_leaf_computation(ciphersuite: Ciphersuite, backend: &impl OpenMlsCr
     let kpb_2 =
         KeyPackageBundle::new(&[ciphersuite], &cb_2, backend, vec![]).expect("error creating kpb");
 
-    let mut diff = tree.empty_diff().expect("error creating empty diff");
+    let mut diff = tree.empty_diff();
     let free_leaf_index = diff.free_leaf_index();
     let added_leaf_index = diff
         .add_leaf(kpb_2.key_package().leaf_node().clone().into())

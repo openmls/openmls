@@ -6,29 +6,14 @@
 //! representation. The main [`ABinaryTree`] struct is generally immutable, but
 //! allows the creation of an [`AbDiff`] struct, where changes can be made before
 //! merging it back into an existing tree.
-//!
-//! # Don't Panic!
-//!
-//! Functions in this module should never panic. However, if there is a bug in
-//! the implementation, a function will return an unrecoverable
-//! [`LibraryError`](ABinaryTreeError::LibraryError). This means that some
-//! functions that are not expected to fail and throw an error, will still
-//! return a [`Result`] since they may throw a
-//! [`LibraryError`](ABinaryTreeError::LibraryError).
 
 use serde::{Deserialize, Serialize};
-use std::{
-    convert::{TryFrom, TryInto},
-    fmt::Debug,
-};
+use std::{convert::TryFrom, fmt::Debug};
 use thiserror::Error;
 
 use super::diff::{AbDiff, StagedAbDiff};
 
-use crate::{
-    binary_tree::{LeafIndex, TreeSize},
-    error::LibraryError,
-};
+use crate::binary_tree::{LeafIndex, TreeSize};
 
 /// The [`NodeIndex`] is used to index nodes.
 pub(in crate::binary_tree) type NodeIndex = u32;
@@ -116,18 +101,14 @@ impl<T: Clone + Debug> ABinaryTree<T> {
     }
 
     /// Creates and returns an empty [`AbDiff`].
-    pub(crate) fn empty_diff(&self) -> Result<AbDiff<'_, T>, ABinaryTreeError> {
-        self.try_into()
-            .map_err(|_| ABinaryTreeError::ABinaryTreeDiffError)
+    pub(crate) fn empty_diff(&self) -> AbDiff<'_, T> {
+        self.into()
     }
 
     /// Merges the changes applied to the [`StagedAbDiff`] into the tree.
     /// Depending on the changes made to the diff, this can either increase or
     /// decrease the size of the tree, although not beyond the minimum size of
     /// leaf or the maximum size of `u32::MAX`.
-    ///
-    /// This function should not fail and only returns a [`Result`], because it
-    /// might throw a [LibraryError](ABinaryTreeError::LibraryError).
     pub(crate) fn merge_diff(&mut self, diff: StagedAbDiff<T>) {
         // If the size of the diff is smaller than the tree, truncate the tree
         // to the size of the diff.
@@ -168,9 +149,6 @@ impl<T: Clone + Debug> ABinaryTree<T> {
 /// Binary Tree error
 #[derive(Error, Debug, PartialEq, Clone)]
 pub(crate) enum ABinaryTreeError {
-    /// See [`LibraryError`] for more details.
-    #[error(transparent)]
-    LibraryError(#[from] LibraryError),
     /// Adding nodes exceeds the maximum possible size of the tree.
     #[error("Adding nodes exceeds the maximum possible size of the tree.")]
     OutOfRange,
@@ -180,7 +158,4 @@ pub(crate) enum ABinaryTreeError {
     /// The given index is outside of the tree.
     #[error("The given index is outside of the tree.")]
     OutOfBounds,
-    /// An error occurred while handling a diff.
-    #[error("An error occurred while handling a diff.")]
-    ABinaryTreeDiffError,
 }

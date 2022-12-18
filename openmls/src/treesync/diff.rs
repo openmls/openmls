@@ -20,7 +20,7 @@
 use openmls_traits::{types::Ciphersuite, OpenMlsCryptoProvider};
 use serde::{Deserialize, Serialize};
 
-use std::{collections::HashSet, convert::TryFrom};
+use std::collections::HashSet;
 
 use super::{
     errors::*,
@@ -73,14 +73,12 @@ pub(crate) struct TreeSyncDiff<'a> {
     own_leaf_index: LeafIndex,
 }
 
-impl<'a> TryFrom<&'a TreeSync> for TreeSyncDiff<'a> {
-    type Error = TreeSyncDiffError;
-
-    fn try_from(tree_sync: &'a TreeSync) -> Result<Self, Self::Error> {
-        Ok(TreeSyncDiff {
-            diff: tree_sync.tree.empty_diff()?,
+impl<'a> From<&'a TreeSync> for TreeSyncDiff<'a> {
+    fn from(tree_sync: &'a TreeSync) -> Self {
+        TreeSyncDiff {
+            diff: tree_sync.tree.empty_diff(),
             own_leaf_index: tree_sync.own_leaf_index,
-        })
+        }
     }
 }
 

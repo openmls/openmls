@@ -167,7 +167,7 @@ impl CoreGroup {
         };
 
         // Create provisional tree and apply proposals
-        let mut diff = self.treesync().empty_diff()?;
+        let mut diff = self.treesync().empty_diff();
 
         let apply_proposals_values = self
             .apply_proposals(&mut diff, backend, &proposal_queue, own_leaf_nodes)

@@ -94,14 +94,14 @@ fn test_node_references() {
         MlsBinaryTree::new(vec![0]).expect("Error when creating a one-node binary tree.");
     let original_tree = tree.clone();
 
-    let diff = tree.empty_diff().expect("error creating empty diff");
+    let diff = tree.empty_diff();
     let staged_diff = diff.into();
     tree.merge_diff(staged_diff);
 
     assert_eq!(tree, original_tree);
 
     // Node access and node references
-    let diff = tree.empty_diff().expect("error creating empty diff");
+    let diff = tree.empty_diff();
     let leaf_reference = diff.leaf(0).expect("error obtaining leaf reference.");
 
     assert_eq!(
@@ -124,7 +124,7 @@ fn test_node_references() {
     assert_eq!(leaf, &0);
 
     // Leaf replacement and node references.
-    let mut diff = tree.empty_diff().expect("error creating empty diff");
+    let mut diff = tree.empty_diff();
     diff.replace_leaf(0, 1).expect("error replacing leaf");
 
     assert_eq!(
@@ -207,7 +207,7 @@ fn test_diff_merging() {
     assert_eq!(leaves[0], (0, &2));
     assert_eq!(leaves[1], (1, &4));
 
-    let mut diff = tree.empty_diff().expect("error creating empty diff");
+    let mut diff = tree.empty_diff();
 
     // Merging larger diffs.
 
@@ -266,7 +266,7 @@ fn test_diff_merging() {
 
     // Merging a diff that decreases the size of the tree.
 
-    let mut diff = tree.empty_diff().expect("error creating empty diff");
+    let mut diff = tree.empty_diff();
     for _ in 0..800 {
         diff.remove_leaf()
             .expect("error while removing large number of leaves");
@@ -281,7 +281,7 @@ fn test_diff_merging() {
 #[test]
 fn test_leaf_addition_and_removal_errors() {
     let tree = MlsBinaryTree::new((0..3).collect()).expect("error creating tree");
-    let mut diff = tree.empty_diff().expect("error creating empty diff");
+    let mut diff = tree.empty_diff();
 
     diff.remove_leaf().expect("error removing leaf");
 
@@ -301,7 +301,7 @@ fn test_leaf_addition_and_removal_errors() {
         nodes.set_len(NodeIndex::MAX as usize);
 
         let tree = MlsBinaryTree::new(nodes).expect("error creating tree");
-        let mut diff = tree.empty_diff().expect("error creating empty diff");
+        let mut diff = tree.empty_diff();
 
         assert_eq!(
             diff.add_leaf(666, 667)
@@ -315,7 +315,7 @@ fn test_leaf_addition_and_removal_errors() {
 fn test_tree_navigation() {
     let tree = MlsBinaryTree::new((0..3).collect()).expect("error creating tree");
 
-    let diff = tree.empty_diff().expect("error creating empty diff");
+    let diff = tree.empty_diff();
 
     // Create a root reference and navigate around a little bit.
     let root_ref = diff.root();
@@ -366,7 +366,7 @@ fn test_direct_path_manipulation() {
     let small_tree = MlsBinaryTree::new(vec![0]).expect("error creating tree");
 
     // Getting the direct path.
-    let mut st_diff = small_tree.empty_diff().expect("error creating empty diff");
+    let mut st_diff = small_tree.empty_diff();
     let direct_path = st_diff
         .direct_path(0)
         .expect("error computing direct path for small tree.");
@@ -410,7 +410,7 @@ fn test_direct_path_manipulation() {
     let medium_tree = MlsBinaryTree::new((0..3).collect()).expect("error creating tree");
 
     // Getting the direct path.
-    let mut mt_diff = medium_tree.empty_diff().expect("error creating empty diff");
+    let mut mt_diff = medium_tree.empty_diff();
     let direct_path = mt_diff
         .direct_path(1)
         .expect("error computing direct path for medium tree.");
@@ -443,7 +443,7 @@ fn test_direct_path_manipulation() {
     let mut large_tree = MlsBinaryTree::new((0..101).collect()).expect("error creating tree");
 
     // Getting the direct path.
-    let mut lt_diff = large_tree.empty_diff().expect("error creating empty diff");
+    let mut lt_diff = large_tree.empty_diff();
     let direct_path = lt_diff
         .direct_path(42)
         .expect("error computing direct path for large tree.");
@@ -516,7 +516,7 @@ fn test_direct_path_manipulation() {
     // on merge.
     let staged_diff = lt_diff.into();
     large_tree.merge_diff(staged_diff);
-    let empty_diff = large_tree.empty_diff().expect("error creating empty diff");
+    let empty_diff = large_tree.empty_diff();
     let direct_path = empty_diff
         .direct_path(0)
         .expect("error computing direct path for large tree.");
@@ -533,7 +533,7 @@ fn test_subtree_root_position() {
 
     // Small tree
     let small_tree = MlsBinaryTree::new((0..3).collect()).expect("error creating tree");
-    let diff = small_tree.empty_diff().expect("error creating empty diff");
+    let diff = small_tree.empty_diff();
 
     // If the given leaf indices are identical, the shared subtree root is
     // the index itself. Since the index of the leaf itself doesn't appear
@@ -561,7 +561,7 @@ fn test_subtree_root_position() {
     // Larger tree
     let tree = MlsBinaryTree::new((0..101).collect()).expect("error creating tree");
 
-    let diff = tree.empty_diff().expect("error creating empty diff");
+    let diff = tree.empty_diff();
 
     // Subtree root position of leaves in the left and right half of the tree is
     // the last node in the direct path.
@@ -590,7 +590,7 @@ fn test_subtree_root_copath_node() {
 
     // Small tree
     let small_tree = MlsBinaryTree::new((0..3).collect()).expect("error creating tree");
-    let diff = small_tree.empty_diff().expect("error creating empty diff");
+    let diff = small_tree.empty_diff();
 
     // If the given leaf indices are identical, the function should return an error.
     let error = diff
@@ -621,7 +621,7 @@ fn test_subtree_root_copath_node() {
     // Larger tree
     let tree = MlsBinaryTree::new((0..101).collect()).expect("error creating tree");
 
-    let diff = tree.empty_diff().expect("error creating empty diff");
+    let diff = tree.empty_diff();
 
     // Subtree root copath node of leaves in the left and right half of the tree is
     // the second to last node in the direct path of the second index.
@@ -659,7 +659,7 @@ fn test_subtree_root_copath_node() {
 fn test_subtree_path() {
     // This should work on a one-node tree.
     let tree = MlsBinaryTree::new(vec![0]).expect("error creating tree");
-    let diff = tree.empty_diff().expect("error creating empty diff");
+    let diff = tree.empty_diff();
 
     // Since in contrast to the direct path, the subtree path contains the
     // shared subtree root itself, the subtree path of the only node should be
@@ -674,7 +674,7 @@ fn test_subtree_path() {
 
     // Small tree
     let small_tree = MlsBinaryTree::new((0..3).collect()).expect("error creating tree");
-    let diff = small_tree.empty_diff().expect("error creating empty diff");
+    let diff = small_tree.empty_diff();
 
     // Since the tree is small, the subtree path of the two leaves should
     // consist of only the root.
@@ -699,7 +699,7 @@ fn test_subtree_path() {
     // Larger tree
     let tree = MlsBinaryTree::new((0..101).collect()).expect("error creating tree");
 
-    let diff = tree.empty_diff().expect("error creating empty diff");
+    let diff = tree.empty_diff();
 
     // Subtree path of leaves in the left and right half of the tree is the root node.
     let subtree_path = diff
@@ -733,7 +733,7 @@ fn test_subtree_path() {
 fn test_diff_iter() {
     let tree = MlsBinaryTree::new((0..101).collect()).expect("error creating tree");
 
-    let diff = tree.empty_diff().expect("error creating empty diff");
+    let diff = tree.empty_diff();
 
     let mut node_set = HashSet::new();
 
@@ -751,7 +751,7 @@ fn test_diff_iter() {
 fn test_export_diff_nodes() {
     let tree = MlsBinaryTree::new((0..101).collect()).expect("error creating tree");
 
-    let diff = tree.empty_diff().expect("error creating empty diff");
+    let diff = tree.empty_diff();
 
     let nodes = diff
         .export_nodes()
@@ -767,7 +767,7 @@ fn test_export_diff_nodes() {
 fn test_diff_mutable_access_after_manipulation() {
     let tree = MlsBinaryTree::new((0..101).collect()).expect("error creating tree");
 
-    let mut diff = tree.empty_diff().expect("error creating empty diff");
+    let mut diff = tree.empty_diff();
 
     // Let's change the nodes along a direct path.
     diff.set_direct_path_to_node(5, &999)
