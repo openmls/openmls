@@ -16,6 +16,7 @@
 //! return a [`Result`] since they may throw a
 //! [`LibraryError`](ABinaryTreeDiffError::LibraryError).
 
+use itertools::Itertools;
 use serde::{Deserialize, Serialize};
 use std::{collections::BTreeMap, fmt::Debug};
 use thiserror::Error;
@@ -169,19 +170,24 @@ impl<'a, T: Clone + Debug> AbDiff<'a, T> {
         Ok(NodeId::try_from_node_index(self, node_index)?)
     }
 
-    /// Returns references to the leaves of the diff in order from left to
-    /// right. This function should not throw an error. However, it might throw
-    /// a [`LibraryError`] error if there is a bug in the implementation.
-    pub(crate) fn leaves(&self) -> Result<Vec<NodeId>, LibraryError> {
-        let mut leaf_references = Vec::new();
-        for leaf_index in 0..self.leaf_count() {
-            let node_index = to_node_index(leaf_index);
-            // The node reference must be valid, since it is a valid leaf
-            let node_ref = NodeId::try_from_node_index(self, node_index)
-                .map_err(|_| LibraryError::custom("Expected a valid node reference"))?;
-            leaf_references.push(node_ref);
-        }
-        Ok(leaf_references)
+    /// Returns an iterator over a tuple of the leaf index and a reference to a
+    /// leaf, sorted according to their position in the tree from left to right.
+    pub(crate) fn leaves(&self) -> impl Iterator<Item = (LeafIndex, &T)> {
+        let original_leaves = self.original_tree.leaves();
+        let diff_leaves = self.diff.iter().filter_map(|(index, leaf)| {
+            if index % 2 == 0 {
+                Some((*index / 2, leaf))
+            } else {
+                None
+            }
+        });
+
+        // Only keep the leaves from the original tree if they are not in the
+        // diff.
+        diff_leaves
+            .chain(original_leaves)
+            .unique_by(|(index, _)| *index)
+            .sorted_by(|(left, _), (right, _)| Ord::cmp(left, right))
     }
 
     // Functions related to the direct paths of leaves

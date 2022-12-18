@@ -79,16 +79,12 @@ fn test_tree_basics() {
     );
 
     // Leaves
-    let leaves1 = tree1
-        .leaves()
-        .expect("error while compiling leaf references.");
-    assert_eq!(vec![&1, &2], leaves1);
+    let leaves1: Vec<(u32, &u32)> = tree1.leaves().collect();
+    assert_eq!(vec![(0, &1), (1, &2)], leaves1);
 
     let tree3 = MlsBinaryTree::new(vec![1]).expect("error creating 1 node binary tree.");
-    let leaves3 = tree3
-        .leaves()
-        .expect("error while compiling leaf references.");
-    assert_eq!(vec![&1], leaves3);
+    let leaves3: Vec<(u32, &u32)> = tree3.leaves().collect();
+    assert_eq!(vec![(0, &1)], leaves3);
 }
 
 #[test]
@@ -205,6 +201,13 @@ fn test_diff_merging() {
     let mut tree = MlsBinaryTree::new(vec![2, 0, 4]).expect("Error creating tree.");
     let original_tree = tree.clone();
 
+    // Test the leaves in the original tree
+    let leaves: Vec<(u32, &u32)> = original_tree.leaves().collect();
+
+    assert_eq!(leaves.len(), 2);
+    assert_eq!(leaves[0], (0, &2));
+    assert_eq!(leaves[1], (1, &4));
+
     let mut diff = tree.empty_diff().expect("error creating empty diff");
 
     // Merging larger diffs.
@@ -216,14 +219,24 @@ fn test_diff_merging() {
     }
 
     // Check that the leaves were actually added.
-    let leaves = diff
-        .leaves()
-        .expect("error compiling vector of leaf references.");
+    let leaves: Vec<(u32, &u32)> = diff.leaves().collect();
+
+    // Expect original 2 leaves + 1000 new ones
+    assert_eq!(leaves.len(), 2 + 1000);
+
+    // Expect original leaves
+    assert_eq!(leaves[0], (0, &2));
+    assert_eq!(leaves[1], (1, &4));
+
+    // Expect new leaves
+    assert_eq!(leaves[2], (2, &0));
+    assert_eq!(leaves[3], (3, &1));
+    assert_eq!(leaves[4], (4, &2));
 
     let first_leaf = leaves.first().expect("leaf vector is empty");
     let last_leaf = leaves.last().expect("leaf vector is empty");
-    assert_eq!(diff.node(*first_leaf).expect("error dereferencing"), &2);
-    assert_eq!(diff.node(*last_leaf).expect("error dereferencing"), &999);
+    assert_eq!(first_leaf, &(0, &2));
+    assert_eq!(last_leaf, &(1001, &999));
     assert_eq!(leaves.len(), diff.leaf_count() as usize);
 
     // Remove some of them again
@@ -233,14 +246,12 @@ fn test_diff_merging() {
     }
 
     // Check that the leaves were actually removed.
-    let leaves = diff
-        .leaves()
-        .expect("error compiling vector of leaf references.");
+    let leaves: Vec<(u32, &u32)> = diff.leaves().collect();
 
     let first_leaf = leaves.first().expect("leaf vector is empty");
     let last_leaf = leaves.last().expect("leaf vector is empty");
-    assert_eq!(diff.node(*first_leaf).expect("error dereferencing"), &2);
-    assert_eq!(diff.node(*last_leaf).expect("error dereferencing"), &799);
+    assert_eq!(first_leaf, &(0, &2));
+    assert_eq!(last_leaf, &(801, &799));
     assert_eq!(leaves.len(), diff.leaf_count() as usize);
 
     let staged_diff = diff.into();
@@ -248,14 +259,12 @@ fn test_diff_merging() {
         .expect("error when merging large diff");
 
     // Verify that the tree has changed post-merge.
-    let leaves = tree
-        .leaves()
-        .expect("error compiling vector of leaf references.");
+    let leaves: Vec<(u32, &u32)> = tree.leaves().collect();
 
     let first_leaf = leaves.first().expect("leaf vector is empty");
     let last_leaf = leaves.last().expect("leaf vector is empty");
-    assert_eq!(*first_leaf, &2);
-    assert_eq!(*last_leaf, &799);
+    assert_eq!(first_leaf, &(0, &2));
+    assert_eq!(last_leaf, &(801, &799));
 
     // Merging a diff that decreases the size of the tree.
 

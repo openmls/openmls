@@ -182,7 +182,7 @@ impl CoreGroup {
                 }
                 *leaf_index
             }
-            Sender::NewMemberCommit => diff.free_leaf_index()?,
+            Sender::NewMemberCommit => diff.free_leaf_index(),
             _ => {
                 return Err(StageCommitError::SenderTypeExternal);
             }

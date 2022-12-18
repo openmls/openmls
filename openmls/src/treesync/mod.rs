@@ -305,7 +305,7 @@ impl TreeSync {
     /// one leaf.
     pub(crate) fn free_leaf_index(&self) -> Result<LeafIndex, TreeSyncError> {
         let diff = self.empty_diff()?;
-        Ok(diff.free_leaf_index()?)
+        Ok(diff.free_leaf_index())
     }
 
     /// Populate the parent hash caches of all nodes in the tree.
@@ -358,60 +358,41 @@ impl TreeSync {
     }
 
     /// Returns a list of [`LeafIndex`]es containing only full nodes.
-    ///
-    /// This function should not fail and only returns a [`Result`], because it
-    /// might throw a [LibraryError](TreeSyncError::LibraryError).
-    pub(crate) fn full_leaves(&self) -> Result<Vec<LeafIndex>, LibraryError> {
+    pub(crate) fn full_leaves(&self) -> Vec<LeafIndex> {
         self.tree
-            .leaves()?
-            .drain(..)
-            .enumerate()
-            .filter(|(_, tsn)| tsn.node().is_some())
-            .map(|(index, _)| {
-                u32::try_from(index).map_err(|_| LibraryError::custom("Index outside of the tree"))
-            })
+            .leaves()
+            .filter_map(|(index, tsn)| tsn.node().as_ref().map(|_| (index)))
             .collect()
     }
 
     /// Returns a list of [`Member`]s containing only full nodes.
     ///
-    /// This function should not fail and only returns a [`Result`], because it
-    /// might throw a [LibraryError](TreeSyncError::LibraryError).
-    ///
     /// XXX: For performance reasons we probably want to have this in a borrowing
     ///      version as well. But it might well go away again.
-    pub(crate) fn full_leave_members(&self) -> Result<Vec<Member>, LibraryError> {
-        let mut leaves = self.tree.leaves()?;
-        let leaves = leaves
-            .drain(..)
-            .enumerate()
-            .filter(|(_, tsn)| tsn.node().is_some());
-        let mut out = vec![];
-        for (index, tsn) in leaves {
-            let index = u32::try_from(index)
-                .map_err(|_| LibraryError::custom("Index outside of the tree"))?;
-            let (encryption_key, signature_key, identity) = if let Some(node) = tsn.node() {
-                // This is a little verbose but will go away soon with #819.
-                if let Ok(leaf_node) = node.as_leaf_node() {
-                    (
-                        leaf_node.public_key(),
-                        leaf_node.leaf_node.credential().signature_key(),
-                        leaf_node.leaf_node.credential().identity(),
-                    )
-                } else {
-                    return Err(LibraryError::custom("The tree is broken."));
-                }
-            } else {
-                return Err(LibraryError::custom("The tree is broken."));
-            };
-            out.push(Member::new(
-                index,
-                encryption_key.as_slice().to_vec(),
-                signature_key.as_slice().to_vec(),
-                identity.to_vec(),
-            ))
-        }
-        Ok(out)
+    pub(crate) fn full_leave_members(&self) -> impl Iterator<Item = Member> + '_ {
+        self.tree
+            .leaves()
+            // Filter out blank nodes (should not be necessary in a valid tree)
+            .filter_map(|(index, tsn)| tsn.node().as_ref().map(|node| (index, node)))
+            // Filter out parent nodes (should not be necessary in a valid tree)
+            .filter_map(|(index, node)| match node.as_leaf_node() {
+                Ok(leaf_node) => Some((index, leaf_node)),
+                Err(_) => None,
+            })
+            // Map to `Member`
+            .map(|(index, leaf_node)| {
+                Member::new(
+                    index,
+                    leaf_node.public_key().as_slice().to_vec(),
+                    leaf_node
+                        .leaf_node
+                        .credential()
+                        .signature_key()
+                        .as_slice()
+                        .to_vec(),
+                    leaf_node.leaf_node.credential().identity().to_vec(),
+                )
+            })
     }
 
     /// Returns a [`TreeSyncError::UnsupportedExtension`] if an [`ExtensionType`]
@@ -421,7 +402,7 @@ impl TreeSync {
         &self,
         extensions: &[crate::extensions::ExtensionType],
     ) -> Result<(), TreeSyncError> {
-        if self.tree.leaves()?.iter().any(|&tsn| {
+        if self.tree.leaves().any(|(_, tsn)| {
             tsn.node()
                 .as_ref()
                 .and_then(|node| {

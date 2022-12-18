@@ -159,7 +159,7 @@ impl CoreGroup {
         // commit a remove proposal.
         for Member {
             index, identity, ..
-        } in group.treesync().full_leave_members()?
+        } in group.treesync().full_leave_members()
         {
             if identity == params.credential_bundle().credential().identity() {
                 let remove_proposal = Proposal::Remove(RemoveProposal { removed: index });

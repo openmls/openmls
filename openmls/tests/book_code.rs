@@ -261,18 +261,10 @@ fn book_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvide
         .expect("error merging pending commit");
 
     // Check that the group now has two members
-    assert_eq!(
-        alice_group
-            .members()
-            .expect("Library error getting group member list")
-            .len(),
-        2
-    );
+    assert_eq!(alice_group.members().count(), 2);
 
     // Check that Alice & Bob are the members of the group
-    let members = alice_group
-        .members()
-        .expect("Library error getting group member list");
+    let members = alice_group.members().collect::<Vec<Member>>();
     assert_eq!(members[0].identity, b"Alice");
     assert_eq!(members[1].identity, b"Bob");
 
@@ -287,14 +279,7 @@ fn book_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvide
     // ANCHOR_END: bob_joins_with_welcome
 
     // Make sure that both groups have the same members
-    assert_eq!(
-        alice_group
-            .members()
-            .expect("Library error getting group member list"),
-        bob_group
-            .members()
-            .expect("Library error getting group member list")
-    );
+    assert!(alice_group.members().eq(bob_group.members()));
 
     // Make sure that both groups have the same epoch authenticator
     assert_eq!(
@@ -521,9 +506,7 @@ fn book_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvide
     );
 
     // Check that Alice, Bob & Charlie are the members of the group
-    let members = alice_group
-        .members()
-        .expect("Library error getting group member list");
+    let members = alice_group.members().collect::<Vec<Member>>();
     assert_eq!(members[0].identity, b"Alice");
     assert_eq!(members[1].identity, b"Bob");
     assert_eq!(members[2].identity, b"Charlie");
@@ -604,9 +587,7 @@ fn book_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvide
     );
 
     // ANCHOR: retrieve_members
-    let charlie_members = charlie_group
-        .members()
-        .expect("Library error getting group member list");
+    let charlie_members = charlie_group.members().collect::<Vec<Member>>();
     // ANCHOR_END: retrieve_members
 
     let bob_member = charlie_members
@@ -642,14 +623,12 @@ fn book_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvide
 
     // Check that alice can use the member list to check if the message is
     // actually from Charlie.
-    let alice_members = alice_group
-        .members()
-        .expect("Library error getting group member list");
+    let mut alice_members = alice_group.members();
     let sender_credential = alice_processed_message
         .credential()
         .expect("Couldn't retrieve credential from message.");
 
-    assert!(alice_members.iter().any(
+    assert!(alice_members.any(
         |Member {
              index: _,
              identity: _,
@@ -657,6 +636,7 @@ fn book_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvide
              signature_key,
          }| signature_key.as_slice() == sender_credential.signature_key().as_slice()
     ));
+    drop(alice_members);
 
     assert_eq!(sender_credential, &charlie_credential);
 
@@ -738,9 +718,7 @@ fn book_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvide
 
     // Check that Bob's group is no longer active
     assert!(!bob_group.is_active());
-    let members = bob_group
-        .members()
-        .expect("Library error getting group member list");
+    let members = bob_group.members().collect::<Vec<Member>>();
     assert_eq!(members.len(), 2);
     assert_eq!(members[0].identity, b"Alice");
     assert_eq!(members[1].identity, b"Charlie");
@@ -753,18 +731,10 @@ fn book_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvide
     );
 
     // Make sure the group only contains two members
-    assert_eq!(
-        alice_group
-            .members()
-            .expect("Library error getting group member list")
-            .len(),
-        2
-    );
+    assert_eq!(alice_group.members().count(), 2);
 
     // Check that Alice & Charlie are the members of the group
-    let members = alice_group
-        .members()
-        .expect("Library error getting group member list");
+    let members = alice_group.members().collect::<Vec<Member>>();
     assert_eq!(members[0].identity, b"Alice");
     assert_eq!(members[1].identity, b"Charlie");
 
@@ -875,18 +845,10 @@ fn book_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvide
     }
 
     // Make sure the group contains two members
-    assert_eq!(
-        alice_group
-            .members()
-            .expect("Library error getting group member list")
-            .len(),
-        2
-    );
+    assert_eq!(alice_group.members().count(), 2);
 
     // Check that Alice & Bob are the members of the group
-    let members = alice_group
-        .members()
-        .expect("Library error getting group member list");
+    let members = alice_group.members().collect::<Vec<Member>>();
     assert_eq!(members[0].identity, b"Alice");
     assert_eq!(members[1].identity, b"Bob");
 
@@ -900,34 +862,18 @@ fn book_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvide
     .expect("Error creating group from Welcome");
 
     // Make sure the group contains two members
-    assert_eq!(
-        alice_group
-            .members()
-            .expect("Library error getting group member list")
-            .len(),
-        2
-    );
+    assert_eq!(alice_group.members().count(), 2);
 
     // Check that Alice & Bob are the members of the group
-    let members = alice_group
-        .members()
-        .expect("Library error getting group member list");
+    let members = alice_group.members().collect::<Vec<Member>>();
     assert_eq!(members[0].identity, b"Alice");
     assert_eq!(members[1].identity, b"Bob");
 
     // Make sure the group contains two members
-    assert_eq!(
-        bob_group
-            .members()
-            .expect("Library error getting group member list")
-            .len(),
-        2
-    );
+    assert_eq!(bob_group.members().count(), 2);
 
     // Check that Alice & Bob are the members of the group
-    let members = bob_group
-        .members()
-        .expect("Library error getting group member list");
+    let members = bob_group.members().collect::<Vec<Member>>();
     assert_eq!(members[0].identity, b"Alice");
     assert_eq!(members[1].identity, b"Bob");
 
@@ -1074,18 +1020,10 @@ fn book_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvide
     assert!(!bob_group.is_active());
 
     // Make sure the group contains one member
-    assert_eq!(
-        alice_group
-            .members()
-            .expect("Library error getting group member list")
-            .len(),
-        1
-    );
+    assert_eq!(alice_group.members().count(), 1);
 
     // Check that Alice is the only member of the group
-    let members = alice_group
-        .members()
-        .expect("Library error getting group member list");
+    let members = alice_group.members().collect::<Vec<Member>>();
     assert_eq!(members[0].identity, b"Alice");
 
     // === Re-Add Bob with external Add proposal ===
@@ -1123,16 +1061,16 @@ fn book_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvide
             let (_commit, welcome) = alice_group
                 .commit_to_pending_proposals(backend)
                 .expect("Could not commit");
-            assert_eq!(alice_group.members().unwrap().len(), 1);
+            assert_eq!(alice_group.members().count(), 1);
             alice_group
                 .merge_pending_commit()
                 .expect("Could not merge commit");
-            assert_eq!(alice_group.members().unwrap().len(), 2);
+            assert_eq!(alice_group.members().count(), 2);
 
             let bob_group =
                 MlsGroup::new_from_welcome(backend, &mls_group_config, welcome.unwrap(), None)
                     .expect("Bob could not join the group");
-            assert_eq!(bob_group.members().unwrap().len(), 2);
+            assert_eq!(bob_group.members().count(), 2);
         }
         _ => unreachable!(),
     }
@@ -1144,7 +1082,7 @@ fn book_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvide
     alice_group
         .merge_pending_commit()
         .expect("Could not nerge commit");
-    assert_eq!(alice_group.members().unwrap().len(), 1);
+    assert_eq!(alice_group.members().count(), 1);
 
     // === Save the group state ===
 

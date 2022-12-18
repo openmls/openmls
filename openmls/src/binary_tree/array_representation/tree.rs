@@ -64,7 +64,7 @@ impl<T: Clone + Debug> ABinaryTree<T> {
     /// [`NodeIndex`].
     pub(crate) fn new(nodes: Vec<T>) -> Result<Self, ABinaryTreeError> {
         // No more than 2^32 nodes
-        if nodes.len() > 2 ^ 32 {
+        if nodes.len() > 1 << 32 {
             return Err(ABinaryTreeError::OutOfRange);
         }
         if nodes.len() % 2 != 1 {
@@ -99,22 +99,20 @@ impl<T: Clone + Debug> ABinaryTree<T> {
         ((self.size() - 1) / 2) + 1
     }
 
-    /// Return a vector of leaves sorted according to their position in the tree
-    /// from left to right. This function should not fail and only returns a
-    /// [`Result`], because it might throw a
-    /// [`LibraryError`](ABinaryTreeError::LibraryError).
-    pub(crate) fn leaves(&self) -> Result<Vec<&T>, LibraryError> {
-        let mut leaf_references = Vec::new();
-        for leaf_index in 0..self.leaf_count() {
-            let node_ref = self
-                .nodes
-                .get(to_node_index(leaf_index) as usize)
-                // Since the index is within the bounds of the tree, this should
-                // be Some.
-                .ok_or_else(|| LibraryError::custom("Node not found"))?;
-            leaf_references.push(node_ref);
-        }
-        Ok(leaf_references)
+    /// Returns an iterator over a tuple of the leaf index and a reference to a
+    /// leaf, sorted according to their position in the tree from left to right.
+    pub(crate) fn leaves(&self) -> impl Iterator<Item = (LeafIndex, &T)> {
+        self.nodes
+            .iter()
+            .enumerate()
+            // Only return the leaves, which are at the even indices
+            .filter_map(|(index, leave)| {
+                if index % 2 == 0 {
+                    Some(((index / 2) as LeafIndex, leave))
+                } else {
+                    None
+                }
+            })
     }
 
     /// Creates and returns an empty [`AbDiff`].

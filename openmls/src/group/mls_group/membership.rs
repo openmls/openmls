@@ -304,7 +304,7 @@ impl MlsGroup {
     }
 
     /// Returns a list of [`Member`]s in the group.
-    pub fn members(&self) -> Result<Vec<Member>, LibraryError> {
+    pub fn members(&self) -> impl Iterator<Item = Member> + '_ {
         self.group.treesync().full_leave_members()
     }
 

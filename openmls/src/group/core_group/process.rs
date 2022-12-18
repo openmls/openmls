@@ -321,11 +321,7 @@ impl CoreGroup {
         // Save the past epoch
         let past_epoch = self.context().epoch();
         // Get all the full leaves
-        let leaves = self
-            .treesync()
-            .full_leave_members()
-            // This should disappear after refactoring TreeSync, fetching the leaves should never fail
-            .map_err(|_| LibraryError::custom("Unexpected error in TreeSync"))?;
+        let leaves = self.treesync().full_leave_members().collect();
         // Merge the staged commit into the group state and store the secret tree from the
         // previous epoch in the message secrets store.
         if let Some(message_secrets) = self.merge_commit(staged_commit)? {
