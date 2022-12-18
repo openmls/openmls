@@ -141,9 +141,6 @@ impl TreeSync {
 
     /// Merge the given diff into this `TreeSync` instance, refreshing the
     /// `tree_hash` value in the process.
-    ///
-    /// Returns an error if the merging process of the underlying
-    /// [`MlsBinaryTree`] fails.
     pub(crate) fn merge_diff(&mut self, tree_sync_diff: StagedTreeSyncDiff) {
         let (own_leaf_index, diff, new_tree_hash) = tree_sync_diff.into_parts();
         self.own_leaf_index = own_leaf_index;
@@ -153,9 +150,6 @@ impl TreeSync {
 
     /// Create an empty diff based on this [`TreeSync`] instance all operations
     /// are created based on an initial, empty [`TreeSyncDiff`].
-    ///
-    /// This function should not fail and only returns a [`Result`], because it
-    /// might throw a [LibraryError](TreeSyncError::LibraryError).
     pub(crate) fn empty_diff(&self) -> TreeSyncDiff {
         self.into()
     }

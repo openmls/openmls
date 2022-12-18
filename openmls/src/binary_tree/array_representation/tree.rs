@@ -49,7 +49,7 @@ impl<T: Clone + Debug> ABinaryTree<T> {
     /// [`NodeIndex`].
     pub(crate) fn new(nodes: Vec<T>) -> Result<Self, ABinaryTreeError> {
         // No more than 2^32 nodes
-        if nodes.len() > 1 << 32 {
+        if nodes.len() > u32::MAX as usize {
             return Err(ABinaryTreeError::OutOfRange);
         }
         if nodes.len() % 2 != 1 {
