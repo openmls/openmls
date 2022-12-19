@@ -18,7 +18,6 @@
 //! - [`RatchetTreeExtension`] (GroupInfo extension)
 //! - [`RequiredCapabilitiesExtension`] (GroupContext extension)
 //! - [`ExternalPubExtension`] (GroupInfo extension)
-//! - [`LifetimeExtension`] (KeyPackage extension)
 
 use serde::{Deserialize, Serialize};
 use std::{convert::TryFrom, fmt::Debug};
@@ -29,7 +28,6 @@ mod application_id_extension;
 mod codec;
 mod external_pub_extension;
 mod external_sender_extension;
-mod life_time_extension;
 mod ratchet_tree_extension;
 mod required_capabilities;
 use errors::*;
@@ -41,7 +39,6 @@ pub mod errors;
 pub use application_id_extension::ApplicationIdExtension;
 pub use external_pub_extension::ExternalPubExtension;
 pub use external_sender_extension::ExternalSendersExtension;
-pub use life_time_extension::LifetimeExtension;
 pub use ratchet_tree_extension::RatchetTreeExtension;
 pub use required_capabilities::RequiredCapabilitiesExtension;
 
@@ -101,11 +98,6 @@ pub enum ExtensionType {
     /// Group context extension that contains the credentials and signature keys
     /// of senders that are permitted to send external proposals to the group.
     ExternalSenders = 5,
-
-    /// The lifetime extension represents the times between which clients will
-    /// consider a KeyPackage valid.
-    /// TODO(#819): This extension will be deleted.
-    Lifetime = 0xff01,
 }
 
 impl TryFrom<u16> for ExtensionType {
@@ -121,7 +113,6 @@ impl TryFrom<u16> for ExtensionType {
             3 => Ok(ExtensionType::RequiredCapabilities),
             4 => Ok(ExtensionType::ExternalPub),
             5 => Ok(ExtensionType::ExternalSenders),
-            0xff01 => Ok(ExtensionType::Lifetime),
             _ => Err(tls_codec::Error::DecodingError(format!(
                 "{} is an unkown extension type",
                 a
@@ -138,8 +129,7 @@ impl ExtensionType {
             | ExtensionType::RatchetTree
             | ExtensionType::RequiredCapabilities
             | ExtensionType::ExternalPub
-            | ExtensionType::ExternalSenders
-            | ExtensionType::Lifetime => true,
+            | ExtensionType::ExternalSenders => true,
         }
     }
 }
@@ -174,10 +164,6 @@ pub enum Extension {
 
     /// A [`ExternalPubExtension`]
     ExternalSenders(ExternalSendersExtension),
-
-    /// A [`LifetimeExtension`]
-    /// TODO(#819): This extension will be deleted.
-    Lifetime(LifetimeExtension),
 }
 
 impl Extension {
@@ -245,18 +231,6 @@ impl Extension {
         }
     }
 
-    /// Get a reference to this extension as [`LifetimeExtension`].
-    /// Returns an [`ExtensionError::InvalidExtensionType`] if called on an
-    /// [`Extension`] that's not a [`LifetimeExtension`].
-    pub fn as_lifetime_extension(&self) -> Result<&LifetimeExtension, ExtensionError> {
-        match self {
-            Self::Lifetime(e) => Ok(e),
-            _ => Err(ExtensionError::InvalidExtensionType(
-                "This is not a LifetimeExtension".into(),
-            )),
-        }
-    }
-
     /// Returns the [`ExtensionType`]
     #[inline]
     pub const fn extension_type(&self) -> ExtensionType {
@@ -266,7 +240,6 @@ impl Extension {
             Extension::RequiredCapabilities(_) => ExtensionType::RequiredCapabilities,
             Extension::ExternalPub(_) => ExtensionType::ExternalPub,
             Extension::ExternalSenders(_) => ExtensionType::ExternalSenders,
-            Extension::Lifetime(_) => ExtensionType::Lifetime,
         }
     }
 }
