@@ -416,12 +416,12 @@ fn group_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvid
         .own_leaf_node()
         .expect("An unexpected error occurred.")
         .credential();
-    let mls_plaintext_bob: MlsPlaintext = verifiable_plaintext
+    let mls_plaintext_bob: MlsAuthContent = verifiable_plaintext
         .verify(backend, credential)
         .expect("An unexpected error occurred.");
 
     assert!(matches!(
-        mls_plaintext_bob.content(), 
+        mls_plaintext_bob.content(),
             MlsContentBody::Application(message) if message.as_slice() == &message_alice[..]));
 
     // === Bob updates and commits ===
@@ -738,12 +738,12 @@ fn group_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvid
         .expect("An unexpected error occurred.")
         .credential();
 
-    let mls_plaintext_alice: MlsPlaintext = verifiable_plaintext
+    let mls_plaintext_alice: MlsAuthContent = verifiable_plaintext
         .verify(backend, credential)
         .expect("An unexpected error occurred.");
 
     assert!(matches!(
-        mls_plaintext_alice.content(), 
+        mls_plaintext_alice.content(),
             MlsContentBody::Application(message) if message.as_slice() == &message_charlie[..]));
 
     // Bob decrypts and verifies
@@ -767,12 +767,12 @@ fn group_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvid
         .own_leaf_node()
         .expect("An unexpected error occurred.")
         .credential();
-    let mls_plaintext_bob: MlsPlaintext = verifiable_plaintext
+    let mls_plaintext_bob: MlsAuthContent = verifiable_plaintext
         .verify(backend, credential)
         .expect("An unexpected error occurred.");
 
     assert!(matches!(
-        mls_plaintext_bob.content(), 
+        mls_plaintext_bob.content(),
         MlsContentBody::Application(message) if message.as_slice() == &message_charlie[..]));
 
     // === Charlie updates and commits ===

@@ -72,7 +72,7 @@ use super::{
 
 #[derive(Debug)]
 pub(crate) struct CreateCommitResult {
-    pub(crate) commit: MlsPlaintext,
+    pub(crate) commit: MlsAuthContent,
     pub(crate) welcome_option: Option<Welcome>,
     pub(crate) staged_commit: StagedCommit,
 }
@@ -316,7 +316,7 @@ impl CoreGroup {
         credential_bundle: &CredentialBundle,
         joiner_key_package: KeyPackage,
         backend: &impl OpenMlsCryptoProvider,
-    ) -> Result<MlsPlaintext, CreateAddProposalError> {
+    ) -> Result<MlsAuthContent, CreateAddProposalError> {
         joiner_key_package
             .leaf_node()
             .validate_required_capabilities(self.required_capabilities())
@@ -325,13 +325,12 @@ impl CoreGroup {
             key_package: joiner_key_package,
         };
         let proposal = Proposal::Add(add_proposal);
-        MlsPlaintext::member_proposal(
+        MlsAuthContent::member_proposal(
             framing_parameters,
             self.own_leaf_index(),
             proposal,
             credential_bundle,
             self.context(),
-            self.message_secrets().membership_key(),
             backend,
         )
         .map_err(|e| e.into())
@@ -349,16 +348,15 @@ impl CoreGroup {
         //      operate on a reference to make this more efficient.
         leaf_node: LeafNode,
         backend: &impl OpenMlsCryptoProvider,
-    ) -> Result<MlsPlaintext, LibraryError> {
+    ) -> Result<MlsAuthContent, LibraryError> {
         let update_proposal = UpdateProposal { leaf_node };
         let proposal = Proposal::Update(update_proposal);
-        MlsPlaintext::member_proposal(
+        MlsAuthContent::member_proposal(
             framing_parameters,
             self.own_leaf_index(),
             proposal,
             credential_bundle,
             self.context(),
-            self.message_secrets().membership_key(),
             backend,
         )
     }
@@ -373,19 +371,18 @@ impl CoreGroup {
         credential_bundle: &CredentialBundle,
         removed: u32,
         backend: &impl OpenMlsCryptoProvider,
-    ) -> Result<MlsPlaintext, ValidationError> {
+    ) -> Result<MlsAuthContent, ValidationError> {
         if self.treesync().leaf_is_in_tree(removed).is_err() {
             return Err(ValidationError::UnknownMember);
         }
         let remove_proposal = RemoveProposal { removed };
         let proposal = Proposal::Remove(remove_proposal);
-        MlsPlaintext::member_proposal(
+        MlsAuthContent::member_proposal(
             framing_parameters,
             self.own_leaf_index(),
             proposal,
             credential_bundle,
             self.context(),
-            self.message_secrets().membership_key(),
             backend,
         )
         .map_err(ValidationError::LibraryError)
@@ -403,16 +400,15 @@ impl CoreGroup {
         credential_bundle: &CredentialBundle,
         psk: PreSharedKeyId,
         backend: &impl OpenMlsCryptoProvider,
-    ) -> Result<MlsPlaintext, LibraryError> {
+    ) -> Result<MlsAuthContent, LibraryError> {
         let presharedkey_proposal = PreSharedKeyProposal::new(psk);
         let proposal = Proposal::PreSharedKey(presharedkey_proposal);
-        MlsPlaintext::member_proposal(
+        MlsAuthContent::member_proposal(
             framing_parameters,
             self.own_leaf_index(),
             proposal,
             credential_bundle,
             self.context(),
-            self.message_secrets().membership_key(),
             backend,
         )
     }
@@ -425,7 +421,7 @@ impl CoreGroup {
         credential_bundle: &CredentialBundle,
         extensions: &[Extension],
         backend: &impl OpenMlsCryptoProvider,
-    ) -> Result<MlsPlaintext, CreateGroupContextExtProposalError> {
+    ) -> Result<MlsAuthContent, CreateGroupContextExtProposalError> {
         // Ensure that the group supports all the extensions that are wanted.
 
         let required_extension = extensions
@@ -446,13 +442,12 @@ impl CoreGroup {
         }
         let proposal = GroupContextExtensionProposal::new(extensions);
         let proposal = Proposal::GroupContextExtensions(proposal);
-        MlsPlaintext::member_proposal(
+        MlsAuthContent::member_proposal(
             framing_parameters,
             self.own_leaf_index(),
             proposal,
             credential_bundle,
             self.context(),
-            self.message_secrets().membership_key(),
             backend,
         )
         .map_err(|e| e.into())
@@ -467,13 +462,12 @@ impl CoreGroup {
         padding_size: usize,
         backend: &impl OpenMlsCryptoProvider,
     ) -> Result<MlsCiphertext, MessageEncryptionError> {
-        let mls_plaintext = MlsPlaintext::new_application(
+        let mls_plaintext = MlsAuthContent::new_application(
             self.own_leaf_index(),
             aad,
             msg,
             credential_bundle,
             self.context(),
-            self.message_secrets().membership_key(),
             backend,
         )?;
         self.encrypt(mls_plaintext, padding_size, backend)
@@ -482,7 +476,7 @@ impl CoreGroup {
     // Encrypt an MlsPlaintext into an MlsCiphertext
     pub(crate) fn encrypt(
         &mut self,
-        mls_plaintext: MlsPlaintext,
+        mls_plaintext: MlsAuthContent,
         padding_size: usize,
         backend: &impl OpenMlsCryptoProvider,
     ) -> Result<MlsCiphertext, MessageEncryptionError> {
@@ -491,11 +485,6 @@ impl CoreGroup {
             &mls_plaintext,
             self.ciphersuite,
             backend,
-            MlsMessageHeader {
-                group_id: self.group_id().clone(),
-                epoch: self.context().epoch(),
-                sender: crate::tree::index::SecretTreeLeafIndex(self.own_leaf_index()),
-            },
             self.message_secrets_store.message_secrets_mut(),
             padding_size,
         )
