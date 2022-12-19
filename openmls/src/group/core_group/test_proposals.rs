@@ -313,7 +313,6 @@ fn test_required_extension_key_package_mismatch(
 
     // Set required capabilities
     let extensions = &[
-        ExtensionType::Capabilities,
         ExtensionType::RequiredCapabilities,
         ExtensionType::ApplicationId,
     ];
@@ -361,7 +360,7 @@ fn test_group_context_extensions(ciphersuite: Ciphersuite, backend: &impl OpenMl
     let bob_key_package = bob_key_package_bundle.key_package();
 
     // Set required capabilities
-    let extensions = &[ExtensionType::Capabilities, ExtensionType::ApplicationId];
+    let extensions = &[ExtensionType::ApplicationId];
     let proposals = &[
         ProposalType::GroupContextExtensions,
         ProposalType::Add,
@@ -442,14 +441,13 @@ fn test_group_context_extension_proposal_fails(
     let bob_key_package = bob_key_package_bundle.key_package();
 
     // Set required capabilities
-    let extensions = &[ExtensionType::Capabilities];
     let proposals = &[
         ProposalType::GroupContextExtensions,
         ProposalType::Add,
         ProposalType::Remove,
         ProposalType::Update,
     ];
-    let required_capabilities = RequiredCapabilitiesExtension::new(extensions, proposals);
+    let required_capabilities = RequiredCapabilitiesExtension::new(&[], proposals);
 
     let mut alice_group = CoreGroup::builder(GroupId::random(backend), alice_key_package_bundle)
         .with_required_capabilities(required_capabilities)

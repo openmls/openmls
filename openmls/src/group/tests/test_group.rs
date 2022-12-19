@@ -305,14 +305,8 @@ fn group_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvid
     .expect("An unexpected error occurred.");
 
     // Mandatory extensions
-    let capabilities_extension = Extension::Capabilities(CapabilitiesExtension::new(
-        None,
-        Some(&[ciphersuite]),
-        None,
-        None,
-    ));
     let lifetime_extension = Extension::Lifetime(LifetimeExtension::new(60));
-    let mandatory_extensions: Vec<Extension> = vec![capabilities_extension, lifetime_extension];
+    let mandatory_extensions: Vec<Extension> = vec![lifetime_extension];
 
     // Generate KeyPackages
     let alice_key_package_bundle = KeyPackageBundle::new(

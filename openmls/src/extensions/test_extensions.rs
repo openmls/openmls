@@ -14,40 +14,6 @@ use crate::{
 };
 
 #[test]
-fn capabilities() {
-    // A capabilities extension with the default values for openmls.
-    let extension_bytes = [
-        0xff, 0x00, 0, 0, 0, 29, 1, 1, 6, 0, 1, 0, 2, 0, 3, 6, 0xff, 00, 0xff, 1, 0, 1, 12, 0, 1,
-        0, 2, 0, 3, 0, 4, 0, 5, 0, 8,
-    ];
-    let mut extension_bytes_mut = &extension_bytes[..];
-
-    let ext = Extension::Capabilities(CapabilitiesExtension::default());
-
-    // Check that decoding works
-    let capabilities_extension = Extension::tls_deserialize(&mut extension_bytes_mut)
-        .expect("An unexpected error occurred.");
-    assert_eq!(ext, capabilities_extension);
-
-    // Encoding creates the expected bytes.
-    assert_eq!(
-        extension_bytes,
-        &capabilities_extension
-            .tls_serialize_detached()
-            .expect("An unexpected error occurred.")[..]
-    );
-
-    // Test encoding and decoding
-    let encoded = ext
-        .tls_serialize_detached()
-        .expect("error encoding capabilities extension");
-    let ext_decoded = Extension::tls_deserialize(&mut encoded.as_slice())
-        .expect("error decoding capabilities extension");
-
-    assert_eq!(ext, ext_decoded);
-}
-
-#[test]
 fn key_package_id() {
     // A key package extension with the default values for openmls.
     let data = &[0u8, 8, 1, 2, 3, 4, 5, 6, 6, 6];

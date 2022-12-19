@@ -166,16 +166,8 @@ impl CoreGroup {
             let capabilities = add_proposal
                 .add_proposal()
                 .key_package()
-                .extension_with_type(ExtensionType::Capabilities)
-                .ok_or(ProposalValidationError::InsufficientCapabilities)?
-                .as_capabilities_extension()
-                .map_err(|_| {
-                    // Mismatches between Extensions and ExtensionTypes should be
-                    // caught when constructing KeyPackages.
-                    ProposalValidationError::LibraryError(LibraryError::custom(
-                        "ExtensionType didn't match extension content.",
-                    ))
-                })?;
+                .leaf_node()
+                .capabilities();
             if !capabilities.ciphersuites().contains(&self.ciphersuite())
                 || !capabilities.versions().contains(&self.version())
             {

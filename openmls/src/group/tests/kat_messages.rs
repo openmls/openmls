@@ -29,8 +29,9 @@ use tls_codec::{Deserialize as TlsDeserialize, Serialize as TlsSerialize, TlsSli
 
 #[derive(Serialize, Deserialize, Debug, Clone, Default)]
 pub struct MessagesTestVector {
-    key_package: String,  /* serialized KeyPackage, */
-    capabilities: String, /* serialized Capabilities, */
+    key_package: String, /* serialized KeyPackage, */
+    // TODO(#1149, #1051)
+    // capabilities: String, /* serialized Capabilities, */
     lifetime: String,     /* serialized {uint64 not_before; uint64 not_after;}, */
     ratchet_tree: String, /* serialized optional<Node> ratchet_tree<1..2^32-1>; */
 
@@ -67,7 +68,8 @@ pub fn generate_test_vector(ciphersuite: Ciphersuite) -> MessagesTestVector {
     let key_package_bundle =
         KeyPackageBundle::new(&[ciphersuite_name], &credential_bundle, &crypto, Vec::new())
             .expect("An unexpected error occurred.");
-    let capabilities = CapabilitiesExtension::default();
+    // TODO(#1149, #1051)
+    // let capabilities = CapabilitiesExtension::default();
     let lifetime = LifetimeExtension::default();
 
     // Let's create a group
@@ -287,11 +289,12 @@ pub fn generate_test_vector(ciphersuite: Ciphersuite) -> MessagesTestVector {
                 .tls_serialize_detached()
                 .expect("An unexpected error occurred."),
         ), // serialized KeyPackage,
-        capabilities: bytes_to_hex(
-            &capabilities
-                .tls_serialize_detached()
-                .expect("An unexpected error occurred."),
-        ), // serialized Capabilities,
+        // TODO(#1149, #1051)
+        // capabilities: bytes_to_hex(
+        //     &capabilities
+        //         .tls_serialize_detached()
+        //         .expect("An unexpected error occurred."),
+        // ), // serialized Capabilities,
         lifetime: bytes_to_hex(
             &lifetime
                 .tls_serialize_detached()
@@ -418,22 +421,23 @@ pub fn run_test_vector(tv: MessagesTestVector) -> Result<(), MessagesTestVectorE
         return Err(MessagesTestVectorError::KeyPackageEncodingMismatch);
     }
 
-    // Capabilities
-    log::debug!("Capabilities tv: {}", tv.capabilities);
-    let tv_capabilities = hex_to_bytes(&tv.capabilities);
-    let my_capabilities = CapabilitiesExtension::tls_deserialize(&mut tv_capabilities.as_slice())
-        .expect("An unexpected error occurred.")
-        .tls_serialize_detached()
-        .expect("An unexpected error occurred.");
-    if tv_capabilities != my_capabilities {
-        log::error!("  Capabilities encoding mismatch");
-        log::debug!("    Encoded: {:x?}", my_capabilities);
-        log::debug!("    Expected: {:x?}", tv_capabilities);
-        if cfg!(test) {
-            panic!("Capabilities encoding mismatch");
-        }
-        return Err(MessagesTestVectorError::CapabilitiesEncodingMismatch);
-    }
+    // TODO(#1149, #1051)
+    // // Capabilities
+    // log::debug!("Capabilities tv: {}", tv.capabilities);
+    // let tv_capabilities = hex_to_bytes(&tv.capabilities);
+    // let my_capabilities = CapabilitiesExtension::tls_deserialize(&mut tv_capabilities.as_slice())
+    //     .expect("An unexpected error occurred.")
+    //     .tls_serialize_detached()
+    //     .expect("An unexpected error occurred.");
+    // if tv_capabilities != my_capabilities {
+    //     log::error!("  Capabilities encoding mismatch");
+    //     log::debug!("    Encoded: {:x?}", my_capabilities);
+    //     log::debug!("    Expected: {:x?}", tv_capabilities);
+    //     if cfg!(test) {
+    //         panic!("Capabilities encoding mismatch");
+    //     }
+    //     return Err(MessagesTestVectorError::CapabilitiesEncodingMismatch);
+    // }
 
     // Lifetime
     let tv_lifetime = hex_to_bytes(&tv.lifetime);

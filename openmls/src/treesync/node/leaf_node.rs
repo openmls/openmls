@@ -47,11 +47,7 @@ pub struct Capabilities {
 
 /// All extensions defined in the MLS spec are considered "default" by the spec.
 fn default_extensions() -> Vec<ExtensionType> {
-    vec![
-        ExtensionType::Capabilities,
-        ExtensionType::Lifetime,
-        ExtensionType::ApplicationId,
-    ]
+    vec![ExtensionType::Lifetime, ExtensionType::ApplicationId]
 }
 
 /// All proposals defined in the MLS spec are considered "default" by the spec.
@@ -133,9 +129,21 @@ impl Capabilities {
         &self.versions
     }
 
+    /// Set the versions list.
+    #[cfg(test)]
+    pub fn set_versions(&mut self, versions: Vec<ProtocolVersion>) {
+        self.versions = versions;
+    }
+
     /// Get a reference to the list of ciphersuites in this extension.
     pub fn ciphersuites(&self) -> &[Ciphersuite] {
         &self.ciphersuites
+    }
+
+    /// Set the ciphersuites list.
+    #[cfg(test)]
+    pub fn set_ciphersuites(&mut self, ciphersuites: Vec<Ciphersuite>) {
+        self.ciphersuites = ciphersuites;
     }
 
     /// Get a reference to the list of supported extensions.
@@ -176,6 +184,32 @@ impl Capabilities {
         self.credentials.append(&mut new_capabilities.credentials);
         self.credentials.sort();
         self.credentials.dedup();
+    }
+
+    /// Check if these [`Capabilities`] support all the capabilities
+    /// required by the given [`RequiredCapabilities`] extension. Returns
+    /// `true` if that is the case and `false` otherwise.
+    pub(crate) fn supports_required_capabilities(
+        &self,
+        required_capabilities: &RequiredCapabilitiesExtension,
+    ) -> bool {
+        // Check if all required extensions are supported.
+        if required_capabilities
+            .extensions()
+            .iter()
+            .any(|e| !self.extensions().contains(e))
+        {
+            return false;
+        }
+        // Check if all required proposals are supported.
+        if required_capabilities
+            .proposals()
+            .iter()
+            .any(|p| !self.proposals().contains(p))
+        {
+            return false;
+        }
+        true
     }
 }
 
@@ -477,6 +511,17 @@ impl LeafNode {
     /// Returns a reference to the [`Signature`] of this leaf.
     pub fn signature(&self) -> &Signature {
         &self.signature
+    }
+
+    /// Return a reference to [`Capabilities`].
+    pub(crate) fn capabilities(&self) -> &Capabilities {
+        &self.payload.capabilities
+    }
+
+    /// Return a mutable reference to [`Capabilities`].
+    #[cfg(test)]
+    pub fn capabilities_mut(&mut self) -> &mut Capabilities {
+        &mut self.payload.capabilities
     }
 }
 

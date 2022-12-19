@@ -1146,22 +1146,18 @@ fn test_valsem106(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
                 test_kpb_payload.set_ciphersuite(wrong_ciphersuite)
             }
             KeyPackageTestVersion::UnsupportedVersion => {
-                test_kpb_payload.add_extension(Extension::Capabilities(CapabilitiesExtension::new(
-                    Some(&[ProtocolVersion::Mls10Draft11]),
-                    // None gives you the default ciphersuites/extensions/proposals.
-                    None,
-                    None,
-                    None,
-                )))
+                let mut new_leaf_node = test_kpb_payload.leaf_node().clone();
+                new_leaf_node
+                    .capabilities_mut()
+                    .set_versions(vec![ProtocolVersion::Mls10Draft11]);
+                test_kpb_payload.set_leaf_node(new_leaf_node);
             }
             KeyPackageTestVersion::UnsupportedCiphersuite => {
-                test_kpb_payload.add_extension(Extension::Capabilities(CapabilitiesExtension::new(
-                    None,
-                    // None gives you the default ciphersuites/extensions/proposals.
-                    Some(&[wrong_ciphersuite]),
-                    None,
-                    None,
-                )))
+                let mut new_leaf_node = test_kpb_payload.leaf_node().clone();
+                new_leaf_node.capabilities_mut().set_ciphersuites(vec![
+                    Ciphersuite::MLS_256_DHKEMX448_CHACHA20POLY1305_SHA512_Ed448,
+                ]);
+                test_kpb_payload.set_leaf_node(new_leaf_node);
             }
             KeyPackageTestVersion::ValidTestCase => (),
         };

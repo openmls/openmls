@@ -100,14 +100,8 @@ fn test_update_proposal_encoding(backend: &impl OpenMlsCryptoProvider) {
             .get(&group_state.ciphersuite())
             .expect("An unexpected error occurred.");
 
-        let capabilities_extension = Extension::Capabilities(CapabilitiesExtension::new(
-            None,
-            Some(&[group_state.ciphersuite()]),
-            None,
-            None,
-        ));
         let lifetime_extension = Extension::Lifetime(LifetimeExtension::new(60));
-        let mandatory_extensions: Vec<Extension> = vec![capabilities_extension, lifetime_extension];
+        let mandatory_extensions: Vec<Extension> = vec![lifetime_extension];
 
         let key_package_bundle = KeyPackageBundle::new(
             &[group_state.ciphersuite()],
@@ -165,14 +159,8 @@ fn test_add_proposal_encoding(backend: &impl OpenMlsCryptoProvider) {
             .get(&group_state.ciphersuite())
             .expect("An unexpected error occurred.");
 
-        let capabilities_extension = Extension::Capabilities(CapabilitiesExtension::new(
-            None,
-            Some(&[group_state.ciphersuite()]),
-            None,
-            None,
-        ));
         let lifetime_extension = Extension::Lifetime(LifetimeExtension::new(60));
-        let mandatory_extensions: Vec<Extension> = vec![capabilities_extension, lifetime_extension];
+        let mandatory_extensions: Vec<Extension> = vec![lifetime_extension];
 
         let key_package_bundle = KeyPackageBundle::new(
             &[group_state.ciphersuite()],
@@ -271,14 +259,8 @@ fn test_commit_encoding(backend: &impl OpenMlsCryptoProvider) {
             .get(&group_state.ciphersuite())
             .expect("An unexpected error occurred.");
 
-        let capabilities_extension = Extension::Capabilities(CapabilitiesExtension::new(
-            None,
-            Some(&[group_state.ciphersuite()]),
-            None,
-            None,
-        ));
         let lifetime_extension = Extension::Lifetime(LifetimeExtension::new(60));
-        let mandatory_extensions: Vec<Extension> = vec![capabilities_extension, lifetime_extension];
+        let mandatory_extensions: Vec<Extension> = vec![lifetime_extension];
 
         let alice_key_package_bundle = KeyPackageBundle::new(
             &[group_state.ciphersuite()],
