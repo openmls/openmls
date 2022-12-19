@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `src/group/core_group/mod.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>mod.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" href="../../../../normalize.css"><link rel="stylesheet" href="../../../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" href="../../../../ayu.css" disabled><link rel="stylesheet" href="../../../../dark.css" disabled><link rel="stylesheet" href="../../../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../../../storage.js"></script><script defer src="../../../../source-script.js"></script><script defer src="../../../../source-files.js"></script><script defer src="../../../../main.js"></script><noscript><link rel="stylesheet" href="../../../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../../../openmls/index.html"><div class="logo-container"><img class="rust-logo" src="../../../../rust-logo.svg" alt="logo"></div></a><h2 class="location"></h2></nav><nav class="sidebar"><a class="sidebar-logo" href="../../../../openmls/index.html"><div class="logo-container"><img class="rust-logo" src="../../../../rust-logo.svg" alt="logo"></div></a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../../../openmls/index.html"><img class="rust-logo" src="../../../../rust-logo.svg" alt="logo"></a><nav class="sub"><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><button type="button">?</button></div><div id="settings-menu" tabindex="-1"><a href="../../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../../wheel.svg"></a></div></div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">1</span>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `openmls/src/group/core_group/mod.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>mod.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" href="../../../../normalize.css"><link rel="stylesheet" href="../../../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" href="../../../../ayu.css" disabled><link rel="stylesheet" href="../../../../dark.css" disabled><link rel="stylesheet" href="../../../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../../../storage.js"></script><script defer src="../../../../source-script.js"></script><script defer src="../../../../source-files.js"></script><script defer src="../../../../main.js"></script><noscript><link rel="stylesheet" href="../../../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><div class="width-limiter"><nav class="sub"><a class="sub-logo-container" href="../../../../openmls/index.html"><img class="rust-logo" src="../../../../rust-logo.svg" alt="logo"></a><form class="search-form"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../../wheel.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><pre class="src-line-numbers"><span id="1">1</span>
 <span id="2">2</span>
 <span id="3">3</span>
 <span id="4">4</span>
@@ -800,17 +800,6 @@
 <span id="800">800</span>
 <span id="801">801</span>
 <span id="802">802</span>
-<span id="803">803</span>
-<span id="804">804</span>
-<span id="805">805</span>
-<span id="806">806</span>
-<span id="807">807</span>
-<span id="808">808</span>
-<span id="809">809</span>
-<span id="810">810</span>
-<span id="811">811</span>
-<span id="812">812</span>
-<span id="813">813</span>
 </pre><pre class="rust"><code><span class="doccomment">//! ### Don&#39;t Panic!
 //!
 //! Functions in this module should never panic. However, if there is a bug in
@@ -885,7 +874,7 @@
 
 <span class="attribute">#[derive(Debug)]
 </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct </span>CreateCommitResult {
-    <span class="kw">pub</span>(<span class="kw">crate</span>) commit: MlsPlaintext,
+    <span class="kw">pub</span>(<span class="kw">crate</span>) commit: MlsAuthContent,
     <span class="kw">pub</span>(<span class="kw">crate</span>) welcome_option: <span class="prelude-ty">Option</span>&lt;Welcome&gt;,
     <span class="kw">pub</span>(<span class="kw">crate</span>) staged_commit: StagedCommit,
 }
@@ -1129,7 +1118,7 @@
         credential_bundle: <span class="kw-2">&amp;</span>CredentialBundle,
         joiner_key_package: KeyPackage,
         backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;MlsPlaintext, CreateAddProposalError&gt; {
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;MlsAuthContent, CreateAddProposalError&gt; {
         joiner_key_package
             .leaf_node()
             .validate_required_capabilities(<span class="self">self</span>.required_capabilities())
@@ -1138,13 +1127,12 @@
             key_package: joiner_key_package,
         };
         <span class="kw">let </span>proposal = Proposal::Add(add_proposal);
-        MlsPlaintext::member_proposal(
+        MlsAuthContent::member_proposal(
             framing_parameters,
             <span class="self">self</span>.own_leaf_index(),
             proposal,
             credential_bundle,
             <span class="self">self</span>.context(),
-            <span class="self">self</span>.message_secrets().membership_key(),
             backend,
         )
         .map_err(|e| e.into())
@@ -1162,16 +1150,15 @@
         //      operate on a reference to make this more efficient.
         </span>leaf_node: LeafNode,
         backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;MlsPlaintext, LibraryError&gt; {
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;MlsAuthContent, LibraryError&gt; {
         <span class="kw">let </span>update_proposal = UpdateProposal { leaf_node };
         <span class="kw">let </span>proposal = Proposal::Update(update_proposal);
-        MlsPlaintext::member_proposal(
+        MlsAuthContent::member_proposal(
             framing_parameters,
             <span class="self">self</span>.own_leaf_index(),
             proposal,
             credential_bundle,
             <span class="self">self</span>.context(),
-            <span class="self">self</span>.message_secrets().membership_key(),
             backend,
         )
     }
@@ -1186,19 +1173,18 @@
         credential_bundle: <span class="kw-2">&amp;</span>CredentialBundle,
         removed: u32,
         backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;MlsPlaintext, ValidationError&gt; {
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;MlsAuthContent, ValidationError&gt; {
         <span class="kw">if </span><span class="self">self</span>.treesync().leaf_is_in_tree(removed).is_err() {
             <span class="kw">return </span><span class="prelude-val">Err</span>(ValidationError::UnknownMember);
         }
         <span class="kw">let </span>remove_proposal = RemoveProposal { removed };
         <span class="kw">let </span>proposal = Proposal::Remove(remove_proposal);
-        MlsPlaintext::member_proposal(
+        MlsAuthContent::member_proposal(
             framing_parameters,
             <span class="self">self</span>.own_leaf_index(),
             proposal,
             credential_bundle,
             <span class="self">self</span>.context(),
-            <span class="self">self</span>.message_secrets().membership_key(),
             backend,
         )
         .map_err(ValidationError::LibraryError)
@@ -1216,16 +1202,15 @@
         credential_bundle: <span class="kw-2">&amp;</span>CredentialBundle,
         psk: PreSharedKeyId,
         backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;MlsPlaintext, LibraryError&gt; {
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;MlsAuthContent, LibraryError&gt; {
         <span class="kw">let </span>presharedkey_proposal = PreSharedKeyProposal::new(psk);
         <span class="kw">let </span>proposal = Proposal::PreSharedKey(presharedkey_proposal);
-        MlsPlaintext::member_proposal(
+        MlsAuthContent::member_proposal(
             framing_parameters,
             <span class="self">self</span>.own_leaf_index(),
             proposal,
             credential_bundle,
             <span class="self">self</span>.context(),
-            <span class="self">self</span>.message_secrets().membership_key(),
             backend,
         )
     }
@@ -1238,7 +1223,7 @@
         credential_bundle: <span class="kw-2">&amp;</span>CredentialBundle,
         extensions: <span class="kw-2">&amp;</span>[Extension],
         backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;MlsPlaintext, CreateGroupContextExtProposalError&gt; {
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;MlsAuthContent, CreateGroupContextExtProposalError&gt; {
         <span class="comment">// Ensure that the group supports all the extensions that are wanted.
 
         </span><span class="kw">let </span>required_extension = extensions
@@ -1259,13 +1244,12 @@
         }
         <span class="kw">let </span>proposal = GroupContextExtensionProposal::new(extensions);
         <span class="kw">let </span>proposal = Proposal::GroupContextExtensions(proposal);
-        MlsPlaintext::member_proposal(
+        MlsAuthContent::member_proposal(
             framing_parameters,
             <span class="self">self</span>.own_leaf_index(),
             proposal,
             credential_bundle,
             <span class="self">self</span>.context(),
-            <span class="self">self</span>.message_secrets().membership_key(),
             backend,
         )
         .map_err(|e| e.into())
@@ -1280,13 +1264,12 @@
         padding_size: usize,
         backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;MlsCiphertext, MessageEncryptionError&gt; {
-        <span class="kw">let </span>mls_plaintext = MlsPlaintext::new_application(
+        <span class="kw">let </span>mls_plaintext = MlsAuthContent::new_application(
             <span class="self">self</span>.own_leaf_index(),
             aad,
             msg,
             credential_bundle,
             <span class="self">self</span>.context(),
-            <span class="self">self</span>.message_secrets().membership_key(),
             backend,
         )<span class="question-mark">?</span>;
         <span class="self">self</span>.encrypt(mls_plaintext, padding_size, backend)
@@ -1295,7 +1278,7 @@
     <span class="comment">// Encrypt an MlsPlaintext into an MlsCiphertext
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>encrypt(
         <span class="kw-2">&amp;mut </span><span class="self">self</span>,
-        mls_plaintext: MlsPlaintext,
+        mls_plaintext: MlsAuthContent,
         padding_size: usize,
         backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;MlsCiphertext, MessageEncryptionError&gt; {
@@ -1304,11 +1287,6 @@
             <span class="kw-2">&amp;</span>mls_plaintext,
             <span class="self">self</span>.ciphersuite,
             backend,
-            MlsMessageHeader {
-                group_id: <span class="self">self</span>.group_id().clone(),
-                epoch: <span class="self">self</span>.context().epoch(),
-                sender: <span class="kw">crate</span>::tree::index::SecretTreeLeafIndex(<span class="self">self</span>.own_leaf_index()),
-            },
             <span class="self">self</span>.message_secrets_store.message_secrets_mut(),
             padding_size,
         )
@@ -1625,4 +1603,4 @@
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) add_ratchet_tree_extension: bool,
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../../../" data-current-crate="openmls" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0 (897e37553 2022-11-02)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../../../" data-current-crate="openmls" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.66.0 (69f9c33d7 2022-12-12)" ></div></body></html>

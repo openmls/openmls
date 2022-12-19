@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `src/group/core_group/staged_commit.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>staged_commit.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" href="../../../../normalize.css"><link rel="stylesheet" href="../../../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" href="../../../../ayu.css" disabled><link rel="stylesheet" href="../../../../dark.css" disabled><link rel="stylesheet" href="../../../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../../../storage.js"></script><script defer src="../../../../source-script.js"></script><script defer src="../../../../source-files.js"></script><script defer src="../../../../main.js"></script><noscript><link rel="stylesheet" href="../../../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../../../openmls/index.html"><div class="logo-container"><img class="rust-logo" src="../../../../rust-logo.svg" alt="logo"></div></a><h2 class="location"></h2></nav><nav class="sidebar"><a class="sidebar-logo" href="../../../../openmls/index.html"><div class="logo-container"><img class="rust-logo" src="../../../../rust-logo.svg" alt="logo"></div></a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../../../openmls/index.html"><img class="rust-logo" src="../../../../rust-logo.svg" alt="logo"></a><nav class="sub"><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><button type="button">?</button></div><div id="settings-menu" tabindex="-1"><a href="../../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../../wheel.svg"></a></div></div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">1</span>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `openmls/src/group/core_group/staged_commit.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>staged_commit.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" href="../../../../normalize.css"><link rel="stylesheet" href="../../../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" href="../../../../ayu.css" disabled><link rel="stylesheet" href="../../../../dark.css" disabled><link rel="stylesheet" href="../../../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../../../storage.js"></script><script defer src="../../../../source-script.js"></script><script defer src="../../../../source-files.js"></script><script defer src="../../../../main.js"></script><noscript><link rel="stylesheet" href="../../../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><div class="width-limiter"><nav class="sub"><a class="sub-logo-container" href="../../../../openmls/index.html"><img class="rust-logo" src="../../../../rust-logo.svg" alt="logo"></a><form class="search-form"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../../wheel.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><pre class="src-line-numbers"><span id="1">1</span>
 <span id="2">2</span>
 <span id="3">3</span>
 <span id="4">4</span>
@@ -520,7 +520,6 @@
 <span id="520">520</span>
 <span id="521">521</span>
 <span id="522">522</span>
-<span id="523">523</span>
 </pre><pre class="rust"><code><span class="kw">use </span><span class="kw">crate</span>::ciphersuite::signable::Verifiable;
 <span class="kw">use </span><span class="kw">crate</span>::treesync::errors::TreeSyncAddLeaf;
 <span class="kw">use </span><span class="kw">crate</span>::treesync::node::leaf_node::{
@@ -579,7 +578,7 @@
     /// group.
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>stage_commit(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        mls_plaintext: <span class="kw-2">&amp;</span>MlsPlaintext,
+        mls_content: <span class="kw-2">&amp;</span>MlsAuthContent,
         proposal_store: <span class="kw-2">&amp;</span>ProposalStore,
         own_leaf_nodes: <span class="kw-2">&amp;</span>[OpenMlsLeafNode],
         backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider,
@@ -588,17 +587,17 @@
         </span><span class="kw">let </span>ciphersuite = <span class="self">self</span>.ciphersuite();
 
         <span class="comment">// Verify epoch
-        </span><span class="kw">if </span>mls_plaintext.epoch() != <span class="self">self</span>.group_context.epoch() {
+        </span><span class="kw">if </span>mls_content.epoch() != <span class="self">self</span>.group_context.epoch() {
             <span class="macro">log::error!</span>(
                 <span class="string">&quot;Epoch mismatch. Got {:?}, expected {:?}&quot;</span>,
-                mls_plaintext.epoch(),
+                mls_content.epoch(),
                 <span class="self">self</span>.group_context.epoch()
             );
             <span class="kw">return </span><span class="prelude-val">Err</span>(StageCommitError::EpochMismatch);
         }
 
         <span class="comment">// Check that the sender is another member of the group
-        </span><span class="kw">let </span>sender = mls_plaintext.sender();
+        </span><span class="kw">let </span>sender = mls_content.sender();
 
         <span class="kw">if let </span>Sender::Member(member) = sender {
             <span class="kw">if </span><span class="kw-2">*</span>member == <span class="self">self</span>.own_leaf_index() {
@@ -607,14 +606,10 @@
         }
 
         <span class="comment">// Extract Commit &amp; Confirmation Tag from MlsPlaintext
-        </span><span class="kw">let </span>commit = <span class="kw">match </span>mls_plaintext.content() {
+        </span><span class="kw">let </span>commit = <span class="kw">match </span>mls_content.content() {
             MlsContentBody::Commit(commit) =&gt; commit,
             <span class="kw">_ </span>=&gt; <span class="kw">return </span><span class="prelude-val">Err</span>(StageCommitError::WrongPlaintextContentType),
         };
-
-        <span class="kw">let </span>received_confirmation_tag = mls_plaintext
-            .confirmation_tag()
-            .ok_or(StageCommitError::ConfirmationTagMissing)<span class="question-mark">?</span>;
 
         <span class="comment">// ValSem244: External Commit, There MUST NOT be any referenced proposals.
         </span><span class="kw">if </span><span class="kw-2">*</span>sender == Sender::NewMemberCommit
@@ -833,7 +828,7 @@
             ciphersuite,
             backend,
             <span class="comment">// It is ok to use return a library error here, because we know the MlsPlaintext contains a Commit
-            </span><span class="kw-2">&amp;</span>ConfirmedTranscriptHashInput::try_from(mls_plaintext)
+            </span><span class="kw-2">&amp;</span>ConfirmedTranscriptHashInput::try_from(mls_content)
                 .map_err(|<span class="kw">_</span>| LibraryError::custom(<span class="string">&quot;Could not convert commit content&quot;</span>))<span class="question-mark">?</span>,
             <span class="kw-2">&amp;</span><span class="self">self</span>.interim_transcript_hash,
         )<span class="question-mark">?</span>;
@@ -865,7 +860,10 @@
             .epoch_secrets(backend)
             .map_err(|<span class="kw">_</span>| LibraryError::custom(<span class="string">&quot;Using the key schedule in the wrong state&quot;</span>))<span class="question-mark">?</span>;
 
-        <span class="kw">let </span>mls_plaintext_commit_auth_data = InterimTranscriptHashInput::try_from(mls_plaintext)
+        <span class="kw">let </span>received_confirmation_tag = mls_content
+            .confirmation_tag()
+            .ok_or(StageCommitError::ConfirmationTagMissing)<span class="question-mark">?</span>;
+        <span class="kw">let </span>mls_plaintext_commit_auth_data = InterimTranscriptHashInput::try_from(received_confirmation_tag)
             .map_err(|<span class="kw">_</span>| {
                 <span class="macro">log::error!</span>(<span class="string">&quot;Confirmation tag is missing in commit. This should be unreachable because we verified the tag before.&quot;</span>);
                 StageCommitError::ConfirmationTagMissing
@@ -1045,4 +1043,4 @@
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../../../" data-current-crate="openmls" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0 (897e37553 2022-11-02)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../../../" data-current-crate="openmls" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.66.0 (69f9c33d7 2022-12-12)" ></div></body></html>

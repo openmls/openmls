@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `src/key_packages/mod.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>mod.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" href="../../../normalize.css"><link rel="stylesheet" href="../../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" href="../../../ayu.css" disabled><link rel="stylesheet" href="../../../dark.css" disabled><link rel="stylesheet" href="../../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../../storage.js"></script><script defer src="../../../source-script.js"></script><script defer src="../../../source-files.js"></script><script defer src="../../../main.js"></script><noscript><link rel="stylesheet" href="../../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../../openmls/index.html"><div class="logo-container"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></div></a><h2 class="location"></h2></nav><nav class="sidebar"><a class="sidebar-logo" href="../../../openmls/index.html"><div class="logo-container"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></div></a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../../openmls/index.html"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></a><nav class="sub"><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><button type="button">?</button></div><div id="settings-menu" tabindex="-1"><a href="../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../wheel.svg"></a></div></div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">1</span>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `openmls/src/key_packages/mod.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>mod.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" href="../../../normalize.css"><link rel="stylesheet" href="../../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" href="../../../ayu.css" disabled><link rel="stylesheet" href="../../../dark.css" disabled><link rel="stylesheet" href="../../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../../storage.js"></script><script defer src="../../../source-script.js"></script><script defer src="../../../source-files.js"></script><script defer src="../../../main.js"></script><noscript><link rel="stylesheet" href="../../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><div class="width-limiter"><nav class="sub"><a class="sub-logo-container" href="../../../openmls/index.html"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></a><form class="search-form"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../wheel.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><pre class="src-line-numbers"><span id="1">1</span>
 <span id="2">2</span>
 <span id="3">3</span>
 <span id="4">4</span>
@@ -747,60 +747,6 @@
 <span id="747">747</span>
 <span id="748">748</span>
 <span id="749">749</span>
-<span id="750">750</span>
-<span id="751">751</span>
-<span id="752">752</span>
-<span id="753">753</span>
-<span id="754">754</span>
-<span id="755">755</span>
-<span id="756">756</span>
-<span id="757">757</span>
-<span id="758">758</span>
-<span id="759">759</span>
-<span id="760">760</span>
-<span id="761">761</span>
-<span id="762">762</span>
-<span id="763">763</span>
-<span id="764">764</span>
-<span id="765">765</span>
-<span id="766">766</span>
-<span id="767">767</span>
-<span id="768">768</span>
-<span id="769">769</span>
-<span id="770">770</span>
-<span id="771">771</span>
-<span id="772">772</span>
-<span id="773">773</span>
-<span id="774">774</span>
-<span id="775">775</span>
-<span id="776">776</span>
-<span id="777">777</span>
-<span id="778">778</span>
-<span id="779">779</span>
-<span id="780">780</span>
-<span id="781">781</span>
-<span id="782">782</span>
-<span id="783">783</span>
-<span id="784">784</span>
-<span id="785">785</span>
-<span id="786">786</span>
-<span id="787">787</span>
-<span id="788">788</span>
-<span id="789">789</span>
-<span id="790">790</span>
-<span id="791">791</span>
-<span id="792">792</span>
-<span id="793">793</span>
-<span id="794">794</span>
-<span id="795">795</span>
-<span id="796">796</span>
-<span id="797">797</span>
-<span id="798">798</span>
-<span id="799">799</span>
-<span id="800">800</span>
-<span id="801">801</span>
-<span id="802">802</span>
-<span id="803">803</span>
 </pre><pre class="rust"><code><span class="doccomment">//! # Key Packages
 //!
 //! Key packages are pre-published public keys that provide some information
@@ -883,16 +829,14 @@
     },
     credentials::<span class="kw-2">*</span>,
     error::LibraryError,
-    extensions::{
-        errors::ExtensionError, CapabilitiesExtension, Extension, ExtensionType, LifetimeExtension,
-    },
+    extensions::{errors::ExtensionError, Extension, ExtensionType, LifetimeExtension},
     treesync::LeafNode,
     versions::ProtocolVersion,
 };
 <span class="kw">use </span>log::error;
 <span class="kw">use </span>openmls_traits::{
     crypto::OpenMlsCrypto,
-    types::{Ciphersuite, CryptoError, HpkeKeyPair, SignatureScheme},
+    types::{Ciphersuite, HpkeKeyPair, SignatureScheme},
     OpenMlsCryptoProvider,
 };
 <span class="kw">use </span>serde::{Deserialize, Serialize};
@@ -1160,17 +1104,17 @@
         backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider,
         hpke_init_key: HpkePublicKey,
         credential_bundle: <span class="kw-2">&amp;</span>CredentialBundle,
-        <span class="comment">// TODO: #819: properly handle extensions (what&#39;s going where?)
-        </span><span class="kw-2">mut </span>extensions: Vec&lt;Extension&gt;,
+        <span class="comment">// TODO: #819: Handle key package extensions (and refactor API).
+        </span><span class="kw-2">mut </span>leaf_node_extensions: Vec&lt;Extension&gt;,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, KeyPackageNewError&gt; {
         <span class="kw">if </span>SignatureScheme::from(ciphersuite) != credential_bundle.credential().signature_scheme() {
             <span class="kw">return </span><span class="prelude-val">Err</span>(KeyPackageNewError::CiphersuiteSignatureSchemeMismatch);
         }
-        <span class="kw">let </span>life_time = extensions
+        <span class="kw">let </span>life_time = leaf_node_extensions
             .iter()
             .position(|e| e.extension_type() == ExtensionType::Lifetime);
         <span class="kw">let </span>lifetime: LifetimeExtension = <span class="kw">if let </span><span class="prelude-val">Some</span>(index) = life_time {
-            <span class="kw">let </span>extension = extensions.remove(index);
+            <span class="kw">let </span>extension = leaf_node_extensions.remove(index);
             extension
                 .as_lifetime_extension()
                 .map_err(|<span class="kw">_</span>| LibraryError::custom(<span class="string">&quot;&quot;</span>))<span class="question-mark">?
@@ -1182,7 +1126,7 @@
             hpke_init_key.clone(),
             credential_bundle,
             lifetime,
-            extensions.clone(),
+            leaf_node_extensions,
             backend,
         )<span class="question-mark">?</span>;
         <span class="kw">let </span>key_package = KeyPackageTBS {
@@ -1192,7 +1136,7 @@
             init_key: hpke_init_key,
             leaf_node,
             credential: credential_bundle.credential().clone(),
-            extensions,
+            extensions: <span class="macro">vec!</span>[],
         };
         <span class="prelude-val">Ok</span>(key_package.sign(backend, credential_bundle)<span class="question-mark">?</span>)
     }
@@ -1237,14 +1181,12 @@
 </span><span class="kw">pub struct </span>KeyPackageBundlePayload {
     key_package_tbs: KeyPackageTBS,
     private_key: HpkePrivateKey,
-    leaf_secret: Secret,
 }
 
 <span class="attribute">#[cfg(not(any(feature = <span class="string">&quot;test-utils&quot;</span>, test)))]
 </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct </span>KeyPackageBundlePayload {
     key_package_tbs: KeyPackageTBS,
     private_key: HpkePrivateKey,
-    leaf_secret: Secret,
 }
 
 <span class="kw">impl </span>KeyPackageBundlePayload {
@@ -1273,6 +1215,16 @@
     </span><span class="kw">pub fn </span>set_ciphersuite(<span class="kw-2">&amp;mut </span><span class="self">self</span>, ciphersuite: Ciphersuite) {
         <span class="self">self</span>.key_package_tbs.set_ciphersuite(ciphersuite)
     }
+    <span class="doccomment">/// Get the [`LeafNode`].
+    </span><span class="attribute">#[cfg(any(feature = <span class="string">&quot;test-utils&quot;</span>, test))]
+    </span><span class="kw">pub fn </span>leaf_node(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>LeafNode {
+        <span class="kw-2">&amp;</span><span class="self">self</span>.key_package_tbs.leaf_node
+    }
+    <span class="doccomment">/// Set the [`LeafNode`].
+    </span><span class="attribute">#[cfg(any(feature = <span class="string">&quot;test-utils&quot;</span>, test))]
+    </span><span class="kw">pub fn </span>set_leaf_node(<span class="kw-2">&amp;mut </span><span class="self">self</span>, leaf_node: LeafNode) {
+        <span class="self">self</span>.key_package_tbs.leaf_node = leaf_node;
+    }
 }
 
 <span class="kw">impl </span>Signable <span class="kw">for </span>KeyPackageBundlePayload {
@@ -1293,7 +1245,6 @@
         <span class="self">Self </span>{
             key_package,
             private_key: payload.private_key,
-            leaf_secret: payload.leaf_secret,
         }
     }
 }
@@ -1305,7 +1256,6 @@
 </span><span class="kw">pub struct </span>KeyPackageBundle {
     <span class="kw">pub</span>(<span class="kw">crate</span>) key_package: KeyPackage,
     <span class="kw">pub</span>(<span class="kw">crate</span>) private_key: HpkePrivateKey,
-    <span class="kw">pub</span>(<span class="kw">crate</span>) leaf_secret: Secret,
 }
 
 <span class="kw">impl </span>From&lt;KeyPackageBundle&gt; <span class="kw">for </span>KeyPackageBundlePayload {
@@ -1313,7 +1263,6 @@
         <span class="self">Self </span>{
             key_package_tbs: kpb.key_package.into(),
             private_key: kpb.private_key,
-            leaf_secret: kpb.leaf_secret,
         }
     }
 }
@@ -1406,7 +1355,6 @@
         credential_bundle: <span class="kw-2">&amp;</span>CredentialBundle,
         <span class="kw-2">mut </span>extensions: Vec&lt;Extension&gt;,
         key_pair: HpkeKeyPair,
-        leaf_secret: Secret,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, KeyPackageBundleNewError&gt; {
         <span class="kw">if </span>ciphersuites.is_empty() {
             <span class="kw">let </span>error = KeyPackageBundleNewError::NoCiphersuitesSupplied;
@@ -1436,38 +1384,6 @@
             <span class="kw">return </span><span class="prelude-val">Err</span>(error);
         }
 
-        <span class="comment">// First, check if one of the input extensions is a capabilities
-        // extension. If there is, check if one of the extensions is a
-        // capabilities extensions and if the contained ciphersuites are the
-        // same as the ciphersuites passed as input. If that is not the case,
-        // return an error. If none of the extensions is a capabilities
-        // extension, create one that supports the given ciphersuites and that
-        // is otherwise default.
-
-        </span><span class="kw">match </span>extensions
-            .iter()
-            .find(|e| e.extension_type() == ExtensionType::Capabilities)
-        {
-            <span class="prelude-val">Some</span>(extension) =&gt; {
-                <span class="kw">let </span>capabilities_extension = extension.as_capabilities_extension()<span class="question-mark">?</span>;
-                <span class="kw">if </span>capabilities_extension.ciphersuites() != ciphersuites {
-                    <span class="kw">let </span>error = KeyPackageBundleNewError::CiphersuiteMismatch;
-                    <span class="macro">error!</span>(
-                        <span class="string">&quot;Error creating new KeyPackageBundle: Invalid Capabilities Extensions {:?}&quot;</span>,
-                        error
-                    );
-                    <span class="kw">return </span><span class="prelude-val">Err</span>(error);
-                }
-            }
-
-            <span class="prelude-val">None </span>=&gt; extensions.push(Extension::Capabilities(CapabilitiesExtension::new(
-                <span class="prelude-val">None</span>,
-                <span class="prelude-val">Some</span>(ciphersuites),
-                <span class="prelude-val">None</span>,
-                <span class="prelude-val">None</span>,
-            ))),
-        };
-
         <span class="comment">// Check if there is a lifetime extension. If not, add one that is at
         // least valid.
         </span><span class="kw">if </span>!extensions
@@ -1492,7 +1408,6 @@
         <span class="prelude-val">Ok</span>(KeyPackageBundle {
             key_package,
             private_key: key_pair.private.into(),
-            leaf_secret,
         })
     }
 
@@ -1514,16 +1429,10 @@
         }
     }
 
-    <span class="doccomment">/// Separates the bundle into the [`KeyPackage`] and the HPKE private key and
-    /// leaf secret as raw byte vectors.
-    </span><span class="kw">pub fn </span>into_parts(<span class="self">self</span>) -&gt; (KeyPackage, (Vec&lt;u8&gt;, Vec&lt;u8&gt;)) {
-        (
-            <span class="self">self</span>.key_package,
-            (
-                <span class="self">self</span>.private_key.as_slice().to_vec(),
-                <span class="self">self</span>.leaf_secret.as_slice().to_vec(),
-            ),
-        )
+    <span class="doccomment">/// Separates the bundle into the [`KeyPackage`] and the HPKE private key
+    /// as raw byte vectors.
+    </span><span class="kw">pub fn </span>into_parts(<span class="self">self</span>) -&gt; (KeyPackage, Vec&lt;u8&gt;) {
+        (<span class="self">self</span>.key_package, <span class="self">self</span>.private_key.as_slice().to_vec())
     }
 
     <span class="doccomment">/// Get the unsigned payload version of this key package bundle for modificaiton.
@@ -1552,18 +1461,15 @@
         }
 
         <span class="kw">let </span>ciphersuite = ciphersuites[<span class="number">0</span>];
-        <span class="kw">let </span>leaf_node_secret = derive_leaf_node_secret(<span class="kw-2">&amp;</span>leaf_secret, backend)
-            .map_err(LibraryError::unexpected_crypto_error)<span class="question-mark">?</span>;
         <span class="kw">let </span>keypair = backend
             .crypto()
-            .derive_hpke_keypair(ciphersuite.hpke_config(), leaf_node_secret.as_slice());
+            .derive_hpke_keypair(ciphersuite.hpke_config(), leaf_secret.as_slice());
         <span class="self">Self</span>::new_with_keypair(
             ciphersuites,
             backend,
             credential_bundle,
             extensions,
             keypair,
-            leaf_secret,
         )
     }
 
@@ -1575,11 +1481,6 @@
     <span class="doccomment">/// Get a reference to the `HpkePrivateKey`.
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>private_key(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>HpkePrivateKey {
         <span class="kw-2">&amp;</span><span class="self">self</span>.private_key
-    }
-
-    <span class="doccomment">/// Get a reference to the leaf secret associated with this bundle.
-    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>leaf_secret(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>Secret {
-        <span class="kw-2">&amp;</span><span class="self">self</span>.leaf_secret
     }
 }
 
@@ -1595,14 +1496,5 @@
         <span class="self">self</span>.key_package.payload.init_key = public_key
     }
 }
-
-<span class="doccomment">/// This function derives the leaf_node_secret from the leaf_secret as
-/// described in 5.4 Ratchet Tree Evolution
-</span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>derive_leaf_node_secret(
-    leaf_secret: <span class="kw-2">&amp;</span>Secret,
-    backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider,
-) -&gt; <span class="prelude-ty">Result</span>&lt;Secret, CryptoError&gt; {
-    leaf_secret.derive_secret(backend, <span class="string">&quot;node&quot;</span>)
-}
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-current-crate="openmls" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0 (897e37553 2022-11-02)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-current-crate="openmls" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.66.0 (69f9c33d7 2022-12-12)" ></div></body></html>

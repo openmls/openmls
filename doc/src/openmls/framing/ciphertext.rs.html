@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `src/framing/ciphertext.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>ciphertext.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" href="../../../normalize.css"><link rel="stylesheet" href="../../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" href="../../../ayu.css" disabled><link rel="stylesheet" href="../../../dark.css" disabled><link rel="stylesheet" href="../../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../../storage.js"></script><script defer src="../../../source-script.js"></script><script defer src="../../../source-files.js"></script><script defer src="../../../main.js"></script><noscript><link rel="stylesheet" href="../../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../../openmls/index.html"><div class="logo-container"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></div></a><h2 class="location"></h2></nav><nav class="sidebar"><a class="sidebar-logo" href="../../../openmls/index.html"><div class="logo-container"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></div></a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../../openmls/index.html"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></a><nav class="sub"><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><button type="button">?</button></div><div id="settings-menu" tabindex="-1"><a href="../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../wheel.svg"></a></div></div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">1</span>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `openmls/src/framing/ciphertext.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>ciphertext.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" href="../../../normalize.css"><link rel="stylesheet" href="../../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" href="../../../ayu.css" disabled><link rel="stylesheet" href="../../../dark.css" disabled><link rel="stylesheet" href="../../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../../storage.js"></script><script defer src="../../../source-script.js"></script><script defer src="../../../source-files.js"></script><script defer src="../../../main.js"></script><noscript><link rel="stylesheet" href="../../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><div class="width-limiter"><nav class="sub"><a class="sub-logo-container" href="../../../openmls/index.html"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></a><form class="search-form"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../wheel.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><pre class="src-line-numbers"><span id="1">1</span>
 <span id="2">2</span>
 <span id="3">3</span>
 <span id="4">4</span>
@@ -481,12 +481,63 @@
 <span id="481">481</span>
 <span id="482">482</span>
 <span id="483">483</span>
+<span id="484">484</span>
+<span id="485">485</span>
+<span id="486">486</span>
+<span id="487">487</span>
+<span id="488">488</span>
+<span id="489">489</span>
+<span id="490">490</span>
+<span id="491">491</span>
+<span id="492">492</span>
+<span id="493">493</span>
+<span id="494">494</span>
+<span id="495">495</span>
+<span id="496">496</span>
+<span id="497">497</span>
+<span id="498">498</span>
+<span id="499">499</span>
+<span id="500">500</span>
+<span id="501">501</span>
+<span id="502">502</span>
+<span id="503">503</span>
+<span id="504">504</span>
+<span id="505">505</span>
+<span id="506">506</span>
+<span id="507">507</span>
+<span id="508">508</span>
+<span id="509">509</span>
+<span id="510">510</span>
+<span id="511">511</span>
+<span id="512">512</span>
+<span id="513">513</span>
+<span id="514">514</span>
+<span id="515">515</span>
+<span id="516">516</span>
+<span id="517">517</span>
+<span id="518">518</span>
+<span id="519">519</span>
+<span id="520">520</span>
+<span id="521">521</span>
+<span id="522">522</span>
+<span id="523">523</span>
+<span id="524">524</span>
+<span id="525">525</span>
+<span id="526">526</span>
+<span id="527">527</span>
+<span id="528">528</span>
+<span id="529">529</span>
+<span id="530">530</span>
+<span id="531">531</span>
+<span id="532">532</span>
+<span id="533">533</span>
+<span id="534">534</span>
+<span id="535">535</span>
+<span id="536">536</span>
+<span id="537">537</span>
 </pre><pre class="rust"><code><span class="kw">use </span>openmls_traits::{types::Ciphersuite, OpenMlsCryptoProvider};
 <span class="kw">use </span>std::io::Write;
-<span class="kw">use </span>tls_codec::{
-    Deserialize, Serialize, Size, TlsByteVecU32, TlsByteVecU8, TlsDeserialize, TlsSerialize,
-    TlsSize,
-};
+<span class="kw">use </span>tls_codec::{Deserialize, Serialize, Size, TlsDeserialize, TlsSerialize, TlsSize};
 
 <span class="kw">use </span><span class="kw">super</span>::codec::deserialize_ciphertext_content;
 
@@ -515,15 +566,14 @@
 ///     opaque ciphertext&lt;V&gt;;
 /// } MLSCiphertext;
 /// ```
-</span><span class="attribute">#[derive(Debug, PartialEq, Clone, TlsSerialize, TlsSize)]
+</span><span class="attribute">#[derive(Debug, PartialEq, Clone, TlsSerialize, TlsSize, TlsDeserialize)]
 </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct </span>MlsCiphertext {
-    wire_format: WireFormat,
     group_id: GroupId,
     epoch: GroupEpoch,
     content_type: ContentType,
     authenticated_data: VLBytes,
-    encrypted_sender_data: TlsByteVecU8,
-    ciphertext: TlsByteVecU32,
+    encrypted_sender_data: VLBytes,
+    ciphertext: VLBytes,
 }
 
 <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct </span>MlsMessageHeader {
@@ -533,17 +583,16 @@
 }
 
 <span class="kw">impl </span>MlsCiphertext {
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>new(
-        wire_format: WireFormat,
+    <span class="attribute">#[cfg(test)]
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>new(
         group_id: GroupId,
         epoch: GroupEpoch,
         content_type: ContentType,
         authenticated_data: VLBytes,
-        encrypted_sender_data: TlsByteVecU8,
-        ciphertext: TlsByteVecU32,
+        encrypted_sender_data: VLBytes,
+        ciphertext: VLBytes,
     ) -&gt; <span class="self">Self </span>{
         <span class="self">Self </span>{
-            wire_format,
             group_id,
             epoch,
             content_type,
@@ -553,21 +602,94 @@
         }
     }
 
-    <span class="doccomment">/// Try to create a new `MlsCiphertext` from an `MlsPlaintext`
+    <span class="doccomment">/// Try to create a new `MlsCiphertext` from an `MlsAuthContent`.
+    ///
+    /// TODO #1148: Refactor theses constructors to avoid test code in main and
+    /// to avoid validation using a special feature flag.
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>try_from_plaintext(
-        mls_plaintext: <span class="kw-2">&amp;</span>MlsPlaintext,
+        mls_plaintext: <span class="kw-2">&amp;</span>MlsAuthContent,
+        ciphersuite: Ciphersuite,
+        backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider,
+        message_secrets: <span class="kw-2">&amp;mut </span>MessageSecrets,
+        padding_size: usize,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;MlsCiphertext, MessageEncryptionError&gt; {
+        <span class="macro">log::debug!</span>(<span class="string">&quot;MlsCiphertext::try_from_plaintext&quot;</span>);
+        <span class="macro">log::trace!</span>(<span class="string">&quot;  ciphersuite: {}&quot;</span>, ciphersuite);
+        <span class="comment">// Check the message has the correct wire format
+        </span><span class="kw">if </span>mls_plaintext.wire_format() != WireFormat::MlsCiphertext {
+            <span class="kw">return </span><span class="prelude-val">Err</span>(MessageEncryptionError::WrongWireFormat);
+        }
+        <span class="self">Self</span>::encrypt_content(
+            <span class="prelude-val">None</span>,
+            mls_plaintext,
+            ciphersuite,
+            backend,
+            message_secrets,
+            padding_size,
+        )
+    }
+
+    <span class="attribute">#[cfg(test)]
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>encrypt_without_check(
+        mls_plaintext: <span class="kw-2">&amp;</span>MlsAuthContent,
+        ciphersuite: Ciphersuite,
+        backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider,
+        message_secrets: <span class="kw-2">&amp;mut </span>MessageSecrets,
+        padding_size: usize,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;MlsCiphertext, MessageEncryptionError&gt; {
+        <span class="self">Self</span>::encrypt_content(
+            <span class="prelude-val">None</span>,
+            mls_plaintext,
+            ciphersuite,
+            backend,
+            message_secrets,
+            padding_size,
+        )
+    }
+
+    <span class="attribute">#[cfg(any(feature = <span class="string">&quot;test-utils&quot;</span>, test))]
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>encrypt_with_different_header(
+        mls_plaintext: <span class="kw-2">&amp;</span>MlsAuthContent,
         ciphersuite: Ciphersuite,
         backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider,
         header: MlsMessageHeader,
         message_secrets: <span class="kw-2">&amp;mut </span>MessageSecrets,
         padding_size: usize,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;MlsCiphertext, MessageEncryptionError&gt; {
-        <span class="macro">log::debug!</span>(<span class="string">&quot;MlsCiphertext::try_from_plaintext&quot;</span>);
-        <span class="macro">log::trace!</span>(<span class="string">&quot;  ciphersuite: {}&quot;</span>, ciphersuite);
-        <span class="comment">// Check the plaintext has the correct wire format
-        </span><span class="kw">if </span>mls_plaintext.wire_format() != WireFormat::MlsCiphertext {
-            <span class="kw">return </span><span class="prelude-val">Err</span>(MessageEncryptionError::WrongWireFormat);
-        }
+        <span class="self">Self</span>::encrypt_content(
+            <span class="prelude-val">Some</span>(header),
+            mls_plaintext,
+            ciphersuite,
+            backend,
+            message_secrets,
+            padding_size,
+        )
+    }
+
+    <span class="doccomment">/// Internal function to encrypt content. The extra message header is only used
+    /// for tests. Otherwise, the data from the given `MlsAuthContent` is used.
+    </span><span class="kw">fn </span>encrypt_content(
+        test_header: <span class="prelude-ty">Option</span>&lt;MlsMessageHeader&gt;,
+        mls_plaintext: <span class="kw-2">&amp;</span>MlsAuthContent,
+        ciphersuite: Ciphersuite,
+        backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider,
+        message_secrets: <span class="kw-2">&amp;mut </span>MessageSecrets,
+        padding_size: usize,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;MlsCiphertext, MessageEncryptionError&gt; {
+        <span class="kw">let </span>sender_index = <span class="kw">if let </span><span class="prelude-val">Some</span>(index) = mls_plaintext.sender().as_member() {
+            index
+        } <span class="kw">else </span>{
+            <span class="kw">return </span><span class="prelude-val">Err</span>(MessageEncryptionError::SenderError(SenderError::NotAMember));
+        };
+        <span class="comment">// Take the provided header only if one is given and if this is indeed a test.
+        </span><span class="kw">let </span>header = <span class="kw">match </span>test_header {
+            <span class="prelude-val">Some</span>(header) <span class="kw">if </span><span class="macro">cfg!</span>(any(feature = <span class="string">&quot;test-utils&quot;</span>, test)) =&gt; header,
+            <span class="kw">_ </span>=&gt; MlsMessageHeader {
+                group_id: mls_plaintext.group_id().clone(),
+                epoch: mls_plaintext.epoch(),
+                sender: sender_index.into(),
+            },
+        };
         <span class="comment">// Serialize the content AAD
         </span><span class="kw">let </span>mls_ciphertext_content_aad = MlsCiphertextContentAad {
             group_id: header.group_id.clone(),
@@ -582,7 +704,8 @@
         </span><span class="kw">let </span>secret_type = SecretType::from(<span class="kw-2">&amp;</span>mls_plaintext.content().content_type());
         <span class="kw">let </span>(generation, (ratchet_key, ratchet_nonce)) = message_secrets
             .secret_tree_mut()
-            .secret_for_encryption(ciphersuite, backend, header.sender, secret_type)<span class="question-mark">?</span>;
+            <span class="comment">// Even in tests we want to use the real sender index, so we have a key to encrypt.
+            </span>.secret_for_encryption(ciphersuite, backend, sender_index.into(), secret_type)<span class="question-mark">?</span>;
         <span class="comment">// Sample reuse guard uniformly at random.
         </span><span class="kw">let </span>reuse_guard: ReuseGuard =
             ReuseGuard::try_from_random(backend).map_err(LibraryError::unexpected_crypto_error)<span class="question-mark">?</span>;
@@ -623,13 +746,9 @@
         </span><span class="kw">let </span>mls_sender_data_aad_bytes = mls_sender_data_aad
             .tls_serialize_detached()
             .map_err(LibraryError::missing_bound_check)<span class="question-mark">?</span>;
-        <span class="kw">let </span>leaf_index = mls_plaintext
-            .sender()
-            .as_member()
-            .ok_or(MessageEncryptionError::SenderError(SenderError::NotAMember))<span class="question-mark">?</span>;
         <span class="kw">let </span>sender_data = MlsSenderData::from_sender(
             <span class="comment">// XXX: #106 This will fail for messages with a non-member sender.
-            </span>leaf_index,
+            </span>header.sender.into(),
             generation,
             reuse_guard,
         );
@@ -645,8 +764,7 @@
             )
             .map_err(LibraryError::unexpected_crypto_error)<span class="question-mark">?</span>;
         <span class="prelude-val">Ok</span>(MlsCiphertext {
-            wire_format: WireFormat::MlsCiphertext,
-            group_id: header.group_id,
+            group_id: header.group_id.clone(),
             epoch: header.epoch,
             content_type: mls_plaintext.content().content_type(),
             authenticated_data: mls_plaintext.authenticated_data().into(),
@@ -663,10 +781,6 @@
         ciphersuite: Ciphersuite,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;MlsSenderData, MessageDecryptionError&gt; {
         <span class="macro">log::debug!</span>(<span class="string">&quot;Decrypting MlsCiphertext&quot;</span>);
-        <span class="comment">// Check the ciphertext has the correct wire format
-        </span><span class="kw">if </span><span class="self">self</span>.wire_format != WireFormat::MlsCiphertext {
-            <span class="kw">return </span><span class="prelude-val">Err</span>(MessageDecryptionError::WrongWireFormat);
-        }
         <span class="comment">// Derive key from the key schedule using the ciphertext.
         </span><span class="kw">let </span>sender_data_key = message_secrets
             .sender_data_secret()
@@ -742,7 +856,7 @@
     }
 
     <span class="doccomment">/// This function decrypts an [`MlsCiphertext`] into an [`VerifiableMlsAuthContent`].
-    /// In order to get an [`MlsPlaintext`] the result must be verified.
+    /// In order to get an [`MlsContent`] the result must be verified.
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>to_plaintext(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         ciphersuite: Ciphersuite,
@@ -782,16 +896,16 @@
 
         <span class="kw">let </span>verifiable = VerifiableMlsAuthContent::new(
             MlsContentTbs::new(
-                <span class="self">self</span>.wire_format,
+                WireFormat::MlsCiphertext,
                 <span class="self">self</span>.group_id.clone(),
                 <span class="self">self</span>.epoch,
                 sender,
                 <span class="self">self</span>.authenticated_data.clone(),
                 mls_ciphertext_content.content,
-            ),
+            )
+            .with_context(message_secrets.serialized_context().to_vec()),
             mls_ciphertext_content.auth,
-            <span class="prelude-val">None</span>, <span class="comment">/* MlsCiphertexts don&#39;t carry along the membership tag. */
-        </span>);
+        );
         <span class="prelude-val">Ok</span>(verifiable)
     }
 
@@ -803,12 +917,12 @@
 
     <span class="doccomment">/// Encodes the `MLSCiphertextContent` struct with padding.
     </span><span class="kw">fn </span>encode_padded_ciphertext_content_detached(
-        mls_plaintext: <span class="kw-2">&amp;</span>MlsPlaintext,
+        mls_plaintext: <span class="kw-2">&amp;</span>MlsAuthContent,
         padding_size: usize,
         mac_len: usize,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;Vec&lt;u8&gt;, tls_codec::Error&gt; {
         <span class="kw">let </span>plaintext_length = mls_plaintext.content().serialized_len_without_type()
-            + mls_plaintext.auth().tls_serialized_len();
+            + mls_plaintext.auth.tls_serialized_len();
 
         <span class="kw">let </span>padding_length = <span class="kw">if </span>padding_size &gt; <span class="number">0 </span>{
             <span class="comment">// Calculate padding block size.
@@ -826,7 +940,7 @@
         <span class="comment">// The `content` field is serialized without the `content_type`, which
         // is not part of the struct as per MLS spec.
         </span>mls_plaintext.content().serialize_without_type(buffer)<span class="question-mark">?</span>;
-        mls_plaintext.auth().tls_serialize(buffer)<span class="question-mark">?</span>;
+        mls_plaintext.auth.tls_serialize(buffer)<span class="question-mark">?</span>;
         <span class="comment">// Note: The `tls_codec::Serialize` implementation for `&amp;[u8]` prepends the length.
         // We do not want this here and thus use the &quot;raw&quot; `write_all` method.
         </span>buffer
@@ -855,12 +969,6 @@
     <span class="doccomment">/// Get the `content_type` in the `MlsCiphertext`.
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>content_type(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; ContentType {
         <span class="self">self</span>.content_type
-    }
-
-    <span class="doccomment">/// Set the wire format.
-    </span><span class="attribute">#[cfg(test)]
-    </span><span class="kw">pub</span>(<span class="kw">super</span>) <span class="kw">fn </span>set_wire_format(<span class="kw-2">&amp;mut </span><span class="self">self</span>, wire_format: WireFormat) {
-        <span class="self">self</span>.wire_format = wire_format;
     }
 
     <span class="doccomment">/// Set the ciphertext.
@@ -965,4 +1073,4 @@
     <span class="kw">pub</span>(<span class="kw">crate</span>) authenticated_data: TlsByteSliceU32&lt;<span class="lifetime">&#39;a</span>&gt;,
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-current-crate="openmls" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0 (897e37553 2022-11-02)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-current-crate="openmls" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.66.0 (69f9c33d7 2022-12-12)" ></div></body></html>
