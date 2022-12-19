@@ -233,7 +233,6 @@
 <span id="233">233</span>
 <span id="234">234</span>
 <span id="235">235</span>
-<span id="236">236</span>
 </pre><pre class="rust"><code><span class="kw">use </span>log::debug;
 <span class="kw">use </span>openmls_traits::crypto::OpenMlsCrypto;
 <span class="kw">use </span>tls_codec::Deserialize;
@@ -417,8 +416,7 @@
 
         <span class="kw">let </span>(group_epoch_secrets, message_secrets) = epoch_secrets.split_secrets(
             serialized_group_context,
-            tree.leaf_count()
-                .map_err(|<span class="kw">_</span>| LibraryError::custom(<span class="string">&quot;The tree was too big&quot;</span>))<span class="question-mark">?</span>,
+            tree.leaf_count(),
             tree.own_leaf_index(),
         );
 

@@ -154,10 +154,6 @@
 <span id="154">154</span>
 <span id="155">155</span>
 <span id="156">156</span>
-<span id="157">157</span>
-<span id="158">158</span>
-<span id="159">159</span>
-<span id="160">160</span>
 </pre><pre class="rust"><code><span class="doccomment">//! Processing functions of an [`MlsGroup`] for incoming messages.
 
 </span><span class="kw">use </span>std::mem;
@@ -273,7 +269,7 @@
 
     <span class="doccomment">/// Merge a [StagedCommit] into the group after inspection. As this advances
     /// the epoch of the group, it also clears any pending commits.
-    </span><span class="kw">pub fn </span>merge_staged_commit(<span class="kw-2">&amp;mut </span><span class="self">self</span>, staged_commit: StagedCommit) -&gt; <span class="prelude-ty">Result</span>&lt;(), LibraryError&gt; {
+    </span><span class="kw">pub fn </span>merge_staged_commit(<span class="kw-2">&amp;mut </span><span class="self">self</span>, staged_commit: StagedCommit) {
         <span class="comment">// Check if we were removed from the group
         </span><span class="kw">if </span>staged_commit.self_removed() {
             <span class="self">self</span>.group_state = MlsGroupState::Inactive;
@@ -284,7 +280,7 @@
 
         <span class="comment">// Merge staged commit
         </span><span class="self">self</span>.group
-            .merge_staged_commit(staged_commit, <span class="kw-2">&amp;mut </span><span class="self">self</span>.proposal_store)<span class="question-mark">?</span>;
+            .merge_staged_commit(staged_commit, <span class="kw-2">&amp;mut </span><span class="self">self</span>.proposal_store);
 
         <span class="comment">// Extract and store the resumption psk for the current epoch
         </span><span class="kw">let </span>resumption_psk = <span class="self">self</span>.group.group_epoch_secrets().resumption_psk();
@@ -296,8 +292,6 @@
 
         <span class="comment">// Delete a potential pending commit
         </span><span class="self">self</span>.clear_pending_commit();
-
-        <span class="prelude-val">Ok</span>(())
     }
 
     <span class="doccomment">/// Merges the pending [`StagedCommit`] if there is one, and
@@ -307,9 +301,7 @@
             MlsGroupState::PendingCommit(<span class="kw">_</span>) =&gt; {
                 <span class="kw">let </span>old_state = mem::replace(<span class="kw-2">&amp;mut </span><span class="self">self</span>.group_state, MlsGroupState::Operational);
                 <span class="kw">if let </span>MlsGroupState::PendingCommit(pending_commit_state) = old_state {
-                    <span class="kw">if let </span><span class="prelude-val">Err</span>(e) = <span class="self">self</span>.merge_staged_commit((<span class="kw-2">*</span>pending_commit_state).into()) {
-                        <span class="macro">log::debug!</span>(<span class="string">&quot;Error when merging own commit: {:?}&quot;</span>, e);
-                    }
+                    <span class="self">self</span>.merge_staged_commit((<span class="kw-2">*</span>pending_commit_state).into());
                 }
                 <span class="prelude-val">Ok</span>(())
             }

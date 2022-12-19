@@ -517,9 +517,6 @@
 <span id="517">517</span>
 <span id="518">518</span>
 <span id="519">519</span>
-<span id="520">520</span>
-<span id="521">521</span>
-<span id="522">522</span>
 </pre><pre class="rust"><code><span class="kw">use </span><span class="kw">crate</span>::ciphersuite::signable::Verifiable;
 <span class="kw">use </span><span class="kw">crate</span>::treesync::errors::TreeSyncAddLeaf;
 <span class="kw">use </span><span class="kw">crate</span>::treesync::node::leaf_node::{
@@ -685,7 +682,7 @@
         };
 
         <span class="comment">// Create provisional tree and apply proposals
-        </span><span class="kw">let </span><span class="kw-2">mut </span>diff = <span class="self">self</span>.treesync().empty_diff()<span class="question-mark">?</span>;
+        </span><span class="kw">let </span><span class="kw-2">mut </span>diff = <span class="self">self</span>.treesync().empty_diff();
 
         <span class="kw">let </span>apply_proposals_values = <span class="self">self
             </span>.apply_proposals(<span class="kw-2">&amp;mut </span>diff, backend, <span class="kw-2">&amp;</span>proposal_queue, own_leaf_nodes)
@@ -700,7 +697,7 @@
                 }
                 <span class="kw-2">*</span>leaf_index
             }
-            Sender::NewMemberCommit =&gt; diff.free_leaf_index()<span class="question-mark">?</span>,
+            Sender::NewMemberCommit =&gt; diff.free_leaf_index(),
             <span class="kw">_ </span>=&gt; {
                 <span class="kw">return </span><span class="prelude-val">Err</span>(StageCommitError::SenderTypeExternal);
             }
@@ -924,15 +921,12 @@
     ///
     /// This function should not fail and only returns a [`Result`], because it
     /// might throw a `LibraryError`.
-    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>merge_commit(
-        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
-        staged_commit: StagedCommit,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="prelude-ty">Option</span>&lt;MessageSecrets&gt;, LibraryError&gt; {
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>merge_commit(<span class="kw-2">&amp;mut </span><span class="self">self</span>, staged_commit: StagedCommit) -&gt; <span class="prelude-ty">Option</span>&lt;MessageSecrets&gt; {
         <span class="kw">match </span>staged_commit.state {
             StagedCommitState::SelfRemoved(staged_diff) =&gt; {
-                <span class="self">self</span>.tree.merge_diff(<span class="kw-2">*</span>staged_diff)<span class="question-mark">?</span>;
-                <span class="prelude-val">Ok</span>(<span class="prelude-val">None</span>)
-            }
+                <span class="self">self</span>.tree.merge_diff(<span class="kw-2">*</span>staged_diff);
+                <span class="prelude-val">None
+            </span>}
             StagedCommitState::GroupMember(state) =&gt; {
                 <span class="self">self</span>.group_context = state.group_context;
                 <span class="self">self</span>.group_epoch_secrets = state.group_epoch_secrets;
@@ -946,8 +940,8 @@
 
                 <span class="self">self</span>.interim_transcript_hash = state.interim_transcript_hash;
 
-                <span class="self">self</span>.tree.merge_diff(state.staged_diff)<span class="question-mark">?</span>;
-                <span class="prelude-val">Ok</span>(<span class="prelude-val">Some</span>(message_secrets))
+                <span class="self">self</span>.tree.merge_diff(state.staged_diff);
+                <span class="prelude-val">Some</span>(message_secrets)
             }
         }
     }

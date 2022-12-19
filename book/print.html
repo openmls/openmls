@@ -405,16 +405,16 @@ Note that in this scenario it is up to the application to define a proper author
             let (_commit, welcome) = alice_group
                 .commit_to_pending_proposals(backend)
                 .expect(&quot;Could not commit&quot;);
-            assert_eq!(alice_group.members().unwrap().len(), 1);
+            assert_eq!(alice_group.members().count(), 1);
             alice_group
                 .merge_pending_commit()
                 .expect(&quot;Could not merge commit&quot;);
-            assert_eq!(alice_group.members().unwrap().len(), 2);
+            assert_eq!(alice_group.members().count(), 2);
 
             let bob_group =
                 MlsGroup::new_from_welcome(backend, &amp;mls_group_config, welcome.unwrap(), None)
                     .expect(&quot;Bob could not join the group&quot;);
-            assert_eq!(bob_group.members().unwrap().len(), 2);
+            assert_eq!(bob_group.members().count(), 2);
         }
         _ =&gt; unreachable!(),
     }</code></pre>
@@ -458,9 +458,7 @@ Even though members were removed in this operation, the Commit message could pot
         }
 
         // Merge staged Commit
-        bob_group
-            .merge_staged_commit(*staged_commit)
-            .expect(&quot;Could not merge Commit.&quot;);
+        bob_group.merge_staged_commit(*staged_commit);
     } else {
         unreachable!(&quot;Expected a StagedCommit.&quot;);
     }
@@ -470,9 +468,7 @@ Even though members were removed in this operation, the Commit message could pot
 
     // Check that Bob's group is no longer active
     assert!(!bob_group.is_active());
-    let members = bob_group
-        .members()
-        .expect(&quot;Library error getting group member list&quot;);
+    let members = bob_group.members().collect::&lt;Vec&lt;Member&gt;&gt;();
     assert_eq!(members.len(), 2);
     assert_eq!(members[0].identity, b&quot;Alice&quot;);
     assert_eq!(members[1].identity, b&quot;Charlie&quot;);</code></pre>
@@ -593,9 +589,7 @@ sender, and authenticated data. It also exposes the message's content. There are
             Sender::Member(member) if *member == charlies_leaf_index
         ));
         // Merge staged commit
-        alice_group
-            .merge_staged_commit(*staged_commit)
-            .expect(&quot;Could not merge Commit.&quot;);
+        alice_group.merge_staged_commit(*staged_commit);
     }</code></pre>
 <h3 id="interpreting-remove-operations"><a class="header" href="#interpreting-remove-operations">Interpreting remove operations</a></h3>
 <p>Remove operations can have different meanings, such as:</p>
@@ -631,9 +625,7 @@ sender, and authenticated data. It also exposes the message's content. There are
         }
 
         // Merge staged Commit
-        bob_group
-            .merge_staged_commit(*staged_commit)
-            .expect(&quot;Could not merge Commit.&quot;);
+        bob_group.merge_staged_commit(*staged_commit);
     } else {
         unreachable!(&quot;Expected a StagedCommit.&quot;);
     }</code></pre>

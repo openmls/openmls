@@ -654,6 +654,43 @@
 <span id="654">654</span>
 <span id="655">655</span>
 <span id="656">656</span>
+<span id="657">657</span>
+<span id="658">658</span>
+<span id="659">659</span>
+<span id="660">660</span>
+<span id="661">661</span>
+<span id="662">662</span>
+<span id="663">663</span>
+<span id="664">664</span>
+<span id="665">665</span>
+<span id="666">666</span>
+<span id="667">667</span>
+<span id="668">668</span>
+<span id="669">669</span>
+<span id="670">670</span>
+<span id="671">671</span>
+<span id="672">672</span>
+<span id="673">673</span>
+<span id="674">674</span>
+<span id="675">675</span>
+<span id="676">676</span>
+<span id="677">677</span>
+<span id="678">678</span>
+<span id="679">679</span>
+<span id="680">680</span>
+<span id="681">681</span>
+<span id="682">682</span>
+<span id="683">683</span>
+<span id="684">684</span>
+<span id="685">685</span>
+<span id="686">686</span>
+<span id="687">687</span>
+<span id="688">688</span>
+<span id="689">689</span>
+<span id="690">690</span>
+<span id="691">691</span>
+<span id="692">692</span>
+<span id="693">693</span>
 </pre><pre class="rust"><code><span class="doccomment">//! An implementation of a diff functionality for the [`ABinaryTree`] struct.
 //!
 //! # About
@@ -673,7 +710,7 @@
 //! [`LibraryError`](ABinaryTreeDiffError::LibraryError).
 
 </span><span class="kw">use </span>serde::{Deserialize, Serialize};
-<span class="kw">use </span>std::{collections::BTreeMap, convert::TryFrom, fmt::Debug};
+<span class="kw">use </span>std::{collections::BTreeMap, fmt::Debug};
 <span class="kw">use </span>thiserror::Error;
 
 <span class="kw">use crate</span>::{
@@ -756,15 +793,13 @@
     size: TreeSize,
 }
 
-<span class="kw">impl</span>&lt;<span class="lifetime">&#39;a</span>, T: Clone + Debug&gt; TryFrom&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>ABinaryTree&lt;T&gt;&gt; <span class="kw">for </span>AbDiff&lt;<span class="lifetime">&#39;a</span>, T&gt; {
-    <span class="kw">type </span>Error = ABinaryTreeDiffError;
-
-    <span class="kw">fn </span>try_from(tree: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>ABinaryTree&lt;T&gt;) -&gt; <span class="prelude-ty">Result</span>&lt;AbDiff&lt;<span class="lifetime">&#39;a</span>, T&gt;, ABinaryTreeDiffError&gt; {
-        <span class="prelude-val">Ok</span>(AbDiff {
+<span class="kw">impl</span>&lt;<span class="lifetime">&#39;a</span>, T: Clone + Debug&gt; From&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>ABinaryTree&lt;T&gt;&gt; <span class="kw">for </span>AbDiff&lt;<span class="lifetime">&#39;a</span>, T&gt; {
+    <span class="kw">fn </span>from(tree: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>ABinaryTree&lt;T&gt;) -&gt; AbDiff&lt;<span class="lifetime">&#39;a</span>, T&gt; {
+        AbDiff {
             original_tree: tree,
             diff: BTreeMap::new(),
-            size: tree.size()<span class="question-mark">?</span>,
-        })
+            size: tree.size(),
+        }
     }
 }
 
@@ -827,19 +862,58 @@
         <span class="prelude-val">Ok</span>(NodeId::try_from_node_index(<span class="self">self</span>, node_index)<span class="question-mark">?</span>)
     }
 
-    <span class="doccomment">/// Returns references to the leaves of the diff in order from left to
-    /// right. This function should not throw an error. However, it might throw
-    /// a [`LibraryError`] error if there is a bug in the implementation.
-    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>leaves(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;Vec&lt;NodeId&gt;, LibraryError&gt; {
-        <span class="kw">let </span><span class="kw-2">mut </span>leaf_references = Vec::new();
-        <span class="kw">for </span>leaf_index <span class="kw">in </span><span class="number">0</span>..<span class="self">self</span>.leaf_count() {
-            <span class="kw">let </span>node_index = to_node_index(leaf_index);
-            <span class="comment">// The node reference must be valid, since it is a valid leaf
-            </span><span class="kw">let </span>node_ref = NodeId::try_from_node_index(<span class="self">self</span>, node_index)
-                .map_err(|<span class="kw">_</span>| LibraryError::custom(<span class="string">&quot;Expected a valid node reference&quot;</span>))<span class="question-mark">?</span>;
-            leaf_references.push(node_ref);
+    <span class="doccomment">/// Returns an iterator over a tuple of the leaf index and a reference to a
+    /// leaf, sorted according to their position in the tree from left to right.
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>leaves(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw">impl </span>Iterator&lt;Item = (LeafIndex, <span class="kw-2">&amp;</span>T)&gt; {
+        <span class="kw">let </span><span class="kw-2">mut </span>original_leaves = <span class="self">self</span>.original_tree.leaves().peekable();
+        <span class="kw">let </span><span class="kw-2">mut </span>diff_leaves = <span class="self">self
+            </span>.diff
+            .iter()
+            .filter_map(|(index, leaf)| {
+                <span class="kw">if </span>index % <span class="number">2 </span>== <span class="number">0 </span>{
+                    <span class="prelude-val">Some</span>((<span class="kw-2">*</span>index / <span class="number">2</span>, leaf))
+                } <span class="kw">else </span>{
+                    <span class="prelude-val">None
+                </span>}
+            })
+            .peekable();
+
+        <span class="comment">// Combine the original leaves with the leaves from the diff. Since
+        // both iterators are sorted, we can just iterate over them and
+        // don&#39;t need additional sorting. If one of the iterators is
+        // exhausted, we just add the remaining leaves from the other
+        // iterator. We also make sure that we don&#39;t add leaves from the
+        // original leaves that are also in the diff.
+
+        </span><span class="kw">let </span><span class="kw-2">mut </span>combined = Vec::new();
+
+        <span class="kw">while let </span><span class="prelude-val">Some</span>((index, leaf)) = <span class="kw">match </span>(original_leaves.peek(), diff_leaves.peek()) {
+            <span class="comment">// The original tree has a leaf that is not in the diff.
+            </span>(<span class="prelude-val">Some</span>((original_index, <span class="kw">_</span>)), <span class="prelude-val">Some</span>((diff_index, <span class="kw">_</span>))) <span class="kw">if </span>original_index &lt; diff_index =&gt; {
+                original_leaves.next()
+            }
+            <span class="comment">// The original tree and the diff have the same leaf. We only
+            // need to add the leaf from the diff and drop the leaf from the
+            // original tree.
+            </span>(<span class="prelude-val">Some</span>((original_index, <span class="kw">_</span>)), <span class="prelude-val">Some</span>((diff_index, <span class="kw">_</span>))) <span class="kw">if </span>original_index == diff_index =&gt; {
+                original_leaves.next();
+                diff_leaves.next()
+            }
+            <span class="comment">// The diff has a leaf that is not in the original tree.
+            </span>(<span class="prelude-val">Some</span>((<span class="kw">_</span>, <span class="kw">_</span>)), <span class="prelude-val">Some</span>((<span class="kw">_</span>, <span class="kw">_</span>))) =&gt; diff_leaves.next(),
+            <span class="comment">// We are out of diff leaves, so we just add the remaining
+            // original leaves.
+            </span>(<span class="prelude-val">Some</span>((<span class="kw">_</span>, <span class="kw">_</span>)), <span class="prelude-val">None</span>) =&gt; original_leaves.next(),
+            <span class="comment">// We are out of original leaves, so we just add the remaining
+            // diff leaves.
+            </span>(<span class="prelude-val">None</span>, <span class="prelude-val">Some</span>((<span class="kw">_</span>, <span class="kw">_</span>))) =&gt; diff_leaves.next(),
+            <span class="comment">// We are out of both leave types, so we are done.
+            </span>(<span class="prelude-val">None</span>, <span class="prelude-val">None</span>) =&gt; <span class="prelude-val">None</span>,
+        } {
+            combined.push((index, leaf));
         }
-        <span class="prelude-val">Ok</span>(leaf_references)
+
+        combined.into_iter()
     }
 
     <span class="comment">// Functions related to the direct paths of leaves
@@ -1183,7 +1257,7 @@
             <span class="kw">return </span><span class="prelude-val">Err</span>(ABinaryTreeDiffError::TreeTooSmall);
         }
         <span class="kw">let </span>removed = <span class="self">self</span>.diff.remove(<span class="kw-2">&amp;</span>(<span class="self">self</span>.tree_size() - <span class="number">1</span>));
-        <span class="kw">if </span><span class="self">self</span>.tree_size() &gt; <span class="self">self</span>.original_tree.size()<span class="question-mark">? </span>{
+        <span class="kw">if </span><span class="self">self</span>.tree_size() &gt; <span class="self">self</span>.original_tree.size() {
             <span class="comment">// If the diff extended the tree, there should be a node to remove
             // here.
             </span><span class="macro">debug_assert!</span>(removed.is_some());

@@ -185,6 +185,11 @@
 <span id="185">185</span>
 <span id="186">186</span>
 <span id="187">187</span>
+<span id="188">188</span>
+<span id="189">189</span>
+<span id="190">190</span>
+<span id="191">191</span>
+<span id="192">192</span>
 </pre><pre class="rust"><code><span class="attribute">#![doc = <span class="macro">include_str!</span>(<span class="string">&quot;../README.md&quot;</span>)]
 </span><span class="doccomment">//! ## Quick Start
 //! For a quick start to learn how OpenMLS works here&#39;s the basic code to set
@@ -332,6 +337,11 @@
 #![cfg_attr(not(feature = <span class="string">&quot;test-utils&quot;</span>), deny(missing_docs))]
 #![deny(rustdoc::broken_intra_doc_links)]
 #![deny(rustdoc::private_intra_doc_links)]
+#![cfg(any(
+    target_pointer_width = <span class="string">&quot;32&quot;</span>,
+    target_pointer_width = <span class="string">&quot;64&quot;</span>,
+    target_pointer_width = <span class="string">&quot;128&quot;
+</span>))]
 
 </span><span class="comment">// === Testing ===
 

@@ -190,8 +190,6 @@
 <span id="190">190</span>
 <span id="191">191</span>
 <span id="192">192</span>
-<span id="193">193</span>
-<span id="194">194</span>
 </pre><pre class="rust"><code><span class="kw">use crate</span>::{
     ciphersuite::signable::Verifiable,
     group::errors::ExternalCommitError,
@@ -309,9 +307,7 @@
                 .group_context()
                 .tls_serialize_detached()
                 .map_err(LibraryError::missing_bound_check)<span class="question-mark">?</span>,
-            treesync
-                .leaf_count()
-                .map_err(|<span class="kw">_</span>| LibraryError::custom(<span class="string">&quot;The tree was too big&quot;</span>))<span class="question-mark">?</span>,
+            treesync.leaf_count(),
             <span class="comment">// We use a fake own index of 0 here, as we&#39;re not going to use the
             // tree for encryption until after the first commit. This issue is
             // tracked in #767.
@@ -355,8 +351,8 @@
         // commit a remove proposal.
         </span><span class="kw">for </span>Member {
             index, identity, ..
-        } <span class="kw">in </span>group.treesync().full_leave_members()<span class="question-mark">?
-        </span>{
+        } <span class="kw">in </span>group.treesync().full_leave_members()
+        {
             <span class="kw">if </span>identity == params.credential_bundle().credential().identity() {
                 <span class="kw">let </span>remove_proposal = Proposal::Remove(RemoveProposal { removed: index });
                 inline_proposals.push(remove_proposal);

@@ -181,9 +181,7 @@ Even though members were removed in this operation, the Commit message could pot
         }
 
         // Merge staged Commit
-        bob_group
-            .merge_staged_commit(*staged_commit)
-            .expect(&quot;Could not merge Commit.&quot;);
+        bob_group.merge_staged_commit(*staged_commit);
     } else {
         unreachable!(&quot;Expected a StagedCommit.&quot;);
     }
@@ -193,9 +191,7 @@ Even though members were removed in this operation, the Commit message could pot
 
     // Check that Bob's group is no longer active
     assert!(!bob_group.is_active());
-    let members = bob_group
-        .members()
-        .expect(&quot;Library error getting group member list&quot;);
+    let members = bob_group.members().collect::&lt;Vec&lt;Member&gt;&gt;();
     assert_eq!(members.len(), 2);
     assert_eq!(members[0].identity, b&quot;Alice&quot;);
     assert_eq!(members[1].identity, b&quot;Charlie&quot;);</code></pre>

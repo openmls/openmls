@@ -634,8 +634,8 @@
             identity,
             encryption_key: <span class="kw">_</span>,
             signature_key,
-        } <span class="kw">in </span><span class="self">self</span>.treesync().full_leave_members()<span class="question-mark">?
-        </span>{
+        } <span class="kw">in </span><span class="self">self</span>.treesync().full_leave_members()
+        {
             <span class="comment">// ValSem103
             </span><span class="kw">if </span>identity_set.contains(<span class="kw-2">&amp;</span>identity) {
                 <span class="kw">return </span><span class="prelude-val">Err</span>(ProposalValidationError::ExistingIdentityAddProposal);
@@ -698,7 +698,7 @@
         committer: u32,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;HashSet&lt;Vec&lt;u8&gt;&gt;, ProposalValidationError&gt; {
         <span class="kw">let </span><span class="kw-2">mut </span>encryption_keys = HashSet::new();
-        <span class="kw">for </span>index <span class="kw">in </span><span class="self">self</span>.treesync().full_leaves()<span class="question-mark">? </span>{
+        <span class="kw">for </span>index <span class="kw">in </span><span class="self">self</span>.treesync().full_leaves() {
             <span class="comment">// 8.3. Leaf Node Validation
             // encryption key must be unique
             </span>encryption_keys.insert(
@@ -779,10 +779,10 @@
         public_key_set: HashSet&lt;Vec&lt;u8&gt;&gt;,
         proposal_sender: <span class="kw-2">&amp;</span>Sender,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(), ProposalValidationError&gt; {
-        <span class="kw">let </span>members = <span class="self">self</span>.treesync().full_leave_members()<span class="question-mark">?</span>;
+        <span class="kw">let </span><span class="kw-2">mut </span>members = <span class="self">self</span>.treesync().full_leave_members();
         <span class="kw">if let </span><span class="prelude-val">Some</span>(Member {
             index: <span class="kw">_</span>, identity, ..
-        }) = members.iter().find(|Member { index, .. }| index == <span class="kw-2">&amp;</span>sender)
+        }) = members.find(|Member { index, .. }| index == <span class="kw-2">&amp;</span>sender)
         {
             <span class="comment">// ValSem109
             </span><span class="kw">if </span>leaf_node.credential().identity() != identity {

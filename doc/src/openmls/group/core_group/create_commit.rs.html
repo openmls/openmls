@@ -437,10 +437,6 @@
 <span id="437">437</span>
 <span id="438">438</span>
 <span id="439">439</span>
-<span id="440">440</span>
-<span id="441">441</span>
-<span id="442">442</span>
-<span id="443">443</span>
 </pre><pre class="rust"><code><span class="kw">use </span>openmls_traits::OpenMlsCryptoProvider;
 
 <span class="kw">use crate</span>::{
@@ -530,7 +526,7 @@
         </span><span class="kw">let </span>proposal_reference_list = proposal_queue.commit_list();
 
         <span class="comment">// Make a copy of the current tree to apply proposals safely
-        </span><span class="kw">let </span><span class="kw-2">mut </span>diff: TreeSyncDiff = <span class="self">self</span>.treesync().empty_diff()<span class="question-mark">?</span>;
+        </span><span class="kw">let </span><span class="kw-2">mut </span>diff: TreeSyncDiff = <span class="self">self</span>.treesync().empty_diff();
 
         <span class="comment">// If this is an external commit we have to set our own leaf index manually
         </span><span class="kw">if </span>params.commit_type() == CommitType::External {
@@ -855,11 +851,7 @@
         <span class="kw-2">mut </span>inline_proposals: <span class="kw">impl </span>Iterator&lt;Item = <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>Proposal&gt;&gt;,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;u32, LibraryError&gt; {
         <span class="comment">// Leftmost free leaf in the tree
-        // This cannot fail unless the tree is completely empty
-        </span><span class="kw">let </span>free_leaf_index = <span class="self">self
-            </span>.treesync()
-            .free_leaf_index()
-            .map_err(|<span class="kw">_</span>| LibraryError::custom(<span class="string">&quot;The tree was empty&quot;</span>))<span class="question-mark">?</span>;
+        </span><span class="kw">let </span>free_leaf_index = <span class="self">self</span>.treesync().free_leaf_index();
         <span class="comment">// Returns the first remove proposal (if there is one)
         </span><span class="kw">let </span>remove_proposal_option = inline_proposals
             .find(|proposal| <span class="kw">match </span>proposal {

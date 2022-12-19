@@ -176,16 +176,16 @@ Note that in this scenario it is up to the application to define a proper author
             let (_commit, welcome) = alice_group
                 .commit_to_pending_proposals(backend)
                 .expect(&quot;Could not commit&quot;);
-            assert_eq!(alice_group.members().unwrap().len(), 1);
+            assert_eq!(alice_group.members().count(), 1);
             alice_group
                 .merge_pending_commit()
                 .expect(&quot;Could not merge commit&quot;);
-            assert_eq!(alice_group.members().unwrap().len(), 2);
+            assert_eq!(alice_group.members().count(), 2);
 
             let bob_group =
                 MlsGroup::new_from_welcome(backend, &amp;mls_group_config, welcome.unwrap(), None)
                     .expect(&quot;Bob could not join the group&quot;);
-            assert_eq!(bob_group.members().unwrap().len(), 2);
+            assert_eq!(bob_group.members().count(), 2);
         }
         _ =&gt; unreachable!(),
     }</code></pre>

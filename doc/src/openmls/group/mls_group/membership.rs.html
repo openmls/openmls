@@ -383,9 +383,6 @@
 <span id="383">383</span>
 <span id="384">384</span>
 <span id="385">385</span>
-<span id="386">386</span>
-<span id="387">387</span>
-<span id="388">388</span>
 </pre><pre class="rust"><code><span class="doccomment">//! MLS group membership
 //!
 //! This module contains membership-related operations and exposes [`RemoveOperation`].
@@ -692,7 +689,7 @@
     }
 
     <span class="doccomment">/// Returns a list of [`Member`]s in the group.
-    </span><span class="kw">pub fn </span>members(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;Vec&lt;Member&gt;, LibraryError&gt; {
+    </span><span class="kw">pub fn </span>members(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw">impl </span>Iterator&lt;Item = Member&gt; + <span class="lifetime">&#39;_ </span>{
         <span class="self">self</span>.group.treesync().full_leave_members()
     }
 
@@ -701,10 +698,7 @@
     </span><span class="kw">pub fn </span>member(<span class="kw-2">&amp;</span><span class="self">self</span>, leaf_index: u32) -&gt; <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>Credential&gt; {
         <span class="self">self</span>.group
             .treesync()
-            <span class="comment">// Besides from returning an error if the member can&#39;t be found,
-            // this will only return an error in case OpenMLS is compiled with a
-            // sub-32 bit architecture. As a result, it should be safe to just
-            // return `None` instead of propagating an error.
+            <span class="comment">// This will return an error if the member can&#39;t be found.
             </span>.leaf(leaf_index)
             .map(|leaf| leaf.map(|l| l.credential()))
             .ok()

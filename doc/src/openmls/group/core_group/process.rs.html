@@ -331,11 +331,6 @@
 <span id="331">331</span>
 <span id="332">332</span>
 <span id="333">333</span>
-<span id="334">334</span>
-<span id="335">335</span>
-<span id="336">336</span>
-<span id="337">337</span>
-<span id="338">338</span>
 </pre><pre class="rust"><code><span class="kw">use </span>core_group::{proposals::QueuedProposal, staged_commit::StagedCommit};
 
 <span class="kw">use crate</span>::{
@@ -654,24 +649,19 @@
         <span class="kw-2">&amp;mut </span><span class="self">self</span>,
         staged_commit: StagedCommit,
         proposal_store: <span class="kw-2">&amp;mut </span>ProposalStore,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;(), LibraryError&gt; {
+    ) {
         <span class="comment">// Save the past epoch
         </span><span class="kw">let </span>past_epoch = <span class="self">self</span>.context().epoch();
         <span class="comment">// Get all the full leaves
-        </span><span class="kw">let </span>leaves = <span class="self">self
-            </span>.treesync()
-            .full_leave_members()
-            <span class="comment">// This should disappear after refactoring TreeSync, fetching the leaves should never fail
-            </span>.map_err(|<span class="kw">_</span>| LibraryError::custom(<span class="string">&quot;Unexpected error in TreeSync&quot;</span>))<span class="question-mark">?</span>;
+        </span><span class="kw">let </span>leaves = <span class="self">self</span>.treesync().full_leave_members().collect();
         <span class="comment">// Merge the staged commit into the group state and store the secret tree from the
         // previous epoch in the message secrets store.
-        </span><span class="kw">if let </span><span class="prelude-val">Some</span>(message_secrets) = <span class="self">self</span>.merge_commit(staged_commit)<span class="question-mark">? </span>{
+        </span><span class="kw">if let </span><span class="prelude-val">Some</span>(message_secrets) = <span class="self">self</span>.merge_commit(staged_commit) {
             <span class="self">self</span>.message_secrets_store
                 .add(past_epoch, message_secrets, leaves);
         }
         <span class="comment">// Empty the proposal store
         </span>proposal_store.empty();
-        <span class="prelude-val">Ok</span>(())
     }
 }
 </code></pre></div>

@@ -467,35 +467,6 @@
 <span id="467">467</span>
 <span id="468">468</span>
 <span id="469">469</span>
-<span id="470">470</span>
-<span id="471">471</span>
-<span id="472">472</span>
-<span id="473">473</span>
-<span id="474">474</span>
-<span id="475">475</span>
-<span id="476">476</span>
-<span id="477">477</span>
-<span id="478">478</span>
-<span id="479">479</span>
-<span id="480">480</span>
-<span id="481">481</span>
-<span id="482">482</span>
-<span id="483">483</span>
-<span id="484">484</span>
-<span id="485">485</span>
-<span id="486">486</span>
-<span id="487">487</span>
-<span id="488">488</span>
-<span id="489">489</span>
-<span id="490">490</span>
-<span id="491">491</span>
-<span id="492">492</span>
-<span id="493">493</span>
-<span id="494">494</span>
-<span id="495">495</span>
-<span id="496">496</span>
-<span id="497">497</span>
-<span id="498">498</span>
 </pre><pre class="rust"><code><span class="doccomment">//! This module implements the ratchet tree component of MLS.
 //!
 //! It exposes the [`Node`] enum that can contain either a [`LeafNode`] or a [`ParentNode`].
@@ -639,27 +610,17 @@
 
     <span class="doccomment">/// Merge the given diff into this `TreeSync` instance, refreshing the
     /// `tree_hash` value in the process.
-    ///
-    /// Returns an error if the merging process of the underlying
-    /// [`MlsBinaryTree`] fails.
-    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>merge_diff(
-        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
-        tree_sync_diff: StagedTreeSyncDiff,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;(), LibraryError&gt; {
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>merge_diff(<span class="kw-2">&amp;mut </span><span class="self">self</span>, tree_sync_diff: StagedTreeSyncDiff) {
         <span class="kw">let </span>(own_leaf_index, diff, new_tree_hash) = tree_sync_diff.into_parts();
         <span class="self">self</span>.own_leaf_index = own_leaf_index;
         <span class="self">self</span>.tree_hash = new_tree_hash;
-        <span class="self">self</span>.tree.merge_diff(diff)
+        <span class="self">self</span>.tree.merge_diff(diff);
     }
 
     <span class="doccomment">/// Create an empty diff based on this [`TreeSync`] instance all operations
     /// are created based on an initial, empty [`TreeSyncDiff`].
-    ///
-    /// This function should not fail and only returns a [`Result`], because it
-    /// might throw a [LibraryError](TreeSyncError::LibraryError).
-    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>empty_diff(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;TreeSyncDiff, LibraryError&gt; {
-        <span class="self">self</span>.try_into()
-            .map_err(|<span class="kw">_</span>| LibraryError::custom(<span class="string">&quot;Could not create empty tree sync diff&quot;</span>))
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>empty_diff(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; TreeSyncDiff {
+        <span class="self">self</span>.into()
     }
 
     <span class="doccomment">/// Create a new [`TreeSync`] instance from a given slice of `Option&lt;Node&gt;`,
@@ -688,7 +649,7 @@
         <span class="comment">// Populate the tree with secrets and derive a commit secret if a path
         // secret is given.
         </span><span class="kw">let </span>commit_secret = <span class="kw">if let </span><span class="prelude-val">Some</span>(path_secret) = path_secret_option.into() {
-            <span class="kw">let </span><span class="kw-2">mut </span>diff = tree_sync.empty_diff()<span class="question-mark">?</span>;
+            <span class="kw">let </span><span class="kw-2">mut </span>diff = tree_sync.empty_diff();
             <span class="kw">let </span>commit_secret = diff
                 .set_path_secrets(backend, ciphersuite, path_secret, sender_index)
                 .map_err(|e| <span class="kw">match </span>e {
@@ -698,7 +659,7 @@
                     }
                 })<span class="question-mark">?</span>;
             <span class="kw">let </span>staged_diff = diff.into_staged_diff(backend, ciphersuite)<span class="question-mark">?</span>;
-            tree_sync.merge_diff(staged_diff)<span class="question-mark">?</span>;
+            tree_sync.merge_diff(staged_diff);
             <span class="prelude-val">Some</span>(commit_secret)
         } <span class="kw">else </span>{
             <span class="prelude-val">None
@@ -729,8 +690,7 @@
                 <span class="prelude-val">Some</span>(node) =&gt; {
                     <span class="kw">let </span><span class="kw-2">mut </span>node = node.clone();
                     <span class="kw">if let </span>Node::LeafNode(<span class="kw-2">ref mut </span>leaf_node) = node {
-                        <span class="kw">let </span>leaf_index = u32::try_from(node_index / <span class="number">2</span>)
-                            .map_err(|<span class="kw">_</span>| LibraryError::custom(<span class="string">&quot;Architecture error&quot;</span>))<span class="question-mark">?</span>;
+                        <span class="kw">let </span>leaf_index = (node_index / <span class="number">2</span>) <span class="kw">as </span>u32;
                         <span class="kw">if </span>leaf_node.public_key() == own_key_package.hpke_init_key() {
                             <span class="comment">// Check if there&#39;s a duplicate
                             </span><span class="kw">if let </span><span class="prelude-val">Some</span>(private_key) = private_key.take() {
@@ -802,9 +762,9 @@
     /// tree. This is either the left-most blank node or, if there are no blank
     /// leaves, the leaf count, since adding a member would extend the tree by
     /// one leaf.
-    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>free_leaf_index(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;LeafIndex, TreeSyncError&gt; {
-        <span class="kw">let </span>diff = <span class="self">self</span>.empty_diff()<span class="question-mark">?</span>;
-        <span class="prelude-val">Ok</span>(diff.free_leaf_index()<span class="question-mark">?</span>)
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>free_leaf_index(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; LeafIndex {
+        <span class="kw">let </span>diff = <span class="self">self</span>.empty_diff();
+        diff.free_leaf_index()
     }
 
     <span class="doccomment">/// Populate the parent hash caches of all nodes in the tree.
@@ -813,12 +773,13 @@
         backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider,
         ciphersuite: Ciphersuite,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(), LibraryError&gt; {
-        <span class="kw">let </span>diff = <span class="self">self</span>.empty_diff()<span class="question-mark">?</span>;
+        <span class="kw">let </span>diff = <span class="self">self</span>.empty_diff();
         <span class="comment">// Make the diff into a staged diff. This implicitly computes the
         // tree hashes and poulates the tree hash caches.
         </span><span class="kw">let </span>staged_diff = diff.into_staged_diff(backend, ciphersuite)<span class="question-mark">?</span>;
         <span class="comment">// Merge the diff.
-        </span><span class="self">self</span>.merge_diff(staged_diff)
+        </span><span class="self">self</span>.merge_diff(staged_diff);
+        <span class="prelude-val">Ok</span>(())
     }
 
     <span class="doccomment">/// Verify the parent hashes of all parent nodes in the tree.
@@ -843,7 +804,7 @@
         // implements `TreeLike`. We choose the less complex version for now.
         // Should this turn out to cause too much computational overhead, we
         // should reconsider and choose the alternative sketched above
-        </span><span class="kw">let </span>diff = <span class="self">self</span>.empty_diff()<span class="question-mark">?</span>;
+        </span><span class="kw">let </span>diff = <span class="self">self</span>.empty_diff();
         <span class="comment">// No need to merge the diff, since we didn&#39;t actually modify any state.
         </span>diff.verify_parent_hashes(backend, ciphersuite)
     }
@@ -852,65 +813,46 @@
     ///
     /// This function should not fail and only returns a [`Result`], because it
     /// might throw a [LibraryError](TreeSyncError::LibraryError).
-    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>leaf_count(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;LeafIndex, TreeSyncError&gt; {
-        <span class="prelude-val">Ok</span>(<span class="self">self</span>.tree.leaf_count()<span class="question-mark">?</span>)
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>leaf_count(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; LeafIndex {
+        <span class="self">self</span>.tree.leaf_count()
     }
 
     <span class="doccomment">/// Returns a list of [`LeafIndex`]es containing only full nodes.
-    ///
-    /// This function should not fail and only returns a [`Result`], because it
-    /// might throw a [LibraryError](TreeSyncError::LibraryError).
-    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>full_leaves(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;Vec&lt;LeafIndex&gt;, LibraryError&gt; {
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>full_leaves(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; Vec&lt;LeafIndex&gt; {
         <span class="self">self</span>.tree
-            .leaves()<span class="question-mark">?
-            </span>.drain(..)
-            .enumerate()
-            .filter(|(<span class="kw">_</span>, tsn)| tsn.node().is_some())
-            .map(|(index, <span class="kw">_</span>)| {
-                u32::try_from(index).map_err(|<span class="kw">_</span>| LibraryError::custom(<span class="string">&quot;Index outside of the tree&quot;</span>))
-            })
+            .leaves()
+            .filter_map(|(index, tsn)| tsn.node().as_ref().map(|<span class="kw">_</span>| (index)))
             .collect()
     }
 
     <span class="doccomment">/// Returns a list of [`Member`]s containing only full nodes.
     ///
-    /// This function should not fail and only returns a [`Result`], because it
-    /// might throw a [LibraryError](TreeSyncError::LibraryError).
-    ///
     /// XXX: For performance reasons we probably want to have this in a borrowing
     ///      version as well. But it might well go away again.
-    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>full_leave_members(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;Vec&lt;Member&gt;, LibraryError&gt; {
-        <span class="kw">let </span><span class="kw-2">mut </span>leaves = <span class="self">self</span>.tree.leaves()<span class="question-mark">?</span>;
-        <span class="kw">let </span>leaves = leaves
-            .drain(..)
-            .enumerate()
-            .filter(|(<span class="kw">_</span>, tsn)| tsn.node().is_some());
-        <span class="kw">let </span><span class="kw-2">mut </span>out = <span class="macro">vec!</span>[];
-        <span class="kw">for </span>(index, tsn) <span class="kw">in </span>leaves {
-            <span class="kw">let </span>index = u32::try_from(index)
-                .map_err(|<span class="kw">_</span>| LibraryError::custom(<span class="string">&quot;Index outside of the tree&quot;</span>))<span class="question-mark">?</span>;
-            <span class="kw">let </span>(encryption_key, signature_key, identity) = <span class="kw">if let </span><span class="prelude-val">Some</span>(node) = tsn.node() {
-                <span class="comment">// This is a little verbose but will go away soon with #819.
-                </span><span class="kw">if let </span><span class="prelude-val">Ok</span>(leaf_node) = node.as_leaf_node() {
-                    (
-                        leaf_node.public_key(),
-                        leaf_node.leaf_node.credential().signature_key(),
-                        leaf_node.leaf_node.credential().identity(),
-                    )
-                } <span class="kw">else </span>{
-                    <span class="kw">return </span><span class="prelude-val">Err</span>(LibraryError::custom(<span class="string">&quot;The tree is broken.&quot;</span>));
-                }
-            } <span class="kw">else </span>{
-                <span class="kw">return </span><span class="prelude-val">Err</span>(LibraryError::custom(<span class="string">&quot;The tree is broken.&quot;</span>));
-            };
-            out.push(Member::new(
-                index,
-                encryption_key.as_slice().to_vec(),
-                signature_key.as_slice().to_vec(),
-                identity.to_vec(),
-            ))
-        }
-        <span class="prelude-val">Ok</span>(out)
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>full_leave_members(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw">impl </span>Iterator&lt;Item = Member&gt; + <span class="lifetime">&#39;_ </span>{
+        <span class="self">self</span>.tree
+            .leaves()
+            <span class="comment">// Filter out blank nodes
+            </span>.filter_map(|(index, tsn)| tsn.node().as_ref().map(|node| (index, node)))
+            <span class="comment">// Filter out parent nodes (should not be necessary in a valid tree)
+            </span>.filter_map(|(index, node)| <span class="kw">match </span>node.as_leaf_node() {
+                <span class="prelude-val">Ok</span>(leaf_node) =&gt; <span class="prelude-val">Some</span>((index, leaf_node)),
+                <span class="prelude-val">Err</span>(<span class="kw">_</span>) =&gt; <span class="prelude-val">None</span>,
+            })
+            <span class="comment">// Map to `Member`
+            </span>.map(|(index, leaf_node)| {
+                Member::new(
+                    index,
+                    leaf_node.public_key().as_slice().to_vec(),
+                    leaf_node
+                        .leaf_node
+                        .credential()
+                        .signature_key()
+                        .as_slice()
+                        .to_vec(),
+                    leaf_node.leaf_node.credential().identity().to_vec(),
+                )
+            })
     }
 
     <span class="doccomment">/// Returns a [`TreeSyncError::UnsupportedExtension`] if an [`ExtensionType`]
@@ -920,7 +862,7 @@
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         extensions: <span class="kw-2">&amp;</span>[<span class="kw">crate</span>::extensions::ExtensionType],
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(), TreeSyncError&gt; {
-        <span class="kw">if </span><span class="self">self</span>.tree.leaves()<span class="question-mark">?</span>.iter().any(|<span class="kw-2">&amp;</span>tsn| {
+        <span class="kw">if </span><span class="self">self</span>.tree.leaves().any(|(<span class="kw">_</span>, tsn)| {
             tsn.node()
                 .as_ref()
                 .and_then(|node| {
