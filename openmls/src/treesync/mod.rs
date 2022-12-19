@@ -363,7 +363,7 @@ impl TreeSync {
     pub(crate) fn full_leave_members(&self) -> impl Iterator<Item = Member> + '_ {
         self.tree
             .leaves()
-            // Filter out blank nodes (should not be necessary in a valid tree)
+            // Filter out blank nodes
             .filter_map(|(index, tsn)| tsn.node().as_ref().map(|node| (index, node)))
             // Filter out parent nodes (should not be necessary in a valid tree)
             .filter_map(|(index, node)| match node.as_leaf_node() {
