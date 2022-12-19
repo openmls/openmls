@@ -311,7 +311,7 @@ fn test_update_path(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvid
         path: Some(broken_path),
     };
 
-    let mut broken_plaintext = MlsPlaintext::commit(
+    let mut broken_plaintext = MlsAuthContent::commit(
         framing_parameters,
         create_commit_result.commit.sender().clone(),
         broken_commit,
@@ -333,19 +333,6 @@ fn test_update_path(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvid
         "Confirmation tag: {:?}",
         broken_plaintext.confirmation_tag()
     );
-
-    let serialized_context = &group_bob
-        .group_context
-        .tls_serialize_detached()
-        .expect("An unexpected error occurred.") as &[u8];
-
-    broken_plaintext
-        .set_membership_tag(
-            backend,
-            serialized_context,
-            group_bob.message_secrets().membership_key(),
-        )
-        .expect("Could not add membership key");
 
     let staged_commit_res =
         alice_group.stage_commit(&broken_plaintext, &proposal_store, &[], backend);

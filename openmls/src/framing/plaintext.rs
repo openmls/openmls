@@ -31,12 +31,11 @@ use tls_codec::{Deserialize, Serialize, TlsByteVecU32, TlsDeserialize, TlsSerial
 ///     optional<MAC> membership_tag;
 /// } MLSPlaintext;
 /// ```
-#[derive(Debug, PartialEq, Clone, Serialize, Deserialize, TlsSerialize, TlsSize)]
+#[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
 pub(crate) struct MlsPlaintext {
-    wire_format: WireFormat,
-    content: MlsContent,
-    auth: MlsContentAuthData,
-    membership_tag: Option<MembershipTag>,
+    pub(super) content: MlsContent,
+    pub(super) auth: MlsContentAuthData,
+    pub(super) membership_tag: Option<MembershipTag>,
 }
 
 /// ```c
@@ -54,12 +53,12 @@ pub(crate) struct MlsPlaintext {
     Debug, PartialEq, Clone, Serialize, Deserialize, TlsSerialize, TlsDeserialize, TlsSize,
 )]
 pub(crate) struct MlsContent {
-    pub(crate) group_id: GroupId,
-    pub(crate) epoch: GroupEpoch,
-    pub(crate) sender: Sender,
-    pub(crate) authenticated_data: VLBytes,
+    pub(super) group_id: GroupId,
+    pub(super) epoch: GroupEpoch,
+    pub(super) sender: Sender,
+    pub(super) authenticated_data: VLBytes,
 
-    pub(crate) body: MlsContentBody,
+    pub(super) body: MlsContentBody,
 }
 
 /// ```c
@@ -132,35 +131,58 @@ impl MlsContentBody {
     }
 }
 
+// TODO #979: This pierces the abstraction boundary and should be removed.
 impl From<MlsPlaintext> for MlsContentBody {
     fn from(plaintext: MlsPlaintext) -> Self {
         plaintext.content.body
     }
 }
 
-// This block only has pub(super) getters.
+#[cfg(test)]
 impl MlsPlaintext {
-    pub(super) fn auth(&self) -> &MlsContentAuthData {
-        &self.auth
+    pub fn set_confirmation_tag(&mut self, confirmation_tag: Option<ConfirmationTag>) {
+        self.auth.confirmation_tag = confirmation_tag;
     }
 
-    #[cfg(test)]
-    pub fn test_signature(&self) -> &Signature {
-        &self.auth.signature
+    pub fn unset_membership_tag(&mut self) {
+        self.membership_tag = None;
     }
 
-    pub(super) fn wire_format(&self) -> WireFormat {
-        self.wire_format
-    }
-
-    #[cfg(test)]
-    pub(super) fn unset_confirmation_tag(&mut self) {
-        self.auth.confirmation_tag = None;
-    }
-
-    #[cfg(test)]
-    pub(super) fn set_content(&mut self, content: MlsContentBody) {
+    pub fn set_content(&mut self, content: MlsContentBody) {
         self.content.body = content;
+    }
+
+    pub fn set_epoch(&mut self, epoch: u64) {
+        self.content.epoch = epoch.into();
+    }
+
+    pub fn content(&self) -> &MlsContentBody {
+        &self.content.body
+    }
+
+    pub fn confirmation_tag(&self) -> Option<&ConfirmationTag> {
+        self.auth.confirmation_tag.as_ref()
+    }
+
+    pub(crate) fn invalidate_signature(&mut self) {
+        let mut modified_signature = self.auth.signature.as_slice().to_vec();
+        modified_signature[0] ^= 0xFF;
+        self.auth.signature.modify(&modified_signature);
+    }
+
+    /// Set the sender.
+    pub(crate) fn set_sender(&mut self, sender: Sender) {
+        self.content.sender = sender;
+    }
+
+    /// Set the group id.
+    pub(crate) fn set_group_id(&mut self, group_id: GroupId) {
+        self.content.group_id = group_id;
+    }
+
+    /// Returns `true` if this is a handshake message and `false` otherwise.
+    pub(crate) fn is_handshake_message(&self) -> bool {
+        self.content_type().is_handshake_message()
     }
 
     // TODO: #727 - Remove if not needed.
@@ -173,168 +195,41 @@ impl MlsPlaintext {
     // pub(super) fn set_membership_tag_test(&mut self, tag: MembershipTag) {
     //     self.membership_tag = Some(tag);
     // }
+}
 
-    #[cfg(test)]
-    pub(super) fn set_wire_format(&mut self, wire_format: WireFormat) {
-        self.wire_format = wire_format;
+impl From<VerifiableMlsAuthContent> for MlsPlaintext {
+    fn from(v: VerifiableMlsAuthContent) -> Self {
+        v.auth_content.into()
+    }
+}
+
+impl From<MlsAuthContent> for MlsPlaintext {
+    fn from(v: MlsAuthContent) -> Self {
+        Self {
+            content: v.tbs.content,
+            auth: v.auth,
+            membership_tag: None,
+        }
     }
 }
 
 impl MlsPlaintext {
-    /// Convenience function for creating an `MlsPlaintext`.
-    #[inline]
-    fn new(
-        framing_parameters: FramingParameters,
-        sender: Sender,
-        body: MlsContentBody,
-        credential_bundle: &CredentialBundle,
-        context: &GroupContext,
-        backend: &impl OpenMlsCryptoProvider,
-    ) -> Result<Self, LibraryError> {
-        let mut mls_plaintext = MlsContentTbs::new(
-            framing_parameters.wire_format(),
-            context.group_id().clone(),
-            context.epoch(),
-            sender.clone(),
-            framing_parameters.aad().into(),
-            body,
-        );
-
-        if let Sender::Member(_) = sender {
-            let serialized_context = context
-                .tls_serialize_detached()
-                .map_err(LibraryError::missing_bound_check)?;
-            mls_plaintext = mls_plaintext.with_context(serialized_context);
+    /// Build an [`MlsPlaintext`].
+    pub(crate) fn new(
+        content: MlsContent,
+        auth: MlsContentAuthData,
+        membership_tag: Option<MembershipTag>,
+    ) -> Self {
+        Self {
+            content,
+            auth,
+            membership_tag,
         }
-
-        mls_plaintext.sign(backend, credential_bundle)
-    }
-
-    /// Create message with membership tag
-    #[inline]
-    fn new_with_membership_tag(
-        framing_parameters: FramingParameters,
-        sender_leaf_index: u32,
-        body: MlsContentBody,
-        credential_bundle: &CredentialBundle,
-        context: &GroupContext,
-        membership_key: &MembershipKey,
-        backend: &impl OpenMlsCryptoProvider,
-    ) -> Result<Self, LibraryError> {
-        let sender = Sender::build_member(sender_leaf_index);
-        let mut mls_plaintext = Self::new(
-            framing_parameters,
-            sender,
-            body,
-            credential_bundle,
-            context,
-            backend,
-        )?;
-        mls_plaintext.set_membership_tag(
-            backend,
-            &context
-                .tls_serialize_detached()
-                .map_err(LibraryError::missing_bound_check)?,
-            membership_key,
-        )?;
-        Ok(mls_plaintext)
-    }
-
-    /// This constructor builds an `MlsPlaintext` containing a Proposal.
-    /// The sender type is always `SenderType::Member`.
-    pub(crate) fn member_proposal(
-        framing_parameters: FramingParameters,
-        sender_leaf_index: u32,
-        proposal: Proposal,
-        credential_bundle: &CredentialBundle,
-        context: &GroupContext,
-        membership_key: &MembershipKey,
-        backend: &impl OpenMlsCryptoProvider,
-    ) -> Result<Self, LibraryError> {
-        Self::new_with_membership_tag(
-            framing_parameters,
-            sender_leaf_index,
-            MlsContentBody::Proposal(proposal),
-            credential_bundle,
-            context,
-            membership_key,
-            backend,
-        )
-    }
-
-    /// This constructor builds an `MlsPlaintext` containing an External Proposal.
-    /// The sender is [Sender::NewMemberProposal].
-    // TODO #151/#106: We don't support preconfigured senders yet
-    pub(crate) fn new_external_proposal(
-        proposal: Proposal,
-        credential_bundle: &CredentialBundle,
-        group_id: GroupId,
-        epoch: GroupEpoch,
-        backend: &impl OpenMlsCryptoProvider,
-    ) -> Result<Self, LibraryError> {
-        let body = MlsContentBody::Proposal(proposal);
-
-        let message = MlsContentTbs::new(
-            WireFormat::MlsPlaintext,
-            group_id,
-            epoch,
-            Sender::NewMemberProposal,
-            vec![].into(),
-            body,
-        );
-        message.sign(backend, credential_bundle)
-    }
-
-    /// This constructor builds an `MlsPlaintext` containing a Commit. If the
-    /// given `CommitType` is `Member`, the `SenderType` is `Member` as well. If
-    /// it's an `External` commit, the `SenderType` is `NewMemberCommit`. If it is an
-    /// `External` commit, the context is not signed along with the rest of the
-    /// commit.
-    pub(crate) fn commit(
-        framing_parameters: FramingParameters,
-        sender: Sender,
-        commit: Commit,
-        credential_bundle: &CredentialBundle,
-        context: &GroupContext,
-        backend: &impl OpenMlsCryptoProvider,
-    ) -> Result<Self, LibraryError> {
-        Self::new(
-            framing_parameters,
-            sender,
-            MlsContentBody::Commit(commit),
-            credential_bundle,
-            context,
-            backend,
-        )
-    }
-
-    /// This constructor builds an `MlsPlaintext` containing an application
-    /// message. The sender type is always `SenderType::Member`.
-    pub(crate) fn new_application(
-        sender_leaf_index: u32,
-        authenticated_data: &[u8],
-        application_message: &[u8],
-        credential_bundle: &CredentialBundle,
-        context: &GroupContext,
-        membership_key: &MembershipKey,
-        backend: &impl OpenMlsCryptoProvider,
-    ) -> Result<Self, LibraryError> {
-        let framing_parameters =
-            FramingParameters::new(authenticated_data, WireFormat::MlsCiphertext);
-        Self::new_with_membership_tag(
-            framing_parameters,
-            sender_leaf_index,
-            MlsContentBody::Application(application_message.into()),
-            credential_bundle,
-            context,
-            membership_key,
-            backend,
-        )
     }
 
     /// Returns a reference to the `content` field.
-    pub(crate) fn content(&self) -> &MlsContentBody {
-        &self.content.body
+    pub(crate) fn content_type(&self) -> ContentType {
+        self.content.body.content_type()
     }
 
     /// Get the sender of this message.
@@ -352,8 +247,9 @@ impl MlsPlaintext {
         serialized_context: &[u8],
         membership_key: &MembershipKey,
     ) -> Result<(), LibraryError> {
-        let tbs_payload =
-            encode_tbs(self, serialized_context).map_err(LibraryError::missing_bound_check)?;
+        let tbs_payload = self
+            .encode_tbs(serialized_context)
+            .map_err(LibraryError::missing_bound_check)?;
         let tbm_payload = MlsContentTbm::new(&tbs_payload, &self.auth)?;
         let membership_tag = membership_key.tag(backend, tbm_payload)?;
 
@@ -361,16 +257,36 @@ impl MlsPlaintext {
         Ok(())
     }
 
-    /// Remove the membership tag for testing.
-    #[cfg(any(feature = "test-utils", test))]
-    pub(crate) fn remove_membership_tag(&mut self) {
-        self.membership_tag = None;
-    }
+    /// Verify the membership tag of an `UnverifiedMlsPlaintext` sent from a
+    /// group member. Returns `Ok(())` if successful or `VerificationError`
+    /// otherwise. Note, that the context must have been set before calling this
+    /// function.
+    // TODO #133: Include this in the validation
+    pub(crate) fn verify_membership(
+        &self,
+        backend: &impl OpenMlsCryptoProvider,
+        membership_key: &MembershipKey,
+        serialized_context: &[u8],
+    ) -> Result<(), ValidationError> {
+        log::debug!("Verifying membership tag.");
+        log_crypto!(trace, "  Membership key: {:x?}", membership_key);
+        log_crypto!(trace, "  Serialized context: {:x?}", serialized_context);
+        let tbs_payload = self
+            .encode_tbs(serialized_context)
+            .map_err(LibraryError::missing_bound_check)?;
+        let tbm_payload = MlsContentTbm::new(&tbs_payload, &self.auth)?;
+        let expected_membership_tag = &membership_key.tag(backend, tbm_payload)?;
 
-    /// Returns `true` if this is a handshake message and `false` otherwise.
-    #[cfg(test)]
-    pub(crate) fn is_handshake_message(&self) -> bool {
-        self.content().content_type().is_handshake_message()
+        // Verify the membership tag
+        if let Some(membership_tag) = &self.membership_tag {
+            // TODO #133: make this a constant-time comparison
+            if membership_tag != expected_membership_tag {
+                return Err(ValidationError::InvalidMembershipTag);
+            }
+        } else {
+            return Err(ValidationError::MissingMembershipTag);
+        }
+        Ok(())
     }
 
     /// Get the group epoch.
@@ -378,18 +294,28 @@ impl MlsPlaintext {
         self.content.epoch
     }
 
-    /// Set the confirmation tag.
-    pub(crate) fn set_confirmation_tag(&mut self, tag: ConfirmationTag) {
-        self.auth.confirmation_tag = Some(tag)
+    /// Get the [`GroupId`].
+    pub(crate) fn group_id(&self) -> &GroupId {
+        &self.content.group_id
     }
 
-    pub(crate) fn confirmation_tag(&self) -> Option<&ConfirmationTag> {
-        self.auth.confirmation_tag.as_ref()
+    fn encode_tbs<'a>(
+        &self,
+        serialized_context: impl Into<Option<&'a [u8]>>,
+    ) -> Result<Vec<u8>, tls_codec::Error> {
+        let mut out = Vec::new();
+        codec::serialize_plaintext_tbs(
+            WireFormat::MlsPlaintext,
+            &self.content,
+            serialized_context,
+            &mut out,
+        )?;
+        Ok(out)
     }
 
-    /// The authenticated data of this MlsPlaintext as byte slice.
-    pub(crate) fn authenticated_data(&self) -> &[u8] {
-        self.content.authenticated_data.as_slice()
+    #[cfg(any(feature = "test-utils", test))]
+    pub fn set_membership_tag_test(&mut self, membership_tag: MembershipTag) {
+        self.membership_tag = Some(membership_tag);
     }
 
     // TODO: #727 - Remove if not needed.
@@ -485,18 +411,15 @@ pub(crate) struct MlsContentTbs {
     pub(super) serialized_context: Option<Vec<u8>>,
 }
 
-fn encode_tbs<'a>(
-    plaintext: &MlsPlaintext,
-    serialized_context: impl Into<Option<&'a [u8]>>,
-) -> Result<Vec<u8>, tls_codec::Error> {
-    let mut out = Vec::new();
-    codec::serialize_plaintext_tbs(
-        plaintext.wire_format,
-        &plaintext.content,
-        serialized_context,
-        &mut out,
-    )?;
-    Ok(out)
+#[cfg(test)]
+impl From<MlsPlaintext> for MlsContentTbs {
+    fn from(v: MlsPlaintext) -> Self {
+        MlsContentTbs {
+            wire_format: WireFormat::MlsPlaintext,
+            content: v.content,
+            serialized_context: None,
+        }
+    }
 }
 
 /// 7.1 Content Authentication
@@ -526,35 +449,235 @@ pub(crate) struct MlsContentAuthData {
     pub(super) confirmation_tag: Option<ConfirmationTag>,
 }
 
-#[cfg(test)]
-impl MlsContentAuthData {
-    pub fn new(signature: Signature, confirmation_tag: impl Into<Option<ConfirmationTag>>) -> Self {
-        Self {
-            signature,
-            confirmation_tag: confirmation_tag.into(),
+/// 6 Message Framing
+///
+/// ```c
+/// // draft-ietf-mls-protocol-16
+///
+/// struct {
+///     WireFormat wire_format;
+///     MLSContent content;
+///     MLSContentAuthData auth;
+/// } MLSAuthenticatedContent;
+/// ```
+///
+/// Note that [`MlsAuthContent`] doesn't correspond exactly to the
+/// MLSAuthenticatedContent from the MLS specification, as the [`MlsContentTbs`]
+/// contains additional information to ease processing.
+///
+/// TODO #1051: Serialization is only needed for KAT generation at this point.
+/// If we want to serialize a spec-compliant MLSAuthenticatedContent, we have to
+/// manually ignore the extra fields in the TBS (i.e. context and later
+/// ProtocolVersion).
+#[derive(PartialEq, Debug, Clone, TlsSerialize, TlsSize)]
+pub(crate) struct MlsAuthContent {
+    pub(super) tbs: MlsContentTbs,
+    pub(super) auth: MlsContentAuthData,
+}
+
+impl MlsAuthContent {
+    /// Convenience function for creating a [`VerifiableMlsAuthContent`].
+    #[inline]
+    fn new_and_sign(
+        framing_parameters: FramingParameters,
+        sender: Sender,
+        body: MlsContentBody,
+        credential_bundle: &CredentialBundle,
+        context: &GroupContext,
+        backend: &impl OpenMlsCryptoProvider,
+    ) -> Result<Self, LibraryError> {
+        let mut content_tbs = MlsContentTbs::new(
+            framing_parameters.wire_format(),
+            context.group_id().clone(),
+            context.epoch(),
+            sender.clone(),
+            framing_parameters.aad().into(),
+            body,
+        );
+
+        if matches!(sender, Sender::NewMemberCommit | Sender::Member(_)) {
+            let serialized_context = context
+                .tls_serialize_detached()
+                .map_err(LibraryError::missing_bound_check)?;
+            content_tbs = content_tbs.with_context(serialized_context);
         }
+
+        content_tbs.sign(backend, credential_bundle)
+    }
+
+    /// This constructor builds an `MlsAuthContent` containing an application
+    /// message. The sender type is always `SenderType::Member`.
+    pub(crate) fn new_application(
+        sender_leaf_index: u32,
+        authenticated_data: &[u8],
+        application_message: &[u8],
+        credential_bundle: &CredentialBundle,
+        context: &GroupContext,
+        backend: &impl OpenMlsCryptoProvider,
+    ) -> Result<Self, LibraryError> {
+        let framing_parameters =
+            FramingParameters::new(authenticated_data, WireFormat::MlsCiphertext);
+        Self::new_and_sign(
+            framing_parameters,
+            Sender::Member(sender_leaf_index),
+            MlsContentBody::Application(application_message.into()),
+            credential_bundle,
+            context,
+            backend,
+        )
+    }
+
+    /// This constructor builds an `MlsPlaintext` containing a Proposal.
+    /// The sender type is always `SenderType::Member`.
+    pub(crate) fn member_proposal(
+        framing_parameters: FramingParameters,
+        sender_leaf_index: u32,
+        proposal: Proposal,
+        credential_bundle: &CredentialBundle,
+        context: &GroupContext,
+        backend: &impl OpenMlsCryptoProvider,
+    ) -> Result<Self, LibraryError> {
+        Self::new_and_sign(
+            framing_parameters,
+            Sender::Member(sender_leaf_index),
+            MlsContentBody::Proposal(proposal),
+            credential_bundle,
+            context,
+            backend,
+        )
+    }
+
+    /// This constructor builds an `MlsPlaintext` containing an External Proposal.
+    /// The sender is [Sender::NewMemberProposal].
+    // TODO #151/#106: We don't support preconfigured senders yet
+    pub(crate) fn new_external_proposal(
+        proposal: Proposal,
+        credential_bundle: &CredentialBundle,
+        group_id: GroupId,
+        epoch: GroupEpoch,
+        backend: &impl OpenMlsCryptoProvider,
+    ) -> Result<Self, LibraryError> {
+        let body = MlsContentBody::Proposal(proposal);
+
+        let content_tbs = MlsContentTbs::new(
+            WireFormat::MlsPlaintext,
+            group_id,
+            epoch,
+            Sender::NewMemberProposal,
+            vec![].into(),
+            body,
+        );
+
+        content_tbs.sign(backend, credential_bundle)
+    }
+
+    /// This constructor builds an `MlsPlaintext` containing a Commit. If the
+    /// given `CommitType` is `Member`, the `SenderType` is `Member` as well. If
+    /// it's an `External` commit, the `SenderType` is `NewMemberCommit`. If it is an
+    /// `External` commit, the context is not signed along with the rest of the
+    /// commit.
+    pub(crate) fn commit(
+        framing_parameters: FramingParameters,
+        sender: Sender,
+        commit: Commit,
+        credential_bundle: &CredentialBundle,
+        context: &GroupContext,
+        backend: &impl OpenMlsCryptoProvider,
+    ) -> Result<Self, LibraryError> {
+        Self::new_and_sign(
+            framing_parameters,
+            sender,
+            MlsContentBody::Commit(commit),
+            credential_bundle,
+            context,
+            backend,
+        )
+    }
+
+    /// Get the signature.
+    pub(crate) fn signature(&self) -> &Signature {
+        &self.auth.signature
+    }
+
+    /// Get the signature.
+    pub(crate) fn confirmation_tag(&self) -> Option<&ConfirmationTag> {
+        self.auth.confirmation_tag.as_ref()
+    }
+
+    /// Set the confirmation tag.
+    pub(crate) fn set_confirmation_tag(&mut self, tag: ConfirmationTag) {
+        self.auth.confirmation_tag = Some(tag)
+    }
+
+    /// Get the content body of the message.
+    pub(crate) fn content(&self) -> &MlsContentBody {
+        &self.tbs.content.body
+    }
+
+    /// Get the wire format.
+    pub(crate) fn wire_format(&self) -> WireFormat {
+        self.tbs.wire_format
+    }
+
+    pub(crate) fn authenticated_data(&self) -> &[u8] {
+        self.tbs.content.authenticated_data.as_slice()
+    }
+
+    /// Get the group id as [`GroupId`].
+    pub(crate) fn group_id(&self) -> &GroupId {
+        &self.tbs.content.group_id
+    }
+
+    /// Get the epoch.
+    pub(crate) fn epoch(&self) -> GroupEpoch {
+        self.tbs.epoch()
+    }
+
+    /// Get the [`Sender`].
+    pub fn sender(&self) -> &Sender {
+        &self.tbs.content.sender
+    }
+
+    #[cfg(test)]
+    pub fn test_signature(&self) -> &Signature {
+        &self.auth.signature
+    }
+
+    #[cfg(test)]
+    pub(super) fn unset_confirmation_tag(&mut self) {
+        self.auth.confirmation_tag = None;
     }
 }
 
-#[derive(PartialEq, Debug, Clone)]
+#[cfg(any(feature = "test-utils", test))]
+impl From<VerifiableMlsAuthContent> for MlsAuthContent {
+    fn from(v: VerifiableMlsAuthContent) -> Self {
+        v.auth_content
+    }
+}
+
+impl From<MlsAuthContent> for MlsContent {
+    fn from(mls_auth_content: MlsAuthContent) -> Self {
+        mls_auth_content.tbs.content
+    }
+}
+
+/// Wrapper struct around [`MlsAuthContent`] to enforce signature verification
+/// before content can be accessed.
+///
+/// TODO #979: Currently, the abstraction boundary between
+/// VerifiableMlsAuthContent and its content is not properly enforced.
+#[derive(PartialEq, Debug, Clone, TlsSerialize, TlsSize)]
 pub(crate) struct VerifiableMlsAuthContent {
-    pub(super) tbs: MlsContentTbs,
-    pub(super) auth: MlsContentAuthData,
-    pub(super) membership_tag: Option<MembershipTag>,
+    pub(super) auth_content: MlsAuthContent,
 }
 
 impl VerifiableMlsAuthContent {
     /// Create a new [`VerifiableMlsAuthContent`] from a [`MlsContentTbs`] and
     /// a [`Signature`].
-    pub(crate) fn new(
-        tbs: MlsContentTbs,
-        auth: MlsContentAuthData,
-        membership_tag: impl Into<Option<MembershipTag>>,
-    ) -> Self {
+    pub(crate) fn new(tbs: MlsContentTbs, auth: MlsContentAuthData) -> Self {
         Self {
-            tbs,
-            auth,
-            membership_tag: membership_tag.into(),
+            auth_content: MlsAuthContent { tbs, auth },
         }
     }
 
@@ -565,171 +688,58 @@ impl VerifiableMlsAuthContent {
         serialized_context: impl Into<Option<Vec<u8>>>,
     ) -> Self {
         let tbs = MlsContentTbs {
-            wire_format: mls_plaintext.wire_format,
+            wire_format: WireFormat::MlsPlaintext,
             content: mls_plaintext.content,
             serialized_context: serialized_context.into(),
         };
 
-        Self {
-            tbs,
-            auth: mls_plaintext.auth,
-            membership_tag: mls_plaintext.membership_tag,
-        }
-    }
-
-    /// Verify the membership tag of an `UnverifiedMlsPlaintext` sent from a
-    /// group member. Returns `Ok(())` if successful or `VerificationError`
-    /// otherwise. Note, that the context must have been set before calling this
-    /// function.
-    // TODO #133: Include this in the validation
-    pub(crate) fn verify_membership(
-        &self,
-        backend: &impl OpenMlsCryptoProvider,
-        membership_key: &MembershipKey,
-    ) -> Result<(), ValidationError> {
-        log::debug!("Verifying membership tag.");
-        log_crypto!(trace, "  Membership key: {:x?}", membership_key);
-        log_crypto!(trace, "  Serialized context: {:x?}", serialized_context);
-        let tbs_payload = self
-            .tbs
-            .tls_serialize_detached()
-            .map_err(LibraryError::missing_bound_check)?;
-        let tbm_payload = MlsContentTbm::new(&tbs_payload, &self.auth)?;
-        let expected_membership_tag = &membership_key.tag(backend, tbm_payload)?;
-
-        // Verify the membership tag
-        if let Some(membership_tag) = &self.membership_tag {
-            // TODO #133: make this a constant-time comparison
-            if membership_tag != expected_membership_tag {
-                return Err(ValidationError::InvalidMembershipTag);
-            }
-        } else {
-            return Err(ValidationError::MissingMembershipTag);
-        }
-        Ok(())
+        Self::new(tbs, mls_plaintext.auth)
     }
 
     /// Get the [`Sender`].
     pub fn sender(&self) -> &Sender {
-        &self.tbs.content.sender
-    }
-
-    /// Set the sender.
-    #[cfg(test)]
-    pub(crate) fn set_sender(&mut self, sender: Sender) {
-        self.tbs.content.sender = sender;
-    }
-
-    /// Get the group id as [`GroupId`].
-    pub(crate) fn group_id(&self) -> &GroupId {
-        &self.tbs.content.group_id
-    }
-
-    /// Set the group id.
-    #[cfg(test)]
-    pub(crate) fn set_group_id(&mut self, group_id: GroupId) {
-        self.tbs.content.group_id = group_id;
+        &self.auth_content.tbs.content.sender
     }
 
     /// Set the serialized context before verifying the signature.
     pub(crate) fn set_context(&mut self, serialized_context: Vec<u8>) {
-        self.tbs.serialized_context = Some(serialized_context);
+        self.auth_content.tbs.serialized_context = Some(serialized_context);
     }
 
     /// Set the serialized context before verifying the signature.
     #[cfg(any(feature = "test-utils", test))]
     pub(crate) fn has_context(&self) -> bool {
-        self.tbs.serialized_context.is_some()
+        self.auth_content.tbs.serialized_context.is_some()
     }
 
     /// Get the epoch.
     pub(crate) fn epoch(&self) -> GroupEpoch {
-        self.tbs.epoch()
-    }
-
-    /// Set the epoch.
-    #[cfg(test)]
-    pub(crate) fn set_epoch(&mut self, epoch: u64) {
-        self.tbs.content.epoch = epoch.into();
-    }
-
-    /// Get the underlying MlsPlaintext data of the tbs object.
-    #[cfg(test)]
-    pub(crate) fn payload(&self) -> &MlsContentTbs {
-        &self.tbs
+        self.auth_content.tbs.epoch()
     }
 
     /// Get the content of the message.
     pub(crate) fn content(&self) -> &MlsContentBody {
-        &self.tbs.content.body
+        &self.auth_content.tbs.content.body
     }
 
     /// Get the wire format.
     pub(crate) fn wire_format(&self) -> WireFormat {
-        self.tbs.wire_format
-    }
-
-    /// Get the membership tag.
-    pub(crate) fn membership_tag(&self) -> &Option<MembershipTag> {
-        &self.membership_tag
-    }
-
-    /// Set the membership tag.
-    #[cfg(test)]
-    pub(crate) fn set_membership_tag(&mut self, tag: MembershipTag) {
-        self.membership_tag = Some(tag);
-    }
-
-    /// Unset the membership tag.
-    #[cfg(test)]
-    pub(crate) fn unset_membership_tag(&mut self) {
-        self.membership_tag = None;
+        self.auth_content.tbs.wire_format
     }
 
     /// Get the confirmation tag.
     pub(crate) fn confirmation_tag(&self) -> Option<&ConfirmationTag> {
-        self.auth.confirmation_tag.as_ref()
-    }
-
-    /// Set the confirmation tag.
-    #[cfg(test)]
-    pub(crate) fn set_confirmation_tag(&mut self, confirmation_tag: Option<ConfirmationTag>) {
-        self.auth.confirmation_tag = confirmation_tag;
+        self.auth_content.auth.confirmation_tag.as_ref()
     }
 
     /// Get the content type
     pub(crate) fn content_type(&self) -> ContentType {
-        self.tbs.content.body.content_type()
-    }
-
-    /// Set the content.
-    #[cfg(test)]
-    pub(crate) fn set_content_body(&mut self, body: MlsContentBody) {
-        self.tbs.content.body = body;
-    }
-
-    /// Get the signature.
-    #[cfg(test)]
-    pub(crate) fn signature(&self) -> &Signature {
-        &self.auth.signature
-    }
-
-    /// Set the signature.
-    #[cfg(test)]
-    pub(crate) fn set_signature(&mut self, signature: Signature) {
-        self.auth.signature = signature;
-    }
-
-    #[cfg(test)]
-    pub(crate) fn invalidate_signature(&mut self) {
-        let mut modified_signature = self.signature().as_slice().to_vec();
-        modified_signature[0] ^= 0xFF;
-        self.auth.signature.modify(&modified_signature);
+        self.auth_content.tbs.content.body.content_type()
     }
 }
 
 impl Signable for MlsContentTbs {
-    type SignedOutput = MlsPlaintext;
+    type SignedOutput = MlsAuthContent;
 
     fn unsigned_payload(&self) -> Result<Vec<u8>, tls_codec::Error> {
         self.tls_serialize_detached()
@@ -765,6 +775,7 @@ impl MlsContentTbs {
             serialized_context: None,
         }
     }
+
     /// Adds a serialized context to MlsContentTbs.
     /// This consumes the original struct and can be used as a builder function.
     pub(crate) fn with_context(mut self, serialized_context: Vec<u8>) -> Self {
@@ -780,11 +791,11 @@ impl MlsContentTbs {
 
 impl Verifiable for VerifiableMlsAuthContent {
     fn unsigned_payload(&self) -> Result<Vec<u8>, tls_codec::Error> {
-        self.tbs.tls_serialize_detached()
+        self.auth_content.tbs.tls_serialize_detached()
     }
 
     fn signature(&self) -> &Signature {
-        &self.auth.signature
+        &self.auth_content.auth.signature
     }
 
     fn label(&self) -> &str {
@@ -797,33 +808,22 @@ mod private_mod {
     pub(crate) struct Seal;
 }
 
-impl VerifiedStruct<VerifiableMlsAuthContent> for MlsPlaintext {
+impl VerifiedStruct<VerifiableMlsAuthContent> for MlsAuthContent {
     fn from_verifiable(v: VerifiableMlsAuthContent, _seal: Self::SealingType) -> Self {
-        Self {
-            wire_format: v.tbs.wire_format,
-            content: v.tbs.content,
-            auth: v.auth,
-            membership_tag: v.membership_tag,
-        }
+        v.auth_content
     }
 
     type SealingType = private_mod::Seal;
 }
 
-impl SignedStruct<MlsContentTbs> for MlsPlaintext {
+impl SignedStruct<MlsContentTbs> for MlsAuthContent {
     fn from_payload(tbs: MlsContentTbs, signature: Signature) -> Self {
         let auth = MlsContentAuthData {
             signature,
             // Tags must always be added after the signature
             confirmation_tag: None,
         };
-        Self {
-            wire_format: tbs.wire_format,
-            content: tbs.content,
-            auth,
-            // Tags must always be added after the signature
-            membership_tag: None,
-        }
+        Self { tbs, auth }
     }
 }
 
@@ -845,20 +845,15 @@ pub(crate) struct ConfirmedTranscriptHashInput<'a> {
     pub(super) signature: &'a Signature,
 }
 
-impl<'a> TryFrom<&'a MlsPlaintext> for ConfirmedTranscriptHashInput<'a> {
-    type Error = &'static str;
-
-    fn try_from(mls_plaintext: &'a MlsPlaintext) -> Result<Self, Self::Error> {
-        if !matches!(
-            mls_plaintext.content.body.content_type(),
-            ContentType::Commit
-        ) {
+impl<'a> ConfirmedTranscriptHashInput<'a> {
+    pub(crate) fn try_from(mls_content: &'a MlsAuthContent) -> Result<Self, &'static str> {
+        if !matches!(mls_content.content().content_type(), ContentType::Commit) {
             return Err("MlsPlaintext needs to contain a Commit.");
         }
         Ok(ConfirmedTranscriptHashInput {
-            wire_format: mls_plaintext.wire_format,
-            mls_content: &mls_plaintext.content,
-            signature: &mls_plaintext.auth.signature,
+            wire_format: mls_content.wire_format(),
+            mls_content: &mls_content.tbs.content,
+            signature: mls_content.signature(),
         })
     }
 }

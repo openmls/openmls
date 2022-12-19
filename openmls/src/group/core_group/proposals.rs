@@ -61,7 +61,7 @@ impl QueuedProposal {
     pub(crate) fn from_mls_plaintext(
         ciphersuite: Ciphersuite,
         backend: &impl OpenMlsCryptoProvider,
-        mls_plaintext: MlsPlaintext,
+        mls_plaintext: MlsAuthContent,
     ) -> Result<Self, LibraryError> {
         let proposal = match mls_plaintext.content() {
             MlsContentBody::Proposal(p) => p,

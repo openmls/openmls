@@ -4,11 +4,11 @@ use openmls_traits::{types::Ciphersuite, OpenMlsCryptoProvider};
 
 use super::CoreGroup;
 use crate::{
-    ciphersuite::{hash_ref::ProposalRef, Secret},
+    ciphersuite::hash_ref::ProposalRef,
     credentials::{CredentialBundle, CredentialType},
     extensions::{ApplicationIdExtension, Extension, ExtensionType, RequiredCapabilitiesExtension},
     framing::sender::Sender,
-    framing::{FramingParameters, MlsPlaintext, WireFormat},
+    framing::{FramingParameters, MlsAuthContent, WireFormat},
     group::{
         create_commit_params::CreateCommitParams,
         errors::*,
@@ -17,7 +17,6 @@ use crate::{
     },
     key_packages::KeyPackageBundle,
     messages::proposals::{AddProposal, Proposal, ProposalOrRef, ProposalType},
-    schedule::MembershipKey,
 };
 
 fn setup_client(
@@ -101,39 +100,30 @@ fn proposal_queue_functions(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryp
     assert!(!proposal_add_alice1.is_type(ProposalType::Remove));
 
     // Frame proposals in MlsPlaintext
-    let mls_plaintext_add_alice1 = MlsPlaintext::member_proposal(
+    let mls_plaintext_add_alice1 = MlsAuthContent::member_proposal(
         framing_parameters,
         0,
         proposal_add_alice1,
         &alice_credential_bundle,
         &group_context,
-        &MembershipKey::from_secret(
-            Secret::random(ciphersuite, backend, None).expect("Not enough randomness."),
-        ),
         backend,
     )
     .expect("Could not create proposal.");
-    let mls_plaintext_add_alice2 = MlsPlaintext::member_proposal(
+    let mls_plaintext_add_alice2 = MlsAuthContent::member_proposal(
         framing_parameters,
         1,
         proposal_add_alice2,
         &alice_credential_bundle,
         &group_context,
-        &MembershipKey::from_secret(
-            Secret::random(ciphersuite, backend, None).expect("Not enough randomness."),
-        ),
         backend,
     )
     .expect("Could not create proposal.");
-    let _mls_plaintext_add_bob1 = MlsPlaintext::member_proposal(
+    let _mls_plaintext_add_bob1 = MlsAuthContent::member_proposal(
         framing_parameters,
         1,
         proposal_add_bob1,
         &alice_credential_bundle,
         &group_context,
-        &MembershipKey::from_secret(
-            Secret::random(ciphersuite, backend, None).expect("Not enough randomness."),
-        ),
         backend,
     )
     .expect("Could not create proposal.");
@@ -226,29 +216,21 @@ fn proposal_queue_order(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoPr
     let proposal_add_bob1 = Proposal::Add(add_proposal_bob1);
 
     // Frame proposals in MlsPlaintext
-    let mls_plaintext_add_alice1 = MlsPlaintext::member_proposal(
+    let mls_plaintext_add_alice1 = MlsAuthContent::member_proposal(
         framing_parameters,
         0,
         proposal_add_alice1.clone(),
         &alice_credential_bundle,
         &group_context,
-        &MembershipKey::from_secret(
-            Secret::random(ciphersuite, backend, None /* MLS version */)
-                .expect("Not enough randomness."),
-        ),
         backend,
     )
     .expect("Could not create proposal.");
-    let mls_plaintext_add_bob1 = MlsPlaintext::member_proposal(
+    let mls_plaintext_add_bob1 = MlsAuthContent::member_proposal(
         framing_parameters,
         1,
         proposal_add_bob1.clone(),
         &alice_credential_bundle,
         &group_context,
-        &MembershipKey::from_secret(
-            Secret::random(ciphersuite, backend, None /* MLS version */)
-                .expect("Not enough randomness."),
-        ),
         backend,
     )
     .expect("Could not create proposal.");
