@@ -102,23 +102,17 @@ fn test_node_references() {
 
     // Node access and node references
     let diff = tree.empty_diff();
-    let leaf_reference = diff.leaf(0).expect("error obtaining leaf reference.");
-
-    assert_eq!(
-        diff.leaf(1)
-            .expect_err("no error when accessing leaf outside of tree"),
-        MlsBinaryTreeDiffError::IndexOutOfBounds(OutOfBoundsError::IndexOutOfBounds)
-    );
+    let leaf = diff.leaf(0);
 
     let leaf_index = diff
-        .leaf_index(leaf_reference)
+        .leaf_index(leaf)
         .expect("leaf reference without a leaf index.");
 
     assert_eq!(leaf_index, 0);
-    assert!(diff.is_leaf(leaf_reference));
+    assert!(diff.is_leaf(leaf));
 
     let leaf = diff
-        .node(leaf_reference)
+        .node(leaf)
         .expect("error dereferencing valid node reference");
 
     assert_eq!(leaf, &0);
@@ -132,20 +126,17 @@ fn test_node_references() {
         MlsBinaryTreeDiffError::IndexOutOfBounds(OutOfBoundsError::IndexOutOfBounds)
     );
 
-    let leaf_reference = diff.leaf(0).expect("error obtaining leaf reference.");
-
+    let leaf = diff.leaf(0);
     let leaf_mut = diff
-        .node_mut(leaf_reference)
+        .node_mut(leaf)
         .expect("error dereferencing valid node reference");
 
     assert_eq!(leaf_mut, &1);
 
     *leaf_mut = 2;
 
-    let leaf_reference = diff.leaf(0).expect("error obtaining leaf reference.");
-
     let leaf = diff
-        .node(leaf_reference)
+        .node(leaf)
         .expect("error dereferencing valid node reference");
 
     assert_eq!(leaf, &2);
@@ -165,10 +156,10 @@ fn test_node_references() {
 
     assert_eq!(new_leaf_index, 1);
 
-    let leaf_reference = diff.leaf(1).expect("error obtaining leaf reference.");
+    let leaf = diff.leaf(1);
 
     let leaf = diff
-        .node(leaf_reference)
+        .node(leaf)
         .expect("error dereferencing valid node reference");
 
     assert_eq!(leaf, &4);
@@ -386,12 +377,6 @@ fn test_direct_path_manipulation() {
         .expect("error setting direct path in small tree.");
     // Nothing should have changed.
     assert_eq!(st_diff.tree_size(), 1);
-    assert_eq!(
-        st_diff
-            .node(st_diff.leaf(0).expect("error getting leaf reference"))
-            .expect("error dereferencing"),
-        &0
-    );
 
     // Setting the direct path to a given path.
     st_diff
@@ -399,12 +384,6 @@ fn test_direct_path_manipulation() {
         .expect("error setting direct path in small tree.");
     // Nothing should have changed.
     assert_eq!(st_diff.tree_size(), 1);
-    assert_eq!(
-        st_diff
-            .node(st_diff.leaf(0).expect("error getting leaf reference"))
-            .expect("error dereferencing"),
-        &0
-    );
 
     // Medium tree
     let medium_tree = MlsBinaryTree::new((0..3).collect()).expect("error creating tree");
