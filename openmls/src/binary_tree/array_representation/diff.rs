@@ -185,47 +185,39 @@ impl<'a, T: Clone + Debug> AbDiff<'a, T> {
             })
             .peekable();
 
+        // Combine the original leaves with the leaves from the diff. Since
+        // both iterators are sorted, we can just iterate over them and
+        // don't need additional sorting. If one of the iterators is
+        // exhausted, we just add the remaining leaves from the other
+        // iterator. We also make sure that we don't add leaves from the
+        // original leaves that are also in the diff.
+
         let mut combined = Vec::new();
 
-        loop {
-            // Combine the original leaves with the leaves from the diff. Since
-            // both iterators are sorted, we can just iterate over them and
-            // don't need additional sorting. If one of the iterators is
-            // exhausted, we just add the remaining leaves from the other
-            // iterator. We also make sure that we don't add leaves from the
-            // original leaves that are also in the diff.
-
-            let next = match (original_leaves.peek(), diff_leaves.peek()) {
-                // The original tree has a leaf that is not in the diff.
-                (Some((original_index, _)), Some((diff_index, _)))
-                    if original_index < diff_index =>
-                {
-                    original_leaves.next()
-                }
-                // The original tree and the diff have the same leaf. We only
-                // need to add the leaf from the diff and drop the leaf from the
-                // original tree.
-                (Some((original_index, _)), Some((diff_index, _)))
-                    if original_index == diff_index =>
-                {
-                    original_leaves.next();
-                    diff_leaves.next()
-                }
-                // The diff has a leaf that is not in the original tree.
-                (Some((_, _)), Some((_, _))) => diff_leaves.next(),
-                // We are out of diff leaves, so we just add the remaining
-                // original leaves.
-                (Some((_, _)), None) => original_leaves.next(),
-                // We are out of original leaves, so we just add the remaining
-                // diff leaves.
-                (None, Some((_, _))) => diff_leaves.next(),
-                // We are out of both leaves, so we are done.
-                (None, None) => break,
-            };
-
-            if let Some((index, leaf)) = next {
-                combined.push((index, leaf));
+        while let Some((index, leaf)) = match (original_leaves.peek(), diff_leaves.peek()) {
+            // The original tree has a leaf that is not in the diff.
+            (Some((original_index, _)), Some((diff_index, _))) if original_index < diff_index => {
+                original_leaves.next()
             }
+            // The original tree and the diff have the same leaf. We only
+            // need to add the leaf from the diff and drop the leaf from the
+            // original tree.
+            (Some((original_index, _)), Some((diff_index, _))) if original_index == diff_index => {
+                original_leaves.next();
+                diff_leaves.next()
+            }
+            // The diff has a leaf that is not in the original tree.
+            (Some((_, _)), Some((_, _))) => diff_leaves.next(),
+            // We are out of diff leaves, so we just add the remaining
+            // original leaves.
+            (Some((_, _)), None) => original_leaves.next(),
+            // We are out of original leaves, so we just add the remaining
+            // diff leaves.
+            (None, Some((_, _))) => diff_leaves.next(),
+            // We are out of both leave types, so we are done.
+            (None, None) => None,
+        } {
+            combined.push((index, leaf));
         }
 
         combined.into_iter()
