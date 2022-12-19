@@ -1,4 +1,4 @@
-# User manual 
+# User manual
 
 The user manual describes how to use the different parts of the OpenMLS API.
 
@@ -19,6 +19,6 @@ Thus, you can create the `backend` object for the following examples using ...
 {{#include ../../../openmls/tests/book_code.rs:create_backend_evercrypt}}
 ```
 
-[`OpenMlsCryptoProvider`]: https://docs.rs/openmls/latest/openmls/prelude/trait.OpenMlsCryptoProvider.html
+[`openmlscryptoprovider`]: https://docs.rs/openmls/latest/openmls/prelude/trait.OpenMlsCryptoProvider.html
 [openmls_rust_crypto]: https://crates.io/crates/openmls_rust_crypto
 [openmls_evercrypt]: https://crates.io/crates/openmls_evercrypt

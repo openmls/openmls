@@ -1,4 +1,3 @@
-
 # External Types
 
 For interoperability, this crate also defines several types and algorithm

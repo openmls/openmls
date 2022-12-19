@@ -1,6 +1,7 @@
 # Summary
 
 [Introduction](introduction.md)
+
 - [User manual](user_manual/README.md)
   - [Credentials](user_manual/identity.md)
   - [Key packages](user_manual/create_key_package.md)

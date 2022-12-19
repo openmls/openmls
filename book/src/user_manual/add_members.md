@@ -30,7 +30,7 @@ proposals are crafted by outsiders, they are always plaintext messages.
 ```
 
 It is then up to the group members to validate the proposal and commit it.
-Note that in this scenario it is up to the application to define a proper authorization policy to grant the sender. 
+Note that in this scenario it is up to the application to define a proper authorization policy to grant the sender.
 
 ```rust,no_run,noplayground
 {{#include ../../../openmls/tests/book_code.rs:decrypt_external_join_proposal}}
