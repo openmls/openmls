@@ -77,18 +77,17 @@
 //! Keys](https://github.com/mlswg/mls-protocol/blob/master/draft-ietf-mls-protocol.md#encryption-keys)
 //! section of the specification.
 
-use crate::{
-    ciphersuite::Secret, messages::proposals::RemoveProposal, tree::index::SecretTreeLeafIndex,
-};
+use crate::messages::proposals::RemoveProposal;
 use crate::{
     credentials::{CredentialBundle, CredentialType},
     framing::*,
     group::*,
     key_packages::{KeyPackageBundle, Lifetime},
     messages::proposals::Proposal,
-    schedule::{EncryptionSecret, MembershipKey, SenderDataSecret},
+    schedule::{EncryptionSecret, SenderDataSecret},
     test_utils::*,
     tree::{
+        index::SecretTreeLeafIndex,
         secret_tree::{SecretTree, SecretType},
         sender_ratchet::SenderRatchetConfiguration,
     },
@@ -193,7 +192,6 @@ fn receiver_group(
 // XXX: we could be more creative in generating these messages.
 #[cfg(any(feature = "test-utils", test))]
 fn build_handshake_messages(
-    leaf: u32,
     sender_index: SecretTreeLeafIndex,
     group: &mut CoreGroup,
     credential_bundle: &CredentialBundle,
@@ -201,26 +199,37 @@ fn build_handshake_messages(
 ) -> (Vec<u8>, Vec<u8>) {
     use tls_codec::Serialize;
 
+    use crate::{prelude_test::Secret, schedule::MembershipKey};
+
     let epoch = random_u64();
     group.context_mut().set_epoch(epoch.into());
+    let framing_parameters = FramingParameters::new(&[1, 2, 3, 4], WireFormat::MlsCiphertext);
     let membership_key = MembershipKey::from_secret(
         Secret::random(group.ciphersuite(), backend, None /* MLS version */)
             .expect("Not enough randomness."),
     );
-    let framing_parameters = FramingParameters::new(&[1, 2, 3, 4], WireFormat::MlsCiphertext);
-    let mut plaintext = MlsPlaintext::member_proposal(
+    let content = MlsAuthContent::member_proposal(
         framing_parameters,
-        leaf,
+        sender_index.into(),
         Proposal::Remove(RemoveProposal { removed: 7 }), // XXX: use random removed
         credential_bundle,
         group.context(),
-        &membership_key,
         backend,
     )
     .expect("An unexpected error occurred.");
-    plaintext.remove_membership_tag();
-    let ciphertext = MlsCiphertext::try_from_plaintext(
-        &plaintext,
+    let mut plaintext: MlsPlaintext = content.clone().into();
+    plaintext
+        .set_membership_tag(
+            backend,
+            &group
+                .context()
+                .tls_serialize_detached()
+                .expect("Could not serialize the group context."),
+            &membership_key,
+        )
+        .expect("Error setting membership tag.");
+    let ciphertext = MlsCiphertext::encrypt_with_different_header(
+        &content,
         group.ciphersuite(),
         backend,
         MlsMessageHeader {
@@ -244,7 +253,6 @@ fn build_handshake_messages(
 
 #[cfg(any(feature = "test-utils", test))]
 fn build_application_messages(
-    leaf: u32,
     sender_index: SecretTreeLeafIndex,
     group: &mut CoreGroup,
     credential_bundle: &CredentialBundle,
@@ -252,25 +260,36 @@ fn build_application_messages(
 ) -> (Vec<u8>, Vec<u8>) {
     use tls_codec::Serialize;
 
+    use crate::{prelude_test::Secret, schedule::MembershipKey};
+
     let epoch = random_u64();
     group.context_mut().set_epoch(epoch.into());
     let membership_key = MembershipKey::from_secret(
         Secret::random(group.ciphersuite(), backend, None /* MLS version */)
             .expect("Not enough randomness."),
     );
-    let mut plaintext = MlsPlaintext::new_application(
-        leaf,
+    let content = MlsAuthContent::new_application(
+        sender_index.into(),
         &[1, 2, 3],
         &[4, 5, 6],
         credential_bundle,
         group.context(),
-        &membership_key,
         backend,
     )
     .expect("An unexpected error occurred.");
-    plaintext.remove_membership_tag();
-    let ciphertext = match MlsCiphertext::try_from_plaintext(
-        &plaintext,
+    let mut plaintext: MlsPlaintext = content.clone().into();
+    plaintext
+        .set_membership_tag(
+            backend,
+            &group
+                .context()
+                .tls_serialize_detached()
+                .expect("Could not serialize the group context."),
+            &membership_key,
+        )
+        .expect("Error setting membership tag.");
+    let ciphertext = match MlsCiphertext::encrypt_with_different_header(
+        &content,
         group.ciphersuite(),
         backend,
         MlsMessageHeader {
@@ -375,13 +394,8 @@ pub fn generate_test_vector(
                 .expect("Error getting decryption secret");
             let application_key_string = bytes_to_hex(application_secret_key.as_slice());
             let application_nonce_string = bytes_to_hex(application_secret_nonce.as_slice());
-            let (application_plaintext, application_ciphertext) = build_application_messages(
-                group.own_leaf_index(),
-                leaf.into(),
-                &mut group,
-                &credential_bundle,
-                &crypto,
-            );
+            let (application_plaintext, application_ciphertext) =
+                build_application_messages(leaf.into(), &mut group, &credential_bundle, &crypto);
             println!("Sender Group: {:?}", group);
             application.push(RatchetStep {
                 key: application_key_string,
@@ -404,13 +418,8 @@ pub fn generate_test_vector(
             let handshake_key_string = bytes_to_hex(handshake_secret_key.as_slice());
             let handshake_nonce_string = bytes_to_hex(handshake_secret_nonce.as_slice());
 
-            let (handshake_plaintext, handshake_ciphertext) = build_handshake_messages(
-                group.own_leaf_index(),
-                leaf.into(),
-                &mut group,
-                &credential_bundle,
-                &crypto,
-            );
+            let (handshake_plaintext, handshake_ciphertext) =
+                build_handshake_messages(leaf.into(), &mut group, &credential_bundle, &crypto);
 
             handshake.push(RatchetStep {
                 key: handshake_key_string,

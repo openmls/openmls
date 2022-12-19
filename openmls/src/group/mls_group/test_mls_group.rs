@@ -344,8 +344,8 @@ fn export_secret(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider)
     )
 }
 
-#[apply(ciphersuites)]
-fn test_invalid_plaintext(ciphersuite: Ciphersuite) {
+#[apply(ciphersuites_and_backends)]
+fn test_invalid_plaintext(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
     // Some basic setup functions for the MlsGroup.
     let mls_group_config = MlsGroupConfig::test_default();
 
@@ -382,8 +382,14 @@ fn test_invalid_plaintext(ciphersuite: Ciphersuite) {
         .self_update(Commit, &group_id, None)
         .expect("error creating self update");
 
-    drop(client);
-    drop(clients);
+    // Store the context and membership key so that we can re-compute the membership tag later.
+    let client_groups = client.groups.read().unwrap();
+    let client_group = client_groups.get(&group_id).unwrap();
+    let context = client_group
+        .export_group_context()
+        .tls_serialize_detached()
+        .unwrap();
+    let membership_key = client_group.group().message_secrets().membership_key();
 
     // Tamper with the message such that signature verification fails
     // Once #574 is addressed the new function from there should be used to manipulate the signature.
@@ -394,6 +400,22 @@ fn test_invalid_plaintext(ciphersuite: Ciphersuite) {
         pt.invalidate_signature()
     };
 
+    // Tamper with the message such that sender lookup fails
+    let mut msg_invalid_sender = mls_message;
+    let random_sender = Sender::build_member(987543210);
+    match &mut msg_invalid_sender.mls_message.body {
+        MlsMessageBody::Plaintext(pt) => {
+            pt.set_sender(random_sender);
+            pt.set_membership_tag(backend, &context, membership_key)
+                .unwrap()
+        }
+        MlsMessageBody::Ciphertext(_) => panic!("This should be a plaintext!"),
+    };
+
+    drop(client_groups);
+    drop(client);
+    drop(clients);
+
     let error = setup
         // We're the "no_client" id to prevent the original sender from treating
         // this message as his own and merging the pending commit.
@@ -401,17 +423,11 @@ fn test_invalid_plaintext(ciphersuite: Ciphersuite) {
         .expect_err("No error when distributing message with invalid signature.");
 
     assert_eq!(
-        ClientError::ProcessMessageError(ProcessMessageError::InvalidMembershipTag),
+        ClientError::ProcessMessageError(ProcessMessageError::ValidationError(
+            ValidationError::InvalidMembershipTag
+        )),
         error
     );
-
-    // Tamper with the message such that sender lookup fails
-    let mut msg_invalid_sender = mls_message;
-    let random_sender = Sender::build_member(987543210);
-    match &mut msg_invalid_sender.mls_message.body {
-        MlsMessageBody::Plaintext(pt) => pt.set_sender(random_sender),
-        MlsMessageBody::Ciphertext(_) => panic!("This should be a plaintext!"),
-    };
 
     let error = setup
         // We're the "no_client" id to prevent the original sender from treating

@@ -6,7 +6,7 @@
 
 use crate::{
     credentials::CredentialBundle,
-    framing::{MlsMessageOut, MlsPlaintext},
+    framing::{MlsAuthContent, MlsMessageOut, MlsPlaintext},
     group::{mls_group::errors::ProposeAddMemberError, GroupEpoch, GroupId},
     key_packages::KeyPackage,
     messages::{AddProposal, Proposal},
@@ -15,7 +15,7 @@ use openmls_traits::OpenMlsCryptoProvider;
 
 /// External Add Proposal where sender is [NewMemberProposal](crate::prelude::Sender::NewMemberProposal). A client
 /// outside the group can request joining the group. This proposal should then be committed by a
-/// group member. Note that this is unconstrained i.e. it works for any [MLS group](crate::prelude::MlsGroup).
+/// group member. Note that this is unconstrained i.e. it works for any [MLS group](crate::group::MlsGroup).
 /// This is not the case for the same external proposal with a [Preconfigured sender](crate::prelude::Sender::External)
 pub struct JoinProposal;
 
@@ -36,13 +36,14 @@ impl JoinProposal {
         credential: &CredentialBundle,
         backend: &impl OpenMlsCryptoProvider,
     ) -> Result<MlsMessageOut, ProposeAddMemberError> {
-        MlsPlaintext::new_external_proposal(
+        MlsAuthContent::new_external_proposal(
             Proposal::Add(AddProposal { key_package }),
             credential,
             group_id,
             epoch,
             backend,
         )
+        .map(MlsPlaintext::from)
         .map(MlsMessageOut::from)
         .map_err(ProposeAddMemberError::from)
     }

@@ -206,6 +206,9 @@ impl MlsGroup {
             state_changed: InnerState::Changed,
         };
 
-        Ok((mls_group, create_commit_result.commit.into()))
+        Ok((
+            mls_group,
+            MlsPlaintext::from(create_commit_result.commit).into(),
+        ))
     }
 }

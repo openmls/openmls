@@ -224,13 +224,13 @@ impl CoreGroup {
         let mut provisional_epoch = self.group_context.epoch();
         provisional_epoch.increment();
 
-        // Build MlsPlaintext
-        let mut mls_plaintext = MlsPlaintext::commit(
+        // Build MlsAuthContent
+        let mut commit = MlsAuthContent::commit(
             *params.framing_parameters(),
             sender,
             commit,
             params.credential_bundle(),
-            &self.group_context,
+            self.context(),
             backend,
         )?;
 
@@ -240,7 +240,7 @@ impl CoreGroup {
             backend,
             // It is ok to a library error here, because we know the MlsPlaintext contains a
             // Commit
-            &ConfirmedTranscriptHashInput::try_from(&mls_plaintext)
+            &ConfirmedTranscriptHashInput::try_from(&commit)
                 .map_err(|_| LibraryError::custom("MlsPlaintext did not contain a commit"))?,
             &self.interim_transcript_hash,
         )?;
@@ -304,16 +304,7 @@ impl CoreGroup {
             .map_err(LibraryError::unexpected_crypto_error)?;
 
         // Set the confirmation tag
-        mls_plaintext.set_confirmation_tag(confirmation_tag.clone());
-
-        // Add membership tag if it's a `Member` commit
-        if params.commit_type() == CommitType::Member {
-            mls_plaintext.set_membership_tag(
-                backend,
-                &serialized_group_context,
-                self.message_secrets().membership_key(),
-            )?;
-        }
+        commit.set_confirmation_tag(confirmation_tag.clone());
 
         // Check if new members were added and, if so, create welcome messages
         let welcome_option = if !plaintext_secrets.is_empty() {
@@ -405,7 +396,7 @@ impl CoreGroup {
         );
 
         Ok(CreateCommitResult {
-            commit: mls_plaintext,
+            commit,
             welcome_option,
             staged_commit,
         })

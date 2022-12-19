@@ -1,7 +1,5 @@
 use super::utils::*;
-use crate::{
-    ciphersuite::signable::*, framing::*, group::*, key_packages::*, messages::*, test_utils::*, *,
-};
+use crate::{framing::*, group::*, key_packages::*, messages::*, test_utils::*, *};
 use openmls_rust_crypto::OpenMlsRustCrypto;
 use openmls_traits::crypto::OpenMlsCrypto;
 use tls_codec::{Deserialize, Serialize};
@@ -111,32 +109,32 @@ fn test_update_proposal_encoding(backend: &impl OpenMlsCryptoProvider) {
         )
         .expect("An unexpected error occurred.");
 
-        let update = group_state
+        let mut update: MlsPlaintext = group_state
             .create_update_proposal(
                 framing_parameters,
                 credential_bundle,
                 key_package_bundle.key_package().leaf_node().clone(),
                 backend,
             )
-            .expect("Could not create proposal.");
+            .expect("Could not create proposal.")
+            .into();
+        update
+            .set_membership_tag(
+                backend,
+                &group_state
+                    .context()
+                    .tls_serialize_detached()
+                    .expect("error serializing context"),
+                group_state.message_secrets().membership_key(),
+            )
+            .expect("error setting membership tag");
         let update_encoded = update
             .tls_serialize_detached()
             .expect("Could not encode proposal.");
-        let mut update_decoded =
-            match VerifiableMlsAuthContent::tls_deserialize(&mut update_encoded.as_slice()) {
-                Ok(a) => a,
-                Err(err) => panic!("Error decoding MPLSPlaintext Update: {:?}", err),
-            };
-        update_decoded.set_context(
-            group_state
-                .context()
-                .tls_serialize_detached()
-                .expect("An unexpected error occurred."),
-        );
-        let update_decoded = update_decoded
-            .verify(backend, credential_bundle.credential())
-            .expect("Error verifying MlsPlaintext");
-
+        let update_decoded = match MlsPlaintext::tls_deserialize(&mut update_encoded.as_slice()) {
+            Ok(a) => a,
+            Err(err) => panic!("Error decoding MPLSPlaintext Update: {:?}", err),
+        };
         assert_eq!(update, update_decoded);
     }
 }
@@ -169,35 +167,28 @@ fn test_add_proposal_encoding(backend: &impl OpenMlsCryptoProvider) {
         .expect("An unexpected error occurred.");
 
         // Adds
-        let add = group_state
+        let mut add: MlsPlaintext = group_state
             .create_add_proposal(
                 framing_parameters,
                 credential_bundle,
                 key_package_bundle.key_package().clone(),
                 backend,
             )
-            .expect("Could not create proposal.");
+            .expect("Could not create proposal.")
+            .into();
+        add.set_membership_tag(
+            backend,
+            &group_state
+                .context()
+                .tls_serialize_detached()
+                .expect("error serializing context"),
+            group_state.message_secrets().membership_key(),
+        )
+        .expect("error setting membership tag");
         let add_encoded = add
             .tls_serialize_detached()
             .expect("Could not encode proposal.");
-        let mut verifiable_plaintext =
-            VerifiableMlsAuthContent::tls_deserialize(&mut add_encoded.as_slice())
-                .expect("An unexpected error occurred.");
-
-        verifiable_plaintext.set_context(
-            group_state
-                .context()
-                .tls_serialize_detached()
-                .expect("An unexpected error occurred."),
-        );
-
-        let credential = group_state
-            .treesync()
-            .own_leaf_node()
-            .expect("An unexpected error occurred.")
-            .credential();
-        let add_decoded = verifiable_plaintext
-            .verify(backend, credential)
+        let add_decoded = MlsPlaintext::tls_deserialize(&mut add_encoded.as_slice())
             .expect("An unexpected error occurred.");
 
         assert_eq!(add, add_decoded);
@@ -222,30 +213,24 @@ fn test_remove_proposal_encoding(backend: &impl OpenMlsCryptoProvider) {
             .get(&group_state.ciphersuite())
             .expect("An unexpected error occurred.");
 
-        let remove = group_state
+        let mut remove: MlsPlaintext = group_state
             .create_remove_proposal(framing_parameters, credential_bundle, 1, backend)
-            .expect("Could not create proposal.");
+            .expect("Could not create proposal.")
+            .into();
+        remove
+            .set_membership_tag(
+                backend,
+                &group_state
+                    .context()
+                    .tls_serialize_detached()
+                    .expect("error serializing context"),
+                group_state.message_secrets().membership_key(),
+            )
+            .expect("error setting membership tag");
         let remove_encoded = remove
             .tls_serialize_detached()
             .expect("Could not encode proposal.");
-        let mut verifiable_plaintext =
-            VerifiableMlsAuthContent::tls_deserialize(&mut remove_encoded.as_slice())
-                .expect("An unexpected error occurred.");
-
-        verifiable_plaintext.set_context(
-            group_state
-                .context()
-                .tls_serialize_detached()
-                .expect("An unexpected error occurred."),
-        );
-
-        let credential = group_state
-            .treesync()
-            .own_leaf_node()
-            .expect("An unexpected error occurred.")
-            .credential();
-        let remove_decoded = verifiable_plaintext
-            .verify(backend, credential)
+        let remove_decoded = MlsPlaintext::tls_deserialize(&mut remove_encoded.as_slice())
             .expect("An unexpected error occurred.");
 
         assert_eq!(remove, remove_decoded);
@@ -325,32 +310,25 @@ fn test_commit_encoding(backend: &impl OpenMlsCryptoProvider) {
         let create_commit_result = group_state
             .create_commit(params, backend)
             .expect("An unexpected error occurred.");
-        let commit_encoded = create_commit_result
-            .commit
+        let mut commit: MlsPlaintext = create_commit_result.commit.into();
+        commit
+            .set_membership_tag(
+                backend,
+                &group_state
+                    .context()
+                    .tls_serialize_detached()
+                    .expect("error serializing context"),
+                group_state.message_secrets().membership_key(),
+            )
+            .expect("error setting membership tag");
+        let commit_encoded = commit
             .tls_serialize_detached()
             .expect("An unexpected error occurred.");
 
-        let mut verifiable_plaintext =
-            VerifiableMlsAuthContent::tls_deserialize(&mut commit_encoded.as_slice())
-                .expect("An unexpected error occurred.");
-
-        verifiable_plaintext.set_context(
-            group_state
-                .context()
-                .tls_serialize_detached()
-                .expect("An unexpected error occurred."),
-        );
-
-        let credential = group_state
-            .treesync()
-            .own_leaf_node()
-            .expect("An unexpected error occurred.")
-            .credential();
-        let commit_decoded = verifiable_plaintext
-            .verify(backend, credential)
+        let commit_decoded = MlsPlaintext::tls_deserialize(&mut commit_encoded.as_slice())
             .expect("An unexpected error occurred.");
 
-        assert_eq!(create_commit_result.commit, commit_decoded);
+        assert_eq!(commit, commit_decoded);
     }
 }
 
