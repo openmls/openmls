@@ -26,6 +26,7 @@ use crate::{
 };
 
 use super::{
+    sorted_iter::sorted_iter,
     tree::{to_node_index, ABinaryTree, ABinaryTreeError, NodeIndex},
     treemath::{direct_path, left, lowest_common_ancestor, parent, right, root, TreeMathError},
 };
@@ -172,8 +173,8 @@ impl<'a, T: Clone + Debug> AbDiff<'a, T> {
     /// Returns an iterator over a tuple of the leaf index and a reference to a
     /// leaf, sorted according to their position in the tree from left to right.
     pub(crate) fn leaves(&self) -> impl Iterator<Item = (LeafIndex, &T)> {
-        let mut original_leaves = self.original_tree.leaves().peekable();
-        let mut diff_leaves = self
+        let original_leaves = self.original_tree.leaves().peekable();
+        let diff_leaves = self
             .diff
             .iter()
             .filter_map(|(index, leaf)| {
@@ -192,35 +193,14 @@ impl<'a, T: Clone + Debug> AbDiff<'a, T> {
         // iterator. We also make sure that we don't add leaves from the
         // original leaves that are also in the diff.
 
-        let mut combined = Vec::new();
+        // Harmonize the iterator types
+        let a_iter = Box::new(diff_leaves) as Box<dyn Iterator<Item = (u32, &T)>>;
+        let b_iter = Box::new(original_leaves) as Box<dyn Iterator<Item = (u32, &T)>>;
 
-        while let Some((index, leaf)) = match (original_leaves.peek(), diff_leaves.peek()) {
-            // The original tree has a leaf that is not in the diff.
-            (Some((original_index, _)), Some((diff_index, _))) if original_index < diff_index => {
-                original_leaves.next()
-            }
-            // The original tree and the diff have the same leaf. We only
-            // need to add the leaf from the diff and drop the leaf from the
-            // original tree.
-            (Some((original_index, _)), Some((diff_index, _))) if original_index == diff_index => {
-                original_leaves.next();
-                diff_leaves.next()
-            }
-            // The diff has a leaf that is not in the original tree.
-            (Some((_, _)), Some((_, _))) => diff_leaves.next(),
-            // We are out of diff leaves, so we just add the remaining
-            // original leaves.
-            (Some((_, _)), None) => original_leaves.next(),
-            // We are out of original leaves, so we just add the remaining
-            // diff leaves.
-            (None, Some((_, _))) => diff_leaves.next(),
-            // We are out of both leave types, so we are done.
-            (None, None) => None,
-        } {
-            combined.push((index, leaf));
-        }
+        // We only compare indices, not the actual leaves
+        let cmp = |&(x, _): &(u32, &T)| x;
 
-        combined.into_iter()
+        sorted_iter(a_iter, b_iter, cmp)
     }
 
     // Functions related to the direct paths of leaves
