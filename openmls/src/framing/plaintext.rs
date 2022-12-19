@@ -131,13 +131,6 @@ impl MlsContentBody {
     }
 }
 
-// TODO #979: This pierces the abstraction boundary and should be removed.
-impl From<MlsPlaintext> for MlsContentBody {
-    fn from(plaintext: MlsPlaintext) -> Self {
-        plaintext.content.body
-    }
-}
-
 #[cfg(test)]
 impl MlsPlaintext {
     pub fn set_confirmation_tag(&mut self, confirmation_tag: Option<ConfirmationTag>) {
@@ -717,9 +710,37 @@ impl VerifiableMlsAuthContent {
         self.auth_content.tbs.epoch()
     }
 
-    /// Get the content of the message.
-    pub(crate) fn content(&self) -> &MlsContentBody {
-        &self.auth_content.tbs.content.body
+    /// Returns the [`Credential`] contained in the [`VerifiableMlsAuthContent`]
+    /// if the `sender_type` is either [`Sender::NewMemberCommit`] or
+    /// [`Sender::NewMemberProposal`].
+    ///
+    /// Returns a [`ValidationError`] if
+    /// * the sender type is not one of the above,
+    /// * the content type doesn't match the sender type, or
+    /// * if it's a NewMemberCommit and the Commit doesn't contain a `path`.
+    pub(crate) fn new_member_credential(&self) -> Result<Credential, ValidationError> {
+        match self.auth_content.tbs.content.sender {
+            Sender::NewMemberCommit => {
+                // only external commits can have a sender type `NewMemberCommit`
+                match &self.auth_content.tbs.content.body {
+                    MlsContentBody::Commit(Commit { path, .. }) => path
+                        .as_ref()
+                        .map(|p| p.leaf_node().credential().clone())
+                        .ok_or(ValidationError::NoPath),
+                    _ => Err(ValidationError::NotACommit),
+                }
+            }
+            Sender::NewMemberProposal => {
+                // only External Add proposals can have a sender type `NewMemberProposal`
+                match &self.auth_content.tbs.content.body {
+                    MlsContentBody::Proposal(Proposal::Add(AddProposal { key_package })) => {
+                        Ok(key_package.credential().clone())
+                    }
+                    _ => Err(ValidationError::NotAnExternalAddProposal),
+                }
+            }
+            _ => Err(ValidationError::UnknownMember),
+        }
     }
 
     /// Get the wire format.

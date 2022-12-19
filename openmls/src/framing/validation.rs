@@ -186,24 +186,9 @@ impl DecryptedMessage {
             }
             // External senders are not supported yet #106/#151.
             Sender::External(_) => unimplemented!(),
-            Sender::NewMemberCommit => {
-                // only external commits can have a sender type `NewMemberCommit`
-                match self.plaintext().content() {
-                    MlsContentBody::Commit(Commit { path, .. }) => path
-                        .as_ref()
-                        .map(|p| p.leaf_node().credential().clone())
-                        .ok_or(ValidationError::NoPath),
-                    _ => Err(ValidationError::NotACommit),
-                }
-            }
-            Sender::NewMemberProposal => {
-                // only External Add proposals can have a sender type `NewMemberProposal`
-                match self.plaintext().content() {
-                    MlsContentBody::Proposal(Proposal::Add(AddProposal { key_package })) => {
-                        Ok(key_package.credential().clone())
-                    }
-                    _ => Err(ValidationError::NotAnExternalAddProposal),
-                }
+            Sender::NewMemberCommit | Sender::NewMemberProposal => {
+                // Fetch the credential from the message itself.
+                self.plaintext.new_member_credential()
             }
         }
     }
