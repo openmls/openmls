@@ -210,9 +210,7 @@ fn remover(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
     if let ProcessedMessageContent::StagedCommitMessage(staged_commit) =
         alice_processed_message.into_content()
     {
-        alice_group
-            .merge_staged_commit(*staged_commit)
-            .expect("Could not merge StagedCommit");
+        alice_group.merge_staged_commit(*staged_commit);
     } else {
         unreachable!("Expected a StagedCommit.");
     }
@@ -617,9 +615,7 @@ fn test_pending_commit_logic(ciphersuite: Ciphersuite, backend: &impl OpenMlsCry
     if let ProcessedMessageContent::StagedCommitMessage(staged_commit) =
         alice_processed_message.into_content()
     {
-        alice_group
-            .merge_staged_commit(*staged_commit)
-            .expect("Could not merge StagedCommit");
+        alice_group.merge_staged_commit(*staged_commit);
     } else {
         unreachable!("Expected a StagedCommit.");
     }

@@ -20,7 +20,7 @@
 use openmls_traits::{types::Ciphersuite, OpenMlsCryptoProvider};
 use serde::{Deserialize, Serialize};
 
-use std::{collections::HashSet, convert::TryFrom};
+use std::collections::HashSet;
 
 use super::{
     errors::*,
@@ -73,14 +73,12 @@ pub(crate) struct TreeSyncDiff<'a> {
     own_leaf_index: LeafIndex,
 }
 
-impl<'a> TryFrom<&'a TreeSync> for TreeSyncDiff<'a> {
-    type Error = TreeSyncDiffError;
-
-    fn try_from(tree_sync: &'a TreeSync) -> Result<Self, Self::Error> {
-        Ok(TreeSyncDiff {
-            diff: tree_sync.tree.empty_diff()?,
+impl<'a> From<&'a TreeSync> for TreeSyncDiff<'a> {
+    fn from(tree_sync: &'a TreeSync) -> Self {
+        TreeSyncDiff {
+            diff: tree_sync.tree.empty_diff(),
             own_leaf_index: tree_sync.own_leaf_index,
-        })
+        }
     }
 }
 
@@ -139,28 +137,18 @@ impl<'a> TreeSyncDiff<'a> {
 
     /// Find and return the index of either the left-most blank leaf, or, if
     /// there are no blank leaves, the leaf count.
-    pub(crate) fn free_leaf_index(&self) -> Result<LeafIndex, LibraryError> {
+    pub(crate) fn free_leaf_index(&self) -> LeafIndex {
         // Find a free leaf and fill it with the new key package.
-        let leaf_ids = self.diff.leaves()?;
         let mut leaf_index_option = None;
-        for (leaf_index, leaf_id) in leaf_ids.iter().enumerate() {
-            let leaf_index: LeafIndex = u32::try_from(leaf_index)
-                .map_err(|_| LibraryError::custom("Could not convert index"))?;
-            // The leaf ID must be valid, since it is one of the leaves of the tree
-            if self
-                .diff
-                .node(*leaf_id)
-                .map_err(|_| LibraryError::custom("Expected a valid leaf ID"))?
-                .node()
-                .is_none()
-            {
+        for (leaf_index, leaf_id) in self.diff.leaves() {
+            if leaf_id.node().is_none() {
                 leaf_index_option = Some(leaf_index);
                 break;
             }
         }
         // If we found a free leaf, replace it with the new one, otherwise
         // extend the tree.
-        Ok(leaf_index_option.unwrap_or_else(|| self.leaf_count()))
+        leaf_index_option.unwrap_or_else(|| self.leaf_count())
     }
 
     /// Adds a new leaf to the tree either by filling a blank leaf or by
@@ -176,7 +164,7 @@ impl<'a> TreeSyncDiff<'a> {
     ) -> Result<LeafIndex, TreeSyncAddLeaf> {
         let node = Node::LeafNode(leaf_node);
         // Find a free leaf and fill it with the new key package.
-        let leaf_index = self.free_leaf_index()?;
+        let leaf_index = self.free_leaf_index();
         // If the free leaf index is within the tree, put the new leaf there,
         // otherwise extend the tree.
         if leaf_index < self.leaf_count() {

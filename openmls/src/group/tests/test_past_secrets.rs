@@ -160,9 +160,7 @@ fn test_past_secrets_in_group(ciphersuite: Ciphersuite, backend: &impl OpenMlsCr
             if let ProcessedMessageContent::StagedCommitMessage(staged_commit) =
                 bob_processed_message.into_content()
             {
-                bob_group
-                    .merge_staged_commit(*staged_commit)
-                    .expect("Could not merge StagedCommit");
+                bob_group.merge_staged_commit(*staged_commit);
             } else {
                 unreachable!("Expected a StagedCommit.");
             }

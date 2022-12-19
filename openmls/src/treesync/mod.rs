@@ -141,27 +141,17 @@ impl TreeSync {
 
     /// Merge the given diff into this `TreeSync` instance, refreshing the
     /// `tree_hash` value in the process.
-    ///
-    /// Returns an error if the merging process of the underlying
-    /// [`MlsBinaryTree`] fails.
-    pub(crate) fn merge_diff(
-        &mut self,
-        tree_sync_diff: StagedTreeSyncDiff,
-    ) -> Result<(), LibraryError> {
+    pub(crate) fn merge_diff(&mut self, tree_sync_diff: StagedTreeSyncDiff) {
         let (own_leaf_index, diff, new_tree_hash) = tree_sync_diff.into_parts();
         self.own_leaf_index = own_leaf_index;
         self.tree_hash = new_tree_hash;
-        self.tree.merge_diff(diff)
+        self.tree.merge_diff(diff);
     }
 
     /// Create an empty diff based on this [`TreeSync`] instance all operations
     /// are created based on an initial, empty [`TreeSyncDiff`].
-    ///
-    /// This function should not fail and only returns a [`Result`], because it
-    /// might throw a [LibraryError](TreeSyncError::LibraryError).
-    pub(crate) fn empty_diff(&self) -> Result<TreeSyncDiff, LibraryError> {
-        self.try_into()
-            .map_err(|_| LibraryError::custom("Could not create empty tree sync diff"))
+    pub(crate) fn empty_diff(&self) -> TreeSyncDiff {
+        self.into()
     }
 
     /// Create a new [`TreeSync`] instance from a given slice of `Option<Node>`,
@@ -190,7 +180,7 @@ impl TreeSync {
         // Populate the tree with secrets and derive a commit secret if a path
         // secret is given.
         let commit_secret = if let Some(path_secret) = path_secret_option.into() {
-            let mut diff = tree_sync.empty_diff()?;
+            let mut diff = tree_sync.empty_diff();
             let commit_secret = diff
                 .set_path_secrets(backend, ciphersuite, path_secret, sender_index)
                 .map_err(|e| match e {
@@ -200,7 +190,7 @@ impl TreeSync {
                     }
                 })?;
             let staged_diff = diff.into_staged_diff(backend, ciphersuite)?;
-            tree_sync.merge_diff(staged_diff)?;
+            tree_sync.merge_diff(staged_diff);
             Some(commit_secret)
         } else {
             None
@@ -231,8 +221,7 @@ impl TreeSync {
                 Some(node) => {
                     let mut node = node.clone();
                     if let Node::LeafNode(ref mut leaf_node) = node {
-                        let leaf_index = u32::try_from(node_index / 2)
-                            .map_err(|_| LibraryError::custom("Architecture error"))?;
+                        let leaf_index = (node_index / 2) as u32;
                         if leaf_node.public_key() == own_key_package.hpke_init_key() {
                             // Check if there's a duplicate
                             if let Some(private_key) = private_key.take() {
@@ -304,9 +293,9 @@ impl TreeSync {
     /// tree. This is either the left-most blank node or, if there are no blank
     /// leaves, the leaf count, since adding a member would extend the tree by
     /// one leaf.
-    pub(crate) fn free_leaf_index(&self) -> Result<LeafIndex, TreeSyncError> {
-        let diff = self.empty_diff()?;
-        Ok(diff.free_leaf_index()?)
+    pub(crate) fn free_leaf_index(&self) -> LeafIndex {
+        let diff = self.empty_diff();
+        diff.free_leaf_index()
     }
 
     /// Populate the parent hash caches of all nodes in the tree.
@@ -315,12 +304,13 @@ impl TreeSync {
         backend: &impl OpenMlsCryptoProvider,
         ciphersuite: Ciphersuite,
     ) -> Result<(), LibraryError> {
-        let diff = self.empty_diff()?;
+        let diff = self.empty_diff();
         // Make the diff into a staged diff. This implicitly computes the
         // tree hashes and poulates the tree hash caches.
         let staged_diff = diff.into_staged_diff(backend, ciphersuite)?;
         // Merge the diff.
-        self.merge_diff(staged_diff)
+        self.merge_diff(staged_diff);
+        Ok(())
     }
 
     /// Verify the parent hashes of all parent nodes in the tree.
@@ -345,7 +335,7 @@ impl TreeSync {
         // implements `TreeLike`. We choose the less complex version for now.
         // Should this turn out to cause too much computational overhead, we
         // should reconsider and choose the alternative sketched above
-        let diff = self.empty_diff()?;
+        let diff = self.empty_diff();
         // No need to merge the diff, since we didn't actually modify any state.
         diff.verify_parent_hashes(backend, ciphersuite)
     }
@@ -354,65 +344,46 @@ impl TreeSync {
     ///
     /// This function should not fail and only returns a [`Result`], because it
     /// might throw a [LibraryError](TreeSyncError::LibraryError).
-    pub(crate) fn leaf_count(&self) -> Result<LeafIndex, TreeSyncError> {
-        Ok(self.tree.leaf_count()?)
+    pub(crate) fn leaf_count(&self) -> LeafIndex {
+        self.tree.leaf_count()
     }
 
     /// Returns a list of [`LeafIndex`]es containing only full nodes.
-    ///
-    /// This function should not fail and only returns a [`Result`], because it
-    /// might throw a [LibraryError](TreeSyncError::LibraryError).
-    pub(crate) fn full_leaves(&self) -> Result<Vec<LeafIndex>, LibraryError> {
+    pub(crate) fn full_leaves(&self) -> Vec<LeafIndex> {
         self.tree
-            .leaves()?
-            .drain(..)
-            .enumerate()
-            .filter(|(_, tsn)| tsn.node().is_some())
-            .map(|(index, _)| {
-                u32::try_from(index).map_err(|_| LibraryError::custom("Index outside of the tree"))
-            })
+            .leaves()
+            .filter_map(|(index, tsn)| tsn.node().as_ref().map(|_| (index)))
             .collect()
     }
 
     /// Returns a list of [`Member`]s containing only full nodes.
     ///
-    /// This function should not fail and only returns a [`Result`], because it
-    /// might throw a [LibraryError](TreeSyncError::LibraryError).
-    ///
     /// XXX: For performance reasons we probably want to have this in a borrowing
     ///      version as well. But it might well go away again.
-    pub(crate) fn full_leave_members(&self) -> Result<Vec<Member>, LibraryError> {
-        let mut leaves = self.tree.leaves()?;
-        let leaves = leaves
-            .drain(..)
-            .enumerate()
-            .filter(|(_, tsn)| tsn.node().is_some());
-        let mut out = vec![];
-        for (index, tsn) in leaves {
-            let index = u32::try_from(index)
-                .map_err(|_| LibraryError::custom("Index outside of the tree"))?;
-            let (encryption_key, signature_key, identity) = if let Some(node) = tsn.node() {
-                // This is a little verbose but will go away soon with #819.
-                if let Ok(leaf_node) = node.as_leaf_node() {
-                    (
-                        leaf_node.public_key(),
-                        leaf_node.leaf_node.credential().signature_key(),
-                        leaf_node.leaf_node.credential().identity(),
-                    )
-                } else {
-                    return Err(LibraryError::custom("The tree is broken."));
-                }
-            } else {
-                return Err(LibraryError::custom("The tree is broken."));
-            };
-            out.push(Member::new(
-                index,
-                encryption_key.as_slice().to_vec(),
-                signature_key.as_slice().to_vec(),
-                identity.to_vec(),
-            ))
-        }
-        Ok(out)
+    pub(crate) fn full_leave_members(&self) -> impl Iterator<Item = Member> + '_ {
+        self.tree
+            .leaves()
+            // Filter out blank nodes
+            .filter_map(|(index, tsn)| tsn.node().as_ref().map(|node| (index, node)))
+            // Filter out parent nodes (should not be necessary in a valid tree)
+            .filter_map(|(index, node)| match node.as_leaf_node() {
+                Ok(leaf_node) => Some((index, leaf_node)),
+                Err(_) => None,
+            })
+            // Map to `Member`
+            .map(|(index, leaf_node)| {
+                Member::new(
+                    index,
+                    leaf_node.public_key().as_slice().to_vec(),
+                    leaf_node
+                        .leaf_node
+                        .credential()
+                        .signature_key()
+                        .as_slice()
+                        .to_vec(),
+                    leaf_node.leaf_node.credential().identity().to_vec(),
+                )
+            })
     }
 
     /// Returns a [`TreeSyncError::UnsupportedExtension`] if an [`ExtensionType`]
@@ -422,7 +393,7 @@ impl TreeSync {
         &self,
         extensions: &[crate::extensions::ExtensionType],
     ) -> Result<(), TreeSyncError> {
-        if self.tree.leaves()?.iter().any(|&tsn| {
+        if self.tree.leaves().any(|(_, tsn)| {
             tsn.node()
                 .as_ref()
                 .and_then(|node| {

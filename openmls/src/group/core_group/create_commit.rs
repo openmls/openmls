@@ -87,7 +87,7 @@ impl CoreGroup {
         let proposal_reference_list = proposal_queue.commit_list();
 
         // Make a copy of the current tree to apply proposals safely
-        let mut diff: TreeSyncDiff = self.treesync().empty_diff()?;
+        let mut diff: TreeSyncDiff = self.treesync().empty_diff();
 
         // If this is an external commit we have to set our own leaf index manually
         if params.commit_type() == CommitType::External {
@@ -412,11 +412,7 @@ impl CoreGroup {
         mut inline_proposals: impl Iterator<Item = Option<&'a Proposal>>,
     ) -> Result<u32, LibraryError> {
         // Leftmost free leaf in the tree
-        // This cannot fail unless the tree is completely empty
-        let free_leaf_index = self
-            .treesync()
-            .free_leaf_index()
-            .map_err(|_| LibraryError::custom("The tree was empty"))?;
+        let free_leaf_index = self.treesync().free_leaf_index();
         // Returns the first remove proposal (if there is one)
         let remove_proposal_option = inline_proposals
             .find(|proposal| match proposal {

@@ -180,9 +180,7 @@ fn test_valsem003(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
     if let ProcessedMessageContent::StagedCommitMessage(staged_commit) =
         processed_message.into_content()
     {
-        bob_group
-            .merge_staged_commit(*staged_commit)
-            .expect("Could not merge Commit message.");
+        bob_group.merge_staged_commit(*staged_commit);
     } else {
         unreachable!("Expected StagedCommit.");
     }
@@ -230,7 +228,7 @@ fn test_valsem003(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
     if let ProcessedMessageContent::StagedCommitMessage(staged_commit) =
         processed_msg.into_content()
     {
-        bob_group.merge_staged_commit(*staged_commit).unwrap();
+        bob_group.merge_staged_commit(*staged_commit);
     } else {
         unreachable!();
     }

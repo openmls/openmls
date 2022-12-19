@@ -176,7 +176,7 @@ impl Client {
                     group_state.store_pending_proposal(*staged_proposal);
                 }
                 ProcessedMessageContent::StagedCommitMessage(staged_commit) => {
-                    group_state.merge_staged_commit(*staged_commit)?;
+                    group_state.merge_staged_commit(*staged_commit);
                 }
             }
         }
@@ -190,7 +190,7 @@ impl Client {
     pub fn get_members_of_group(&self, group_id: &GroupId) -> Result<Vec<Member>, ClientError> {
         let groups = self.groups.read().expect("An unexpected error occurred.");
         let group = groups.get(group_id).ok_or(ClientError::NoMatchingGroup)?;
-        let members = group.members().expect("error getting members");
+        let members = group.members().collect();
         Ok(members)
     }
 

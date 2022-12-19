@@ -161,18 +161,10 @@ fn mls_group_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoPr
             .expect("error merging pending commit");
 
         // Check that the group now has two members
-        assert_eq!(
-            alice_group
-                .members()
-                .expect("Library error getting group member list")
-                .len(),
-            2
-        );
+        assert_eq!(alice_group.members().count(), 2);
 
         // Check that Alice & Bob are the members of the group
-        let members = alice_group
-            .members()
-            .expect("Library error getting group member list");
+        let members = alice_group.members().collect::<Vec<Member>>();
         assert_eq!(members[0].identity, b"Alice");
         assert_eq!(members[1].identity, b"Bob");
 
@@ -185,14 +177,7 @@ fn mls_group_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoPr
         .expect("Error creating group from Welcome");
 
         // Make sure that both groups have the same members
-        assert_eq!(
-            alice_group
-                .members()
-                .expect("Library error getting group member list"),
-            bob_group
-                .members()
-                .expect("Library error getting group member list")
-        );
+        assert!(alice_group.members().eq(bob_group.members()));
 
         // Make sure that both groups have the same epoch authenticator
         assert_eq!(
@@ -253,14 +238,10 @@ fn mls_group_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoPr
             assert_eq!(update_kp.credential(), &bob_credential);
 
             // Merge staged Commit
-            alice_group
-                .merge_staged_commit(*staged_commit)
-                .expect("Could not merge Commit.");
+            alice_group.merge_staged_commit(*staged_commit);
 
             // Check Bob's new key package
-            let members = alice_group
-                .members()
-                .expect("Library error getting group member list");
+            let members = alice_group.members().collect::<Vec<Member>>();
             assert_eq!(
                 &members[1].signature_key,
                 update_kp.credential().signature_key().as_slice()
@@ -343,14 +324,10 @@ fn mls_group_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoPr
             // Check that Alice updated
             assert_eq!(update_kp.credential(), &alice_credential);
 
-            bob_group
-                .merge_staged_commit(*staged_commit)
-                .expect("Could not merge StagedCommit");
+            bob_group.merge_staged_commit(*staged_commit);
 
             // Check Alice's new key package
-            let members = bob_group
-                .members()
-                .expect("Library error getting group member list");
+            let members = bob_group.members().collect::<Vec<Member>>();
             assert_eq!(
                 &members[0].signature_key,
                 update_kp.credential().signature_key().as_slice()
@@ -397,9 +374,7 @@ fn mls_group_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoPr
         if let ProcessedMessageContent::StagedCommitMessage(staged_commit) =
             alice_processed_message.into_content()
         {
-            alice_group
-                .merge_staged_commit(*staged_commit)
-                .expect("Could not merge StagedCommit");
+            alice_group.merge_staged_commit(*staged_commit);
         } else {
             unreachable!("Expected a StagedCommit.");
         }
@@ -423,9 +398,7 @@ fn mls_group_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoPr
         );
 
         // Check that Alice, Bob & Charlie are the members of the group
-        let members = alice_group
-            .members()
-            .expect("Library error getting group member list");
+        let members = alice_group.members().collect::<Vec<Member>>();
         assert_eq!(members[0].identity, b"Alice");
         assert_eq!(members[1].identity, b"Bob");
         assert_eq!(members[2].identity, b"Charlie");
@@ -469,9 +442,7 @@ fn mls_group_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoPr
         if let ProcessedMessageContent::StagedCommitMessage(staged_commit) =
             alice_processed_message.into_content()
         {
-            alice_group
-                .merge_staged_commit(*staged_commit)
-                .expect("Could not merge StagedCommit");
+            alice_group.merge_staged_commit(*staged_commit);
         } else {
             unreachable!("Expected a StagedCommit.");
         }
@@ -480,9 +451,7 @@ fn mls_group_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoPr
         if let ProcessedMessageContent::StagedCommitMessage(staged_commit) =
             bob_processed_message.into_content()
         {
-            bob_group
-                .merge_staged_commit(*staged_commit)
-                .expect("Could not merge StagedCommit");
+            bob_group.merge_staged_commit(*staged_commit);
         } else {
             unreachable!("Expected a StagedCommit.");
         }
@@ -545,9 +514,7 @@ fn mls_group_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoPr
             );
 
             // Merge staged Commit
-            alice_group
-                .merge_staged_commit(*staged_commit)
-                .expect("Could not merge Commit.");
+            alice_group.merge_staged_commit(*staged_commit);
         } else {
             unreachable!("Expected a StagedCommit.");
         }
@@ -568,9 +535,7 @@ fn mls_group_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoPr
             );
 
             // Merge staged Commit
-            bob_group
-                .merge_staged_commit(*staged_commit)
-                .expect("Could not merge Commit.");
+            bob_group.merge_staged_commit(*staged_commit);
         } else {
             unreachable!("Expected a StagedCommit.");
         }
@@ -588,18 +553,10 @@ fn mls_group_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoPr
         );
 
         // Make sure the group only contains two members
-        assert_eq!(
-            alice_group
-                .members()
-                .expect("Library error getting group member list")
-                .len(),
-            2
-        );
+        assert_eq!(alice_group.members().count(), 2);
 
         // Check that Alice & Charlie are the members of the group
-        let members = alice_group
-            .members()
-            .expect("Library error getting group member list");
+        let members = alice_group.members().collect::<Vec<Member>>();
         assert_eq!(members[0].identity, b"Alice");
         assert_eq!(members[1].identity, b"Charlie");
 
@@ -695,26 +652,16 @@ fn mls_group_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoPr
         if let ProcessedMessageContent::StagedCommitMessage(staged_commit) =
             charlie_processed_message.into_content()
         {
-            charlie_group
-                .merge_staged_commit(*staged_commit)
-                .expect("Could not merge StagedCommit");
+            charlie_group.merge_staged_commit(*staged_commit);
         } else {
             unreachable!("Expected a StagedCommit.");
         }
 
         // Make sure the group contains two members
-        assert_eq!(
-            alice_group
-                .members()
-                .expect("Library error getting group member list")
-                .len(),
-            2
-        );
+        assert_eq!(alice_group.members().count(), 2);
 
         // Check that Alice & Bob are the members of the group
-        let members = alice_group
-            .members()
-            .expect("Library error getting group member list");
+        let members = alice_group.members().collect::<Vec<Member>>();
         assert_eq!(members[0].identity, b"Alice");
         assert_eq!(members[1].identity, b"Bob");
 
@@ -728,34 +675,18 @@ fn mls_group_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoPr
         .expect("Error creating group from Welcome");
 
         // Make sure the group contains two members
-        assert_eq!(
-            alice_group
-                .members()
-                .expect("Library error getting group member list")
-                .len(),
-            2
-        );
+        assert_eq!(alice_group.members().count(), 2);
 
         // Check that Alice & Bob are the members of the group
-        let members = alice_group
-            .members()
-            .expect("Library error getting group member list");
+        let members = alice_group.members().collect::<Vec<Member>>();
         assert_eq!(members[0].identity, b"Alice");
         assert_eq!(members[1].identity, b"Bob");
 
         // Make sure the group contains two members
-        assert_eq!(
-            bob_group
-                .members()
-                .expect("Library error getting group member list")
-                .len(),
-            2
-        );
+        assert_eq!(bob_group.members().count(), 2);
 
         // Check that Alice & Bob are the members of the group
-        let members = bob_group
-            .members()
-            .expect("Library error getting group member list");
+        let members = bob_group.members().collect::<Vec<Member>>();
         assert_eq!(members[0].identity, b"Alice");
         assert_eq!(members[1].identity, b"Bob");
 
@@ -863,9 +794,7 @@ fn mls_group_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoPr
 
             assert!(staged_commit.self_removed());
             // Merge staged Commit
-            bob_group
-                .merge_staged_commit(*staged_commit)
-                .expect("Could not merge Commit.");
+            bob_group.merge_staged_commit(*staged_commit);
         } else {
             unreachable!("Expected a StagedCommit.");
         }
@@ -874,18 +803,10 @@ fn mls_group_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoPr
         assert!(!bob_group.is_active());
 
         // Make sure the group contains one member
-        assert_eq!(
-            alice_group
-                .members()
-                .expect("Library error getting group member list")
-                .len(),
-            1
-        );
+        assert_eq!(alice_group.members().count(), 1);
 
         // Check that Alice is the only member of the group
-        let members = alice_group
-            .members()
-            .expect("Library error getting group member list");
+        let members = alice_group.members().collect::<Vec<Member>>();
         assert_eq!(members[0].identity, b"Alice");
 
         // === Save the group state ===

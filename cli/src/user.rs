@@ -78,7 +78,7 @@ impl User {
             encryption_key: _,
             signature_key,
             ..
-        } in mls_group.members().unwrap().iter()
+        } in mls_group.members()
         {
             if self
                 .identity
@@ -89,7 +89,7 @@ impl User {
                 .as_slice()
                 != signature_key.as_slice()
             {
-                let contact = match self.contacts.get(signature_key) {
+                let contact = match self.contacts.get(&signature_key) {
                     Some(c) => c.id.clone(),
                     None => panic!("There's a member in the group we don't know."),
                 };
@@ -194,9 +194,7 @@ impl User {
                             // intentionally left blank.
                         }
                         ProcessedMessageContent::StagedCommitMessage(commit_ptr) => {
-                            mls_group
-                                .merge_staged_commit(*commit_ptr)
-                                .expect("Failed to merge staged commit!");
+                            mls_group.merge_staged_commit(*commit_ptr);
                         }
                     }
                 }

@@ -113,7 +113,7 @@ impl MlsGroup {
 
     /// Merge a [StagedCommit] into the group after inspection. As this advances
     /// the epoch of the group, it also clears any pending commits.
-    pub fn merge_staged_commit(&mut self, staged_commit: StagedCommit) -> Result<(), LibraryError> {
+    pub fn merge_staged_commit(&mut self, staged_commit: StagedCommit) {
         // Check if we were removed from the group
         if staged_commit.self_removed() {
             self.group_state = MlsGroupState::Inactive;
@@ -124,7 +124,7 @@ impl MlsGroup {
 
         // Merge staged commit
         self.group
-            .merge_staged_commit(staged_commit, &mut self.proposal_store)?;
+            .merge_staged_commit(staged_commit, &mut self.proposal_store);
 
         // Extract and store the resumption psk for the current epoch
         let resumption_psk = self.group.group_epoch_secrets().resumption_psk();
@@ -136,8 +136,6 @@ impl MlsGroup {
 
         // Delete a potential pending commit
         self.clear_pending_commit();
-
-        Ok(())
     }
 
     /// Merges the pending [`StagedCommit`] if there is one, and
@@ -147,9 +145,7 @@ impl MlsGroup {
             MlsGroupState::PendingCommit(_) => {
                 let old_state = mem::replace(&mut self.group_state, MlsGroupState::Operational);
                 if let MlsGroupState::PendingCommit(pending_commit_state) = old_state {
-                    if let Err(e) = self.merge_staged_commit((*pending_commit_state).into()) {
-                        log::debug!("Error when merging own commit: {:?}", e);
-                    }
+                    self.merge_staged_commit((*pending_commit_state).into());
                 }
                 Ok(())
             }
