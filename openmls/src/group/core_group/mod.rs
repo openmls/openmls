@@ -463,7 +463,7 @@ impl CoreGroup {
         padding_size: usize,
         backend: &impl OpenMlsCryptoProvider,
     ) -> Result<PrivateMessage, MessageEncryptionError> {
-        let mls_plaintext = AuthenticatedContent::new_application(
+        let public_message = AuthenticatedContent::new_application(
             self.own_leaf_index(),
             aad,
             msg,
@@ -471,19 +471,19 @@ impl CoreGroup {
             self.context(),
             backend,
         )?;
-        self.encrypt(mls_plaintext, padding_size, backend)
+        self.encrypt(public_message, padding_size, backend)
     }
 
     // Encrypt an PublicMessage into an PrivateMessage
     pub(crate) fn encrypt(
         &mut self,
-        mls_plaintext: AuthenticatedContent,
+        public_message: AuthenticatedContent,
         padding_size: usize,
         backend: &impl OpenMlsCryptoProvider,
     ) -> Result<PrivateMessage, MessageEncryptionError> {
-        log::trace!("{:?}", mls_plaintext.confirmation_tag());
-        PrivateMessage::try_from_plaintext(
-            &mls_plaintext,
+        log::trace!("{:?}", public_message.confirmation_tag());
+        PrivateMessage::try_from_authenticated_content(
+            &public_message,
             self.ciphersuite,
             backend,
             self.message_secrets_store.message_secrets_mut(),
@@ -495,7 +495,7 @@ impl CoreGroup {
     #[cfg(any(feature = "test-utils", test))]
     pub(crate) fn decrypt(
         &mut self,
-        mls_ciphertext: &PrivateMessage,
+        private_message: &PrivateMessage,
         backend: &impl OpenMlsCryptoProvider,
         sender_ratchet_configuration: &SenderRatchetConfiguration,
     ) -> Result<VerifiableAuthenticatedContent, MessageDecryptionError> {
@@ -503,9 +503,9 @@ impl CoreGroup {
 
         let ciphersuite = self.ciphersuite();
         let message_secrets = self
-            .message_secrets_mut(mls_ciphertext.epoch())
+            .message_secrets_mut(private_message.epoch())
             .map_err(|_| MessageDecryptionError::AeadError)?;
-        let sender_data = mls_ciphertext.sender_data(message_secrets, backend, ciphersuite)?;
+        let sender_data = private_message.sender_data(message_secrets, backend, ciphersuite)?;
         if self
             .treesync()
             .leaf_is_in_tree(sender_data.leaf_index)
@@ -517,9 +517,9 @@ impl CoreGroup {
         }
         let sender_index = SecretTreeLeafIndex(sender_data.leaf_index);
         let message_secrets = self
-            .message_secrets_mut(mls_ciphertext.epoch())
+            .message_secrets_mut(private_message.epoch())
             .map_err(|_| MessageDecryptionError::AeadError)?;
-        mls_ciphertext.to_plaintext(
+        private_message.to_verifiable_content(
             ciphersuite,
             backend,
             message_secrets,

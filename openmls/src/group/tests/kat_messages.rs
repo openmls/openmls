@@ -50,10 +50,10 @@ pub struct MessagesTestVector {
 
     commit: String, /* serialized Commit */
 
-    mls_plaintext_application: String, /* serialized PublicMessage(ApplicationData) */
-    mls_plaintext_proposal: String,    /* serialized PublicMessage(Proposal(*)) */
-    mls_plaintext_commit: String,      /* serialized PublicMessage(Commit) */
-    mls_ciphertext: String,            /* serialized PrivateMessage */
+    public_message_application: String, /* serialized PublicMessage(ApplicationData) */
+    public_message_proposal: String,    /* serialized PublicMessage(Proposal(*)) */
+    public_message_commit: String,      /* serialized PublicMessage(Commit) */
+    private_message: String,            /* serialized PrivateMessage */
 }
 
 pub fn generate_test_vector(ciphersuite: Ciphersuite) -> MessagesTestVector {
@@ -200,8 +200,12 @@ pub fn generate_test_vector(ciphersuite: Ciphersuite) -> MessagesTestVector {
         .expect("An unexpected error occurred.");
 
     let mut proposal_store = ProposalStore::from_queued_proposal(
-        QueuedProposal::from_mls_plaintext(ciphersuite, &crypto, add_proposal_content.clone())
-            .expect("An unexpected error occurred."),
+        QueuedProposal::from_authenticated_content(
+            ciphersuite,
+            &crypto,
+            add_proposal_content.clone(),
+        )
+        .expect("An unexpected error occurred."),
     );
     let params = CreateCommitParams::builder()
         .framing_parameters(framing_parameters)
@@ -230,7 +234,7 @@ pub fn generate_test_vector(ciphersuite: Ciphersuite) -> MessagesTestVector {
     .expect("Error creating receiver group.");
 
     // Clone the secret tree to bypass FS restrictions
-    let mls_ciphertext_application = group
+    let private_message_application = group
         .create_application_message(
             b"aad",
             b"msg",
@@ -240,23 +244,24 @@ pub fn generate_test_vector(ciphersuite: Ciphersuite) -> MessagesTestVector {
         )
         .expect("An unexpected error occurred.");
     // Replace the secret tree
-    let mut verifiable_mls_plaintext_application = receiver_group
+    let mut verifiable_public_message_application = receiver_group
         .decrypt(
-            &mls_ciphertext_application,
+            &private_message_application,
             &crypto,
             &SenderRatchetConfiguration::default(),
         )
         .expect("An unexpected error occurred.");
     // Sets the context implicitly.
-    if !verifiable_mls_plaintext_application.has_context() {
-        verifiable_mls_plaintext_application.set_context(
+    if !verifiable_public_message_application.has_context() {
+        verifiable_public_message_application.set_context(
             group
                 .context()
                 .tls_serialize_detached()
                 .expect("Anunexpected error occured."),
         );
     }
-    let mls_content_application: AuthenticatedContent = verifiable_mls_plaintext_application.into();
+    let mls_content_application: AuthenticatedContent =
+        verifiable_public_message_application.into();
 
     let encryption_target = match random_u32() % 3 {
         0 => create_commit_result.commit.clone(),
@@ -278,7 +283,7 @@ pub fn generate_test_vector(ciphersuite: Ciphersuite) -> MessagesTestVector {
     let mut commit_pt: PublicMessage = create_commit_result.commit.into();
     commit_pt.set_membership_tag_test(random_membership_tag);
 
-    let mls_ciphertext = group
+    let private_message = group
         .encrypt(encryption_target, random_u8() as usize, &crypto)
         .expect("An unexpected error occurred.");
 
@@ -359,23 +364,23 @@ pub fn generate_test_vector(ciphersuite: Ciphersuite) -> MessagesTestVector {
                 .expect("An unexpected error occurred."),
         ), /* serialized Commit */
 
-        mls_plaintext_application: bytes_to_hex(
+        public_message_application: bytes_to_hex(
             &application_pt
                 .tls_serialize_detached()
                 .expect("An unexpected error occurred."),
         ), /* serialized PublicMessage(ApplicationData) */
-        mls_plaintext_proposal: bytes_to_hex(
+        public_message_proposal: bytes_to_hex(
             &proposal_pt
                 .tls_serialize_detached()
                 .expect("An unexpected error occurred."),
         ), /* serialized PublicMessage(Proposal(*)) */
-        mls_plaintext_commit: bytes_to_hex(
+        public_message_commit: bytes_to_hex(
             &commit_pt
                 .tls_serialize_detached()
                 .expect("An unexpected error occurred."),
         ), /* serialized PublicMessage(Commit) */
-        mls_ciphertext: bytes_to_hex(
-            &mls_ciphertext
+        private_message: bytes_to_hex(
+            &private_message
                 .tls_serialize_detached()
                 .expect("An unexpected error occurred."),
         ), /* serialized PrivateMessage */
@@ -607,18 +612,18 @@ pub fn run_test_vector(tv: MessagesTestVector) -> Result<(), MessagesTestVectorE
     }
 
     // MlsPlaintextApplication
-    let mut tv_mls_plaintext_application = hex_to_bytes(&tv.mls_plaintext_application);
+    let mut tv_public_message_application = hex_to_bytes(&tv.public_message_application);
     // Fake the wire format so we can deserialize
-    tv_mls_plaintext_application[0] = WireFormat::PublicMessage as u8;
-    let my_mls_plaintext_application =
-        PublicMessage::tls_deserialize(&mut tv_mls_plaintext_application.as_slice())
+    tv_public_message_application[0] = WireFormat::PublicMessage as u8;
+    let my_public_message_application =
+        PublicMessage::tls_deserialize(&mut tv_public_message_application.as_slice())
             .expect("An unexpected error occurred.")
             .tls_serialize_detached()
             .expect("An unexpected error occurred.");
-    if tv_mls_plaintext_application != my_mls_plaintext_application {
+    if tv_public_message_application != my_public_message_application {
         log::error!("  MlsPlaintextApplication encoding mismatch");
-        log::debug!("    Encoded: {:x?}", my_mls_plaintext_application);
-        log::debug!("    Expected: {:x?}", tv_mls_plaintext_application);
+        log::debug!("    Encoded: {:x?}", my_public_message_application);
+        log::debug!("    Expected: {:x?}", tv_public_message_application);
         if cfg!(test) {
             panic!("MlsPlaintextApplication encoding mismatch");
         }
@@ -626,18 +631,18 @@ pub fn run_test_vector(tv: MessagesTestVector) -> Result<(), MessagesTestVectorE
     }
 
     // PublicMessage(Proposal)
-    let mut tv_mls_plaintext_proposal = hex_to_bytes(&tv.mls_plaintext_proposal);
+    let mut tv_public_message_proposal = hex_to_bytes(&tv.public_message_proposal);
     // Fake the wire format so we can deserialize
-    tv_mls_plaintext_proposal[0] = WireFormat::PublicMessage as u8;
-    let my_mls_plaintext_proposal =
-        PublicMessage::tls_deserialize(&mut tv_mls_plaintext_proposal.as_slice())
+    tv_public_message_proposal[0] = WireFormat::PublicMessage as u8;
+    let my_public_message_proposal =
+        PublicMessage::tls_deserialize(&mut tv_public_message_proposal.as_slice())
             .expect("An unexpected error occurred.")
             .tls_serialize_detached()
             .expect("An unexpected error occurred.");
-    if tv_mls_plaintext_proposal != my_mls_plaintext_proposal {
+    if tv_public_message_proposal != my_public_message_proposal {
         log::error!("  PublicMessage(Proposal) encoding mismatch");
-        log::debug!("    Encoded: {:x?}", my_mls_plaintext_proposal);
-        log::debug!("    Expected: {:x?}", tv_mls_plaintext_proposal);
+        log::debug!("    Encoded: {:x?}", my_public_message_proposal);
+        log::debug!("    Expected: {:x?}", tv_public_message_proposal);
         if cfg!(test) {
             panic!("PublicMessage(Proposal) encoding mismatch");
         }
@@ -645,18 +650,18 @@ pub fn run_test_vector(tv: MessagesTestVector) -> Result<(), MessagesTestVectorE
     }
 
     // PublicMessage(Commit)
-    let mut tv_mls_plaintext_commit = hex_to_bytes(&tv.mls_plaintext_commit);
+    let mut tv_public_message_commit = hex_to_bytes(&tv.public_message_commit);
     // Fake the wire format so we can deserialize
-    tv_mls_plaintext_commit[0] = WireFormat::PublicMessage as u8;
-    let my_mls_plaintext_commit =
-        PublicMessage::tls_deserialize(&mut tv_mls_plaintext_commit.as_slice())
+    tv_public_message_commit[0] = WireFormat::PublicMessage as u8;
+    let my_public_message_commit =
+        PublicMessage::tls_deserialize(&mut tv_public_message_commit.as_slice())
             .expect("An unexpected error occurred.")
             .tls_serialize_detached()
             .expect("An unexpected error occurred.");
-    if tv_mls_plaintext_commit != my_mls_plaintext_commit {
+    if tv_public_message_commit != my_public_message_commit {
         log::error!("  PublicMessage(Commit) encoding mismatch");
-        log::debug!("    Encoded: {:x?}", my_mls_plaintext_commit);
-        log::debug!("    Expected: {:x?}", tv_mls_plaintext_commit);
+        log::debug!("    Encoded: {:x?}", my_public_message_commit);
+        log::debug!("    Expected: {:x?}", tv_public_message_commit);
         if cfg!(test) {
             panic!("PublicMessage(Commit) encoding mismatch");
         }
@@ -664,15 +669,15 @@ pub fn run_test_vector(tv: MessagesTestVector) -> Result<(), MessagesTestVectorE
     }
 
     // PrivateMessage
-    let tv_mls_ciphertext = hex_to_bytes(&tv.mls_ciphertext);
-    let my_mls_ciphertext = PrivateMessage::tls_deserialize(&mut tv_mls_ciphertext.as_slice())
+    let tv_private_message = hex_to_bytes(&tv.private_message);
+    let my_private_message = PrivateMessage::tls_deserialize(&mut tv_private_message.as_slice())
         .expect("An unexpected error occurred.")
         .tls_serialize_detached()
         .expect("An unexpected error occurred.");
-    if tv_mls_ciphertext != my_mls_ciphertext {
+    if tv_private_message != my_private_message {
         log::error!("  PrivateMessage encoding mismatch");
-        log::debug!("    Encoded: {:x?}", my_mls_ciphertext);
-        log::debug!("    Expected: {:x?}", tv_mls_ciphertext);
+        log::debug!("    Encoded: {:x?}", my_private_message);
+        log::debug!("    Expected: {:x?}", tv_private_message);
         if cfg!(test) {
             panic!("PrivateMessage encoding mismatch");
         }

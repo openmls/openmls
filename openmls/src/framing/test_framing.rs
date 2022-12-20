@@ -209,7 +209,7 @@ fn wire_format_checks(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProv
         .sender_data(&message_secrets, backend, ciphersuite)
         .expect("Could not decrypt sender data.");
     let verifiable_plaintext = ciphertext
-        .to_plaintext(
+        .to_verifiable_content(
             ciphersuite,
             backend,
             &mut message_secrets,
@@ -245,7 +245,7 @@ fn wire_format_checks(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProv
         .sender_data(&message_secrets, backend, ciphersuite)
         .expect("Could not decrypt sender data.");
     let verifiable_plaintext = ciphertext
-        .to_plaintext(
+        .to_verifiable_content(
             ciphersuite,
             backend,
             &mut message_secrets,
@@ -268,7 +268,7 @@ fn wire_format_checks(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProv
 
     // Try to encrypt an PublicMessage with the wrong wire format
     assert_eq!(
-        PrivateMessage::try_from_plaintext(
+        PrivateMessage::try_from_authenticated_content(
             &plaintext,
             ciphersuite,
             backend,
@@ -341,7 +341,7 @@ fn membership_tag(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
         Secret::random(ciphersuite, backend, None /* MLS version */)
             .expect("Not enough randomness."),
     );
-    let mut mls_plaintext: PublicMessage = AuthenticatedContent::new_application(
+    let mut public_message: PublicMessage = AuthenticatedContent::new_application(
         987543210,
         &[1, 2, 3],
         &[4, 5, 6],
@@ -356,25 +356,25 @@ fn membership_tag(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
         .tls_serialize_detached()
         .expect("An unexpected error occurred.");
 
-    mls_plaintext
+    public_message
         .set_membership_tag(backend, &serialized_context, &membership_key)
         .expect("Error setting membership tag.");
 
     println!(
         "Membership tag error: {:?}",
-        mls_plaintext.verify_membership(backend, &membership_key, &serialized_context)
+        public_message.verify_membership(backend, &membership_key, &serialized_context)
     );
 
     // Verify signature & membership tag
-    assert!(mls_plaintext
+    assert!(public_message
         .verify_membership(backend, &membership_key, &serialized_context)
         .is_ok());
 
     // Change the content of the plaintext message
-    mls_plaintext.set_content(FramedContentBody::Application(vec![7, 8, 9].into()));
+    public_message.set_content(FramedContentBody::Application(vec![7, 8, 9].into()));
 
     // Expect the signature & membership tag verification to fail
-    assert!(mls_plaintext
+    assert!(public_message
         .verify_membership(backend, &membership_key, &serialized_context)
         .is_err());
 }
@@ -447,7 +447,7 @@ fn unknown_sender(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
         .expect("Could not create proposal.");
 
     let mut proposal_store = ProposalStore::from_queued_proposal(
-        QueuedProposal::from_mls_plaintext(ciphersuite, backend, bob_add_proposal)
+        QueuedProposal::from_authenticated_content(ciphersuite, backend, bob_add_proposal)
             .expect("Could not create QueuedProposal."),
     );
 
@@ -488,7 +488,7 @@ fn unknown_sender(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
 
     proposal_store.empty();
     proposal_store.add(
-        QueuedProposal::from_mls_plaintext(ciphersuite, backend, charlie_add_proposal)
+        QueuedProposal::from_authenticated_content(ciphersuite, backend, charlie_add_proposal)
             .expect("Could not create staged proposal."),
     );
 
@@ -523,7 +523,7 @@ fn unknown_sender(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
 
     proposal_store.empty();
     proposal_store.add(
-        QueuedProposal::from_mls_plaintext(ciphersuite, backend, bob_remove_proposal)
+        QueuedProposal::from_authenticated_content(ciphersuite, backend, bob_remove_proposal)
             .expect("Could not create staged proposal."),
     );
 
@@ -635,7 +635,7 @@ fn confirmation_tag_presence(ciphersuite: Ciphersuite, backend: &impl OpenMlsCry
         .expect("Could not create proposal.");
 
     let proposal_store = ProposalStore::from_queued_proposal(
-        QueuedProposal::from_mls_plaintext(ciphersuite, backend, bob_add_proposal)
+        QueuedProposal::from_authenticated_content(ciphersuite, backend, bob_add_proposal)
             .expect("Could not create QueuedProposal."),
     );
 
@@ -739,7 +739,7 @@ fn invalid_plaintext_signature(ciphersuite: Ciphersuite, backend: &impl OpenMlsC
         .expect("Could not create proposal.");
 
     let proposal_store = ProposalStore::from_queued_proposal(
-        QueuedProposal::from_mls_plaintext(ciphersuite, backend, bob_add_proposal)
+        QueuedProposal::from_authenticated_content(ciphersuite, backend, bob_add_proposal)
             .expect("Could not create QueuedProposal."),
     );
 
@@ -885,7 +885,7 @@ fn invalid_plaintext_signature(ciphersuite: Ciphersuite, backend: &impl OpenMlsC
 
     // proposal_store.empty();
     // proposal_store.add(
-    //     QueuedProposal::from_mls_plaintext(ciphersuite, backend, bob_add_proposal.clone())
+    //     QueuedProposal::from_authenticated_content(ciphersuite, backend, bob_add_proposal.clone())
     //         .expect("Could not create staged proposal."),
     // );
 
@@ -922,7 +922,7 @@ fn invalid_plaintext_signature(ciphersuite: Ciphersuite, backend: &impl OpenMlsC
 
     // proposal_store.empty();
     // proposal_store.add(
-    //     QueuedProposal::from_mls_plaintext(ciphersuite, backend, bob_add_proposal)
+    //     QueuedProposal::from_authenticated_content(ciphersuite, backend, bob_add_proposal)
     //         .expect("Could not create staged proposal."),
     // );
 

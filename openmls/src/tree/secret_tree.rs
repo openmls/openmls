@@ -57,8 +57,8 @@ impl From<&ContentType> for SecretType {
 }
 
 impl From<&PublicMessage> for SecretType {
-    fn from(mls_plaintext: &PublicMessage) -> SecretType {
-        SecretType::from(&mls_plaintext.content_type())
+    fn from(public_message: &PublicMessage) -> SecretType {
+        SecretType::from(&public_message.content_type())
     }
 }
 

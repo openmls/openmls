@@ -60,12 +60,12 @@ pub struct QueuedProposal {
 
 impl QueuedProposal {
     /// Creates a new [QueuedProposal] from an [PublicMessage]
-    pub(crate) fn from_mls_plaintext(
+    pub(crate) fn from_authenticated_content(
         ciphersuite: Ciphersuite,
         backend: &impl OpenMlsCryptoProvider,
-        mls_plaintext: AuthenticatedContent,
+        public_message: AuthenticatedContent,
     ) -> Result<Self, LibraryError> {
-        let proposal = match mls_plaintext.content() {
+        let proposal = match public_message.content() {
             FramedContentBody::Proposal(p) => p,
             _ => return Err(LibraryError::custom("Wrong content type")),
         };
@@ -73,7 +73,7 @@ impl QueuedProposal {
         Ok(Self {
             proposal: proposal.clone(), // FIXME
             proposal_reference,
-            sender: mls_plaintext.sender().clone(),
+            sender: public_message.sender().clone(),
             proposal_or_ref_type: ProposalOrRefType::Reference,
         })
     }

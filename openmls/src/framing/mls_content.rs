@@ -259,7 +259,7 @@ impl FramedContentTbs {
         self.content.epoch
     }
 
-    pub(super) fn serialize_plaintext_tbs<'a, W: Write>(
+    pub(super) fn serialize_content_tbs<'a, W: Write>(
         wire_format: WireFormat,
         content: &FramedContent,
         serialized_context: impl Into<Option<&'a [u8]>>,
@@ -296,7 +296,7 @@ impl Size for FramedContentTbs {
 
 impl TlsSerializeTrait for FramedContentTbs {
     fn tls_serialize<W: Write>(&self, writer: &mut W) -> Result<usize, tls_codec::Error> {
-        Self::serialize_plaintext_tbs(
+        Self::serialize_content_tbs(
             self.wire_format,
             &self.content,
             self.serialized_context.as_deref(),

@@ -330,7 +330,7 @@ impl MlsGroup {
     /// Converts PublicMessage to MlsMessageOut. Depending on whether handshake
     /// message should be encrypted, PublicMessage messages are encrypted to
     /// PrivateMessage first.
-    fn plaintext_to_mls_message(
+    fn content_to_mls_message(
         &mut self,
         mls_auth_content: AuthenticatedContent,
         backend: &impl OpenMlsCryptoProvider,

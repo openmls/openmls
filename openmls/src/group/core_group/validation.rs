@@ -54,7 +54,7 @@ impl CoreGroup {
     ///  - ValSem004
     ///  - ValSem005
     ///  - ValSem009
-    pub(crate) fn validate_plaintext(
+    pub(crate) fn validate_verifiable_content(
         &self,
         plaintext: &VerifiableAuthenticatedContent,
     ) -> Result<(), ValidationError> {

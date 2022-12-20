@@ -36,7 +36,7 @@ pub(crate) struct MlsMessage {
 /// MLSMessage (Body)
 ///
 /// Note: Because [MlsMessageBody] already discriminates between
-/// `mls_plaintext`, `mls_ciphertext`, etc., we don't use the
+/// `public_message`, `private_message`, etc., we don't use the
 /// `wire_format` field. This prevents inconsistent assignments
 /// where `wire_format` contradicts the variant given in `body`.
 ///
@@ -47,9 +47,9 @@ pub(crate) struct MlsMessage {
 ///
 ///     WireFormat wire_format;
 ///     select (MLSMessage.wire_format) {
-///         case mls_plaintext:
+///         case public_message:
 ///             PublicMessage plaintext;
-///         case mls_ciphertext:
+///         case private_message:
 ///             PrivateMessage ciphertext;
 ///         case mls_welcome:
 ///             Welcome welcome;
@@ -66,43 +66,43 @@ pub(crate) struct MlsMessage {
 pub(crate) enum MlsMessageBody {
     /// Plaintext message
     #[tls_codec(discriminant = 1)]
-    Plaintext(PublicMessage),
+    PublicMessage(PublicMessage),
 
     /// Ciphertext message
     #[tls_codec(discriminant = 2)]
-    Ciphertext(PrivateMessage),
+    PrivateMessage(PrivateMessage),
 }
 
 impl MlsMessage {
     /// Returns the wire format.
     fn wire_format(&self) -> WireFormat {
         match self.body {
-            MlsMessageBody::Ciphertext(_) => WireFormat::PrivateMessage,
-            MlsMessageBody::Plaintext(_) => WireFormat::PublicMessage,
+            MlsMessageBody::PrivateMessage(_) => WireFormat::PrivateMessage,
+            MlsMessageBody::PublicMessage(_) => WireFormat::PublicMessage,
         }
     }
 
     /// Returns the group ID.
     fn group_id(&self) -> &GroupId {
         match self.body {
-            MlsMessageBody::Ciphertext(ref m) => m.group_id(),
-            MlsMessageBody::Plaintext(ref m) => m.group_id(),
+            MlsMessageBody::PrivateMessage(ref m) => m.group_id(),
+            MlsMessageBody::PublicMessage(ref m) => m.group_id(),
         }
     }
 
     /// Returns the epoch.
     fn epoch(&self) -> GroupEpoch {
         match self.body {
-            MlsMessageBody::Ciphertext(ref m) => m.epoch(),
-            MlsMessageBody::Plaintext(ref m) => m.epoch(),
+            MlsMessageBody::PrivateMessage(ref m) => m.epoch(),
+            MlsMessageBody::PublicMessage(ref m) => m.epoch(),
         }
     }
 
     /// Returns the content type.
     fn content_type(&self) -> ContentType {
         match self.body {
-            MlsMessageBody::Ciphertext(ref m) => m.content_type(),
-            MlsMessageBody::Plaintext(ref m) => m.content_type(),
+            MlsMessageBody::PrivateMessage(ref m) => m.content_type(),
+            MlsMessageBody::PublicMessage(ref m) => m.content_type(),
         }
     }
 
@@ -159,14 +159,14 @@ impl MlsMessageIn {
     /// Returns `true` if this is either an external proposal or external commit
     pub fn is_external(&self) -> bool {
         match &self.mls_message.body {
-            MlsMessageBody::Plaintext(p) => {
+            MlsMessageBody::PublicMessage(p) => {
                 matches!(
                     p.sender(),
                     Sender::NewMemberProposal | Sender::NewMemberCommit | Sender::External(_)
                 )
             }
             // external message cannot be encrypted
-            MlsMessageBody::Ciphertext(_) => false,
+            MlsMessageBody::PrivateMessage(_) => false,
         }
     }
 
@@ -185,7 +185,7 @@ impl MlsMessageIn {
     /// Returns an [`PublicMessage`] if the [`MlsMessageIn`] contains one. Otherwise returns `None`.
     #[cfg(test)]
     pub(crate) fn into_plaintext(self) -> Option<PublicMessage> {
-        if let MlsMessageBody::Plaintext(pt) = self.mls_message.body {
+        if let MlsMessageBody::PublicMessage(pt) = self.mls_message.body {
             Some(pt)
         } else {
             None
@@ -195,7 +195,7 @@ impl MlsMessageIn {
     /// Returns an [`PrivateMessage`] if the [`MlsMessageIn`] contains one. Otherwise returns `None`.
     #[cfg(test)]
     pub(crate) fn into_ciphertext(self) -> Option<PrivateMessage> {
-        if let MlsMessageBody::Ciphertext(ct) = self.mls_message.body {
+        if let MlsMessageBody::PrivateMessage(ct) = self.mls_message.body {
             Some(ct)
         } else {
             None
@@ -211,7 +211,7 @@ pub struct MlsMessageOut {
 
 impl From<PublicMessage> for MlsMessageOut {
     fn from(plaintext: PublicMessage) -> Self {
-        let body = MlsMessageBody::Plaintext(plaintext);
+        let body = MlsMessageBody::PublicMessage(plaintext);
 
         Self {
             mls_message: MlsMessage { body },
@@ -221,7 +221,7 @@ impl From<PublicMessage> for MlsMessageOut {
 
 impl From<PrivateMessage> for MlsMessageOut {
     fn from(ciphertext: PrivateMessage) -> Self {
-        let body = MlsMessageBody::Ciphertext(ciphertext);
+        let body = MlsMessageBody::PrivateMessage(ciphertext);
 
         Self {
             mls_message: MlsMessage { body },
@@ -279,7 +279,7 @@ impl From<MlsMessageOut> for MlsMessageIn {
 #[cfg(any(feature = "test-utils", test))]
 impl From<PublicMessage> for MlsMessageIn {
     fn from(plaintext: PublicMessage) -> Self {
-        let body = MlsMessageBody::Plaintext(plaintext);
+        let body = MlsMessageBody::PublicMessage(plaintext);
 
         Self {
             mls_message: MlsMessage { body },
@@ -290,7 +290,7 @@ impl From<PublicMessage> for MlsMessageIn {
 #[cfg(any(feature = "test-utils", test))]
 impl From<PrivateMessage> for MlsMessageIn {
     fn from(ciphertext: PrivateMessage) -> Self {
-        let body = MlsMessageBody::Ciphertext(ciphertext);
+        let body = MlsMessageBody::PrivateMessage(ciphertext);
 
         Self {
             mls_message: MlsMessage { body },

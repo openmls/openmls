@@ -609,7 +609,7 @@ pub fn run_test_vector(
                 .sender_data(group.message_secrets_test_mut(), backend, ciphersuite)
                 .expect("Unable to get sender data");
             let mls_plaintext_application = mls_ciphertext_application
-                .to_plaintext(
+                .to_verifiable_content(
                     ciphersuite,
                     backend,
                     group.message_secrets_test_mut(),
@@ -681,7 +681,7 @@ pub fn run_test_vector(
                 .sender_data(group.message_secrets_test_mut(), backend, ciphersuite)
                 .expect("Unable to get sender data");
             let mls_plaintext_handshake = mls_ciphertext_handshake
-                .to_plaintext(
+                .to_verifiable_content(
                     ciphersuite,
                     backend,
                     group.message_secrets_test_mut(),
@@ -749,7 +749,7 @@ pub fn run_test_vector(
                 .sender_data(group.message_secrets_test_mut(), backend, ciphersuite)
                 .expect("Unable to get sender data");
             let mls_plaintext_handshake = mls_ciphertext_handshake
-                .to_plaintext(
+                .to_verifiable_content(
                     ciphersuite,
                     backend,
                     group.message_secrets_test_mut(),

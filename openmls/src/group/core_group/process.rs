@@ -41,7 +41,7 @@ impl CoreGroup {
         //  - ValSem006
         //  - ValSem007 MembershipTag presence
         let decrypted_message = match message.mls_message.body {
-            MlsMessageBody::Plaintext(plaintext) => {
+            MlsMessageBody::PublicMessage(public_message) => {
                 // If the message is older than the current epoch, we need to fetch the correct secret tree first.
                 let message_secrets =
                     self.message_secrets_for_epoch(epoch).map_err(|e| match e {
@@ -51,9 +51,13 @@ impl CoreGroup {
                         )
                         .into(),
                     })?;
-                DecryptedMessage::from_inbound_plaintext(plaintext, message_secrets, backend)?
+                DecryptedMessage::from_inbound_public_message(
+                    public_message,
+                    message_secrets,
+                    backend,
+                )?
             }
-            MlsMessageBody::Ciphertext(ciphertext) => {
+            MlsMessageBody::PrivateMessage(ciphertext) => {
                 // If the message is older than the current epoch, we need to fetch the correct secret tree first
                 DecryptedMessage::from_inbound_ciphertext(
                     ciphertext,
@@ -68,7 +72,7 @@ impl CoreGroup {
         //  - ValSem004
         //  - ValSem005
         //  - ValSem009
-        self.validate_plaintext(decrypted_message.plaintext())?;
+        self.validate_verifiable_content(decrypted_message.verifiable_content())?;
 
         // Extract the credential if the sender is a member or a new member.
         // Checks the following semantic validation:
@@ -80,7 +84,7 @@ impl CoreGroup {
         let credential = decrypted_message.credential(
             self.treesync(),
             self.message_secrets_store
-                .leaves_for_epoch(decrypted_message.plaintext().epoch()),
+                .leaves_for_epoch(decrypted_message.verifiable_content().epoch()),
         )?;
 
         Ok(UnverifiedMessage::from_decrypted_message(
@@ -142,7 +146,7 @@ impl CoreGroup {
                 let plaintext = unverified_message
                     .into_verified(backend)
                     .map_err(|_| ProcessMessageError::InvalidSignature)?
-                    .take_plaintext();
+                    .take_authenticated_content();
 
                 let sender = plaintext.sender().clone();
                 let authenticated_data = plaintext.authenticated_data().to_owned();
@@ -154,7 +158,7 @@ impl CoreGroup {
                         ))
                     }
                     FramedContentBody::Proposal(_) => ProcessedMessageContent::ProposalMessage(
-                        Box::new(QueuedProposal::from_mls_plaintext(
+                        Box::new(QueuedProposal::from_authenticated_content(
                             self.ciphersuite(),
                             backend,
                             plaintext,
@@ -213,26 +217,32 @@ impl CoreGroup {
                 let verified_new_member_message = unverified_new_member_message
                     .into_verified(backend)
                     .map_err(|_| ProcessMessageError::InvalidSignature)?;
-                let sender = verified_new_member_message.plaintext().sender().clone();
+                let sender = verified_new_member_message
+                    .authenticated_content()
+                    .sender()
+                    .clone();
                 let authenticated_data = verified_new_member_message
-                    .plaintext()
+                    .authenticated_content()
                     .authenticated_data()
                     .to_owned();
 
-                let content = match verified_new_member_message.plaintext().content() {
+                let content = match verified_new_member_message
+                    .authenticated_content()
+                    .content()
+                {
                     FramedContentBody::Proposal(_) => {
                         ProcessedMessageContent::ExternalJoinProposalMessage(Box::new(
-                            QueuedProposal::from_mls_plaintext(
+                            QueuedProposal::from_authenticated_content(
                                 self.ciphersuite(),
                                 backend,
-                                verified_new_member_message.take_plaintext(),
+                                verified_new_member_message.take_authenticated_content(),
                             )?,
                         ))
                     }
                     FramedContentBody::Commit(_) => {
                         // We throw a library error here, because a missing confirmation tag should be found during deserialization.
                         let staged_commit = self.stage_commit(
-                            verified_new_member_message.plaintext(),
+                            verified_new_member_message.authenticated_content(),
                             proposal_store,
                             own_leaf_nodes,
                             backend,

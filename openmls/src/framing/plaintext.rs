@@ -213,7 +213,7 @@ impl PublicMessage {
         serialized_context: impl Into<Option<&'a [u8]>>,
     ) -> Result<Vec<u8>, tls_codec::Error> {
         let mut out = Vec::new();
-        FramedContentTbs::serialize_plaintext_tbs(
+        FramedContentTbs::serialize_content_tbs(
             WireFormat::PublicMessage,
             &self.content,
             serialized_context,
@@ -309,8 +309,8 @@ pub(crate) struct InterimTranscriptHashInput<'a> {
 impl<'a> TryFrom<&'a PublicMessage> for InterimTranscriptHashInput<'a> {
     type Error = &'static str;
 
-    fn try_from(mls_plaintext: &'a PublicMessage) -> Result<Self, Self::Error> {
-        match mls_plaintext.auth.confirmation_tag.as_ref() {
+    fn try_from(public_message: &'a PublicMessage) -> Result<Self, Self::Error> {
+        match public_message.auth.confirmation_tag.as_ref() {
             Some(confirmation_tag) => Ok(InterimTranscriptHashInput { confirmation_tag }),
             None => Err("PublicMessage needs to contain a confirmation tag."),
         }

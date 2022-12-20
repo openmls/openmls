@@ -206,8 +206,12 @@ pub(crate) fn setup(config: TestSetupConfig, backend: &impl OpenMlsCryptoProvide
             let mut proposal_store = ProposalStore::new();
             for proposal in proposal_list {
                 proposal_store.add(
-                    QueuedProposal::from_mls_plaintext(group_config.ciphersuite, backend, proposal)
-                        .expect("Could not create staged proposal."),
+                    QueuedProposal::from_authenticated_content(
+                        group_config.ciphersuite,
+                        backend,
+                        proposal,
+                    )
+                    .expect("Could not create staged proposal."),
                 );
             }
             let params = CreateCommitParams::builder()

@@ -50,39 +50,41 @@ use super::{
     *,
 };
 
-/// Intermediate message that can be constructed either from a plaintext message or from ciphertext message.
+/// Intermediate message that can be constructed either from a public message or from private message.
 /// If it it constructed from a ciphertext message, the ciphertext message is decrypted first.
 /// This function implements the following checks:
 ///  - ValSem005
 ///  - ValSem007
 ///  - ValSem009
 pub(crate) struct DecryptedMessage {
-    plaintext: VerifiableAuthenticatedContent,
+    verifiable_content: VerifiableAuthenticatedContent,
 }
 
 impl DecryptedMessage {
     /// Constructs a [DecryptedMessage] from a [VerifiableAuthenticatedContent].
-    pub(crate) fn from_inbound_plaintext(
-        plaintext: PublicMessage,
+    pub(crate) fn from_inbound_public_message(
+        public_message: PublicMessage,
         message_secrets: &MessageSecrets,
         backend: &impl OpenMlsCryptoProvider,
     ) -> Result<Self, ValidationError> {
-        if plaintext.sender().is_member() {
+        if public_message.sender().is_member() {
             // Verify the membership tag. This needs to be done explicitly for PublicMessage messages,
             // it is implicit for PrivateMessage messages (because the encryption can only be known by members).
             // ValSem007 Membership tag presence
             // ValSem008
-            plaintext.verify_membership(
+            public_message.verify_membership(
                 backend,
                 message_secrets.membership_key(),
                 message_secrets.serialized_context(),
             )?;
         }
 
-        let verifiable_content =
-            PublicMessage::into_verifiable_content(plaintext, message_secrets.serialized_context());
+        let verifiable_content = PublicMessage::into_verifiable_content(
+            public_message,
+            message_secrets.serialized_context(),
+        );
 
-        Self::from_plaintext(verifiable_content)
+        Self::from_verifiable_content(verifiable_content)
     }
 
     /// Constructs a [DecryptedMessage] from a [PrivateMessage] by attempting to decrypt it
@@ -105,7 +107,7 @@ impl DecryptedMessage {
         let message_secrets = group
             .message_secrets_mut(ciphertext.epoch())
             .map_err(|_| MessageDecryptionError::AeadError)?;
-        let plaintext = ciphertext.to_plaintext(
+        let verifiable_content = ciphertext.to_verifiable_content(
             ciphersuite,
             backend,
             message_secrets,
@@ -113,29 +115,32 @@ impl DecryptedMessage {
             sender_ratchet_configuration,
             sender_data,
         )?;
-        Self::from_plaintext(plaintext)
+        Self::from_verifiable_content(verifiable_content)
     }
 
     // Internal constructor function. Does the following checks:
     // - Confirmation tag must be present for Commit messages
     // - Membership tag must be present for member messages, if the original incoming message was not an PrivateMessage
     // - Ensures application messages were originally PrivateMessage messages
-    fn from_plaintext(plaintext: VerifiableAuthenticatedContent) -> Result<Self, ValidationError> {
+    fn from_verifiable_content(
+        verifiable_content: VerifiableAuthenticatedContent,
+    ) -> Result<Self, ValidationError> {
         // ValSem009
-        if plaintext.content_type() == ContentType::Commit && plaintext.confirmation_tag().is_none()
+        if verifiable_content.content_type() == ContentType::Commit
+            && verifiable_content.confirmation_tag().is_none()
         {
             return Err(ValidationError::MissingConfirmationTag);
         }
         // ValSem005
-        if plaintext.content_type() == ContentType::Application {
-            if plaintext.wire_format() != WireFormat::PrivateMessage {
+        if verifiable_content.content_type() == ContentType::Application {
+            if verifiable_content.wire_format() != WireFormat::PrivateMessage {
                 return Err(ValidationError::UnencryptedApplicationMessage);
-            } else if !plaintext.sender().is_member() {
+            } else if !verifiable_content.sender().is_member() {
                 // This should not happen because the sender of an PrivateMessage should always be a member
                 return Err(LibraryError::custom("Expected sender to be member.").into());
             }
         }
-        Ok(DecryptedMessage { plaintext })
+        Ok(DecryptedMessage { verifiable_content })
     }
 
     /// Gets the correct credential from the message depending on the sender type.
@@ -186,19 +191,19 @@ impl DecryptedMessage {
             Sender::External(_) => unimplemented!(),
             Sender::NewMemberCommit | Sender::NewMemberProposal => {
                 // Fetch the credential from the message itself.
-                self.plaintext.new_member_credential()
+                self.verifiable_content.new_member_credential()
             }
         }
     }
 
     /// Returns the sender.
     pub fn sender(&self) -> &Sender {
-        self.plaintext.sender()
+        self.verifiable_content.sender()
     }
 
-    /// Returns the plaintext.
-    pub(crate) fn plaintext(&self) -> &VerifiableAuthenticatedContent {
-        &self.plaintext
+    /// Returns the [`VerifiableAuthenticatedContent`].
+    pub(crate) fn verifiable_content(&self) -> &VerifiableAuthenticatedContent {
+        &self.verifiable_content
     }
 }
 
@@ -207,7 +212,7 @@ impl DecryptedMessage {
 /// and the optional `aad` if the original message was encrypted.
 #[derive(Debug, Clone)]
 pub(crate) struct UnverifiedMessage {
-    plaintext: VerifiableAuthenticatedContent,
+    verifiable_content: VerifiableAuthenticatedContent,
     credential: Option<Credential>,
 }
 
@@ -218,14 +223,14 @@ impl UnverifiedMessage {
         credential: Option<Credential>,
     ) -> Self {
         UnverifiedMessage {
-            plaintext: decrypted_message.plaintext,
+            verifiable_content: decrypted_message.verifiable_content,
             credential,
         }
     }
 
     /// Decomposes an [UnverifiedMessage] into its parts.
     pub(crate) fn into_parts(self) -> (VerifiableAuthenticatedContent, Option<Credential>) {
-        (self.plaintext, self.credential)
+        (self.verifiable_content, self.credential)
     }
 }
 
@@ -251,11 +256,11 @@ impl UnverifiedContextMessage {
         unverified_message: UnverifiedMessage,
     ) -> Result<Self, LibraryError> {
         // Decompose UnverifiedMessage
-        let (plaintext, credential_option) = unverified_message.into_parts();
-        match plaintext.sender() {
+        let (verifiable_content, credential_option) = unverified_message.into_parts();
+        match verifiable_content.sender() {
             Sender::Member(_) => {
                 Ok(UnverifiedContextMessage::Group(UnverifiedGroupMessage {
-                    plaintext,
+                    verifiable_content,
                     // If the message type is `Member` it always contains credentials
                     credential: credential_option
                         .ok_or_else(|| LibraryError::custom("Expected credential"))?,
@@ -266,7 +271,7 @@ impl UnverifiedContextMessage {
             Sender::NewMemberProposal | Sender::NewMemberCommit => {
                 Ok(UnverifiedContextMessage::NewMember(
                     UnverifiedNewMemberMessage {
-                        plaintext,
+                        verifiable_content,
                         // If the message type is `NewMemberCommit` or `NewMemberProposal` it always contains credentials
                         credential: credential_option
                             .ok_or_else(|| LibraryError::custom("Expected credential"))?,
@@ -279,7 +284,7 @@ impl UnverifiedContextMessage {
 
 /// Part of [UnverifiedContextMessage].
 pub(crate) struct UnverifiedGroupMessage {
-    plaintext: VerifiableAuthenticatedContent,
+    verifiable_content: VerifiableAuthenticatedContent,
     credential: Credential,
 }
 
@@ -293,9 +298,11 @@ impl UnverifiedGroupMessage {
         backend: &impl OpenMlsCryptoProvider,
     ) -> Result<VerifiedMemberMessage, ValidationError> {
         // ValSem010
-        self.plaintext
+        self.verifiable_content
             .verify(backend, &self.credential)
-            .map(|plaintext| VerifiedMemberMessage { plaintext })
+            .map(|authenticated_content| VerifiedMemberMessage {
+                authenticated_content,
+            })
             .map_err(|_| ValidationError::InvalidSignature)
         // XXX: We have tests checking for errors here. But really we should
         //      rewrite them.
@@ -314,7 +321,7 @@ impl UnverifiedGroupMessage {
 
 /// Part of [UnverifiedContextMessage].
 pub(crate) struct UnverifiedNewMemberMessage {
-    plaintext: VerifiableAuthenticatedContent,
+    verifiable_content: VerifiableAuthenticatedContent,
     credential: Credential,
 }
 
@@ -329,9 +336,11 @@ impl UnverifiedNewMemberMessage {
     ) -> Result<VerifiedExternalMessage, ValidationError> {
         // ValSem010
         let verified_external_message = self
-            .plaintext
+            .verifiable_content
             .verify(backend, &self.credential)
-            .map(|plaintext| VerifiedExternalMessage { plaintext })
+            .map(|authenticated_content| VerifiedExternalMessage {
+                authenticated_content,
+            })
             .map_err(|_| ValidationError::InvalidSignature)?;
         Ok(verified_external_message)
     }
@@ -345,37 +354,37 @@ impl UnverifiedNewMemberMessage {
 // TODO #151/#106: We don't support external senders yet
 /// Part of [UnverifiedContextMessage].
 pub(crate) struct UnverifiedExternalMessage {
-    _plaintext: VerifiableAuthenticatedContent,
+    _verifiable_content: VerifiableAuthenticatedContent,
 }
 
 /// Member message, where all semantic checks on the framing have been successfully performed.
 #[derive(Debug)]
 pub(crate) struct VerifiedMemberMessage {
-    plaintext: AuthenticatedContent,
+    authenticated_content: AuthenticatedContent,
 }
 
 impl VerifiedMemberMessage {
     /// Consumes the message and returns the inner [PublicMessage].
-    pub(crate) fn take_plaintext(self) -> AuthenticatedContent {
-        self.plaintext
+    pub(crate) fn take_authenticated_content(self) -> AuthenticatedContent {
+        self.authenticated_content
     }
 }
 
 /// External message, where all semantic checks on the framing have been successfully performed.
 /// Note: External messages are not fully supported yet #106
 pub(crate) struct VerifiedExternalMessage {
-    plaintext: AuthenticatedContent,
+    authenticated_content: AuthenticatedContent,
 }
 
 impl VerifiedExternalMessage {
     /// Returns a reference to the inner [FramedContent].
-    pub(crate) fn plaintext(&self) -> &AuthenticatedContent {
-        &self.plaintext
+    pub(crate) fn authenticated_content(&self) -> &AuthenticatedContent {
+        &self.authenticated_content
     }
 
     /// Consumes the message and returns the inner [PublicMessage].
-    pub(crate) fn take_plaintext(self) -> AuthenticatedContent {
-        self.plaintext
+    pub(crate) fn take_authenticated_content(self) -> AuthenticatedContent {
+        self.authenticated_content
     }
 }
 

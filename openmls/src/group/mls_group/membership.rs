@@ -74,7 +74,7 @@ impl MlsGroup {
 
         // Convert PublicMessage messages to MLSMessage and encrypt them if required by
         // the configuration
-        let mls_messages = self.plaintext_to_mls_message(create_commit_result.commit, backend)?;
+        let mls_messages = self.content_to_mls_message(create_commit_result.commit, backend)?;
 
         // Set the current group state to [`MlsGroupState::PendingCommit`],
         // storing the current [`StagedCommit`] from the commit results
@@ -147,7 +147,7 @@ impl MlsGroup {
 
         // Convert PublicMessage messages to MLSMessage and encrypt them if required by
         // the configuration
-        let mls_message = self.plaintext_to_mls_message(create_commit_result.commit, backend)?;
+        let mls_message = self.content_to_mls_message(create_commit_result.commit, backend)?;
 
         // Set the current group state to [`MlsGroupState::PendingCommit`],
         // storing the current [`StagedCommit`] from the commit results
@@ -197,13 +197,14 @@ impl MlsGroup {
                 }
             })?;
 
-        self.proposal_store.add(QueuedProposal::from_mls_plaintext(
-            self.ciphersuite(),
-            backend,
-            add_proposal.clone(),
-        )?);
+        self.proposal_store
+            .add(QueuedProposal::from_authenticated_content(
+                self.ciphersuite(),
+                backend,
+                add_proposal.clone(),
+            )?);
 
-        let mls_message = self.plaintext_to_mls_message(add_proposal, backend)?;
+        let mls_message = self.content_to_mls_message(add_proposal, backend)?;
 
         // Since the state of the group might be changed, arm the state flag
         self.flag_state_change();
@@ -243,13 +244,14 @@ impl MlsGroup {
             )
             .map_err(|_| ProposeRemoveMemberError::UnknownMember)?;
 
-        self.proposal_store.add(QueuedProposal::from_mls_plaintext(
-            self.ciphersuite(),
-            backend,
-            remove_proposal.clone(),
-        )?);
+        self.proposal_store
+            .add(QueuedProposal::from_authenticated_content(
+                self.ciphersuite(),
+                backend,
+                remove_proposal.clone(),
+            )?);
 
-        let mls_message = self.plaintext_to_mls_message(remove_proposal, backend)?;
+        let mls_message = self.content_to_mls_message(remove_proposal, backend)?;
 
         // Since the state of the group might be changed, arm the state flag
         self.flag_state_change();
@@ -294,13 +296,14 @@ impl MlsGroup {
             )
             .map_err(|_| LibraryError::custom("Creating a self removal should not fail"))?;
 
-        self.proposal_store.add(QueuedProposal::from_mls_plaintext(
-            self.ciphersuite(),
-            backend,
-            remove_proposal.clone(),
-        )?);
+        self.proposal_store
+            .add(QueuedProposal::from_authenticated_content(
+                self.ciphersuite(),
+                backend,
+                remove_proposal.clone(),
+            )?);
 
-        Ok(self.plaintext_to_mls_message(remove_proposal, backend)?)
+        Ok(self.content_to_mls_message(remove_proposal, backend)?)
     }
 
     /// Returns a list of [`Member`]s in the group.
