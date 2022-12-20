@@ -177,7 +177,7 @@ impl<'a, T: Clone + Debug> AbDiff<'a, T> {
         // We only compare indices, not the actual leaves
         let cmp = |&(x, _): &(u32, &T)| x;
 
-        sorted_iter(a_iter, b_iter, cmp)
+        sorted_iter(a_iter, b_iter, cmp, self.size as usize)
     }
 
     // Functions related to the direct paths of leaves
@@ -330,20 +330,31 @@ impl<'a, T: Clone + Debug> AbDiff<'a, T> {
         }
     }
 
-    /// Returns a vector containing the nodes of the tree in-order, i.e. in the
-    /// array representation of the diff. This function should not fail and only
-    /// returns a [`Result`], because it might throw a
-    /// [`LibraryError`].
-    pub(crate) fn export_nodes(&self) -> Result<Vec<T>, LibraryError> {
-        let mut nodes = Vec::new();
-        for node_index in 0..self.tree_size() {
-            let node = self
-                .node_by_index(node_index)
-                // We know the node must be in the tree
-                .map_err(|_| LibraryError::custom("Expected node to be in the tree"))?;
-            nodes.push(node.clone());
-        }
-        Ok(nodes)
+    /// Returns an iterator over a tuple of the node index and a reference to a
+    /// node, sorted according to their position in the tree from left to right.
+    pub(crate) fn nodes(&self) -> impl Iterator<Item = (NodeIndex, &T)> {
+        let original_nodes = self.original_tree.nodes().peekable();
+        let diff_nodes = self
+            .diff
+            .iter()
+            .map(|(index, node)| (*index, node))
+            .peekable();
+
+        // Combine the original nodes with the nodes from the diff. Since
+        // both iterators are sorted, we can just iterate over them and
+        // don't need additional sorting. If one of the iterators is
+        // exhausted, we just add the remaining nodes from the other
+        // iterator. We also make sure that we don't add nodes from the
+        // original nodes that are also in the diff.
+
+        // Harmonize the iterator types
+        let a_iter = Box::new(diff_nodes) as Box<dyn Iterator<Item = (u32, &T)>>;
+        let b_iter = Box::new(original_nodes) as Box<dyn Iterator<Item = (u32, &T)>>;
+
+        // We only compare indices, not the actual nodes
+        let cmp = |&(x, _): &(u32, &T)| x;
+
+        sorted_iter(a_iter, b_iter, cmp, self.size as usize)
     }
 
     /// Returns the size of the diff.

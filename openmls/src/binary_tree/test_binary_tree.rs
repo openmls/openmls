@@ -40,7 +40,7 @@ fn test_tree_basics() {
     }
 
     // Test node export
-    let exported_nodes = tree1.nodes().to_vec();
+    let exported_nodes = tree1.nodes().map(|(_, node)| *node).collect();
     let tree2 =
         MlsBinaryTree::new(exported_nodes).expect("error when creating tree from exported nodes.");
 
@@ -732,9 +732,7 @@ fn test_export_diff_nodes() {
 
     let diff = tree.empty_diff();
 
-    let nodes = diff
-        .export_nodes()
-        .expect("error exporting nodes from diff");
+    let nodes = diff.nodes().map(|(_, node)| *node).collect();
 
     // If we re-export the nodes into a tree, we should end up with the same tree.
     let new_tree = MlsBinaryTree::new(nodes).expect("error creating tree from exported nodes");

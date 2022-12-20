@@ -891,9 +891,8 @@ impl<'a> TreeSyncDiff<'a> {
     pub(crate) fn export_nodes(&self) -> Result<Vec<Option<Node>>, LibraryError> {
         let nodes = self
             .diff
-            .export_nodes()?
-            .into_iter()
-            .map(|ts_node| ts_node.node().to_owned())
+            .nodes()
+            .map(|(_, ts_node)| ts_node.node().to_owned())
             .collect();
         Ok(nodes)
     }

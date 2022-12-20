@@ -10,6 +10,8 @@
 //! vectors. If an element is present in both input vectors, only the element
 //! from iterator `a` is returned.
 //!
+//! The iterator stops after the maximum `size` is reached.
+//!
 //! Note that the two iterators must be sorted. Using this with unsroted
 //! iterators will result in an incorrect output.
 
@@ -27,6 +29,8 @@ where
     a: Peekable<I>,
     b: Peekable<I>,
     cmp: F,
+    size: usize,
+    counter: usize,
 }
 
 impl<I, E, F> Iterator for SortedIter<I, E, F>
@@ -38,6 +42,11 @@ where
     type Item = I::Item;
 
     fn next(&mut self) -> Option<Self::Item> {
+        if self.counter == self.size {
+            return None;
+        } else {
+            self.counter += 1;
+        }
         let a_next = self.a.peek();
         let b_next = self.b.peek();
         match (a_next, b_next) {
@@ -67,7 +76,7 @@ where
 }
 
 /// Create a new [`SortedIter`] from two input iterators.
-pub fn sorted_iter<I, E, F>(a: I, b: I, cmp: F) -> SortedIter<I, E, F>
+pub fn sorted_iter<I, E, F>(a: I, b: I, cmp: F, size: usize) -> SortedIter<I, E, F>
 where
     I: Iterator,
     E: Ord,
@@ -77,6 +86,8 @@ where
         a: a.peekable(),
         b: b.peekable(),
         cmp,
+        size,
+        counter: 0,
     }
 }
 
@@ -86,47 +97,65 @@ fn test_sorted_iter() {
     // Test empty input
     let a: Vec<i32> = Vec::new();
     let b: Vec<i32> = Vec::new();
+    let len = 1;
     let cmp = |x: &i32| *x;
-    let s = sorted_iter(a.into_iter(), b.into_iter(), cmp);
+    let s = sorted_iter(a.into_iter(), b.into_iter(), cmp, len);
     let result: Vec<i32> = s.collect();
     assert_eq!(result, Vec::<i32>::new());
 
     // Test input with only one element
     let a = vec![1];
     let b: Vec<i32> = Vec::new();
+    let len = 1;
     let cmp = |x: &i32| *x;
-    let iter = sorted_iter(a.into_iter(), b.into_iter(), cmp);
+    let iter = sorted_iter(a.into_iter(), b.into_iter(), cmp, len);
     let result: Vec<i32> = iter.collect();
     assert_eq!(result, vec![1]);
 
     let a: Vec<i32> = Vec::new();
     let b = vec![1];
+    let len = 1;
     let cmp = |x: &i32| *x;
-    let iter = sorted_iter(a.into_iter(), b.into_iter(), cmp);
+    let iter = sorted_iter(a.into_iter(), b.into_iter(), cmp, len);
     let result: Vec<i32> = iter.collect();
     assert_eq!(result, vec![1]);
 
-    // Test input with two elements, sorted in ascending order
+    // Test input with two elements
     let a = vec![1, 2];
     let b = vec![3, 4];
+    let len = 4;
     let cmp = |x: &i32| *x;
-    let iter = sorted_iter(a.into_iter(), b.into_iter(), cmp);
+    let iter = sorted_iter(a.into_iter(), b.into_iter(), cmp, len);
     let result: Vec<i32> = iter.collect();
     assert_eq!(result, vec![1, 2, 3, 4]);
 
-    // Test input with two elements, one in each iterator, sorted in ascending order
+    // Test input with two elements, one in each iterator
     let a = vec![1, 2, 3, 4, 5, 6];
     let b = vec![4, 5, 6, 7, 8, 9, 10];
+    let len = 10;
     let cmp = |x: &i32| *x;
-    let iter = sorted_iter(a.into_iter(), b.into_iter(), cmp);
+    let iter = sorted_iter(a.into_iter(), b.into_iter(), cmp, len);
     let result: Vec<i32> = iter.collect();
     assert_eq!(result, vec![1, 2, 3, 4, 5, 6, 7, 8, 9, 10]);
 
     // Test with tuples
     let a = vec![(1, 1), (2, 1), (3, 1)];
     let b = vec![(1, 2), (2, 2), (4, 2)];
+    let len = 4;
     let cmp = |x: &(i32, i32)| x.0;
-    let iter = sorted_iter(a.into_iter(), b.into_iter(), cmp);
+    let iter = sorted_iter(a.into_iter(), b.into_iter(), cmp, len);
     let result: Vec<(i32, i32)> = iter.collect();
     assert_eq!(result, vec![(1, 1), (2, 1), (3, 1), (4, 2)]);
+
+    // Test with tuples and options
+    let a = vec![(1, None), (2, None), (3, Some(1))];
+    let b = vec![(1, Some(2)), (2, Some(2)), (4, Some(2))];
+    let len = 4;
+    let cmp = |x: &(i32, Option<i32>)| x.0;
+    let iter = sorted_iter(a.into_iter(), b.into_iter(), cmp, len);
+    let result: Vec<(i32, Option<i32>)> = iter.collect();
+    assert_eq!(
+        result,
+        vec![(1, None), (2, None), (3, Some(1)), (4, Some(2))]
+    );
 }
