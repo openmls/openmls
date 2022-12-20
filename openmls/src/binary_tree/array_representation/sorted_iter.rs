@@ -6,13 +6,13 @@
 //! function `cmp` that is provided as an argument to the [`sorted_iter`]
 //! function, which creates an instance of [`SortedIter`].
 //!
-//! The resulting iteraor iterates over all unique elements from both input
+//! The resulting iterator iterates over all unique elements from both input
 //! vectors. If an element is present in both input vectors, only the element
 //! from iterator `a` is returned.
 //!
 //! The iterator stops after the maximum `size` is reached.
 //!
-//! Note that the two iterators must be sorted. Using this with unsroted
+//! Note that the two iterators must be sorted. Using this with unsorted
 //! iterators will result in an incorrect output.
 
 use std::cmp::Ordering;
