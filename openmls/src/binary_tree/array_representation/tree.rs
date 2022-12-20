@@ -84,6 +84,16 @@ impl<T: Clone + Debug> ABinaryTree<T> {
         ((self.size() - 1) / 2) + 1
     }
 
+    /// Returns an iterator over a tuple of the node index and a reference to a
+    /// node, sorted according to their position in the tree from left to right.
+    pub(crate) fn nodes(&self) -> impl Iterator<Item = (NodeIndex, &T)> {
+        self.nodes.iter().enumerate().map(|(index, node)| {
+            // We can cast the index to a NodeIndex, because the maximum size of
+            // a tree is 2^32.
+            ((index as NodeIndex), node)
+        })
+    }
+
     /// Returns an iterator over a tuple of the leaf index and a reference to a
     /// leaf, sorted according to their position in the tree from left to right.
     pub(crate) fn leaves(&self) -> impl Iterator<Item = (LeafIndex, &T)> {
@@ -129,11 +139,6 @@ impl<T: Clone + Debug> ABinaryTree<T> {
                 self.nodes[node_index as usize] = diff_node;
             }
         }
-    }
-
-    /// Export the nodes of the tree in the array representation.
-    pub(crate) fn nodes(&self) -> &[T] {
-        &self.nodes
     }
 
     /// Return a reference to the leaf at the given `LeafIndex`.
