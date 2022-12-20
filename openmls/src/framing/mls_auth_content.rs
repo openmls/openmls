@@ -1,3 +1,11 @@
+//! # MLS content authentication
+//!
+//! This module contains structs and implementation that pertain to content
+//! authentication in MLS. Besides structs that directly represent structs in
+//! the MLS specification, this module also contains
+//! [`VerifiableAuthenticatedContent`], a wrapper struct which ensures that the
+//! signatures are verified before the content of an MLS [`PrivateMessage`] or
+//! [`PublicMessage`] can be accessed by processing functions of OpenMLS.
 use crate::{
     ciphersuite::signable::{Signable, SignedStruct, Verifiable, VerifiedStruct},
     error::LibraryError,
