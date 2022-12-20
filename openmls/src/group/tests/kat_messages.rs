@@ -50,10 +50,10 @@ pub struct MessagesTestVector {
 
     commit: String, /* serialized Commit */
 
-    public_message_application: String, /* serialized PublicMessage(ApplicationData) */
-    public_message_proposal: String,    /* serialized PublicMessage(Proposal(*)) */
-    public_message_commit: String,      /* serialized PublicMessage(Commit) */
-    private_message: String,            /* serialized PrivateMessage */
+    mls_plaintext_application: String, /* serialized PublicMessage(ApplicationData) */
+    mls_plaintext_proposal: String,    /* serialized PublicMessage(Proposal(*)) */
+    mls_plaintext_commit: String,      /* serialized PublicMessage(Commit) */
+    mls_ciphertext: String,            /* serialized PrivateMessage */
 }
 
 pub fn generate_test_vector(ciphersuite: Ciphersuite) -> MessagesTestVector {
@@ -364,22 +364,22 @@ pub fn generate_test_vector(ciphersuite: Ciphersuite) -> MessagesTestVector {
                 .expect("An unexpected error occurred."),
         ), /* serialized Commit */
 
-        public_message_application: bytes_to_hex(
+        mls_plaintext_application: bytes_to_hex(
             &application_pt
                 .tls_serialize_detached()
                 .expect("An unexpected error occurred."),
         ), /* serialized PublicMessage(ApplicationData) */
-        public_message_proposal: bytes_to_hex(
+        mls_plaintext_proposal: bytes_to_hex(
             &proposal_pt
                 .tls_serialize_detached()
                 .expect("An unexpected error occurred."),
         ), /* serialized PublicMessage(Proposal(*)) */
-        public_message_commit: bytes_to_hex(
+        mls_plaintext_commit: bytes_to_hex(
             &commit_pt
                 .tls_serialize_detached()
                 .expect("An unexpected error occurred."),
         ), /* serialized PublicMessage(Commit) */
-        private_message: bytes_to_hex(
+        mls_ciphertext: bytes_to_hex(
             &private_message
                 .tls_serialize_detached()
                 .expect("An unexpected error occurred."),
@@ -612,7 +612,7 @@ pub fn run_test_vector(tv: MessagesTestVector) -> Result<(), MessagesTestVectorE
     }
 
     // MlsPlaintextApplication
-    let mut tv_public_message_application = hex_to_bytes(&tv.public_message_application);
+    let mut tv_public_message_application = hex_to_bytes(&tv.mls_plaintext_application);
     // Fake the wire format so we can deserialize
     tv_public_message_application[0] = WireFormat::PublicMessage as u8;
     let my_public_message_application =
@@ -631,7 +631,7 @@ pub fn run_test_vector(tv: MessagesTestVector) -> Result<(), MessagesTestVectorE
     }
 
     // PublicMessage(Proposal)
-    let mut tv_public_message_proposal = hex_to_bytes(&tv.public_message_proposal);
+    let mut tv_public_message_proposal = hex_to_bytes(&tv.mls_plaintext_proposal);
     // Fake the wire format so we can deserialize
     tv_public_message_proposal[0] = WireFormat::PublicMessage as u8;
     let my_public_message_proposal =
@@ -650,7 +650,7 @@ pub fn run_test_vector(tv: MessagesTestVector) -> Result<(), MessagesTestVectorE
     }
 
     // PublicMessage(Commit)
-    let mut tv_public_message_commit = hex_to_bytes(&tv.public_message_commit);
+    let mut tv_public_message_commit = hex_to_bytes(&tv.mls_plaintext_commit);
     // Fake the wire format so we can deserialize
     tv_public_message_commit[0] = WireFormat::PublicMessage as u8;
     let my_public_message_commit =
@@ -669,7 +669,7 @@ pub fn run_test_vector(tv: MessagesTestVector) -> Result<(), MessagesTestVectorE
     }
 
     // PrivateMessage
-    let tv_private_message = hex_to_bytes(&tv.private_message);
+    let tv_private_message = hex_to_bytes(&tv.mls_ciphertext);
     let my_private_message = PrivateMessage::tls_deserialize(&mut tv_private_message.as_slice())
         .expect("An unexpected error occurred.")
         .tls_serialize_detached()
