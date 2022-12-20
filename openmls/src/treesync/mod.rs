@@ -423,8 +423,7 @@ impl TreeSync {
     pub fn export_nodes(&self) -> Vec<Option<Node>> {
         self.tree
             .nodes()
-            .iter()
-            .map(|ts_node| ts_node.node_without_private_key())
+            .map(|(_, ts_node)| ts_node.node_without_private_key())
             .collect()
     }
 
