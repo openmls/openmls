@@ -201,7 +201,7 @@ fn test_external_init(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProv
 
     // Let's make sure there's a remove in the commit.
     let contains_remove = match create_commit_result.commit.content() {
-        crate::prelude_test::plaintext::MlsContentBody::Commit(commit) => commit
+        crate::prelude_test::mls_content::MlsContentBody::Commit(commit) => commit
             .proposals
             .as_slice()
             .iter()

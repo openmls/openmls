@@ -9,7 +9,7 @@ use super::{
 use crate::{
     credentials::{Credential, CredentialBundle},
     error::LibraryError,
-    framing::*,
+    framing::{mls_auth_content::MlsAuthContent, *},
     group::*,
     key_packages::{KeyPackage, KeyPackageBundle},
     messages::{proposals::*, Welcome},

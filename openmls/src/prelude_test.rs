@@ -2,7 +2,7 @@
 //! Include this to get access to all necessary pub(crate) functions of OpenMLS testing.
 
 pub use crate::ciphersuite::{signable::Verifiable, *};
-pub use crate::framing::{plaintext::*, *};
+pub use crate::framing::{mls_content::*, *};
 
 // KATs
 pub use crate::binary_tree::array_representation::kat_treemath;

@@ -35,13 +35,14 @@ mod test_proposals;
 
 #[cfg(test)]
 use super::errors::CreateGroupContextExtProposalError;
+use crate::framing::mls_auth_content::VerifiableMlsAuthContent;
 
 use crate::{
     ciphersuite::{signable::Signable, HpkePublicKey},
     credentials::*,
     error::LibraryError,
     extensions::errors::*,
-    framing::*,
+    framing::{mls_auth_content::MlsAuthContent, *},
     group::*,
     key_packages::*,
     messages::VerifiableGroupInfo,

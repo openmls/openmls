@@ -1,7 +1,7 @@
 use crate::{
     ciphersuite::signable::Verifiable,
     credentials::*,
-    framing::*,
+    framing::{mls_auth_content::*, mls_content::*, *},
     group::{tests::tree_printing::print_tree, *},
     key_packages::*,
     test_utils::*,

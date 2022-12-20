@@ -7,7 +7,8 @@
 use crate::{
     ciphersuite::signable::Signable,
     credentials::*,
-    framing::*,
+    framing::mls_content::MlsContentBody,
+    framing::{mls_auth_content::MlsAuthContent, *},
     group::*,
     key_packages::*,
     messages::proposals::*,

@@ -125,7 +125,7 @@ use crate::{
     binary_tree::LeafIndex,
     ciphersuite::{AeadKey, AeadNonce, HpkePrivateKey, Mac, Secret},
     error::LibraryError,
-    framing::{MembershipTag, MlsContentTbm},
+    framing::{mls_content::MlsContentTbm, MembershipTag},
     messages::{ConfirmationTag, GroupInfo, PathSecret},
     tree::secret_tree::SecretTree,
     versions::ProtocolVersion,

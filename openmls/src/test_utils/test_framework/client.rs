@@ -12,8 +12,14 @@ use openmls_traits::{
 use tls_codec::Serialize;
 
 use crate::{
-    ciphersuite::hash_ref::KeyPackageRef, credentials::*, extensions::*, framing::MlsMessageIn,
-    framing::*, group::*, key_packages::*, messages::*, treesync::node::Node,
+    ciphersuite::hash_ref::KeyPackageRef,
+    credentials::*,
+    extensions::*,
+    framing::{mls_content::ContentType, MlsMessageIn, *},
+    group::*,
+    key_packages::*,
+    messages::*,
+    treesync::node::Node,
 };
 
 use super::{errors::ClientError, ActionType};

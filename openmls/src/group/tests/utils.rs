@@ -9,7 +9,7 @@ use std::collections::HashMap;
 
 use crate::{
     credentials::{errors::*, *},
-    framing::*,
+    framing::{mls_auth_content::*, mls_content::*, *},
     group::*,
     key_packages::{errors::*, *},
     test_utils::*,

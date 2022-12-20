@@ -1,4 +1,5 @@
 use crate::ciphersuite::signable::Verifiable;
+use crate::framing::mls_content::MlsContentBody;
 use crate::treesync::errors::TreeSyncAddLeaf;
 use crate::treesync::node::leaf_node::{
     LeafNodeTbs, OpenMlsLeafNode, TreeInfoTbs, VerifiableLeafNodeTbs,

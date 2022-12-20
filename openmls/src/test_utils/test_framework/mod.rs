@@ -24,7 +24,7 @@
 use crate::{
     ciphersuite::{hash_ref::KeyPackageRef, *},
     credentials::*,
-    framing::*,
+    framing::{mls_content::ContentType, *},
     group::*,
     key_packages::*,
     messages::*,

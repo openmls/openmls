@@ -7,7 +7,7 @@ use tls_codec::Serialize;
 use crate::{
     ciphersuite::{signable::Signable, AeadNonce},
     credentials::*,
-    framing::*,
+    framing::{mls_auth_content::*, mls_content::*, *},
     group::{errors::*, *},
     key_packages::*,
     messages::*,

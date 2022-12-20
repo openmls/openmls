@@ -8,7 +8,7 @@ use crate::{
     credentials::{CredentialBundle, CredentialType},
     extensions::{ApplicationIdExtension, Extension, ExtensionType, RequiredCapabilitiesExtension},
     framing::sender::Sender,
-    framing::{FramingParameters, MlsAuthContent, WireFormat},
+    framing::{mls_auth_content::MlsAuthContent, FramingParameters, WireFormat},
     group::{
         create_commit_params::CreateCommitParams,
         errors::*,

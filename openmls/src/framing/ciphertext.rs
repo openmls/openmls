@@ -2,10 +2,15 @@ use openmls_traits::{types::Ciphersuite, OpenMlsCryptoProvider};
 use std::io::Write;
 use tls_codec::{Deserialize, Serialize, Size, TlsDeserialize, TlsSerialize, TlsSize};
 
-use super::codec::deserialize_ciphertext_content;
+use super::{
+    codec::deserialize_ciphertext_content,
+    mls_auth_content::{MlsAuthContent, MlsContentAuthData, VerifiableMlsAuthContent},
+    mls_content::{ContentType, MlsContentBody},
+};
 
 use crate::{
     error::LibraryError,
+    framing::mls_content::MlsContentTbs,
     tree::{
         index::SecretTreeLeafIndex, secret_tree::SecretType,
         sender_ratchet::SenderRatchetConfiguration,

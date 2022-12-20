@@ -5,7 +5,7 @@ use tls_codec::Serialize;
 
 use crate::{
     credentials::*,
-    framing::*,
+    framing::{mls_content::*, *},
     group::{errors::*, *},
     messages::{
         external_proposals::*,

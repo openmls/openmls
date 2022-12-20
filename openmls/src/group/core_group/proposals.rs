@@ -1,7 +1,7 @@
 use crate::{
     ciphersuite::hash_ref::ProposalRef,
     error::LibraryError,
-    framing::*,
+    framing::{mls_auth_content::MlsAuthContent, mls_content::MlsContentBody, Sender, SenderError},
     group::errors::*,
     messages::proposals::{
         AddProposal, PreSharedKeyProposal, Proposal, ProposalOrRef, ProposalOrRefType,

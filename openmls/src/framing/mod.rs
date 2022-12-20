@@ -16,6 +16,8 @@ use tls_codec::*;
 pub(crate) mod ciphertext;
 pub(crate) mod codec;
 pub(crate) mod message;
+pub(crate) mod mls_auth_content;
+pub(crate) mod mls_content;
 pub(crate) mod plaintext;
 pub(crate) mod sender;
 pub(crate) mod validation;

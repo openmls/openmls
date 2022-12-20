@@ -6,7 +6,7 @@
 
 use crate::{
     credentials::CredentialBundle,
-    framing::{MlsAuthContent, MlsMessageOut, MlsPlaintext},
+    framing::{mls_auth_content::MlsAuthContent, MlsMessageOut, MlsPlaintext},
     group::{mls_group::errors::ProposeAddMemberError, GroupEpoch, GroupId},
     key_packages::KeyPackage,
     messages::{AddProposal, Proposal},

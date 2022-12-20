@@ -11,7 +11,7 @@ use rstest_reuse::{self, *};
 use crate::{
     ciphersuite::signable::Signable,
     credentials::*,
-    framing::*,
+    framing::{mls_auth_content::*, mls_content::*, *},
     group::{errors::*, *},
     messages::proposals::*,
     schedule::psk::*,

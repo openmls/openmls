@@ -14,7 +14,7 @@ use crate::{
 };
 
 use super::{
-    proposals::ProposalQueue, ContentType, CoreGroup, Member, MlsMessageIn,
+    mls_content::ContentType, proposals::ProposalQueue, CoreGroup, Member, MlsMessageIn,
     ProposalValidationError, VerifiableMlsAuthContent, WireFormat,
 };
 

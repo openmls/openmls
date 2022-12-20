@@ -12,7 +12,7 @@
 
 use tls_codec::{Deserialize, Serialize};
 
-use super::*;
+use super::{mls_content::ContentType, *};
 
 use crate::error::LibraryError;
 

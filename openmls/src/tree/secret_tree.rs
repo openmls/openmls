@@ -1,6 +1,6 @@
 use super::*;
 use crate::{
-    framing::*,
+    framing::{mls_content::ContentType, *},
     schedule::*,
     tree::{index::*, sender_ratchet::*, treemath::*},
 };

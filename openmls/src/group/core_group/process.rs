@@ -1,6 +1,7 @@
 use core_group::{proposals::QueuedProposal, staged_commit::StagedCommit};
 
 use crate::{
+    framing::mls_content::MlsContentBody,
     group::{errors::ValidationError, mls_group::errors::ProcessMessageError},
     treesync::node::leaf_node::OpenMlsLeafNode,
 };

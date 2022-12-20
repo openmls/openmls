@@ -10,7 +10,8 @@ use tls_codec::{Deserialize, Serialize};
 use crate::{
     ciphersuite::signable::Signable,
     credentials::errors::CredentialError,
-    framing::*,
+    framing::mls_content::*,
+    framing::{mls_auth_content::*, *},
     group::{
         core_group::{
             create_commit_params::CreateCommitParams,
