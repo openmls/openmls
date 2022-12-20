@@ -1,6 +1,41 @@
 //! # Message framing
 //!
 //! This module contains framing-related operations for MLS messages, including validation operations.
+//! The general structure of the framing process in OpenMLS closely mirrors the
+//! one described in Section 7 of the MLS specification. It can be visualized as follows:
+//!
+//! ```text
+//!                               Proposal        Commit     Application Data
+//!                                  |              |              |
+//!                                  +--------------+--------------+
+//!                                                 |
+//!                                                 V
+//!                                          FramedContent
+//!                                              |  |                -.
+//!                                              |  |                  |
+//!                                     +--------+  |                  |
+//!                                     |           |                  |
+//!                                     V           |                  +-- Asymmetric
+//!                           FramedContentAuthData |                  |   Sign / Verify
+//!                                     |           |                  |
+//!                                     +--------+  |                  |
+//!                                              |  |                  |
+//!                                              V  V                -'
+//!                                        AuthenticatedContent
+//!                                                 |                -.
+//!                                                 |                  |
+//!                                                 |                  |
+//!                                        +--------+--------+         +-- Symmetric
+//!                                        |                 |         |   Protect / Unprotect
+//!                                        V                 V         |
+//! Welcome  KeyPackage  GroupInfo   PublicMessage    PrivateMessage -'
+//!    |          |          |             |                 |
+//!    |          |          |             |                 |
+//!    +----------+----------+----+--------+-----------------+
+//!                               |
+//!                               V
+//!                           MLSMessage
+//! ```
 //!
 //!  - [`MlsMessageIn`]/[`MlsMessageOut`]: Unified message type for incoming & outgoing MLS messages
 //!  - [`ApplicationMessage`]: Application message received through a [`ProcessedMessage`]
