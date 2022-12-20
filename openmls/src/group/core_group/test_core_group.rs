@@ -171,7 +171,7 @@ fn test_failed_groupinfo_decryption(
 fn test_update_path(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
     // Basic group setup.
     let group_aad = b"Alice's test group";
-    let framing_parameters = FramingParameters::new(group_aad, WireFormat::MlsPlaintext);
+    let framing_parameters = FramingParameters::new(group_aad, WireFormat::PublicMessage);
 
     // Define credential bundles
     let alice_credential_bundle = CredentialBundle::new(
@@ -232,7 +232,7 @@ fn test_update_path(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvid
         .expect("Error creating commit");
 
     let commit = match create_commit_result.commit.content() {
-        MlsContentBody::Commit(commit) => commit,
+        FramedContentBody::Commit(commit) => commit,
         _ => panic!("Wrong content type"),
     };
     assert!(!commit.has_path());
@@ -293,7 +293,7 @@ fn test_update_path(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvid
     // apart the commit, manipulating the ciphertexts and the piecing it
     // back together.
     let commit = match create_commit_result.commit.content() {
-        MlsContentBody::Commit(commit) => commit,
+        FramedContentBody::Commit(commit) => commit,
         _ => panic!("Bob created a commit, which does not contain an actual commit."),
     };
 
@@ -311,7 +311,7 @@ fn test_update_path(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvid
         path: Some(broken_path),
     };
 
-    let mut broken_plaintext = MlsAuthContent::commit(
+    let mut broken_plaintext = AuthenticatedContent::commit(
         framing_parameters,
         create_commit_result.commit.sender().clone(),
         broken_commit,
@@ -347,7 +347,7 @@ fn test_update_path(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvid
 fn test_psks(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
     // Basic group setup.
     let group_aad = b"Alice's test group";
-    let framing_parameters = FramingParameters::new(group_aad, WireFormat::MlsPlaintext);
+    let framing_parameters = FramingParameters::new(group_aad, WireFormat::PublicMessage);
 
     // Define credential bundles
     let alice_credential_bundle = CredentialBundle::new(
@@ -496,7 +496,7 @@ fn test_psks(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
 fn test_staged_commit_creation(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
     // Basic group setup.
     let group_aad = b"Alice's test group";
-    let framing_parameters = FramingParameters::new(group_aad, WireFormat::MlsPlaintext);
+    let framing_parameters = FramingParameters::new(group_aad, WireFormat::PublicMessage);
 
     // Define credential bundles
     let alice_credential_bundle = CredentialBundle::new(
@@ -588,7 +588,7 @@ fn test_staged_commit_creation(ciphersuite: Ciphersuite, backend: &impl OpenMlsC
 fn test_own_commit_processing(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
     // Basic group setup.
     let group_aad = b"Alice's test group";
-    let framing_parameters = FramingParameters::new(group_aad, WireFormat::MlsPlaintext);
+    let framing_parameters = FramingParameters::new(group_aad, WireFormat::PublicMessage);
 
     // Define credential bundles
     let alice_credential_bundle = CredentialBundle::new(
@@ -663,7 +663,7 @@ fn test_proposal_application_after_self_was_removed(
 
     // Basic group setup.
     let group_aad = b"Alice's test group";
-    let framing_parameters = FramingParameters::new(group_aad, WireFormat::MlsPlaintext);
+    let framing_parameters = FramingParameters::new(group_aad, WireFormat::PublicMessage);
 
     let (alice_credential_bundle, alice_kpb) = setup_client("Alice", ciphersuite, backend);
     let (_, bob_kpb) = setup_client("Bob", ciphersuite, backend);

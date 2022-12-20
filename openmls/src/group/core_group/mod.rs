@@ -35,14 +35,14 @@ mod test_proposals;
 
 #[cfg(test)]
 use super::errors::CreateGroupContextExtProposalError;
-use crate::framing::mls_auth_content::VerifiableMlsAuthContent;
+use crate::framing::mls_auth_content::VerifiableAuthenticatedContent;
 
 use crate::{
     ciphersuite::{signable::Signable, HpkePublicKey},
     credentials::*,
     error::LibraryError,
     extensions::errors::*,
-    framing::{mls_auth_content::MlsAuthContent, *},
+    framing::{mls_auth_content::AuthenticatedContent, *},
     group::*,
     key_packages::*,
     messages::VerifiableGroupInfo,
@@ -73,7 +73,7 @@ use super::{
 
 #[derive(Debug)]
 pub(crate) struct CreateCommitResult {
-    pub(crate) commit: MlsAuthContent,
+    pub(crate) commit: AuthenticatedContent,
     pub(crate) welcome_option: Option<Welcome>,
     pub(crate) staged_commit: StagedCommit,
 }
@@ -317,7 +317,7 @@ impl CoreGroup {
         credential_bundle: &CredentialBundle,
         joiner_key_package: KeyPackage,
         backend: &impl OpenMlsCryptoProvider,
-    ) -> Result<MlsAuthContent, CreateAddProposalError> {
+    ) -> Result<AuthenticatedContent, CreateAddProposalError> {
         joiner_key_package
             .leaf_node()
             .validate_required_capabilities(self.required_capabilities())
@@ -326,7 +326,7 @@ impl CoreGroup {
             key_package: joiner_key_package,
         };
         let proposal = Proposal::Add(add_proposal);
-        MlsAuthContent::member_proposal(
+        AuthenticatedContent::member_proposal(
             framing_parameters,
             self.own_leaf_index(),
             proposal,
@@ -349,10 +349,10 @@ impl CoreGroup {
         //      operate on a reference to make this more efficient.
         leaf_node: LeafNode,
         backend: &impl OpenMlsCryptoProvider,
-    ) -> Result<MlsAuthContent, LibraryError> {
+    ) -> Result<AuthenticatedContent, LibraryError> {
         let update_proposal = UpdateProposal { leaf_node };
         let proposal = Proposal::Update(update_proposal);
-        MlsAuthContent::member_proposal(
+        AuthenticatedContent::member_proposal(
             framing_parameters,
             self.own_leaf_index(),
             proposal,
@@ -372,13 +372,13 @@ impl CoreGroup {
         credential_bundle: &CredentialBundle,
         removed: u32,
         backend: &impl OpenMlsCryptoProvider,
-    ) -> Result<MlsAuthContent, ValidationError> {
+    ) -> Result<AuthenticatedContent, ValidationError> {
         if self.treesync().leaf_is_in_tree(removed).is_err() {
             return Err(ValidationError::UnknownMember);
         }
         let remove_proposal = RemoveProposal { removed };
         let proposal = Proposal::Remove(remove_proposal);
-        MlsAuthContent::member_proposal(
+        AuthenticatedContent::member_proposal(
             framing_parameters,
             self.own_leaf_index(),
             proposal,
@@ -401,10 +401,10 @@ impl CoreGroup {
         credential_bundle: &CredentialBundle,
         psk: PreSharedKeyId,
         backend: &impl OpenMlsCryptoProvider,
-    ) -> Result<MlsAuthContent, LibraryError> {
+    ) -> Result<AuthenticatedContent, LibraryError> {
         let presharedkey_proposal = PreSharedKeyProposal::new(psk);
         let proposal = Proposal::PreSharedKey(presharedkey_proposal);
-        MlsAuthContent::member_proposal(
+        AuthenticatedContent::member_proposal(
             framing_parameters,
             self.own_leaf_index(),
             proposal,
@@ -422,7 +422,7 @@ impl CoreGroup {
         credential_bundle: &CredentialBundle,
         extensions: &[Extension],
         backend: &impl OpenMlsCryptoProvider,
-    ) -> Result<MlsAuthContent, CreateGroupContextExtProposalError> {
+    ) -> Result<AuthenticatedContent, CreateGroupContextExtProposalError> {
         // Ensure that the group supports all the extensions that are wanted.
 
         let required_extension = extensions
@@ -443,7 +443,7 @@ impl CoreGroup {
         }
         let proposal = GroupContextExtensionProposal::new(extensions);
         let proposal = Proposal::GroupContextExtensions(proposal);
-        MlsAuthContent::member_proposal(
+        AuthenticatedContent::member_proposal(
             framing_parameters,
             self.own_leaf_index(),
             proposal,
@@ -462,8 +462,8 @@ impl CoreGroup {
         credential_bundle: &CredentialBundle,
         padding_size: usize,
         backend: &impl OpenMlsCryptoProvider,
-    ) -> Result<MlsCiphertext, MessageEncryptionError> {
-        let mls_plaintext = MlsAuthContent::new_application(
+    ) -> Result<PrivateMessage, MessageEncryptionError> {
+        let mls_plaintext = AuthenticatedContent::new_application(
             self.own_leaf_index(),
             aad,
             msg,
@@ -474,15 +474,15 @@ impl CoreGroup {
         self.encrypt(mls_plaintext, padding_size, backend)
     }
 
-    // Encrypt an MlsPlaintext into an MlsCiphertext
+    // Encrypt an PublicMessage into an PrivateMessage
     pub(crate) fn encrypt(
         &mut self,
-        mls_plaintext: MlsAuthContent,
+        mls_plaintext: AuthenticatedContent,
         padding_size: usize,
         backend: &impl OpenMlsCryptoProvider,
-    ) -> Result<MlsCiphertext, MessageEncryptionError> {
+    ) -> Result<PrivateMessage, MessageEncryptionError> {
         log::trace!("{:?}", mls_plaintext.confirmation_tag());
-        MlsCiphertext::try_from_plaintext(
+        PrivateMessage::try_from_plaintext(
             &mls_plaintext,
             self.ciphersuite,
             backend,
@@ -491,14 +491,14 @@ impl CoreGroup {
         )
     }
 
-    /// Decrypt an MlsCiphertext into an MlsPlaintext
+    /// Decrypt an PrivateMessage into an PublicMessage
     #[cfg(any(feature = "test-utils", test))]
     pub(crate) fn decrypt(
         &mut self,
-        mls_ciphertext: &MlsCiphertext,
+        mls_ciphertext: &PrivateMessage,
         backend: &impl OpenMlsCryptoProvider,
         sender_ratchet_configuration: &SenderRatchetConfiguration,
-    ) -> Result<VerifiableMlsAuthContent, MessageDecryptionError> {
+    ) -> Result<VerifiableAuthenticatedContent, MessageDecryptionError> {
         use crate::tree::index::SecretTreeLeafIndex;
 
         let ciphersuite = self.ciphersuite();

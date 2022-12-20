@@ -46,9 +46,9 @@ mod test_framing;
 #[repr(u8)]
 pub enum WireFormat {
     /// Plaintext message
-    MlsPlaintext = 1,
+    PublicMessage = 1,
     /// Encrypted message
-    MlsCiphertext = 2,
+    PrivateMessage = 2,
 }
 
 /// This struct is used to group common framing parameters

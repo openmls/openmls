@@ -125,14 +125,14 @@ pub enum StageCommitError {
     /// See [`LibraryError`] for more details.
     #[error(transparent)]
     LibraryError(#[from] LibraryError),
-    /// The epoch of the group context and MlsPlaintext didn't match.
-    #[error("The epoch of the group context and MlsPlaintext didn't match.")]
+    /// The epoch of the group context and PublicMessage didn't match.
+    #[error("The epoch of the group context and PublicMessage didn't match.")]
     EpochMismatch,
     /// The Commit was created by this client.
     #[error("The Commit was created by this client.")]
     OwnCommit,
-    /// stage_commit was called with an MlsPlaintext that is not a Commit.
-    #[error("stage_commit was called with an MlsPlaintext that is not a Commit.")]
+    /// stage_commit was called with an PublicMessage that is not a Commit.
+    #[error("stage_commit was called with an PublicMessage that is not a Commit.")]
     WrongPlaintextContentType,
     /// Unable to verify the leaf node signature.
     #[error("Unable to verify the leaf node signature.")]
@@ -219,17 +219,17 @@ pub enum ValidationError {
     /// Message epoch differs from the group's epoch.
     #[error("Message epoch differs from the group's epoch.")]
     WrongEpoch,
-    /// The MlsPlaintext is not a Commit despite the sender begin of type [NewMemberCommit](crate::prelude::Sender::NewMemberCommit).
-    #[error("The MlsPlaintext is not a Commit despite the sender begin of type NewMemberCommit.")]
+    /// The PublicMessage is not a Commit despite the sender begin of type [NewMemberCommit](crate::prelude::Sender::NewMemberCommit).
+    #[error("The PublicMessage is not a Commit despite the sender begin of type NewMemberCommit.")]
     NotACommit,
-    /// The MlsPlaintext is not an External Add Proposal despite the sender begin of type [NewMemberProposal](crate::prelude::Sender::NewMemberProposal).
-    #[error("The MlsPlaintext is not an external Add proposal despite the sender begin of type NewMemberProposal.")]
+    /// The PublicMessage is not an External Add Proposal despite the sender begin of type [NewMemberProposal](crate::prelude::Sender::NewMemberProposal).
+    #[error("The PublicMessage is not an external Add proposal despite the sender begin of type NewMemberProposal.")]
     NotAnExternalAddProposal,
     /// The Commit doesn't have a path despite the sender being of type NewMemberCommit.
     #[error("The Commit doesn't have a path despite the sender being of type NewMemberCommit.")]
     NoPath,
-    /// The MlsPlaintext contains an application message but was not encrypted.
-    #[error("The MlsPlaintext contains an application message but was not encrypted.")]
+    /// The PublicMessage contains an application message but was not encrypted.
+    #[error("The PublicMessage contains an application message but was not encrypted.")]
     UnencryptedApplicationMessage,
     /// Sender is not part of the group.
     #[error("Sender is not part of the group.")]

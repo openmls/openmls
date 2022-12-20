@@ -16,7 +16,7 @@ use tls_codec::Serialize;
 fn create_commit_optional_path(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
     let group_aad = b"Alice's test group";
     // Framing parameters
-    let framing_parameters = FramingParameters::new(group_aad, WireFormat::MlsPlaintext);
+    let framing_parameters = FramingParameters::new(group_aad, WireFormat::PublicMessage);
 
     // Define identities
     let alice_credential_bundle = CredentialBundle::new(
@@ -99,7 +99,7 @@ fn create_commit_optional_path(ciphersuite: Ciphersuite, backend: &impl OpenMlsC
             Err(e) => panic!("Error creating commit: {:?}", e),
         };
     let commit = match create_commit_result.commit.content() {
-        MlsContentBody::Commit(commit) => commit,
+        FramedContentBody::Commit(commit) => commit,
         _ => panic!(),
     };
     assert!(commit.has_path());
@@ -134,7 +134,7 @@ fn create_commit_optional_path(ciphersuite: Ciphersuite, backend: &impl OpenMlsC
         Err(e) => panic!("Error creating commit: {:?}", e),
     };
     let commit = match create_commit_result.commit.content() {
-        MlsContentBody::Commit(commit) => commit,
+        FramedContentBody::Commit(commit) => commit,
         _ => panic!(),
     };
     assert!(!commit.has_path());
@@ -191,7 +191,7 @@ fn create_commit_optional_path(ciphersuite: Ciphersuite, backend: &impl OpenMlsC
         Err(e) => panic!("Error creating commit: {:?}", e),
     };
     let commit = match create_commit_result.commit.content() {
-        MlsContentBody::Commit(commit) => commit,
+        FramedContentBody::Commit(commit) => commit,
         _ => panic!(),
     };
     assert!(commit.has_path());
@@ -206,7 +206,7 @@ fn create_commit_optional_path(ciphersuite: Ciphersuite, backend: &impl OpenMlsC
 fn basic_group_setup(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
     let group_aad = b"Alice's test group";
     // Framing parameters
-    let framing_parameters = FramingParameters::new(group_aad, WireFormat::MlsPlaintext);
+    let framing_parameters = FramingParameters::new(group_aad, WireFormat::PublicMessage);
 
     // Define credential bundles
     let alice_credential_bundle = CredentialBundle::new(
@@ -285,7 +285,7 @@ fn basic_group_setup(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvi
 fn group_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
     let group_aad = b"Alice's test group";
     // Framing parameters
-    let framing_parameters = FramingParameters::new(group_aad, WireFormat::MlsPlaintext);
+    let framing_parameters = FramingParameters::new(group_aad, WireFormat::PublicMessage);
     let sender_ratchet_configuration = SenderRatchetConfiguration::default();
 
     // Define credential bundles
@@ -356,7 +356,7 @@ fn group_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvid
         .create_commit(params, backend)
         .expect("Error creating commit");
     let commit = match create_commit_result.commit.content() {
-        MlsContentBody::Commit(commit) => commit,
+        FramedContentBody::Commit(commit) => commit,
         _ => panic!("Wrong content type"),
     };
     assert!(!commit.has_path());
@@ -416,13 +416,13 @@ fn group_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvid
         .own_leaf_node()
         .expect("An unexpected error occurred.")
         .credential();
-    let mls_plaintext_bob: MlsAuthContent = verifiable_plaintext
+    let mls_plaintext_bob: AuthenticatedContent = verifiable_plaintext
         .verify(backend, credential)
         .expect("An unexpected error occurred.");
 
     assert!(matches!(
         mls_plaintext_bob.content(),
-            MlsContentBody::Application(message) if message.as_slice() == &message_alice[..]));
+            FramedContentBody::Application(message) if message.as_slice() == &message_alice[..]));
 
     // === Bob updates and commits ===
     let bob_update_key_package_bundle = KeyPackageBundle::new(
@@ -464,7 +464,7 @@ fn group_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvid
 
     // Check that there is a path
     let commit = match create_commit_result.commit.content() {
-        MlsContentBody::Commit(commit) => commit,
+        FramedContentBody::Commit(commit) => commit,
         _ => panic!("Wrong content type"),
     };
     assert!(commit.has_path());
@@ -664,7 +664,7 @@ fn group_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvid
     // Check there is no path since there are only Add Proposals and no forced
     // self-update
     let commit = match create_commit_result.commit.content() {
-        MlsContentBody::Commit(commit) => commit,
+        FramedContentBody::Commit(commit) => commit,
         _ => panic!("Wrong content type"),
     };
     assert!(!commit.has_path());
@@ -738,13 +738,13 @@ fn group_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvid
         .expect("An unexpected error occurred.")
         .credential();
 
-    let mls_plaintext_alice: MlsAuthContent = verifiable_plaintext
+    let mls_plaintext_alice: AuthenticatedContent = verifiable_plaintext
         .verify(backend, credential)
         .expect("An unexpected error occurred.");
 
     assert!(matches!(
         mls_plaintext_alice.content(),
-            MlsContentBody::Application(message) if message.as_slice() == &message_charlie[..]));
+            FramedContentBody::Application(message) if message.as_slice() == &message_charlie[..]));
 
     // Bob decrypts and verifies
     let mut verifiable_plaintext = group_bob
@@ -767,13 +767,13 @@ fn group_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvid
         .own_leaf_node()
         .expect("An unexpected error occurred.")
         .credential();
-    let mls_plaintext_bob: MlsAuthContent = verifiable_plaintext
+    let mls_plaintext_bob: AuthenticatedContent = verifiable_plaintext
         .verify(backend, credential)
         .expect("An unexpected error occurred.");
 
     assert!(matches!(
         mls_plaintext_bob.content(),
-        MlsContentBody::Application(message) if message.as_slice() == &message_charlie[..]));
+        FramedContentBody::Application(message) if message.as_slice() == &message_charlie[..]));
 
     // === Charlie updates and commits ===
     let charlie_update_key_package_bundle = KeyPackageBundle::new(
@@ -815,7 +815,7 @@ fn group_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvid
 
     // Check that there is a new KeyPackageBundle
     let commit = match create_commit_result.commit.content() {
-        MlsContentBody::Commit(commit) => commit,
+        FramedContentBody::Commit(commit) => commit,
         _ => panic!("Wrong content type"),
     };
     assert!(commit.has_path());

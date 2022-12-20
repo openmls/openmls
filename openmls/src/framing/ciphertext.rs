@@ -4,13 +4,15 @@ use tls_codec::{Deserialize, Serialize, Size, TlsDeserialize, TlsSerialize, TlsS
 
 use super::{
     codec::deserialize_ciphertext_content,
-    mls_auth_content::{MlsAuthContent, MlsContentAuthData, VerifiableMlsAuthContent},
-    mls_content::{ContentType, MlsContentBody},
+    mls_auth_content::{
+        AuthenticatedContent, FramedContentAuthData, VerifiableAuthenticatedContent,
+    },
+    mls_content::{ContentType, FramedContentBody},
 };
 
 use crate::{
     error::LibraryError,
-    framing::mls_content::MlsContentTbs,
+    framing::mls_content::FramedContentTbs,
     tree::{
         index::SecretTreeLeafIndex, secret_tree::SecretType,
         sender_ratchet::SenderRatchetConfiguration,
@@ -19,7 +21,7 @@ use crate::{
 
 use super::*;
 
-/// `MlsCiphertext` is the framing struct for an encrypted `MlsPlaintext`.
+/// `PrivateMessage` is the framing struct for an encrypted `PublicMessage`.
 /// This message format is meant to be sent to and received from the Delivery
 /// Service.
 ///
@@ -32,10 +34,10 @@ use super::*;
 ///     opaque authenticated_data<V>;
 ///     opaque encrypted_sender_data<V>;
 ///     opaque ciphertext<V>;
-/// } MLSCiphertext;
+/// } PrivateMessage;
 /// ```
 #[derive(Debug, PartialEq, Clone, TlsSerialize, TlsSize, TlsDeserialize)]
-pub(crate) struct MlsCiphertext {
+pub(crate) struct PrivateMessage {
     group_id: GroupId,
     epoch: GroupEpoch,
     content_type: ContentType,
@@ -50,7 +52,7 @@ pub(crate) struct MlsMessageHeader {
     pub(crate) sender: SecretTreeLeafIndex,
 }
 
-impl MlsCiphertext {
+impl PrivateMessage {
     #[cfg(test)]
     pub(crate) fn new(
         group_id: GroupId,
@@ -70,21 +72,21 @@ impl MlsCiphertext {
         }
     }
 
-    /// Try to create a new `MlsCiphertext` from an `MlsAuthContent`.
+    /// Try to create a new `PrivateMessage` from an `AuthenticatedContent`.
     ///
     /// TODO #1148: Refactor theses constructors to avoid test code in main and
     /// to avoid validation using a special feature flag.
     pub(crate) fn try_from_plaintext(
-        mls_plaintext: &MlsAuthContent,
+        mls_plaintext: &AuthenticatedContent,
         ciphersuite: Ciphersuite,
         backend: &impl OpenMlsCryptoProvider,
         message_secrets: &mut MessageSecrets,
         padding_size: usize,
-    ) -> Result<MlsCiphertext, MessageEncryptionError> {
-        log::debug!("MlsCiphertext::try_from_plaintext");
+    ) -> Result<PrivateMessage, MessageEncryptionError> {
+        log::debug!("PrivateMessage::try_from_plaintext");
         log::trace!("  ciphersuite: {}", ciphersuite);
         // Check the message has the correct wire format
-        if mls_plaintext.wire_format() != WireFormat::MlsCiphertext {
+        if mls_plaintext.wire_format() != WireFormat::PrivateMessage {
             return Err(MessageEncryptionError::WrongWireFormat);
         }
         Self::encrypt_content(
@@ -99,12 +101,12 @@ impl MlsCiphertext {
 
     #[cfg(test)]
     pub(crate) fn encrypt_without_check(
-        mls_plaintext: &MlsAuthContent,
+        mls_plaintext: &AuthenticatedContent,
         ciphersuite: Ciphersuite,
         backend: &impl OpenMlsCryptoProvider,
         message_secrets: &mut MessageSecrets,
         padding_size: usize,
-    ) -> Result<MlsCiphertext, MessageEncryptionError> {
+    ) -> Result<PrivateMessage, MessageEncryptionError> {
         Self::encrypt_content(
             None,
             mls_plaintext,
@@ -117,13 +119,13 @@ impl MlsCiphertext {
 
     #[cfg(any(feature = "test-utils", test))]
     pub(crate) fn encrypt_with_different_header(
-        mls_plaintext: &MlsAuthContent,
+        mls_plaintext: &AuthenticatedContent,
         ciphersuite: Ciphersuite,
         backend: &impl OpenMlsCryptoProvider,
         header: MlsMessageHeader,
         message_secrets: &mut MessageSecrets,
         padding_size: usize,
-    ) -> Result<MlsCiphertext, MessageEncryptionError> {
+    ) -> Result<PrivateMessage, MessageEncryptionError> {
         Self::encrypt_content(
             Some(header),
             mls_plaintext,
@@ -135,15 +137,15 @@ impl MlsCiphertext {
     }
 
     /// Internal function to encrypt content. The extra message header is only used
-    /// for tests. Otherwise, the data from the given `MlsAuthContent` is used.
+    /// for tests. Otherwise, the data from the given `AuthenticatedContent` is used.
     fn encrypt_content(
         test_header: Option<MlsMessageHeader>,
-        mls_plaintext: &MlsAuthContent,
+        mls_plaintext: &AuthenticatedContent,
         ciphersuite: Ciphersuite,
         backend: &impl OpenMlsCryptoProvider,
         message_secrets: &mut MessageSecrets,
         padding_size: usize,
-    ) -> Result<MlsCiphertext, MessageEncryptionError> {
+    ) -> Result<PrivateMessage, MessageEncryptionError> {
         let sender_index = if let Some(index) = mls_plaintext.sender().as_member() {
             index
         } else {
@@ -159,7 +161,7 @@ impl MlsCiphertext {
             },
         };
         // Serialize the content AAD
-        let mls_ciphertext_content_aad = MlsCiphertextContentAad {
+        let mls_ciphertext_content_aad = PrivateContentTbe {
             group_id: header.group_id.clone(),
             epoch: header.epoch,
             content_type: mls_plaintext.content().content_type(),
@@ -231,7 +233,7 @@ impl MlsCiphertext {
                 &sender_data_nonce,
             )
             .map_err(LibraryError::unexpected_crypto_error)?;
-        Ok(MlsCiphertext {
+        Ok(PrivateMessage {
             group_id: header.group_id.clone(),
             epoch: header.epoch,
             content_type: mls_plaintext.content().content_type(),
@@ -241,14 +243,14 @@ impl MlsCiphertext {
         })
     }
 
-    /// Decrypt the sender data from this [`MlsCiphertext`].
+    /// Decrypt the sender data from this [`PrivateMessage`].
     pub(crate) fn sender_data(
         &self,
         message_secrets: &MessageSecrets,
         backend: &impl OpenMlsCryptoProvider,
         ciphersuite: Ciphersuite,
     ) -> Result<MlsSenderData, MessageDecryptionError> {
-        log::debug!("Decrypting MlsCiphertext");
+        log::debug!("Decrypting PrivateMessage");
         // Derive key from the key schedule using the ciphertext.
         let sender_data_key = message_secrets
             .sender_data_secret()
@@ -282,16 +284,16 @@ impl MlsCiphertext {
             .map_err(|_| MessageDecryptionError::MalformedContent)
     }
 
-    /// Decrypt this [`MlsCiphertext`] and return the [`MlsCiphertextContent`].
+    /// Decrypt this [`PrivateMessage`] and return the [`PrivateContentTbe`].
     #[inline]
     fn decrypt(
         &self,
         backend: &impl OpenMlsCryptoProvider,
         ratchet_key: AeadKey,
         ratchet_nonce: &AeadNonce,
-    ) -> Result<MlsCiphertextContent, MessageDecryptionError> {
+    ) -> Result<PrivatContentTbe, MessageDecryptionError> {
         // Serialize content AAD
-        let mls_ciphertext_content_aad_bytes = MlsCiphertextContentAad {
+        let mls_ciphertext_content_aad_bytes = PrivateContentTbe {
             group_id: self.group_id.clone(),
             epoch: self.epoch,
             content_type: self.content_type,
@@ -313,7 +315,7 @@ impl MlsCiphertext {
             })?;
         log_content!(
             trace,
-            "  Successfully decrypted MlsPlaintext bytes: {:x?}",
+            "  Successfully decrypted PublicMessage bytes: {:x?}",
             mls_ciphertext_content_bytes
         );
         deserialize_ciphertext_content(
@@ -323,8 +325,8 @@ impl MlsCiphertext {
         .map_err(|_| MessageDecryptionError::MalformedContent)
     }
 
-    /// This function decrypts an [`MlsCiphertext`] into an [`VerifiableMlsAuthContent`].
-    /// In order to get an [`MlsContent`] the result must be verified.
+    /// This function decrypts an [`PrivateMessage`] into an [`VerifiableAuthenticatedContent`].
+    /// In order to get an [`FramedContent`] the result must be verified.
     pub(crate) fn to_plaintext(
         &self,
         ciphersuite: Ciphersuite,
@@ -333,7 +335,7 @@ impl MlsCiphertext {
         sender_index: SecretTreeLeafIndex,
         sender_ratchet_configuration: &SenderRatchetConfiguration,
         sender_data: MlsSenderData,
-    ) -> Result<VerifiableMlsAuthContent, MessageDecryptionError> {
+    ) -> Result<VerifiableAuthenticatedContent, MessageDecryptionError> {
         let secret_type = SecretType::from(&self.content_type);
         // Extract generation and key material for encryption
         let (ratchet_key, ratchet_nonce) = message_secrets
@@ -354,17 +356,17 @@ impl MlsCiphertext {
         let prepared_nonce = ratchet_nonce.xor_with_reuse_guard(&sender_data.reuse_guard);
         let mls_ciphertext_content = self.decrypt(backend, ratchet_key, &prepared_nonce)?;
 
-        // Extract sender. The sender type is always of type Member for MlsCiphertext.
+        // Extract sender. The sender type is always of type Member for PrivateMessage.
         let sender = Sender::from_sender_data(sender_data);
         log_content!(
             trace,
-            "  Successfully decoded MlsPlaintext with: {:x?}",
+            "  Successfully decoded PublicMessage with: {:x?}",
             mls_ciphertext_content.content
         );
 
-        let verifiable = VerifiableMlsAuthContent::new(
-            MlsContentTbs::new(
-                WireFormat::MlsCiphertext,
+        let verifiable = VerifiableAuthenticatedContent::new(
+            FramedContentTbs::new(
+                WireFormat::PrivateMessage,
                 self.group_id.clone(),
                 self.epoch,
                 sender,
@@ -383,9 +385,9 @@ impl MlsCiphertext {
         self.content_type.is_handshake_message()
     }
 
-    /// Encodes the `MLSCiphertextContent` struct with padding.
+    /// Encodes the `PrivateContentTbe` struct with padding.
     fn encode_padded_ciphertext_content_detached(
-        mls_plaintext: &MlsAuthContent,
+        mls_plaintext: &AuthenticatedContent,
         padding_size: usize,
         mac_len: usize,
     ) -> Result<Vec<u8>, tls_codec::Error> {
@@ -418,7 +420,7 @@ impl MlsCiphertext {
         Ok(buffer.to_vec())
     }
 
-    /// Get the `group_id` in the `MlsCiphertext`.
+    /// Get the `group_id` in the `PrivateMessage`.
     pub(crate) fn group_id(&self) -> &GroupId {
         &self.group_id
     }
@@ -429,12 +431,12 @@ impl MlsCiphertext {
         self.ciphertext.as_slice()
     }
 
-    /// Get the `epoch` in the `MlsCiphertext`.
+    /// Get the `epoch` in the `PrivateMessage`.
     pub(crate) fn epoch(&self) -> GroupEpoch {
         self.epoch
     }
 
-    /// Get the `content_type` in the `MlsCiphertext`.
+    /// Get the `content_type` in the `PrivateMessage`.
     pub(crate) fn content_type(&self) -> ContentType {
         self.content_type
     }
@@ -489,12 +491,12 @@ impl MlsSenderDataAad {
     }
 }
 
-/// MLSCiphertextContent
+/// PrivateContentTbe
 ///
 /// ```c
 /// // draft-ietf-mls-protocol-16
 /// struct {
-///     select (MLSCiphertext.content_type) {
+///     select (PrivateMessage.content_type) {
 ///         case application:
 ///           opaque application_data<V>;
 ///
@@ -505,18 +507,18 @@ impl MlsSenderDataAad {
 ///           Commit commit;
 ///     }
 ///
-///     MLSContentAuthData auth;
+///     FramedContentAuthData auth;
 ///     opaque padding[length_of_padding];
-/// } MLSCiphertextContent;
+/// } PrivateContentTbe;
 /// ```
 #[derive(Debug, Clone)]
-pub(crate) struct MlsCiphertextContent {
+pub(crate) struct PrivatContentTbe {
     // The `content` field is serialized and deserialized manually without the
     // `content_type`, which is not part of the struct as per MLS spec. See the
-    // implementation of `TlsSerialize` for `MlsCiphertextContent`, as well as
+    // implementation of `TlsSerialize` for `PrivateContentTbe`, as well as
     // `deserialize_ciphertext_content`.
-    pub(crate) content: MlsContentBody,
-    pub(crate) auth: MlsContentAuthData,
+    pub(crate) content: FramedContentBody,
+    pub(crate) auth: FramedContentAuthData,
     /// Length of the all-zero padding.
     ///
     /// We do not retain any bytes here to avoid the need to
@@ -534,7 +536,7 @@ pub(crate) struct MlsCiphertextContent {
 }
 
 #[derive(TlsSerialize, TlsSize)]
-pub(crate) struct MlsCiphertextContentAad<'a> {
+pub(crate) struct PrivateContentTbe<'a> {
     pub(crate) group_id: GroupId,
     pub(crate) epoch: GroupEpoch,
     pub(crate) content_type: ContentType,

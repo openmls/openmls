@@ -125,7 +125,7 @@ use crate::{
     binary_tree::LeafIndex,
     ciphersuite::{AeadKey, AeadNonce, HpkePrivateKey, Mac, Secret},
     error::LibraryError,
-    framing::{mls_content::MlsContentTbm, MembershipTag},
+    framing::{mls_content::FramedContentTbm, MembershipTag},
     messages::{ConfirmationTag, GroupInfo, PathSecret},
     tree::secret_tree::SecretTree,
     versions::ProtocolVersion,
@@ -802,7 +802,7 @@ impl ConfirmationKey {
     /// >  11.2. Commit
     ///
     /// ```text
-    /// MLSPlaintext.confirmation_tag =
+    /// PublicMessage.confirmation_tag =
     ///     MAC(confirmation_key, GroupContext.confirmed_transcript_hash)
     /// ```
     pub(crate) fn tag(
@@ -866,7 +866,7 @@ impl MembershipKey {
     pub(crate) fn tag(
         &self,
         backend: &impl OpenMlsCryptoProvider,
-        tbm_payload: MlsContentTbm,
+        tbm_payload: FramedContentTbm,
     ) -> Result<MembershipTag, LibraryError> {
         Ok(MembershipTag(
             Mac::new(

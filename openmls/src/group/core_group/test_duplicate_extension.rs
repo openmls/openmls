@@ -52,7 +52,7 @@ fn duplicate_ratchet_tree_extension(
         add_ratchet_tree_extension: true,
     };
 
-    let framing_parameters = FramingParameters::new(group_aad, WireFormat::MlsPlaintext);
+    let framing_parameters = FramingParameters::new(group_aad, WireFormat::PublicMessage);
 
     let mut alice_group = CoreGroup::builder(GroupId::random(backend), alice_key_package_bundle)
         .with_config(config)

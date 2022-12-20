@@ -95,7 +95,7 @@ impl MlsGroup {
             .build();
         let create_commit_result = self.group.create_commit(params, backend)?;
 
-        // Convert MlsPlaintext messages to MLSMessage and encrypt them if required by
+        // Convert PublicMessage messages to MLSMessage and encrypt them if required by
         // the configuration
         let mls_message = self.plaintext_to_mls_message(create_commit_result.commit, backend)?;
 

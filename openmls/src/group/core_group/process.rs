@@ -1,7 +1,7 @@
 use core_group::{proposals::QueuedProposal, staged_commit::StagedCommit};
 
 use crate::{
-    framing::mls_content::MlsContentBody,
+    framing::mls_content::FramedContentBody,
     group::{errors::ValidationError, mls_group::errors::ProcessMessageError},
     treesync::node::leaf_node::OpenMlsLeafNode,
 };
@@ -11,7 +11,7 @@ use super::{proposals::ProposalStore, *};
 impl CoreGroup {
     /// This function is used to parse messages from the DS.
     /// It checks for syntactic errors and makes some semantic checks as well.
-    /// If the input is a [MlsCiphertext] message, it will be decrypted.
+    /// If the input is a [PrivateMessage] message, it will be decrypted.
     /// Returns an [UnverifiedMessage] that can be inspected and later processed in
     /// [Self::process_unverified_message()].
     /// Checks the following semantic validation:
@@ -148,19 +148,19 @@ impl CoreGroup {
                 let authenticated_data = plaintext.authenticated_data().to_owned();
 
                 let content = match &plaintext.content() {
-                    MlsContentBody::Application(application_message) => {
+                    FramedContentBody::Application(application_message) => {
                         ProcessedMessageContent::ApplicationMessage(ApplicationMessage::new(
                             application_message.as_slice().to_owned(),
                         ))
                     }
-                    MlsContentBody::Proposal(_) => ProcessedMessageContent::ProposalMessage(
+                    FramedContentBody::Proposal(_) => ProcessedMessageContent::ProposalMessage(
                         Box::new(QueuedProposal::from_mls_plaintext(
                             self.ciphersuite(),
                             backend,
                             plaintext,
                         )?),
                     ),
-                    MlsContentBody::Commit(_) => {
+                    FramedContentBody::Commit(_) => {
                         //  - ValSem100
                         //  - ValSem101
                         //  - ValSem102
@@ -220,7 +220,7 @@ impl CoreGroup {
                     .to_owned();
 
                 let content = match verified_new_member_message.plaintext().content() {
-                    MlsContentBody::Proposal(_) => {
+                    FramedContentBody::Proposal(_) => {
                         ProcessedMessageContent::ExternalJoinProposalMessage(Box::new(
                             QueuedProposal::from_mls_plaintext(
                                 self.ciphersuite(),
@@ -229,7 +229,7 @@ impl CoreGroup {
                             )?,
                         ))
                     }
-                    MlsContentBody::Commit(_) => {
+                    FramedContentBody::Commit(_) => {
                         // We throw a library error here, because a missing confirmation tag should be found during deserialization.
                         let staged_commit = self.stage_commit(
                             verified_new_member_message.plaintext(),
@@ -260,7 +260,7 @@ impl CoreGroup {
 
     /// This function is used to parse messages from the DS. It checks for
     /// syntactic errors and does semantic validation as well. If the input is a
-    /// [MlsCiphertext] message, it will be decrypted. It returns a
+    /// [PrivateMessage] message, it will be decrypted. It returns a
     /// [ProcessedMessage] enum. Checks the following semantic validation:
     ///  - ValSem002
     ///  - ValSem003

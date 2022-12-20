@@ -177,7 +177,7 @@ impl MlsGroup {
             ResumptionPskStore::new(mls_group_config.number_of_resumption_psks);
 
         // Prepare the commit parameters
-        let framing_parameters = FramingParameters::new(aad, WireFormat::MlsPlaintext);
+        let framing_parameters = FramingParameters::new(aad, WireFormat::PublicMessage);
 
         let proposal_store = ProposalStore::new();
         let params = CreateCommitParams::builder()
@@ -208,7 +208,7 @@ impl MlsGroup {
 
         Ok((
             mls_group,
-            MlsPlaintext::from(create_commit_result.commit).into(),
+            PublicMessage::from(create_commit_result.commit).into(),
         ))
     }
 }

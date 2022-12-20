@@ -56,8 +56,8 @@ impl From<&ContentType> for SecretType {
     }
 }
 
-impl From<&MlsPlaintext> for SecretType {
-    fn from(mls_plaintext: &MlsPlaintext) -> SecretType {
+impl From<&PublicMessage> for SecretType {
+    fn from(mls_plaintext: &PublicMessage) -> SecretType {
         SecretType::from(&mls_plaintext.content_type())
     }
 }
@@ -248,7 +248,7 @@ impl SecretTree {
     }
 
     /// Return RatchetSecrets for a given index and generation. This should be
-    /// called when decrypting an MlsCiphertext received from another member.
+    /// called when decrypting an PrivateMessage received from another member.
     /// Returns an error if index or generation are out of bound.
     pub(crate) fn secret_for_decryption(
         &mut self,

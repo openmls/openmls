@@ -61,7 +61,7 @@ impl ClientInfo {
 /// (see OpenMLS) for details.
 #[derive(Debug)]
 pub enum Message {
-    /// An `MLSMessage` is either an OpenMLS `MlsCiphertext` or `MlsPlaintext`.
+    /// An `MLSMessage` is either an OpenMLS `PrivateMessage` or `PublicMessage`.
     MlsMessage(MlsMessageIn),
 
     /// An OpenMLS `Welcome` message.

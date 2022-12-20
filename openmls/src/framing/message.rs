@@ -48,9 +48,9 @@ pub(crate) struct MlsMessage {
 ///     WireFormat wire_format;
 ///     select (MLSMessage.wire_format) {
 ///         case mls_plaintext:
-///             MLSPlaintext plaintext;
+///             PublicMessage plaintext;
 ///         case mls_ciphertext:
-///             MLSCiphertext ciphertext;
+///             PrivateMessage ciphertext;
 ///         case mls_welcome:
 ///             Welcome welcome;
 ///         case mls_group_info:
@@ -66,19 +66,19 @@ pub(crate) struct MlsMessage {
 pub(crate) enum MlsMessageBody {
     /// Plaintext message
     #[tls_codec(discriminant = 1)]
-    Plaintext(MlsPlaintext),
+    Plaintext(PublicMessage),
 
     /// Ciphertext message
     #[tls_codec(discriminant = 2)]
-    Ciphertext(MlsCiphertext),
+    Ciphertext(PrivateMessage),
 }
 
 impl MlsMessage {
     /// Returns the wire format.
     fn wire_format(&self) -> WireFormat {
         match self.body {
-            MlsMessageBody::Ciphertext(_) => WireFormat::MlsCiphertext,
-            MlsMessageBody::Plaintext(_) => WireFormat::MlsPlaintext,
+            MlsMessageBody::Ciphertext(_) => WireFormat::PrivateMessage,
+            MlsMessageBody::Plaintext(_) => WireFormat::PublicMessage,
         }
     }
 
@@ -182,9 +182,9 @@ impl MlsMessageIn {
         self.mls_message.to_bytes()
     }
 
-    /// Returns an [`MlsPlaintext`] if the [`MlsMessageIn`] contains one. Otherwise returns `None`.
+    /// Returns an [`PublicMessage`] if the [`MlsMessageIn`] contains one. Otherwise returns `None`.
     #[cfg(test)]
-    pub(crate) fn into_plaintext(self) -> Option<MlsPlaintext> {
+    pub(crate) fn into_plaintext(self) -> Option<PublicMessage> {
         if let MlsMessageBody::Plaintext(pt) = self.mls_message.body {
             Some(pt)
         } else {
@@ -192,9 +192,9 @@ impl MlsMessageIn {
         }
     }
 
-    /// Returns an [`MlsCiphertext`] if the [`MlsMessageIn`] contains one. Otherwise returns `None`.
+    /// Returns an [`PrivateMessage`] if the [`MlsMessageIn`] contains one. Otherwise returns `None`.
     #[cfg(test)]
-    pub(crate) fn into_ciphertext(self) -> Option<MlsCiphertext> {
+    pub(crate) fn into_ciphertext(self) -> Option<PrivateMessage> {
         if let MlsMessageBody::Ciphertext(ct) = self.mls_message.body {
             Some(ct)
         } else {
@@ -209,8 +209,8 @@ pub struct MlsMessageOut {
     pub(crate) mls_message: MlsMessage,
 }
 
-impl From<MlsPlaintext> for MlsMessageOut {
-    fn from(plaintext: MlsPlaintext) -> Self {
+impl From<PublicMessage> for MlsMessageOut {
+    fn from(plaintext: PublicMessage) -> Self {
         let body = MlsMessageBody::Plaintext(plaintext);
 
         Self {
@@ -219,8 +219,8 @@ impl From<MlsPlaintext> for MlsMessageOut {
     }
 }
 
-impl From<MlsCiphertext> for MlsMessageOut {
-    fn from(ciphertext: MlsCiphertext) -> Self {
+impl From<PrivateMessage> for MlsMessageOut {
+    fn from(ciphertext: PrivateMessage) -> Self {
         let body = MlsMessageBody::Ciphertext(ciphertext);
 
         Self {
@@ -277,8 +277,8 @@ impl From<MlsMessageOut> for MlsMessageIn {
 }
 
 #[cfg(any(feature = "test-utils", test))]
-impl From<MlsPlaintext> for MlsMessageIn {
-    fn from(plaintext: MlsPlaintext) -> Self {
+impl From<PublicMessage> for MlsMessageIn {
+    fn from(plaintext: PublicMessage) -> Self {
         let body = MlsMessageBody::Plaintext(plaintext);
 
         Self {
@@ -288,8 +288,8 @@ impl From<MlsPlaintext> for MlsMessageIn {
 }
 
 #[cfg(any(feature = "test-utils", test))]
-impl From<MlsCiphertext> for MlsMessageIn {
-    fn from(ciphertext: MlsCiphertext) -> Self {
+impl From<PrivateMessage> for MlsMessageIn {
+    fn from(ciphertext: PrivateMessage) -> Self {
         let body = MlsMessageBody::Ciphertext(ciphertext);
 
         Self {

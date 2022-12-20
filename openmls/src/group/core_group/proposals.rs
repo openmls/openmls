@@ -1,7 +1,9 @@
 use crate::{
     ciphersuite::hash_ref::ProposalRef,
     error::LibraryError,
-    framing::{mls_auth_content::MlsAuthContent, mls_content::MlsContentBody, Sender, SenderError},
+    framing::{
+        mls_auth_content::AuthenticatedContent, mls_content::FramedContentBody, Sender, SenderError,
+    },
     group::errors::*,
     messages::proposals::{
         AddProposal, PreSharedKeyProposal, Proposal, ProposalOrRef, ProposalOrRefType,
@@ -47,7 +49,7 @@ impl ProposalStore {
 }
 
 /// Alternative representation of a Proposal, where the sender is extracted from
-/// the encapsulating MlsPlaintext and the ProposalRef is attached.
+/// the encapsulating PublicMessage and the ProposalRef is attached.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct QueuedProposal {
     proposal: Proposal,
@@ -57,14 +59,14 @@ pub struct QueuedProposal {
 }
 
 impl QueuedProposal {
-    /// Creates a new [QueuedProposal] from an [MlsPlaintext]
+    /// Creates a new [QueuedProposal] from an [PublicMessage]
     pub(crate) fn from_mls_plaintext(
         ciphersuite: Ciphersuite,
         backend: &impl OpenMlsCryptoProvider,
-        mls_plaintext: MlsAuthContent,
+        mls_plaintext: AuthenticatedContent,
     ) -> Result<Self, LibraryError> {
         let proposal = match mls_plaintext.content() {
-            MlsContentBody::Proposal(p) => p,
+            FramedContentBody::Proposal(p) => p,
             _ => return Err(LibraryError::custom("Wrong content type")),
         };
         let proposal_reference = ProposalRef::from_proposal(ciphersuite, backend, proposal)?;

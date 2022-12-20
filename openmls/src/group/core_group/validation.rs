@@ -15,7 +15,7 @@ use crate::{
 
 use super::{
     mls_content::ContentType, proposals::ProposalQueue, CoreGroup, Member, MlsMessageIn,
-    ProposalValidationError, VerifiableMlsAuthContent, WireFormat,
+    ProposalValidationError, VerifiableAuthenticatedContent, WireFormat,
 };
 
 impl CoreGroup {
@@ -56,7 +56,7 @@ impl CoreGroup {
     ///  - ValSem009
     pub(crate) fn validate_plaintext(
         &self,
-        plaintext: &VerifiableMlsAuthContent,
+        plaintext: &VerifiableAuthenticatedContent,
     ) -> Result<(), ValidationError> {
         // ValSem004
         let sender = plaintext.sender();
@@ -76,7 +76,7 @@ impl CoreGroup {
         // ValSem005
         // Application messages must always be encrypted
         if plaintext.content_type() == ContentType::Application {
-            if plaintext.wire_format() != WireFormat::MlsCiphertext {
+            if plaintext.wire_format() != WireFormat::PrivateMessage {
                 return Err(ValidationError::UnencryptedApplicationMessage);
             } else if !plaintext.sender().is_member() {
                 return Err(ValidationError::NonMemberApplicationMessage);

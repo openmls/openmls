@@ -8,7 +8,7 @@ use crate::{
     credentials::{CredentialBundle, CredentialType},
     extensions::{ApplicationIdExtension, Extension, ExtensionType, RequiredCapabilitiesExtension},
     framing::sender::Sender,
-    framing::{mls_auth_content::MlsAuthContent, FramingParameters, WireFormat},
+    framing::{mls_auth_content::AuthenticatedContent, FramingParameters, WireFormat},
     group::{
         create_commit_params::CreateCommitParams,
         errors::*,
@@ -43,7 +43,7 @@ fn setup_client(
 #[apply(ciphersuites_and_backends)]
 fn proposal_queue_functions(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
     // Framing parameters
-    let framing_parameters = FramingParameters::new(&[], WireFormat::MlsPlaintext);
+    let framing_parameters = FramingParameters::new(&[], WireFormat::PublicMessage);
     // Define identities
     let (alice_credential_bundle, alice_key_package_bundle) =
         setup_client("Alice", ciphersuite, backend);
@@ -99,8 +99,8 @@ fn proposal_queue_functions(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryp
     assert!(!proposal_add_alice1.is_type(ProposalType::Update));
     assert!(!proposal_add_alice1.is_type(ProposalType::Remove));
 
-    // Frame proposals in MlsPlaintext
-    let mls_plaintext_add_alice1 = MlsAuthContent::member_proposal(
+    // Frame proposals in PublicMessage
+    let mls_plaintext_add_alice1 = AuthenticatedContent::member_proposal(
         framing_parameters,
         0,
         proposal_add_alice1,
@@ -109,7 +109,7 @@ fn proposal_queue_functions(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryp
         backend,
     )
     .expect("Could not create proposal.");
-    let mls_plaintext_add_alice2 = MlsAuthContent::member_proposal(
+    let mls_plaintext_add_alice2 = AuthenticatedContent::member_proposal(
         framing_parameters,
         1,
         proposal_add_alice2,
@@ -118,7 +118,7 @@ fn proposal_queue_functions(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryp
         backend,
     )
     .expect("Could not create proposal.");
-    let _mls_plaintext_add_bob1 = MlsAuthContent::member_proposal(
+    let _mls_plaintext_add_bob1 = AuthenticatedContent::member_proposal(
         framing_parameters,
         1,
         proposal_add_bob1,
@@ -174,7 +174,7 @@ fn proposal_queue_functions(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryp
 #[apply(ciphersuites_and_backends)]
 fn proposal_queue_order(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
     // Framing parameters
-    let framing_parameters = FramingParameters::new(&[], WireFormat::MlsPlaintext);
+    let framing_parameters = FramingParameters::new(&[], WireFormat::PublicMessage);
     // Define identities
     let (alice_credential_bundle, alice_key_package_bundle) =
         setup_client("Alice", ciphersuite, backend);
@@ -215,8 +215,8 @@ fn proposal_queue_order(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoPr
             .expect("An unexpected error occurred.");
     let proposal_add_bob1 = Proposal::Add(add_proposal_bob1);
 
-    // Frame proposals in MlsPlaintext
-    let mls_plaintext_add_alice1 = MlsAuthContent::member_proposal(
+    // Frame proposals in PublicMessage
+    let mls_plaintext_add_alice1 = AuthenticatedContent::member_proposal(
         framing_parameters,
         0,
         proposal_add_alice1.clone(),
@@ -225,7 +225,7 @@ fn proposal_queue_order(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoPr
         backend,
     )
     .expect("Could not create proposal.");
-    let mls_plaintext_add_bob1 = MlsAuthContent::member_proposal(
+    let mls_plaintext_add_bob1 = AuthenticatedContent::member_proposal(
         framing_parameters,
         1,
         proposal_add_bob1.clone(),
@@ -303,7 +303,7 @@ fn test_required_extension_key_package_mismatch(
 ) {
     // Basic group setup.
     let group_aad = b"Alice's test group";
-    let framing_parameters = FramingParameters::new(group_aad, WireFormat::MlsPlaintext);
+    let framing_parameters = FramingParameters::new(group_aad, WireFormat::PublicMessage);
 
     let (alice_credential_bundle, alice_key_package_bundle) =
         setup_client("Alice", ciphersuite, backend);
@@ -344,7 +344,7 @@ fn test_required_extension_key_package_mismatch(
 fn test_group_context_extensions(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
     // Basic group setup.
     let group_aad = b"Alice's test group";
-    let framing_parameters = FramingParameters::new(group_aad, WireFormat::MlsPlaintext);
+    let framing_parameters = FramingParameters::new(group_aad, WireFormat::PublicMessage);
 
     let (alice_credential_bundle, alice_key_package_bundle) =
         setup_client("Alice", ciphersuite, backend);
@@ -425,7 +425,7 @@ fn test_group_context_extension_proposal_fails(
 ) {
     // Basic group setup.
     let group_aad = b"Alice's test group";
-    let framing_parameters = FramingParameters::new(group_aad, WireFormat::MlsPlaintext);
+    let framing_parameters = FramingParameters::new(group_aad, WireFormat::PublicMessage);
 
     let (alice_credential_bundle, alice_key_package_bundle) =
         setup_client("Alice", ciphersuite, backend);
@@ -544,7 +544,7 @@ fn test_group_context_extension_proposal(
 ) {
     // Basic group setup.
     let group_aad = b"Alice's test group";
-    let framing_parameters = FramingParameters::new(group_aad, WireFormat::MlsPlaintext);
+    let framing_parameters = FramingParameters::new(group_aad, WireFormat::PublicMessage);
 
     let (alice_credential_bundle, _) = setup_client("Alice", ciphersuite, backend);
     let (bob_credential_bundle, _) = setup_client("Bob", ciphersuite, backend);

@@ -1,5 +1,5 @@
 use crate::ciphersuite::signable::Verifiable;
-use crate::framing::mls_content::MlsContentBody;
+use crate::framing::mls_content::FramedContentBody;
 use crate::treesync::errors::TreeSyncAddLeaf;
 use crate::treesync::node::leaf_node::{
     LeafNodeTbs, OpenMlsLeafNode, TreeInfoTbs, VerifiableLeafNodeTbs,
@@ -57,7 +57,7 @@ impl CoreGroup {
     /// group.
     pub(crate) fn stage_commit(
         &self,
-        mls_content: &MlsAuthContent,
+        mls_content: &AuthenticatedContent,
         proposal_store: &ProposalStore,
         own_leaf_nodes: &[OpenMlsLeafNode],
         backend: &impl OpenMlsCryptoProvider,
@@ -84,9 +84,9 @@ impl CoreGroup {
             }
         }
 
-        // Extract Commit & Confirmation Tag from MlsPlaintext
+        // Extract Commit & Confirmation Tag from PublicMessage
         let commit = match mls_content.content() {
-            MlsContentBody::Commit(commit) => commit,
+            FramedContentBody::Commit(commit) => commit,
             _ => return Err(StageCommitError::WrongPlaintextContentType),
         };
 
@@ -197,7 +197,7 @@ impl CoreGroup {
 
         // Determine if Commit has a path
         let commit_secret = if let Some(path) = commit.path.clone() {
-            // Verify the leaf node and MlsPlaintext membership tag
+            // Verify the leaf node and PublicMessage membership tag
             // Note that the signature must have been verified already.
             // TODO #106: Support external members
             let leaf_node = path.leaf_node();
@@ -306,7 +306,7 @@ impl CoreGroup {
         let confirmed_transcript_hash = update_confirmed_transcript_hash(
             ciphersuite,
             backend,
-            // It is ok to use return a library error here, because we know the MlsPlaintext contains a Commit
+            // It is ok to use return a library error here, because we know the PublicMessage contains a Commit
             &ConfirmedTranscriptHashInput::try_from(mls_content)
                 .map_err(|_| LibraryError::custom("Could not convert commit content"))?,
             &self.interim_transcript_hash,

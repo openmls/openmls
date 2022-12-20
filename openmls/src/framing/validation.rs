@@ -45,7 +45,7 @@ use crate::{
 };
 
 use super::{
-    mls_auth_content::{MlsAuthContent, VerifiableMlsAuthContent},
+    mls_auth_content::{AuthenticatedContent, VerifiableAuthenticatedContent},
     mls_content::ContentType,
     *,
 };
@@ -57,19 +57,19 @@ use super::{
 ///  - ValSem007
 ///  - ValSem009
 pub(crate) struct DecryptedMessage {
-    plaintext: VerifiableMlsAuthContent,
+    plaintext: VerifiableAuthenticatedContent,
 }
 
 impl DecryptedMessage {
-    /// Constructs a [DecryptedMessage] from a [VerifiableMlsAuthContent].
+    /// Constructs a [DecryptedMessage] from a [VerifiableAuthenticatedContent].
     pub(crate) fn from_inbound_plaintext(
-        plaintext: MlsPlaintext,
+        plaintext: PublicMessage,
         message_secrets: &MessageSecrets,
         backend: &impl OpenMlsCryptoProvider,
     ) -> Result<Self, ValidationError> {
         if plaintext.sender().is_member() {
-            // Verify the membership tag. This needs to be done explicitly for MlsPlaintext messages,
-            // it is implicit for MlsCiphertext messages (because the encryption can only be known by members).
+            // Verify the membership tag. This needs to be done explicitly for PublicMessage messages,
+            // it is implicit for PrivateMessage messages (because the encryption can only be known by members).
             // ValSem007 Membership tag presence
             // ValSem008
             plaintext.verify_membership(
@@ -80,15 +80,15 @@ impl DecryptedMessage {
         }
 
         let verifiable_content =
-            MlsPlaintext::into_verifiable_content(plaintext, message_secrets.serialized_context());
+            PublicMessage::into_verifiable_content(plaintext, message_secrets.serialized_context());
 
         Self::from_plaintext(verifiable_content)
     }
 
-    /// Constructs a [DecryptedMessage] from a [MlsCiphertext] by attempting to decrypt it
-    /// to a [VerifiableMlsAuthContent] first.
+    /// Constructs a [DecryptedMessage] from a [PrivateMessage] by attempting to decrypt it
+    /// to a [VerifiableAuthenticatedContent] first.
     pub(crate) fn from_inbound_ciphertext(
-        ciphertext: MlsCiphertext,
+        ciphertext: PrivateMessage,
         backend: &impl OpenMlsCryptoProvider,
         group: &mut CoreGroup,
         sender_ratchet_configuration: &SenderRatchetConfiguration,
@@ -118,9 +118,9 @@ impl DecryptedMessage {
 
     // Internal constructor function. Does the following checks:
     // - Confirmation tag must be present for Commit messages
-    // - Membership tag must be present for member messages, if the original incoming message was not an MlsCiphertext
-    // - Ensures application messages were originally MlsCiphertext messages
-    fn from_plaintext(plaintext: VerifiableMlsAuthContent) -> Result<Self, ValidationError> {
+    // - Membership tag must be present for member messages, if the original incoming message was not an PrivateMessage
+    // - Ensures application messages were originally PrivateMessage messages
+    fn from_plaintext(plaintext: VerifiableAuthenticatedContent) -> Result<Self, ValidationError> {
         // ValSem009
         if plaintext.content_type() == ContentType::Commit && plaintext.confirmation_tag().is_none()
         {
@@ -128,10 +128,10 @@ impl DecryptedMessage {
         }
         // ValSem005
         if plaintext.content_type() == ContentType::Application {
-            if plaintext.wire_format() != WireFormat::MlsCiphertext {
+            if plaintext.wire_format() != WireFormat::PrivateMessage {
                 return Err(ValidationError::UnencryptedApplicationMessage);
             } else if !plaintext.sender().is_member() {
-                // This should not happen because the sender of an MlsCiphertext should always be a member
+                // This should not happen because the sender of an PrivateMessage should always be a member
                 return Err(LibraryError::custom("Expected sender to be member.").into());
             }
         }
@@ -197,7 +197,7 @@ impl DecryptedMessage {
     }
 
     /// Returns the plaintext.
-    pub(crate) fn plaintext(&self) -> &VerifiableMlsAuthContent {
+    pub(crate) fn plaintext(&self) -> &VerifiableAuthenticatedContent {
         &self.plaintext
     }
 }
@@ -207,7 +207,7 @@ impl DecryptedMessage {
 /// and the optional `aad` if the original message was encrypted.
 #[derive(Debug, Clone)]
 pub(crate) struct UnverifiedMessage {
-    plaintext: VerifiableMlsAuthContent,
+    plaintext: VerifiableAuthenticatedContent,
     credential: Option<Credential>,
 }
 
@@ -224,12 +224,12 @@ impl UnverifiedMessage {
     }
 
     /// Decomposes an [UnverifiedMessage] into its parts.
-    pub(crate) fn into_parts(self) -> (VerifiableMlsAuthContent, Option<Credential>) {
+    pub(crate) fn into_parts(self) -> (VerifiableAuthenticatedContent, Option<Credential>) {
         (self.plaintext, self.credential)
     }
 }
 
-/// Contains an VerifiableMlsAuthContent and a [Credential] if it is a message
+/// Contains an VerifiableAuthenticatedContent and a [Credential] if it is a message
 /// from a `Member`, a `Preconfigured`, a `NewMemberProposal` or a `NewMemberCommit`. It sets the
 /// serialized group context and verifies the membership tag for member messages. It can be
 /// converted to a verified message by verifying the signature, either with the credential or an
@@ -279,7 +279,7 @@ impl UnverifiedContextMessage {
 
 /// Part of [UnverifiedContextMessage].
 pub(crate) struct UnverifiedGroupMessage {
-    plaintext: VerifiableMlsAuthContent,
+    plaintext: VerifiableAuthenticatedContent,
     credential: Credential,
 }
 
@@ -314,7 +314,7 @@ impl UnverifiedGroupMessage {
 
 /// Part of [UnverifiedContextMessage].
 pub(crate) struct UnverifiedNewMemberMessage {
-    plaintext: VerifiableMlsAuthContent,
+    plaintext: VerifiableAuthenticatedContent,
     credential: Credential,
 }
 
@@ -345,18 +345,18 @@ impl UnverifiedNewMemberMessage {
 // TODO #151/#106: We don't support external senders yet
 /// Part of [UnverifiedContextMessage].
 pub(crate) struct UnverifiedExternalMessage {
-    _plaintext: VerifiableMlsAuthContent,
+    _plaintext: VerifiableAuthenticatedContent,
 }
 
 /// Member message, where all semantic checks on the framing have been successfully performed.
 #[derive(Debug)]
 pub(crate) struct VerifiedMemberMessage {
-    plaintext: MlsAuthContent,
+    plaintext: AuthenticatedContent,
 }
 
 impl VerifiedMemberMessage {
-    /// Consumes the message and returns the inner [MlsPlaintext].
-    pub(crate) fn take_plaintext(self) -> MlsAuthContent {
+    /// Consumes the message and returns the inner [PublicMessage].
+    pub(crate) fn take_plaintext(self) -> AuthenticatedContent {
         self.plaintext
     }
 }
@@ -364,17 +364,17 @@ impl VerifiedMemberMessage {
 /// External message, where all semantic checks on the framing have been successfully performed.
 /// Note: External messages are not fully supported yet #106
 pub(crate) struct VerifiedExternalMessage {
-    plaintext: MlsAuthContent,
+    plaintext: AuthenticatedContent,
 }
 
 impl VerifiedExternalMessage {
-    /// Returns a reference to the inner [MlsContent].
-    pub(crate) fn plaintext(&self) -> &MlsAuthContent {
+    /// Returns a reference to the inner [FramedContent].
+    pub(crate) fn plaintext(&self) -> &AuthenticatedContent {
         &self.plaintext
     }
 
-    /// Consumes the message and returns the inner [MlsPlaintext].
-    pub(crate) fn take_plaintext(self) -> MlsAuthContent {
+    /// Consumes the message and returns the inner [PublicMessage].
+    pub(crate) fn take_plaintext(self) -> AuthenticatedContent {
         self.plaintext
     }
 }

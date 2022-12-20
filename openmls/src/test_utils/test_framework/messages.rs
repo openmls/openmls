@@ -9,9 +9,9 @@ use tls_codec::{TlsDeserialize, TlsSerialize, TlsSize};
 #[derive(Debug, Clone, Copy, TlsSerialize, TlsDeserialize, TlsSize)]
 #[repr(u8)]
 pub enum MessageType {
-    /// An MlsCiphertext message.
-    MlsCiphertext = 0,
+    /// An PrivateMessage message.
+    PrivateMessage = 0,
 
-    /// An MlsPlaintext message.
-    MlsPlaintext = 1,
+    /// An PublicMessage message.
+    PublicMessage = 1,
 }

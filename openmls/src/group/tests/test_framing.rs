@@ -97,7 +97,7 @@ fn padding(backend: &impl OpenMlsCryptoProvider) {
     }
 }
 
-/// Check that MLSCiphertextContent's padding field is verified to be all-zero.
+/// Check that PrivateContentTbe's padding field is verified to be all-zero.
 #[apply(ciphersuites_and_backends)]
 fn bad_padding(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
     let tests = {
@@ -137,13 +137,13 @@ fn bad_padding(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
         );
 
         let plaintext = {
-            let plaintext_tbs = MlsContentTbs::new(
-                WireFormat::MlsCiphertext,
+            let plaintext_tbs = FramedContentTbs::new(
+                WireFormat::PrivateMessage,
                 GroupId::random(backend),
                 1,
                 sender,
                 vec![1, 2, 3].into(),
-                MlsContentBody::Application(vec![4, 5, 6].into()),
+                FramedContentBody::Application(vec![4, 5, 6].into()),
             );
 
             plaintext_tbs.sign(backend, &credential_bundle).unwrap()
@@ -188,7 +188,7 @@ fn bad_padding(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
             };
 
             let mls_ciphertext_content_aad_bytes = {
-                let mls_ciphertext_content_aad = MlsCiphertextContentAad {
+                let mls_ciphertext_content_aad = PrivateContentTbe {
                     group_id: group_id.clone(),
                     epoch,
                     content_type: plaintext.content().content_type(),
@@ -296,7 +296,7 @@ fn bad_padding(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
                 )
                 .unwrap();
 
-            MlsCiphertext::new(
+            PrivateMessage::new(
                 group_id,
                 epoch,
                 plaintext.content().content_type(),

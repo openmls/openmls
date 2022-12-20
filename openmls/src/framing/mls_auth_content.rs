@@ -4,7 +4,7 @@ use crate::{
     group::errors::ValidationError,
 };
 
-use super::mls_content::{ContentType, MlsContentBody, MlsContentTbs};
+use super::mls_content::{ContentType, FramedContentBody, FramedContentTbs};
 
 use super::*;
 use openmls_traits::OpenMlsCryptoProvider;
@@ -15,7 +15,7 @@ use tls_codec::{
     Deserialize as TlsDeserializeTrait, Serialize as TlsSerializeTrait, Size, TlsSerialize, TlsSize,
 };
 
-/// Private module to ensure protection of [`MlsAuthContent`].
+/// Private module to ensure protection of [`AuthenticatedContent`].
 mod private_mod {
     #[derive(Default)]
     pub(crate) struct Seal;
@@ -27,7 +27,7 @@ mod private_mod {
 /// // draft-ietf-mls-protocol-16
 ///
 /// struct {
-///    /* SignWithLabel(., "MLSContentTBS", MLSContentTBS) */
+///    /* SignWithLabel(., "FramedContentTBS", FramedContentTBS) */
 ///    opaque signature<V>;
 ///    select (MLSContent.content_type) {
 ///        case commit:
@@ -40,15 +40,15 @@ mod private_mod {
 ///        case proposal:
 ///            struct{};
 ///    };
-///} MLSContentAuthData;
+///} FramedContentAuthData;
 /// ```
 #[derive(PartialEq, Debug, Clone, Serialize, Deserialize)]
-pub(crate) struct MlsContentAuthData {
+pub(crate) struct FramedContentAuthData {
     pub(super) signature: Signature,
     pub(super) confirmation_tag: Option<ConfirmationTag>,
 }
 
-impl MlsContentAuthData {
+impl FramedContentAuthData {
     pub(super) fn deserialize<R: Read>(
         bytes: &mut R,
         content_type: ContentType,
@@ -74,36 +74,36 @@ impl MlsContentAuthData {
 /// struct {
 ///     WireFormat wire_format;
 ///     MLSContent content;
-///     MLSContentAuthData auth;
-/// } MLSAuthenticatedContent;
+///     FramedContentAuthData auth;
+/// } AuthenticatedContent;
 /// ```
 ///
-/// Note that [`MlsAuthContent`] doesn't correspond exactly to the
-/// MLSAuthenticatedContent from the MLS specification, as the [`MlsContentTbs`]
+/// Note that [`AuthenticatedContent`] doesn't correspond exactly to the
+/// AuthenticatedContent from the MLS specification, as the [`FramedContentTbs`]
 /// contains additional information to ease processing.
 ///
 /// TODO #1051: Serialization is only needed for KAT generation at this point.
-/// If we want to serialize a spec-compliant MLSAuthenticatedContent, we have to
+/// If we want to serialize a spec-compliant AuthenticatedContent, we have to
 /// manually ignore the extra fields in the TBS (i.e. context and later
 /// ProtocolVersion).
 #[derive(PartialEq, Debug, Clone, TlsSerialize, TlsSize)]
-pub(crate) struct MlsAuthContent {
-    pub(super) tbs: MlsContentTbs,
-    pub(super) auth: MlsContentAuthData,
+pub(crate) struct AuthenticatedContent {
+    pub(super) tbs: FramedContentTbs,
+    pub(super) auth: FramedContentAuthData,
 }
 
-impl MlsAuthContent {
-    /// Convenience function for creating a [`VerifiableMlsAuthContent`].
+impl AuthenticatedContent {
+    /// Convenience function for creating a [`VerifiableAuthenticatedContent`].
     #[inline]
     fn new_and_sign(
         framing_parameters: FramingParameters,
         sender: Sender,
-        body: MlsContentBody,
+        body: FramedContentBody,
         credential_bundle: &CredentialBundle,
         context: &GroupContext,
         backend: &impl OpenMlsCryptoProvider,
     ) -> Result<Self, LibraryError> {
-        let mut content_tbs = MlsContentTbs::new(
+        let mut content_tbs = FramedContentTbs::new(
             framing_parameters.wire_format(),
             context.group_id().clone(),
             context.epoch(),
@@ -122,7 +122,7 @@ impl MlsAuthContent {
         content_tbs.sign(backend, credential_bundle)
     }
 
-    /// This constructor builds an `MlsAuthContent` containing an application
+    /// This constructor builds an `AuthenticatedContent` containing an application
     /// message. The sender type is always `SenderType::Member`.
     pub(crate) fn new_application(
         sender_leaf_index: u32,
@@ -133,18 +133,18 @@ impl MlsAuthContent {
         backend: &impl OpenMlsCryptoProvider,
     ) -> Result<Self, LibraryError> {
         let framing_parameters =
-            FramingParameters::new(authenticated_data, WireFormat::MlsCiphertext);
+            FramingParameters::new(authenticated_data, WireFormat::PrivateMessage);
         Self::new_and_sign(
             framing_parameters,
             Sender::Member(sender_leaf_index),
-            MlsContentBody::Application(application_message.into()),
+            FramedContentBody::Application(application_message.into()),
             credential_bundle,
             context,
             backend,
         )
     }
 
-    /// This constructor builds an `MlsPlaintext` containing a Proposal.
+    /// This constructor builds an `PublicMessage` containing a Proposal.
     /// The sender type is always `SenderType::Member`.
     pub(crate) fn member_proposal(
         framing_parameters: FramingParameters,
@@ -157,14 +157,14 @@ impl MlsAuthContent {
         Self::new_and_sign(
             framing_parameters,
             Sender::Member(sender_leaf_index),
-            MlsContentBody::Proposal(proposal),
+            FramedContentBody::Proposal(proposal),
             credential_bundle,
             context,
             backend,
         )
     }
 
-    /// This constructor builds an `MlsPlaintext` containing an External Proposal.
+    /// This constructor builds an `PublicMessage` containing an External Proposal.
     /// The sender is [Sender::NewMemberProposal].
     // TODO #151/#106: We don't support preconfigured senders yet
     pub(crate) fn new_external_proposal(
@@ -174,10 +174,10 @@ impl MlsAuthContent {
         epoch: GroupEpoch,
         backend: &impl OpenMlsCryptoProvider,
     ) -> Result<Self, LibraryError> {
-        let body = MlsContentBody::Proposal(proposal);
+        let body = FramedContentBody::Proposal(proposal);
 
-        let content_tbs = MlsContentTbs::new(
-            WireFormat::MlsPlaintext,
+        let content_tbs = FramedContentTbs::new(
+            WireFormat::PublicMessage,
             group_id,
             epoch,
             Sender::NewMemberProposal,
@@ -188,7 +188,7 @@ impl MlsAuthContent {
         content_tbs.sign(backend, credential_bundle)
     }
 
-    /// This constructor builds an `MlsPlaintext` containing a Commit. If the
+    /// This constructor builds an `PublicMessage` containing a Commit. If the
     /// given `CommitType` is `Member`, the `SenderType` is `Member` as well. If
     /// it's an `External` commit, the `SenderType` is `NewMemberCommit`. If it is an
     /// `External` commit, the context is not signed along with the rest of the
@@ -204,7 +204,7 @@ impl MlsAuthContent {
         Self::new_and_sign(
             framing_parameters,
             sender,
-            MlsContentBody::Commit(commit),
+            FramedContentBody::Commit(commit),
             credential_bundle,
             context,
             backend,
@@ -227,7 +227,7 @@ impl MlsAuthContent {
     }
 
     /// Get the content body of the message.
-    pub(crate) fn content(&self) -> &MlsContentBody {
+    pub(crate) fn content(&self) -> &FramedContentBody {
         &self.tbs.content.body
     }
 
@@ -267,28 +267,28 @@ impl MlsAuthContent {
 }
 
 #[cfg(any(feature = "test-utils", test))]
-impl From<VerifiableMlsAuthContent> for MlsAuthContent {
-    fn from(v: VerifiableMlsAuthContent) -> Self {
+impl From<VerifiableAuthenticatedContent> for AuthenticatedContent {
+    fn from(v: VerifiableAuthenticatedContent) -> Self {
         v.auth_content
     }
 }
 
-/// Wrapper struct around [`MlsAuthContent`] to enforce signature verification
+/// Wrapper struct around [`AuthenticatedContent`] to enforce signature verification
 /// before content can be accessed.
 ///
 /// TODO #979: Currently, the abstraction boundary between
-/// VerifiableMlsAuthContent and its content is not properly enforced.
+/// VerifiableAuthenticatedContent and its content is not properly enforced.
 #[derive(PartialEq, Debug, Clone, TlsSerialize, TlsSize)]
-pub(crate) struct VerifiableMlsAuthContent {
-    auth_content: MlsAuthContent,
+pub(crate) struct VerifiableAuthenticatedContent {
+    auth_content: AuthenticatedContent,
 }
 
-impl VerifiableMlsAuthContent {
-    /// Create a new [`VerifiableMlsAuthContent`] from a [`MlsContentTbs`] and
+impl VerifiableAuthenticatedContent {
+    /// Create a new [`VerifiableAuthenticatedContent`] from a [`FramedContentTbs`] and
     /// a [`Signature`].
-    pub(crate) fn new(tbs: MlsContentTbs, auth: MlsContentAuthData) -> Self {
+    pub(crate) fn new(tbs: FramedContentTbs, auth: FramedContentAuthData) -> Self {
         Self {
-            auth_content: MlsAuthContent { tbs, auth },
+            auth_content: AuthenticatedContent { tbs, auth },
         }
     }
 
@@ -313,7 +313,7 @@ impl VerifiableMlsAuthContent {
         self.auth_content.tbs.epoch()
     }
 
-    /// Returns the [`Credential`] contained in the [`VerifiableMlsAuthContent`]
+    /// Returns the [`Credential`] contained in the [`VerifiableAuthenticatedContent`]
     /// if the `sender_type` is either [`Sender::NewMemberCommit`] or
     /// [`Sender::NewMemberProposal`].
     ///
@@ -326,7 +326,7 @@ impl VerifiableMlsAuthContent {
             Sender::NewMemberCommit => {
                 // only external commits can have a sender type `NewMemberCommit`
                 match &self.auth_content.tbs.content.body {
-                    MlsContentBody::Commit(Commit { path, .. }) => path
+                    FramedContentBody::Commit(Commit { path, .. }) => path
                         .as_ref()
                         .map(|p| p.leaf_node().credential().clone())
                         .ok_or(ValidationError::NoPath),
@@ -336,7 +336,7 @@ impl VerifiableMlsAuthContent {
             Sender::NewMemberProposal => {
                 // only External Add proposals can have a sender type `NewMemberProposal`
                 match &self.auth_content.tbs.content.body {
-                    MlsContentBody::Proposal(Proposal::Add(AddProposal { key_package })) => {
+                    FramedContentBody::Proposal(Proposal::Add(AddProposal { key_package })) => {
                         Ok(key_package.credential().clone())
                     }
                     _ => Err(ValidationError::NotAnExternalAddProposal),
@@ -362,7 +362,7 @@ impl VerifiableMlsAuthContent {
     }
 }
 
-impl Verifiable for VerifiableMlsAuthContent {
+impl Verifiable for VerifiableAuthenticatedContent {
     fn unsigned_payload(&self) -> Result<Vec<u8>, tls_codec::Error> {
         self.auth_content.tbs.tls_serialize_detached()
     }
@@ -372,21 +372,21 @@ impl Verifiable for VerifiableMlsAuthContent {
     }
 
     fn label(&self) -> &str {
-        "MLSPlaintextTBS"
+        "FramedContentTBS"
     }
 }
 
-impl VerifiedStruct<VerifiableMlsAuthContent> for MlsAuthContent {
-    fn from_verifiable(v: VerifiableMlsAuthContent, _seal: Self::SealingType) -> Self {
+impl VerifiedStruct<VerifiableAuthenticatedContent> for AuthenticatedContent {
+    fn from_verifiable(v: VerifiableAuthenticatedContent, _seal: Self::SealingType) -> Self {
         v.auth_content
     }
 
     type SealingType = private_mod::Seal;
 }
 
-impl SignedStruct<MlsContentTbs> for MlsAuthContent {
-    fn from_payload(tbs: MlsContentTbs, signature: Signature) -> Self {
-        let auth = MlsContentAuthData {
+impl SignedStruct<FramedContentTbs> for AuthenticatedContent {
+    fn from_payload(tbs: FramedContentTbs, signature: Signature) -> Self {
+        let auth = FramedContentAuthData {
             signature,
             // Tags must always be added after the signature
             confirmation_tag: None,
@@ -395,7 +395,7 @@ impl SignedStruct<MlsContentTbs> for MlsAuthContent {
     }
 }
 
-impl Size for MlsContentAuthData {
+impl Size for FramedContentAuthData {
     #[inline]
     fn tls_serialized_len(&self) -> usize {
         self.signature.tls_serialized_len()
@@ -407,7 +407,7 @@ impl Size for MlsContentAuthData {
     }
 }
 
-impl TlsSerializeTrait for MlsContentAuthData {
+impl TlsSerializeTrait for FramedContentAuthData {
     fn tls_serialize<W: Write>(&self, writer: &mut W) -> Result<usize, tls_codec::Error> {
         let mut written = self.signature.tls_serialize(writer)?;
         written += if let Some(confirmation_tag) = &self.confirmation_tag {

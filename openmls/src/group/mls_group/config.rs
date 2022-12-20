@@ -185,21 +185,22 @@ impl MlsGroupConfigBuilder {
 /// Note that application messages must always be encrypted.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub enum IncomingWireFormatPolicy {
-    /// Handshake messages must always be MlsCiphertext
+    /// Handshake messages must always be PrivateMessage
     AlwaysCiphertext,
-    /// Handshake messages must always be MlsPlaintext
+    /// Handshake messages must always be PublicMessage
     AlwaysPlaintext,
-    /// Handshake messages can either be MlsCiphertext or MlsPlaintext
+    /// Handshake messages can either be PrivateMessage or PublicMessage
     Mixed,
 }
 
 impl IncomingWireFormatPolicy {
     pub(crate) fn is_compatible_with(&self, wire_format: WireFormat) -> bool {
         match self {
-            IncomingWireFormatPolicy::AlwaysCiphertext => wire_format == WireFormat::MlsCiphertext,
-            IncomingWireFormatPolicy::AlwaysPlaintext => wire_format == WireFormat::MlsPlaintext,
+            IncomingWireFormatPolicy::AlwaysCiphertext => wire_format == WireFormat::PrivateMessage,
+            IncomingWireFormatPolicy::AlwaysPlaintext => wire_format == WireFormat::PublicMessage,
             IncomingWireFormatPolicy::Mixed => {
-                wire_format == WireFormat::MlsCiphertext || wire_format == WireFormat::MlsPlaintext
+                wire_format == WireFormat::PrivateMessage
+                    || wire_format == WireFormat::PublicMessage
             }
         }
     }
@@ -209,9 +210,9 @@ impl IncomingWireFormatPolicy {
 /// Note that application messages must always be encrypted.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub enum OutgoingWireFormatPolicy {
-    /// Handshake messages must always be MlsCiphertext
+    /// Handshake messages must always be PrivateMessage
     AlwaysCiphertext,
-    /// Handshake messages must always be MlsPlaintext
+    /// Handshake messages must always be PublicMessage
     AlwaysPlaintext,
 }
 
@@ -254,8 +255,8 @@ impl Default for WireFormatPolicy {
 impl From<OutgoingWireFormatPolicy> for WireFormat {
     fn from(outgoing: OutgoingWireFormatPolicy) -> Self {
         match outgoing {
-            OutgoingWireFormatPolicy::AlwaysCiphertext => WireFormat::MlsCiphertext,
-            OutgoingWireFormatPolicy::AlwaysPlaintext => WireFormat::MlsPlaintext,
+            OutgoingWireFormatPolicy::AlwaysCiphertext => WireFormat::PrivateMessage,
+            OutgoingWireFormatPolicy::AlwaysPlaintext => WireFormat::PublicMessage,
         }
     }
 }
