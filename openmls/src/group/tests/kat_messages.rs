@@ -686,18 +686,18 @@ pub fn run_test_vector(tv: MessagesTestVector) -> Result<(), MessagesTestVectorE
     Ok(())
 }
 
-#[test]
-fn read_test_vectors_messages() {
-    let _tests: Vec<MessagesTestVector> = read("test_vectors/kat_messages.json");
-
-    // FIXME: Disabled for now. Tracking re-enabling them in #1051
-    // for test_vector in tests {
-    //     match run_test_vector(test_vector) {
-    //         Ok(_) => {}
-    //         Err(e) => panic!("Error while checking messages test vector.\n{:?}", e),
-    //     }
-    // }
-}
+// FIXME: Disabled for now. Tracking re-enabling them in #1051
+//#[test]
+//fn read_test_vectors_messages() {
+//    let _tests: Vec<MessagesTestVector> = read("test_vectors/kat_messages.json");
+//
+//    for test_vector in tests {
+//        match run_test_vector(test_vector) {
+//            Ok(_) => {}
+//            Err(e) => panic!("Error while checking messages test vector.\n{:?}", e),
+//        }
+//    }
+//}
 
 /// Messages test vector error
 #[derive(Error, Debug, PartialEq, Eq, Clone)]
