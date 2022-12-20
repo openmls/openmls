@@ -10,6 +10,7 @@ Check which scenarios and group sizes are enabled in the code.
 ## Real World Scenarios
 
 ### Stable group
+
 Many private groups follow this model.
 
 - Group is created by user P1
@@ -18,6 +19,7 @@ Many private groups follow this model.
 - Every X messages, one user in the group sends an update
 
 ### Somewhat stable group
+
 This can model a company or team-wide group where regularly but infrequently, users are added, and users leave.
 
 - Group is created by user P1
@@ -28,52 +30,59 @@ This can model a company or team-wide group where regularly but infrequently, us
 - Every Z messages, R users are removed
 
 ### High fluctuation group
+
 This models public groups where users frequently join and leave.
 Real-time scenarios such as [gather.town](https://gather.town) are examples of high-fluctuation groups.
 It is the same scenario as the somewhat stable group but with a very small Y and Z.
 
 ## Extreme Scenarios
+
 In addition to the three scenarios above extreme and corner cases are interesting.
 
 ### Every second leave is blank
+
 Only every second leave in the tree is non-blank.
 
 ## Use Case Scenarios
+
 A collection of common use cases/flows from everyday scenarios.
 
 ### Long-time offline device
+
 Suppose a device has been offline for a while. In that case, it has to process a large number of application and protocol messages.
 
 ## Tree scenarios
+
 In addition to the scenarios above, it is interesting to look at the same scenario but with different states of the tree.
 For example, take the stable group with N members messaging each other.
 What is the performance difference between a message sent right after group setup, i.e., each member only joined the group without other messages being sent, and a tree where every member has sent an update before the message?
 
 ## Measurements
+
 - Group creation
-    - create group
-    - create proposals
-    - create welcome
-    - apply commit
+  - create group
+  - create proposals
+  - create welcome
+  - apply commit
 - Join group
-    - create group from welcome
+  - create group from welcome
 - Send application message
 - Receive application message
 - Send update
-    - create proposal
-    - create commit
-    - apply commit
+  - create proposal
+  - create commit
+  - apply commit
 - Receive update
-    - apply commit
+  - apply commit
 - Add user sender
-    - create proposal
-    - create welcome
-    - apply commit
+  - create proposal
+  - create welcome
+  - apply commit
 - Existing user getting an add
-    - apply commit
+  - apply commit
 - Remove user sender
-    - create proposal
-    - create commit
-    - apply commit
+  - create proposal
+  - create commit
+  - apply commit
 - Existing user getting a remove
-    - apply commit
+  - apply commit
