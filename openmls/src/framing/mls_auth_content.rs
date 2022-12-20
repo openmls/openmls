@@ -275,9 +275,6 @@ impl From<VerifiableAuthenticatedContent> for AuthenticatedContent {
 
 /// Wrapper struct around [`AuthenticatedContent`] to enforce signature verification
 /// before content can be accessed.
-///
-/// TODO #979: Currently, the abstraction boundary between
-/// VerifiableAuthenticatedContent and its content is not properly enforced.
 #[derive(PartialEq, Debug, Clone, TlsSerialize, TlsSize)]
 pub(crate) struct VerifiableAuthenticatedContent {
     auth_content: AuthenticatedContent,
