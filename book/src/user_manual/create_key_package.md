@@ -2,11 +2,11 @@
 
 To enable the asynchronous establishment of groups through pre-publishing key material, as well as to represent clients in the group, MLS relies on key packages. Key packages hold several pieces of information:
 
-* a public HPKE encryption key to enable MLS' basic group key distribution feature
-* the lifetime throughout which the key package is valid
-* information about the client's capabilities (i.e., which features of MLS it supports)
-* any extension that the client wants to include
-* one of the client's [credentials](./identity.md), as well as a signature over the whole key package using the private key corresponding to the credential's signature public key
+- a public HPKE encryption key to enable MLS' basic group key distribution feature
+- the lifetime throughout which the key package is valid
+- information about the client's capabilities (i.e., which features of MLS it supports)
+- any extension that the client wants to include
+- one of the client's [credentials](./identity.md), as well as a signature over the whole key package using the private key corresponding to the credential's signature public key
 
 ## Creating key packages
 
@@ -34,4 +34,3 @@ After creating the key package bundle, clients should store it in the key store 
 ```
 
 All functions and structs related to key packages can be found in the [`key_packages`](https://docs.rs/crate/openmls/latest/key_packages/index.html) module.
-

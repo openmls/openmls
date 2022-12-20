@@ -718,8 +718,6 @@ fn test_proposal_application_after_self_was_removed(
     let bob_index = alice_group
         .treesync()
         .full_leave_members()
-        .expect("Error getting leaves")
-        .iter()
         .find(
             |Member {
                  index: _, identity, ..
@@ -772,13 +770,9 @@ fn test_proposal_application_after_self_was_removed(
             backend,
         )
         .expect("error staging commit");
-    bob_group
-        .merge_commit(staged_commit)
-        .expect("error merging commit");
+    bob_group.merge_commit(staged_commit);
 
-    alice_group
-        .merge_commit(remove_add_commit_result.staged_commit)
-        .expect("error merging pending commit");
+    alice_group.merge_commit(remove_add_commit_result.staged_commit);
 
     let ratchet_tree = alice_group.treesync().export_nodes();
 
@@ -796,24 +790,14 @@ fn test_proposal_application_after_self_was_removed(
     // to his tree after he was removed by comparing membership lists. In
     // particular, Bob's list should show that he was removed and Charlie was
     // added.
-    let alice_members = alice_group
-        .treesync()
-        .full_leave_members()
-        .expect("Error getting leaves");
+    let alice_members = alice_group.treesync().full_leave_members();
 
-    let bob_members = bob_group
-        .treesync()
-        .full_leave_members()
-        .expect("Error getting leaves");
+    let bob_members = bob_group.treesync().full_leave_members();
 
-    let charlie_members = charlie_group
-        .treesync()
-        .full_leave_members()
-        .expect("Error getting leaves");
+    let charlie_members = charlie_group.treesync().full_leave_members();
 
-    for (alice_member, (bob_member, charlie_member)) in alice_members
-        .iter()
-        .zip(bob_members.iter().zip(charlie_members.iter()))
+    for (alice_member, (bob_member, charlie_member)) in
+        alice_members.zip(bob_members.zip(charlie_members))
     {
         // Note that we can't compare encryption keys for Bob because they
         // didn't get updated.
@@ -826,6 +810,8 @@ fn test_proposal_application_after_self_was_removed(
         assert_eq!(charlie_member.encryption_key, alice_member.encryption_key);
     }
 
-    assert_eq!(bob_members[0].identity, b"Alice");
-    assert_eq!(bob_members[1].identity, b"Charlie");
+    let mut bob_members = bob_group.treesync().full_leave_members();
+
+    assert_eq!(bob_members.next().unwrap().identity, b"Alice");
+    assert_eq!(bob_members.next().unwrap().identity, b"Charlie");
 }

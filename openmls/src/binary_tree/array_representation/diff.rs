@@ -17,7 +17,7 @@
 //! [`LibraryError`](ABinaryTreeDiffError::LibraryError).
 
 use serde::{Deserialize, Serialize};
-use std::{collections::BTreeMap, convert::TryFrom, fmt::Debug};
+use std::{collections::BTreeMap, fmt::Debug};
 use thiserror::Error;
 
 use crate::{
@@ -100,15 +100,13 @@ pub(crate) struct AbDiff<'a, T: Clone + Debug> {
     size: TreeSize,
 }
 
-impl<'a, T: Clone + Debug> TryFrom<&'a ABinaryTree<T>> for AbDiff<'a, T> {
-    type Error = ABinaryTreeDiffError;
-
-    fn try_from(tree: &'a ABinaryTree<T>) -> Result<AbDiff<'a, T>, ABinaryTreeDiffError> {
-        Ok(AbDiff {
+impl<'a, T: Clone + Debug> From<&'a ABinaryTree<T>> for AbDiff<'a, T> {
+    fn from(tree: &'a ABinaryTree<T>) -> AbDiff<'a, T> {
+        AbDiff {
             original_tree: tree,
             diff: BTreeMap::new(),
-            size: tree.size()?,
-        })
+            size: tree.size(),
+        }
     }
 }
 
@@ -171,19 +169,58 @@ impl<'a, T: Clone + Debug> AbDiff<'a, T> {
         Ok(NodeId::try_from_node_index(self, node_index)?)
     }
 
-    /// Returns references to the leaves of the diff in order from left to
-    /// right. This function should not throw an error. However, it might throw
-    /// a [`LibraryError`] error if there is a bug in the implementation.
-    pub(crate) fn leaves(&self) -> Result<Vec<NodeId>, LibraryError> {
-        let mut leaf_references = Vec::new();
-        for leaf_index in 0..self.leaf_count() {
-            let node_index = to_node_index(leaf_index);
-            // The node reference must be valid, since it is a valid leaf
-            let node_ref = NodeId::try_from_node_index(self, node_index)
-                .map_err(|_| LibraryError::custom("Expected a valid node reference"))?;
-            leaf_references.push(node_ref);
+    /// Returns an iterator over a tuple of the leaf index and a reference to a
+    /// leaf, sorted according to their position in the tree from left to right.
+    pub(crate) fn leaves(&self) -> impl Iterator<Item = (LeafIndex, &T)> {
+        let mut original_leaves = self.original_tree.leaves().peekable();
+        let mut diff_leaves = self
+            .diff
+            .iter()
+            .filter_map(|(index, leaf)| {
+                if index % 2 == 0 {
+                    Some((*index / 2, leaf))
+                } else {
+                    None
+                }
+            })
+            .peekable();
+
+        // Combine the original leaves with the leaves from the diff. Since
+        // both iterators are sorted, we can just iterate over them and
+        // don't need additional sorting. If one of the iterators is
+        // exhausted, we just add the remaining leaves from the other
+        // iterator. We also make sure that we don't add leaves from the
+        // original leaves that are also in the diff.
+
+        let mut combined = Vec::new();
+
+        while let Some((index, leaf)) = match (original_leaves.peek(), diff_leaves.peek()) {
+            // The original tree has a leaf that is not in the diff.
+            (Some((original_index, _)), Some((diff_index, _))) if original_index < diff_index => {
+                original_leaves.next()
+            }
+            // The original tree and the diff have the same leaf. We only
+            // need to add the leaf from the diff and drop the leaf from the
+            // original tree.
+            (Some((original_index, _)), Some((diff_index, _))) if original_index == diff_index => {
+                original_leaves.next();
+                diff_leaves.next()
+            }
+            // The diff has a leaf that is not in the original tree.
+            (Some((_, _)), Some((_, _))) => diff_leaves.next(),
+            // We are out of diff leaves, so we just add the remaining
+            // original leaves.
+            (Some((_, _)), None) => original_leaves.next(),
+            // We are out of original leaves, so we just add the remaining
+            // diff leaves.
+            (None, Some((_, _))) => diff_leaves.next(),
+            // We are out of both leave types, so we are done.
+            (None, None) => None,
+        } {
+            combined.push((index, leaf));
         }
-        Ok(leaf_references)
+
+        combined.into_iter()
     }
 
     // Functions related to the direct paths of leaves
@@ -527,7 +564,7 @@ impl<'a, T: Clone + Debug> AbDiff<'a, T> {
             return Err(ABinaryTreeDiffError::TreeTooSmall);
         }
         let removed = self.diff.remove(&(self.tree_size() - 1));
-        if self.tree_size() > self.original_tree.size()? {
+        if self.tree_size() > self.original_tree.size() {
             // If the diff extended the tree, there should be a node to remove
             // here.
             debug_assert!(removed.is_some());

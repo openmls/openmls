@@ -23,4 +23,3 @@ If someone else already gave you a group ID, e.g., a backend server, you can als
 ```rust,no_run,noplayground
 {{#include ../../../openmls/tests/book_code.rs:alice_create_group_with_group_id}}
 ```
-

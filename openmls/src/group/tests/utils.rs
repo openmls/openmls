@@ -222,9 +222,7 @@ pub(crate) fn setup(config: TestSetupConfig, backend: &impl OpenMlsCryptoProvide
                 .welcome_option
                 .expect("An unexpected error occurred.");
 
-            core_group
-                .merge_staged_commit(create_commit_result.staged_commit, &mut proposal_store)
-                .expect("error merging own commits");
+            core_group.merge_staged_commit(create_commit_result.staged_commit, &mut proposal_store);
 
             // Distribute the Welcome message to the other members.
             for client_id in 1..group_config.members.len() {

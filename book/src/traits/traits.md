@@ -1,6 +1,6 @@
 # OpenMLS Traits
 
-> **⚠️  These traits are responsible for all cryptographic operations and randomness
+> **⚠️ These traits are responsible for all cryptographic operations and randomness
 > within OpenMLS.
 > Please ensure you know what you're doing when implementing your own versions.**
 

@@ -203,7 +203,7 @@ impl CoreGroup {
             identity,
             encryption_key: _,
             signature_key,
-        } in self.treesync().full_leave_members()?
+        } in self.treesync().full_leave_members()
         {
             // ValSem103
             if identity_set.contains(&identity) {
@@ -267,7 +267,7 @@ impl CoreGroup {
         committer: u32,
     ) -> Result<HashSet<Vec<u8>>, ProposalValidationError> {
         let mut encryption_keys = HashSet::new();
-        for index in self.treesync().full_leaves()? {
+        for index in self.treesync().full_leaves() {
             // 8.3. Leaf Node Validation
             // encryption key must be unique
             encryption_keys.insert(
@@ -348,10 +348,10 @@ impl CoreGroup {
         public_key_set: HashSet<Vec<u8>>,
         proposal_sender: &Sender,
     ) -> Result<(), ProposalValidationError> {
-        let members = self.treesync().full_leave_members()?;
+        let mut members = self.treesync().full_leave_members();
         if let Some(Member {
             index: _, identity, ..
-        }) = members.iter().find(|Member { index, .. }| index == &sender)
+        }) = members.find(|Member { index, .. }| index == &sender)
         {
             // ValSem109
             if leaf_node.credential().identity() != identity {
