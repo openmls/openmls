@@ -15,8 +15,14 @@ use super::{
 
 use super::*;
 use openmls_traits::OpenMlsCryptoProvider;
-use std::convert::TryFrom;
-use tls_codec::{TlsDeserialize, TlsSerialize, TlsSize};
+use std::{
+    convert::TryFrom,
+    io::{Read, Write},
+};
+use tls_codec::{
+    Deserialize as TlsDeserializeTrait, Serialize as TlsSerializeTrait, TlsDeserialize,
+    TlsSerialize, TlsSize,
+};
 
 /// Wrapper around a `Mac` used for type safety.
 #[derive(
@@ -40,9 +46,9 @@ pub(crate) struct MembershipTag(pub(crate) Mac);
 /// ```
 #[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
 pub(crate) struct MlsPlaintext {
-    pub(super) content: MlsContent,
-    pub(super) auth: MlsContentAuthData,
-    pub(super) membership_tag: Option<MembershipTag>,
+    content: MlsContent,
+    auth: MlsContentAuthData,
+    membership_tag: Option<MembershipTag>,
 }
 
 #[cfg(test)]
@@ -102,12 +108,6 @@ impl MlsPlaintext {
     // pub(super) fn set_membership_tag_test(&mut self, tag: MembershipTag) {
     //     self.membership_tag = Some(tag);
     // }
-}
-
-impl From<VerifiableMlsAuthContent> for MlsPlaintext {
-    fn from(v: VerifiableMlsAuthContent) -> Self {
-        v.auth_content.into()
-    }
 }
 
 impl From<MlsAuthContent> for MlsPlaintext {
@@ -220,6 +220,24 @@ impl MlsPlaintext {
         Ok(out)
     }
 
+    /// Turns this [`MlsPlaintext`] into a [`VerifiableMlsAuthContent`]. The
+    /// `serialized_context` is added only if the [`Sender`] of the plaintext is
+    /// [`Sender::Member`] or [`Sender::NewMemberCommit`] as per MLS specification.
+    pub fn into_verifiable_content(self, serialized_context: &[u8]) -> VerifiableMlsAuthContent {
+        let serialized_context =
+            if matches!(self.sender(), Sender::NewMemberCommit | Sender::Member(_)) {
+                Some(serialized_context.to_vec())
+            } else {
+                None
+            };
+        let tbs = MlsContentTbs {
+            wire_format: WireFormat::MlsPlaintext,
+            content: self.content,
+            serialized_context,
+        };
+        VerifiableMlsAuthContent::new(tbs, self.auth)
+    }
+
     #[cfg(any(feature = "test-utils", test))]
     pub fn set_membership_tag_test(&mut self, membership_tag: MembershipTag) {
         self.membership_tag = Some(membership_tag);
@@ -232,6 +250,17 @@ impl MlsPlaintext {
     //     modified_signature[0] ^= 0xFF;
     //     self.signature.modify(&modified_signature);
     // }
+}
+
+#[cfg(test)]
+impl From<MlsPlaintext> for MlsContentTbs {
+    fn from(v: MlsPlaintext) -> Self {
+        MlsContentTbs {
+            wire_format: WireFormat::MlsPlaintext,
+            content: v.content,
+            serialized_context: None,
+        }
+    }
 }
 
 // === Helper structs ===
@@ -286,5 +315,45 @@ impl<'a> TryFrom<&'a MlsPlaintext> for InterimTranscriptHashInput<'a> {
 impl<'a> From<&'a ConfirmationTag> for InterimTranscriptHashInput<'a> {
     fn from(confirmation_tag: &'a ConfirmationTag) -> Self {
         InterimTranscriptHashInput { confirmation_tag }
+    }
+}
+
+impl TlsDeserializeTrait for MlsPlaintext {
+    fn tls_deserialize<R: Read>(bytes: &mut R) -> Result<Self, tls_codec::Error> {
+        let content: MlsContent = MlsContent::tls_deserialize(bytes)?;
+        let auth = MlsContentAuthData::deserialize(bytes, content.body.content_type())?;
+        let membership_tag = if content.sender.is_member() {
+            Some(MembershipTag::tls_deserialize(bytes)?)
+        } else {
+            None
+        };
+
+        Ok(MlsPlaintext::new(content, auth, membership_tag))
+    }
+}
+
+impl Size for MlsPlaintext {
+    #[inline]
+    fn tls_serialized_len(&self) -> usize {
+        self.content.tls_serialized_len()
+            + self.auth.tls_serialized_len()
+            + if let Some(membership_tag) = &self.membership_tag {
+                membership_tag.tls_serialized_len()
+            } else {
+                0
+            }
+    }
+}
+
+impl TlsSerializeTrait for MlsPlaintext {
+    fn tls_serialize<W: Write>(&self, writer: &mut W) -> Result<usize, tls_codec::Error> {
+        let mut written = self.content.tls_serialize(writer)?;
+        written += self.auth.tls_serialize(writer)?;
+        written += if let Some(membership_tag) = &self.membership_tag {
+            membership_tag.tls_serialize(writer)?
+        } else {
+            0
+        };
+        Ok(written)
     }
 }

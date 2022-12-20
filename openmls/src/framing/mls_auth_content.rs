@@ -280,7 +280,7 @@ impl From<VerifiableMlsAuthContent> for MlsAuthContent {
 /// VerifiableMlsAuthContent and its content is not properly enforced.
 #[derive(PartialEq, Debug, Clone, TlsSerialize, TlsSize)]
 pub(crate) struct VerifiableMlsAuthContent {
-    pub(super) auth_content: MlsAuthContent,
+    auth_content: MlsAuthContent,
 }
 
 impl VerifiableMlsAuthContent {
@@ -290,21 +290,6 @@ impl VerifiableMlsAuthContent {
         Self {
             auth_content: MlsAuthContent { tbs, auth },
         }
-    }
-
-    /// Create a [`VerifiableMlsAuthContent`] from an [`MlsPlaintext`] and the
-    /// serialized context.
-    pub(crate) fn from_plaintext(
-        mls_plaintext: MlsPlaintext,
-        serialized_context: impl Into<Option<Vec<u8>>>,
-    ) -> Self {
-        let tbs = MlsContentTbs {
-            wire_format: WireFormat::MlsPlaintext,
-            content: mls_plaintext.content,
-            serialized_context: serialized_context.into(),
-        };
-
-        Self::new(tbs, mls_plaintext.auth)
     }
 
     /// Get the [`Sender`].

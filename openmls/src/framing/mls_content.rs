@@ -7,9 +7,6 @@ use crate::group::GroupId;
 use crate::messages::proposals::Proposal;
 use crate::messages::Commit;
 
-#[cfg(test)]
-use super::MlsPlaintext;
-
 use super::Sender;
 use super::WireFormat;
 
@@ -28,7 +25,6 @@ use tls_codec::VLBytes;
 
 use super::mls_auth_content::MlsAuthContent;
 
-//use serde::{Deserialize, Serialize};
 use serde::{Deserialize, Serialize};
 use tls_codec::{
     Deserialize as TlsDeserializeTrait, Serialize as TlsSerializeTrait, Size, TlsDeserialize,
@@ -211,17 +207,6 @@ pub(crate) struct MlsContentTbs {
     pub(super) wire_format: WireFormat,
     pub(super) content: MlsContent,
     pub(super) serialized_context: Option<Vec<u8>>,
-}
-
-#[cfg(test)]
-impl From<MlsPlaintext> for MlsContentTbs {
-    fn from(v: MlsPlaintext) -> Self {
-        MlsContentTbs {
-            wire_format: WireFormat::MlsPlaintext,
-            content: v.content,
-            serialized_context: None,
-        }
-    }
 }
 
 impl Signable for MlsContentTbs {

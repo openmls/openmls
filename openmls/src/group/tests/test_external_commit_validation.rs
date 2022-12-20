@@ -730,14 +730,11 @@ fn test_valsem246(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
     assert_eq!(path_credential, bob_credential_bundle.credential());
 
     // This shows that the message is actually signed using this credential.
-    let auth_content = VerifiableMlsAuthContent::from_plaintext(
-        original_plaintext.clone(),
-        Some(
-            alice_group
-                .export_group_context()
-                .tls_serialize_detached()
-                .expect("error serializing context"),
-        ),
+    let auth_content = original_plaintext.clone().into_verifiable_content(
+        &alice_group
+            .export_group_context()
+            .tls_serialize_detached()
+            .expect("error serializing context"),
     );
     let verification_result: Result<MlsAuthContent, CredentialError> =
         auth_content.verify(backend, bob_credential_bundle.credential());

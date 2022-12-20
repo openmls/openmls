@@ -11,10 +11,7 @@ use crate::test_utils::{read, write};
 use crate::{
     ciphersuite::signable::*,
     credentials::*,
-    framing::{
-        mls_auth_content::{MlsAuthContent, VerifiableMlsAuthContent},
-        *,
-    },
+    framing::{mls_auth_content::MlsAuthContent, *},
     group::*,
     messages::*,
     schedule::*,
@@ -256,7 +253,7 @@ pub fn run_test_vector(
         }
         return Err(TranscriptTestVectorError::MembershipTagVerificationError);
     }
-    let commit = VerifiableMlsAuthContent::from_plaintext(commit, serialized_context);
+    let commit = commit.into_verifiable_content(&serialized_context);
     let confirmation_tag = commit
         .confirmation_tag()
         .cloned()

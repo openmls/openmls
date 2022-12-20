@@ -79,16 +79,10 @@ impl DecryptedMessage {
             )?;
         }
 
-        let context = if matches!(
-            plaintext.sender(),
-            Sender::NewMemberCommit | Sender::Member(_)
-        ) {
-            Some(message_secrets.serialized_context().to_vec())
-        } else {
-            None
-        };
+        let verifiable_content =
+            MlsPlaintext::into_verifiable_content(plaintext, message_secrets.serialized_context());
 
-        Self::from_plaintext(VerifiableMlsAuthContent::from_plaintext(plaintext, context))
+        Self::from_plaintext(verifiable_content)
     }
 
     /// Constructs a [DecryptedMessage] from a [MlsCiphertext] by attempting to decrypt it

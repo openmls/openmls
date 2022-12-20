@@ -1,52 +1,11 @@
-use tls_codec::{Deserialize, Serialize, Size};
+use tls_codec::{Serialize, Size};
 
 use super::{
     mls_auth_content::MlsContentAuthData,
-    mls_content::{ContentType, MlsContent, MlsContentBody},
-    plaintext::{MembershipTag, MlsPlaintext},
+    mls_content::{ContentType, MlsContentBody},
     *,
 };
 use std::io::{Read, Write};
-
-impl Deserialize for MlsPlaintext {
-    fn tls_deserialize<R: Read>(bytes: &mut R) -> Result<Self, tls_codec::Error> {
-        let content: MlsContent = MlsContent::tls_deserialize(bytes)?;
-        let auth = MlsContentAuthData::deserialize(bytes, content.body.content_type())?;
-        let membership_tag = if content.sender.is_member() {
-            Some(MembershipTag::tls_deserialize(bytes)?)
-        } else {
-            None
-        };
-
-        Ok(MlsPlaintext::new(content, auth, membership_tag))
-    }
-}
-
-impl Size for MlsPlaintext {
-    #[inline]
-    fn tls_serialized_len(&self) -> usize {
-        self.content.tls_serialized_len()
-            + self.auth.tls_serialized_len()
-            + if let Some(membership_tag) = &self.membership_tag {
-                membership_tag.tls_serialized_len()
-            } else {
-                0
-            }
-    }
-}
-
-impl Serialize for MlsPlaintext {
-    fn tls_serialize<W: Write>(&self, writer: &mut W) -> Result<usize, tls_codec::Error> {
-        let mut written = self.content.tls_serialize(writer)?;
-        written += self.auth.tls_serialize(writer)?;
-        written += if let Some(membership_tag) = &self.membership_tag {
-            membership_tag.tls_serialize(writer)?
-        } else {
-            0
-        };
-        Ok(written)
-    }
-}
 
 impl Size for MlsCiphertextContent {
     fn tls_serialized_len(&self) -> usize {
