@@ -56,10 +56,10 @@ impl CoreGroup {
     ///  - ValSem009
     pub(crate) fn validate_verifiable_content(
         &self,
-        plaintext: &VerifiableAuthenticatedContent,
+        verifiable_content: &VerifiableAuthenticatedContent,
     ) -> Result<(), ValidationError> {
         // ValSem004
-        let sender = plaintext.sender();
+        let sender = verifiable_content.sender();
         if let Sender::Member(leaf_index) = sender {
             // If the sender is a member, it has to be in the tree.
             // TODO: #133 Lookup of a leaf index in the old tree isn't very
@@ -67,7 +67,7 @@ impl CoreGroup {
             if self.treesync().leaf_is_in_tree(*leaf_index).is_err()
                 && !self
                     .message_secrets_store
-                    .epoch_has_leaf(plaintext.epoch(), *leaf_index)
+                    .epoch_has_leaf(verifiable_content.epoch(), *leaf_index)
             {
                 return Err(ValidationError::UnknownMember);
             }
@@ -75,16 +75,17 @@ impl CoreGroup {
 
         // ValSem005
         // Application messages must always be encrypted
-        if plaintext.content_type() == ContentType::Application {
-            if plaintext.wire_format() != WireFormat::PrivateMessage {
+        if verifiable_content.content_type() == ContentType::Application {
+            if verifiable_content.wire_format() != WireFormat::PrivateMessage {
                 return Err(ValidationError::UnencryptedApplicationMessage);
-            } else if !plaintext.sender().is_member() {
+            } else if !verifiable_content.sender().is_member() {
                 return Err(ValidationError::NonMemberApplicationMessage);
             }
         }
 
         // ValSem009
-        if plaintext.content_type() == ContentType::Commit && plaintext.confirmation_tag().is_none()
+        if verifiable_content.content_type() == ContentType::Commit
+            && verifiable_content.confirmation_tag().is_none()
         {
             return Err(ValidationError::MissingConfirmationTag);
         }
