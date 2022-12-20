@@ -166,7 +166,7 @@ proposals are crafted by outsiders, they are always plaintext messages.</p>
     )
     .expect(&quot;Could not create external Add proposal&quot;);</code></pre>
 <p>It is then up to the group members to validate the proposal and commit it.
-Note that in this scenario it is up to the application to define a proper authorization policy to grant the sender. </p>
+Note that in this scenario it is up to the application to define a proper authorization policy to grant the sender.</p>
 <pre><code class="language-rust no_run noplayground">    let alice_processed_message = alice_group
         .process_message(backend, proposal.into())
         .expect(&quot;Could not process message.&quot;);

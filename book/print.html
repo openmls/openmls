@@ -368,7 +368,7 @@ If the group configuration does not use the ratchet tree extension, the ratchet 
         None, // We use the ratchet tree extension, so we don't provide a ratchet tree here
     )
     .expect(&quot;Error joining group from Welcome&quot;);</code></pre>
-<p>Pay attention not to forward a Welcome message to a client before its associated commit has been accepted by the 
+<p>Pay attention not to forward a Welcome message to a client before its associated commit has been accepted by the
 Delivery Service. Otherwise, you would end up with an invalid MLS group instance.</p>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="adding-members-to-a-group"><a class="header" href="#adding-members-to-a-group">Adding members to a group</a></h1>
 <h2 id="immediate-operation"><a class="header" href="#immediate-operation">Immediate operation</a></h2>
@@ -395,7 +395,7 @@ proposals are crafted by outsiders, they are always plaintext messages.</p>
     )
     .expect(&quot;Could not create external Add proposal&quot;);</code></pre>
 <p>It is then up to the group members to validate the proposal and commit it.
-Note that in this scenario it is up to the application to define a proper authorization policy to grant the sender. </p>
+Note that in this scenario it is up to the application to define a proper authorization policy to grant the sender.</p>
 <pre><code class="language-rust no_run noplayground">    let alice_processed_message = alice_group
         .process_message(backend, proposal.into())
         .expect(&quot;Could not process message.&quot;);
@@ -639,7 +639,7 @@ sender, and authenticated data. It also exposes the message's content. There are
 <div style="break-before: page; page-break-before: always;"></div><h1 id="crypto-subtle-feature"><a class="header" href="#crypto-subtle-feature">crypto-subtle feature</a></h1>
 <p>This feature of the OpenMLS crate allows importing and exporting private signature keys that can be used with credentials.</p>
 <p>⚠️ Note that no checks are performed on the keys. Use this feature at your own risk. If you create a credential from an existing key
-or export key material, you are responsible for deleting that key. If that key is kept outside OpenMLS, 
+or export key material, you are responsible for deleting that key. If that key is kept outside OpenMLS,
 updating a leaf will not be enough to achieve Forward Secrecy/Post-compromise Security.</p>
 <h2 id="importing-keys"><a class="header" href="#importing-keys">Importing keys</a></h2>
 <p>A signature keypair can be created from existing raw keys with the following function call:</p>
@@ -659,7 +659,7 @@ let public_key = vec![4, 5, 6]; // Sample public key as raw bytes
 
 let identity = vec![7, 8, 9]; // Sample identity
 
-let signature_keypair 
+let signature_keypair
     = SignatureKeypair::from_bytes(signature_scheme, public_key, private_key);
 
 let credential_bundle = CredentialBundle::from_parts(identity, signature_keypair);</code></pre>
@@ -726,7 +726,7 @@ In this example, we assume we got a <code>credential</code> where we want to ret
         .expect(&quot;Error retrieving the credential bundle&quot;);</code></pre>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="openmls-traits"><a class="header" href="#openmls-traits">OpenMLS Traits</a></h1>
 <blockquote>
-<p><strong>⚠️  These traits are responsible for all cryptographic operations and randomness
+<p><strong>⚠️ These traits are responsible for all cryptographic operations and randomness
 within OpenMLS.
 Please ensure you know what you're doing when implementing your own versions.</strong></p>
 </blockquote>

@@ -151,7 +151,7 @@ If the group configuration does not use the ratchet tree extension, the ratchet 
         None, // We use the ratchet tree extension, so we don't provide a ratchet tree here
     )
     .expect(&quot;Error joining group from Welcome&quot;);</code></pre>
-<p>Pay attention not to forward a Welcome message to a client before its associated commit has been accepted by the 
+<p>Pay attention not to forward a Welcome message to a client before its associated commit has been accepted by the
 Delivery Service. Otherwise, you would end up with an invalid MLS group instance.</p>
 
                     </main>
