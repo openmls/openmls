@@ -644,53 +644,6 @@
 <span id="644">644</span>
 <span id="645">645</span>
 <span id="646">646</span>
-<span id="647">647</span>
-<span id="648">648</span>
-<span id="649">649</span>
-<span id="650">650</span>
-<span id="651">651</span>
-<span id="652">652</span>
-<span id="653">653</span>
-<span id="654">654</span>
-<span id="655">655</span>
-<span id="656">656</span>
-<span id="657">657</span>
-<span id="658">658</span>
-<span id="659">659</span>
-<span id="660">660</span>
-<span id="661">661</span>
-<span id="662">662</span>
-<span id="663">663</span>
-<span id="664">664</span>
-<span id="665">665</span>
-<span id="666">666</span>
-<span id="667">667</span>
-<span id="668">668</span>
-<span id="669">669</span>
-<span id="670">670</span>
-<span id="671">671</span>
-<span id="672">672</span>
-<span id="673">673</span>
-<span id="674">674</span>
-<span id="675">675</span>
-<span id="676">676</span>
-<span id="677">677</span>
-<span id="678">678</span>
-<span id="679">679</span>
-<span id="680">680</span>
-<span id="681">681</span>
-<span id="682">682</span>
-<span id="683">683</span>
-<span id="684">684</span>
-<span id="685">685</span>
-<span id="686">686</span>
-<span id="687">687</span>
-<span id="688">688</span>
-<span id="689">689</span>
-<span id="690">690</span>
-<span id="691">691</span>
-<span id="692">692</span>
-<span id="693">693</span>
 </pre><pre class="rust"><code><span class="doccomment">//! An implementation of a diff functionality for the [`ABinaryTree`] struct.
 //!
 //! # About
@@ -719,6 +672,7 @@
 };
 
 <span class="kw">use super</span>::{
+    sorted_iter::sorted_iter,
     tree::{to_node_index, ABinaryTree, ABinaryTreeError, NodeIndex},
     treemath::{direct_path, left, lowest_common_ancestor, parent, right, root, TreeMathError},
 };
@@ -757,28 +711,6 @@
     <span class="doccomment">/// Return the projected size of the tree after a merge with the diff.
     </span><span class="kw">pub</span>(<span class="kw">super</span>) <span class="kw">fn </span>tree_size(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; TreeSize {
         <span class="self">self</span>.size
-    }
-}
-
-<span class="doccomment">/// A [`NodeReference`] represents the position of a node in an [`AbDiff`]. It
-/// can be used to access the node at that position or to navigate to other,
-/// neighbouring nodes via the [`AbDiff::sibling()`], [`AbDiff::left_child()`]
-/// and [`AbDiff::right_child()`] functions of the [`AbDiff`].
-</span><span class="attribute">#[derive(Debug, Clone, Copy, PartialEq)]
-</span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct </span>NodeId {
-    node_index: NodeIndex,
-}
-
-<span class="kw">impl </span>NodeId {
-    <span class="doccomment">/// Creates a new [`NodeReference`] to a node at the given index.
-    ///
-    /// Returns an error if the given index is outside the bounds of the diff.
-    </span><span class="kw">pub</span>(<span class="kw">super</span>) <span class="kw">fn </span>try_from_node_index&lt;T: Clone + Debug&gt;(
-        diff: <span class="kw-2">&amp;</span>AbDiff&lt;T&gt;,
-        node_index: NodeIndex,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, OutOfBoundsError&gt; {
-        diff.out_of_bounds(node_index)<span class="question-mark">?</span>;
-        <span class="prelude-val">Ok</span>(NodeId { node_index })
     }
 }
 
@@ -853,20 +785,19 @@
         <span class="self">self</span>.replace_node(node_index, new_leaf)
     }
 
-    <span class="doccomment">/// Obtain a [`NodeReference`] to the leaf with the given [`LeafIndex`].
+    <span class="doccomment">/// Obtain a [`NodeIndex`] to the leaf with the given [`LeafIndex`].
     ///
     /// Returns an error if the given leaf index does not correspond to a leaf
     /// in the diff.
-    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>leaf(<span class="kw-2">&amp;</span><span class="self">self</span>, leaf_index: LeafIndex) -&gt; <span class="prelude-ty">Result</span>&lt;NodeId, ABinaryTreeDiffError&gt; {
-        <span class="kw">let </span>node_index = to_node_index(leaf_index);
-        <span class="prelude-val">Ok</span>(NodeId::try_from_node_index(<span class="self">self</span>, node_index)<span class="question-mark">?</span>)
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>leaf(<span class="kw-2">&amp;</span><span class="self">self</span>, leaf_index: LeafIndex) -&gt; NodeIndex {
+        to_node_index(leaf_index)
     }
 
     <span class="doccomment">/// Returns an iterator over a tuple of the leaf index and a reference to a
     /// leaf, sorted according to their position in the tree from left to right.
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>leaves(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw">impl </span>Iterator&lt;Item = (LeafIndex, <span class="kw-2">&amp;</span>T)&gt; {
-        <span class="kw">let </span><span class="kw-2">mut </span>original_leaves = <span class="self">self</span>.original_tree.leaves().peekable();
-        <span class="kw">let </span><span class="kw-2">mut </span>diff_leaves = <span class="self">self
+        <span class="kw">let </span>original_leaves = <span class="self">self</span>.original_tree.leaves().peekable();
+        <span class="kw">let </span>diff_leaves = <span class="self">self
             </span>.diff
             .iter()
             .filter_map(|(index, leaf)| {
@@ -885,59 +816,29 @@
         // iterator. We also make sure that we don&#39;t add leaves from the
         // original leaves that are also in the diff.
 
-        </span><span class="kw">let </span><span class="kw-2">mut </span>combined = Vec::new();
+        // Harmonize the iterator types
+        </span><span class="kw">let </span>a_iter = Box::new(diff_leaves) <span class="kw">as </span>Box&lt;<span class="kw">dyn </span>Iterator&lt;Item = (u32, <span class="kw-2">&amp;</span>T)&gt;&gt;;
+        <span class="kw">let </span>b_iter = Box::new(original_leaves) <span class="kw">as </span>Box&lt;<span class="kw">dyn </span>Iterator&lt;Item = (u32, <span class="kw-2">&amp;</span>T)&gt;&gt;;
 
-        <span class="kw">while let </span><span class="prelude-val">Some</span>((index, leaf)) = <span class="kw">match </span>(original_leaves.peek(), diff_leaves.peek()) {
-            <span class="comment">// The original tree has a leaf that is not in the diff.
-            </span>(<span class="prelude-val">Some</span>((original_index, <span class="kw">_</span>)), <span class="prelude-val">Some</span>((diff_index, <span class="kw">_</span>))) <span class="kw">if </span>original_index &lt; diff_index =&gt; {
-                original_leaves.next()
-            }
-            <span class="comment">// The original tree and the diff have the same leaf. We only
-            // need to add the leaf from the diff and drop the leaf from the
-            // original tree.
-            </span>(<span class="prelude-val">Some</span>((original_index, <span class="kw">_</span>)), <span class="prelude-val">Some</span>((diff_index, <span class="kw">_</span>))) <span class="kw">if </span>original_index == diff_index =&gt; {
-                original_leaves.next();
-                diff_leaves.next()
-            }
-            <span class="comment">// The diff has a leaf that is not in the original tree.
-            </span>(<span class="prelude-val">Some</span>((<span class="kw">_</span>, <span class="kw">_</span>)), <span class="prelude-val">Some</span>((<span class="kw">_</span>, <span class="kw">_</span>))) =&gt; diff_leaves.next(),
-            <span class="comment">// We are out of diff leaves, so we just add the remaining
-            // original leaves.
-            </span>(<span class="prelude-val">Some</span>((<span class="kw">_</span>, <span class="kw">_</span>)), <span class="prelude-val">None</span>) =&gt; original_leaves.next(),
-            <span class="comment">// We are out of original leaves, so we just add the remaining
-            // diff leaves.
-            </span>(<span class="prelude-val">None</span>, <span class="prelude-val">Some</span>((<span class="kw">_</span>, <span class="kw">_</span>))) =&gt; diff_leaves.next(),
-            <span class="comment">// We are out of both leave types, so we are done.
-            </span>(<span class="prelude-val">None</span>, <span class="prelude-val">None</span>) =&gt; <span class="prelude-val">None</span>,
-        } {
-            combined.push((index, leaf));
-        }
+        <span class="comment">// We only compare indices, not the actual leaves
+        </span><span class="kw">let </span>cmp = |<span class="kw-2">&amp;</span>(x, <span class="kw">_</span>): <span class="kw-2">&amp;</span>(u32, <span class="kw-2">&amp;</span>T)| x;
 
-        combined.into_iter()
+        sorted_iter(a_iter, b_iter, cmp, <span class="self">self</span>.size <span class="kw">as </span>usize)
     }
 
     <span class="comment">// Functions related to the direct paths of leaves
     //////////////////////////////////////////////////
 
-    </span><span class="doccomment">/// Returns a vector of [`NodeReference`] instances, each one referencing a
+    </span><span class="doccomment">/// Returns a vector of [`NodeIndex`] instances, each one referencing a
     /// node in the direct path of the given [`LeafIndex`], ordered from the
     /// parent of the corresponding leaf to the root of the tree.
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>direct_path(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         leaf_index: LeafIndex,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;Vec&lt;NodeId&gt;, OutOfBoundsError&gt; {
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;Vec&lt;NodeIndex&gt;, OutOfBoundsError&gt; {
         <span class="kw">let </span>node_index = to_node_index(leaf_index);
         <span class="comment">// `direct_path` only throws an error if the input index is out of bounds.
-        </span><span class="kw">let </span>direct_path_indices = direct_path(node_index, <span class="self">self</span>.tree_size())
-            .map_err(|<span class="kw">_</span>| OutOfBoundsError::IndexOutOfBounds)<span class="question-mark">?</span>;
-        <span class="kw">let </span><span class="kw-2">mut </span>direct_path = Vec::new();
-        <span class="kw">for </span>node_index <span class="kw">in </span>direct_path_indices {
-            <span class="comment">// `direct_path` only throws an error if the input index is out of bounds.
-            </span><span class="kw">let </span>node_ref = NodeId::try_from_node_index(<span class="self">self</span>, node_index)
-                .map_err(|<span class="kw">_</span>| OutOfBoundsError::IndexOutOfBounds)<span class="question-mark">?</span>;
-            direct_path.push(node_ref);
-        }
-        <span class="prelude-val">Ok</span>(direct_path)
+        </span>direct_path(node_index, <span class="self">self</span>.tree_size()).map_err(|<span class="kw">_</span>| OutOfBoundsError::IndexOutOfBounds)
     }
 
     <span class="doccomment">/// Sets all nodes in the direct path to a copy of the given node. This
@@ -1011,7 +912,7 @@
             </span>.ok_or_else(|| LibraryError::custom(<span class="string">&quot;index should be in the direct path&quot;</span>).into())
     }
 
-    <span class="doccomment">/// Returns [`NodeReference`] to the copath node of the `leaf_index_1` that is
+    <span class="doccomment">/// Returns [`NodeIndex`] to the copath node of the `leaf_index_1` that is
     /// in the direct path of `leaf_index_2`.
     ///
     /// Returns an error if both leaf indices are identical or if one of the
@@ -1020,7 +921,7 @@
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         leaf_index_1: LeafIndex,
         leaf_index_2: LeafIndex,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;NodeId, ABinaryTreeDiffError&gt; {
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;NodeIndex, ABinaryTreeDiffError&gt; {
         <span class="self">self</span>.leaf_pair_check(leaf_index_1, leaf_index_2)<span class="question-mark">?</span>;
 
         <span class="comment">// We want to return the position of the lowest common ancestor in the
@@ -1035,10 +936,10 @@
             right(subtree_root_node_index, <span class="self">self</span>.tree_size())<span class="question-mark">?
         </span>};
 
-        <span class="prelude-val">Ok</span>(NodeId::try_from_node_index(<span class="self">self</span>, copath_node_index)<span class="question-mark">?</span>)
+        <span class="prelude-val">Ok</span>(copath_node_index)
     }
 
-    <span class="doccomment">/// Returns a vector of [`NodeReference`]s, where the first reference is to
+    <span class="doccomment">/// Returns a vector of [`NodeIndex`]es, where the first reference is to
     /// the root of the shared subtree of the two given leaf indices followed by
     /// references to the nodes in the direct path of said subtree root.
     ///
@@ -1048,7 +949,7 @@
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         leaf_index_1: LeafIndex,
         leaf_index_2: LeafIndex,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;Vec&lt;NodeId&gt;, ABinaryTreeDiffError&gt; {
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;Vec&lt;NodeIndex&gt;, ABinaryTreeDiffError&gt; {
         <span class="kw">let </span>node_index_1 = to_node_index(leaf_index_1);
         <span class="kw">let </span>node_index_2 = to_node_index(leaf_index_2);
 
@@ -1056,12 +957,9 @@
         <span class="self">self</span>.out_of_bounds(node_index_2)<span class="question-mark">?</span>;
 
         <span class="kw">let </span>lca = lowest_common_ancestor(node_index_1, node_index_2);
-        <span class="kw">let </span>direct_path_indices = direct_path(lca, <span class="self">self</span>.tree_size())<span class="question-mark">?</span>;
-        <span class="kw">let </span><span class="kw-2">mut </span>full_path = <span class="macro">vec!</span>[NodeId::try_from_node_index(<span class="self">self</span>, lca)<span class="question-mark">?</span>];
-        <span class="kw">for </span>node_index <span class="kw">in </span>direct_path_indices {
-            <span class="kw">let </span>node_ref = NodeId::try_from_node_index(<span class="self">self</span>, node_index)<span class="question-mark">?</span>;
-            full_path.push(node_ref);
-        }
+        <span class="kw">let </span><span class="kw-2">mut </span>direct_path = direct_path(lca, <span class="self">self</span>.tree_size())<span class="question-mark">?</span>;
+        <span class="kw">let </span><span class="kw-2">mut </span>full_path = <span class="macro">vec!</span>[lca];
+        full_path.append(<span class="kw-2">&amp;mut </span>direct_path);
 
         <span class="prelude-val">Ok</span>(full_path)
     }
@@ -1078,20 +976,31 @@
         }
     }
 
-    <span class="doccomment">/// Returns a vector containing the nodes of the tree in-order, i.e. in the
-    /// array representation of the diff. This function should not fail and only
-    /// returns a [`Result`], because it might throw a
-    /// [`LibraryError`].
-    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>export_nodes(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;Vec&lt;T&gt;, LibraryError&gt; {
-        <span class="kw">let </span><span class="kw-2">mut </span>nodes = Vec::new();
-        <span class="kw">for </span>node_index <span class="kw">in </span><span class="number">0</span>..<span class="self">self</span>.tree_size() {
-            <span class="kw">let </span>node = <span class="self">self
-                </span>.node_by_index(node_index)
-                <span class="comment">// We know the node must be in the tree
-                </span>.map_err(|<span class="kw">_</span>| LibraryError::custom(<span class="string">&quot;Expected node to be in the tree&quot;</span>))<span class="question-mark">?</span>;
-            nodes.push(node.clone());
-        }
-        <span class="prelude-val">Ok</span>(nodes)
+    <span class="doccomment">/// Returns an iterator over a tuple of the node index and a reference to a
+    /// node, sorted according to their position in the tree from left to right.
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>nodes(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw">impl </span>Iterator&lt;Item = (NodeIndex, <span class="kw-2">&amp;</span>T)&gt; {
+        <span class="kw">let </span>original_nodes = <span class="self">self</span>.original_tree.nodes().peekable();
+        <span class="kw">let </span>diff_nodes = <span class="self">self
+            </span>.diff
+            .iter()
+            .map(|(index, node)| (<span class="kw-2">*</span>index, node))
+            .peekable();
+
+        <span class="comment">// Combine the original nodes with the nodes from the diff. Since
+        // both iterators are sorted, we can just iterate over them and
+        // don&#39;t need additional sorting. If one of the iterators is
+        // exhausted, we just add the remaining nodes from the other
+        // iterator. We also make sure that we don&#39;t add nodes from the
+        // original nodes that are also in the diff.
+
+        // Harmonize the iterator types
+        </span><span class="kw">let </span>a_iter = Box::new(diff_nodes) <span class="kw">as </span>Box&lt;<span class="kw">dyn </span>Iterator&lt;Item = (u32, <span class="kw-2">&amp;</span>T)&gt;&gt;;
+        <span class="kw">let </span>b_iter = Box::new(original_nodes) <span class="kw">as </span>Box&lt;<span class="kw">dyn </span>Iterator&lt;Item = (u32, <span class="kw-2">&amp;</span>T)&gt;&gt;;
+
+        <span class="comment">// We only compare indices, not the actual nodes
+        </span><span class="kw">let </span>cmp = |<span class="kw-2">&amp;</span>(x, <span class="kw">_</span>): <span class="kw-2">&amp;</span>(u32, <span class="kw-2">&amp;</span>T)| x;
+
+        sorted_iter(a_iter, b_iter, cmp, <span class="self">self</span>.size <span class="kw">as </span>usize)
     }
 
     <span class="doccomment">/// Returns the size of the diff.
@@ -1104,82 +1013,81 @@
         ((<span class="self">self</span>.tree_size() - <span class="number">1</span>) / <span class="number">2</span>) + <span class="number">1
     </span>}
 
-    <span class="comment">// Functions around individual [`NodeReference`]s
+    <span class="comment">// Functions around individual [`NodeIndex`]s
     ///////////////////////////////////////////////
 
-    </span><span class="doccomment">/// Returns a reference to the node pointed to by the [`NodeReference`].
-    /// Returns an Error if the [`NodeReference`] points to a node outside of the
+    </span><span class="doccomment">/// Returns a reference to the node pointed to by the [`NodeIndex`].
+    /// Returns an Error if the [`NodeIndex`] points to a node outside of the
     /// bounds of the tree. This can happen, for example, if the node was
     /// removed while shrinking the diff after the creation of the
-    /// [`NodeReference`].
-    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>node(<span class="kw-2">&amp;</span><span class="self">self</span>, node_ref: NodeId) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="kw-2">&amp;</span>T, ABinaryTreeDiffError&gt; {
-        <span class="self">self</span>.node_by_index(node_ref.node_index)
+    /// [`NodeIndex`].
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>node(<span class="kw-2">&amp;</span><span class="self">self</span>, node_index: NodeIndex) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="kw-2">&amp;</span>T, ABinaryTreeDiffError&gt; {
+        <span class="self">self</span>.node_by_index(node_index)
     }
 
     <span class="doccomment">/// Returns a mutable reference to the node pointed to by the
-    /// [`NodeReference`]. Returns an Error if the [`NodeReference`] points to a
+    /// [`NodeIndex`]. Returns an Error if the [`NodeIndex`] points to a
     /// node outside of the bounds of the tree. This can happen, for example, if
     /// the node was removed while shrinking the diff after the creation of the
-    /// [`NodeReference`].
-    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>node_mut(<span class="kw-2">&amp;mut </span><span class="self">self</span>, node_ref: NodeId) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="kw-2">&amp;mut </span>T, ABinaryTreeDiffError&gt; {
-        <span class="self">self</span>.node_mut_by_index(node_ref.node_index)
+    /// [`NodeIndex`].
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>node_mut(
+        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
+        node_index: NodeIndex,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="kw-2">&amp;mut </span>T, ABinaryTreeDiffError&gt; {
+        <span class="self">self</span>.node_mut_by_index(node_index)
     }
 
-    <span class="doccomment">/// Return a [`NodeReference`] to the root node of the diff. Since the diff
+    <span class="doccomment">/// Return a [`NodeIndex`] to the root node of the diff. Since the diff
     /// always consists of at least one node, this operation cannot fail.
-    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>root(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; NodeId {
-        <span class="kw">let </span>root_index = root(<span class="self">self</span>.tree_size());
-        <span class="comment">// We create the reference directly instead of via self.new_reference,
-        // since due to the minimum tree size of one node, the root is always
-        // within bounds.
-        </span>NodeId {
-            node_index: root_index,
-        }
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>root(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; NodeIndex {
+        root(<span class="self">self</span>.tree_size())
     }
 
-    <span class="doccomment">/// Returns true if the given [`NodeReference`] points to a leaf and [`false`]
+    <span class="doccomment">/// Returns true if the given [`NodeIndex`] points to a leaf and [`false`]
     /// otherwise.
-    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>is_leaf(<span class="kw-2">&amp;</span><span class="self">self</span>, node_ref: NodeId) -&gt; bool {
-        node_ref.node_index % <span class="number">2 </span>== <span class="number">0
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>is_leaf(<span class="kw-2">&amp;</span><span class="self">self</span>, node_index: NodeIndex) -&gt; bool {
+        node_index % <span class="number">2 </span>== <span class="number">0
     </span>}
 
-    <span class="doccomment">/// Returns a [`NodeReference`] to the parent of the referenced node. Returns
-    /// an error when the given [`NodeReference`] points to the root node or to a
+    <span class="doccomment">/// Returns a [`NodeIndex`] to the parent of the referenced node. Returns
+    /// an error when the given [`NodeIndex`] points to the root node or to a
     /// node not in the tree.
-    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>parent(<span class="kw-2">&amp;</span><span class="self">self</span>, node_ref: NodeId) -&gt; <span class="prelude-ty">Result</span>&lt;NodeId, ABinaryTreeDiffError&gt; {
-        <span class="kw">let </span>parent_index = parent(node_ref.node_index, <span class="self">self</span>.tree_size())<span class="question-mark">?</span>;
-        <span class="prelude-val">Ok</span>(NodeId::try_from_node_index(<span class="self">self</span>, parent_index)<span class="question-mark">?</span>)
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>parent(<span class="kw-2">&amp;</span><span class="self">self</span>, node_index: NodeIndex) -&gt; <span class="prelude-ty">Result</span>&lt;NodeIndex, ABinaryTreeDiffError&gt; {
+        <span class="prelude-val">Ok</span>(parent(node_index, <span class="self">self</span>.tree_size())<span class="question-mark">?</span>)
     }
 
-    <span class="doccomment">/// Returns a [`NodeReference`] to the sibling of the referenced node. Returns
-    /// an error when the given [`NodeReference`] points to the root node or to a
+    <span class="doccomment">/// Returns a [`NodeIndex`] to the sibling of the referenced node. Returns
+    /// an error when the given [`NodeIndex`] points to the root node or to a
     /// node not in the tree.
-    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>sibling(<span class="kw-2">&amp;</span><span class="self">self</span>, node_ref: NodeId) -&gt; <span class="prelude-ty">Result</span>&lt;NodeId, ABinaryTreeDiffError&gt; {
-        <span class="kw">let </span>sibling_index = sibling(node_ref.node_index, <span class="self">self</span>.tree_size())<span class="question-mark">?</span>;
-        <span class="prelude-val">Ok</span>(NodeId::try_from_node_index(<span class="self">self</span>, sibling_index)<span class="question-mark">?</span>)
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>sibling(<span class="kw-2">&amp;</span><span class="self">self</span>, node_index: NodeIndex) -&gt; <span class="prelude-ty">Result</span>&lt;NodeIndex, ABinaryTreeDiffError&gt; {
+        <span class="prelude-val">Ok</span>(sibling(node_index, <span class="self">self</span>.tree_size())<span class="question-mark">?</span>)
     }
 
-    <span class="doccomment">/// Returns a [`NodeReference`] to the left child of the referenced node.
-    /// Returns an error when the given [`NodeReference`] points to a leaf node or
+    <span class="doccomment">/// Returns a [`NodeIndex`] to the left child of the referenced node.
+    /// Returns an error when the given [`NodeIndex`] points to a leaf node or
     /// to a node not in the tree.
-    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>left_child(<span class="kw-2">&amp;</span><span class="self">self</span>, node_ref: NodeId) -&gt; <span class="prelude-ty">Result</span>&lt;NodeId, ABinaryTreeDiffError&gt; {
-        <span class="kw">let </span>left_child_index = left(node_ref.node_index)<span class="question-mark">?</span>;
-        <span class="prelude-val">Ok</span>(NodeId::try_from_node_index(<span class="self">self</span>, left_child_index)<span class="question-mark">?</span>)
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>left_child(
+        <span class="kw-2">&amp;</span><span class="self">self</span>,
+        node_index: NodeIndex,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;NodeIndex, ABinaryTreeDiffError&gt; {
+        <span class="prelude-val">Ok</span>(left(node_index)<span class="question-mark">?</span>)
     }
 
-    <span class="doccomment">/// Returns a [`NodeReference`] to the right child of the referenced node.
-    /// Returns an error when the given [`NodeReference`] points to a leaf node or
+    <span class="doccomment">/// Returns a [`NodeIndex`] to the right child of the referenced node.
+    /// Returns an error when the given [`NodeIndex`] points to a leaf node or
     /// to a node not in the tree.
-    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>right_child(<span class="kw-2">&amp;</span><span class="self">self</span>, node_ref: NodeId) -&gt; <span class="prelude-ty">Result</span>&lt;NodeId, ABinaryTreeDiffError&gt; {
-        <span class="kw">let </span>right_child_index = right(node_ref.node_index, <span class="self">self</span>.tree_size())<span class="question-mark">?</span>;
-        <span class="prelude-val">Ok</span>(NodeId::try_from_node_index(<span class="self">self</span>, right_child_index)<span class="question-mark">?</span>)
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>right_child(
+        <span class="kw-2">&amp;</span><span class="self">self</span>,
+        node_index: NodeIndex,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;NodeIndex, ABinaryTreeDiffError&gt; {
+        <span class="prelude-val">Ok</span>(right(node_index, <span class="self">self</span>.tree_size())<span class="question-mark">?</span>)
     }
 
     <span class="doccomment">/// Returns the [`LeafIndex`] of the referenced node. If the referenced node
     /// is not a leaf, [`None`] is returned.
-    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>leaf_index(<span class="kw-2">&amp;</span><span class="self">self</span>, node_ref: NodeId) -&gt; <span class="prelude-ty">Option</span>&lt;LeafIndex&gt; {
-        <span class="kw">if </span><span class="self">self</span>.is_leaf(node_ref) {
-            <span class="prelude-val">Some</span>(node_ref.node_index / <span class="number">2</span>)
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>leaf_index(<span class="kw-2">&amp;</span><span class="self">self</span>, node_index: NodeIndex) -&gt; <span class="prelude-ty">Option</span>&lt;LeafIndex&gt; {
+        <span class="kw">if </span><span class="self">self</span>.is_leaf(node_index) {
+            <span class="prelude-val">Some</span>(node_index / <span class="number">2</span>)
         } <span class="kw">else </span>{
             <span class="prelude-val">None
         </span>}
@@ -1309,11 +1217,11 @@
     <span class="attribute">#[cfg(test)]
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>deref_vec(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        node_ref_vec: Vec&lt;NodeId&gt;,
+        node_index_vec: Vec&lt;NodeIndex&gt;,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;Vec&lt;<span class="kw-2">&amp;</span>T&gt;, ABinaryTreeDiffError&gt; {
         <span class="kw">let </span><span class="kw-2">mut </span>node_vec = Vec::new();
-        <span class="kw">for </span>node_ref <span class="kw">in </span>node_ref_vec {
-            <span class="kw">let </span>node = <span class="self">self</span>.node(node_ref)<span class="question-mark">?</span>;
+        <span class="kw">for </span>node_index <span class="kw">in </span>node_index_vec {
+            <span class="kw">let </span>node = <span class="self">self</span>.node(node_index)<span class="question-mark">?</span>;
             node_vec.push(node);
         }
         <span class="prelude-val">Ok</span>(node_vec)
@@ -1327,15 +1235,13 @@
 }
 
 <span class="kw">impl</span>&lt;<span class="lifetime">&#39;a</span>, T: Clone + Debug&gt; Iterator <span class="kw">for </span>DiffIterator&lt;<span class="lifetime">&#39;a</span>, T&gt; {
-    <span class="kw">type </span>Item = NodeId;
+    <span class="kw">type </span>Item = NodeIndex;
 
     <span class="kw">fn </span>next(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;<span class="self">Self</span>::Item&gt; {
         <span class="kw">if </span><span class="self">self</span>.diff.node_by_index(<span class="self">self</span>.current_index).is_ok() {
-            <span class="kw">let </span>node_ref_option = <span class="prelude-val">Some</span>(NodeId {
-                node_index: <span class="self">self</span>.current_index,
-            });
+            <span class="kw">let </span>current_index_opt = <span class="prelude-val">Some</span>(<span class="self">self</span>.current_index);
             <span class="self">self</span>.current_index += <span class="number">1</span>;
-            node_ref_option
+            current_index_opt
         } <span class="kw">else </span>{
             <span class="prelude-val">None
         </span>}

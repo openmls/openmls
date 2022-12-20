@@ -466,7 +466,6 @@
 <span id="466">466</span>
 <span id="467">467</span>
 <span id="468">468</span>
-<span id="469">469</span>
 </pre><pre class="rust"><code><span class="doccomment">//! This module implements the ratchet tree component of MLS.
 //!
 //! It exposes the [`Node`] enum that can contain either a [`LeafNode`] or a [`ParentNode`].
@@ -892,8 +891,7 @@
     </span><span class="kw">pub fn </span>export_nodes(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; Vec&lt;<span class="prelude-ty">Option</span>&lt;Node&gt;&gt; {
         <span class="self">self</span>.tree
             .nodes()
-            .iter()
-            .map(|ts_node| ts_node.node_without_private_key())
+            .map(|(<span class="kw">_</span>, ts_node)| ts_node.node_without_private_key())
             .collect()
     }
 
