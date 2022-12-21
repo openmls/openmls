@@ -89,11 +89,6 @@ fn generate_key_package_bundle(
     backend: &impl OpenMlsCryptoProvider,
 ) -> Result<KeyPackage, KeyPackageBundleNewError> {
     // ANCHOR: create_key_package_bundle
-    // Define extensions
-    let extensions = vec![Extension::Lifetime(LifetimeExtension::new(
-        60 * 60 * 24 * 90, // Maximum lifetime of 90 days, expressed in seconds
-    ))];
-
     // Fetch the credential bundle from the key store
     let credential_bundle = backend
         .key_store()
@@ -107,7 +102,7 @@ fn generate_key_package_bundle(
 
     // Create the key package bundle
     let key_package_bundle =
-        KeyPackageBundle::new(ciphersuites, &credential_bundle, backend, extensions)?;
+        KeyPackageBundle::new(ciphersuites, &credential_bundle, backend, vec![])?;
     // ANCHOR_END: create_key_package_bundle
     // ANCHOR: store_key_package_bundle
     let key_package = key_package_bundle.key_package().clone();

@@ -4,8 +4,7 @@ use tls_codec::{Deserialize, Serialize, Size, TlsByteVecU32, TlsSliceU32};
 
 use crate::extensions::{
     ApplicationIdExtension, Extension, ExtensionType, ExternalPubExtension,
-    ExternalSendersExtension, LifetimeExtension, RatchetTreeExtension,
-    RequiredCapabilitiesExtension,
+    ExternalSendersExtension, RatchetTreeExtension, RequiredCapabilitiesExtension,
 };
 
 impl Size for Extension {
@@ -19,7 +18,6 @@ impl Size for Extension {
                 Extension::RequiredCapabilities(e) => e.tls_serialized_len(),
                 Extension::ExternalPub(e) => e.tls_serialized_len(),
                 Extension::ExternalSenders(e) => e.tls_serialized_len(),
-                Extension::Lifetime(e) => e.tls_serialized_len(),
             }
     }
 }
@@ -39,7 +37,6 @@ impl Serialize for Extension {
             Extension::RequiredCapabilities(e) => e.tls_serialize(&mut extension_data),
             Extension::ExternalPub(e) => e.tls_serialize(&mut extension_data),
             Extension::ExternalSenders(e) => e.tls_serialize(&mut extension_data),
-            Extension::Lifetime(e) => e.tls_serialize(&mut extension_data),
         }?;
         debug_assert_eq!(extension_data_written, extension_data_len);
         debug_assert_eq!(extension_data_written, extension_data.len());
@@ -75,9 +72,6 @@ impl Deserialize for Extension {
             ExtensionType::ExternalSenders => Extension::ExternalSenders(
                 ExternalSendersExtension::tls_deserialize(&mut extension_data)?,
             ),
-            ExtensionType::Lifetime => {
-                Extension::Lifetime(LifetimeExtension::tls_deserialize(&mut extension_data)?)
-            }
         })
     }
 }

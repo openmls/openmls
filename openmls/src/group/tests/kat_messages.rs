@@ -17,7 +17,10 @@ use crate::{
     schedule::psk::*,
     test_utils::*,
     tree::sender_ratchet::*,
-    treesync::node::{leaf_node::LeafNodeSource, Node},
+    treesync::node::{
+        leaf_node::{LeafNodeSource, Lifetime},
+        Node,
+    },
     versions::ProtocolVersion,
 };
 
@@ -71,7 +74,7 @@ pub fn generate_test_vector(ciphersuite: Ciphersuite) -> MessagesTestVector {
             .expect("An unexpected error occurred.");
     // TODO(#1149, #1051)
     // let capabilities = CapabilitiesExtension::default();
-    let lifetime = LifetimeExtension::default();
+    let lifetime = Lifetime::default();
 
     // Let's create a group
     let mut group = CoreGroup::builder(GroupId::random(&crypto), key_package_bundle)
@@ -445,7 +448,7 @@ pub fn run_test_vector(tv: MessagesTestVector) -> Result<(), MessagesTestVectorE
 
     // Lifetime
     let tv_lifetime = hex_to_bytes(&tv.lifetime);
-    let my_lifetime = LifetimeExtension::tls_deserialize(&mut tv_lifetime.as_slice())
+    let my_lifetime = Lifetime::tls_deserialize(&mut tv_lifetime.as_slice())
         .expect("An unexpected error occurred.")
         .tls_serialize_detached()
         .expect("An unexpected error occurred.");

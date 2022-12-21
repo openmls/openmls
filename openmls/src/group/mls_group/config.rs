@@ -28,7 +28,9 @@
 //! ```
 
 use super::*;
-use crate::tree::sender_ratchet::SenderRatchetConfiguration;
+use crate::{
+    tree::sender_ratchet::SenderRatchetConfiguration, treesync::node::leaf_node::Lifetime,
+};
 use serde::{Deserialize, Serialize};
 
 /// Specifies the configuration parameters for a [`MlsGroup`]. Refer to
@@ -52,7 +54,7 @@ pub struct MlsGroupConfig {
     /// Sender ratchet configuration
     pub(crate) sender_ratchet_configuration: SenderRatchetConfiguration,
     /// Lifetime of the own leaf node
-    pub(crate) lifetime: LifetimeExtension,
+    pub(crate) lifetime: Lifetime,
 }
 
 impl MlsGroupConfig {
@@ -92,7 +94,7 @@ impl MlsGroupConfig {
     }
 
     /// Returns the [`MlsGroupConfig`] lifetime configuration.
-    pub fn lifetime(&self) -> &LifetimeExtension {
+    pub fn lifetime(&self) -> &Lifetime {
         &self.lifetime
     }
 
@@ -170,7 +172,7 @@ impl MlsGroupConfigBuilder {
     }
 
     /// Sets the `lifetime` property of the MlsGroupConfig.
-    pub fn lifetime(mut self, lifetime: LifetimeExtension) -> Self {
+    pub fn lifetime(mut self, lifetime: Lifetime) -> Self {
         self.config.lifetime = lifetime;
         self
     }

@@ -80,8 +80,8 @@ use crate::{
     },
     credentials::*,
     error::LibraryError,
-    extensions::{errors::ExtensionError, Extension, ExtensionType, LifetimeExtension},
-    treesync::LeafNode,
+    extensions::{errors::ExtensionError, Extension, ExtensionType},
+    treesync::{node::leaf_node::Lifetime, LeafNode},
     versions::ProtocolVersion,
 };
 use log::error;
@@ -356,27 +356,15 @@ impl KeyPackage {
         hpke_init_key: HpkePublicKey,
         credential_bundle: &CredentialBundle,
         // TODO: #819: Handle key package extensions (and refactor API).
-        mut leaf_node_extensions: Vec<Extension>,
+        leaf_node_extensions: Vec<Extension>,
     ) -> Result<Self, KeyPackageNewError> {
         if SignatureScheme::from(ciphersuite) != credential_bundle.credential().signature_scheme() {
             return Err(KeyPackageNewError::CiphersuiteSignatureSchemeMismatch);
         }
-        let life_time = leaf_node_extensions
-            .iter()
-            .position(|e| e.extension_type() == ExtensionType::Lifetime);
-        let lifetime: LifetimeExtension = if let Some(index) = life_time {
-            let extension = leaf_node_extensions.remove(index);
-            extension
-                .as_lifetime_extension()
-                .map_err(|_| LibraryError::custom(""))?
-                .clone()
-        } else {
-            LifetimeExtension::default()
-        };
         let leaf_node = LeafNode::from_init_key(
             hpke_init_key.clone(),
             credential_bundle,
-            lifetime,
+            Lifetime::default(),
             leaf_node_extensions,
             backend,
         )?;
@@ -635,14 +623,6 @@ impl KeyPackageBundle {
             return Err(error);
         }
 
-        // Check if there is a lifetime extension. If not, add one that is at
-        // least valid.
-        if !extensions
-            .iter()
-            .any(|e| e.extension_type() == ExtensionType::Lifetime)
-        {
-            extensions.push(Extension::Lifetime(LifetimeExtension::default()));
-        }
         let key_package = KeyPackage::new(
             ciphersuite,
             backend,

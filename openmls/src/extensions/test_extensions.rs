@@ -29,29 +29,6 @@ fn key_package_id() {
     assert_eq!(&data[..], &serialized_extension_struct);
 }
 
-#[test]
-fn lifetime() {
-    // A freshly created extensions must be valid.
-    let ext = LifetimeExtension::default();
-    assert!(ext.is_valid());
-
-    // An extension without lifetime is invalid (waiting for 1 second).
-    let ext = LifetimeExtension::new(0);
-    std::thread::sleep(std::time::Duration::from_secs(1));
-    assert!(!ext.is_valid());
-
-    // Test (de)serializing invalid extension
-    let serialized = ext
-        .tls_serialize_detached()
-        .expect("error encoding life time extension");
-    let ext_deserialized = LifetimeExtension::tls_deserialize(&mut serialized.as_slice())
-        .expect_err("Didn't get an error deserializing invalid life time extension");
-    assert_eq!(
-        ext_deserialized,
-        tls_codec::Error::DecodingError("Invalid".to_string()),
-    );
-}
-
 // This tests the ratchet tree extension to deliver the public ratcheting tree
 // in-band
 #[apply(ciphersuites_and_backends)]
