@@ -57,7 +57,7 @@ pub struct InteropGroup {
 /// transaction ids to key package hashes.
 pub struct MlsClientImpl {
     groups: Mutex<Vec<InteropGroup>>,
-    pending_key_packages: Mutex<HashMap<Vec<u8>, (KeyPackageBundle, CredentialBundle)>>,
+    pending_key_packages: Mutex<HashMap<Vec<u8>, (KeyPackage, CredentialBundle)>>,
     /// Note that the client currently doesn't really use transaction ids and
     /// instead relies on the KeyPackage hash in the Welcome message to identify
     /// what key package to use when joining a group.
@@ -445,7 +445,7 @@ impl MlsClient for MlsClientImpl {
     ) -> Result<tonic::Response<CreateKeyPackageResponse>, tonic::Status> {
         let create_kp_request = request.get_ref();
 
-        let ciphersuite = to_ciphersuite(create_kp_request.cipher_suite)?;
+        let ciphersuite = *to_ciphersuite(create_kp_request.cipher_suite)?;
         let credential_bundle = CredentialBundle::new(
             "OpenMLS".bytes().collect(),
             CredentialType::Basic,
@@ -453,14 +453,17 @@ impl MlsClient for MlsClientImpl {
             &self.crypto_provider,
         )
         .unwrap();
-        let key_package_bundle = KeyPackageBundle::new(
-            &[*ciphersuite],
-            &credential_bundle,
+        let key_package = KeyPackage::create(
+            CryptoConfig {
+                ciphersuite,
+                version: ProtocolVersion::default(),
+            },
             &self.crypto_provider,
+            &credential_bundle,
+            vec![],
             vec![],
         )
         .unwrap();
-        let key_package = key_package_bundle.key_package().clone();
         let mut transaction_id_map = self.transaction_id_map.lock().unwrap();
         let transaction_id = transaction_id_map.len() as u32;
         transaction_id_map.insert(
@@ -473,13 +476,12 @@ impl MlsClient for MlsClientImpl {
         );
 
         self.pending_key_packages.lock().unwrap().insert(
-            key_package_bundle
-                .key_package()
+            key_package
                 .hash_ref(self.crypto_provider.crypto())
                 .unwrap()
                 .as_slice()
                 .to_vec(),
-            (key_package_bundle, credential_bundle),
+            (key_package.clone(), credential_bundle),
         );
 
         Ok(Response::new(CreateKeyPackageResponse {

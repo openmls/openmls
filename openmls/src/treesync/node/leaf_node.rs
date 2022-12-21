@@ -15,7 +15,7 @@ use crate::{
     error::LibraryError,
     extensions::{Extension, ExtensionType, RequiredCapabilitiesExtension},
     group::GroupId,
-    key_packages::{KeyPackage, KeyPackageBundle},
+    key_packages::KeyPackage,
     messages::proposals::ProposalType,
     treesync::errors::TreeSyncError,
     versions::ProtocolVersion,
@@ -924,7 +924,11 @@ impl OpenMlsLeafNode {
     }
 
     /// Generate a leaf from a [`KeyPackageBundle`] and the leaf index.
-    pub fn from_key_package_bundel(kpb: KeyPackageBundle, leaf_index: u32) -> Self {
+    #[cfg(test)]
+    pub(crate) fn from_key_package_bundle(
+        kpb: crate::key_packages::KeyPackageBundle,
+        leaf_index: u32,
+    ) -> Self {
         let (key_package, private_key) = kpb.into_parts();
         Self {
             leaf_node: key_package.take_leaf_node(),

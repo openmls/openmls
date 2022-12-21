@@ -41,9 +41,17 @@
 //!     &backend,
 //! )
 //! .expect("Error creating credential.");
-//! let key_package_bundle =
-//!     KeyPackageBundle::new(&[ciphersuite], &credential_bundle, &backend, vec![])
-//!         .expect("Error creating key package bundle.");
+//! let key_package = KeyPackage::create(
+//!     CryptoConfig {
+//!         ciphersuite,
+//!         version: ProtocolVersion::default(),
+//!     },
+//!     &backend,
+//!     &credential_bundle,
+//!     vec![],
+//!     vec![],
+//! )
+//! .unwrap();
 //! ```
 //!
 //! See [`KeyPackageBundle`] for more details and other ways to create key
@@ -528,14 +536,7 @@ impl KeyPackage {
 }
 
 /// Payload of the [`KeyPackageBundle`].
-#[cfg(any(feature = "test-utils", test))]
-pub struct KeyPackageBundlePayload {
-    key_package_tbs: KeyPackageTBS,
-    private_key: HpkePrivateKey,
-}
-
-#[cfg(not(any(feature = "test-utils", test)))]
-pub(crate) struct KeyPackageBundlePayload {
+struct KeyPackageBundlePayload {
     key_package_tbs: KeyPackageTBS,
     private_key: HpkePrivateKey,
 }
@@ -562,11 +563,11 @@ impl SignedStruct<KeyPackageBundlePayload> for KeyPackageBundle {
     }
 }
 
-/// A [`KeyPackageBundle`] contains a [`KeyPackage`], the corresponding private
-/// key, and a leaf secret.
+/// A [`KeyPackageBundle`] contains a [`KeyPackage`] and the corresponding private
+/// key.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[cfg_attr(test, derive(PartialEq))]
-pub struct KeyPackageBundle {
+pub(crate) struct KeyPackageBundle {
     pub(crate) key_package: KeyPackage,
     pub(crate) private_key: HpkePrivateKey,
 }
@@ -739,12 +740,6 @@ impl KeyPackageBundle {
     /// as raw byte vectors.
     pub fn into_parts(self) -> (KeyPackage, Vec<u8>) {
         (self.key_package, self.private_key.as_slice().to_vec())
-    }
-
-    /// Get the unsigned payload version of this key package bundle for modificaiton.
-    #[cfg(feature = "test-utils")]
-    pub fn unsigned(self) -> KeyPackageBundlePayload {
-        self.into()
     }
 }
 

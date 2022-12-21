@@ -560,7 +560,7 @@ fn group_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvid
         .stage_commit(
             &create_commit_result.commit,
             &proposal_store,
-            &[OpenMlsLeafNode::from_key_package_bundel(
+            &[OpenMlsLeafNode::from_key_package_bundle(
                 bob_update_key_package_bundle,
                 group_bob.own_leaf_index(),
             )],
