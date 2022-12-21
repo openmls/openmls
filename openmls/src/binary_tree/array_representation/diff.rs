@@ -26,6 +26,7 @@ use crate::{
 };
 
 use super::{
+    sorted_iter::sorted_iter,
     tree::{to_node_index, ABinaryTree, ABinaryTreeError, NodeIndex},
     treemath::{direct_path, left, lowest_common_ancestor, parent, right, root, TreeMathError},
 };
@@ -64,28 +65,6 @@ impl<T: Clone + Debug> StagedAbDiff<T> {
     /// Return the projected size of the tree after a merge with the diff.
     pub(super) fn tree_size(&self) -> TreeSize {
         self.size
-    }
-}
-
-/// A [`NodeReference`] represents the position of a node in an [`AbDiff`]. It
-/// can be used to access the node at that position or to navigate to other,
-/// neighbouring nodes via the [`AbDiff::sibling()`], [`AbDiff::left_child()`]
-/// and [`AbDiff::right_child()`] functions of the [`AbDiff`].
-#[derive(Debug, Clone, Copy, PartialEq)]
-pub(crate) struct NodeId {
-    node_index: NodeIndex,
-}
-
-impl NodeId {
-    /// Creates a new [`NodeReference`] to a node at the given index.
-    ///
-    /// Returns an error if the given index is outside the bounds of the diff.
-    pub(super) fn try_from_node_index<T: Clone + Debug>(
-        diff: &AbDiff<T>,
-        node_index: NodeIndex,
-    ) -> Result<Self, OutOfBoundsError> {
-        diff.out_of_bounds(node_index)?;
-        Ok(NodeId { node_index })
     }
 }
 
@@ -160,20 +139,19 @@ impl<'a, T: Clone + Debug> AbDiff<'a, T> {
         self.replace_node(node_index, new_leaf)
     }
 
-    /// Obtain a [`NodeReference`] to the leaf with the given [`LeafIndex`].
+    /// Obtain a [`NodeIndex`] to the leaf with the given [`LeafIndex`].
     ///
     /// Returns an error if the given leaf index does not correspond to a leaf
     /// in the diff.
-    pub(crate) fn leaf(&self, leaf_index: LeafIndex) -> Result<NodeId, ABinaryTreeDiffError> {
-        let node_index = to_node_index(leaf_index);
-        Ok(NodeId::try_from_node_index(self, node_index)?)
+    pub(crate) fn leaf(&self, leaf_index: LeafIndex) -> NodeIndex {
+        to_node_index(leaf_index)
     }
 
     /// Returns an iterator over a tuple of the leaf index and a reference to a
     /// leaf, sorted according to their position in the tree from left to right.
     pub(crate) fn leaves(&self) -> impl Iterator<Item = (LeafIndex, &T)> {
-        let mut original_leaves = self.original_tree.leaves().peekable();
-        let mut diff_leaves = self
+        let original_leaves = self.original_tree.leaves().peekable();
+        let diff_leaves = self
             .diff
             .iter()
             .filter_map(|(index, leaf)| {
@@ -192,59 +170,29 @@ impl<'a, T: Clone + Debug> AbDiff<'a, T> {
         // iterator. We also make sure that we don't add leaves from the
         // original leaves that are also in the diff.
 
-        let mut combined = Vec::new();
+        // Harmonize the iterator types
+        let a_iter = Box::new(diff_leaves) as Box<dyn Iterator<Item = (u32, &T)>>;
+        let b_iter = Box::new(original_leaves) as Box<dyn Iterator<Item = (u32, &T)>>;
 
-        while let Some((index, leaf)) = match (original_leaves.peek(), diff_leaves.peek()) {
-            // The original tree has a leaf that is not in the diff.
-            (Some((original_index, _)), Some((diff_index, _))) if original_index < diff_index => {
-                original_leaves.next()
-            }
-            // The original tree and the diff have the same leaf. We only
-            // need to add the leaf from the diff and drop the leaf from the
-            // original tree.
-            (Some((original_index, _)), Some((diff_index, _))) if original_index == diff_index => {
-                original_leaves.next();
-                diff_leaves.next()
-            }
-            // The diff has a leaf that is not in the original tree.
-            (Some((_, _)), Some((_, _))) => diff_leaves.next(),
-            // We are out of diff leaves, so we just add the remaining
-            // original leaves.
-            (Some((_, _)), None) => original_leaves.next(),
-            // We are out of original leaves, so we just add the remaining
-            // diff leaves.
-            (None, Some((_, _))) => diff_leaves.next(),
-            // We are out of both leave types, so we are done.
-            (None, None) => None,
-        } {
-            combined.push((index, leaf));
-        }
+        // We only compare indices, not the actual leaves
+        let cmp = |&(x, _): &(u32, &T)| x;
 
-        combined.into_iter()
+        sorted_iter(a_iter, b_iter, cmp, self.size as usize)
     }
 
     // Functions related to the direct paths of leaves
     //////////////////////////////////////////////////
 
-    /// Returns a vector of [`NodeReference`] instances, each one referencing a
+    /// Returns a vector of [`NodeIndex`] instances, each one referencing a
     /// node in the direct path of the given [`LeafIndex`], ordered from the
     /// parent of the corresponding leaf to the root of the tree.
     pub(crate) fn direct_path(
         &self,
         leaf_index: LeafIndex,
-    ) -> Result<Vec<NodeId>, OutOfBoundsError> {
+    ) -> Result<Vec<NodeIndex>, OutOfBoundsError> {
         let node_index = to_node_index(leaf_index);
         // `direct_path` only throws an error if the input index is out of bounds.
-        let direct_path_indices = direct_path(node_index, self.tree_size())
-            .map_err(|_| OutOfBoundsError::IndexOutOfBounds)?;
-        let mut direct_path = Vec::new();
-        for node_index in direct_path_indices {
-            // `direct_path` only throws an error if the input index is out of bounds.
-            let node_ref = NodeId::try_from_node_index(self, node_index)
-                .map_err(|_| OutOfBoundsError::IndexOutOfBounds)?;
-            direct_path.push(node_ref);
-        }
-        Ok(direct_path)
+        direct_path(node_index, self.tree_size()).map_err(|_| OutOfBoundsError::IndexOutOfBounds)
     }
 
     /// Sets all nodes in the direct path to a copy of the given node. This
@@ -318,7 +266,7 @@ impl<'a, T: Clone + Debug> AbDiff<'a, T> {
             .ok_or_else(|| LibraryError::custom("index should be in the direct path").into())
     }
 
-    /// Returns [`NodeReference`] to the copath node of the `leaf_index_1` that is
+    /// Returns [`NodeIndex`] to the copath node of the `leaf_index_1` that is
     /// in the direct path of `leaf_index_2`.
     ///
     /// Returns an error if both leaf indices are identical or if one of the
@@ -327,7 +275,7 @@ impl<'a, T: Clone + Debug> AbDiff<'a, T> {
         &self,
         leaf_index_1: LeafIndex,
         leaf_index_2: LeafIndex,
-    ) -> Result<NodeId, ABinaryTreeDiffError> {
+    ) -> Result<NodeIndex, ABinaryTreeDiffError> {
         self.leaf_pair_check(leaf_index_1, leaf_index_2)?;
 
         // We want to return the position of the lowest common ancestor in the
@@ -342,10 +290,10 @@ impl<'a, T: Clone + Debug> AbDiff<'a, T> {
             right(subtree_root_node_index, self.tree_size())?
         };
 
-        Ok(NodeId::try_from_node_index(self, copath_node_index)?)
+        Ok(copath_node_index)
     }
 
-    /// Returns a vector of [`NodeReference`]s, where the first reference is to
+    /// Returns a vector of [`NodeIndex`]es, where the first reference is to
     /// the root of the shared subtree of the two given leaf indices followed by
     /// references to the nodes in the direct path of said subtree root.
     ///
@@ -355,7 +303,7 @@ impl<'a, T: Clone + Debug> AbDiff<'a, T> {
         &self,
         leaf_index_1: LeafIndex,
         leaf_index_2: LeafIndex,
-    ) -> Result<Vec<NodeId>, ABinaryTreeDiffError> {
+    ) -> Result<Vec<NodeIndex>, ABinaryTreeDiffError> {
         let node_index_1 = to_node_index(leaf_index_1);
         let node_index_2 = to_node_index(leaf_index_2);
 
@@ -363,12 +311,9 @@ impl<'a, T: Clone + Debug> AbDiff<'a, T> {
         self.out_of_bounds(node_index_2)?;
 
         let lca = lowest_common_ancestor(node_index_1, node_index_2);
-        let direct_path_indices = direct_path(lca, self.tree_size())?;
-        let mut full_path = vec![NodeId::try_from_node_index(self, lca)?];
-        for node_index in direct_path_indices {
-            let node_ref = NodeId::try_from_node_index(self, node_index)?;
-            full_path.push(node_ref);
-        }
+        let mut direct_path = direct_path(lca, self.tree_size())?;
+        let mut full_path = vec![lca];
+        full_path.append(&mut direct_path);
 
         Ok(full_path)
     }
@@ -385,20 +330,31 @@ impl<'a, T: Clone + Debug> AbDiff<'a, T> {
         }
     }
 
-    /// Returns a vector containing the nodes of the tree in-order, i.e. in the
-    /// array representation of the diff. This function should not fail and only
-    /// returns a [`Result`], because it might throw a
-    /// [`LibraryError`].
-    pub(crate) fn export_nodes(&self) -> Result<Vec<T>, LibraryError> {
-        let mut nodes = Vec::new();
-        for node_index in 0..self.tree_size() {
-            let node = self
-                .node_by_index(node_index)
-                // We know the node must be in the tree
-                .map_err(|_| LibraryError::custom("Expected node to be in the tree"))?;
-            nodes.push(node.clone());
-        }
-        Ok(nodes)
+    /// Returns an iterator over a tuple of the node index and a reference to a
+    /// node, sorted according to their position in the tree from left to right.
+    pub(crate) fn nodes(&self) -> impl Iterator<Item = (NodeIndex, &T)> {
+        let original_nodes = self.original_tree.nodes().peekable();
+        let diff_nodes = self
+            .diff
+            .iter()
+            .map(|(index, node)| (*index, node))
+            .peekable();
+
+        // Combine the original nodes with the nodes from the diff. Since
+        // both iterators are sorted, we can just iterate over them and
+        // don't need additional sorting. If one of the iterators is
+        // exhausted, we just add the remaining nodes from the other
+        // iterator. We also make sure that we don't add nodes from the
+        // original nodes that are also in the diff.
+
+        // Harmonize the iterator types
+        let a_iter = Box::new(diff_nodes) as Box<dyn Iterator<Item = (u32, &T)>>;
+        let b_iter = Box::new(original_nodes) as Box<dyn Iterator<Item = (u32, &T)>>;
+
+        // We only compare indices, not the actual nodes
+        let cmp = |&(x, _): &(u32, &T)| x;
+
+        sorted_iter(a_iter, b_iter, cmp, self.size as usize)
     }
 
     /// Returns the size of the diff.
@@ -411,82 +367,81 @@ impl<'a, T: Clone + Debug> AbDiff<'a, T> {
         ((self.tree_size() - 1) / 2) + 1
     }
 
-    // Functions around individual [`NodeReference`]s
+    // Functions around individual [`NodeIndex`]s
     ///////////////////////////////////////////////
 
-    /// Returns a reference to the node pointed to by the [`NodeReference`].
-    /// Returns an Error if the [`NodeReference`] points to a node outside of the
+    /// Returns a reference to the node pointed to by the [`NodeIndex`].
+    /// Returns an Error if the [`NodeIndex`] points to a node outside of the
     /// bounds of the tree. This can happen, for example, if the node was
     /// removed while shrinking the diff after the creation of the
-    /// [`NodeReference`].
-    pub(crate) fn node(&self, node_ref: NodeId) -> Result<&T, ABinaryTreeDiffError> {
-        self.node_by_index(node_ref.node_index)
+    /// [`NodeIndex`].
+    pub(crate) fn node(&self, node_index: NodeIndex) -> Result<&T, ABinaryTreeDiffError> {
+        self.node_by_index(node_index)
     }
 
     /// Returns a mutable reference to the node pointed to by the
-    /// [`NodeReference`]. Returns an Error if the [`NodeReference`] points to a
+    /// [`NodeIndex`]. Returns an Error if the [`NodeIndex`] points to a
     /// node outside of the bounds of the tree. This can happen, for example, if
     /// the node was removed while shrinking the diff after the creation of the
-    /// [`NodeReference`].
-    pub(crate) fn node_mut(&mut self, node_ref: NodeId) -> Result<&mut T, ABinaryTreeDiffError> {
-        self.node_mut_by_index(node_ref.node_index)
+    /// [`NodeIndex`].
+    pub(crate) fn node_mut(
+        &mut self,
+        node_index: NodeIndex,
+    ) -> Result<&mut T, ABinaryTreeDiffError> {
+        self.node_mut_by_index(node_index)
     }
 
-    /// Return a [`NodeReference`] to the root node of the diff. Since the diff
+    /// Return a [`NodeIndex`] to the root node of the diff. Since the diff
     /// always consists of at least one node, this operation cannot fail.
-    pub(crate) fn root(&self) -> NodeId {
-        let root_index = root(self.tree_size());
-        // We create the reference directly instead of via self.new_reference,
-        // since due to the minimum tree size of one node, the root is always
-        // within bounds.
-        NodeId {
-            node_index: root_index,
-        }
+    pub(crate) fn root(&self) -> NodeIndex {
+        root(self.tree_size())
     }
 
-    /// Returns true if the given [`NodeReference`] points to a leaf and [`false`]
+    /// Returns true if the given [`NodeIndex`] points to a leaf and [`false`]
     /// otherwise.
-    pub(crate) fn is_leaf(&self, node_ref: NodeId) -> bool {
-        node_ref.node_index % 2 == 0
+    pub(crate) fn is_leaf(&self, node_index: NodeIndex) -> bool {
+        node_index % 2 == 0
     }
 
-    /// Returns a [`NodeReference`] to the parent of the referenced node. Returns
-    /// an error when the given [`NodeReference`] points to the root node or to a
+    /// Returns a [`NodeIndex`] to the parent of the referenced node. Returns
+    /// an error when the given [`NodeIndex`] points to the root node or to a
     /// node not in the tree.
-    pub(crate) fn parent(&self, node_ref: NodeId) -> Result<NodeId, ABinaryTreeDiffError> {
-        let parent_index = parent(node_ref.node_index, self.tree_size())?;
-        Ok(NodeId::try_from_node_index(self, parent_index)?)
+    pub(crate) fn parent(&self, node_index: NodeIndex) -> Result<NodeIndex, ABinaryTreeDiffError> {
+        Ok(parent(node_index, self.tree_size())?)
     }
 
-    /// Returns a [`NodeReference`] to the sibling of the referenced node. Returns
-    /// an error when the given [`NodeReference`] points to the root node or to a
+    /// Returns a [`NodeIndex`] to the sibling of the referenced node. Returns
+    /// an error when the given [`NodeIndex`] points to the root node or to a
     /// node not in the tree.
-    pub(crate) fn sibling(&self, node_ref: NodeId) -> Result<NodeId, ABinaryTreeDiffError> {
-        let sibling_index = sibling(node_ref.node_index, self.tree_size())?;
-        Ok(NodeId::try_from_node_index(self, sibling_index)?)
+    pub(crate) fn sibling(&self, node_index: NodeIndex) -> Result<NodeIndex, ABinaryTreeDiffError> {
+        Ok(sibling(node_index, self.tree_size())?)
     }
 
-    /// Returns a [`NodeReference`] to the left child of the referenced node.
-    /// Returns an error when the given [`NodeReference`] points to a leaf node or
+    /// Returns a [`NodeIndex`] to the left child of the referenced node.
+    /// Returns an error when the given [`NodeIndex`] points to a leaf node or
     /// to a node not in the tree.
-    pub(crate) fn left_child(&self, node_ref: NodeId) -> Result<NodeId, ABinaryTreeDiffError> {
-        let left_child_index = left(node_ref.node_index)?;
-        Ok(NodeId::try_from_node_index(self, left_child_index)?)
+    pub(crate) fn left_child(
+        &self,
+        node_index: NodeIndex,
+    ) -> Result<NodeIndex, ABinaryTreeDiffError> {
+        Ok(left(node_index)?)
     }
 
-    /// Returns a [`NodeReference`] to the right child of the referenced node.
-    /// Returns an error when the given [`NodeReference`] points to a leaf node or
+    /// Returns a [`NodeIndex`] to the right child of the referenced node.
+    /// Returns an error when the given [`NodeIndex`] points to a leaf node or
     /// to a node not in the tree.
-    pub(crate) fn right_child(&self, node_ref: NodeId) -> Result<NodeId, ABinaryTreeDiffError> {
-        let right_child_index = right(node_ref.node_index, self.tree_size())?;
-        Ok(NodeId::try_from_node_index(self, right_child_index)?)
+    pub(crate) fn right_child(
+        &self,
+        node_index: NodeIndex,
+    ) -> Result<NodeIndex, ABinaryTreeDiffError> {
+        Ok(right(node_index, self.tree_size())?)
     }
 
     /// Returns the [`LeafIndex`] of the referenced node. If the referenced node
     /// is not a leaf, [`None`] is returned.
-    pub(crate) fn leaf_index(&self, node_ref: NodeId) -> Option<LeafIndex> {
-        if self.is_leaf(node_ref) {
-            Some(node_ref.node_index / 2)
+    pub(crate) fn leaf_index(&self, node_index: NodeIndex) -> Option<LeafIndex> {
+        if self.is_leaf(node_index) {
+            Some(node_index / 2)
         } else {
             None
         }
@@ -616,11 +571,11 @@ impl<'a, T: Clone + Debug> AbDiff<'a, T> {
     #[cfg(test)]
     pub(crate) fn deref_vec(
         &self,
-        node_ref_vec: Vec<NodeId>,
+        node_index_vec: Vec<NodeIndex>,
     ) -> Result<Vec<&T>, ABinaryTreeDiffError> {
         let mut node_vec = Vec::new();
-        for node_ref in node_ref_vec {
-            let node = self.node(node_ref)?;
+        for node_index in node_index_vec {
+            let node = self.node(node_index)?;
             node_vec.push(node);
         }
         Ok(node_vec)
@@ -634,15 +589,13 @@ pub(crate) struct DiffIterator<'a, T: Clone + Debug> {
 }
 
 impl<'a, T: Clone + Debug> Iterator for DiffIterator<'a, T> {
-    type Item = NodeId;
+    type Item = NodeIndex;
 
     fn next(&mut self) -> Option<Self::Item> {
         if self.diff.node_by_index(self.current_index).is_ok() {
-            let node_ref_option = Some(NodeId {
-                node_index: self.current_index,
-            });
+            let current_index_opt = Some(self.current_index);
             self.current_index += 1;
-            node_ref_option
+            current_index_opt
         } else {
             None
         }
