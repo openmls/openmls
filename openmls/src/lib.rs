@@ -41,7 +41,7 @@
 //!     ciphersuites: &[Ciphersuite],
 //!     credential: &Credential,
 //!     backend: &impl OpenMlsCryptoProvider,
-//! ) -> Result<KeyPackage, KeyPackageBundleNewError> {
+//! ) -> KeyPackage {
 //!     // Fetch the credential bundle from the key store
 //!     let credential_id = credential
 //!         .signature_key()
@@ -53,7 +53,7 @@
 //!         .expect("An unexpected error occurred.");
 //!
 //!     // Create the key package
-//!     let key_package = KeyPackage::create(
+//!     KeyPackage::create(
 //!         CryptoConfig {
 //!             ciphersuite: ciphersuites[0],
 //!             version: ProtocolVersion::default(),
@@ -63,8 +63,7 @@
 //!         vec![],
 //!         vec![],
 //!     )
-//!     .unwrap();
-//!     Ok(key_package)
+//!     .unwrap()
 //! }
 //!
 //! // First they need credentials to identify them

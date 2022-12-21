@@ -33,7 +33,7 @@ fn generate_key_package(
     credential: &Credential,
     extensions: Vec<Extension>,
     crypto_backend: &impl OpenMlsCryptoProvider,
-) -> Result<KeyPackage, KeyPackageBundleNewError> {
+) -> KeyPackage {
     let credential_bundle = crypto_backend
         .key_store()
         .read(
@@ -44,7 +44,7 @@ fn generate_key_package(
         )
         .expect("An unexpected error occurred.");
 
-    let key_package = KeyPackage::create(
+    KeyPackage::create(
         CryptoConfig {
             ciphersuite: ciphersuites[0],
             version: ProtocolVersion::default(),
@@ -54,9 +54,7 @@ fn generate_key_package(
         extensions,
         vec![],
     )
-    .unwrap();
-
-    Ok(key_package)
+    .unwrap()
 }
 
 #[actix_rt::test]
@@ -105,7 +103,7 @@ async fn test_list_clients() {
     .unwrap();
     let client_id = credential_bundle.identity().to_vec();
     let client_key_package =
-        generate_key_package(&[ciphersuite], &credential_bundle, vec![], crypto).unwrap();
+        generate_key_package(&[ciphersuite], &credential_bundle, vec![], crypto);
     let client_key_package = vec![(
         client_key_package
             .hash_ref(crypto.crypto())
@@ -204,8 +202,7 @@ async fn test_group() {
             crypto,
         )
         .unwrap();
-        let client_key_package =
-            generate_key_package(&[ciphersuite], &credential, vec![], crypto).unwrap();
+        let client_key_package = generate_key_package(&[ciphersuite], &credential, vec![], crypto);
         let client_data = ClientInfo::new(
             client_name.to_string(),
             vec![(

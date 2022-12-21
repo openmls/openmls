@@ -1,11 +1,10 @@
 //! # Key Package errors
 //!
-//! `KeyPackageError` are thrown on errors handling `KeyPackage`s and
-//! `KeyPackageBundle`s.
+//! `KeyPackageError` are thrown on errors handling `KeyPackage`s.
 
 use thiserror::Error;
 
-use crate::{error::LibraryError, extensions::errors::ExtensionError};
+use crate::error::LibraryError;
 
 /// KeyPackage verify error
 #[derive(Error, Debug, PartialEq, Clone)]
@@ -47,29 +46,6 @@ pub enum KeyPackageNewError {
     /// Accessing the key store failed.
     #[error("Accessing the key store failed.")]
     KeyStoreError,
-}
-
-/// KeyPackageBundle new error
-#[derive(Error, Debug, PartialEq, Clone)]
-pub enum KeyPackageBundleNewError {
-    /// See [`LibraryError`] for more details.
-    #[error(transparent)]
-    LibraryError(#[from] LibraryError),
-    /// Creating a new key package requires at least one ciphersuite.
-    #[error("Creating a new key package requires at least one ciphersuite.")]
-    NoCiphersuitesSupplied,
-    /// The ciphersuite does not match the signature scheme.
-    #[error("The ciphersuite does not match the signature scheme.")]
-    CiphersuiteSignatureSchemeMismatch,
-    /// Duplicate extensions are not allowed.
-    #[error("Duplicate extensions are not allowed.")]
-    DuplicateExtension,
-    /// The list of ciphersuites is not consistent with the capabilities extension.
-    #[error("The list of ciphersuites is not consistent with the capabilities extension.")]
-    CiphersuiteMismatch,
-    /// See [`ExtensionError`] for more details.
-    #[error(transparent)]
-    ExtensionError(#[from] ExtensionError),
 }
 
 /// KeyPackage new error
