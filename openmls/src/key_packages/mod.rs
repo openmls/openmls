@@ -391,6 +391,11 @@ impl KeyPackage {
     pub fn ciphersuite(&self) -> Ciphersuite {
         self.payload.ciphersuite
     }
+
+    /// Get a reference to the HPKE init key.
+    pub fn hpke_init_key(&self) -> &HpkePublicKey {
+        &self.payload.init_key
+    }
 }
 
 /// Crate visible `KeyPackage` functions.
@@ -404,11 +409,6 @@ impl KeyPackage {
             .as_slice()
             .iter()
             .find(|&e| e.extension_type() == extension_type)
-    }
-
-    /// Get a reference to the HPKE init key.
-    pub fn hpke_init_key(&self) -> &HpkePublicKey {
-        &self.payload.init_key
     }
 
     /// Get the `ProtocolVersion`.
@@ -498,34 +498,6 @@ impl KeyPackage {
     }
 }
 
-/// Payload of the [`KeyPackageBundle`].
-struct KeyPackageBundlePayload {
-    key_package_tbs: KeyPackageTBS,
-    private_key: HpkePrivateKey,
-}
-
-impl Signable for KeyPackageBundlePayload {
-    type SignedOutput = KeyPackageBundle;
-
-    fn unsigned_payload(&self) -> Result<Vec<u8>, tls_codec::Error> {
-        self.key_package_tbs.unsigned_payload()
-    }
-
-    fn label(&self) -> &str {
-        SIGNATURE_KEY_PACKAGE_LABEL
-    }
-}
-
-impl SignedStruct<KeyPackageBundlePayload> for KeyPackageBundle {
-    fn from_payload(payload: KeyPackageBundlePayload, signature: Signature) -> Self {
-        let key_package = KeyPackage::from_payload(payload.key_package_tbs, signature);
-        Self {
-            key_package,
-            private_key: payload.private_key,
-        }
-    }
-}
-
 /// A [`KeyPackageBundle`] contains a [`KeyPackage`] and the corresponding private
 /// key.
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -535,19 +507,10 @@ pub(crate) struct KeyPackageBundle {
     pub(crate) private_key: HpkePrivateKey,
 }
 
-impl From<KeyPackageBundle> for KeyPackageBundlePayload {
-    fn from(kpb: KeyPackageBundle) -> Self {
-        Self {
-            key_package_tbs: kpb.key_package.into(),
-            private_key: kpb.private_key,
-        }
-    }
-}
-
 // Public `KeyPackageBundle` functions.
 impl KeyPackageBundle {
     /// Get a reference to the public part of this bundle, i.e. the [`KeyPackage`].
-    pub fn key_package(&self) -> &KeyPackage {
+    pub(crate) fn key_package(&self) -> &KeyPackage {
         &self.key_package
     }
 }
@@ -587,18 +550,5 @@ impl KeyPackageBundle {
             key_package,
             private_key: private_key.into(),
         }
-    }
-}
-
-/// Crate visible `KeyPackageBundle` functions.
-impl KeyPackageBundle {
-    /// Update the private key in the bundle.
-    pub(crate) fn _set_private_key(&mut self, private_key: HpkePrivateKey) {
-        self.private_key = private_key;
-    }
-
-    /// Get a reference to the `HpkePrivateKey`.
-    pub(crate) fn private_key(&self) -> &HpkePrivateKey {
-        &self.private_key
     }
 }

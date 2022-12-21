@@ -73,7 +73,7 @@ pub enum KeyPackageBundleNewError {
 }
 
 /// KeyPackage new error
-#[derive(Error, Debug, PartialEq, Clone)]
+#[derive(Error, Debug, PartialEq, Eq, Clone)]
 pub enum KeyPackageDeleteError {
     /// Accessing the key store failed.
     #[error("Accessing the key store failed.")]

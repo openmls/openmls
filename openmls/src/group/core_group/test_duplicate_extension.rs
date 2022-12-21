@@ -103,7 +103,7 @@ fn duplicate_ratchet_tree_extension(
         .hpke_open(
             ciphersuite.hpke_config(),
             egs.encrypted_group_secrets(),
-            bob_key_package_bundle.private_key().as_slice(),
+            bob_key_package_bundle.private_key.as_slice(),
             &[],
             &[],
         )
