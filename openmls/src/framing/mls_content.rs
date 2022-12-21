@@ -1,34 +1,27 @@
 //! This module contains the [`FramedContent`] struct and associated helper structs
 //! such as [`FramedContentTbs`], as well as their implementations.
 
-use crate::ciphersuite::signable::Signable;
-use crate::group::GroupEpoch;
-use crate::group::GroupId;
-use crate::messages::proposals::Proposal;
-use crate::messages::Commit;
+use crate::{
+    ciphersuite::signable::Signable,
+    error::LibraryError,
+    group::{GroupEpoch, GroupId},
+    messages::{proposals::Proposal, Commit},
+};
 
-use super::Sender;
-use super::WireFormat;
+use std::{
+    convert::TryFrom,
+    io::{Read, Write},
+};
 
-use crate::error::LibraryError;
-
-use super::mls_auth_content::FramedContentAuthData;
-
-use std::convert::TryFrom;
-
-use std::io::Read;
-
-use std::io::Write;
-
-use tls_codec::TlsByteVecU32;
-use tls_codec::VLBytes;
-
-use super::mls_auth_content::AuthenticatedContent;
+use super::{
+    mls_auth_content::{AuthenticatedContent, FramedContentAuthData},
+    Sender, WireFormat,
+};
 
 use serde::{Deserialize, Serialize};
 use tls_codec::{
-    Deserialize as TlsDeserializeTrait, Serialize as TlsSerializeTrait, Size, TlsDeserialize,
-    TlsSerialize, TlsSize,
+    Deserialize as TlsDeserializeTrait, Serialize as TlsSerializeTrait, Size, TlsByteVecU32,
+    TlsDeserialize, TlsSerialize, TlsSize, VLBytes,
 };
 
 /// ```c

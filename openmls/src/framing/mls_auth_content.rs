@@ -12,9 +12,11 @@ use crate::{
     group::errors::ValidationError,
 };
 
-use super::mls_content::{ContentType, FramedContentBody, FramedContentTbs};
-
-use super::*;
+use super::{
+    mls_content::{ContentType, FramedContentBody, FramedContentTbs},
+    AddProposal, Commit, ConfirmationTag, Credential, CredentialBundle, FramingParameters,
+    GroupContext, GroupEpoch, GroupId, Proposal, Sender, Signature, WireFormat,
+};
 use openmls_traits::OpenMlsCryptoProvider;
 use std::io::{Read, Write};
 
