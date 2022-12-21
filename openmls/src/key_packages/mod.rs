@@ -54,8 +54,7 @@
 //! .unwrap();
 //! ```
 //!
-//! See [`KeyPackageBundle`] for more details and other ways to create key
-//! package bundles.
+//! See [`KeyPackage`] for more details and other ways to create key packages.
 //!
 //! ## Loading key packages
 //!

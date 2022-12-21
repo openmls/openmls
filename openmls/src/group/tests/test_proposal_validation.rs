@@ -251,7 +251,7 @@ fn test_valsem100(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
     // artificially add another add proposal with the same identity.
     let (_charlie_credential_bundle, charlie_key_package_bundle) =
         generate_credential_bundle_and_key_package("Charlie".into(), ciphersuite, backend);
-    let charlie_key_package = charlie_key_package_bundle.clone();
+    let charlie_key_package = charlie_key_package_bundle;
 
     // Create the Commit with Add proposal.
     let serialized_update = alice_group
@@ -273,7 +273,7 @@ fn test_valsem100(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
     // identity.
     let (_charlie_credential_bundle, charlie_key_package_bundle) =
         generate_credential_bundle_and_key_package("Charlie".into(), ciphersuite, backend);
-    let charlie_key_package = charlie_key_package_bundle.clone();
+    let charlie_key_package = charlie_key_package_bundle;
     let second_add_proposal = Proposal::Add(AddProposal {
         key_package: charlie_key_package,
     });
@@ -582,9 +582,7 @@ fn test_valsem102(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
     // credential.
     let (dave_credential_bundle, _) =
         generate_credential_bundle_and_key_package("Dave".into(), ciphersuite, backend);
-    let dave_key_package = charlie_key_package
-        .clone()
-        .resign(backend, &dave_credential_bundle);
+    let dave_key_package = charlie_key_package.resign(backend, &dave_credential_bundle);
     let second_add_proposal = Proposal::Add(AddProposal {
         key_package: dave_key_package,
     });
@@ -668,9 +666,8 @@ fn test_valsem103(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
 
     // We now have alice create a commit. Then we artificially add an Add
     // proposal with an existing identity (Bob).
-    let (_bob_credential_bundle, bob_key_package_bundle) =
+    let (_bob_credential_bundle, bob_key_package) =
         generate_credential_bundle_and_key_package("Bob".into(), ciphersuite, backend);
-    let bob_key_package = bob_key_package_bundle.clone();
 
     // Create the Commit.
     let serialized_update = alice_group

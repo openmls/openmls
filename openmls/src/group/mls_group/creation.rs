@@ -17,7 +17,7 @@ impl MlsGroup {
     /// This function removes the private key corresponding to the
     /// `key_package` from the key store.
     ///
-    /// Returns an error ([`NewGroupError::NoMatchingKeyPackageBundle`]) if the
+    /// Returns an error ([`NewGroupError::NoMatchingKeyPackage`]) if the
     /// private key for the [`KeyPackage`] can not be found.
     pub fn new(
         backend: &impl OpenMlsCryptoProvider,
@@ -34,7 +34,7 @@ impl MlsGroup {
 
     /// Creates a new group with a given group ID with the creator as the only member.
     ///
-    /// Returns an error ([`NewGroupError::NoMatchingKeyPackageBundle`]) if the
+    /// Returns an error ([`NewGroupError::NoMatchingKeyPackage`]) if the
     /// private key for the [`KeyPackage`] can not be found.
     pub fn new_with_group_id(
         backend: &impl OpenMlsCryptoProvider,
@@ -112,8 +112,8 @@ impl MlsGroup {
     }
 
     /// Creates a new group from a [`Welcome`] message. Returns an error
-    /// ([`WelcomeError::NoMatchingKeyPackage`]) if no
-    /// [`KeyPackageBundle`] can be found.
+    /// ([`WelcomeError::NoMatchingKeyPackage`]) if no [`KeyPackage`]
+    /// can be found.
     pub fn new_from_welcome(
         backend: &impl OpenMlsCryptoProvider,
         mls_group_config: &MlsGroupConfig,

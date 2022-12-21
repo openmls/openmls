@@ -11,7 +11,7 @@
 //! Clients can create a [`Credential`] by creating a [`CredentialBundle`] which
 //! contains the [`Credential`], as well as the corresponding private key
 //! material. The [`CredentialBundle`] can in turn be used to generate a
-//! [`KeyPackageBundle`](crate::key_packages::KeyPackageBundle).
+//! [`KeyPackage`](crate::key_packages::KeyPackage).
 //!
 //! The MLS protocol spec allows the that represents a client in a group to
 //! change over time. Concretely, members can issue an Update proposal or a Full
