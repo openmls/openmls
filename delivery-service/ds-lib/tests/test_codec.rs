@@ -16,8 +16,6 @@ fn test_client_info() {
         crypto,
     )
     .unwrap();
-    // let client_key_package_bundle =
-    //     KeyPackageBundle::new(&[ciphersuite], &credential_bundle, crypto, vec![]).unwrap();
     let client_key_package = KeyPackage::create(
         CryptoConfig {
             ciphersuite,

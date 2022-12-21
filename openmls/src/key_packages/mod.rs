@@ -93,17 +93,14 @@ use crate::{
     treesync::{node::leaf_node::Lifetime, LeafNode},
     versions::ProtocolVersion,
 };
-use log::error;
 use openmls_traits::{
     crypto::OpenMlsCrypto,
     key_store::OpenMlsKeyStore,
-    types::{Ciphersuite, HpkeKeyPair, SignatureScheme},
+    types::{Ciphersuite, SignatureScheme},
     OpenMlsCryptoProvider,
 };
 use serde::{Deserialize, Serialize};
-use tls_codec::{
-    Deserialize as TlsDeserializeTrait, Serialize as TlsSerializeTrait, TlsSize, VLBytes,
-};
+use tls_codec::{Deserialize as TlsDeserializeTrait, Serialize as TlsSerializeTrait, TlsSize};
 
 // Private
 mod codec;
@@ -396,41 +393,6 @@ impl KeyPackage {
     }
 }
 
-impl KeyPackage {
-    /// Create a new key package but only with the given `extensions` for the
-    /// given `ciphersuite` and `identity`, and the initial HPKE key pair
-    /// `init_key`.
-    fn new(
-        ciphersuite: Ciphersuite,
-        backend: &impl OpenMlsCryptoProvider,
-        hpke_init_key: HpkePublicKey,
-        credential_bundle: &CredentialBundle,
-        // TODO: #819: Handle key package extensions (and refactor API).
-        leaf_node_extensions: Vec<Extension>,
-    ) -> Result<Self, KeyPackageNewError> {
-        if SignatureScheme::from(ciphersuite) != credential_bundle.credential().signature_scheme() {
-            return Err(KeyPackageNewError::CiphersuiteSignatureSchemeMismatch);
-        }
-        let leaf_node = LeafNode::from_init_key(
-            hpke_init_key.clone(),
-            credential_bundle,
-            Lifetime::default(),
-            leaf_node_extensions,
-            backend,
-        )?;
-        let key_package = KeyPackageTBS {
-            // TODO: #34 Take from global config.
-            protocol_version: ProtocolVersion::default(),
-            ciphersuite,
-            init_key: hpke_init_key,
-            leaf_node,
-            credential: credential_bundle.credential().clone(),
-            extensions: vec![],
-        };
-        Ok(key_package.sign(backend, credential_bundle)?)
-    }
-}
-
 /// Crate visible `KeyPackage` functions.
 impl KeyPackage {
     /// Get a reference to the extension of `extension_type`.
@@ -460,6 +422,7 @@ impl KeyPackage {
     }
 
     /// Get the [`LeafNode`].
+    #[cfg(test)]
     pub(crate) fn take_leaf_node(self) -> LeafNode {
         self.payload.leaf_node
     }
@@ -583,159 +546,14 @@ impl From<KeyPackageBundle> for KeyPackageBundlePayload {
 
 // Public `KeyPackageBundle` functions.
 impl KeyPackageBundle {
-    /// Create a new [`KeyPackageBundle`] with a fresh key pair.
-    /// This key package will have the default MLS version.
-    /// Use [`KeyPackageBundle::new_with_version`]
-    /// to get a key package bundle for a specific MLS version.
-    ///
-    /// Note that the capabilities extension gets added automatically, based on
-    /// the configuration.
-    ///
-    /// Returns a new [`KeyPackageBundle`] or a [`KeyPackageBundleNewError`].
-    pub fn new(
-        ciphersuites: &[Ciphersuite],
-        credential_bundle: &CredentialBundle,
-        backend: &impl OpenMlsCryptoProvider,
-        extensions: Vec<Extension>,
-    ) -> Result<Self, KeyPackageBundleNewError> {
-        Self::new_with_version(
-            ProtocolVersion::default(),
-            ciphersuites,
-            backend,
-            credential_bundle,
-            extensions,
-        )
-    }
-
-    /// Create a new [`KeyPackageBundle`] with
-    /// * a fresh key pair
-    /// * the provided MLS version
-    /// * the first ciphersuite in the `ciphersuites` slice
-    /// * the provided `extensions`
-    ///
-    /// Note that the capabilities extension gets added automatically, based on
-    /// the configuration.
-    ///
-    /// Returns a new [`KeyPackageBundle`] or a [`KeyPackageBundleNewError`].
-    fn new_with_version(
-        version: ProtocolVersion,
-        ciphersuites: &[Ciphersuite],
-        backend: &impl OpenMlsCryptoProvider,
-        credential_bundle: &CredentialBundle,
-        extensions: Vec<Extension>,
-    ) -> Result<Self, KeyPackageBundleNewError> {
-        if ciphersuites.is_empty() {
-            let error = KeyPackageBundleNewError::NoCiphersuitesSupplied;
-            error!(
-                "Error creating new KeyPackageBundle: No Ciphersuites specified {:?}",
-                error
-            );
-            return Err(error);
-        }
-
-        let ciphersuite = ciphersuites.iter().find(|&&c| {
-            SignatureScheme::from(c) == credential_bundle.credential().signature_scheme()
-        });
-        let ciphersuite =
-            ciphersuite.ok_or(KeyPackageBundleNewError::CiphersuiteSignatureSchemeMismatch)?;
-
-        let leaf_secret = Secret::random(*ciphersuite, backend, version)
-            .map_err(LibraryError::unexpected_crypto_error)?;
-        Self::new_from_leaf_secret(
-            ciphersuites,
-            backend,
-            credential_bundle,
-            extensions,
-            leaf_secret,
-        )
-    }
-
-    /// Create a new [`KeyPackageBundle`] for the given `ciphersuite`, `identity`,
-    /// and `extensions`, using the given [`HpkeKeyPair`].
-    ///
-    /// Note that the capabilities extension gets added automatically, based on
-    /// the configuration. The ciphersuite for this key package bundle is the
-    /// first one in the `ciphersuites` list. If a capabilities extension is
-    /// included in the extensions, its supported ciphersuites have to match the
-    /// `ciphersuites` list.
-    ///
-    /// Returns an [`KeyPackageBundleNewError::DuplicateExtension`] error if `extensions`
-    /// contains multiple extensions of the same type.
-    ///
-    /// Returns a new [`KeyPackageBundle`].
-    fn new_with_keypair(
-        ciphersuites: &[Ciphersuite],
-        backend: &impl OpenMlsCryptoProvider,
-        credential_bundle: &CredentialBundle,
-        mut extensions: Vec<Extension>,
-        key_pair: HpkeKeyPair,
-    ) -> Result<Self, KeyPackageBundleNewError> {
-        if ciphersuites.is_empty() {
-            let error = KeyPackageBundleNewError::NoCiphersuitesSupplied;
-            error!(
-                "Error creating new KeyPackageBundle: No Ciphersuites specified {:?}",
-                error
-            );
-            return Err(error);
-        }
-
-        let ciphersuite = ciphersuites.iter().find(|&&c| {
-            SignatureScheme::from(c) == credential_bundle.credential().signature_scheme()
-        });
-        let ciphersuite =
-            *ciphersuite.ok_or(KeyPackageBundleNewError::CiphersuiteSignatureSchemeMismatch)?;
-
-        // Detect duplicate extensions an return an error in case there is are any.
-        let extensions_length = extensions.len();
-        extensions.sort();
-        extensions.dedup();
-        if extensions_length != extensions.len() {
-            let error = KeyPackageBundleNewError::DuplicateExtension;
-            error!(
-                "Error creating new KeyPackageBundle: Duplicate Extension {:?}",
-                error
-            );
-            return Err(error);
-        }
-
-        let key_package = KeyPackage::new(
-            ciphersuite,
-            backend,
-            key_pair.public.into(),
-            credential_bundle,
-            extensions,
-        )
-        .map_err(|e| match e {
-            KeyPackageNewError::LibraryError(e) => e.into(),
-            KeyPackageNewError::CiphersuiteSignatureSchemeMismatch => {
-                KeyPackageBundleNewError::CiphersuiteSignatureSchemeMismatch
-            }
-            KeyPackageNewError::KeyStoreError => todo!(),
-        })?;
-        Ok(KeyPackageBundle {
-            key_package,
-            private_key: key_pair.private.into(),
-        })
-    }
-
     /// Get a reference to the public part of this bundle, i.e. the [`KeyPackage`].
     pub fn key_package(&self) -> &KeyPackage {
         &self.key_package
     }
+}
 
-    /// Get a reference to the HPKE key pair.
-    pub fn key_pair(&self) -> (&VLBytes, &HpkePublicKey) {
-        (&self.private_key, self.key_package.hpke_init_key())
-    }
-
-    /// Get a reference to the HPKE key pair.
-    pub fn hpke_key_pair(&self) -> HpkeKeyPair {
-        HpkeKeyPair {
-            private: self.private_key.clone().into(),
-            public: self.key_package.hpke_init_key().as_slice().to_vec(),
-        }
-    }
-
+#[cfg(test)]
+impl KeyPackageBundle {
     /// Separates the bundle into the [`KeyPackage`] and the HPKE private key
     /// as raw byte vectors.
     pub fn into_parts(self) -> (KeyPackage, Vec<u8>) {
@@ -743,37 +561,37 @@ impl KeyPackageBundle {
     }
 }
 
-/// Crate visible `KeyPackageBundle` functions.
+#[cfg(any(feature = "test-utils", test))]
 impl KeyPackageBundle {
-    pub(crate) fn new_from_leaf_secret(
-        ciphersuites: &[Ciphersuite],
+    pub(crate) fn new(
         backend: &impl OpenMlsCryptoProvider,
+        ciphersuite: Ciphersuite,
         credential_bundle: &CredentialBundle,
-        extensions: Vec<Extension>,
-        leaf_secret: Secret,
-    ) -> Result<Self, KeyPackageBundleNewError> {
-        if ciphersuites.is_empty() {
-            let error = KeyPackageBundleNewError::NoCiphersuitesSupplied;
-            error!(
-                "Error creating new KeyPackageBundle: No Ciphersuites specified {:?}",
-                error
-            );
-            return Err(error);
-        }
-
-        let ciphersuite = ciphersuites[0];
-        let keypair = backend
-            .crypto()
-            .derive_hpke_keypair(ciphersuite.hpke_config(), leaf_secret.as_slice());
-        Self::new_with_keypair(
-            ciphersuites,
+    ) -> Self {
+        let key_package = KeyPackage::create(
+            CryptoConfig {
+                ciphersuite,
+                version: ProtocolVersion::default(),
+            },
             backend,
             credential_bundle,
-            extensions,
-            keypair,
+            vec![],
+            vec![],
         )
+        .unwrap();
+        let private_key: Vec<u8> = backend
+            .key_store()
+            .read(key_package.hpke_init_key().as_slice())
+            .unwrap();
+        Self {
+            key_package,
+            private_key: private_key.into(),
+        }
     }
+}
 
+/// Crate visible `KeyPackageBundle` functions.
+impl KeyPackageBundle {
     /// Update the private key in the bundle.
     pub(crate) fn _set_private_key(&mut self, private_key: HpkePrivateKey) {
         self.private_key = private_key;

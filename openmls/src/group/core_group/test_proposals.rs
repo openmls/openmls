@@ -6,7 +6,7 @@ use super::CoreGroup;
 use crate::{
     ciphersuite::hash_ref::ProposalRef,
     credentials::{CredentialBundle, CredentialType},
-    extensions::{ApplicationIdExtension, Extension, ExtensionType, RequiredCapabilitiesExtension},
+    extensions::{Extension, ExtensionType, RequiredCapabilitiesExtension},
     framing::sender::Sender,
     framing::{FramingParameters, MlsAuthContent, WireFormat},
     group::{
@@ -31,9 +31,7 @@ fn setup_client(
         backend,
     )
     .expect("An unexpected error occurred.");
-    let key_package_bundle =
-        KeyPackageBundle::new(&[ciphersuite], &credential_bundle, backend, Vec::new())
-            .expect("An unexpected error occurred.");
+    let key_package_bundle = KeyPackageBundle::new(backend, ciphersuite, &credential_bundle);
     (credential_bundle, key_package_bundle)
 }
 
@@ -51,13 +49,8 @@ fn proposal_queue_functions(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryp
         setup_client("Bob", ciphersuite, backend);
 
     let bob_key_package = bob_key_package_bundle.key_package();
-    let alice_update_key_package_bundle = KeyPackageBundle::new(
-        &[ciphersuite],
-        &alice_credential_bundle,
-        backend,
-        Vec::new(),
-    )
-    .expect("An unexpected error occurred.");
+    let alice_update_key_package_bundle =
+        KeyPackageBundle::new(backend, ciphersuite, &alice_credential_bundle);
     let alice_update_key_package = alice_update_key_package_bundle.key_package();
     assert!(alice_update_key_package.verify(backend).is_ok());
 
@@ -182,13 +175,8 @@ fn proposal_queue_order(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoPr
         setup_client("Bob", ciphersuite, backend);
 
     let bob_key_package = bob_key_package_bundle.key_package();
-    let alice_update_key_package_bundle = KeyPackageBundle::new(
-        &[ciphersuite],
-        &alice_credential_bundle,
-        backend,
-        Vec::new(),
-    )
-    .expect("An unexpected error occurred.");
+    let alice_update_key_package_bundle =
+        KeyPackageBundle::new(backend, ciphersuite, &alice_credential_bundle);
     let alice_update_key_package = alice_update_key_package_bundle.key_package();
     assert!(alice_update_key_package.verify(backend).is_ok());
 
@@ -350,13 +338,8 @@ fn test_group_context_extensions(ciphersuite: Ciphersuite, backend: &impl OpenMl
         setup_client("Alice", ciphersuite, backend);
     let (bob_credential_bundle, _) = setup_client("Bob", ciphersuite, backend);
 
-    let bob_key_package_bundle = KeyPackageBundle::new(
-        &[ciphersuite],
-        &bob_credential_bundle,
-        backend,
-        vec![Extension::ApplicationId(ApplicationIdExtension::default())],
-    )
-    .expect("An unexpected error occurred.");
+    let bob_key_package_bundle =
+        KeyPackageBundle::new(backend, ciphersuite, &bob_credential_bundle);
     let bob_key_package = bob_key_package_bundle.key_package();
 
     // Set required capabilities
@@ -431,13 +414,8 @@ fn test_group_context_extension_proposal_fails(
         setup_client("Alice", ciphersuite, backend);
     let (bob_credential_bundle, _) = setup_client("Bob", ciphersuite, backend);
 
-    let bob_key_package_bundle = KeyPackageBundle::new(
-        &[ciphersuite],
-        &bob_credential_bundle,
-        backend,
-        vec![Extension::ApplicationId(ApplicationIdExtension::default())],
-    )
-    .expect("An unexpected error occurred.");
+    let bob_key_package_bundle =
+        KeyPackageBundle::new(backend, ciphersuite, &bob_credential_bundle);
     let bob_key_package = bob_key_package_bundle.key_package();
 
     // Set required capabilities
@@ -549,20 +527,10 @@ fn test_group_context_extension_proposal(
     let (alice_credential_bundle, _) = setup_client("Alice", ciphersuite, backend);
     let (bob_credential_bundle, _) = setup_client("Bob", ciphersuite, backend);
 
-    let bob_key_package_bundle = KeyPackageBundle::new(
-        &[ciphersuite],
-        &bob_credential_bundle,
-        backend,
-        vec![Extension::ApplicationId(ApplicationIdExtension::default())],
-    )
-    .expect("An unexpected error occurred.");
-    let alice_key_package_bundle = KeyPackageBundle::new(
-        &[ciphersuite],
-        &alice_credential_bundle,
-        backend,
-        vec![Extension::ApplicationId(ApplicationIdExtension::default())],
-    )
-    .expect("An unexpected error occurred.");
+    let bob_key_package_bundle =
+        KeyPackageBundle::new(backend, ciphersuite, &bob_credential_bundle);
+    let alice_key_package_bundle =
+        KeyPackageBundle::new(backend, ciphersuite, &alice_credential_bundle);
     let bob_key_package = bob_key_package_bundle.key_package();
 
     let mut alice_group = CoreGroup::builder(GroupId::random(backend), alice_key_package_bundle)

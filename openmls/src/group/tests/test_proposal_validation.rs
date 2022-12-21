@@ -1587,8 +1587,7 @@ fn test_valsem109(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
     // Keep the original plaintext for positive test later.
     let original_plaintext = plaintext.clone();
 
-    let kpb = KeyPackageBundle::new(&[ciphersuite], &new_cb, backend, vec![])
-        .expect("Error creating key package");
+    let kpb = KeyPackageBundle::new(backend, ciphersuite, &new_cb);
 
     let update_proposal = Proposal::Update(UpdateProposal {
         leaf_node: kpb.key_package().leaf_node().clone(),
