@@ -1,5 +1,6 @@
 use super::*;
 use actix_web::{dev::Body, http::StatusCode, test, web, web::Bytes, App};
+use openmls::prelude::config::CryptoConfig;
 use openmls_rust_crypto::OpenMlsRustCrypto;
 use openmls_traits::key_store::OpenMlsKeyStore;
 use openmls_traits::types::SignatureScheme;
@@ -42,18 +43,20 @@ fn generate_key_package(
                 .expect("Error serializing signature key"),
         )
         .expect("An unexpected error occurred.");
-    let kpb = KeyPackageBundle::new(ciphersuites, &credential_bundle, crypto_backend, extensions)?;
-    let kp = kpb.key_package().clone();
-    crypto_backend
-        .key_store()
-        .store(
-            kp.hash_ref(crypto_backend.crypto())
-                .expect("Could not hash KeyPackage.")
-                .as_slice(),
-            &kpb,
-        )
-        .expect("An unexpected error occurred.");
-    Ok(kp)
+
+    let key_package = KeyPackage::create(
+        CryptoConfig {
+            ciphersuite: ciphersuites[0],
+            version: ProtocolVersion::default(),
+        },
+        crypto_backend,
+        &credential_bundle,
+        extensions,
+        vec![],
+    )
+    .unwrap();
+
+    Ok(key_package)
 }
 
 #[actix_rt::test]
@@ -189,7 +192,7 @@ async fn test_group() {
 
     // Add two clients.
     let clients = ["Client1", "Client2"];
-    let mut key_package_bundles = Vec::new();
+    let mut key_packages = Vec::new();
     let mut credentials = Vec::new();
     let mut client_ids = Vec::new();
     for client_name in clients.iter() {
@@ -214,7 +217,7 @@ async fn test_group() {
                 client_key_package.clone(),
             )],
         );
-        key_package_bundles.push(client_key_package);
+        key_packages.push(client_key_package);
         client_ids.push(credential.identity().to_vec());
         credentials.push(credential);
         let req = test::TestRequest::post()
@@ -229,18 +232,10 @@ async fn test_group() {
 
     // Client1 creates MyFirstGroup
     let group_id = GroupId::from_slice(b"MyFirstGroup");
-    let group_ciphersuite = key_package_bundles[0].ciphersuite();
-    let mut group = MlsGroup::new_with_group_id(
-        crypto,
-        &mls_group_config,
-        group_id,
-        key_package_bundles
-            .remove(0)
-            .hash_ref(crypto.crypto())
-            .expect("Could not hash KeyPackage.")
-            .as_slice(),
-    )
-    .expect("An unexpected error occurred.");
+    let group_ciphersuite = key_packages[0].ciphersuite();
+    let mut group =
+        MlsGroup::new_with_group_id(crypto, &mls_group_config, group_id, key_packages.remove(0))
+            .expect("An unexpected error occurred.");
 
     // === Client1 invites Client2 ===
     // First we need to get the key package for Client2 from the DS.

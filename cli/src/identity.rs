@@ -1,31 +1,12 @@
 use std::mem::replace;
 
-use openmls::prelude::*;
+use openmls::prelude::{config::CryptoConfig, *};
 use openmls_rust_crypto::OpenMlsRustCrypto;
 use openmls_traits::{key_store::OpenMlsKeyStore, types::SignatureScheme, OpenMlsCryptoProvider};
 
 pub struct Identity {
-    pub(crate) kpb: KeyPackageBundle,
+    pub(crate) kp: KeyPackage,
     pub(crate) credential: CredentialBundle,
-}
-
-/// Stores KeyPackageBundle in the crypto_backend's keystore with the hash of
-/// the keypackage as the key.
-fn store_key_package_bundle_in_keystore(
-    crypto_backend: &OpenMlsRustCrypto,
-    key_package_bundle: &KeyPackageBundle,
-) {
-    crypto_backend
-        .key_store()
-        .store(
-            key_package_bundle
-                .key_package()
-                .hash_ref(crypto_backend.crypto())
-                .expect("Failed to hash KeyPackage.")
-                .as_slice(),
-            key_package_bundle,
-        )
-        .expect("Failed to store KeyPackage in keystore.");
 }
 
 /// Stores CredentialBundle in the crypto_backend's keystore with the
@@ -56,27 +37,44 @@ impl Identity {
             crypto,
         )
         .unwrap();
-        let key_package_bundle =
-            KeyPackageBundle::new(&[ciphersuite], &credential_bundle, crypto, vec![]).unwrap();
 
-        store_key_package_bundle_in_keystore(crypto, &key_package_bundle);
+        let key_package = KeyPackage::create(
+            CryptoConfig {
+                ciphersuite,
+                version: ProtocolVersion::default(),
+            },
+            crypto,
+            &credential_bundle,
+            vec![],
+            vec![],
+        )
+        .unwrap();
+
         store_credential_bundle_in_keystore(crypto, &credential_bundle);
         Self {
-            kpb: key_package_bundle,
+            kp: key_package,
             credential: credential_bundle,
         }
     }
 
-    /// Update the key package bundle in this identity.
-    /// The function returns the old `KeyPackageBundle`.
-    pub fn update(&mut self, crypto: &OpenMlsRustCrypto) -> KeyPackageBundle {
-        let ciphersuite = self.kpb.key_package().ciphersuite();
-        let key_package_bundle =
-            KeyPackageBundle::new(&[ciphersuite], &self.credential, crypto, vec![]).unwrap();
+    /// Update the key package in this identity.
+    /// The function returns the old `KeyPackage`.
+    pub fn update(&mut self, crypto: &OpenMlsRustCrypto) -> KeyPackage {
+        let ciphersuite = self.kp.ciphersuite();
 
-        store_key_package_bundle_in_keystore(crypto, &key_package_bundle);
+        let key_package = KeyPackage::create(
+            CryptoConfig {
+                ciphersuite,
+                version: ProtocolVersion::default(),
+            },
+            crypto,
+            &self.credential,
+            vec![],
+            vec![],
+        )
+        .unwrap();
 
-        replace(&mut self.kpb, key_package_bundle)
+        replace(&mut self.kp, key_package)
     }
 
     /// Get the plain credential as byte vector.

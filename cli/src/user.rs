@@ -58,13 +58,12 @@ impl User {
         vec![(
             self.identity
                 .borrow()
-                .kpb
-                .key_package()
+                .kp
                 .hash_ref(self.crypto.crypto())
                 .unwrap()
                 .as_slice()
                 .to_vec(),
-            self.identity.borrow().kpb.key_package().clone(),
+            self.identity.borrow().kp.clone(),
         )]
     }
 
@@ -230,7 +229,7 @@ impl User {
         let group_id = name.as_bytes();
         let mut group_aad = group_id.to_vec();
         group_aad.extend(b" AAD");
-        let kpb = self.identity.borrow_mut().update(&self.crypto);
+        let kp = self.identity.borrow_mut().update(&self.crypto);
 
         // NOTE: Since the DS currently doesn't distribute copies of the group's ratchet
         // tree, we need to include the ratchet_tree_extension.
@@ -242,10 +241,7 @@ impl User {
             &self.crypto,
             &group_config,
             GroupId::from_slice(group_id),
-            kpb.key_package()
-                .hash_ref(self.crypto.crypto())
-                .expect("Failed to hash KeyPackage.")
-                .as_slice(),
+            kp,
         )
         .expect("Failed to create MlsGroup");
         mls_group.set_aad(group_aad.as_slice());
