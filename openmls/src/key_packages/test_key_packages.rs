@@ -4,10 +4,13 @@ use tls_codec::Deserialize;
 
 use crate::{extensions::*, key_packages::*};
 
-#[apply(ciphersuites_and_backends)]
-fn generate_key_package(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
+/// Helper function to generate key packages
+fn key_package(
+    ciphersuite: Ciphersuite,
+    backend: &impl OpenMlsCryptoProvider,
+) -> (KeyPackage, CredentialBundle) {
     let credential_bundle = CredentialBundle::new(
-        vec![1, 2, 3],
+        b"Sasha".to_vec(),
         CredentialType::Basic,
         ciphersuite.into(),
         backend,
@@ -15,71 +18,89 @@ fn generate_key_package(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoPr
     .expect("An unexpected error occurred.");
 
     // Generate a valid KeyPackage.
-    let kpb = KeyPackageBundle::new(&[ciphersuite], &credential_bundle, backend, vec![])
-        .expect("An unexpected error occurred.");
-    std::thread::sleep(std::time::Duration::from_millis(1));
-    assert!(kpb.key_package().verify(backend).is_ok());
+    let key_package = KeyPackage::create(
+        CryptoConfig {
+            ciphersuite,
+            version: ProtocolVersion::default(),
+        },
+        backend,
+        &credential_bundle,
+        vec![],
+        vec![],
+    )
+    .expect("An unexpected error occurred.");
+
+    (key_package, credential_bundle)
 }
 
 #[apply(ciphersuites_and_backends)]
-fn decryption_key_index_computation(
-    ciphersuite: Ciphersuite,
-    backend: &impl OpenMlsCryptoProvider,
-) {
-    let id = vec![1, 2, 3];
-    let credential_bundle =
-        CredentialBundle::new(id, CredentialType::Basic, ciphersuite.into(), backend)
-            .expect("An unexpected error occurred.");
-    let kpb = KeyPackageBundle::new(&[ciphersuite], &credential_bundle, backend, Vec::new())
-        .expect("An unexpected error occurred.")
-        .unsigned();
+fn generate_key_package(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
+    let (key_package, credential_bundle) = key_package(ciphersuite, backend);
 
-    let kpb = kpb
-        .sign(backend, &credential_bundle)
-        .expect("An unexpected error occurred.");
-    let enc = kpb
-        .key_package()
+    assert!(key_package
+        .verify_no_out(backend, credential_bundle.credential())
+        .is_ok());
+    // TODO[FK]: replace with `validate`
+    assert!(KeyPackage::verify(&key_package, backend).is_ok());
+}
+
+#[apply(ciphersuites_and_backends)]
+fn serialization(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
+    let (key_package, _) = key_package(ciphersuite, backend);
+
+    let encoded = key_package
         .tls_serialize_detached()
         .expect("An unexpected error occurred.");
 
-    // Now it's valid.
-    let kp =
-        KeyPackage::tls_deserialize(&mut enc.as_slice()).expect("An unexpected error occurred.");
-    assert_eq!(kpb.key_package, kp);
+    let decoded_key_package = KeyPackage::tls_deserialize(&mut encoded.as_slice())
+        .expect("An unexpected error occurred.");
+    assert_eq!(key_package, decoded_key_package);
 }
 
 #[apply(ciphersuites_and_backends)]
-fn key_package_id_extension(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
-    let id = vec![1, 2, 3];
-    let credential_bundle =
-        CredentialBundle::new(id, CredentialType::Basic, ciphersuite.into(), backend)
-            .expect("An unexpected error occurred.");
-    let kpb = KeyPackageBundle::new(&[ciphersuite], &credential_bundle, backend, vec![])
-        .expect("An unexpected error occurred.");
-    let verification = kpb.key_package().verify(backend);
-    assert!(verification.is_ok());
-    let mut kpb = kpb.unsigned();
+fn application_id_extension(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
+    // This is a leaf node extension but it is set through the key package.
+    let credential_bundle = CredentialBundle::new(
+        b"Sasha".to_vec(),
+        CredentialType::Basic,
+        ciphersuite.into(),
+        backend,
+    )
+    .expect("An unexpected error occurred.");
 
-    // Add an ID to the key package.
-    let id = [1, 2, 3, 4];
-    kpb.add_extension(Extension::ApplicationId(ApplicationIdExtension::new(&id)));
+    // Generate a valid KeyPackage.
+    let id = b"application id" as &[u8];
+    let key_package = KeyPackage::create(
+        CryptoConfig {
+            ciphersuite,
+            version: ProtocolVersion::default(),
+        },
+        backend,
+        &credential_bundle,
+        vec![],
+        vec![Extension::ApplicationId(ApplicationIdExtension::new(id))],
+    )
+    .expect("An unexpected error occurred.");
 
-    // Sign it to make it valid.
-    let kpb = kpb
-        .sign(backend, &credential_bundle)
-        .expect("An unexpected error occurred.");
-    assert!(kpb.key_package().verify(backend).is_ok());
+    assert!(key_package
+        .verify_no_out(backend, credential_bundle.credential())
+        .is_ok());
+    // TODO[FK]: replace with `validate`
+    assert!(KeyPackage::verify(&key_package, backend).is_ok());
 
     // Check ID
     assert_eq!(
-        &id[..],
-        kpb.key_package().application_id().expect("No key ID")
+        Some(id),
+        key_package
+            .leaf_node()
+            .extension_by_type(ExtensionType::ApplicationId)
+            .map(|e| e.as_application_id_extension().unwrap().as_slice())
     );
 }
 
 #[apply(backends)]
 fn test_mismatch(backend: &impl OpenMlsCryptoProvider) {
-    // === KeyPackageBundle negative test ===
+    // === KeyPackage negative test ===
 
     let ciphersuite_name = Ciphersuite::MLS_128_DHKEMX25519_AES128GCM_SHA256_Ed25519;
     let signature_scheme = SignatureScheme::ECDSA_SECP256R1_SHA256;
@@ -93,11 +114,20 @@ fn test_mismatch(backend: &impl OpenMlsCryptoProvider) {
     .expect("Could not create credential bundle");
 
     assert_eq!(
-        KeyPackageBundle::new(&[ciphersuite_name], &credential_bundle, backend, vec![],),
-        Err(KeyPackageBundleNewError::CiphersuiteSignatureSchemeMismatch)
+        KeyPackage::create(
+            CryptoConfig {
+                ciphersuite: ciphersuite_name,
+                version: ProtocolVersion::default(),
+            },
+            backend,
+            &credential_bundle,
+            vec![],
+            vec![],
+        ),
+        Err(KeyPackageNewError::CiphersuiteSignatureSchemeMismatch)
     );
 
-    // === KeyPackageBundle positive test ===
+    // === KeyPackage positive test ===
 
     let ciphersuite_name = Ciphersuite::MLS_128_DHKEMX25519_AES128GCM_SHA256_Ed25519;
     let signature_scheme = SignatureScheme::ED25519;
@@ -110,7 +140,15 @@ fn test_mismatch(backend: &impl OpenMlsCryptoProvider) {
     )
     .expect("Could not create credential bundle");
 
-    assert!(
-        KeyPackageBundle::new(&[ciphersuite_name], &credential_bundle, backend, vec![]).is_ok()
-    );
+    assert!(KeyPackage::create(
+        CryptoConfig {
+            ciphersuite: ciphersuite_name,
+            version: ProtocolVersion::default(),
+        },
+        backend,
+        &credential_bundle,
+        vec![],
+        vec![],
+    )
+    .is_ok());
 }

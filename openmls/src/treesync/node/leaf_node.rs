@@ -15,7 +15,7 @@ use crate::{
     error::LibraryError,
     extensions::{Extension, ExtensionType, RequiredCapabilitiesExtension},
     group::GroupId,
-    key_packages::KeyPackageBundle,
+    key_packages::{KeyPackage, KeyPackageBundle},
     messages::proposals::ProposalType,
     treesync::errors::TreeSyncError,
     versions::ProtocolVersion,
@@ -521,6 +521,17 @@ impl LeafNode {
         &self.payload.capabilities
     }
 
+    /// Get the extension with the given `type` in this leaf.
+    ///
+    ///
+    /// Returns `None` if no extension of the requested type is present.
+    pub fn extension_by_type(&self, extension_type: ExtensionType) -> Option<&Extension> {
+        self.payload
+            .extensions
+            .iter()
+            .find(|&e| e.extension_type() == extension_type)
+    }
+
     /// Return a mutable reference to [`Capabilities`].
     #[cfg(test)]
     pub fn capabilities_mut(&mut self) -> &mut Capabilities {
@@ -630,11 +641,11 @@ impl From<LeafNode> for OpenMlsLeafNode {
     }
 }
 
-impl From<KeyPackageBundle> for OpenMlsLeafNode {
-    fn from(kpb: KeyPackageBundle) -> Self {
+impl From<KeyPackage> for OpenMlsLeafNode {
+    fn from(key_package: KeyPackage) -> Self {
         Self {
-            leaf_node: kpb.key_package.leaf_node().clone(),
-            private_key: Some(kpb.private_key),
+            leaf_node: key_package.leaf_node().clone(),
+            private_key: None,
             leaf_index: None,
         }
     }

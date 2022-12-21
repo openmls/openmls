@@ -41,19 +41,14 @@ fn new_test_group(
     .unwrap();
 
     // Generate KeyPackages
-    let key_package =
-        generate_key_package_bundle(&[ciphersuite], &credential, vec![], backend).unwrap();
+    let key_package = generate_key_package(&[ciphersuite], &credential, vec![], backend).unwrap();
 
     // Define the MlsGroup configuration
     let mls_group_config = MlsGroupConfig::builder()
         .wire_format_policy(wire_format_policy)
         .build();
 
-    let kpr = key_package
-        .hash_ref(backend.crypto())
-        .expect("Could not hash KeyPackage.");
-
-    MlsGroup::new_with_group_id(backend, &mls_group_config, group_id, kpr.as_slice()).unwrap()
+    MlsGroup::new_with_group_id(backend, &mls_group_config, group_id, key_package).unwrap()
 }
 
 // Validation test setup
@@ -73,9 +68,8 @@ fn validation_test_setup(
     )
     .expect("An unexpected error occurred.");
 
-    let bob_key_package =
-        generate_key_package_bundle(&[ciphersuite], &bob_credential, vec![], backend)
-            .expect("An unexpected error occurred.");
+    let bob_key_package = generate_key_package(&[ciphersuite], &bob_credential, vec![], backend)
+        .expect("An unexpected error occurred.");
 
     let (_message, welcome) = alice_group
         .add_members(backend, &[bob_key_package])
@@ -128,8 +122,7 @@ fn external_add_proposal_should_succeed(
         .unwrap();
 
         let charlie_kp =
-            generate_key_package_bundle(&[ciphersuite], charlie_cb.credential(), vec![], backend)
-                .unwrap();
+            generate_key_package(&[ciphersuite], charlie_cb.credential(), vec![], backend).unwrap();
 
         let proposal = JoinProposal::new(
             charlie_kp.clone(),
@@ -230,8 +223,7 @@ fn external_add_proposal_should_be_signed_by_key_package_it_references(
     .unwrap();
 
     let charlie_kp =
-        generate_key_package_bundle(&[ciphersuite], charlie_cb.credential(), vec![], backend)
-            .unwrap();
+        generate_key_package(&[ciphersuite], charlie_cb.credential(), vec![], backend).unwrap();
 
     let invalid_proposal = JoinProposal::new(
         charlie_kp,
@@ -281,8 +273,7 @@ fn new_member_proposal_sender_should_be_reserved_for_join_proposals(
         )
         .expect("Could not read signature key from key store.");
 
-    let any_kp =
-        generate_key_package_bundle(&[ciphersuite], &any_credential, vec![], backend).unwrap();
+    let any_kp = generate_key_package(&[ciphersuite], &any_credential, vec![], backend).unwrap();
 
     let join_proposal = JoinProposal::new(
         any_kp,

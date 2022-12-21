@@ -17,9 +17,9 @@ pub enum NewGroupError {
     /// See [`LibraryError`] for more details.
     #[error(transparent)]
     LibraryError(#[from] LibraryError),
-    /// No matching KeyPackageBundle was found in the key store.
-    #[error("No matching KeyPackageBundle was found in the key store.")]
-    NoMatchingKeyPackageBundle,
+    /// No matching KeyPackage was found in the key store.
+    #[error("No matching KeyPackage was found in the key store.")]
+    NoMatchingKeyPackage,
     /// No matching CredentialBundle was found in the key store.
     #[error("No matching CredentialBundle was found in the key store.")]
     NoMatchingCredentialBundle,
@@ -211,6 +211,9 @@ pub enum SelfUpdateError {
     /// See [`MlsGroupStateError`] for more details.
     #[error(transparent)]
     GroupStateError(#[from] MlsGroupStateError),
+    /// Error accessing the key store.
+    #[error("Error accessing the key store.")]
+    KeyStoreError,
 }
 
 /// Propose self update error
@@ -225,6 +228,9 @@ pub enum ProposeSelfUpdateError {
     /// See [`MlsGroupStateError`] for more details.
     #[error(transparent)]
     GroupStateError(#[from] MlsGroupStateError),
+    /// Error accessing the key store.
+    #[error("Error accessing the key store.")]
+    KeyStoreError,
 }
 
 /// Commit to pending proposals error

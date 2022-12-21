@@ -5,13 +5,14 @@ use tls_codec::Serialize;
 use crate::{
     credentials::{errors::CredentialError, *},
     framing::*,
-    group::{errors::*, *},
+    group::{config::CryptoConfig, errors::*, *},
     key_packages::{errors::*, *},
     messages::proposals::*,
     test_utils::test_framework::{
         errors::ClientError, ActionType::Commit, CodecUse, MlsGroupTestSetup,
     },
     test_utils::*,
+    versions::ProtocolVersion,
 };
 
 fn generate_credential_bundle(
@@ -35,13 +36,13 @@ fn generate_credential_bundle(
     Ok(credential)
 }
 
-fn generate_key_package_bundle(
-    key_store: &impl OpenMlsCryptoProvider,
+fn generate_key_package(
+    backend: &impl OpenMlsCryptoProvider,
     ciphersuites: &[Ciphersuite],
     credential: &Credential,
-    extensions: Vec<Extension>,
+    extensions: Vec<Extension>, // TODO[FK]: allow setting leaf node extensions
 ) -> Result<KeyPackage, KeyPackageBundleNewError> {
-    let credential_bundle = key_store
+    let credential_bundle = backend
         .key_store()
         .read(
             &credential
@@ -50,18 +51,19 @@ fn generate_key_package_bundle(
                 .expect("Error serializing signature key."),
         )
         .expect("An unexpected error occurred.");
-    let kpb = KeyPackageBundle::new(ciphersuites, &credential_bundle, key_store, extensions)?;
-    let kp = kpb.key_package().clone();
-    key_store
-        .key_store()
-        .store(
-            kp.hash_ref(key_store.crypto())
-                .expect("Could not hash KeyPackage.")
-                .as_slice(),
-            &kpb,
-        )
-        .expect("An unexpected error occurred.");
-    Ok(kp)
+
+    let key_package = KeyPackage::create(
+        CryptoConfig {
+            ciphersuite: ciphersuites[0],
+            version: ProtocolVersion::default(),
+        },
+        backend,
+        &credential_bundle,
+        extensions,
+        vec![],
+    )
+    .unwrap();
+    Ok(key_package)
 }
 
 #[apply(ciphersuites_and_backends)]
@@ -79,23 +81,16 @@ fn test_mls_group_persistence(ciphersuite: Ciphersuite, backend: &impl OpenMlsCr
 
     // Generate KeyPackages
     let alice_key_package =
-        generate_key_package_bundle(backend, &[ciphersuite], &alice_credential, vec![])
+        generate_key_package(backend, &[ciphersuite], &alice_credential, vec![])
             .expect("An unexpected error occurred.");
 
     // Define the MlsGroup configuration
     let mls_group_config = MlsGroupConfig::test_default();
 
     // === Alice creates a group ===
-    let mut alice_group = MlsGroup::new_with_group_id(
-        backend,
-        &mls_group_config,
-        group_id,
-        alice_key_package
-            .hash_ref(backend.crypto())
-            .expect("Could not hash KeyPackage.")
-            .as_slice(),
-    )
-    .expect("An unexpected error occurred.");
+    let mut alice_group =
+        MlsGroup::new_with_group_id(backend, &mls_group_config, group_id, alice_key_package)
+            .expect("An unexpected error occurred.");
 
     // Check the internal state has changed
     assert_eq!(alice_group.state_changed(), InnerState::Changed);
@@ -155,31 +150,23 @@ fn remover(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
 
     // Generate KeyPackages
     let alice_key_package =
-        generate_key_package_bundle(backend, &[ciphersuite], &alice_credential, vec![])
+        generate_key_package(backend, &[ciphersuite], &alice_credential, vec![])
             .expect("An unexpected error occurred.");
 
-    let bob_key_package =
-        generate_key_package_bundle(backend, &[ciphersuite], &bob_credential, vec![])
-            .expect("An unexpected error occurred.");
+    let bob_key_package = generate_key_package(backend, &[ciphersuite], &bob_credential, vec![])
+        .expect("An unexpected error occurred.");
 
     let charlie_key_package =
-        generate_key_package_bundle(backend, &[ciphersuite], &charlie_credential, vec![])
+        generate_key_package(backend, &[ciphersuite], &charlie_credential, vec![])
             .expect("An unexpected error occurred.");
 
     // Define the MlsGroup configuration
     let mls_group_config = MlsGroupConfig::default();
 
     // === Alice creates a group ===
-    let mut alice_group = MlsGroup::new_with_group_id(
-        backend,
-        &mls_group_config,
-        group_id,
-        alice_key_package
-            .hash_ref(backend.crypto())
-            .expect("Could not hash KeyPackage.")
-            .as_slice(),
-    )
-    .expect("An unexpected error occurred.");
+    let mut alice_group =
+        MlsGroup::new_with_group_id(backend, &mls_group_config, group_id, alice_key_package)
+            .expect("An unexpected error occurred.");
 
     // === Alice adds Bob ===
     let (_queued_message, welcome) = alice_group
@@ -300,23 +287,16 @@ fn export_secret(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider)
 
     // Generate KeyPackages
     let alice_key_package =
-        generate_key_package_bundle(backend, &[ciphersuite], &alice_credential, vec![])
+        generate_key_package(backend, &[ciphersuite], &alice_credential, vec![])
             .expect("An unexpected error occurred.");
 
     // Define the MlsGroup configuration
     let mls_group_config = MlsGroupConfig::test_default();
 
     // === Alice creates a group ===
-    let alice_group = MlsGroup::new_with_group_id(
-        backend,
-        &mls_group_config,
-        group_id,
-        alice_key_package
-            .hash_ref(backend.crypto())
-            .expect("Could not hash KeyPackage.")
-            .as_slice(),
-    )
-    .expect("An unexpected error occurred.");
+    let alice_group =
+        MlsGroup::new_with_group_id(backend, &mls_group_config, group_id, alice_key_package)
+            .expect("An unexpected error occurred.");
 
     assert!(
         alice_group
@@ -458,27 +438,19 @@ fn test_pending_commit_logic(ciphersuite: Ciphersuite, backend: &impl OpenMlsCry
 
     // Generate KeyPackages
     let alice_key_package =
-        generate_key_package_bundle(backend, &[ciphersuite], &alice_credential, vec![])
+        generate_key_package(backend, &[ciphersuite], &alice_credential, vec![])
             .expect("An unexpected error occurred.");
 
-    let bob_key_package =
-        generate_key_package_bundle(backend, &[ciphersuite], &bob_credential, vec![])
-            .expect("An unexpected error occurred.");
+    let bob_key_package = generate_key_package(backend, &[ciphersuite], &bob_credential, vec![])
+        .expect("An unexpected error occurred.");
 
     // Define the MlsGroup configuration
     let mls_group_config = MlsGroupConfig::test_default();
 
     // === Alice creates a group ===
-    let mut alice_group = MlsGroup::new_with_group_id(
-        backend,
-        &mls_group_config,
-        group_id,
-        alice_key_package
-            .hash_ref(backend.crypto())
-            .expect("Could not hash KeyPackage.")
-            .as_slice(),
-    )
-    .expect("An unexpected error occurred.");
+    let mut alice_group =
+        MlsGroup::new_with_group_id(backend, &mls_group_config, group_id, alice_key_package)
+            .expect("An unexpected error occurred.");
 
     // There should be no pending commit after group creation.
     assert!(alice_group.pending_commit().is_none());

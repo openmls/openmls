@@ -44,6 +44,9 @@ pub enum KeyPackageNewError {
     /// The ciphersuite does not match the signature scheme.
     #[error("The ciphersuite does not match the signature scheme.")]
     CiphersuiteSignatureSchemeMismatch,
+    /// Accessing the key store failed.
+    #[error("Accessing the key store failed.")]
+    KeyStoreError,
 }
 
 /// KeyPackageBundle new error
@@ -67,4 +70,12 @@ pub enum KeyPackageBundleNewError {
     /// See [`ExtensionError`] for more details.
     #[error(transparent)]
     ExtensionError(#[from] ExtensionError),
+}
+
+/// KeyPackage new error
+#[derive(Error, Debug, PartialEq, Clone)]
+pub enum KeyPackageDeleteError {
+    /// Accessing the key store failed.
+    #[error("Accessing the key store failed.")]
+    KeyStoreError,
 }

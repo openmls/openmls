@@ -21,16 +21,12 @@ Clients need to choose a few parameters to create a `KeyPackageBundle`:
 
 Clients must specify at least one ciphersuite and not advertise ciphersuites they do not support.
 
-Clients should specify all extensions they support. Mandatory extensions, like the `LifetimeExtension` can be specified here with specific values. Mandatory extensions are created on the fly with default values if no extensions are specified. See the documentation of extensions for more details.
+Clients should specify all extensions they support. See the documentation of extensions for more details.
 
 ```rust,no_run,noplayground
-{{#include ../../../openmls/tests/book_code.rs:create_key_package_bundle}}
+{{#include ../../../openmls/tests/book_code.rs:create_key_package}}
 ```
 
-After creating the key package bundle, clients should store it in the key store so that it can be reused during group operations:
-
-```rust,no_run,noplayground
-{{#include ../../../openmls/tests/book_code.rs:store_key_package_bundle}}
-```
+This will also store the private key for the key package in the key store.
 
 All functions and structs related to key packages can be found in the [`key_packages`](https://docs.rs/crate/openmls/latest/key_packages/index.html) module.

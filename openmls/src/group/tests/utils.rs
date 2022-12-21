@@ -20,6 +20,7 @@ use ::rand::RngCore;
 use openmls_traits::key_store::OpenMlsKeyStore;
 use openmls_traits::types::SignatureScheme;
 use openmls_traits::OpenMlsCryptoProvider;
+use prelude::{config::CryptoConfig, ProtocolVersion};
 use tls_codec::Serialize;
 
 /// Configuration of a client meant to be used in a test setup.
@@ -345,12 +346,12 @@ pub(super) fn generate_credential_bundle(
 }
 
 // Helper function to generate a KeyPackageBundle
-pub(super) fn generate_key_package_bundle(
+pub(super) fn generate_key_package(
     ciphersuites: &[Ciphersuite],
     credential: &Credential,
     extensions: Vec<Extension>,
     backend: &impl OpenMlsCryptoProvider,
-) -> Result<KeyPackage, KeyPackageBundleNewError> {
+) -> Result<KeyPackage, KeyPackageNewError> {
     let credential_bundle = backend
         .key_store()
         .read(
@@ -360,18 +361,16 @@ pub(super) fn generate_key_package_bundle(
                 .expect("Error serializing signature key."),
         )
         .expect("An unexpected error occurred.");
-    let kpb = KeyPackageBundle::new(ciphersuites, &credential_bundle, backend, extensions)?;
-    let kp = kpb.key_package().clone();
-    backend
-        .key_store()
-        .store(
-            kp.hash_ref(backend.crypto())
-                .expect("Could not hash KeyPackage.")
-                .as_slice(),
-            &kpb,
-        )
-        .expect("An unexpected error occurred.");
-    Ok(kp)
+    KeyPackage::create(
+        CryptoConfig {
+            ciphersuite: ciphersuites[0],
+            version: ProtocolVersion::default(),
+        },
+        backend,
+        &credential_bundle,
+        extensions,
+        vec![], // FIXME: allow setting leaf node extensions.
+    )
 }
 
 // Helper function to generate a CredentialBundle
