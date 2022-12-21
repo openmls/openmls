@@ -12,6 +12,9 @@ use crate::{
     group::errors::ValidationError,
 };
 
+#[cfg(doc)]
+use super::{PrivateMessage, PublicMessage};
+
 use super::{
     mls_content::{ContentType, FramedContentBody, FramedContentTbs},
     AddProposal, Commit, ConfirmationTag, Credential, CredentialBundle, FramingParameters,
