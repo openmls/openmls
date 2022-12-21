@@ -48,8 +48,6 @@ impl Client {
             .credentials
             .get(&ciphersuites[0])
             .ok_or(ClientError::CiphersuiteNotSupported)?;
-        let mandatory_extensions: Vec<Extension> =
-            vec![Extension::Lifetime(LifetimeExtension::new(157788000))]; // 5 years
         let credential_bundle: CredentialBundle = self
             .crypto
             .key_store()
@@ -60,13 +58,8 @@ impl Client {
                     .expect("Error serializing signature key."),
             )
             .ok_or(ClientError::NoMatchingCredential)?;
-        let kpb = KeyPackageBundle::new(
-            ciphersuites,
-            &credential_bundle,
-            &self.crypto,
-            mandatory_extensions,
-        )
-        .expect("An unexpected error occurred.");
+        let kpb = KeyPackageBundle::new(ciphersuites, &credential_bundle, &self.crypto, vec![])
+            .expect("An unexpected error occurred.");
         let kp = kpb.key_package().clone();
         self.crypto
             .key_store()
@@ -88,8 +81,6 @@ impl Client {
             .credentials
             .get(&ciphersuite)
             .ok_or(ClientError::CiphersuiteNotSupported)?;
-        let mandatory_extensions: Vec<Extension> =
-            vec![Extension::Lifetime(LifetimeExtension::new(157788000))]; // 5 years
         let credential_bundle: CredentialBundle = self
             .crypto
             .key_store()
@@ -100,13 +91,8 @@ impl Client {
                     .expect("Error serializing signature key."),
             )
             .ok_or(ClientError::NoMatchingCredential)?;
-        let kpb = KeyPackageBundle::new(
-            &[ciphersuite],
-            &credential_bundle,
-            &self.crypto,
-            mandatory_extensions,
-        )
-        .expect("An unexpected error occurred.");
+        let kpb = KeyPackageBundle::new(&[ciphersuite], &credential_bundle, &self.crypto, vec![])
+            .expect("An unexpected error occurred.");
         let key_package = kpb.key_package().clone();
         self.crypto
             .key_store()

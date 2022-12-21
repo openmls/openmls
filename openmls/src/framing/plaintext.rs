@@ -702,6 +702,7 @@ impl VerifiableMlsAuthContent {
     }
 
     /// Set the serialized context before verifying the signature.
+    #[cfg(any(feature = "test-utils", test))]
     pub(crate) fn set_context(&mut self, serialized_context: Vec<u8>) {
         self.auth_content.tbs.serialized_context = Some(serialized_context);
     }
