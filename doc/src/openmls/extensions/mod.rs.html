@@ -286,33 +286,6 @@
 <span id="286">286</span>
 <span id="287">287</span>
 <span id="288">288</span>
-<span id="289">289</span>
-<span id="290">290</span>
-<span id="291">291</span>
-<span id="292">292</span>
-<span id="293">293</span>
-<span id="294">294</span>
-<span id="295">295</span>
-<span id="296">296</span>
-<span id="297">297</span>
-<span id="298">298</span>
-<span id="299">299</span>
-<span id="300">300</span>
-<span id="301">301</span>
-<span id="302">302</span>
-<span id="303">303</span>
-<span id="304">304</span>
-<span id="305">305</span>
-<span id="306">306</span>
-<span id="307">307</span>
-<span id="308">308</span>
-<span id="309">309</span>
-<span id="310">310</span>
-<span id="311">311</span>
-<span id="312">312</span>
-<span id="313">313</span>
-<span id="314">314</span>
-<span id="315">315</span>
 </pre><pre class="rust"><code><span class="doccomment">//! # Extensions
 //!
 //! In MLS, extensions appear in the following places:
@@ -333,7 +306,6 @@
 //! - [`RatchetTreeExtension`] (GroupInfo extension)
 //! - [`RequiredCapabilitiesExtension`] (GroupContext extension)
 //! - [`ExternalPubExtension`] (GroupInfo extension)
-//! - [`LifetimeExtension`] (KeyPackage extension)
 
 </span><span class="kw">use </span>serde::{Deserialize, Serialize};
 <span class="kw">use </span>std::{convert::TryFrom, fmt::Debug};
@@ -344,7 +316,6 @@
 <span class="kw">mod </span>codec;
 <span class="kw">mod </span>external_pub_extension;
 <span class="kw">mod </span>external_sender_extension;
-<span class="kw">mod </span>life_time_extension;
 <span class="kw">mod </span>ratchet_tree_extension;
 <span class="kw">mod </span>required_capabilities;
 <span class="kw">use </span>errors::<span class="kw-2">*</span>;
@@ -356,7 +327,6 @@
 </span><span class="kw">pub use </span>application_id_extension::ApplicationIdExtension;
 <span class="kw">pub use </span>external_pub_extension::ExternalPubExtension;
 <span class="kw">pub use </span>external_sender_extension::ExternalSendersExtension;
-<span class="kw">pub use </span>life_time_extension::LifetimeExtension;
 <span class="kw">pub use </span>ratchet_tree_extension::RatchetTreeExtension;
 <span class="kw">pub use </span>required_capabilities::RequiredCapabilitiesExtension;
 
@@ -416,11 +386,6 @@
     <span class="doccomment">/// Group context extension that contains the credentials and signature keys
     /// of senders that are permitted to send external proposals to the group.
     </span>ExternalSenders = <span class="number">5</span>,
-
-    <span class="doccomment">/// The lifetime extension represents the times between which clients will
-    /// consider a KeyPackage valid.
-    /// TODO(#819): This extension will be deleted.
-    </span>Lifetime = <span class="number">0xff01</span>,
 }
 
 <span class="kw">impl </span>TryFrom&lt;u16&gt; <span class="kw">for </span>ExtensionType {
@@ -436,7 +401,6 @@
             <span class="number">3 </span>=&gt; <span class="prelude-val">Ok</span>(ExtensionType::RequiredCapabilities),
             <span class="number">4 </span>=&gt; <span class="prelude-val">Ok</span>(ExtensionType::ExternalPub),
             <span class="number">5 </span>=&gt; <span class="prelude-val">Ok</span>(ExtensionType::ExternalSenders),
-            <span class="number">0xff01 </span>=&gt; <span class="prelude-val">Ok</span>(ExtensionType::Lifetime),
             <span class="kw">_ </span>=&gt; <span class="prelude-val">Err</span>(tls_codec::Error::DecodingError(<span class="macro">format!</span>(
                 <span class="string">&quot;{} is an unkown extension type&quot;</span>,
                 a
@@ -453,8 +417,7 @@
             | ExtensionType::RatchetTree
             | ExtensionType::RequiredCapabilities
             | ExtensionType::ExternalPub
-            | ExtensionType::ExternalSenders
-            | ExtensionType::Lifetime =&gt; <span class="bool-val">true</span>,
+            | ExtensionType::ExternalSenders =&gt; <span class="bool-val">true</span>,
         }
     }
 }
@@ -489,10 +452,6 @@
 
     <span class="doccomment">/// A [`ExternalPubExtension`]
     </span>ExternalSenders(ExternalSendersExtension),
-
-    <span class="doccomment">/// A [`LifetimeExtension`]
-    /// TODO(#819): This extension will be deleted.
-    </span>Lifetime(LifetimeExtension),
 }
 
 <span class="kw">impl </span>Extension {
@@ -560,18 +519,6 @@
         }
     }
 
-    <span class="doccomment">/// Get a reference to this extension as [`LifetimeExtension`].
-    /// Returns an [`ExtensionError::InvalidExtensionType`] if called on an
-    /// [`Extension`] that&#39;s not a [`LifetimeExtension`].
-    </span><span class="kw">pub fn </span>as_lifetime_extension(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="kw-2">&amp;</span>LifetimeExtension, ExtensionError&gt; {
-        <span class="kw">match </span><span class="self">self </span>{
-            <span class="self">Self</span>::Lifetime(e) =&gt; <span class="prelude-val">Ok</span>(e),
-            <span class="kw">_ </span>=&gt; <span class="prelude-val">Err</span>(ExtensionError::InvalidExtensionType(
-                <span class="string">&quot;This is not a LifetimeExtension&quot;</span>.into(),
-            )),
-        }
-    }
-
     <span class="doccomment">/// Returns the [`ExtensionType`]
     </span><span class="attribute">#[inline]
     </span><span class="kw">pub const fn </span>extension_type(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; ExtensionType {
@@ -581,7 +528,6 @@
             Extension::RequiredCapabilities(<span class="kw">_</span>) =&gt; ExtensionType::RequiredCapabilities,
             Extension::ExternalPub(<span class="kw">_</span>) =&gt; ExtensionType::ExternalPub,
             Extension::ExternalSenders(<span class="kw">_</span>) =&gt; ExtensionType::ExternalSenders,
-            Extension::Lifetime(<span class="kw">_</span>) =&gt; ExtensionType::Lifetime,
         }
     }
 }

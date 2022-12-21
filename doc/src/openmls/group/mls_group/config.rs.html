@@ -297,6 +297,8 @@
 <span id="297">297</span>
 <span id="298">298</span>
 <span id="299">299</span>
+<span id="300">300</span>
+<span id="301">301</span>
 </pre><pre class="rust"><code><span class="doccomment">//! Configuration module for [`MlsGroup`] configurations.
 //!
 //! ## Building an MlsGroupConfig
@@ -327,7 +329,9 @@
 //! ```
 
 </span><span class="kw">use super</span>::<span class="kw-2">*</span>;
-<span class="kw">use </span><span class="kw">crate</span>::tree::sender_ratchet::SenderRatchetConfiguration;
+<span class="kw">use crate</span>::{
+    tree::sender_ratchet::SenderRatchetConfiguration, treesync::node::leaf_node::Lifetime,
+};
 <span class="kw">use </span>serde::{Deserialize, Serialize};
 
 <span class="doccomment">/// Specifies the configuration parameters for a [`MlsGroup`]. Refer to
@@ -351,7 +355,7 @@
     <span class="doccomment">/// Sender ratchet configuration
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) sender_ratchet_configuration: SenderRatchetConfiguration,
     <span class="doccomment">/// Lifetime of the own leaf node
-    </span><span class="kw">pub</span>(<span class="kw">crate</span>) lifetime: LifetimeExtension,
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) lifetime: Lifetime,
 }
 
 <span class="kw">impl </span>MlsGroupConfig {
@@ -391,7 +395,7 @@
     }
 
     <span class="doccomment">/// Returns the [`MlsGroupConfig`] lifetime configuration.
-    </span><span class="kw">pub fn </span>lifetime(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>LifetimeExtension {
+    </span><span class="kw">pub fn </span>lifetime(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>Lifetime {
         <span class="kw-2">&amp;</span><span class="self">self</span>.lifetime
     }
 
@@ -469,7 +473,7 @@
     </span>}
 
     <span class="doccomment">/// Sets the `lifetime` property of the MlsGroupConfig.
-    </span><span class="kw">pub fn </span>lifetime(<span class="kw-2">mut </span><span class="self">self</span>, lifetime: LifetimeExtension) -&gt; <span class="self">Self </span>{
+    </span><span class="kw">pub fn </span>lifetime(<span class="kw-2">mut </span><span class="self">self</span>, lifetime: Lifetime) -&gt; <span class="self">Self </span>{
         <span class="self">self</span>.config.lifetime = lifetime;
         <span class="self">self
     </span>}

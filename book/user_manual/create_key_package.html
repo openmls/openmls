@@ -160,12 +160,7 @@
 </ul>
 <p>Clients must specify at least one ciphersuite and not advertise ciphersuites they do not support.</p>
 <p>Clients should specify all extensions they support. Mandatory extensions, like the <code>LifetimeExtension</code> can be specified here with specific values. Mandatory extensions are created on the fly with default values if no extensions are specified. See the documentation of extensions for more details.</p>
-<pre><code class="language-rust no_run noplayground">    // Define extensions
-    let extensions = vec![Extension::Lifetime(LifetimeExtension::new(
-        60 * 60 * 24 * 90, // Maximum lifetime of 90 days, expressed in seconds
-    ))];
-
-    // Fetch the credential bundle from the key store
+<pre><code class="language-rust no_run noplayground">    // Fetch the credential bundle from the key store
     let credential_bundle = backend
         .key_store()
         .read(
@@ -178,7 +173,7 @@
 
     // Create the key package bundle
     let key_package_bundle =
-        KeyPackageBundle::new(ciphersuites, &amp;credential_bundle, backend, extensions)?;</code></pre>
+        KeyPackageBundle::new(ciphersuites, &amp;credential_bundle, backend, vec![])?;</code></pre>
 <p>After creating the key package bundle, clients should store it in the key store so that it can be reused during group operations:</p>
 <pre><code class="language-rust no_run noplayground">    let key_package = key_package_bundle.key_package().clone();
 

@@ -254,12 +254,7 @@ Currently, there are two implementations available through the <a href="https://
 </ul>
 <p>Clients must specify at least one ciphersuite and not advertise ciphersuites they do not support.</p>
 <p>Clients should specify all extensions they support. Mandatory extensions, like the <code>LifetimeExtension</code> can be specified here with specific values. Mandatory extensions are created on the fly with default values if no extensions are specified. See the documentation of extensions for more details.</p>
-<pre><code class="language-rust no_run noplayground">    // Define extensions
-    let extensions = vec![Extension::Lifetime(LifetimeExtension::new(
-        60 * 60 * 24 * 90, // Maximum lifetime of 90 days, expressed in seconds
-    ))];
-
-    // Fetch the credential bundle from the key store
+<pre><code class="language-rust no_run noplayground">    // Fetch the credential bundle from the key store
     let credential_bundle = backend
         .key_store()
         .read(
@@ -272,7 +267,7 @@ Currently, there are two implementations available through the <a href="https://
 
     // Create the key package bundle
     let key_package_bundle =
-        KeyPackageBundle::new(ciphersuites, &amp;credential_bundle, backend, extensions)?;</code></pre>
+        KeyPackageBundle::new(ciphersuites, &amp;credential_bundle, backend, vec![])?;</code></pre>
 <p>After creating the key package bundle, clients should store it in the key store so that it can be reused during group operations:</p>
 <pre><code class="language-rust no_run noplayground">    let key_package = key_package_bundle.key_package().clone();
 
@@ -314,12 +309,7 @@ Currently, there are two implementations available through the <a href="https://
 <p>Before a group can be created, a group configuration (<code>MlsGroupConfiguration</code>) needs to be defined. The default values of configuration parameters are picked for safety. However, check all parameters carefully to ascertain if they match your implementation's requirements. See <a href="user_manual/group_config.html">Group configuration</a> for more details.</p>
 <p>In addition to the group configuration, the client should define all supported and required extensions for the group. The negotiation mechanism for extension in MLS consists in setting an initial list of extensions at group creation time and choosing key packages of subsequent new members accordingly.</p>
 <p>In practice, the supported and required extensions are set by adding them to the initial <code>KeyPackage</code> of the creator:</p>
-<pre><code class="language-rust no_run noplayground">    // Define extensions
-    let extensions = vec![Extension::Lifetime(LifetimeExtension::new(
-        60 * 60 * 24 * 90, // Maximum lifetime of 90 days, expressed in seconds
-    ))];
-
-    // Fetch the credential bundle from the key store
+<pre><code class="language-rust no_run noplayground">    // Fetch the credential bundle from the key store
     let credential_bundle = backend
         .key_store()
         .read(
@@ -332,7 +322,7 @@ Currently, there are two implementations available through the <a href="https://
 
     // Create the key package bundle
     let key_package_bundle =
-        KeyPackageBundle::new(ciphersuites, &amp;credential_bundle, backend, extensions)?;</code></pre>
+        KeyPackageBundle::new(ciphersuites, &amp;credential_bundle, backend, vec![])?;</code></pre>
 <p>After that, the group can be created:</p>
 <pre><code class="language-rust no_run noplayground">    let mut alice_group = MlsGroup::new(
         backend,

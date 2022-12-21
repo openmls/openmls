@@ -497,7 +497,7 @@
     ciphersuite::Secret,
     credentials::CredentialBundle,
     error::LibraryError,
-    extensions::{Extension, LifetimeExtension},
+    extensions::Extension,
     framing::SenderError,
     group::Member,
     key_packages::KeyPackageBundle,
@@ -507,7 +507,7 @@
 
 <span class="kw">use </span><span class="self">self</span>::{
     diff::{StagedTreeSyncDiff, TreeSyncDiff},
-    node::leaf_node::{Capabilities, LeafNodeSource, OpenMlsLeafNode},
+    node::leaf_node::{Capabilities, LeafNodeSource, Lifetime, OpenMlsLeafNode},
     treesync_node::{TreeSyncNode, TreeSyncNodeError},
 };
 
@@ -560,7 +560,7 @@
         backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider,
         key_package_bundle: KeyPackageBundle,
         credential_bundle: <span class="kw-2">&amp;</span>CredentialBundle,
-        life_time: LifetimeExtension,
+        life_time: Lifetime,
         capabilities: Capabilities,
         extensions: Vec&lt;Extension&gt;,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(<span class="self">Self</span>, CommitSecret), LibraryError&gt; {

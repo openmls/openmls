@@ -924,6 +924,9 @@
 <span id="924">924</span>
 <span id="925">925</span>
 <span id="926">926</span>
+<span id="927">927</span>
+<span id="928">928</span>
+<span id="929">929</span>
 </pre><pre class="rust"><code><span class="doccomment">//! This module contains the [`LeafNode`] struct and its implementation.
 </span><span class="kw">use </span>openmls_traits::{crypto::OpenMlsCrypto, types::Ciphersuite, OpenMlsCryptoProvider};
 <span class="kw">use </span>serde::{Deserialize, Serialize};
@@ -939,13 +942,16 @@
     },
     credentials::{Credential, CredentialBundle, CredentialType},
     error::LibraryError,
-    extensions::{Extension, ExtensionType, LifetimeExtension, RequiredCapabilitiesExtension},
+    extensions::{Extension, ExtensionType, RequiredCapabilitiesExtension},
     group::GroupId,
     key_packages::KeyPackageBundle,
     messages::proposals::ProposalType,
     treesync::errors::TreeSyncError,
     versions::ProtocolVersion,
 };
+
+<span class="kw">mod </span>lifetime;
+<span class="kw">pub use </span><span class="self">self</span>::lifetime::Lifetime;
 
 <span class="doccomment">/// Capabilities of [`LeafNode`]s.
 ///
@@ -973,7 +979,7 @@
 
 </span><span class="doccomment">/// All extensions defined in the MLS spec are considered &quot;default&quot; by the spec.
 </span><span class="kw">fn </span>default_extensions() -&gt; Vec&lt;ExtensionType&gt; {
-    <span class="macro">vec!</span>[ExtensionType::Lifetime, ExtensionType::ApplicationId]
+    <span class="macro">vec!</span>[ExtensionType::ApplicationId]
 }
 
 <span class="doccomment">/// All proposals defined in the MLS spec are considered &quot;default&quot; by the spec.
@@ -1159,8 +1165,8 @@
 #[repr(u8)]
 </span><span class="kw">pub enum </span>LeafNodeSource {
     <span class="attribute">#[tls_codec(discriminant = <span class="number">1</span>)]
-    </span>KeyPackage(LifetimeExtension), <span class="comment">// FIXME: remove extension and put Lifetime here
-    </span>Update,
+    </span>KeyPackage(Lifetime),
+    Update,
     Commit(ParentHash),
 }
 
@@ -1311,7 +1317,7 @@
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>from_init_key(
         init_key: HpkePublicKey,
         credential_bundle: <span class="kw-2">&amp;</span>CredentialBundle,
-        lifetime: LifetimeExtension,
+        lifetime: Lifetime,
         extensions: Vec&lt;Extension&gt;,
         backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, LibraryError&gt; {
@@ -1424,9 +1430,9 @@
         <span class="prelude-val">Ok</span>(())
     }
 
-    <span class="doccomment">/// Returns the [`LifeTimeExtension`] if present.
+    <span class="doccomment">/// Returns the [`Lifetime`] if present.
     /// `None` otherwise.
-    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>life_time(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>LifetimeExtension&gt; {
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>life_time(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>Lifetime&gt; {
         <span class="kw">if let </span>LeafNodeSource::KeyPackage(life_time) = <span class="kw-2">&amp;</span><span class="self">self</span>.payload.leaf_node_source {
             <span class="prelude-val">Some</span>(life_time)
         } <span class="kw">else </span>{

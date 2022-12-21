@@ -800,6 +800,9 @@
 <span id="800">800</span>
 <span id="801">801</span>
 <span id="802">802</span>
+<span id="803">803</span>
+<span id="804">804</span>
+<span id="805">805</span>
 </pre><pre class="rust"><code><span class="doccomment">//! ### Don&#39;t Panic!
 //!
 //! Functions in this module should never panic. However, if there is a bug in
@@ -850,7 +853,10 @@
     messages::{proposals::<span class="kw-2">*</span>, <span class="kw-2">*</span>},
     schedule::{message_secrets::<span class="kw-2">*</span>, psk::<span class="kw-2">*</span>, <span class="kw-2">*</span>},
     tree::{secret_tree::SecretTreeError, sender_ratchet::SenderRatchetConfiguration},
-    treesync::{node::leaf_node::Capabilities, <span class="kw-2">*</span>},
+    treesync::{
+        node::leaf_node::{Capabilities, Lifetime},
+        <span class="kw-2">*</span>,
+    },
     versions::ProtocolVersion,
 };
 
@@ -942,7 +948,7 @@
     version: <span class="prelude-ty">Option</span>&lt;ProtocolVersion&gt;,
     required_capabilities: <span class="prelude-ty">Option</span>&lt;RequiredCapabilitiesExtension&gt;,
     max_past_epochs: usize,
-    lifetime: <span class="prelude-ty">Option</span>&lt;LifetimeExtension&gt;,
+    lifetime: <span class="prelude-ty">Option</span>&lt;Lifetime&gt;,
 }
 
 <span class="kw">impl </span>CoreGroupBuilder {
@@ -984,8 +990,8 @@
         <span class="self">self</span>.max_past_epochs = max_past_epochs;
         <span class="self">self
     </span>}
-    <span class="doccomment">/// Set the [`LifetimeExtension`] for the own leaf in the group.
-    </span><span class="kw">pub fn </span>with_lifetime(<span class="kw-2">mut </span><span class="self">self</span>, lifetime: LifetimeExtension) -&gt; <span class="self">Self </span>{
+    <span class="doccomment">/// Set the [`Lifetime`] for the own leaf in the group.
+    </span><span class="kw">pub fn </span>with_lifetime(<span class="kw-2">mut </span><span class="self">self</span>, lifetime: Lifetime) -&gt; <span class="self">Self </span>{
         <span class="self">self</span>.lifetime = <span class="prelude-val">Some</span>(lifetime);
         <span class="self">self
     </span>}

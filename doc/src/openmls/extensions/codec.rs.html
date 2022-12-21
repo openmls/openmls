@@ -75,20 +75,13 @@
 <span id="75">75</span>
 <span id="76">76</span>
 <span id="77">77</span>
-<span id="78">78</span>
-<span id="79">79</span>
-<span id="80">80</span>
-<span id="81">81</span>
-<span id="82">82</span>
-<span id="83">83</span>
 </pre><pre class="rust"><code><span class="kw">use </span>std::io::{Read, Write};
 
 <span class="kw">use </span>tls_codec::{Deserialize, Serialize, Size, TlsByteVecU32, TlsSliceU32};
 
 <span class="kw">use </span><span class="kw">crate</span>::extensions::{
     ApplicationIdExtension, Extension, ExtensionType, ExternalPubExtension,
-    ExternalSendersExtension, LifetimeExtension, RatchetTreeExtension,
-    RequiredCapabilitiesExtension,
+    ExternalSendersExtension, RatchetTreeExtension, RequiredCapabilitiesExtension,
 };
 
 <span class="kw">impl </span>Size <span class="kw">for </span>Extension {
@@ -102,7 +95,6 @@
                 Extension::RequiredCapabilities(e) =&gt; e.tls_serialized_len(),
                 Extension::ExternalPub(e) =&gt; e.tls_serialized_len(),
                 Extension::ExternalSenders(e) =&gt; e.tls_serialized_len(),
-                Extension::Lifetime(e) =&gt; e.tls_serialized_len(),
             }
     }
 }
@@ -122,7 +114,6 @@
             Extension::RequiredCapabilities(e) =&gt; e.tls_serialize(<span class="kw-2">&amp;mut </span>extension_data),
             Extension::ExternalPub(e) =&gt; e.tls_serialize(<span class="kw-2">&amp;mut </span>extension_data),
             Extension::ExternalSenders(e) =&gt; e.tls_serialize(<span class="kw-2">&amp;mut </span>extension_data),
-            Extension::Lifetime(e) =&gt; e.tls_serialize(<span class="kw-2">&amp;mut </span>extension_data),
         }<span class="question-mark">?</span>;
         <span class="macro">debug_assert_eq!</span>(extension_data_written, extension_data_len);
         <span class="macro">debug_assert_eq!</span>(extension_data_written, extension_data.len());
@@ -158,9 +149,6 @@
             ExtensionType::ExternalSenders =&gt; Extension::ExternalSenders(
                 ExternalSendersExtension::tls_deserialize(<span class="kw-2">&amp;mut </span>extension_data)<span class="question-mark">?</span>,
             ),
-            ExtensionType::Lifetime =&gt; {
-                Extension::Lifetime(LifetimeExtension::tls_deserialize(<span class="kw-2">&amp;mut </span>extension_data)<span class="question-mark">?</span>)
-            }
         })
     }
 }
