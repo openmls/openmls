@@ -87,11 +87,9 @@
 //! // in MLS
 //!
 //! // Generate KeyPackages
-//! let sasha_key_package = generate_key_package(&[ciphersuite], &sasha_credential, backend)
-//!     .expect("An unexpected error occurred.");
+//! let sasha_key_package = generate_key_package(&[ciphersuite], &sasha_credential, backend);
 //!
-//! let maxim_key_package = generate_key_package(&[ciphersuite], &maxim_credential, backend)
-//!     .expect("An unexpected error occurred.");
+//! let maxim_key_package = generate_key_package(&[ciphersuite], &maxim_credential, backend);
 //!
 //! // Now Sasha starts a new group ...
 //! // First, fetch the credential bundle from the key store
