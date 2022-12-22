@@ -1654,7 +1654,7 @@ fn test_valsem110(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
         )
         .expect("An unexpected error occurred.");
 
-    let mut update_leaf_node = bob_leaf_node.clone();
+    let mut update_leaf_node = bob_leaf_node;
     update_leaf_node
         .rekey(
             bob_group.group_id(),
