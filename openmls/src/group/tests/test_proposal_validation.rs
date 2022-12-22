@@ -1673,52 +1673,58 @@ fn test_valsem110(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
         )
         .unwrap();
 
-    let mut update_key_package = KeyPackage::create(
-        CryptoConfig {
-            ciphersuite,
-            version: ProtocolVersion::default(),
-        },
-        backend,
-        &bob_credential_bundle,
-        vec![],
-        vec![],
-    )
-    .unwrap();
-    update_key_package.set_public_key(bob_leaf_node.encryption_key().clone());
+    // TODO[FK]: This must go in again when #819 is finished and the leaf node
+    //           uses an encryption key that's different from the init key in the
+    //           key package.
+    //           Right now we can't do this because we don't have Bob's private
+    //           key any more.
 
-    // We first go the manual route
-    let update_proposal = bob_group
-        .propose_self_update(backend, Some(update_key_package.clone()))
-        .expect("error while creating remove proposal");
+    // let mut update_key_package = KeyPackage::create(
+    //     CryptoConfig {
+    //         ciphersuite,
+    //         version: ProtocolVersion::default(),
+    //     },
+    //     backend,
+    //     &bob_credential_bundle,
+    //     vec![],
+    //     vec![],
+    // )
+    // .unwrap();
+    // update_key_package.set_public_key(bob_leaf_node.encryption_key().clone());
 
-    // Have Alice process this proposal.
-    if let ProcessedMessageContent::ProposalMessage(proposal) = alice_group
-        .process_message(backend, update_proposal.into())
-        .expect("error processing proposal")
-        .into_content()
-    {
-        alice_group.store_pending_proposal(*proposal)
-    } else {
-        panic!("Unexpected message type");
-    };
+    // // We first go the manual route
+    // let update_proposal = bob_group
+    //     .propose_self_update(backend, Some(update_key_package.clone()))
+    //     .expect("error while creating remove proposal");
 
-    // This should fail, since the hpke keys collide.
-    let err = alice_group
-        .commit_to_pending_proposals(backend)
-        .expect_err("no error while trying to commit to update proposal with differing identity");
+    // // Have Alice process this proposal.
+    // if let ProcessedMessageContent::ProposalMessage(proposal) = alice_group
+    //     .process_message(backend, update_proposal.into())
+    //     .expect("error processing proposal")
+    //     .into_content()
+    // {
+    //     alice_group.store_pending_proposal(*proposal)
+    // } else {
+    //     panic!("Unexpected message type");
+    // };
 
-    assert_eq!(
-        err,
-        CommitToPendingProposalsError::CreateCommitError(
-            CreateCommitError::ProposalValidationError(
-                ProposalValidationError::ExistingPublicKeyUpdateProposal
-            )
-        )
-    );
+    // // This should fail, since the hpke keys collide.
+    // let err = alice_group
+    //     .commit_to_pending_proposals(backend)
+    //     .expect_err("no error while trying to commit to update proposal with differing identity");
 
-    // Clear commit to try another way of committing two identical removes.
-    alice_group.clear_pending_commit();
-    alice_group.clear_pending_proposals();
+    // assert_eq!(
+    //     err,
+    //     CommitToPendingProposalsError::CreateCommitError(
+    //         CreateCommitError::ProposalValidationError(
+    //             ProposalValidationError::ExistingPublicKeyUpdateProposal
+    //         )
+    //     )
+    // );
+
+    // // Clear commit to try another way of committing two identical removes.
+    // alice_group.clear_pending_commit();
+    // alice_group.clear_pending_proposals();
 
     // We now have Alice create a commit. Then we artificially add an
     // update proposal with a colliding hpke key.

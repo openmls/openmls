@@ -122,7 +122,7 @@ impl MlsGroup {
     ) -> Result<Self, WelcomeError> {
         let resumption_psk_store =
             ResumptionPskStore::new(mls_group_config.number_of_resumption_psks);
-        let (key_package, hash_ref) = welcome
+        let (key_package, _) = welcome
             .secrets()
             .iter()
             .find_map(|egs| {
@@ -134,12 +134,6 @@ impl MlsGroup {
             })
             .ok_or(WelcomeError::NoMatchingKeyPackage)?;
 
-        // Delete the KeyPackage from the key store
-        backend
-            .key_store()
-            .delete(&hash_ref)
-            .map_err(|_| WelcomeError::KeyStoreDeletionError)?;
-
         // TODO #751
         let private_key: Vec<u8> = backend
             .key_store()
@@ -149,6 +143,14 @@ impl MlsGroup {
             key_package,
             private_key: private_key.into(),
         };
+
+        // Delete the [`KeyPackage`] and the corresponding private key from the
+        // key store
+        key_package_bundle
+            .key_package
+            .delete(backend)
+            .map_err(|_| WelcomeError::KeyStoreDeletionError)?;
+
         let mut group =
             CoreGroup::new_from_welcome(welcome, ratchet_tree, key_package_bundle, backend)?;
         group.set_max_past_epochs(mls_group_config.max_past_epochs);

@@ -207,6 +207,10 @@ fn test_welcome_ciphersuite_mismatch(
             &bob_kp,
         )
         .unwrap();
+    backend
+        .key_store()
+        .store(bob_kp.hpke_init_key().as_slice(), &bob_private_key)
+        .unwrap();
 
     let _group = MlsGroup::new_from_welcome(
         backend,
