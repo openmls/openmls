@@ -239,7 +239,7 @@ fn book_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvide
             .expect("Expected a proposal.");
         // Check that Bob was added
         assert_eq!(
-            add.add_proposal().key_package().credential(),
+            add.add_proposal().key_package().leaf_node().credential(),
             &bob_credential
         );
         // Check that Alice added Bob
@@ -782,7 +782,10 @@ fn book_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvide
         // In the case we received an Add Proposal
         if let Proposal::Add(add_proposal) = staged_proposal.proposal() {
             // Check that Bob was added
-            assert_eq!(add_proposal.key_package().credential(), &bob_credential);
+            assert_eq!(
+                add_proposal.key_package().leaf_node().credential(),
+                &bob_credential
+            );
         } else {
             panic!("Expected an AddProposal.");
         }

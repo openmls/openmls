@@ -92,7 +92,8 @@ use openmls_traits::{
 };
 use serde::{Deserialize, Serialize};
 use tls_codec::{
-    Deserialize as TlsDeserializeTrait, Serialize as TlsSerializeTrait, TlsSize, VLBytes,
+    Deserialize as TlsDeserializeTrait, Serialize as TlsSerializeTrait, TlsSerialize, TlsSize,
+    VLBytes,
 };
 
 // Private
@@ -121,25 +122,13 @@ mod test_key_packages;
 ///     Extension extensions<V>;
 /// } KeyPackageTBS;
 /// ```
-#[derive(Debug, Clone, PartialEq, TlsSize, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, TlsSize, TlsSerialize, Serialize, Deserialize)]
 struct KeyPackageTBS {
     protocol_version: ProtocolVersion,
     ciphersuite: Ciphersuite,
     init_key: HpkePublicKey,
     leaf_node: LeafNode,
-    credential: Credential, // TODO[FK]: remove
     extensions: Vec<Extension>,
-}
-
-impl tls_codec::Serialize for KeyPackageTBS {
-    fn tls_serialize<W: std::io::Write>(&self, writer: &mut W) -> Result<usize, tls_codec::Error> {
-        let mut written = self.protocol_version.tls_serialize(writer)?;
-        written += self.ciphersuite.tls_serialize(writer)?;
-        written += self.init_key.tls_serialize(writer)?;
-        written += self.leaf_node.tls_serialize(writer)?;
-        written += self.credential.tls_serialize(writer)?;
-        self.extensions.tls_serialize(writer).map(|l| l + written)
-    }
 }
 
 impl Signable for KeyPackageTBS {
@@ -173,12 +162,6 @@ impl KeyPackageTBS {
     fn add_extension(&mut self, extension: Extension) {
         self.remove_extension(extension.extension_type());
         self.extensions.push(extension);
-    }
-
-    /// Replace the credential in the KeyPackage.
-    #[cfg(any(feature = "test-utils", test))]
-    pub fn set_credential(&mut self, credential: Credential) {
-        self.credential = credential
     }
 
     /// Replace the public key in the KeyPackage.
@@ -278,10 +261,12 @@ impl KeyPackage {
         }
 
         // Verify the signature on this key package.
-        <Self as Verifiable>::verify_no_out(self, backend, &self.payload.credential).map_err(|_| {
-            log::error!("Key package signature is invalid.");
-            KeyPackageVerifyError::InvalidSignature
-        })
+        <Self as Verifiable>::verify_no_out(self, backend, self.leaf_node().credential()).map_err(
+            |_| {
+                log::error!("Key package signature is invalid.");
+                KeyPackageVerifyError::InvalidSignature
+            },
+        )
     }
 
     /// Get the application ID of this key package as byte slice.
@@ -320,11 +305,6 @@ impl KeyPackage {
         Ok(())
     }
 
-    /// Get a reference to the [`Credential`].
-    pub fn credential(&self) -> &Credential {
-        &self.payload.credential
-    }
-
     /// Compute the [`KeyPackageRef`] of this [`KeyPackage`].
     /// The [`KeyPackageRef`] is used to identify a new member that should get
     /// added to a group.
@@ -342,6 +322,11 @@ impl KeyPackage {
     /// Get the [`Ciphersuite`].
     pub fn ciphersuite(&self) -> Ciphersuite {
         self.payload.ciphersuite
+    }
+
+    /// Get the [`LeafNode`] reference.
+    pub fn leaf_node(&self) -> &LeafNode {
+        &self.payload.leaf_node
     }
 }
 
@@ -374,7 +359,6 @@ impl KeyPackage {
             ciphersuite,
             init_key: hpke_init_key,
             leaf_node,
-            credential: credential_bundle.credential().clone(),
             extensions: vec![],
         };
         Ok(key_package.sign(backend, credential_bundle)?)
@@ -402,11 +386,6 @@ impl KeyPackage {
     /// Get the `ProtocolVersion`.
     pub(crate) fn protocol_version(&self) -> ProtocolVersion {
         self.payload.protocol_version
-    }
-
-    /// Get the [`LeafNode`] reference.
-    pub(crate) fn leaf_node(&self) -> &LeafNode {
-        &self.payload.leaf_node
     }
 
     /// Get the [`LeafNode`].
@@ -437,7 +416,7 @@ impl KeyPackageBundlePayload {
     /// Replace the credential in the KeyPackage.
     #[cfg(any(feature = "test-utils", test))]
     pub fn set_credential(&mut self, credential: Credential) {
-        self.key_package_tbs.set_credential(credential)
+        self.key_package_tbs.leaf_node.set_credential(credential)
     }
     /// Replace the public key in the KeyPackage.
     #[cfg(any(feature = "test-utils", test))]

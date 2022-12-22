@@ -526,6 +526,12 @@ impl LeafNode {
     pub fn capabilities_mut(&mut self) -> &mut Capabilities {
         &mut self.payload.capabilities
     }
+
+    /// Replace the credential in the KeyPackage.
+    #[cfg(any(feature = "test-utils", test))]
+    pub(crate) fn set_credential(&mut self, credential: Credential) {
+        self.payload.credential = credential;
+    }
 }
 
 const LEAF_NODE_SIGNATURE_LABEL: &str = "LeafNodeTBS";
