@@ -1,5 +1,7 @@
 //! # The sender of a message.
 
+use crate::binary_tree::array_representation::treemath::LeafNodeIndex;
+
 use super::*;
 use tls_codec::{TlsDeserialize, TlsSerialize, TlsSize};
 
@@ -37,7 +39,7 @@ use tls_codec::{TlsDeserialize, TlsSerialize, TlsSize};
 pub enum Sender {
     /// The sender is a member of the group
     #[tls_codec(discriminant = 1)]
-    Member(u32),
+    Member(LeafNodeIndex),
     /// The sender is not a member of the group and has an external value instead
     External(TlsByteVecU8),
     /// The sender is a new member of the group that joins itself through
@@ -55,7 +57,7 @@ impl Sender {
     }
 
     /// Create a member sender.
-    pub(crate) fn build_member(leaf_index: u32) -> Self {
+    pub(crate) fn build_member(leaf_index: LeafNodeIndex) -> Self {
         Self::Member(leaf_index)
     }
 
@@ -66,7 +68,7 @@ impl Sender {
 
     /// Returns the leaf index of the [`Sender`] or [`None`] if this
     /// is not a [`Sender::Member`].
-    pub(crate) fn as_member(&self) -> Option<u32> {
+    pub(crate) fn as_member(&self) -> Option<LeafNodeIndex> {
         match self {
             Sender::Member(leaf_index) => Some(*leaf_index),
             _ => None,

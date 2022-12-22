@@ -1059,7 +1059,7 @@ fn book_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvide
     // ANCHOR_END: decrypt_external_join_proposal
     // now cleanup
     alice_group
-        .remove_members(backend, &[1])
+        .remove_members(backend, &[LeafNodeIndex::new(1)])
         .expect("Could not remove Bob");
     alice_group
         .merge_pending_commit()

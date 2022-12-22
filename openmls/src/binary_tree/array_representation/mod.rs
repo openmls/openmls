@@ -14,8 +14,7 @@
 pub(crate) mod diff;
 pub(crate) mod sorted_iter;
 pub(crate) mod tree;
-
-pub(super) mod treemath;
+pub(crate) mod treemath;
 
 // Tests
 

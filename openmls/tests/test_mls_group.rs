@@ -217,10 +217,7 @@ fn mls_group_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoPr
         }
 
         // === Bob updates and commits ===
-        let (queued_message, welcome_option) = match bob_group.self_update(backend, None) {
-            Ok(qm) => qm,
-            Err(e) => panic!("Error performing self-update: {:?}", e),
-        };
+        let (queued_message, welcome_option) = bob_group.self_update(backend, None).unwrap();
 
         let alice_processed_message = alice_group
             .process_message(backend, queued_message.clone().into())

@@ -3,7 +3,10 @@
 use openmls_traits::{crypto::OpenMlsCrypto, types::Ciphersuite, OpenMlsCryptoProvider};
 use tls_codec::{Serialize, TlsSerialize, TlsSize, TlsSliceU32, TlsSliceU8, VLByteSlice};
 
-use crate::{binary_tree::LeafIndex, ciphersuite::HpkePublicKey, error::LibraryError};
+use crate::{
+    binary_tree::array_representation::treemath::LeafNodeIndex, ciphersuite::HpkePublicKey,
+    error::LibraryError,
+};
 
 use super::{node::parent_node::ParentNode, LeafNode};
 
@@ -85,7 +88,7 @@ pub(super) struct TreeHashInput<'a> {
 
 impl<'a> TreeHashInput<'a> {
     /// Create a new [`TreeHashInput`] instance from a leaf node.
-    pub(super) fn new_leaf(leaf_index: &'a LeafIndex, leaf_node: Option<&'a LeafNode>) -> Self {
+    pub(super) fn new_leaf(leaf_index: &'a LeafNodeIndex, leaf_node: Option<&'a LeafNode>) -> Self {
         Self {
             node_type: NodeType::Leaf(LeafNodeHashInput {
                 leaf_index,
@@ -136,7 +139,7 @@ impl<'a> TreeHashInput<'a> {
 /// ```
 #[derive(TlsSerialize, TlsSize)]
 struct LeafNodeHashInput<'a> {
-    leaf_index: &'a LeafIndex,
+    leaf_index: &'a LeafNodeIndex,
     leaf_node: Option<&'a LeafNode>,
 }
 

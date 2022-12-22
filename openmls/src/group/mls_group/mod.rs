@@ -7,6 +7,7 @@ use super::{
     staged_commit::StagedCommit,
 };
 use crate::{
+    binary_tree::array_representation::treemath::LeafNodeIndex,
     credentials::{Credential, CredentialBundle},
     error::LibraryError,
     framing::*,
@@ -239,7 +240,7 @@ impl MlsGroup {
     }
 
     /// Returns the leaf index of the client in the tree owning this group.
-    pub fn own_leaf_index(&self) -> u32 {
+    pub fn own_leaf_index(&self) -> LeafNodeIndex {
         self.group.treesync().own_leaf_index()
     }
 

@@ -5,6 +5,7 @@
 //! for more description on the test vectors.
 
 use crate::{
+    binary_tree::array_representation::treemath::LeafNodeIndex,
     ciphersuite::signable::Signable,
     credentials::*,
     framing::*,
@@ -158,7 +159,7 @@ pub fn generate_test_vector(ciphersuite: Ciphersuite) -> MessagesTestVector {
     // Create proposal to remove a user
     // TODO #525: This is not a valid RemoveProposal since random_u32() is not a valid KeyPackageRef.
     let remove_proposal = RemoveProposal {
-        removed: 7, // XXX: use valid, random
+        removed: LeafNodeIndex::new(7), // XXX: use valid, random
     };
 
     let psk_id = PreSharedKeyId::new(

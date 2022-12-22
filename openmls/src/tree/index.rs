@@ -1,9 +1,11 @@
 use std::convert::TryFrom;
 use tls_codec::{TlsDeserialize, TlsSerialize, TlsSize};
 
+use crate::binary_tree::array_representation::treemath::LeafNodeIndex;
+
 use super::*;
 
-/// NodeIndex is an index to the nodes of a tree, both parent and leaf nodes.
+/// SecretTreeNodeIndex is an index to the nodes of a tree, both parent and leaf nodes.
 #[derive(
     Debug,
     Ord,
@@ -52,7 +54,7 @@ impl From<SecretTreeLeafIndex> for SecretTreeNodeIndex {
     }
 }
 
-/// LeafIndex is an index to the leaves of a tree.
+/// SecretTreeLeafLeafIndex is an index to the leaves of a tree.
 #[derive(
     Debug,
     Default,
@@ -80,6 +82,13 @@ impl SecretTreeLeafIndex {
     }
 }
 
+impl From<LeafNodeIndex> for SecretTreeLeafIndex {
+    fn from(i: LeafNodeIndex) -> SecretTreeLeafIndex {
+        SecretTreeLeafIndex(i.u32())
+    }
+}
+
+#[cfg(test)]
 impl From<u32> for SecretTreeLeafIndex {
     fn from(i: u32) -> SecretTreeLeafIndex {
         SecretTreeLeafIndex(i)

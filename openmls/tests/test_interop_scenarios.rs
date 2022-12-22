@@ -245,7 +245,12 @@ fn remove(ciphersuite: Ciphersuite) {
 
     // Have alice remove Bob.
     setup
-        .remove_clients(ActionType::Commit, group, &alice_id, &[bob_index as u32])
+        .remove_clients(
+            ActionType::Commit,
+            group,
+            &alice_id,
+            &[LeafNodeIndex::new(bob_index as u32)],
+        )
         .expect("Error removing Bob from the group.");
 
     // Check that group members agree on a group state.
@@ -304,7 +309,12 @@ fn large_group_lifecycle(ciphersuite: Ciphersuite) {
             target_id = group.random_group_member();
         }
         setup
-            .remove_clients(ActionType::Commit, group, &remover_id.1, &[target_id.0])
+            .remove_clients(
+                ActionType::Commit,
+                group,
+                &remover_id.1,
+                &[LeafNodeIndex::new(target_id.0)],
+            )
             .expect("Error while removing group member.");
         group_members = group.members.clone();
         setup.check_group_states(group);

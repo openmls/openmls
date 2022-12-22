@@ -9,8 +9,9 @@ use std::convert::TryFrom;
 use crate::test_utils::{read, write};
 
 use crate::{
-    ciphersuite::signable::*, credentials::*, framing::*, group::*, messages::*, schedule::*,
-    test_utils::*, versions::ProtocolVersion,
+    binary_tree::array_representation::treemath::LeafNodeIndex, ciphersuite::signable::*,
+    credentials::*, framing::*, group::*, messages::*, schedule::*, test_utils::*,
+    versions::ProtocolVersion,
 };
 
 use openmls_rust_crypto::OpenMlsRustCrypto;
@@ -83,7 +84,7 @@ pub fn generate_test_vector(ciphersuite: Ciphersuite) -> TranscriptTestVector {
         .random_vec(48)
         .expect("An unexpected error occurred.");
     let framing_parameters = FramingParameters::new(&aad, WireFormat::MlsPlaintext);
-    let sender = Sender::build_member(7); // XXX: use random, valid sender
+    let sender = Sender::build_member(LeafNodeIndex::new(7)); // XXX: use random, valid sender
     let mut commit = MlsAuthContent::commit(
         framing_parameters,
         sender,

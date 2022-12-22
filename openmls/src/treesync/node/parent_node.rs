@@ -11,7 +11,7 @@ use thiserror::*;
 use tls_codec::{TlsSerialize, TlsSize, VLBytes};
 
 use crate::{
-    binary_tree::LeafIndex,
+    binary_tree::array_representation::treemath::LeafNodeIndex,
     ciphersuite::{HpkePrivateKey, HpkePublicKey},
     error::LibraryError,
     messages::PathSecret,
@@ -168,12 +168,12 @@ impl ParentNode {
     }
 
     /// Get the list of unmerged leaves.
-    pub(in crate::treesync) fn unmerged_leaves(&self) -> &[LeafIndex] {
+    pub(in crate::treesync) fn unmerged_leaves(&self) -> &[LeafNodeIndex] {
         self.unmerged_leaves.list()
     }
 
-    /// Add a [`LeafIndex`] to the node's list of unmerged leaves.
-    pub(in crate::treesync) fn add_unmerged_leaf(&mut self, leaf_index: LeafIndex) {
+    /// Add a [`LeafNodeIndex`] to the node's list of unmerged leaves.
+    pub(in crate::treesync) fn add_unmerged_leaf(&mut self, leaf_index: LeafNodeIndex) {
         self.unmerged_leaves.add(leaf_index);
     }
 
@@ -215,7 +215,7 @@ impl ParentNode {
 /// A helper struct that maintains a sorted list of unmerged leaves.
 #[derive(Debug, Eq, PartialEq, Clone, Serialize, Deserialize, TlsSize, TlsSerialize)]
 pub(in crate::treesync) struct UnmergedLeaves {
-    list: Vec<LeafIndex>,
+    list: Vec<LeafNodeIndex>,
 }
 
 impl UnmergedLeaves {
@@ -223,7 +223,7 @@ impl UnmergedLeaves {
         Self { list: Vec::new() }
     }
 
-    pub(in crate::treesync) fn add(&mut self, leaf_index: LeafIndex) {
+    pub(in crate::treesync) fn add(&mut self, leaf_index: LeafNodeIndex) {
         // The list of unmerged leaves must be sorted. This is enforced upon
         // deserialization. We can therefore safely insert the new leaf at the
         // correct position.
@@ -231,13 +231,13 @@ impl UnmergedLeaves {
         self.list.insert(position, leaf_index);
     }
 
-    pub(in crate::treesync) fn list(&self) -> &[LeafIndex] {
+    pub(in crate::treesync) fn list(&self) -> &[LeafNodeIndex] {
         self.list.as_slice()
     }
 
     /// Set the list of unmerged leaves.
     #[cfg(test)]
-    pub(in crate::treesync) fn set_list(&mut self, list: Vec<LeafIndex>) {
+    pub(in crate::treesync) fn set_list(&mut self, list: Vec<LeafNodeIndex>) {
         self.list = list;
     }
 }
@@ -249,10 +249,10 @@ pub(in crate::treesync) enum UnmergedLeavesError {
     NotSorted,
 }
 
-impl TryFrom<Vec<LeafIndex>> for UnmergedLeaves {
+impl TryFrom<Vec<LeafNodeIndex>> for UnmergedLeaves {
     type Error = UnmergedLeavesError;
 
-    fn try_from(list: Vec<LeafIndex>) -> Result<Self, Self::Error> {
+    fn try_from(list: Vec<LeafNodeIndex>) -> Result<Self, Self::Error> {
         // The list of unmerged leaves must be sorted.
         if !list.windows(2).all(|e| e[0] < e[1]) {
             return Err(UnmergedLeavesError::NotSorted);

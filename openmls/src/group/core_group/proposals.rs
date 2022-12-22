@@ -1,4 +1,5 @@
 use crate::{
+    binary_tree::array_representation::treemath::LeafNodeIndex,
     ciphersuite::hash_ref::ProposalRef,
     error::LibraryError,
     framing::*,
@@ -330,14 +331,14 @@ impl ProposalQueue {
         sender: Sender,
         proposal_store: &'a ProposalStore,
         inline_proposals: &'a [Proposal],
-        own_index: u32,
+        own_index: LeafNodeIndex,
     ) -> Result<(Self, bool), ProposalQueueError> {
         #[derive(Clone, Default)]
         struct Member {
             updates: Vec<QueuedProposal>,
             removes: Vec<QueuedProposal>,
         }
-        let mut members = HashMap::<u32, Member>::new();
+        let mut members = HashMap::<LeafNodeIndex, Member>::new();
         let mut adds: HashSet<ProposalRef> = HashSet::new();
         let mut valid_proposals: HashSet<ProposalRef> = HashSet::new();
         let mut proposal_pool: HashMap<ProposalRef, QueuedProposal> = HashMap::new();
