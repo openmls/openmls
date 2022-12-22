@@ -48,7 +48,7 @@ impl MlsGroup {
                     .clone();
 
                 // FIXME[FK]: The OpenMlsLeafNode should go away. Then we don't
-                //            need the private key here anymore.
+                //            need the private key here anymore. (#819)
                 let private_key: Vec<u8> = backend
                     .key_store()
                     .read(encryption_key.as_slice())
@@ -102,7 +102,7 @@ impl MlsGroup {
     pub fn propose_self_update(
         &mut self,
         backend: &impl OpenMlsCryptoProvider,
-        key_package: Option<KeyPackage>, // FIXME[FK]: this must be a leaf node.
+        key_package: Option<KeyPackage>, // FIXME[FK]: #819 this must be a leaf node.
     ) -> Result<MlsMessageOut, ProposeSelfUpdateError> {
         self.is_operational()?;
 

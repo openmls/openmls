@@ -40,7 +40,7 @@ fn generate_key_package(
     backend: &impl OpenMlsCryptoProvider,
     ciphersuites: &[Ciphersuite],
     credential: &Credential,
-    extensions: Vec<Extension>, // TODO[FK]: allow setting leaf node extensions
+    extensions: Vec<Extension>, // TODO[FK]: #819 allow setting leaf node extensions
 ) -> KeyPackage {
     let credential_bundle = backend
         .key_store()

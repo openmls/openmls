@@ -431,13 +431,6 @@ fn test_valsem101(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
     let dave_credential_bundle =
         CredentialBundle::from_parts("Dave".into(), charlie_credential_bundle.key_pair());
 
-    // TODO[FK]: What's really being tested here?
-    // let mut kpb_payload: KeyPackageTBS = charlie_key_package.into();
-    // kpb_payload.set_credential(dave_credential_bundle.credential().clone());
-    // let dave_key_package_bundle = kpb_payload
-    //     .sign(backend, &dave_credential_bundle)
-    //     .expect("error signing credential bundle");
-
     let dave_key_package = KeyPackage::create(
         CryptoConfig {
             ciphersuite,
@@ -919,7 +912,6 @@ fn test_valsem105(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
         match alice_and_bob_share_keys {
             KeyUniqueness::NegativeSameKey => {
                 // Create a new key package for bob with the init key from Charlie.
-                // XXX[FK]: Do we delete the private key because there's only one?
                 bob_key_package = KeyPackage::new_from_keys_test(
                     CryptoConfig {
                         ciphersuite,

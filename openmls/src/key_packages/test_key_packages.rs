@@ -40,7 +40,7 @@ fn generate_key_package(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoPr
     assert!(key_package
         .verify_no_out(backend, credential_bundle.credential())
         .is_ok());
-    // TODO[FK]: replace with `validate`
+    // TODO[FK]: #819 #133 replace with `validate`
     assert!(KeyPackage::verify(&key_package, backend).is_ok());
 }
 
@@ -85,7 +85,7 @@ fn application_id_extension(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryp
     assert!(key_package
         .verify_no_out(backend, credential_bundle.credential())
         .is_ok());
-    // TODO[FK]: replace with `validate`
+    // TODO[FK]: #819 #133 replace with `validate`
     assert!(KeyPackage::verify(&key_package, backend).is_ok());
 
     // Check ID

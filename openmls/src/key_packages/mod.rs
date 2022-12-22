@@ -133,7 +133,7 @@ struct KeyPackageTBS {
     ciphersuite: Ciphersuite,
     init_key: HpkePublicKey,
     leaf_node: LeafNode,
-    credential: Credential, // TODO[FK]: remove
+    credential: Credential, // TODO[FK]: #819 #893 remove
     extensions: Vec<Extension>,
 }
 
