@@ -7,7 +7,7 @@ use tls_codec::{
 };
 
 use crate::{
-    binary_tree::array_representation::treemath::LeafNodeIndex,
+    binary_tree::array_representation::LeafNodeIndex,
     ciphersuite::{
         signable::{Signable, SignedStruct, Verifiable},
         HpkePrivateKey, HpkePublicKey, Secret, Signature, SignaturePublicKey,

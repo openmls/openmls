@@ -26,7 +26,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::{
     binary_tree::{
-        array_representation::treemath::{is_node_in_tree, LeafNodeIndex},
+        array_representation::{is_node_in_tree, LeafNodeIndex},
         MlsBinaryTree, MlsBinaryTreeError,
     },
     ciphersuite::Secret,

@@ -1,6 +1,6 @@
 //! # The sender of a message.
 
-use crate::binary_tree::array_representation::treemath::LeafNodeIndex;
+use crate::binary_tree::array_representation::LeafNodeIndex;
 
 use super::*;
 use tls_codec::{TlsDeserialize, TlsSerialize, TlsSize};

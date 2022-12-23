@@ -5,7 +5,7 @@
 use core_group::create_commit_params::CreateCommitParams;
 use tls_codec::Serialize;
 
-use crate::{binary_tree::array_representation::treemath::LeafNodeIndex, treesync::LeafNode};
+use crate::{binary_tree::array_representation::LeafNodeIndex, treesync::LeafNode};
 
 use super::{
     errors::{AddMembersError, LeaveGroupError, RemoveMembersError},

@@ -4,7 +4,7 @@
 //! Proposals, Commits and application messages.
 
 use crate::{
-    binary_tree::array_representation::treemath::LeafNodeIndex,
+    binary_tree::array_representation::LeafNodeIndex,
     ciphersuite::signable::{Signable, SignedStruct, Verifiable, VerifiedStruct},
     error::LibraryError,
     group::errors::ValidationError,

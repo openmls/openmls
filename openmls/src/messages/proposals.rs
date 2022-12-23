@@ -6,7 +6,7 @@
 //! [`ProposalType::is_supported()`] can be used.
 
 use crate::{
-    binary_tree::array_representation::treemath::LeafNodeIndex,
+    binary_tree::array_representation::LeafNodeIndex,
     ciphersuite::hash_ref::{make_proposal_ref, KeyPackageRef, ProposalRef},
     error::LibraryError,
     extensions::Extension,

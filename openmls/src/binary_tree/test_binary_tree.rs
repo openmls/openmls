@@ -2,7 +2,10 @@ use std::collections::HashSet;
 
 use crate::binary_tree::{MlsBinaryTree, MlsBinaryTreeDiffError, MlsBinaryTreeError};
 
-use super::{array_representation::treemath::TreeNodeIndex, LeafNodeIndex};
+use super::{
+    array_representation::{TreeNodeIndex, TreeSize},
+    LeafNodeIndex,
+};
 
 #[test]
 fn test_tree_basics() {
@@ -18,7 +21,7 @@ fn test_tree_basics() {
     let tree1 = MlsBinaryTree::new(nodes.clone()).expect("Error when creating tree from nodes.");
 
     // Test size reporting
-    assert_eq!(tree1.size(), 3);
+    assert_eq!(tree1.size(), TreeSize::new(3));
     assert_eq!(tree1.leaf_count(), 2);
 
     // Test tree creation: Too many nodes (only in cases where usize is 64 bit).

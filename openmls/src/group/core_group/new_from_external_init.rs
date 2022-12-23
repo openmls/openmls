@@ -1,5 +1,5 @@
 use crate::{
-    binary_tree::array_representation::treemath::LeafNodeIndex,
+    binary_tree::array_representation::LeafNodeIndex,
     ciphersuite::signable::Verifiable,
     group::errors::ExternalCommitError,
     messages::proposals::{ExternalInitProposal, Proposal},

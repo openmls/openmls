@@ -6,7 +6,7 @@ use array_representation::{
 };
 
 // Public
-pub use array_representation::treemath::LeafNodeIndex;
+pub use array_representation::LeafNodeIndex;
 
 // Crate
 pub(crate) mod array_representation;
@@ -25,6 +25,3 @@ pub(crate) type MlsBinaryTreeDiff<'a, Node> = AbDiff<'a, Node>;
 pub(crate) type StagedMlsBinaryTreeDiff<Node> = StagedAbDiff<Node>;
 pub(crate) type MlsBinaryTreeError = ABinaryTreeError;
 pub(crate) type MlsBinaryTreeDiffError = ABinaryTreeDiffError;
-
-/// A tree can be at most `2^32 - 1` nodes big.
-pub(crate) type TreeSize = u32;

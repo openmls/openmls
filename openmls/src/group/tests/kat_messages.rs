@@ -5,7 +5,7 @@
 //! for more description on the test vectors.
 
 use crate::{
-    binary_tree::array_representation::treemath::LeafNodeIndex,
+    binary_tree::array_representation::LeafNodeIndex,
     ciphersuite::signable::Signable,
     credentials::*,
     framing::*,

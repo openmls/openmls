@@ -20,14 +20,14 @@ use serde::{Deserialize, Serialize};
 use std::{collections::BTreeMap, fmt::Debug};
 use thiserror::Error;
 
-use crate::{binary_tree::TreeSize, error::LibraryError};
+use crate::error::LibraryError;
 
 use super::{
     sorted_iter::sorted_iter,
     tree::{ABinaryTree, ABinaryTreeError},
     treemath::{
-        common_direct_path, direct_path, left, lowest_common_ancestor, right, root, sibling,
-        LeafNodeIndex, ParentNodeIndex, TreeNodeIndex,
+        common_direct_path, copath, direct_path, left, lowest_common_ancestor, right, root,
+        LeafNodeIndex, ParentNodeIndex, TreeNodeIndex, TreeSize,
     },
 };
 
@@ -105,10 +105,10 @@ impl<'a, T: Clone + Debug + Default> AbDiff<'a, T> {
         new_leaf: T,
     ) -> Result<LeafNodeIndex, ABinaryTreeDiffError> {
         // Prevent the tree from becoming too large.
-        if self.size() >= u32::MAX - 1 {
+        if self.size().u32() >= u32::MAX - 1 {
             return Err(ABinaryTreeDiffError::TreeTooLarge);
         }
-        let original_size = self.size();
+        let original_size = self.size().u32();
         let previous_parent = self
             .diff
             .insert(TreeNodeIndex::new(original_size), parent_node);
@@ -118,7 +118,7 @@ impl<'a, T: Clone + Debug + Default> AbDiff<'a, T> {
             .insert(TreeNodeIndex::new(original_size + 1), new_leaf);
         debug_assert!(previous_leaf.is_none());
         // Increase size
-        self.size += 2;
+        self.size.inc(2);
         Ok(LeafNodeIndex::new(self.leaf_count() - 1))
     }
 
@@ -167,7 +167,7 @@ impl<'a, T: Clone + Debug + Default> AbDiff<'a, T> {
         // We only compare indices, not the actual leaves
         let cmp = |&(x, _): &(LeafNodeIndex, &T)| x;
 
-        sorted_iter(a_iter, b_iter, cmp, self.size as usize)
+        sorted_iter(a_iter, b_iter, cmp, self.size.usize())
     }
 
     // Functions related to the direct paths of leaves
@@ -200,6 +200,11 @@ impl<'a, T: Clone + Debug + Default> AbDiff<'a, T> {
         }
     }
 
+    /// Returns the copath of a leaf node.
+    pub(crate) fn copath(&self, leaf_index: LeafNodeIndex) -> Vec<TreeNodeIndex> {
+        copath(leaf_index, self.size())
+    }
+
     // Functions related to the shared subtree of two given leaves
     //////////////////////////////////////////////////////////////
 
@@ -221,8 +226,8 @@ impl<'a, T: Clone + Debug + Default> AbDiff<'a, T> {
         // the bound of the tree), there is a non-leaf root node that is in the
         // direct path of all leaves.
         debug_assert!(leaf_index_1 != leaf_index_2);
-        debug_assert!(leaf_index_1.to_tree_index() < self.size);
-        debug_assert!(leaf_index_2.to_tree_index() < self.size);
+        debug_assert!(leaf_index_1.to_tree_index() < self.size.u32());
+        debug_assert!(leaf_index_2.to_tree_index() < self.size.u32());
 
         let subtree_root_node_index = lowest_common_ancestor(leaf_index_1, leaf_index_2);
         let leaf_index_1_direct_path = self.direct_path(leaf_index_1);
@@ -242,8 +247,8 @@ impl<'a, T: Clone + Debug + Default> AbDiff<'a, T> {
         leaf_index_2: LeafNodeIndex,
     ) -> TreeNodeIndex {
         debug_assert!(leaf_index_1 != leaf_index_2);
-        debug_assert!(leaf_index_1.to_tree_index() < self.size);
-        debug_assert!(leaf_index_2.to_tree_index() < self.size);
+        debug_assert!(leaf_index_1.to_tree_index() < self.size.u32());
+        debug_assert!(leaf_index_2.to_tree_index() < self.size.u32());
 
         // We want to return the position of the lowest common ancestor in the
         // direct path of `leaf_index_1` (i.e. the sender_leaf_index).
@@ -295,16 +300,16 @@ impl<'a, T: Clone + Debug + Default> AbDiff<'a, T> {
         // We only compare indices, not the actual nodes
         let cmp = |&(x, _): &(TreeNodeIndex, &T)| x;
 
-        sorted_iter(a_iter, b_iter, cmp, self.size as usize)
+        sorted_iter(a_iter, b_iter, cmp, self.size.usize())
     }
 
     /// Returns the leaf count of the diff.
     pub(crate) fn leaf_count(&self) -> u32 {
-        ((self.size - 1) / 2) + 1
+        ((self.size.u32() - 1) / 2) + 1
     }
 
     /// Returns the size of the diff tree.
-    pub(crate) fn size(&self) -> u32 {
+    pub(crate) fn size(&self) -> TreeSize {
         self.size
     }
 
@@ -335,16 +340,7 @@ impl<'a, T: Clone + Debug + Default> AbDiff<'a, T> {
         root(self.size())
     }
 
-    /// Returns a [`TreeNodeIndex`] to the sibling of the referenced node. Returns
-    /// an error when the given [`TreeNodeIndex`] points to the root node or to a
-    /// node not in the tree.
-    pub(crate) fn sibling(&self, node_index: TreeNodeIndex) -> TreeNodeIndex {
-        sibling(node_index, self.size())
-    }
-
     /// Returns a [`TreeNodeIndex`] to the left child of the referenced node.
-    /// Returns an error when the given [`TreeNodeIndex`] points to a leaf node or
-    /// to a node not in the tree.
     pub(crate) fn left_child(&self, node_index: ParentNodeIndex) -> TreeNodeIndex {
         left(node_index)
     }
@@ -409,10 +405,12 @@ impl<'a, T: Clone + Debug + Default> AbDiff<'a, T> {
     /// small (i.e. < 1 node).
     fn remove_node(&mut self) -> Result<(), ABinaryTreeDiffError> {
         // First make sure that the tree isn't getting too small.
-        if self.size() <= 1 {
+        if self.size().u32() <= 1 {
             return Err(ABinaryTreeDiffError::TreeTooSmall);
         }
-        let removed = self.diff.remove(&TreeNodeIndex::new(&self.size() - 1));
+        let removed = self
+            .diff
+            .remove(&TreeNodeIndex::new(&self.size().u32() - 1));
         if self.size() > self.original_tree.size() {
             // If the diff extended the tree, there should be a node to remove
             // here.
@@ -420,7 +418,7 @@ impl<'a, T: Clone + Debug + Default> AbDiff<'a, T> {
         }
         // There should be a node here to remove.
         // We decrease the size to signal that a node was removed from the diff.
-        self.size -= 1;
+        self.size.dec(1);
         Ok(())
     }
 

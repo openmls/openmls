@@ -6,7 +6,7 @@ use thiserror::Error;
 use tls_codec::VLByteSlice;
 
 use crate::{
-    binary_tree::{array_representation::treemath::LeafNodeIndex, MlsBinaryTreeDiffError},
+    binary_tree::{array_representation::LeafNodeIndex, MlsBinaryTreeDiffError},
     error::LibraryError,
 };
 

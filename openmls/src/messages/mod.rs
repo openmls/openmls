@@ -4,7 +4,7 @@
 //! as well as Proposals & the group info used for External Commits.
 
 use crate::{
-    binary_tree::array_representation::treemath::LeafNodeIndex,
+    binary_tree::array_representation::LeafNodeIndex,
     ciphersuite::hash_ref::KeyPackageRef,
     ciphersuite::{signable::*, *},
     error::LibraryError,

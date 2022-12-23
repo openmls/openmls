@@ -13,10 +13,8 @@ use thiserror::Error;
 
 use super::{
     diff::{AbDiff, StagedAbDiff},
-    treemath::{LeafNodeIndex, TreeNodeIndex},
+    treemath::{LeafNodeIndex, TreeNodeIndex, TreeSize},
 };
-
-use crate::binary_tree::TreeSize;
 
 #[cfg_attr(test, derive(PartialEq))]
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -67,16 +65,16 @@ impl<T: Clone + Debug + Default> ABinaryTree<T> {
     }
 
     /// Return the number of nodes in the tree.
-    pub(crate) fn size(&self) -> u32 {
+    pub(crate) fn size(&self) -> TreeSize {
         // We can cast the size to a u32, because the maximum size of a
         // tree is 2^32.
-        self.nodes.len() as u32
+        TreeSize::new(self.nodes.len() as u32)
     }
 
     /// Return the number of leaves in the tree.
-    pub(crate) fn leaf_count(&self) -> TreeSize {
+    pub(crate) fn leaf_count(&self) -> u32 {
         // This works, because the tree always has at least one leaf.
-        ((self.size() - 1) / 2) + 1
+        ((self.size().u32() - 1) / 2) + 1
     }
 
     /// Returns an iterator over a tuple of the node index and a reference to a
@@ -116,15 +114,15 @@ impl<T: Clone + Debug + Default> ABinaryTree<T> {
     pub(crate) fn merge_diff(&mut self, diff: StagedAbDiff<T>) {
         // If the size of the diff is smaller than the tree, truncate the tree
         // to the size of the diff.
-        self.nodes.truncate(diff.tree_size() as usize);
+        self.nodes.truncate(diff.tree_size().usize());
 
         // Iterate over the BTreeMap in order of indices.
         for (node_index, diff_node) in diff.diff().into_iter() {
             // Assert that the node index is within the range of the tree.
-            debug_assert!(node_index.u32() <= self.size());
+            debug_assert!(node_index.u32() <= self.size().u32());
 
             // If the node would extend the tree, push it to the vector of nodes.
-            if node_index.u32() == self.size() {
+            if node_index.u32() == self.size().u32() {
                 self.nodes.push(diff_node);
             } else {
                 // If the node_index points to somewhere within the size of the
@@ -142,7 +140,7 @@ impl<T: Clone + Debug + Default> ABinaryTree<T> {
     }
 
     /// Return a reference to the leaf at the given `LeafNodeIndex`, or the default
-    /// value if the leaf is not found..
+    /// value if the leaf is not found.
     pub(crate) fn leaf(&self, leaf_index: LeafNodeIndex) -> &T {
         self.nodes
             .get(leaf_index.to_tree_index() as usize)

@@ -1,7 +1,7 @@
 use std::convert::TryFrom;
 use tls_codec::{TlsDeserialize, TlsSerialize, TlsSize};
 
-use crate::binary_tree::array_representation::treemath::LeafNodeIndex;
+use crate::binary_tree::array_representation::LeafNodeIndex;
 
 use super::*;
 

@@ -35,7 +35,7 @@ use super::{
 
 use crate::{
     binary_tree::{
-        array_representation::treemath::{direct_path, LeafNodeIndex, TreeNodeIndex},
+        array_representation::{direct_path, LeafNodeIndex, TreeNodeIndex},
         MlsBinaryTreeDiff, StagedMlsBinaryTreeDiff,
     },
     ciphersuite::{HpkePrivateKey, HpkePublicKey, Secret},
@@ -569,11 +569,8 @@ impl<'a> TreeSyncDiff<'a> {
         );
 
         let mut copath_resolutions = Vec::new();
-        for node_index in &full_path {
-            // If sibling is not a blank, return its HpkePublicKey.
-            let sibling_id = self.diff.sibling(*node_index);
-
-            let resolution = self.resolution(sibling_id, excluded_indices)?;
+        for node_index in self.diff.copath(leaf_index) {
+            let resolution = self.resolution(node_index, excluded_indices)?;
             copath_resolutions.push(resolution);
         }
         Ok(copath_resolutions)

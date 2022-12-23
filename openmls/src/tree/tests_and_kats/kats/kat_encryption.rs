@@ -79,7 +79,7 @@
 
 use crate::messages::proposals::RemoveProposal;
 use crate::{
-    binary_tree::array_representation::treemath::LeafNodeIndex,
+    binary_tree::array_representation::LeafNodeIndex,
     credentials::{CredentialBundle, CredentialType},
     framing::*,
     group::*,

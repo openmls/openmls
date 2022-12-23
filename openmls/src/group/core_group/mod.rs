@@ -37,7 +37,7 @@ mod test_proposals;
 use super::errors::CreateGroupContextExtProposalError;
 
 use crate::{
-    binary_tree::array_representation::treemath::LeafNodeIndex,
+    binary_tree::array_representation::LeafNodeIndex,
     ciphersuite::{signable::Signable, HpkePublicKey},
     credentials::*,
     error::LibraryError,

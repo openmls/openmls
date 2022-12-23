@@ -12,9 +12,9 @@ use openmls_traits::{
 use tls_codec::Serialize;
 
 use crate::{
-    binary_tree::array_representation::treemath::LeafNodeIndex,
-    ciphersuite::hash_ref::KeyPackageRef, credentials::*, extensions::*, framing::MlsMessageIn,
-    framing::*, group::*, key_packages::*, messages::*, treesync::node::Node,
+    binary_tree::array_representation::LeafNodeIndex, ciphersuite::hash_ref::KeyPackageRef,
+    credentials::*, extensions::*, framing::MlsMessageIn, framing::*, group::*, key_packages::*,
+    messages::*, treesync::node::Node,
 };
 
 use super::{errors::ClientError, ActionType};

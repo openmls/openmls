@@ -7,7 +7,7 @@ use super::{
     staged_commit::StagedCommit,
 };
 use crate::{
-    binary_tree::array_representation::treemath::LeafNodeIndex,
+    binary_tree::array_representation::LeafNodeIndex,
     credentials::{Credential, CredentialBundle},
     error::LibraryError,
     framing::*,

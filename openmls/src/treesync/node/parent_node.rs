@@ -11,7 +11,7 @@ use thiserror::*;
 use tls_codec::{TlsSerialize, TlsSize, VLBytes};
 
 use crate::{
-    binary_tree::array_representation::treemath::LeafNodeIndex,
+    binary_tree::array_representation::LeafNodeIndex,
     ciphersuite::{HpkePrivateKey, HpkePublicKey},
     error::LibraryError,
     messages::PathSecret,

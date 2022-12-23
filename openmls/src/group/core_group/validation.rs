@@ -4,7 +4,7 @@
 use std::collections::HashSet;
 
 use crate::{
-    binary_tree::array_representation::treemath::LeafNodeIndex,
+    binary_tree::array_representation::LeafNodeIndex,
     error::LibraryError,
     extensions::ExtensionType,
     framing::Sender,

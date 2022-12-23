@@ -4,7 +4,7 @@ use openmls_traits::{crypto::OpenMlsCrypto, types::Ciphersuite, OpenMlsCryptoPro
 use tls_codec::{Serialize, TlsSerialize, TlsSize, TlsSliceU32, TlsSliceU8, VLByteSlice};
 
 use crate::{
-    binary_tree::array_representation::treemath::LeafNodeIndex, ciphersuite::HpkePublicKey,
+    binary_tree::array_representation::LeafNodeIndex, ciphersuite::HpkePublicKey,
     error::LibraryError,
 };
 

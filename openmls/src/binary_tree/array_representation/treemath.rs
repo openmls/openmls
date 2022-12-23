@@ -2,8 +2,6 @@ use serde::{Deserialize, Serialize};
 use std::cmp::Ordering;
 use tls_codec::{TlsDeserialize, TlsSerialize, TlsSize};
 
-use crate::binary_tree::TreeSize;
-
 /// LeafNodeIndex references a leaf node in a tree.
 #[derive(
     Debug,
@@ -44,7 +42,8 @@ impl LeafNodeIndex {
     }
 
     /// Warning: Only use when the node index represents a leaf node
-    pub(super) fn from_tree_index(node_index: u32) -> Self {
+    fn from_tree_index(node_index: u32) -> Self {
+        debug_assert!(node_index % 2 == 0);
         LeafNodeIndex(node_index / 2)
     }
 }
@@ -66,7 +65,7 @@ impl ParentNodeIndex {
     }
 
     /// Warning: Only use when the node index represents a parent node
-    pub(super) fn from_tree_index(node_index: u32) -> Self {
+    fn from_tree_index(node_index: u32) -> Self {
         debug_assert!(node_index > 0);
         debug_assert!(node_index % 2 == 1);
         ParentNodeIndex((node_index - 1) / 2)
@@ -128,6 +127,41 @@ impl PartialOrd for TreeNodeIndex {
     }
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
+pub(crate) struct TreeSize(u32);
+
+impl TreeSize {
+    /// Create a new `TreeSize` from a `u32`.
+    pub(crate) fn new(size: u32) -> Self {
+        TreeSize(size)
+    }
+
+    /// Return the inner value as `u32`.
+    pub(super) fn u32(&self) -> u32 {
+        self.0
+    }
+
+    /// Return the inner value as `usize`.
+    pub(super) fn usize(&self) -> usize {
+        self.0 as usize
+    }
+
+    /// Increase the size by `n`.
+    pub(super) fn inc(&mut self, n: u32) {
+        self.0 += n;
+    }
+
+    /// Decrease the size by `n`.
+    pub(super) fn dec(&mut self, n: u32) {
+        debug_assert!(self.0 >= n);
+        if self.0 >= n {
+            self.0 -= n;
+        } else {
+            self.0 = 0;
+        }
+    }
+}
+
 fn log2(x: u32) -> usize {
     if x == 0 {
         return 0;
@@ -151,7 +185,8 @@ fn level(index: u32) -> usize {
     k
 }
 
-pub(super) fn root(size: u32) -> TreeNodeIndex {
+pub(super) fn root(size: TreeSize) -> TreeNodeIndex {
+    let size = size.u32();
     debug_assert!(size > 0);
     TreeNodeIndex::new((1 << log2(size)) - 1)
 }
@@ -170,7 +205,8 @@ fn left_helper(x: u32) -> u32 {
     x ^ (0x01 << (k - 1))
 }
 
-pub(super) fn right(index: ParentNodeIndex, size: u32) -> TreeNodeIndex {
+pub(super) fn right(index: ParentNodeIndex, size: TreeSize) -> TreeNodeIndex {
+    let size = size.u32();
     debug_assert!(size > 0);
     debug_assert!(index.to_tree_index() < size);
     let x = index.to_tree_index();
@@ -205,16 +241,22 @@ pub(super) fn parent(x: TreeNodeIndex) -> ParentNodeIndex {
 } */
 
 // The parent here might be beyond the right edge of the tree.
-pub fn parent_step(x: u32) -> u32 {
+fn parent_step(x: u32) -> u32 {
     let k = level(x);
     let b = (x >> (k + 1)) & 0x01;
     (x | (1 << k)) ^ (b << (k + 1))
 }
 
+/// Re-exported for testing.
+#[cfg(any(feature = "test-utils", test))]
+pub(crate) fn test_parent(index: TreeNodeIndex, size: TreeSize) -> ParentNodeIndex {
+    parent(index, size)
+}
+
 // This function is only safe to use if index <= size.
-pub(super) fn parent(index: TreeNodeIndex, size: u32) -> ParentNodeIndex {
+fn parent(index: TreeNodeIndex, size: TreeSize) -> ParentNodeIndex {
     let x = index.u32();
-    let n = size;
+    let n = size.u32();
     let mut p = parent_step(x);
     while p >= n {
         let new_p = parent_step(p);
@@ -224,7 +266,13 @@ pub(super) fn parent(index: TreeNodeIndex, size: u32) -> ParentNodeIndex {
     ParentNodeIndex::from_tree_index(p)
 }
 
-pub(crate) fn sibling(index: TreeNodeIndex, size: u32) -> TreeNodeIndex {
+/// Re-exported for testing.
+#[cfg(any(feature = "test-utils", test))]
+pub(crate) fn test_sibling(index: TreeNodeIndex, size: TreeSize) -> TreeNodeIndex {
+    sibling(index, size)
+}
+
+fn sibling(index: TreeNodeIndex, size: TreeSize) -> TreeNodeIndex {
     let p = parent(index, size);
     match index.u32().cmp(&p.to_tree_index()) {
         Ordering::Less => right(p, size),
@@ -235,7 +283,7 @@ pub(crate) fn sibling(index: TreeNodeIndex, size: u32) -> TreeNodeIndex {
 
 /// Direct path from a node to the root.
 /// Does not include the node itself.
-pub(crate) fn direct_path(node_index: LeafNodeIndex, size: u32) -> Vec<ParentNodeIndex> {
+pub(crate) fn direct_path(node_index: LeafNodeIndex, size: TreeSize) -> Vec<ParentNodeIndex> {
     let r = root(size).u32();
 
     let mut d = vec![];
@@ -246,6 +294,28 @@ pub(crate) fn direct_path(node_index: LeafNodeIndex, size: u32) -> Vec<ParentNod
         x = parent.to_tree_index();
     }
     d
+}
+
+/// Copath of a leaf node.
+pub(crate) fn copath(leaf_index: LeafNodeIndex, size: TreeSize) -> Vec<TreeNodeIndex> {
+    // Start with leaf
+    let mut full_path = vec![TreeNodeIndex::Leaf(leaf_index)];
+    let mut direct_path = direct_path(leaf_index, size);
+    if !direct_path.is_empty() {
+        // Remove root
+        direct_path.pop();
+    }
+    full_path.append(
+        &mut direct_path
+            .iter()
+            .map(|i| TreeNodeIndex::Parent(*i))
+            .collect(),
+    );
+
+    full_path
+        .into_iter()
+        .map(|node| sibling(node, size))
+        .collect()
 }
 
 /// Common ancestor of two leaf nodes, aka the node where their direct paths
@@ -307,31 +377,28 @@ pub(crate) fn node_width(n: usize) -> usize {
     }
 }
 
-pub(crate) fn is_node_in_tree(node_index: TreeNodeIndex, size: u32) -> bool {
-    node_index.u32() < size
+pub(crate) fn is_node_in_tree(node_index: TreeNodeIndex, size: TreeSize) -> bool {
+    node_index.u32() < size.u32()
 }
 
 #[test]
 fn test_node_in_tree() {
-    let tests = [
-        (TreeNodeIndex::new(0u32), 2u32),
-        (TreeNodeIndex::new(1), 2),
-        (TreeNodeIndex::new(2), 4),
-        (TreeNodeIndex::new(5), 6),
-        (TreeNodeIndex::new(2), 10),
-    ];
+    let tests = [(0u32, 2u32), (1, 2), (2, 4), (5, 6), (2, 10)];
     for test in tests.iter() {
-        assert!(is_node_in_tree(test.0, test.1));
+        assert!(is_node_in_tree(
+            TreeNodeIndex::new(test.0),
+            TreeSize::new(test.1)
+        ));
     }
 }
 
 #[test]
 fn test_node_not_in_tree() {
-    let tests = [
-        (TreeNodeIndex::new(3u32), 2u32),
-        (TreeNodeIndex::new(13), 7),
-    ];
+    let tests = [(3u32, 2u32), (13, 7)];
     for test in tests.iter() {
-        assert!(!is_node_in_tree(test.0, test.1));
+        assert!(!is_node_in_tree(
+            TreeNodeIndex::new(test.0),
+            TreeSize::new(test.1)
+        ));
     }
 }
