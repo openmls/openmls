@@ -1,37 +1,41 @@
 //! # Validation steps for incoming messages
 //!
 //! ```text
-//! parse_message(MlsMessageIn) -> UnverifiedMessage
 //!
-//! MlsMessageIn (exposes: wire format, group, epoch)
-//! |
-//! V
-//! DecryptedMessage
-//! |
-//! V
-//! UnverifiedMessage (exposes AAD, Credential of sender)
+//!                             MlsMessageIn
+//!                                  │                    -.
+//!                                  │                      │
+//!                                  │                      │
+//!                                  ▼                      │
+//!                           DecryptedMessage              +-- parse_message
+//!                                  │                      │
+//!                                  │                      │
+//!                                  │                      │
+//!                                  ▼                    -'
+//!                           UnverifiedMessage
+//!                                  │                                       -.
+//!                                  │                                         │
+//!                                  │                                         │
+//!                                  ▼                                         │
+//!                       UnverifiedContextMessage                             │
+//!                                  │                                         │
+//!                                  │                                         │
+//!             (sender is member)   │   (sender is external)                  │
+//!               ┌──────────────────┴───────────────────┐                     │
+//!               │                                      │                     │
+//!               ▼                                      ▼                     +-- process_unverified_message
+//!     UnverifiedGroupMessage              UnverifiedExternalMessage          │
+//!               │                                      │                     │
+//!               │ (verify_signature)                   │ (verify_signature)  │
+//!               │                                      │                     │
+//!               ▼                                      ▼                     │
+//!     VerifiedMemberMessage                VerifiedExternalMessage           │
+//!               │                                      │                     │
+//!               └──────────────────┬───────────────────┘                     │
+//!                                  │                                         │
+//!                                  ▼                                       -'
+//!                          ProcessedMessage
 //!
-//! process_unverified_message(UnverfiedMessage) -> ProcessedMessage
-//!
-//! UnverifiedMessage
-//! |
-//! V
-//! UnverifiedContextMessage (includes group context)
-//! |                        |
-//! | (sender is member)     | (sender is not member)
-//! |                        |
-//! V                        V
-//! UnverifiedGroupMessage   UnverifiedExternalMessage
-//! |                        |
-//! | (verify signature)     | (verify signature)
-//! |                        |
-//! V                        V
-//! VerfiedMemberMessage     VerifiedExternalMessage
-//! |                        |
-//! +------------------------+
-//! |
-//! V
-//! ProcessedMessage (Application, Proposal, ExternalProposal, Commit, External Commit)
 //! ```
 // TODO #106/#151: Update the above diagram
 
