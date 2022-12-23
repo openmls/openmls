@@ -41,7 +41,7 @@ pub(crate) struct MembershipTag(pub(crate) Mac);
 /// // draft-ietf-mls-protocol-16
 ///
 /// struct {
-///     MLSContent content;
+///     FramedContent content;
 ///     FramedContentAuthData auth;
 ///     optional<MAC> membership_tag;
 /// } PublicMessage;
@@ -277,7 +277,7 @@ impl From<PublicMessage> for FramedContentTbs {
 ///
 /// struct {
 ///    WireFormat wire_format;
-///    MLSContent content; /* with content_type == commit */
+///    FramedContent content; /* with content_type == commit */
 ///    opaque signature<V>;
 ///} ConfirmedTranscriptHashInput;
 /// ```

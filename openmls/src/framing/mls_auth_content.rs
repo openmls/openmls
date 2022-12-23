@@ -42,7 +42,7 @@ mod private_mod {
 /// struct {
 ///    /* SignWithLabel(., "FramedContentTBS", FramedContentTBS) */
 ///    opaque signature<V>;
-///    select (MLSContent.content_type) {
+///    select (FramedContent.content_type) {
 ///        case commit:
 ///            /*
 ///              MAC(confirmation_key,
@@ -86,7 +86,7 @@ impl FramedContentAuthData {
 ///
 /// struct {
 ///     WireFormat wire_format;
-///     MLSContent content;
+///     FramedContent content;
 ///     FramedContentAuthData auth;
 /// } AuthenticatedContent;
 /// ```

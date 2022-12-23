@@ -33,7 +33,7 @@ use tls_codec::{
 ///     opaque authenticated_data<V>;
 ///
 ///     // ... continued in [FramedContentBody] ...
-/// } MLSContent;
+/// } FramedContent;
 /// ```
 #[derive(
     Debug, PartialEq, Clone, Serialize, Deserialize, TlsSerialize, TlsDeserialize, TlsSize,
@@ -59,7 +59,7 @@ impl From<AuthenticatedContent> for FramedContent {
 ///     // ... continued from [FramedContent] ...
 ///
 ///     ContentType content_type;
-///     select (MLSContent.content_type) {
+///     select (FramedContent.content_type) {
 ///         case application:
 ///           opaque application_data<V>;
 ///         case proposal:
@@ -67,7 +67,7 @@ impl From<AuthenticatedContent> for FramedContent {
 ///         case commit:
 ///           Commit commit;
 ///     }
-/// } MLSContent;
+/// } FramedContent;
 /// ```
 #[derive(
     Debug, PartialEq, Clone, Serialize, Deserialize, TlsSerialize, TlsDeserialize, TlsSize,
