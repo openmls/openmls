@@ -10,9 +10,9 @@ use super::{
         AuthenticatedContent, FramedContentAuthData, VerifiableAuthenticatedContent,
     },
     mls_content::{AuthenticatedContentTbm, ContentType, FramedContent, FramedContentTbs},
+    *,
 };
 
-use super::*;
 use openmls_traits::OpenMlsCryptoProvider;
 use std::{
     convert::TryFrom,
@@ -60,7 +60,7 @@ impl PublicMessage {
         self.membership_tag = None;
     }
 
-    pub fn set_content(&mut self, content: mls_content::FramedContentBody) {
+    pub fn set_content(&mut self, content: FramedContentBody) {
         self.content.body = content;
     }
 
@@ -68,7 +68,7 @@ impl PublicMessage {
         self.content.epoch = epoch.into();
     }
 
-    pub fn content(&self) -> &mls_content::FramedContentBody {
+    pub fn content(&self) -> &FramedContentBody {
         &self.content.body
     }
 
