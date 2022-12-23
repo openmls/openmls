@@ -52,14 +52,14 @@ pub(crate) mod codec;
 pub(crate) mod message;
 pub(crate) mod mls_auth_content;
 pub(crate) mod mls_content;
-pub(crate) mod plaintext;
 pub(crate) mod private_message;
+pub(crate) mod public_message;
 pub(crate) mod sender;
 pub(crate) mod validation;
 pub(crate) use errors::*;
 pub(crate) use mls_auth_content::*;
-pub(crate) use plaintext::*;
 pub(crate) use private_message::*;
+pub(crate) use public_message::*;
 
 #[cfg(test)]
 pub(crate) use mls_content::*;
