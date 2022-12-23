@@ -11,8 +11,6 @@ use super::{
     },
     mls_content::{AuthenticatedContentTbm, ContentType, FramedContent, FramedContentTbs},
 };
-//#[cfg(test)]
-//use super::mls_auth_content::FramedContentBody;
 
 use super::*;
 use openmls_traits::OpenMlsCryptoProvider;
