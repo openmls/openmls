@@ -172,15 +172,15 @@ impl ContentType {
 /// struct {
 ///   FramedContentTBS tbs;
 ///   FramedContentAuthData auth;
-/// } FramedContentTBM;
+/// } AuthenticatedContentTBM;
 /// ```
 #[derive(Debug)]
-pub(crate) struct FramedContentTbm<'a> {
+pub(crate) struct AuthenticatedContentTbm<'a> {
     pub(crate) tbs_payload: &'a [u8],
     pub(crate) auth: &'a FramedContentAuthData,
 }
 
-impl<'a> FramedContentTbm<'a> {
+impl<'a> AuthenticatedContentTbm<'a> {
     pub(crate) fn new(
         tbs_payload: &'a [u8],
         auth: &'a FramedContentAuthData,

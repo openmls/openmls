@@ -9,7 +9,7 @@ use super::{
     mls_auth_content::{
         AuthenticatedContent, FramedContentAuthData, VerifiableAuthenticatedContent,
     },
-    mls_content::{ContentType, FramedContent, FramedContentTbm, FramedContentTbs},
+    mls_content::{AuthenticatedContentTbm, ContentType, FramedContent, FramedContentTbs},
 };
 
 //#[cfg(test)]
@@ -159,7 +159,7 @@ impl PublicMessage {
         let tbs_payload = self
             .encode_tbs(serialized_context)
             .map_err(LibraryError::missing_bound_check)?;
-        let tbm_payload = FramedContentTbm::new(&tbs_payload, &self.auth)?;
+        let tbm_payload = AuthenticatedContentTbm::new(&tbs_payload, &self.auth)?;
         let membership_tag = membership_key.tag(backend, tbm_payload)?;
 
         self.membership_tag = Some(membership_tag);
@@ -183,7 +183,7 @@ impl PublicMessage {
         let tbs_payload = self
             .encode_tbs(serialized_context)
             .map_err(LibraryError::missing_bound_check)?;
-        let tbm_payload = FramedContentTbm::new(&tbs_payload, &self.auth)?;
+        let tbm_payload = AuthenticatedContentTbm::new(&tbs_payload, &self.auth)?;
         let expected_membership_tag = &membership_key.tag(backend, tbm_payload)?;
 
         // Verify the membership tag
