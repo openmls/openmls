@@ -8,7 +8,7 @@ Validation is enforced using Rust's type system. The chain of functions used to 
 
 ### Syntax validation
 
-Incoming messages in the shape of a byte string can only be deserialized into a `MlsMessageIn` struct. Deserialization ensures that the message is a syntactically correct MLS message, i.e., either an PublicMessage or an PrivateMessage.
+Incoming messages in the shape of a byte string can only be deserialized into a `MlsMessageIn` struct. Deserialization ensures that the message is a syntactically correct MLS message, i.e., either a PublicMessage or a PrivateMessage.
 Further syntax checks are applied for the latter case once the message is decrypted.
 
 ### Semantic validation
