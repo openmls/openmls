@@ -188,7 +188,7 @@ fn bad_padding(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
             };
 
             let private_message_content_aad_bytes = {
-                let private_message_content_aad = PrivateContentTbe {
+                let private_message_content_aad = PrivateContentAad {
                     group_id: group_id.clone(),
                     epoch,
                     content_type: plaintext.content().content_type(),

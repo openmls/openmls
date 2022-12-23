@@ -161,7 +161,7 @@ impl PrivateMessage {
             },
         };
         // Serialize the content AAD
-        let private_message_content_aad = PrivateContentTbe {
+        let private_message_content_aad = PrivateContentAad {
             group_id: header.group_id.clone(),
             epoch: header.epoch,
             content_type: public_message.content().content_type(),
@@ -291,9 +291,9 @@ impl PrivateMessage {
         backend: &impl OpenMlsCryptoProvider,
         ratchet_key: AeadKey,
         ratchet_nonce: &AeadNonce,
-    ) -> Result<PrivatContentTbe, MessageDecryptionError> {
+    ) -> Result<PrivateContentTbe, MessageDecryptionError> {
         // Serialize content AAD
-        let private_message_content_aad_bytes = PrivateContentTbe {
+        let private_message_content_aad_bytes = PrivateContentAad {
             group_id: self.group_id.clone(),
             epoch: self.epoch,
             content_type: self.content_type,
@@ -516,7 +516,7 @@ impl MlsSenderDataAad {
 /// } PrivateContentTbe;
 /// ```
 #[derive(Debug, Clone)]
-pub(crate) struct PrivatContentTbe {
+pub(crate) struct PrivateContentTbe {
     // The `content` field is serialized and deserialized manually without the
     // `content_type`, which is not part of the struct as per MLS spec. See the
     // implementation of `TlsSerialize` for `PrivateContentTbe`, as well as
@@ -540,7 +540,7 @@ pub(crate) struct PrivatContentTbe {
 }
 
 #[derive(TlsSerialize, TlsSize)]
-pub(crate) struct PrivateContentTbe<'a> {
+pub(crate) struct PrivateContentAad<'a> {
     pub(crate) group_id: GroupId,
     pub(crate) epoch: GroupEpoch,
     pub(crate) content_type: ContentType,
