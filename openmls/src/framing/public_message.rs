@@ -163,10 +163,9 @@ impl PublicMessage {
         Ok(())
     }
 
-    /// Verify the membership tag of an `UnverifiedMlsPlaintext` sent from a
-    /// group member. Returns `Ok(())` if successful or `VerificationError`
-    /// otherwise. Note, that the context must have been set before calling this
-    /// function.
+    /// Verify the membership tag of a [`PublicMessage`] sent from a group
+    /// member. Returns `Ok(())` if successful or [`ValidationError`] otherwise.
+    /// Note, that the context must have been set before calling this function.
     // TODO #133: Include this in the validation
     pub(crate) fn verify_membership(
         &self,
