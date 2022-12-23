@@ -1,6 +1,6 @@
 //! # PublicMessage
 //!
-//! An PublicMessage is a framing structure for MLS messages. It can contain
+//! A PublicMessage is a framing structure for MLS messages. It can contain
 //! Proposals, Commits and application messages.
 
 use crate::{error::LibraryError, group::errors::ValidationError};
