@@ -12,7 +12,7 @@ use rstest_reuse::{self, *};
 use crate::{
     ciphersuite::{hash_ref::ProposalRef, signable::Verifiable},
     credentials::{errors::*, *},
-    framing::{mls_auth_content::*, mls_content::*, *},
+    framing::*,
     group::{errors::*, tests::utils::resign_external_commit, *},
     messages::proposals::*,
 };

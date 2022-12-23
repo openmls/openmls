@@ -189,10 +189,7 @@ fn build_handshake_messages(
 ) -> (Vec<u8>, Vec<u8>) {
     use tls_codec::Serialize;
 
-    use crate::{
-        framing::mls_auth_content::AuthenticatedContent, prelude_test::Secret,
-        schedule::MembershipKey,
-    };
+    use crate::{prelude_test::Secret, schedule::MembershipKey};
 
     let epoch = random_u64();
     group.context_mut().set_epoch(epoch.into());
@@ -253,10 +250,7 @@ fn build_application_messages(
 ) -> (Vec<u8>, Vec<u8>) {
     use tls_codec::Serialize;
 
-    use crate::{
-        framing::mls_auth_content::AuthenticatedContent, prelude_test::Secret,
-        schedule::MembershipKey,
-    };
+    use crate::{prelude_test::Secret, schedule::MembershipKey};
 
     let epoch = random_u64();
     group.context_mut().set_epoch(epoch.into());

@@ -58,7 +58,11 @@ pub(crate) mod sender;
 pub(crate) mod validation;
 pub(crate) use ciphertext::*;
 pub(crate) use errors::*;
+pub(crate) use mls_auth_content::*;
 pub(crate) use plaintext::*;
+
+#[cfg(test)]
+pub(crate) use mls_content::*;
 
 // Crate
 pub(crate) use sender::*;

@@ -12,7 +12,7 @@ use super::utils::*;
 use crate::{
     ciphersuite::signable::Signable,
     credentials::{CredentialBundle, CredentialType},
-    framing::{mls_content::*, MessageDecryptionError, WireFormat, *},
+    framing::{MessageDecryptionError, WireFormat, *},
     group::*,
     schedule::{message_secrets::MessageSecrets, EncryptionSecret},
     test_utils::*,

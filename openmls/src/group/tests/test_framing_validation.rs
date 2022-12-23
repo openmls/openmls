@@ -10,7 +10,7 @@ use rstest_reuse::{self, *};
 
 use crate::{
     credentials::*,
-    framing::{mls_content::*, *},
+    framing::*,
     group::{errors::*, *},
     key_packages::*,
 };
