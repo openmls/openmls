@@ -3,6 +3,7 @@ use openmls_traits::{key_store::OpenMlsKeyStore, types::SignatureScheme, OpenMls
 use tls_codec::Serialize;
 
 use crate::{
+    binary_tree::LeafNodeIndex,
     credentials::{errors::CredentialError, *},
     framing::*,
     group::{errors::*, *},
@@ -230,7 +231,7 @@ fn remover(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
     // === Alice removes Bob & Charlie commits ===
 
     let queued_messages = alice_group
-        .propose_remove_member(backend, 1)
+        .propose_remove_member(backend, LeafNodeIndex::new(1))
         .expect("Could not propose removal");
 
     let charlie_processed_message = charlie_group
@@ -243,7 +244,7 @@ fn remover(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
     {
         if let Proposal::Remove(ref remove_proposal) = staged_proposal.proposal() {
             // Check that Bob was removed
-            assert_eq!(remove_proposal.removed(), 1);
+            assert_eq!(remove_proposal.removed(), LeafNodeIndex::new(1));
             // Store proposal
             charlie_group.store_pending_proposal(*staged_proposal.clone());
         } else {
@@ -253,7 +254,7 @@ fn remover(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
         // Check that Alice removed Bob
         assert!(matches!(
             staged_proposal.sender(),
-            Sender::Member(member) if *member == 0
+            Sender::Member(member) if member.u32() == 0
         ));
     } else {
         unreachable!("Expected a QueuedProposal.");
@@ -271,9 +272,9 @@ fn remover(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
             .next()
             .expect("Expected a proposal.");
         // Check that Bob was removed
-        assert_eq!(remove.remove_proposal().removed(), 1);
+        assert_eq!(remove.remove_proposal().removed().u32(), 1);
         // Check that Alice removed Bob
-        assert!(matches!(remove.sender(), Sender::Member(member) if *member == 0));
+        assert!(matches!(remove.sender(), Sender::Member(member) if member.u32() == 0));
     } else {
         unreachable!("Expected a StagedCommit.");
     };
@@ -394,7 +395,7 @@ fn test_invalid_plaintext(ciphersuite: Ciphersuite, backend: &impl OpenMlsCrypto
 
     // Tamper with the message such that sender lookup fails
     let mut msg_invalid_sender = mls_message;
-    let random_sender = Sender::build_member(987543210);
+    let random_sender = Sender::build_member(LeafNodeIndex::new(987543210));
     match &mut msg_invalid_sender.mls_message.body {
         MlsMessageBody::Plaintext(pt) => {
             pt.set_sender(random_sender);
@@ -530,14 +531,14 @@ fn test_pending_commit_logic(ciphersuite: Ciphersuite, backend: &impl OpenMlsCry
         ProposeAddMemberError::GroupStateError(MlsGroupStateError::PendingCommit)
     );
     let error = alice_group
-        .remove_members(backend, &[1])
+        .remove_members(backend, &[LeafNodeIndex::new(1)])
         .expect_err("no error committing while a commit is pending");
     assert_eq!(
         error,
         RemoveMembersError::GroupStateError(MlsGroupStateError::PendingCommit)
     );
     let error = alice_group
-        .propose_remove_member(backend, 1)
+        .propose_remove_member(backend, LeafNodeIndex::new(1))
         .expect_err("no error creating a proposal while a commit is pending");
     assert_eq!(
         error,

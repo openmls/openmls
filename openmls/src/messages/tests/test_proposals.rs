@@ -2,6 +2,7 @@ use openmls_rust_crypto::OpenMlsRustCrypto;
 use tls_codec::{Deserialize, Serialize};
 
 use crate::{
+    binary_tree::LeafNodeIndex,
     ciphersuite::hash_ref::ProposalRef,
     messages::proposals::{Proposal, ProposalOrRef, RemoveProposal},
     test_utils::*,
@@ -13,7 +14,9 @@ use crate::{
 fn proposals_codec(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
     // Proposal
 
-    let remove_proposal = RemoveProposal { removed: 72549 };
+    let remove_proposal = RemoveProposal {
+        removed: LeafNodeIndex::new(72549),
+    };
     let proposal = Proposal::Remove(remove_proposal);
     let proposal_or_ref = ProposalOrRef::Proposal(proposal.clone());
     let encoded = proposal_or_ref
