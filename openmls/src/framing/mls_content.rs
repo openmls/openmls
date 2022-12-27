@@ -25,7 +25,7 @@ use tls_codec::{
 };
 
 /// ```c
-/// // draft-ietf-mls-protocol-16
+/// // draft-ietf-mls-protocol-17
 /// struct {
 ///     opaque group_id<V>;
 ///     uint64 epoch;
@@ -54,7 +54,7 @@ impl From<AuthenticatedContent> for FramedContent {
 }
 
 /// ```c
-/// // draft-ietf-mls-protocol-16
+/// // draft-ietf-mls-protocol-17
 /// struct {
 ///     // ... continued from [FramedContent] ...
 ///
@@ -167,7 +167,7 @@ impl ContentType {
 /// 7.2 Encoding and Decoding a Plaintext
 ///
 /// ```c
-/// // draft-ietf-mls-protocol-16
+/// // draft-ietf-mls-protocol-17
 ///
 /// struct {
 ///   FramedContentTBS tbs;

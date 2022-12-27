@@ -35,7 +35,7 @@ pub(crate) struct MembershipTag(pub(crate) Mac);
 /// 9. Message framing
 ///
 /// ```c
-/// // draft-ietf-mls-protocol-16
+/// // draft-ietf-mls-protocol-17
 ///
 /// struct {
 ///     FramedContent content;

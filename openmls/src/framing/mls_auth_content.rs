@@ -37,7 +37,7 @@ mod private_mod {
 /// 7.1 Content Authentication
 ///
 /// ```c
-/// // draft-ietf-mls-protocol-16
+/// // draft-ietf-mls-protocol-17
 ///
 /// struct {
 ///    /* SignWithLabel(., "FramedContentTBS", FramedContentTBS) */
@@ -82,7 +82,7 @@ impl FramedContentAuthData {
 /// 6 Message Framing
 ///
 /// ```c
-/// // draft-ietf-mls-protocol-16
+/// // draft-ietf-mls-protocol-17
 ///
 /// struct {
 ///     WireFormat wire_format;
