@@ -32,7 +32,7 @@ use crate::{
     ciphersuite::Secret,
     credentials::CredentialBundle,
     error::LibraryError,
-    extensions::{Extension, LifetimeExtension},
+    extensions::Extension,
     framing::SenderError,
     group::Member,
     key_packages::KeyPackageBundle,
@@ -42,7 +42,7 @@ use crate::{
 
 use self::{
     diff::{StagedTreeSyncDiff, TreeSyncDiff},
-    node::leaf_node::{Capabilities, LeafNodeSource, OpenMlsLeafNode},
+    node::leaf_node::{Capabilities, LeafNodeSource, Lifetime, OpenMlsLeafNode},
     treesync_node::{TreeSyncNode, TreeSyncNodeError},
 };
 
@@ -95,7 +95,7 @@ impl TreeSync {
         backend: &impl OpenMlsCryptoProvider,
         key_package_bundle: KeyPackageBundle,
         credential_bundle: &CredentialBundle,
-        life_time: LifetimeExtension,
+        life_time: Lifetime,
         capabilities: Capabilities,
         extensions: Vec<Extension>,
     ) -> Result<(Self, CommitSecret), LibraryError> {

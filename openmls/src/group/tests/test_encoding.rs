@@ -103,14 +103,11 @@ fn test_update_proposal_encoding(backend: &impl OpenMlsCryptoProvider) {
             .get(&group_state.ciphersuite())
             .expect("An unexpected error occurred.");
 
-        let lifetime_extension = Extension::Lifetime(LifetimeExtension::new(60));
-        let mandatory_extensions: Vec<Extension> = vec![lifetime_extension];
-
         let key_package_bundle = KeyPackageBundle::new(
             &[group_state.ciphersuite()],
             credential_bundle,
             backend,
-            mandatory_extensions,
+            vec![],
         )
         .expect("An unexpected error occurred.");
 
@@ -162,14 +159,11 @@ fn test_add_proposal_encoding(backend: &impl OpenMlsCryptoProvider) {
             .get(&group_state.ciphersuite())
             .expect("An unexpected error occurred.");
 
-        let lifetime_extension = Extension::Lifetime(LifetimeExtension::new(60));
-        let mandatory_extensions: Vec<Extension> = vec![lifetime_extension];
-
         let key_package_bundle = KeyPackageBundle::new(
             &[group_state.ciphersuite()],
             credential_bundle,
             backend,
-            mandatory_extensions,
+            vec![],
         )
         .expect("An unexpected error occurred.");
 
@@ -267,14 +261,11 @@ fn test_commit_encoding(backend: &impl OpenMlsCryptoProvider) {
             .get(&group_state.ciphersuite())
             .expect("An unexpected error occurred.");
 
-        let lifetime_extension = Extension::Lifetime(LifetimeExtension::new(60));
-        let mandatory_extensions: Vec<Extension> = vec![lifetime_extension];
-
         let alice_key_package_bundle = KeyPackageBundle::new(
             &[group_state.ciphersuite()],
             alice_credential_bundle,
             backend,
-            mandatory_extensions.clone(),
+            vec![],
         )
         .expect("An unexpected error occurred.");
 
