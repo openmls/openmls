@@ -585,3 +585,78 @@ fn test_pending_commit_logic(ciphersuite: Ciphersuite, backend: &impl OpenMlsCry
     }
     assert!(alice_group.pending_commit().is_none());
 }
+
+// Test that the key package and the corresponding private key are deleted when
+// creating a new group for a welcome message.
+#[apply(ciphersuites_and_backends)]
+fn key_package_deletion(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
+    let group_id = GroupId::from_slice(b"Test Group");
+
+    // Generate credential bundles
+    let alice_credential = generate_credential_bundle(
+        backend,
+        "Alice".into(),
+        CredentialType::Basic,
+        ciphersuite.signature_algorithm(),
+    )
+    .expect("An unexpected error occurred.");
+
+    let bob_credential = generate_credential_bundle(
+        backend,
+        "Bob".into(),
+        CredentialType::Basic,
+        ciphersuite.signature_algorithm(),
+    )
+    .expect("An unexpected error occurred.");
+
+    // Generate KeyPackages
+    let alice_key_package =
+        generate_key_package(backend, &[ciphersuite], &alice_credential, vec![]);
+
+    let bob_key_package = generate_key_package(backend, &[ciphersuite], &bob_credential, vec![]);
+
+    // Define the MlsGroup configuration
+    let mls_group_config = MlsGroupConfig::default();
+
+    // === Alice creates a group ===
+    let mut alice_group =
+        MlsGroup::new_with_group_id(backend, &mls_group_config, group_id, alice_key_package)
+            .unwrap();
+
+    // === Alice adds Bob ===
+    let (_queued_message, welcome) = alice_group
+        .add_members(backend, &[bob_key_package.clone()])
+        .unwrap();
+
+    alice_group.merge_pending_commit().unwrap();
+
+    // === Bob joins the group ===
+    let _bob_group = MlsGroup::new_from_welcome(
+        backend,
+        &mls_group_config,
+        welcome,
+        Some(alice_group.export_ratchet_tree()),
+    )
+    .expect("Error creating group from Welcome");
+
+    // TEST: The private key must be gone from the key store.
+    assert!(backend
+        .key_store()
+        .read::<Vec<u8>>(bob_key_package.hpke_init_key().as_slice())
+        .is_none(),
+        "The HPKE private key is still in the key store after creating a new group from the key package.");
+
+    // TEST: The key package must be gone from the key store.
+    assert!(
+        backend
+            .key_store()
+            .read::<KeyPackage>(
+                bob_key_package
+                    .hash_ref(backend.crypto())
+                    .unwrap()
+                    .as_slice()
+            )
+            .is_none(),
+        "The key package is still in the key store after creating a new group from it."
+    );
+}
