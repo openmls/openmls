@@ -12,6 +12,7 @@ use openmls_traits::{
 use tls_codec::Serialize;
 
 use crate::{
+    binary_tree::array_representation::LeafNodeIndex,
     ciphersuite::hash_ref::KeyPackageRef,
     credentials::*,
     extensions::*,
@@ -251,7 +252,7 @@ impl Client {
         &self,
         action_type: ActionType,
         group_id: &GroupId,
-        targets: &[u32],
+        targets: &[LeafNodeIndex],
     ) -> Result<(Vec<MlsMessageOut>, Option<Welcome>), ClientError> {
         let mut groups = self.groups.write().expect("An unexpected error occurred.");
         let group = groups

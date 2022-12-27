@@ -34,7 +34,10 @@ use super::{
 };
 
 use crate::{
-    binary_tree::{LeafIndex, MlsBinaryTreeDiff, StagedMlsBinaryTreeDiff},
+    binary_tree::{
+        array_representation::{direct_path, LeafNodeIndex, TreeNodeIndex},
+        MlsBinaryTreeDiff, StagedMlsBinaryTreeDiff,
+    },
     ciphersuite::{HpkePrivateKey, HpkePublicKey, Secret},
     credentials::CredentialBundle,
     error::LibraryError,
@@ -49,13 +52,19 @@ pub(crate) type UpdatePathResult = (Vec<PlainUpdatePathNode>, CommitSecret);
 /// and later merged into a [`TreeSync`] instance.
 #[derive(Debug, Serialize, Deserialize)]
 pub(crate) struct StagedTreeSyncDiff {
-    own_leaf_index: LeafIndex,
+    own_leaf_index: LeafNodeIndex,
     diff: StagedMlsBinaryTreeDiff<TreeSyncNode>,
     new_tree_hash: Vec<u8>,
 }
 
 impl StagedTreeSyncDiff {
-    pub(super) fn into_parts(self) -> (LeafIndex, StagedMlsBinaryTreeDiff<TreeSyncNode>, Vec<u8>) {
+    pub(super) fn into_parts(
+        self,
+    ) -> (
+        LeafNodeIndex,
+        StagedMlsBinaryTreeDiff<TreeSyncNode>,
+        Vec<u8>,
+    ) {
         (self.own_leaf_index, self.diff, self.new_tree_hash)
     }
 }
@@ -68,7 +77,7 @@ impl StagedTreeSyncDiff {
 /// invariants. See [`TreeSync`] for the list of invariants.
 pub(crate) struct TreeSyncDiff<'a> {
     diff: MlsBinaryTreeDiff<'a, TreeSyncNode>,
-    own_leaf_index: LeafIndex,
+    own_leaf_index: LeafNodeIndex,
 }
 
 impl<'a> From<&'a TreeSync> for TreeSyncDiff<'a> {
@@ -83,36 +92,43 @@ impl<'a> From<&'a TreeSync> for TreeSyncDiff<'a> {
 impl<'a> TreeSyncDiff<'a> {
     /// Check if the right-most leaf and its parent are blank. If that is the
     /// case, remove the right-most leaf and its parent until either the
-    /// right-most leaf or its parent are not blank anymore. This behaviour
-    /// differs from that in the MLS spec. This is because there is a suspected
-    /// bug in the trimming algorithm in the spec, which is currently under
-    /// discussion.
-    pub(crate) fn trim_tree(&mut self) -> Result<(), TreeSyncDiffError> {
+    /// right-most leaf or its parent are not blank anymore.
+    pub(crate) fn trim_tree(&mut self) {
         // Nothing to trim if there's only one leaf left.
         if self.leaf_count() == 1 {
-            return Ok(());
+            return;
         }
-        let mut leaf_index = self.diff.leaf(self.leaf_count() - 1);
-        let mut parent_index = self.diff.parent(leaf_index)?;
-        // Trim only if the parent node is blank as well;.
-        while self.diff.node(leaf_index)?.node().is_none()
-            && self.diff.node(parent_index)?.node().is_none()
-        {
-            self.diff.remove_leaf()?;
-            // If there's only one leaf left, it won't have a parent, so we'll
-            // have to stop here.
-            if self.leaf_count() == 1 {
-                return Ok(());
+
+        // We reverse the nodes here to make sure we start with the right-most
+        let mut nodes = self
+            .diff
+            .nodes()
+            .collect::<Vec<(TreeNodeIndex, &TreeSyncNode)>>();
+        nodes.reverse();
+
+        let mut blank_leaf_counter = 0;
+
+        // Take chunks of 2
+        for chunk in nodes.chunks(2) {
+            if chunk.len() == 2
+                && chunk.get(0).and_then(|(_, n)| n.node().as_ref()).is_none()
+                && chunk.get(1).and_then(|(_, n)| n.node().as_ref()).is_none()
+            {
+                // Both nodes are blank, so we want to remove them.
+                blank_leaf_counter += 1;
+            } else {
+                break;
             }
-            leaf_index = self.diff.leaf(self.leaf_count() - 1);
-            parent_index = self.diff.parent(leaf_index)?;
         }
-        Ok(())
+
+        for _ in 0..blank_leaf_counter {
+            debug_assert!(self.diff.remove_leaf().is_ok());
+        }
     }
 
     /// Returns the number of leaves in the tree that would result from merging
     /// this diff.
-    pub(crate) fn leaf_count(&self) -> LeafIndex {
+    pub(crate) fn leaf_count(&self) -> u32 {
         self.diff.leaf_count()
     }
 
@@ -120,22 +136,17 @@ impl<'a> TreeSyncDiff<'a> {
     /// direct path.
     ///
     /// Returns an error if the target leaf is blank or outside of the tree.
-    pub(crate) fn update_leaf(
-        &mut self,
-        leaf_node: OpenMlsLeafNode,
-        leaf_index: LeafIndex,
-    ) -> Result<(), TreeSyncDiffError> {
+    pub(crate) fn update_leaf(&mut self, leaf_node: OpenMlsLeafNode, leaf_index: LeafNodeIndex) {
         let node = Node::LeafNode(leaf_node);
-        self.diff.replace_leaf(leaf_index, node.into())?;
+        self.diff.replace_leaf(leaf_index, node.into());
         // This effectively wipes the tree hashes in the direct path.
         self.diff
-            .set_direct_path_to_node(leaf_index, &TreeSyncNode::blank())?;
-        Ok(())
+            .set_direct_path_to_node(leaf_index, &TreeSyncNode::blank());
     }
 
     /// Find and return the index of either the left-most blank leaf, or, if
     /// there are no blank leaves, the leaf count.
-    pub(crate) fn free_leaf_index(&self) -> LeafIndex {
+    pub(crate) fn free_leaf_index(&self) -> LeafNodeIndex {
         // Find a free leaf and fill it with the new key package.
         let mut leaf_index_option = None;
         for (leaf_index, leaf_id) in self.diff.leaves() {
@@ -146,7 +157,7 @@ impl<'a> TreeSyncDiff<'a> {
         }
         // If we found a free leaf, replace it with the new one, otherwise
         // extend the tree.
-        leaf_index_option.unwrap_or_else(|| self.leaf_count())
+        leaf_index_option.unwrap_or_else(|| LeafNodeIndex::new(self.leaf_count()))
     }
 
     /// Adds a new leaf to the tree either by filling a blank leaf or by
@@ -155,21 +166,18 @@ impl<'a> TreeSyncDiff<'a> {
     /// new leaf to the `unmerged_leaves` of the parent nodes in its direct
     /// path.
     ///
-    /// Returns the LeafIndex of the new leaf.
+    /// Returns the LeafNodeIndex of the new leaf.
     pub(crate) fn add_leaf(
         &mut self,
         leaf_node: OpenMlsLeafNode,
-    ) -> Result<LeafIndex, TreeSyncAddLeaf> {
+    ) -> Result<LeafNodeIndex, TreeSyncAddLeaf> {
         let node = Node::LeafNode(leaf_node);
         // Find a free leaf and fill it with the new key package.
         let leaf_index = self.free_leaf_index();
         // If the free leaf index is within the tree, put the new leaf there,
         // otherwise extend the tree.
-        if leaf_index < self.leaf_count() {
-            self.diff
-                .replace_leaf(leaf_index, node.into())
-                // We know the leaf index is in the tree, so replacing it should not fail
-                .map_err(|_| LibraryError::custom("Could not replace the leaf"))?;
+        if leaf_index.u32() < self.leaf_count() {
+            self.diff.replace_leaf(leaf_index, node.into())
         } else {
             self.diff
                 .add_leaf(TreeSyncNode::blank(), node.into())
@@ -177,17 +185,9 @@ impl<'a> TreeSyncDiff<'a> {
         }
         // Add new unmerged leaves entry to all nodes in direct path. Also, wipe
         // the cached tree hash.
-        for node_index in self
-            .diff
-            .direct_path(leaf_index)
-            // We checked the leaf index is in the tree
-            .map_err(|_| LibraryError::custom("Expected leaf index to be in tree"))?
-        {
+        for node_index in self.diff.direct_path(leaf_index) {
             // We know that the nodes from the direct path are in the tree
-            let tsn = self
-                .diff
-                .node_mut(node_index)
-                .map_err(|_| LibraryError::custom("Expected a node"))?;
+            let tsn = self.diff.node_mut(node_index.into());
             if let Some(ref mut node) = tsn.node_mut() {
                 // We know that nodes in the direct path are always parent nodes
                 let pn = node
@@ -202,20 +202,16 @@ impl<'a> TreeSyncDiff<'a> {
 
     /// Clear the tree hash (root and own leaf index).
     pub(crate) fn clear_tree_hash(&mut self) -> Result<(), LibraryError> {
+        self.diff.node_mut(self.diff.root()).erase_tree_hash();
         self.diff
-            .node_mut(self.diff.root())
-            .map_err(|_| LibraryError::custom("Root was not in tree."))?
-            .erase_tree_hash();
-        self.diff
-            .node_mut(self.diff.leaf(self.own_leaf_index()))
-            .map_err(|_| LibraryError::custom("Node was not in tree."))?
+            .node_mut(self.own_leaf_index().into())
             .erase_tree_hash();
         Ok(())
     }
 
     /// Set the `own_leaf_index` to `leaf_index`. This has to be used with
     /// caution, as it can invalidate the [`TreeSync`] invariants.
-    pub(crate) fn set_own_index(&mut self, leaf_index: LeafIndex) {
+    pub(crate) fn set_own_index(&mut self, leaf_index: LeafNodeIndex) {
         self.own_leaf_index = leaf_index
     }
 
@@ -225,13 +221,12 @@ impl<'a> TreeSyncDiff<'a> {
     /// parent are non-blank.
     ///
     /// Returns an error if the target leaf is outside of the tree.
-    pub(crate) fn blank_leaf(&mut self, leaf_index: LeafIndex) -> Result<(), TreeSyncDiffError> {
-        self.diff.replace_leaf(leaf_index, TreeSyncNode::blank())?;
+    pub(crate) fn blank_leaf(&mut self, leaf_index: LeafNodeIndex) {
+        self.diff.replace_leaf(leaf_index, TreeSyncNode::blank());
         // This also erases any cached tree hash in the direct path.
         self.diff
-            .set_direct_path_to_node(leaf_index, &TreeSyncNode::blank())?;
-        self.trim_tree()?;
-        Ok(())
+            .set_direct_path_to_node(leaf_index, &TreeSyncNode::blank());
+        self.trim_tree();
     }
 
     /// Derive a new direct path for our own leaf.
@@ -247,12 +242,7 @@ impl<'a> TreeSyncDiff<'a> {
                 .map_err(LibraryError::unexpected_crypto_error)?,
         );
 
-        let path_length = self
-            .diff
-            .direct_path(self.own_leaf_index)
-            // We assume the own leaf is in the tree
-            .map_err(|_| LibraryError::custom("Own leaf was not in tree"))?
-            .len();
+        let path_length = self.diff.direct_path(self.own_leaf_index).len();
 
         ParentNode::derive_path(backend, ciphersuite, path_secret, path_length)
     }
@@ -297,7 +287,7 @@ impl<'a> TreeSyncDiff<'a> {
         &mut self,
         backend: &impl OpenMlsCryptoProvider,
         ciphersuite: Ciphersuite,
-        sender_leaf_index: LeafIndex,
+        sender_leaf_index: LeafNodeIndex,
         leaf_node: LeafNode,
         path: Vec<ParentNode>,
     ) -> Result<(), ApplyUpdatePathError> {
@@ -316,10 +306,7 @@ impl<'a> TreeSyncDiff<'a> {
         let mut leaf: OpenMlsLeafNode = leaf_node.into();
         leaf.set_leaf_index(sender_leaf_index);
         let node = Node::LeafNode(leaf);
-        self.diff
-            .replace_leaf(sender_leaf_index, node.into())
-            // We assume the sender leaf is in the tree
-            .map_err(|_| LibraryError::custom("Expected sender leaf to be in the tree"))?;
+        self.diff.replace_leaf(sender_leaf_index, node.into());
         Ok(())
     }
 
@@ -334,7 +321,7 @@ impl<'a> TreeSyncDiff<'a> {
         &mut self,
         backend: &impl OpenMlsCryptoProvider,
         ciphersuite: Ciphersuite,
-        leaf_index: LeafIndex,
+        leaf_index: LeafNodeIndex,
         mut path: Vec<ParentNode>,
     ) -> Result<Vec<u8>, LibraryError> {
         // Compute the parent hash.
@@ -347,9 +334,7 @@ impl<'a> TreeSyncDiff<'a> {
         // Set the direct path. Note, that the nodes here don't have a tree hash
         // TODO #804
         // set.
-        self.diff
-            .set_direct_path(leaf_index, direct_path)
-            .map_err(|_| LibraryError::custom("Expected the leaf index to be in the tree"))?;
+        self.diff.set_direct_path(leaf_index, direct_path);
         Ok(parent_hash)
     }
 
@@ -370,19 +355,13 @@ impl<'a> TreeSyncDiff<'a> {
         backend: &impl OpenMlsCryptoProvider,
         ciphersuite: Ciphersuite,
         mut path_secret: PathSecret,
-        sender_index: LeafIndex,
+        sender_index: LeafNodeIndex,
     ) -> Result<CommitSecret, TreeSyncSetPathError> {
         // We assume both nodes are in the tree, since the sender_index must be in the tree
-        let subtree_path = self
-            .diff
-            .subtree_path(self.own_leaf_index, sender_index)
-            .map_err(|_| LibraryError::custom("Expected both nodes to be in the tree"))?;
+        let subtree_path = self.diff.subtree_path(self.own_leaf_index, sender_index);
         for node_index in subtree_path {
             // We know the node is in the diff, since it is in the subtree path
-            let tsn = self
-                .diff
-                .node_mut(node_index)
-                .map_err(|_| LibraryError::custom("Expected the node to be in the diff"))?;
+            let tsn = self.diff.node_mut(node_index.into());
             // We only care about non-blank nodes.
             if let Some(ref mut node) = tsn.node_mut() {
                 // This has to be a parent node.
@@ -423,10 +402,7 @@ impl<'a> TreeSyncDiff<'a> {
         resolution: &mut Vec<HpkePublicKey>,
     ) -> Result<(), LibraryError> {
         for leaf_index in parent_node.unmerged_leaves() {
-            let leaf = self
-                .diff
-                .node(self.diff.leaf(*leaf_index))
-                .map_err(|_| LibraryError::custom("Unmerged leaf not in tree"))?;
+            let leaf = self.diff.node((*leaf_index).into());
             // All unmerged leaves should be non-blank.
             let leaf_node = leaf
                 .node()
@@ -456,7 +432,7 @@ impl<'a> TreeSyncDiff<'a> {
         backend: &impl OpenMlsCryptoProvider,
         ciphersuite: Ciphersuite,
         path: &mut [ParentNode],
-        leaf_index: LeafIndex,
+        leaf_index: LeafNodeIndex,
     ) -> Result<Vec<u8>, LibraryError> {
         // If the path is empty, return a zero-length string. This is the case
         // when the tree has only one leaf.
@@ -485,7 +461,7 @@ impl<'a> TreeSyncDiff<'a> {
                 backend,
                 ciphersuite,
                 path_node.parent_hash(),
-                resolution,
+                resolution.as_slice(),
             )?;
             previous_parent_hash = parent_hash
         }
@@ -501,69 +477,60 @@ impl<'a> TreeSyncDiff<'a> {
     /// In case node_id is not in the tree a LibraryError is returned.
     fn resolution(
         &self,
-        node_index: u32,
-        excluded_indices: &HashSet<&LeafIndex>,
+        node_index: TreeNodeIndex,
+        excluded_indices: &HashSet<&LeafNodeIndex>,
     ) -> Result<Vec<HpkePublicKey>, LibraryError> {
         // First, check if the node is blank or not.
-        if let Some(node) = self
-            .diff
-            .node(node_index)
-            .map_err(|_| LibraryError::custom("Expected node to be in the tree"))?
-            .node()
-        {
+        if let Some(node) = self.diff.node(node_index).node() {
             // If it's a full node, check if it's a leaf.
-            if let Some(leaf_index) = self.diff.leaf_index(node_index) {
-                // If the node is a leaf, check if it is in the exclusion list.
-                if excluded_indices.contains(&leaf_index) {
-                    Ok(vec![])
-                } else {
-                    // If it's not, return its public key as its resolution.
-                    Ok(vec![node.public_key().clone()])
-                }
-            } else {
-                // If it's a parent node, get the unmerged leaves, exclude them
-                // as necessary and add their public keys to the resulting
-                // resolution.
-                let mut resolution = vec![node.public_key().clone()];
-                for leaf_index in node
-                    .as_parent_node()
-                    .map_err(|_| LibraryError::custom("Expected a parent node"))?
-                    .unmerged_leaves()
-                {
-                    if !excluded_indices.contains(leaf_index) {
-                        let leaf = self
-                            .diff
-                            .node(self.diff.leaf(*leaf_index))
-                            .map_err(|_| LibraryError::custom("Expected node to be in the tree"))?;
-                        // TODO #800: unmerged leaves should be checked
-                        let leaf_node = leaf
-                            .node()
-                            .as_ref()
-                            .ok_or_else(|| LibraryError::custom("Found a blank unmerged leaf"))?;
-                        resolution.push(leaf_node.public_key().clone())
+            match node_index {
+                TreeNodeIndex::Leaf(leaf_index) => {
+                    // If the node is a leaf, check if it is in the exclusion list.
+                    if excluded_indices.contains(&leaf_index) {
+                        Ok(vec![])
+                    } else {
+                        // If it's not, return its public key as its resolution.
+                        Ok(vec![node.public_key().clone()])
                     }
                 }
-                Ok(resolution)
+                TreeNodeIndex::Parent(_) => {
+                    // If it's a parent node, get the unmerged leaves, exclude them
+                    // as necessary and add their public keys to the resulting
+                    // resolution.
+                    let mut resolution = vec![node.public_key().clone()];
+                    for leaf_index in node
+                        .as_parent_node()
+                        .map_err(|_| LibraryError::custom("Expected a parent node"))?
+                        .unmerged_leaves()
+                    {
+                        if !excluded_indices.contains(&leaf_index) {
+                            let leaf = self.diff.node((*leaf_index).into());
+                            // TODO #800: unmerged leaves should be checked
+                            let leaf_node = leaf.node().as_ref().ok_or_else(|| {
+                                LibraryError::custom("Found a blank unmerged leaf")
+                            })?;
+                            resolution.push(leaf_node.public_key().clone())
+                        }
+                    }
+                    Ok(resolution)
+                }
             }
         } else {
             // If it's a blank, also check if it's a leaf
-            if self.diff.is_leaf(node_index) {
-                // If it is, just return an empty vector.
-                Ok(vec![])
-            } else {
-                // If not, continue resolving down the tree.
-                let mut resolution = Vec::new();
-                let left_child = self
-                    .diff
-                    .left_child(node_index)
-                    .map_err(|_| LibraryError::custom("Expected a parent node"))?;
-                let right_child = self
-                    .diff
-                    .right_child(node_index)
-                    .map_err(|_| LibraryError::custom("Expected a parent node"))?;
-                resolution.append(&mut self.resolution(left_child, excluded_indices)?);
-                resolution.append(&mut self.resolution(right_child, excluded_indices)?);
-                Ok(resolution)
+            match node_index {
+                TreeNodeIndex::Leaf(_) => {
+                    // If it is, just return an empty vector.
+                    Ok(vec![])
+                }
+                TreeNodeIndex::Parent(parent_node) => {
+                    // If not, continue resolving down the tree.
+                    let mut resolution = Vec::new();
+                    let left_child = self.diff.left_child(parent_node);
+                    let right_child = self.diff.right_child(parent_node);
+                    resolution.append(&mut self.resolution(left_child, excluded_indices)?);
+                    resolution.append(&mut self.resolution(right_child, excluded_indices)?);
+                    Ok(resolution)
+                }
             }
         }
     }
@@ -578,38 +545,32 @@ impl<'a> TreeSyncDiff<'a> {
     /// if the target leaf is outside of the tree.
     pub(crate) fn copath_resolutions(
         &self,
-        leaf_index: LeafIndex,
-        excluded_indices: &HashSet<&LeafIndex>,
+        leaf_index: LeafNodeIndex,
+        excluded_indices: &HashSet<&LeafNodeIndex>,
     ) -> Result<Vec<Vec<HpkePublicKey>>, LibraryError> {
-        let leaf = self.diff.leaf(leaf_index);
         // If we're the only node in the tree, there's no copath.
-        if leaf == self.diff.root() {
+        if leaf_index.to_tree_index() == self.diff.root().u32() {
             return Ok(vec![]);
         }
 
         // We want the full path here, including the leaf itself, but not the
         // root.
-        let mut full_path = vec![leaf];
-        let mut direct_path = self
-            .diff
-            .direct_path(leaf_index)
-            // We know the leaf index is in the tree
-            .map_err(|_| LibraryError::custom("Expected leaf index to be in tree"))?;
+        let mut full_path = vec![TreeNodeIndex::Leaf(leaf_index)];
+        let mut direct_path = direct_path(leaf_index, self.diff.size());
         if !direct_path.is_empty() {
             // Remove root
             direct_path.pop();
         }
-        full_path.append(&mut direct_path);
+        full_path.append(
+            &mut direct_path
+                .iter()
+                .map(|i| TreeNodeIndex::Parent(*i))
+                .collect(),
+        );
 
         let mut copath_resolutions = Vec::new();
-        for node_index in &full_path {
-            // If sibling is not a blank, return its HpkePublicKey.
-            let sibling_id = self
-                .diff
-                .sibling(*node_index)
-                // The root should not be there anymore, hence sibling cannot fail
-                .map_err(|_| LibraryError::custom("Expected root to be removed"))?;
-            let resolution = self.resolution(sibling_id, excluded_indices)?;
+        for node_index in self.diff.copath(leaf_index) {
+            let resolution = self.resolution(node_index, excluded_indices)?;
             copath_resolutions.push(resolution);
         }
         Ok(copath_resolutions)
@@ -625,98 +586,74 @@ impl<'a> TreeSyncDiff<'a> {
         backend: &impl OpenMlsCryptoProvider,
         ciphersuite: Ciphersuite,
     ) -> Result<(), TreeSyncParentHashError> {
-        for node_index in self.diff.iter() {
-            // Continue early if node is blank.
-            if let Some(Node::ParentNode(parent_node)) = self
-                .diff
-                .node(node_index)
-                .map_err(|_| LibraryError::custom("Node not in tree"))?
-                .node()
-            {
-                // We don't care about leaf nodes.
-                let left_child_id = self
-                    .diff
-                    .left_child(node_index)
-                    .map_err(|_| LibraryError::custom("Expected parent node"))?;
-                let mut right_child_id = self
-                    .diff
-                    .right_child(node_index)
-                    .map_err(|_| LibraryError::custom("Expected parent node"))?;
-                // If the left child is blank, we continue with the next step
-                // in the verification algorithm.
-                if let Some(left_child) = self
-                    .diff
-                    .node(left_child_id)
-                    .map_err(|_| LibraryError::custom("Node not in tree"))?
-                    .node()
-                {
-                    let mut right_child_resolution =
-                        self.resolution(right_child_id, &HashSet::new())?;
-                    // Filter unmerged leaves from resolution.
-                    self.filter_resolution(parent_node, &mut right_child_resolution)?;
-                    let node_hash = parent_node.compute_parent_hash(
-                        backend,
-                        ciphersuite,
-                        parent_node.parent_hash(),
-                        &right_child_resolution,
-                    )?;
-                    if let Some(left_child_parent_hash) = left_child.parent_hash() {
-                        if node_hash == left_child_parent_hash {
-                            // If the hashes match, we continue with the next node.
-                            continue;
-                        };
+        for (node_index, node) in self.diff.nodes() {
+            if let TreeNodeIndex::Parent(parent_index) = node_index {
+                // Continue early if node is blank.
+                if let Some(Node::ParentNode(parent_node)) = node.node() {
+                    // We don't care about leaf nodes.
+                    let left_child_id = self.diff.left_child(parent_index);
+                    let mut right_child_id = self.diff.right_child(parent_index);
+                    // If the left child is blank, we continue with the next step
+                    // in the verification algorithm.
+                    if let Some(left_child) = self.diff.node(left_child_id).node() {
+                        let mut right_child_resolution =
+                            self.resolution(right_child_id, &HashSet::new())?;
+                        // Filter unmerged leaves from resolution.
+                        self.filter_resolution(parent_node, &mut right_child_resolution)?;
+                        let node_hash = parent_node.compute_parent_hash(
+                            backend,
+                            ciphersuite,
+                            parent_node.parent_hash(),
+                            &right_child_resolution,
+                        )?;
+                        if let Some(left_child_parent_hash) = left_child.parent_hash() {
+                            if node_hash == left_child_parent_hash {
+                                // If the hashes match, we continue with the next node.
+                                continue;
+                            };
+                        }
                     }
-                }
 
-                // If the right child is blank, replace it with its left child
-                // until it's non-blank or a leaf.
-                while self
-                    .diff
-                    .node(right_child_id)
-                    .map_err(|_| LibraryError::custom("Node not in tree"))?
-                    .node()
-                    .is_none()
-                    && !self.diff.is_leaf(right_child_id)
-                {
-                    right_child_id = self
-                        .diff
-                        .left_child(right_child_id)
-                        .map_err(|_| LibraryError::custom("Expected parent node"))?;
-                }
-                // If the "right child" is a non-blank node, we continue,
-                // otherwise it has to be a blank leaf node and the check
-                // fails.
-                if let Some(right_child) = self
-                    .diff
-                    .node(right_child_id)
-                    .map_err(|_| LibraryError::custom("Node not in tree"))?
-                    .node()
-                {
-                    // Perform the check with the parent hash of the "right
-                    // child" and the left child resolution.
-                    let mut left_child_resolution =
-                        self.resolution(left_child_id, &HashSet::new())?;
-                    // Filter unmerged leaves from resolution.
-                    self.filter_resolution(parent_node, &mut left_child_resolution)?;
-                    let node_hash = parent_node.compute_parent_hash(
-                        backend,
-                        ciphersuite,
-                        parent_node.parent_hash(),
-                        &left_child_resolution,
-                    )?;
-                    if let Some(right_child_parent_hash) = right_child.parent_hash() {
-                        if node_hash == right_child_parent_hash {
-                            // If the hashes match, we continue with the next node.
-                            continue;
-                        };
+                    // If the right child is blank, replace it with its left child
+                    // until it's non-blank or a leaf.
+
+                    while self.diff.node(right_child_id).node().is_none()
+                        && matches!(right_child_id, TreeNodeIndex::Parent(_))
+                    {
+                        if let TreeNodeIndex::Parent(parent_index) = right_child_id {
+                            right_child_id = self.diff.left_child(parent_index);
+                        }
                     }
-                    // If the hash doesn't match, or the leaf doesn't have a
-                    // parent hash extension (the `None` case in the `if let`
-                    // above), the verification fails.
+                    // If the "right child" is a non-blank node, we continue,
+                    // otherwise it has to be a blank leaf node and the check
+                    // fails.
+                    if let Some(right_child) = self.diff.node(right_child_id).node() {
+                        // Perform the check with the parent hash of the "right
+                        // child" and the left child resolution.
+                        let mut left_child_resolution =
+                            self.resolution(left_child_id, &HashSet::new())?;
+                        // Filter unmerged leaves from resolution.
+                        self.filter_resolution(parent_node, &mut left_child_resolution)?;
+                        let node_hash = parent_node.compute_parent_hash(
+                            backend,
+                            ciphersuite,
+                            parent_node.parent_hash(),
+                            &left_child_resolution,
+                        )?;
+                        if let Some(right_child_parent_hash) = right_child.parent_hash() {
+                            if node_hash == right_child_parent_hash {
+                                // If the hashes match, we continue with the next node.
+                                continue;
+                            };
+                        }
+                        // If the hash doesn't match, or the leaf doesn't have a
+                        // parent hash extension (the `None` case in the `if let`
+                        // above), the verification fails.
+                    }
+                    return Err(TreeSyncParentHashError::InvalidParentHash);
+                } else {
+                    continue;
                 }
-                return Err(TreeSyncParentHashError::InvalidParentHash);
-            } else {
-                continue;
             }
         }
         Ok(())
@@ -746,18 +683,9 @@ impl<'a> TreeSyncDiff<'a> {
         &mut self,
         backend: &impl OpenMlsCryptoProvider,
         ciphersuite: Ciphersuite,
-        node_index: u32,
+        node_index: TreeNodeIndex,
     ) -> Result<Vec<u8>, LibraryError> {
         // Check if this is a leaf.
-        if let Some(leaf_index) = self.diff.leaf_index(node_index) {
-            let leaf = self
-                .diff
-                .node_mut(node_index)
-                .map_err(|_| LibraryError::custom("Expected node to be in tree"))?;
-            let tree_hash =
-                leaf.compute_tree_hash(backend, ciphersuite, Some(leaf_index), vec![], vec![])?;
-            return Ok(tree_hash);
-        }
         // // Return early if there's already a cached tree hash.
         // TODO[FK]: Do we want to keep caching?
         // let node = self
@@ -768,37 +696,34 @@ impl<'a> TreeSyncDiff<'a> {
         //     return Ok(tree_hash.to_vec());
         // }
         // Compute left hash.
-        let left_child = self
-            .diff
-            .left_child(node_index)
-            .map_err(|_| LibraryError::custom("Expected node to be in tree"))?;
-        let left_hash = self.compute_tree_hash(backend, ciphersuite, left_child)?;
-        // Compute right hash.
-        let right_child = self
-            .diff
-            .right_child(node_index)
-            .map_err(|_| LibraryError::custom("Expected node to be in tree"))?;
-        let right_hash = self.compute_tree_hash(backend, ciphersuite, right_child)?;
+        match node_index {
+            TreeNodeIndex::Leaf(leaf_index) => {
+                let leaf = self.diff.node_mut(node_index);
 
-        let node = self
-            .diff
-            .node_mut(node_index)
-            .map_err(|_| LibraryError::custom("Expected node to be in tree"))?;
-        let tree_hash =
-            node.compute_tree_hash(backend, ciphersuite, None, left_hash, right_hash)?;
+                leaf.compute_tree_hash(backend, ciphersuite, Some(leaf_index), vec![], vec![])
+            }
+            TreeNodeIndex::Parent(parent_index) => {
+                let left_child = self.diff.left_child(parent_index);
+                let left_hash = self.compute_tree_hash(backend, ciphersuite, left_child)?;
+                // Compute right hash.
+                let right_child = self.diff.right_child(parent_index);
+                let right_hash = self.compute_tree_hash(backend, ciphersuite, right_child)?;
 
-        Ok(tree_hash)
+                let node = self.diff.node_mut(parent_index.into());
+
+                node.compute_tree_hash(backend, ciphersuite, None, left_hash, right_hash)
+            }
+        }
     }
 
     /// Return the own leaf index.
-    pub(crate) fn own_leaf_index(&self) -> LeafIndex {
+    pub(crate) fn own_leaf_index(&self) -> LeafNodeIndex {
         self.own_leaf_index
     }
 
     /// Return a reference to our own leaf.
     pub(crate) fn own_leaf(&self) -> Result<&OpenMlsLeafNode, TreeSyncDiffError> {
-        let node_index = self.diff.leaf(self.own_leaf_index);
-        let node = self.diff.node(node_index)?;
+        let node = self.diff.node(self.own_leaf_index.into());
         match node.node() {
             Some(node) => Ok(node.as_leaf_node()?),
             None => Err(LibraryError::custom("Node was empty.").into()),
@@ -807,8 +732,7 @@ impl<'a> TreeSyncDiff<'a> {
 
     /// Return a mutable reference to our own leaf.
     pub(crate) fn own_leaf_mut(&mut self) -> Result<&mut OpenMlsLeafNode, TreeSyncDiffError> {
-        let node_index = self.diff.leaf(self.own_leaf_index);
-        let node = self.diff.node_mut(node_index)?;
+        let node = self.diff.node_mut(self.own_leaf_index.into());
         match node.node_mut() {
             Some(node) => Ok(node.as_leaf_node_mut()?),
             None => Err(LibraryError::custom("Node was empty.").into()),
@@ -831,8 +755,8 @@ impl<'a> TreeSyncDiff<'a> {
     /// the given leaf indices is outside of the tree.
     pub(crate) fn subtree_root_position(
         &self,
-        leaf_index_1: LeafIndex,
-        leaf_index_2: LeafIndex,
+        leaf_index_1: LeafNodeIndex,
+        leaf_index_2: LeafNodeIndex,
     ) -> Result<usize, TreeSyncDiffError> {
         Ok(self
             .diff
@@ -848,14 +772,14 @@ impl<'a> TreeSyncDiff<'a> {
     /// `sender_leaf_index` is outside of the tree.
     pub(crate) fn decryption_key(
         &self,
-        sender_leaf_index: LeafIndex,
-        excluded_indices: &HashSet<&LeafIndex>,
+        sender_leaf_index: LeafNodeIndex,
+        excluded_indices: &HashSet<&LeafNodeIndex>,
     ) -> Result<(&HpkePrivateKey, usize), TreeSyncDiffError> {
         // Get the copath node of the sender that is in our direct path, as well
         // as its position in our direct path.
         let subtree_root_copath_node_id = self
             .diff
-            .subtree_root_copath_node(sender_leaf_index, self.own_leaf_index)?;
+            .subtree_root_copath_node(sender_leaf_index, self.own_leaf_index);
 
         let sender_copath_resolution =
             self.resolution(subtree_root_copath_node_id, excluded_indices)?;
@@ -863,11 +787,18 @@ impl<'a> TreeSyncDiff<'a> {
         // Get all of the public keys that we have secret keys for, i.e. our own
         // leaf pk, as well as potentially a number of public keys from our
         // direct path.
-        let mut own_node_ids = vec![self.diff.leaf(self.own_leaf_index)];
+        let mut own_node_ids = vec![TreeNodeIndex::Leaf(self.own_leaf_index)];
 
-        own_node_ids.append(&mut self.diff.direct_path(self.own_leaf_index)?);
+        own_node_ids.append(
+            &mut self
+                .diff
+                .direct_path(self.own_leaf_index)
+                .iter()
+                .map(|node| TreeNodeIndex::Parent(*node))
+                .collect(),
+        );
         for node_id in own_node_ids {
-            let node_tsn = self.diff.node(node_id)?;
+            let node_tsn = self.diff.node(node_id);
             // If the node is blank, skip it.
             if let Some(node) = node_tsn.node() {
                 // If we don't have the private key, skip it.
@@ -897,8 +828,8 @@ impl<'a> TreeSyncDiff<'a> {
         Ok(nodes)
     }
 
-    /// Get the length of the direct path of the given [`LeafIndex`].
-    pub(super) fn direct_path_len(&self, leaf_index: LeafIndex) -> Result<usize, OutOfBoundsError> {
-        Ok(self.diff.direct_path(leaf_index)?.len())
+    /// Get the length of the direct path of the given [`LeafNodeIndex`].
+    pub(super) fn direct_path_len(&self, leaf_index: LeafNodeIndex) -> usize {
+        self.diff.direct_path(leaf_index).len()
     }
 }

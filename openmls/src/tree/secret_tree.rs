@@ -101,7 +101,7 @@ pub(crate) struct SecretTree {
     nodes: Vec<Option<SecretTreeNode>>,
     handshake_sender_ratchets: Vec<Option<SenderRatchet>>,
     application_sender_ratchets: Vec<Option<SenderRatchet>>,
-    size: SecretTreeLeafIndex,
+    size: u32,
 }
 
 impl SecretTree {
@@ -111,11 +111,11 @@ impl SecretTree {
     /// or `next_secret()`.
     pub(crate) fn new(
         encryption_secret: EncryptionSecret,
-        size: SecretTreeLeafIndex,
+        size: u32,
         own_index: SecretTreeLeafIndex,
     ) -> Self {
         let root = root(size);
-        let num_indices = SecretTreeNodeIndex::from(size).as_usize() - 1;
+        let num_indices = SecretTreeNodeIndex::from(size * 2).as_usize() - 1;
 
         let mut nodes: Vec<Option<SecretTreeNode>> =
             std::iter::repeat_with(|| Option::<SecretTreeNode>::None)
@@ -126,11 +126,11 @@ impl SecretTree {
             secret: encryption_secret.consume_secret(),
         });
         let handshake_sender_ratchets = std::iter::repeat_with(|| Option::<SenderRatchet>::None)
-            .take(size.as_usize())
+            .take(size as usize)
             .collect();
 
         let application_sender_ratchets = std::iter::repeat_with(|| Option::<SenderRatchet>::None)
-            .take(size.as_usize())
+            .take(size as usize)
             .collect();
 
         SecretTree {
@@ -167,7 +167,7 @@ impl SecretTree {
             index,
             ciphersuite
         );
-        if index >= self.size {
+        if index.as_u32() >= self.size {
             log::error!("Index is larger than the tree size.");
             return Err(SecretTreeError::IndexOutOfBounds);
         }
@@ -267,7 +267,7 @@ impl SecretTree {
             ciphersuite,
         );
         // Check tree bounds
-        if index >= self.size {
+        if index.as_u32() >= self.size {
             return Err(SecretTreeError::IndexOutOfBounds);
         }
         if self.ratchet_opt(index, secret_type)?.is_none() {

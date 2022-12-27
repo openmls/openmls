@@ -7,6 +7,7 @@
 //! signatures are verified before the content of an MLS [`PrivateMessage`] or
 //! [`PublicMessage`] can be accessed by processing functions of OpenMLS.
 use crate::{
+    binary_tree::LeafNodeIndex,
     ciphersuite::signable::{Signable, SignedStruct, Verifiable, VerifiedStruct},
     error::LibraryError,
     group::errors::ValidationError,
@@ -138,7 +139,7 @@ impl AuthenticatedContent {
     /// This constructor builds an `AuthenticatedContent` containing an application
     /// message. The sender type is always `SenderType::Member`.
     pub(crate) fn new_application(
-        sender_leaf_index: u32,
+        sender_leaf_index: LeafNodeIndex,
         authenticated_data: &[u8],
         application_message: &[u8],
         credential_bundle: &CredentialBundle,
@@ -161,7 +162,7 @@ impl AuthenticatedContent {
     /// The sender type is always `SenderType::Member`.
     pub(crate) fn member_proposal(
         framing_parameters: FramingParameters,
-        sender_leaf_index: u32,
+        sender_leaf_index: LeafNodeIndex,
         proposal: Proposal,
         credential_bundle: &CredentialBundle,
         context: &GroupContext,

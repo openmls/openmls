@@ -3,7 +3,6 @@ use std::collections::HashSet;
 use openmls_traits::OpenMlsCryptoProvider;
 
 use crate::{
-    binary_tree::LeafIndex,
     error::LibraryError,
     framing::Sender,
     group::errors::ApplyProposalsError,
@@ -18,7 +17,7 @@ use super::*;
 pub(crate) struct ApplyProposalsValues {
     pub(crate) path_required: bool,
     pub(crate) self_removed: bool,
-    pub(crate) invitation_list: Vec<(LeafIndex, AddProposal)>,
+    pub(crate) invitation_list: Vec<(LeafNodeIndex, AddProposal)>,
     pub(crate) presharedkeys: Vec<PreSharedKeyId>,
     pub(crate) external_init_secret_option: Option<InitSecret>,
 }
@@ -27,10 +26,10 @@ impl ApplyProposalsValues {
     /// This function creates a `HashSet` of node indexes of the new nodes that
     /// were added to the tree. The `HashSet` will be querried by the
     /// `resolve()` function to filter out those nodes from the resolution.
-    pub(crate) fn exclusion_list(&self) -> HashSet<&LeafIndex> {
+    pub(crate) fn exclusion_list(&self) -> HashSet<&LeafNodeIndex> {
         // Collect the new leaves' indexes so we can filter them out in the resolution
         // later
-        let new_leaves_indexes: HashSet<&LeafIndex> = self
+        let new_leaves_indexes: HashSet<&LeafNodeIndex> = self
             .invitation_list
             .iter()
             .map(|(index, _)| index)
@@ -109,8 +108,7 @@ impl CoreGroup {
                 } else {
                     update_proposal.leaf_node().clone().into()
                 };
-                diff.update_leaf(leaf_node, sender_index)
-                    .map_err(|_| LibraryError::custom("Update proposal from non-member"))?;
+                diff.update_leaf(leaf_node, sender_index);
             }
         }
 
@@ -122,9 +120,7 @@ impl CoreGroup {
                     self_removed = true;
                 }
                 // Blank the direct path of the removed member
-                diff.blank_leaf(remove_proposal.removed())
-                    // The remove proposals were validated before, so this should not happen
-                    .map_err(|_| LibraryError::custom("Removed member not in tree"))?;
+                diff.blank_leaf(remove_proposal.removed());
             }
         }
 

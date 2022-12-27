@@ -11,6 +11,7 @@ use super::{
 };
 
 use crate::{
+    binary_tree::array_representation::LeafNodeIndex,
     error::LibraryError,
     framing::mls_content::FramedContentTbs,
     tree::{
@@ -49,7 +50,7 @@ pub(crate) struct PrivateMessage {
 pub(crate) struct MlsMessageHeader {
     pub(crate) group_id: GroupId,
     pub(crate) epoch: GroupEpoch,
-    pub(crate) sender: SecretTreeLeafIndex,
+    pub(crate) sender: LeafNodeIndex,
 }
 
 impl PrivateMessage {
@@ -157,7 +158,7 @@ impl PrivateMessage {
             _ => MlsMessageHeader {
                 group_id: public_message.group_id().clone(),
                 epoch: public_message.epoch(),
-                sender: sender_index.into(),
+                sender: sender_index,
             },
         };
         // Serialize the content AAD
@@ -218,7 +219,7 @@ impl PrivateMessage {
             .map_err(LibraryError::missing_bound_check)?;
         let sender_data = MlsSenderData::from_sender(
             // XXX: #106 This will fail for messages with a non-member sender.
-            header.sender.into(),
+            header.sender,
             generation,
             reuse_guard,
         );
@@ -457,14 +458,18 @@ impl PrivateMessage {
 #[derive(Clone, TlsDeserialize, TlsSerialize, TlsSize)]
 #[cfg_attr(test, derive(Debug))]
 pub(crate) struct MlsSenderData {
-    pub(crate) leaf_index: u32,
+    pub(crate) leaf_index: LeafNodeIndex,
     pub(crate) generation: u32,
     pub(crate) reuse_guard: ReuseGuard,
 }
 
 impl MlsSenderData {
     /// Build new [`MlsSenderData`] for a [`Sender`].
-    pub(crate) fn from_sender(leaf_index: u32, generation: u32, reuse_guard: ReuseGuard) -> Self {
+    pub(crate) fn from_sender(
+        leaf_index: LeafNodeIndex,
+        generation: u32,
+        reuse_guard: ReuseGuard,
+    ) -> Self {
         MlsSenderData {
             leaf_index,
             generation,

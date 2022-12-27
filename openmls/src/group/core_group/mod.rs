@@ -38,6 +38,7 @@ use super::errors::CreateGroupContextExtProposalError;
 use crate::framing::mls_auth_content::VerifiableAuthenticatedContent;
 
 use crate::{
+    binary_tree::array_representation::LeafNodeIndex,
     ciphersuite::{signable::Signable, HpkePublicKey},
     credentials::*,
     error::LibraryError,
@@ -85,7 +86,7 @@ pub(crate) struct CreateCommitResult {
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Member {
     /// The member's leaf index in the ratchet tree.
-    pub index: u32,
+    pub index: LeafNodeIndex,
     /// The member's identity from the credential.
     pub identity: Vec<u8>,
     /// The member's public HPHKE encryption key.
@@ -97,7 +98,7 @@ pub struct Member {
 impl Member {
     /// Create new member.
     pub fn new(
-        index: u32,
+        index: LeafNodeIndex,
         encryption_key: Vec<u8>,
         signature_key: Vec<u8>,
         identity: Vec<u8>,
@@ -278,7 +279,7 @@ impl CoreGroupBuilder {
             .map_err(|_| LibraryError::custom("Using the key schedule in the wrong state"))?;
 
         let (group_epoch_secrets, message_secrets) =
-            epoch_secrets.split_secrets(serialized_group_context, 1u32, 0u32);
+            epoch_secrets.split_secrets(serialized_group_context, 1u32, LeafNodeIndex::new(0u32));
         let message_secrets_store =
             MessageSecretsStore::new_with_secret(self.max_past_epochs, message_secrets);
 
@@ -373,10 +374,10 @@ impl CoreGroup {
         &self,
         framing_parameters: FramingParameters,
         credential_bundle: &CredentialBundle,
-        removed: u32,
+        removed: LeafNodeIndex,
         backend: &impl OpenMlsCryptoProvider,
     ) -> Result<AuthenticatedContent, ValidationError> {
-        if self.treesync().leaf_is_in_tree(removed).is_err() {
+        if !self.treesync().is_leaf_in_tree(removed) {
             return Err(ValidationError::UnknownMember);
         }
         let remove_proposal = RemoveProposal { removed };
@@ -509,16 +510,12 @@ impl CoreGroup {
             .message_secrets_mut(private_message.epoch())
             .map_err(|_| MessageDecryptionError::AeadError)?;
         let sender_data = private_message.sender_data(message_secrets, backend, ciphersuite)?;
-        if self
-            .treesync()
-            .leaf_is_in_tree(sender_data.leaf_index)
-            .is_err()
-        {
+        if !self.treesync().is_leaf_in_tree(sender_data.leaf_index) {
             return Err(MessageDecryptionError::SenderError(
                 SenderError::UnknownSender,
             ));
         }
-        let sender_index = SecretTreeLeafIndex(sender_data.leaf_index);
+        let sender_index = SecretTreeLeafIndex::from(sender_data.leaf_index);
         let message_secrets = self
             .message_secrets_mut(private_message.epoch())
             .map_err(|_| MessageDecryptionError::AeadError)?;
@@ -662,7 +659,7 @@ impl CoreGroup {
 // Private and crate functions
 impl CoreGroup {
     /// Get the leaf index of this client.
-    pub(crate) fn own_leaf_index(&self) -> u32 {
+    pub(crate) fn own_leaf_index(&self) -> LeafNodeIndex {
         self.treesync().own_leaf_index()
     }
 

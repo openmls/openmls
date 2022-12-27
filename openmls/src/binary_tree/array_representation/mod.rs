@@ -10,14 +10,21 @@
 //! of the contained modules (especially [`tree`] and [`diff`]) for more
 //! information.
 
+// Public
+pub use treemath::LeafNodeIndex;
+
 // Crate
 pub(crate) mod diff;
 pub(crate) mod sorted_iter;
 pub(crate) mod tree;
 
-pub(super) mod treemath;
+pub(crate) use treemath::{direct_path, is_node_in_tree, TreeNodeIndex};
+
+mod treemath;
 
 // Tests
-
 #[cfg(any(feature = "test-utils", test))]
 pub mod kat_treemath;
+
+#[cfg(test)]
+pub(crate) use treemath::TreeSize;

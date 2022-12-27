@@ -411,7 +411,7 @@ impl CoreGroup {
     pub(crate) fn free_leaf_index<'a>(
         &self,
         mut inline_proposals: impl Iterator<Item = Option<&'a Proposal>>,
-    ) -> Result<u32, LibraryError> {
+    ) -> Result<LeafNodeIndex, LibraryError> {
         // Leftmost free leaf in the tree
         let free_leaf_index = self.treesync().free_leaf_index();
         // Returns the first remove proposal (if there is one)
