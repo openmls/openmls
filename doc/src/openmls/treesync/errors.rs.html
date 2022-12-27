@@ -209,12 +209,6 @@
 <span id="209">209</span>
 <span id="210">210</span>
 <span id="211">211</span>
-<span id="212">212</span>
-<span id="213">213</span>
-<span id="214">214</span>
-<span id="215">215</span>
-<span id="216">216</span>
-<span id="217">217</span>
 </pre><pre class="rust"><code><span class="doccomment">//! TreeSync errors
 //!
 //! This module exposes [`ApplyUpdatePathError`] and [`PublicTreeError`].
@@ -226,10 +220,7 @@
 
 <span class="comment">// === Public errors ===
 
-// Re-exporting OutOfBoundsError from the ABinaryTree
-</span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">use </span><span class="kw">crate</span>::binary_tree::OutOfBoundsError;
-
-<span class="doccomment">/// Public tree error
+</span><span class="doccomment">/// Public tree error
 </span><span class="attribute">#[derive(Error, Debug, PartialEq, Eq, Clone)]
 </span><span class="kw">pub enum </span>PublicTreeError {
     <span class="doccomment">/// The derived public key doesn&#39;t match the one in the tree.
@@ -395,9 +386,6 @@
     <span class="doccomment">/// See [`MlsBinaryTreeError`] for more details.
     </span><span class="attribute">#[error(transparent)]
     </span>CreationError(<span class="attribute">#[from] </span>MlsBinaryTreeError),
-    <span class="doccomment">/// See [`OutOfBoundsError`] for more details.
-    </span><span class="attribute">#[error(transparent)]
-    </span>UnknownMember(<span class="attribute">#[from] </span>OutOfBoundsError),
 }
 
 <span class="doccomment">/// TreeKem error

@@ -116,12 +116,23 @@
 <span id="116">116</span>
 <span id="117">117</span>
 <span id="118">118</span>
+<span id="119">119</span>
+<span id="120">120</span>
+<span id="121">121</span>
+<span id="122">122</span>
+<span id="123">123</span>
+<span id="124">124</span>
+<span id="125">125</span>
+<span id="126">126</span>
+<span id="127">127</span>
 </pre><pre class="rust"><code><span class="kw">use </span>std::convert::TryFrom;
 <span class="kw">use </span>tls_codec::{TlsDeserialize, TlsSerialize, TlsSize};
 
+<span class="kw">use </span><span class="kw">crate</span>::binary_tree::array_representation::LeafNodeIndex;
+
 <span class="kw">use super</span>::<span class="kw-2">*</span>;
 
-<span class="doccomment">/// NodeIndex is an index to the nodes of a tree, both parent and leaf nodes.
+<span class="doccomment">/// SecretTreeNodeIndex is an index to the nodes of a tree, both parent and leaf nodes.
 </span><span class="attribute">#[derive(
     Debug,
     Ord,
@@ -170,7 +181,7 @@
     }
 }
 
-<span class="doccomment">/// LeafIndex is an index to the leaves of a tree.
+<span class="doccomment">/// SecretTreeLeafLeafIndex is an index to the leaves of a tree.
 </span><span class="attribute">#[derive(
     Debug,
     Default,
@@ -198,7 +209,14 @@
     }
 }
 
-<span class="kw">impl </span>From&lt;u32&gt; <span class="kw">for </span>SecretTreeLeafIndex {
+<span class="kw">impl </span>From&lt;LeafNodeIndex&gt; <span class="kw">for </span>SecretTreeLeafIndex {
+    <span class="kw">fn </span>from(i: LeafNodeIndex) -&gt; SecretTreeLeafIndex {
+        SecretTreeLeafIndex(i.u32())
+    }
+}
+
+<span class="attribute">#[cfg(test)]
+</span><span class="kw">impl </span>From&lt;u32&gt; <span class="kw">for </span>SecretTreeLeafIndex {
     <span class="kw">fn </span>from(i: u32) -&gt; SecretTreeLeafIndex {
         SecretTreeLeafIndex(i)
     }

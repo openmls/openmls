@@ -73,9 +73,13 @@
 <span id="73">73</span>
 <span id="74">74</span>
 <span id="75">75</span>
+<span id="76">76</span>
+<span id="77">77</span>
 </pre><pre class="rust"><code><span class="doccomment">//! # The sender of a message.
 
-</span><span class="kw">use super</span>::<span class="kw-2">*</span>;
+</span><span class="kw">use </span><span class="kw">crate</span>::binary_tree::array_representation::LeafNodeIndex;
+
+<span class="kw">use super</span>::<span class="kw-2">*</span>;
 <span class="kw">use </span>tls_codec::{TlsDeserialize, TlsSerialize, TlsSize};
 
 <span class="doccomment">/// All possible sender types according to the MLS protocol spec.
@@ -112,7 +116,7 @@
 </span><span class="kw">pub enum </span>Sender {
     <span class="doccomment">/// The sender is a member of the group
     </span><span class="attribute">#[tls_codec(discriminant = <span class="number">1</span>)]
-    </span>Member(u32),
+    </span>Member(LeafNodeIndex),
     <span class="doccomment">/// The sender is not a member of the group and has an external value instead
     </span>External(TlsByteVecU8),
     <span class="doccomment">/// The sender is a new member of the group that joins itself through
@@ -130,7 +134,7 @@
     }
 
     <span class="doccomment">/// Create a member sender.
-    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>build_member(leaf_index: u32) -&gt; <span class="self">Self </span>{
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>build_member(leaf_index: LeafNodeIndex) -&gt; <span class="self">Self </span>{
         <span class="self">Self</span>::Member(leaf_index)
     }
 
@@ -141,7 +145,7 @@
 
     <span class="doccomment">/// Returns the leaf index of the [`Sender`] or [`None`] if this
     /// is not a [`Sender::Member`].
-    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>as_member(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;u32&gt; {
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>as_member(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;LeafNodeIndex&gt; {
         <span class="kw">match </span><span class="self">self </span>{
             Sender::Member(leaf_index) =&gt; <span class="prelude-val">Some</span>(<span class="kw-2">*</span>leaf_index),
             <span class="kw">_ </span>=&gt; <span class="prelude-val">None</span>,

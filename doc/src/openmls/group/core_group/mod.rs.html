@@ -800,9 +800,6 @@
 <span id="800">800</span>
 <span id="801">801</span>
 <span id="802">802</span>
-<span id="803">803</span>
-<span id="804">804</span>
-<span id="805">805</span>
 </pre><pre class="rust"><code><span class="doccomment">//! ### Don&#39;t Panic!
 //!
 //! Functions in this module should never panic. However, if there is a bug in
@@ -842,6 +839,7 @@
 </span><span class="kw">use </span><span class="kw">super</span>::errors::CreateGroupContextExtProposalError;
 
 <span class="kw">use crate</span>::{
+    binary_tree::array_representation::LeafNodeIndex,
     ciphersuite::{signable::Signable, HpkePublicKey},
     credentials::<span class="kw-2">*</span>,
     error::LibraryError,
@@ -889,7 +887,7 @@
 </span><span class="attribute">#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 </span><span class="kw">pub struct </span>Member {
     <span class="doccomment">/// The member&#39;s leaf index in the ratchet tree.
-    </span><span class="kw">pub </span>index: u32,
+    </span><span class="kw">pub </span>index: LeafNodeIndex,
     <span class="doccomment">/// The member&#39;s identity from the credential.
     </span><span class="kw">pub </span>identity: Vec&lt;u8&gt;,
     <span class="doccomment">/// The member&#39;s public HPHKE encryption key.
@@ -901,7 +899,7 @@
 <span class="kw">impl </span>Member {
     <span class="doccomment">/// Create new member.
     </span><span class="kw">pub fn </span>new(
-        index: u32,
+        index: LeafNodeIndex,
         encryption_key: Vec&lt;u8&gt;,
         signature_key: Vec&lt;u8&gt;,
         identity: Vec&lt;u8&gt;,
@@ -1082,7 +1080,7 @@
             .map_err(|<span class="kw">_</span>| LibraryError::custom(<span class="string">&quot;Using the key schedule in the wrong state&quot;</span>))<span class="question-mark">?</span>;
 
         <span class="kw">let </span>(group_epoch_secrets, message_secrets) =
-            epoch_secrets.split_secrets(serialized_group_context, <span class="number">1u32</span>, <span class="number">0u32</span>);
+            epoch_secrets.split_secrets(serialized_group_context, <span class="number">1u32</span>, LeafNodeIndex::new(<span class="number">0u32</span>));
         <span class="kw">let </span>message_secrets_store =
             MessageSecretsStore::new_with_secret(<span class="self">self</span>.max_past_epochs, message_secrets);
 
@@ -1177,10 +1175,10 @@
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         framing_parameters: FramingParameters,
         credential_bundle: <span class="kw-2">&amp;</span>CredentialBundle,
-        removed: u32,
+        removed: LeafNodeIndex,
         backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;MlsAuthContent, ValidationError&gt; {
-        <span class="kw">if </span><span class="self">self</span>.treesync().leaf_is_in_tree(removed).is_err() {
+        <span class="kw">if </span>!<span class="self">self</span>.treesync().is_leaf_in_tree(removed) {
             <span class="kw">return </span><span class="prelude-val">Err</span>(ValidationError::UnknownMember);
         }
         <span class="kw">let </span>remove_proposal = RemoveProposal { removed };
@@ -1313,16 +1311,12 @@
             </span>.message_secrets_mut(mls_ciphertext.epoch())
             .map_err(|<span class="kw">_</span>| MessageDecryptionError::AeadError)<span class="question-mark">?</span>;
         <span class="kw">let </span>sender_data = mls_ciphertext.sender_data(message_secrets, backend, ciphersuite)<span class="question-mark">?</span>;
-        <span class="kw">if </span><span class="self">self
-            </span>.treesync()
-            .leaf_is_in_tree(sender_data.leaf_index)
-            .is_err()
-        {
+        <span class="kw">if </span>!<span class="self">self</span>.treesync().is_leaf_in_tree(sender_data.leaf_index) {
             <span class="kw">return </span><span class="prelude-val">Err</span>(MessageDecryptionError::SenderError(
                 SenderError::UnknownSender,
             ));
         }
-        <span class="kw">let </span>sender_index = SecretTreeLeafIndex(sender_data.leaf_index);
+        <span class="kw">let </span>sender_index = SecretTreeLeafIndex::from(sender_data.leaf_index);
         <span class="kw">let </span>message_secrets = <span class="self">self
             </span>.message_secrets_mut(mls_ciphertext.epoch())
             .map_err(|<span class="kw">_</span>| MessageDecryptionError::AeadError)<span class="question-mark">?</span>;
@@ -1466,7 +1460,7 @@
 <span class="comment">// Private and crate functions
 </span><span class="kw">impl </span>CoreGroup {
     <span class="doccomment">/// Get the leaf index of this client.
-    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>own_leaf_index(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; u32 {
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>own_leaf_index(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; LeafNodeIndex {
         <span class="self">self</span>.treesync().own_leaf_index()
     }
 

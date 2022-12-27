@@ -190,7 +190,9 @@
 <span id="190">190</span>
 <span id="191">191</span>
 <span id="192">192</span>
+<span id="193">193</span>
 </pre><pre class="rust"><code><span class="kw">use crate</span>::{
+    binary_tree::array_representation::LeafNodeIndex,
     ciphersuite::signable::Verifiable,
     group::errors::ExternalCommitError,
     messages::proposals::{ExternalInitProposal, Proposal},
@@ -311,7 +313,7 @@
             <span class="comment">// We use a fake own index of 0 here, as we&#39;re not going to use the
             // tree for encryption until after the first commit. This issue is
             // tracked in #767.
-            </span><span class="number">0u32</span>,
+            </span>LeafNodeIndex::new(<span class="number">0u32</span>),
         );
         <span class="kw">let </span>message_secrets_store = MessageSecretsStore::new_with_secret(<span class="number">0</span>, message_secrets);
 

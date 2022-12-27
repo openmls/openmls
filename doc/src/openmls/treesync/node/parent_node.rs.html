@@ -273,7 +273,7 @@
 <span class="kw">use </span>tls_codec::{TlsSerialize, TlsSize, VLBytes};
 
 <span class="kw">use crate</span>::{
-    binary_tree::LeafIndex,
+    binary_tree::array_representation::LeafNodeIndex,
     ciphersuite::{HpkePrivateKey, HpkePublicKey},
     error::LibraryError,
     messages::PathSecret,
@@ -430,12 +430,12 @@
     }
 
     <span class="doccomment">/// Get the list of unmerged leaves.
-    </span><span class="kw">pub</span>(<span class="kw">in </span><span class="kw">crate</span>::treesync) <span class="kw">fn </span>unmerged_leaves(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>[LeafIndex] {
+    </span><span class="kw">pub</span>(<span class="kw">in </span><span class="kw">crate</span>::treesync) <span class="kw">fn </span>unmerged_leaves(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>[LeafNodeIndex] {
         <span class="self">self</span>.unmerged_leaves.list()
     }
 
-    <span class="doccomment">/// Add a [`LeafIndex`] to the node&#39;s list of unmerged leaves.
-    </span><span class="kw">pub</span>(<span class="kw">in </span><span class="kw">crate</span>::treesync) <span class="kw">fn </span>add_unmerged_leaf(<span class="kw-2">&amp;mut </span><span class="self">self</span>, leaf_index: LeafIndex) {
+    <span class="doccomment">/// Add a [`LeafNodeIndex`] to the node&#39;s list of unmerged leaves.
+    </span><span class="kw">pub</span>(<span class="kw">in </span><span class="kw">crate</span>::treesync) <span class="kw">fn </span>add_unmerged_leaf(<span class="kw-2">&amp;mut </span><span class="self">self</span>, leaf_index: LeafNodeIndex) {
         <span class="self">self</span>.unmerged_leaves.add(leaf_index);
     }
 
@@ -477,7 +477,7 @@
 <span class="doccomment">/// A helper struct that maintains a sorted list of unmerged leaves.
 </span><span class="attribute">#[derive(Debug, Eq, PartialEq, Clone, Serialize, Deserialize, TlsSize, TlsSerialize)]
 </span><span class="kw">pub</span>(<span class="kw">in </span><span class="kw">crate</span>::treesync) <span class="kw">struct </span>UnmergedLeaves {
-    list: Vec&lt;LeafIndex&gt;,
+    list: Vec&lt;LeafNodeIndex&gt;,
 }
 
 <span class="kw">impl </span>UnmergedLeaves {
@@ -485,7 +485,7 @@
         <span class="self">Self </span>{ list: Vec::new() }
     }
 
-    <span class="kw">pub</span>(<span class="kw">in </span><span class="kw">crate</span>::treesync) <span class="kw">fn </span>add(<span class="kw-2">&amp;mut </span><span class="self">self</span>, leaf_index: LeafIndex) {
+    <span class="kw">pub</span>(<span class="kw">in </span><span class="kw">crate</span>::treesync) <span class="kw">fn </span>add(<span class="kw-2">&amp;mut </span><span class="self">self</span>, leaf_index: LeafNodeIndex) {
         <span class="comment">// The list of unmerged leaves must be sorted. This is enforced upon
         // deserialization. We can therefore safely insert the new leaf at the
         // correct position.
@@ -493,13 +493,13 @@
         <span class="self">self</span>.list.insert(position, leaf_index);
     }
 
-    <span class="kw">pub</span>(<span class="kw">in </span><span class="kw">crate</span>::treesync) <span class="kw">fn </span>list(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>[LeafIndex] {
+    <span class="kw">pub</span>(<span class="kw">in </span><span class="kw">crate</span>::treesync) <span class="kw">fn </span>list(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>[LeafNodeIndex] {
         <span class="self">self</span>.list.as_slice()
     }
 
     <span class="doccomment">/// Set the list of unmerged leaves.
     </span><span class="attribute">#[cfg(test)]
-    </span><span class="kw">pub</span>(<span class="kw">in </span><span class="kw">crate</span>::treesync) <span class="kw">fn </span>set_list(<span class="kw-2">&amp;mut </span><span class="self">self</span>, list: Vec&lt;LeafIndex&gt;) {
+    </span><span class="kw">pub</span>(<span class="kw">in </span><span class="kw">crate</span>::treesync) <span class="kw">fn </span>set_list(<span class="kw-2">&amp;mut </span><span class="self">self</span>, list: Vec&lt;LeafNodeIndex&gt;) {
         <span class="self">self</span>.list = list;
     }
 }
@@ -511,10 +511,10 @@
     </span>NotSorted,
 }
 
-<span class="kw">impl </span>TryFrom&lt;Vec&lt;LeafIndex&gt;&gt; <span class="kw">for </span>UnmergedLeaves {
+<span class="kw">impl </span>TryFrom&lt;Vec&lt;LeafNodeIndex&gt;&gt; <span class="kw">for </span>UnmergedLeaves {
     <span class="kw">type </span>Error = UnmergedLeavesError;
 
-    <span class="kw">fn </span>try_from(list: Vec&lt;LeafIndex&gt;) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, <span class="self">Self</span>::Error&gt; {
+    <span class="kw">fn </span>try_from(list: Vec&lt;LeafNodeIndex&gt;) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, <span class="self">Self</span>::Error&gt; {
         <span class="comment">// The list of unmerged leaves must be sorted.
         </span><span class="kw">if </span>!list.windows(<span class="number">2</span>).all(|e| e[<span class="number">0</span>] &lt; e[<span class="number">1</span>]) {
             <span class="kw">return </span><span class="prelude-val">Err</span>(UnmergedLeavesError::NotSorted);

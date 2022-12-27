@@ -169,12 +169,6 @@
 <span id="169">169</span>
 <span id="170">170</span>
 <span id="171">171</span>
-<span id="172">172</span>
-<span id="173">173</span>
-<span id="174">174</span>
-<span id="175">175</span>
-<span id="176">176</span>
-<span id="177">177</span>
 </pre><pre class="rust"><code><span class="kw">use </span><span class="kw">crate</span>::tree::index::<span class="kw-2">*</span>;
 <span class="kw">use </span>thiserror::Error;
 
@@ -226,8 +220,8 @@
     </span>}
 }
 
-<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>root(size: SecretTreeLeafIndex) -&gt; SecretTreeNodeIndex {
-    <span class="kw">let </span>n = size.as_usize();
+<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>root(size: u32) -&gt; SecretTreeNodeIndex {
+    <span class="kw">let </span>n = size <span class="kw">as </span>usize;
     <span class="kw">let </span>w = node_width(n);
     SecretTreeNodeIndex::from((<span class="number">1usize </span>&lt;&lt; log2(w)) - <span class="number">1</span>)
 }
@@ -243,10 +237,10 @@
 
 <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>right(
     index: SecretTreeNodeIndex,
-    size: SecretTreeLeafIndex,
+    size: u32,
 ) -&gt; <span class="prelude-ty">Result</span>&lt;SecretTreeNodeIndex, TreeMathError&gt; {
     <span class="kw">let </span>x = index.as_usize();
-    <span class="kw">let </span>n = size.as_usize();
+    <span class="kw">let </span>n = size <span class="kw">as </span>usize;
     <span class="kw">let </span>k = level(SecretTreeNodeIndex::from(x));
     <span class="kw">if </span>k == <span class="number">0 </span>{
         <span class="kw">return </span><span class="prelude-val">Err</span>(TreeMathError::LeafHasNoChildren);
@@ -269,12 +263,9 @@
 
 <span class="comment">// This function is only safe to use if index &lt;= size.
 // If this is not checked before calling the function, `parent` should be used.
-</span><span class="kw">fn </span>try_parent(
-    index: SecretTreeNodeIndex,
-    size: SecretTreeLeafIndex,
-) -&gt; <span class="prelude-ty">Result</span>&lt;SecretTreeNodeIndex, TreeMathError&gt; {
+</span><span class="kw">fn </span>try_parent(index: SecretTreeNodeIndex, size: u32) -&gt; <span class="prelude-ty">Result</span>&lt;SecretTreeNodeIndex, TreeMathError&gt; {
     <span class="kw">let </span>x = index.as_usize();
-    <span class="kw">let </span>n = size.as_usize();
+    <span class="kw">let </span>n = size <span class="kw">as </span>usize;
     <span class="kw">if </span>index == root(size) {
         <span class="kw">return </span><span class="prelude-val">Err</span>(TreeMathError::RootHasNoParent);
     }
@@ -290,14 +281,11 @@
 }
 
 <span class="attribute">#[inline(always)]
-</span><span class="kw">fn </span>leaf_in_tree(
-    leaf_index: SecretTreeLeafIndex,
-    size: SecretTreeLeafIndex,
-) -&gt; <span class="prelude-ty">Result</span>&lt;(), TreeMathError&gt; {
-    <span class="kw">if </span>leaf_index &gt;= size {
-        <span class="prelude-val">Err</span>(TreeMathError::LeafNotInTree)
-    } <span class="kw">else </span>{
+</span><span class="kw">fn </span>is_leaf_in_tree(leaf_index: SecretTreeLeafIndex, size: u32) -&gt; <span class="prelude-ty">Result</span>&lt;(), TreeMathError&gt; {
+    <span class="kw">if </span>leaf_index.as_u32() &lt; size {
         <span class="prelude-val">Ok</span>(())
+    } <span class="kw">else </span>{
+        <span class="prelude-val">Err</span>(TreeMathError::LeafNotInTree)
     }
 }
 
@@ -305,9 +293,9 @@
 /// Does not include the leaf node but includes the root.
 </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>leaf_direct_path(
     leaf_index: SecretTreeLeafIndex,
-    size: SecretTreeLeafIndex,
+    size: u32,
 ) -&gt; <span class="prelude-ty">Result</span>&lt;Vec&lt;SecretTreeNodeIndex&gt;, TreeMathError&gt; {
-    leaf_in_tree(leaf_index, size)<span class="question-mark">?</span>;
+    is_leaf_in_tree(leaf_index, size)<span class="question-mark">?</span>;
     <span class="kw">let </span>node_index = SecretTreeNodeIndex::from(leaf_index);
     <span class="kw">let </span>r = root(size);
     <span class="kw">if </span>node_index == r {
@@ -330,7 +318,7 @@
 </span><span class="kw">fn </span>invalid_inputs() {
     <span class="macro">assert_eq!</span>(
         <span class="prelude-val">Err</span>(TreeMathError::InvalidInput),
-        try_parent(<span class="number">1000u32</span>.into(), <span class="number">100u32</span>.into())
+        try_parent(<span class="number">1000u32</span>.into(), <span class="number">100u32</span>)
     );
 }
 
@@ -338,7 +326,7 @@
 </span><span class="kw">fn </span>test_leaf_in_tree() {
     <span class="kw">let </span>tests = [(<span class="number">0u32</span>, <span class="number">2u32</span>), (<span class="number">1</span>, <span class="number">2</span>), (<span class="number">4</span>, <span class="number">5</span>), (<span class="number">9</span>, <span class="number">10</span>)];
     <span class="kw">for </span>test <span class="kw">in </span>tests.iter() {
-        leaf_in_tree(test.<span class="number">0</span>.into(), test.<span class="number">1</span>.into()).expect(<span class="string">&quot;An unexpected error occurred.&quot;</span>);
+        is_leaf_in_tree(test.<span class="number">0</span>.into(), test.<span class="number">1</span>).expect(<span class="string">&quot;An unexpected error occurred.&quot;</span>);
     }
 }
 
@@ -347,7 +335,7 @@
     <span class="kw">let </span>tests = [(<span class="number">2u32</span>, <span class="number">2u32</span>), (<span class="number">7</span>, <span class="number">7</span>)];
     <span class="kw">for </span>test <span class="kw">in </span>tests.iter() {
         <span class="macro">assert_eq!</span>(
-            leaf_in_tree(test.<span class="number">0</span>.into(), test.<span class="number">1</span>.into()),
+            is_leaf_in_tree(test.<span class="number">0</span>.into(), test.<span class="number">1</span>),
             <span class="prelude-val">Err</span>(TreeMathError::LeafNotInTree)
         );
     }

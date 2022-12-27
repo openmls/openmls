@@ -1250,10 +1250,6 @@
 <span id="1250">1250</span>
 <span id="1251">1251</span>
 <span id="1252">1252</span>
-<span id="1253">1253</span>
-<span id="1254">1254</span>
-<span id="1255">1255</span>
-<span id="1256">1256</span>
 </pre><pre class="rust"><code><span class="doccomment">//! # Key schedule
 //!
 //! This module contains the types and implementations for key schedule operations.
@@ -1378,7 +1374,7 @@
 // ```
 
 </span><span class="kw">use crate</span>::{
-    binary_tree::LeafIndex,
+    binary_tree::array_representation::LeafNodeIndex,
     ciphersuite::{AeadKey, AeadNonce, HpkePrivateKey, Mac, Secret},
     error::LibraryError,
     framing::{MembershipTag, MlsContentTbm},
@@ -1913,12 +1909,8 @@
 
     <span class="doccomment">/// Create a `SecretTree` from the `encryption_secret` contained in the
     /// `EpochSecrets`. The `encryption_secret` is consumed, allowing us to achieve FS.
-    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>create_secret_tree(
-        <span class="self">self</span>,
-        treesize: LeafIndex,
-        own_index: LeafIndex,
-    ) -&gt; SecretTree {
-        SecretTree::new(<span class="self">self</span>, treesize.into(), own_index.into())
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>create_secret_tree(<span class="self">self</span>, treesize: u32, own_index: LeafNodeIndex) -&gt; SecretTree {
+        SecretTree::new(<span class="self">self</span>, treesize, own_index.into())
     }
 
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>consume_secret(<span class="self">self</span>) -&gt; Secret {
@@ -2427,7 +2419,7 @@
         <span class="self">self</span>,
         serialized_context: Vec&lt;u8&gt;,
         treesize: u32,
-        own_index: u32,
+        own_index: LeafNodeIndex,
     ) -&gt; (GroupEpochSecrets, MessageSecrets) {
         <span class="kw">let </span>secret_tree = <span class="self">self
             </span>.encryption_secret

@@ -391,6 +391,7 @@
 <span id="391">391</span>
 <span id="392">392</span>
 <span id="393">393</span>
+<span id="394">394</span>
 </pre><pre class="rust"><code><span class="doccomment">//! # Proposals
 //!
 //! This module defines all the different types of Proposals.
@@ -399,6 +400,7 @@
 //! [`ProposalType::is_supported()`] can be used.
 
 </span><span class="kw">use crate</span>::{
+    binary_tree::array_representation::LeafNodeIndex,
     ciphersuite::hash_ref::{make_proposal_ref, KeyPackageRef, ProposalRef},
     error::LibraryError,
     extensions::Extension,
@@ -599,12 +601,12 @@
     Debug, PartialEq, Eq, Clone, Serialize, Deserialize, TlsDeserialize, TlsSerialize, TlsSize,
 )]
 </span><span class="kw">pub struct </span>RemoveProposal {
-    <span class="kw">pub</span>(<span class="kw">crate</span>) removed: u32,
+    <span class="kw">pub</span>(<span class="kw">crate</span>) removed: LeafNodeIndex,
 }
 
 <span class="kw">impl </span>RemoveProposal {
     <span class="doccomment">/// Returns the leaf index of the removed leaf in this proposal.
-    </span><span class="kw">pub fn </span>removed(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; u32 {
+    </span><span class="kw">pub fn </span>removed(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; LeafNodeIndex {
         <span class="self">self</span>.removed
     }
 }

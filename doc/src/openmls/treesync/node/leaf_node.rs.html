@@ -927,6 +927,7 @@
 <span id="927">927</span>
 <span id="928">928</span>
 <span id="929">929</span>
+<span id="930">930</span>
 </pre><pre class="rust"><code><span class="doccomment">//! This module contains the [`LeafNode`] struct and its implementation.
 </span><span class="kw">use </span>openmls_traits::{crypto::OpenMlsCrypto, types::Ciphersuite, OpenMlsCryptoProvider};
 <span class="kw">use </span>serde::{Deserialize, Serialize};
@@ -936,6 +937,7 @@
 };
 
 <span class="kw">use crate</span>::{
+    binary_tree::array_representation::LeafNodeIndex,
     ciphersuite::{
         signable::{Signable, SignedStruct, Verifiable},
         HpkePrivateKey, HpkePublicKey, Secret, Signature, SignaturePublicKey,
@@ -1173,7 +1175,7 @@
 <span class="attribute">#[derive(Debug, TlsSerialize, TlsDeserialize, TlsSize)]
 </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct </span>TreePosition {
     group_id: GroupId,
-    leaf_index: u32,
+    leaf_index: LeafNodeIndex,
 }
 
 <span class="attribute">#[derive(Debug)]
@@ -1184,7 +1186,7 @@
 }
 
 <span class="kw">impl </span>TreeInfoTbs {
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>commit(group_id: GroupId, leaf_index: u32) -&gt; <span class="self">Self </span>{
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>commit(group_id: GroupId, leaf_index: LeafNodeIndex) -&gt; <span class="self">Self </span>{
         <span class="self">Self</span>::Commit(TreePosition {
             group_id,
             leaf_index,
@@ -1546,7 +1548,7 @@
 </span><span class="kw">pub struct </span>OpenMlsLeafNode {
     <span class="kw">pub</span>(<span class="kw">in </span><span class="kw">crate</span>::treesync) leaf_node: LeafNode,
     private_key: <span class="prelude-ty">Option</span>&lt;HpkePrivateKey&gt;,
-    leaf_index: <span class="prelude-ty">Option</span>&lt;u32&gt;,
+    leaf_index: <span class="prelude-ty">Option</span>&lt;LeafNodeIndex&gt;,
 }
 
 <span class="kw">impl </span>From&lt;LeafNode&gt; <span class="kw">for </span>OpenMlsLeafNode {
@@ -1837,12 +1839,12 @@
     }
 
     <span class="doccomment">/// Set the leaf index for this leaf.
-    </span><span class="kw">pub fn </span>set_leaf_index(<span class="kw-2">&amp;mut </span><span class="self">self</span>, leaf_index: u32) {
+    </span><span class="kw">pub fn </span>set_leaf_index(<span class="kw-2">&amp;mut </span><span class="self">self</span>, leaf_index: LeafNodeIndex) {
         <span class="self">self</span>.leaf_index = <span class="prelude-val">Some</span>(leaf_index);
     }
 
     <span class="doccomment">/// Generate a leaf from a [`KeyPackageBundle`] and the leaf index.
-    </span><span class="kw">pub fn </span>from_key_package_bundel(kpb: KeyPackageBundle, leaf_index: u32) -&gt; <span class="self">Self </span>{
+    </span><span class="kw">pub fn </span>from_key_package_bundel(kpb: KeyPackageBundle, leaf_index: LeafNodeIndex) -&gt; <span class="self">Self </span>{
         <span class="kw">let </span>(key_package, private_key) = kpb.into_parts();
         <span class="self">Self </span>{
             leaf_node: key_package.take_leaf_node(),

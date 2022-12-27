@@ -374,11 +374,6 @@
 <span id="374">374</span>
 <span id="375">375</span>
 <span id="376">376</span>
-<span id="377">377</span>
-<span id="378">378</span>
-<span id="379">379</span>
-<span id="380">380</span>
-<span id="381">381</span>
 </pre><pre class="rust"><code><span class="doccomment">//! Module to encrypt and decrypt update paths for a [`TreeSyncDiff`] instance.
 //!
 //! # About
@@ -397,7 +392,7 @@
 <span class="kw">use </span>serde::{Deserialize, Serialize};
 
 <span class="kw">use crate</span>::{
-    binary_tree::{LeafIndex, OutOfBoundsError},
+    binary_tree::array_representation::LeafNodeIndex,
     ciphersuite::{hash_ref::KeyPackageRef, HpkePublicKey},
     error::LibraryError,
     messages::{proposals::AddProposal, EncryptedGroupSecrets, GroupSecrets, PathSecret},
@@ -427,7 +422,7 @@
         ciphersuite: Ciphersuite,
         path: <span class="kw-2">&amp;</span>[PlainUpdatePathNode],
         group_context: <span class="kw-2">&amp;</span>[u8],
-        exclusion_list: <span class="kw-2">&amp;</span>HashSet&lt;<span class="kw-2">&amp;</span>LeafIndex&gt;,
+        exclusion_list: <span class="kw-2">&amp;</span>HashSet&lt;<span class="kw-2">&amp;</span>LeafNodeIndex&gt;,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;Vec&lt;UpdatePathNode&gt;, LibraryError&gt; {
         <span class="kw">let </span>copath_resolutions = <span class="self">self</span>.copath_resolutions(<span class="self">self</span>.own_leaf_index(), exclusion_list)<span class="question-mark">?</span>;
 
@@ -463,20 +458,15 @@
         ciphersuite: Ciphersuite,
         params: DecryptPathParams,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(Vec&lt;ParentNode&gt;, CommitSecret), ApplyUpdatePathError&gt; {
-        <span class="kw">let </span>path_position = <span class="self">self
-            </span>.subtree_root_position(params.sender_leaf_index, <span class="self">self</span>.own_leaf_index())
-            .map_err(|<span class="kw">_</span>| LibraryError::custom(<span class="string">&quot;Expected own leaf to be in the tree&quot;</span>))<span class="question-mark">?</span>;
-
         <span class="comment">// ValSem202: Path must be the right length
-        </span><span class="kw">let </span>direct_path_length =
-            <span class="self">self</span>.direct_path_len(params.sender_leaf_index)
-                .map_err(|e| <span class="kw">match </span>e {
-                    OutOfBoundsError::LibraryError(e) =&gt; ApplyUpdatePathError::LibraryError(e),
-                    OutOfBoundsError::IndexOutOfBounds =&gt; ApplyUpdatePathError::MissingSender,
-                })<span class="question-mark">?</span>;
+        </span><span class="kw">let </span>direct_path_length = <span class="self">self</span>.direct_path_len(params.sender_leaf_index);
         <span class="kw">if </span>direct_path_length != params.update_path.len() {
             <span class="kw">return </span><span class="prelude-val">Err</span>(ApplyUpdatePathError::PathLengthMismatch);
         }
+
+        <span class="kw">let </span>path_position = <span class="self">self
+            </span>.subtree_root_position(params.sender_leaf_index, <span class="self">self</span>.own_leaf_index())
+            .map_err(|<span class="kw">_</span>| LibraryError::custom(<span class="string">&quot;Expected own leaf to be in the tree&quot;</span>))<span class="question-mark">?</span>;
 
         <span class="kw">let </span>update_path_node = params
             .update_path
@@ -544,8 +534,8 @@
 <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct </span>DecryptPathParams&lt;<span class="lifetime">&#39;a</span>&gt; {
     <span class="kw">pub</span>(<span class="kw">crate</span>) version: ProtocolVersion,
     <span class="kw">pub</span>(<span class="kw">crate</span>) update_path: Vec&lt;UpdatePathNode&gt;,
-    <span class="kw">pub</span>(<span class="kw">crate</span>) sender_leaf_index: LeafIndex,
-    <span class="kw">pub</span>(<span class="kw">crate</span>) exclusion_list: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>HashSet&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>LeafIndex&gt;,
+    <span class="kw">pub</span>(<span class="kw">crate</span>) sender_leaf_index: LeafNodeIndex,
+    <span class="kw">pub</span>(<span class="kw">crate</span>) exclusion_list: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>HashSet&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>LeafNodeIndex&gt;,
     <span class="kw">pub</span>(<span class="kw">crate</span>) group_context: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8],
 }
 
@@ -634,7 +624,7 @@
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>from_plain_update_path(
         diff: <span class="kw-2">&amp;</span>TreeSyncDiff,
         joiner_secret: <span class="kw-2">&amp;</span>JoinerSecret,
-        invited_members: Vec&lt;(LeafIndex, AddProposal)&gt;,
+        invited_members: Vec&lt;(LeafNodeIndex, AddProposal)&gt;,
         plain_path_option: <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>[PlainUpdatePathNode]&gt;,
         presharedkeys: <span class="kw-2">&amp;</span>[PreSharedKeyId],
         backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider,

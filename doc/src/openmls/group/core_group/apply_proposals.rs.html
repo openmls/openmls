@@ -181,16 +181,11 @@
 <span id="181">181</span>
 <span id="182">182</span>
 <span id="183">183</span>
-<span id="184">184</span>
-<span id="185">185</span>
-<span id="186">186</span>
-<span id="187">187</span>
 </pre><pre class="rust"><code><span class="kw">use </span>std::collections::HashSet;
 
 <span class="kw">use </span>openmls_traits::OpenMlsCryptoProvider;
 
 <span class="kw">use crate</span>::{
-    binary_tree::LeafIndex,
     error::LibraryError,
     framing::Sender,
     group::errors::ApplyProposalsError,
@@ -205,7 +200,7 @@
 </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct </span>ApplyProposalsValues {
     <span class="kw">pub</span>(<span class="kw">crate</span>) path_required: bool,
     <span class="kw">pub</span>(<span class="kw">crate</span>) self_removed: bool,
-    <span class="kw">pub</span>(<span class="kw">crate</span>) invitation_list: Vec&lt;(LeafIndex, AddProposal)&gt;,
+    <span class="kw">pub</span>(<span class="kw">crate</span>) invitation_list: Vec&lt;(LeafNodeIndex, AddProposal)&gt;,
     <span class="kw">pub</span>(<span class="kw">crate</span>) presharedkeys: Vec&lt;PreSharedKeyId&gt;,
     <span class="kw">pub</span>(<span class="kw">crate</span>) external_init_secret_option: <span class="prelude-ty">Option</span>&lt;InitSecret&gt;,
 }
@@ -214,10 +209,10 @@
     <span class="doccomment">/// This function creates a `HashSet` of node indexes of the new nodes that
     /// were added to the tree. The `HashSet` will be querried by the
     /// `resolve()` function to filter out those nodes from the resolution.
-    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>exclusion_list(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; HashSet&lt;<span class="kw-2">&amp;</span>LeafIndex&gt; {
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>exclusion_list(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; HashSet&lt;<span class="kw-2">&amp;</span>LeafNodeIndex&gt; {
         <span class="comment">// Collect the new leaves&#39; indexes so we can filter them out in the resolution
         // later
-        </span><span class="kw">let </span>new_leaves_indexes: HashSet&lt;<span class="kw-2">&amp;</span>LeafIndex&gt; = <span class="self">self
+        </span><span class="kw">let </span>new_leaves_indexes: HashSet&lt;<span class="kw-2">&amp;</span>LeafNodeIndex&gt; = <span class="self">self
             </span>.invitation_list
             .iter()
             .map(|(index, <span class="kw">_</span>)| index)
@@ -296,8 +291,7 @@
                 } <span class="kw">else </span>{
                     update_proposal.leaf_node().clone().into()
                 };
-                diff.update_leaf(leaf_node, sender_index)
-                    .map_err(|<span class="kw">_</span>| LibraryError::custom(<span class="string">&quot;Update proposal from non-member&quot;</span>))<span class="question-mark">?</span>;
+                diff.update_leaf(leaf_node, sender_index);
             }
         }
 
@@ -309,9 +303,7 @@
                     self_removed = <span class="bool-val">true</span>;
                 }
                 <span class="comment">// Blank the direct path of the removed member
-                </span>diff.blank_leaf(remove_proposal.removed())
-                    <span class="comment">// The remove proposals were validated before, so this should not happen
-                    </span>.map_err(|<span class="kw">_</span>| LibraryError::custom(<span class="string">&quot;Removed member not in tree&quot;</span>))<span class="question-mark">?</span>;
+                </span>diff.blank_leaf(remove_proposal.removed());
             }
         }
 

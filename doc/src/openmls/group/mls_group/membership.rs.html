@@ -390,7 +390,7 @@
 </span><span class="kw">use </span>core_group::create_commit_params::CreateCommitParams;
 <span class="kw">use </span>tls_codec::Serialize;
 
-<span class="kw">use </span><span class="kw">crate</span>::prelude::LeafNode;
+<span class="kw">use crate</span>::{binary_tree::array_representation::LeafNodeIndex, treesync::LeafNode};
 
 <span class="kw">use super</span>::{
     errors::{AddMembersError, LeaveGroupError, RemoveMembersError},
@@ -493,7 +493,7 @@
     </span><span class="kw">pub fn </span>remove_members(
         <span class="kw-2">&amp;mut </span><span class="self">self</span>,
         backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider,
-        members: <span class="kw-2">&amp;</span>[u32],
+        members: <span class="kw-2">&amp;</span>[LeafNodeIndex],
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(MlsMessageOut, <span class="prelude-ty">Option</span>&lt;Welcome&gt;), RemoveMembersError&gt; {
         <span class="self">self</span>.is_operational()<span class="question-mark">?</span>;
 
@@ -603,7 +603,7 @@
     </span><span class="kw">pub fn </span>propose_remove_member(
         <span class="kw-2">&amp;mut </span><span class="self">self</span>,
         backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider,
-        member: u32,
+        member: LeafNodeIndex,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;MlsMessageOut, ProposeRemoveMemberError&gt; {
         <span class="self">self</span>.is_operational()<span class="question-mark">?</span>;
 
@@ -695,7 +695,7 @@
 
     <span class="doccomment">/// Returns the [`Credential`] of a member corresponding to the given
     /// leaf index. Returns `None` if the member can not be found in this group.
-    </span><span class="kw">pub fn </span>member(<span class="kw-2">&amp;</span><span class="self">self</span>, leaf_index: u32) -&gt; <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>Credential&gt; {
+    </span><span class="kw">pub fn </span>member(<span class="kw-2">&amp;</span><span class="self">self</span>, leaf_index: LeafNodeIndex) -&gt; <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>Credential&gt; {
         <span class="self">self</span>.group
             .treesync()
             <span class="comment">// This will return an error if the member can&#39;t be found.
@@ -719,11 +719,11 @@
     <span class="doccomment">/// Another member (indicated by the leaf index) requested to leave
     /// the group by issuing a remove proposal in the previous epoch and the
     /// proposal has now been committed.
-    </span>TheyLeft(u32),
+    </span>TheyLeft(LeafNodeIndex),
     <span class="doccomment">/// Another member (indicated by the leaf index) was removed by the [`Sender`].
-    </span>TheyWereRemovedBy((u32, Sender)),
+    </span>TheyWereRemovedBy((LeafNodeIndex, Sender)),
     <span class="doccomment">/// We removed another member (indicated by the leaf index).
-    </span>WeRemovedThem(u32),
+    </span>WeRemovedThem(LeafNodeIndex),
 }
 
 <span class="kw">impl </span>RemoveOperation {

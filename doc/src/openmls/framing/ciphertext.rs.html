@@ -535,6 +535,11 @@
 <span id="535">535</span>
 <span id="536">536</span>
 <span id="537">537</span>
+<span id="538">538</span>
+<span id="539">539</span>
+<span id="540">540</span>
+<span id="541">541</span>
+<span id="542">542</span>
 </pre><pre class="rust"><code><span class="kw">use </span>openmls_traits::{types::Ciphersuite, OpenMlsCryptoProvider};
 <span class="kw">use </span>std::io::Write;
 <span class="kw">use </span>tls_codec::{Deserialize, Serialize, Size, TlsDeserialize, TlsSerialize, TlsSize};
@@ -542,6 +547,7 @@
 <span class="kw">use </span><span class="kw">super</span>::codec::deserialize_ciphertext_content;
 
 <span class="kw">use crate</span>::{
+    binary_tree::array_representation::LeafNodeIndex,
     error::LibraryError,
     tree::{
         index::SecretTreeLeafIndex, secret_tree::SecretType,
@@ -579,7 +585,7 @@
 <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct </span>MlsMessageHeader {
     <span class="kw">pub</span>(<span class="kw">crate</span>) group_id: GroupId,
     <span class="kw">pub</span>(<span class="kw">crate</span>) epoch: GroupEpoch,
-    <span class="kw">pub</span>(<span class="kw">crate</span>) sender: SecretTreeLeafIndex,
+    <span class="kw">pub</span>(<span class="kw">crate</span>) sender: LeafNodeIndex,
 }
 
 <span class="kw">impl </span>MlsCiphertext {
@@ -687,7 +693,7 @@
             <span class="kw">_ </span>=&gt; MlsMessageHeader {
                 group_id: mls_plaintext.group_id().clone(),
                 epoch: mls_plaintext.epoch(),
-                sender: sender_index.into(),
+                sender: sender_index,
             },
         };
         <span class="comment">// Serialize the content AAD
@@ -748,7 +754,7 @@
             .map_err(LibraryError::missing_bound_check)<span class="question-mark">?</span>;
         <span class="kw">let </span>sender_data = MlsSenderData::from_sender(
             <span class="comment">// XXX: #106 This will fail for messages with a non-member sender.
-            </span>header.sender.into(),
+            </span>header.sender,
             generation,
             reuse_guard,
         );
@@ -983,14 +989,18 @@
 </span><span class="attribute">#[derive(Clone, TlsDeserialize, TlsSerialize, TlsSize)]
 #[cfg_attr(test, derive(Debug))]
 </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct </span>MlsSenderData {
-    <span class="kw">pub</span>(<span class="kw">crate</span>) leaf_index: u32,
+    <span class="kw">pub</span>(<span class="kw">crate</span>) leaf_index: LeafNodeIndex,
     <span class="kw">pub</span>(<span class="kw">crate</span>) generation: u32,
     <span class="kw">pub</span>(<span class="kw">crate</span>) reuse_guard: ReuseGuard,
 }
 
 <span class="kw">impl </span>MlsSenderData {
     <span class="doccomment">/// Build new [`MlsSenderData`] for a [`Sender`].
-    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>from_sender(leaf_index: u32, generation: u32, reuse_guard: ReuseGuard) -&gt; <span class="self">Self </span>{
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>from_sender(
+        leaf_index: LeafNodeIndex,
+        generation: u32,
+        reuse_guard: ReuseGuard,
+    ) -&gt; <span class="self">Self </span>{
         MlsSenderData {
             leaf_index,
             generation,

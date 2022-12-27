@@ -21,6 +21,13 @@
 <span id="21">21</span>
 <span id="22">22</span>
 <span id="23">23</span>
+<span id="24">24</span>
+<span id="25">25</span>
+<span id="26">26</span>
+<span id="27">27</span>
+<span id="28">28</span>
+<span id="29">29</span>
+<span id="30">30</span>
 </pre><pre class="rust"><code><span class="doccomment">//! This module contains an implementation of a full, left balanced binary tree
 //! that uses the array-representation to store and index the individual nodes.
 //!
@@ -33,16 +40,23 @@
 //! of the contained modules (especially [`tree`] and [`diff`]) for more
 //! information.
 
-</span><span class="comment">// Crate
+</span><span class="comment">// Public
+</span><span class="kw">pub use </span>treemath::LeafNodeIndex;
+
+<span class="comment">// Crate
 </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">mod </span>diff;
 <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">mod </span>sorted_iter;
 <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">mod </span>tree;
 
-<span class="kw">pub</span>(<span class="kw">super</span>) <span class="kw">mod </span>treemath;
+<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">use </span>treemath::{direct_path, is_node_in_tree, TreeNodeIndex};
+
+<span class="kw">mod </span>treemath;
 
 <span class="comment">// Tests
-
 </span><span class="attribute">#[cfg(any(feature = <span class="string">&quot;test-utils&quot;</span>, test))]
 </span><span class="kw">pub mod </span>kat_treemath;
+
+<span class="attribute">#[cfg(test)]
+</span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">use </span>treemath::TreeSize;
 </code></pre></div>
 </section></div></main><div id="rustdoc-vars" data-root-path="../../../../" data-current-crate="openmls" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.66.0 (69f9c33d7 2022-12-12)" ></div></body></html>

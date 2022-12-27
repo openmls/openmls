@@ -493,7 +493,10 @@
 <span class="kw">use </span>serde::{Deserialize, Serialize};
 
 <span class="kw">use crate</span>::{
-    binary_tree::{LeafIndex, MlsBinaryTree, MlsBinaryTreeError},
+    binary_tree::{
+        array_representation::{is_node_in_tree, LeafNodeIndex},
+        MlsBinaryTree, MlsBinaryTreeError,
+    },
     ciphersuite::Secret,
     credentials::CredentialBundle,
     error::LibraryError,
@@ -532,7 +535,7 @@
 </span><span class="kw">pub mod </span>tests_and_kats;
 
 <span class="doccomment">/// The [`TreeSync`] struct holds an [`MlsBinaryTree`] instance, which contains
-/// the state that is synced across the group, as well as the [`LeafIndex`]
+/// the state that is synced across the group, as well as the [`LeafNodeIndex`]
 /// pointing to the leaf of this group member and the current hash of the tree.
 ///
 /// It follows the same pattern of tree and diff as the underlying
@@ -547,7 +550,7 @@
 #[cfg_attr(test, derive(PartialEq))]
 </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct </span>TreeSync {
     tree: MlsBinaryTree&lt;TreeSyncNode&gt;,
-    own_leaf_index: LeafIndex,
+    own_leaf_index: LeafNodeIndex,
     tree_hash: Vec&lt;u8&gt;,
 }
 
@@ -576,7 +579,7 @@
             backend,
             credential_bundle,
         )<span class="question-mark">?</span>;
-        leaf.set_leaf_index(<span class="number">0</span>);
+        leaf.set_leaf_index(LeafNodeIndex::new(<span class="number">0</span>));
         leaf.add_capabilities(capabilities);
         extensions
             .into_iter()
@@ -623,7 +626,7 @@
     }
 
     <span class="doccomment">/// Create a new [`TreeSync`] instance from a given slice of `Option&lt;Node&gt;`,
-    /// as well as a `LeafIndex` representing the source of the node slice and
+    /// as well as a `LeafNodeIndex` representing the source of the node slice and
     /// the `KeyPackageBundle` representing this client in the group. If a
     /// [`PathSecret`] is passed via `path_secret_option`, it will derive the
     /// private keys in the nodes of the direct path of the sender that it
@@ -638,7 +641,7 @@
         backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider,
         ciphersuite: Ciphersuite,
         node_options: <span class="kw-2">&amp;</span>[<span class="prelude-ty">Option</span>&lt;Node&gt;],
-        sender_index: u32,
+        sender_index: LeafNodeIndex,
         path_secret_option: <span class="kw">impl </span>Into&lt;<span class="prelude-ty">Option</span>&lt;PathSecret&gt;&gt;,
         key_package_bundle: KeyPackageBundle,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(<span class="self">Self</span>, <span class="prelude-ty">Option</span>&lt;CommitSecret&gt;), TreeSyncFromNodesError&gt; {
@@ -689,7 +692,7 @@
                 <span class="prelude-val">Some</span>(node) =&gt; {
                     <span class="kw">let </span><span class="kw-2">mut </span>node = node.clone();
                     <span class="kw">if let </span>Node::LeafNode(<span class="kw-2">ref mut </span>leaf_node) = node {
-                        <span class="kw">let </span>leaf_index = (node_index / <span class="number">2</span>) <span class="kw">as </span>u32;
+                        <span class="kw">let </span>leaf_index = LeafNodeIndex::new((node_index / <span class="number">2</span>) <span class="kw">as </span>u32);
                         <span class="kw">if </span>leaf_node.public_key() == own_key_package.hpke_init_key() {
                             <span class="comment">// Check if there&#39;s a duplicate
                             </span><span class="kw">if let </span><span class="prelude-val">Some</span>(private_key) = private_key.take() {
@@ -746,7 +749,7 @@
         <span class="kw">let </span><span class="kw-2">mut </span>tree_sync = <span class="self">Self </span>{
             tree,
             tree_hash: <span class="macro">vec!</span>[],
-            own_leaf_index: <span class="number">0</span>,
+            own_leaf_index: LeafNodeIndex::new(<span class="number">0</span>),
         };
         <span class="comment">// Verify all parent hashes.
         </span>tree_sync
@@ -757,11 +760,11 @@
         <span class="prelude-val">Ok</span>(tree_sync)
     }
 
-    <span class="doccomment">/// Find the `LeafIndex` which a new leaf would have if it were added to the
+    <span class="doccomment">/// Find the `LeafNodeIndex` which a new leaf would have if it were added to the
     /// tree. This is either the left-most blank node or, if there are no blank
     /// leaves, the leaf count, since adding a member would extend the tree by
     /// one leaf.
-    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>free_leaf_index(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; LeafIndex {
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>free_leaf_index(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; LeafNodeIndex {
         <span class="kw">let </span>diff = <span class="self">self</span>.empty_diff();
         diff.free_leaf_index()
     }
@@ -812,12 +815,12 @@
     ///
     /// This function should not fail and only returns a [`Result`], because it
     /// might throw a [LibraryError](TreeSyncError::LibraryError).
-    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>leaf_count(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; LeafIndex {
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>leaf_count(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; u32 {
         <span class="self">self</span>.tree.leaf_count()
     }
 
-    <span class="doccomment">/// Returns a list of [`LeafIndex`]es containing only full nodes.
-    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>full_leaves(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; Vec&lt;LeafIndex&gt; {
+    <span class="doccomment">/// Returns a list of [`LeafNodeIndex`]es containing only full nodes.
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>full_leaves(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; Vec&lt;LeafNodeIndex&gt; {
         <span class="self">self</span>.tree
             .leaves()
             .filter_map(|(index, tsn)| tsn.node().as_ref().map(|<span class="kw">_</span>| (index)))
@@ -896,7 +899,7 @@
     }
 
     <span class="doccomment">/// Returns the leaf index of this client.
-    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>own_leaf_index(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; LeafIndex {
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>own_leaf_index(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; LeafNodeIndex {
         <span class="self">self</span>.own_leaf_index
     }
 
@@ -910,15 +913,15 @@
             </span>.ok_or_else(|| LibraryError::custom(<span class="string">&quot;Own leaf is outside of the tree&quot;</span>).into())
     }
 
-    <span class="doccomment">/// Return a reference to the leaf at the given `LeafIndex` or `None` if the
+    <span class="doccomment">/// Return a reference to the leaf at the given `LeafNodeIndex` or `None` if the
     /// leaf is blank.
     ///
     /// Returns an error if the leaf is outside of the tree.
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>leaf(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        leaf_index: LeafIndex,
+        leaf_index: LeafNodeIndex,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>OpenMlsLeafNode&gt;, TreeSyncError&gt; {
-        <span class="kw">let </span>tsn = <span class="self">self</span>.tree.leaf(leaf_index)<span class="question-mark">?</span>;
+        <span class="kw">let </span>tsn = <span class="self">self</span>.tree.leaf(leaf_index);
         <span class="prelude-val">Ok</span>(<span class="kw">match </span>tsn.node() {
             <span class="prelude-val">Some</span>(node) =&gt; <span class="prelude-val">Some</span>(node.as_leaf_node()<span class="question-mark">?</span>),
             <span class="prelude-val">None </span>=&gt; <span class="prelude-val">None</span>,
@@ -927,11 +930,8 @@
 
     <span class="doccomment">/// Returns a [`TreeSyncError`] if the `leaf_index` is not a leaf in this
     /// tree or empty.
-    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>leaf_is_in_tree(<span class="kw-2">&amp;</span><span class="self">self</span>, leaf_index: LeafIndex) -&gt; <span class="prelude-ty">Result</span>&lt;(), TreeSyncError&gt; {
-        <span class="kw">if </span><span class="self">self</span>.tree.leaf(leaf_index)<span class="question-mark">?</span>.node().is_none() {
-            <span class="kw">return </span><span class="prelude-val">Err</span>(TreeSyncError::LeafNotInTree);
-        }
-        <span class="prelude-val">Ok</span>(())
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>is_leaf_in_tree(<span class="kw-2">&amp;</span><span class="self">self</span>, leaf_index: LeafNodeIndex) -&gt; bool {
+        is_node_in_tree(leaf_index.into(), <span class="self">self</span>.tree.size())
     }
 }
 </code></pre></div>

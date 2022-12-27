@@ -849,7 +849,7 @@
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>free_leaf_index&lt;<span class="lifetime">&#39;a</span>&gt;(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         <span class="kw-2">mut </span>inline_proposals: <span class="kw">impl </span>Iterator&lt;Item = <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>Proposal&gt;&gt;,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;u32, LibraryError&gt; {
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;LeafNodeIndex, LibraryError&gt; {
         <span class="comment">// Leftmost free leaf in the tree
         </span><span class="kw">let </span>free_leaf_index = <span class="self">self</span>.treesync().free_leaf_index();
         <span class="comment">// Returns the first remove proposal (if there is one)

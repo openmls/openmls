@@ -192,29 +192,381 @@
 <span id="192">192</span>
 <span id="193">193</span>
 <span id="194">194</span>
-</pre><pre class="rust"><code><span class="kw">use </span>std::cmp::Ordering;
-<span class="kw">use </span>thiserror::Error;
+<span id="195">195</span>
+<span id="196">196</span>
+<span id="197">197</span>
+<span id="198">198</span>
+<span id="199">199</span>
+<span id="200">200</span>
+<span id="201">201</span>
+<span id="202">202</span>
+<span id="203">203</span>
+<span id="204">204</span>
+<span id="205">205</span>
+<span id="206">206</span>
+<span id="207">207</span>
+<span id="208">208</span>
+<span id="209">209</span>
+<span id="210">210</span>
+<span id="211">211</span>
+<span id="212">212</span>
+<span id="213">213</span>
+<span id="214">214</span>
+<span id="215">215</span>
+<span id="216">216</span>
+<span id="217">217</span>
+<span id="218">218</span>
+<span id="219">219</span>
+<span id="220">220</span>
+<span id="221">221</span>
+<span id="222">222</span>
+<span id="223">223</span>
+<span id="224">224</span>
+<span id="225">225</span>
+<span id="226">226</span>
+<span id="227">227</span>
+<span id="228">228</span>
+<span id="229">229</span>
+<span id="230">230</span>
+<span id="231">231</span>
+<span id="232">232</span>
+<span id="233">233</span>
+<span id="234">234</span>
+<span id="235">235</span>
+<span id="236">236</span>
+<span id="237">237</span>
+<span id="238">238</span>
+<span id="239">239</span>
+<span id="240">240</span>
+<span id="241">241</span>
+<span id="242">242</span>
+<span id="243">243</span>
+<span id="244">244</span>
+<span id="245">245</span>
+<span id="246">246</span>
+<span id="247">247</span>
+<span id="248">248</span>
+<span id="249">249</span>
+<span id="250">250</span>
+<span id="251">251</span>
+<span id="252">252</span>
+<span id="253">253</span>
+<span id="254">254</span>
+<span id="255">255</span>
+<span id="256">256</span>
+<span id="257">257</span>
+<span id="258">258</span>
+<span id="259">259</span>
+<span id="260">260</span>
+<span id="261">261</span>
+<span id="262">262</span>
+<span id="263">263</span>
+<span id="264">264</span>
+<span id="265">265</span>
+<span id="266">266</span>
+<span id="267">267</span>
+<span id="268">268</span>
+<span id="269">269</span>
+<span id="270">270</span>
+<span id="271">271</span>
+<span id="272">272</span>
+<span id="273">273</span>
+<span id="274">274</span>
+<span id="275">275</span>
+<span id="276">276</span>
+<span id="277">277</span>
+<span id="278">278</span>
+<span id="279">279</span>
+<span id="280">280</span>
+<span id="281">281</span>
+<span id="282">282</span>
+<span id="283">283</span>
+<span id="284">284</span>
+<span id="285">285</span>
+<span id="286">286</span>
+<span id="287">287</span>
+<span id="288">288</span>
+<span id="289">289</span>
+<span id="290">290</span>
+<span id="291">291</span>
+<span id="292">292</span>
+<span id="293">293</span>
+<span id="294">294</span>
+<span id="295">295</span>
+<span id="296">296</span>
+<span id="297">297</span>
+<span id="298">298</span>
+<span id="299">299</span>
+<span id="300">300</span>
+<span id="301">301</span>
+<span id="302">302</span>
+<span id="303">303</span>
+<span id="304">304</span>
+<span id="305">305</span>
+<span id="306">306</span>
+<span id="307">307</span>
+<span id="308">308</span>
+<span id="309">309</span>
+<span id="310">310</span>
+<span id="311">311</span>
+<span id="312">312</span>
+<span id="313">313</span>
+<span id="314">314</span>
+<span id="315">315</span>
+<span id="316">316</span>
+<span id="317">317</span>
+<span id="318">318</span>
+<span id="319">319</span>
+<span id="320">320</span>
+<span id="321">321</span>
+<span id="322">322</span>
+<span id="323">323</span>
+<span id="324">324</span>
+<span id="325">325</span>
+<span id="326">326</span>
+<span id="327">327</span>
+<span id="328">328</span>
+<span id="329">329</span>
+<span id="330">330</span>
+<span id="331">331</span>
+<span id="332">332</span>
+<span id="333">333</span>
+<span id="334">334</span>
+<span id="335">335</span>
+<span id="336">336</span>
+<span id="337">337</span>
+<span id="338">338</span>
+<span id="339">339</span>
+<span id="340">340</span>
+<span id="341">341</span>
+<span id="342">342</span>
+<span id="343">343</span>
+<span id="344">344</span>
+<span id="345">345</span>
+<span id="346">346</span>
+<span id="347">347</span>
+<span id="348">348</span>
+<span id="349">349</span>
+<span id="350">350</span>
+<span id="351">351</span>
+<span id="352">352</span>
+<span id="353">353</span>
+<span id="354">354</span>
+<span id="355">355</span>
+<span id="356">356</span>
+<span id="357">357</span>
+<span id="358">358</span>
+<span id="359">359</span>
+<span id="360">360</span>
+<span id="361">361</span>
+<span id="362">362</span>
+<span id="363">363</span>
+<span id="364">364</span>
+<span id="365">365</span>
+<span id="366">366</span>
+<span id="367">367</span>
+<span id="368">368</span>
+<span id="369">369</span>
+<span id="370">370</span>
+<span id="371">371</span>
+<span id="372">372</span>
+<span id="373">373</span>
+<span id="374">374</span>
+<span id="375">375</span>
+<span id="376">376</span>
+<span id="377">377</span>
+<span id="378">378</span>
+<span id="379">379</span>
+<span id="380">380</span>
+<span id="381">381</span>
+<span id="382">382</span>
+<span id="383">383</span>
+<span id="384">384</span>
+<span id="385">385</span>
+<span id="386">386</span>
+<span id="387">387</span>
+<span id="388">388</span>
+<span id="389">389</span>
+<span id="390">390</span>
+<span id="391">391</span>
+<span id="392">392</span>
+<span id="393">393</span>
+<span id="394">394</span>
+<span id="395">395</span>
+<span id="396">396</span>
+<span id="397">397</span>
+<span id="398">398</span>
+<span id="399">399</span>
+<span id="400">400</span>
+<span id="401">401</span>
+<span id="402">402</span>
+<span id="403">403</span>
+<span id="404">404</span>
+</pre><pre class="rust"><code><span class="kw">use </span>serde::{Deserialize, Serialize};
+<span class="kw">use </span>std::cmp::Ordering;
+<span class="kw">use </span>tls_codec::{TlsDeserialize, TlsSerialize, TlsSize};
 
-<span class="kw">use </span><span class="kw">super</span>::tree::NodeIndex;
+<span class="doccomment">/// LeafNodeIndex references a leaf node in a tree.
+</span><span class="attribute">#[derive(
+    Debug,
+    Clone,
+    Copy,
+    PartialEq,
+    Eq,
+    PartialOrd,
+    Ord,
+    Hash,
+    Serialize,
+    Deserialize,
+    TlsDeserialize,
+    TlsSerialize,
+    TlsSize,
+)]
+</span><span class="kw">pub struct </span>LeafNodeIndex(u32);
 
-<span class="doccomment">/// Tree math error
-</span><span class="attribute">#[derive(Error, Debug, PartialEq, Clone)]
-</span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">enum </span>TreeMathError {
-    <span class="doccomment">/// Leaf nodes don&#39;t have children.
-    </span><span class="attribute">#[error(<span class="string">&quot;Leaf nodes don&#39;t have children.&quot;</span>)]
-    </span>LeafHasNoChildren,
-    <span class="doccomment">/// Root nodes don&#39;t have parents.
-    </span><span class="attribute">#[error(<span class="string">&quot;Root nodes don&#39;t have parents.&quot;</span>)]
-    </span>RootHasNoParent,
-    <span class="doccomment">/// The node index is larger than the tree size.
-    </span><span class="attribute">#[error(<span class="string">&quot;The node index is larger than the tree size.&quot;</span>)]
-    </span>NodeNotInTree,
-    <span class="doccomment">/// The provided input is invalid for tree math.
-    </span><span class="attribute">#[error(<span class="string">&quot;The provided input is invalid for tree math.&quot;</span>)]
-    </span>InvalidInput,
+<span class="kw">impl </span>LeafNodeIndex {
+    <span class="doccomment">/// Create a new `LeafNodeIndex` from a `u32`.
+    </span><span class="kw">pub fn </span>new(index: u32) -&gt; <span class="self">Self </span>{
+        LeafNodeIndex(index)
+    }
+
+    <span class="doccomment">/// Return the inner value as `u32`.
+    </span><span class="kw">pub fn </span>u32(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; u32 {
+        <span class="self">self</span>.<span class="number">0
+    </span>}
+
+    <span class="doccomment">/// Return the inner value as `usize`.
+    </span><span class="kw">pub fn </span>usize(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; usize {
+        <span class="self">self</span>.u32() <span class="kw">as </span>usize
+    }
+
+    <span class="doccomment">/// Return the index as a TreeNodeIndex value.
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>to_tree_index(<span class="self">self</span>) -&gt; u32 {
+        <span class="self">self</span>.<span class="number">0 </span>* <span class="number">2
+    </span>}
+
+    <span class="doccomment">/// Warning: Only use when the node index represents a leaf node
+    </span><span class="kw">fn </span>from_tree_index(node_index: u32) -&gt; <span class="self">Self </span>{
+        <span class="macro">debug_assert!</span>(node_index % <span class="number">2 </span>== <span class="number">0</span>);
+        LeafNodeIndex(node_index / <span class="number">2</span>)
+    }
 }
 
-<span class="kw">fn </span>log2(x: NodeIndex) -&gt; usize {
+<span class="doccomment">/// ParentNodeIndex references a parent node in a tree.
+</span><span class="attribute">#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
+</span><span class="kw">pub struct </span>ParentNodeIndex(u32);
+
+<span class="kw">impl </span>ParentNodeIndex {
+    <span class="attribute">#[cfg(any(test, feature = <span class="string">&quot;test-utils&quot;</span>))]
+    </span><span class="doccomment">/// Return the inner value as `u32`.
+    </span><span class="kw">pub fn </span>u32(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; u32 {
+        <span class="self">self</span>.<span class="number">0
+    </span>}
+
+    <span class="doccomment">/// Return the index as a TreeNodeIndex value.
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>to_tree_index(<span class="self">self</span>) -&gt; u32 {
+        <span class="self">self</span>.<span class="number">0 </span>* <span class="number">2 </span>+ <span class="number">1
+    </span>}
+
+    <span class="doccomment">/// Warning: Only use when the node index represents a parent node
+    </span><span class="kw">fn </span>from_tree_index(node_index: u32) -&gt; <span class="self">Self </span>{
+        <span class="macro">debug_assert!</span>(node_index &gt; <span class="number">0</span>);
+        <span class="macro">debug_assert!</span>(node_index % <span class="number">2 </span>== <span class="number">1</span>);
+        ParentNodeIndex((node_index - <span class="number">1</span>) / <span class="number">2</span>)
+    }
+}
+
+<span class="kw">impl </span>From&lt;LeafNodeIndex&gt; <span class="kw">for </span>TreeNodeIndex {
+    <span class="kw">fn </span>from(leaf_index: LeafNodeIndex) -&gt; <span class="self">Self </span>{
+        TreeNodeIndex::Leaf(leaf_index)
+    }
+}
+
+<span class="kw">impl </span>From&lt;ParentNodeIndex&gt; <span class="kw">for </span>TreeNodeIndex {
+    <span class="kw">fn </span>from(parent_index: ParentNodeIndex) -&gt; <span class="self">Self </span>{
+        TreeNodeIndex::Parent(parent_index)
+    }
+}
+
+<span class="doccomment">/// TreeNodeIndex references a node in a tree.
+</span><span class="attribute">#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+</span><span class="kw">pub enum </span>TreeNodeIndex {
+    Leaf(LeafNodeIndex),
+    Parent(ParentNodeIndex),
+}
+
+<span class="kw">impl </span>TreeNodeIndex {
+    <span class="doccomment">/// Create a new `TreeNodeIndex` from a `u32`.
+    </span><span class="kw">pub fn </span>new(index: u32) -&gt; <span class="self">Self </span>{
+        <span class="kw">if </span>index % <span class="number">2 </span>== <span class="number">0 </span>{
+            TreeNodeIndex::Leaf(LeafNodeIndex::from_tree_index(index))
+        } <span class="kw">else </span>{
+            TreeNodeIndex::Parent(ParentNodeIndex::from_tree_index(index))
+        }
+    }
+
+    <span class="doccomment">/// Return the inner value as `u32`.
+    </span><span class="kw">pub fn </span>u32(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; u32 {
+        <span class="kw">match </span><span class="self">self </span>{
+            TreeNodeIndex::Leaf(index) =&gt; index.to_tree_index(),
+            TreeNodeIndex::Parent(index) =&gt; index.to_tree_index(),
+        }
+    }
+
+    <span class="doccomment">/// Return the inner value as `usize`.
+    </span><span class="kw">pub fn </span>usize(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; usize {
+        <span class="self">self</span>.u32() <span class="kw">as </span>usize
+    }
+}
+
+<span class="kw">impl </span>Ord <span class="kw">for </span>TreeNodeIndex {
+    <span class="kw">fn </span>cmp(<span class="kw-2">&amp;</span><span class="self">self</span>, other: <span class="kw-2">&amp;</span>TreeNodeIndex) -&gt; Ordering {
+        <span class="self">self</span>.u32().cmp(<span class="kw-2">&amp;</span>other.u32())
+    }
+}
+
+<span class="kw">impl </span>PartialOrd <span class="kw">for </span>TreeNodeIndex {
+    <span class="kw">fn </span>partial_cmp(<span class="kw-2">&amp;</span><span class="self">self</span>, other: <span class="kw-2">&amp;</span>TreeNodeIndex) -&gt; <span class="prelude-ty">Option</span>&lt;Ordering&gt; {
+        <span class="prelude-val">Some</span>(<span class="self">self</span>.cmp(other))
+    }
+}
+
+<span class="attribute">#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
+</span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct </span>TreeSize(u32);
+
+<span class="kw">impl </span>TreeSize {
+    <span class="doccomment">/// Create a new `TreeSize` from a `u32`.
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>new(size: u32) -&gt; <span class="self">Self </span>{
+        TreeSize(size)
+    }
+
+    <span class="doccomment">/// Return the inner value as `u32`.
+    </span><span class="kw">pub</span>(<span class="kw">super</span>) <span class="kw">fn </span>u32(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; u32 {
+        <span class="self">self</span>.<span class="number">0
+    </span>}
+
+    <span class="doccomment">/// Return the inner value as `usize`.
+    </span><span class="kw">pub</span>(<span class="kw">super</span>) <span class="kw">fn </span>usize(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; usize {
+        <span class="self">self</span>.<span class="number">0 </span><span class="kw">as </span>usize
+    }
+
+    <span class="doccomment">/// Increase the size by `n`.
+    </span><span class="kw">pub</span>(<span class="kw">super</span>) <span class="kw">fn </span>inc(<span class="kw-2">&amp;mut </span><span class="self">self</span>, n: u32) {
+        <span class="self">self</span>.<span class="number">0 </span>+= n;
+    }
+
+    <span class="doccomment">/// Decrease the size by `n`.
+    </span><span class="kw">pub</span>(<span class="kw">super</span>) <span class="kw">fn </span>dec(<span class="kw-2">&amp;mut </span><span class="self">self</span>, n: u32) {
+        <span class="macro">debug_assert!</span>(<span class="self">self</span>.<span class="number">0 </span>&gt;= n);
+        <span class="kw">if </span><span class="self">self</span>.<span class="number">0 </span>&gt;= n {
+            <span class="self">self</span>.<span class="number">0 </span>-= n;
+        } <span class="kw">else </span>{
+            <span class="self">self</span>.<span class="number">0 </span>= <span class="number">0</span>;
+        }
+    }
+}
+
+<span class="kw">fn </span>log2(x: u32) -&gt; usize {
     <span class="kw">if </span>x == <span class="number">0 </span>{
         <span class="kw">return </span><span class="number">0</span>;
     }
@@ -225,7 +577,7 @@
     k - <span class="number">1
 </span>}
 
-<span class="kw">fn </span>level(index: NodeIndex) -&gt; usize {
+<span class="kw">fn </span>level(index: u32) -&gt; usize {
     <span class="kw">let </span>x = index;
     <span class="kw">if </span>(x &amp; <span class="number">0x01</span>) == <span class="number">0 </span>{
         <span class="kw">return </span><span class="number">0</span>;
@@ -237,106 +589,149 @@
     k
 }
 
-<span class="kw">pub</span>(<span class="kw">super</span>) <span class="kw">fn </span>root(size: NodeIndex) -&gt; NodeIndex {
-    (<span class="number">1 </span>&lt;&lt; log2(size)) - <span class="number">1
-</span>}
-
-<span class="kw">pub</span>(<span class="kw">super</span>) <span class="kw">fn </span>left(index: NodeIndex) -&gt; <span class="prelude-ty">Result</span>&lt;NodeIndex, TreeMathError&gt; {
-    <span class="kw">let </span>x = index;
-    <span class="kw">let </span>k = level(x);
-    <span class="kw">if </span>k == <span class="number">0 </span>{
-        <span class="kw">return </span><span class="prelude-val">Err</span>(TreeMathError::LeafHasNoChildren);
-    }
-    <span class="prelude-val">Ok</span>(x ^ (<span class="number">0x01 </span>&lt;&lt; (k - <span class="number">1</span>)))
+<span class="kw">pub</span>(<span class="kw">super</span>) <span class="kw">fn </span>root(size: TreeSize) -&gt; TreeNodeIndex {
+    <span class="kw">let </span>size = size.u32();
+    <span class="macro">debug_assert!</span>(size &gt; <span class="number">0</span>);
+    TreeNodeIndex::new((<span class="number">1 </span>&lt;&lt; log2(size)) - <span class="number">1</span>)
 }
 
-<span class="kw">pub</span>(<span class="kw">super</span>) <span class="kw">fn </span>right(index: NodeIndex, size: NodeIndex) -&gt; <span class="prelude-ty">Result</span>&lt;NodeIndex, TreeMathError&gt; {
-    <span class="kw">let </span>x = index;
-    <span class="kw">let </span>n = size;
+<span class="kw">pub</span>(<span class="kw">super</span>) <span class="kw">fn </span>left(index: ParentNodeIndex) -&gt; TreeNodeIndex {
+    <span class="kw">let </span>x = index.to_tree_index();
     <span class="kw">let </span>k = level(x);
-    <span class="kw">if </span>k == <span class="number">0 </span>{
-        <span class="kw">return </span><span class="prelude-val">Err</span>(TreeMathError::LeafHasNoChildren);
-    }
+    <span class="macro">debug_assert!</span>(k &gt; <span class="number">0</span>);
+    <span class="kw">let </span>index = x ^ (<span class="number">0x01 </span>&lt;&lt; (k - <span class="number">1</span>));
+    TreeNodeIndex::new(index)
+}
+
+<span class="kw">fn </span>left_helper(x: u32) -&gt; u32 {
+    <span class="kw">let </span>k = level(x);
+    <span class="macro">debug_assert!</span>(k &gt; <span class="number">0</span>);
+    x ^ (<span class="number">0x01 </span>&lt;&lt; (k - <span class="number">1</span>))
+}
+
+<span class="kw">pub</span>(<span class="kw">super</span>) <span class="kw">fn </span>right(index: ParentNodeIndex, size: TreeSize) -&gt; TreeNodeIndex {
+    <span class="kw">let </span>size = size.u32();
+    <span class="macro">debug_assert!</span>(size &gt; <span class="number">0</span>);
+    <span class="macro">debug_assert!</span>(index.to_tree_index() &lt; size);
+    <span class="kw">let </span>x = index.to_tree_index();
+    <span class="kw">let </span>k = level(x);
+    <span class="macro">debug_assert!</span>(k &gt; <span class="number">0</span>);
     <span class="kw">let </span><span class="kw-2">mut </span>r = x ^ (<span class="number">0x03 </span>&lt;&lt; (k - <span class="number">1</span>));
-    <span class="kw">while </span>r &gt;= n {
-        r = left(r)<span class="question-mark">?</span>;
+    <span class="kw">while </span>r &gt;= size {
+        r = left_helper(r);
     }
-    <span class="prelude-val">Ok</span>(r)
+    TreeNodeIndex::new(r)
 }
 
-<span class="comment">// The parent here might be beyond the right edge of the tree.
-</span><span class="kw">pub</span>(<span class="kw">super</span>) <span class="kw">fn </span>parent_step(x: NodeIndex) -&gt; NodeIndex {
+<span class="comment">/*
+/// New treemath for full tree
+
+pub(super) fn right(index: ParentNodeIndex) -&gt; TreeNodeIndex {
+    let x = index.to_tree_index();
+    let k = level(x);
+    debug_assert!(k &gt; 0);
+    let index = x ^ (0x03 &lt;&lt; (k - 1));
+    TreeNodeIndex::new(index)
+}
+
+/// Warning: There is no check about the tree size and whether the parent is
+/// beyond the root
+pub(super) fn parent(x: TreeNodeIndex) -&gt; ParentNodeIndex {
+    let x = x.u32();
+    let k = level(x);
+    let b = (x &gt;&gt; (k + 1)) &amp; 0x01;
+    let index = (x | (1 &lt;&lt; k)) ^ (b &lt;&lt; (k + 1));
+    ParentNodeIndex::from_tree_index(index)
+} */
+
+// The parent here might be beyond the right edge of the tree.
+</span><span class="kw">fn </span>parent_step(x: u32) -&gt; u32 {
     <span class="kw">let </span>k = level(x);
     <span class="kw">let </span>b = (x &gt;&gt; (k + <span class="number">1</span>)) &amp; <span class="number">0x01</span>;
     (x | (<span class="number">1 </span>&lt;&lt; k)) ^ (b &lt;&lt; (k + <span class="number">1</span>))
 }
 
+<span class="doccomment">/// Re-exported for testing.
+</span><span class="attribute">#[cfg(any(feature = <span class="string">&quot;test-utils&quot;</span>, test))]
+</span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>test_parent(index: TreeNodeIndex, size: TreeSize) -&gt; ParentNodeIndex {
+    parent(index, size)
+}
+
 <span class="comment">// This function is only safe to use if index &lt;= size.
-// If this is not checked before calling the function, `parent` should be used.
-</span><span class="kw">fn </span>try_parent(index: NodeIndex, size: NodeIndex) -&gt; <span class="prelude-ty">Result</span>&lt;NodeIndex, TreeMathError&gt; {
-    <span class="kw">let </span>x = index;
-    <span class="kw">let </span>n = size;
-    <span class="kw">if </span>index == root(size) {
-        <span class="kw">return </span><span class="prelude-val">Err</span>(TreeMathError::RootHasNoParent);
-    }
+</span><span class="kw">fn </span>parent(index: TreeNodeIndex, size: TreeSize) -&gt; ParentNodeIndex {
+    <span class="kw">let </span>x = index.u32();
+    <span class="kw">let </span>n = size.u32();
     <span class="kw">let </span><span class="kw-2">mut </span>p = parent_step(x);
     <span class="kw">while </span>p &gt;= n {
         <span class="kw">let </span>new_p = parent_step(p);
-        <span class="kw">if </span>new_p == p {
-            <span class="kw">return </span><span class="prelude-val">Err</span>(TreeMathError::InvalidInput);
-        }
+        <span class="macro">debug_assert!</span>(new_p != p);
         p = new_p;
     }
-    <span class="prelude-val">Ok</span>(p)
+    ParentNodeIndex::from_tree_index(p)
 }
 
-<span class="kw">pub</span>(<span class="kw">super</span>) <span class="kw">fn </span>sibling(index: NodeIndex, size: NodeIndex) -&gt; <span class="prelude-ty">Result</span>&lt;NodeIndex, TreeMathError&gt; {
-    node_in_tree(index, size)<span class="question-mark">?</span>;
-    <span class="kw">let </span>p = try_parent(index, size)<span class="question-mark">?</span>;
-    <span class="kw">match </span>index.cmp(<span class="kw-2">&amp;</span>p) {
+<span class="doccomment">/// Re-exported for testing.
+</span><span class="attribute">#[cfg(any(feature = <span class="string">&quot;test-utils&quot;</span>, test))]
+</span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>test_sibling(index: TreeNodeIndex, size: TreeSize) -&gt; TreeNodeIndex {
+    sibling(index, size)
+}
+
+<span class="kw">fn </span>sibling(index: TreeNodeIndex, size: TreeSize) -&gt; TreeNodeIndex {
+    <span class="kw">let </span>p = parent(index, size);
+    <span class="kw">match </span>index.u32().cmp(<span class="kw-2">&amp;</span>p.to_tree_index()) {
         Ordering::Less =&gt; right(p, size),
         Ordering::Greater =&gt; left(p),
         Ordering::Equal =&gt; left(p),
     }
 }
 
-<span class="attribute">#[inline(always)]
-</span><span class="kw">pub</span>(<span class="kw">super</span>) <span class="kw">fn </span>node_in_tree(node_index: NodeIndex, size: NodeIndex) -&gt; <span class="prelude-ty">Result</span>&lt;(), TreeMathError&gt; {
-    <span class="kw">if </span>node_index &gt;= size {
-        <span class="prelude-val">Err</span>(TreeMathError::NodeNotInTree)
-    } <span class="kw">else </span>{
-        <span class="prelude-val">Ok</span>(())
-    }
-}
-
 <span class="doccomment">/// Direct path from a node to the root.
 /// Does not include the node itself.
-</span><span class="kw">pub</span>(<span class="kw">super</span>) <span class="kw">fn </span>direct_path(
-    node_index: NodeIndex,
-    size: NodeIndex,
-) -&gt; <span class="prelude-ty">Result</span>&lt;Vec&lt;NodeIndex&gt;, TreeMathError&gt; {
-    node_in_tree(node_index, size)<span class="question-mark">?</span>;
-    <span class="kw">let </span>node_index = node_index;
-    <span class="kw">let </span>r = root(size);
-    <span class="kw">if </span>node_index == r {
-        <span class="kw">return </span><span class="prelude-val">Ok</span>(<span class="macro">vec!</span>[]);
-    }
+</span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>direct_path(node_index: LeafNodeIndex, size: TreeSize) -&gt; Vec&lt;ParentNodeIndex&gt; {
+    <span class="kw">let </span>r = root(size).u32();
 
     <span class="kw">let </span><span class="kw-2">mut </span>d = <span class="macro">vec!</span>[];
-    <span class="kw">let </span><span class="kw-2">mut </span>x = node_index;
+    <span class="kw">let </span><span class="kw-2">mut </span>x = node_index.to_tree_index();
     <span class="kw">while </span>x != r {
-        x = try_parent(x, size)<span class="question-mark">?</span>;
-        d.push(x);
+        <span class="kw">let </span>parent = parent(TreeNodeIndex::new(x), size);
+        d.push(parent);
+        x = parent.to_tree_index();
     }
-    <span class="prelude-val">Ok</span>(d)
+    d
 }
 
-<span class="kw">pub</span>(<span class="kw">super</span>) <span class="kw">fn </span>lowest_common_ancestor(x: NodeIndex, y: NodeIndex) -&gt; NodeIndex {
+<span class="doccomment">/// Copath of a leaf node.
+</span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>copath(leaf_index: LeafNodeIndex, size: TreeSize) -&gt; Vec&lt;TreeNodeIndex&gt; {
+    <span class="comment">// Start with leaf
+    </span><span class="kw">let </span><span class="kw-2">mut </span>full_path = <span class="macro">vec!</span>[TreeNodeIndex::Leaf(leaf_index)];
+    <span class="kw">let </span><span class="kw-2">mut </span>direct_path = direct_path(leaf_index, size);
+    <span class="kw">if </span>!direct_path.is_empty() {
+        <span class="comment">// Remove root
+        </span>direct_path.pop();
+    }
+    full_path.append(
+        <span class="kw-2">&amp;mut </span>direct_path
+            .iter()
+            .map(|i| TreeNodeIndex::Parent(<span class="kw-2">*</span>i))
+            .collect(),
+    );
+
+    full_path
+        .into_iter()
+        .map(|node| sibling(node, size))
+        .collect()
+}
+
+<span class="doccomment">/// Common ancestor of two leaf nodes, aka the node where their direct paths
+/// intersect.
+</span><span class="kw">pub</span>(<span class="kw">super</span>) <span class="kw">fn </span>lowest_common_ancestor(x: LeafNodeIndex, y: LeafNodeIndex) -&gt; ParentNodeIndex {
+    <span class="kw">let </span>x = x.to_tree_index();
+    <span class="kw">let </span>y = y.to_tree_index();
     <span class="kw">let </span>(lx, ly) = (level(x) + <span class="number">1</span>, level(y) + <span class="number">1</span>);
     <span class="kw">if </span>(lx &lt;= ly) &amp;&amp; (x &gt;&gt; ly == y &gt;&gt; ly) {
-        <span class="kw">return </span>y;
+        <span class="kw">return </span>ParentNodeIndex::from_tree_index(y);
     } <span class="kw">else if </span>(ly &lt;= lx) &amp;&amp; (x &gt;&gt; lx == y &gt;&gt; lx) {
-        <span class="kw">return </span>x;
+        <span class="kw">return </span>ParentNodeIndex::from_tree_index(x);
     }
 
     <span class="kw">let </span>(<span class="kw-2">mut </span>xn, <span class="kw-2">mut </span>yn) = (x, y);
@@ -346,12 +741,35 @@
         yn &gt;&gt;= <span class="number">1</span>;
         k += <span class="number">1</span>;
     }
-    (xn &lt;&lt; k) + (<span class="number">1 </span>&lt;&lt; (k - <span class="number">1</span>)) - <span class="number">1
-</span>}
+    ParentNodeIndex::from_tree_index((xn &lt;&lt; k) + (<span class="number">1 </span>&lt;&lt; (k - <span class="number">1</span>)) - <span class="number">1</span>)
+}
 
-<span class="kw">pub</span>(<span class="kw">super</span>) <span class="kw">fn </span>parent(index: NodeIndex, size: NodeIndex) -&gt; <span class="prelude-ty">Result</span>&lt;NodeIndex, TreeMathError&gt; {
-    node_in_tree(index, size)<span class="question-mark">?</span>;
-    try_parent(index, size)
+<span class="doccomment">/// The common direct path of two leaf nodes, i.e. the path from their common
+/// ancestor to the root.
+</span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>common_direct_path(
+    x: LeafNodeIndex,
+    y: LeafNodeIndex,
+    size: TreeSize,
+) -&gt; Vec&lt;ParentNodeIndex&gt; {
+    <span class="kw">let </span>x = x;
+    <span class="kw">let </span>y = y;
+    <span class="kw">let </span><span class="kw-2">mut </span>x_path = direct_path(x, size);
+    <span class="kw">let </span><span class="kw-2">mut </span>y_path = direct_path(y, size);
+    x_path.reverse();
+    y_path.reverse();
+
+    <span class="kw">let </span><span class="kw-2">mut </span>common_path = <span class="macro">vec!</span>[];
+
+    <span class="kw">for </span>(x, y) <span class="kw">in </span>x_path.iter().zip(y_path.iter()) {
+        <span class="kw">if </span>x == y {
+            common_path.push(<span class="kw-2">*</span>x);
+        } <span class="kw">else </span>{
+            <span class="kw">break</span>;
+        }
+    }
+
+    common_path.reverse();
+    common_path
 }
 
 <span class="attribute">#[cfg(any(feature = <span class="string">&quot;test-utils&quot;</span>, test))]
@@ -363,16 +781,18 @@
     </span>}
 }
 
-<span class="attribute">#[test]
-</span><span class="kw">fn </span>invalid_inputs() {
-    <span class="macro">assert_eq!</span>(<span class="prelude-val">Err</span>(TreeMathError::NodeNotInTree), parent(<span class="number">1000u32</span>, <span class="number">100u32</span>));
+<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>is_node_in_tree(node_index: TreeNodeIndex, size: TreeSize) -&gt; bool {
+    node_index.u32() &lt; size.u32()
 }
 
 <span class="attribute">#[test]
 </span><span class="kw">fn </span>test_node_in_tree() {
     <span class="kw">let </span>tests = [(<span class="number">0u32</span>, <span class="number">2u32</span>), (<span class="number">1</span>, <span class="number">2</span>), (<span class="number">2</span>, <span class="number">4</span>), (<span class="number">5</span>, <span class="number">6</span>), (<span class="number">2</span>, <span class="number">10</span>)];
     <span class="kw">for </span>test <span class="kw">in </span>tests.iter() {
-        node_in_tree(test.<span class="number">0</span>, test.<span class="number">1</span>).expect(<span class="string">&quot;An unexpected error occurred.&quot;</span>);
+        <span class="macro">assert!</span>(is_node_in_tree(
+            TreeNodeIndex::new(test.<span class="number">0</span>),
+            TreeSize::new(test.<span class="number">1</span>)
+        ));
     }
 }
 
@@ -380,10 +800,10 @@
 </span><span class="kw">fn </span>test_node_not_in_tree() {
     <span class="kw">let </span>tests = [(<span class="number">3u32</span>, <span class="number">2u32</span>), (<span class="number">13</span>, <span class="number">7</span>)];
     <span class="kw">for </span>test <span class="kw">in </span>tests.iter() {
-        <span class="macro">assert_eq!</span>(
-            node_in_tree(test.<span class="number">0</span>, test.<span class="number">1</span>),
-            <span class="prelude-val">Err</span>(TreeMathError::NodeNotInTree)
-        );
+        <span class="macro">assert!</span>(!is_node_in_tree(
+            TreeNodeIndex::new(test.<span class="number">0</span>),
+            TreeSize::new(test.<span class="number">1</span>)
+        ));
     }
 }
 </code></pre></div>

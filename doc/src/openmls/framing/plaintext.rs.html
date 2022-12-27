@@ -880,12 +880,15 @@
 <span id="880">880</span>
 <span id="881">881</span>
 <span id="882">882</span>
+<span id="883">883</span>
+<span id="884">884</span>
 </pre><pre class="rust"><code><span class="doccomment">//! # MlsPlaintext
 //!
 //! An MlsPlaintext is a framing structure for MLS messages. It can contain
 //! Proposals, Commits and application messages.
 
 </span><span class="kw">use crate</span>::{
+    binary_tree::array_representation::LeafNodeIndex,
     ciphersuite::signable::{Signable, SignedStruct, Verifiable, VerifiedStruct},
     error::LibraryError,
     group::errors::ValidationError,
@@ -1390,7 +1393,7 @@
     <span class="doccomment">/// This constructor builds an `MlsAuthContent` containing an application
     /// message. The sender type is always `SenderType::Member`.
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>new_application(
-        sender_leaf_index: u32,
+        sender_leaf_index: LeafNodeIndex,
         authenticated_data: <span class="kw-2">&amp;</span>[u8],
         application_message: <span class="kw-2">&amp;</span>[u8],
         credential_bundle: <span class="kw-2">&amp;</span>CredentialBundle,
@@ -1413,7 +1416,7 @@
     /// The sender type is always `SenderType::Member`.
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>member_proposal(
         framing_parameters: FramingParameters,
-        sender_leaf_index: u32,
+        sender_leaf_index: LeafNodeIndex,
         proposal: Proposal,
         credential_bundle: <span class="kw-2">&amp;</span>CredentialBundle,
         context: <span class="kw-2">&amp;</span>GroupContext,
@@ -1583,7 +1586,8 @@
         <span class="kw-2">&amp;</span><span class="self">self</span>.auth_content.tbs.content.sender
     }
 
-    <span class="doccomment">/// Set the serialized context before verifying the signature.
+    <span class="attribute">#[cfg(any(feature = <span class="string">&quot;test-utils&quot;</span>, test))]
+    </span><span class="doccomment">/// Set the serialized context before verifying the signature.
     </span><span class="attribute">#[cfg(any(feature = <span class="string">&quot;test-utils&quot;</span>, test))]
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>set_context(<span class="kw-2">&amp;mut </span><span class="self">self</span>, serialized_context: Vec&lt;u8&gt;) {
         <span class="self">self</span>.auth_content.tbs.serialized_context = <span class="prelude-val">Some</span>(serialized_context);

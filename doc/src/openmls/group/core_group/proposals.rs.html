@@ -555,7 +555,9 @@
 <span id="555">555</span>
 <span id="556">556</span>
 <span id="557">557</span>
+<span id="558">558</span>
 </pre><pre class="rust"><code><span class="kw">use crate</span>::{
+    binary_tree::array_representation::LeafNodeIndex,
     ciphersuite::hash_ref::ProposalRef,
     error::LibraryError,
     framing::<span class="kw-2">*</span>,
@@ -887,14 +889,14 @@
         sender: Sender,
         proposal_store: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>ProposalStore,
         inline_proposals: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[Proposal],
-        own_index: u32,
+        own_index: LeafNodeIndex,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(<span class="self">Self</span>, bool), ProposalQueueError&gt; {
         <span class="attribute">#[derive(Clone, Default)]
         </span><span class="kw">struct </span>Member {
             updates: Vec&lt;QueuedProposal&gt;,
             removes: Vec&lt;QueuedProposal&gt;,
         }
-        <span class="kw">let </span><span class="kw-2">mut </span>members = HashMap::&lt;u32, Member&gt;::new();
+        <span class="kw">let </span><span class="kw-2">mut </span>members = HashMap::&lt;LeafNodeIndex, Member&gt;::new();
         <span class="kw">let </span><span class="kw-2">mut </span>adds: HashSet&lt;ProposalRef&gt; = HashSet::new();
         <span class="kw">let </span><span class="kw-2">mut </span>valid_proposals: HashSet&lt;ProposalRef&gt; = HashSet::new();
         <span class="kw">let </span><span class="kw-2">mut </span>proposal_pool: HashMap&lt;ProposalRef, QueuedProposal&gt; = HashMap::new();
