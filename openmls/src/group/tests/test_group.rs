@@ -10,7 +10,6 @@ use crate::{
     *,
 };
 use openmls_rust_crypto::OpenMlsRustCrypto;
-use tls_codec::Serialize;
 
 #[apply(ciphersuites_and_backends)]
 fn create_commit_optional_path(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
@@ -357,20 +356,13 @@ fn group_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvid
         .create_application_message(&[], &message_alice, &alice_credential_bundle, 0, backend)
         .expect("An unexpected error occurred.");
 
-    let mut verifiable_plaintext = group_bob
+    let verifiable_plaintext = group_bob
         .decrypt(
             &mls_ciphertext_alice,
             backend,
             &sender_ratchet_configuration,
         )
         .expect("An unexpected error occurred.");
-
-    verifiable_plaintext.set_context(
-        group_bob
-            .context()
-            .tls_serialize_detached()
-            .expect("An unexpected error occurred."),
-    );
 
     let credential = group_alice
         .treesync()
@@ -662,20 +654,13 @@ fn group_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvid
         .expect("An unexpected error occurred.");
 
     // Alice decrypts and verifies
-    let mut verifiable_plaintext = group_alice
+    let verifiable_plaintext = group_alice
         .decrypt(
             &mls_ciphertext_charlie.clone(),
             backend,
             &sender_ratchet_configuration,
         )
         .expect("An unexpected error occurred.");
-
-    verifiable_plaintext.set_context(
-        group_alice
-            .context()
-            .tls_serialize_detached()
-            .expect("An unexpected error occurred."),
-    );
 
     let credential = group_charlie
         .treesync()
@@ -692,20 +677,13 @@ fn group_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvid
             FramedContentBody::Application(message) if message.as_slice() == &message_charlie[..]));
 
     // Bob decrypts and verifies
-    let mut verifiable_plaintext = group_bob
+    let verifiable_plaintext = group_bob
         .decrypt(
             &mls_ciphertext_charlie,
             backend,
             &sender_ratchet_configuration,
         )
         .expect("An unexpected error occurred.");
-
-    verifiable_plaintext.set_context(
-        group_bob
-            .context()
-            .tls_serialize_detached()
-            .expect("An unexpected error occurred."),
-    );
 
     let credential = group_charlie
         .treesync()

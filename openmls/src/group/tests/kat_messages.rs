@@ -239,22 +239,13 @@ pub fn generate_test_vector(ciphersuite: Ciphersuite) -> MessagesTestVector {
         )
         .expect("An unexpected error occurred.");
     // Replace the secret tree
-    let mut verifiable_public_message_application = receiver_group
+    let verifiable_public_message_application = receiver_group
         .decrypt(
             &private_message_application,
             &crypto,
             &SenderRatchetConfiguration::default(),
         )
         .expect("An unexpected error occurred.");
-    // Sets the context implicitly.
-    if !verifiable_public_message_application.has_context() {
-        verifiable_public_message_application.set_context(
-            group
-                .context()
-                .tls_serialize_detached()
-                .expect("Anunexpected error occured."),
-        );
-    }
     let mls_content_application: AuthenticatedContent =
         verifiable_public_message_application.into();
 

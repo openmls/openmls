@@ -308,17 +308,6 @@ impl VerifiableAuthenticatedContent {
         &self.auth_content.tbs.content.sender
     }
 
-    /// Set the serialized context before verifying the signature.
-    pub(crate) fn set_context(&mut self, serialized_context: Vec<u8>) {
-        self.auth_content.tbs.serialized_context = Some(serialized_context);
-    }
-
-    /// Set the serialized context before verifying the signature.
-    #[cfg(any(feature = "test-utils", test))]
-    pub(crate) fn has_context(&self) -> bool {
-        self.auth_content.tbs.serialized_context.is_some()
-    }
-
     /// Get the epoch.
     pub(crate) fn epoch(&self) -> GroupEpoch {
         self.auth_content.tbs.epoch()
