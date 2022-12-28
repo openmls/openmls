@@ -103,7 +103,7 @@ impl DecryptedMessage {
             .message_secrets_and_leaves_mut(ciphertext.epoch())
             .map_err(|_| MessageDecryptionError::AeadError)?;
         let sender_data = ciphertext.sender_data(message_secrets, backend, ciphersuite)?;
-        let sender_index = SecretTreeLeafIndex(sender_data.leaf_index);
+        let sender_index = SecretTreeLeafIndex::from(sender_data.leaf_index);
         let message_secrets = group
             .message_secrets_mut(ciphertext.epoch())
             .map_err(|_| MessageDecryptionError::AeadError)?;

@@ -1,5 +1,8 @@
 use super::utils::*;
-use crate::{framing::*, group::*, key_packages::*, messages::*, test_utils::*, *};
+use crate::{
+    binary_tree::LeafNodeIndex, framing::*, group::*, key_packages::*, messages::*, test_utils::*,
+    *,
+};
 use openmls_rust_crypto::OpenMlsRustCrypto;
 use openmls_traits::crypto::OpenMlsCrypto;
 use tls_codec::{Deserialize, Serialize};
@@ -212,7 +215,12 @@ fn test_remove_proposal_encoding(backend: &impl OpenMlsCryptoProvider) {
             .expect("An unexpected error occurred.");
 
         let mut remove: MlsPlaintext = group_state
-            .create_remove_proposal(framing_parameters, credential_bundle, 1, backend)
+            .create_remove_proposal(
+                framing_parameters,
+                credential_bundle,
+                LeafNodeIndex::new(1),
+                backend,
+            )
             .expect("Could not create proposal.")
             .into();
         remove

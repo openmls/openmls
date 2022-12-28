@@ -10,6 +10,7 @@ use tls_codec::Serialize;
 
 use super::utils::*;
 use crate::{
+    binary_tree::*,
     ciphersuite::signable::Signable,
     credentials::{CredentialBundle, CredentialType},
     framing::{MessageDecryptionError, WireFormat, *},
@@ -125,7 +126,7 @@ fn bad_padding(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
         )
         .unwrap();
 
-        let sender = Sender::build_member(654);
+        let sender = Sender::build_member(LeafNodeIndex::new(654));
 
         let group_context = GroupContext::new(
             ciphersuite,
@@ -149,7 +150,8 @@ fn bad_padding(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
             plaintext_tbs.sign(backend, &credential_bundle).unwrap()
         };
 
-        let mut message_secrets = MessageSecrets::random(ciphersuite, backend, 0);
+        let mut message_secrets =
+            MessageSecrets::random(ciphersuite, backend, LeafNodeIndex::new(0));
 
         let encryption_secret_bytes = backend
             .rand()
@@ -163,7 +165,11 @@ fn bad_padding(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
                 ciphersuite,
             );
 
-            SecretTree::new(sender_encryption_secret, 2u32.into(), 0u32.into())
+            SecretTree::new(
+                sender_encryption_secret,
+                2u32,
+                LeafNodeIndex::new(0u32).into(),
+            )
         };
 
         let receiver_secret_tree = {
@@ -173,7 +179,11 @@ fn bad_padding(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
                 ciphersuite,
             );
 
-            SecretTree::new(receiver_encryption_secret, 2u32.into(), 1u32.into())
+            SecretTree::new(
+                receiver_encryption_secret,
+                2u32,
+                LeafNodeIndex::new(1u32).into(),
+            )
         };
 
         message_secrets.replace_secret_tree(sender_secret_tree);

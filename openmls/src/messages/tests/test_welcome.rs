@@ -1,4 +1,5 @@
 use crate::{
+    binary_tree::LeafNodeIndex,
     ciphersuite::{hash_ref::KeyPackageRef, signable::Signable, AeadKey, AeadNonce, Mac, Secret},
     credentials::{errors::CredentialError, CredentialBundle, CredentialType},
     group::{errors::WelcomeError, GroupId, MlsGroup, MlsGroupConfig},
@@ -257,7 +258,7 @@ fn test_welcome_message_with_version(
             ConfirmationTag(Mac {
                 mac_value: vec![1, 2, 3, 4, 5].into(),
             }),
-            1,
+            LeafNodeIndex::new(1),
         )
     };
 

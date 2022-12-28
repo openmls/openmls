@@ -8,6 +8,7 @@ use signable::Verifiable;
 use tls_codec::{Deserialize, Serialize};
 
 use crate::{
+    binary_tree::LeafNodeIndex,
     ciphersuite::signable::Signable,
     credentials::errors::CredentialError,
     framing::*,
@@ -20,10 +21,7 @@ use crate::{
         tests::tree_printing::print_tree,
     },
     key_packages::KeyPackageBundle,
-    tree::{
-        index::SecretTreeLeafIndex, secret_tree::SecretTree,
-        sender_ratchet::SenderRatchetConfiguration,
-    },
+    tree::{secret_tree::SecretTree, sender_ratchet::SenderRatchetConfiguration},
     versions::ProtocolVersion,
 };
 
@@ -37,7 +35,7 @@ fn codec_plaintext(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvide
         backend,
     )
     .expect("An unexpected error occurred.");
-    let sender = Sender::build_member(987543210);
+    let sender = Sender::build_member(LeafNodeIndex::new(987543210));
     let group_context = GroupContext::new(
         ciphersuite,
         GroupId::random(backend),
@@ -90,7 +88,7 @@ fn codec_ciphertext(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvid
         backend,
     )
     .expect("An unexpected error occurred.");
-    let sender = Sender::build_member(0);
+    let sender = Sender::build_member(LeafNodeIndex::new(0));
     let group_context = GroupContext::new(
         ciphersuite,
         GroupId::from_slice(&[5, 5, 5]),
@@ -132,7 +130,7 @@ fn codec_ciphertext(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvid
         .add_context(backend, &serialized_group_context)
         .expect("Could not add context to key schedule");
 
-    let mut message_secrets = MessageSecrets::random(ciphersuite, backend, 0);
+    let mut message_secrets = MessageSecrets::random(ciphersuite, backend, LeafNodeIndex::new(0));
 
     let orig = MlsCiphertext::encrypt_with_different_header(
         &plaintext,
@@ -141,7 +139,7 @@ fn codec_ciphertext(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvid
         MlsMessageHeader {
             group_id: group_context.group_id().clone(),
             epoch: group_context.epoch(),
-            sender: SecretTreeLeafIndex(987543210),
+            sender: LeafNodeIndex::new(987543210),
         },
         &mut message_secrets,
         0,
@@ -164,7 +162,7 @@ fn wire_format_checks(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProv
     let configuration = &SenderRatchetConfiguration::default();
     let (plaintext, _credential) = create_content(ciphersuite, WireFormat::MlsCiphertext, backend);
 
-    let mut message_secrets = MessageSecrets::random(ciphersuite, backend, 0);
+    let mut message_secrets = MessageSecrets::random(ciphersuite, backend, LeafNodeIndex::new(0));
     let encryption_secret_bytes = backend
         .rand()
         .random_vec(ciphersuite.hash_length())
@@ -179,13 +177,20 @@ fn wire_format_checks(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProv
         ProtocolVersion::default(),
         ciphersuite,
     );
-    let sender_secret_tree = SecretTree::new(sender_encryption_secret, 2u32.into(), 0u32.into());
-    let receiver_secret_tree =
-        SecretTree::new(receiver_encryption_secret, 2u32.into(), 1u32.into());
+    let sender_secret_tree = SecretTree::new(
+        sender_encryption_secret,
+        2u32,
+        LeafNodeIndex::new(0u32).into(),
+    );
+    let receiver_secret_tree = SecretTree::new(
+        receiver_encryption_secret,
+        2u32,
+        LeafNodeIndex::new(1u32).into(),
+    );
 
     message_secrets.replace_secret_tree(sender_secret_tree);
 
-    let sender_index = SecretTreeLeafIndex(0);
+    let sender_index = LeafNodeIndex::new(0);
     let ciphertext = MlsCiphertext::encrypt_with_different_header(
         &plaintext,
         ciphersuite,
@@ -212,7 +217,7 @@ fn wire_format_checks(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProv
             ciphersuite,
             backend,
             &mut message_secrets,
-            sender_index,
+            sender_index.into(),
             configuration,
             sender_data,
         )
@@ -248,7 +253,7 @@ fn wire_format_checks(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProv
             ciphersuite,
             backend,
             &mut message_secrets,
-            sender_index,
+            sender_index.into(),
             configuration,
             sender_data,
         )
@@ -291,7 +296,7 @@ fn create_content(
         backend,
     )
     .expect("An unexpected error occurred.");
-    let sender = Sender::build_member(0);
+    let sender = Sender::build_member(LeafNodeIndex::new(0));
     let group_context = GroupContext::new(
         ciphersuite,
         GroupId::from_slice(&[5, 5, 5]),
@@ -341,7 +346,7 @@ fn membership_tag(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
             .expect("Not enough randomness."),
     );
     let mut mls_plaintext: MlsPlaintext = MlsAuthContent::new_application(
-        987543210,
+        LeafNodeIndex::new(987543210),
         &[1, 2, 3],
         &[4, 5, 6],
         &credential_bundle,
@@ -517,7 +522,12 @@ fn unknown_sender(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
 
     // Alice removes Bob
     let bob_remove_proposal = group_alice
-        .create_remove_proposal(framing_parameters, &alice_credential_bundle, 1, backend)
+        .create_remove_proposal(
+            framing_parameters,
+            &alice_credential_bundle,
+            LeafNodeIndex::new(1),
+            backend,
+        )
         .expect("Could not create proposal.");
 
     proposal_store.empty();
@@ -553,7 +563,7 @@ fn unknown_sender(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
     // Alice sends a message with a sender that is outside of the group
     // Expected result: SenderError::UnknownSender
     let bogus_sender_message = MlsAuthContent::new_application(
-        0,
+        LeafNodeIndex::new(0),
         &[],
         &[1, 2, 3],
         &alice_credential_bundle,
@@ -569,7 +579,7 @@ fn unknown_sender(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
         MlsMessageHeader {
             group_id: group_alice.group_id().clone(),
             epoch: group_alice.context().epoch(),
-            sender: SecretTreeLeafIndex(987543210u32),
+            sender: LeafNodeIndex::new(987543210u32),
         },
         group_alice.message_secrets_test_mut(),
         0,

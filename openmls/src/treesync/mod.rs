@@ -25,7 +25,10 @@ use openmls_traits::{
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    binary_tree::{LeafIndex, MlsBinaryTree, MlsBinaryTreeError},
+    binary_tree::{
+        array_representation::{is_node_in_tree, LeafNodeIndex},
+        MlsBinaryTree, MlsBinaryTreeError,
+    },
     ciphersuite::Secret,
     credentials::CredentialBundle,
     error::LibraryError,
@@ -64,7 +67,7 @@ pub use node::{leaf_node::LeafNode, parent_node::ParentNode, Node};
 pub mod tests_and_kats;
 
 /// The [`TreeSync`] struct holds an [`MlsBinaryTree`] instance, which contains
-/// the state that is synced across the group, as well as the [`LeafIndex`]
+/// the state that is synced across the group, as well as the [`LeafNodeIndex`]
 /// pointing to the leaf of this group member and the current hash of the tree.
 ///
 /// It follows the same pattern of tree and diff as the underlying
@@ -79,7 +82,7 @@ pub mod tests_and_kats;
 #[cfg_attr(test, derive(PartialEq))]
 pub(crate) struct TreeSync {
     tree: MlsBinaryTree<TreeSyncNode>,
-    own_leaf_index: LeafIndex,
+    own_leaf_index: LeafNodeIndex,
     tree_hash: Vec<u8>,
 }
 
@@ -108,7 +111,7 @@ impl TreeSync {
             backend,
             credential_bundle,
         )?;
-        leaf.set_leaf_index(0);
+        leaf.set_leaf_index(LeafNodeIndex::new(0));
         leaf.add_capabilities(capabilities);
         extensions
             .into_iter()
@@ -155,7 +158,7 @@ impl TreeSync {
     }
 
     /// Create a new [`TreeSync`] instance from a given slice of `Option<Node>`,
-    /// as well as a `LeafIndex` representing the source of the node slice and
+    /// as well as a `LeafNodeIndex` representing the source of the node slice and
     /// the `KeyPackageBundle` representing this client in the group. If a
     /// [`PathSecret`] is passed via `path_secret_option`, it will derive the
     /// private keys in the nodes of the direct path of the sender that it
@@ -170,7 +173,7 @@ impl TreeSync {
         backend: &impl OpenMlsCryptoProvider,
         ciphersuite: Ciphersuite,
         node_options: &[Option<Node>],
-        sender_index: u32,
+        sender_index: LeafNodeIndex,
         path_secret_option: impl Into<Option<PathSecret>>,
         key_package_bundle: KeyPackageBundle,
     ) -> Result<(Self, Option<CommitSecret>), TreeSyncFromNodesError> {
@@ -221,7 +224,7 @@ impl TreeSync {
                 Some(node) => {
                     let mut node = node.clone();
                     if let Node::LeafNode(ref mut leaf_node) = node {
-                        let leaf_index = (node_index / 2) as u32;
+                        let leaf_index = LeafNodeIndex::new((node_index / 2) as u32);
                         if leaf_node.public_key() == own_key_package.hpke_init_key() {
                             // Check if there's a duplicate
                             if let Some(private_key) = private_key.take() {
@@ -278,7 +281,7 @@ impl TreeSync {
         let mut tree_sync = Self {
             tree,
             tree_hash: vec![],
-            own_leaf_index: 0,
+            own_leaf_index: LeafNodeIndex::new(0),
         };
         // Verify all parent hashes.
         tree_sync
@@ -289,11 +292,11 @@ impl TreeSync {
         Ok(tree_sync)
     }
 
-    /// Find the `LeafIndex` which a new leaf would have if it were added to the
+    /// Find the `LeafNodeIndex` which a new leaf would have if it were added to the
     /// tree. This is either the left-most blank node or, if there are no blank
     /// leaves, the leaf count, since adding a member would extend the tree by
     /// one leaf.
-    pub(crate) fn free_leaf_index(&self) -> LeafIndex {
+    pub(crate) fn free_leaf_index(&self) -> LeafNodeIndex {
         let diff = self.empty_diff();
         diff.free_leaf_index()
     }
@@ -344,12 +347,12 @@ impl TreeSync {
     ///
     /// This function should not fail and only returns a [`Result`], because it
     /// might throw a [LibraryError](TreeSyncError::LibraryError).
-    pub(crate) fn leaf_count(&self) -> LeafIndex {
+    pub(crate) fn leaf_count(&self) -> u32 {
         self.tree.leaf_count()
     }
 
-    /// Returns a list of [`LeafIndex`]es containing only full nodes.
-    pub(crate) fn full_leaves(&self) -> Vec<LeafIndex> {
+    /// Returns a list of [`LeafNodeIndex`]es containing only full nodes.
+    pub(crate) fn full_leaves(&self) -> Vec<LeafNodeIndex> {
         self.tree
             .leaves()
             .filter_map(|(index, tsn)| tsn.node().as_ref().map(|_| (index)))
@@ -428,7 +431,7 @@ impl TreeSync {
     }
 
     /// Returns the leaf index of this client.
-    pub(crate) fn own_leaf_index(&self) -> LeafIndex {
+    pub(crate) fn own_leaf_index(&self) -> LeafNodeIndex {
         self.own_leaf_index
     }
 
@@ -442,15 +445,15 @@ impl TreeSync {
             .ok_or_else(|| LibraryError::custom("Own leaf is outside of the tree").into())
     }
 
-    /// Return a reference to the leaf at the given `LeafIndex` or `None` if the
+    /// Return a reference to the leaf at the given `LeafNodeIndex` or `None` if the
     /// leaf is blank.
     ///
     /// Returns an error if the leaf is outside of the tree.
     pub(crate) fn leaf(
         &self,
-        leaf_index: LeafIndex,
+        leaf_index: LeafNodeIndex,
     ) -> Result<Option<&OpenMlsLeafNode>, TreeSyncError> {
-        let tsn = self.tree.leaf(leaf_index)?;
+        let tsn = self.tree.leaf(leaf_index);
         Ok(match tsn.node() {
             Some(node) => Some(node.as_leaf_node()?),
             None => None,
@@ -459,10 +462,7 @@ impl TreeSync {
 
     /// Returns a [`TreeSyncError`] if the `leaf_index` is not a leaf in this
     /// tree or empty.
-    pub(crate) fn leaf_is_in_tree(&self, leaf_index: LeafIndex) -> Result<(), TreeSyncError> {
-        if self.tree.leaf(leaf_index)?.node().is_none() {
-            return Err(TreeSyncError::LeafNotInTree);
-        }
-        Ok(())
+    pub(crate) fn is_leaf_in_tree(&self, leaf_index: LeafNodeIndex) -> bool {
+        is_node_in_tree(leaf_index.into(), self.tree.size())
     }
 }

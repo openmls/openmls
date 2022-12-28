@@ -9,6 +9,7 @@ use rstest_reuse::{self, *};
 use tls_codec::{Deserialize, Serialize};
 
 use crate::{
+    binary_tree::LeafNodeIndex,
     ciphersuite::{hash_ref::ProposalRef, signable::Signable},
     credentials::*,
     framing::{
@@ -1422,7 +1423,7 @@ fn test_valsem108(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
     // There are two ways in which we could use the MlsGroup API to commit to
     // remove proposals: Create the proposals and then commit them manually or
     // use the `remove_members` endpoint.
-    let fake_leaf_index = 9238754;
+    let fake_leaf_index = LeafNodeIndex::new(9238754);
 
     // We first go the manual route
     let _remove_proposal1 = alice_group
@@ -1475,7 +1476,9 @@ fn test_valsem108(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
     let original_plaintext = plaintext.clone();
 
     // Use a random leaf index that doesn't exist to create a remove proposal.
-    let remove_proposal = Proposal::Remove(RemoveProposal { removed: 987 });
+    let remove_proposal = Proposal::Remove(RemoveProposal {
+        removed: LeafNodeIndex::new(987),
+    });
 
     // Artificially add a proposal trying to remove someone that is not in a
     // group.

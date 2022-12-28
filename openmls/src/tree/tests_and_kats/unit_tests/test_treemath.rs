@@ -2,7 +2,6 @@ use openmls_rust_crypto::OpenMlsRustCrypto;
 use openmls_traits::types::SignatureScheme;
 
 use crate::{
-    
     test_utils::*,
     tree::{
         index::{LeafIndex, NodeIndex},
@@ -51,13 +50,8 @@ fn test_tree_hash(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
             backend,
         )
         .expect("An unexpected error occurred.");
-        KeyPackageBundle::new(
-            &[ciphersuite],
-            &credential_bundle,
-            backend,
-            Vec::new(),
-        )
-        .expect("An unexpected error occurred.")
+        KeyPackageBundle::new(&[ciphersuite], &credential_bundle, backend, Vec::new())
+            .expect("An unexpected error occurred.")
     }
 
     let kbp = create_identity(b"Tree creator", ciphersuite, backend);
