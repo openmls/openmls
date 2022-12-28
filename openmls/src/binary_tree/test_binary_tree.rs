@@ -2,7 +2,7 @@ use std::collections::HashSet;
 
 use crate::binary_tree::{
     array_representation::tree::{ABinaryTree, TreeNode},
-    MlsBinaryTree, MlsBinaryTreeError,
+    MlsBinaryTree, MlsBinaryTreeDiffError, MlsBinaryTreeError,
 };
 
 use super::{
@@ -154,6 +154,40 @@ fn test_diff_merging() {
     tree.merge_diff(staged_diff);
 
     assert_eq!(tree, original_tree);
+}
+
+#[test]
+fn test_leaf_addition_and_removal_errors() {
+    let tree = MlsBinaryTree::new(vec![
+        TreeNode::Leaf(2),
+        TreeNode::Parent(0),
+        TreeNode::Leaf(4),
+    ])
+    .expect("error creating tree");
+    let mut diff = tree.empty_diff();
+
+    diff.remove_leaf().expect("error removing leaf");
+
+    // Should fail removing the last remaining leaf.
+    assert_eq!(
+        diff.remove_leaf()
+            .expect_err("no error trying to remove the last leaf in the diff"),
+        MlsBinaryTreeDiffError::TreeTooSmall
+    );
+
+    // Let's test what happens when the tree is getting too large.
+    let mut nodes: Vec<TreeNode<u32, u32>> = Vec::new();
+
+    // We allow uninitialized vectors because we don't want to allocate so much memory
+    #[allow(clippy::uninit_vec)]
+    unsafe {
+        nodes.set_len(u32::MAX as usize);
+
+        assert_eq!(
+            MlsBinaryTree::new(nodes).expect_err("no error adding beyond TREE_MAX"),
+            MlsBinaryTreeError::OutOfRange
+        )
+    }
 }
 
 #[test]

@@ -459,13 +459,11 @@ impl<'a> TreeSyncDiff<'a> {
     /// given in the list.
     ///
     /// Returns The list of HPKE public keys.
-    /// In case node_id is not in the tree a LibraryError is returned.
     fn resolution(
         &self,
         node_index: TreeNodeIndex,
         excluded_indices: &HashSet<&LeafNodeIndex>,
     ) -> Vec<HpkePublicKey> {
-        // If it's a full node, check if it's a leaf.
         match node_index {
             TreeNodeIndex::Leaf(leaf_index) => {
                 // If the node is a leaf, check if it is in the exclusion list.
