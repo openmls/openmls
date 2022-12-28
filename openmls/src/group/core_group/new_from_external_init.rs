@@ -21,7 +21,7 @@ impl CoreGroup {
     /// `ExternalInit` proposal and commits it along with the given proposals by
     /// reference and by value.
     ///
-    /// Returns the new `CoreGroup` object, as well as the `MlsPlaintext`
+    /// Returns the new `CoreGroup` object, as well as the `PublicMessage`
     /// containing the commit.
     pub(crate) fn join_by_external_commit(
         backend: &impl OpenMlsCryptoProvider,

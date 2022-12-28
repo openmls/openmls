@@ -52,18 +52,18 @@
 //! For all `N` entries in the `leaves` and all generations `j`
 //! * `leaves[N].handshake[j].key = handshake_ratchet_key_[2*N]_[j]`
 //! * `leaves[N].handshake[j].nonce = handshake_ratchet_nonce_[2*N]_[j]`
-//! * `leaves[N].handshake[j].plaintext` represents an MlsPlaintext containing a
+//! * `leaves[N].handshake[j].plaintext` represents an PublicMessage containing a
 //!   handshake message (Proposal or Commit) from leaf `N`
-//! * `leaves[N].handshake[j].ciphertext` represents an MlsCiphertext object
-//!   that successfully decrypts to an MlsPlaintext equivalent to
+//! * `leaves[N].handshake[j].ciphertext` represents an PrivateMessage object
+//!   that successfully decrypts to an PublicMessage equivalent to
 //!   `leaves[N].handshake[j].plaintext` using the keys for leaf `N` and
 //!   generation `j`.
 //! * `leaves[N].application[j].key = application_ratchet_key_[2*N]_[j]`
 //! * `leaves[N].application[j].nonce = application_ratchet_nonce_[2*N]_[j]`
-//! * `leaves[N].application[j].plaintext` represents an MlsPlaintext containing
+//! * `leaves[N].application[j].plaintext` represents an PublicMessage containing
 //!   application data from leaf `N`
-//! * `leaves[N].application[j].ciphertext` represents an MlsCiphertext object
-//!   that successfully decrypts to an MlsPlaintext equivalent to
+//! * `leaves[N].application[j].ciphertext` represents an PrivateMessage object
+//!   that successfully decrypts to an PublicMessage equivalent to
 //!   `leaves[N].handshake[j].plaintext` using the keys for leaf `N` and
 //!   generation `j`.
 //! * `sender_data_info.secret.key = sender_data_key(sender_data_secret,
@@ -147,9 +147,7 @@ fn group(
         backend,
     )
     .expect("An unexpected error occurred.");
-    let key_package_bundle =
-        KeyPackageBundle::new(&[ciphersuite], &credential_bundle, backend, Vec::new())
-            .expect("An unexpected error occurred.");
+    let key_package_bundle = KeyPackageBundle::new(backend, ciphersuite, &credential_bundle);
     (
         CoreGroup::builder(GroupId::random(backend), key_package_bundle)
             .build(&credential_bundle, backend)
@@ -171,9 +169,7 @@ fn receiver_group(
         backend,
     )
     .expect("An unexpected error occurred.");
-    let key_package_bundle =
-        KeyPackageBundle::new(&[ciphersuite], &credential_bundle, backend, Vec::new())
-            .expect("An unexpected error occurred.");
+    let key_package_bundle = KeyPackageBundle::new(backend, ciphersuite, &credential_bundle);
     CoreGroup::builder(group_id.clone(), key_package_bundle)
         .build(&credential_bundle, backend)
         .expect("Error creating CoreGroup")
@@ -193,12 +189,12 @@ fn build_handshake_messages(
 
     let epoch = random_u64();
     group.context_mut().set_epoch(epoch.into());
-    let framing_parameters = FramingParameters::new(&[1, 2, 3, 4], WireFormat::MlsCiphertext);
+    let framing_parameters = FramingParameters::new(&[1, 2, 3, 4], WireFormat::PrivateMessage);
     let membership_key = MembershipKey::from_secret(
         Secret::random(group.ciphersuite(), backend, None /* MLS version */)
             .expect("Not enough randomness."),
     );
-    let content = MlsAuthContent::member_proposal(
+    let content = AuthenticatedContent::member_proposal(
         framing_parameters,
         sender_index,
         Proposal::Remove(RemoveProposal {
@@ -209,7 +205,7 @@ fn build_handshake_messages(
         backend,
     )
     .expect("An unexpected error occurred.");
-    let mut plaintext: MlsPlaintext = content.clone().into();
+    let mut plaintext: PublicMessage = content.clone().into();
     plaintext
         .set_membership_tag(
             backend,
@@ -220,7 +216,7 @@ fn build_handshake_messages(
             &membership_key,
         )
         .expect("Error setting membership tag.");
-    let ciphertext = MlsCiphertext::encrypt_with_different_header(
+    let ciphertext = PrivateMessage::encrypt_with_different_header(
         &content,
         group.ciphersuite(),
         backend,
@@ -232,7 +228,7 @@ fn build_handshake_messages(
         group.message_secrets_test_mut(),
         0,
     )
-    .expect("Could not create MlsCiphertext");
+    .expect("Could not create PrivateMessage");
     (
         plaintext
             .tls_serialize_detached()
@@ -260,7 +256,7 @@ fn build_application_messages(
         Secret::random(group.ciphersuite(), backend, None /* MLS version */)
             .expect("Not enough randomness."),
     );
-    let content = MlsAuthContent::new_application(
+    let content = AuthenticatedContent::new_application(
         sender_index,
         &[1, 2, 3],
         &[4, 5, 6],
@@ -269,7 +265,7 @@ fn build_application_messages(
         backend,
     )
     .expect("An unexpected error occurred.");
-    let mut plaintext: MlsPlaintext = content.clone().into();
+    let mut plaintext: PublicMessage = content.clone().into();
     plaintext
         .set_membership_tag(
             backend,
@@ -280,7 +276,7 @@ fn build_application_messages(
             &membership_key,
         )
         .expect("Error setting membership tag.");
-    let ciphertext = match MlsCiphertext::encrypt_with_different_header(
+    let ciphertext = match PrivateMessage::encrypt_with_different_header(
         &content,
         group.ciphersuite(),
         backend,
@@ -293,7 +289,7 @@ fn build_application_messages(
         0,
     ) {
         Ok(c) => c,
-        Err(e) => panic!("Could not create MlsCiphertext {}", e),
+        Err(e) => panic!("Could not create PrivateMessage {}", e),
     };
     (
         plaintext
@@ -580,8 +576,8 @@ pub fn run_test_vector(
             // Setup group
             let ctxt_bytes = hex_to_bytes(&application.ciphertext);
             let mls_ciphertext_application =
-                MlsCiphertext::tls_deserialize(&mut ctxt_bytes.as_slice())
-                    .expect("Error parsing MlsCiphertext");
+                PrivateMessage::tls_deserialize(&mut ctxt_bytes.as_slice())
+                    .expect("Error parsing PrivateMessage");
             let mut group =
                 receiver_group(ciphersuite, backend, mls_ciphertext_application.group_id());
             *group.message_secrets_test_mut().sender_data_secret_mut() =
@@ -591,8 +587,8 @@ pub fn run_test_vector(
                     ciphersuite,
                 );
 
-            // Note that we can't actually get an MlsPlaintext because we don't
-            // have enough information. We encode the VerifiableMlsAuthContent
+            // Note that we can't actually get an PublicMessage because we don't
+            // have enough information. We encode the VerifiableAuthenticatedContent
             // and compare it to the plaintext in the test vector instead.
 
             // Swap secret tree
@@ -605,7 +601,7 @@ pub fn run_test_vector(
                 .sender_data(group.message_secrets_test_mut(), backend, ciphersuite)
                 .expect("Unable to get sender data");
             let mls_plaintext_application = mls_ciphertext_application
-                .to_plaintext(
+                .to_verifiable_content(
                     ciphersuite,
                     backend,
                     group.message_secrets_test_mut(),
@@ -613,11 +609,11 @@ pub fn run_test_vector(
                     &SenderRatchetConfiguration::default(),
                     sender_data,
                 )
-                .expect("Error decrypting MlsCiphertext");
+                .expect("Error decrypting PrivateMessage");
             if hex_to_bytes(&application.plaintext)
                 != mls_plaintext_application
                     .tls_serialize_detached()
-                    .expect("Error encoding MlsPlaintext")
+                    .expect("Error encoding PublicMessage")
             {
                 if cfg!(test) {
                     panic!("Decrypted application message mismatch");
@@ -658,8 +654,8 @@ pub fn run_test_vector(
             // Setup group
             let handshake_bytes = hex_to_bytes(&handshake.ciphertext);
             let mls_ciphertext_handshake =
-                MlsCiphertext::tls_deserialize(&mut handshake_bytes.as_slice())
-                    .expect("Error parsing MlsCiphertext");
+                PrivateMessage::tls_deserialize(&mut handshake_bytes.as_slice())
+                    .expect("Error parsing PrivateMessage");
             *group.message_secrets_test_mut().sender_data_secret_mut() =
                 SenderDataSecret::from_slice(
                     hex_to_bytes(&test_vector.sender_data_secret).as_slice(),
@@ -677,7 +673,7 @@ pub fn run_test_vector(
                 .sender_data(group.message_secrets_test_mut(), backend, ciphersuite)
                 .expect("Unable to get sender data");
             let mls_plaintext_handshake = mls_ciphertext_handshake
-                .to_plaintext(
+                .to_verifiable_content(
                     ciphersuite,
                     backend,
                     group.message_secrets_test_mut(),
@@ -685,11 +681,11 @@ pub fn run_test_vector(
                     &SenderRatchetConfiguration::default(),
                     sender_data,
                 )
-                .expect("Error decrypting MlsCiphertext");
+                .expect("Error decrypting PrivateMessage");
             if hex_to_bytes(&handshake.plaintext)
                 != mls_plaintext_handshake
                     .tls_serialize_detached()
-                    .expect("Error encoding MlsPlaintext")
+                    .expect("Error encoding PublicMessage")
             {
                 if cfg!(test) {
                     panic!("Decrypted handshake message mismatch");
@@ -724,8 +720,8 @@ pub fn run_test_vector(
             // Setup group
             let handshake_bytes = hex_to_bytes(&handshake.ciphertext);
             let mls_ciphertext_handshake =
-                MlsCiphertext::tls_deserialize(&mut handshake_bytes.as_slice())
-                    .expect("Error parsing MLSCiphertext");
+                PrivateMessage::tls_deserialize(&mut handshake_bytes.as_slice())
+                    .expect("Error parsing PrivateMessage");
             let mut group =
                 receiver_group(ciphersuite, backend, mls_ciphertext_handshake.group_id());
             *group.message_secrets_test_mut().sender_data_secret_mut() =
@@ -745,7 +741,7 @@ pub fn run_test_vector(
                 .sender_data(group.message_secrets_test_mut(), backend, ciphersuite)
                 .expect("Unable to get sender data");
             let mls_plaintext_handshake = mls_ciphertext_handshake
-                .to_plaintext(
+                .to_verifiable_content(
                     ciphersuite,
                     backend,
                     group.message_secrets_test_mut(),
@@ -753,11 +749,11 @@ pub fn run_test_vector(
                     &SenderRatchetConfiguration::default(),
                     sender_data,
                 )
-                .expect("Error decrypting MLSCiphertext");
+                .expect("Error decrypting PrivateMessage");
             if hex_to_bytes(&handshake.plaintext)
                 != mls_plaintext_handshake
                     .tls_serialize_detached()
-                    .expect("Error encoding MLSPlaintext")
+                    .expect("Error encoding PublicMessage")
             {
                 return Err(EncTestVectorError::DecryptedHandshakeMessageMismatch);
             }

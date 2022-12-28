@@ -6,7 +6,7 @@
 
 use crate::{
     credentials::CredentialBundle,
-    framing::{MlsAuthContent, MlsMessageOut, MlsPlaintext},
+    framing::{mls_auth_content::AuthenticatedContent, MlsMessageOut, PublicMessage},
     group::{mls_group::errors::ProposeAddMemberError, GroupEpoch, GroupId},
     key_packages::KeyPackage,
     messages::{AddProposal, Proposal},
@@ -36,14 +36,14 @@ impl JoinProposal {
         credential: &CredentialBundle,
         backend: &impl OpenMlsCryptoProvider,
     ) -> Result<MlsMessageOut, ProposeAddMemberError> {
-        MlsAuthContent::new_external_proposal(
+        AuthenticatedContent::new_external_proposal(
             Proposal::Add(AddProposal { key_package }),
             credential,
             group_id,
             epoch,
             backend,
         )
-        .map(MlsPlaintext::from)
+        .map(PublicMessage::from)
         .map(MlsMessageOut::from)
         .map_err(ProposeAddMemberError::from)
     }

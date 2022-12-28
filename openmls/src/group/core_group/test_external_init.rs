@@ -20,7 +20,7 @@ use super::{
 fn test_external_init(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
     // Basic group setup.
     let group_aad = b"Alice's test group";
-    let framing_parameters = FramingParameters::new(group_aad, WireFormat::MlsPlaintext);
+    let framing_parameters = FramingParameters::new(group_aad, WireFormat::PublicMessage);
 
     // Define credential bundles
     let alice_credential_bundle = CredentialBundle::new(
@@ -39,17 +39,11 @@ fn test_external_init(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProv
     .expect("An unexpected error occurred.");
 
     // Generate KeyPackages
-    let alice_key_package_bundle = KeyPackageBundle::new(
-        &[ciphersuite],
-        &alice_credential_bundle,
-        backend,
-        Vec::new(),
-    )
-    .expect("An unexpected error occurred.");
+    let alice_key_package_bundle =
+        KeyPackageBundle::new(backend, ciphersuite, &alice_credential_bundle);
 
     let bob_key_package_bundle =
-        KeyPackageBundle::new(&[ciphersuite], &bob_credential_bundle, backend, Vec::new())
-            .expect("An unexpected error occurred.");
+        KeyPackageBundle::new(backend, ciphersuite, &bob_credential_bundle);
     let bob_key_package = bob_key_package_bundle.key_package();
 
     // === Alice creates a group ===
@@ -69,7 +63,7 @@ fn test_external_init(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProv
         )
         .expect("Could not create proposal.");
     let proposal_store = ProposalStore::from_queued_proposal(
-        QueuedProposal::from_mls_plaintext(ciphersuite, backend, bob_add_proposal)
+        QueuedProposal::from_authenticated_content(ciphersuite, backend, bob_add_proposal)
             .expect("Could not create QueuedProposal."),
     );
     let params = CreateCommitParams::builder()
@@ -201,7 +195,7 @@ fn test_external_init(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProv
 
     // Let's make sure there's a remove in the commit.
     let contains_remove = match create_commit_result.commit.content() {
-        crate::prelude_test::plaintext::MlsContentBody::Commit(commit) => commit
+        crate::prelude_test::mls_content::FramedContentBody::Commit(commit) => commit
             .proposals
             .as_slice()
             .iter()
@@ -253,7 +247,7 @@ fn test_external_init_single_member_group(
 ) {
     // Basic group setup.
     let group_aad = b"Alice's test group";
-    let framing_parameters = FramingParameters::new(group_aad, WireFormat::MlsPlaintext);
+    let framing_parameters = FramingParameters::new(group_aad, WireFormat::PublicMessage);
 
     // Define credential bundles
     let alice_credential_bundle = CredentialBundle::new(
@@ -265,13 +259,8 @@ fn test_external_init_single_member_group(
     .expect("An unexpected error occurred.");
 
     // Generate KeyPackages
-    let alice_key_package_bundle = KeyPackageBundle::new(
-        &[ciphersuite],
-        &alice_credential_bundle,
-        backend,
-        Vec::new(),
-    )
-    .expect("An unexpected error occurred.");
+    let alice_key_package_bundle =
+        KeyPackageBundle::new(backend, ciphersuite, &alice_credential_bundle);
 
     // === Alice creates a group ===
     let group_id = GroupId::random(backend);
@@ -342,7 +331,7 @@ fn test_external_init_broken_signature(
 ) {
     // Basic group setup.
     let group_aad = b"Alice's test group";
-    let framing_parameters = FramingParameters::new(group_aad, WireFormat::MlsPlaintext);
+    let framing_parameters = FramingParameters::new(group_aad, WireFormat::PublicMessage);
 
     // Define credential bundles
     let alice_credential_bundle = CredentialBundle::new(
@@ -361,17 +350,11 @@ fn test_external_init_broken_signature(
     .expect("An unexpected error occurred.");
 
     // Generate KeyPackages
-    let alice_key_package_bundle = KeyPackageBundle::new(
-        &[ciphersuite],
-        &alice_credential_bundle,
-        backend,
-        Vec::new(),
-    )
-    .expect("An unexpected error occurred.");
+    let alice_key_package_bundle =
+        KeyPackageBundle::new(backend, ciphersuite, &alice_credential_bundle);
 
     let bob_key_package_bundle =
-        KeyPackageBundle::new(&[ciphersuite], &bob_credential_bundle, backend, Vec::new())
-            .expect("An unexpected error occurred.");
+        KeyPackageBundle::new(backend, ciphersuite, &bob_credential_bundle);
     let bob_key_package = bob_key_package_bundle.key_package();
 
     // === Alice creates a group ===
@@ -391,7 +374,7 @@ fn test_external_init_broken_signature(
         )
         .expect("Could not create proposal.");
     let proposal_store = ProposalStore::from_queued_proposal(
-        QueuedProposal::from_mls_plaintext(ciphersuite, backend, bob_add_proposal)
+        QueuedProposal::from_authenticated_content(ciphersuite, backend, bob_add_proposal)
             .expect("Could not create QueuedProposal."),
     );
     let params = CreateCommitParams::builder()

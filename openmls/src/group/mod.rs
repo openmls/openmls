@@ -21,6 +21,7 @@ pub(crate) mod mls_group;
 pub(crate) use group_context::*;
 
 // Public
+pub mod config;
 pub mod errors;
 
 pub use core_group::proposals::*;

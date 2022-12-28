@@ -15,8 +15,8 @@ use crate::{
 };
 
 use super::{
-    proposals::ProposalQueue, ContentType, CoreGroup, Member, MlsMessageIn,
-    ProposalValidationError, VerifiableMlsAuthContent, WireFormat,
+    mls_content::ContentType, proposals::ProposalQueue, CoreGroup, Member, MlsMessageIn,
+    ProposalValidationError, VerifiableAuthenticatedContent, WireFormat,
 };
 
 impl CoreGroup {
@@ -55,12 +55,12 @@ impl CoreGroup {
     ///  - ValSem004
     ///  - ValSem005
     ///  - ValSem009
-    pub(crate) fn validate_plaintext(
+    pub(crate) fn validate_verifiable_content(
         &self,
-        plaintext: &VerifiableMlsAuthContent,
+        verifiable_content: &VerifiableAuthenticatedContent,
     ) -> Result<(), ValidationError> {
         // ValSem004
-        let sender = plaintext.sender();
+        let sender = verifiable_content.sender();
         if let Sender::Member(leaf_index) = sender {
             // If the sender is a member, it has to be in the tree.
             // TODO: #133 Lookup of a leaf index in the old tree isn't very
@@ -68,7 +68,7 @@ impl CoreGroup {
             if !self.treesync().is_leaf_in_tree(*leaf_index)
                 && !self
                     .message_secrets_store
-                    .epoch_has_leaf(plaintext.epoch(), *leaf_index)
+                    .epoch_has_leaf(verifiable_content.epoch(), *leaf_index)
             {
                 return Err(ValidationError::UnknownMember);
             }
@@ -76,16 +76,17 @@ impl CoreGroup {
 
         // ValSem005
         // Application messages must always be encrypted
-        if plaintext.content_type() == ContentType::Application {
-            if plaintext.wire_format() != WireFormat::MlsCiphertext {
+        if verifiable_content.content_type() == ContentType::Application {
+            if verifiable_content.wire_format() != WireFormat::PrivateMessage {
                 return Err(ValidationError::UnencryptedApplicationMessage);
-            } else if !plaintext.sender().is_member() {
+            } else if !verifiable_content.sender().is_member() {
                 return Err(ValidationError::NonMemberApplicationMessage);
             }
         }
 
         // ValSem009
-        if plaintext.content_type() == ContentType::Commit && plaintext.confirmation_tag().is_none()
+        if verifiable_content.content_type() == ContentType::Commit
+            && verifiable_content.confirmation_tag().is_none()
         {
             return Err(ValidationError::MissingConfirmationTag);
         }
@@ -116,6 +117,7 @@ impl CoreGroup {
             let identity = add_proposal
                 .add_proposal()
                 .key_package()
+                .leaf_node()
                 .credential()
                 .identity()
                 .to_vec();
@@ -126,6 +128,7 @@ impl CoreGroup {
             let signature_key = add_proposal
                 .add_proposal()
                 .key_package()
+                .leaf_node()
                 .credential()
                 .signature_key()
                 .as_slice()

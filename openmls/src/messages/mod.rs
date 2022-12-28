@@ -168,7 +168,7 @@ impl Commit {
     }
 }
 
-/// Confirmation tag field of MlsPlaintext. For type safety this is a wrapper
+/// Confirmation tag field of PublicMessage. For type safety this is a wrapper
 /// around a `Mac`.
 #[derive(
     Debug, PartialEq, Clone, Serialize, Deserialize, TlsDeserialize, TlsSerialize, TlsSize,

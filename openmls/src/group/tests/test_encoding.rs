@@ -76,9 +76,9 @@ fn test_application_message_encoding(backend: &impl OpenMlsCryptoProvider) {
                 .tls_serialize_detached()
                 .expect("An unexpected error occurred.");
             let encrypted_message_decoded =
-                match MlsCiphertext::tls_deserialize(&mut encrypted_message_bytes.as_slice()) {
+                match PrivateMessage::tls_deserialize(&mut encrypted_message_bytes.as_slice()) {
                     Ok(a) => a,
-                    Err(err) => panic!("Error decoding MlsCiphertext: {:?}", err),
+                    Err(err) => panic!("Error decoding PrivateMessage: {:?}", err),
                 };
             assert_eq!(encrypted_message, encrypted_message_decoded);
         }
@@ -95,7 +95,7 @@ fn test_update_proposal_encoding(backend: &impl OpenMlsCryptoProvider) {
         .expect("An unexpected error occurred.")
         .borrow();
     // Framing parameters
-    let framing_parameters = FramingParameters::new(&[], WireFormat::MlsPlaintext);
+    let framing_parameters = FramingParameters::new(&[], WireFormat::PublicMessage);
 
     for group_state in alice.group_states.borrow_mut().values_mut() {
         let credential_bundle = alice
@@ -103,15 +103,10 @@ fn test_update_proposal_encoding(backend: &impl OpenMlsCryptoProvider) {
             .get(&group_state.ciphersuite())
             .expect("An unexpected error occurred.");
 
-        let key_package_bundle = KeyPackageBundle::new(
-            &[group_state.ciphersuite()],
-            credential_bundle,
-            backend,
-            vec![],
-        )
-        .expect("An unexpected error occurred.");
+        let key_package_bundle =
+            KeyPackageBundle::new(backend, group_state.ciphersuite(), credential_bundle);
 
-        let mut update: MlsPlaintext = group_state
+        let mut update: PublicMessage = group_state
             .create_update_proposal(
                 framing_parameters,
                 credential_bundle,
@@ -133,7 +128,7 @@ fn test_update_proposal_encoding(backend: &impl OpenMlsCryptoProvider) {
         let update_encoded = update
             .tls_serialize_detached()
             .expect("Could not encode proposal.");
-        let update_decoded = match MlsPlaintext::tls_deserialize(&mut update_encoded.as_slice()) {
+        let update_decoded = match PublicMessage::tls_deserialize(&mut update_encoded.as_slice()) {
             Ok(a) => a,
             Err(err) => panic!("Error decoding MPLSPlaintext Update: {:?}", err),
         };
@@ -151,7 +146,7 @@ fn test_add_proposal_encoding(backend: &impl OpenMlsCryptoProvider) {
         .expect("An unexpected error occurred.")
         .borrow();
     // Framing parameters
-    let framing_parameters = FramingParameters::new(&[], WireFormat::MlsPlaintext);
+    let framing_parameters = FramingParameters::new(&[], WireFormat::PublicMessage);
 
     for group_state in alice.group_states.borrow_mut().values_mut() {
         let credential_bundle = alice
@@ -159,16 +154,11 @@ fn test_add_proposal_encoding(backend: &impl OpenMlsCryptoProvider) {
             .get(&group_state.ciphersuite())
             .expect("An unexpected error occurred.");
 
-        let key_package_bundle = KeyPackageBundle::new(
-            &[group_state.ciphersuite()],
-            credential_bundle,
-            backend,
-            vec![],
-        )
-        .expect("An unexpected error occurred.");
+        let key_package_bundle =
+            KeyPackageBundle::new(backend, group_state.ciphersuite(), credential_bundle);
 
         // Adds
-        let mut add: MlsPlaintext = group_state
+        let mut add: PublicMessage = group_state
             .create_add_proposal(
                 framing_parameters,
                 credential_bundle,
@@ -189,7 +179,7 @@ fn test_add_proposal_encoding(backend: &impl OpenMlsCryptoProvider) {
         let add_encoded = add
             .tls_serialize_detached()
             .expect("Could not encode proposal.");
-        let add_decoded = MlsPlaintext::tls_deserialize(&mut add_encoded.as_slice())
+        let add_decoded = PublicMessage::tls_deserialize(&mut add_encoded.as_slice())
             .expect("An unexpected error occurred.");
 
         assert_eq!(add, add_decoded);
@@ -206,7 +196,7 @@ fn test_remove_proposal_encoding(backend: &impl OpenMlsCryptoProvider) {
         .expect("An unexpected error occurred.")
         .borrow();
     // Framing parameters
-    let framing_parameters = FramingParameters::new(&[], WireFormat::MlsPlaintext);
+    let framing_parameters = FramingParameters::new(&[], WireFormat::PublicMessage);
 
     for group_state in alice.group_states.borrow_mut().values_mut() {
         let credential_bundle = alice
@@ -214,7 +204,7 @@ fn test_remove_proposal_encoding(backend: &impl OpenMlsCryptoProvider) {
             .get(&group_state.ciphersuite())
             .expect("An unexpected error occurred.");
 
-        let mut remove: MlsPlaintext = group_state
+        let mut remove: PublicMessage = group_state
             .create_remove_proposal(
                 framing_parameters,
                 credential_bundle,
@@ -236,7 +226,7 @@ fn test_remove_proposal_encoding(backend: &impl OpenMlsCryptoProvider) {
         let remove_encoded = remove
             .tls_serialize_detached()
             .expect("Could not encode proposal.");
-        let remove_decoded = MlsPlaintext::tls_deserialize(&mut remove_encoded.as_slice())
+        let remove_decoded = PublicMessage::tls_deserialize(&mut remove_encoded.as_slice())
             .expect("An unexpected error occurred.");
 
         assert_eq!(remove, remove_decoded);
@@ -253,7 +243,7 @@ fn test_commit_encoding(backend: &impl OpenMlsCryptoProvider) {
         .expect("An unexpected error occurred.")
         .borrow();
     // Framing parameters
-    let framing_parameters = FramingParameters::new(&[], WireFormat::MlsPlaintext);
+    let framing_parameters = FramingParameters::new(&[], WireFormat::PublicMessage);
 
     for group_state in alice.group_states.borrow_mut().values_mut() {
         let alice_credential_bundle = alice
@@ -261,13 +251,8 @@ fn test_commit_encoding(backend: &impl OpenMlsCryptoProvider) {
             .get(&group_state.ciphersuite())
             .expect("An unexpected error occurred.");
 
-        let alice_key_package_bundle = KeyPackageBundle::new(
-            &[group_state.ciphersuite()],
-            alice_credential_bundle,
-            backend,
-            vec![],
-        )
-        .expect("An unexpected error occurred.");
+        let alice_key_package_bundle =
+            KeyPackageBundle::new(backend, group_state.ciphersuite(), alice_credential_bundle);
 
         // Create a few proposals to put into the commit
 
@@ -299,11 +284,11 @@ fn test_commit_encoding(backend: &impl OpenMlsCryptoProvider) {
             .expect("Could not create proposal.");
 
         let mut proposal_store = ProposalStore::from_queued_proposal(
-            QueuedProposal::from_mls_plaintext(group_state.ciphersuite(), backend, add)
+            QueuedProposal::from_authenticated_content(group_state.ciphersuite(), backend, add)
                 .expect("Could not create QueuedProposal."),
         );
         proposal_store.add(
-            QueuedProposal::from_mls_plaintext(group_state.ciphersuite(), backend, update)
+            QueuedProposal::from_authenticated_content(group_state.ciphersuite(), backend, update)
                 .expect("Could not create QueuedProposal."),
         );
 
@@ -315,7 +300,7 @@ fn test_commit_encoding(backend: &impl OpenMlsCryptoProvider) {
         let create_commit_result = group_state
             .create_commit(params, backend)
             .expect("An unexpected error occurred.");
-        let mut commit: MlsPlaintext = create_commit_result.commit.into();
+        let mut commit: PublicMessage = create_commit_result.commit.into();
         commit
             .set_membership_tag(
                 backend,
@@ -330,7 +315,7 @@ fn test_commit_encoding(backend: &impl OpenMlsCryptoProvider) {
             .tls_serialize_detached()
             .expect("An unexpected error occurred.");
 
-        let commit_decoded = MlsPlaintext::tls_deserialize(&mut commit_encoded.as_slice())
+        let commit_decoded = PublicMessage::tls_deserialize(&mut commit_encoded.as_slice())
             .expect("An unexpected error occurred.");
 
         assert_eq!(commit, commit_decoded);
@@ -346,7 +331,7 @@ fn test_welcome_message_encoding(backend: &impl OpenMlsCryptoProvider) {
         .expect("An unexpected error occurred.")
         .borrow();
     // Framing parameters
-    let framing_parameters = FramingParameters::new(&[], WireFormat::MlsPlaintext);
+    let framing_parameters = FramingParameters::new(&[], WireFormat::PublicMessage);
 
     for group_state in alice.group_states.borrow_mut().values_mut() {
         let credential_bundle = alice
@@ -374,7 +359,7 @@ fn test_welcome_message_encoding(backend: &impl OpenMlsCryptoProvider) {
             .expect("Could not create proposal.");
 
         let proposal_store = ProposalStore::from_queued_proposal(
-            QueuedProposal::from_mls_plaintext(group_state.ciphersuite(), backend, add)
+            QueuedProposal::from_authenticated_content(group_state.ciphersuite(), backend, add)
                 .expect("Could not create QueuedProposal."),
         );
 

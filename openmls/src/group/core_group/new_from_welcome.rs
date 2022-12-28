@@ -48,7 +48,7 @@ impl CoreGroup {
             .hpke_open(
                 ciphersuite.hpke_config(),
                 egs.encrypted_group_secrets(),
-                key_package_bundle.private_key().as_slice(),
+                key_package_bundle.private_key.as_slice(),
                 &[],
                 &[],
             )
