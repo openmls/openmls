@@ -57,9 +57,11 @@ pub(crate) mod public_message;
 pub(crate) mod sender;
 pub(crate) mod validation;
 pub(crate) use errors::*;
-pub(crate) use mls_auth_content::*;
 pub(crate) use private_message::*;
 pub(crate) use public_message::*;
+
+#[cfg(any(feature = "test-utils", test))]
+pub(crate) use mls_auth_content::*;
 
 #[cfg(test)]
 pub(crate) use mls_content::*;

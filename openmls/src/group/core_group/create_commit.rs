@@ -2,7 +2,6 @@ use openmls_traits::OpenMlsCryptoProvider;
 
 use crate::{
     ciphersuite::signable::Signable,
-    framing::mls_auth_content::AuthenticatedContent,
     group::{config::CryptoConfig, core_group::*, errors::CreateCommitError},
     treesync::{
         diff::TreeSyncDiff,
