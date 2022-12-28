@@ -18,7 +18,7 @@ use crate::{
     treesync::errors::ApplyUpdatePathError,
 };
 
-use super::utils::{generate_credential_bundle, generate_key_package_bundle, resign_message};
+use super::utils::{generate_credential_bundle, generate_key_package, resign_message};
 
 struct CommitValidationTestSetup {
     alice_group: MlsGroup,
@@ -61,15 +61,14 @@ fn validation_test_setup(
 
     // Generate KeyPackages
     let alice_key_package =
-        generate_key_package_bundle(&[ciphersuite], &alice_credential, vec![], backend)
+        generate_key_package(&[ciphersuite], &alice_credential, vec![], backend)
             .expect("An unexpected error occurred.");
 
-    let bob_key_package =
-        generate_key_package_bundle(&[ciphersuite], &bob_credential, vec![], backend)
-            .expect("An unexpected error occurred.");
+    let bob_key_package = generate_key_package(&[ciphersuite], &bob_credential, vec![], backend)
+        .expect("An unexpected error occurred.");
 
     let charlie_key_package =
-        generate_key_package_bundle(&[ciphersuite], &charlie_credential, vec![], backend)
+        generate_key_package(&[ciphersuite], &charlie_credential, vec![], backend)
             .expect("An unexpected error occurred.");
 
     // Define the MlsGroup configuration
@@ -79,16 +78,9 @@ fn validation_test_setup(
         .build();
 
     // === Alice creates a group ===
-    let mut alice_group = MlsGroup::new_with_group_id(
-        backend,
-        &mls_group_config,
-        group_id,
-        alice_key_package
-            .hash_ref(backend.crypto())
-            .expect("Could not hash KeyPackage.")
-            .as_slice(),
-    )
-    .expect("An unexpected error occurred.");
+    let mut alice_group =
+        MlsGroup::new_with_group_id(backend, &mls_group_config, group_id, alice_key_package)
+            .expect("An unexpected error occurred.");
 
     let (_message, welcome) = alice_group
         .add_members(backend, &[bob_key_package, charlie_key_package])
@@ -272,7 +264,7 @@ fn test_valsem201(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
         )
         .unwrap();
         let dave_key_package =
-            generate_key_package_bundle(&[ciphersuite], &dave_credential, vec![], backend).unwrap();
+            generate_key_package(&[ciphersuite], &dave_credential, vec![], backend).unwrap();
 
         queued(Proposal::Add(AddProposal {
             key_package: dave_key_package,

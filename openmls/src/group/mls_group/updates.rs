@@ -1,15 +1,14 @@
 use core_group::create_commit_params::CreateCommitParams;
-use openmls_traits::types::HpkeKeyPair;
 use tls_codec::Serialize;
 
-use crate::versions::ProtocolVersion;
+use crate::{ciphersuite::HpkePublicKey, versions::ProtocolVersion};
 
 use super::*;
 
 impl MlsGroup {
     /// Updates the own leaf node.
     ///
-    /// An [`HpkeKeyPair`] can optionally be provided.
+    /// An [`HpkePublicKey`] can optionally be provided.
     /// If not, a new one will be created on the fly.
     ///
     /// If successful, it returns a tuple of [`MlsMessageOut`] and an optional [`Welcome`].
@@ -19,7 +18,7 @@ impl MlsGroup {
     pub fn self_update(
         &mut self,
         backend: &impl OpenMlsCryptoProvider,
-        key_pair: Option<HpkeKeyPair>,
+        encryption_key: Option<HpkePublicKey>,
     ) -> Result<(MlsMessageOut, Option<Welcome>), SelfUpdateError> {
         self.is_operational()?;
 
@@ -36,8 +35,8 @@ impl MlsGroup {
 
         // Create Commit over all proposals. If a `KeyPackageBundle` was passed
         // in, use it to create an update proposal by value. TODO #751
-        let create_commit_result = match key_pair {
-            Some(key_pair) => {
+        let create_commit_result = match encryption_key {
+            Some(encryption_key) => {
                 let group_id = self.group_id().clone();
                 let mut own_leaf = self
                     .group
@@ -47,8 +46,17 @@ impl MlsGroup {
                         LibraryError::custom("The tree is broken. Couldn't find own leaf.")
                     })?
                     .clone();
+
+                // FIXME[FK]: The OpenMlsLeafNode should go away. Then we don't
+                //            need the private key here anymore. (#819)
+                let private_key: Vec<u8> = backend
+                    .key_store()
+                    .read(encryption_key.as_slice())
+                    .ok_or(SelfUpdateError::KeyStoreError)?;
+                let private_key: VLBytes = private_key.into();
+
                 own_leaf.update_encryption_key(
-                    (&key_pair.private.into(), &key_pair.public.into()),
+                    (&encryption_key, &private_key),
                     &credential_bundle,
                     group_id,
                     backend,
@@ -94,13 +102,13 @@ impl MlsGroup {
     pub fn propose_self_update(
         &mut self,
         backend: &impl OpenMlsCryptoProvider,
-        key_package_bundle: Option<KeyPackageBundle>,
+        key_package: Option<KeyPackage>, // FIXME[FK]: #819 this must be a leaf node.
     ) -> Result<MlsMessageOut, ProposeSelfUpdateError> {
         self.is_operational()?;
 
-        let credential = if let Some(kp) = &key_package_bundle {
+        let credential = if let Some(kp) = &key_package {
             // If there's a key pair use the credential in there.
-            kp.key_package().credential()
+            kp.leaf_node().credential()
         } else {
             // Use the old credential.
             self.credential()?
@@ -135,9 +143,14 @@ impl MlsGroup {
             .own_leaf_node()
             .map_err(|_| LibraryError::custom("The tree is broken. Couldn't find own leaf."))?
             .clone();
-        if let Some(key_pair) = key_package_bundle {
+        if let Some(key_package) = key_package {
+            let private_key: Vec<u8> = backend
+                .key_store()
+                .read(key_package.hpke_init_key().as_slice())
+                .ok_or(ProposeSelfUpdateError::KeyStoreError)?;
+            let private_key: VLBytes = private_key.into();
             rekeyed_own_leaf.update_encryption_key(
-                key_pair.key_pair(),
+                (&private_key, key_package.hpke_init_key()),
                 &credential_bundle,
                 self.group_id().clone(),
                 backend,

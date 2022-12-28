@@ -17,10 +17,11 @@ use crate::{
     credentials::*,
     extensions::*,
     framing::{mls_content::ContentType, MlsMessageIn, *},
-    group::*,
+    group::{config::CryptoConfig, *},
     key_packages::*,
     messages::*,
     treesync::node::Node,
+    versions::ProtocolVersion,
 };
 
 use super::{errors::ClientError, ActionType};
@@ -65,14 +66,20 @@ impl Client {
                     .expect("Error serializing signature key."),
             )
             .ok_or(ClientError::NoMatchingCredential)?;
-        let kpb = KeyPackageBundle::new(ciphersuites, &credential_bundle, &self.crypto, vec![])
-            .expect("An unexpected error occurred.");
-        let kp = kpb.key_package().clone();
-        self.crypto
-            .key_store()
-            .store(kp.hash_ref(self.crypto.crypto())?.as_slice(), &kpb)
-            .expect("An unexpected error occurred.");
-        Ok(kp)
+
+        let key_package = KeyPackage::create(
+            CryptoConfig {
+                ciphersuite: ciphersuites[0],
+                version: ProtocolVersion::default(),
+            },
+            &self.crypto,
+            &credential_bundle,
+            vec![],
+            vec![],
+        )
+        .unwrap();
+
+        Ok(key_package)
     }
 
     /// Create a group with the given [MlsGroupConfig] and [Ciphersuite], and return the created [GroupId].
@@ -98,18 +105,18 @@ impl Client {
                     .expect("Error serializing signature key."),
             )
             .ok_or(ClientError::NoMatchingCredential)?;
-        let kpb = KeyPackageBundle::new(&[ciphersuite], &credential_bundle, &self.crypto, vec![])
-            .expect("An unexpected error occurred.");
-        let key_package = kpb.key_package().clone();
-        self.crypto
-            .key_store()
-            .store(key_package.hash_ref(self.crypto.crypto())?.as_slice(), &kpb)
-            .expect("An unexpected error occurred.");
-        let group_state = MlsGroup::new(
+        let key_package = KeyPackage::create(
+            CryptoConfig {
+                ciphersuite,
+                version: ProtocolVersion::default(),
+            },
             &self.crypto,
-            &mls_group_config,
-            key_package.hash_ref(self.crypto.crypto())?.as_slice(),
-        )?;
+            &credential_bundle,
+            vec![],
+            vec![],
+        )
+        .unwrap();
+        let group_state = MlsGroup::new(&self.crypto, &mls_group_config, key_package)?;
         let group_id = group_state.group_id().clone();
         self.groups
             .write()
@@ -196,17 +203,18 @@ impl Client {
         &self,
         action_type: ActionType,
         group_id: &GroupId,
-        key_pair: Option<KeyPackageBundle>,
+        key_package: Option<KeyPackage>,
     ) -> Result<(MlsMessageOut, Option<Welcome>), ClientError> {
         let mut groups = self.groups.write().expect("An unexpected error occurred.");
         let group = groups
             .get_mut(group_id)
             .ok_or(ClientError::NoMatchingGroup)?;
         let action_results = match action_type {
-            ActionType::Commit => {
-                group.self_update(&self.crypto, key_pair.map(|kpb| kpb.hpke_key_pair()))?
-            }
-            ActionType::Proposal => (group.propose_self_update(&self.crypto, key_pair)?, None),
+            ActionType::Commit => group.self_update(
+                &self.crypto,
+                key_package.map(|kp| kp.hpke_init_key().clone()),
+            )?,
+            ActionType::Proposal => (group.propose_self_update(&self.crypto, key_package)?, None),
         };
         Ok(action_results)
     }

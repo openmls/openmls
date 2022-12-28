@@ -103,13 +103,8 @@ fn test_update_proposal_encoding(backend: &impl OpenMlsCryptoProvider) {
             .get(&group_state.ciphersuite())
             .expect("An unexpected error occurred.");
 
-        let key_package_bundle = KeyPackageBundle::new(
-            &[group_state.ciphersuite()],
-            credential_bundle,
-            backend,
-            vec![],
-        )
-        .expect("An unexpected error occurred.");
+        let key_package_bundle =
+            KeyPackageBundle::new(backend, group_state.ciphersuite(), credential_bundle);
 
         let mut update: PublicMessage = group_state
             .create_update_proposal(
@@ -159,13 +154,8 @@ fn test_add_proposal_encoding(backend: &impl OpenMlsCryptoProvider) {
             .get(&group_state.ciphersuite())
             .expect("An unexpected error occurred.");
 
-        let key_package_bundle = KeyPackageBundle::new(
-            &[group_state.ciphersuite()],
-            credential_bundle,
-            backend,
-            vec![],
-        )
-        .expect("An unexpected error occurred.");
+        let key_package_bundle =
+            KeyPackageBundle::new(backend, group_state.ciphersuite(), credential_bundle);
 
         // Adds
         let mut add: PublicMessage = group_state
@@ -261,13 +251,8 @@ fn test_commit_encoding(backend: &impl OpenMlsCryptoProvider) {
             .get(&group_state.ciphersuite())
             .expect("An unexpected error occurred.");
 
-        let alice_key_package_bundle = KeyPackageBundle::new(
-            &[group_state.ciphersuite()],
-            alice_credential_bundle,
-            backend,
-            vec![],
-        )
-        .expect("An unexpected error occurred.");
+        let alice_key_package_bundle =
+            KeyPackageBundle::new(backend, group_state.ciphersuite(), alice_credential_bundle);
 
         // Create a few proposals to put into the commit
 

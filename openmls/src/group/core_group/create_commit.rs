@@ -3,7 +3,7 @@ use openmls_traits::OpenMlsCryptoProvider;
 use crate::{
     ciphersuite::signable::Signable,
     framing::mls_auth_content::AuthenticatedContent,
-    group::{core_group::*, errors::CreateCommitError},
+    group::{config::CryptoConfig, core_group::*, errors::CreateCommitError},
     treesync::{
         diff::TreeSyncDiff,
         node::{leaf_node::OpenMlsLeafNode, parent_node::PlainUpdatePathNode},
@@ -135,15 +135,19 @@ impl CoreGroup {
             // If this is an external commit we add a fresh leaf to the diff.
             // Generate a KeyPackageBundle to generate a payload from for later
             // path generation.
-            let key_package_bundle = KeyPackageBundle::new(
-                &[self.ciphersuite()],
-                params.credential_bundle(),
+            let key_package = KeyPackage::create(
+                CryptoConfig {
+                    ciphersuite,
+                    version: self.version(),
+                },
                 backend,
+                params.credential_bundle(),
+                vec![],
                 vec![],
             )
             .map_err(|_| LibraryError::custom("Unexpected KeyPackage error"))?;
 
-            let mut leaf_node: OpenMlsLeafNode = key_package_bundle.into();
+            let mut leaf_node: OpenMlsLeafNode = key_package.into();
             leaf_node.set_leaf_index(own_leaf_index);
             diff.add_leaf(leaf_node)
                 .map_err(|_| LibraryError::custom("Tree full: cannot add more members"))?;

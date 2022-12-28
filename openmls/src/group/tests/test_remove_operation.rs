@@ -1,6 +1,6 @@
 //! This module tests the classification of remove operations with RemoveOperation
 
-use super::utils::{generate_credential_bundle, generate_key_package_bundle};
+use super::utils::{generate_credential_bundle, generate_key_package};
 use crate::{credentials::*, framing::*, group::*, test_utils::*, *};
 use openmls_rust_crypto::OpenMlsRustCrypto;
 
@@ -44,29 +44,22 @@ fn test_remove_operation_variants(ciphersuite: Ciphersuite, backend: &impl OpenM
 
         // Generate KeyPackages
         let alice_key_package =
-            generate_key_package_bundle(&[ciphersuite], &alice_credential, vec![], backend)
+            generate_key_package(&[ciphersuite], &alice_credential, vec![], backend)
                 .expect("An unexpected error occurred.");
         let bob_key_package =
-            generate_key_package_bundle(&[ciphersuite], &bob_credential, vec![], backend)
+            generate_key_package(&[ciphersuite], &bob_credential, vec![], backend)
                 .expect("An unexpected error occurred.");
         let charlie_key_package =
-            generate_key_package_bundle(&[ciphersuite], &charlie_credential, vec![], backend)
+            generate_key_package(&[ciphersuite], &charlie_credential, vec![], backend)
                 .expect("An unexpected error occurred.");
 
         // Define the MlsGroup configuration
         let mls_group_config = MlsGroupConfig::default();
 
         // === Alice creates a group ===
-        let mut alice_group = MlsGroup::new_with_group_id(
-            backend,
-            &mls_group_config,
-            group_id,
-            alice_key_package
-                .hash_ref(backend.crypto())
-                .expect("Could not hash KeyPackage.")
-                .as_slice(),
-        )
-        .expect("An unexpected error occurred.");
+        let mut alice_group =
+            MlsGroup::new_with_group_id(backend, &mls_group_config, group_id, alice_key_package)
+                .expect("An unexpected error occurred.");
 
         // === Alice adds Bob & Charlie ===
 

@@ -17,7 +17,7 @@ use crate::{
     messages::proposals::*,
 };
 
-use super::utils::{generate_credential_bundle, generate_key_package_bundle};
+use super::utils::{generate_credential_bundle, generate_key_package};
 
 // Test setup values
 struct ECValidationTestSetup {
@@ -54,7 +54,7 @@ fn validation_test_setup(
 
     // Generate KeyPackages
     let alice_key_package =
-        generate_key_package_bundle(&[ciphersuite], &alice_credential, vec![], backend)
+        generate_key_package(&[ciphersuite], &alice_credential, vec![], backend)
             .expect("An unexpected error occurred.");
 
     // Define the MlsGroup configuration
@@ -64,16 +64,9 @@ fn validation_test_setup(
         .build();
 
     // === Alice creates a group ===
-    let alice_group = MlsGroup::new_with_group_id(
-        backend,
-        &mls_group_config,
-        group_id,
-        alice_key_package
-            .hash_ref(backend.crypto())
-            .expect("Could not hash KeyPackage.")
-            .as_slice(),
-    )
-    .expect("An unexpected error occurred.");
+    let alice_group =
+        MlsGroup::new_with_group_id(backend, &mls_group_config, group_id, alice_key_package)
+            .expect("An unexpected error occurred.");
 
     let bob_credential_bundle = backend
         .key_store()
@@ -259,7 +252,7 @@ fn test_valsem242(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
     // an Update proposal that comes from a leaf that's actually inside of the
     // tree. If that is not the case, we'll get a general proposal validation
     // error before we get the external commit specific one.
-    let bob_key_package = generate_key_package_bundle(
+    let bob_key_package = generate_key_package(
         &[ciphersuite],
         bob_credential_bundle.credential(),
         vec![],
@@ -281,8 +274,7 @@ fn test_valsem242(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
         )
         .unwrap();
         let charlie_key_package =
-            generate_key_package_bundle(&[ciphersuite], &charlie_credential, vec![], backend)
-                .unwrap();
+            generate_key_package(&[ciphersuite], &charlie_credential, vec![], backend).unwrap();
 
         ProposalOrRef::Proposal(Proposal::Add(AddProposal {
             key_package: charlie_key_package,
@@ -290,7 +282,7 @@ fn test_valsem242(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
     };
 
     let update_proposal = || {
-        let bob_key_package = generate_key_package_bundle(
+        let bob_key_package = generate_key_package(
             &[ciphersuite],
             bob_credential_bundle.credential(),
             vec![],
@@ -400,7 +392,7 @@ fn test_valsem243(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
     // Alice has to add Bob first, so that Bob actually creates a remove
     // proposal to remove his former self.
 
-    let bob_key_package = generate_key_package_bundle(
+    let bob_key_package = generate_key_package(
         &[ciphersuite],
         bob_credential_bundle.credential(),
         vec![],
@@ -545,7 +537,7 @@ fn test_valsem244(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
     };
 
     // Add an Add proposal by reference
-    let bob_key_package = generate_key_package_bundle(
+    let bob_key_package = generate_key_package(
         &[ciphersuite],
         bob_credential_bundle.credential(),
         vec![],
@@ -682,7 +674,7 @@ fn test_valsem246(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
 
     // Generate KeyPackage
     let bob_new_key_package =
-        generate_key_package_bundle(&[ciphersuite], &bob_new_credential, vec![], backend)
+        generate_key_package(&[ciphersuite], &bob_new_credential, vec![], backend)
             .expect("An unexpected error occurred.");
 
     if let Some(ref mut path) = content.path {

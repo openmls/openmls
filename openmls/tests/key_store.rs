@@ -3,7 +3,7 @@ use openmls::{prelude::*, test_utils::*, *};
 use openmls_traits::{key_store::OpenMlsKeyStore, types::SignatureScheme};
 
 #[apply(ciphersuites_and_backends)]
-fn test_store_key_package_bundle(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
+fn test_store_key_package(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
     // ANCHOR: key_store_store
     // First we generate a credential and key package for our user.
     let credential_bundle = CredentialBundle::new(
@@ -13,30 +13,25 @@ fn test_store_key_package_bundle(ciphersuite: Ciphersuite, backend: &impl OpenMl
         backend,
     )
     .unwrap();
-    let key_package_bundle =
-        KeyPackageBundle::new(&[ciphersuite], &credential_bundle, backend, vec![])
-            .expect("Error generating new key package bundle.");
 
-    // In order to store something in the key store we need to define an ID.
-    // Here we simply take the key package reference.
-    let id = key_package_bundle
-        .key_package()
-        .hash_ref(backend.crypto())
-        .expect("Failed to hash KeyPackage.");
-
-    // Now we can store the key_package_bundle.
-    backend
-        .key_store()
-        .store(id.as_slice(), &key_package_bundle)
-        .expect("Failed to store key package bundle in keystore.");
+    let key_package = KeyPackage::create(
+        config::CryptoConfig {
+            ciphersuite,
+            version: ProtocolVersion::default(),
+        },
+        backend,
+        &credential_bundle,
+        vec![],
+        vec![],
+    )
+    .unwrap();
     // ANCHOR_END: key_store_store
 
     // ANCHOR: key_store_delete
-    // Delete the key package bundle.
-    backend
-        .key_store()
-        .delete(id.as_slice())
-        .expect("Error deleting key package bundle");
+    // Delete the key package
+    key_package
+        .delete(backend)
+        .expect("Error deleting key package");
     // ANCHOR_END: key_store_delete
 }
 

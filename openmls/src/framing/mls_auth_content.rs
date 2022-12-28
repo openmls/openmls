@@ -348,7 +348,7 @@ impl VerifiableAuthenticatedContent {
                 // only External Add proposals can have a sender type `NewMemberProposal`
                 match &self.auth_content.tbs.content.body {
                     FramedContentBody::Proposal(Proposal::Add(AddProposal { key_package })) => {
-                        Ok(key_package.credential().clone())
+                        Ok(key_package.leaf_node().credential().clone())
                     }
                     _ => Err(ValidationError::NotAnExternalAddProposal),
                 }

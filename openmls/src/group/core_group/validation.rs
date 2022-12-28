@@ -117,6 +117,7 @@ impl CoreGroup {
             let identity = add_proposal
                 .add_proposal()
                 .key_package()
+                .leaf_node()
                 .credential()
                 .identity()
                 .to_vec();
@@ -127,6 +128,7 @@ impl CoreGroup {
             let signature_key = add_proposal
                 .add_proposal()
                 .key_package()
+                .leaf_node()
                 .credential()
                 .signature_key()
                 .as_slice()

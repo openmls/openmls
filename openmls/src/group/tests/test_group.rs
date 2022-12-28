@@ -36,17 +36,14 @@ fn create_commit_optional_path(ciphersuite: Ciphersuite, backend: &impl OpenMlsC
 
     // Generate KeyPackages
     let alice_key_package_bundle =
-        KeyPackageBundle::new(&[ciphersuite], &alice_credential_bundle, backend, vec![])
-            .expect("An unexpected error occurred.");
+        KeyPackageBundle::new(backend, ciphersuite, &alice_credential_bundle);
 
     let bob_key_package_bundle =
-        KeyPackageBundle::new(&[ciphersuite], &bob_credential_bundle, backend, vec![])
-            .expect("An unexpected error occurred.");
+        KeyPackageBundle::new(backend, ciphersuite, &bob_credential_bundle);
     let bob_key_package = bob_key_package_bundle.key_package();
 
     let alice_update_key_package_bundle =
-        KeyPackageBundle::new(&[ciphersuite], &alice_credential_bundle, backend, vec![])
-            .expect("An unexpected error occurred.");
+        KeyPackageBundle::new(backend, ciphersuite, &alice_credential_bundle);
     let alice_update_key_package = alice_update_key_package_bundle.key_package();
     assert!(alice_update_key_package.verify(backend,).is_ok());
 
@@ -210,17 +207,11 @@ fn basic_group_setup(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvi
 
     // Generate KeyPackages
     let bob_key_package_bundle =
-        KeyPackageBundle::new(&[ciphersuite], &bob_credential_bundle, backend, Vec::new())
-            .expect("An unexpected error occurred.");
+        KeyPackageBundle::new(backend, ciphersuite, &bob_credential_bundle);
     let bob_key_package = bob_key_package_bundle.key_package();
 
-    let alice_key_package_bundle = KeyPackageBundle::new(
-        &[ciphersuite],
-        &alice_credential_bundle,
-        backend,
-        Vec::new(),
-    )
-    .expect("An unexpected error occurred.");
+    let alice_key_package_bundle =
+        KeyPackageBundle::new(backend, ciphersuite, &alice_credential_bundle);
 
     // Alice creates a group
     let group_alice = CoreGroup::builder(GroupId::random(backend), alice_key_package_bundle)
@@ -290,12 +281,10 @@ fn group_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvid
 
     // Generate KeyPackages
     let alice_key_package_bundle =
-        KeyPackageBundle::new(&[ciphersuite], &alice_credential_bundle, backend, vec![])
-            .expect("An unexpected error occurred.");
+        KeyPackageBundle::new(backend, ciphersuite, &alice_credential_bundle);
 
     let bob_key_package_bundle =
-        KeyPackageBundle::new(&[ciphersuite], &bob_credential_bundle, backend, vec![])
-            .expect("An unexpected error occurred.");
+        KeyPackageBundle::new(backend, ciphersuite, &bob_credential_bundle);
     let bob_key_package = bob_key_package_bundle.key_package();
 
     // === Alice creates a group ===
@@ -398,8 +387,7 @@ fn group_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvid
 
     // === Bob updates and commits ===
     let bob_update_key_package_bundle =
-        KeyPackageBundle::new(&[ciphersuite], &bob_credential_bundle, backend, vec![])
-            .expect("Could not create key package bundle.");
+        KeyPackageBundle::new(backend, ciphersuite, &bob_credential_bundle);
 
     let update_proposal_bob = group_bob
         .create_update_proposal(
@@ -458,8 +446,7 @@ fn group_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvid
 
     // === Alice updates and commits ===
     let alice_update_key_package_bundle =
-        KeyPackageBundle::new(&[ciphersuite], &alice_credential_bundle, backend, vec![])
-            .expect("Could not create key package bundle.");
+        KeyPackageBundle::new(backend, ciphersuite, &alice_credential_bundle);
 
     let update_proposal_alice = group_alice
         .create_update_proposal(
@@ -512,8 +499,7 @@ fn group_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvid
 
     // === Bob updates and Alice commits ===
     let bob_update_key_package_bundle =
-        KeyPackageBundle::new(&[ciphersuite], &bob_credential_bundle, backend, vec![])
-            .expect("Could not create key package bundle.");
+        KeyPackageBundle::new(backend, ciphersuite, &bob_credential_bundle);
 
     let update_proposal_bob = group_bob
         .create_update_proposal(
@@ -564,7 +550,7 @@ fn group_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvid
         .stage_commit(
             &create_commit_result.commit,
             &proposal_store,
-            &[OpenMlsLeafNode::from_key_package_bundel(
+            &[OpenMlsLeafNode::from_key_package_bundle(
                 bob_update_key_package_bundle,
                 group_bob.own_leaf_index(),
             )],
@@ -591,8 +577,7 @@ fn group_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvid
     .expect("An unexpected error occurred.");
 
     let charlie_key_package_bundle =
-        KeyPackageBundle::new(&[ciphersuite], &charlie_credential_bundle, backend, vec![])
-            .expect("Could not create key package bundle.");
+        KeyPackageBundle::new(backend, ciphersuite, &charlie_credential_bundle);
     let charlie_key_package = charlie_key_package_bundle.key_package().clone();
 
     let add_charlie_proposal_bob = group_bob
@@ -737,8 +722,7 @@ fn group_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvid
 
     // === Charlie updates and commits ===
     let charlie_update_key_package_bundle =
-        KeyPackageBundle::new(&[ciphersuite], &charlie_credential_bundle, backend, vec![])
-            .expect("Could not create key package bundle.");
+        KeyPackageBundle::new(backend, ciphersuite, &charlie_credential_bundle);
 
     let update_proposal_charlie = group_charlie
         .create_update_proposal(
