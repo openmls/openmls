@@ -476,6 +476,7 @@ impl<'a> TreeSyncDiff<'a> {
                     if let Some(leaf) = self.diff.leaf(leaf_index).node() {
                         vec![leaf.public_key().clone()]
                     } else {
+                        // If it's a blank, return an empty vector.
                         vec![]
                     }
                 }

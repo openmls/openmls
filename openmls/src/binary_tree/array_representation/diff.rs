@@ -108,7 +108,7 @@ impl<'a, L: Clone + Debug + Default, P: Clone + Debug + Default> AbDiff<'a, L, P
     /// Extend the diff by a leaf and its new parent node.
     ///
     /// Returns an error if adding either of the two nodes increases the size of
-    /// the diff beyond [`u32::MAX`].
+    /// the diff beyond [`MAX_TREE_SIZE`].
     pub(crate) fn add_leaf(
         &mut self,
         parent_node: P,
