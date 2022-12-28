@@ -22,8 +22,8 @@ pub enum MessageDecryptionError {
     /// An error occurred during AEAD decryption.
     #[error("An error occurred during AEAD decryption.")]
     AeadError,
-    /// The WireFormat was not MLSCiphertext.
-    #[error("The WireFormat was not MLSCiphertext.")]
+    /// The WireFormat was not PrivateMessage.
+    #[error("The WireFormat was not PrivateMessage.")]
     WrongWireFormat,
     /// The content is malformed.
     #[error("The content is malformed.")]
@@ -42,8 +42,8 @@ pub(crate) enum MessageEncryptionError {
     /// See [`LibraryError`] for more details.
     #[error(transparent)]
     LibraryError(#[from] LibraryError),
-    /// The WireFormat was not MLSCiphertext.
-    #[error("The WireFormat was not MLSCiphertext.")]
+    /// The WireFormat was not PrivateMessage.
+    #[error("The WireFormat was not PrivateMessage.")]
     WrongWireFormat,
     /// See [`SecretTreeError`] for more details.
     #[error(transparent)]

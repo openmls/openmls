@@ -13,7 +13,8 @@ use crate::{
     ciphersuite::hash_ref::ProposalRef,
     credentials::*,
     framing::{
-        MlsContentBody, MlsMessageIn, MlsMessageOut, MlsPlaintext, ProcessedMessageContent, Sender,
+        mls_content::FramedContentBody, MlsMessageIn, MlsMessageOut, ProcessedMessageContent,
+        PublicMessage, Sender,
     },
     group::{config::CryptoConfig, errors::*, *},
     key_packages::*,
@@ -157,11 +158,11 @@ fn validation_test_setup(
 fn insert_proposal_and_resign(
     backend: &impl OpenMlsCryptoProvider,
     proposal_or_ref: ProposalOrRef,
-    mut plaintext: MlsPlaintext,
-    original_plaintext: &MlsPlaintext,
+    mut plaintext: PublicMessage,
+    original_plaintext: &PublicMessage,
     committer_group: &MlsGroup,
-) -> MlsPlaintext {
-    let mut commit_content = if let MlsContentBody::Commit(commit) = plaintext.content() {
+) -> PublicMessage {
+    let mut commit_content = if let FramedContentBody::Commit(commit) = plaintext.content() {
         commit.clone()
     } else {
         panic!("Unexpected content type.");
@@ -169,7 +170,7 @@ fn insert_proposal_and_resign(
 
     commit_content.proposals.push(proposal_or_ref);
 
-    plaintext.set_content(MlsContentBody::Commit(commit_content));
+    plaintext.set_content(FramedContentBody::Commit(commit_content));
 
     let mut signed_plaintext =
         resign_message(committer_group, plaintext, original_plaintext, backend);
@@ -1327,7 +1328,7 @@ fn test_valsem107(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
             .into_plaintext()
             .expect("Message was not a plaintext.");
 
-        let commit_content = if let MlsContentBody::Commit(commit) = plaintext.content() {
+        let commit_content = if let FramedContentBody::Commit(commit) = plaintext.content() {
             commit.clone()
         } else {
             panic!("Unexpected content type.");
@@ -1829,7 +1830,7 @@ fn test_valsem111(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
         .into_plaintext()
         .expect("Message was not a plaintext.");
 
-    let commit_content = if let MlsContentBody::Commit(commit) = plaintext.content() {
+    let commit_content = if let FramedContentBody::Commit(commit) = plaintext.content() {
         commit.clone()
     } else {
         panic!("Unexpected content type.");

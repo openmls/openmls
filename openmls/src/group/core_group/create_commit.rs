@@ -227,8 +227,8 @@ impl CoreGroup {
         let mut provisional_epoch = self.group_context.epoch();
         provisional_epoch.increment();
 
-        // Build MlsAuthContent
-        let mut commit = MlsAuthContent::commit(
+        // Build AuthenticatedContent
+        let mut commit = AuthenticatedContent::commit(
             *params.framing_parameters(),
             sender,
             commit,
@@ -241,10 +241,10 @@ impl CoreGroup {
         let confirmed_transcript_hash = update_confirmed_transcript_hash(
             ciphersuite,
             backend,
-            // It is ok to a library error here, because we know the MlsPlaintext contains a
+            // It is ok to a library error here, because we know the PublicMessage contains a
             // Commit
             &ConfirmedTranscriptHashInput::try_from(&commit)
-                .map_err(|_| LibraryError::custom("MlsPlaintext did not contain a commit"))?,
+                .map_err(|_| LibraryError::custom("PublicMessage did not contain a commit"))?,
             &self.interim_transcript_hash,
         )?;
 

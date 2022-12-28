@@ -325,7 +325,7 @@ async fn test_group() {
         .create_message(crypto, client2_message)
         .unwrap();
 
-    // Send mls_ciphertext to the group
+    // Send private_message to the group
     let msg = GroupMessage::new(out_messages.into(), &client_ids);
     let req = test::TestRequest::post()
         .uri("/send/message")

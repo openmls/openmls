@@ -135,13 +135,13 @@ fn external_add_proposal_should_succeed(
         .unwrap();
 
         // an external proposal is always plaintext and has sender type 'new_member_proposal'
-        let verify_proposal = |msg: &MlsPlaintext| {
+        let verify_proposal = |msg: &PublicMessage| {
             *msg.sender() == Sender::NewMemberProposal
                 && msg.content_type() == ContentType::Proposal
-                && matches!(msg.content(), MlsContentBody::Proposal(p) if p.proposal_type() == ProposalType::Add)
+                && matches!(msg.content(), FramedContentBody::Proposal(p) if p.proposal_type() == ProposalType::Add)
         };
         assert!(
-            matches!(proposal.mls_message.body, MlsMessageBody::Plaintext(ref msg) if verify_proposal(msg))
+            matches!(proposal.mls_message.body, MlsMessageBody::PublicMessage(ref msg) if verify_proposal(msg))
         );
 
         let msg = alice_group
@@ -285,11 +285,11 @@ fn new_member_proposal_sender_should_be_reserved_for_join_proposals(
     )
     .unwrap();
 
-    if let MlsMessageBody::Plaintext(plaintext) = &join_proposal.mls_message.body {
+    if let MlsMessageBody::PublicMessage(plaintext) = &join_proposal.mls_message.body {
         // Make sure it's an add proposal...
         assert!(matches!(
             plaintext.content(),
-            MlsContentBody::Proposal(Proposal::Add(_))
+            FramedContentBody::Proposal(Proposal::Add(_))
         ));
 
         // ... and that it has the right sender type
@@ -308,7 +308,7 @@ fn new_member_proposal_sender_should_be_reserved_for_join_proposals(
     let remove_proposal = alice_group
         .propose_remove_member(backend, LeafNodeIndex::new(1))
         .unwrap();
-    if let MlsMessageBody::Plaintext(mut plaintext) = remove_proposal.mls_message.body {
+    if let MlsMessageBody::PublicMessage(mut plaintext) = remove_proposal.mls_message.body {
         plaintext.set_sender(Sender::NewMemberProposal);
         assert!(matches!(
             bob_group
@@ -323,7 +323,7 @@ fn new_member_proposal_sender_should_be_reserved_for_join_proposals(
 
     // Update proposal cannot have a 'new_member_proposal' sender
     let update_proposal = alice_group.propose_self_update(backend, None).unwrap();
-    if let MlsMessageBody::Plaintext(mut plaintext) = update_proposal.mls_message.body {
+    if let MlsMessageBody::PublicMessage(mut plaintext) = update_proposal.mls_message.body {
         plaintext.set_sender(Sender::NewMemberProposal);
         assert!(matches!(
             bob_group

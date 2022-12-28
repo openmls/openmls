@@ -82,9 +82,9 @@ impl MlsGroup {
             }
         };
 
-        // Convert MlsPlaintext messages to MLSMessage and encrypt them if required by
+        // Convert PublicMessage messages to MLSMessage and encrypt them if required by
         // the configuration
-        let mls_message = self.plaintext_to_mls_message(create_commit_result.commit, backend)?;
+        let mls_message = self.content_to_mls_message(create_commit_result.commit, backend)?;
 
         // Set the current group state to [`MlsGroupState::PendingCommit`],
         // storing the current [`StagedCommit`] from the commit results
@@ -173,13 +173,14 @@ impl MlsGroup {
         )?;
 
         self.own_leaf_nodes.push(rekeyed_own_leaf);
-        self.proposal_store.add(QueuedProposal::from_mls_plaintext(
-            self.ciphersuite(),
-            backend,
-            update_proposal.clone(),
-        )?);
+        self.proposal_store
+            .add(QueuedProposal::from_authenticated_content(
+                self.ciphersuite(),
+                backend,
+                update_proposal.clone(),
+            )?);
 
-        let mls_message = self.plaintext_to_mls_message(update_proposal, backend)?;
+        let mls_message = self.content_to_mls_message(update_proposal, backend)?;
 
         // Since the state of the group might be changed, arm the state flag
         self.flag_state_change();

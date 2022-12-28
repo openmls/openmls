@@ -160,7 +160,7 @@ pub(crate) fn setup(config: TestSetupConfig, backend: &impl OpenMlsCryptoProvide
         let mut proposal_list = Vec::new();
         let group_aad = b"";
         // Framing parameters
-        let framing_parameters = FramingParameters::new(group_aad, WireFormat::MlsPlaintext);
+        let framing_parameters = FramingParameters::new(group_aad, WireFormat::PublicMessage);
         initial_group_member
             .group_states
             .borrow_mut()
@@ -200,8 +200,12 @@ pub(crate) fn setup(config: TestSetupConfig, backend: &impl OpenMlsCryptoProvide
             let mut proposal_store = ProposalStore::new();
             for proposal in proposal_list {
                 proposal_store.add(
-                    QueuedProposal::from_mls_plaintext(group_config.ciphersuite, backend, proposal)
-                        .expect("Could not create staged proposal."),
+                    QueuedProposal::from_authenticated_content(
+                        group_config.ciphersuite,
+                        backend,
+                        proposal,
+                    )
+                    .expect("Could not create staged proposal."),
                 );
             }
             let params = CreateCommitParams::builder()
@@ -397,10 +401,10 @@ pub(super) fn get_credential_bundle(
 #[cfg(test)]
 pub(crate) fn resign_message(
     alice_group: &MlsGroup,
-    plaintext: MlsPlaintext,
-    original_plaintext: &MlsPlaintext,
+    plaintext: PublicMessage,
+    original_plaintext: &PublicMessage,
     backend: &impl OpenMlsCryptoProvider,
-) -> MlsPlaintext {
+) -> PublicMessage {
     use prelude::signable::Signable;
 
     let alice_credential_bundle = backend
@@ -420,8 +424,8 @@ pub(crate) fn resign_message(
         .expect("error serializing context");
 
     // We have to re-sign, since we changed the content.
-    let tbs: MlsContentTbs = plaintext.into();
-    let mut signed_plaintext: MlsAuthContent = tbs
+    let tbs: FramedContentTbs = plaintext.into();
+    let mut signed_plaintext: AuthenticatedContent = tbs
         .with_context(serialized_context.clone())
         .sign(backend, &alice_credential_bundle)
         .expect("Error signing modified payload.");
@@ -434,7 +438,7 @@ pub(crate) fn resign_message(
             .clone(),
     );
 
-    let mut signed_plaintext: MlsPlaintext = signed_plaintext.into();
+    let mut signed_plaintext: PublicMessage = signed_plaintext.into();
 
     let membership_key = alice_group.group().message_secrets().membership_key();
 
@@ -447,17 +451,17 @@ pub(crate) fn resign_message(
 #[cfg(test)]
 pub(crate) fn resign_external_commit(
     bob_credential_bundle: &CredentialBundle,
-    plaintext: MlsPlaintext,
-    original_plaintext: &MlsPlaintext,
+    plaintext: PublicMessage,
+    original_plaintext: &PublicMessage,
     serialized_context: Vec<u8>,
     backend: &impl OpenMlsCryptoProvider,
-) -> MlsPlaintext {
+) -> PublicMessage {
     let serialized_context = Some(serialized_context);
     // We have to re-sign, since we changed the content.
 
     use prelude::signable::Signable;
-    let tbs: MlsContentTbs = plaintext.into();
-    let mut signed_plaintext: MlsAuthContent = if let Some(context) = serialized_context {
+    let tbs: FramedContentTbs = plaintext.into();
+    let mut signed_plaintext: AuthenticatedContent = if let Some(context) = serialized_context {
         tbs.with_context(context)
             .sign(backend, bob_credential_bundle)
             .expect("Error signing modified payload.")
@@ -474,7 +478,7 @@ pub(crate) fn resign_external_commit(
             .clone(),
     );
 
-    let signed_plaintext: MlsPlaintext = signed_plaintext.into();
+    let signed_plaintext: PublicMessage = signed_plaintext.into();
 
     signed_plaintext
 }

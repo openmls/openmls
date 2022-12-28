@@ -9,7 +9,7 @@ use super::*;
 #[apply(backends)]
 fn build_create_commit_params(backend: &impl OpenMlsCryptoProvider) {
     let framing_parameters: FramingParameters =
-        FramingParameters::new(&[1, 2, 3], WireFormat::MlsCiphertext);
+        FramingParameters::new(&[1, 2, 3], WireFormat::PrivateMessage);
     let credential_bundle: &CredentialBundle = &CredentialBundle::new(
         vec![4, 5, 6],
         CredentialType::Basic,

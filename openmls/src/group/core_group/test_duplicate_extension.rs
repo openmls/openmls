@@ -46,7 +46,7 @@ fn duplicate_ratchet_tree_extension(
         add_ratchet_tree_extension: true,
     };
 
-    let framing_parameters = FramingParameters::new(group_aad, WireFormat::MlsPlaintext);
+    let framing_parameters = FramingParameters::new(group_aad, WireFormat::PublicMessage);
 
     let mut alice_group = CoreGroup::builder(GroupId::random(backend), alice_key_package_bundle)
         .with_config(config)
@@ -64,7 +64,7 @@ fn duplicate_ratchet_tree_extension(
         .expect("Could not create proposal.");
 
     let proposal_store = ProposalStore::from_queued_proposal(
-        QueuedProposal::from_mls_plaintext(ciphersuite, backend, bob_add_proposal)
+        QueuedProposal::from_authenticated_content(ciphersuite, backend, bob_add_proposal)
             .expect("Could not create StagingProposal"),
     );
 

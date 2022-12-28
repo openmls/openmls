@@ -170,7 +170,7 @@ fn test_failed_groupinfo_decryption(
 fn test_update_path(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
     // Basic group setup.
     let group_aad = b"Alice's test group";
-    let framing_parameters = FramingParameters::new(group_aad, WireFormat::MlsPlaintext);
+    let framing_parameters = FramingParameters::new(group_aad, WireFormat::PublicMessage);
 
     // Define credential bundles
     let alice_credential_bundle = CredentialBundle::new(
@@ -211,7 +211,7 @@ fn test_update_path(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvid
         )
         .expect("Could not create proposal.");
     let proposal_store = ProposalStore::from_queued_proposal(
-        QueuedProposal::from_mls_plaintext(ciphersuite, backend, bob_add_proposal)
+        QueuedProposal::from_authenticated_content(ciphersuite, backend, bob_add_proposal)
             .expect("Could not create QueuedProposal."),
     );
     let params = CreateCommitParams::builder()
@@ -225,7 +225,7 @@ fn test_update_path(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvid
         .expect("Error creating commit");
 
     let commit = match create_commit_result.commit.content() {
-        MlsContentBody::Commit(commit) => commit,
+        FramedContentBody::Commit(commit) => commit,
         _ => panic!("Wrong content type"),
     };
     assert!(!commit.has_path());
@@ -263,7 +263,7 @@ fn test_update_path(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvid
         )
         .expect("Could not create proposal.");
     let proposal_store = ProposalStore::from_queued_proposal(
-        QueuedProposal::from_mls_plaintext(ciphersuite, backend, update_proposal_bob)
+        QueuedProposal::from_authenticated_content(ciphersuite, backend, update_proposal_bob)
             .expect("Could not create QueuedProposal."),
     );
     let params = CreateCommitParams::builder()
@@ -280,7 +280,7 @@ fn test_update_path(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvid
     // apart the commit, manipulating the ciphertexts and the piecing it
     // back together.
     let commit = match create_commit_result.commit.content() {
-        MlsContentBody::Commit(commit) => commit,
+        FramedContentBody::Commit(commit) => commit,
         _ => panic!("Bob created a commit, which does not contain an actual commit."),
     };
 
@@ -298,7 +298,7 @@ fn test_update_path(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvid
         path: Some(broken_path),
     };
 
-    let mut broken_plaintext = MlsAuthContent::commit(
+    let mut broken_plaintext = AuthenticatedContent::commit(
         framing_parameters,
         create_commit_result.commit.sender().clone(),
         broken_commit,
@@ -334,7 +334,7 @@ fn test_update_path(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvid
 fn test_psks(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
     // Basic group setup.
     let group_aad = b"Alice's test group";
-    let framing_parameters = FramingParameters::new(group_aad, WireFormat::MlsPlaintext);
+    let framing_parameters = FramingParameters::new(group_aad, WireFormat::PublicMessage);
 
     // Define credential bundles
     let alice_credential_bundle = CredentialBundle::new(
@@ -406,11 +406,11 @@ fn test_psks(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
         .expect("Could not create proposal");
 
     let mut proposal_store = ProposalStore::from_queued_proposal(
-        QueuedProposal::from_mls_plaintext(ciphersuite, backend, bob_add_proposal)
+        QueuedProposal::from_authenticated_content(ciphersuite, backend, bob_add_proposal)
             .expect("Could not create QueuedProposal."),
     );
     proposal_store.add(
-        QueuedProposal::from_mls_plaintext(ciphersuite, backend, psk_proposal)
+        QueuedProposal::from_authenticated_content(ciphersuite, backend, psk_proposal)
             .expect("Could not create QueuedProposal."),
     );
     log::info!(" >>> Creating commit ...");
@@ -457,7 +457,7 @@ fn test_psks(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
         )
         .expect("Could not create proposal.");
     let proposal_store = ProposalStore::from_queued_proposal(
-        QueuedProposal::from_mls_plaintext(ciphersuite, backend, update_proposal_bob)
+        QueuedProposal::from_authenticated_content(ciphersuite, backend, update_proposal_bob)
             .expect("Could not create QueuedProposal."),
     );
     let params = CreateCommitParams::builder()
@@ -476,7 +476,7 @@ fn test_psks(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
 fn test_staged_commit_creation(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
     // Basic group setup.
     let group_aad = b"Alice's test group";
-    let framing_parameters = FramingParameters::new(group_aad, WireFormat::MlsPlaintext);
+    let framing_parameters = FramingParameters::new(group_aad, WireFormat::PublicMessage);
 
     // Define credential bundles
     let alice_credential_bundle = CredentialBundle::new(
@@ -517,7 +517,7 @@ fn test_staged_commit_creation(ciphersuite: Ciphersuite, backend: &impl OpenMlsC
         )
         .expect("Could not create proposal.");
     let proposal_store = ProposalStore::from_queued_proposal(
-        QueuedProposal::from_mls_plaintext(ciphersuite, backend, bob_add_proposal)
+        QueuedProposal::from_authenticated_content(ciphersuite, backend, bob_add_proposal)
             .expect("Could not create QueuedProposal."),
     );
     let params = CreateCommitParams::builder()
@@ -562,7 +562,7 @@ fn test_staged_commit_creation(ciphersuite: Ciphersuite, backend: &impl OpenMlsC
 fn test_own_commit_processing(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
     // Basic group setup.
     let group_aad = b"Alice's test group";
-    let framing_parameters = FramingParameters::new(group_aad, WireFormat::MlsPlaintext);
+    let framing_parameters = FramingParameters::new(group_aad, WireFormat::PublicMessage);
 
     // Define credential bundles
     let alice_credential_bundle = CredentialBundle::new(
@@ -630,7 +630,7 @@ fn test_proposal_application_after_self_was_removed(
 
     // Basic group setup.
     let group_aad = b"Alice's test group";
-    let framing_parameters = FramingParameters::new(group_aad, WireFormat::MlsPlaintext);
+    let framing_parameters = FramingParameters::new(group_aad, WireFormat::PublicMessage);
 
     let (alice_credential_bundle, alice_kpb) = setup_client("Alice", ciphersuite, backend);
     let (_, bob_kpb) = setup_client("Bob", ciphersuite, backend);
@@ -651,7 +651,7 @@ fn test_proposal_application_after_self_was_removed(
         .expect("Could not create proposal");
 
     let bob_add_proposal_store = ProposalStore::from_queued_proposal(
-        QueuedProposal::from_mls_plaintext(ciphersuite, backend, bob_add_proposal)
+        QueuedProposal::from_authenticated_content(ciphersuite, backend, bob_add_proposal)
             .expect("Could not create QueuedProposal."),
     );
 
@@ -711,12 +711,12 @@ fn test_proposal_application_after_self_was_removed(
         .expect("Could not create proposal");
 
     let mut remove_add_proposal_store = ProposalStore::from_queued_proposal(
-        QueuedProposal::from_mls_plaintext(ciphersuite, backend, bob_remove_proposal)
+        QueuedProposal::from_authenticated_content(ciphersuite, backend, bob_remove_proposal)
             .expect("Could not create QueuedProposal."),
     );
 
     remove_add_proposal_store.add(
-        QueuedProposal::from_mls_plaintext(ciphersuite, backend, charlie_add_proposal)
+        QueuedProposal::from_authenticated_content(ciphersuite, backend, charlie_add_proposal)
             .expect("Could not create QueuedProposal."),
     );
 
