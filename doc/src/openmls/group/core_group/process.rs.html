@@ -331,9 +331,21 @@
 <span id="331">331</span>
 <span id="332">332</span>
 <span id="333">333</span>
+<span id="334">334</span>
+<span id="335">335</span>
+<span id="336">336</span>
+<span id="337">337</span>
+<span id="338">338</span>
+<span id="339">339</span>
+<span id="340">340</span>
+<span id="341">341</span>
+<span id="342">342</span>
+<span id="343">343</span>
+<span id="344">344</span>
 </pre><pre class="rust"><code><span class="kw">use </span>core_group::{proposals::QueuedProposal, staged_commit::StagedCommit};
 
 <span class="kw">use crate</span>::{
+    framing::mls_content::FramedContentBody,
     group::{errors::ValidationError, mls_group::errors::ProcessMessageError},
     treesync::node::leaf_node::OpenMlsLeafNode,
 };
@@ -343,7 +355,7 @@
 <span class="kw">impl </span>CoreGroup {
     <span class="doccomment">/// This function is used to parse messages from the DS.
     /// It checks for syntactic errors and makes some semantic checks as well.
-    /// If the input is a [MlsCiphertext] message, it will be decrypted.
+    /// If the input is a [PrivateMessage] message, it will be decrypted.
     /// Returns an [UnverifiedMessage] that can be inspected and later processed in
     /// [Self::process_unverified_message()].
     /// Checks the following semantic validation:
@@ -373,7 +385,7 @@
         //  - ValSem006
         //  - ValSem007 MembershipTag presence
         </span><span class="kw">let </span>decrypted_message = <span class="kw">match </span>message.mls_message.body {
-            MlsMessageBody::Plaintext(plaintext) =&gt; {
+            MlsMessageBody::PublicMessage(public_message) =&gt; {
                 <span class="comment">// If the message is older than the current epoch, we need to fetch the correct secret tree first.
                 </span><span class="kw">let </span>message_secrets =
                     <span class="self">self</span>.message_secrets_for_epoch(epoch).map_err(|e| <span class="kw">match </span>e {
@@ -383,9 +395,13 @@
                         )
                         .into(),
                     })<span class="question-mark">?</span>;
-                DecryptedMessage::from_inbound_plaintext(plaintext, message_secrets, backend)<span class="question-mark">?
+                DecryptedMessage::from_inbound_public_message(
+                    public_message,
+                    message_secrets,
+                    backend,
+                )<span class="question-mark">?
             </span>}
-            MlsMessageBody::Ciphertext(ciphertext) =&gt; {
+            MlsMessageBody::PrivateMessage(ciphertext) =&gt; {
                 <span class="comment">// If the message is older than the current epoch, we need to fetch the correct secret tree first
                 </span>DecryptedMessage::from_inbound_ciphertext(
                     ciphertext,
@@ -400,7 +416,7 @@
         //  - ValSem004
         //  - ValSem005
         //  - ValSem009
-        </span><span class="self">self</span>.validate_plaintext(decrypted_message.plaintext())<span class="question-mark">?</span>;
+        </span><span class="self">self</span>.validate_verifiable_content(decrypted_message.verifiable_content())<span class="question-mark">?</span>;
 
         <span class="comment">// Extract the credential if the sender is a member or a new member.
         // Checks the following semantic validation:
@@ -412,7 +428,7 @@
         </span><span class="kw">let </span>credential = decrypted_message.credential(
             <span class="self">self</span>.treesync(),
             <span class="self">self</span>.message_secrets_store
-                .leaves_for_epoch(decrypted_message.plaintext().epoch()),
+                .leaves_for_epoch(decrypted_message.verifiable_content().epoch()),
         )<span class="question-mark">?</span>;
 
         <span class="prelude-val">Ok</span>(UnverifiedMessage::from_decrypted_message(
@@ -474,25 +490,25 @@
                 </span><span class="kw">let </span>plaintext = unverified_message
                     .into_verified(backend)
                     .map_err(|<span class="kw">_</span>| ProcessMessageError::InvalidSignature)<span class="question-mark">?
-                    </span>.take_plaintext();
+                    </span>.take_authenticated_content();
 
                 <span class="kw">let </span>sender = plaintext.sender().clone();
                 <span class="kw">let </span>authenticated_data = plaintext.authenticated_data().to_owned();
 
                 <span class="kw">let </span>content = <span class="kw">match </span><span class="kw-2">&amp;</span>plaintext.content() {
-                    MlsContentBody::Application(application_message) =&gt; {
+                    FramedContentBody::Application(application_message) =&gt; {
                         ProcessedMessageContent::ApplicationMessage(ApplicationMessage::new(
                             application_message.as_slice().to_owned(),
                         ))
                     }
-                    MlsContentBody::Proposal(<span class="kw">_</span>) =&gt; ProcessedMessageContent::ProposalMessage(
-                        Box::new(QueuedProposal::from_mls_plaintext(
+                    FramedContentBody::Proposal(<span class="kw">_</span>) =&gt; ProcessedMessageContent::ProposalMessage(
+                        Box::new(QueuedProposal::from_authenticated_content(
                             <span class="self">self</span>.ciphersuite(),
                             backend,
                             plaintext,
                         )<span class="question-mark">?</span>),
                     ),
-                    MlsContentBody::Commit(<span class="kw">_</span>) =&gt; {
+                    FramedContentBody::Commit(<span class="kw">_</span>) =&gt; {
                         <span class="comment">//  - ValSem100
                         //  - ValSem101
                         //  - ValSem102
@@ -545,26 +561,32 @@
                 </span><span class="kw">let </span>verified_new_member_message = unverified_new_member_message
                     .into_verified(backend)
                     .map_err(|<span class="kw">_</span>| ProcessMessageError::InvalidSignature)<span class="question-mark">?</span>;
-                <span class="kw">let </span>sender = verified_new_member_message.plaintext().sender().clone();
+                <span class="kw">let </span>sender = verified_new_member_message
+                    .authenticated_content()
+                    .sender()
+                    .clone();
                 <span class="kw">let </span>authenticated_data = verified_new_member_message
-                    .plaintext()
+                    .authenticated_content()
                     .authenticated_data()
                     .to_owned();
 
-                <span class="kw">let </span>content = <span class="kw">match </span>verified_new_member_message.plaintext().content() {
-                    MlsContentBody::Proposal(<span class="kw">_</span>) =&gt; {
+                <span class="kw">let </span>content = <span class="kw">match </span>verified_new_member_message
+                    .authenticated_content()
+                    .content()
+                {
+                    FramedContentBody::Proposal(<span class="kw">_</span>) =&gt; {
                         ProcessedMessageContent::ExternalJoinProposalMessage(Box::new(
-                            QueuedProposal::from_mls_plaintext(
+                            QueuedProposal::from_authenticated_content(
                                 <span class="self">self</span>.ciphersuite(),
                                 backend,
-                                verified_new_member_message.take_plaintext(),
+                                verified_new_member_message.take_authenticated_content(),
                             )<span class="question-mark">?</span>,
                         ))
                     }
-                    MlsContentBody::Commit(<span class="kw">_</span>) =&gt; {
+                    FramedContentBody::Commit(<span class="kw">_</span>) =&gt; {
                         <span class="comment">// We throw a library error here, because a missing confirmation tag should be found during deserialization.
                         </span><span class="kw">let </span>staged_commit = <span class="self">self</span>.stage_commit(
-                            verified_new_member_message.plaintext(),
+                            verified_new_member_message.authenticated_content(),
                             proposal_store,
                             own_leaf_nodes,
                             backend,
@@ -592,7 +614,7 @@
 
     <span class="doccomment">/// This function is used to parse messages from the DS. It checks for
     /// syntactic errors and does semantic validation as well. If the input is a
-    /// [MlsCiphertext] message, it will be decrypted. It returns a
+    /// [PrivateMessage] message, it will be decrypted. It returns a
     /// [ProcessedMessage] enum. Checks the following semantic validation:
     ///  - ValSem002
     ///  - ValSem003

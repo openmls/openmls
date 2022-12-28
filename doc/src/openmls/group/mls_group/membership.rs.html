@@ -383,6 +383,9 @@
 <span id="383">383</span>
 <span id="384">384</span>
 <span id="385">385</span>
+<span id="386">386</span>
+<span id="387">387</span>
+<span id="388">388</span>
 </pre><pre class="rust"><code><span class="doccomment">//! MLS group membership
 //!
 //! This module contains membership-related operations and exposes [`RemoveOperation`].
@@ -457,9 +460,9 @@
             }
         };
 
-        <span class="comment">// Convert MlsPlaintext messages to MLSMessage and encrypt them if required by
+        <span class="comment">// Convert PublicMessage messages to MLSMessage and encrypt them if required by
         // the configuration
-        </span><span class="kw">let </span>mls_messages = <span class="self">self</span>.plaintext_to_mls_message(create_commit_result.commit, backend)<span class="question-mark">?</span>;
+        </span><span class="kw">let </span>mls_messages = <span class="self">self</span>.content_to_mls_message(create_commit_result.commit, backend)<span class="question-mark">?</span>;
 
         <span class="comment">// Set the current group state to [`MlsGroupState::PendingCommit`],
         // storing the current [`StagedCommit`] from the commit results
@@ -530,9 +533,9 @@
             .build();
         <span class="kw">let </span>create_commit_result = <span class="self">self</span>.group.create_commit(params, backend)<span class="question-mark">?</span>;
 
-        <span class="comment">// Convert MlsPlaintext messages to MLSMessage and encrypt them if required by
+        <span class="comment">// Convert PublicMessage messages to MLSMessage and encrypt them if required by
         // the configuration
-        </span><span class="kw">let </span>mls_message = <span class="self">self</span>.plaintext_to_mls_message(create_commit_result.commit, backend)<span class="question-mark">?</span>;
+        </span><span class="kw">let </span>mls_message = <span class="self">self</span>.content_to_mls_message(create_commit_result.commit, backend)<span class="question-mark">?</span>;
 
         <span class="comment">// Set the current group state to [`MlsGroupState::PendingCommit`],
         // storing the current [`StagedCommit`] from the commit results
@@ -582,13 +585,14 @@
                 }
             })<span class="question-mark">?</span>;
 
-        <span class="self">self</span>.proposal_store.add(QueuedProposal::from_mls_plaintext(
-            <span class="self">self</span>.ciphersuite(),
-            backend,
-            add_proposal.clone(),
-        )<span class="question-mark">?</span>);
+        <span class="self">self</span>.proposal_store
+            .add(QueuedProposal::from_authenticated_content(
+                <span class="self">self</span>.ciphersuite(),
+                backend,
+                add_proposal.clone(),
+            )<span class="question-mark">?</span>);
 
-        <span class="kw">let </span>mls_message = <span class="self">self</span>.plaintext_to_mls_message(add_proposal, backend)<span class="question-mark">?</span>;
+        <span class="kw">let </span>mls_message = <span class="self">self</span>.content_to_mls_message(add_proposal, backend)<span class="question-mark">?</span>;
 
         <span class="comment">// Since the state of the group might be changed, arm the state flag
         </span><span class="self">self</span>.flag_state_change();
@@ -628,13 +632,14 @@
             )
             .map_err(|<span class="kw">_</span>| ProposeRemoveMemberError::UnknownMember)<span class="question-mark">?</span>;
 
-        <span class="self">self</span>.proposal_store.add(QueuedProposal::from_mls_plaintext(
-            <span class="self">self</span>.ciphersuite(),
-            backend,
-            remove_proposal.clone(),
-        )<span class="question-mark">?</span>);
+        <span class="self">self</span>.proposal_store
+            .add(QueuedProposal::from_authenticated_content(
+                <span class="self">self</span>.ciphersuite(),
+                backend,
+                remove_proposal.clone(),
+            )<span class="question-mark">?</span>);
 
-        <span class="kw">let </span>mls_message = <span class="self">self</span>.plaintext_to_mls_message(remove_proposal, backend)<span class="question-mark">?</span>;
+        <span class="kw">let </span>mls_message = <span class="self">self</span>.content_to_mls_message(remove_proposal, backend)<span class="question-mark">?</span>;
 
         <span class="comment">// Since the state of the group might be changed, arm the state flag
         </span><span class="self">self</span>.flag_state_change();
@@ -679,13 +684,14 @@
             )
             .map_err(|<span class="kw">_</span>| LibraryError::custom(<span class="string">&quot;Creating a self removal should not fail&quot;</span>))<span class="question-mark">?</span>;
 
-        <span class="self">self</span>.proposal_store.add(QueuedProposal::from_mls_plaintext(
-            <span class="self">self</span>.ciphersuite(),
-            backend,
-            remove_proposal.clone(),
-        )<span class="question-mark">?</span>);
+        <span class="self">self</span>.proposal_store
+            .add(QueuedProposal::from_authenticated_content(
+                <span class="self">self</span>.ciphersuite(),
+                backend,
+                remove_proposal.clone(),
+            )<span class="question-mark">?</span>);
 
-        <span class="prelude-val">Ok</span>(<span class="self">self</span>.plaintext_to_mls_message(remove_proposal, backend)<span class="question-mark">?</span>)
+        <span class="prelude-val">Ok</span>(<span class="self">self</span>.content_to_mls_message(remove_proposal, backend)<span class="question-mark">?</span>)
     }
 
     <span class="doccomment">/// Returns a list of [`Member`]s in the group.

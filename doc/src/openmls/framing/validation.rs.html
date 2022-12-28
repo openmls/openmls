@@ -509,44 +509,44 @@
 <span id="509">509</span>
 <span id="510">510</span>
 <span id="511">511</span>
-<span id="512">512</span>
-<span id="513">513</span>
-<span id="514">514</span>
-<span id="515">515</span>
 </pre><pre class="rust"><code><span class="doccomment">//! # Validation steps for incoming messages
 //!
 //! ```text
-//! parse_message(MlsMessageIn) -&gt; UnverifiedMessage
 //!
-//! MlsMessageIn (exposes: wire format, group, epoch)
-//! |
-//! V
-//! DecryptedMessage
-//! |
-//! V
-//! UnverifiedMessage (exposes AAD, Credential of sender)
+//!                             MlsMessageIn
+//!                                  │                    -.
+//!                                  │                      │
+//!                                  │                      │
+//!                                  ▼                      │
+//!                           DecryptedMessage              +-- parse_message
+//!                                  │                      │
+//!                                  │                      │
+//!                                  │                      │
+//!                                  ▼                    -&#39;
+//!                           UnverifiedMessage
+//!                                  │                                       -.
+//!                                  │                                         │
+//!                                  │                                         │
+//!                                  ▼                                         │
+//!                       UnverifiedContextMessage                             │
+//!                                  │                                         │
+//!                                  │                                         │
+//!             (sender is member)   │   (sender is external)                  │
+//!               ┌──────────────────┴───────────────────┐                     │
+//!               │                                      │                     │
+//!               ▼                                      ▼                     +-- process_unverified_message
+//!     UnverifiedGroupMessage              UnverifiedExternalMessage          │
+//!               │                                      │                     │
+//!               │ (verify_signature)                   │ (verify_signature)  │
+//!               │                                      │                     │
+//!               ▼                                      ▼                     │
+//!     VerifiedMemberMessage                VerifiedExternalMessage           │
+//!               │                                      │                     │
+//!               └──────────────────┬───────────────────┘                     │
+//!                                  │                                         │
+//!                                  ▼                                       -&#39;
+//!                          ProcessedMessage
 //!
-//! process_unverified_message(UnverfiedMessage) -&gt; ProcessedMessage
-//!
-//! UnverifiedMessage
-//! |
-//! V
-//! UnverifiedContextMessage (includes group context)
-//! |                        |
-//! | (sender is member)     | (sender is not member)
-//! |                        |
-//! V                        V
-//! UnverifiedGroupMessage   UnverifiedExternalMessage
-//! |                        |
-//! | (verify signature)     | (verify signature)
-//! |                        |
-//! V                        V
-//! VerfiedMemberMessage     VerifiedExternalMessage
-//! |                        |
-//! +------------------------+
-//! |
-//! V
-//! ProcessedMessage (Application, Proposal, ExternalProposal, Commit, External Commit)
 //! ```
 </span><span class="comment">// TODO #106/#151: Update the above diagram
 
@@ -559,53 +559,53 @@
     tree::sender_ratchet::SenderRatchetConfiguration,
 };
 
-<span class="kw">use super</span>::<span class="kw-2">*</span>;
+<span class="kw">use super</span>::{
+    mls_auth_content::{AuthenticatedContent, VerifiableAuthenticatedContent},
+    mls_content::ContentType,
+    <span class="kw-2">*</span>,
+};
 
-<span class="doccomment">/// Intermediate message that can be constructed either from a plaintext message or from ciphertext message.
+<span class="doccomment">/// Intermediate message that can be constructed either from a public message or from private message.
 /// If it it constructed from a ciphertext message, the ciphertext message is decrypted first.
 /// This function implements the following checks:
 ///  - ValSem005
 ///  - ValSem007
 ///  - ValSem009
 </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct </span>DecryptedMessage {
-    plaintext: VerifiableMlsAuthContent,
+    verifiable_content: VerifiableAuthenticatedContent,
 }
 
 <span class="kw">impl </span>DecryptedMessage {
-    <span class="doccomment">/// Constructs a [DecryptedMessage] from a [VerifiableMlsAuthContent].
-    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>from_inbound_plaintext(
-        plaintext: MlsPlaintext,
+    <span class="doccomment">/// Constructs a [DecryptedMessage] from a [VerifiableAuthenticatedContent].
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>from_inbound_public_message(
+        public_message: PublicMessage,
         message_secrets: <span class="kw-2">&amp;</span>MessageSecrets,
         backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, ValidationError&gt; {
-        <span class="kw">if </span>plaintext.sender().is_member() {
-            <span class="comment">// Verify the membership tag. This needs to be done explicitly for MlsPlaintext messages,
-            // it is implicit for MlsCiphertext messages (because the encryption can only be known by members).
+        <span class="kw">if </span>public_message.sender().is_member() {
+            <span class="comment">// Verify the membership tag. This needs to be done explicitly for PublicMessage messages,
+            // it is implicit for PrivateMessage messages (because the encryption can only be known by members).
             // ValSem007 Membership tag presence
             // ValSem008
-            </span>plaintext.verify_membership(
+            </span>public_message.verify_membership(
                 backend,
                 message_secrets.membership_key(),
                 message_secrets.serialized_context(),
             )<span class="question-mark">?</span>;
         }
 
-        <span class="kw">let </span>context = <span class="kw">if </span><span class="macro">matches!</span>(
-            plaintext.sender(),
-            Sender::NewMemberCommit | Sender::Member(<span class="kw">_</span>)
-        ) {
-            <span class="prelude-val">Some</span>(message_secrets.serialized_context().to_vec())
-        } <span class="kw">else </span>{
-            <span class="prelude-val">None
-        </span>};
+        <span class="kw">let </span>verifiable_content = PublicMessage::into_verifiable_content(
+            public_message,
+            message_secrets.serialized_context(),
+        );
 
-        <span class="self">Self</span>::from_plaintext(VerifiableMlsAuthContent::from_plaintext(plaintext, context))
+        <span class="self">Self</span>::from_verifiable_content(verifiable_content)
     }
 
-    <span class="doccomment">/// Constructs a [DecryptedMessage] from a [MlsCiphertext] by attempting to decrypt it
-    /// to a [VerifiableMlsAuthContent] first.
+    <span class="doccomment">/// Constructs a [DecryptedMessage] from a [PrivateMessage] by attempting to decrypt it
+    /// to a [VerifiableAuthenticatedContent] first.
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>from_inbound_ciphertext(
-        ciphertext: MlsCiphertext,
+        ciphertext: PrivateMessage,
         backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider,
         group: <span class="kw-2">&amp;mut </span>CoreGroup,
         sender_ratchet_configuration: <span class="kw-2">&amp;</span>SenderRatchetConfiguration,
@@ -622,7 +622,7 @@
         <span class="kw">let </span>message_secrets = group
             .message_secrets_mut(ciphertext.epoch())
             .map_err(|<span class="kw">_</span>| MessageDecryptionError::AeadError)<span class="question-mark">?</span>;
-        <span class="kw">let </span>plaintext = ciphertext.to_plaintext(
+        <span class="kw">let </span>verifiable_content = ciphertext.to_verifiable_content(
             ciphersuite,
             backend,
             message_secrets,
@@ -630,29 +630,32 @@
             sender_ratchet_configuration,
             sender_data,
         )<span class="question-mark">?</span>;
-        <span class="self">Self</span>::from_plaintext(plaintext)
+        <span class="self">Self</span>::from_verifiable_content(verifiable_content)
     }
 
     <span class="comment">// Internal constructor function. Does the following checks:
     // - Confirmation tag must be present for Commit messages
-    // - Membership tag must be present for member messages, if the original incoming message was not an MlsCiphertext
-    // - Ensures application messages were originally MlsCiphertext messages
-    </span><span class="kw">fn </span>from_plaintext(plaintext: VerifiableMlsAuthContent) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, ValidationError&gt; {
+    // - Membership tag must be present for member messages, if the original incoming message was not an PrivateMessage
+    // - Ensures application messages were originally PrivateMessage messages
+    </span><span class="kw">fn </span>from_verifiable_content(
+        verifiable_content: VerifiableAuthenticatedContent,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, ValidationError&gt; {
         <span class="comment">// ValSem009
-        </span><span class="kw">if </span>plaintext.content_type() == ContentType::Commit &amp;&amp; plaintext.confirmation_tag().is_none()
+        </span><span class="kw">if </span>verifiable_content.content_type() == ContentType::Commit
+            &amp;&amp; verifiable_content.confirmation_tag().is_none()
         {
             <span class="kw">return </span><span class="prelude-val">Err</span>(ValidationError::MissingConfirmationTag);
         }
         <span class="comment">// ValSem005
-        </span><span class="kw">if </span>plaintext.content_type() == ContentType::Application {
-            <span class="kw">if </span>plaintext.wire_format() != WireFormat::MlsCiphertext {
+        </span><span class="kw">if </span>verifiable_content.content_type() == ContentType::Application {
+            <span class="kw">if </span>verifiable_content.wire_format() != WireFormat::PrivateMessage {
                 <span class="kw">return </span><span class="prelude-val">Err</span>(ValidationError::UnencryptedApplicationMessage);
-            } <span class="kw">else if </span>!plaintext.sender().is_member() {
-                <span class="comment">// This should not happen because the sender of an MlsCiphertext should always be a member
+            } <span class="kw">else if </span>!verifiable_content.sender().is_member() {
+                <span class="comment">// This should not happen because the sender of an PrivateMessage should always be a member
                 </span><span class="kw">return </span><span class="prelude-val">Err</span>(LibraryError::custom(<span class="string">&quot;Expected sender to be member.&quot;</span>).into());
             }
         }
-        <span class="prelude-val">Ok</span>(DecryptedMessage { plaintext })
+        <span class="prelude-val">Ok</span>(DecryptedMessage { verifiable_content })
     }
 
     <span class="doccomment">/// Gets the correct credential from the message depending on the sender type.
@@ -701,36 +704,21 @@
             }
             <span class="comment">// External senders are not supported yet #106/#151.
             </span>Sender::External(<span class="kw">_</span>) =&gt; <span class="macro">unimplemented!</span>(),
-            Sender::NewMemberCommit =&gt; {
-                <span class="comment">// only external commits can have a sender type `NewMemberCommit`
-                </span><span class="kw">match </span><span class="self">self</span>.plaintext().content() {
-                    MlsContentBody::Commit(Commit { path, .. }) =&gt; path
-                        .as_ref()
-                        .map(|p| p.leaf_node().credential().clone())
-                        .ok_or(ValidationError::NoPath),
-                    <span class="kw">_ </span>=&gt; <span class="prelude-val">Err</span>(ValidationError::NotACommit),
-                }
-            }
-            Sender::NewMemberProposal =&gt; {
-                <span class="comment">// only External Add proposals can have a sender type `NewMemberProposal`
-                </span><span class="kw">match </span><span class="self">self</span>.plaintext().content() {
-                    MlsContentBody::Proposal(Proposal::Add(AddProposal { key_package })) =&gt; {
-                        <span class="prelude-val">Ok</span>(key_package.leaf_node().credential().clone())
-                    }
-                    <span class="kw">_ </span>=&gt; <span class="prelude-val">Err</span>(ValidationError::NotAnExternalAddProposal),
-                }
+            Sender::NewMemberCommit | Sender::NewMemberProposal =&gt; {
+                <span class="comment">// Fetch the credential from the message itself.
+                </span><span class="self">self</span>.verifiable_content.new_member_credential()
             }
         }
     }
 
     <span class="doccomment">/// Returns the sender.
     </span><span class="kw">pub fn </span>sender(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>Sender {
-        <span class="self">self</span>.plaintext.sender()
+        <span class="self">self</span>.verifiable_content.sender()
     }
 
-    <span class="doccomment">/// Returns the plaintext.
-    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>plaintext(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>VerifiableMlsAuthContent {
-        <span class="kw-2">&amp;</span><span class="self">self</span>.plaintext
+    <span class="doccomment">/// Returns the [`VerifiableAuthenticatedContent`].
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>verifiable_content(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>VerifiableAuthenticatedContent {
+        <span class="kw-2">&amp;</span><span class="self">self</span>.verifiable_content
     }
 }
 
@@ -739,7 +727,7 @@
 /// and the optional `aad` if the original message was encrypted.
 </span><span class="attribute">#[derive(Debug, Clone)]
 </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct </span>UnverifiedMessage {
-    plaintext: VerifiableMlsAuthContent,
+    verifiable_content: VerifiableAuthenticatedContent,
     credential: <span class="prelude-ty">Option</span>&lt;Credential&gt;,
 }
 
@@ -750,18 +738,18 @@
         credential: <span class="prelude-ty">Option</span>&lt;Credential&gt;,
     ) -&gt; <span class="self">Self </span>{
         UnverifiedMessage {
-            plaintext: decrypted_message.plaintext,
+            verifiable_content: decrypted_message.verifiable_content,
             credential,
         }
     }
 
     <span class="doccomment">/// Decomposes an [UnverifiedMessage] into its parts.
-    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>into_parts(<span class="self">self</span>) -&gt; (VerifiableMlsAuthContent, <span class="prelude-ty">Option</span>&lt;Credential&gt;) {
-        (<span class="self">self</span>.plaintext, <span class="self">self</span>.credential)
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>into_parts(<span class="self">self</span>) -&gt; (VerifiableAuthenticatedContent, <span class="prelude-ty">Option</span>&lt;Credential&gt;) {
+        (<span class="self">self</span>.verifiable_content, <span class="self">self</span>.credential)
     }
 }
 
-<span class="doccomment">/// Contains an VerifiableMlsAuthContent and a [Credential] if it is a message
+<span class="doccomment">/// Contains an VerifiableAuthenticatedContent and a [Credential] if it is a message
 /// from a `Member`, a `Preconfigured`, a `NewMemberProposal` or a `NewMemberCommit`. It sets the
 /// serialized group context and verifies the membership tag for member messages. It can be
 /// converted to a verified message by verifying the signature, either with the credential or an
@@ -783,11 +771,11 @@
         unverified_message: UnverifiedMessage,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, LibraryError&gt; {
         <span class="comment">// Decompose UnverifiedMessage
-        </span><span class="kw">let </span>(plaintext, credential_option) = unverified_message.into_parts();
-        <span class="kw">match </span>plaintext.sender() {
+        </span><span class="kw">let </span>(verifiable_content, credential_option) = unverified_message.into_parts();
+        <span class="kw">match </span>verifiable_content.sender() {
             Sender::Member(<span class="kw">_</span>) =&gt; {
                 <span class="prelude-val">Ok</span>(UnverifiedContextMessage::Group(UnverifiedGroupMessage {
-                    plaintext,
+                    verifiable_content,
                     <span class="comment">// If the message type is `Member` it always contains credentials
                     </span>credential: credential_option
                         .ok_or_else(|| LibraryError::custom(<span class="string">&quot;Expected credential&quot;</span>))<span class="question-mark">?</span>,
@@ -798,7 +786,7 @@
             Sender::NewMemberProposal | Sender::NewMemberCommit =&gt; {
                 <span class="prelude-val">Ok</span>(UnverifiedContextMessage::NewMember(
                     UnverifiedNewMemberMessage {
-                        plaintext,
+                        verifiable_content,
                         <span class="comment">// If the message type is `NewMemberCommit` or `NewMemberProposal` it always contains credentials
                         </span>credential: credential_option
                             .ok_or_else(|| LibraryError::custom(<span class="string">&quot;Expected credential&quot;</span>))<span class="question-mark">?</span>,
@@ -811,7 +799,7 @@
 
 <span class="doccomment">/// Part of [UnverifiedContextMessage].
 </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct </span>UnverifiedGroupMessage {
-    plaintext: VerifiableMlsAuthContent,
+    verifiable_content: VerifiableAuthenticatedContent,
     credential: Credential,
 }
 
@@ -825,9 +813,11 @@
         backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;VerifiedMemberMessage, ValidationError&gt; {
         <span class="comment">// ValSem010
-        </span><span class="self">self</span>.plaintext
+        </span><span class="self">self</span>.verifiable_content
             .verify(backend, <span class="kw-2">&amp;</span><span class="self">self</span>.credential)
-            .map(|plaintext| VerifiedMemberMessage { plaintext })
+            .map(|authenticated_content| VerifiedMemberMessage {
+                authenticated_content,
+            })
             .map_err(|<span class="kw">_</span>| ValidationError::InvalidSignature)
         <span class="comment">// XXX: We have tests checking for errors here. But really we should
         //      rewrite them.
@@ -846,7 +836,7 @@
 
 <span class="doccomment">/// Part of [UnverifiedContextMessage].
 </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct </span>UnverifiedNewMemberMessage {
-    plaintext: VerifiableMlsAuthContent,
+    verifiable_content: VerifiableAuthenticatedContent,
     credential: Credential,
 }
 
@@ -861,9 +851,11 @@
     ) -&gt; <span class="prelude-ty">Result</span>&lt;VerifiedExternalMessage, ValidationError&gt; {
         <span class="comment">// ValSem010
         </span><span class="kw">let </span>verified_external_message = <span class="self">self
-            </span>.plaintext
+            </span>.verifiable_content
             .verify(backend, <span class="kw-2">&amp;</span><span class="self">self</span>.credential)
-            .map(|plaintext| VerifiedExternalMessage { plaintext })
+            .map(|authenticated_content| VerifiedExternalMessage {
+                authenticated_content,
+            })
             .map_err(|<span class="kw">_</span>| ValidationError::InvalidSignature)<span class="question-mark">?</span>;
         <span class="prelude-val">Ok</span>(verified_external_message)
     }
@@ -877,37 +869,37 @@
 <span class="comment">// TODO #151/#106: We don&#39;t support external senders yet
 </span><span class="doccomment">/// Part of [UnverifiedContextMessage].
 </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct </span>UnverifiedExternalMessage {
-    _plaintext: VerifiableMlsAuthContent,
+    _verifiable_content: VerifiableAuthenticatedContent,
 }
 
 <span class="doccomment">/// Member message, where all semantic checks on the framing have been successfully performed.
 </span><span class="attribute">#[derive(Debug)]
 </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct </span>VerifiedMemberMessage {
-    plaintext: MlsAuthContent,
+    authenticated_content: AuthenticatedContent,
 }
 
 <span class="kw">impl </span>VerifiedMemberMessage {
-    <span class="doccomment">/// Consumes the message and returns the inner [MlsPlaintext].
-    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>take_plaintext(<span class="self">self</span>) -&gt; MlsAuthContent {
-        <span class="self">self</span>.plaintext
+    <span class="doccomment">/// Consumes the message and returns the inner [PublicMessage].
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>take_authenticated_content(<span class="self">self</span>) -&gt; AuthenticatedContent {
+        <span class="self">self</span>.authenticated_content
     }
 }
 
 <span class="doccomment">/// External message, where all semantic checks on the framing have been successfully performed.
 /// Note: External messages are not fully supported yet #106
 </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct </span>VerifiedExternalMessage {
-    plaintext: MlsAuthContent,
+    authenticated_content: AuthenticatedContent,
 }
 
 <span class="kw">impl </span>VerifiedExternalMessage {
-    <span class="doccomment">/// Returns a reference to the inner [MlsContent].
-    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>plaintext(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>MlsAuthContent {
-        <span class="kw-2">&amp;</span><span class="self">self</span>.plaintext
+    <span class="doccomment">/// Returns a reference to the inner [FramedContent].
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>authenticated_content(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>AuthenticatedContent {
+        <span class="kw-2">&amp;</span><span class="self">self</span>.authenticated_content
     }
 
-    <span class="doccomment">/// Consumes the message and returns the inner [MlsPlaintext].
-    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>take_plaintext(<span class="self">self</span>) -&gt; MlsAuthContent {
-        <span class="self">self</span>.plaintext
+    <span class="doccomment">/// Consumes the message and returns the inner [PublicMessage].
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>take_authenticated_content(<span class="self">self</span>) -&gt; AuthenticatedContent {
+        <span class="self">self</span>.authenticated_content
     }
 }
 

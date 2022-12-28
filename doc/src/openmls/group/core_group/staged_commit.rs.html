@@ -517,7 +517,9 @@
 <span id="517">517</span>
 <span id="518">518</span>
 <span id="519">519</span>
+<span id="520">520</span>
 </pre><pre class="rust"><code><span class="kw">use </span><span class="kw">crate</span>::ciphersuite::signable::Verifiable;
+<span class="kw">use </span><span class="kw">crate</span>::framing::mls_content::FramedContentBody;
 <span class="kw">use </span><span class="kw">crate</span>::treesync::errors::TreeSyncAddLeaf;
 <span class="kw">use </span><span class="kw">crate</span>::treesync::node::leaf_node::{
     LeafNodeTbs, OpenMlsLeafNode, TreeInfoTbs, VerifiableLeafNodeTbs,
@@ -575,7 +577,7 @@
     /// group.
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>stage_commit(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        mls_content: <span class="kw-2">&amp;</span>MlsAuthContent,
+        mls_content: <span class="kw-2">&amp;</span>AuthenticatedContent,
         proposal_store: <span class="kw-2">&amp;</span>ProposalStore,
         own_leaf_nodes: <span class="kw-2">&amp;</span>[OpenMlsLeafNode],
         backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider,
@@ -602,9 +604,9 @@
             }
         }
 
-        <span class="comment">// Extract Commit &amp; Confirmation Tag from MlsPlaintext
+        <span class="comment">// Extract Commit &amp; Confirmation Tag from PublicMessage
         </span><span class="kw">let </span>commit = <span class="kw">match </span>mls_content.content() {
-            MlsContentBody::Commit(commit) =&gt; commit,
+            FramedContentBody::Commit(commit) =&gt; commit,
             <span class="kw">_ </span>=&gt; <span class="kw">return </span><span class="prelude-val">Err</span>(StageCommitError::WrongPlaintextContentType),
         };
 
@@ -715,7 +717,7 @@
 
         <span class="comment">// Determine if Commit has a path
         </span><span class="kw">let </span>commit_secret = <span class="kw">if let </span><span class="prelude-val">Some</span>(path) = commit.path.clone() {
-            <span class="comment">// Verify the leaf node and MlsPlaintext membership tag
+            <span class="comment">// Verify the leaf node and PublicMessage membership tag
             // Note that the signature must have been verified already.
             // TODO #106: Support external members
             </span><span class="kw">let </span>leaf_node = path.leaf_node();
@@ -824,7 +826,7 @@
         <span class="kw">let </span>confirmed_transcript_hash = update_confirmed_transcript_hash(
             ciphersuite,
             backend,
-            <span class="comment">// It is ok to use return a library error here, because we know the MlsPlaintext contains a Commit
+            <span class="comment">// It is ok to use return a library error here, because we know the PublicMessage contains a Commit
             </span><span class="kw-2">&amp;</span>ConfirmedTranscriptHashInput::try_from(mls_content)
                 .map_err(|<span class="kw">_</span>| LibraryError::custom(<span class="string">&quot;Could not convert commit content&quot;</span>))<span class="question-mark">?</span>,
             <span class="kw-2">&amp;</span><span class="self">self</span>.interim_transcript_hash,

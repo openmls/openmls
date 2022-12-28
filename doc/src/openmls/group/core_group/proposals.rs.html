@@ -556,11 +556,15 @@
 <span id="556">556</span>
 <span id="557">557</span>
 <span id="558">558</span>
+<span id="559">559</span>
+<span id="560">560</span>
 </pre><pre class="rust"><code><span class="kw">use crate</span>::{
     binary_tree::array_representation::LeafNodeIndex,
     ciphersuite::hash_ref::ProposalRef,
     error::LibraryError,
-    framing::<span class="kw-2">*</span>,
+    framing::{
+        mls_auth_content::AuthenticatedContent, mls_content::FramedContentBody, Sender, SenderError,
+    },
     group::errors::<span class="kw-2">*</span>,
     messages::proposals::{
         AddProposal, PreSharedKeyProposal, Proposal, ProposalOrRef, ProposalOrRefType,
@@ -606,7 +610,7 @@
 }
 
 <span class="doccomment">/// Alternative representation of a Proposal, where the sender is extracted from
-/// the encapsulating MlsPlaintext and the ProposalRef is attached.
+/// the encapsulating PublicMessage and the ProposalRef is attached.
 </span><span class="attribute">#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 </span><span class="kw">pub struct </span>QueuedProposal {
     proposal: Proposal,
@@ -616,21 +620,21 @@
 }
 
 <span class="kw">impl </span>QueuedProposal {
-    <span class="doccomment">/// Creates a new [QueuedProposal] from an [MlsPlaintext]
-    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>from_mls_plaintext(
+    <span class="doccomment">/// Creates a new [QueuedProposal] from an [PublicMessage]
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>from_authenticated_content(
         ciphersuite: Ciphersuite,
         backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider,
-        mls_plaintext: MlsAuthContent,
+        public_message: AuthenticatedContent,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, LibraryError&gt; {
-        <span class="kw">let </span>proposal = <span class="kw">match </span>mls_plaintext.content() {
-            MlsContentBody::Proposal(p) =&gt; p,
+        <span class="kw">let </span>proposal = <span class="kw">match </span>public_message.content() {
+            FramedContentBody::Proposal(p) =&gt; p,
             <span class="kw">_ </span>=&gt; <span class="kw">return </span><span class="prelude-val">Err</span>(LibraryError::custom(<span class="string">&quot;Wrong content type&quot;</span>)),
         };
         <span class="kw">let </span>proposal_reference = ProposalRef::from_proposal(ciphersuite, backend, proposal)<span class="question-mark">?</span>;
         <span class="prelude-val">Ok</span>(<span class="self">Self </span>{
             proposal: proposal.clone(), <span class="comment">// FIXME
             </span>proposal_reference,
-            sender: mls_plaintext.sender().clone(),
+            sender: public_message.sender().clone(),
             proposal_or_ref_type: ProposalOrRefType::Reference,
         })
     }

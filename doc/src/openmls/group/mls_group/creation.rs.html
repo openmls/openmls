@@ -423,7 +423,7 @@
             ResumptionPskStore::new(mls_group_config.number_of_resumption_psks);
 
         <span class="comment">// Prepare the commit parameters
-        </span><span class="kw">let </span>framing_parameters = FramingParameters::new(aad, WireFormat::MlsPlaintext);
+        </span><span class="kw">let </span>framing_parameters = FramingParameters::new(aad, WireFormat::PublicMessage);
 
         <span class="kw">let </span>proposal_store = ProposalStore::new();
         <span class="kw">let </span>params = CreateCommitParams::builder()
@@ -454,7 +454,7 @@
 
         <span class="prelude-val">Ok</span>((
             mls_group,
-            MlsPlaintext::from(create_commit_result.commit).into(),
+            PublicMessage::from(create_commit_result.commit).into(),
         ))
     }
 }

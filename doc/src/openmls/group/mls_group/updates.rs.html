@@ -187,6 +187,7 @@
 <span id="187">187</span>
 <span id="188">188</span>
 <span id="189">189</span>
+<span id="190">190</span>
 </pre><pre class="rust"><code><span class="kw">use </span>core_group::create_commit_params::CreateCommitParams;
 <span class="kw">use </span>tls_codec::Serialize;
 
@@ -271,9 +272,9 @@
             </span>}
         };
 
-        <span class="comment">// Convert MlsPlaintext messages to MLSMessage and encrypt them if required by
+        <span class="comment">// Convert PublicMessage messages to MLSMessage and encrypt them if required by
         // the configuration
-        </span><span class="kw">let </span>mls_message = <span class="self">self</span>.plaintext_to_mls_message(create_commit_result.commit, backend)<span class="question-mark">?</span>;
+        </span><span class="kw">let </span>mls_message = <span class="self">self</span>.content_to_mls_message(create_commit_result.commit, backend)<span class="question-mark">?</span>;
 
         <span class="comment">// Set the current group state to [`MlsGroupState::PendingCommit`],
         // storing the current [`StagedCommit`] from the commit results
@@ -362,13 +363,14 @@
         )<span class="question-mark">?</span>;
 
         <span class="self">self</span>.own_leaf_nodes.push(rekeyed_own_leaf);
-        <span class="self">self</span>.proposal_store.add(QueuedProposal::from_mls_plaintext(
-            <span class="self">self</span>.ciphersuite(),
-            backend,
-            update_proposal.clone(),
-        )<span class="question-mark">?</span>);
+        <span class="self">self</span>.proposal_store
+            .add(QueuedProposal::from_authenticated_content(
+                <span class="self">self</span>.ciphersuite(),
+                backend,
+                update_proposal.clone(),
+            )<span class="question-mark">?</span>);
 
-        <span class="kw">let </span>mls_message = <span class="self">self</span>.plaintext_to_mls_message(update_proposal, backend)<span class="question-mark">?</span>;
+        <span class="kw">let </span>mls_message = <span class="self">self</span>.content_to_mls_message(update_proposal, backend)<span class="question-mark">?</span>;
 
         <span class="comment">// Since the state of the group might be changed, arm the state flag
         </span><span class="self">self</span>.flag_state_change();

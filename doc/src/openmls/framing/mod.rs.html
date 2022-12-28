@@ -72,9 +72,87 @@
 <span id="72">72</span>
 <span id="73">73</span>
 <span id="74">74</span>
+<span id="75">75</span>
+<span id="76">76</span>
+<span id="77">77</span>
+<span id="78">78</span>
+<span id="79">79</span>
+<span id="80">80</span>
+<span id="81">81</span>
+<span id="82">82</span>
+<span id="83">83</span>
+<span id="84">84</span>
+<span id="85">85</span>
+<span id="86">86</span>
+<span id="87">87</span>
+<span id="88">88</span>
+<span id="89">89</span>
+<span id="90">90</span>
+<span id="91">91</span>
+<span id="92">92</span>
+<span id="93">93</span>
+<span id="94">94</span>
+<span id="95">95</span>
+<span id="96">96</span>
+<span id="97">97</span>
+<span id="98">98</span>
+<span id="99">99</span>
+<span id="100">100</span>
+<span id="101">101</span>
+<span id="102">102</span>
+<span id="103">103</span>
+<span id="104">104</span>
+<span id="105">105</span>
+<span id="106">106</span>
+<span id="107">107</span>
+<span id="108">108</span>
+<span id="109">109</span>
+<span id="110">110</span>
+<span id="111">111</span>
+<span id="112">112</span>
+<span id="113">113</span>
+<span id="114">114</span>
+<span id="115">115</span>
+<span id="116">116</span>
+<span id="117">117</span>
 </pre><pre class="rust"><code><span class="doccomment">//! # Message framing
 //!
 //! This module contains framing-related operations for MLS messages, including validation operations.
+//! The general structure of the framing process in OpenMLS closely mirrors the
+//! one described in Section 7 of the MLS specification. It can be visualized as follows:
+//!
+//! ```text
+//!                               Proposal        Commit     Application Data
+//!                                  |              |              |
+//!                                  +--------------+--------------+
+//!                                                 |
+//!                                                 V
+//!                                          FramedContent
+//!                                              |  |                -.
+//!                                              |  |                  |
+//!                                     +--------+  |                  |
+//!                                     |           |                  |
+//!                                     V           |                  +-- Asymmetric
+//!                           FramedContentAuthData |                  |   Sign / Verify
+//!                                     |           |                  |
+//!                                     +--------+  |                  |
+//!                                              |  |                  |
+//!                                              V  V                -&#39;
+//!                                        AuthenticatedContent
+//!                                                 |                -.
+//!                                                 |                  |
+//!                                                 |                  |
+//!                                        +--------+--------+         +-- Symmetric
+//!                                        |                 |         |   Protect / Unprotect
+//!                                        V                 V         |
+//! Welcome  KeyPackage  GroupInfo   PublicMessage    PrivateMessage -&#39;
+//!    |          |          |             |                 |
+//!    |          |          |             |                 |
+//!    +----------+----------+----+--------+-----------------+
+//!                               |
+//!                               V
+//!                           MLSMessage
+//! ```
 //!
 //!  - [`MlsMessageIn`]/[`MlsMessageOut`]: Unified message type for incoming &amp; outgoing MLS messages
 //!  - [`ApplicationMessage`]: Application message received through a [`ProcessedMessage`]
@@ -87,15 +165,23 @@
 <span class="kw">use </span>serde::{Deserialize, Serialize};
 <span class="kw">use </span>tls_codec::<span class="kw-2">*</span>;
 
-<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">mod </span>ciphertext;
 <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">mod </span>codec;
 <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">mod </span>message;
-<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">mod </span>plaintext;
+<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">mod </span>mls_auth_content;
+<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">mod </span>mls_content;
+<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">mod </span>private_message;
+<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">mod </span>public_message;
 <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">mod </span>sender;
 <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">mod </span>validation;
-<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">use </span>ciphertext::<span class="kw-2">*</span>;
 <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">use </span>errors::<span class="kw-2">*</span>;
-<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">use </span>plaintext::<span class="kw-2">*</span>;
+<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">use </span>private_message::<span class="kw-2">*</span>;
+<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">use </span>public_message::<span class="kw-2">*</span>;
+
+<span class="attribute">#[cfg(any(feature = <span class="string">&quot;test-utils&quot;</span>, test))]
+</span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">use </span>mls_auth_content::<span class="kw-2">*</span>;
+
+<span class="attribute">#[cfg(test)]
+</span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">use </span>mls_content::<span class="kw-2">*</span>;
 
 <span class="comment">// Crate
 </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">use </span>sender::<span class="kw-2">*</span>;
@@ -118,9 +204,9 @@
 #[repr(u8)]
 </span><span class="kw">pub enum </span>WireFormat {
     <span class="doccomment">/// Plaintext message
-    </span>MlsPlaintext = <span class="number">1</span>,
+    </span>PublicMessage = <span class="number">1</span>,
     <span class="doccomment">/// Encrypted message
-    </span>MlsCiphertext = <span class="number">2</span>,
+    </span>PrivateMessage = <span class="number">2</span>,
 }
 
 <span class="doccomment">/// This struct is used to group common framing parameters

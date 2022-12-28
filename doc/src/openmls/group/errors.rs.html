@@ -594,14 +594,14 @@
     <span class="doccomment">/// See [`LibraryError`] for more details.
     </span><span class="attribute">#[error(transparent)]
     </span>LibraryError(<span class="attribute">#[from] </span>LibraryError),
-    <span class="doccomment">/// The epoch of the group context and MlsPlaintext didn&#39;t match.
-    </span><span class="attribute">#[error(<span class="string">&quot;The epoch of the group context and MlsPlaintext didn&#39;t match.&quot;</span>)]
+    <span class="doccomment">/// The epoch of the group context and PublicMessage didn&#39;t match.
+    </span><span class="attribute">#[error(<span class="string">&quot;The epoch of the group context and PublicMessage didn&#39;t match.&quot;</span>)]
     </span>EpochMismatch,
     <span class="doccomment">/// The Commit was created by this client.
     </span><span class="attribute">#[error(<span class="string">&quot;The Commit was created by this client.&quot;</span>)]
     </span>OwnCommit,
-    <span class="doccomment">/// stage_commit was called with an MlsPlaintext that is not a Commit.
-    </span><span class="attribute">#[error(<span class="string">&quot;stage_commit was called with an MlsPlaintext that is not a Commit.&quot;</span>)]
+    <span class="doccomment">/// stage_commit was called with an PublicMessage that is not a Commit.
+    </span><span class="attribute">#[error(<span class="string">&quot;stage_commit was called with an PublicMessage that is not a Commit.&quot;</span>)]
     </span>WrongPlaintextContentType,
     <span class="doccomment">/// Unable to verify the leaf node signature.
     </span><span class="attribute">#[error(<span class="string">&quot;Unable to verify the leaf node signature.&quot;</span>)]
@@ -688,17 +688,17 @@
     <span class="doccomment">/// Message epoch differs from the group&#39;s epoch.
     </span><span class="attribute">#[error(<span class="string">&quot;Message epoch differs from the group&#39;s epoch.&quot;</span>)]
     </span>WrongEpoch,
-    <span class="doccomment">/// The MlsPlaintext is not a Commit despite the sender begin of type [NewMemberCommit](crate::prelude::Sender::NewMemberCommit).
-    </span><span class="attribute">#[error(<span class="string">&quot;The MlsPlaintext is not a Commit despite the sender begin of type NewMemberCommit.&quot;</span>)]
+    <span class="doccomment">/// The PublicMessage is not a Commit despite the sender begin of type [NewMemberCommit](crate::prelude::Sender::NewMemberCommit).
+    </span><span class="attribute">#[error(<span class="string">&quot;The PublicMessage is not a Commit despite the sender begin of type NewMemberCommit.&quot;</span>)]
     </span>NotACommit,
-    <span class="doccomment">/// The MlsPlaintext is not an External Add Proposal despite the sender begin of type [NewMemberProposal](crate::prelude::Sender::NewMemberProposal).
-    </span><span class="attribute">#[error(<span class="string">&quot;The MlsPlaintext is not an external Add proposal despite the sender begin of type NewMemberProposal.&quot;</span>)]
+    <span class="doccomment">/// The PublicMessage is not an External Add Proposal despite the sender begin of type [NewMemberProposal](crate::prelude::Sender::NewMemberProposal).
+    </span><span class="attribute">#[error(<span class="string">&quot;The PublicMessage is not an external Add proposal despite the sender begin of type NewMemberProposal.&quot;</span>)]
     </span>NotAnExternalAddProposal,
     <span class="doccomment">/// The Commit doesn&#39;t have a path despite the sender being of type NewMemberCommit.
     </span><span class="attribute">#[error(<span class="string">&quot;The Commit doesn&#39;t have a path despite the sender being of type NewMemberCommit.&quot;</span>)]
     </span>NoPath,
-    <span class="doccomment">/// The MlsPlaintext contains an application message but was not encrypted.
-    </span><span class="attribute">#[error(<span class="string">&quot;The MlsPlaintext contains an application message but was not encrypted.&quot;</span>)]
+    <span class="doccomment">/// The PublicMessage contains an application message but was not encrypted.
+    </span><span class="attribute">#[error(<span class="string">&quot;The PublicMessage contains an application message but was not encrypted.&quot;</span>)]
     </span>UnencryptedApplicationMessage,
     <span class="doccomment">/// Sender is not part of the group.
     </span><span class="attribute">#[error(<span class="string">&quot;Sender is not part of the group.&quot;</span>)]

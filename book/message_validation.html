@@ -146,7 +146,7 @@
 <h2 id="validation-steps"><a class="header" href="#validation-steps">Validation steps</a></h2>
 <p>Validation is enforced using Rust's type system. The chain of functions used to process incoming messages is described in the chapter on <a href="user_manual/processing.html">Processing incoming messages</a>, where each function takes a distinct type as input and produces a distinct type as output, thus ensuring that the individual steps can't be skipped. We now detail which step performs which validation checks.</p>
 <h3 id="syntax-validation"><a class="header" href="#syntax-validation">Syntax validation</a></h3>
-<p>Incoming messages in the shape of a byte string can only be deserialized into a <code>MlsMessageIn</code> struct. Deserialization ensures that the message is a syntactically correct MLS message, i.e., either an MLSPlaintext or an MLSCiphertext.
+<p>Incoming messages in the shape of a byte string can only be deserialized into a <code>MlsMessageIn</code> struct. Deserialization ensures that the message is a syntactically correct MLS message, i.e., either a PublicMessage or a PrivateMessage.
 Further syntax checks are applied for the latter case once the message is decrypted.</p>
 <h3 id="semantic-validation"><a class="header" href="#semantic-validation">Semantic validation</a></h3>
 <p>Every function in the processing chain performs several semantic validation steps. For a list of these steps, see <a href="message_validation.html#detailed-list-of-validation-steps">below</a>. In the following, we will give a brief overview of which function performs which category of checks.</p>
@@ -175,7 +175,7 @@ Further syntax checks are applied for the latter case once the message is decryp
 <tr><td><code>ValSem008</code></td><td>Membership tag verification</td><td>✅</td><td>✅</td><td><code>openmls/src/group/tests/test_framing_validation.rs</code></td></tr>
 <tr><td><code>ValSem009</code></td><td>Confirmation tag presence</td><td>✅</td><td>✅</td><td><code>openmls/src/group/tests/test_framing_validation.rs</code></td></tr>
 <tr><td><code>ValSem010</code></td><td>Signature verification</td><td>✅</td><td>✅</td><td><code>openmls/src/group/tests/test_framing_validation.rs</code></td></tr>
-<tr><td><code>ValSem011</code></td><td>MLSCiphertextContent padding must be all-zero</td><td>✅</td><td>✅</td><td><code>openmls/src/group/tests/test_framing.rs</code></td></tr>
+<tr><td><code>ValSem011</code></td><td>PrivateContentTbe padding must be all-zero</td><td>✅</td><td>✅</td><td><code>openmls/src/group/tests/test_framing.rs</code></td></tr>
 </tbody></table>
 </div>
 <h3 id="semantic-validation-of-proposals-covered-by-a-commit"><a class="header" href="#semantic-validation-of-proposals-covered-by-a-commit">Semantic validation of proposals covered by a Commit</a></h3>

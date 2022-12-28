@@ -441,7 +441,7 @@
     binary_tree::array_representation::LeafNodeIndex,
     credentials::{Credential, CredentialBundle},
     error::LibraryError,
-    framing::<span class="kw-2">*</span>,
+    framing::{mls_auth_content::AuthenticatedContent, <span class="kw-2">*</span>},
     group::<span class="kw-2">*</span>,
     key_packages::{KeyPackage, KeyPackageBundle},
     messages::{proposals::<span class="kw-2">*</span>, Welcome},
@@ -759,17 +759,17 @@
 
 <span class="comment">// Private methods of MlsGroup
 </span><span class="kw">impl </span>MlsGroup {
-    <span class="doccomment">/// Converts MlsPlaintext to MlsMessageOut. Depending on whether handshake
-    /// message should be encrypted, MlsPlaintext messages are encrypted to
-    /// MlsCiphertext first.
-    </span><span class="kw">fn </span>plaintext_to_mls_message(
+    <span class="doccomment">/// Converts PublicMessage to MlsMessageOut. Depending on whether handshake
+    /// message should be encrypted, PublicMessage messages are encrypted to
+    /// PrivateMessage first.
+    </span><span class="kw">fn </span>content_to_mls_message(
         <span class="kw-2">&amp;mut </span><span class="self">self</span>,
-        mls_auth_content: MlsAuthContent,
+        mls_auth_content: AuthenticatedContent,
         backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;MlsMessageOut, LibraryError&gt; {
         <span class="kw">let </span>msg = <span class="kw">match </span><span class="self">self</span>.configuration().wire_format_policy().outgoing() {
             OutgoingWireFormatPolicy::AlwaysPlaintext =&gt; {
-                <span class="kw">let </span><span class="kw-2">mut </span>plaintext: MlsPlaintext = mls_auth_content.into();
+                <span class="kw">let </span><span class="kw-2">mut </span>plaintext: PublicMessage = mls_auth_content.into();
                 <span class="comment">// Set the membership tag only if the sender type is `Member`.
                 </span><span class="kw">if </span>plaintext.sender().is_member() {
                     plaintext.set_membership_tag(

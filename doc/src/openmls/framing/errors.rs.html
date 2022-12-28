@@ -101,8 +101,8 @@
     <span class="doccomment">/// An error occurred during AEAD decryption.
     </span><span class="attribute">#[error(<span class="string">&quot;An error occurred during AEAD decryption.&quot;</span>)]
     </span>AeadError,
-    <span class="doccomment">/// The WireFormat was not MLSCiphertext.
-    </span><span class="attribute">#[error(<span class="string">&quot;The WireFormat was not MLSCiphertext.&quot;</span>)]
+    <span class="doccomment">/// The WireFormat was not PrivateMessage.
+    </span><span class="attribute">#[error(<span class="string">&quot;The WireFormat was not PrivateMessage.&quot;</span>)]
     </span>WrongWireFormat,
     <span class="doccomment">/// The content is malformed.
     </span><span class="attribute">#[error(<span class="string">&quot;The content is malformed.&quot;</span>)]
@@ -121,8 +121,8 @@
     <span class="doccomment">/// See [`LibraryError`] for more details.
     </span><span class="attribute">#[error(transparent)]
     </span>LibraryError(<span class="attribute">#[from] </span>LibraryError),
-    <span class="doccomment">/// The WireFormat was not MLSCiphertext.
-    </span><span class="attribute">#[error(<span class="string">&quot;The WireFormat was not MLSCiphertext.&quot;</span>)]
+    <span class="doccomment">/// The WireFormat was not PrivateMessage.
+    </span><span class="attribute">#[error(<span class="string">&quot;The WireFormat was not PrivateMessage.&quot;</span>)]
     </span>WrongWireFormat,
     <span class="doccomment">/// See [`SecretTreeError`] for more details.
     </span><span class="attribute">#[error(transparent)]

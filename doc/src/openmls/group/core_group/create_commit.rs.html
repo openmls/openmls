@@ -670,8 +670,8 @@
         </span><span class="kw">let </span><span class="kw-2">mut </span>provisional_epoch = <span class="self">self</span>.group_context.epoch();
         provisional_epoch.increment();
 
-        <span class="comment">// Build MlsAuthContent
-        </span><span class="kw">let </span><span class="kw-2">mut </span>commit = MlsAuthContent::commit(
+        <span class="comment">// Build AuthenticatedContent
+        </span><span class="kw">let </span><span class="kw-2">mut </span>commit = AuthenticatedContent::commit(
             <span class="kw-2">*</span>params.framing_parameters(),
             sender,
             commit,
@@ -684,10 +684,10 @@
         </span><span class="kw">let </span>confirmed_transcript_hash = update_confirmed_transcript_hash(
             ciphersuite,
             backend,
-            <span class="comment">// It is ok to a library error here, because we know the MlsPlaintext contains a
+            <span class="comment">// It is ok to a library error here, because we know the PublicMessage contains a
             // Commit
             </span><span class="kw-2">&amp;</span>ConfirmedTranscriptHashInput::try_from(<span class="kw-2">&amp;</span>commit)
-                .map_err(|<span class="kw">_</span>| LibraryError::custom(<span class="string">&quot;MlsPlaintext did not contain a commit&quot;</span>))<span class="question-mark">?</span>,
+                .map_err(|<span class="kw">_</span>| LibraryError::custom(<span class="string">&quot;PublicMessage did not contain a commit&quot;</span>))<span class="question-mark">?</span>,
             <span class="kw-2">&amp;</span><span class="self">self</span>.interim_transcript_hash,
         )<span class="question-mark">?</span>;
 

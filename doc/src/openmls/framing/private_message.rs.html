@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `openmls/src/framing/ciphertext.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>ciphertext.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" href="../../../normalize.css"><link rel="stylesheet" href="../../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" href="../../../ayu.css" disabled><link rel="stylesheet" href="../../../dark.css" disabled><link rel="stylesheet" href="../../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../../storage.js"></script><script defer src="../../../source-script.js"></script><script defer src="../../../source-files.js"></script><script defer src="../../../main.js"></script><noscript><link rel="stylesheet" href="../../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><div class="width-limiter"><nav class="sub"><a class="sub-logo-container" href="../../../openmls/index.html"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></a><form class="search-form"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../wheel.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><pre class="src-line-numbers"><span id="1">1</span>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `openmls/src/framing/private_message.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>private_message.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" href="../../../normalize.css"><link rel="stylesheet" href="../../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" href="../../../ayu.css" disabled><link rel="stylesheet" href="../../../dark.css" disabled><link rel="stylesheet" href="../../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../../storage.js"></script><script defer src="../../../source-script.js"></script><script defer src="../../../source-files.js"></script><script defer src="../../../main.js"></script><noscript><link rel="stylesheet" href="../../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><div class="width-limiter"><nav class="sub"><a class="sub-logo-container" href="../../../openmls/index.html"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></a><form class="search-form"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../wheel.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><pre class="src-line-numbers"><span id="1">1</span>
 <span id="2">2</span>
 <span id="3">3</span>
 <span id="4">4</span>
@@ -540,15 +540,33 @@
 <span id="540">540</span>
 <span id="541">541</span>
 <span id="542">542</span>
+<span id="543">543</span>
+<span id="544">544</span>
+<span id="545">545</span>
+<span id="546">546</span>
+<span id="547">547</span>
+<span id="548">548</span>
+<span id="549">549</span>
+<span id="550">550</span>
+<span id="551">551</span>
+<span id="552">552</span>
+<span id="553">553</span>
 </pre><pre class="rust"><code><span class="kw">use </span>openmls_traits::{types::Ciphersuite, OpenMlsCryptoProvider};
 <span class="kw">use </span>std::io::Write;
 <span class="kw">use </span>tls_codec::{Deserialize, Serialize, Size, TlsDeserialize, TlsSerialize, TlsSize};
 
-<span class="kw">use </span><span class="kw">super</span>::codec::deserialize_ciphertext_content;
+<span class="kw">use super</span>::{
+    codec::deserialize_ciphertext_content,
+    mls_auth_content::{
+        AuthenticatedContent, FramedContentAuthData, VerifiableAuthenticatedContent,
+    },
+    mls_content::{ContentType, FramedContentBody},
+};
 
 <span class="kw">use crate</span>::{
     binary_tree::array_representation::LeafNodeIndex,
     error::LibraryError,
+    framing::mls_content::FramedContentTbs,
     tree::{
         index::SecretTreeLeafIndex, secret_tree::SecretType,
         sender_ratchet::SenderRatchetConfiguration,
@@ -557,12 +575,12 @@
 
 <span class="kw">use super</span>::<span class="kw-2">*</span>;
 
-<span class="doccomment">/// `MlsCiphertext` is the framing struct for an encrypted `MlsPlaintext`.
+<span class="doccomment">/// `PrivateMessage` is the framing struct for an encrypted `PublicMessage`.
 /// This message format is meant to be sent to and received from the Delivery
 /// Service.
 ///
 /// ```c
-/// // draft-ietf-mls-protocol-16
+/// // draft-ietf-mls-protocol-17
 /// struct {
 ///     opaque group_id&lt;V&gt;;
 ///     uint64 epoch;
@@ -570,10 +588,10 @@
 ///     opaque authenticated_data&lt;V&gt;;
 ///     opaque encrypted_sender_data&lt;V&gt;;
 ///     opaque ciphertext&lt;V&gt;;
-/// } MLSCiphertext;
+/// } PrivateMessage;
 /// ```
 </span><span class="attribute">#[derive(Debug, PartialEq, Clone, TlsSerialize, TlsSize, TlsDeserialize)]
-</span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct </span>MlsCiphertext {
+</span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct </span>PrivateMessage {
     group_id: GroupId,
     epoch: GroupEpoch,
     content_type: ContentType,
@@ -588,7 +606,7 @@
     <span class="kw">pub</span>(<span class="kw">crate</span>) sender: LeafNodeIndex,
 }
 
-<span class="kw">impl </span>MlsCiphertext {
+<span class="kw">impl </span>PrivateMessage {
     <span class="attribute">#[cfg(test)]
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>new(
         group_id: GroupId,
@@ -608,26 +626,26 @@
         }
     }
 
-    <span class="doccomment">/// Try to create a new `MlsCiphertext` from an `MlsAuthContent`.
+    <span class="doccomment">/// Try to create a new `PrivateMessage` from an `AuthenticatedContent`.
     ///
     /// TODO #1148: Refactor theses constructors to avoid test code in main and
     /// to avoid validation using a special feature flag.
-    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>try_from_plaintext(
-        mls_plaintext: <span class="kw-2">&amp;</span>MlsAuthContent,
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>try_from_authenticated_content(
+        public_message: <span class="kw-2">&amp;</span>AuthenticatedContent,
         ciphersuite: Ciphersuite,
         backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider,
         message_secrets: <span class="kw-2">&amp;mut </span>MessageSecrets,
         padding_size: usize,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;MlsCiphertext, MessageEncryptionError&gt; {
-        <span class="macro">log::debug!</span>(<span class="string">&quot;MlsCiphertext::try_from_plaintext&quot;</span>);
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;PrivateMessage, MessageEncryptionError&gt; {
+        <span class="macro">log::debug!</span>(<span class="string">&quot;PrivateMessage::try_from_authenticated_content&quot;</span>);
         <span class="macro">log::trace!</span>(<span class="string">&quot;  ciphersuite: {}&quot;</span>, ciphersuite);
         <span class="comment">// Check the message has the correct wire format
-        </span><span class="kw">if </span>mls_plaintext.wire_format() != WireFormat::MlsCiphertext {
+        </span><span class="kw">if </span>public_message.wire_format() != WireFormat::PrivateMessage {
             <span class="kw">return </span><span class="prelude-val">Err</span>(MessageEncryptionError::WrongWireFormat);
         }
         <span class="self">Self</span>::encrypt_content(
             <span class="prelude-val">None</span>,
-            mls_plaintext,
+            public_message,
             ciphersuite,
             backend,
             message_secrets,
@@ -637,15 +655,15 @@
 
     <span class="attribute">#[cfg(test)]
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>encrypt_without_check(
-        mls_plaintext: <span class="kw-2">&amp;</span>MlsAuthContent,
+        public_message: <span class="kw-2">&amp;</span>AuthenticatedContent,
         ciphersuite: Ciphersuite,
         backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider,
         message_secrets: <span class="kw-2">&amp;mut </span>MessageSecrets,
         padding_size: usize,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;MlsCiphertext, MessageEncryptionError&gt; {
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;PrivateMessage, MessageEncryptionError&gt; {
         <span class="self">Self</span>::encrypt_content(
             <span class="prelude-val">None</span>,
-            mls_plaintext,
+            public_message,
             ciphersuite,
             backend,
             message_secrets,
@@ -655,16 +673,16 @@
 
     <span class="attribute">#[cfg(any(feature = <span class="string">&quot;test-utils&quot;</span>, test))]
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>encrypt_with_different_header(
-        mls_plaintext: <span class="kw-2">&amp;</span>MlsAuthContent,
+        public_message: <span class="kw-2">&amp;</span>AuthenticatedContent,
         ciphersuite: Ciphersuite,
         backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider,
         header: MlsMessageHeader,
         message_secrets: <span class="kw-2">&amp;mut </span>MessageSecrets,
         padding_size: usize,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;MlsCiphertext, MessageEncryptionError&gt; {
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;PrivateMessage, MessageEncryptionError&gt; {
         <span class="self">Self</span>::encrypt_content(
             <span class="prelude-val">Some</span>(header),
-            mls_plaintext,
+            public_message,
             ciphersuite,
             backend,
             message_secrets,
@@ -673,16 +691,16 @@
     }
 
     <span class="doccomment">/// Internal function to encrypt content. The extra message header is only used
-    /// for tests. Otherwise, the data from the given `MlsAuthContent` is used.
+    /// for tests. Otherwise, the data from the given `AuthenticatedContent` is used.
     </span><span class="kw">fn </span>encrypt_content(
         test_header: <span class="prelude-ty">Option</span>&lt;MlsMessageHeader&gt;,
-        mls_plaintext: <span class="kw-2">&amp;</span>MlsAuthContent,
+        public_message: <span class="kw-2">&amp;</span>AuthenticatedContent,
         ciphersuite: Ciphersuite,
         backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider,
         message_secrets: <span class="kw-2">&amp;mut </span>MessageSecrets,
         padding_size: usize,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;MlsCiphertext, MessageEncryptionError&gt; {
-        <span class="kw">let </span>sender_index = <span class="kw">if let </span><span class="prelude-val">Some</span>(index) = mls_plaintext.sender().as_member() {
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;PrivateMessage, MessageEncryptionError&gt; {
+        <span class="kw">let </span>sender_index = <span class="kw">if let </span><span class="prelude-val">Some</span>(index) = public_message.sender().as_member() {
             index
         } <span class="kw">else </span>{
             <span class="kw">return </span><span class="prelude-val">Err</span>(MessageEncryptionError::SenderError(SenderError::NotAMember));
@@ -691,23 +709,23 @@
         </span><span class="kw">let </span>header = <span class="kw">match </span>test_header {
             <span class="prelude-val">Some</span>(header) <span class="kw">if </span><span class="macro">cfg!</span>(any(feature = <span class="string">&quot;test-utils&quot;</span>, test)) =&gt; header,
             <span class="kw">_ </span>=&gt; MlsMessageHeader {
-                group_id: mls_plaintext.group_id().clone(),
-                epoch: mls_plaintext.epoch(),
+                group_id: public_message.group_id().clone(),
+                epoch: public_message.epoch(),
                 sender: sender_index,
             },
         };
         <span class="comment">// Serialize the content AAD
-        </span><span class="kw">let </span>mls_ciphertext_content_aad = MlsCiphertextContentAad {
+        </span><span class="kw">let </span>private_message_content_aad = PrivateContentAad {
             group_id: header.group_id.clone(),
             epoch: header.epoch,
-            content_type: mls_plaintext.content().content_type(),
-            authenticated_data: TlsByteSliceU32(mls_plaintext.authenticated_data()),
+            content_type: public_message.content().content_type(),
+            authenticated_data: TlsByteSliceU32(public_message.authenticated_data()),
         };
-        <span class="kw">let </span>mls_ciphertext_content_aad_bytes = mls_ciphertext_content_aad
+        <span class="kw">let </span>private_message_content_aad_bytes = private_message_content_aad
             .tls_serialize_detached()
             .map_err(LibraryError::missing_bound_check)<span class="question-mark">?</span>;
         <span class="comment">// Extract generation and key material for encryption
-        </span><span class="kw">let </span>secret_type = SecretType::from(<span class="kw-2">&amp;</span>mls_plaintext.content().content_type());
+        </span><span class="kw">let </span>secret_type = SecretType::from(<span class="kw-2">&amp;</span>public_message.content().content_type());
         <span class="kw">let </span>(generation, (ratchet_key, ratchet_nonce)) = message_secrets
             .secret_tree_mut()
             <span class="comment">// Even in tests we want to use the real sender index, so we have a key to encrypt.
@@ -722,12 +740,12 @@
             .aead_seal(
                 backend,
                 <span class="kw-2">&amp;</span><span class="self">Self</span>::encode_padded_ciphertext_content_detached(
-                    mls_plaintext,
+                    public_message,
                     padding_size,
                     ciphersuite.mac_length(),
                 )
                 .map_err(LibraryError::missing_bound_check)<span class="question-mark">?</span>,
-                <span class="kw-2">&amp;</span>mls_ciphertext_content_aad_bytes,
+                <span class="kw-2">&amp;</span>private_message_content_aad_bytes,
                 <span class="kw-2">&amp;</span>prepared_nonce,
             )
             .map_err(LibraryError::unexpected_crypto_error)<span class="question-mark">?</span>;
@@ -746,7 +764,7 @@
         </span><span class="kw">let </span>mls_sender_data_aad = MlsSenderDataAad::new(
             header.group_id.clone(),
             header.epoch,
-            mls_plaintext.content().content_type(),
+            public_message.content().content_type(),
         );
         <span class="comment">// Serialize the sender data AAD
         </span><span class="kw">let </span>mls_sender_data_aad_bytes = mls_sender_data_aad
@@ -769,24 +787,24 @@
                 <span class="kw-2">&amp;</span>sender_data_nonce,
             )
             .map_err(LibraryError::unexpected_crypto_error)<span class="question-mark">?</span>;
-        <span class="prelude-val">Ok</span>(MlsCiphertext {
+        <span class="prelude-val">Ok</span>(PrivateMessage {
             group_id: header.group_id.clone(),
             epoch: header.epoch,
-            content_type: mls_plaintext.content().content_type(),
-            authenticated_data: mls_plaintext.authenticated_data().into(),
+            content_type: public_message.content().content_type(),
+            authenticated_data: public_message.authenticated_data().into(),
             encrypted_sender_data: encrypted_sender_data.into(),
             ciphertext: ciphertext.into(),
         })
     }
 
-    <span class="doccomment">/// Decrypt the sender data from this [`MlsCiphertext`].
+    <span class="doccomment">/// Decrypt the sender data from this [`PrivateMessage`].
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>sender_data(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         message_secrets: <span class="kw-2">&amp;</span>MessageSecrets,
         backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider,
         ciphersuite: Ciphersuite,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;MlsSenderData, MessageDecryptionError&gt; {
-        <span class="macro">log::debug!</span>(<span class="string">&quot;Decrypting MlsCiphertext&quot;</span>);
+        <span class="macro">log::debug!</span>(<span class="string">&quot;Decrypting PrivateMessage&quot;</span>);
         <span class="comment">// Derive key from the key schedule using the ciphertext.
         </span><span class="kw">let </span>sender_data_key = message_secrets
             .sender_data_secret()
@@ -820,16 +838,16 @@
             .map_err(|<span class="kw">_</span>| MessageDecryptionError::MalformedContent)
     }
 
-    <span class="doccomment">/// Decrypt this [`MlsCiphertext`] and return the [`MlsCiphertextContent`].
+    <span class="doccomment">/// Decrypt this [`PrivateMessage`] and return the [`PrivateContentTbe`].
     </span><span class="attribute">#[inline]
     </span><span class="kw">fn </span>decrypt(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider,
         ratchet_key: AeadKey,
         ratchet_nonce: <span class="kw-2">&amp;</span>AeadNonce,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;MlsCiphertextContent, MessageDecryptionError&gt; {
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;PrivateContentTbe, MessageDecryptionError&gt; {
         <span class="comment">// Serialize content AAD
-        </span><span class="kw">let </span>mls_ciphertext_content_aad_bytes = MlsCiphertextContentAad {
+        </span><span class="kw">let </span>private_message_content_aad_bytes = PrivateContentAad {
             group_id: <span class="self">self</span>.group_id.clone(),
             epoch: <span class="self">self</span>.epoch,
             content_type: <span class="self">self</span>.content_type,
@@ -838,11 +856,11 @@
         .tls_serialize_detached()
         .map_err(LibraryError::missing_bound_check)<span class="question-mark">?</span>;
         <span class="comment">// Decrypt payload
-        </span><span class="kw">let </span>mls_ciphertext_content_bytes = ratchet_key
+        </span><span class="kw">let </span>private_message_content_bytes = ratchet_key
             .aead_open(
                 backend,
                 <span class="self">self</span>.ciphertext.as_slice(),
-                <span class="kw-2">&amp;</span>mls_ciphertext_content_aad_bytes,
+                <span class="kw-2">&amp;</span>private_message_content_aad_bytes,
                 ratchet_nonce,
             )
             .map_err(|<span class="kw">_</span>| {
@@ -851,19 +869,19 @@
             })<span class="question-mark">?</span>;
         <span class="macro">log_content!</span>(
             trace,
-            <span class="string">&quot;  Successfully decrypted MlsPlaintext bytes: {:x?}&quot;</span>,
-            mls_ciphertext_content_bytes
+            <span class="string">&quot;  Successfully decrypted PublicMessage bytes: {:x?}&quot;</span>,
+            private_message_content_bytes
         );
         deserialize_ciphertext_content(
-            <span class="kw-2">&amp;mut </span>mls_ciphertext_content_bytes.as_slice(),
+            <span class="kw-2">&amp;mut </span>private_message_content_bytes.as_slice(),
             <span class="self">self</span>.content_type(),
         )
         .map_err(|<span class="kw">_</span>| MessageDecryptionError::MalformedContent)
     }
 
-    <span class="doccomment">/// This function decrypts an [`MlsCiphertext`] into an [`VerifiableMlsAuthContent`].
-    /// In order to get an [`MlsContent`] the result must be verified.
-    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>to_plaintext(
+    <span class="doccomment">/// This function decrypts an [`PrivateMessage`] into an [`VerifiableAuthenticatedContent`].
+    /// In order to get an [`FramedContent`] the result must be verified.
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>to_verifiable_content(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         ciphersuite: Ciphersuite,
         backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider,
@@ -871,7 +889,7 @@
         sender_index: SecretTreeLeafIndex,
         sender_ratchet_configuration: <span class="kw-2">&amp;</span>SenderRatchetConfiguration,
         sender_data: MlsSenderData,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;VerifiableMlsAuthContent, MessageDecryptionError&gt; {
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;VerifiableAuthenticatedContent, MessageDecryptionError&gt; {
         <span class="kw">let </span>secret_type = SecretType::from(<span class="kw-2">&amp;</span><span class="self">self</span>.content_type);
         <span class="comment">// Extract generation and key material for encryption
         </span><span class="kw">let </span>(ratchet_key, ratchet_nonce) = message_secrets
@@ -890,27 +908,27 @@
             })<span class="question-mark">?</span>;
         <span class="comment">// Prepare the nonce by xoring with the reuse guard.
         </span><span class="kw">let </span>prepared_nonce = ratchet_nonce.xor_with_reuse_guard(<span class="kw-2">&amp;</span>sender_data.reuse_guard);
-        <span class="kw">let </span>mls_ciphertext_content = <span class="self">self</span>.decrypt(backend, ratchet_key, <span class="kw-2">&amp;</span>prepared_nonce)<span class="question-mark">?</span>;
+        <span class="kw">let </span>private_message_content = <span class="self">self</span>.decrypt(backend, ratchet_key, <span class="kw-2">&amp;</span>prepared_nonce)<span class="question-mark">?</span>;
 
-        <span class="comment">// Extract sender. The sender type is always of type Member for MlsCiphertext.
+        <span class="comment">// Extract sender. The sender type is always of type Member for PrivateMessage.
         </span><span class="kw">let </span>sender = Sender::from_sender_data(sender_data);
         <span class="macro">log_content!</span>(
             trace,
-            <span class="string">&quot;  Successfully decoded MlsPlaintext with: {:x?}&quot;</span>,
-            mls_ciphertext_content.content
+            <span class="string">&quot;  Successfully decoded PublicMessage with: {:x?}&quot;</span>,
+            private_message_content.content
         );
 
-        <span class="kw">let </span>verifiable = VerifiableMlsAuthContent::new(
-            MlsContentTbs::new(
-                WireFormat::MlsCiphertext,
+        <span class="kw">let </span>verifiable = VerifiableAuthenticatedContent::new(
+            FramedContentTbs::new(
+                WireFormat::PrivateMessage,
                 <span class="self">self</span>.group_id.clone(),
                 <span class="self">self</span>.epoch,
                 sender,
                 <span class="self">self</span>.authenticated_data.clone(),
-                mls_ciphertext_content.content,
+                private_message_content.content,
             )
             .with_context(message_secrets.serialized_context().to_vec()),
-            mls_ciphertext_content.auth,
+            private_message_content.auth,
         );
         <span class="prelude-val">Ok</span>(verifiable)
     }
@@ -921,14 +939,16 @@
         <span class="self">self</span>.content_type.is_handshake_message()
     }
 
-    <span class="doccomment">/// Encodes the `MLSCiphertextContent` struct with padding.
+    <span class="doccomment">/// Encodes the `PrivateContentTbe` struct with padding.
     </span><span class="kw">fn </span>encode_padded_ciphertext_content_detached(
-        mls_plaintext: <span class="kw-2">&amp;</span>MlsAuthContent,
+        authenticated_content: <span class="kw-2">&amp;</span>AuthenticatedContent,
         padding_size: usize,
         mac_len: usize,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;Vec&lt;u8&gt;, tls_codec::Error&gt; {
-        <span class="kw">let </span>plaintext_length = mls_plaintext.content().serialized_len_without_type()
-            + mls_plaintext.auth.tls_serialized_len();
+        <span class="kw">let </span>plaintext_length = authenticated_content
+            .content()
+            .serialized_len_without_type()
+            + authenticated_content.auth.tls_serialized_len();
 
         <span class="kw">let </span>padding_length = <span class="kw">if </span>padding_size &gt; <span class="number">0 </span>{
             <span class="comment">// Calculate padding block size.
@@ -945,8 +965,10 @@
 
         <span class="comment">// The `content` field is serialized without the `content_type`, which
         // is not part of the struct as per MLS spec.
-        </span>mls_plaintext.content().serialize_without_type(buffer)<span class="question-mark">?</span>;
-        mls_plaintext.auth.tls_serialize(buffer)<span class="question-mark">?</span>;
+        </span>authenticated_content
+            .content()
+            .serialize_without_type(buffer)<span class="question-mark">?</span>;
+        authenticated_content.auth.tls_serialize(buffer)<span class="question-mark">?</span>;
         <span class="comment">// Note: The `tls_codec::Serialize` implementation for `&amp;[u8]` prepends the length.
         // We do not want this here and thus use the &quot;raw&quot; `write_all` method.
         </span>buffer
@@ -956,7 +978,7 @@
         <span class="prelude-val">Ok</span>(buffer.to_vec())
     }
 
-    <span class="doccomment">/// Get the `group_id` in the `MlsCiphertext`.
+    <span class="doccomment">/// Get the `group_id` in the `PrivateMessage`.
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>group_id(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>GroupId {
         <span class="kw-2">&amp;</span><span class="self">self</span>.group_id
     }
@@ -967,12 +989,12 @@
         <span class="self">self</span>.ciphertext.as_slice()
     }
 
-    <span class="doccomment">/// Get the `epoch` in the `MlsCiphertext`.
+    <span class="doccomment">/// Get the `epoch` in the `PrivateMessage`.
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>epoch(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; GroupEpoch {
         <span class="self">self</span>.epoch
     }
 
-    <span class="doccomment">/// Get the `content_type` in the `MlsCiphertext`.
+    <span class="doccomment">/// Get the `content_type` in the `PrivateMessage`.
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>content_type(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; ContentType {
         <span class="self">self</span>.content_type
     }
@@ -1031,12 +1053,12 @@
     }
 }
 
-<span class="doccomment">/// MLSCiphertextContent
+<span class="doccomment">/// PrivateContentTbe
 ///
 /// ```c
-/// // draft-ietf-mls-protocol-16
+/// // draft-ietf-mls-protocol-17
 /// struct {
-///     select (MLSCiphertext.content_type) {
+///     select (PrivateMessage.content_type) {
 ///         case application:
 ///           opaque application_data&lt;V&gt;;
 ///
@@ -1047,18 +1069,18 @@
 ///           Commit commit;
 ///     }
 ///
-///     MLSContentAuthData auth;
+///     FramedContentAuthData auth;
 ///     opaque padding[length_of_padding];
-/// } MLSCiphertextContent;
+/// } PrivateContentTbe;
 /// ```
 </span><span class="attribute">#[derive(Debug, Clone)]
-</span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct </span>MlsCiphertextContent {
+</span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct </span>PrivateContentTbe {
     <span class="comment">// The `content` field is serialized and deserialized manually without the
     // `content_type`, which is not part of the struct as per MLS spec. See the
-    // implementation of `TlsSerialize` for `MlsCiphertextContent`, as well as
+    // implementation of `TlsSerialize` for `PrivateContentTbe`, as well as
     // `deserialize_ciphertext_content`.
-    </span><span class="kw">pub</span>(<span class="kw">crate</span>) content: MlsContentBody,
-    <span class="kw">pub</span>(<span class="kw">crate</span>) auth: MlsContentAuthData,
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) content: FramedContentBody,
+    <span class="kw">pub</span>(<span class="kw">crate</span>) auth: FramedContentAuthData,
     <span class="doccomment">/// Length of the all-zero padding.
     ///
     /// We do not retain any bytes here to avoid the need to
@@ -1076,7 +1098,7 @@
 }
 
 <span class="attribute">#[derive(TlsSerialize, TlsSize)]
-</span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct </span>MlsCiphertextContentAad&lt;<span class="lifetime">&#39;a</span>&gt; {
+</span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct </span>PrivateContentAad&lt;<span class="lifetime">&#39;a</span>&gt; {
     <span class="kw">pub</span>(<span class="kw">crate</span>) group_id: GroupId,
     <span class="kw">pub</span>(<span class="kw">crate</span>) epoch: GroupEpoch,
     <span class="kw">pub</span>(<span class="kw">crate</span>) content_type: ContentType,

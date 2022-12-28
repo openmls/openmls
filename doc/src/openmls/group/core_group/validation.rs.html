@@ -432,6 +432,7 @@
 <span id="432">432</span>
 <span id="433">433</span>
 <span id="434">434</span>
+<span id="435">435</span>
 </pre><pre class="rust"><code><span class="doccomment">//! This module contains validation functions for incoming messages
 //! as defined in &lt;https://github.com/openmls/openmls/wiki/Message-validation&gt;
 
@@ -449,8 +450,8 @@
 };
 
 <span class="kw">use super</span>::{
-    proposals::ProposalQueue, ContentType, CoreGroup, Member, MlsMessageIn,
-    ProposalValidationError, VerifiableMlsAuthContent, WireFormat,
+    mls_content::ContentType, proposals::ProposalQueue, CoreGroup, Member, MlsMessageIn,
+    ProposalValidationError, VerifiableAuthenticatedContent, WireFormat,
 };
 
 <span class="kw">impl </span>CoreGroup {
@@ -489,12 +490,12 @@
     ///  - ValSem004
     ///  - ValSem005
     ///  - ValSem009
-    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>validate_plaintext(
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>validate_verifiable_content(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        plaintext: <span class="kw-2">&amp;</span>VerifiableMlsAuthContent,
+        verifiable_content: <span class="kw-2">&amp;</span>VerifiableAuthenticatedContent,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(), ValidationError&gt; {
         <span class="comment">// ValSem004
-        </span><span class="kw">let </span>sender = plaintext.sender();
+        </span><span class="kw">let </span>sender = verifiable_content.sender();
         <span class="kw">if let </span>Sender::Member(leaf_index) = sender {
             <span class="comment">// If the sender is a member, it has to be in the tree.
             // TODO: #133 Lookup of a leaf index in the old tree isn&#39;t very
@@ -502,7 +503,7 @@
             </span><span class="kw">if </span>!<span class="self">self</span>.treesync().is_leaf_in_tree(<span class="kw-2">*</span>leaf_index)
                 &amp;&amp; !<span class="self">self
                     </span>.message_secrets_store
-                    .epoch_has_leaf(plaintext.epoch(), <span class="kw-2">*</span>leaf_index)
+                    .epoch_has_leaf(verifiable_content.epoch(), <span class="kw-2">*</span>leaf_index)
             {
                 <span class="kw">return </span><span class="prelude-val">Err</span>(ValidationError::UnknownMember);
             }
@@ -510,16 +511,17 @@
 
         <span class="comment">// ValSem005
         // Application messages must always be encrypted
-        </span><span class="kw">if </span>plaintext.content_type() == ContentType::Application {
-            <span class="kw">if </span>plaintext.wire_format() != WireFormat::MlsCiphertext {
+        </span><span class="kw">if </span>verifiable_content.content_type() == ContentType::Application {
+            <span class="kw">if </span>verifiable_content.wire_format() != WireFormat::PrivateMessage {
                 <span class="kw">return </span><span class="prelude-val">Err</span>(ValidationError::UnencryptedApplicationMessage);
-            } <span class="kw">else if </span>!plaintext.sender().is_member() {
+            } <span class="kw">else if </span>!verifiable_content.sender().is_member() {
                 <span class="kw">return </span><span class="prelude-val">Err</span>(ValidationError::NonMemberApplicationMessage);
             }
         }
 
         <span class="comment">// ValSem009
-        </span><span class="kw">if </span>plaintext.content_type() == ContentType::Commit &amp;&amp; plaintext.confirmation_tag().is_none()
+        </span><span class="kw">if </span>verifiable_content.content_type() == ContentType::Commit
+            &amp;&amp; verifiable_content.confirmation_tag().is_none()
         {
             <span class="kw">return </span><span class="prelude-val">Err</span>(ValidationError::MissingConfirmationTag);
         }

@@ -56,7 +56,7 @@
 
 </span><span class="kw">use crate</span>::{
     credentials::CredentialBundle,
-    framing::{MlsAuthContent, MlsMessageOut, MlsPlaintext},
+    framing::{mls_auth_content::AuthenticatedContent, MlsMessageOut, PublicMessage},
     group::{mls_group::errors::ProposeAddMemberError, GroupEpoch, GroupId},
     key_packages::KeyPackage,
     messages::{AddProposal, Proposal},
@@ -86,14 +86,14 @@
         credential: <span class="kw-2">&amp;</span>CredentialBundle,
         backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;MlsMessageOut, ProposeAddMemberError&gt; {
-        MlsAuthContent::new_external_proposal(
+        AuthenticatedContent::new_external_proposal(
             Proposal::Add(AddProposal { key_package }),
             credential,
             group_id,
             epoch,
             backend,
         )
-        .map(MlsPlaintext::from)
+        .map(PublicMessage::from)
         .map(MlsMessageOut::from)
         .map_err(ProposeAddMemberError::from)
     }
