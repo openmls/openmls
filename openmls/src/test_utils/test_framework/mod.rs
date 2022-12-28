@@ -494,7 +494,7 @@ impl MlsGroupTestSetup {
         action_type: ActionType,
         group: &mut Group,
         client_id: &[u8],
-        key_pair: Option<KeyPackageBundle>,
+        key_pair: Option<KeyPackage>,
     ) -> Result<(), SetupError> {
         let clients = self.clients.read().expect("An unexpected error occurred.");
         let client = clients

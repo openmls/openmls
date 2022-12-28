@@ -14,50 +14,50 @@ impl MlsGroup {
 
     /// Creates a new group with the creator as the only member (and a random group ID).
     ///
-    /// This function removes the `KeyPackageBundle` corresponding to the
-    /// `key_package_hash` from the key store. Returns an error
-    /// ([`NewGroupError::NoMatchingKeyPackageBundle`]) if no
-    /// [`KeyPackageBundle`] can be found.
+    /// This function removes the private key corresponding to the
+    /// `key_package` from the key store.
+    ///
+    /// Returns an error ([`NewGroupError::NoMatchingKeyPackage`]) if the
+    /// private key for the [`KeyPackage`] can not be found.
     pub fn new(
         backend: &impl OpenMlsCryptoProvider,
         mls_group_config: &MlsGroupConfig,
-        key_package_hash: &[u8],
+        key_package: KeyPackage,
     ) -> Result<Self, NewGroupError> {
         Self::new_with_group_id(
             backend,
             mls_group_config,
             GroupId::random(backend),
-            key_package_hash,
+            key_package,
         )
     }
 
     /// Creates a new group with a given group ID with the creator as the only member.
     ///
-    /// This function removes the `KeyPackageBundle` corresponding to the
-    /// `key_package_hash` from the key store. Returns an error
-    /// ([`NewGroupError::NoMatchingKeyPackageBundle`]) if no
-    /// [`KeyPackageBundle`] can be found.
+    /// Returns an error ([`NewGroupError::NoMatchingKeyPackage`]) if the
+    /// private key for the [`KeyPackage`] can not be found.
     pub fn new_with_group_id(
         backend: &impl OpenMlsCryptoProvider,
         mls_group_config: &MlsGroupConfig,
         group_id: GroupId,
-        key_package_hash: &[u8],
+        key_package: KeyPackage,
     ) -> Result<Self, NewGroupError> {
         // TODO #751
-        let kph = key_package_hash.to_vec();
-        let key_package_bundle: KeyPackageBundle = backend
+
+        // Read and delete the private key for the key package.
+        let private_hpke_init_key: Vec<u8> = backend
             .key_store()
-            .read(&kph)
-            .ok_or(NewGroupError::NoMatchingKeyPackageBundle)?;
+            .read(key_package.hpke_init_key().as_ref())
+            .ok_or(NewGroupError::NoMatchingKeyPackage)?;
         backend
             .key_store()
-            .delete(&kph)
+            .delete(key_package.hpke_init_key().as_ref())
             .map_err(|_| NewGroupError::KeyStoreDeletionError)?;
+
         let credential_bundle: CredentialBundle = backend
             .key_store()
             .read(
-                &key_package_bundle
-                    .key_package()
+                &key_package
                     .leaf_node()
                     .credential()
                     .signature_key()
@@ -70,26 +70,30 @@ impl MlsGroup {
         let group_config = CoreGroupConfig {
             add_ratchet_tree_extension: mls_group_config.use_ratchet_tree_extension,
         };
-        let group = CoreGroup::builder(group_id, key_package_bundle)
-            .with_config(group_config)
-            .with_required_capabilities(mls_group_config.required_capabilities.clone())
-            .with_max_past_epoch_secrets(mls_group_config.max_past_epochs)
-            .with_lifetime(*mls_group_config.lifetime())
-            .build(&credential_bundle, backend)
-            .map_err(|e| match e {
-                CoreGroupBuildError::LibraryError(e) => e.into(),
-                CoreGroupBuildError::UnsupportedProposalType => {
-                    NewGroupError::UnsupportedProposalType
-                }
-                CoreGroupBuildError::UnsupportedExtensionType => {
-                    NewGroupError::UnsupportedExtensionType
-                }
-                // We don't support PSKs yet
-                CoreGroupBuildError::PskError(e) => {
-                    log::debug!("Unexpected PSK error: {:?}", e);
-                    LibraryError::custom("Unexpected PSK error").into()
-                }
-            })?;
+        let group = CoreGroup::builder(
+            group_id,
+            KeyPackageBundle {
+                key_package,
+                private_key: private_hpke_init_key.into(),
+            },
+        )
+        .with_config(group_config)
+        .with_required_capabilities(mls_group_config.required_capabilities.clone())
+        .with_max_past_epoch_secrets(mls_group_config.max_past_epochs)
+        .with_lifetime(*mls_group_config.lifetime())
+        .build(&credential_bundle, backend)
+        .map_err(|e| match e {
+            CoreGroupBuildError::LibraryError(e) => e.into(),
+            CoreGroupBuildError::UnsupportedProposalType => NewGroupError::UnsupportedProposalType,
+            CoreGroupBuildError::UnsupportedExtensionType => {
+                NewGroupError::UnsupportedExtensionType
+            }
+            // We don't support PSKs yet
+            CoreGroupBuildError::PskError(e) => {
+                log::debug!("Unexpected PSK error: {:?}", e);
+                LibraryError::custom("Unexpected PSK error").into()
+            }
+        })?;
 
         let resumption_psk_store =
             ResumptionPskStore::new(mls_group_config.number_of_resumption_psks);
@@ -109,8 +113,8 @@ impl MlsGroup {
     }
 
     /// Creates a new group from a [`Welcome`] message. Returns an error
-    /// ([`WelcomeError::NoMatchingKeyPackageBundle`]) if no
-    /// [`KeyPackageBundle`] can be found.
+    /// ([`WelcomeError::NoMatchingKeyPackage`]) if no [`KeyPackage`]
+    /// can be found.
     pub fn new_from_welcome(
         backend: &impl OpenMlsCryptoProvider,
         mls_group_config: &MlsGroupConfig,
@@ -119,7 +123,7 @@ impl MlsGroup {
     ) -> Result<Self, WelcomeError> {
         let resumption_psk_store =
             ResumptionPskStore::new(mls_group_config.number_of_resumption_psks);
-        let (key_package_bundle, hash_ref) = welcome
+        let (key_package, _) = welcome
             .secrets()
             .iter()
             .find_map(|egs| {
@@ -127,16 +131,27 @@ impl MlsGroup {
                 backend
                     .key_store()
                     .read(&hash_ref)
-                    .map(|kpb: KeyPackageBundle| (kpb, hash_ref))
+                    .map(|kp: KeyPackage| (kp, hash_ref))
             })
-            .ok_or(WelcomeError::NoMatchingKeyPackageBundle)?;
+            .ok_or(WelcomeError::NoMatchingKeyPackage)?;
 
-        // Delete the KeyPackageBundle from the key store
-        backend
-            .key_store()
-            .delete(&hash_ref)
-            .map_err(|_| WelcomeError::KeyStoreDeletionError)?;
         // TODO #751
+        let private_key: Vec<u8> = backend
+            .key_store()
+            .read(key_package.hpke_init_key().as_slice())
+            .ok_or(WelcomeError::NoMatchingKeyPackage)?;
+        let key_package_bundle = KeyPackageBundle {
+            key_package,
+            private_key: private_key.into(),
+        };
+
+        // Delete the [`KeyPackage`] and the corresponding private key from the
+        // key store
+        key_package_bundle
+            .key_package
+            .delete(backend)
+            .map_err(|_| WelcomeError::KeyStoreDeletionError)?;
+
         let mut group =
             CoreGroup::new_from_welcome(welcome, ratchet_tree, key_package_bundle, backend)?;
         group.set_max_past_epochs(mls_group_config.max_past_epochs);

@@ -7,7 +7,7 @@ use clap::Parser;
 use clap_derive::*;
 use openmls::{prelude::*, prelude_test::*};
 
-use openmls_traits::key_store::OpenMlsKeyStore;
+use openmls::prelude::config::CryptoConfig;
 use openmls_traits::OpenMlsCryptoProvider;
 use serde::{self, Serialize};
 use std::{collections::HashMap, convert::TryFrom, fmt::Display, fs::File, io::Write, sync::Mutex};
@@ -48,7 +48,7 @@ pub struct InteropGroup {
     group: MlsGroup,
     wire_format_policy: WireFormatPolicy,
     credential_bundle: CredentialBundle,
-    own_kpbs: Vec<KeyPackageBundle>,
+    own_kps: Vec<KeyPackage>,
 }
 
 /// This is the main state struct of the interop client. It keeps track of the
@@ -57,7 +57,7 @@ pub struct InteropGroup {
 /// transaction ids to key package hashes.
 pub struct MlsClientImpl {
     groups: Mutex<Vec<InteropGroup>>,
-    pending_key_packages: Mutex<HashMap<Vec<u8>, (KeyPackageBundle, CredentialBundle)>>,
+    pending_key_packages: Mutex<HashMap<Vec<u8>, (KeyPackage, CredentialBundle)>>,
     /// Note that the client currently doesn't really use transaction ids and
     /// instead relies on the KeyPackage hash in the Welcome message to identify
     /// what key package to use when joining a group.
@@ -400,21 +400,18 @@ impl MlsClient for MlsClientImpl {
             &self.crypto_provider,
         )
         .unwrap();
-        let key_package_bundle = KeyPackageBundle::new(
-            &[ciphersuite],
-            &credential_bundle,
+
+        let key_package = KeyPackage::create(
+            CryptoConfig {
+                ciphersuite,
+                version: ProtocolVersion::default(),
+            },
             &self.crypto_provider,
+            &credential_bundle,
+            vec![],
             vec![],
         )
         .unwrap();
-        let kp_hash = key_package_bundle
-            .key_package()
-            .hash_ref(self.crypto_provider.crypto())
-            .unwrap();
-        self.crypto_provider
-            .key_store()
-            .store(kp_hash.as_slice(), &key_package_bundle)
-            .unwrap();
         let wire_format_policy = wire_format_policy(create_group_request.encrypt_handshake);
         let mls_group_config = MlsGroupConfig::builder()
             .wire_format_policy(wire_format_policy)
@@ -424,7 +421,7 @@ impl MlsClient for MlsClientImpl {
             &self.crypto_provider,
             &mls_group_config,
             GroupId::from_slice(&create_group_request.group_id),
-            kp_hash.as_slice(),
+            key_package,
         )
         .map_err(into_status)?;
 
@@ -432,7 +429,7 @@ impl MlsClient for MlsClientImpl {
             credential_bundle,
             wire_format_policy,
             group,
-            own_kpbs: Vec::new(),
+            own_kps: Vec::new(),
         };
 
         let mut groups = self.groups.lock().unwrap();
@@ -448,7 +445,7 @@ impl MlsClient for MlsClientImpl {
     ) -> Result<tonic::Response<CreateKeyPackageResponse>, tonic::Status> {
         let create_kp_request = request.get_ref();
 
-        let ciphersuite = to_ciphersuite(create_kp_request.cipher_suite)?;
+        let ciphersuite = *to_ciphersuite(create_kp_request.cipher_suite)?;
         let credential_bundle = CredentialBundle::new(
             "OpenMLS".bytes().collect(),
             CredentialType::Basic,
@@ -456,14 +453,17 @@ impl MlsClient for MlsClientImpl {
             &self.crypto_provider,
         )
         .unwrap();
-        let key_package_bundle = KeyPackageBundle::new(
-            &[*ciphersuite],
-            &credential_bundle,
+        let key_package = KeyPackage::create(
+            CryptoConfig {
+                ciphersuite,
+                version: ProtocolVersion::default(),
+            },
             &self.crypto_provider,
+            &credential_bundle,
+            vec![],
             vec![],
         )
         .unwrap();
-        let key_package = key_package_bundle.key_package().clone();
         let mut transaction_id_map = self.transaction_id_map.lock().unwrap();
         let transaction_id = transaction_id_map.len() as u32;
         transaction_id_map.insert(
@@ -476,13 +476,12 @@ impl MlsClient for MlsClientImpl {
         );
 
         self.pending_key_packages.lock().unwrap().insert(
-            key_package_bundle
-                .key_package()
+            key_package
                 .hash_ref(self.crypto_provider.crypto())
                 .unwrap()
                 .as_slice()
                 .to_vec(),
-            (key_package_bundle, credential_bundle),
+            (key_package.clone(), credential_bundle),
         );
 
         Ok(Response::new(CreateKeyPackageResponse {
@@ -525,7 +524,7 @@ impl MlsClient for MlsClientImpl {
             credential_bundle,
             wire_format_policy,
             group,
-            own_kpbs: Vec::new(),
+            own_kps: Vec::new(),
         };
 
         let mut groups = self.groups.lock().unwrap();
@@ -691,10 +690,15 @@ impl MlsClient for MlsClientImpl {
         let interop_group = groups
             .get_mut(update_proposal_request.state_id as usize)
             .ok_or_else(|| tonic::Status::new(tonic::Code::InvalidArgument, "unknown state_id"))?;
-        let key_package_bundle = KeyPackageBundle::new(
-            &[interop_group.group.ciphersuite()],
-            &interop_group.credential_bundle,
+
+        let key_package = KeyPackage::create(
+            CryptoConfig {
+                ciphersuite: interop_group.group.ciphersuite(),
+                version: ProtocolVersion::default(),
+            },
             &self.crypto_provider,
+            &interop_group.credential_bundle,
+            vec![],
             vec![],
         )
         .unwrap();
@@ -705,12 +709,12 @@ impl MlsClient for MlsClientImpl {
         interop_group.group.set_configuration(&mls_group_config);
         let proposal = interop_group
             .group
-            .propose_self_update(&self.crypto_provider, Some(key_package_bundle.clone()))
+            .propose_self_update(&self.crypto_provider, Some(key_package.clone()))
             .map_err(into_status)?
             .to_bytes()
             .unwrap();
 
-        interop_group.own_kpbs.push(key_package_bundle);
+        interop_group.own_kps.push(key_package);
 
         Ok(Response::new(ProposalResponse { proposal }))
     }

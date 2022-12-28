@@ -20,6 +20,7 @@ use ::rand::RngCore;
 use openmls_traits::key_store::OpenMlsKeyStore;
 use openmls_traits::types::SignatureScheme;
 use openmls_traits::OpenMlsCryptoProvider;
+use prelude::{config::CryptoConfig, ProtocolVersion};
 use tls_codec::Serialize;
 
 /// Configuration of a client meant to be used in a test setup.
@@ -105,8 +106,7 @@ pub(crate) fn setup(config: TestSetupConfig, backend: &impl OpenMlsCryptoProvide
             let mut key_packages = Vec::new();
             for _ in 0..KEY_PACKAGE_COUNT {
                 let key_package_bundle: KeyPackageBundle =
-                    KeyPackageBundle::new(&[ciphersuite], &credential_bundle, backend, vec![])
-                        .expect("An unexpected error occurred.");
+                    KeyPackageBundle::new(backend, ciphersuite, &credential_bundle);
                 key_packages.push(key_package_bundle.key_package().clone());
                 key_package_bundles.push(key_package_bundle);
             }
@@ -345,12 +345,12 @@ pub(super) fn generate_credential_bundle(
 }
 
 // Helper function to generate a KeyPackageBundle
-pub(super) fn generate_key_package_bundle(
+pub(super) fn generate_key_package(
     ciphersuites: &[Ciphersuite],
     credential: &Credential,
     extensions: Vec<Extension>,
     backend: &impl OpenMlsCryptoProvider,
-) -> Result<KeyPackage, KeyPackageBundleNewError> {
+) -> Result<KeyPackage, KeyPackageNewError> {
     let credential_bundle = backend
         .key_store()
         .read(
@@ -360,18 +360,16 @@ pub(super) fn generate_key_package_bundle(
                 .expect("Error serializing signature key."),
         )
         .expect("An unexpected error occurred.");
-    let kpb = KeyPackageBundle::new(ciphersuites, &credential_bundle, backend, extensions)?;
-    let kp = kpb.key_package().clone();
-    backend
-        .key_store()
-        .store(
-            kp.hash_ref(backend.crypto())
-                .expect("Could not hash KeyPackage.")
-                .as_slice(),
-            &kpb,
-        )
-        .expect("An unexpected error occurred.");
-    Ok(kp)
+    KeyPackage::create(
+        CryptoConfig {
+            ciphersuite: ciphersuites[0],
+            version: ProtocolVersion::default(),
+        },
+        backend,
+        &credential_bundle,
+        extensions,
+        vec![], // FIXME: allow setting leaf node extensions.
+    )
 }
 
 // Helper function to generate a CredentialBundle

@@ -16,7 +16,7 @@ use crate::{
     key_packages::*,
 };
 
-use super::utils::{generate_credential_bundle, generate_key_package_bundle};
+use super::utils::{generate_credential_bundle, generate_key_package};
 
 // Test setup values
 struct ValidationTestSetup {
@@ -55,12 +55,11 @@ fn validation_test_setup(
 
     // Generate KeyPackages
     let alice_key_package =
-        generate_key_package_bundle(&[ciphersuite], &alice_credential, vec![], backend)
+        generate_key_package(&[ciphersuite], &alice_credential, vec![], backend)
             .expect("An unexpected error occurred.");
 
-    let bob_key_package =
-        generate_key_package_bundle(&[ciphersuite], &bob_credential, vec![], backend)
-            .expect("An unexpected error occurred.");
+    let bob_key_package = generate_key_package(&[ciphersuite], &bob_credential, vec![], backend)
+        .expect("An unexpected error occurred.");
 
     // Define the MlsGroup configuration
     let mls_group_config = MlsGroupConfig::builder()
@@ -72,10 +71,7 @@ fn validation_test_setup(
         backend,
         &mls_group_config,
         group_id,
-        alice_key_package
-            .hash_ref(backend.crypto())
-            .expect("Could not hash KeyPackage.")
-            .as_slice(),
+        alice_key_package.clone(),
     )
     .expect("An unexpected error occurred.");
 

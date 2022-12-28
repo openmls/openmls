@@ -4,7 +4,7 @@ extern crate openmls;
 extern crate rand;
 
 use criterion::Criterion;
-use openmls::prelude::*;
+use openmls::prelude::{config::CryptoConfig, *};
 use openmls_rust_crypto::OpenMlsRustCrypto;
 use openmls_traits::{crypto::OpenMlsCrypto, OpenMlsCryptoProvider};
 
@@ -27,11 +27,15 @@ fn criterion_kp_bundle(c: &mut Criterion, backend: &impl OpenMlsCryptoProvider) 
                         .expect("An unexpected error occurred.")
                     },
                     |credential_bundle: CredentialBundle| {
-                        KeyPackageBundle::new(
-                            &[ciphersuite],
-                            &credential_bundle,
+                        let _key_package = KeyPackage::create(
+                            CryptoConfig {
+                                ciphersuite,
+                                version: ProtocolVersion::default(),
+                            },
                             backend,
-                            Vec::new(),
+                            &credential_bundle,
+                            vec![],
+                            vec![],
                         )
                         .expect("An unexpected error occurred.");
                     },
