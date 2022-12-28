@@ -5,6 +5,7 @@ use openmls_traits::{
 use tls_codec::Serialize;
 
 use crate::{
+    binary_tree::*,
     ciphersuite::{signable::Signable, AeadNonce},
     credentials::*,
     framing::*,
@@ -97,7 +98,12 @@ fn test_failed_groupinfo_decryption(
             &Vec::new(),
         );
 
-        GroupInfoTBS::new(group_context, &extensions, confirmation_tag, 0)
+        GroupInfoTBS::new(
+            group_context,
+            &extensions,
+            confirmation_tag,
+            LeafNodeIndex::new(0),
+        )
     };
 
     // Generate key and nonce for the symmetric cipher.
@@ -225,11 +231,6 @@ fn test_update_path(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvid
     assert!(!commit.has_path());
     // Check that the function returned a Welcome message
     assert!(create_commit_result.welcome_option.is_some());
-
-    println!(
-        " *** Confirmation tag: {:?}",
-        create_commit_result.commit.confirmation_tag()
-    );
 
     alice_group
         .merge_commit(create_commit_result.staged_commit)

@@ -5,7 +5,7 @@
 use core_group::create_commit_params::CreateCommitParams;
 use tls_codec::Serialize;
 
-use crate::prelude::LeafNode;
+use crate::{binary_tree::array_representation::LeafNodeIndex, treesync::LeafNode};
 
 use super::{
     errors::{AddMembersError, LeaveGroupError, RemoveMembersError},
@@ -108,7 +108,7 @@ impl MlsGroup {
     pub fn remove_members(
         &mut self,
         backend: &impl OpenMlsCryptoProvider,
-        members: &[u32],
+        members: &[LeafNodeIndex],
     ) -> Result<(MlsMessageOut, Option<Welcome>), RemoveMembersError> {
         self.is_operational()?;
 
@@ -218,7 +218,7 @@ impl MlsGroup {
     pub fn propose_remove_member(
         &mut self,
         backend: &impl OpenMlsCryptoProvider,
-        member: u32,
+        member: LeafNodeIndex,
     ) -> Result<MlsMessageOut, ProposeRemoveMemberError> {
         self.is_operational()?;
 
@@ -310,7 +310,7 @@ impl MlsGroup {
 
     /// Returns the [`Credential`] of a member corresponding to the given
     /// leaf index. Returns `None` if the member can not be found in this group.
-    pub fn member(&self, leaf_index: u32) -> Option<&Credential> {
+    pub fn member(&self, leaf_index: LeafNodeIndex) -> Option<&Credential> {
         self.group
             .treesync()
             // This will return an error if the member can't be found.
@@ -334,11 +334,11 @@ pub enum RemoveOperation {
     /// Another member (indicated by the leaf index) requested to leave
     /// the group by issuing a remove proposal in the previous epoch and the
     /// proposal has now been committed.
-    TheyLeft(u32),
+    TheyLeft(LeafNodeIndex),
     /// Another member (indicated by the leaf index) was removed by the [`Sender`].
-    TheyWereRemovedBy((u32, Sender)),
+    TheyWereRemovedBy((LeafNodeIndex, Sender)),
     /// We removed another member (indicated by the leaf index).
-    WeRemovedThem(u32),
+    WeRemovedThem(LeafNodeIndex),
 }
 
 impl RemoveOperation {

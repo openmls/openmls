@@ -49,8 +49,8 @@ pub(crate) fn node_width(n: usize) -> usize {
     }
 }
 
-pub(crate) fn root(size: SecretTreeLeafIndex) -> SecretTreeNodeIndex {
-    let n = size.as_usize();
+pub(crate) fn root(size: u32) -> SecretTreeNodeIndex {
+    let n = size as usize;
     let w = node_width(n);
     SecretTreeNodeIndex::from((1usize << log2(w)) - 1)
 }
@@ -66,10 +66,10 @@ pub(crate) fn left(index: SecretTreeNodeIndex) -> Result<SecretTreeNodeIndex, Tr
 
 pub(crate) fn right(
     index: SecretTreeNodeIndex,
-    size: SecretTreeLeafIndex,
+    size: u32,
 ) -> Result<SecretTreeNodeIndex, TreeMathError> {
     let x = index.as_usize();
-    let n = size.as_usize();
+    let n = size as usize;
     let k = level(SecretTreeNodeIndex::from(x));
     if k == 0 {
         return Err(TreeMathError::LeafHasNoChildren);
@@ -92,12 +92,9 @@ pub(crate) fn parent_step(x: usize) -> usize {
 
 // This function is only safe to use if index <= size.
 // If this is not checked before calling the function, `parent` should be used.
-fn try_parent(
-    index: SecretTreeNodeIndex,
-    size: SecretTreeLeafIndex,
-) -> Result<SecretTreeNodeIndex, TreeMathError> {
+fn try_parent(index: SecretTreeNodeIndex, size: u32) -> Result<SecretTreeNodeIndex, TreeMathError> {
     let x = index.as_usize();
-    let n = size.as_usize();
+    let n = size as usize;
     if index == root(size) {
         return Err(TreeMathError::RootHasNoParent);
     }
@@ -113,14 +110,11 @@ fn try_parent(
 }
 
 #[inline(always)]
-fn leaf_in_tree(
-    leaf_index: SecretTreeLeafIndex,
-    size: SecretTreeLeafIndex,
-) -> Result<(), TreeMathError> {
-    if leaf_index >= size {
-        Err(TreeMathError::LeafNotInTree)
-    } else {
+fn is_leaf_in_tree(leaf_index: SecretTreeLeafIndex, size: u32) -> Result<(), TreeMathError> {
+    if leaf_index.as_u32() < size {
         Ok(())
+    } else {
+        Err(TreeMathError::LeafNotInTree)
     }
 }
 
@@ -128,9 +122,9 @@ fn leaf_in_tree(
 /// Does not include the leaf node but includes the root.
 pub(crate) fn leaf_direct_path(
     leaf_index: SecretTreeLeafIndex,
-    size: SecretTreeLeafIndex,
+    size: u32,
 ) -> Result<Vec<SecretTreeNodeIndex>, TreeMathError> {
-    leaf_in_tree(leaf_index, size)?;
+    is_leaf_in_tree(leaf_index, size)?;
     let node_index = SecretTreeNodeIndex::from(leaf_index);
     let r = root(size);
     if node_index == r {
@@ -153,7 +147,7 @@ pub(crate) fn leaf_direct_path(
 fn invalid_inputs() {
     assert_eq!(
         Err(TreeMathError::InvalidInput),
-        try_parent(1000u32.into(), 100u32.into())
+        try_parent(1000u32.into(), 100u32)
     );
 }
 
@@ -161,7 +155,7 @@ fn invalid_inputs() {
 fn test_leaf_in_tree() {
     let tests = [(0u32, 2u32), (1, 2), (4, 5), (9, 10)];
     for test in tests.iter() {
-        leaf_in_tree(test.0.into(), test.1.into()).expect("An unexpected error occurred.");
+        is_leaf_in_tree(test.0.into(), test.1).expect("An unexpected error occurred.");
     }
 }
 
@@ -170,7 +164,7 @@ fn test_leaf_not_in_tree() {
     let tests = [(2u32, 2u32), (7, 7)];
     for test in tests.iter() {
         assert_eq!(
-            leaf_in_tree(test.0.into(), test.1.into()),
+            is_leaf_in_tree(test.0.into(), test.1),
             Err(TreeMathError::LeafNotInTree)
         );
     }

@@ -99,7 +99,9 @@ use openmls_traits::{
     OpenMlsCryptoProvider,
 };
 use serde::{Deserialize, Serialize};
-use tls_codec::{Deserialize as TlsDeserializeTrait, Serialize as TlsSerializeTrait, TlsSize};
+use tls_codec::{
+    Deserialize as TlsDeserializeTrait, Serialize as TlsSerializeTrait, TlsSerialize, TlsSize,
+};
 
 // Private
 mod codec;
@@ -127,25 +129,13 @@ mod test_key_packages;
 ///     Extension extensions<V>;
 /// } KeyPackageTBS;
 /// ```
-#[derive(Debug, Clone, PartialEq, TlsSize, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, TlsSize, TlsSerialize, Serialize, Deserialize)]
 struct KeyPackageTBS {
     protocol_version: ProtocolVersion,
     ciphersuite: Ciphersuite,
     init_key: HpkePublicKey,
     leaf_node: LeafNode,
-    credential: Credential, // TODO[FK]: #819 #893 remove
     extensions: Vec<Extension>,
-}
-
-impl tls_codec::Serialize for KeyPackageTBS {
-    fn tls_serialize<W: std::io::Write>(&self, writer: &mut W) -> Result<usize, tls_codec::Error> {
-        let mut written = self.protocol_version.tls_serialize(writer)?;
-        written += self.ciphersuite.tls_serialize(writer)?;
-        written += self.init_key.tls_serialize(writer)?;
-        written += self.leaf_node.tls_serialize(writer)?;
-        written += self.credential.tls_serialize(writer)?;
-        self.extensions.tls_serialize(writer).map(|l| l + written)
-    }
 }
 
 impl Signable for KeyPackageTBS {
@@ -163,6 +153,38 @@ impl Signable for KeyPackageTBS {
 impl From<KeyPackage> for KeyPackageTBS {
     fn from(kp: KeyPackage) -> Self {
         kp.payload
+    }
+}
+
+impl KeyPackageTBS {
+    /// Remove an extension from the KeyPackage.
+    #[cfg(any(feature = "test-utils", test))]
+    pub(crate) fn remove_extension(&mut self, extension_type: ExtensionType) {
+        self.extensions
+            .retain(|e| e.extension_type() != extension_type);
+    }
+
+    /// Add (or replace) an extension to the KeyPackage.
+    #[cfg(any(feature = "test-utils", test))]
+    fn add_extension(&mut self, extension: Extension) {
+        self.remove_extension(extension.extension_type());
+        self.extensions.push(extension);
+    }
+
+    /// Replace the public key in the KeyPackage.
+    #[cfg(any(feature = "test-utils", test))]
+    pub fn set_public_key(&mut self, public_key: HpkePublicKey) {
+        self.init_key = public_key
+    }
+    /// Replace the version in the KeyPackage.
+    #[cfg(any(feature = "test-utils", test))]
+    pub fn set_version(&mut self, version: ProtocolVersion) {
+        self.protocol_version = version
+    }
+    /// Replace the ciphersuite in the KeyPackage.
+    #[cfg(any(feature = "test-utils", test))]
+    pub fn set_ciphersuite(&mut self, ciphersuite: Ciphersuite) {
+        self.ciphersuite = ciphersuite
     }
 }
 
@@ -274,7 +296,6 @@ impl KeyPackage {
             ciphersuite: config.ciphersuite,
             init_key: init_key.into(),
             leaf_node,
-            credential: credential.credential().clone(),
             extensions,
         };
 
@@ -341,10 +362,12 @@ impl KeyPackage {
         }
 
         // Verify the signature on this key package.
-        <Self as Verifiable>::verify_no_out(self, backend, &self.payload.credential).map_err(|_| {
-            log::error!("Key package signature is invalid.");
-            KeyPackageVerifyError::InvalidSignature
-        })
+        <Self as Verifiable>::verify_no_out(self, backend, self.leaf_node().credential()).map_err(
+            |_| {
+                log::error!("Key package signature is invalid.");
+                KeyPackageVerifyError::InvalidSignature
+            },
+        )
     }
 
     /// Get a reference to the extensions of this key package.
@@ -367,11 +390,6 @@ impl KeyPackage {
         Ok(())
     }
 
-    /// Get a reference to the [`Credential`].
-    pub fn credential(&self) -> &Credential {
-        &self.payload.credential
-    }
-
     /// Compute the [`KeyPackageRef`] of this [`KeyPackage`].
     /// The [`KeyPackageRef`] is used to identify a new member that should get
     /// added to a group.
@@ -391,7 +409,12 @@ impl KeyPackage {
         self.payload.ciphersuite
     }
 
-    /// Get a reference to the HPKE init key.
+    /// Get the [`LeafNode`] reference.
+    pub fn leaf_node(&self) -> &LeafNode {
+        &self.payload.leaf_node
+    }
+
+    /// Get the public HPKE init key of this key package.
     pub fn hpke_init_key(&self) -> &HpkePublicKey {
         &self.payload.init_key
     }
@@ -413,11 +436,6 @@ impl KeyPackage {
     /// Get the `ProtocolVersion`.
     pub(crate) fn protocol_version(&self) -> ProtocolVersion {
         self.payload.protocol_version
-    }
-
-    /// Get the [`LeafNode`] reference.
-    pub(crate) fn leaf_node(&self) -> &LeafNode {
-        &self.payload.leaf_node
     }
 
     /// Get the [`LeafNode`].
@@ -454,7 +472,9 @@ impl KeyPackage {
         backend: &impl OpenMlsCryptoProvider,
         credential: &CredentialBundle,
     ) -> Self {
-        self.payload.credential = credential.credential().clone();
+        self.payload
+            .leaf_node
+            .set_credential(credential.credential().clone());
         self.payload.sign(backend, credential).unwrap()
     }
 
@@ -469,11 +489,6 @@ impl KeyPackage {
     pub fn add_extension(&mut self, extension: Extension) {
         self.remove_extension(extension.extension_type());
         self.payload.extensions.push(extension);
-    }
-
-    /// Replace the credential in the KeyPackage.
-    pub fn set_credential(&mut self, credential: Credential) {
-        self.payload.credential = credential
     }
 
     /// Replace the public key in the KeyPackage.

@@ -5,6 +5,7 @@ use tls_codec::{Deserialize, Serialize, Size, TlsDeserialize, TlsSerialize, TlsS
 use super::codec::deserialize_ciphertext_content;
 
 use crate::{
+    binary_tree::array_representation::LeafNodeIndex,
     error::LibraryError,
     tree::{
         index::SecretTreeLeafIndex, secret_tree::SecretType,
@@ -42,7 +43,7 @@ pub(crate) struct MlsCiphertext {
 pub(crate) struct MlsMessageHeader {
     pub(crate) group_id: GroupId,
     pub(crate) epoch: GroupEpoch,
-    pub(crate) sender: SecretTreeLeafIndex,
+    pub(crate) sender: LeafNodeIndex,
 }
 
 impl MlsCiphertext {
@@ -150,7 +151,7 @@ impl MlsCiphertext {
             _ => MlsMessageHeader {
                 group_id: mls_plaintext.group_id().clone(),
                 epoch: mls_plaintext.epoch(),
-                sender: sender_index.into(),
+                sender: sender_index,
             },
         };
         // Serialize the content AAD
@@ -211,7 +212,7 @@ impl MlsCiphertext {
             .map_err(LibraryError::missing_bound_check)?;
         let sender_data = MlsSenderData::from_sender(
             // XXX: #106 This will fail for messages with a non-member sender.
-            header.sender.into(),
+            header.sender,
             generation,
             reuse_guard,
         );
@@ -446,14 +447,18 @@ impl MlsCiphertext {
 #[derive(Clone, TlsDeserialize, TlsSerialize, TlsSize)]
 #[cfg_attr(test, derive(Debug))]
 pub(crate) struct MlsSenderData {
-    pub(crate) leaf_index: u32,
+    pub(crate) leaf_index: LeafNodeIndex,
     pub(crate) generation: u32,
     pub(crate) reuse_guard: ReuseGuard,
 }
 
 impl MlsSenderData {
     /// Build new [`MlsSenderData`] for a [`Sender`].
-    pub(crate) fn from_sender(leaf_index: u32, generation: u32, reuse_guard: ReuseGuard) -> Self {
+    pub(crate) fn from_sender(
+        leaf_index: LeafNodeIndex,
+        generation: u32,
+        reuse_guard: ReuseGuard,
+    ) -> Self {
         MlsSenderData {
             leaf_index,
             generation,

@@ -4,6 +4,7 @@
 use std::collections::HashSet;
 
 use crate::{
+    binary_tree::array_representation::LeafNodeIndex,
     error::LibraryError,
     extensions::ExtensionType,
     framing::Sender,
@@ -64,7 +65,7 @@ impl CoreGroup {
             // If the sender is a member, it has to be in the tree.
             // TODO: #133 Lookup of a leaf index in the old tree isn't very
             //       useful. Add a proper validation step here.
-            if self.treesync().leaf_is_in_tree(*leaf_index).is_err()
+            if !self.treesync().is_leaf_in_tree(*leaf_index)
                 && !self
                     .message_secrets_store
                     .epoch_has_leaf(plaintext.epoch(), *leaf_index)
@@ -115,6 +116,7 @@ impl CoreGroup {
             let identity = add_proposal
                 .add_proposal()
                 .key_package()
+                .leaf_node()
                 .credential()
                 .identity()
                 .to_vec();
@@ -125,6 +127,7 @@ impl CoreGroup {
             let signature_key = add_proposal
                 .add_proposal()
                 .key_package()
+                .leaf_node()
                 .credential()
                 .signature_key()
                 .as_slice()
@@ -247,7 +250,7 @@ impl CoreGroup {
             }
 
             // TODO: ValSem108
-            if self.treesync().leaf_is_in_tree(removed).is_err() {
+            if !self.treesync().is_leaf_in_tree(removed) {
                 return Err(ProposalValidationError::UnknownMemberRemoval);
             }
         }
@@ -264,7 +267,7 @@ impl CoreGroup {
     pub(crate) fn validate_update_proposals(
         &self,
         proposal_queue: &ProposalQueue,
-        committer: u32,
+        committer: LeafNodeIndex,
     ) -> Result<HashSet<Vec<u8>>, ProposalValidationError> {
         let mut encryption_keys = HashSet::new();
         for index in self.treesync().full_leaves() {
@@ -343,7 +346,7 @@ impl CoreGroup {
     /// - ValSem110
     pub(super) fn validate_path_key_package(
         &self,
-        sender: u32,
+        sender: LeafNodeIndex,
         leaf_node: &LeafNode,
         public_key_set: HashSet<Vec<u8>>,
         proposal_sender: &Sender,

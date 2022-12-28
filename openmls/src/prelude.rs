@@ -31,6 +31,9 @@ pub use crate::key_store::*;
 // Tree
 pub use crate::tree::sender_ratchet::SenderRatchetConfiguration;
 
+// Binary tree
+pub use crate::binary_tree::LeafNodeIndex;
+
 // TreeSync
 pub use crate::treesync::{
     errors::{ApplyUpdatePathError, PublicTreeError},

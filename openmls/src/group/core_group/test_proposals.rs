@@ -4,6 +4,7 @@ use openmls_traits::{types::Ciphersuite, OpenMlsCryptoProvider};
 
 use super::CoreGroup;
 use crate::{
+    binary_tree::LeafNodeIndex,
     ciphersuite::hash_ref::ProposalRef,
     credentials::{CredentialBundle, CredentialType},
     extensions::{Extension, ExtensionType, RequiredCapabilitiesExtension},
@@ -95,7 +96,7 @@ fn proposal_queue_functions(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryp
     // Frame proposals in MlsPlaintext
     let mls_plaintext_add_alice1 = MlsAuthContent::member_proposal(
         framing_parameters,
-        0,
+        LeafNodeIndex::new(0),
         proposal_add_alice1,
         &alice_credential_bundle,
         &group_context,
@@ -104,7 +105,7 @@ fn proposal_queue_functions(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryp
     .expect("Could not create proposal.");
     let mls_plaintext_add_alice2 = MlsAuthContent::member_proposal(
         framing_parameters,
-        1,
+        LeafNodeIndex::new(1),
         proposal_add_alice2,
         &alice_credential_bundle,
         &group_context,
@@ -113,7 +114,7 @@ fn proposal_queue_functions(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryp
     .expect("Could not create proposal.");
     let _mls_plaintext_add_bob1 = MlsAuthContent::member_proposal(
         framing_parameters,
-        1,
+        LeafNodeIndex::new(1),
         proposal_add_bob1,
         &alice_credential_bundle,
         &group_context,
@@ -133,10 +134,10 @@ fn proposal_queue_functions(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryp
     let (proposal_queue, own_update) = ProposalQueue::filter_proposals(
         ciphersuite,
         backend,
-        Sender::build_member(1),
+        Sender::build_member(LeafNodeIndex::new(1)),
         &proposal_store,
         &[],
-        0,
+        LeafNodeIndex::new(0),
     )
     .expect("Could not create ProposalQueue.");
 
@@ -206,7 +207,7 @@ fn proposal_queue_order(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoPr
     // Frame proposals in MlsPlaintext
     let mls_plaintext_add_alice1 = MlsAuthContent::member_proposal(
         framing_parameters,
-        0,
+        LeafNodeIndex::new(0),
         proposal_add_alice1.clone(),
         &alice_credential_bundle,
         &group_context,
@@ -215,7 +216,7 @@ fn proposal_queue_order(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoPr
     .expect("Could not create proposal.");
     let mls_plaintext_add_bob1 = MlsAuthContent::member_proposal(
         framing_parameters,
-        1,
+        LeafNodeIndex::new(1),
         proposal_add_bob1.clone(),
         &alice_credential_bundle,
         &group_context,
@@ -238,7 +239,7 @@ fn proposal_queue_order(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoPr
         ProposalOrRef::Reference(proposal_reference_add_alice1),
     ];
 
-    let sender = Sender::build_member(0);
+    let sender = Sender::build_member(LeafNodeIndex::new(0));
 
     // And the same should go for proposal queues built from committed
     // proposals. The order here should be dictated by the proposals passed

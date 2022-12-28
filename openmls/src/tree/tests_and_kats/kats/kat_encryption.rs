@@ -79,6 +79,7 @@
 
 use crate::messages::proposals::RemoveProposal;
 use crate::{
+    binary_tree::array_representation::LeafNodeIndex,
     credentials::{CredentialBundle, CredentialType},
     framing::*,
     group::*,
@@ -87,7 +88,6 @@ use crate::{
     schedule::{EncryptionSecret, SenderDataSecret},
     test_utils::*,
     tree::{
-        index::SecretTreeLeafIndex,
         secret_tree::{SecretTree, SecretType},
         sender_ratchet::SenderRatchetConfiguration,
     },
@@ -178,7 +178,7 @@ fn receiver_group(
 // XXX: we could be more creative in generating these messages.
 #[cfg(any(feature = "test-utils", test))]
 fn build_handshake_messages(
-    sender_index: SecretTreeLeafIndex,
+    sender_index: LeafNodeIndex,
     group: &mut CoreGroup,
     credential_bundle: &CredentialBundle,
     backend: &impl OpenMlsCryptoProvider,
@@ -196,8 +196,10 @@ fn build_handshake_messages(
     );
     let content = MlsAuthContent::member_proposal(
         framing_parameters,
-        sender_index.into(),
-        Proposal::Remove(RemoveProposal { removed: 7 }), // XXX: use random removed
+        sender_index,
+        Proposal::Remove(RemoveProposal {
+            removed: LeafNodeIndex::new(7),
+        }), // XXX: use random removed
         credential_bundle,
         group.context(),
         backend,
@@ -239,7 +241,7 @@ fn build_handshake_messages(
 
 #[cfg(any(feature = "test-utils", test))]
 fn build_application_messages(
-    sender_index: SecretTreeLeafIndex,
+    sender_index: LeafNodeIndex,
     group: &mut CoreGroup,
     credential_bundle: &CredentialBundle,
     backend: &impl OpenMlsCryptoProvider,
@@ -255,7 +257,7 @@ fn build_application_messages(
             .expect("Not enough randomness."),
     );
     let content = MlsAuthContent::new_application(
-        sender_index.into(),
+        sender_index,
         &[1, 2, 3],
         &[4, 5, 6],
         credential_bundle,
@@ -343,24 +345,24 @@ pub fn generate_test_vector(
 
     let mut leaves = Vec::new();
     for leaf in 0..n_leaves {
-        let sender_leaf = leaf;
+        let sender_leaf = LeafNodeIndex::new(leaf);
         // It doesn't matter who the receiver is, as long as it's not the same
         // as the sender, so we don't get into trouble with the secret tree.
-        let receiver_leaf = u32::from(leaf == 0);
+        let receiver_leaf = LeafNodeIndex::new(u32::from(leaf == 0));
         let encryption_secret = EncryptionSecret::from_slice(
             &encryption_secret_bytes[..],
             ProtocolVersion::default(),
             ciphersuite,
         );
         let encryption_secret_tree =
-            SecretTree::new(encryption_secret, n_leaves.into(), sender_leaf.into());
+            SecretTree::new(encryption_secret, n_leaves, sender_leaf.into());
         let decryption_secret = EncryptionSecret::from_slice(
             &encryption_secret_bytes[..],
             ProtocolVersion::default(),
             ciphersuite,
         );
         let mut decryption_secret_tree =
-            SecretTree::new(decryption_secret, n_leaves.into(), receiver_leaf.into());
+            SecretTree::new(decryption_secret, n_leaves, receiver_leaf.into());
 
         *group.message_secrets_test_mut().secret_tree_mut() = encryption_secret_tree;
 
@@ -372,7 +374,7 @@ pub fn generate_test_vector(
                 .secret_for_decryption(
                     ciphersuite,
                     &crypto,
-                    leaf.into(),
+                    sender_leaf.into(),
                     SecretType::ApplicationSecret,
                     generation,
                     &SenderRatchetConfiguration::default(),
@@ -381,7 +383,7 @@ pub fn generate_test_vector(
             let application_key_string = bytes_to_hex(application_secret_key.as_slice());
             let application_nonce_string = bytes_to_hex(application_secret_nonce.as_slice());
             let (application_plaintext, application_ciphertext) =
-                build_application_messages(leaf.into(), &mut group, &credential_bundle, &crypto);
+                build_application_messages(sender_leaf, &mut group, &credential_bundle, &crypto);
             println!("Sender Group: {:?}", group);
             application.push(RatchetStep {
                 key: application_key_string,
@@ -395,7 +397,7 @@ pub fn generate_test_vector(
                 .secret_for_decryption(
                     ciphersuite,
                     &crypto,
-                    leaf.into(),
+                    sender_leaf.into(),
                     SecretType::HandshakeSecret,
                     generation,
                     &SenderRatchetConfiguration::default(),
@@ -405,7 +407,7 @@ pub fn generate_test_vector(
             let handshake_nonce_string = bytes_to_hex(handshake_secret_nonce.as_slice());
 
             let (handshake_plaintext, handshake_ciphertext) =
-                build_handshake_messages(leaf.into(), &mut group, &credential_bundle, &crypto);
+                build_handshake_messages(sender_leaf, &mut group, &credential_bundle, &crypto);
 
             handshake.push(RatchetStep {
                 key: handshake_key_string,
@@ -501,7 +503,7 @@ pub fn run_test_vector(
     for (leaf_index, leaf) in test_vector.leaves.iter().enumerate() {
         // It doesn't matter who the receiver is, as long as it's not the same
         // as the sender, so we don't get into trouble with the secret tree.
-        let receiver_leaf = u32::from(leaf_index == 0);
+        let receiver_leaf = LeafNodeIndex::new(u32::from(leaf_index == 0));
 
         let mut secret_tree = SecretTree::new(
             EncryptionSecret::from_slice(
@@ -509,7 +511,7 @@ pub fn run_test_vector(
                 ProtocolVersion::default(),
                 ciphersuite,
             ),
-            n_leaves.into(),
+            n_leaves,
             receiver_leaf.into(),
         );
 
@@ -527,7 +529,7 @@ pub fn run_test_vector(
             }
             return Err(EncTestVectorError::InvalidLeafSequenceHandshake);
         }
-        let leaf_index = leaf_index as u32;
+        let leaf_index = LeafNodeIndex::new(leaf_index as u32);
 
         // We keep a fresh copy of the secret tree so we don't lose any secrets.
         let fresh_secret_tree = secret_tree.clone();

@@ -108,7 +108,7 @@ impl MlsGroup {
 
         let credential = if let Some(kp) = &key_package {
             // If there's a key pair use the credential in there.
-            kp.credential()
+            kp.leaf_node().credential()
         } else {
             // Use the old credential.
             self.credential()?

@@ -7,6 +7,7 @@ use tls_codec::{
 };
 
 use crate::{
+    binary_tree::array_representation::LeafNodeIndex,
     ciphersuite::{
         signable::{Signable, SignedStruct, Verifiable},
         HpkePrivateKey, HpkePublicKey, Secret, Signature, SignaturePublicKey,
@@ -244,7 +245,7 @@ pub enum LeafNodeSource {
 #[derive(Debug, TlsSerialize, TlsDeserialize, TlsSize)]
 pub(crate) struct TreePosition {
     group_id: GroupId,
-    leaf_index: u32,
+    leaf_index: LeafNodeIndex,
 }
 
 #[derive(Debug)]
@@ -255,7 +256,7 @@ pub(crate) enum TreeInfoTbs {
 }
 
 impl TreeInfoTbs {
-    pub(crate) fn commit(group_id: GroupId, leaf_index: u32) -> Self {
+    pub(crate) fn commit(group_id: GroupId, leaf_index: LeafNodeIndex) -> Self {
         Self::Commit(TreePosition {
             group_id,
             leaf_index,
@@ -537,6 +538,12 @@ impl LeafNode {
     pub fn capabilities_mut(&mut self) -> &mut Capabilities {
         &mut self.payload.capabilities
     }
+
+    /// Replace the credential in the KeyPackage.
+    #[cfg(any(feature = "test-utils", test))]
+    pub(crate) fn set_credential(&mut self, credential: Credential) {
+        self.payload.credential = credential;
+    }
 }
 
 const LEAF_NODE_SIGNATURE_LABEL: &str = "LeafNodeTBS";
@@ -628,7 +635,7 @@ impl LeafNodeTbs {
 pub struct OpenMlsLeafNode {
     pub(in crate::treesync) leaf_node: LeafNode,
     private_key: Option<HpkePrivateKey>,
-    leaf_index: Option<u32>,
+    leaf_index: Option<LeafNodeIndex>,
 }
 
 impl From<LeafNode> for OpenMlsLeafNode {
@@ -919,7 +926,7 @@ impl OpenMlsLeafNode {
     }
 
     /// Set the leaf index for this leaf.
-    pub fn set_leaf_index(&mut self, leaf_index: u32) {
+    pub fn set_leaf_index(&mut self, leaf_index: LeafNodeIndex) {
         self.leaf_index = Some(leaf_index);
     }
 
@@ -927,7 +934,7 @@ impl OpenMlsLeafNode {
     #[cfg(test)]
     pub(crate) fn from_key_package_bundle(
         kpb: crate::key_packages::KeyPackageBundle,
-        leaf_index: u32,
+        leaf_index: LeafNodeIndex,
     ) -> Self {
         let (key_package, private_key) = kpb.into_parts();
         Self {

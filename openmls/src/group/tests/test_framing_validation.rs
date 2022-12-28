@@ -9,6 +9,7 @@ use rstest::*;
 use rstest_reuse::{self, *};
 
 use crate::{
+    binary_tree::LeafNodeIndex,
     credentials::*,
     framing::*,
     group::{errors::*, *},
@@ -264,7 +265,7 @@ fn test_valsem004(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
 
     let original_message = plaintext.clone();
 
-    let random_sender = Sender::build_member(987);
+    let random_sender = Sender::build_member(LeafNodeIndex::new(987));
     plaintext.set_sender(random_sender);
 
     // The membership tag is checked before the sender, so we need to re-calculate it and set it

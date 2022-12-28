@@ -65,10 +65,10 @@ fn test_free_leaf_computation(ciphersuite: Ciphersuite, backend: &impl OpenMlsCr
     let added_leaf_index = diff
         .add_leaf(kpb_2.key_package().leaf_node().clone().into())
         .expect("error adding leaf");
-    assert_eq!(free_leaf_index, 1u32);
+    assert_eq!(free_leaf_index.u32(), 1u32);
     assert_eq!(free_leaf_index, added_leaf_index);
 
     let free_leaf_index = diff.free_leaf_index();
 
-    assert_eq!(free_leaf_index, 2u32);
+    assert_eq!(free_leaf_index.u32(), 2u32);
 }

@@ -12,16 +12,9 @@ use openmls_traits::{
 use tls_codec::Serialize;
 
 use crate::{
-    ciphersuite::hash_ref::KeyPackageRef,
-    credentials::*,
-    extensions::*,
-    framing::MlsMessageIn,
-    framing::*,
-    group::{config::CryptoConfig, *},
-    key_packages::*,
-    messages::*,
-    treesync::node::Node,
-    versions::ProtocolVersion,
+    binary_tree::array_representation::LeafNodeIndex, ciphersuite::hash_ref::KeyPackageRef,
+    credentials::*, extensions::*, framing::MlsMessageIn, framing::*, group::{*, config::CryptoConfig}, key_packages::*,
+    messages::*, treesync::node::Node, versions::ProtocolVersion,
 };
 
 use super::{errors::ClientError, ActionType};
@@ -260,7 +253,7 @@ impl Client {
         &self,
         action_type: ActionType,
         group_id: &GroupId,
-        targets: &[u32],
+        targets: &[LeafNodeIndex],
     ) -> Result<(Vec<MlsMessageOut>, Option<Welcome>), ClientError> {
         let mut groups = self.groups.write().expect("An unexpected error occurred.");
         let group = groups

@@ -4,6 +4,7 @@
 //! Proposals, Commits and application messages.
 
 use crate::{
+    binary_tree::array_representation::LeafNodeIndex,
     ciphersuite::signable::{Signable, SignedStruct, Verifiable, VerifiedStruct},
     error::LibraryError,
     group::errors::ValidationError,
@@ -508,7 +509,7 @@ impl MlsAuthContent {
     /// This constructor builds an `MlsAuthContent` containing an application
     /// message. The sender type is always `SenderType::Member`.
     pub(crate) fn new_application(
-        sender_leaf_index: u32,
+        sender_leaf_index: LeafNodeIndex,
         authenticated_data: &[u8],
         application_message: &[u8],
         credential_bundle: &CredentialBundle,
@@ -531,7 +532,7 @@ impl MlsAuthContent {
     /// The sender type is always `SenderType::Member`.
     pub(crate) fn member_proposal(
         framing_parameters: FramingParameters,
-        sender_leaf_index: u32,
+        sender_leaf_index: LeafNodeIndex,
         proposal: Proposal,
         credential_bundle: &CredentialBundle,
         context: &GroupContext,
@@ -701,6 +702,7 @@ impl VerifiableMlsAuthContent {
         &self.auth_content.tbs.content.sender
     }
 
+    #[cfg(any(feature = "test-utils", test))]
     /// Set the serialized context before verifying the signature.
     #[cfg(any(feature = "test-utils", test))]
     pub(crate) fn set_context(&mut self, serialized_context: Vec<u8>) {

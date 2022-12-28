@@ -139,7 +139,7 @@ fn mls_group_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoPr
                 .expect("Expected a proposal.");
             // Check that Bob was added
             assert_eq!(
-                add.add_proposal().key_package().credential(),
+                add.add_proposal().key_package().leaf_node().credential(),
                 &bob_credential
             );
             // Check that Alice added Bob
@@ -211,10 +211,7 @@ fn mls_group_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoPr
         }
 
         // === Bob updates and commits ===
-        let (queued_message, welcome_option) = match bob_group.self_update(backend, None) {
-            Ok(qm) => qm,
-            Err(e) => panic!("Error performing self-update: {:?}", e),
-        };
+        let (queued_message, welcome_option) = bob_group.self_update(backend, None).unwrap();
 
         let alice_processed_message = alice_group
             .process_message(backend, queued_message.clone().into())
@@ -628,7 +625,10 @@ fn mls_group_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoPr
         {
             if let Proposal::Add(add_proposal) = staged_proposal.proposal() {
                 // Check that Bob was added
-                assert_eq!(add_proposal.key_package().credential(), &bob_credential);
+                assert_eq!(
+                    add_proposal.key_package().leaf_node().credential(),
+                    &bob_credential
+                );
             } else {
                 unreachable!("Expected an AddProposal.");
             }

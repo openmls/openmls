@@ -4,6 +4,7 @@ use rstest_reuse::{self, *};
 use tls_codec::Serialize;
 
 use crate::{
+    binary_tree::LeafNodeIndex,
     credentials::*,
     framing::*,
     group::{errors::*, *},
@@ -304,7 +305,9 @@ fn new_member_proposal_sender_should_be_reserved_for_join_proposals(
     alice_group.clear_pending_proposals();
 
     // Remove proposal cannot have a 'new_member_proposal' sender
-    let remove_proposal = alice_group.propose_remove_member(backend, 1).unwrap();
+    let remove_proposal = alice_group
+        .propose_remove_member(backend, LeafNodeIndex::new(1))
+        .unwrap();
     if let MlsMessageBody::Plaintext(mut plaintext) = remove_proposal.mls_message.body {
         plaintext.set_sender(Sender::NewMemberProposal);
         assert!(matches!(

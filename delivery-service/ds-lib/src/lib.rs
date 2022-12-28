@@ -36,7 +36,12 @@ impl ClientInfo {
     pub fn new(client_name: String, mut key_packages: Vec<(Vec<u8>, KeyPackage)>) -> Self {
         Self {
             client_name,
-            id: key_packages[0].1.credential().identity().to_vec(),
+            id: key_packages[0]
+                .1
+                .leaf_node()
+                .credential()
+                .identity()
+                .to_vec(),
             key_packages: ClientKeyPackages(
                 key_packages
                     .drain(..)
