@@ -156,38 +156,6 @@ impl From<KeyPackage> for KeyPackageTBS {
     }
 }
 
-impl KeyPackageTBS {
-    /// Remove an extension from the KeyPackage.
-    #[cfg(any(feature = "test-utils", test))]
-    pub(crate) fn remove_extension(&mut self, extension_type: ExtensionType) {
-        self.extensions
-            .retain(|e| e.extension_type() != extension_type);
-    }
-
-    /// Add (or replace) an extension to the KeyPackage.
-    #[cfg(any(feature = "test-utils", test))]
-    fn add_extension(&mut self, extension: Extension) {
-        self.remove_extension(extension.extension_type());
-        self.extensions.push(extension);
-    }
-
-    /// Replace the public key in the KeyPackage.
-    #[cfg(any(feature = "test-utils", test))]
-    pub fn set_public_key(&mut self, public_key: HpkePublicKey) {
-        self.init_key = public_key
-    }
-    /// Replace the version in the KeyPackage.
-    #[cfg(any(feature = "test-utils", test))]
-    pub fn set_version(&mut self, version: ProtocolVersion) {
-        self.protocol_version = version
-    }
-    /// Replace the ciphersuite in the KeyPackage.
-    #[cfg(any(feature = "test-utils", test))]
-    pub fn set_ciphersuite(&mut self, ciphersuite: Ciphersuite) {
-        self.ciphersuite = ciphersuite
-    }
-}
-
 /// The key package struct.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct KeyPackage {
