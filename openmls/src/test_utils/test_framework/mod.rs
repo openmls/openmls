@@ -22,9 +22,10 @@
 //! group states.
 
 use crate::{
+    binary_tree::array_representation::LeafNodeIndex,
     ciphersuite::{hash_ref::KeyPackageRef, *},
     credentials::*,
-    framing::*,
+    framing::{mls_content::ContentType, *},
     group::*,
     key_packages::*,
     messages::*,
@@ -328,12 +329,7 @@ impl MlsGroupTestSetup {
             .map(
                 |Member {
                      index, identity, ..
-                 }| {
-                    (
-                        usize::try_from(*index).expect("The tree is too large."),
-                        identity.clone(),
-                    )
-                },
+                 }| { (index.usize(), identity.clone()) },
             )
             .collect();
         group.public_tree = sender_group.export_ratchet_tree();
@@ -498,7 +494,7 @@ impl MlsGroupTestSetup {
         action_type: ActionType,
         group: &mut Group,
         client_id: &[u8],
-        key_pair: Option<KeyPackageBundle>,
+        key_pair: Option<KeyPackage>,
     ) -> Result<(), SetupError> {
         let clients = self.clients.read().expect("An unexpected error occurred.");
         let client = clients
@@ -571,7 +567,7 @@ impl MlsGroupTestSetup {
         action_type: ActionType,
         group: &mut Group,
         remover_id: &[u8],
-        target_members: &[u32],
+        target_members: &[LeafNodeIndex],
     ) -> Result<(), SetupError> {
         let clients = self.clients.read().expect("An unexpected error occurred.");
         let remover = clients

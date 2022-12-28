@@ -10,6 +10,7 @@ use tls_codec::Serialize;
 
 use super::utils::*;
 use crate::{
+    binary_tree::*,
     ciphersuite::signable::Signable,
     credentials::{CredentialBundle, CredentialType},
     framing::{MessageDecryptionError, WireFormat, *},
@@ -70,7 +71,7 @@ fn padding(backend: &impl OpenMlsCryptoProvider) {
             for _ in 0..10 {
                 let message = randombytes(random_usize() % 1000);
                 let aad = randombytes(random_usize() % 1000);
-                let mls_ciphertext = group_state
+                let private_message = group_state
                     .create_application_message(
                         &aad,
                         &message,
@@ -79,7 +80,7 @@ fn padding(backend: &impl OpenMlsCryptoProvider) {
                         backend,
                     )
                     .expect("An unexpected error occurred.");
-                let ciphertext = mls_ciphertext.ciphertext();
+                let ciphertext = private_message.ciphertext();
                 let length = ciphertext.len();
                 let overflow = if padding_size > 0 {
                     length % padding_size
@@ -97,7 +98,7 @@ fn padding(backend: &impl OpenMlsCryptoProvider) {
     }
 }
 
-/// Check that MLSCiphertextContent's padding field is verified to be all-zero.
+/// Check that PrivateContentTbe's padding field is verified to be all-zero.
 #[apply(ciphersuites_and_backends)]
 fn bad_padding(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
     let tests = {
@@ -125,7 +126,7 @@ fn bad_padding(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
         )
         .unwrap();
 
-        let sender = Sender::build_member(654);
+        let sender = Sender::build_member(LeafNodeIndex::new(654));
 
         let group_context = GroupContext::new(
             ciphersuite,
@@ -137,19 +138,20 @@ fn bad_padding(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
         );
 
         let plaintext = {
-            let plaintext_tbs = MlsContentTbs::new(
-                WireFormat::MlsCiphertext,
+            let plaintext_tbs = FramedContentTbs::new(
+                WireFormat::PrivateMessage,
                 GroupId::random(backend),
                 1,
                 sender,
                 vec![1, 2, 3].into(),
-                MlsContentBody::Application(vec![4, 5, 6].into()),
+                FramedContentBody::Application(vec![4, 5, 6].into()),
             );
 
             plaintext_tbs.sign(backend, &credential_bundle).unwrap()
         };
 
-        let mut message_secrets = MessageSecrets::random(ciphersuite, backend, 0);
+        let mut message_secrets =
+            MessageSecrets::random(ciphersuite, backend, LeafNodeIndex::new(0));
 
         let encryption_secret_bytes = backend
             .rand()
@@ -163,7 +165,11 @@ fn bad_padding(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
                 ciphersuite,
             );
 
-            SecretTree::new(sender_encryption_secret, 2u32.into(), 0u32.into())
+            SecretTree::new(
+                sender_encryption_secret,
+                2u32,
+                LeafNodeIndex::new(0u32).into(),
+            )
         };
 
         let receiver_secret_tree = {
@@ -173,7 +179,11 @@ fn bad_padding(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
                 ciphersuite,
             );
 
-            SecretTree::new(receiver_encryption_secret, 2u32.into(), 1u32.into())
+            SecretTree::new(
+                receiver_encryption_secret,
+                2u32,
+                LeafNodeIndex::new(1u32).into(),
+            )
         };
 
         message_secrets.replace_secret_tree(sender_secret_tree);
@@ -187,15 +197,17 @@ fn bad_padding(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
                 _ => panic!("Unexpected match."),
             };
 
-            let mls_ciphertext_content_aad_bytes = {
-                let mls_ciphertext_content_aad = MlsCiphertextContentAad {
+            let private_message_content_aad_bytes = {
+                let private_message_content_aad = PrivateContentAad {
                     group_id: group_id.clone(),
                     epoch,
                     content_type: plaintext.content().content_type(),
                     authenticated_data: TlsByteSliceU32(plaintext.authenticated_data()),
                 };
 
-                mls_ciphertext_content_aad.tls_serialize_detached().unwrap()
+                private_message_content_aad
+                    .tls_serialize_detached()
+                    .unwrap()
             };
 
             // Extract generation and key material for encryption
@@ -261,7 +273,7 @@ fn bad_padding(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
                 .aead_seal(
                     backend,
                     &padded,
-                    &mls_ciphertext_content_aad_bytes,
+                    &private_message_content_aad_bytes,
                     &prepared_nonce,
                 )
                 .unwrap();
@@ -296,7 +308,7 @@ fn bad_padding(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
                 )
                 .unwrap();
 
-            MlsCiphertext::new(
+            PrivateMessage::new(
                 group_id,
                 epoch,
                 plaintext.content().content_type(),
@@ -312,7 +324,7 @@ fn bad_padding(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
             .sender_data(&message_secrets, backend, ciphersuite)
             .expect("Could not decrypt sender data.");
 
-        let verifiable_plaintext_result = tampered_ciphertext.to_plaintext(
+        let verifiable_plaintext_result = tampered_ciphertext.to_verifiable_content(
             ciphersuite,
             backend,
             &mut message_secrets,

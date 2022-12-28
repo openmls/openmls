@@ -7,6 +7,7 @@ use tls_codec::{
 };
 
 use crate::{
+    binary_tree::array_representation::LeafNodeIndex,
     ciphersuite::{
         signable::{Signable, SignedStruct, Verifiable},
         HpkePrivateKey, HpkePublicKey, Secret, Signature, SignaturePublicKey,
@@ -15,7 +16,7 @@ use crate::{
     error::LibraryError,
     extensions::{Extension, ExtensionType, RequiredCapabilitiesExtension},
     group::GroupId,
-    key_packages::KeyPackageBundle,
+    key_packages::KeyPackage,
     messages::proposals::ProposalType,
     treesync::errors::TreeSyncError,
     versions::ProtocolVersion,
@@ -244,7 +245,7 @@ pub enum LeafNodeSource {
 #[derive(Debug, TlsSerialize, TlsDeserialize, TlsSize)]
 pub(crate) struct TreePosition {
     group_id: GroupId,
-    leaf_index: u32,
+    leaf_index: LeafNodeIndex,
 }
 
 #[derive(Debug)]
@@ -255,7 +256,7 @@ pub(crate) enum TreeInfoTbs {
 }
 
 impl TreeInfoTbs {
-    pub(crate) fn commit(group_id: GroupId, leaf_index: u32) -> Self {
+    pub(crate) fn commit(group_id: GroupId, leaf_index: LeafNodeIndex) -> Self {
         Self::Commit(TreePosition {
             group_id,
             leaf_index,
@@ -521,10 +522,27 @@ impl LeafNode {
         &self.payload.capabilities
     }
 
+    /// Get the extension with the given `type` in this leaf.
+    ///
+    ///
+    /// Returns `None` if no extension of the requested type is present.
+    pub fn extension_by_type(&self, extension_type: ExtensionType) -> Option<&Extension> {
+        self.payload
+            .extensions
+            .iter()
+            .find(|&e| e.extension_type() == extension_type)
+    }
+
     /// Return a mutable reference to [`Capabilities`].
     #[cfg(test)]
     pub fn capabilities_mut(&mut self) -> &mut Capabilities {
         &mut self.payload.capabilities
+    }
+
+    /// Replace the credential in the KeyPackage.
+    #[cfg(any(feature = "test-utils", test))]
+    pub(crate) fn set_credential(&mut self, credential: Credential) {
+        self.payload.credential = credential;
     }
 }
 
@@ -617,7 +635,7 @@ impl LeafNodeTbs {
 pub struct OpenMlsLeafNode {
     pub(in crate::treesync) leaf_node: LeafNode,
     private_key: Option<HpkePrivateKey>,
-    leaf_index: Option<u32>,
+    leaf_index: Option<LeafNodeIndex>,
 }
 
 impl From<LeafNode> for OpenMlsLeafNode {
@@ -630,11 +648,11 @@ impl From<LeafNode> for OpenMlsLeafNode {
     }
 }
 
-impl From<KeyPackageBundle> for OpenMlsLeafNode {
-    fn from(kpb: KeyPackageBundle) -> Self {
+impl From<KeyPackage> for OpenMlsLeafNode {
+    fn from(key_package: KeyPackage) -> Self {
         Self {
-            leaf_node: kpb.key_package.leaf_node().clone(),
-            private_key: Some(kpb.private_key),
+            leaf_node: key_package.leaf_node().clone(),
+            private_key: None,
             leaf_index: None,
         }
     }
@@ -908,12 +926,16 @@ impl OpenMlsLeafNode {
     }
 
     /// Set the leaf index for this leaf.
-    pub fn set_leaf_index(&mut self, leaf_index: u32) {
+    pub fn set_leaf_index(&mut self, leaf_index: LeafNodeIndex) {
         self.leaf_index = Some(leaf_index);
     }
 
     /// Generate a leaf from a [`KeyPackageBundle`] and the leaf index.
-    pub fn from_key_package_bundel(kpb: KeyPackageBundle, leaf_index: u32) -> Self {
+    #[cfg(test)]
+    pub(crate) fn from_key_package_bundle(
+        kpb: crate::key_packages::KeyPackageBundle,
+        leaf_index: LeafNodeIndex,
+    ) -> Self {
         let (key_package, private_key) = kpb.into_parts();
         Self {
             leaf_node: key_package.take_leaf_node(),

@@ -7,9 +7,10 @@ use super::{
     staged_commit::StagedCommit,
 };
 use crate::{
+    binary_tree::array_representation::LeafNodeIndex,
     credentials::{Credential, CredentialBundle},
     error::LibraryError,
-    framing::*,
+    framing::{mls_auth_content::AuthenticatedContent, *},
     group::*,
     key_packages::{KeyPackage, KeyPackageBundle},
     messages::{proposals::*, Welcome},
@@ -239,7 +240,7 @@ impl MlsGroup {
     }
 
     /// Returns the leaf index of the client in the tree owning this group.
-    pub fn own_leaf_index(&self) -> u32 {
+    pub fn own_leaf_index(&self) -> LeafNodeIndex {
         self.group.treesync().own_leaf_index()
     }
 
@@ -327,17 +328,17 @@ impl MlsGroup {
 
 // Private methods of MlsGroup
 impl MlsGroup {
-    /// Converts MlsPlaintext to MlsMessageOut. Depending on whether handshake
-    /// message should be encrypted, MlsPlaintext messages are encrypted to
-    /// MlsCiphertext first.
-    fn plaintext_to_mls_message(
+    /// Converts PublicMessage to MlsMessageOut. Depending on whether handshake
+    /// message should be encrypted, PublicMessage messages are encrypted to
+    /// PrivateMessage first.
+    fn content_to_mls_message(
         &mut self,
-        mls_auth_content: MlsAuthContent,
+        mls_auth_content: AuthenticatedContent,
         backend: &impl OpenMlsCryptoProvider,
     ) -> Result<MlsMessageOut, LibraryError> {
         let msg = match self.configuration().wire_format_policy().outgoing() {
             OutgoingWireFormatPolicy::AlwaysPlaintext => {
-                let mut plaintext: MlsPlaintext = mls_auth_content.into();
+                let mut plaintext: PublicMessage = mls_auth_content.into();
                 // Set the membership tag only if the sender type is `Member`.
                 if plaintext.sender().is_member() {
                     plaintext.set_membership_tag(

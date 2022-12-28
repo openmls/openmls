@@ -10,13 +10,12 @@ use crate::{
     *,
 };
 use openmls_rust_crypto::OpenMlsRustCrypto;
-use tls_codec::Serialize;
 
 #[apply(ciphersuites_and_backends)]
 fn create_commit_optional_path(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
     let group_aad = b"Alice's test group";
     // Framing parameters
-    let framing_parameters = FramingParameters::new(group_aad, WireFormat::MlsPlaintext);
+    let framing_parameters = FramingParameters::new(group_aad, WireFormat::PublicMessage);
 
     // Define identities
     let alice_credential_bundle = CredentialBundle::new(
@@ -36,17 +35,14 @@ fn create_commit_optional_path(ciphersuite: Ciphersuite, backend: &impl OpenMlsC
 
     // Generate KeyPackages
     let alice_key_package_bundle =
-        KeyPackageBundle::new(&[ciphersuite], &alice_credential_bundle, backend, vec![])
-            .expect("An unexpected error occurred.");
+        KeyPackageBundle::new(backend, ciphersuite, &alice_credential_bundle);
 
     let bob_key_package_bundle =
-        KeyPackageBundle::new(&[ciphersuite], &bob_credential_bundle, backend, vec![])
-            .expect("An unexpected error occurred.");
+        KeyPackageBundle::new(backend, ciphersuite, &bob_credential_bundle);
     let bob_key_package = bob_key_package_bundle.key_package();
 
     let alice_update_key_package_bundle =
-        KeyPackageBundle::new(&[ciphersuite], &alice_credential_bundle, backend, vec![])
-            .expect("An unexpected error occurred.");
+        KeyPackageBundle::new(backend, ciphersuite, &alice_credential_bundle);
     let alice_update_key_package = alice_update_key_package_bundle.key_package();
     assert!(alice_update_key_package.verify(backend,).is_ok());
 
@@ -68,7 +64,7 @@ fn create_commit_optional_path(ciphersuite: Ciphersuite, backend: &impl OpenMlsC
         .expect("Could not create proposal.");
 
     let mut proposal_store = ProposalStore::from_queued_proposal(
-        QueuedProposal::from_mls_plaintext(ciphersuite, backend, bob_add_proposal)
+        QueuedProposal::from_authenticated_content(ciphersuite, backend, bob_add_proposal)
             .expect("Could not create QueuedProposal."),
     );
 
@@ -83,7 +79,7 @@ fn create_commit_optional_path(ciphersuite: Ciphersuite, backend: &impl OpenMlsC
             Err(e) => panic!("Error creating commit: {:?}", e),
         };
     let commit = match create_commit_result.commit.content() {
-        MlsContentBody::Commit(commit) => commit,
+        FramedContentBody::Commit(commit) => commit,
         _ => panic!(),
     };
     assert!(commit.has_path());
@@ -103,7 +99,7 @@ fn create_commit_optional_path(ciphersuite: Ciphersuite, backend: &impl OpenMlsC
 
     proposal_store.empty();
     proposal_store.add(
-        QueuedProposal::from_mls_plaintext(ciphersuite, backend, bob_add_proposal)
+        QueuedProposal::from_authenticated_content(ciphersuite, backend, bob_add_proposal)
             .expect("Could not create QueuedProposal."),
     );
 
@@ -118,7 +114,7 @@ fn create_commit_optional_path(ciphersuite: Ciphersuite, backend: &impl OpenMlsC
         Err(e) => panic!("Error creating commit: {:?}", e),
     };
     let commit = match create_commit_result.commit.content() {
-        MlsContentBody::Commit(commit) => commit,
+        FramedContentBody::Commit(commit) => commit,
         _ => panic!(),
     };
     assert!(!commit.has_path());
@@ -159,7 +155,7 @@ fn create_commit_optional_path(ciphersuite: Ciphersuite, backend: &impl OpenMlsC
 
     proposal_store.empty();
     proposal_store.add(
-        QueuedProposal::from_mls_plaintext(ciphersuite, backend, alice_update_proposal)
+        QueuedProposal::from_authenticated_content(ciphersuite, backend, alice_update_proposal)
             .expect("Could not create QueuedProposal."),
     );
 
@@ -175,7 +171,7 @@ fn create_commit_optional_path(ciphersuite: Ciphersuite, backend: &impl OpenMlsC
         Err(e) => panic!("Error creating commit: {:?}", e),
     };
     let commit = match create_commit_result.commit.content() {
-        MlsContentBody::Commit(commit) => commit,
+        FramedContentBody::Commit(commit) => commit,
         _ => panic!(),
     };
     assert!(commit.has_path());
@@ -190,7 +186,7 @@ fn create_commit_optional_path(ciphersuite: Ciphersuite, backend: &impl OpenMlsC
 fn basic_group_setup(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
     let group_aad = b"Alice's test group";
     // Framing parameters
-    let framing_parameters = FramingParameters::new(group_aad, WireFormat::MlsPlaintext);
+    let framing_parameters = FramingParameters::new(group_aad, WireFormat::PublicMessage);
 
     // Define credential bundles
     let alice_credential_bundle = CredentialBundle::new(
@@ -210,17 +206,11 @@ fn basic_group_setup(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvi
 
     // Generate KeyPackages
     let bob_key_package_bundle =
-        KeyPackageBundle::new(&[ciphersuite], &bob_credential_bundle, backend, Vec::new())
-            .expect("An unexpected error occurred.");
+        KeyPackageBundle::new(backend, ciphersuite, &bob_credential_bundle);
     let bob_key_package = bob_key_package_bundle.key_package();
 
-    let alice_key_package_bundle = KeyPackageBundle::new(
-        &[ciphersuite],
-        &alice_credential_bundle,
-        backend,
-        Vec::new(),
-    )
-    .expect("An unexpected error occurred.");
+    let alice_key_package_bundle =
+        KeyPackageBundle::new(backend, ciphersuite, &alice_credential_bundle);
 
     // Alice creates a group
     let group_alice = CoreGroup::builder(GroupId::random(backend), alice_key_package_bundle)
@@ -238,7 +228,7 @@ fn basic_group_setup(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvi
         .expect("Could not create proposal.");
 
     let proposal_store = ProposalStore::from_queued_proposal(
-        QueuedProposal::from_mls_plaintext(ciphersuite, backend, bob_add_proposal)
+        QueuedProposal::from_authenticated_content(ciphersuite, backend, bob_add_proposal)
             .expect("Could not create QueuedProposal."),
     );
 
@@ -269,7 +259,7 @@ fn basic_group_setup(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvi
 fn group_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
     let group_aad = b"Alice's test group";
     // Framing parameters
-    let framing_parameters = FramingParameters::new(group_aad, WireFormat::MlsPlaintext);
+    let framing_parameters = FramingParameters::new(group_aad, WireFormat::PublicMessage);
     let sender_ratchet_configuration = SenderRatchetConfiguration::default();
 
     // Define credential bundles
@@ -290,12 +280,10 @@ fn group_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvid
 
     // Generate KeyPackages
     let alice_key_package_bundle =
-        KeyPackageBundle::new(&[ciphersuite], &alice_credential_bundle, backend, vec![])
-            .expect("An unexpected error occurred.");
+        KeyPackageBundle::new(backend, ciphersuite, &alice_credential_bundle);
 
     let bob_key_package_bundle =
-        KeyPackageBundle::new(&[ciphersuite], &bob_credential_bundle, backend, vec![])
-            .expect("An unexpected error occurred.");
+        KeyPackageBundle::new(backend, ciphersuite, &bob_credential_bundle);
     let bob_key_package = bob_key_package_bundle.key_package();
 
     // === Alice creates a group ===
@@ -314,7 +302,7 @@ fn group_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvid
         .expect("Could not create proposal.");
 
     let mut proposal_store = ProposalStore::from_queued_proposal(
-        QueuedProposal::from_mls_plaintext(ciphersuite, backend, bob_add_proposal)
+        QueuedProposal::from_authenticated_content(ciphersuite, backend, bob_add_proposal)
             .expect("Could not create QueuedProposal."),
     );
 
@@ -328,7 +316,7 @@ fn group_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvid
         .create_commit(params, backend)
         .expect("Error creating commit");
     let commit = match create_commit_result.commit.content() {
-        MlsContentBody::Commit(commit) => commit,
+        FramedContentBody::Commit(commit) => commit,
         _ => panic!("Wrong content type"),
     };
     assert!(!commit.has_path());
@@ -368,7 +356,7 @@ fn group_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvid
         .create_application_message(&[], &message_alice, &alice_credential_bundle, 0, backend)
         .expect("An unexpected error occurred.");
 
-    let mut verifiable_plaintext = group_bob
+    let verifiable_plaintext = group_bob
         .decrypt(
             &mls_ciphertext_alice,
             backend,
@@ -376,30 +364,22 @@ fn group_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvid
         )
         .expect("An unexpected error occurred.");
 
-    verifiable_plaintext.set_context(
-        group_bob
-            .context()
-            .tls_serialize_detached()
-            .expect("An unexpected error occurred."),
-    );
-
     let credential = group_alice
         .treesync()
         .own_leaf_node()
         .expect("An unexpected error occurred.")
         .credential();
-    let mls_plaintext_bob: MlsAuthContent = verifiable_plaintext
+    let mls_plaintext_bob: AuthenticatedContent = verifiable_plaintext
         .verify(backend, credential)
         .expect("An unexpected error occurred.");
 
     assert!(matches!(
         mls_plaintext_bob.content(),
-            MlsContentBody::Application(message) if message.as_slice() == &message_alice[..]));
+            FramedContentBody::Application(message) if message.as_slice() == &message_alice[..]));
 
     // === Bob updates and commits ===
     let bob_update_key_package_bundle =
-        KeyPackageBundle::new(&[ciphersuite], &bob_credential_bundle, backend, vec![])
-            .expect("Could not create key package bundle.");
+        KeyPackageBundle::new(backend, ciphersuite, &bob_credential_bundle);
 
     let update_proposal_bob = group_bob
         .create_update_proposal(
@@ -415,7 +395,7 @@ fn group_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvid
 
     proposal_store.empty();
     proposal_store.add(
-        QueuedProposal::from_mls_plaintext(ciphersuite, backend, update_proposal_bob)
+        QueuedProposal::from_authenticated_content(ciphersuite, backend, update_proposal_bob)
             .expect("Could not create QueuedProposal."),
     );
 
@@ -432,7 +412,7 @@ fn group_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvid
 
     // Check that there is a path
     let commit = match create_commit_result.commit.content() {
-        MlsContentBody::Commit(commit) => commit,
+        FramedContentBody::Commit(commit) => commit,
         _ => panic!("Wrong content type"),
     };
     assert!(commit.has_path());
@@ -458,8 +438,7 @@ fn group_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvid
 
     // === Alice updates and commits ===
     let alice_update_key_package_bundle =
-        KeyPackageBundle::new(&[ciphersuite], &alice_credential_bundle, backend, vec![])
-            .expect("Could not create key package bundle.");
+        KeyPackageBundle::new(backend, ciphersuite, &alice_credential_bundle);
 
     let update_proposal_alice = group_alice
         .create_update_proposal(
@@ -475,7 +454,7 @@ fn group_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvid
 
     proposal_store.empty();
     proposal_store.add(
-        QueuedProposal::from_mls_plaintext(ciphersuite, backend, update_proposal_alice)
+        QueuedProposal::from_authenticated_content(ciphersuite, backend, update_proposal_alice)
             .expect("Could not create QueuedProposal."),
     );
 
@@ -512,8 +491,7 @@ fn group_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvid
 
     // === Bob updates and Alice commits ===
     let bob_update_key_package_bundle =
-        KeyPackageBundle::new(&[ciphersuite], &bob_credential_bundle, backend, vec![])
-            .expect("Could not create key package bundle.");
+        KeyPackageBundle::new(backend, ciphersuite, &bob_credential_bundle);
 
     let update_proposal_bob = group_bob
         .create_update_proposal(
@@ -529,8 +507,12 @@ fn group_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvid
 
     proposal_store.empty();
     proposal_store.add(
-        QueuedProposal::from_mls_plaintext(ciphersuite, backend, update_proposal_bob.clone())
-            .expect("Could not create QueuedProposal."),
+        QueuedProposal::from_authenticated_content(
+            ciphersuite,
+            backend,
+            update_proposal_bob.clone(),
+        )
+        .expect("Could not create QueuedProposal."),
     );
 
     let params = CreateCommitParams::builder()
@@ -552,7 +534,7 @@ fn group_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvid
         .expect("error merging own commits");
 
     proposal_store.add(
-        QueuedProposal::from_mls_plaintext(ciphersuite, backend, update_proposal_bob)
+        QueuedProposal::from_authenticated_content(ciphersuite, backend, update_proposal_bob)
             .expect("Could not create StagedProposal."),
     );
 
@@ -560,7 +542,7 @@ fn group_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvid
         .stage_commit(
             &create_commit_result.commit,
             &proposal_store,
-            &[OpenMlsLeafNode::from_key_package_bundel(
+            &[OpenMlsLeafNode::from_key_package_bundle(
                 bob_update_key_package_bundle,
                 group_bob.own_leaf_index(),
             )],
@@ -587,8 +569,7 @@ fn group_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvid
     .expect("An unexpected error occurred.");
 
     let charlie_key_package_bundle =
-        KeyPackageBundle::new(&[ciphersuite], &charlie_credential_bundle, backend, vec![])
-            .expect("Could not create key package bundle.");
+        KeyPackageBundle::new(backend, ciphersuite, &charlie_credential_bundle);
     let charlie_key_package = charlie_key_package_bundle.key_package().clone();
 
     let add_charlie_proposal_bob = group_bob
@@ -602,7 +583,7 @@ fn group_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvid
 
     proposal_store.empty();
     proposal_store.add(
-        QueuedProposal::from_mls_plaintext(ciphersuite, backend, add_charlie_proposal_bob)
+        QueuedProposal::from_authenticated_content(ciphersuite, backend, add_charlie_proposal_bob)
             .expect("Could not create QueuedProposal."),
     );
 
@@ -620,7 +601,7 @@ fn group_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvid
     // Check there is no path since there are only Add Proposals and no forced
     // self-update
     let commit = match create_commit_result.commit.content() {
-        MlsContentBody::Commit(commit) => commit,
+        FramedContentBody::Commit(commit) => commit,
         _ => panic!("Wrong content type"),
     };
     assert!(!commit.has_path());
@@ -673,7 +654,7 @@ fn group_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvid
         .expect("An unexpected error occurred.");
 
     // Alice decrypts and verifies
-    let mut verifiable_plaintext = group_alice
+    let verifiable_plaintext = group_alice
         .decrypt(
             &mls_ciphertext_charlie.clone(),
             backend,
@@ -681,29 +662,22 @@ fn group_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvid
         )
         .expect("An unexpected error occurred.");
 
-    verifiable_plaintext.set_context(
-        group_alice
-            .context()
-            .tls_serialize_detached()
-            .expect("An unexpected error occurred."),
-    );
-
     let credential = group_charlie
         .treesync()
         .own_leaf_node()
         .expect("An unexpected error occurred.")
         .credential();
 
-    let mls_plaintext_alice: MlsAuthContent = verifiable_plaintext
+    let mls_plaintext_alice: AuthenticatedContent = verifiable_plaintext
         .verify(backend, credential)
         .expect("An unexpected error occurred.");
 
     assert!(matches!(
         mls_plaintext_alice.content(),
-            MlsContentBody::Application(message) if message.as_slice() == &message_charlie[..]));
+            FramedContentBody::Application(message) if message.as_slice() == &message_charlie[..]));
 
     // Bob decrypts and verifies
-    let mut verifiable_plaintext = group_bob
+    let verifiable_plaintext = group_bob
         .decrypt(
             &mls_ciphertext_charlie,
             backend,
@@ -711,30 +685,22 @@ fn group_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvid
         )
         .expect("An unexpected error occurred.");
 
-    verifiable_plaintext.set_context(
-        group_bob
-            .context()
-            .tls_serialize_detached()
-            .expect("An unexpected error occurred."),
-    );
-
     let credential = group_charlie
         .treesync()
         .own_leaf_node()
         .expect("An unexpected error occurred.")
         .credential();
-    let mls_plaintext_bob: MlsAuthContent = verifiable_plaintext
+    let mls_plaintext_bob: AuthenticatedContent = verifiable_plaintext
         .verify(backend, credential)
         .expect("An unexpected error occurred.");
 
     assert!(matches!(
         mls_plaintext_bob.content(),
-        MlsContentBody::Application(message) if message.as_slice() == &message_charlie[..]));
+        FramedContentBody::Application(message) if message.as_slice() == &message_charlie[..]));
 
     // === Charlie updates and commits ===
     let charlie_update_key_package_bundle =
-        KeyPackageBundle::new(&[ciphersuite], &charlie_credential_bundle, backend, vec![])
-            .expect("Could not create key package bundle.");
+        KeyPackageBundle::new(backend, ciphersuite, &charlie_credential_bundle);
 
     let update_proposal_charlie = group_charlie
         .create_update_proposal(
@@ -750,7 +716,7 @@ fn group_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvid
 
     proposal_store.empty();
     proposal_store.add(
-        QueuedProposal::from_mls_plaintext(ciphersuite, backend, update_proposal_charlie)
+        QueuedProposal::from_authenticated_content(ciphersuite, backend, update_proposal_charlie)
             .expect("Could not create QueuedProposal."),
     );
 
@@ -767,7 +733,7 @@ fn group_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvid
 
     // Check that there is a new KeyPackageBundle
     let commit = match create_commit_result.commit.content() {
-        MlsContentBody::Commit(commit) => commit,
+        FramedContentBody::Commit(commit) => commit,
         _ => panic!("Wrong content type"),
     };
     assert!(commit.has_path());
@@ -810,8 +776,12 @@ fn group_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvid
 
     proposal_store.empty();
     proposal_store.add(
-        QueuedProposal::from_mls_plaintext(ciphersuite, backend, remove_bob_proposal_charlie)
-            .expect("Could not create QueuedProposal."),
+        QueuedProposal::from_authenticated_content(
+            ciphersuite,
+            backend,
+            remove_bob_proposal_charlie,
+        )
+        .expect("Could not create QueuedProposal."),
     );
 
     let params = CreateCommitParams::builder()

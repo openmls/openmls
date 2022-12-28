@@ -136,7 +136,11 @@ impl MessageSecretsStore {
     }
 
     /// Check if the provided epoch contains a leaf index.
-    pub(crate) fn epoch_has_leaf(&self, group_epoch: GroupEpoch, leaf_index: u32) -> bool {
+    pub(crate) fn epoch_has_leaf(
+        &self,
+        group_epoch: GroupEpoch,
+        leaf_index: LeafNodeIndex,
+    ) -> bool {
         self.past_epoch_trees.iter().any(|t| {
             t.epoch == group_epoch.0
                 && t.leaves

@@ -1,8 +1,7 @@
 //! This module defines the [`MessageSecrets`] struct that can be used for message decryption & verification
 
 use super::*;
-#[cfg(test)]
-use crate::tree::index::SecretTreeLeafIndex;
+
 /// Combined message secrets that need to be stored for later decryption/verification
 #[derive(Debug, Serialize, Deserialize)]
 pub(crate) struct MessageSecrets {
@@ -69,7 +68,7 @@ impl MessageSecrets {
     pub(crate) fn random(
         ciphersuite: Ciphersuite,
         backend: &impl OpenMlsCryptoProvider,
-        own_index: u32,
+        own_index: LeafNodeIndex,
     ) -> Self {
         use openmls_traits::random::OpenMlsRand;
 
@@ -83,7 +82,7 @@ impl MessageSecrets {
                 .expect("Not enough randomness."),
             secret_tree: SecretTree::new(
                 EncryptionSecret::random(ciphersuite, backend),
-                SecretTreeLeafIndex(10),
+                10,
                 own_index.into(),
             ),
         }

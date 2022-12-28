@@ -9,8 +9,15 @@ use std::convert::TryFrom;
 use crate::test_utils::{read, write};
 
 use crate::{
-    ciphersuite::signable::*, credentials::*, framing::*, group::*, messages::*, schedule::*,
-    test_utils::*, versions::ProtocolVersion,
+    binary_tree::array_representation::LeafNodeIndex,
+    ciphersuite::signable::*,
+    credentials::*,
+    framing::{mls_auth_content::AuthenticatedContent, *},
+    group::*,
+    messages::*,
+    schedule::*,
+    test_utils::*,
+    versions::ProtocolVersion,
 };
 
 use openmls_rust_crypto::OpenMlsRustCrypto;
@@ -30,7 +37,7 @@ pub struct TranscriptTestVector {
     credential: String,
     membership_key: String,
     confirmation_key: String,
-    commit: String, // TLS serialized MlsPlaintext(Commit)
+    commit: String, // TLS serialized PublicMessage(Commit)
     group_context: String,
     confirmed_transcript_hash_after: String,
     interim_transcript_hash_after: String,
@@ -82,9 +89,9 @@ pub fn generate_test_vector(ciphersuite: Ciphersuite) -> TranscriptTestVector {
         .rand()
         .random_vec(48)
         .expect("An unexpected error occurred.");
-    let framing_parameters = FramingParameters::new(&aad, WireFormat::MlsPlaintext);
-    let sender = Sender::build_member(7); // XXX: use random, valid sender
-    let mut commit = MlsAuthContent::commit(
+    let framing_parameters = FramingParameters::new(&aad, WireFormat::PublicMessage);
+    let sender = Sender::build_member(LeafNodeIndex::new(7)); // XXX: use random, valid sender
+    let mut commit = AuthenticatedContent::commit(
         framing_parameters,
         sender,
         Commit {
@@ -117,7 +124,7 @@ pub fn generate_test_vector(ciphersuite: Ciphersuite) -> TranscriptTestVector {
         &confirmed_transcript_hash_after,
     )
     .expect("Error updating interim transcript hash");
-    let mut commit: MlsPlaintext = commit.into();
+    let mut commit: PublicMessage = commit.into();
     commit
         .set_membership_tag(
             &crypto,
@@ -211,8 +218,8 @@ pub fn run_test_vector(
 
     // Check membership and confirmation tags.
     let commit_bytes = hex_to_bytes(&test_vector.commit);
-    let commit =
-        MlsPlaintext::tls_deserialize(&mut commit_bytes.as_slice()).expect("Error decoding commit");
+    let commit = PublicMessage::tls_deserialize(&mut commit_bytes.as_slice())
+        .expect("Error decoding commit");
     let context = GroupContext::new(
         ciphersuite,
         group_id,
@@ -247,14 +254,14 @@ pub fn run_test_vector(
         }
         return Err(TranscriptTestVectorError::MembershipTagVerificationError);
     }
-    let commit = VerifiableMlsAuthContent::from_plaintext(commit, serialized_context);
+    let commit = commit.into_verifiable_content(&serialized_context);
     let confirmation_tag = commit
         .confirmation_tag()
         .cloned()
         .expect("Confirmation tag is missing");
-    let content: MlsAuthContent = commit
+    let content: AuthenticatedContent = commit
         .verify(backend, &credential)
-        .expect("Invalid signature on MlsPlaintext commit");
+        .expect("Invalid signature on PublicMessage commit");
 
     //let my_confirmation_tag = confirmation_key.tag(&confirmed_transcript_hash_before);
     let confirmed_transcript_hash_after =

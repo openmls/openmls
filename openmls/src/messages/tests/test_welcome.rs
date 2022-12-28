@@ -1,8 +1,9 @@
 use crate::{
+    binary_tree::LeafNodeIndex,
     ciphersuite::{hash_ref::KeyPackageRef, signable::Signable, AeadKey, AeadNonce, Mac, Secret},
     credentials::{errors::CredentialError, CredentialBundle, CredentialType},
-    group::{errors::WelcomeError, GroupId, MlsGroup, MlsGroupConfig},
-    key_packages::KeyPackageBundle,
+    group::{config::CryptoConfig, errors::WelcomeError, GroupId, MlsGroup, MlsGroupConfig},
+    key_packages::KeyPackage,
     messages::{
         ConfirmationTag, EncryptedGroupSecrets, GroupInfo, GroupInfoTBS, GroupSecrets, Welcome,
     },
@@ -83,49 +84,39 @@ fn test_welcome_ciphersuite_mismatch(
     )
     .expect("Could not create credential bundle.");
 
-    // Create key package bundles and store them in the key store
-    let alice_kpb =
-        KeyPackageBundle::new(&[ciphersuite], &alice_credential_bundle, backend, vec![])
-            .expect("Could not create KeyPackageBundle for Alice.");
-    let alice_kp = alice_kpb.key_package().clone();
+    // Create key packages
+    let alice_kp = KeyPackage::create(
+        CryptoConfig {
+            ciphersuite,
+            version: ProtocolVersion::default(),
+        },
+        backend,
+        &alice_credential_bundle,
+        vec![],
+        vec![],
+    )
+    .unwrap();
+    let bob_kp = KeyPackage::create(
+        CryptoConfig {
+            ciphersuite,
+            version: ProtocolVersion::default(),
+        },
+        backend,
+        &bob_credential_bundle,
+        vec![],
+        vec![],
+    )
+    .unwrap();
 
-    backend
+    let bob_private_key: Vec<u8> = backend
         .key_store()
-        .store(
-            alice_kp
-                .hash_ref(backend.crypto())
-                .expect("Could not hash KeyPackage.")
-                .as_slice(),
-            &alice_kpb,
-        )
-        .expect("An unexpected error occurred.");
-
-    let bob_kpb = KeyPackageBundle::new(&[ciphersuite], &bob_credential_bundle, backend, vec![])
-        .expect("Could not create KeyPackageBundle for Bob.");
-    let bob_kp = bob_kpb.key_package().clone();
-
-    backend
-        .key_store()
-        .store(
-            bob_kp
-                .hash_ref(backend.crypto())
-                .expect("Could not hash KeyPackage.")
-                .as_slice(),
-            &bob_kpb,
-        )
-        .expect("An unexpected error occurred.");
+        .read(bob_kp.hpke_init_key().as_slice())
+        .unwrap();
 
     // === Alice creates a group  and adds Bob ===
-    let mut alice_group = MlsGroup::new_with_group_id(
-        backend,
-        &mls_group_config,
-        group_id,
-        alice_kp
-            .hash_ref(backend.crypto())
-            .expect("Could not hash KeyPackage.")
-            .as_slice(),
-    )
-    .expect("An unexpected error occurred.");
+    let mut alice_group =
+        MlsGroup::new_with_group_id(backend, &mls_group_config, group_id, alice_kp)
+            .expect("An unexpected error occurred.");
 
     let (_queued_message, mut welcome) = alice_group
         .add_members(backend, &[bob_kp.clone()])
@@ -146,7 +137,7 @@ fn test_welcome_ciphersuite_mismatch(
         .hpke_open(
             ciphersuite.hpke_config(),
             egs.encrypted_group_secrets(),
-            bob_kpb.private_key().as_slice(),
+            &bob_private_key,
             &[],
             &[],
         )
@@ -208,18 +199,19 @@ fn test_welcome_ciphersuite_mismatch(
 
     // === Process the original Welcome ===
 
-    // We need to store the KeyPackageBundle again because it has been consumed
+    // We need to store the key package key again because it has been consumed
     // already
     backend
         .key_store()
         .store(
-            bob_kp
-                .hash_ref(backend.crypto())
-                .expect("Could not hash KeyPackage.")
-                .as_slice(),
-            &bob_kpb,
+            bob_kp.hash_ref(backend.crypto()).unwrap().as_slice(),
+            &bob_kp,
         )
-        .expect("An unexpected error occurred.");
+        .unwrap();
+    backend
+        .key_store()
+        .store(bob_kp.hpke_init_key().as_slice(), &bob_private_key)
+        .unwrap();
 
     let _group = MlsGroup::new_from_welcome(
         backend,
@@ -257,7 +249,7 @@ fn test_welcome_message_with_version(
             ConfirmationTag(Mac {
                 mac_value: vec![1, 2, 3, 4, 5].into(),
             }),
-            1,
+            LeafNodeIndex::new(1),
         )
     };
 

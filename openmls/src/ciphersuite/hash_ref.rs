@@ -23,7 +23,7 @@
 //!
 //! For a KeyPackageRef, the `value` input is the encoded KeyPackage, and the
 //! ciphersuite specified in the KeyPackage determines the hash function used.  For a
-//! ProposalRef, the `value` input is the MLSPlaintext carrying the proposal, and
+//! ProposalRef, the `value` input is the PublicMessage carrying the proposal, and
 //! the hash function is determined by the group's ciphersuite.
 
 use openmls_traits::{crypto::OpenMlsCrypto, types::CryptoError};

@@ -6,7 +6,7 @@ use thiserror::Error;
 use tls_codec::VLByteSlice;
 
 use crate::{
-    binary_tree::{LeafIndex, MlsBinaryTreeDiffError},
+    binary_tree::{array_representation::LeafNodeIndex, MlsBinaryTreeDiffError},
     error::LibraryError,
 };
 
@@ -86,7 +86,7 @@ impl TreeSyncNode {
         &mut self,
         backend: &impl OpenMlsCryptoProvider,
         ciphersuite: Ciphersuite,
-        leaf_index_option: Option<LeafIndex>,
+        leaf_index_option: Option<LeafNodeIndex>,
         left_hash: Vec<u8>,
         right_hash: Vec<u8>,
     ) -> Result<Vec<u8>, LibraryError> {

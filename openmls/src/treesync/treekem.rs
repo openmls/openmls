@@ -16,7 +16,7 @@ use openmls_traits::{
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    binary_tree::{LeafIndex, OutOfBoundsError},
+    binary_tree::array_representation::LeafNodeIndex,
     ciphersuite::{hash_ref::KeyPackageRef, HpkePublicKey},
     error::LibraryError,
     messages::{proposals::AddProposal, EncryptedGroupSecrets, GroupSecrets, PathSecret},
@@ -46,7 +46,7 @@ impl<'a> TreeSyncDiff<'a> {
         ciphersuite: Ciphersuite,
         path: &[PlainUpdatePathNode],
         group_context: &[u8],
-        exclusion_list: &HashSet<&LeafIndex>,
+        exclusion_list: &HashSet<&LeafNodeIndex>,
     ) -> Result<Vec<UpdatePathNode>, LibraryError> {
         let copath_resolutions = self.copath_resolutions(self.own_leaf_index(), exclusion_list)?;
 
@@ -82,20 +82,15 @@ impl<'a> TreeSyncDiff<'a> {
         ciphersuite: Ciphersuite,
         params: DecryptPathParams,
     ) -> Result<(Vec<ParentNode>, CommitSecret), ApplyUpdatePathError> {
-        let path_position = self
-            .subtree_root_position(params.sender_leaf_index, self.own_leaf_index())
-            .map_err(|_| LibraryError::custom("Expected own leaf to be in the tree"))?;
-
         // ValSem202: Path must be the right length
-        let direct_path_length =
-            self.direct_path_len(params.sender_leaf_index)
-                .map_err(|e| match e {
-                    OutOfBoundsError::LibraryError(e) => ApplyUpdatePathError::LibraryError(e),
-                    OutOfBoundsError::IndexOutOfBounds => ApplyUpdatePathError::MissingSender,
-                })?;
+        let direct_path_length = self.direct_path_len(params.sender_leaf_index);
         if direct_path_length != params.update_path.len() {
             return Err(ApplyUpdatePathError::PathLengthMismatch);
         }
+
+        let path_position = self
+            .subtree_root_position(params.sender_leaf_index, self.own_leaf_index())
+            .map_err(|_| LibraryError::custom("Expected own leaf to be in the tree"))?;
 
         let update_path_node = params
             .update_path
@@ -163,8 +158,8 @@ impl<'a> TreeSyncDiff<'a> {
 pub(crate) struct DecryptPathParams<'a> {
     pub(crate) version: ProtocolVersion,
     pub(crate) update_path: Vec<UpdatePathNode>,
-    pub(crate) sender_leaf_index: LeafIndex,
-    pub(crate) exclusion_list: &'a HashSet<&'a LeafIndex>,
+    pub(crate) sender_leaf_index: LeafNodeIndex,
+    pub(crate) exclusion_list: &'a HashSet<&'a LeafNodeIndex>,
     pub(crate) group_context: &'a [u8],
 }
 
@@ -253,7 +248,7 @@ impl PlaintextSecret {
     pub(crate) fn from_plain_update_path(
         diff: &TreeSyncDiff,
         joiner_secret: &JoinerSecret,
-        invited_members: Vec<(LeafIndex, AddProposal)>,
+        invited_members: Vec<(LeafNodeIndex, AddProposal)>,
         plain_path_option: Option<&[PlainUpdatePathNode]>,
         presharedkeys: &[PreSharedKeyId],
         backend: &impl OpenMlsCryptoProvider,

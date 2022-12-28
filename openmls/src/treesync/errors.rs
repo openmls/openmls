@@ -9,9 +9,6 @@ use crate::{binary_tree::MlsBinaryTreeDiffError, error::LibraryError};
 
 // === Public errors ===
 
-// Re-exporting OutOfBoundsError from the ABinaryTree
-pub(crate) use crate::binary_tree::OutOfBoundsError;
-
 /// Public tree error
 #[derive(Error, Debug, PartialEq, Eq, Clone)]
 pub enum PublicTreeError {
@@ -178,9 +175,6 @@ pub(crate) enum TreeSyncDiffError {
     /// See [`MlsBinaryTreeError`] for more details.
     #[error(transparent)]
     CreationError(#[from] MlsBinaryTreeError),
-    /// See [`OutOfBoundsError`] for more details.
-    #[error(transparent)]
-    UnknownMember(#[from] OutOfBoundsError),
 }
 
 /// TreeKem error

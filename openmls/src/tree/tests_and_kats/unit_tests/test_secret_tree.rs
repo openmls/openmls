@@ -16,11 +16,7 @@ use std::collections::HashMap;
 fn test_boundaries(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
     let configuration = &SenderRatchetConfiguration::default();
     let encryption_secret = EncryptionSecret::random(ciphersuite, backend);
-    let mut secret_tree = SecretTree::new(
-        encryption_secret,
-        SecretTreeLeafIndex::from(3u32),
-        2u32.into(),
-    );
+    let mut secret_tree = SecretTree::new(encryption_secret, 3u32, 2u32.into());
     let secret_type = SecretType::ApplicationSecret;
     assert!(secret_tree
         .secret_for_decryption(
@@ -107,11 +103,7 @@ fn test_boundaries(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvide
         Err(SecretTreeError::IndexOutOfBounds)
     );
     let encryption_secret = EncryptionSecret::random(ciphersuite, backend);
-    let mut largetree = SecretTree::new(
-        encryption_secret,
-        SecretTreeLeafIndex::from(100_000u32),
-        2u32.into(),
-    );
+    let mut largetree = SecretTree::new(encryption_secret, 100_000u32, 2u32.into());
     assert!(largetree
         .secret_for_decryption(
             ciphersuite,
@@ -164,11 +156,7 @@ fn increment_generation(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoPr
 
     let mut unique_values: HashMap<Vec<u8>, bool> = HashMap::new();
     let encryption_secret = EncryptionSecret::random(ciphersuite, backend);
-    let mut secret_tree = SecretTree::new(
-        encryption_secret,
-        SecretTreeLeafIndex::from(SIZE as u32),
-        0u32.into(),
-    );
+    let mut secret_tree = SecretTree::new(encryption_secret, SIZE as u32, 0u32.into());
     for i in 0..SIZE {
         assert_eq!(
             secret_tree.generation(
@@ -243,7 +231,7 @@ fn secret_tree(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
             ProtocolVersion::default(),
             ciphersuite,
         ),
-        SecretTreeLeafIndex::from(n_leaves),
+        n_leaves,
         1u32.into(),
     );
     println!("Secret tree: {:?}", secret_tree);

@@ -1,6 +1,6 @@
 //! # OpenMLS Key Store Trait
 
-use std::fmt::Debug;
+use std::{convert::Infallible, fmt::Debug};
 
 pub trait FromKeyStoreValue: Sized {
     type Error: std::error::Error + Debug;
@@ -37,4 +37,18 @@ pub trait OpenMlsKeyStore: Send + Sync {
     ///
     /// Returns an error if storing fails.
     fn delete(&self, k: &[u8]) -> Result<(), Self::Error>;
+}
+
+impl ToKeyStoreValue for Vec<u8> {
+    type Error = Infallible;
+    fn to_key_store_value(&self) -> Result<Vec<u8>, Self::Error> {
+        Ok(self.clone())
+    }
+}
+
+impl FromKeyStoreValue for Vec<u8> {
+    type Error = Infallible;
+    fn from_key_store_value(ksv: &[u8]) -> Result<Self, Self::Error> {
+        Ok(ksv.to_vec())
+    }
 }

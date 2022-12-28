@@ -1,7 +1,10 @@
 use crate::{
+    binary_tree::array_representation::LeafNodeIndex,
     ciphersuite::hash_ref::ProposalRef,
     error::LibraryError,
-    framing::*,
+    framing::{
+        mls_auth_content::AuthenticatedContent, mls_content::FramedContentBody, Sender, SenderError,
+    },
     group::errors::*,
     messages::proposals::{
         AddProposal, PreSharedKeyProposal, Proposal, ProposalOrRef, ProposalOrRefType,
@@ -47,7 +50,7 @@ impl ProposalStore {
 }
 
 /// Alternative representation of a Proposal, where the sender is extracted from
-/// the encapsulating MlsPlaintext and the ProposalRef is attached.
+/// the encapsulating PublicMessage and the ProposalRef is attached.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct QueuedProposal {
     proposal: Proposal,
@@ -57,21 +60,21 @@ pub struct QueuedProposal {
 }
 
 impl QueuedProposal {
-    /// Creates a new [QueuedProposal] from an [MlsPlaintext]
-    pub(crate) fn from_mls_plaintext(
+    /// Creates a new [QueuedProposal] from an [PublicMessage]
+    pub(crate) fn from_authenticated_content(
         ciphersuite: Ciphersuite,
         backend: &impl OpenMlsCryptoProvider,
-        mls_plaintext: MlsAuthContent,
+        public_message: AuthenticatedContent,
     ) -> Result<Self, LibraryError> {
-        let proposal = match mls_plaintext.content() {
-            MlsContentBody::Proposal(p) => p,
+        let proposal = match public_message.content() {
+            FramedContentBody::Proposal(p) => p,
             _ => return Err(LibraryError::custom("Wrong content type")),
         };
         let proposal_reference = ProposalRef::from_proposal(ciphersuite, backend, proposal)?;
         Ok(Self {
             proposal: proposal.clone(), // FIXME
             proposal_reference,
-            sender: mls_plaintext.sender().clone(),
+            sender: public_message.sender().clone(),
             proposal_or_ref_type: ProposalOrRefType::Reference,
         })
     }
@@ -330,14 +333,14 @@ impl ProposalQueue {
         sender: Sender,
         proposal_store: &'a ProposalStore,
         inline_proposals: &'a [Proposal],
-        own_index: u32,
+        own_index: LeafNodeIndex,
     ) -> Result<(Self, bool), ProposalQueueError> {
         #[derive(Clone, Default)]
         struct Member {
             updates: Vec<QueuedProposal>,
             removes: Vec<QueuedProposal>,
         }
-        let mut members = HashMap::<u32, Member>::new();
+        let mut members = HashMap::<LeafNodeIndex, Member>::new();
         let mut adds: HashSet<ProposalRef> = HashSet::new();
         let mut valid_proposals: HashSet<ProposalRef> = HashSet::new();
         let mut proposal_pool: HashMap<ProposalRef, QueuedProposal> = HashMap::new();

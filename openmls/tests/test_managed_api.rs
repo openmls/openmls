@@ -41,7 +41,7 @@ fn test_mls_group_api(ciphersuite: Ciphersuite) {
             ActionType::Commit,
             group,
             &remover_id,
-            &[target_index as u32],
+            &[LeafNodeIndex::new(target_index as u32)],
         )
         .expect("An unexpected error occurred.");
 

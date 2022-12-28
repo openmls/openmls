@@ -29,26 +29,19 @@ fn test_external_commit(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoPr
             alice_cb
         };
 
-        let alice_kph = {
-            let ciphersuites = vec![ciphersuite];
+        let alice_key_package = KeyPackage::create(
+            config::CryptoConfig {
+                ciphersuite,
+                version: ProtocolVersion::default(),
+            },
+            backend,
+            &alice_cb,
+            vec![],
+            vec![],
+        )
+        .expect("Creation of key package failed.");
 
-            let alice_kpb = KeyPackageBundle::new(&ciphersuites, &alice_cb, backend, vec![])
-                .expect("Creation of key package bundle failed.");
-
-            let alice_kph = alice_kpb
-                .key_package()
-                .hash_ref(backend.crypto())
-                .expect("Hashing of key package failed.");
-
-            backend
-                .key_store()
-                .store(alice_kph.as_slice(), &alice_kpb)
-                .expect("An unexpected error occurred.");
-
-            alice_kph
-        };
-
-        MlsGroup::new(backend, &group_config, alice_kph.as_slice())
+        MlsGroup::new(backend, &group_config, alice_key_package)
             .expect("An unexpected error occurred.")
     };
 

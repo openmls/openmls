@@ -52,18 +52,18 @@
 //! For all `N` entries in the `leaves` and all generations `j`
 //! * `leaves[N].handshake[j].key = handshake_ratchet_key_[2*N]_[j]`
 //! * `leaves[N].handshake[j].nonce = handshake_ratchet_nonce_[2*N]_[j]`
-//! * `leaves[N].handshake[j].plaintext` represents an MlsPlaintext containing a
+//! * `leaves[N].handshake[j].plaintext` represents an PublicMessage containing a
 //!   handshake message (Proposal or Commit) from leaf `N`
-//! * `leaves[N].handshake[j].ciphertext` represents an MlsCiphertext object
-//!   that successfully decrypts to an MlsPlaintext equivalent to
+//! * `leaves[N].handshake[j].ciphertext` represents an PrivateMessage object
+//!   that successfully decrypts to an PublicMessage equivalent to
 //!   `leaves[N].handshake[j].plaintext` using the keys for leaf `N` and
 //!   generation `j`.
 //! * `leaves[N].application[j].key = application_ratchet_key_[2*N]_[j]`
 //! * `leaves[N].application[j].nonce = application_ratchet_nonce_[2*N]_[j]`
-//! * `leaves[N].application[j].plaintext` represents an MlsPlaintext containing
+//! * `leaves[N].application[j].plaintext` represents an PublicMessage containing
 //!   application data from leaf `N`
-//! * `leaves[N].application[j].ciphertext` represents an MlsCiphertext object
-//!   that successfully decrypts to an MlsPlaintext equivalent to
+//! * `leaves[N].application[j].ciphertext` represents an PrivateMessage object
+//!   that successfully decrypts to an PublicMessage equivalent to
 //!   `leaves[N].handshake[j].plaintext` using the keys for leaf `N` and
 //!   generation `j`.
 //! * `sender_data_info.secret.key = sender_data_key(sender_data_secret,
@@ -79,6 +79,7 @@
 
 use crate::messages::proposals::RemoveProposal;
 use crate::{
+    binary_tree::array_representation::LeafNodeIndex,
     credentials::{CredentialBundle, CredentialType},
     framing::*,
     group::*,
@@ -87,7 +88,6 @@ use crate::{
     schedule::{EncryptionSecret, SenderDataSecret},
     test_utils::*,
     tree::{
-        index::SecretTreeLeafIndex,
         secret_tree::{SecretTree, SecretType},
         sender_ratchet::SenderRatchetConfiguration,
     },
@@ -147,9 +147,7 @@ fn group(
         backend,
     )
     .expect("An unexpected error occurred.");
-    let key_package_bundle =
-        KeyPackageBundle::new(&[ciphersuite], &credential_bundle, backend, Vec::new())
-            .expect("An unexpected error occurred.");
+    let key_package_bundle = KeyPackageBundle::new(backend, ciphersuite, &credential_bundle);
     (
         CoreGroup::builder(GroupId::random(backend), key_package_bundle)
             .build(&credential_bundle, backend)
@@ -171,9 +169,7 @@ fn receiver_group(
         backend,
     )
     .expect("An unexpected error occurred.");
-    let key_package_bundle =
-        KeyPackageBundle::new(&[ciphersuite], &credential_bundle, backend, Vec::new())
-            .expect("An unexpected error occurred.");
+    let key_package_bundle = KeyPackageBundle::new(backend, ciphersuite, &credential_bundle);
     CoreGroup::builder(group_id.clone(), key_package_bundle)
         .build(&credential_bundle, backend)
         .expect("Error creating CoreGroup")
@@ -182,7 +178,7 @@ fn receiver_group(
 // XXX: we could be more creative in generating these messages.
 #[cfg(any(feature = "test-utils", test))]
 fn build_handshake_messages(
-    sender_index: SecretTreeLeafIndex,
+    sender_index: LeafNodeIndex,
     group: &mut CoreGroup,
     credential_bundle: &CredentialBundle,
     backend: &impl OpenMlsCryptoProvider,
@@ -193,21 +189,23 @@ fn build_handshake_messages(
 
     let epoch = random_u64();
     group.context_mut().set_epoch(epoch.into());
-    let framing_parameters = FramingParameters::new(&[1, 2, 3, 4], WireFormat::MlsCiphertext);
+    let framing_parameters = FramingParameters::new(&[1, 2, 3, 4], WireFormat::PrivateMessage);
     let membership_key = MembershipKey::from_secret(
         Secret::random(group.ciphersuite(), backend, None /* MLS version */)
             .expect("Not enough randomness."),
     );
-    let content = MlsAuthContent::member_proposal(
+    let content = AuthenticatedContent::member_proposal(
         framing_parameters,
-        sender_index.into(),
-        Proposal::Remove(RemoveProposal { removed: 7 }), // XXX: use random removed
+        sender_index,
+        Proposal::Remove(RemoveProposal {
+            removed: LeafNodeIndex::new(7),
+        }), // XXX: use random removed
         credential_bundle,
         group.context(),
         backend,
     )
     .expect("An unexpected error occurred.");
-    let mut plaintext: MlsPlaintext = content.clone().into();
+    let mut plaintext: PublicMessage = content.clone().into();
     plaintext
         .set_membership_tag(
             backend,
@@ -218,7 +216,7 @@ fn build_handshake_messages(
             &membership_key,
         )
         .expect("Error setting membership tag.");
-    let ciphertext = MlsCiphertext::encrypt_with_different_header(
+    let ciphertext = PrivateMessage::encrypt_with_different_header(
         &content,
         group.ciphersuite(),
         backend,
@@ -230,7 +228,7 @@ fn build_handshake_messages(
         group.message_secrets_test_mut(),
         0,
     )
-    .expect("Could not create MlsCiphertext");
+    .expect("Could not create PrivateMessage");
     (
         plaintext
             .tls_serialize_detached()
@@ -243,7 +241,7 @@ fn build_handshake_messages(
 
 #[cfg(any(feature = "test-utils", test))]
 fn build_application_messages(
-    sender_index: SecretTreeLeafIndex,
+    sender_index: LeafNodeIndex,
     group: &mut CoreGroup,
     credential_bundle: &CredentialBundle,
     backend: &impl OpenMlsCryptoProvider,
@@ -258,8 +256,8 @@ fn build_application_messages(
         Secret::random(group.ciphersuite(), backend, None /* MLS version */)
             .expect("Not enough randomness."),
     );
-    let content = MlsAuthContent::new_application(
-        sender_index.into(),
+    let content = AuthenticatedContent::new_application(
+        sender_index,
         &[1, 2, 3],
         &[4, 5, 6],
         credential_bundle,
@@ -267,7 +265,7 @@ fn build_application_messages(
         backend,
     )
     .expect("An unexpected error occurred.");
-    let mut plaintext: MlsPlaintext = content.clone().into();
+    let mut plaintext: PublicMessage = content.clone().into();
     plaintext
         .set_membership_tag(
             backend,
@@ -278,7 +276,7 @@ fn build_application_messages(
             &membership_key,
         )
         .expect("Error setting membership tag.");
-    let ciphertext = match MlsCiphertext::encrypt_with_different_header(
+    let ciphertext = match PrivateMessage::encrypt_with_different_header(
         &content,
         group.ciphersuite(),
         backend,
@@ -291,7 +289,7 @@ fn build_application_messages(
         0,
     ) {
         Ok(c) => c,
-        Err(e) => panic!("Could not create MlsCiphertext {}", e),
+        Err(e) => panic!("Could not create PrivateMessage {}", e),
     };
     (
         plaintext
@@ -347,24 +345,24 @@ pub fn generate_test_vector(
 
     let mut leaves = Vec::new();
     for leaf in 0..n_leaves {
-        let sender_leaf = leaf;
+        let sender_leaf = LeafNodeIndex::new(leaf);
         // It doesn't matter who the receiver is, as long as it's not the same
         // as the sender, so we don't get into trouble with the secret tree.
-        let receiver_leaf = u32::from(leaf == 0);
+        let receiver_leaf = LeafNodeIndex::new(u32::from(leaf == 0));
         let encryption_secret = EncryptionSecret::from_slice(
             &encryption_secret_bytes[..],
             ProtocolVersion::default(),
             ciphersuite,
         );
         let encryption_secret_tree =
-            SecretTree::new(encryption_secret, n_leaves.into(), sender_leaf.into());
+            SecretTree::new(encryption_secret, n_leaves, sender_leaf.into());
         let decryption_secret = EncryptionSecret::from_slice(
             &encryption_secret_bytes[..],
             ProtocolVersion::default(),
             ciphersuite,
         );
         let mut decryption_secret_tree =
-            SecretTree::new(decryption_secret, n_leaves.into(), receiver_leaf.into());
+            SecretTree::new(decryption_secret, n_leaves, receiver_leaf.into());
 
         *group.message_secrets_test_mut().secret_tree_mut() = encryption_secret_tree;
 
@@ -376,7 +374,7 @@ pub fn generate_test_vector(
                 .secret_for_decryption(
                     ciphersuite,
                     &crypto,
-                    leaf.into(),
+                    sender_leaf.into(),
                     SecretType::ApplicationSecret,
                     generation,
                     &SenderRatchetConfiguration::default(),
@@ -385,7 +383,7 @@ pub fn generate_test_vector(
             let application_key_string = bytes_to_hex(application_secret_key.as_slice());
             let application_nonce_string = bytes_to_hex(application_secret_nonce.as_slice());
             let (application_plaintext, application_ciphertext) =
-                build_application_messages(leaf.into(), &mut group, &credential_bundle, &crypto);
+                build_application_messages(sender_leaf, &mut group, &credential_bundle, &crypto);
             println!("Sender Group: {:?}", group);
             application.push(RatchetStep {
                 key: application_key_string,
@@ -399,7 +397,7 @@ pub fn generate_test_vector(
                 .secret_for_decryption(
                     ciphersuite,
                     &crypto,
-                    leaf.into(),
+                    sender_leaf.into(),
                     SecretType::HandshakeSecret,
                     generation,
                     &SenderRatchetConfiguration::default(),
@@ -409,7 +407,7 @@ pub fn generate_test_vector(
             let handshake_nonce_string = bytes_to_hex(handshake_secret_nonce.as_slice());
 
             let (handshake_plaintext, handshake_ciphertext) =
-                build_handshake_messages(leaf.into(), &mut group, &credential_bundle, &crypto);
+                build_handshake_messages(sender_leaf, &mut group, &credential_bundle, &crypto);
 
             handshake.push(RatchetStep {
                 key: handshake_key_string,
@@ -505,7 +503,7 @@ pub fn run_test_vector(
     for (leaf_index, leaf) in test_vector.leaves.iter().enumerate() {
         // It doesn't matter who the receiver is, as long as it's not the same
         // as the sender, so we don't get into trouble with the secret tree.
-        let receiver_leaf = u32::from(leaf_index == 0);
+        let receiver_leaf = LeafNodeIndex::new(u32::from(leaf_index == 0));
 
         let mut secret_tree = SecretTree::new(
             EncryptionSecret::from_slice(
@@ -513,7 +511,7 @@ pub fn run_test_vector(
                 ProtocolVersion::default(),
                 ciphersuite,
             ),
-            n_leaves.into(),
+            n_leaves,
             receiver_leaf.into(),
         );
 
@@ -531,7 +529,7 @@ pub fn run_test_vector(
             }
             return Err(EncTestVectorError::InvalidLeafSequenceHandshake);
         }
-        let leaf_index = leaf_index as u32;
+        let leaf_index = LeafNodeIndex::new(leaf_index as u32);
 
         // We keep a fresh copy of the secret tree so we don't lose any secrets.
         let fresh_secret_tree = secret_tree.clone();
@@ -578,8 +576,8 @@ pub fn run_test_vector(
             // Setup group
             let ctxt_bytes = hex_to_bytes(&application.ciphertext);
             let mls_ciphertext_application =
-                MlsCiphertext::tls_deserialize(&mut ctxt_bytes.as_slice())
-                    .expect("Error parsing MlsCiphertext");
+                PrivateMessage::tls_deserialize(&mut ctxt_bytes.as_slice())
+                    .expect("Error parsing PrivateMessage");
             let mut group =
                 receiver_group(ciphersuite, backend, mls_ciphertext_application.group_id());
             *group.message_secrets_test_mut().sender_data_secret_mut() =
@@ -589,8 +587,8 @@ pub fn run_test_vector(
                     ciphersuite,
                 );
 
-            // Note that we can't actually get an MlsPlaintext because we don't
-            // have enough information. We encode the VerifiableMlsAuthContent
+            // Note that we can't actually get an PublicMessage because we don't
+            // have enough information. We encode the VerifiableAuthenticatedContent
             // and compare it to the plaintext in the test vector instead.
 
             // Swap secret tree
@@ -603,7 +601,7 @@ pub fn run_test_vector(
                 .sender_data(group.message_secrets_test_mut(), backend, ciphersuite)
                 .expect("Unable to get sender data");
             let mls_plaintext_application = mls_ciphertext_application
-                .to_plaintext(
+                .to_verifiable_content(
                     ciphersuite,
                     backend,
                     group.message_secrets_test_mut(),
@@ -611,11 +609,11 @@ pub fn run_test_vector(
                     &SenderRatchetConfiguration::default(),
                     sender_data,
                 )
-                .expect("Error decrypting MlsCiphertext");
+                .expect("Error decrypting PrivateMessage");
             if hex_to_bytes(&application.plaintext)
                 != mls_plaintext_application
                     .tls_serialize_detached()
-                    .expect("Error encoding MlsPlaintext")
+                    .expect("Error encoding PublicMessage")
             {
                 if cfg!(test) {
                     panic!("Decrypted application message mismatch");
@@ -656,8 +654,8 @@ pub fn run_test_vector(
             // Setup group
             let handshake_bytes = hex_to_bytes(&handshake.ciphertext);
             let mls_ciphertext_handshake =
-                MlsCiphertext::tls_deserialize(&mut handshake_bytes.as_slice())
-                    .expect("Error parsing MlsCiphertext");
+                PrivateMessage::tls_deserialize(&mut handshake_bytes.as_slice())
+                    .expect("Error parsing PrivateMessage");
             *group.message_secrets_test_mut().sender_data_secret_mut() =
                 SenderDataSecret::from_slice(
                     hex_to_bytes(&test_vector.sender_data_secret).as_slice(),
@@ -675,7 +673,7 @@ pub fn run_test_vector(
                 .sender_data(group.message_secrets_test_mut(), backend, ciphersuite)
                 .expect("Unable to get sender data");
             let mls_plaintext_handshake = mls_ciphertext_handshake
-                .to_plaintext(
+                .to_verifiable_content(
                     ciphersuite,
                     backend,
                     group.message_secrets_test_mut(),
@@ -683,11 +681,11 @@ pub fn run_test_vector(
                     &SenderRatchetConfiguration::default(),
                     sender_data,
                 )
-                .expect("Error decrypting MlsCiphertext");
+                .expect("Error decrypting PrivateMessage");
             if hex_to_bytes(&handshake.plaintext)
                 != mls_plaintext_handshake
                     .tls_serialize_detached()
-                    .expect("Error encoding MlsPlaintext")
+                    .expect("Error encoding PublicMessage")
             {
                 if cfg!(test) {
                     panic!("Decrypted handshake message mismatch");
@@ -722,8 +720,8 @@ pub fn run_test_vector(
             // Setup group
             let handshake_bytes = hex_to_bytes(&handshake.ciphertext);
             let mls_ciphertext_handshake =
-                MlsCiphertext::tls_deserialize(&mut handshake_bytes.as_slice())
-                    .expect("Error parsing MLSCiphertext");
+                PrivateMessage::tls_deserialize(&mut handshake_bytes.as_slice())
+                    .expect("Error parsing PrivateMessage");
             let mut group =
                 receiver_group(ciphersuite, backend, mls_ciphertext_handshake.group_id());
             *group.message_secrets_test_mut().sender_data_secret_mut() =
@@ -743,7 +741,7 @@ pub fn run_test_vector(
                 .sender_data(group.message_secrets_test_mut(), backend, ciphersuite)
                 .expect("Unable to get sender data");
             let mls_plaintext_handshake = mls_ciphertext_handshake
-                .to_plaintext(
+                .to_verifiable_content(
                     ciphersuite,
                     backend,
                     group.message_secrets_test_mut(),
@@ -751,11 +749,11 @@ pub fn run_test_vector(
                     &SenderRatchetConfiguration::default(),
                     sender_data,
                 )
-                .expect("Error decrypting MLSCiphertext");
+                .expect("Error decrypting PrivateMessage");
             if hex_to_bytes(&handshake.plaintext)
                 != mls_plaintext_handshake
                     .tls_serialize_detached()
-                    .expect("Error encoding MLSPlaintext")
+                    .expect("Error encoding PublicMessage")
             {
                 return Err(EncTestVectorError::DecryptedHandshakeMessageMismatch);
             }

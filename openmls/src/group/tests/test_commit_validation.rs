@@ -18,7 +18,7 @@ use crate::{
     treesync::errors::ApplyUpdatePathError,
 };
 
-use super::utils::{generate_credential_bundle, generate_key_package_bundle, resign_message};
+use super::utils::{generate_credential_bundle, generate_key_package, resign_message};
 
 struct CommitValidationTestSetup {
     alice_group: MlsGroup,
@@ -61,15 +61,14 @@ fn validation_test_setup(
 
     // Generate KeyPackages
     let alice_key_package =
-        generate_key_package_bundle(&[ciphersuite], &alice_credential, vec![], backend)
+        generate_key_package(&[ciphersuite], &alice_credential, vec![], backend)
             .expect("An unexpected error occurred.");
 
-    let bob_key_package =
-        generate_key_package_bundle(&[ciphersuite], &bob_credential, vec![], backend)
-            .expect("An unexpected error occurred.");
+    let bob_key_package = generate_key_package(&[ciphersuite], &bob_credential, vec![], backend)
+        .expect("An unexpected error occurred.");
 
     let charlie_key_package =
-        generate_key_package_bundle(&[ciphersuite], &charlie_credential, vec![], backend)
+        generate_key_package(&[ciphersuite], &charlie_credential, vec![], backend)
             .expect("An unexpected error occurred.");
 
     // Define the MlsGroup configuration
@@ -79,16 +78,9 @@ fn validation_test_setup(
         .build();
 
     // === Alice creates a group ===
-    let mut alice_group = MlsGroup::new_with_group_id(
-        backend,
-        &mls_group_config,
-        group_id,
-        alice_key_package
-            .hash_ref(backend.crypto())
-            .expect("Could not hash KeyPackage.")
-            .as_slice(),
-    )
-    .expect("An unexpected error occurred.");
+    let mut alice_group =
+        MlsGroup::new_with_group_id(backend, &mls_group_config, group_id, alice_key_package)
+            .expect("An unexpected error occurred.");
 
     let (_message, welcome) = alice_group
         .add_members(backend, &[bob_key_package, charlie_key_package])
@@ -124,7 +116,7 @@ fn validation_test_setup(
 // ValSem200: Commit must not cover inline self Remove proposal
 #[apply(ciphersuites_and_backends)]
 fn test_valsem200(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
-    // Test with MlsPlaintext
+    // Test with PublicMessage
     let CommitValidationTestSetup {
         mut alice_group,
         mut bob_group,
@@ -147,7 +139,7 @@ fn test_valsem200(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
             .into_plaintext()
             .expect("Message was not a plaintext.");
 
-    let proposal = if let MlsContentBody::Proposal(proposal) = proposal_message.content() {
+    let proposal = if let FramedContentBody::Proposal(proposal) = proposal_message.content() {
         proposal.clone()
     } else {
         panic!("Unexpected content type.");
@@ -172,7 +164,7 @@ fn test_valsem200(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
     // Keep the original plaintext for positive test later.
     let original_plaintext = plaintext.clone();
 
-    let mut commit_content = if let MlsContentBody::Commit(commit) = plaintext.content() {
+    let mut commit_content = if let FramedContentBody::Commit(commit) = plaintext.content() {
         commit.clone()
     } else {
         panic!("Unexpected content type.");
@@ -182,7 +174,7 @@ fn test_valsem200(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
         .proposals
         .push(ProposalOrRef::Proposal(proposal));
 
-    plaintext.set_content(MlsContentBody::Commit(commit_content));
+    plaintext.set_content(FramedContentBody::Commit(commit_content));
 
     let alice_credential_bundle = backend
         .key_store()
@@ -202,8 +194,8 @@ fn test_valsem200(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
         .expect("error serializing context");
 
     // We have to re-sign, since we changed the content.
-    let tbs: MlsContentTbs = plaintext.into();
-    let mut signed_plaintext: MlsAuthContent = tbs
+    let tbs: FramedContentTbs = plaintext.into();
+    let mut signed_plaintext: AuthenticatedContent = tbs
         .with_context(serialized_context.clone())
         .sign(backend, &alice_credential_bundle)
         .expect("Error signing modified payload.");
@@ -216,7 +208,7 @@ fn test_valsem200(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
             .clone(),
     );
 
-    let mut signed_plaintext: MlsPlaintext = signed_plaintext.into();
+    let mut signed_plaintext: PublicMessage = signed_plaintext.into();
 
     let membership_key = alice_group.group().message_secrets().membership_key();
 
@@ -246,7 +238,7 @@ fn test_valsem200(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
 #[apply(ciphersuites_and_backends)]
 fn test_valsem201(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
     let wire_format_policy = PURE_PLAINTEXT_WIRE_FORMAT_POLICY;
-    // Test with MlsPlaintext
+    // Test with PublicMessage
     let CommitValidationTestSetup {
         mut alice_group,
         mut bob_group,
@@ -272,7 +264,7 @@ fn test_valsem201(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
         )
         .unwrap();
         let dave_key_package =
-            generate_key_package_bundle(&[ciphersuite], &dave_credential, vec![], backend).unwrap();
+            generate_key_package(&[ciphersuite], &dave_credential, vec![], backend).unwrap();
 
         queued(Proposal::Add(AddProposal {
             key_package: dave_key_package,
@@ -362,13 +354,13 @@ fn test_valsem201(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
             .commit;
 
         // verify that path can be omitted in some situations
-        if let MlsContentBody::Commit(commit) = commit.content() {
+        if let FramedContentBody::Commit(commit) = commit.content() {
             assert_eq!(commit.has_path(), is_path_required);
         } else {
             panic!()
         };
 
-        let mut commit: MlsPlaintext = commit.into();
+        let mut commit: PublicMessage = commit.into();
         let membership_key = alice_group.group().message_secrets().membership_key();
         let serialized_context = alice_group
             .export_group_context()
@@ -404,20 +396,20 @@ fn test_valsem201(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
 
 fn erase_path(
     backend: &impl OpenMlsCryptoProvider,
-    mut plaintext: MlsPlaintext,
+    mut plaintext: PublicMessage,
     alice_group: &MlsGroup,
 ) -> MlsMessageIn {
     // Keep the original plaintext for positive test later.
     let original_plaintext = plaintext.clone();
 
-    let mut commit_content = if let MlsContentBody::Commit(commit) = plaintext.content() {
+    let mut commit_content = if let FramedContentBody::Commit(commit) = plaintext.content() {
         commit.clone()
     } else {
         panic!("Unexpected content type.");
     };
     commit_content.path = None;
 
-    plaintext.set_content(MlsContentBody::Commit(commit_content));
+    plaintext.set_content(FramedContentBody::Commit(commit_content));
 
     let plaintext = resign_message(alice_group, plaintext, &original_plaintext, backend);
 
@@ -427,7 +419,7 @@ fn erase_path(
 // ValSem202: Path must be the right length
 #[apply(ciphersuites_and_backends)]
 fn test_valsem202(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
-    // Test with MlsPlaintext
+    // Test with PublicMessage
     let CommitValidationTestSetup {
         mut alice_group,
         mut bob_group,
@@ -452,7 +444,7 @@ fn test_valsem202(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
     // Keep the original plaintext for positive test later.
     let original_plaintext = plaintext.clone();
 
-    let mut commit_content = if let MlsContentBody::Commit(commit) = plaintext.content() {
+    let mut commit_content = if let FramedContentBody::Commit(commit) = plaintext.content() {
         commit.clone()
     } else {
         panic!("Unexpected content type.");
@@ -461,7 +453,7 @@ fn test_valsem202(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
         path.pop();
     };
 
-    plaintext.set_content(MlsContentBody::Commit(commit_content));
+    plaintext.set_content(FramedContentBody::Commit(commit_content));
 
     let plaintext = resign_message(&alice_group, plaintext, &original_plaintext, backend);
 
@@ -491,7 +483,7 @@ fn test_valsem202(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
 // ValSem203: Path secrets must decrypt correctly
 #[apply(ciphersuites_and_backends)]
 fn test_valsem203(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
-    // Test with MlsPlaintext
+    // Test with PublicMessage
     let CommitValidationTestSetup {
         mut alice_group,
         mut bob_group,
@@ -516,7 +508,7 @@ fn test_valsem203(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
     // Keep the original plaintext for positive test later.
     let original_plaintext = plaintext.clone();
 
-    let mut commit_content = if let MlsContentBody::Commit(commit) = plaintext.content() {
+    let mut commit_content = if let FramedContentBody::Commit(commit) = plaintext.content() {
         commit.clone()
     } else {
         panic!("Unexpected content type.");
@@ -527,7 +519,7 @@ fn test_valsem203(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
         path.flip_eps_bytes();
     };
 
-    plaintext.set_content(MlsContentBody::Commit(commit_content));
+    plaintext.set_content(FramedContentBody::Commit(commit_content));
 
     let plaintext = resign_message(&alice_group, plaintext, &original_plaintext, backend);
 
@@ -557,7 +549,7 @@ fn test_valsem203(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
 // ValSem204: Public keys from Path must be verified and match the private keys from the direct path
 #[apply(ciphersuites_and_backends)]
 fn test_valsem204(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
-    // Test with MlsPlaintext
+    // Test with PublicMessage
     let CommitValidationTestSetup {
         mut alice_group,
         mut bob_group,
@@ -582,7 +574,7 @@ fn test_valsem204(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
     // Keep the original plaintext for positive test later.
     let original_plaintext = plaintext.clone();
 
-    let mut commit_content = if let MlsContentBody::Commit(commit) = plaintext.content() {
+    let mut commit_content = if let FramedContentBody::Commit(commit) = plaintext.content() {
         commit.clone()
     } else {
         panic!("Unexpected content type.");
@@ -593,7 +585,7 @@ fn test_valsem204(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
         path.flip_node_bytes();
     };
 
-    plaintext.set_content(MlsContentBody::Commit(commit_content));
+    plaintext.set_content(FramedContentBody::Commit(commit_content));
 
     let plaintext = resign_message(&alice_group, plaintext, &original_plaintext, backend);
 
@@ -623,7 +615,7 @@ fn test_valsem204(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
 // ValSem205: Confirmation tag must be successfully verified
 #[apply(ciphersuites_and_backends)]
 fn test_valsem205(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
-    // Test with MlsPlaintext
+    // Test with PublicMessage
     let CommitValidationTestSetup {
         mut alice_group,
         mut bob_group,
