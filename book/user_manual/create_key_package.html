@@ -159,7 +159,7 @@
 <li><code>extensions: Vec&lt;Extensions&gt;</code>: A list of supported extensions.</li>
 </ul>
 <p>Clients must specify at least one ciphersuite and not advertise ciphersuites they do not support.</p>
-<p>Clients should specify all extensions they support. Mandatory extensions, like the <code>LifetimeExtension</code> can be specified here with specific values. Mandatory extensions are created on the fly with default values if no extensions are specified. See the documentation of extensions for more details.</p>
+<p>Clients should specify all extensions they support. See the documentation of extensions for more details.</p>
 <pre><code class="language-rust no_run noplayground">    // Fetch the credential bundle from the key store
     let credential_bundle = backend
         .key_store()
@@ -171,23 +171,19 @@
         )
         .expect(&quot;An unexpected error occurred.&quot;);
 
-    // Create the key package bundle
-    let key_package_bundle =
-        KeyPackageBundle::new(ciphersuites, &amp;credential_bundle, backend, vec![])?;</code></pre>
-<p>After creating the key package bundle, clients should store it in the key store so that it can be reused during group operations:</p>
-<pre><code class="language-rust no_run noplayground">    let key_package = key_package_bundle.key_package().clone();
-
-    // Store it in the key store
-    backend
-        .key_store()
-        .store(
-            key_package
-                .hash_ref(backend.crypto())
-                .expect(&quot;Could not hash KeyPackage.&quot;)
-                .as_slice(),
-            &amp;key_package_bundle,
-        )
-        .expect(&quot;An unexpected error occurred.&quot;);</code></pre>
+    // Create the key package
+    KeyPackage::create(
+        CryptoConfig {
+            ciphersuite: ciphersuites[0],
+            version: ProtocolVersion::default(),
+        },
+        backend,
+        &amp;credential_bundle,
+        vec![],
+        vec![],
+    )
+    .unwrap()</code></pre>
+<p>This will also store the private key for the key package in the key store.</p>
 <p>All functions and structs related to key packages can be found in the <a href="https://docs.rs/crate/openmls/latest/key_packages/index.html"><code>key_packages</code></a> module.</p>
 
                     </main>

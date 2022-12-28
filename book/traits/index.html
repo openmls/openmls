@@ -167,28 +167,23 @@ to be provided as a byte slice.</p>
         backend,
     )
     .unwrap();
-    let key_package_bundle =
-        KeyPackageBundle::new(&amp;[ciphersuite], &amp;credential_bundle, backend, vec![])
-            .expect(&quot;Error generating new key package bundle.&quot;);
 
-    // In order to store something in the key store we need to define an ID.
-    // Here we simply take the key package reference.
-    let id = key_package_bundle
-        .key_package()
-        .hash_ref(backend.crypto())
-        .expect(&quot;Failed to hash KeyPackage.&quot;);
-
-    // Now we can store the key_package_bundle.
-    backend
-        .key_store()
-        .store(id.as_slice(), &amp;key_package_bundle)
-        .expect(&quot;Failed to store key package bundle in keystore.&quot;);</code></pre>
+    let key_package = KeyPackage::create(
+        config::CryptoConfig {
+            ciphersuite,
+            version: ProtocolVersion::default(),
+        },
+        backend,
+        &amp;credential_bundle,
+        vec![],
+        vec![],
+    )
+    .unwrap();</code></pre>
 <p>The <code>delete</code> is called with the identifier to delete a value.</p>
-<pre><code class="language-rust no_run noplayground">    // Delete the key package bundle.
-    backend
-        .key_store()
-        .delete(id.as_slice())
-        .expect(&quot;Error deleting key package bundle&quot;);</code></pre>
+<pre><code class="language-rust no_run noplayground">    // Delete the key package
+    key_package
+        .delete(backend)
+        .expect(&quot;Error deleting key package&quot;);</code></pre>
 <p>Retrieving a value from the key store is as simple as calling <code>read</code>.
 In this example, we assume we got a <code>credential</code> where we want to retrieve the credential bundle, i.e., the private key material.</p>
 <pre><code class="language-rust no_run noplayground">    // In order to read something from the key store we need to define an ID.

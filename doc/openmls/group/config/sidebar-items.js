@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"struct":[["CryptoConfig","A config struct for commonly used values when performing cryptographic operations."]]};

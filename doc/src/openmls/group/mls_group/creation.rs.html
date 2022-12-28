@@ -213,6 +213,21 @@
 <span id="213">213</span>
 <span id="214">214</span>
 <span id="215">215</span>
+<span id="216">216</span>
+<span id="217">217</span>
+<span id="218">218</span>
+<span id="219">219</span>
+<span id="220">220</span>
+<span id="221">221</span>
+<span id="222">222</span>
+<span id="223">223</span>
+<span id="224">224</span>
+<span id="225">225</span>
+<span id="226">226</span>
+<span id="227">227</span>
+<span id="228">228</span>
+<span id="229">229</span>
+<span id="230">230</span>
 </pre><pre class="rust"><code><span class="kw">use crate</span>::{
     group::{
         core_group::create_commit_params::CreateCommitParams,
@@ -229,50 +244,50 @@
 
     </span><span class="doccomment">/// Creates a new group with the creator as the only member (and a random group ID).
     ///
-    /// This function removes the `KeyPackageBundle` corresponding to the
-    /// `key_package_hash` from the key store. Returns an error
-    /// ([`NewGroupError::NoMatchingKeyPackageBundle`]) if no
-    /// [`KeyPackageBundle`] can be found.
+    /// This function removes the private key corresponding to the
+    /// `key_package` from the key store.
+    ///
+    /// Returns an error ([`NewGroupError::NoMatchingKeyPackage`]) if the
+    /// private key for the [`KeyPackage`] can not be found.
     </span><span class="kw">pub fn </span>new(
         backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider,
         mls_group_config: <span class="kw-2">&amp;</span>MlsGroupConfig,
-        key_package_hash: <span class="kw-2">&amp;</span>[u8],
+        key_package: KeyPackage,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, NewGroupError&gt; {
         <span class="self">Self</span>::new_with_group_id(
             backend,
             mls_group_config,
             GroupId::random(backend),
-            key_package_hash,
+            key_package,
         )
     }
 
     <span class="doccomment">/// Creates a new group with a given group ID with the creator as the only member.
     ///
-    /// This function removes the `KeyPackageBundle` corresponding to the
-    /// `key_package_hash` from the key store. Returns an error
-    /// ([`NewGroupError::NoMatchingKeyPackageBundle`]) if no
-    /// [`KeyPackageBundle`] can be found.
+    /// Returns an error ([`NewGroupError::NoMatchingKeyPackage`]) if the
+    /// private key for the [`KeyPackage`] can not be found.
     </span><span class="kw">pub fn </span>new_with_group_id(
         backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider,
         mls_group_config: <span class="kw-2">&amp;</span>MlsGroupConfig,
         group_id: GroupId,
-        key_package_hash: <span class="kw-2">&amp;</span>[u8],
+        key_package: KeyPackage,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, NewGroupError&gt; {
         <span class="comment">// TODO #751
-        </span><span class="kw">let </span>kph = key_package_hash.to_vec();
-        <span class="kw">let </span>key_package_bundle: KeyPackageBundle = backend
+
+        // Read and delete the private key for the key package.
+        </span><span class="kw">let </span>private_hpke_init_key: Vec&lt;u8&gt; = backend
             .key_store()
-            .read(<span class="kw-2">&amp;</span>kph)
-            .ok_or(NewGroupError::NoMatchingKeyPackageBundle)<span class="question-mark">?</span>;
+            .read(key_package.hpke_init_key().as_ref())
+            .ok_or(NewGroupError::NoMatchingKeyPackage)<span class="question-mark">?</span>;
         backend
             .key_store()
-            .delete(<span class="kw-2">&amp;</span>kph)
+            .delete(key_package.hpke_init_key().as_ref())
             .map_err(|<span class="kw">_</span>| NewGroupError::KeyStoreDeletionError)<span class="question-mark">?</span>;
+
         <span class="kw">let </span>credential_bundle: CredentialBundle = backend
             .key_store()
             .read(
-                <span class="kw-2">&amp;</span>key_package_bundle
-                    .key_package()
+                <span class="kw-2">&amp;</span>key_package
                     .leaf_node()
                     .credential()
                     .signature_key()
@@ -285,26 +300,30 @@
         <span class="kw">let </span>group_config = CoreGroupConfig {
             add_ratchet_tree_extension: mls_group_config.use_ratchet_tree_extension,
         };
-        <span class="kw">let </span>group = CoreGroup::builder(group_id, key_package_bundle)
-            .with_config(group_config)
-            .with_required_capabilities(mls_group_config.required_capabilities.clone())
-            .with_max_past_epoch_secrets(mls_group_config.max_past_epochs)
-            .with_lifetime(<span class="kw-2">*</span>mls_group_config.lifetime())
-            .build(<span class="kw-2">&amp;</span>credential_bundle, backend)
-            .map_err(|e| <span class="kw">match </span>e {
-                CoreGroupBuildError::LibraryError(e) =&gt; e.into(),
-                CoreGroupBuildError::UnsupportedProposalType =&gt; {
-                    NewGroupError::UnsupportedProposalType
-                }
-                CoreGroupBuildError::UnsupportedExtensionType =&gt; {
-                    NewGroupError::UnsupportedExtensionType
-                }
-                <span class="comment">// We don&#39;t support PSKs yet
-                </span>CoreGroupBuildError::PskError(e) =&gt; {
-                    <span class="macro">log::debug!</span>(<span class="string">&quot;Unexpected PSK error: {:?}&quot;</span>, e);
-                    LibraryError::custom(<span class="string">&quot;Unexpected PSK error&quot;</span>).into()
-                }
-            })<span class="question-mark">?</span>;
+        <span class="kw">let </span>group = CoreGroup::builder(
+            group_id,
+            KeyPackageBundle {
+                key_package,
+                private_key: private_hpke_init_key.into(),
+            },
+        )
+        .with_config(group_config)
+        .with_required_capabilities(mls_group_config.required_capabilities.clone())
+        .with_max_past_epoch_secrets(mls_group_config.max_past_epochs)
+        .with_lifetime(<span class="kw-2">*</span>mls_group_config.lifetime())
+        .build(<span class="kw-2">&amp;</span>credential_bundle, backend)
+        .map_err(|e| <span class="kw">match </span>e {
+            CoreGroupBuildError::LibraryError(e) =&gt; e.into(),
+            CoreGroupBuildError::UnsupportedProposalType =&gt; NewGroupError::UnsupportedProposalType,
+            CoreGroupBuildError::UnsupportedExtensionType =&gt; {
+                NewGroupError::UnsupportedExtensionType
+            }
+            <span class="comment">// We don&#39;t support PSKs yet
+            </span>CoreGroupBuildError::PskError(e) =&gt; {
+                <span class="macro">log::debug!</span>(<span class="string">&quot;Unexpected PSK error: {:?}&quot;</span>, e);
+                LibraryError::custom(<span class="string">&quot;Unexpected PSK error&quot;</span>).into()
+            }
+        })<span class="question-mark">?</span>;
 
         <span class="kw">let </span>resumption_psk_store =
             ResumptionPskStore::new(mls_group_config.number_of_resumption_psks);
@@ -324,8 +343,8 @@
     }
 
     <span class="doccomment">/// Creates a new group from a [`Welcome`] message. Returns an error
-    /// ([`WelcomeError::NoMatchingKeyPackageBundle`]) if no
-    /// [`KeyPackageBundle`] can be found.
+    /// ([`WelcomeError::NoMatchingKeyPackage`]) if no [`KeyPackage`]
+    /// can be found.
     </span><span class="kw">pub fn </span>new_from_welcome(
         backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider,
         mls_group_config: <span class="kw-2">&amp;</span>MlsGroupConfig,
@@ -334,7 +353,7 @@
     ) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, WelcomeError&gt; {
         <span class="kw">let </span>resumption_psk_store =
             ResumptionPskStore::new(mls_group_config.number_of_resumption_psks);
-        <span class="kw">let </span>(key_package_bundle, hash_ref) = welcome
+        <span class="kw">let </span>(key_package, <span class="kw">_</span>) = welcome
             .secrets()
             .iter()
             .find_map(|egs| {
@@ -342,17 +361,28 @@
                 backend
                     .key_store()
                     .read(<span class="kw-2">&amp;</span>hash_ref)
-                    .map(|kpb: KeyPackageBundle| (kpb, hash_ref))
+                    .map(|kp: KeyPackage| (kp, hash_ref))
             })
-            .ok_or(WelcomeError::NoMatchingKeyPackageBundle)<span class="question-mark">?</span>;
+            .ok_or(WelcomeError::NoMatchingKeyPackage)<span class="question-mark">?</span>;
 
-        <span class="comment">// Delete the KeyPackageBundle from the key store
-        </span>backend
-            .key_store()
-            .delete(<span class="kw-2">&amp;</span>hash_ref)
-            .map_err(|<span class="kw">_</span>| WelcomeError::KeyStoreDeletionError)<span class="question-mark">?</span>;
         <span class="comment">// TODO #751
-        </span><span class="kw">let </span><span class="kw-2">mut </span>group =
+        </span><span class="kw">let </span>private_key: Vec&lt;u8&gt; = backend
+            .key_store()
+            .read(key_package.hpke_init_key().as_slice())
+            .ok_or(WelcomeError::NoMatchingKeyPackage)<span class="question-mark">?</span>;
+        <span class="kw">let </span>key_package_bundle = KeyPackageBundle {
+            key_package,
+            private_key: private_key.into(),
+        };
+
+        <span class="comment">// Delete the [`KeyPackage`] and the corresponding private key from the
+        // key store
+        </span>key_package_bundle
+            .key_package
+            .delete(backend)
+            .map_err(|<span class="kw">_</span>| WelcomeError::KeyStoreDeletionError)<span class="question-mark">?</span>;
+
+        <span class="kw">let </span><span class="kw-2">mut </span>group =
             CoreGroup::new_from_welcome(welcome, ratchet_tree, key_package_bundle, backend)<span class="question-mark">?</span>;
         group.set_max_past_epochs(mls_group_config.max_past_epochs);
 

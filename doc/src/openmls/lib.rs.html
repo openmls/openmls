@@ -184,19 +184,13 @@
 <span id="184">184</span>
 <span id="185">185</span>
 <span id="186">186</span>
-<span id="187">187</span>
-<span id="188">188</span>
-<span id="189">189</span>
-<span id="190">190</span>
-<span id="191">191</span>
-<span id="192">192</span>
 </pre><pre class="rust"><code><span class="attribute">#![doc = <span class="macro">include_str!</span>(<span class="string">&quot;../README.md&quot;</span>)]
 </span><span class="doccomment">//! ## Quick Start
 //! For a quick start to learn how OpenMLS works here&#39;s the basic code to set
 //! up to parties and have them create a group.
 //!
 //! ```
-//! use openmls::prelude::*;
+//! use openmls::prelude::{*, config::CryptoConfig};
 //! use openmls_rust_crypto::{OpenMlsRustCrypto};
 //!
 //! // Define ciphersuite ...
@@ -229,11 +223,11 @@
 //! }
 //!
 //! // A helper to create key package bundles.
-//! fn generate_key_package_bundle(
+//! fn generate_key_package(
 //!     ciphersuites: &amp;[Ciphersuite],
 //!     credential: &amp;Credential,
 //!     backend: &amp;impl OpenMlsCryptoProvider,
-//! ) -&gt; Result&lt;KeyPackage, KeyPackageBundleNewError&gt; {
+//! ) -&gt; KeyPackage {
 //!     // Fetch the credential bundle from the key store
 //!     let credential_id = credential
 //!         .signature_key()
@@ -244,19 +238,18 @@
 //!         .read(&amp;credential_id)
 //!         .expect(&quot;An unexpected error occurred.&quot;);
 //!
-//!     // Create the key package bundle
-//!     let key_package_bundle =
-//!         KeyPackageBundle::new(ciphersuites, &amp;credential_bundle, backend, vec![])?;
-//!
-//!     // Store it in the key store
-//!     let key_package_id = key_package_bundle.key_package()
-//!             .hash_ref(backend.crypto())
-//!             .expect(&quot;Could not hash KeyPackage.&quot;);
-//!     backend
-//!         .key_store()
-//!         .store(key_package_id.as_slice(), &amp;key_package_bundle)
-//!         .expect(&quot;An unexpected error occurred.&quot;);
-//!     Ok(key_package_bundle.into_parts().0)
+//!     // Create the key package
+//!     KeyPackage::create(
+//!         CryptoConfig {
+//!             ciphersuite: ciphersuites[0],
+//!             version: ProtocolVersion::default(),
+//!         },
+//!         backend,
+//!         &amp;credential_bundle,
+//!         vec![],
+//!         vec![],
+//!     )
+//!     .unwrap()
 //! }
 //!
 //! // First they need credentials to identify them
@@ -280,11 +273,9 @@
 //! // in MLS
 //!
 //! // Generate KeyPackages
-//! let sasha_key_package = generate_key_package_bundle(&amp;[ciphersuite], &amp;sasha_credential, backend)
-//!     .expect(&quot;An unexpected error occurred.&quot;);
+//! let sasha_key_package = generate_key_package(&amp;[ciphersuite], &amp;sasha_credential, backend);
 //!
-//! let maxim_key_package = generate_key_package_bundle(&amp;[ciphersuite], &amp;maxim_credential, backend)
-//!     .expect(&quot;An unexpected error occurred.&quot;);
+//! let maxim_key_package = generate_key_package(&amp;[ciphersuite], &amp;maxim_credential, backend);
 //!
 //! // Now Sasha starts a new group ...
 //! // First, fetch the credential bundle from the key store
@@ -299,10 +290,7 @@
 //! let mut sasha_group = MlsGroup::new(
 //!     backend,
 //!     &amp;MlsGroupConfig::default(),
-//!     sasha_key_package
-//!         .hash_ref(backend.crypto())
-//!         .expect(&quot;Could not hash KeyPackage.&quot;)
-//!         .as_slice(),
+//!     sasha_key_package,
 //! )
 //! .expect(&quot;An unexpected error occurred.&quot;);
 //!

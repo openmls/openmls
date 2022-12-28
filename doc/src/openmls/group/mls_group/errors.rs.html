@@ -271,6 +271,12 @@
 <span id="271">271</span>
 <span id="272">272</span>
 <span id="273">273</span>
+<span id="274">274</span>
+<span id="275">275</span>
+<span id="276">276</span>
+<span id="277">277</span>
+<span id="278">278</span>
+<span id="279">279</span>
 </pre><pre class="rust"><code><span class="doccomment">//! # MlsGroup errors
 //!
 //! This module defines the public errors that can be returned from all calls
@@ -290,9 +296,9 @@
     <span class="doccomment">/// See [`LibraryError`] for more details.
     </span><span class="attribute">#[error(transparent)]
     </span>LibraryError(<span class="attribute">#[from] </span>LibraryError),
-    <span class="doccomment">/// No matching KeyPackageBundle was found in the key store.
-    </span><span class="attribute">#[error(<span class="string">&quot;No matching KeyPackageBundle was found in the key store.&quot;</span>)]
-    </span>NoMatchingKeyPackageBundle,
+    <span class="doccomment">/// No matching KeyPackage was found in the key store.
+    </span><span class="attribute">#[error(<span class="string">&quot;No matching KeyPackage was found in the key store.&quot;</span>)]
+    </span>NoMatchingKeyPackage,
     <span class="doccomment">/// No matching CredentialBundle was found in the key store.
     </span><span class="attribute">#[error(<span class="string">&quot;No matching CredentialBundle was found in the key store.&quot;</span>)]
     </span>NoMatchingCredentialBundle,
@@ -484,6 +490,9 @@
     <span class="doccomment">/// See [`MlsGroupStateError`] for more details.
     </span><span class="attribute">#[error(transparent)]
     </span>GroupStateError(<span class="attribute">#[from] </span>MlsGroupStateError),
+    <span class="doccomment">/// Error accessing the key store.
+    </span><span class="attribute">#[error(<span class="string">&quot;Error accessing the key store.&quot;</span>)]
+    </span>KeyStoreError,
 }
 
 <span class="doccomment">/// Propose self update error
@@ -498,6 +507,9 @@
     <span class="doccomment">/// See [`MlsGroupStateError`] for more details.
     </span><span class="attribute">#[error(transparent)]
     </span>GroupStateError(<span class="attribute">#[from] </span>MlsGroupStateError),
+    <span class="doccomment">/// Error accessing the key store.
+    </span><span class="attribute">#[error(<span class="string">&quot;Error accessing the key store.&quot;</span>)]
+    </span>KeyStoreError,
 }
 
 <span class="doccomment">/// Commit to pending proposals error

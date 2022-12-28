@@ -57,7 +57,7 @@
 </pre><pre class="rust"><code><span class="doccomment">//! Serialization for key store objects.
 
 </span><span class="kw">use crate</span>::{
-    credentials::CredentialBundle, key_packages::KeyPackageBundle, prelude::LibraryError,
+    credentials::CredentialBundle, key_packages::KeyPackage, prelude::LibraryError,
     schedule::psk::PskBundle,
 };
 
@@ -65,7 +65,7 @@
 
 <span class="comment">// === OpenMLS Key Store Types
 
-</span><span class="kw">impl </span>FromKeyStoreValue <span class="kw">for </span>KeyPackageBundle {
+</span><span class="kw">impl </span>FromKeyStoreValue <span class="kw">for </span>KeyPackage {
     <span class="kw">type </span>Error = LibraryError;
     <span class="kw">fn </span>from_key_store_value(ksv: <span class="kw-2">&amp;</span>[u8]) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, <span class="self">Self</span>::Error&gt; {
         serde_json::from_slice(ksv).map_err(|<span class="kw">_</span>| LibraryError::custom(<span class="string">&quot;Invalid key package bundle.&quot;</span>))
@@ -79,7 +79,7 @@
     }
 }
 
-<span class="kw">impl </span>ToKeyStoreValue <span class="kw">for </span>KeyPackageBundle {
+<span class="kw">impl </span>ToKeyStoreValue <span class="kw">for </span>KeyPackage {
     <span class="kw">type </span>Error = LibraryError;
     <span class="kw">fn </span>to_key_store_value(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;Vec&lt;u8&gt;, <span class="self">Self</span>::Error&gt; {
         serde_json::to_vec(<span class="self">self</span>)

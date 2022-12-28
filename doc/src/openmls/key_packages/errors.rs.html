@@ -55,27 +55,13 @@
 <span id="55">55</span>
 <span id="56">56</span>
 <span id="57">57</span>
-<span id="58">58</span>
-<span id="59">59</span>
-<span id="60">60</span>
-<span id="61">61</span>
-<span id="62">62</span>
-<span id="63">63</span>
-<span id="64">64</span>
-<span id="65">65</span>
-<span id="66">66</span>
-<span id="67">67</span>
-<span id="68">68</span>
-<span id="69">69</span>
-<span id="70">70</span>
 </pre><pre class="rust"><code><span class="doccomment">//! # Key Package errors
 //!
-//! `KeyPackageError` are thrown on errors handling `KeyPackage`s and
-//! `KeyPackageBundle`s.
+//! `KeyPackageError` are thrown on errors handling `KeyPackage`s.
 
 </span><span class="kw">use </span>thiserror::Error;
 
-<span class="kw">use crate</span>::{error::LibraryError, extensions::errors::ExtensionError};
+<span class="kw">use </span><span class="kw">crate</span>::error::LibraryError;
 
 <span class="doccomment">/// KeyPackage verify error
 </span><span class="attribute">#[derive(Error, Debug, PartialEq, Clone)]
@@ -114,29 +100,17 @@
     <span class="doccomment">/// The ciphersuite does not match the signature scheme.
     </span><span class="attribute">#[error(<span class="string">&quot;The ciphersuite does not match the signature scheme.&quot;</span>)]
     </span>CiphersuiteSignatureSchemeMismatch,
+    <span class="doccomment">/// Accessing the key store failed.
+    </span><span class="attribute">#[error(<span class="string">&quot;Accessing the key store failed.&quot;</span>)]
+    </span>KeyStoreError,
 }
 
-<span class="doccomment">/// KeyPackageBundle new error
-</span><span class="attribute">#[derive(Error, Debug, PartialEq, Clone)]
-</span><span class="kw">pub enum </span>KeyPackageBundleNewError {
-    <span class="doccomment">/// See [`LibraryError`] for more details.
-    </span><span class="attribute">#[error(transparent)]
-    </span>LibraryError(<span class="attribute">#[from] </span>LibraryError),
-    <span class="doccomment">/// Creating a new key package requires at least one ciphersuite.
-    </span><span class="attribute">#[error(<span class="string">&quot;Creating a new key package requires at least one ciphersuite.&quot;</span>)]
-    </span>NoCiphersuitesSupplied,
-    <span class="doccomment">/// The ciphersuite does not match the signature scheme.
-    </span><span class="attribute">#[error(<span class="string">&quot;The ciphersuite does not match the signature scheme.&quot;</span>)]
-    </span>CiphersuiteSignatureSchemeMismatch,
-    <span class="doccomment">/// Duplicate extensions are not allowed.
-    </span><span class="attribute">#[error(<span class="string">&quot;Duplicate extensions are not allowed.&quot;</span>)]
-    </span>DuplicateExtension,
-    <span class="doccomment">/// The list of ciphersuites is not consistent with the capabilities extension.
-    </span><span class="attribute">#[error(<span class="string">&quot;The list of ciphersuites is not consistent with the capabilities extension.&quot;</span>)]
-    </span>CiphersuiteMismatch,
-    <span class="doccomment">/// See [`ExtensionError`] for more details.
-    </span><span class="attribute">#[error(transparent)]
-    </span>ExtensionError(<span class="attribute">#[from] </span>ExtensionError),
+<span class="doccomment">/// KeyPackage new error
+</span><span class="attribute">#[derive(Error, Debug, PartialEq, Eq, Clone)]
+</span><span class="kw">pub enum </span>KeyPackageDeleteError {
+    <span class="doccomment">/// Accessing the key store failed.
+    </span><span class="attribute">#[error(<span class="string">&quot;Accessing the key store failed.&quot;</span>)]
+    </span>KeyStoreError,
 }
 </code></pre></div>
 </section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-current-crate="openmls" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.66.0 (69f9c33d7 2022-12-12)" ></div></body></html>

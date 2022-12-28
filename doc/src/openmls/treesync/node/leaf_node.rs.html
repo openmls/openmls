@@ -934,6 +934,21 @@
 <span id="934">934</span>
 <span id="935">935</span>
 <span id="936">936</span>
+<span id="937">937</span>
+<span id="938">938</span>
+<span id="939">939</span>
+<span id="940">940</span>
+<span id="941">941</span>
+<span id="942">942</span>
+<span id="943">943</span>
+<span id="944">944</span>
+<span id="945">945</span>
+<span id="946">946</span>
+<span id="947">947</span>
+<span id="948">948</span>
+<span id="949">949</span>
+<span id="950">950</span>
+<span id="951">951</span>
 </pre><pre class="rust"><code><span class="doccomment">//! This module contains the [`LeafNode`] struct and its implementation.
 </span><span class="kw">use </span>openmls_traits::{crypto::OpenMlsCrypto, types::Ciphersuite, OpenMlsCryptoProvider};
 <span class="kw">use </span>serde::{Deserialize, Serialize};
@@ -952,7 +967,7 @@
     error::LibraryError,
     extensions::{Extension, ExtensionType, RequiredCapabilitiesExtension},
     group::GroupId,
-    key_packages::KeyPackageBundle,
+    key_packages::KeyPackage,
     messages::proposals::ProposalType,
     treesync::errors::TreeSyncError,
     versions::ProtocolVersion,
@@ -1458,6 +1473,17 @@
         <span class="kw-2">&amp;</span><span class="self">self</span>.payload.capabilities
     }
 
+    <span class="doccomment">/// Get the extension with the given `type` in this leaf.
+    ///
+    ///
+    /// Returns `None` if no extension of the requested type is present.
+    </span><span class="kw">pub fn </span>extension_by_type(<span class="kw-2">&amp;</span><span class="self">self</span>, extension_type: ExtensionType) -&gt; <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>Extension&gt; {
+        <span class="self">self</span>.payload
+            .extensions
+            .iter()
+            .find(|<span class="kw-2">&amp;</span>e| e.extension_type() == extension_type)
+    }
+
     <span class="doccomment">/// Return a mutable reference to [`Capabilities`].
     </span><span class="attribute">#[cfg(test)]
     </span><span class="kw">pub fn </span>capabilities_mut(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;mut </span>Capabilities {
@@ -1573,11 +1599,11 @@
     }
 }
 
-<span class="kw">impl </span>From&lt;KeyPackageBundle&gt; <span class="kw">for </span>OpenMlsLeafNode {
-    <span class="kw">fn </span>from(kpb: KeyPackageBundle) -&gt; <span class="self">Self </span>{
+<span class="kw">impl </span>From&lt;KeyPackage&gt; <span class="kw">for </span>OpenMlsLeafNode {
+    <span class="kw">fn </span>from(key_package: KeyPackage) -&gt; <span class="self">Self </span>{
         <span class="self">Self </span>{
-            leaf_node: kpb.key_package.leaf_node().clone(),
-            private_key: <span class="prelude-val">Some</span>(kpb.private_key),
+            leaf_node: key_package.leaf_node().clone(),
+            private_key: <span class="prelude-val">None</span>,
             leaf_index: <span class="prelude-val">None</span>,
         }
     }
@@ -1856,7 +1882,11 @@
     }
 
     <span class="doccomment">/// Generate a leaf from a [`KeyPackageBundle`] and the leaf index.
-    </span><span class="kw">pub fn </span>from_key_package_bundel(kpb: KeyPackageBundle, leaf_index: LeafNodeIndex) -&gt; <span class="self">Self </span>{
+    </span><span class="attribute">#[cfg(test)]
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>from_key_package_bundle(
+        kpb: <span class="kw">crate</span>::key_packages::KeyPackageBundle,
+        leaf_index: LeafNodeIndex,
+    ) -&gt; <span class="self">Self </span>{
         <span class="kw">let </span>(key_package, private_key) = kpb.into_parts();
         <span class="self">Self </span>{
             leaf_node: key_package.take_leaf_node(),
