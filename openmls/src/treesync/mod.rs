@@ -461,8 +461,6 @@ impl TreeSync {
 
     /// Return a reference to the leaf at the given `LeafNodeIndex` or `None` if the
     /// leaf is blank.
-    ///
-    /// Returns an error if the leaf is outside of the tree.
     pub(crate) fn leaf(&self, leaf_index: LeafNodeIndex) -> Option<&OpenMlsLeafNode> {
         let tsn = self.tree.leaf(leaf_index);
         tsn.node().as_ref()

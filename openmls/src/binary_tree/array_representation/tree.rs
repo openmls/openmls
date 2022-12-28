@@ -110,21 +110,19 @@ impl<L: Clone + Debug + Default, P: Clone + Debug + Default> ABinaryTree<L, P> {
     /// Return the number of nodes in the tree.
     pub(crate) fn size(&self) -> TreeSize {
         // We can cast the size to a u32, because the maximum size of a
-        // tree is 2^32.
+        // tree is 2^30.
         TreeSize::new((self.leaf_nodes.len() + self.parent_nodes.len()) as u32)
     }
 
     /// Return the number of leaf nodes in the tree.
     pub(crate) fn leaf_count(&self) -> u32 {
         // This works, because the tree always has at least one leaf.
-        //((self.size().u32() - 1) / 2) + 1
         self.leaf_nodes.len() as u32
     }
 
     /// Return the number of parent nodes in the tree.
     pub(crate) fn parent_count(&self) -> u32 {
         // This works, because the tree always has at least one leaf.
-        //(self.size().u32() - 1) / 2
         self.parent_nodes.len() as u32
     }
 

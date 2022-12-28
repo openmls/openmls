@@ -113,8 +113,8 @@ impl<'a> TreeSyncDiff<'a> {
 
         let mut blank_leaf_counter = 0;
 
-        for (leaf, parent) in leaves.iter().zip(parents.iter()) {
-            if leaf.1.node().as_ref().is_none() && parent.1.node().as_ref().is_none() {
+        for ((_, leaf), (_, parent)) in leaves.iter().zip(parents.iter()) {
+            if leaf.node().as_ref().is_none() && parent.node().as_ref().is_none() {
                 // Both leaf & parent are blank, so we want to remove them.
                 blank_leaf_counter += 1;
             } else {
@@ -494,6 +494,8 @@ impl<'a> TreeSyncDiff<'a> {
                                 // TODO #800: unmerged leaves should be checked
                                 if let Some(leaf_node) = leaf.node() {
                                     resolution.push(leaf_node.public_key().clone())
+                                } else {
+                                    debug_assert!(false, "Unmerged leaves should not be blank.");
                                 }
                             }
                         }
