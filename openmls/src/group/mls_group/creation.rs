@@ -58,6 +58,7 @@ impl MlsGroup {
             .read(
                 &key_package_bundle
                     .key_package()
+                    .leaf_node()
                     .credential()
                     .signature_key()
                     .tls_serialize_detached()
