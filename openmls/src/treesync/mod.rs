@@ -26,7 +26,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::{
     binary_tree::{
-        array_representation::{is_node_in_tree, LeafNodeIndex},
+        array_representation::{is_node_in_tree, tree::TreeNode, LeafNodeIndex},
         MlsBinaryTree, MlsBinaryTreeError,
     },
     ciphersuite::Secret,
@@ -43,7 +43,7 @@ use crate::{
 use self::{
     diff::{StagedTreeSyncDiff, TreeSyncDiff},
     node::leaf_node::{Capabilities, LeafNodeSource, Lifetime, OpenMlsLeafNode},
-    treesync_node::{TreeSyncNode, TreeSyncNodeError},
+    treesync_node::{TreeSyncLeafNode, TreeSyncNode, TreeSyncParentNode},
 };
 
 // Private
@@ -81,7 +81,7 @@ pub mod tests_and_kats;
 #[derive(Debug, Serialize, Deserialize)]
 #[cfg_attr(test, derive(PartialEq))]
 pub(crate) struct TreeSync {
-    tree: MlsBinaryTree<TreeSyncNode>,
+    tree: MlsBinaryTree<TreeSyncLeafNode, TreeSyncParentNode>,
     own_leaf_index: LeafNodeIndex,
     tree_hash: Vec<u8>,
 }
@@ -214,13 +214,14 @@ impl TreeSync {
         // TODO #800: Unmerged leaves should be checked
         // Before we can instantiate the TreeSync instance, we have to figure
         // out what our leaf index is.
-        let mut ts_nodes: Vec<TreeSyncNode> = Vec::with_capacity(node_options.len());
+        let mut ts_nodes: Vec<TreeNode<TreeSyncLeafNode, TreeSyncParentNode>> =
+            Vec::with_capacity(node_options.len());
         let mut own_index_option = None;
         let own_key_package = key_package_bundle.key_package;
         let mut private_key = Some(key_package_bundle.private_key);
         // Check if our own key package is in the tree.
         for (node_index, node_option) in node_options.iter().enumerate() {
-            let ts_node_option: TreeSyncNode = match node_option {
+            let ts_node_option: TreeNode<TreeSyncLeafNode, TreeSyncParentNode> = match node_option {
                 Some(node) => {
                     let mut node = node.clone();
                     if let Node::LeafNode(ref mut leaf_node) = node {
@@ -236,9 +237,15 @@ impl TreeSync {
                         }
                         leaf_node.set_leaf_index(leaf_index);
                     }
-                    node.into()
+                    TreeSyncNode::from(node).into()
                 }
-                None => TreeSyncNode::blank(),
+                None => {
+                    if node_index % 2 == 0 {
+                        TreeNode::Leaf(TreeSyncLeafNode::blank())
+                    } else {
+                        TreeNode::Parent(TreeSyncParentNode::blank())
+                    }
+                }
             };
             ts_nodes.push(ts_node_option);
         }
@@ -274,10 +281,27 @@ impl TreeSync {
     pub(crate) fn from_nodes_without_leaf(
         backend: &impl OpenMlsCryptoProvider,
         ciphersuite: Ciphersuite,
-        mut nodes: Vec<Option<Node>>,
+        nodes: Vec<Option<Node>>,
     ) -> Result<Self, TreeSyncFromNodesError> {
-        let ts_nodes: Vec<TreeSyncNode> = nodes.drain(..).map(|node| node.into()).collect();
-        let tree = MlsBinaryTree::new(ts_nodes).map_err(|_| PublicTreeError::MalformedTree)?;
+        let mut tree_nodes: Vec<TreeNode<TreeSyncLeafNode, TreeSyncParentNode>> = Vec::new();
+        for (index, node_option) in nodes.into_iter().enumerate() {
+            let node = match node_option {
+                Some(node) => match node {
+                    Node::LeafNode(leaf) => TreeNode::Leaf(TreeSyncLeafNode::from(leaf)),
+                    Node::ParentNode(parent) => TreeNode::Parent(TreeSyncParentNode::from(parent)),
+                },
+                None => {
+                    if index % 2 == 0 {
+                        TreeNode::Leaf(TreeSyncLeafNode::blank())
+                    } else {
+                        TreeNode::Parent(TreeSyncParentNode::blank())
+                    }
+                }
+            };
+            tree_nodes.push(node);
+        }
+
+        let tree = MlsBinaryTree::new(tree_nodes).map_err(|_| PublicTreeError::MalformedTree)?;
         let mut tree_sync = Self {
             tree,
             tree_hash: vec![],
@@ -352,10 +376,10 @@ impl TreeSync {
     }
 
     /// Returns a list of [`LeafNodeIndex`]es containing only full nodes.
-    pub(crate) fn full_leaves(&self) -> Vec<LeafNodeIndex> {
+    pub(crate) fn full_leaves(&self) -> Vec<&OpenMlsLeafNode> {
         self.tree
             .leaves()
-            .filter_map(|(index, tsn)| tsn.node().as_ref().map(|_| (index)))
+            .filter_map(|(_, tsn)| tsn.node().as_ref())
             .collect()
     }
 
@@ -368,11 +392,6 @@ impl TreeSync {
             .leaves()
             // Filter out blank nodes
             .filter_map(|(index, tsn)| tsn.node().as_ref().map(|node| (index, node)))
-            // Filter out parent nodes (should not be necessary in a valid tree)
-            .filter_map(|(index, node)| match node.as_leaf_node() {
-                Ok(leaf_node) => Some((index, leaf_node)),
-                Err(_) => None,
-            })
             // Map to `Member`
             .map(|(index, leaf_node)| {
                 Member::new(
@@ -399,19 +418,10 @@ impl TreeSync {
         if self.tree.leaves().any(|(_, tsn)| {
             tsn.node()
                 .as_ref()
-                .and_then(|node| {
-                    node.as_leaf_node()
-                        .and_then(|leaf_node| {
-                            leaf_node
-                                .leaf_node()
-                                .check_extension_support(extensions)
-                                .map_err(|_| {
-                                    NodeError::LibraryError(LibraryError::custom(
-                                        "This is never used, so we don't care",
-                                    ))
-                                }) // Here we get an error if the extensions are not supported
-                        })
-                        .ok() // Turn the error into None
+                .map(|node| {
+                    node.leaf_node()
+                        .check_extension_support(extensions)
+                        .map_err(|_| LibraryError::custom("This is never used, so we don't care"))
                 })
                 .is_none() // Return true if this is none
         }) {
@@ -425,8 +435,13 @@ impl TreeSync {
     /// array-representation of the underlying binary tree.
     pub fn export_nodes(&self) -> Vec<Option<Node>> {
         self.tree
-            .nodes()
-            .map(|(_, ts_node)| ts_node.node_without_private_key())
+            .export_nodes()
+            .iter()
+            // Filter out private keys
+            .map(|node| match node {
+                TreeNode::Leaf(leaf) => leaf.node_without_private_key().map(Node::LeafNode),
+                TreeNode::Parent(parent) => parent.node_without_private_key().map(Node::ParentNode),
+            })
             .collect()
     }
 
@@ -439,25 +454,18 @@ impl TreeSync {
     ///
     /// This function should not fail and only returns a [`Result`], because it
     /// might throw a [LibraryError](TreeSyncError::LibraryError).
-    pub(crate) fn own_leaf_node(&self) -> Result<&OpenMlsLeafNode, TreeSyncError> {
+    pub(crate) fn own_leaf_node(&self) -> Option<&OpenMlsLeafNode> {
         // Our own leaf should be inside of the tree and never blank.
-        self.leaf(self.own_leaf_index)?
-            .ok_or_else(|| LibraryError::custom("Own leaf is outside of the tree").into())
+        self.leaf(self.own_leaf_index)
     }
 
     /// Return a reference to the leaf at the given `LeafNodeIndex` or `None` if the
     /// leaf is blank.
     ///
     /// Returns an error if the leaf is outside of the tree.
-    pub(crate) fn leaf(
-        &self,
-        leaf_index: LeafNodeIndex,
-    ) -> Result<Option<&OpenMlsLeafNode>, TreeSyncError> {
+    pub(crate) fn leaf(&self, leaf_index: LeafNodeIndex) -> Option<&OpenMlsLeafNode> {
         let tsn = self.tree.leaf(leaf_index);
-        Ok(match tsn.node() {
-            Some(node) => Some(node.as_leaf_node()?),
-            None => None,
-        })
+        tsn.node().as_ref()
     }
 
     /// Returns a [`TreeSyncError`] if the `leaf_index` is not a leaf in this

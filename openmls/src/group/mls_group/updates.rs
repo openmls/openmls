@@ -43,7 +43,7 @@ impl MlsGroup {
                     .group
                     .treesync()
                     .own_leaf_node()
-                    .map_err(|_| {
+                    .ok_or_else(|| {
                         LibraryError::custom("The tree is broken. Couldn't find own leaf.")
                     })?
                     .clone();
@@ -133,7 +133,7 @@ impl MlsGroup {
         // The new leaf node will be applied later when the proposal is commited.
         let mut rekeyed_own_leaf = tree
             .own_leaf_node()
-            .map_err(|_| LibraryError::custom("The tree is broken. Couldn't find own leaf."))?
+            .ok_or_else(|| LibraryError::custom("The tree is broken. Couldn't find own leaf."))?
             .clone();
         if let Some(key_pair) = key_package_bundle {
             rekeyed_own_leaf.update_encryption_key(

@@ -67,7 +67,6 @@ impl CoreGroup {
         let group_info: GroupInfo = {
             let group_info_signer_leaf = treesync
                 .leaf(verifiable_group_info.signer())
-                .map_err(|_| ExternalCommitError::UnknownSender)?
                 .ok_or(ExternalCommitError::UnknownSender)?
                 .credential();
 

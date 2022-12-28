@@ -89,12 +89,8 @@ impl MlsGroup {
     }
 
     /// Returns a reference to the own [`LeafNode`].
-    pub fn own_leaf(&self) -> Result<&LeafNode, LibraryError> {
-        self.group
-            .treesync()
-            .own_leaf_node()
-            .map(|l| l.leaf_node())
-            .map_err(|_| LibraryError::custom("There's no own leaf in this group."))
+    pub fn own_leaf(&self) -> Option<&LeafNode> {
+        self.group.treesync().own_leaf_node().map(|l| l.leaf_node())
     }
 
     /// Removes members from the group.
@@ -315,9 +311,7 @@ impl MlsGroup {
             .treesync()
             // This will return an error if the member can't be found.
             .leaf(leaf_index)
-            .map(|leaf| leaf.map(|l| l.credential()))
-            .ok()
-            .flatten()
+            .map(|leaf| leaf.credential())
     }
 }
 

@@ -218,7 +218,6 @@ impl CoreGroup {
             let public_key = self
                 .treesync()
                 .leaf(index)
-                .map_err(|_| ProposalValidationError::UnknownMember)?
                 .ok_or(ProposalValidationError::UnknownMember)?
                 .public_key()
                 .as_slice();
@@ -268,21 +267,10 @@ impl CoreGroup {
         committer: LeafNodeIndex,
     ) -> Result<HashSet<Vec<u8>>, ProposalValidationError> {
         let mut encryption_keys = HashSet::new();
-        for index in self.treesync().full_leaves() {
+        for leaf in self.treesync().full_leaves() {
             // 8.3. Leaf Node Validation
             // encryption key must be unique
-            encryption_keys.insert(
-                self.treesync()
-                    .leaf(index)
-                    .and_then(|leaf| {
-                        leaf.map(|leaf| leaf.public_key()).ok_or_else(|| {
-                            LibraryError::custom("This must have been a leaf node").into()
-                        })
-                    })
-                    .map_err(|_| LibraryError::custom("This must have been a leaf node."))?
-                    .as_slice()
-                    .to_vec(),
-            );
+            encryption_keys.insert(leaf.public_key().as_slice().to_vec());
         }
 
         // Check the update proposals from the proposal queue first
@@ -306,10 +294,7 @@ impl CoreGroup {
                 return Err(ProposalValidationError::UpdateFromNonMember);
             }
 
-            if let Some(leaf_node) = tree
-                .leaf(sender_leaf_index)
-                .map_err(|_| ProposalValidationError::UnknownMember)?
-            {
+            if let Some(leaf_node) = tree.leaf(sender_leaf_index) {
                 // ValSem109
                 // Identity must be unchanged between existing member and new proposal
                 if update_proposal
@@ -417,7 +402,6 @@ impl CoreGroup {
                         let removed_leaf = self
                             .treesync()
                             .leaf(removed_leaf)
-                            .map_err(|_| ExternalCommitValidationError::UnknownMemberRemoval)?
                             .ok_or(ExternalCommitValidationError::UnknownMemberRemoval)?;
                         if removed_leaf.credential().identity() != new_leaf.credential().identity()
                         {

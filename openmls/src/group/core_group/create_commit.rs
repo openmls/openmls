@@ -170,7 +170,7 @@ impl CoreGroup {
                         params.credential_bundle(),
                         backend,
                     )?;
-                    diff.clear_tree_hash()?;
+                    diff.clear_tree_hash();
                 }
 
                 // Derive and apply an update path based on the previously
@@ -189,7 +189,7 @@ impl CoreGroup {
                     &plain_path,
                     &serialized_group_context,
                     &apply_proposals_values.exclusion_list(),
-                )?;
+                );
                 let leaf_node = diff.own_leaf().map_err(|_| LibraryError::custom("Couldn't find own leaf"))?.clone();
                 let encrypted_path = UpdatePath::new(leaf_node.into(),  encrypted_path);
                 PathProcessingResult {
@@ -310,7 +310,7 @@ impl CoreGroup {
             // Create the ratchet tree extension if necessary
             let other_extensions: Vec<Extension> = if self.use_ratchet_tree_extension {
                 vec![Extension::RatchetTree(RatchetTreeExtension::new(
-                    diff.export_nodes()?,
+                    diff.export_nodes(),
                 ))]
             } else {
                 Vec::new()

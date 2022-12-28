@@ -437,7 +437,7 @@ impl CoreGroup {
             required_capabilities.check_support()?;
             self.treesync()
                 .own_leaf_node()
-                .map_err(|_| LibraryError::custom("Expected own leaf"))?
+                .ok_or_else(|| LibraryError::custom("Expected own leaf"))?
                 .validate_required_capabilities(required_capabilities)?;
             // Ensure that all other leaf nodes support all the required
             // extensions as well.
@@ -666,7 +666,6 @@ impl CoreGroup {
     pub(crate) fn own_identity(&self) -> Option<&[u8]> {
         self.treesync()
             .own_leaf_node()
-            .ok()
             .map(|node| node.credential().identity())
     }
 
