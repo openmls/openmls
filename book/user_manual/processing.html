@@ -176,7 +176,10 @@ sender, and authenticated data. It also exposes the message's content. There are
         // In the case we received an Add Proposal
         if let Proposal::Add(add_proposal) = staged_proposal.proposal() {
             // Check that Bob was added
-            assert_eq!(add_proposal.key_package().credential(), &amp;bob_credential);
+            assert_eq!(
+                add_proposal.key_package().leaf_node().credential(),
+                &amp;bob_credential
+            );
         } else {
             panic!(&quot;Expected an AddProposal.&quot;);
         }

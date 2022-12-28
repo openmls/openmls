@@ -430,6 +430,8 @@
 <span id="430">430</span>
 <span id="431">431</span>
 <span id="432">432</span>
+<span id="433">433</span>
+<span id="434">434</span>
 </pre><pre class="rust"><code><span class="doccomment">//! This module contains validation functions for incoming messages
 //! as defined in &lt;https://github.com/openmls/openmls/wiki/Message-validation&gt;
 
@@ -548,6 +550,7 @@
             <span class="kw">let </span>identity = add_proposal
                 .add_proposal()
                 .key_package()
+                .leaf_node()
                 .credential()
                 .identity()
                 .to_vec();
@@ -558,6 +561,7 @@
             <span class="kw">let </span>signature_key = add_proposal
                 .add_proposal()
                 .key_package()
+                .leaf_node()
                 .credential()
                 .signature_key()
                 .as_slice()

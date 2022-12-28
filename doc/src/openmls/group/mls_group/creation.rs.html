@@ -212,6 +212,7 @@
 <span id="212">212</span>
 <span id="213">213</span>
 <span id="214">214</span>
+<span id="215">215</span>
 </pre><pre class="rust"><code><span class="kw">use crate</span>::{
     group::{
         core_group::create_commit_params::CreateCommitParams,
@@ -272,6 +273,7 @@
             .read(
                 <span class="kw-2">&amp;</span>key_package_bundle
                     .key_package()
+                    .leaf_node()
                     .credential()
                     .signature_key()
                     .tls_serialize_detached()

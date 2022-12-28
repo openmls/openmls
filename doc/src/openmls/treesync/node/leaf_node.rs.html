@@ -928,6 +928,12 @@
 <span id="928">928</span>
 <span id="929">929</span>
 <span id="930">930</span>
+<span id="931">931</span>
+<span id="932">932</span>
+<span id="933">933</span>
+<span id="934">934</span>
+<span id="935">935</span>
+<span id="936">936</span>
 </pre><pre class="rust"><code><span class="doccomment">//! This module contains the [`LeafNode`] struct and its implementation.
 </span><span class="kw">use </span>openmls_traits::{crypto::OpenMlsCrypto, types::Ciphersuite, OpenMlsCryptoProvider};
 <span class="kw">use </span>serde::{Deserialize, Serialize};
@@ -1456,6 +1462,12 @@
     </span><span class="attribute">#[cfg(test)]
     </span><span class="kw">pub fn </span>capabilities_mut(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;mut </span>Capabilities {
         <span class="kw-2">&amp;mut </span><span class="self">self</span>.payload.capabilities
+    }
+
+    <span class="doccomment">/// Replace the credential in the KeyPackage.
+    </span><span class="attribute">#[cfg(any(feature = <span class="string">&quot;test-utils&quot;</span>, test))]
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>set_credential(<span class="kw-2">&amp;mut </span><span class="self">self</span>, credential: Credential) {
+        <span class="self">self</span>.payload.credential = credential;
     }
 }
 
