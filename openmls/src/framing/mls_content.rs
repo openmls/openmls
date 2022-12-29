@@ -6,6 +6,7 @@ use crate::{
     error::LibraryError,
     group::{GroupEpoch, GroupId},
     messages::{proposals::Proposal, Commit},
+    versions::ProtocolVersion,
 };
 
 use std::{
@@ -197,6 +198,7 @@ impl<'a> AuthenticatedContentTbm<'a> {
 
 #[derive(PartialEq, Debug, Clone, Serialize, Deserialize)]
 pub(crate) struct FramedContentTbs {
+    pub(super) version: ProtocolVersion,
     pub(super) wire_format: WireFormat,
     pub(super) content: FramedContent,
     pub(super) serialized_context: Option<Vec<u8>>,
@@ -234,6 +236,7 @@ impl FramedContentTbs {
             body,
         };
         FramedContentTbs {
+            version: ProtocolVersion::Mls10,
             wire_format,
             content,
             serialized_context: None,
