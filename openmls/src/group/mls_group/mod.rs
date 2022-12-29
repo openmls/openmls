@@ -343,7 +343,6 @@ impl MlsGroup {
                 if plaintext.sender().is_member() {
                     plaintext.set_membership_tag(
                         backend,
-                        self.group.message_secrets().serialized_context(),
                         self.group.message_secrets().membership_key(),
                     )?;
                 }

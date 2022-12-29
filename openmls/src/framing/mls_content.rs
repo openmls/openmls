@@ -195,7 +195,7 @@ impl<'a> AuthenticatedContentTbm<'a> {
     }
 }
 
-#[derive(PartialEq, Debug, Clone)]
+#[derive(PartialEq, Debug, Clone, Serialize, Deserialize)]
 pub(crate) struct FramedContentTbs {
     pub(super) wire_format: WireFormat,
     pub(super) content: FramedContent,

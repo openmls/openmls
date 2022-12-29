@@ -67,26 +67,21 @@ pub(crate) struct DecryptedMessage {
 impl DecryptedMessage {
     /// Constructs a [DecryptedMessage] from a [VerifiableAuthenticatedContent].
     pub(crate) fn from_inbound_public_message(
-        public_message: PublicMessage,
+        mut public_message: PublicMessage,
         message_secrets: &MessageSecrets,
         backend: &impl OpenMlsCryptoProvider,
     ) -> Result<Self, ValidationError> {
+        // Set the context for verification (happens only for the correct sender types).
+        public_message.set_context(message_secrets.serialized_context());
         if public_message.sender().is_member() {
             // Verify the membership tag. This needs to be done explicitly for PublicMessage messages,
             // it is implicit for PrivateMessage messages (because the encryption can only be known by members).
             // ValSem007 Membership tag presence
             // ValSem008
-            public_message.verify_membership(
-                backend,
-                message_secrets.membership_key(),
-                message_secrets.serialized_context(),
-            )?;
+            public_message.verify_membership(backend, message_secrets.membership_key())?;
         }
 
-        let verifiable_content = PublicMessage::into_verifiable_content(
-            public_message,
-            message_secrets.serialized_context(),
-        );
+        let verifiable_content = public_message.into();
 
         Self::from_verifiable_content(verifiable_content)
     }
