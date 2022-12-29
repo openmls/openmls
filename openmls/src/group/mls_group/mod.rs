@@ -228,10 +228,9 @@ impl MlsGroup {
             return Err(MlsGroupStateError::UseAfterEviction);
         }
         let tree = self.group.treesync();
-        Ok(tree
-            .own_leaf_node()
-            .map_err(|_| LibraryError::custom("Own leaf node missing"))?
-            .credential())
+        tree.own_leaf_node()
+            .map(|node| node.credential())
+            .ok_or_else(|| LibraryError::custom("Own leaf node missing").into())
     }
 
     /// Get the identity of the client's [`Credential`] owning this group.

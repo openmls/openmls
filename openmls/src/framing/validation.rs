@@ -161,10 +161,7 @@ impl DecryptedMessage {
         let sender = self.sender();
         match sender {
             Sender::Member(leaf_index) => {
-                match treesync
-                    .leaf(*leaf_index)
-                    .map_err(|_| ValidationError::UnknownMember)?
-                {
+                match treesync.leaf(*leaf_index) {
                     Some(sender_leaf) => Ok(sender_leaf.credential().clone()),
                     None => {
                         // This might not actually be an error but the sender's
@@ -178,10 +175,7 @@ impl DecryptedMessage {
                             .iter()
                             .find(|&old_member| *leaf_index == old_member.index)
                         {
-                            match treesync
-                                .leaf(*index)
-                                .map_err(|_| ValidationError::UnknownMember)?
-                            {
+                            match treesync.leaf(*index) {
                                 Some(node) => Ok(node.credential().clone()),
                                 None => Err(ValidationError::UnknownMember),
                             }

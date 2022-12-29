@@ -1,22 +1,25 @@
 use std::collections::HashSet;
 
-use crate::binary_tree::{MlsBinaryTree, MlsBinaryTreeDiffError, MlsBinaryTreeError};
+use crate::binary_tree::{
+    array_representation::tree::{ABinaryTree, TreeNode},
+    MlsBinaryTree, MlsBinaryTreeDiffError, MlsBinaryTreeError,
+};
 
 use super::{
-    array_representation::{TreeNodeIndex, TreeSize},
+    array_representation::{ParentNodeIndex, TreeSize},
     LeafNodeIndex,
 };
 
 #[test]
 fn test_tree_basics() {
     // Test tree creation: Wrong number of nodes.
-    let mut nodes = vec![1, 0];
+    let mut nodes = vec![TreeNode::Leaf(1), TreeNode::Parent(0)];
     assert_eq!(
         MlsBinaryTree::new(nodes.clone())
             .expect_err("No error when creating a non-full binary tree."),
         MlsBinaryTreeError::InvalidNumberOfNodes
     );
-    nodes.push(2);
+    nodes.push(TreeNode::Leaf(2));
 
     let tree1 = MlsBinaryTree::new(nodes.clone()).expect("Error when creating tree from nodes.");
 
@@ -30,7 +33,7 @@ fn test_tree_basics() {
     #[allow(clippy::uninit_vec)]
     unsafe {
         let len = u32::MAX as usize + 2;
-        let mut nodes: Vec<u32> = Vec::new();
+        let mut nodes: Vec<TreeNode<u32, u32>> = Vec::new();
 
         nodes.set_len(len);
 
@@ -41,16 +44,16 @@ fn test_tree_basics() {
     }
 
     // Test node export
-    let exported_nodes = tree1.nodes().map(|(_, node)| *node).collect();
+    let exported_nodes = tree1.export_nodes();
     let tree2 =
         MlsBinaryTree::new(exported_nodes).expect("error when creating tree from exported nodes.");
 
     assert_eq!(tree1, tree2);
 
     // Node access
-    assert_eq!(&1, tree1.node_by_index(TreeNodeIndex::new(0)));
-    assert_eq!(&0, tree1.node_by_index(TreeNodeIndex::new(1)));
-    assert_eq!(&2, tree1.node_by_index(TreeNodeIndex::new(2)));
+    assert_eq!(&1, tree1.leaf_by_index(LeafNodeIndex::new(0)));
+    assert_eq!(&0, tree1.parent_by_index(ParentNodeIndex::new(0)));
+    assert_eq!(&2, tree1.leaf_by_index(LeafNodeIndex::new(1)));
 
     // Leaves
     let leaves1: Vec<(LeafNodeIndex, &u32)> = tree1.leaves().collect();
@@ -59,14 +62,20 @@ fn test_tree_basics() {
         leaves1
     );
 
-    let tree3 = MlsBinaryTree::new(vec![1]).expect("error creating 1 node binary tree.");
+    let tree3: ABinaryTree<u32, u32> =
+        MlsBinaryTree::new(vec![TreeNode::Leaf(1)]).expect("error creating 1 node binary tree.");
     let leaves3: Vec<(LeafNodeIndex, &u32)> = tree3.leaves().collect();
     assert_eq!(vec![(LeafNodeIndex::new(0), &1)], leaves3);
 }
 
 #[test]
 fn test_diff_merging() {
-    let mut tree = MlsBinaryTree::new(vec![2, 0, 4]).expect("Error creating tree.");
+    let mut tree = MlsBinaryTree::new(vec![
+        TreeNode::Leaf(2),
+        TreeNode::Parent(0),
+        TreeNode::Leaf(4),
+    ])
+    .expect("Error creating tree.");
     let original_tree = tree.clone();
 
     // Test the leaves in the original tree
@@ -149,7 +158,12 @@ fn test_diff_merging() {
 
 #[test]
 fn test_leaf_addition_and_removal_errors() {
-    let tree = MlsBinaryTree::new((0..3).collect()).expect("error creating tree");
+    let tree = MlsBinaryTree::new(vec![
+        TreeNode::Leaf(2),
+        TreeNode::Parent(0),
+        TreeNode::Leaf(4),
+    ])
+    .expect("error creating tree");
     let mut diff = tree.empty_diff();
 
     diff.remove_leaf().expect("error removing leaf");
@@ -162,48 +176,68 @@ fn test_leaf_addition_and_removal_errors() {
     );
 
     // Let's test what happens when the tree is getting too large.
-    let mut nodes: Vec<u32> = Vec::new();
+    let mut nodes: Vec<TreeNode<u32, u32>> = Vec::new();
 
     // We allow uninitialized vectors because we don't want to allocate so much memory
     #[allow(clippy::uninit_vec)]
     unsafe {
         nodes.set_len(u32::MAX as usize);
 
-        let tree = MlsBinaryTree::new(nodes).expect("error creating tree");
-        let mut diff = tree.empty_diff();
-
         assert_eq!(
-            diff.add_leaf(666, 667)
-                .expect_err("no error adding beyond u32 max"),
-            MlsBinaryTreeDiffError::TreeTooLarge
+            MlsBinaryTree::new(nodes).expect_err("no error adding beyond TREE_MAX"),
+            MlsBinaryTreeError::OutOfRange
         )
     }
 }
 
 #[test]
 fn test_diff_iter() {
-    let tree = MlsBinaryTree::new((0..101).collect()).expect("error creating tree");
+    let nodes = (0..101)
+        .map(|i| {
+            if i % 2 == 0 {
+                TreeNode::Leaf(i)
+            } else {
+                TreeNode::Parent(i)
+            }
+        })
+        .collect();
+    let tree = MlsBinaryTree::new(nodes).expect("error creating tree");
 
     let diff = tree.empty_diff();
 
-    let mut node_set = HashSet::new();
-
-    for (_, node) in diff.nodes() {
-        node_set.insert(node);
+    let mut leaf_set = HashSet::new();
+    for (_, node) in diff.leaves() {
+        leaf_set.insert(node);
+    }
+    for i in 0..51 {
+        assert!(leaf_set.contains(&(i * 2)));
     }
 
-    for i in 0..101 {
-        assert!(node_set.contains(&i));
+    let mut parent_set = HashSet::new();
+    for (_, node) in diff.parents() {
+        parent_set.insert(node);
+    }
+    for i in 0..50 {
+        assert!(parent_set.contains(&((i * 2) + 1)));
     }
 }
 
 #[test]
 fn test_export_diff_nodes() {
-    let tree = MlsBinaryTree::new((0..101).collect()).expect("error creating tree");
+    let nodes = (0..101)
+        .map(|i| {
+            if i % 2 == 0 {
+                TreeNode::Leaf(i)
+            } else {
+                TreeNode::Parent(i)
+            }
+        })
+        .collect();
+    let tree = MlsBinaryTree::new(nodes).expect("error creating tree");
 
     let diff = tree.empty_diff();
 
-    let nodes = diff.nodes().map(|(_, node)| *node).collect();
+    let nodes = diff.export_nodes();
 
     // If we re-export the nodes into a tree, we should end up with the same tree.
     let new_tree = MlsBinaryTree::new(nodes).expect("error creating tree from exported nodes");
@@ -213,7 +247,16 @@ fn test_export_diff_nodes() {
 
 #[test]
 fn test_diff_mutable_access_after_manipulation() {
-    let tree = MlsBinaryTree::new((0..101).collect()).expect("error creating tree");
+    let nodes = (0..101)
+        .map(|i| {
+            if i % 2 == 0 {
+                TreeNode::Leaf(i)
+            } else {
+                TreeNode::Parent(i)
+            }
+        })
+        .collect();
+    let tree = MlsBinaryTree::new(nodes).expect("error creating tree");
 
     let mut diff = tree.empty_diff();
 
@@ -222,13 +265,9 @@ fn test_diff_mutable_access_after_manipulation() {
 
     // Now let's get references to a neighbour's path, where some nodes were
     // changed and some weren't.
-    let direct_path_refs = diff
-        .direct_path(LeafNodeIndex::new(6))
-        .iter()
-        .map(|index| TreeNodeIndex::Parent(*index))
-        .collect::<Vec<TreeNodeIndex>>();
+    let direct_path_refs = diff.direct_path(LeafNodeIndex::new(6));
     for node_ref in &direct_path_refs {
-        let node_mut = diff.node_mut(*node_ref);
+        let node_mut = diff.parent_mut(*node_ref);
         *node_mut = 888;
     }
 

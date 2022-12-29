@@ -47,8 +47,8 @@ impl<'a> TreeSyncDiff<'a> {
         path: &[PlainUpdatePathNode],
         group_context: &[u8],
         exclusion_list: &HashSet<&LeafNodeIndex>,
-    ) -> Result<Vec<UpdatePathNode>, LibraryError> {
-        let copath_resolutions = self.copath_resolutions(self.own_leaf_index(), exclusion_list)?;
+    ) -> Vec<UpdatePathNode> {
+        let copath_resolutions = self.copath_resolutions(self.own_leaf_index(), exclusion_list);
 
         // There should be as many copath resolutions.
         debug_assert_eq!(copath_resolutions.len(), path.len());
@@ -60,7 +60,7 @@ impl<'a> TreeSyncDiff<'a> {
             .map(|(node, resolution)| node.encrypt(backend, ciphersuite, resolution, group_context))
             .collect::<Vec<UpdatePathNode>>();
 
-        Ok(nodes)
+        nodes
     }
 
     /// Decrypt an [`UpdatePath`] originating from the given
