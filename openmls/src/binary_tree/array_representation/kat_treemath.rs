@@ -68,10 +68,10 @@ pub fn generate_test_vector(n_leaves: u32) -> TreeMathTestVector {
     for i in 0..n_leaves {
         test_vector
             .root
-            .push(root(TreeSize::new(node_width(i as usize + 1) as u32)).u32());
+            .push(root(TreeSize::new(node_width(i as usize + 1) as u32)).test_u32());
     }
     for i in 0..n_nodes.u32() {
-        let tree_index = TreeNodeIndex::new(i);
+        let tree_index = TreeNodeIndex::test_new(i);
 
         match tree_index {
             TreeNodeIndex::Leaf(_) => {
@@ -79,35 +79,35 @@ pub fn generate_test_vector(n_leaves: u32) -> TreeMathTestVector {
                 test_vector.left.push(None);
                 test_vector.right.push(None);
                 // Exclude root & small trees
-                let parent = if i > 0 && i != root(n_nodes).u32() {
+                let parent = if i > 0 && i != root(n_nodes).test_u32() {
                     Some(test_parent(tree_index, n_nodes).u32())
                 } else {
                     None
                 };
                 test_vector.parent.push(parent);
                 // Exclude root & small trees
-                let sibling = if i > 0 && i != root(n_nodes).u32() {
-                    Some(test_sibling(tree_index, n_nodes).u32())
+                let sibling = if i > 0 && i != root(n_nodes).test_u32() {
+                    Some(test_sibling(tree_index, n_nodes).test_u32())
                 } else {
                     None
                 };
                 test_vector.sibling.push(sibling);
             }
             TreeNodeIndex::Parent(parent_index) => {
-                test_vector.left.push(Some(left(parent_index).u32()));
+                test_vector.left.push(Some(left(parent_index).test_u32()));
                 test_vector
                     .right
-                    .push(Some(right(parent_index, n_nodes).u32()));
+                    .push(Some(right(parent_index, n_nodes).test_u32()));
                 // Exclude root
-                let parent = if i != root(n_nodes).u32() {
+                let parent = if i != root(n_nodes).test_u32() {
                     Some(test_parent(tree_index, n_nodes).u32())
                 } else {
                     None
                 };
                 test_vector.parent.push(parent);
                 // Exclude root
-                let sibling = if i != root(n_nodes).u32() {
-                    Some(test_sibling(tree_index, n_nodes).u32())
+                let sibling = if i != root(n_nodes).test_u32() {
+                    Some(test_sibling(tree_index, n_nodes).test_u32())
                 } else {
                     None
                 };
@@ -139,13 +139,13 @@ pub fn run_test_vector(test_vector: TreeMathTestVector) -> Result<(), TmTestVect
         return Err(TmTestVectorError::TreeSizeMismatch);
     }
     for i in 0..n_leaves {
-        if test_vector.root[i] != root(TreeSize::new(node_width(i + 1) as u32)).u32() {
+        if test_vector.root[i] != root(TreeSize::new(node_width(i + 1) as u32)).test_u32() {
             return Err(TmTestVectorError::RootIndexMismatch);
         }
     }
 
     for i in 0..n_nodes {
-        let tree_index = TreeNodeIndex::new(i as u32);
+        let tree_index = TreeNodeIndex::test_new(i as u32);
         let size = TreeSize::new(n_nodes as u32);
         match tree_index {
             TreeNodeIndex::Leaf(_) => {
@@ -157,35 +157,37 @@ pub fn run_test_vector(test_vector: TreeMathTestVector) -> Result<(), TmTestVect
                 }
 
                 if i > 0
-                    && i != root(size).usize()
-                    && test_vector.parent[i] != Some(test_parent(tree_index, size).to_tree_index())
+                    && i != root(size).test_usize()
+                    && test_vector.parent[i]
+                        != Some(test_parent(tree_index, size).test_to_tree_index())
                 {
                     return Err(TmTestVectorError::ParentIndexMismatch);
                 }
 
                 if i > 0
-                    && i != root(size).usize()
-                    && test_vector.sibling[i] != Some(test_sibling(tree_index, size).u32())
+                    && i != root(size).test_usize()
+                    && test_vector.sibling[i] != Some(test_sibling(tree_index, size).test_u32())
                 {
                     return Err(TmTestVectorError::SiblingIndexMismatch);
                 }
             }
             TreeNodeIndex::Parent(parent_index) => {
-                if test_vector.left[i] != Some(left(parent_index).u32()) {
+                if test_vector.left[i] != Some(left(parent_index).test_u32()) {
                     return Err(TmTestVectorError::LeftIndexMismatch);
                 }
-                if test_vector.right[i] != Some(right(parent_index, size).u32()) {
+                if test_vector.right[i] != Some(right(parent_index, size).test_u32()) {
                     return Err(TmTestVectorError::RightIndexMismatch);
                 }
 
-                if i != root(size).usize()
-                    && test_vector.parent[i] != Some(test_parent(tree_index, size).to_tree_index())
+                if i != root(size).test_usize()
+                    && test_vector.parent[i]
+                        != Some(test_parent(tree_index, size).test_to_tree_index())
                 {
                     return Err(TmTestVectorError::ParentIndexMismatch);
                 }
 
-                if i != root(size).usize()
-                    && test_vector.sibling[i] != Some(test_sibling(tree_index, size).u32())
+                if i != root(size).test_usize()
+                    && test_vector.sibling[i] != Some(test_sibling(tree_index, size).test_u32())
                 {
                     return Err(TmTestVectorError::SiblingIndexMismatch);
                 }

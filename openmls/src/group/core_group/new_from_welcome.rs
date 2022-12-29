@@ -146,7 +146,6 @@ impl CoreGroup {
 
         let signer_credential = tree
             .leaf(group_info.signer())
-            .map_err(|_| WelcomeError::UnknownSender)?
             .ok_or(WelcomeError::UnknownSender)?
             .credential();
 

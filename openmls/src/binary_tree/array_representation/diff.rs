@@ -20,11 +20,11 @@ use serde::{Deserialize, Serialize};
 use std::{collections::BTreeMap, fmt::Debug};
 use thiserror::Error;
 
-use crate::error::LibraryError;
+use crate::{binary_tree::array_representation::treemath::MAX_TREE_SIZE, error::LibraryError};
 
 use super::{
     sorted_iter::sorted_iter,
-    tree::{ABinaryTree, ABinaryTreeError},
+    tree::{ABinaryTree, ABinaryTreeError, TreeNode},
     treemath::{
         common_direct_path, copath, direct_path, left, lowest_common_ancestor, right, root,
         LeafNodeIndex, ParentNodeIndex, TreeNodeIndex, TreeSize,
@@ -42,24 +42,28 @@ use super::{
 /// was created from. However, the lack of the internal reference means that its
 /// lifetime is not tied to that of the original tree.
 #[derive(Debug, Serialize, Deserialize)]
-pub(crate) struct StagedAbDiff<T: Clone + Debug + Default> {
-    diff: BTreeMap<TreeNodeIndex, T>,
+pub(crate) struct StagedAbDiff<L: Clone + Debug + Default, P: Clone + Debug + Default> {
+    leaf_diff: BTreeMap<LeafNodeIndex, L>,
+    parent_diff: BTreeMap<ParentNodeIndex, P>,
     size: TreeSize,
 }
 
-impl<'a, T: Clone + Debug + Default> From<AbDiff<'a, T>> for StagedAbDiff<T> {
-    fn from(diff: AbDiff<'a, T>) -> Self {
+impl<'a, L: Clone + Debug + Default, P: Clone + Debug + Default> From<AbDiff<'a, L, P>>
+    for StagedAbDiff<L, P>
+{
+    fn from(diff: AbDiff<'a, L, P>) -> Self {
         StagedAbDiff {
-            diff: diff.diff,
+            leaf_diff: diff.leaf_diff,
+            parent_diff: diff.parent_diff,
             size: diff.size,
         }
     }
 }
 
-impl<T: Clone + Debug + Default> StagedAbDiff<T> {
-    /// Return the actual diff inside of this StagedAbDiff
-    pub(super) fn diff(self) -> BTreeMap<TreeNodeIndex, T> {
-        self.diff
+impl<L: Clone + Debug + Default, P: Clone + Debug + Default> StagedAbDiff<L, P> {
+    /// Return the leaf and parent diffs as a tuple.
+    pub(super) fn into_diffs(self) -> (BTreeMap<LeafNodeIndex, L>, BTreeMap<ParentNodeIndex, P>) {
+        (self.leaf_diff, self.parent_diff)
     }
 
     /// Return the projected size of the tree after a merge with the diff.
@@ -73,53 +77,58 @@ impl<T: Clone + Debug + Default> StagedAbDiff<T> {
 /// accessed mutably or immutably. Any changes are saved by the [`AbDiff`] applied
 /// to the original [`ABinaryTree`] instance by converting it to a [`StagedAbDiff`]
 /// and subsequently merging it.
-pub(crate) struct AbDiff<'a, T: Clone + Debug + Default> {
-    original_tree: &'a ABinaryTree<T>,
-    diff: BTreeMap<TreeNodeIndex, T>,
+pub(crate) struct AbDiff<'a, L: Clone + Debug + Default, P: Clone + Debug + Default> {
+    original_tree: &'a ABinaryTree<L, P>,
+    leaf_diff: BTreeMap<LeafNodeIndex, L>,
+    parent_diff: BTreeMap<ParentNodeIndex, P>,
     size: TreeSize,
-    default: T,
+    default_leaf: L,
+    default_parent: P,
 }
 
-impl<'a, T: Clone + Debug + Default> From<&'a ABinaryTree<T>> for AbDiff<'a, T> {
-    fn from(tree: &'a ABinaryTree<T>) -> AbDiff<'a, T> {
+impl<'a, L: Clone + Debug + Default, P: Clone + Debug + Default> From<&'a ABinaryTree<L, P>>
+    for AbDiff<'a, L, P>
+{
+    fn from(tree: &'a ABinaryTree<L, P>) -> AbDiff<'a, L, P> {
         AbDiff {
             original_tree: tree,
-            diff: BTreeMap::new(),
+            leaf_diff: BTreeMap::new(),
+            parent_diff: BTreeMap::new(),
             size: tree.size(),
-            default: T::default(),
+            default_leaf: L::default(),
+            default_parent: P::default(),
         }
     }
 }
 
-impl<'a, T: Clone + Debug + Default> AbDiff<'a, T> {
+impl<'a, L: Clone + Debug + Default, P: Clone + Debug + Default> AbDiff<'a, L, P> {
     // Functions handling interactions with leaves.
     ///////////////////////////////////////////////
 
     /// Extend the diff by a leaf and its new parent node.
     ///
     /// Returns an error if adding either of the two nodes increases the size of
-    /// the diff beyond [`u32::MAX`].
+    /// the diff beyond [`MAX_TREE_SIZE`].
     pub(crate) fn add_leaf(
         &mut self,
-        parent_node: T,
-        new_leaf: T,
+        parent_node: P,
+        new_leaf: L,
     ) -> Result<LeafNodeIndex, ABinaryTreeDiffError> {
         // Prevent the tree from becoming too large.
-        if self.size().u32() >= u32::MAX - 1 {
+        if self.size().u32() >= MAX_TREE_SIZE {
             return Err(ABinaryTreeDiffError::TreeTooLarge);
         }
-        let original_size = self.size().u32();
-        let previous_parent = self
-            .diff
-            .insert(TreeNodeIndex::new(original_size), parent_node);
+        let new_leaf_index = LeafNodeIndex::new(self.leaf_count());
+        let new_parent_index = ParentNodeIndex::new(self.parent_count());
+        let previous_leaf = self.leaf_diff.insert(new_leaf_index, new_leaf);
+        let previous_parent = self.parent_diff.insert(new_parent_index, parent_node);
+
         debug_assert!(previous_parent.is_none());
-        let previous_leaf = self
-            .diff
-            .insert(TreeNodeIndex::new(original_size + 1), new_leaf);
         debug_assert!(previous_leaf.is_none());
-        // Increase size
-        self.size.inc(2);
-        Ok(LeafNodeIndex::new(self.leaf_count() - 1))
+
+        // Increase the tree size
+        self.size.inc();
+        Ok(new_leaf_index)
     }
 
     /// Removes a leaf from the diff. To keep the binary tree (diff) balanced,
@@ -127,47 +136,98 @@ impl<'a, T: Clone + Debug + Default> AbDiff<'a, T> {
     ///
     /// Returns an error if the diff only has one leaf left.
     pub(crate) fn remove_leaf(&mut self) -> Result<(), ABinaryTreeDiffError> {
-        self.remove_node()?;
-        self.remove_node()
+        // First make sure that the tree isn't getting too small.
+        if self.size().u32() <= 1 {
+            return Err(ABinaryTreeDiffError::TreeTooSmall);
+        }
+
+        // Remove leaf
+        let removed_leaf = self
+            .leaf_diff
+            .remove(&LeafNodeIndex::new(&self.leaf_count() - 1));
+        if self.leaf_count() > self.original_tree.leaf_count() {
+            // If the diff extended the tree, there should be a node to remove
+            // here.
+            debug_assert!(removed_leaf.is_some());
+        }
+
+        // Remove parent
+        let removed_parent = self
+            .parent_diff
+            .remove(&ParentNodeIndex::new(&self.parent_count() - 1));
+        if self.parent_count() > self.original_tree.parent_count() {
+            // If the diff extended the tree, there should be a node to remove
+            // here.
+            debug_assert!(removed_parent.is_some());
+        }
+
+        // We decrease the size to signal that a node was removed from the diff.
+        self.size.dec();
+        Ok(())
     }
 
-    /// Replace the content of the node at the given leaf index with new
+    /// Replace the content of the leaf node at the given leaf index with new
     /// content.
-    ///
-    /// Returns an error if the given leaf index is larger than the leaf count
-    /// of the diff.
-    pub(crate) fn replace_leaf(&mut self, leaf_index: LeafNodeIndex, new_leaf: T) {
-        self.replace_node(leaf_index.into(), new_leaf);
+    pub(crate) fn replace_leaf(&mut self, leaf_index: LeafNodeIndex, new_leaf: L) {
+        self.leaf_diff.insert(leaf_index, new_leaf);
+    }
+
+    /// Replace the content of the parent node at the given leaf index with new
+    /// content.
+    pub(crate) fn replace_parent(&mut self, parent_index: ParentNodeIndex, node: P) {
+        self.parent_diff.insert(parent_index, node);
     }
 
     /// Returns an iterator over a tuple of the leaf index and a reference to a
     /// leaf, sorted according to their position in the tree from left to right.
-    pub(crate) fn leaves(&self) -> impl Iterator<Item = (LeafNodeIndex, &T)> {
+    pub(crate) fn leaves(&self) -> impl Iterator<Item = (LeafNodeIndex, &L)> {
         let original_leaves = self.original_tree.leaves().peekable();
         let diff_leaves = self
-            .diff
+            .leaf_diff
             .iter()
-            .filter_map(|(index, leaf)| match index {
-                TreeNodeIndex::Leaf(leaf_index) => Some((*leaf_index, leaf)),
-                TreeNodeIndex::Parent(_) => None,
-            })
+            .map(|(index, leaf)| (*index, leaf))
             .peekable();
 
-        // Combine the original leaves with the leaves from the diff. Since
-        // both iterators are sorted, we can just iterate over them and
-        // don't need additional sorting. If one of the iterators is
-        // exhausted, we just add the remaining leaves from the other
-        // iterator. We also make sure that we don't add leaves from the
-        // original leaves that are also in the diff.
+        // Combine the original leaves with the leaves from the diff. Since both
+        // iterators are sorted, we can just iterate over them and don't need
+        // additional sorting. If one of the iterators is exhausted, we just add
+        // the remaining leaves from the other iterator. We also make sure that
+        // we don't add leaves from the original leaves that are also in the
+        // diff.
 
         // Harmonize the iterator types
-        let a_iter = Box::new(diff_leaves) as Box<dyn Iterator<Item = (LeafNodeIndex, &T)>>;
-        let b_iter = Box::new(original_leaves) as Box<dyn Iterator<Item = (LeafNodeIndex, &T)>>;
+        let a_iter = Box::new(diff_leaves) as Box<dyn Iterator<Item = (LeafNodeIndex, &L)>>;
+        let b_iter = Box::new(original_leaves) as Box<dyn Iterator<Item = (LeafNodeIndex, &L)>>;
 
         // We only compare indices, not the actual leaves
-        let cmp = |&(x, _): &(LeafNodeIndex, &T)| x;
+        let cmp = |&(x, _): &(LeafNodeIndex, &L)| x;
 
-        sorted_iter(a_iter, b_iter, cmp, self.size.usize())
+        sorted_iter(a_iter, b_iter, cmp, self.leaf_count() as usize)
+    }
+
+    pub(crate) fn parents(&self) -> impl Iterator<Item = (ParentNodeIndex, &P)> {
+        let original_parents = self.original_tree.parents().peekable();
+        let diff_parents = self
+            .parent_diff
+            .iter()
+            .map(|(index, parent)| (*index, parent))
+            .peekable();
+
+        // Combine the original parents with the parents from the diff. Since
+        // both iterators are sorted, we can just iterate over them and don't
+        // need additional sorting. If one of the iterators is exhausted, we
+        // just add the remaining parents from the other iterator. We also make
+        // sure that we don't add parents from the original parents that are
+        // also in the diff.
+
+        // Harmonize the iterator types
+        let a_iter = Box::new(diff_parents) as Box<dyn Iterator<Item = (ParentNodeIndex, &P)>>;
+        let b_iter = Box::new(original_parents) as Box<dyn Iterator<Item = (ParentNodeIndex, &P)>>;
+
+        // We only compare indices, not the actual parents
+        let cmp = |&(x, _): &(ParentNodeIndex, &P)| x;
+
+        sorted_iter(a_iter, b_iter, cmp, self.parent_count() as usize)
     }
 
     // Functions related to the direct paths of leaves
@@ -180,23 +240,21 @@ impl<'a, T: Clone + Debug + Default> AbDiff<'a, T> {
         direct_path(leaf_index, self.size())
     }
 
-    /// Sets all nodes in the direct path to a copy of the given node. This
-    /// function will throw an [`ABinaryTreeDiffError::OutOfBounds`] error if
-    /// the given index does not correspond to a leaf in the diff.
-    pub(crate) fn set_direct_path_to_node(&mut self, leaf_index: LeafNodeIndex, node: &T) {
+    /// Sets all nodes in the direct path to a copy of the given node.
+    pub(crate) fn set_direct_path_to_node(&mut self, leaf_index: LeafNodeIndex, node: &P) {
         let direct_path = self.direct_path(leaf_index);
         for node_index in &direct_path {
-            self.replace_node(TreeNodeIndex::Parent(*node_index), node.clone());
+            self.replace_parent(*node_index, node.clone());
         }
     }
 
     /// Sets the nodes in the direct path of the given leaf index to the nodes
     /// given in the `path`.
-    pub(crate) fn set_direct_path(&mut self, leaf_index: LeafNodeIndex, path: Vec<T>) {
+    pub(crate) fn set_direct_path(&mut self, leaf_index: LeafNodeIndex, path: Vec<P>) {
         let direct_path = direct_path(leaf_index, self.size());
         debug_assert_eq!(path.len(), direct_path.len());
         for (node_index, node) in direct_path.iter().zip(path.into_iter()) {
-            self.replace_node(TreeNodeIndex::Parent(*node_index), node);
+            self.replace_parent(*node_index, node);
         }
     }
 
@@ -226,8 +284,8 @@ impl<'a, T: Clone + Debug + Default> AbDiff<'a, T> {
         // the bound of the tree), there is a non-leaf root node that is in the
         // direct path of all leaves.
         debug_assert!(leaf_index_1 != leaf_index_2);
-        debug_assert!(leaf_index_1.to_tree_index() < self.size.u32());
-        debug_assert!(leaf_index_2.to_tree_index() < self.size.u32());
+        debug_assert!(leaf_index_1.u32() < self.size.leaf_count());
+        debug_assert!(leaf_index_2.u32() < self.size.leaf_count());
 
         let subtree_root_node_index = lowest_common_ancestor(leaf_index_1, leaf_index_2);
         let leaf_index_1_direct_path = self.direct_path(leaf_index_1);
@@ -247,8 +305,8 @@ impl<'a, T: Clone + Debug + Default> AbDiff<'a, T> {
         leaf_index_2: LeafNodeIndex,
     ) -> TreeNodeIndex {
         debug_assert!(leaf_index_1 != leaf_index_2);
-        debug_assert!(leaf_index_1.to_tree_index() < self.size.u32());
-        debug_assert!(leaf_index_2.to_tree_index() < self.size.u32());
+        debug_assert!(leaf_index_1.u32() < self.size.leaf_count());
+        debug_assert!(leaf_index_2.u32() < self.size.leaf_count());
 
         // We want to return the position of the lowest common ancestor in the
         // direct path of `leaf_index_1` (i.e. the sender_leaf_index).
@@ -276,36 +334,35 @@ impl<'a, T: Clone + Debug + Default> AbDiff<'a, T> {
     // Functions pertaining to the whole diff
     /////////////////////////////////////////
 
-    /// Returns an iterator over a tuple of the node index and a reference to a
-    /// node, sorted according to their position in the tree from left to right.
-    pub(crate) fn nodes(&self) -> impl Iterator<Item = (TreeNodeIndex, &T)> {
-        let original_nodes = self.original_tree.nodes().peekable();
-        let diff_nodes = self
-            .diff
-            .iter()
-            .map(|(index, node)| (*index, node))
-            .peekable();
+    /// Exports the nodes
+    pub(crate) fn export_nodes(&self) -> Vec<TreeNode<L, P>> {
+        let mut nodes = Vec::new();
 
-        // Combine the original nodes with the nodes from the diff. Since
-        // both iterators are sorted, we can just iterate over them and
-        // don't need additional sorting. If one of the iterators is
-        // exhausted, we just add the remaining nodes from the other
-        // iterator. We also make sure that we don't add nodes from the
-        // original nodes that are also in the diff.
+        let leaves = self.leaves().map(|(_, node)| node);
+        let parents = self.parents().map(|(_, node)| node);
 
-        // Harmonize the iterator types
-        let a_iter = Box::new(diff_nodes) as Box<dyn Iterator<Item = (TreeNodeIndex, &T)>>;
-        let b_iter = Box::new(original_nodes) as Box<dyn Iterator<Item = (TreeNodeIndex, &T)>>;
+        // Interleave the leaves and parents.
+        for (leaf, parent) in leaves.zip(parents) {
+            nodes.push(TreeNode::Leaf(leaf.clone()));
+            nodes.push(TreeNode::Parent(parent.clone()));
+        }
 
-        // We only compare indices, not the actual nodes
-        let cmp = |&(x, _): &(TreeNodeIndex, &T)| x;
+        // Add the least leaf
+        if let Some(last_leaf) = self.leaves().map(|(_, node)| node).last() {
+            nodes.push(TreeNode::Leaf(last_leaf.clone()));
+        }
 
-        sorted_iter(a_iter, b_iter, cmp, self.size.usize())
+        nodes
     }
 
     /// Returns the leaf count of the diff.
     pub(crate) fn leaf_count(&self) -> u32 {
         ((self.size.u32() - 1) / 2) + 1
+    }
+
+    /// Returns the parent count of the diff.
+    pub(crate) fn parent_count(&self) -> u32 {
+        (self.size.u32() - 1) / 2
     }
 
     /// Returns the size of the diff tree.
@@ -316,22 +373,28 @@ impl<'a, T: Clone + Debug + Default> AbDiff<'a, T> {
     // Functions around individual [`TreeNodeIndex`]es
     ///////////////////////////////////////////////
 
-    /// Returns a reference to the node pointed to by the [`TreeNodeIndex`].
-    /// Returns an Error if the [`TreeNodeIndex`] points to a node outside of the
-    /// bounds of the tree. This can happen, for example, if the node was
-    /// removed while shrinking the diff after the creation of the
-    /// [`TreeNodeIndex`].
-    pub(crate) fn node(&self, node_index: TreeNodeIndex) -> &T {
-        self.node_by_index(node_index)
+    /// Returns a reference to the leaf node pointed to by the
+    /// [`LeafNodeIndex`].
+    pub(crate) fn leaf(&self, leaf_index: LeafNodeIndex) -> &L {
+        self.leaf_by_index(leaf_index)
     }
 
-    /// Returns a mutable reference to the node pointed to by the
-    /// [`TreeNodeIndex`]. Returns an Error if the [`TreeNodeIndex`] points to a
-    /// node outside of the bounds of the tree. This can happen, for example, if
-    /// the node was removed while shrinking the diff after the creation of the
-    /// [`TreeNodeIndex`].
-    pub(crate) fn node_mut(&mut self, node_index: TreeNodeIndex) -> &mut T {
-        self.node_mut_by_index(node_index)
+    /// Returns a reference to the parent node pointed to by the
+    /// [`ParentNodeIndex`].
+    pub(crate) fn parent(&self, parent_index: ParentNodeIndex) -> &P {
+        self.parent_by_index(parent_index)
+    }
+
+    /// Returns a mutable reference to the leaf node pointed to by the
+    /// [`LeafNodeIndex`].
+    pub(crate) fn leaf_mut(&mut self, leaf_index: LeafNodeIndex) -> &mut L {
+        self.leaf_mut_by_index(leaf_index)
+    }
+
+    /// Returns a mutable reference to the parent node pointed to by the
+    /// [`ParentNodeIndex`].
+    pub(crate) fn parent_mut(&mut self, parent_index: ParentNodeIndex) -> &mut P {
+        self.parent_mut_by_index(parent_index)
     }
 
     /// Return a [`TreeNodeIndex`] to the root node of the diff. Since the diff
@@ -357,69 +420,70 @@ impl<'a, T: Clone + Debug + Default> AbDiff<'a, T> {
 
     // Node access functions
 
-    /// Returns a reference to the node at index `node_index`.
-    fn node_by_index(&self, node_index: TreeNodeIndex) -> &T {
+    /// Returns a reference to the leaf node at index `leaf_index`.
+    fn leaf_by_index(&self, leaf_index: LeafNodeIndex) -> &L {
         // Check if it's in the diff.
-        if let Some(node) = self.diff.get(&node_index) {
+        if let Some(node) = self.leaf_diff.get(&leaf_index) {
             return node;
         }
         // If it isn't in the diff, it must be in the tree.
-        self.original_tree.node_by_index(node_index)
+        self.original_tree.leaf_by_index(leaf_index)
     }
 
-    /// Returns a mutable reference to the node in the diff at index
-    /// `node_index`. If the diff doesn't have a node at that index, it clones
+    /// Returns a reference to the parent node at index `parent_index`.
+    fn parent_by_index(&self, parent_index: ParentNodeIndex) -> &P {
+        // Check if it's in the diff.
+        if let Some(node) = self.parent_diff.get(&parent_index) {
+            return node;
+        }
+        // If it isn't in the diff, it must be in the tree.
+        self.original_tree.parent_by_index(parent_index)
+    }
+
+    /// Returns a mutable reference to the leaf node in the diff at index
+    /// `leaf_index`. If the diff doesn't have a node at that index, it clones
     /// the node to the diff and returns a mutable reference to that node.
-    fn node_mut_by_index(&mut self, node_index: TreeNodeIndex) -> &mut T {
+    fn leaf_mut_by_index(&mut self, leaf_index: LeafNodeIndex) -> &mut L {
         // We then check if the node is already in the diff. (Not using `if let
         // ...` here, because the borrow checker doesn't like that).
-        if self.diff.contains_key(&node_index) {
+        if self.leaf_diff.contains_key(&leaf_index) {
             return self
-                .diff
-                .get_mut(&node_index)
+                .leaf_diff
+                .get_mut(&leaf_index)
                 // We just checked that this index exists, so this must be Some.
-                .unwrap_or(&mut self.default);
+                .unwrap_or(&mut self.default_leaf);
             // If not, we take a copy from the original tree and put it in the
             // diff before returning a mutable reference to it.
         }
-        let tree_node = self.original_tree.node_by_index(node_index);
-        self.replace_node(node_index, tree_node.clone());
-        self.diff
-            .get_mut(&node_index)
+        let tree_node = self.original_tree.leaf_by_index(leaf_index);
+        self.replace_leaf(leaf_index, tree_node.clone());
+        self.leaf_diff
+            .get_mut(&leaf_index)
             // We just inserted this into the diff, so this should be Some.
-            .unwrap_or(&mut self.default)
+            .unwrap_or(&mut self.default_leaf)
     }
 
-    // Helper functions for node addition and removal
-
-    /// This function is used to place a node at the given index such that any
-    /// previous node in the tree at the same position is replaced upon merging
-    /// the diff. This function also overrides any previously made changes to
-    /// that node as part of modifying this diff.
-    fn replace_node(&mut self, node_index: TreeNodeIndex, node: T) {
-        self.diff.insert(node_index, node);
-    }
-
-    /// Removes a node from the right edge of the diff, thus decreasing the size
-    /// of the diff by one. Throws an error if this would make the diff too
-    /// small (i.e. < 1 node).
-    fn remove_node(&mut self) -> Result<(), ABinaryTreeDiffError> {
-        // First make sure that the tree isn't getting too small.
-        if self.size().u32() <= 1 {
-            return Err(ABinaryTreeDiffError::TreeTooSmall);
+    /// Returns a mutable reference to the parent node in the diff at index
+    /// `parent_index`. If the diff doesn't have a node at that index, it clones
+    /// the node to the diff and returns a mutable reference to that node.
+    fn parent_mut_by_index(&mut self, parent_index: ParentNodeIndex) -> &mut P {
+        // We then check if the node is already in the diff. (Not using `if let
+        // ...` here, because the borrow checker doesn't like that).
+        if self.parent_diff.contains_key(&parent_index) {
+            return self
+                .parent_diff
+                .get_mut(&parent_index)
+                // We just checked that this index exists, so this must be Some.
+                .unwrap_or(&mut self.default_parent);
+            // If not, we take a copy from the original tree and put it in the
+            // diff before returning a mutable reference to it.
         }
-        let removed = self
-            .diff
-            .remove(&TreeNodeIndex::new(&self.size().u32() - 1));
-        if self.size() > self.original_tree.size() {
-            // If the diff extended the tree, there should be a node to remove
-            // here.
-            debug_assert!(removed.is_some());
-        }
-        // There should be a node here to remove.
-        // We decrease the size to signal that a node was removed from the diff.
-        self.size.dec(1);
-        Ok(())
+        let tree_node = self.original_tree.parent_by_index(parent_index);
+        self.replace_parent(parent_index, tree_node.clone());
+        self.parent_diff
+            .get_mut(&parent_index)
+            // We just inserted this into the diff, so this should be Some.
+            .unwrap_or(&mut self.default_parent)
     }
 
     // Index checking
@@ -427,14 +491,14 @@ impl<'a, T: Clone + Debug + Default> AbDiff<'a, T> {
     #[cfg(test)]
     pub(crate) fn deref_vec(
         &self,
-        node_index_vec: Vec<TreeNodeIndex>,
-    ) -> Result<Vec<&T>, ABinaryTreeDiffError> {
-        let mut node_vec = Vec::new();
-        for node_index in node_index_vec {
-            let node = self.node(node_index);
-            node_vec.push(node);
+        parent_index_vec: Vec<ParentNodeIndex>,
+    ) -> Result<Vec<&P>, ABinaryTreeDiffError> {
+        let mut parent_vec = Vec::new();
+        for parent_index in parent_index_vec {
+            let node = self.parent(parent_index);
+            parent_vec.push(node);
         }
-        Ok(node_vec)
+        Ok(parent_vec)
     }
 }
 
@@ -450,9 +514,6 @@ pub(crate) enum ABinaryTreeDiffError {
     /// Minimum tree size reached.
     #[error("Minimum tree size reached.")]
     TreeTooSmall,
-    /// Error while executing folding function.
-    #[error("Error while executing folding function.")]
-    FoldingError,
     /// See [`ABinaryTreeError`] for more details.
     #[error(transparent)]
     ABinaryTreeError(#[from] ABinaryTreeError),

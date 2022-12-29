@@ -42,7 +42,7 @@ impl MlsGroup {
                     .group
                     .treesync()
                     .own_leaf_node()
-                    .map_err(|_| {
+                    .ok_or_else(|| {
                         LibraryError::custom("The tree is broken. Couldn't find own leaf.")
                     })?
                     .clone();
@@ -141,7 +141,7 @@ impl MlsGroup {
         // The new leaf node will be applied later when the proposal is commited.
         let mut rekeyed_own_leaf = tree
             .own_leaf_node()
-            .map_err(|_| LibraryError::custom("The tree is broken. Couldn't find own leaf."))?
+            .ok_or_else(|| LibraryError::custom("The tree is broken. Couldn't find own leaf."))?
             .clone();
         if let Some(key_package) = key_package {
             let private_key: Vec<u8> = backend
