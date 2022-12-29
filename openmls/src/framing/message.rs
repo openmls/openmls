@@ -14,7 +14,7 @@ use tls_codec::{Deserialize, Serialize};
 
 use super::{mls_content::ContentType, *};
 
-use crate::error::LibraryError;
+use crate::{error::LibraryError, versions::ProtocolVersion};
 
 /// Unified message type for MLS messages.
 /// /// This is only used internally, externally we use either [`MlsMessageIn`] or
@@ -30,6 +30,7 @@ use crate::error::LibraryError;
 /// ```
 #[derive(PartialEq, Debug, Clone, TlsSerialize, TlsSize, TlsDeserialize)]
 pub(crate) struct MlsMessage {
+    pub(crate) protocol_version: ProtocolVersion,
     pub(crate) body: MlsMessageBody,
 }
 
@@ -214,7 +215,10 @@ impl From<PublicMessage> for MlsMessageOut {
         let body = MlsMessageBody::PublicMessage(plaintext);
 
         Self {
-            mls_message: MlsMessage { body },
+            mls_message: MlsMessage {
+                body,
+                protocol_version: ProtocolVersion::Mls10,
+            },
         }
     }
 }
@@ -224,7 +228,10 @@ impl From<PrivateMessage> for MlsMessageOut {
         let body = MlsMessageBody::PrivateMessage(ciphertext);
 
         Self {
-            mls_message: MlsMessage { body },
+            mls_message: MlsMessage {
+                body,
+                protocol_version: ProtocolVersion::Mls10,
+            },
         }
     }
 }
@@ -282,7 +289,10 @@ impl From<PublicMessage> for MlsMessageIn {
         let body = MlsMessageBody::PublicMessage(plaintext);
 
         Self {
-            mls_message: MlsMessage { body },
+            mls_message: MlsMessage {
+                body,
+                protocol_version: ProtocolVersion::Mls10,
+            },
         }
     }
 }
@@ -293,7 +303,10 @@ impl From<PrivateMessage> for MlsMessageIn {
         let body = MlsMessageBody::PrivateMessage(ciphertext);
 
         Self {
-            mls_message: MlsMessage { body },
+            mls_message: MlsMessage {
+                body,
+                protocol_version: ProtocolVersion::Mls10,
+            },
         }
     }
 }
