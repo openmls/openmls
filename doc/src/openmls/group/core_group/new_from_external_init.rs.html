@@ -190,7 +190,6 @@
 <span id="190">190</span>
 <span id="191">191</span>
 <span id="192">192</span>
-<span id="193">193</span>
 </pre><pre class="rust"><code><span class="kw">use crate</span>::{
     binary_tree::array_representation::LeafNodeIndex,
     ciphersuite::signable::Verifiable,
@@ -260,8 +259,7 @@
         <span class="kw">let </span>group_info: GroupInfo = {
             <span class="kw">let </span>group_info_signer_leaf = treesync
                 .leaf(verifiable_group_info.signer())
-                .map_err(|<span class="kw">_</span>| ExternalCommitError::UnknownSender)<span class="question-mark">?
-                </span>.ok_or(ExternalCommitError::UnknownSender)<span class="question-mark">?
+                .ok_or(ExternalCommitError::UnknownSender)<span class="question-mark">?
                 </span>.credential();
 
             verifiable_group_info

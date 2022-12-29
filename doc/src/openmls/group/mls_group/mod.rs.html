@@ -428,7 +428,6 @@
 <span id="428">428</span>
 <span id="429">429</span>
 <span id="430">430</span>
-<span id="431">431</span>
 </pre><pre class="rust"><code><span class="doccomment">//! MLS Group
 //!
 //! This module contains [`MlsGroup`] and its submodules.
@@ -659,10 +658,9 @@
             <span class="kw">return </span><span class="prelude-val">Err</span>(MlsGroupStateError::UseAfterEviction);
         }
         <span class="kw">let </span>tree = <span class="self">self</span>.group.treesync();
-        <span class="prelude-val">Ok</span>(tree
-            .own_leaf_node()
-            .map_err(|<span class="kw">_</span>| LibraryError::custom(<span class="string">&quot;Own leaf node missing&quot;</span>))<span class="question-mark">?
-            </span>.credential())
+        tree.own_leaf_node()
+            .map(|node| node.credential())
+            .ok_or_else(|| LibraryError::custom(<span class="string">&quot;Own leaf node missing&quot;</span>).into())
     }
 
     <span class="doccomment">/// Get the identity of the client&#39;s [`Credential`] owning this group.

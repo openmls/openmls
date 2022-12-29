@@ -182,33 +182,6 @@
 <span id="182">182</span>
 <span id="183">183</span>
 <span id="184">184</span>
-<span id="185">185</span>
-<span id="186">186</span>
-<span id="187">187</span>
-<span id="188">188</span>
-<span id="189">189</span>
-<span id="190">190</span>
-<span id="191">191</span>
-<span id="192">192</span>
-<span id="193">193</span>
-<span id="194">194</span>
-<span id="195">195</span>
-<span id="196">196</span>
-<span id="197">197</span>
-<span id="198">198</span>
-<span id="199">199</span>
-<span id="200">200</span>
-<span id="201">201</span>
-<span id="202">202</span>
-<span id="203">203</span>
-<span id="204">204</span>
-<span id="205">205</span>
-<span id="206">206</span>
-<span id="207">207</span>
-<span id="208">208</span>
-<span id="209">209</span>
-<span id="210">210</span>
-<span id="211">211</span>
 </pre><pre class="rust"><code><span class="doccomment">//! TreeSync errors
 //!
 //! This module exposes [`ApplyUpdatePathError`] and [`PublicTreeError`].
@@ -288,12 +261,6 @@
     <span class="doccomment">/// See [`MlsBinaryTreeError`] for more details.
     </span><span class="attribute">#[error(transparent)]
     </span>BinaryTreeError(<span class="attribute">#[from] </span>MlsBinaryTreeError),
-    <span class="doccomment">/// See [`TreeSyncNodeError`] for more details.
-    </span><span class="attribute">#[error(transparent)]
-    </span>TreeSyncNodeError(<span class="attribute">#[from] </span>TreeSyncNodeError),
-    <span class="doccomment">/// See [`NodeError`] for more details.
-    </span><span class="attribute">#[error(transparent)]
-    </span>NodeTypeError(<span class="attribute">#[from] </span>NodeError),
     <span class="doccomment">/// See [`TreeSyncDiffError`] for more details.
     </span><span class="attribute">#[error(transparent)]
     </span>TreeSyncDiffError(<span class="attribute">#[from] </span>TreeSyncDiffError),
@@ -371,12 +338,6 @@
         <span class="string">&quot;Couldn&#39;t find a fitting private key in the filtered resolution of the given leaf index.&quot;
     </span>)]
     </span>NoPrivateKeyFound,
-    <span class="doccomment">/// See [`NodeError`] for more details.
-    </span><span class="attribute">#[error(transparent)]
-    </span>NodeTypeError(<span class="attribute">#[from] </span>NodeError),
-    <span class="doccomment">/// See [`TreeSyncNodeError`] for more details.
-    </span><span class="attribute">#[error(transparent)]
-    </span>TreeSyncNodeError(<span class="attribute">#[from] </span>TreeSyncNodeError),
     <span class="doccomment">/// See [`MlsBinaryTreeDiffError`] for more details.
     </span><span class="attribute">#[error(transparent)]
     </span>TreeDiffError(<span class="attribute">#[from] </span>MlsBinaryTreeDiffError),
@@ -404,21 +365,6 @@
     <span class="doccomment">/// See [`PathSecretError`] for more details.
     </span><span class="attribute">#[error(transparent)]
     </span>PathSecretError(<span class="attribute">#[from] </span>PathSecretError),
-}
-
-<span class="doccomment">/// Binary Tree error
-</span><span class="attribute">#[derive(Error, Debug, PartialEq, Clone)]
-#[allow(clippy::enum_variant_names)]
-</span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">enum </span>NodeError {
-    <span class="doccomment">/// See [`LibraryError`] for more details.
-    </span><span class="attribute">#[error(transparent)]
-    </span>LibraryError(<span class="attribute">#[from] </span>LibraryError),
-    <span class="doccomment">/// This is not a leaf node.
-    </span><span class="attribute">#[error(<span class="string">&quot;This is not a leaf node.&quot;</span>)]
-    </span>AsLeafError,
-    <span class="doccomment">/// This is not a parent node.
-    </span><span class="attribute">#[error(<span class="string">&quot;This is not a parent node.&quot;</span>)]
-    </span>AsParentError,
 }
 </code></pre></div>
 </section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-current-crate="openmls" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.66.0 (69f9c33d7 2022-12-12)" ></div></body></html>

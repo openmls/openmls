@@ -503,12 +503,6 @@
 <span id="503">503</span>
 <span id="504">504</span>
 <span id="505">505</span>
-<span id="506">506</span>
-<span id="507">507</span>
-<span id="508">508</span>
-<span id="509">509</span>
-<span id="510">510</span>
-<span id="511">511</span>
 </pre><pre class="rust"><code><span class="doccomment">//! # Validation steps for incoming messages
 //!
 //! ```text
@@ -672,10 +666,7 @@
         <span class="kw">let </span>sender = <span class="self">self</span>.sender();
         <span class="kw">match </span>sender {
             Sender::Member(leaf_index) =&gt; {
-                <span class="kw">match </span>treesync
-                    .leaf(<span class="kw-2">*</span>leaf_index)
-                    .map_err(|<span class="kw">_</span>| ValidationError::UnknownMember)<span class="question-mark">?
-                </span>{
+                <span class="kw">match </span>treesync.leaf(<span class="kw-2">*</span>leaf_index) {
                     <span class="prelude-val">Some</span>(sender_leaf) =&gt; <span class="prelude-val">Ok</span>(sender_leaf.credential().clone()),
                     <span class="prelude-val">None </span>=&gt; {
                         <span class="comment">// This might not actually be an error but the sender&#39;s
@@ -689,10 +680,7 @@
                             .iter()
                             .find(|<span class="kw-2">&amp;</span>old_member| <span class="kw-2">*</span>leaf_index == old_member.index)
                         {
-                            <span class="kw">match </span>treesync
-                                .leaf(<span class="kw-2">*</span>index)
-                                .map_err(|<span class="kw">_</span>| ValidationError::UnknownMember)<span class="question-mark">?
-                            </span>{
+                            <span class="kw">match </span>treesync.leaf(<span class="kw-2">*</span>index) {
                                 <span class="prelude-val">Some</span>(node) =&gt; <span class="prelude-val">Ok</span>(node.credential().clone()),
                                 <span class="prelude-val">None </span>=&gt; <span class="prelude-val">Err</span>(ValidationError::UnknownMember),
                             }

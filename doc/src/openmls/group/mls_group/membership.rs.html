@@ -380,12 +380,6 @@
 <span id="380">380</span>
 <span id="381">381</span>
 <span id="382">382</span>
-<span id="383">383</span>
-<span id="384">384</span>
-<span id="385">385</span>
-<span id="386">386</span>
-<span id="387">387</span>
-<span id="388">388</span>
 </pre><pre class="rust"><code><span class="doccomment">//! MLS group membership
 //!
 //! This module contains membership-related operations and exposes [`RemoveOperation`].
@@ -477,12 +471,8 @@
     }
 
     <span class="doccomment">/// Returns a reference to the own [`LeafNode`].
-    </span><span class="kw">pub fn </span>own_leaf(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="kw-2">&amp;</span>LeafNode, LibraryError&gt; {
-        <span class="self">self</span>.group
-            .treesync()
-            .own_leaf_node()
-            .map(|l| l.leaf_node())
-            .map_err(|<span class="kw">_</span>| LibraryError::custom(<span class="string">&quot;There&#39;s no own leaf in this group.&quot;</span>))
+    </span><span class="kw">pub fn </span>own_leaf(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>LeafNode&gt; {
+        <span class="self">self</span>.group.treesync().own_leaf_node().map(|l| l.leaf_node())
     }
 
     <span class="doccomment">/// Removes members from the group.
@@ -706,9 +696,7 @@
             .treesync()
             <span class="comment">// This will return an error if the member can&#39;t be found.
             </span>.leaf(leaf_index)
-            .map(|leaf| leaf.map(|l| l.credential()))
-            .ok()
-            .flatten()
+            .map(|leaf| leaf.credential())
     }
 }
 

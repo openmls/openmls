@@ -146,81 +146,168 @@
 <span id="146">146</span>
 <span id="147">147</span>
 <span id="148">148</span>
+<span id="149">149</span>
+<span id="150">150</span>
+<span id="151">151</span>
+<span id="152">152</span>
+<span id="153">153</span>
+<span id="154">154</span>
+<span id="155">155</span>
+<span id="156">156</span>
+<span id="157">157</span>
+<span id="158">158</span>
+<span id="159">159</span>
+<span id="160">160</span>
+<span id="161">161</span>
+<span id="162">162</span>
+<span id="163">163</span>
+<span id="164">164</span>
+<span id="165">165</span>
+<span id="166">166</span>
+<span id="167">167</span>
+<span id="168">168</span>
+<span id="169">169</span>
+<span id="170">170</span>
+<span id="171">171</span>
+<span id="172">172</span>
+<span id="173">173</span>
+<span id="174">174</span>
+<span id="175">175</span>
+<span id="176">176</span>
+<span id="177">177</span>
+<span id="178">178</span>
+<span id="179">179</span>
+<span id="180">180</span>
+<span id="181">181</span>
+<span id="182">182</span>
+<span id="183">183</span>
+<span id="184">184</span>
+<span id="185">185</span>
+<span id="186">186</span>
+<span id="187">187</span>
+<span id="188">188</span>
+<span id="189">189</span>
+<span id="190">190</span>
+<span id="191">191</span>
+<span id="192">192</span>
+<span id="193">193</span>
+<span id="194">194</span>
+<span id="195">195</span>
+<span id="196">196</span>
+<span id="197">197</span>
+<span id="198">198</span>
+<span id="199">199</span>
+<span id="200">200</span>
+<span id="201">201</span>
+<span id="202">202</span>
+<span id="203">203</span>
+<span id="204">204</span>
+<span id="205">205</span>
+<span id="206">206</span>
+<span id="207">207</span>
+<span id="208">208</span>
+<span id="209">209</span>
+<span id="210">210</span>
+<span id="211">211</span>
+<span id="212">212</span>
+<span id="213">213</span>
+<span id="214">214</span>
+<span id="215">215</span>
+<span id="216">216</span>
+<span id="217">217</span>
+<span id="218">218</span>
+<span id="219">219</span>
+<span id="220">220</span>
+<span id="221">221</span>
 </pre><pre class="rust"><code><span class="doccomment">//! This module contains the [`TreeSyncNode`] struct and its implementation.
 
 </span><span class="kw">use </span>openmls_traits::{types::Ciphersuite, OpenMlsCryptoProvider};
 <span class="kw">use </span>serde::{Deserialize, Serialize};
-<span class="kw">use </span>thiserror::Error;
 <span class="kw">use </span>tls_codec::VLByteSlice;
 
 <span class="kw">use crate</span>::{
-    binary_tree::{array_representation::LeafNodeIndex, MlsBinaryTreeDiffError},
+    binary_tree::array_representation::{tree::TreeNode, LeafNodeIndex},
     error::LibraryError,
 };
 
-<span class="kw">use super</span>::{errors::NodeError, hashes::TreeHashInput, Node};
+<span class="kw">use super</span>::{hashes::TreeHashInput, node::leaf_node::OpenMlsLeafNode, Node, ParentNode};
 
-<span class="attribute">#[derive(Debug, Clone, Default, Serialize, Deserialize)]
-#[cfg_attr(test, derive(PartialEq))]
-</span><span class="doccomment">/// This intermediate struct on top of `Option&lt;Node&gt;` allows us to cache tree
-/// hash values. Blank nodes are represented by [`TreeSyncNode`] instances where
-/// `node = None`.
-</span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct </span>TreeSyncNode {
-    tree_hash: <span class="prelude-ty">Option</span>&lt;Vec&lt;u8&gt;&gt;,
-    node: <span class="prelude-ty">Option</span>&lt;Node&gt;,
+<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">enum </span>TreeSyncNode {
+    Leaf(TreeSyncLeafNode),
+    Parent(TreeSyncParentNode),
 }
 
 <span class="kw">impl </span>From&lt;Node&gt; <span class="kw">for </span>TreeSyncNode {
     <span class="kw">fn </span>from(node: Node) -&gt; <span class="self">Self </span>{
-        <span class="self">Self </span>{
-            tree_hash: <span class="prelude-val">None</span>,
-            node: <span class="prelude-val">Some</span>(node),
+        <span class="kw">match </span>node {
+            Node::LeafNode(leaf) =&gt; TreeSyncNode::Leaf(leaf.into()),
+            Node::ParentNode(parent) =&gt; TreeSyncNode::Parent(parent.into()),
         }
     }
 }
 
 <span class="kw">impl </span>From&lt;TreeSyncNode&gt; <span class="kw">for </span><span class="prelude-ty">Option</span>&lt;Node&gt; {
     <span class="kw">fn </span>from(tsn: TreeSyncNode) -&gt; <span class="self">Self </span>{
-        tsn.node
+        <span class="kw">match </span>tsn {
+            TreeSyncNode::Leaf(leaf) =&gt; leaf.into(),
+            TreeSyncNode::Parent(parent) =&gt; parent.into(),
+        }
     }
 }
 
-<span class="kw">impl </span>From&lt;<span class="prelude-ty">Option</span>&lt;Node&gt;&gt; <span class="kw">for </span>TreeSyncNode {
-    <span class="kw">fn </span>from(option_node: <span class="prelude-ty">Option</span>&lt;Node&gt;) -&gt; <span class="self">Self </span>{
-        option_node.map(|node| node.into()).unwrap_or_default()
+<span class="kw">impl </span>From&lt;TreeNode&lt;TreeSyncLeafNode, TreeSyncParentNode&gt;&gt; <span class="kw">for </span>TreeSyncNode {
+    <span class="kw">fn </span>from(tree_node: TreeNode&lt;TreeSyncLeafNode, TreeSyncParentNode&gt;) -&gt; <span class="self">Self </span>{
+        <span class="kw">match </span>tree_node {
+            TreeNode::Leaf(leaf) =&gt; TreeSyncNode::Leaf(leaf),
+            TreeNode::Parent(parent) =&gt; TreeSyncNode::Parent(parent),
+        }
     }
 }
 
-<span class="kw">impl </span>TreeSyncNode {
-    <span class="doccomment">/// Create a blank [`TreeSyncNode`].
+<span class="kw">impl </span>From&lt;TreeSyncNode&gt; <span class="kw">for </span>TreeNode&lt;TreeSyncLeafNode, TreeSyncParentNode&gt; {
+    <span class="kw">fn </span>from(tsn: TreeSyncNode) -&gt; <span class="self">Self </span>{
+        <span class="kw">match </span>tsn {
+            TreeSyncNode::Leaf(leaf) =&gt; TreeNode::Leaf(leaf),
+            TreeSyncNode::Parent(parent) =&gt; TreeNode::Parent(parent),
+        }
+    }
+}
+
+<span class="attribute">#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[cfg_attr(test, derive(PartialEq))]
+</span><span class="doccomment">/// This intermediate struct on top of `Option&lt;Node&gt;` allows us to cache tree
+/// hash values. Blank nodes are represented by [`TreeSyncNode`] instances where
+/// `node = None`.
+</span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct </span>TreeSyncLeafNode {
+    tree_hash: <span class="prelude-ty">Option</span>&lt;Vec&lt;u8&gt;&gt;,
+    node: <span class="prelude-ty">Option</span>&lt;OpenMlsLeafNode&gt;,
+}
+
+<span class="kw">impl </span>TreeSyncLeafNode {
+    <span class="doccomment">/// Create a blank [`TreeSyncLeafNode`].
     </span><span class="kw">pub</span>(<span class="kw">in </span><span class="kw">crate</span>::treesync) <span class="kw">fn </span>blank() -&gt; <span class="self">Self </span>{
         <span class="self">Self</span>::default()
     }
 
     <span class="doccomment">/// Return a reference to the contained `Option&lt;Node&gt;`.
-    </span><span class="kw">pub</span>(<span class="kw">in </span><span class="kw">crate</span>::treesync) <span class="kw">fn </span>node(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span><span class="prelude-ty">Option</span>&lt;Node&gt; {
+    </span><span class="kw">pub</span>(<span class="kw">in </span><span class="kw">crate</span>::treesync) <span class="kw">fn </span>node(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span><span class="prelude-ty">Option</span>&lt;OpenMlsLeafNode&gt; {
         <span class="kw-2">&amp;</span><span class="self">self</span>.node
     }
 
     <span class="doccomment">/// Return a copy of this node, but remove any potential private key
     /// material contained in the `Node`.
-    </span><span class="kw">pub</span>(<span class="kw">in </span><span class="kw">crate</span>::treesync) <span class="kw">fn </span>node_without_private_key(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;Node&gt; {
-        <span class="kw">if let </span><span class="prelude-val">Some</span>(node) = <span class="self">self</span>.node() {
-            <span class="kw">match </span>node {
-                Node::LeafNode(leaf_node) =&gt; Node::LeafNode(leaf_node.clone_public()),
-                Node::ParentNode(parent_node) =&gt; {
-                    Node::ParentNode(parent_node.clone_without_private_key())
-                }
-            }
-            .into()
-        } <span class="kw">else </span>{
-            <span class="prelude-val">None
-        </span>}
+    </span><span class="kw">pub</span>(<span class="kw">in </span><span class="kw">crate</span>::treesync) <span class="kw">fn </span>node_without_private_key(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;OpenMlsLeafNode&gt; {
+        <span class="self">self</span>.node.as_ref().map(|node| node.clone_public())
     }
 
     <span class="doccomment">/// Return a mutable reference to the contained `Option&lt;Node&gt;`.
-    </span><span class="kw">pub</span>(<span class="kw">in </span><span class="kw">crate</span>::treesync) <span class="kw">fn </span>node_mut(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;mut </span><span class="prelude-ty">Option</span>&lt;Node&gt; {
+    </span><span class="kw">pub</span>(<span class="kw">in </span><span class="kw">crate</span>::treesync) <span class="kw">fn </span>node_mut(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;mut </span><span class="prelude-ty">Option</span>&lt;OpenMlsLeafNode&gt; {
         <span class="kw-2">&amp;mut </span><span class="self">self</span>.node
+    }
+
+    <span class="doccomment">/// Return a reference to the cached tree hash.
+    </span><span class="kw">pub</span>(<span class="kw">in </span><span class="kw">crate</span>::treesync) <span class="kw">fn </span>tree_hash(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>[u8]&gt; {
+        <span class="self">self</span>.tree_hash.as_deref()
     }
 
     <span class="doccomment">/// Replace the current `tree_hash` with `None`.
@@ -234,64 +321,123 @@
         <span class="kw-2">&amp;mut </span><span class="self">self</span>,
         backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider,
         ciphersuite: Ciphersuite,
-        leaf_index_option: <span class="prelude-ty">Option</span>&lt;LeafNodeIndex&gt;,
-        left_hash: Vec&lt;u8&gt;,
-        right_hash: Vec&lt;u8&gt;,
+        leaf_index: LeafNodeIndex,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;Vec&lt;u8&gt;, LibraryError&gt; {
-        <span class="comment">// // If there&#39;s a cached tree hash, use that one.
-        // TODO[FK]: Do we want to keep caching?
-        // if let Some(hash) = self.tree_hash() {
-        //     return Ok(hash.clone());
-        // };
-        // Otherwise compute it.
-        // Check if I&#39;m a leaf node.
-        </span><span class="kw">let </span>hash = <span class="kw">if let </span><span class="prelude-val">Some</span>(leaf_index) = leaf_index_option {
-            <span class="kw">let </span>leaf_node = <span class="self">self</span>.node.as_ref().map(|node| node.as_leaf_node());
-            <span class="kw">let </span>leaf_node = <span class="kw">if let </span><span class="prelude-val">Some</span>(result) = leaf_node {
-                result
-                    .as_ref()
-                    .map_err(|<span class="kw">_</span>| LibraryError::custom(<span class="string">&quot;Expected a leaf node&quot;</span>))<span class="question-mark">?</span>;
-                result.ok()
-            } <span class="kw">else </span>{
-                <span class="prelude-val">None
-            </span>}
-            .map(|l| <span class="kw-2">&amp;</span>l.leaf_node);
-            <span class="kw">let </span>hash_input = TreeHashInput::new_leaf(<span class="kw-2">&amp;</span>leaf_index, leaf_node);
-            hash_input.hash(backend, ciphersuite)<span class="question-mark">?
-        </span>} <span class="kw">else </span>{
-            <span class="kw">let </span>parent_node_option = <span class="kw">match </span><span class="self">self</span>.node.as_ref() {
-                <span class="prelude-val">Some</span>(node) =&gt; <span class="prelude-val">Some</span>(
-                    node.as_parent_node()
-                        .map_err(|<span class="kw">_</span>| LibraryError::custom(<span class="string">&quot;Expected a parent node&quot;</span>))<span class="question-mark">?</span>,
-                ),
-                <span class="prelude-val">None </span>=&gt; <span class="prelude-val">None</span>,
-            };
-            <span class="kw">let </span>hash_input = TreeHashInput::new_parent(
-                parent_node_option,
-                VLByteSlice(<span class="kw-2">&amp;</span>left_hash),
-                VLByteSlice(<span class="kw-2">&amp;</span>right_hash),
+        <span class="comment">// If there&#39;s a cached tree hash, use that one.
+        </span><span class="kw">if let </span><span class="prelude-val">Some</span>(hash) = <span class="self">self</span>.tree_hash() {
+            <span class="prelude-val">Ok</span>(hash.to_vec())
+        } <span class="kw">else </span>{
+            <span class="comment">// Otherwise compute it.
+            </span><span class="kw">let </span>hash_input = TreeHashInput::new_leaf(
+                <span class="kw-2">&amp;</span>leaf_index,
+                <span class="self">self</span>.node.as_ref().map(|node| <span class="kw-2">&amp;</span>node.leaf_node),
             );
-            hash_input.hash(backend, ciphersuite)<span class="question-mark">?
-        </span>};
-        <span class="self">self</span>.tree_hash = <span class="prelude-val">Some</span>(hash.clone());
-        <span class="prelude-val">Ok</span>(hash)
+            <span class="kw">let </span>hash = hash_input.hash(backend, ciphersuite)<span class="question-mark">?</span>;
+            <span class="self">self</span>.tree_hash = <span class="prelude-val">Some</span>(hash.clone());
+
+            <span class="prelude-val">Ok</span>(hash)
+        }
     }
 }
 
-<span class="doccomment">/// Binary Tree error
-</span><span class="attribute">#[derive(Error, Debug, PartialEq, Clone)]
-</span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">enum </span>TreeSyncNodeError {
-    <span class="doccomment">/// See [`LibraryError`] for more details.
-    </span><span class="attribute">#[error(transparent)]
-    </span>LibraryError(<span class="attribute">#[from] </span>LibraryError),
-    <span class="doccomment">/// See [`NodeError`] for more details.
-    </span><span class="attribute">#[error(transparent)]
-    </span>NodeType(<span class="attribute">#[from] </span>NodeError),
+<span class="kw">impl </span>From&lt;OpenMlsLeafNode&gt; <span class="kw">for </span>TreeSyncLeafNode {
+    <span class="kw">fn </span>from(node: OpenMlsLeafNode) -&gt; <span class="self">Self </span>{
+        <span class="self">Self </span>{
+            tree_hash: <span class="prelude-val">None</span>,
+            node: <span class="prelude-val">Some</span>(node),
+        }
+    }
 }
 
-<span class="kw">impl </span>From&lt;TreeSyncNodeError&gt; <span class="kw">for </span>MlsBinaryTreeDiffError {
-    <span class="kw">fn </span>from(<span class="kw">_</span>: TreeSyncNodeError) -&gt; <span class="self">Self </span>{
-        MlsBinaryTreeDiffError::FoldingError
+<span class="kw">impl </span>From&lt;TreeSyncLeafNode&gt; <span class="kw">for </span><span class="prelude-ty">Option</span>&lt;Node&gt; {
+    <span class="kw">fn </span>from(tsln: TreeSyncLeafNode) -&gt; <span class="self">Self </span>{
+        tsln.node.map(Node::LeafNode)
+    }
+}
+
+<span class="attribute">#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[cfg_attr(test, derive(PartialEq))]
+</span><span class="doccomment">/// This intermediate struct on top of `Option&lt;Node&gt;` allows us to cache tree
+/// hash values. Blank nodes are represented by [`TreeSyncNode`] instances where
+/// `node = None`.
+</span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct </span>TreeSyncParentNode {
+    tree_hash: <span class="prelude-ty">Option</span>&lt;Vec&lt;u8&gt;&gt;,
+    node: <span class="prelude-ty">Option</span>&lt;ParentNode&gt;,
+}
+
+<span class="kw">impl </span>TreeSyncParentNode {
+    <span class="doccomment">/// Create a blank [`TreeSyncParentNode`].
+    </span><span class="kw">pub</span>(<span class="kw">in </span><span class="kw">crate</span>::treesync) <span class="kw">fn </span>blank() -&gt; <span class="self">Self </span>{
+        <span class="self">Self</span>::default()
+    }
+
+    <span class="doccomment">/// Return a reference to the contained `Option&lt;Node&gt;`.
+    </span><span class="kw">pub</span>(<span class="kw">in </span><span class="kw">crate</span>::treesync) <span class="kw">fn </span>node(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span><span class="prelude-ty">Option</span>&lt;ParentNode&gt; {
+        <span class="kw-2">&amp;</span><span class="self">self</span>.node
+    }
+
+    <span class="doccomment">/// Return a copy of this node, but remove any potential private key
+    /// material contained in the `Node`.
+    </span><span class="kw">pub</span>(<span class="kw">in </span><span class="kw">crate</span>::treesync) <span class="kw">fn </span>node_without_private_key(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;ParentNode&gt; {
+        <span class="self">self</span>.node
+            .as_ref()
+            .map(|node| node.clone_without_private_key())
+    }
+
+    <span class="doccomment">/// Return a mutable reference to the contained `Option&lt;Node&gt;`.
+    </span><span class="kw">pub</span>(<span class="kw">in </span><span class="kw">crate</span>::treesync) <span class="kw">fn </span>node_mut(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;mut </span><span class="prelude-ty">Option</span>&lt;ParentNode&gt; {
+        <span class="kw-2">&amp;mut </span><span class="self">self</span>.node
+    }
+
+    <span class="doccomment">/// Return a reference to the cached tree hash.
+    </span><span class="kw">pub</span>(<span class="kw">in </span><span class="kw">crate</span>::treesync) <span class="kw">fn </span>tree_hash(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>[u8]&gt; {
+        <span class="self">self</span>.tree_hash.as_deref()
+    }
+
+    <span class="doccomment">/// Replace the current `tree_hash` with `None`.
+    </span><span class="kw">pub</span>(<span class="kw">in </span><span class="kw">crate</span>::treesync) <span class="kw">fn </span>erase_tree_hash(<span class="kw-2">&amp;mut </span><span class="self">self</span>) {
+        <span class="self">self</span>.tree_hash = <span class="prelude-val">None
+    </span>}
+
+    <span class="doccomment">/// Compute the tree hash for this node, thus populating the `tree_hash`
+    /// field.
+    </span><span class="kw">pub</span>(<span class="kw">in </span><span class="kw">crate</span>::treesync) <span class="kw">fn </span>compute_tree_hash(
+        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
+        backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider,
+        ciphersuite: Ciphersuite,
+        left_hash: Vec&lt;u8&gt;,
+        right_hash: Vec&lt;u8&gt;,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;Vec&lt;u8&gt;, LibraryError&gt; {
+        <span class="comment">// If there&#39;s a cached tree hash, use that one.
+        </span><span class="kw">if let </span><span class="prelude-val">Some</span>(hash) = <span class="self">self</span>.tree_hash() {
+            <span class="prelude-val">Ok</span>(hash.to_vec())
+        } <span class="kw">else </span>{
+            <span class="comment">// Otherwise compute it.
+            </span><span class="kw">let </span>hash_input = TreeHashInput::new_parent(
+                <span class="self">self</span>.node.as_ref(),
+                VLByteSlice(<span class="kw-2">&amp;</span>left_hash),
+                VLByteSlice(<span class="kw-2">&amp;</span>right_hash),
+            );
+            <span class="kw">let </span>hash = hash_input.hash(backend, ciphersuite)<span class="question-mark">?</span>;
+            <span class="self">self</span>.tree_hash = <span class="prelude-val">Some</span>(hash.clone());
+
+            <span class="prelude-val">Ok</span>(hash)
+        }
+    }
+}
+
+<span class="kw">impl </span>From&lt;ParentNode&gt; <span class="kw">for </span>TreeSyncParentNode {
+    <span class="kw">fn </span>from(node: ParentNode) -&gt; <span class="self">Self </span>{
+        <span class="self">Self </span>{
+            tree_hash: <span class="prelude-val">None</span>,
+            node: <span class="prelude-val">Some</span>(node),
+        }
+    }
+}
+
+<span class="kw">impl </span>From&lt;TreeSyncParentNode&gt; <span class="kw">for </span><span class="prelude-ty">Option</span>&lt;Node&gt; {
+    <span class="kw">fn </span>from(tspn: TreeSyncParentNode) -&gt; <span class="self">Self </span>{
+        tspn.node.map(Node::ParentNode)
     }
 }
 </code></pre></div>

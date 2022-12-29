@@ -800,7 +800,6 @@
 <span id="800">800</span>
 <span id="801">801</span>
 <span id="802">802</span>
-<span id="803">803</span>
 </pre><pre class="rust"><code><span class="doccomment">//! ### Don&#39;t Panic!
 //!
 //! Functions in this module should never panic. However, if there is a bug in
@@ -1241,7 +1240,7 @@
             </span>required_capabilities.check_support()<span class="question-mark">?</span>;
             <span class="self">self</span>.treesync()
                 .own_leaf_node()
-                .map_err(|<span class="kw">_</span>| LibraryError::custom(<span class="string">&quot;Expected own leaf&quot;</span>))<span class="question-mark">?
+                .ok_or_else(|| LibraryError::custom(<span class="string">&quot;Expected own leaf&quot;</span>))<span class="question-mark">?
                 </span>.validate_required_capabilities(required_capabilities)<span class="question-mark">?</span>;
             <span class="comment">// Ensure that all other leaf nodes support all the required
             // extensions as well.
@@ -1470,7 +1469,6 @@
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>own_identity(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>[u8]&gt; {
         <span class="self">self</span>.treesync()
             .own_leaf_node()
-            .ok()
             .map(|node| node.credential().identity())
     }
 

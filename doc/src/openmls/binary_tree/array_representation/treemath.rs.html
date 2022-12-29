@@ -402,9 +402,56 @@
 <span id="402">402</span>
 <span id="403">403</span>
 <span id="404">404</span>
+<span id="405">405</span>
+<span id="406">406</span>
+<span id="407">407</span>
+<span id="408">408</span>
+<span id="409">409</span>
+<span id="410">410</span>
+<span id="411">411</span>
+<span id="412">412</span>
+<span id="413">413</span>
+<span id="414">414</span>
+<span id="415">415</span>
+<span id="416">416</span>
+<span id="417">417</span>
+<span id="418">418</span>
+<span id="419">419</span>
+<span id="420">420</span>
+<span id="421">421</span>
+<span id="422">422</span>
+<span id="423">423</span>
+<span id="424">424</span>
+<span id="425">425</span>
+<span id="426">426</span>
+<span id="427">427</span>
+<span id="428">428</span>
+<span id="429">429</span>
+<span id="430">430</span>
+<span id="431">431</span>
+<span id="432">432</span>
+<span id="433">433</span>
+<span id="434">434</span>
+<span id="435">435</span>
+<span id="436">436</span>
+<span id="437">437</span>
+<span id="438">438</span>
+<span id="439">439</span>
+<span id="440">440</span>
+<span id="441">441</span>
+<span id="442">442</span>
+<span id="443">443</span>
+<span id="444">444</span>
+<span id="445">445</span>
+<span id="446">446</span>
+<span id="447">447</span>
+<span id="448">448</span>
+<span id="449">449</span>
 </pre><pre class="rust"><code><span class="kw">use </span>serde::{Deserialize, Serialize};
 <span class="kw">use </span>std::cmp::Ordering;
 <span class="kw">use </span>tls_codec::{TlsDeserialize, TlsSerialize, TlsSize};
+
+<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">const </span>MAX_TREE_SIZE: u32 = <span class="number">1 </span>&lt;&lt; <span class="number">30</span>;
 
 <span class="doccomment">/// LeafNodeIndex references a leaf node in a tree.
 </span><span class="attribute">#[derive(
@@ -441,7 +488,7 @@
     }
 
     <span class="doccomment">/// Return the index as a TreeNodeIndex value.
-    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>to_tree_index(<span class="self">self</span>) -&gt; u32 {
+    </span><span class="kw">fn </span>to_tree_index(<span class="self">self</span>) -&gt; u32 {
         <span class="self">self</span>.<span class="number">0 </span>* <span class="number">2
     </span>}
 
@@ -457,16 +504,30 @@
 </span><span class="kw">pub struct </span>ParentNodeIndex(u32);
 
 <span class="kw">impl </span>ParentNodeIndex {
-    <span class="attribute">#[cfg(any(test, feature = <span class="string">&quot;test-utils&quot;</span>))]
-    </span><span class="doccomment">/// Return the inner value as `u32`.
-    </span><span class="kw">pub fn </span>u32(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; u32 {
+    <span class="doccomment">/// Create a new `ParentNodeIndex` from a `u32`.
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>new(index: u32) -&gt; <span class="self">Self </span>{
+        ParentNodeIndex(index)
+    }
+
+    <span class="doccomment">/// Return the inner value as `u32`.
+    </span><span class="kw">pub</span>(<span class="kw">super</span>) <span class="kw">fn </span>u32(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; u32 {
         <span class="self">self</span>.<span class="number">0
     </span>}
 
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>usize(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; usize {
+        <span class="self">self</span>.<span class="number">0 </span><span class="kw">as </span>usize
+    }
+
     <span class="doccomment">/// Return the index as a TreeNodeIndex value.
-    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>to_tree_index(<span class="self">self</span>) -&gt; u32 {
+    </span><span class="kw">fn </span>to_tree_index(<span class="self">self</span>) -&gt; u32 {
         <span class="self">self</span>.<span class="number">0 </span>* <span class="number">2 </span>+ <span class="number">1
     </span>}
+
+    <span class="doccomment">/// Re-exported for testing.
+    </span><span class="attribute">#[cfg(any(feature = <span class="string">&quot;test-utils&quot;</span>, test))]
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>test_to_tree_index(<span class="self">self</span>) -&gt; u32 {
+        <span class="self">self</span>.to_tree_index()
+    }
 
     <span class="doccomment">/// Warning: Only use when the node index represents a parent node
     </span><span class="kw">fn </span>from_tree_index(node_index: u32) -&gt; <span class="self">Self </span>{
@@ -497,7 +558,7 @@
 
 <span class="kw">impl </span>TreeNodeIndex {
     <span class="doccomment">/// Create a new `TreeNodeIndex` from a `u32`.
-    </span><span class="kw">pub fn </span>new(index: u32) -&gt; <span class="self">Self </span>{
+    </span><span class="kw">fn </span>new(index: u32) -&gt; <span class="self">Self </span>{
         <span class="kw">if </span>index % <span class="number">2 </span>== <span class="number">0 </span>{
             TreeNodeIndex::Leaf(LeafNodeIndex::from_tree_index(index))
         } <span class="kw">else </span>{
@@ -505,17 +566,36 @@
         }
     }
 
+    <span class="doccomment">/// Re-exported for testing.
+    </span><span class="attribute">#[cfg(any(feature = <span class="string">&quot;test-utils&quot;</span>, test))]
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>test_new(index: u32) -&gt; <span class="self">Self </span>{
+        <span class="self">Self</span>::new(index)
+    }
+
     <span class="doccomment">/// Return the inner value as `u32`.
-    </span><span class="kw">pub fn </span>u32(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; u32 {
+    </span><span class="kw">fn </span>u32(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; u32 {
         <span class="kw">match </span><span class="self">self </span>{
             TreeNodeIndex::Leaf(index) =&gt; index.to_tree_index(),
             TreeNodeIndex::Parent(index) =&gt; index.to_tree_index(),
         }
     }
 
+    <span class="doccomment">/// Re-exported for testing.
+    </span><span class="attribute">#[cfg(any(feature = <span class="string">&quot;test-utils&quot;</span>, test))]
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>test_u32(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; u32 {
+        <span class="self">self</span>.u32()
+    }
+
     <span class="doccomment">/// Return the inner value as `usize`.
-    </span><span class="kw">pub fn </span>usize(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; usize {
+    </span><span class="attribute">#[cfg(any(feature = <span class="string">&quot;test-utils&quot;</span>, test))]
+    </span><span class="kw">fn </span>usize(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; usize {
         <span class="self">self</span>.u32() <span class="kw">as </span>usize
+    }
+
+    <span class="doccomment">/// Re-exported for testing.
+    </span><span class="attribute">#[cfg(any(feature = <span class="string">&quot;test-utils&quot;</span>, test))]
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>test_usize(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; usize {
+        <span class="self">self</span>.usize()
     }
 }
 
@@ -537,29 +617,39 @@
 <span class="kw">impl </span>TreeSize {
     <span class="doccomment">/// Create a new `TreeSize` from a `u32`.
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>new(size: u32) -&gt; <span class="self">Self </span>{
+        <span class="macro">debug_assert!</span>(size % <span class="number">2 </span>== <span class="number">1 </span>|| size == <span class="number">0</span>);
         TreeSize(size)
     }
+
+    <span class="doccomment">/// Return the number of leaf nodes in the tree.
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>leaf_count(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; u32 {
+        (<span class="self">self</span>.<span class="number">0 </span>/ <span class="number">2</span>) + <span class="number">1
+    </span>}
+
+    <span class="doccomment">/// Return the number of parent nodes in the tree.
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>parent_count(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; u32 {
+        <span class="self">self</span>.<span class="number">0 </span>/ <span class="number">2
+    </span>}
 
     <span class="doccomment">/// Return the inner value as `u32`.
     </span><span class="kw">pub</span>(<span class="kw">super</span>) <span class="kw">fn </span>u32(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; u32 {
         <span class="self">self</span>.<span class="number">0
     </span>}
 
-    <span class="doccomment">/// Return the inner value as `usize`.
-    </span><span class="kw">pub</span>(<span class="kw">super</span>) <span class="kw">fn </span>usize(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; usize {
-        <span class="self">self</span>.<span class="number">0 </span><span class="kw">as </span>usize
+    <span class="doccomment">/// Increase the size.
+    </span><span class="kw">pub</span>(<span class="kw">super</span>) <span class="kw">fn </span>inc(<span class="kw-2">&amp;mut </span><span class="self">self</span>) {
+        <span class="kw">if </span><span class="self">self</span>.<span class="number">0 </span>&gt;= <span class="number">1 </span>{
+            <span class="self">self</span>.<span class="number">0 </span>+= <span class="number">2</span>;
+        } <span class="kw">else </span>{
+            <span class="self">self</span>.<span class="number">0 </span>= <span class="number">1</span>;
+        }
     }
 
-    <span class="doccomment">/// Increase the size by `n`.
-    </span><span class="kw">pub</span>(<span class="kw">super</span>) <span class="kw">fn </span>inc(<span class="kw-2">&amp;mut </span><span class="self">self</span>, n: u32) {
-        <span class="self">self</span>.<span class="number">0 </span>+= n;
-    }
-
-    <span class="doccomment">/// Decrease the size by `n`.
-    </span><span class="kw">pub</span>(<span class="kw">super</span>) <span class="kw">fn </span>dec(<span class="kw-2">&amp;mut </span><span class="self">self</span>, n: u32) {
-        <span class="macro">debug_assert!</span>(<span class="self">self</span>.<span class="number">0 </span>&gt;= n);
-        <span class="kw">if </span><span class="self">self</span>.<span class="number">0 </span>&gt;= n {
-            <span class="self">self</span>.<span class="number">0 </span>-= n;
+    <span class="doccomment">/// Decrease the size.
+    </span><span class="kw">pub</span>(<span class="kw">super</span>) <span class="kw">fn </span>dec(<span class="kw-2">&amp;mut </span><span class="self">self</span>) {
+        <span class="macro">debug_assert!</span>(<span class="self">self</span>.<span class="number">0 </span>&gt;= <span class="number">2</span>);
+        <span class="kw">if </span><span class="self">self</span>.<span class="number">0 </span>&gt;= <span class="number">2 </span>{
+            <span class="self">self</span>.<span class="number">0 </span>-= <span class="number">2</span>;
         } <span class="kw">else </span>{
             <span class="self">self</span>.<span class="number">0 </span>= <span class="number">0</span>;
         }
@@ -787,7 +877,7 @@ pub(super) fn parent(x: TreeNodeIndex) -&gt; ParentNodeIndex {
 
 <span class="attribute">#[test]
 </span><span class="kw">fn </span>test_node_in_tree() {
-    <span class="kw">let </span>tests = [(<span class="number">0u32</span>, <span class="number">2u32</span>), (<span class="number">1</span>, <span class="number">2</span>), (<span class="number">2</span>, <span class="number">4</span>), (<span class="number">5</span>, <span class="number">6</span>), (<span class="number">2</span>, <span class="number">10</span>)];
+    <span class="kw">let </span>tests = [(<span class="number">0u32</span>, <span class="number">3u32</span>), (<span class="number">1</span>, <span class="number">3</span>), (<span class="number">2</span>, <span class="number">5</span>), (<span class="number">5</span>, <span class="number">7</span>), (<span class="number">2</span>, <span class="number">11</span>)];
     <span class="kw">for </span>test <span class="kw">in </span>tests.iter() {
         <span class="macro">assert!</span>(is_node_in_tree(
             TreeNodeIndex::new(test.<span class="number">0</span>),
@@ -798,7 +888,7 @@ pub(super) fn parent(x: TreeNodeIndex) -&gt; ParentNodeIndex {
 
 <span class="attribute">#[test]
 </span><span class="kw">fn </span>test_node_not_in_tree() {
-    <span class="kw">let </span>tests = [(<span class="number">3u32</span>, <span class="number">2u32</span>), (<span class="number">13</span>, <span class="number">7</span>)];
+    <span class="kw">let </span>tests = [(<span class="number">3u32</span>, <span class="number">1u32</span>), (<span class="number">13</span>, <span class="number">7</span>)];
     <span class="kw">for </span>test <span class="kw">in </span>tests.iter() {
         <span class="macro">assert!</span>(!is_node_in_tree(
             TreeNodeIndex::new(test.<span class="number">0</span>),

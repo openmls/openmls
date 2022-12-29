@@ -617,7 +617,7 @@
                         </span>params.credential_bundle(),
                         backend,
                     )<span class="question-mark">?</span>;
-                    diff.clear_tree_hash()<span class="question-mark">?</span>;
+                    diff.clear_tree_hash();
                 }
 
                 <span class="comment">// Derive and apply an update path based on the previously
@@ -636,7 +636,7 @@
                     <span class="kw-2">&amp;</span>plain_path,
                     <span class="kw-2">&amp;</span>serialized_group_context,
                     <span class="kw-2">&amp;</span>apply_proposals_values.exclusion_list(),
-                )<span class="question-mark">?</span>;
+                );
                 <span class="kw">let </span>leaf_node = diff.own_leaf().map_err(|<span class="kw">_</span>| LibraryError::custom(<span class="string">&quot;Couldn&#39;t find own leaf&quot;</span>))<span class="question-mark">?</span>.clone();
                 <span class="kw">let </span>encrypted_path = UpdatePath::new(leaf_node.into(),  encrypted_path);
                 PathProcessingResult {
@@ -757,7 +757,7 @@
             <span class="comment">// Create the ratchet tree extension if necessary
             </span><span class="kw">let </span>other_extensions: Vec&lt;Extension&gt; = <span class="kw">if </span><span class="self">self</span>.use_ratchet_tree_extension {
                 <span class="macro">vec!</span>[Extension::RatchetTree(RatchetTreeExtension::new(
-                    diff.export_nodes()<span class="question-mark">?</span>,
+                    diff.export_nodes(),
                 ))]
             } <span class="kw">else </span>{
                 Vec::new()

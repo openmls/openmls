@@ -417,22 +417,6 @@
 <span id="417">417</span>
 <span id="418">418</span>
 <span id="419">419</span>
-<span id="420">420</span>
-<span id="421">421</span>
-<span id="422">422</span>
-<span id="423">423</span>
-<span id="424">424</span>
-<span id="425">425</span>
-<span id="426">426</span>
-<span id="427">427</span>
-<span id="428">428</span>
-<span id="429">429</span>
-<span id="430">430</span>
-<span id="431">431</span>
-<span id="432">432</span>
-<span id="433">433</span>
-<span id="434">434</span>
-<span id="435">435</span>
 </pre><pre class="rust"><code><span class="doccomment">//! This module contains validation functions for incoming messages
 //! as defined in &lt;https://github.com/openmls/openmls/wiki/Message-validation&gt;
 
@@ -656,8 +640,7 @@
             </span><span class="kw">let </span>public_key = <span class="self">self
                 </span>.treesync()
                 .leaf(index)
-                .map_err(|<span class="kw">_</span>| ProposalValidationError::UnknownMember)<span class="question-mark">?
-                </span>.ok_or(ProposalValidationError::UnknownMember)<span class="question-mark">?
+                .ok_or(ProposalValidationError::UnknownMember)<span class="question-mark">?
                 </span>.public_key()
                 .as_slice();
             <span class="kw">if </span>public_key_set.contains(public_key) {
@@ -706,21 +689,10 @@
         committer: LeafNodeIndex,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;HashSet&lt;Vec&lt;u8&gt;&gt;, ProposalValidationError&gt; {
         <span class="kw">let </span><span class="kw-2">mut </span>encryption_keys = HashSet::new();
-        <span class="kw">for </span>index <span class="kw">in </span><span class="self">self</span>.treesync().full_leaves() {
+        <span class="kw">for </span>leaf <span class="kw">in </span><span class="self">self</span>.treesync().full_leaves() {
             <span class="comment">// 8.3. Leaf Node Validation
             // encryption key must be unique
-            </span>encryption_keys.insert(
-                <span class="self">self</span>.treesync()
-                    .leaf(index)
-                    .and_then(|leaf| {
-                        leaf.map(|leaf| leaf.public_key()).ok_or_else(|| {
-                            LibraryError::custom(<span class="string">&quot;This must have been a leaf node&quot;</span>).into()
-                        })
-                    })
-                    .map_err(|<span class="kw">_</span>| LibraryError::custom(<span class="string">&quot;This must have been a leaf node.&quot;</span>))<span class="question-mark">?
-                    </span>.as_slice()
-                    .to_vec(),
-            );
+            </span>encryption_keys.insert(leaf.public_key().as_slice().to_vec());
         }
 
         <span class="comment">// Check the update proposals from the proposal queue first
@@ -744,10 +716,7 @@
                 <span class="kw">return </span><span class="prelude-val">Err</span>(ProposalValidationError::UpdateFromNonMember);
             }
 
-            <span class="kw">if let </span><span class="prelude-val">Some</span>(leaf_node) = tree
-                .leaf(sender_leaf_index)
-                .map_err(|<span class="kw">_</span>| ProposalValidationError::UnknownMember)<span class="question-mark">?
-            </span>{
+            <span class="kw">if let </span><span class="prelude-val">Some</span>(leaf_node) = tree.leaf(sender_leaf_index) {
                 <span class="comment">// ValSem109
                 // Identity must be unchanged between existing member and new proposal
                 </span><span class="kw">if </span>update_proposal
@@ -855,8 +824,7 @@
                         </span><span class="kw">let </span>removed_leaf = <span class="self">self
                             </span>.treesync()
                             .leaf(removed_leaf)
-                            .map_err(|<span class="kw">_</span>| ExternalCommitValidationError::UnknownMemberRemoval)<span class="question-mark">?
-                            </span>.ok_or(ExternalCommitValidationError::UnknownMemberRemoval)<span class="question-mark">?</span>;
+                            .ok_or(ExternalCommitValidationError::UnknownMemberRemoval)<span class="question-mark">?</span>;
                         <span class="kw">if </span>removed_leaf.credential().identity() != new_leaf.credential().identity()
                         {
                             <span class="kw">return </span><span class="prelude-val">Err</span>(ExternalCommitValidationError::InvalidRemoveProposal);

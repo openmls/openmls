@@ -47,9 +47,9 @@
 
 </span><span class="doccomment">/// We use this type alias as a convenience, so we can later swap out the tree
 /// representation with a feature-flag.
-</span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">type </span>MlsBinaryTree&lt;Node&gt; = ABinaryTree&lt;Node&gt;;
-<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">type </span>MlsBinaryTreeDiff&lt;<span class="lifetime">&#39;a</span>, Node&gt; = AbDiff&lt;<span class="lifetime">&#39;a</span>, Node&gt;;
-<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">type </span>StagedMlsBinaryTreeDiff&lt;Node&gt; = StagedAbDiff&lt;Node&gt;;
+</span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">type </span>MlsBinaryTree&lt;L, P&gt; = ABinaryTree&lt;L, P&gt;;
+<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">type </span>MlsBinaryTreeDiff&lt;<span class="lifetime">&#39;a</span>, L, P&gt; = AbDiff&lt;<span class="lifetime">&#39;a</span>, L, P&gt;;
+<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">type </span>StagedMlsBinaryTreeDiff&lt;L, P&gt; = StagedAbDiff&lt;L, P&gt;;
 <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">type </span>MlsBinaryTreeError = ABinaryTreeError;
 <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">type </span>MlsBinaryTreeDiffError = ABinaryTreeDiffError;
 </code></pre></div>

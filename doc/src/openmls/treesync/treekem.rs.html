@@ -423,8 +423,8 @@
         path: <span class="kw-2">&amp;</span>[PlainUpdatePathNode],
         group_context: <span class="kw-2">&amp;</span>[u8],
         exclusion_list: <span class="kw-2">&amp;</span>HashSet&lt;<span class="kw-2">&amp;</span>LeafNodeIndex&gt;,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;Vec&lt;UpdatePathNode&gt;, LibraryError&gt; {
-        <span class="kw">let </span>copath_resolutions = <span class="self">self</span>.copath_resolutions(<span class="self">self</span>.own_leaf_index(), exclusion_list)<span class="question-mark">?</span>;
+    ) -&gt; Vec&lt;UpdatePathNode&gt; {
+        <span class="kw">let </span>copath_resolutions = <span class="self">self</span>.copath_resolutions(<span class="self">self</span>.own_leaf_index(), exclusion_list);
 
         <span class="comment">// There should be as many copath resolutions.
         </span><span class="macro">debug_assert_eq!</span>(copath_resolutions.len(), path.len());
@@ -436,7 +436,7 @@
             .map(|(node, resolution)| node.encrypt(backend, ciphersuite, resolution, group_context))
             .collect::&lt;Vec&lt;UpdatePathNode&gt;&gt;();
 
-        <span class="prelude-val">Ok</span>(nodes)
+        nodes
     }
 
     <span class="doccomment">/// Decrypt an [`UpdatePath`] originating from the given

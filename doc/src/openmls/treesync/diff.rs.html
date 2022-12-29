@@ -833,6 +833,13 @@
 <span id="833">833</span>
 <span id="834">834</span>
 <span id="835">835</span>
+<span id="836">836</span>
+<span id="837">837</span>
+<span id="838">838</span>
+<span id="839">839</span>
+<span id="840">840</span>
+<span id="841">841</span>
+<span id="842">842</span>
 </pre><pre class="rust"><code><span class="doccomment">//! This module provides the diff functionality for [`TreeSync`].
 //!
 //! # About
@@ -864,13 +871,13 @@
         parent_node::{ParentNode, PathDerivationResult, PlainUpdatePathNode},
         Node,
     },
-    treesync_node::TreeSyncNode,
+    treesync_node::{TreeSyncLeafNode, TreeSyncNode, TreeSyncParentNode},
     TreeSync, TreeSyncParentHashError, TreeSyncSetPathError,
 };
 
 <span class="kw">use crate</span>::{
     binary_tree::{
-        array_representation::{direct_path, LeafNodeIndex, TreeNodeIndex},
+        array_representation::{direct_path, LeafNodeIndex, ParentNodeIndex, TreeNodeIndex},
         MlsBinaryTreeDiff, StagedMlsBinaryTreeDiff,
     },
     ciphersuite::{HpkePrivateKey, HpkePublicKey, Secret},
@@ -888,7 +895,7 @@
 </span><span class="attribute">#[derive(Debug, Serialize, Deserialize)]
 </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct </span>StagedTreeSyncDiff {
     own_leaf_index: LeafNodeIndex,
-    diff: StagedMlsBinaryTreeDiff&lt;TreeSyncNode&gt;,
+    diff: StagedMlsBinaryTreeDiff&lt;TreeSyncLeafNode, TreeSyncParentNode&gt;,
     new_tree_hash: Vec&lt;u8&gt;,
 }
 
@@ -897,7 +904,7 @@
         <span class="self">self</span>,
     ) -&gt; (
         LeafNodeIndex,
-        StagedMlsBinaryTreeDiff&lt;TreeSyncNode&gt;,
+        StagedMlsBinaryTreeDiff&lt;TreeSyncLeafNode, TreeSyncParentNode&gt;,
         Vec&lt;u8&gt;,
     ) {
         (<span class="self">self</span>.own_leaf_index, <span class="self">self</span>.diff, <span class="self">self</span>.new_tree_hash)
@@ -911,7 +918,7 @@
 /// checks are performed to ensure that the changes preseve the [`TreeSync`]
 /// invariants. See [`TreeSync`] for the list of invariants.
 </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct </span>TreeSyncDiff&lt;<span class="lifetime">&#39;a</span>&gt; {
-    diff: MlsBinaryTreeDiff&lt;<span class="lifetime">&#39;a</span>, TreeSyncNode&gt;,
+    diff: MlsBinaryTreeDiff&lt;<span class="lifetime">&#39;a</span>, TreeSyncLeafNode, TreeSyncParentNode&gt;,
     own_leaf_index: LeafNodeIndex,
 }
 
@@ -935,21 +942,22 @@
         }
 
         <span class="comment">// We reverse the nodes here to make sure we start with the right-most
-        </span><span class="kw">let </span><span class="kw-2">mut </span>nodes = <span class="self">self
+        </span><span class="kw">let </span><span class="kw-2">mut </span>leaves = <span class="self">self
             </span>.diff
-            .nodes()
-            .collect::&lt;Vec&lt;(TreeNodeIndex, <span class="kw-2">&amp;</span>TreeSyncNode)&gt;&gt;();
-        nodes.reverse();
+            .leaves()
+            .collect::&lt;Vec&lt;(LeafNodeIndex, <span class="kw-2">&amp;</span>TreeSyncLeafNode)&gt;&gt;();
+        leaves.reverse();
+        <span class="kw">let </span><span class="kw-2">mut </span>parents = <span class="self">self
+            </span>.diff
+            .parents()
+            .collect::&lt;Vec&lt;(ParentNodeIndex, <span class="kw-2">&amp;</span>TreeSyncParentNode)&gt;&gt;();
+        parents.reverse();
 
         <span class="kw">let </span><span class="kw-2">mut </span>blank_leaf_counter = <span class="number">0</span>;
 
-        <span class="comment">// Take chunks of 2
-        </span><span class="kw">for </span>chunk <span class="kw">in </span>nodes.chunks(<span class="number">2</span>) {
-            <span class="kw">if </span>chunk.len() == <span class="number">2
-                </span>&amp;&amp; chunk.get(<span class="number">0</span>).and_then(|(<span class="kw">_</span>, n)| n.node().as_ref()).is_none()
-                &amp;&amp; chunk.get(<span class="number">1</span>).and_then(|(<span class="kw">_</span>, n)| n.node().as_ref()).is_none()
-            {
-                <span class="comment">// Both nodes are blank, so we want to remove them.
+        <span class="kw">for </span>((<span class="kw">_</span>, leaf), (<span class="kw">_</span>, parent)) <span class="kw">in </span>leaves.iter().zip(parents.iter()) {
+            <span class="kw">if </span>leaf.node().as_ref().is_none() &amp;&amp; parent.node().as_ref().is_none() {
+                <span class="comment">// Both leaf &amp; parent are blank, so we want to remove them.
                 </span>blank_leaf_counter += <span class="number">1</span>;
             } <span class="kw">else </span>{
                 <span class="kw">break</span>;
@@ -972,11 +980,10 @@
     ///
     /// Returns an error if the target leaf is blank or outside of the tree.
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>update_leaf(<span class="kw-2">&amp;mut </span><span class="self">self</span>, leaf_node: OpenMlsLeafNode, leaf_index: LeafNodeIndex) {
-        <span class="kw">let </span>node = Node::LeafNode(leaf_node);
-        <span class="self">self</span>.diff.replace_leaf(leaf_index, node.into());
+        <span class="self">self</span>.diff.replace_leaf(leaf_index, leaf_node.into());
         <span class="comment">// This effectively wipes the tree hashes in the direct path.
         </span><span class="self">self</span>.diff
-            .set_direct_path_to_node(leaf_index, <span class="kw-2">&amp;</span>TreeSyncNode::blank());
+            .set_direct_path_to_node(leaf_index, <span class="kw-2">&amp;</span>TreeSyncParentNode::blank());
     }
 
     <span class="doccomment">/// Find and return the index of either the left-most blank leaf, or, if
@@ -1006,29 +1013,24 @@
         <span class="kw-2">&amp;mut </span><span class="self">self</span>,
         leaf_node: OpenMlsLeafNode,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;LeafNodeIndex, TreeSyncAddLeaf&gt; {
-        <span class="kw">let </span>node = Node::LeafNode(leaf_node);
         <span class="comment">// Find a free leaf and fill it with the new key package.
         </span><span class="kw">let </span>leaf_index = <span class="self">self</span>.free_leaf_index();
         <span class="comment">// If the free leaf index is within the tree, put the new leaf there,
         // otherwise extend the tree.
         </span><span class="kw">if </span>leaf_index.u32() &lt; <span class="self">self</span>.leaf_count() {
-            <span class="self">self</span>.diff.replace_leaf(leaf_index, node.into())
+            <span class="self">self</span>.diff.replace_leaf(leaf_index, leaf_node.into())
         } <span class="kw">else </span>{
             <span class="self">self</span>.diff
-                .add_leaf(TreeSyncNode::blank(), node.into())
+                .add_leaf(TreeSyncParentNode::blank(), leaf_node.into())
                 .map_err(|<span class="kw">_</span>| TreeSyncAddLeaf::TreeFull)<span class="question-mark">?</span>;
         }
         <span class="comment">// Add new unmerged leaves entry to all nodes in direct path. Also, wipe
         // the cached tree hash.
-        </span><span class="kw">for </span>node_index <span class="kw">in </span><span class="self">self</span>.diff.direct_path(leaf_index) {
+        </span><span class="kw">for </span>parent_index <span class="kw">in </span><span class="self">self</span>.diff.direct_path(leaf_index) {
             <span class="comment">// We know that the nodes from the direct path are in the tree
-            </span><span class="kw">let </span>tsn = <span class="self">self</span>.diff.node_mut(node_index.into());
-            <span class="kw">if let </span><span class="prelude-val">Some</span>(<span class="kw-2">ref mut </span>node) = tsn.node_mut() {
-                <span class="comment">// We know that nodes in the direct path are always parent nodes
-                </span><span class="kw">let </span>pn = node
-                    .as_parent_node_mut()
-                    .map_err(|<span class="kw">_</span>| LibraryError::custom(<span class="string">&quot;Expected a parent node&quot;</span>))<span class="question-mark">?</span>;
-                pn.add_unmerged_leaf(leaf_index);
+            </span><span class="kw">let </span>tsn = <span class="self">self</span>.diff.parent_mut(parent_index);
+            <span class="kw">if let </span><span class="prelude-val">Some</span>(<span class="kw-2">ref mut </span>parent_node) = tsn.node_mut() {
+                parent_node.add_unmerged_leaf(leaf_index);
             }
             tsn.erase_tree_hash();
         }
@@ -1036,12 +1038,16 @@
     }
 
     <span class="doccomment">/// Clear the tree hash (root and own leaf index).
-    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>clear_tree_hash(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;(), LibraryError&gt; {
-        <span class="self">self</span>.diff.node_mut(<span class="self">self</span>.diff.root()).erase_tree_hash();
-        <span class="self">self</span>.diff
-            .node_mut(<span class="self">self</span>.own_leaf_index().into())
-            .erase_tree_hash();
-        <span class="prelude-val">Ok</span>(())
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>clear_tree_hash(<span class="kw-2">&amp;mut </span><span class="self">self</span>) {
+        <span class="kw">match </span><span class="self">self</span>.diff.root() {
+            TreeNodeIndex::Leaf(leaf_index) =&gt; {
+                <span class="self">self</span>.diff.leaf_mut(leaf_index).erase_tree_hash();
+            }
+            TreeNodeIndex::Parent(parent_index) =&gt; {
+                <span class="self">self</span>.diff.parent_mut(parent_index).erase_tree_hash();
+            }
+        }
+        <span class="self">self</span>.diff.leaf_mut(<span class="self">self</span>.own_leaf_index()).erase_tree_hash();
     }
 
     <span class="doccomment">/// Set the `own_leaf_index` to `leaf_index`. This has to be used with
@@ -1057,10 +1063,11 @@
     ///
     /// Returns an error if the target leaf is outside of the tree.
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>blank_leaf(<span class="kw-2">&amp;mut </span><span class="self">self</span>, leaf_index: LeafNodeIndex) {
-        <span class="self">self</span>.diff.replace_leaf(leaf_index, TreeSyncNode::blank());
+        <span class="self">self</span>.diff
+            .replace_leaf(leaf_index, TreeSyncLeafNode::blank());
         <span class="comment">// This also erases any cached tree hash in the direct path.
         </span><span class="self">self</span>.diff
-            .set_direct_path_to_node(leaf_index, <span class="kw-2">&amp;</span>TreeSyncNode::blank());
+            .set_direct_path_to_node(leaf_index, <span class="kw-2">&amp;</span>TreeSyncParentNode::blank());
         <span class="self">self</span>.trim_tree();
     }
 
@@ -1140,8 +1147,7 @@
         <span class="comment">// Update the `encryption_key` in the leaf.
         </span><span class="kw">let </span><span class="kw-2">mut </span>leaf: OpenMlsLeafNode = leaf_node.into();
         leaf.set_leaf_index(sender_leaf_index);
-        <span class="kw">let </span>node = Node::LeafNode(leaf);
-        <span class="self">self</span>.diff.replace_leaf(sender_leaf_index, node.into());
+        <span class="self">self</span>.diff.replace_leaf(sender_leaf_index, leaf.into());
         <span class="prelude-val">Ok</span>(())
     }
 
@@ -1161,9 +1167,9 @@
     ) -&gt; <span class="prelude-ty">Result</span>&lt;Vec&lt;u8&gt;, LibraryError&gt; {
         <span class="comment">// Compute the parent hash.
         </span><span class="kw">let </span>parent_hash = <span class="self">self</span>.set_parent_hashes(backend, ciphersuite, <span class="kw-2">&amp;mut </span>path, leaf_index)<span class="question-mark">?</span>;
-        <span class="kw">let </span>direct_path: Vec&lt;TreeSyncNode&gt; = path
+        <span class="kw">let </span>direct_path: Vec&lt;TreeSyncParentNode&gt; = path
             .into_iter()
-            .map(|parent_node| Node::ParentNode(parent_node).into())
+            .map(|parent_node| parent_node.into())
             .collect();
 
         <span class="comment">// Set the direct path. Note, that the nodes here don&#39;t have a tree hash
@@ -1194,28 +1200,24 @@
     ) -&gt; <span class="prelude-ty">Result</span>&lt;CommitSecret, TreeSyncSetPathError&gt; {
         <span class="comment">// We assume both nodes are in the tree, since the sender_index must be in the tree
         </span><span class="kw">let </span>subtree_path = <span class="self">self</span>.diff.subtree_path(<span class="self">self</span>.own_leaf_index, sender_index);
-        <span class="kw">for </span>node_index <span class="kw">in </span>subtree_path {
+        <span class="kw">for </span>parent_index <span class="kw">in </span>subtree_path {
             <span class="comment">// We know the node is in the diff, since it is in the subtree path
-            </span><span class="kw">let </span>tsn = <span class="self">self</span>.diff.node_mut(node_index.into());
+            </span><span class="kw">let </span>tsn = <span class="self">self</span>.diff.parent_mut(parent_index);
             <span class="comment">// We only care about non-blank nodes.
-            </span><span class="kw">if let </span><span class="prelude-val">Some</span>(<span class="kw-2">ref mut </span>node) = tsn.node_mut() {
-                <span class="comment">// This has to be a parent node.
-                </span><span class="kw">let </span>pn = node
-                    .as_parent_node_mut()
-                    .map_err(|<span class="kw">_</span>| LibraryError::custom(<span class="string">&quot;Expected a parent node&quot;</span>))<span class="question-mark">?</span>;
+            </span><span class="kw">if let </span><span class="prelude-val">Some</span>(<span class="kw-2">ref mut </span>parent_node) = tsn.node_mut() {
                 <span class="comment">// If our own leaf index is not in the list of unmerged leaves
                 // then we should have the secret for this node.
-                </span><span class="kw">if </span>!pn.unmerged_leaves().contains(<span class="kw-2">&amp;</span><span class="self">self</span>.own_leaf_index) {
+                </span><span class="kw">if </span>!parent_node.unmerged_leaves().contains(<span class="kw-2">&amp;</span><span class="self">self</span>.own_leaf_index) {
                     <span class="kw">let </span>(public_key, private_key) =
                         path_secret.derive_key_pair(backend, ciphersuite)<span class="question-mark">?</span>;
                     <span class="comment">// The derived public key should match the one in the node.
                     // If not, the tree is corrupt.
-                    </span><span class="kw">if </span>pn.public_key() != <span class="kw-2">&amp;</span>public_key {
+                    </span><span class="kw">if </span>parent_node.public_key() != <span class="kw-2">&amp;</span>public_key {
                         <span class="kw">return </span><span class="prelude-val">Err</span>(TreeSyncSetPathError::PublicKeyMismatch);
                     } <span class="kw">else </span>{
                         <span class="comment">// If everything is ok, set the private key and derive
                         // the next path secret.
-                        </span>pn.set_private_key(private_key);
+                        </span>parent_node.set_private_key(private_key);
                         path_secret = path_secret.derive_path_secret(backend, ciphersuite)<span class="question-mark">?</span>;
                     }
                 };
@@ -1231,29 +1233,19 @@
     ///
     /// Returns a LibraryError when the ParentNode is not in the tree or
     /// its unmerged leaves are not in the tree.
-    </span><span class="kw">fn </span>filter_resolution(
-        <span class="kw-2">&amp;</span><span class="self">self</span>,
-        parent_node: <span class="kw-2">&amp;</span>ParentNode,
-        resolution: <span class="kw-2">&amp;mut </span>Vec&lt;HpkePublicKey&gt;,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;(), LibraryError&gt; {
+    </span><span class="kw">fn </span>filter_resolution(<span class="kw-2">&amp;</span><span class="self">self</span>, parent_node: <span class="kw-2">&amp;</span>ParentNode, resolution: <span class="kw-2">&amp;mut </span>Vec&lt;HpkePublicKey&gt;) {
         <span class="kw">for </span>leaf_index <span class="kw">in </span>parent_node.unmerged_leaves() {
-            <span class="kw">let </span>leaf = <span class="self">self</span>.diff.node((<span class="kw-2">*</span>leaf_index).into());
+            <span class="kw">let </span>leaf = <span class="self">self</span>.diff.leaf(<span class="kw-2">*</span>leaf_index);
             <span class="comment">// All unmerged leaves should be non-blank.
-            </span><span class="kw">let </span>leaf_node = leaf
-                .node()
-                .as_ref()
-                .ok_or_else(|| LibraryError::custom(<span class="string">&quot;Node was empty.&quot;</span>))<span class="question-mark">?</span>;
-            <span class="kw">let </span>leaf = leaf_node
-                .as_leaf_node()
-                .map_err(|<span class="kw">_</span>| LibraryError::custom(<span class="string">&quot;Unmerged leaf not a leaf&quot;</span>))<span class="question-mark">?</span>;
-            <span class="kw">if let </span><span class="prelude-val">Some</span>(position) = resolution
-                .iter()
-                .position(|bytes| bytes == leaf.public_key())
-            {
-                resolution.remove(position);
-            };
+            </span><span class="kw">if let </span><span class="prelude-val">Some</span>(leaf_node) = leaf.node() {
+                <span class="kw">if let </span><span class="prelude-val">Some</span>(position) = resolution
+                    .iter()
+                    .position(|bytes| bytes == leaf_node.public_key())
+                {
+                    resolution.remove(position);
+                };
+            }
         }
-        <span class="prelude-val">Ok</span>(())
     }
 
     <span class="doccomment">/// Set the parent hash of the given nodes assuming that they are the new
@@ -1277,7 +1269,7 @@
 
         <span class="comment">// Get the resolutions of the copath nodes (i.e. the original child
         // resolutions).
-        </span><span class="kw">let </span><span class="kw-2">mut </span>copath_resolutions = <span class="self">self</span>.copath_resolutions(leaf_index, <span class="kw-2">&amp;</span>HashSet::new())<span class="question-mark">?</span>;
+        </span><span class="kw">let </span><span class="kw-2">mut </span>copath_resolutions = <span class="self">self</span>.copath_resolutions(leaf_index, <span class="kw-2">&amp;</span>HashSet::new());
         <span class="comment">// There should be as many copath resolutions as nodes in the direct
         // path.
         </span><span class="macro">debug_assert_eq!</span>(path.len(), copath_resolutions.len());
@@ -1291,7 +1283,7 @@
         {
             path_node.set_parent_hash(previous_parent_hash);
             <span class="comment">// Filter out the node&#39;s unmerged leaves before hashing.
-            </span><span class="self">self</span>.filter_resolution(path_node, resolution)<span class="question-mark">?</span>;
+            </span><span class="self">self</span>.filter_resolution(path_node, resolution);
             <span class="kw">let </span>parent_hash = path_node.compute_parent_hash(
                 backend,
                 ciphersuite,
@@ -1309,62 +1301,56 @@
     /// given in the list.
     ///
     /// Returns The list of HPKE public keys.
-    /// In case node_id is not in the tree a LibraryError is returned.
     </span><span class="kw">fn </span>resolution(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         node_index: TreeNodeIndex,
         excluded_indices: <span class="kw-2">&amp;</span>HashSet&lt;<span class="kw-2">&amp;</span>LeafNodeIndex&gt;,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;Vec&lt;HpkePublicKey&gt;, LibraryError&gt; {
-        <span class="comment">// First, check if the node is blank or not.
-        </span><span class="kw">if let </span><span class="prelude-val">Some</span>(node) = <span class="self">self</span>.diff.node(node_index).node() {
-            <span class="comment">// If it&#39;s a full node, check if it&#39;s a leaf.
-            </span><span class="kw">match </span>node_index {
-                TreeNodeIndex::Leaf(leaf_index) =&gt; {
-                    <span class="comment">// If the node is a leaf, check if it is in the exclusion list.
-                    </span><span class="kw">if </span>excluded_indices.contains(<span class="kw-2">&amp;</span>leaf_index) {
-                        <span class="prelude-val">Ok</span>(<span class="macro">vec!</span>[])
+    ) -&gt; Vec&lt;HpkePublicKey&gt; {
+        <span class="kw">match </span>node_index {
+            TreeNodeIndex::Leaf(leaf_index) =&gt; {
+                <span class="comment">// If the node is a leaf, check if it is in the exclusion list.
+                </span><span class="kw">if </span>excluded_indices.contains(<span class="kw-2">&amp;</span>leaf_index) {
+                    <span class="macro">vec!</span>[]
+                } <span class="kw">else </span>{
+                    <span class="comment">// If it&#39;s not, return its public key as its resolution.
+                    </span><span class="kw">if let </span><span class="prelude-val">Some</span>(leaf) = <span class="self">self</span>.diff.leaf(leaf_index).node() {
+                        <span class="macro">vec!</span>[leaf.public_key().clone()]
                     } <span class="kw">else </span>{
-                        <span class="comment">// If it&#39;s not, return its public key as its resolution.
-                        </span><span class="prelude-val">Ok</span>(<span class="macro">vec!</span>[node.public_key().clone()])
+                        <span class="comment">// If it&#39;s a blank, return an empty vector.
+                        </span><span class="macro">vec!</span>[]
                     }
-                }
-                TreeNodeIndex::Parent(<span class="kw">_</span>) =&gt; {
-                    <span class="comment">// If it&#39;s a parent node, get the unmerged leaves, exclude them
-                    // as necessary and add their public keys to the resulting
-                    // resolution.
-                    </span><span class="kw">let </span><span class="kw-2">mut </span>resolution = <span class="macro">vec!</span>[node.public_key().clone()];
-                    <span class="kw">for </span>leaf_index <span class="kw">in </span>node
-                        .as_parent_node()
-                        .map_err(|<span class="kw">_</span>| LibraryError::custom(<span class="string">&quot;Expected a parent node&quot;</span>))<span class="question-mark">?
-                        </span>.unmerged_leaves()
-                    {
-                        <span class="kw">if </span>!excluded_indices.contains(<span class="kw-2">&amp;</span>leaf_index) {
-                            <span class="kw">let </span>leaf = <span class="self">self</span>.diff.node((<span class="kw-2">*</span>leaf_index).into());
-                            <span class="comment">// TODO #800: unmerged leaves should be checked
-                            </span><span class="kw">let </span>leaf_node = leaf.node().as_ref().ok_or_else(|| {
-                                LibraryError::custom(<span class="string">&quot;Found a blank unmerged leaf&quot;</span>)
-                            })<span class="question-mark">?</span>;
-                            resolution.push(leaf_node.public_key().clone())
-                        }
-                    }
-                    <span class="prelude-val">Ok</span>(resolution)
                 }
             }
-        } <span class="kw">else </span>{
-            <span class="comment">// If it&#39;s a blank, also check if it&#39;s a leaf
-            </span><span class="kw">match </span>node_index {
-                TreeNodeIndex::Leaf(<span class="kw">_</span>) =&gt; {
-                    <span class="comment">// If it is, just return an empty vector.
-                    </span><span class="prelude-val">Ok</span>(<span class="macro">vec!</span>[])
-                }
-                TreeNodeIndex::Parent(parent_node) =&gt; {
-                    <span class="comment">// If not, continue resolving down the tree.
-                    </span><span class="kw">let </span><span class="kw-2">mut </span>resolution = Vec::new();
-                    <span class="kw">let </span>left_child = <span class="self">self</span>.diff.left_child(parent_node);
-                    <span class="kw">let </span>right_child = <span class="self">self</span>.diff.right_child(parent_node);
-                    resolution.append(<span class="kw-2">&amp;mut </span><span class="self">self</span>.resolution(left_child, excluded_indices)<span class="question-mark">?</span>);
-                    resolution.append(<span class="kw-2">&amp;mut </span><span class="self">self</span>.resolution(right_child, excluded_indices)<span class="question-mark">?</span>);
-                    <span class="prelude-val">Ok</span>(resolution)
+            TreeNodeIndex::Parent(parent_index) =&gt; {
+                <span class="kw">match </span><span class="self">self</span>.diff.parent(parent_index).node() {
+                    <span class="prelude-val">Some</span>(parent) =&gt; {
+                        <span class="comment">// If it&#39;s a non-blank parent node, get the unmerged
+                        // leaves, exclude them as necessary and add their
+                        // public keys to the resulting resolution.
+                        </span><span class="kw">let </span><span class="kw-2">mut </span>resolution = <span class="macro">vec!</span>[parent.public_key().clone()];
+                        <span class="kw">for </span>leaf_index <span class="kw">in </span>parent.unmerged_leaves() {
+                            <span class="kw">if </span>!excluded_indices.contains(<span class="kw-2">&amp;</span>leaf_index) {
+                                <span class="kw">let </span>leaf = <span class="self">self</span>.diff.leaf(<span class="kw-2">*</span>leaf_index);
+                                <span class="comment">// TODO #800: unmerged leaves should be checked
+                                </span><span class="kw">if let </span><span class="prelude-val">Some</span>(leaf_node) = leaf.node() {
+                                    resolution.push(leaf_node.public_key().clone())
+                                } <span class="kw">else </span>{
+                                    <span class="macro">debug_assert!</span>(<span class="bool-val">false</span>, <span class="string">&quot;Unmerged leaves should not be blank.&quot;</span>);
+                                }
+                            }
+                        }
+                        resolution
+                    }
+                    <span class="prelude-val">None </span>=&gt; {
+                        <span class="comment">// If it is a blank parent node, continue resolving
+                        // down the tree.
+                        </span><span class="kw">let </span><span class="kw-2">mut </span>resolution = Vec::new();
+                        <span class="kw">let </span>left_child = <span class="self">self</span>.diff.left_child(parent_index);
+                        <span class="kw">let </span>right_child = <span class="self">self</span>.diff.right_child(parent_index);
+                        resolution.append(<span class="kw-2">&amp;mut </span><span class="self">self</span>.resolution(left_child, excluded_indices));
+                        resolution.append(<span class="kw-2">&amp;mut </span><span class="self">self</span>.resolution(right_child, excluded_indices));
+                        resolution
+                    }
                 }
             }
         }
@@ -1382,10 +1368,10 @@
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         leaf_index: LeafNodeIndex,
         excluded_indices: <span class="kw-2">&amp;</span>HashSet&lt;<span class="kw-2">&amp;</span>LeafNodeIndex&gt;,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;Vec&lt;Vec&lt;HpkePublicKey&gt;&gt;, LibraryError&gt; {
+    ) -&gt; Vec&lt;Vec&lt;HpkePublicKey&gt;&gt; {
         <span class="comment">// If we&#39;re the only node in the tree, there&#39;s no copath.
-        </span><span class="kw">if </span>leaf_index.to_tree_index() == <span class="self">self</span>.diff.root().u32() {
-            <span class="kw">return </span><span class="prelude-val">Ok</span>(<span class="macro">vec!</span>[]);
+        </span><span class="kw">if </span><span class="self">self</span>.diff.leaf_count() == <span class="number">1 </span>{
+            <span class="kw">return </span><span class="macro">vec!</span>[];
         }
 
         <span class="comment">// We want the full path here, including the leaf itself, but not the
@@ -1405,10 +1391,10 @@
 
         <span class="kw">let </span><span class="kw-2">mut </span>copath_resolutions = Vec::new();
         <span class="kw">for </span>node_index <span class="kw">in </span><span class="self">self</span>.diff.copath(leaf_index) {
-            <span class="kw">let </span>resolution = <span class="self">self</span>.resolution(node_index, excluded_indices)<span class="question-mark">?</span>;
+            <span class="kw">let </span>resolution = <span class="self">self</span>.resolution(node_index, excluded_indices);
             copath_resolutions.push(resolution);
         }
-        <span class="prelude-val">Ok</span>(copath_resolutions)
+        copath_resolutions
     }
 
     <span class="doccomment">/// Verify the parent hashes of all nodes in the tree.
@@ -1418,79 +1404,96 @@
     /// tree is malformed.
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>verify_parent_hashes(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider,
-        ciphersuite: Ciphersuite,
+        _backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider,
+        _ciphersuite: Ciphersuite,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(), TreeSyncParentHashError&gt; {
-        <span class="kw">for </span>(node_index, node) <span class="kw">in </span><span class="self">self</span>.diff.nodes() {
-            <span class="kw">if let </span>TreeNodeIndex::Parent(parent_index) = node_index {
-                <span class="comment">// Continue early if node is blank.
-                </span><span class="kw">if let </span><span class="prelude-val">Some</span>(Node::ParentNode(parent_node)) = node.node() {
-                    <span class="comment">// We don&#39;t care about leaf nodes.
-                    </span><span class="kw">let </span>left_child_id = <span class="self">self</span>.diff.left_child(parent_index);
-                    <span class="kw">let </span><span class="kw-2">mut </span>right_child_id = <span class="self">self</span>.diff.right_child(parent_index);
-                    <span class="comment">// If the left child is blank, we continue with the next step
-                    // in the verification algorithm.
-                    </span><span class="kw">if let </span><span class="prelude-val">Some</span>(left_child) = <span class="self">self</span>.diff.node(left_child_id).node() {
-                        <span class="kw">let </span><span class="kw-2">mut </span>right_child_resolution =
-                            <span class="self">self</span>.resolution(right_child_id, <span class="kw-2">&amp;</span>HashSet::new())<span class="question-mark">?</span>;
-                        <span class="comment">// Filter unmerged leaves from resolution.
-                        </span><span class="self">self</span>.filter_resolution(parent_node, <span class="kw-2">&amp;mut </span>right_child_resolution)<span class="question-mark">?</span>;
-                        <span class="kw">let </span>node_hash = parent_node.compute_parent_hash(
-                            backend,
-                            ciphersuite,
-                            parent_node.parent_hash(),
-                            <span class="kw-2">&amp;</span>right_child_resolution,
-                        )<span class="question-mark">?</span>;
-                        <span class="kw">if let </span><span class="prelude-val">Some</span>(left_child_parent_hash) = left_child.parent_hash() {
-                            <span class="kw">if </span>node_hash == left_child_parent_hash {
-                                <span class="comment">// If the hashes match, we continue with the next node.
-                                </span><span class="kw">continue</span>;
-                            };
-                        }
-                    }
-
-                    <span class="comment">// If the right child is blank, replace it with its left child
-                    // until it&#39;s non-blank or a leaf.
-
-                    </span><span class="kw">while </span><span class="self">self</span>.diff.node(right_child_id).node().is_none()
-                        &amp;&amp; <span class="macro">matches!</span>(right_child_id, TreeNodeIndex::Parent(<span class="kw">_</span>))
-                    {
-                        <span class="kw">if let </span>TreeNodeIndex::Parent(parent_index) = right_child_id {
-                            right_child_id = <span class="self">self</span>.diff.left_child(parent_index);
-                        }
-                    }
-                    <span class="comment">// If the &quot;right child&quot; is a non-blank node, we continue,
-                    // otherwise it has to be a blank leaf node and the check
-                    // fails.
-                    </span><span class="kw">if let </span><span class="prelude-val">Some</span>(right_child) = <span class="self">self</span>.diff.node(right_child_id).node() {
-                        <span class="comment">// Perform the check with the parent hash of the &quot;right
-                        // child&quot; and the left child resolution.
-                        </span><span class="kw">let </span><span class="kw-2">mut </span>left_child_resolution =
-                            <span class="self">self</span>.resolution(left_child_id, <span class="kw-2">&amp;</span>HashSet::new())<span class="question-mark">?</span>;
-                        <span class="comment">// Filter unmerged leaves from resolution.
-                        </span><span class="self">self</span>.filter_resolution(parent_node, <span class="kw-2">&amp;mut </span>left_child_resolution)<span class="question-mark">?</span>;
-                        <span class="kw">let </span>node_hash = parent_node.compute_parent_hash(
-                            backend,
-                            ciphersuite,
-                            parent_node.parent_hash(),
-                            <span class="kw-2">&amp;</span>left_child_resolution,
-                        )<span class="question-mark">?</span>;
-                        <span class="kw">if let </span><span class="prelude-val">Some</span>(right_child_parent_hash) = right_child.parent_hash() {
-                            <span class="kw">if </span>node_hash == right_child_parent_hash {
-                                <span class="comment">// If the hashes match, we continue with the next node.
-                                </span><span class="kw">continue</span>;
-                            };
-                        }
-                        <span class="comment">// If the hash doesn&#39;t match, or the leaf doesn&#39;t have a
-                        // parent hash extension (the `None` case in the `if let`
-                        // above), the verification fails.
-                    </span>}
-                    <span class="kw">return </span><span class="prelude-val">Err</span>(TreeSyncParentHashError::InvalidParentHash);
-                } <span class="kw">else </span>{
-                    <span class="kw">continue</span>;
+        <span class="comment">// TODO #995: Implement new parent hash verification
+        /* for (parent_index, parent_node) in self.diff.parents() {
+            let left_child_id = self.diff.left_child(parent_index);
+            let mut right_child_id = self.diff.right_child(parent_index);
+            // If the left child is blank, we continue with the next step
+            // in the verification algorithm.
+            let left_child_node = match left_child_id {
+                TreeNodeIndex::Leaf(leaf_index) =&gt; self.diff.leaf(leaf_index).node(),
+                TreeNodeIndex::Parent(parent_index) =&gt; self.diff.parent(parent_index).node(),
+            };
+            if let Some(left_child) = left_child_node {
+                let mut right_child_resolution = self.resolution(right_child_id, &amp;HashSet::new());
+                // Filter unmerged leaves from resolution.
+                self.filter_resolution(parent_node, &amp;mut right_child_resolution);
+                let node_hash = parent_node.compute_parent_hash(
+                    backend,
+                    ciphersuite,
+                    parent_node.parent_hash(),
+                    &amp;right_child_resolution,
+                )?;
+                if let Some(left_child_parent_hash) = left_child.parent_hash() {
+                    if node_hash == left_child_parent_hash {
+                        // If the hashes match, we continue with the next node.
+                        continue;
+                    };
                 }
             }
-        }
+
+            // If the right child is blank, replace it with its left child
+            // until it&#39;s non-blank or a leaf.
+            if let TreeNodeIndex::Parent(parent_index) = right_child_id {
+                let mut right_child = parent_index;
+                right_child_id = TreeNodeIndex::Parent(right_child);
+                while self.diff.parent(right_child).node().is_none() {
+                    match self.diff.left_child(parent_index) {
+                        TreeNodeIndex::Parent(left_child) =&gt; {
+                            right_child = left_child;
+                        }
+                        TreeNodeIndex::Leaf(leaf_index) =&gt; {
+                            right_child_id = TreeNodeIndex::Leaf(leaf_index);
+                            break;
+                        }
+                    }
+                }
+            }
+
+            // If the &quot;right child&quot; is a non-blank node, we continue,
+            // otherwise it has to be a blank leaf node and the check
+            // fails.
+            let right_child_node = match right_child_id {
+                TreeNodeIndex::Leaf(leaf_index) =&gt; self
+                    .diff
+                    .leaf(leaf_index)
+                    .node()
+                    .map(|node| TreeNode::Leaf(node)),
+                TreeNodeIndex::Parent(parent_index) =&gt; self
+                    .diff
+                    .parent(parent_index)
+                    .node()
+                    .map(|node| TreeNode::Parent(node)),
+            };
+            if let Some(right_child) = right_child_node {
+                // Perform the check with the parent hash of the &quot;right
+                // child&quot; and the left child resolution.
+                let mut left_child_resolution = self.resolution(left_child_id, &amp;HashSet::new());
+                // Filter unmerged leaves from resolution.
+                self.filter_resolution(parent_node, &amp;mut left_child_resolution);
+                let node_hash = parent_node.compute_parent_hash(
+                    backend,
+                    ciphersuite,
+                    parent_node.parent_hash(),
+                    &amp;left_child_resolution,
+                )?;
+                if let Some(right_child_parent_hash) = right_child.parent_hash() {
+                    if node_hash == right_child_parent_hash {
+                        // If the hashes match, we continue with the next node.
+                        continue;
+                    };
+                }
+                // If the hash doesn&#39;t match, or the leaf doesn&#39;t have a
+                // parent hash extension (the `None` case in the `if let`
+                // above), the verification fails.
+            }
+            return Err(TreeSyncParentHashError::InvalidParentHash);
+        } */
+        // Clippy warning suppersion
+        </span><span class="kw">let _ </span>= TreeSyncParentHashError::InvalidParentHash;
         <span class="prelude-val">Ok</span>(())
     }
 
@@ -1520,33 +1523,35 @@
         ciphersuite: Ciphersuite,
         node_index: TreeNodeIndex,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;Vec&lt;u8&gt;, LibraryError&gt; {
-        <span class="comment">// Check if this is a leaf.
-        // // Return early if there&#39;s already a cached tree hash.
-        // TODO[FK]: Do we want to keep caching?
-        // let node = self
-        //     .diff
-        //     .node(node_id)
-        //     .map_err(|_| LibraryError::custom(&quot;Expected node to be in tree&quot;))?;
-        // if let Some(tree_hash) = node.tree_hash() {
-        //     return Ok(tree_hash.to_vec());
-        // }
-        // Compute left hash.
-        </span><span class="kw">match </span>node_index {
+        <span class="kw">match </span>node_index {
             TreeNodeIndex::Leaf(leaf_index) =&gt; {
-                <span class="kw">let </span>leaf = <span class="self">self</span>.diff.node_mut(node_index);
+                <span class="kw">let </span>leaf = <span class="self">self</span>.diff.leaf_mut(leaf_index);
 
-                leaf.compute_tree_hash(backend, ciphersuite, <span class="prelude-val">Some</span>(leaf_index), <span class="macro">vec!</span>[], <span class="macro">vec!</span>[])
+                <span class="kw">if let </span><span class="prelude-val">Some</span>(hash) = leaf.tree_hash() {
+                    <span class="comment">// Return early if there&#39;s already a cached tree hash.
+                    </span><span class="prelude-val">Ok</span>(hash.to_vec())
+                } <span class="kw">else </span>{
+                    leaf.compute_tree_hash(backend, ciphersuite, leaf_index)
+                }
             }
             TreeNodeIndex::Parent(parent_index) =&gt; {
-                <span class="kw">let </span>left_child = <span class="self">self</span>.diff.left_child(parent_index);
-                <span class="kw">let </span>left_hash = <span class="self">self</span>.compute_tree_hash(backend, ciphersuite, left_child)<span class="question-mark">?</span>;
-                <span class="comment">// Compute right hash.
-                </span><span class="kw">let </span>right_child = <span class="self">self</span>.diff.right_child(parent_index);
-                <span class="kw">let </span>right_hash = <span class="self">self</span>.compute_tree_hash(backend, ciphersuite, right_child)<span class="question-mark">?</span>;
+                <span class="kw">let </span>node = <span class="self">self</span>.diff.parent(parent_index);
 
-                <span class="kw">let </span>node = <span class="self">self</span>.diff.node_mut(parent_index.into());
+                <span class="kw">if let </span><span class="prelude-val">Some</span>(hash) = node.tree_hash() {
+                    <span class="comment">// Return early if there&#39;s already a cached tree hash.
+                    </span><span class="prelude-val">Ok</span>(hash.to_vec())
+                } <span class="kw">else </span>{
+                    <span class="comment">// Compute left hash.
+                    </span><span class="kw">let </span>left_child = <span class="self">self</span>.diff.left_child(parent_index);
+                    <span class="kw">let </span>left_hash = <span class="self">self</span>.compute_tree_hash(backend, ciphersuite, left_child)<span class="question-mark">?</span>;
+                    <span class="comment">// Compute right hash.
+                    </span><span class="kw">let </span>right_child = <span class="self">self</span>.diff.right_child(parent_index);
+                    <span class="kw">let </span>right_hash = <span class="self">self</span>.compute_tree_hash(backend, ciphersuite, right_child)<span class="question-mark">?</span>;
 
-                node.compute_tree_hash(backend, ciphersuite, <span class="prelude-val">None</span>, left_hash, right_hash)
+                    <span class="kw">let </span>node = <span class="self">self</span>.diff.parent_mut(parent_index);
+
+                    node.compute_tree_hash(backend, ciphersuite, left_hash, right_hash)
+                }
             }
         }
     }
@@ -1558,18 +1563,18 @@
 
     <span class="doccomment">/// Return a reference to our own leaf.
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>own_leaf(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="kw-2">&amp;</span>OpenMlsLeafNode, TreeSyncDiffError&gt; {
-        <span class="kw">let </span>node = <span class="self">self</span>.diff.node(<span class="self">self</span>.own_leaf_index.into());
+        <span class="kw">let </span>node = <span class="self">self</span>.diff.leaf(<span class="self">self</span>.own_leaf_index);
         <span class="kw">match </span>node.node() {
-            <span class="prelude-val">Some</span>(node) =&gt; <span class="prelude-val">Ok</span>(node.as_leaf_node()<span class="question-mark">?</span>),
+            <span class="prelude-val">Some</span>(node) =&gt; <span class="prelude-val">Ok</span>(node),
             <span class="prelude-val">None </span>=&gt; <span class="prelude-val">Err</span>(LibraryError::custom(<span class="string">&quot;Node was empty.&quot;</span>).into()),
         }
     }
 
     <span class="doccomment">/// Return a mutable reference to our own leaf.
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>own_leaf_mut(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="kw-2">&amp;mut </span>OpenMlsLeafNode, TreeSyncDiffError&gt; {
-        <span class="kw">let </span>node = <span class="self">self</span>.diff.node_mut(<span class="self">self</span>.own_leaf_index.into());
+        <span class="kw">let </span>node = <span class="self">self</span>.diff.leaf_mut(<span class="self">self</span>.own_leaf_index);
         <span class="kw">match </span>node.node_mut() {
-            <span class="prelude-val">Some</span>(node) =&gt; <span class="prelude-val">Ok</span>(node.as_leaf_node_mut()<span class="question-mark">?</span>),
+            <span class="prelude-val">Some</span>(node) =&gt; <span class="prelude-val">Ok</span>(node),
             <span class="prelude-val">None </span>=&gt; <span class="prelude-val">Err</span>(LibraryError::custom(<span class="string">&quot;Node was empty.&quot;</span>).into()),
         }
     }
@@ -1617,7 +1622,7 @@
             .subtree_root_copath_node(sender_leaf_index, <span class="self">self</span>.own_leaf_index);
 
         <span class="kw">let </span>sender_copath_resolution =
-            <span class="self">self</span>.resolution(subtree_root_copath_node_id, excluded_indices)<span class="question-mark">?</span>;
+            <span class="self">self</span>.resolution(subtree_root_copath_node_id, excluded_indices);
 
         <span class="comment">// Get all of the public keys that we have secret keys for, i.e. our own
         // leaf pk, as well as potentially a number of public keys from our
@@ -1632,21 +1637,31 @@
                 .map(|node| TreeNodeIndex::Parent(<span class="kw-2">*</span>node))
                 .collect(),
         );
-        <span class="kw">for </span>node_id <span class="kw">in </span>own_node_ids {
-            <span class="kw">let </span>node_tsn = <span class="self">self</span>.diff.node(node_id);
+        <span class="kw">for </span>node_index <span class="kw">in </span>own_node_ids {
             <span class="comment">// If the node is blank, skip it.
-            </span><span class="kw">if let </span><span class="prelude-val">Some</span>(node) = node_tsn.node() {
-                <span class="comment">// If we don&#39;t have the private key, skip it.
-                </span><span class="kw">if let </span><span class="prelude-val">Some</span>(private_key) = node.private_key() {
-                    <span class="comment">// If we do have the private key, check if the key is in the
-                    // resolution.
-                    </span><span class="kw">if let </span><span class="prelude-val">Some</span>(resolution_position) = sender_copath_resolution
-                        .iter()
-                        .position(|pk| pk == node.public_key())
-                    {
-                        <span class="kw">return </span><span class="prelude-val">Ok</span>((private_key, resolution_position));
-                    };
-                }
+            // If we don&#39;t have the private key, skip it.
+            </span><span class="kw">if let </span><span class="prelude-val">Some</span>((<span class="prelude-val">Some</span>(private_key), public_key)) = <span class="kw">match </span>node_index {
+                TreeNodeIndex::Leaf(leaf_index) =&gt; <span class="self">self
+                    </span>.diff
+                    .leaf(leaf_index)
+                    .node()
+                    .as_ref()
+                    .map(|node| (node.private_key(), node.public_key())),
+                TreeNodeIndex::Parent(parent_index) =&gt; <span class="self">self
+                    </span>.diff
+                    .parent(parent_index)
+                    .node()
+                    .as_ref()
+                    .map(|node| (node.private_key(), node.public_key())),
+            } {
+                <span class="comment">// If we do have the private key, check if the key is in the
+                // resolution.
+                </span><span class="kw">if let </span><span class="prelude-val">Some</span>(resolution_position) = sender_copath_resolution
+                    .iter()
+                    .position(|pk| pk == public_key)
+                {
+                    <span class="kw">return </span><span class="prelude-val">Ok</span>((private_key, resolution_position));
+                };
             }
         }
         <span class="prelude-val">Err</span>(TreeSyncDiffError::NoPrivateKeyFound)
@@ -1654,13 +1669,12 @@
 
     <span class="doccomment">/// Returns a vector of all nodes in the tree resulting from merging this
     /// diff.
-    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>export_nodes(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;Vec&lt;<span class="prelude-ty">Option</span>&lt;Node&gt;&gt;, LibraryError&gt; {
-        <span class="kw">let </span>nodes = <span class="self">self
-            </span>.diff
-            .nodes()
-            .map(|(<span class="kw">_</span>, ts_node)| ts_node.node().to_owned())
-            .collect();
-        <span class="prelude-val">Ok</span>(nodes)
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>export_nodes(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; Vec&lt;<span class="prelude-ty">Option</span>&lt;Node&gt;&gt; {
+        <span class="self">self</span>.diff
+            .export_nodes()
+            .into_iter()
+            .map(|node| TreeSyncNode::from(node).into())
+            .collect()
     }
 
     <span class="doccomment">/// Get the length of the direct path of the given [`LeafNodeIndex`].

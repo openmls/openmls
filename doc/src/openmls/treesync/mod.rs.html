@@ -466,6 +466,12 @@
 <span id="466">466</span>
 <span id="467">467</span>
 <span id="468">468</span>
+<span id="469">469</span>
+<span id="470">470</span>
+<span id="471">471</span>
+<span id="472">472</span>
+<span id="473">473</span>
+<span id="474">474</span>
 </pre><pre class="rust"><code><span class="doccomment">//! This module implements the ratchet tree component of MLS.
 //!
 //! It exposes the [`Node`] enum that can contain either a [`LeafNode`] or a [`ParentNode`].
@@ -494,7 +500,7 @@
 
 <span class="kw">use crate</span>::{
     binary_tree::{
-        array_representation::{is_node_in_tree, LeafNodeIndex},
+        array_representation::{is_node_in_tree, tree::TreeNode, LeafNodeIndex},
         MlsBinaryTree, MlsBinaryTreeError,
     },
     ciphersuite::Secret,
@@ -511,7 +517,7 @@
 <span class="kw">use </span><span class="self">self</span>::{
     diff::{StagedTreeSyncDiff, TreeSyncDiff},
     node::leaf_node::{Capabilities, LeafNodeSource, Lifetime, OpenMlsLeafNode},
-    treesync_node::{TreeSyncNode, TreeSyncNodeError},
+    treesync_node::{TreeSyncLeafNode, TreeSyncNode, TreeSyncParentNode},
 };
 
 <span class="comment">// Private
@@ -549,7 +555,7 @@
 </span><span class="attribute">#[derive(Debug, Serialize, Deserialize)]
 #[cfg_attr(test, derive(PartialEq))]
 </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct </span>TreeSync {
-    tree: MlsBinaryTree&lt;TreeSyncNode&gt;,
+    tree: MlsBinaryTree&lt;TreeSyncLeafNode, TreeSyncParentNode&gt;,
     own_leaf_index: LeafNodeIndex,
     tree_hash: Vec&lt;u8&gt;,
 }
@@ -682,13 +688,14 @@
         <span class="comment">// TODO #800: Unmerged leaves should be checked
         // Before we can instantiate the TreeSync instance, we have to figure
         // out what our leaf index is.
-        </span><span class="kw">let </span><span class="kw-2">mut </span>ts_nodes: Vec&lt;TreeSyncNode&gt; = Vec::with_capacity(node_options.len());
+        </span><span class="kw">let </span><span class="kw-2">mut </span>ts_nodes: Vec&lt;TreeNode&lt;TreeSyncLeafNode, TreeSyncParentNode&gt;&gt; =
+            Vec::with_capacity(node_options.len());
         <span class="kw">let </span><span class="kw-2">mut </span>own_index_option = <span class="prelude-val">None</span>;
         <span class="kw">let </span>own_key_package = key_package_bundle.key_package;
         <span class="kw">let </span><span class="kw-2">mut </span>private_key = <span class="prelude-val">Some</span>(key_package_bundle.private_key);
         <span class="comment">// Check if our own key package is in the tree.
         </span><span class="kw">for </span>(node_index, node_option) <span class="kw">in </span>node_options.iter().enumerate() {
-            <span class="kw">let </span>ts_node_option: TreeSyncNode = <span class="kw">match </span>node_option {
+            <span class="kw">let </span>ts_node_option: TreeNode&lt;TreeSyncLeafNode, TreeSyncParentNode&gt; = <span class="kw">match </span>node_option {
                 <span class="prelude-val">Some</span>(node) =&gt; {
                     <span class="kw">let </span><span class="kw-2">mut </span>node = node.clone();
                     <span class="kw">if let </span>Node::LeafNode(<span class="kw-2">ref mut </span>leaf_node) = node {
@@ -704,9 +711,15 @@
                         }
                         leaf_node.set_leaf_index(leaf_index);
                     }
-                    node.into()
+                    TreeSyncNode::from(node).into()
                 }
-                <span class="prelude-val">None </span>=&gt; TreeSyncNode::blank(),
+                <span class="prelude-val">None </span>=&gt; {
+                    <span class="kw">if </span>node_index % <span class="number">2 </span>== <span class="number">0 </span>{
+                        TreeNode::Leaf(TreeSyncLeafNode::blank())
+                    } <span class="kw">else </span>{
+                        TreeNode::Parent(TreeSyncParentNode::blank())
+                    }
+                }
             };
             ts_nodes.push(ts_node_option);
         }
@@ -742,10 +755,27 @@
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>from_nodes_without_leaf(
         backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider,
         ciphersuite: Ciphersuite,
-        <span class="kw-2">mut </span>nodes: Vec&lt;<span class="prelude-ty">Option</span>&lt;Node&gt;&gt;,
+        nodes: Vec&lt;<span class="prelude-ty">Option</span>&lt;Node&gt;&gt;,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, TreeSyncFromNodesError&gt; {
-        <span class="kw">let </span>ts_nodes: Vec&lt;TreeSyncNode&gt; = nodes.drain(..).map(|node| node.into()).collect();
-        <span class="kw">let </span>tree = MlsBinaryTree::new(ts_nodes).map_err(|<span class="kw">_</span>| PublicTreeError::MalformedTree)<span class="question-mark">?</span>;
+        <span class="kw">let </span><span class="kw-2">mut </span>tree_nodes: Vec&lt;TreeNode&lt;TreeSyncLeafNode, TreeSyncParentNode&gt;&gt; = Vec::new();
+        <span class="kw">for </span>(index, node_option) <span class="kw">in </span>nodes.into_iter().enumerate() {
+            <span class="kw">let </span>node = <span class="kw">match </span>node_option {
+                <span class="prelude-val">Some</span>(node) =&gt; <span class="kw">match </span>node {
+                    Node::LeafNode(leaf) =&gt; TreeNode::Leaf(TreeSyncLeafNode::from(leaf)),
+                    Node::ParentNode(parent) =&gt; TreeNode::Parent(TreeSyncParentNode::from(parent)),
+                },
+                <span class="prelude-val">None </span>=&gt; {
+                    <span class="kw">if </span>index % <span class="number">2 </span>== <span class="number">0 </span>{
+                        TreeNode::Leaf(TreeSyncLeafNode::blank())
+                    } <span class="kw">else </span>{
+                        TreeNode::Parent(TreeSyncParentNode::blank())
+                    }
+                }
+            };
+            tree_nodes.push(node);
+        }
+
+        <span class="kw">let </span>tree = MlsBinaryTree::new(tree_nodes).map_err(|<span class="kw">_</span>| PublicTreeError::MalformedTree)<span class="question-mark">?</span>;
         <span class="kw">let </span><span class="kw-2">mut </span>tree_sync = <span class="self">Self </span>{
             tree,
             tree_hash: <span class="macro">vec!</span>[],
@@ -820,10 +850,10 @@
     }
 
     <span class="doccomment">/// Returns a list of [`LeafNodeIndex`]es containing only full nodes.
-    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>full_leaves(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; Vec&lt;LeafNodeIndex&gt; {
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>full_leaves(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; Vec&lt;<span class="kw-2">&amp;</span>OpenMlsLeafNode&gt; {
         <span class="self">self</span>.tree
             .leaves()
-            .filter_map(|(index, tsn)| tsn.node().as_ref().map(|<span class="kw">_</span>| (index)))
+            .filter_map(|(<span class="kw">_</span>, tsn)| tsn.node().as_ref())
             .collect()
     }
 
@@ -836,11 +866,6 @@
             .leaves()
             <span class="comment">// Filter out blank nodes
             </span>.filter_map(|(index, tsn)| tsn.node().as_ref().map(|node| (index, node)))
-            <span class="comment">// Filter out parent nodes (should not be necessary in a valid tree)
-            </span>.filter_map(|(index, node)| <span class="kw">match </span>node.as_leaf_node() {
-                <span class="prelude-val">Ok</span>(leaf_node) =&gt; <span class="prelude-val">Some</span>((index, leaf_node)),
-                <span class="prelude-val">Err</span>(<span class="kw">_</span>) =&gt; <span class="prelude-val">None</span>,
-            })
             <span class="comment">// Map to `Member`
             </span>.map(|(index, leaf_node)| {
                 Member::new(
@@ -867,20 +892,11 @@
         <span class="kw">if </span><span class="self">self</span>.tree.leaves().any(|(<span class="kw">_</span>, tsn)| {
             tsn.node()
                 .as_ref()
-                .and_then(|node| {
-                    node.as_leaf_node()
-                        .and_then(|leaf_node| {
-                            leaf_node
-                                .leaf_node()
-                                .check_extension_support(extensions)
-                                .map_err(|<span class="kw">_</span>| {
-                                    NodeError::LibraryError(LibraryError::custom(
-                                        <span class="string">&quot;This is never used, so we don&#39;t care&quot;</span>,
-                                    ))
-                                }) <span class="comment">// Here we get an error if the extensions are not supported
-                        </span>})
-                        .ok() <span class="comment">// Turn the error into None
-                </span>})
+                .map(|node| {
+                    node.leaf_node()
+                        .check_extension_support(extensions)
+                        .map_err(|<span class="kw">_</span>| LibraryError::custom(<span class="string">&quot;This is never used, so we don&#39;t care&quot;</span>))
+                })
                 .is_none() <span class="comment">// Return true if this is none
         </span>}) {
             <span class="prelude-val">Err</span>(TreeSyncError::UnsupportedExtension)
@@ -893,8 +909,13 @@
     /// array-representation of the underlying binary tree.
     </span><span class="kw">pub fn </span>export_nodes(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; Vec&lt;<span class="prelude-ty">Option</span>&lt;Node&gt;&gt; {
         <span class="self">self</span>.tree
-            .nodes()
-            .map(|(<span class="kw">_</span>, ts_node)| ts_node.node_without_private_key())
+            .export_nodes()
+            .iter()
+            <span class="comment">// Filter out private keys
+            </span>.map(|node| <span class="kw">match </span>node {
+                TreeNode::Leaf(leaf) =&gt; leaf.node_without_private_key().map(Node::LeafNode),
+                TreeNode::Parent(parent) =&gt; parent.node_without_private_key().map(Node::ParentNode),
+            })
             .collect()
     }
 
@@ -907,25 +928,16 @@
     ///
     /// This function should not fail and only returns a [`Result`], because it
     /// might throw a [LibraryError](TreeSyncError::LibraryError).
-    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>own_leaf_node(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="kw-2">&amp;</span>OpenMlsLeafNode, TreeSyncError&gt; {
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>own_leaf_node(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>OpenMlsLeafNode&gt; {
         <span class="comment">// Our own leaf should be inside of the tree and never blank.
-        </span><span class="self">self</span>.leaf(<span class="self">self</span>.own_leaf_index)<span class="question-mark">?
-            </span>.ok_or_else(|| LibraryError::custom(<span class="string">&quot;Own leaf is outside of the tree&quot;</span>).into())
+        </span><span class="self">self</span>.leaf(<span class="self">self</span>.own_leaf_index)
     }
 
     <span class="doccomment">/// Return a reference to the leaf at the given `LeafNodeIndex` or `None` if the
     /// leaf is blank.
-    ///
-    /// Returns an error if the leaf is outside of the tree.
-    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>leaf(
-        <span class="kw-2">&amp;</span><span class="self">self</span>,
-        leaf_index: LeafNodeIndex,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>OpenMlsLeafNode&gt;, TreeSyncError&gt; {
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>leaf(<span class="kw-2">&amp;</span><span class="self">self</span>, leaf_index: LeafNodeIndex) -&gt; <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>OpenMlsLeafNode&gt; {
         <span class="kw">let </span>tsn = <span class="self">self</span>.tree.leaf(leaf_index);
-        <span class="prelude-val">Ok</span>(<span class="kw">match </span>tsn.node() {
-            <span class="prelude-val">Some</span>(node) =&gt; <span class="prelude-val">Some</span>(node.as_leaf_node()<span class="question-mark">?</span>),
-            <span class="prelude-val">None </span>=&gt; <span class="prelude-val">None</span>,
-        })
+        tsn.node().as_ref()
     }
 
     <span class="doccomment">/// Returns a [`TreeSyncError`] if the `leaf_index` is not a leaf in this

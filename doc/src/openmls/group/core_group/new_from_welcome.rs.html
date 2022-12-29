@@ -232,7 +232,6 @@
 <span id="232">232</span>
 <span id="233">233</span>
 <span id="234">234</span>
-<span id="235">235</span>
 </pre><pre class="rust"><code><span class="kw">use </span>log::debug;
 <span class="kw">use </span>openmls_traits::crypto::OpenMlsCrypto;
 <span class="kw">use </span>tls_codec::Deserialize;
@@ -381,8 +380,7 @@
 
         <span class="kw">let </span>signer_credential = tree
             .leaf(group_info.signer())
-            .map_err(|<span class="kw">_</span>| WelcomeError::UnknownSender)<span class="question-mark">?
-            </span>.ok_or(WelcomeError::UnknownSender)<span class="question-mark">?
+            .ok_or(WelcomeError::UnknownSender)<span class="question-mark">?
             </span>.credential();
 
         <span class="comment">// Verify GroupInfo signature
