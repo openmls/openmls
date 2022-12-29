@@ -352,10 +352,6 @@ fn test_invalid_plaintext(ciphersuite: Ciphersuite, backend: &impl OpenMlsCrypto
     // Store the context and membership key so that we can re-compute the membership tag later.
     let client_groups = client.groups.read().unwrap();
     let client_group = client_groups.get(&group_id).unwrap();
-    let context = client_group
-        .export_group_context()
-        .tls_serialize_detached()
-        .unwrap();
     let membership_key = client_group.group().message_secrets().membership_key();
 
     // Tamper with the message such that signature verification fails
@@ -373,8 +369,7 @@ fn test_invalid_plaintext(ciphersuite: Ciphersuite, backend: &impl OpenMlsCrypto
     match &mut msg_invalid_sender.mls_message.body {
         MlsMessageBody::PublicMessage(pt) => {
             pt.set_sender(random_sender);
-            pt.set_membership_tag(backend, &context, membership_key)
-                .unwrap()
+            pt.set_membership_tag(backend, membership_key).unwrap()
         }
         MlsMessageBody::PrivateMessage(_) => panic!("This should be a plaintext!"),
     };

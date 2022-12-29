@@ -207,14 +207,7 @@ fn build_handshake_messages(
     .expect("An unexpected error occurred.");
     let mut plaintext: PublicMessage = content.clone().into();
     plaintext
-        .set_membership_tag(
-            backend,
-            &group
-                .context()
-                .tls_serialize_detached()
-                .expect("Could not serialize the group context."),
-            &membership_key,
-        )
+        .set_membership_tag(backend, &membership_key)
         .expect("Error setting membership tag.");
     let ciphertext = PrivateMessage::encrypt_with_different_header(
         &content,
@@ -267,14 +260,7 @@ fn build_application_messages(
     .expect("An unexpected error occurred.");
     let mut plaintext: PublicMessage = content.clone().into();
     plaintext
-        .set_membership_tag(
-            backend,
-            &group
-                .context()
-                .tls_serialize_detached()
-                .expect("Could not serialize the group context."),
-            &membership_key,
-        )
+        .set_membership_tag(backend, &membership_key)
         .expect("Error setting membership tag.");
     let ciphertext = match PrivateMessage::encrypt_with_different_header(
         &content,

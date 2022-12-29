@@ -178,14 +178,7 @@ fn insert_proposal_and_resign(
     let membership_key = committer_group.group().message_secrets().membership_key();
 
     signed_plaintext
-        .set_membership_tag(
-            backend,
-            &committer_group
-                .export_group_context()
-                .tls_serialize_detached()
-                .expect("error serializing context"),
-            membership_key,
-        )
+        .set_membership_tag(backend, membership_key)
         .expect("error refreshing membership tag");
 
     signed_plaintext
