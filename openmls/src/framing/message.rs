@@ -61,7 +61,6 @@ pub(crate) struct MlsMessage {
 ///     }
 /// } MLSMessage;
 /// ```
-#[allow(clippy::large_enum_variant)] // TODO #979: Remove the clippy warning suppresion
 #[derive(Debug, PartialEq, Clone, TlsSerialize, TlsDeserialize, TlsSize)]
 #[repr(u8)]
 pub(crate) enum MlsMessageBody {
