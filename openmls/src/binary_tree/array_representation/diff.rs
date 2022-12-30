@@ -248,54 +248,25 @@ impl<'a, L: Clone + Debug + Default, P: Clone + Debug + Default> AbDiff<'a, L, P
         }
     }
 
-    /// Sets the nodes in the direct path of the given leaf index to the nodes
-    /// given in the `path`.
-    pub(crate) fn set_direct_path(&mut self, leaf_index: LeafNodeIndex, path: Vec<P>) {
-        let direct_path = direct_path(leaf_index, self.size());
-        debug_assert_eq!(path.len(), direct_path.len());
-        for (node_index, node) in direct_path.iter().zip(path.into_iter()) {
-            self.replace_parent(*node_index, node);
-        }
-    }
-
     /// Returns the copath of a leaf node.
     pub(crate) fn copath(&self, leaf_index: LeafNodeIndex) -> Vec<TreeNodeIndex> {
         copath(leaf_index, self.size())
     }
 
-    // Functions related to the shared subtree of two given leaves
-    //////////////////////////////////////////////////////////////
-
-    /// Given two leaf indices, returns the position of the shared subtree root
-    /// in the direct path of the first leaf index.
-    ///
-    /// Returns an error if both leaf indices are identical or if one of the
-    /// leaf indices does not correspond to a leaf in the diff.
-    pub(crate) fn subtree_root_position(
+    /// Returns the lowest common ancestor of two leaf nodes.
+    pub(crate) fn lowest_common_ancestor(
         &self,
         leaf_index_1: LeafNodeIndex,
         leaf_index_2: LeafNodeIndex,
-    ) -> Result<usize, ABinaryTreeDiffError> {
-        // If the given leaf indices are identical, the shared subtree root is
-        // the index itself. Since the index of the leaf itself doesn't appear
-        // in the direct path, we can't return anything meaningful. This check
-        // also ensures that the tree is large enough such that the direct path
-        // is never empty, since if there is a second leaf index (that is within
-        // the bound of the tree), there is a non-leaf root node that is in the
-        // direct path of all leaves.
+    ) -> ParentNodeIndex {
         debug_assert!(leaf_index_1 != leaf_index_2);
         debug_assert!(leaf_index_1.u32() < self.size.leaf_count());
         debug_assert!(leaf_index_2.u32() < self.size.leaf_count());
-
-        let subtree_root_node_index = lowest_common_ancestor(leaf_index_1, leaf_index_2);
-        let leaf_index_1_direct_path = self.direct_path(leaf_index_1);
-
-        leaf_index_1_direct_path
-            .iter()
-            .position(|&direct_path_node_index| direct_path_node_index == subtree_root_node_index)
-            // The shared subtree root has to be in the direct path of both nodes.
-            .ok_or_else(|| LibraryError::custom("index should be in the direct path").into())
+        lowest_common_ancestor(leaf_index_1, leaf_index_2)
     }
+
+    // Functions related to the shared subtree of two given leaves
+    //////////////////////////////////////////////////////////////
 
     /// Returns [`TreeNodeIndex`] to the copath node of the `leaf_index_1` that is
     /// in the direct path of `leaf_index_2`.

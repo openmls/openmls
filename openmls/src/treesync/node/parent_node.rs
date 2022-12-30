@@ -11,7 +11,7 @@ use thiserror::*;
 use tls_codec::{TlsSerialize, TlsSize, VLBytes};
 
 use crate::{
-    binary_tree::array_representation::LeafNodeIndex,
+    binary_tree::array_representation::{LeafNodeIndex, ParentNodeIndex},
     ciphersuite::{HpkePrivateKey, HpkePublicKey},
     error::LibraryError,
     messages::PathSecret,
@@ -88,8 +88,11 @@ impl PlainUpdatePathNode {
 /// The result of a path derivation result containing the vector of
 /// [`ParentNode`], as well as [`PlainUpdatePathNode`] instance and a
 /// [`CommitSecret`].
-pub(in crate::treesync) type PathDerivationResult =
-    (Vec<ParentNode>, Vec<PlainUpdatePathNode>, CommitSecret);
+pub(in crate::treesync) type PathDerivationResult = (
+    Vec<(ParentNodeIndex, ParentNode)>,
+    Vec<PlainUpdatePathNode>,
+    CommitSecret,
+);
 
 impl ParentNode {
     /// Create a new [`ParentNode`].
@@ -115,12 +118,12 @@ impl ParentNode {
         backend: &impl OpenMlsCryptoProvider,
         ciphersuite: Ciphersuite,
         path_secret: PathSecret,
-        path_length: usize,
+        path_indices: Vec<ParentNodeIndex>,
     ) -> Result<PathDerivationResult, LibraryError> {
         let mut next_path_secret = path_secret;
-        let mut path_secrets = Vec::with_capacity(path_length);
+        let mut path_secrets = Vec::with_capacity(path_indices.len());
 
-        for _ in 0..path_length {
+        for _ in 0..path_indices.len() {
             let path_secret = next_path_secret;
             // Derive the next path secret.
             next_path_secret = path_secret.derive_path_secret(backend, ciphersuite)?;
@@ -130,7 +133,8 @@ impl ParentNode {
         // Iterate over the path secrets and derive a key pair
         let (path, update_path_nodes) = path_secrets
             .into_par_iter()
-            .map(|path_secret| {
+            .zip(path_indices)
+            .map(|(path_secret, index)| {
                 // Derive a key pair from the path secret. This includes the
                 // intermediate derivation of a node secret.
                 let (public_key, private_key) =
@@ -142,9 +146,9 @@ impl ParentNode {
                     public_key,
                     path_secret,
                 };
-                Ok((parent_node, update_path_node))
+                Ok(((index, parent_node), update_path_node))
             })
-            .collect::<Result<Vec<(ParentNode, PlainUpdatePathNode)>, LibraryError>>()?
+            .collect::<Result<Vec<((ParentNodeIndex, ParentNode), PlainUpdatePathNode)>, LibraryError>>()?
             .into_iter()
             .unzip();
 

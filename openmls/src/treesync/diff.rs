@@ -19,6 +19,7 @@
 //! [`LibraryError`](TreeSyncDiffError::LibraryError).
 use openmls_traits::{types::Ciphersuite, OpenMlsCryptoProvider};
 use serde::{Deserialize, Serialize};
+use tls_codec::VLBytes;
 
 use std::collections::HashSet;
 
@@ -27,7 +28,7 @@ use super::{
     node::{
         leaf_node::{LeafNode, OpenMlsLeafNode},
         parent_node::{ParentNode, PathDerivationResult, PlainUpdatePathNode},
-        Node,
+        Node, NodeReference,
     },
     treesync_node::{TreeSyncLeafNode, TreeSyncNode, TreeSyncParentNode},
     TreeSync, TreeSyncParentHashError, TreeSyncSetPathError,
@@ -35,7 +36,7 @@ use super::{
 
 use crate::{
     binary_tree::{
-        array_representation::{direct_path, LeafNodeIndex, ParentNodeIndex, TreeNodeIndex},
+        array_representation::{LeafNodeIndex, ParentNodeIndex, TreeNodeIndex},
         MlsBinaryTreeDiff, StagedMlsBinaryTreeDiff,
     },
     ciphersuite::{HpkePrivateKey, HpkePublicKey, Secret},
@@ -90,6 +91,27 @@ impl<'a> From<&'a TreeSync> for TreeSyncDiff<'a> {
 }
 
 impl<'a> TreeSyncDiff<'a> {
+    /// Filtered direct path, skips the nodes whose copath resolution is empty.
+    pub(crate) fn filtered_direct_path(&self, leaf_index: LeafNodeIndex) -> Vec<ParentNodeIndex> {
+        // Full direct path
+        let direct_path = self.diff.direct_path(leaf_index);
+        // Copath resolutions
+        let copath_resolutions = self.copath_resolutions(leaf_index);
+
+        direct_path
+            .into_iter()
+            .zip(copath_resolutions.into_iter())
+            .filter_map(|(index, resolution)| {
+                // Filter out the nodes whose copath resolution is empty
+                if !resolution.is_empty() {
+                    Some(index)
+                } else {
+                    None
+                }
+            })
+            .collect()
+    }
+
     /// Check if the right-most leaf and its parent are blank. If that is the
     /// case, remove the right-most leaf and its parent until either the
     /// right-most leaf or its parent are not blank anymore.
@@ -242,9 +264,9 @@ impl<'a> TreeSyncDiff<'a> {
                 .map_err(LibraryError::unexpected_crypto_error)?,
         );
 
-        let path_length = self.diff.direct_path(self.own_leaf_index).len();
+        let path_indices = self.filtered_direct_path(self.own_leaf_index);
 
-        ParentNode::derive_path(backend, ciphersuite, path_secret, path_length)
+        ParentNode::derive_path(backend, ciphersuite, path_secret, path_indices)
     }
 
     /// Given a new [`OpenMlsLeafNode`], use it to create a new path and
@@ -291,6 +313,12 @@ impl<'a> TreeSyncDiff<'a> {
         leaf_node: LeafNode,
         path: Vec<ParentNode>,
     ) -> Result<(), ApplyUpdatePathError> {
+        let filtered_direct_path = self.filtered_direct_path(sender_leaf_index);
+        debug_assert_eq!(filtered_direct_path.len(), path.len());
+        let path = filtered_direct_path
+            .into_iter()
+            .zip(path.into_iter())
+            .collect();
         let parent_hash =
             self.process_update_path(backend, ciphersuite, sender_leaf_index, path)?;
 
@@ -321,19 +349,24 @@ impl<'a> TreeSyncDiff<'a> {
         backend: &impl OpenMlsCryptoProvider,
         ciphersuite: Ciphersuite,
         leaf_index: LeafNodeIndex,
-        mut path: Vec<ParentNode>,
+        mut path: Vec<(ParentNodeIndex, ParentNode)>,
     ) -> Result<Vec<u8>, LibraryError> {
         // Compute the parent hash.
         let parent_hash = self.set_parent_hashes(backend, ciphersuite, &mut path, leaf_index)?;
-        let direct_path: Vec<TreeSyncParentNode> = path
-            .into_iter()
-            .map(|parent_node| parent_node.into())
-            .collect();
 
-        // Set the direct path. Note, that the nodes here don't have a tree hash
+        // While probably not necessary, the spec mandates we blank the direct path nodes
+        let direct_path_nodes = self.diff.direct_path(leaf_index);
+        for node in direct_path_nodes {
+            *self.diff.parent_mut(node) = TreeSyncParentNode::blank();
+        }
+
+        // Set the node of the filtered direct path.
+        // Note, that the nodes here don't have a tree hash set.
         // TODO #804
-        // set.
-        self.diff.set_direct_path(leaf_index, direct_path);
+        for (index, node) in path.into_iter() {
+            *self.diff.parent_mut(index) = node.into();
+        }
+
         Ok(parent_hash)
     }
 
@@ -416,7 +449,7 @@ impl<'a> TreeSyncDiff<'a> {
         &mut self,
         backend: &impl OpenMlsCryptoProvider,
         ciphersuite: Ciphersuite,
-        path: &mut [ParentNode],
+        path: &mut [(ParentNodeIndex, ParentNode)],
         leaf_index: LeafNodeIndex,
     ) -> Result<Vec<u8>, LibraryError> {
         // If the path is empty, return a zero-length string. This is the case
@@ -426,15 +459,27 @@ impl<'a> TreeSyncDiff<'a> {
         }
 
         // Get the resolutions of the copath nodes (i.e. the original child
-        // resolutions).
-        let mut copath_resolutions = self.copath_resolutions(leaf_index, &HashSet::new());
+        // resolutions) and the corresponding public keys.
+        let mut copath_resolutions = self
+            .filtered_copath_resolutions(leaf_index, &HashSet::new())
+            .into_iter()
+            .map(|resolution| {
+                resolution
+                    .into_iter()
+                    .map(|(_, node_ref)| match node_ref {
+                        NodeReference::Leaf(leaf) => leaf.public_key().clone(),
+                        NodeReference::Parent(parent) => parent.public_key().clone(),
+                    })
+                    .collect::<Vec<HpkePublicKey>>()
+            })
+            .collect::<Vec<Vec<HpkePublicKey>>>();
         // There should be as many copath resolutions as nodes in the direct
         // path.
         debug_assert_eq!(path.len(), copath_resolutions.len());
         // We go through the nodes in the direct path in reverse order and get
         // the corresponding copath resolution for each node.
         let mut previous_parent_hash = vec![];
-        for (path_node, resolution) in path
+        for ((_, path_node), resolution) in path
             .iter_mut()
             .rev()
             .zip(copath_resolutions.iter_mut().rev())
@@ -455,24 +500,21 @@ impl<'a> TreeSyncDiff<'a> {
     }
 
     /// Helper function computing the resolution of a node with the given index.
-    /// If an exclusion list is given, do not add the public keys of the leaves
-    /// given in the list.
-    ///
-    /// Returns The list of HPKE public keys.
+    /// If an exclusion list is given, do not add the leaves given in the list.
     fn resolution(
         &self,
         node_index: TreeNodeIndex,
         excluded_indices: &HashSet<&LeafNodeIndex>,
-    ) -> Vec<HpkePublicKey> {
+    ) -> Vec<(TreeNodeIndex, NodeReference)> {
         match node_index {
             TreeNodeIndex::Leaf(leaf_index) => {
                 // If the node is a leaf, check if it is in the exclusion list.
                 if excluded_indices.contains(&leaf_index) {
                     vec![]
                 } else {
-                    // If it's not, return its public key as its resolution.
+                    // If it's not, return it as its resolution.
                     if let Some(leaf) = self.diff.leaf(leaf_index).node() {
-                        vec![leaf.public_key().clone()]
+                        vec![(TreeNodeIndex::Leaf(leaf_index), NodeReference::Leaf(leaf))]
                     } else {
                         // If it's a blank, return an empty vector.
                         vec![]
@@ -483,15 +525,21 @@ impl<'a> TreeSyncDiff<'a> {
                 match self.diff.parent(parent_index).node() {
                     Some(parent) => {
                         // If it's a non-blank parent node, get the unmerged
-                        // leaves, exclude them as necessary and add their
-                        // public keys to the resulting resolution.
-                        let mut resolution = vec![parent.public_key().clone()];
+                        // leaves, exclude them as necessary and add the node to
+                        // the resulting resolution.
+                        let mut resolution = vec![(
+                            TreeNodeIndex::Parent(parent_index),
+                            NodeReference::Parent(parent),
+                        )];
                         for leaf_index in parent.unmerged_leaves() {
                             if !excluded_indices.contains(&leaf_index) {
                                 let leaf = self.diff.leaf(*leaf_index);
                                 // TODO #800: unmerged leaves should be checked
                                 if let Some(leaf_node) = leaf.node() {
-                                    resolution.push(leaf_node.public_key().clone())
+                                    resolution.push((
+                                        TreeNodeIndex::Leaf(*leaf_index),
+                                        NodeReference::Leaf(leaf_node),
+                                    ))
                                 } else {
                                     debug_assert!(false, "Unmerged leaves should not be blank.");
                                 }
@@ -525,32 +573,60 @@ impl<'a> TreeSyncDiff<'a> {
     pub(crate) fn copath_resolutions(
         &self,
         leaf_index: LeafNodeIndex,
-        excluded_indices: &HashSet<&LeafNodeIndex>,
-    ) -> Vec<Vec<HpkePublicKey>> {
+    ) -> Vec<Vec<(TreeNodeIndex, NodeReference)>> {
         // If we're the only node in the tree, there's no copath.
         if self.diff.leaf_count() == 1 {
             return vec![];
         }
 
-        // We want the full path here, including the leaf itself, but not the
-        // root.
-        let mut full_path = vec![TreeNodeIndex::Leaf(leaf_index)];
-        let mut direct_path = direct_path(leaf_index, self.diff.size());
-        if !direct_path.is_empty() {
-            // Remove root
-            direct_path.pop();
+        let mut copath_resolutions = Vec::new();
+        for node_index in self.diff.copath(leaf_index) {
+            let resolution = self.resolution(node_index, &HashSet::new());
+            copath_resolutions.push(resolution);
         }
-        full_path.append(
-            &mut direct_path
-                .iter()
-                .map(|i| TreeNodeIndex::Parent(*i))
-                .collect(),
-        );
+        copath_resolutions
+    }
+
+    /// Helper function to filter resolutions by the given exclusion list.
+    fn filtered_resolution(
+        &self,
+        resolution: Vec<(TreeNodeIndex, NodeReference<'a>)>,
+        exclusion_list: &HashSet<&LeafNodeIndex>,
+    ) -> Vec<(TreeNodeIndex, NodeReference<'a>)> {
+        resolution
+            .into_iter()
+            .filter_map(|(index, node)| {
+                if let TreeNodeIndex::Leaf(leaf_index) = index {
+                    if exclusion_list.contains(&leaf_index) {
+                        None
+                    } else {
+                        Some((TreeNodeIndex::Leaf(leaf_index), node))
+                    }
+                } else {
+                    Some((index, node))
+                }
+            })
+            .collect()
+    }
+
+    /// Compute the copath resolutions, but leave out empty resolutions.
+    /// Additionally, resolutions are filtered by the given exclusion list.
+    pub(super) fn filtered_copath_resolutions(
+        &self,
+        leaf_index: LeafNodeIndex,
+        exclusion_list: &HashSet<&LeafNodeIndex>,
+    ) -> Vec<Vec<(TreeNodeIndex, NodeReference)>> {
+        // If we're the only node in the tree, there's no copath.
+        if self.diff.leaf_count() == 1 {
+            return vec![];
+        }
 
         let mut copath_resolutions = Vec::new();
         for node_index in self.diff.copath(leaf_index) {
-            let resolution = self.resolution(node_index, excluded_indices);
-            copath_resolutions.push(resolution);
+            let resolution = self.resolution(node_index, &HashSet::new());
+            if !resolution.is_empty() {
+                copath_resolutions.push(self.filtered_resolution(resolution, exclusion_list));
+            }
         }
         copath_resolutions
     }
@@ -749,16 +825,20 @@ impl<'a> TreeSyncDiff<'a> {
     /// Returns the position of the subtree root shared by both given indices in
     /// the direct path of `leaf_index_1`.
     ///
-    /// Returns an error if the given leaf indices are identical or if either of
-    /// the given leaf indices is outside of the tree.
-    pub(crate) fn subtree_root_position(
+    /// Returns a [LibraryError] if there's an error in the tree math computation.
+    pub(super) fn subtree_root_position(
         &self,
         leaf_index_1: LeafNodeIndex,
         leaf_index_2: LeafNodeIndex,
     ) -> Result<usize, TreeSyncDiffError> {
-        Ok(self
-            .diff
-            .subtree_root_position(leaf_index_1, leaf_index_2)?)
+        let subtree_root_node_index = self.diff.lowest_common_ancestor(leaf_index_1, leaf_index_2);
+        let leaf_index_1_direct_path = self.filtered_direct_path(leaf_index_1);
+
+        leaf_index_1_direct_path
+            .iter()
+            .position(|&direct_path_node_index| direct_path_node_index == subtree_root_node_index)
+            // The shared subtree root has to be in the direct path of both nodes.
+            .ok_or_else(|| LibraryError::custom("index should be in the direct path").into())
     }
 
     /// Compute the position of the highest node in the tree in the filtered
@@ -779,8 +859,14 @@ impl<'a> TreeSyncDiff<'a> {
             .diff
             .subtree_root_copath_node(sender_leaf_index, self.own_leaf_index);
 
-        let sender_copath_resolution =
-            self.resolution(subtree_root_copath_node_id, excluded_indices);
+        let sender_copath_resolution: Vec<VLBytes> = self
+            .resolution(subtree_root_copath_node_id, excluded_indices)
+            .into_iter()
+            .map(|(_, node_ref)| match node_ref {
+                NodeReference::Leaf(leaf) => leaf.public_key().clone(),
+                NodeReference::Parent(parent) => parent.public_key().clone(),
+            })
+            .collect();
 
         // Get all of the public keys that we have secret keys for, i.e. our own
         // leaf pk, as well as potentially a number of public keys from our
@@ -835,8 +921,29 @@ impl<'a> TreeSyncDiff<'a> {
             .collect()
     }
 
-    /// Get the length of the direct path of the given [`LeafNodeIndex`].
-    pub(super) fn direct_path_len(&self, leaf_index: LeafNodeIndex) -> usize {
-        self.diff.direct_path(leaf_index).len()
+    /// Returns the filtered common path two leaf nodes share. If the leaves are
+    /// identical, the common path is empty.
+    pub(super) fn filtered_common_direct_path(
+        &self,
+        leaf_index_1: LeafNodeIndex,
+        leaf_index_2: LeafNodeIndex,
+    ) -> Vec<ParentNodeIndex> {
+        let mut x_path = self.filtered_direct_path(leaf_index_1);
+        let mut y_path = self.filtered_direct_path(leaf_index_2);
+        x_path.reverse();
+        y_path.reverse();
+
+        let mut common_path = vec![];
+
+        for (x, y) in x_path.iter().zip(y_path.iter()) {
+            if x == y {
+                common_path.push(*x);
+            } else {
+                break;
+            }
+        }
+
+        common_path.reverse();
+        common_path
     }
 }
