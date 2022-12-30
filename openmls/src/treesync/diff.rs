@@ -587,28 +587,6 @@ impl<'a> TreeSyncDiff<'a> {
         copath_resolutions
     }
 
-    /// Helper function to filter resolutions by the given exclusion list.
-    fn filtered_resolution(
-        &self,
-        resolution: Vec<(TreeNodeIndex, NodeReference<'a>)>,
-        exclusion_list: &HashSet<&LeafNodeIndex>,
-    ) -> Vec<(TreeNodeIndex, NodeReference<'a>)> {
-        resolution
-            .into_iter()
-            .filter_map(|(index, node)| {
-                if let TreeNodeIndex::Leaf(leaf_index) = index {
-                    if exclusion_list.contains(&leaf_index) {
-                        None
-                    } else {
-                        Some((TreeNodeIndex::Leaf(leaf_index), node))
-                    }
-                } else {
-                    Some((index, node))
-                }
-            })
-            .collect()
-    }
-
     /// Compute the copath resolutions, but leave out empty resolutions.
     /// Additionally, resolutions are filtered by the given exclusion list.
     pub(super) fn filtered_copath_resolutions(
@@ -625,7 +603,21 @@ impl<'a> TreeSyncDiff<'a> {
         for node_index in self.diff.copath(leaf_index) {
             let resolution = self.resolution(node_index, &HashSet::new());
             if !resolution.is_empty() {
-                copath_resolutions.push(self.filtered_resolution(resolution, exclusion_list));
+                let filtered_resolution = resolution
+                    .into_iter()
+                    .filter_map(|(index, node)| {
+                        if let TreeNodeIndex::Leaf(leaf_index) = index {
+                            if exclusion_list.contains(&leaf_index) {
+                                None
+                            } else {
+                                Some((TreeNodeIndex::Leaf(leaf_index), node))
+                            }
+                        } else {
+                            Some((index, node))
+                        }
+                    })
+                    .collect();
+                copath_resolutions.push(filtered_resolution);
             }
         }
         copath_resolutions
