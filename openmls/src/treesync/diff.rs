@@ -98,6 +98,9 @@ impl<'a> TreeSyncDiff<'a> {
         // Copath resolutions
         let copath_resolutions = self.copath_resolutions(leaf_index);
 
+        // The two vectors should have the same length
+        debug_assert_eq!(direct_path.len(), copath_resolutions.len());
+
         direct_path
             .into_iter()
             .zip(copath_resolutions.into_iter())
@@ -579,12 +582,13 @@ impl<'a> TreeSyncDiff<'a> {
             return vec![];
         }
 
-        let mut copath_resolutions = Vec::new();
-        for node_index in self.diff.copath(leaf_index) {
-            let resolution = self.resolution(node_index, &HashSet::new());
-            copath_resolutions.push(resolution);
-        }
-        copath_resolutions
+        // Get the copath of the given leaf index and compute the resolution of
+        // each node.
+        self.diff
+            .copath(leaf_index)
+            .into_iter()
+            .map(|node_index| self.resolution(node_index, &HashSet::new()))
+            .collect()
     }
 
     /// Compute the copath resolutions, but leave out empty resolutions.
@@ -914,7 +918,7 @@ impl<'a> TreeSyncDiff<'a> {
     }
 
     /// Returns the filtered common path two leaf nodes share. If the leaves are
-    /// identical, the common path is empty.
+    /// identical, the common path is the leaf's direct path.
     pub(super) fn filtered_common_direct_path(
         &self,
         leaf_index_1: LeafNodeIndex,

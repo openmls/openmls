@@ -150,8 +150,7 @@ impl<'a> TreeSyncDiff<'a> {
             }
         }
 
-        // The output should have the same length as the input.
-        debug_assert_eq!(params.update_path.len(), path_position + derived_path.len());
+        let _update_path_len = params.update_path.len();
 
         // Finally, we append the derived path to the part of the update path
         // below the first node that we have a private key for.
@@ -162,6 +161,9 @@ impl<'a> TreeSyncDiff<'a> {
             .map(|update_path_node| update_path_node.public_key.into())
             .collect();
         path.append(&mut derived_path.into_iter().map(|(_, node)| node).collect());
+
+        // The output should have the same length as the input.
+        debug_assert_eq!(_update_path_len, path.len());
 
         Ok((path, commit_secret))
     }
