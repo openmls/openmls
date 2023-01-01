@@ -16,3 +16,9 @@ pub enum Node {
     LeafNode(OpenMlsLeafNode),
     ParentNode(ParentNode),
 }
+
+/// Container enum with reference to a node in a tree.
+pub(crate) enum NodeReference<'a> {
+    Leaf(&'a OpenMlsLeafNode),
+    Parent(&'a ParentNode),
+}

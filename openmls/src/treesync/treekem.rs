@@ -21,6 +21,7 @@ use crate::{
     error::LibraryError,
     messages::{proposals::AddProposal, EncryptedGroupSecrets, GroupSecrets, PathSecret},
     schedule::{psk::PreSharedKeyId, CommitSecret, JoinerSecret},
+    treesync::node::NodeReference,
     versions::ProtocolVersion,
 };
 
@@ -38,8 +39,6 @@ impl<'a> TreeSyncDiff<'a> {
     /// included in the resulting [`UpdatePath`].
     ///
     /// Returns the encrypted path (i.e. an [`UpdatePath`] instance).
-    ///
-    /// Returns an error if the path does not have the same length as the copath resolution.
     pub(crate) fn encrypt_path(
         &self,
         backend: &impl OpenMlsCryptoProvider,
@@ -48,7 +47,20 @@ impl<'a> TreeSyncDiff<'a> {
         group_context: &[u8],
         exclusion_list: &HashSet<&LeafNodeIndex>,
     ) -> Vec<UpdatePathNode> {
-        let copath_resolutions = self.copath_resolutions(self.own_leaf_index(), exclusion_list);
+        // Copath resolutions with the corresponding public keys.
+        let copath_resolutions = self
+            .filtered_copath_resolutions(self.own_leaf_index(), exclusion_list)
+            .into_iter()
+            .map(|resolution| {
+                resolution
+                    .into_iter()
+                    .map(|(_, node_ref)| match node_ref {
+                        NodeReference::Leaf(leaf) => leaf.public_key().clone(),
+                        NodeReference::Parent(parent) => parent.public_key().clone(),
+                    })
+                    .collect::<Vec<HpkePublicKey>>()
+            })
+            .collect::<Vec<Vec<HpkePublicKey>>>();
 
         // There should be as many copath resolutions.
         debug_assert_eq!(copath_resolutions.len(), path.len());
@@ -83,7 +95,7 @@ impl<'a> TreeSyncDiff<'a> {
         params: DecryptPathParams,
     ) -> Result<(Vec<ParentNode>, CommitSecret), ApplyUpdatePathError> {
         // ValSem202: Path must be the right length
-        let direct_path_length = self.direct_path_len(params.sender_leaf_index);
+        let direct_path_length = self.filtered_direct_path(params.sender_leaf_index).len();
         if direct_path_length != params.update_path.len() {
             return Err(ApplyUpdatePathError::PathLengthMismatch);
         }
@@ -97,7 +109,7 @@ impl<'a> TreeSyncDiff<'a> {
             .get(path_position)
             // We know the update path has the right length through validation, therefore there must be an element at this position
             // TODO #804
-            .ok_or_else(|| LibraryError::custom("Expected to find ciphertext in update path"))?;
+            .ok_or_else(|| LibraryError::custom("Expected to find ciphertext in update path 1"))?;
 
         let (decryption_key, resolution_position) = self
             .decryption_key(params.sender_leaf_index, params.exclusion_list)
@@ -107,7 +119,7 @@ impl<'a> TreeSyncDiff<'a> {
             .encrypted_path_secrets(resolution_position)
             // We know the update path has the right length through validation, therefore there must be a ciphertext at this position
             // TODO #804
-            .ok_or_else(|| LibraryError::custom("Expected to find ciphertext in update path"))?;
+            .ok_or_else(|| LibraryError::custom("Expected to find ciphertext in update path 2"))?;
 
         // ValSem203: Path secrets must decrypt correctly
         let path_secret = PathSecret::decrypt(
@@ -120,13 +132,14 @@ impl<'a> TreeSyncDiff<'a> {
         )
         .map_err(|_| ApplyUpdatePathError::UnableToDecrypt)?;
 
-        let remaining_path_length = params.update_path.len() - path_position;
-        let (mut derived_path, _plain_update_path, commit_secret) =
-            ParentNode::derive_path(backend, ciphersuite, path_secret, remaining_path_length)?;
+        let common_path =
+            self.filtered_common_direct_path(self.own_leaf_index(), params.sender_leaf_index);
+        let (derived_path, _plain_update_path, commit_secret) =
+            ParentNode::derive_path(backend, ciphersuite, path_secret, common_path)?;
         // We now check that the public keys in the update path and in the
         // derived path match up.
         // ValSem204: Public keys from Path must be verified and match the private keys from the direct path
-        for (update_parent_node, derived_parent_node) in params
+        for (update_parent_node, (_, derived_parent_node)) in params
             .update_path
             .iter()
             .skip(path_position)
@@ -137,19 +150,20 @@ impl<'a> TreeSyncDiff<'a> {
             }
         }
 
-        // Finally, we append the derived path to the part of the update path
-        // below the first node that we have a private key for.
         let _update_path_len = params.update_path.len();
 
+        // Finally, we append the derived path to the part of the update path
+        // below the first node that we have a private key for.
         let mut path: Vec<ParentNode> = params
             .update_path
             .into_iter()
             .take(path_position)
             .map(|update_path_node| update_path_node.public_key.into())
             .collect();
-        path.append(&mut derived_path);
+        path.append(&mut derived_path.into_iter().map(|(_, node)| node).collect());
 
-        debug_assert_eq!(path.len(), _update_path_len);
+        // The output should have the same length as the input.
+        debug_assert_eq!(_update_path_len, path.len());
 
         Ok((path, commit_secret))
     }

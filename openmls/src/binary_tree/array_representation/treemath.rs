@@ -328,7 +328,7 @@ fn sibling(index: TreeNodeIndex, size: TreeSize) -> TreeNodeIndex {
 
 /// Direct path from a node to the root.
 /// Does not include the node itself.
-pub(crate) fn direct_path(node_index: LeafNodeIndex, size: TreeSize) -> Vec<ParentNodeIndex> {
+pub(super) fn direct_path(node_index: LeafNodeIndex, size: TreeSize) -> Vec<ParentNodeIndex> {
     let r = root(size).u32();
 
     let mut d = vec![];

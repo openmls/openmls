@@ -4,7 +4,7 @@ use super::utils::{generate_credential_bundle, generate_key_package};
 use crate::{credentials::*, framing::*, group::*, test_utils::*, *};
 use openmls_rust_crypto::OpenMlsRustCrypto;
 
-// Tests the differen variants of the RemoveOperation enum.
+// Tests the different variants of the RemoveOperation enum.
 #[apply(ciphersuites_and_backends)]
 fn test_remove_operation_variants(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
     // We define two test cases, one where the member is removed by another member
