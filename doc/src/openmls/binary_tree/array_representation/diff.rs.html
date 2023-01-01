@@ -489,35 +489,6 @@
 <span id="489">489</span>
 <span id="490">490</span>
 <span id="491">491</span>
-<span id="492">492</span>
-<span id="493">493</span>
-<span id="494">494</span>
-<span id="495">495</span>
-<span id="496">496</span>
-<span id="497">497</span>
-<span id="498">498</span>
-<span id="499">499</span>
-<span id="500">500</span>
-<span id="501">501</span>
-<span id="502">502</span>
-<span id="503">503</span>
-<span id="504">504</span>
-<span id="505">505</span>
-<span id="506">506</span>
-<span id="507">507</span>
-<span id="508">508</span>
-<span id="509">509</span>
-<span id="510">510</span>
-<span id="511">511</span>
-<span id="512">512</span>
-<span id="513">513</span>
-<span id="514">514</span>
-<span id="515">515</span>
-<span id="516">516</span>
-<span id="517">517</span>
-<span id="518">518</span>
-<span id="519">519</span>
-<span id="520">520</span>
 </pre><pre class="rust"><code><span class="doccomment">//! An implementation of a diff functionality for the [`ABinaryTree`] struct.
 //!
 //! # About
@@ -768,56 +739,27 @@
         }
     }
 
-    <span class="doccomment">/// Sets the nodes in the direct path of the given leaf index to the nodes
-    /// given in the `path`.
-    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>set_direct_path(<span class="kw-2">&amp;mut </span><span class="self">self</span>, leaf_index: LeafNodeIndex, path: Vec&lt;P&gt;) {
-        <span class="kw">let </span>direct_path = direct_path(leaf_index, <span class="self">self</span>.size());
-        <span class="macro">debug_assert_eq!</span>(path.len(), direct_path.len());
-        <span class="kw">for </span>(node_index, node) <span class="kw">in </span>direct_path.iter().zip(path.into_iter()) {
-            <span class="self">self</span>.replace_parent(<span class="kw-2">*</span>node_index, node);
-        }
-    }
-
     <span class="doccomment">/// Returns the copath of a leaf node.
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>copath(<span class="kw-2">&amp;</span><span class="self">self</span>, leaf_index: LeafNodeIndex) -&gt; Vec&lt;TreeNodeIndex&gt; {
         copath(leaf_index, <span class="self">self</span>.size())
     }
 
-    <span class="comment">// Functions related to the shared subtree of two given leaves
-    //////////////////////////////////////////////////////////////
-
-    </span><span class="doccomment">/// Given two leaf indices, returns the position of the shared subtree root
-    /// in the direct path of the first leaf index.
-    ///
-    /// Returns an error if both leaf indices are identical or if one of the
-    /// leaf indices does not correspond to a leaf in the diff.
-    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>subtree_root_position(
+    <span class="doccomment">/// Returns the lowest common ancestor of two leaf nodes.
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>lowest_common_ancestor(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         leaf_index_1: LeafNodeIndex,
         leaf_index_2: LeafNodeIndex,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;usize, ABinaryTreeDiffError&gt; {
-        <span class="comment">// If the given leaf indices are identical, the shared subtree root is
-        // the index itself. Since the index of the leaf itself doesn&#39;t appear
-        // in the direct path, we can&#39;t return anything meaningful. This check
-        // also ensures that the tree is large enough such that the direct path
-        // is never empty, since if there is a second leaf index (that is within
-        // the bound of the tree), there is a non-leaf root node that is in the
-        // direct path of all leaves.
-        </span><span class="macro">debug_assert!</span>(leaf_index_1 != leaf_index_2);
+    ) -&gt; ParentNodeIndex {
+        <span class="macro">debug_assert!</span>(leaf_index_1 != leaf_index_2);
         <span class="macro">debug_assert!</span>(leaf_index_1.u32() &lt; <span class="self">self</span>.size.leaf_count());
         <span class="macro">debug_assert!</span>(leaf_index_2.u32() &lt; <span class="self">self</span>.size.leaf_count());
-
-        <span class="kw">let </span>subtree_root_node_index = lowest_common_ancestor(leaf_index_1, leaf_index_2);
-        <span class="kw">let </span>leaf_index_1_direct_path = <span class="self">self</span>.direct_path(leaf_index_1);
-
-        leaf_index_1_direct_path
-            .iter()
-            .position(|<span class="kw-2">&amp;</span>direct_path_node_index| direct_path_node_index == subtree_root_node_index)
-            <span class="comment">// The shared subtree root has to be in the direct path of both nodes.
-            </span>.ok_or_else(|| LibraryError::custom(<span class="string">&quot;index should be in the direct path&quot;</span>).into())
+        lowest_common_ancestor(leaf_index_1, leaf_index_2)
     }
 
-    <span class="doccomment">/// Returns [`TreeNodeIndex`] to the copath node of the `leaf_index_1` that is
+    <span class="comment">// Functions related to the shared subtree of two given leaves
+    //////////////////////////////////////////////////////////////
+
+    </span><span class="doccomment">/// Returns [`TreeNodeIndex`] to the copath node of the `leaf_index_1` that is
     /// in the direct path of `leaf_index_2`.
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>subtree_root_copath_node(
         <span class="kw-2">&amp;</span><span class="self">self</span>,

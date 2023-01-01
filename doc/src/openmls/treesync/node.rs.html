@@ -16,6 +16,12 @@
 <span id="16">16</span>
 <span id="17">17</span>
 <span id="18">18</span>
+<span id="19">19</span>
+<span id="20">20</span>
+<span id="21">21</span>
+<span id="22">22</span>
+<span id="23">23</span>
+<span id="24">24</span>
 </pre><pre class="rust"><code><span class="doccomment">//! This module contains types and methods around the [`Node`] enum. The
 //! variants of the enum are `LeafNode` and [`ParentNode`], both of which are
 //! defined in the respective [`leaf_node`] and [`parent_node`] submodules.
@@ -33,6 +39,12 @@
 </span><span class="kw">pub enum </span>Node {
     LeafNode(OpenMlsLeafNode),
     ParentNode(ParentNode),
+}
+
+<span class="doccomment">/// Container enum with reference to a node in a tree.
+</span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">enum </span>NodeReference&lt;<span class="lifetime">&#39;a</span>&gt; {
+    Leaf(<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>OpenMlsLeafNode),
+    Parent(<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>ParentNode),
 }
 </code></pre></div>
 </section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-current-crate="openmls" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.66.0 (69f9c33d7 2022-12-12)" ></div></body></html>

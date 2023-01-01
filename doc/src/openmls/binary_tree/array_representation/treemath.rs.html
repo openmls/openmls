@@ -777,7 +777,7 @@ pub(super) fn parent(x: TreeNodeIndex) -&gt; ParentNodeIndex {
 
 <span class="doccomment">/// Direct path from a node to the root.
 /// Does not include the node itself.
-</span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>direct_path(node_index: LeafNodeIndex, size: TreeSize) -&gt; Vec&lt;ParentNodeIndex&gt; {
+</span><span class="kw">pub</span>(<span class="kw">super</span>) <span class="kw">fn </span>direct_path(node_index: LeafNodeIndex, size: TreeSize) -&gt; Vec&lt;ParentNodeIndex&gt; {
     <span class="kw">let </span>r = root(size).u32();
 
     <span class="kw">let </span><span class="kw-2">mut </span>d = <span class="macro">vec!</span>[];

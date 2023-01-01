@@ -840,6 +840,109 @@
 <span id="840">840</span>
 <span id="841">841</span>
 <span id="842">842</span>
+<span id="843">843</span>
+<span id="844">844</span>
+<span id="845">845</span>
+<span id="846">846</span>
+<span id="847">847</span>
+<span id="848">848</span>
+<span id="849">849</span>
+<span id="850">850</span>
+<span id="851">851</span>
+<span id="852">852</span>
+<span id="853">853</span>
+<span id="854">854</span>
+<span id="855">855</span>
+<span id="856">856</span>
+<span id="857">857</span>
+<span id="858">858</span>
+<span id="859">859</span>
+<span id="860">860</span>
+<span id="861">861</span>
+<span id="862">862</span>
+<span id="863">863</span>
+<span id="864">864</span>
+<span id="865">865</span>
+<span id="866">866</span>
+<span id="867">867</span>
+<span id="868">868</span>
+<span id="869">869</span>
+<span id="870">870</span>
+<span id="871">871</span>
+<span id="872">872</span>
+<span id="873">873</span>
+<span id="874">874</span>
+<span id="875">875</span>
+<span id="876">876</span>
+<span id="877">877</span>
+<span id="878">878</span>
+<span id="879">879</span>
+<span id="880">880</span>
+<span id="881">881</span>
+<span id="882">882</span>
+<span id="883">883</span>
+<span id="884">884</span>
+<span id="885">885</span>
+<span id="886">886</span>
+<span id="887">887</span>
+<span id="888">888</span>
+<span id="889">889</span>
+<span id="890">890</span>
+<span id="891">891</span>
+<span id="892">892</span>
+<span id="893">893</span>
+<span id="894">894</span>
+<span id="895">895</span>
+<span id="896">896</span>
+<span id="897">897</span>
+<span id="898">898</span>
+<span id="899">899</span>
+<span id="900">900</span>
+<span id="901">901</span>
+<span id="902">902</span>
+<span id="903">903</span>
+<span id="904">904</span>
+<span id="905">905</span>
+<span id="906">906</span>
+<span id="907">907</span>
+<span id="908">908</span>
+<span id="909">909</span>
+<span id="910">910</span>
+<span id="911">911</span>
+<span id="912">912</span>
+<span id="913">913</span>
+<span id="914">914</span>
+<span id="915">915</span>
+<span id="916">916</span>
+<span id="917">917</span>
+<span id="918">918</span>
+<span id="919">919</span>
+<span id="920">920</span>
+<span id="921">921</span>
+<span id="922">922</span>
+<span id="923">923</span>
+<span id="924">924</span>
+<span id="925">925</span>
+<span id="926">926</span>
+<span id="927">927</span>
+<span id="928">928</span>
+<span id="929">929</span>
+<span id="930">930</span>
+<span id="931">931</span>
+<span id="932">932</span>
+<span id="933">933</span>
+<span id="934">934</span>
+<span id="935">935</span>
+<span id="936">936</span>
+<span id="937">937</span>
+<span id="938">938</span>
+<span id="939">939</span>
+<span id="940">940</span>
+<span id="941">941</span>
+<span id="942">942</span>
+<span id="943">943</span>
+<span id="944">944</span>
+<span id="945">945</span>
 </pre><pre class="rust"><code><span class="doccomment">//! This module provides the diff functionality for [`TreeSync`].
 //!
 //! # About
@@ -861,6 +964,7 @@
 //! [`LibraryError`](TreeSyncDiffError::LibraryError).
 </span><span class="kw">use </span>openmls_traits::{types::Ciphersuite, OpenMlsCryptoProvider};
 <span class="kw">use </span>serde::{Deserialize, Serialize};
+<span class="kw">use </span>tls_codec::VLBytes;
 
 <span class="kw">use </span>std::collections::HashSet;
 
@@ -869,7 +973,7 @@
     node::{
         leaf_node::{LeafNode, OpenMlsLeafNode},
         parent_node::{ParentNode, PathDerivationResult, PlainUpdatePathNode},
-        Node,
+        Node, NodeReference,
     },
     treesync_node::{TreeSyncLeafNode, TreeSyncNode, TreeSyncParentNode},
     TreeSync, TreeSyncParentHashError, TreeSyncSetPathError,
@@ -877,7 +981,7 @@
 
 <span class="kw">use crate</span>::{
     binary_tree::{
-        array_representation::{direct_path, LeafNodeIndex, ParentNodeIndex, TreeNodeIndex},
+        array_representation::{LeafNodeIndex, ParentNodeIndex, TreeNodeIndex},
         MlsBinaryTreeDiff, StagedMlsBinaryTreeDiff,
     },
     ciphersuite::{HpkePrivateKey, HpkePublicKey, Secret},
@@ -932,6 +1036,30 @@
 }
 
 <span class="kw">impl</span>&lt;<span class="lifetime">&#39;a</span>&gt; TreeSyncDiff&lt;<span class="lifetime">&#39;a</span>&gt; {
+    <span class="doccomment">/// Filtered direct path, skips the nodes whose copath resolution is empty.
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>filtered_direct_path(<span class="kw-2">&amp;</span><span class="self">self</span>, leaf_index: LeafNodeIndex) -&gt; Vec&lt;ParentNodeIndex&gt; {
+        <span class="comment">// Full direct path
+        </span><span class="kw">let </span>direct_path = <span class="self">self</span>.diff.direct_path(leaf_index);
+        <span class="comment">// Copath resolutions
+        </span><span class="kw">let </span>copath_resolutions = <span class="self">self</span>.copath_resolutions(leaf_index);
+
+        <span class="comment">// The two vectors should have the same length
+        </span><span class="macro">debug_assert_eq!</span>(direct_path.len(), copath_resolutions.len());
+
+        direct_path
+            .into_iter()
+            .zip(copath_resolutions.into_iter())
+            .filter_map(|(index, resolution)| {
+                <span class="comment">// Filter out the nodes whose copath resolution is empty
+                </span><span class="kw">if </span>!resolution.is_empty() {
+                    <span class="prelude-val">Some</span>(index)
+                } <span class="kw">else </span>{
+                    <span class="prelude-val">None
+                </span>}
+            })
+            .collect()
+    }
+
     <span class="doccomment">/// Check if the right-most leaf and its parent are blank. If that is the
     /// case, remove the right-most leaf and its parent until either the
     /// right-most leaf or its parent are not blank anymore.
@@ -1084,9 +1212,9 @@
                 .map_err(LibraryError::unexpected_crypto_error)<span class="question-mark">?</span>,
         );
 
-        <span class="kw">let </span>path_length = <span class="self">self</span>.diff.direct_path(<span class="self">self</span>.own_leaf_index).len();
+        <span class="kw">let </span>path_indices = <span class="self">self</span>.filtered_direct_path(<span class="self">self</span>.own_leaf_index);
 
-        ParentNode::derive_path(backend, ciphersuite, path_secret, path_length)
+        ParentNode::derive_path(backend, ciphersuite, path_secret, path_indices)
     }
 
     <span class="doccomment">/// Given a new [`OpenMlsLeafNode`], use it to create a new path and
@@ -1133,6 +1261,12 @@
         leaf_node: LeafNode,
         path: Vec&lt;ParentNode&gt;,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(), ApplyUpdatePathError&gt; {
+        <span class="kw">let </span>filtered_direct_path = <span class="self">self</span>.filtered_direct_path(sender_leaf_index);
+        <span class="macro">debug_assert_eq!</span>(filtered_direct_path.len(), path.len());
+        <span class="kw">let </span>path = filtered_direct_path
+            .into_iter()
+            .zip(path.into_iter())
+            .collect();
         <span class="kw">let </span>parent_hash =
             <span class="self">self</span>.process_update_path(backend, ciphersuite, sender_leaf_index, path)<span class="question-mark">?</span>;
 
@@ -1163,19 +1297,24 @@
         backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider,
         ciphersuite: Ciphersuite,
         leaf_index: LeafNodeIndex,
-        <span class="kw-2">mut </span>path: Vec&lt;ParentNode&gt;,
+        <span class="kw-2">mut </span>path: Vec&lt;(ParentNodeIndex, ParentNode)&gt;,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;Vec&lt;u8&gt;, LibraryError&gt; {
         <span class="comment">// Compute the parent hash.
         </span><span class="kw">let </span>parent_hash = <span class="self">self</span>.set_parent_hashes(backend, ciphersuite, <span class="kw-2">&amp;mut </span>path, leaf_index)<span class="question-mark">?</span>;
-        <span class="kw">let </span>direct_path: Vec&lt;TreeSyncParentNode&gt; = path
-            .into_iter()
-            .map(|parent_node| parent_node.into())
-            .collect();
 
-        <span class="comment">// Set the direct path. Note, that the nodes here don&#39;t have a tree hash
+        <span class="comment">// While probably not necessary, the spec mandates we blank the direct path nodes
+        </span><span class="kw">let </span>direct_path_nodes = <span class="self">self</span>.diff.direct_path(leaf_index);
+        <span class="kw">for </span>node <span class="kw">in </span>direct_path_nodes {
+            <span class="kw-2">*</span><span class="self">self</span>.diff.parent_mut(node) = TreeSyncParentNode::blank();
+        }
+
+        <span class="comment">// Set the node of the filtered direct path.
+        // Note, that the nodes here don&#39;t have a tree hash set.
         // TODO #804
-        // set.
-        </span><span class="self">self</span>.diff.set_direct_path(leaf_index, direct_path);
+        </span><span class="kw">for </span>(index, node) <span class="kw">in </span>path.into_iter() {
+            <span class="kw-2">*</span><span class="self">self</span>.diff.parent_mut(index) = node.into();
+        }
+
         <span class="prelude-val">Ok</span>(parent_hash)
     }
 
@@ -1258,7 +1397,7 @@
         <span class="kw-2">&amp;mut </span><span class="self">self</span>,
         backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider,
         ciphersuite: Ciphersuite,
-        path: <span class="kw-2">&amp;mut </span>[ParentNode],
+        path: <span class="kw-2">&amp;mut </span>[(ParentNodeIndex, ParentNode)],
         leaf_index: LeafNodeIndex,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;Vec&lt;u8&gt;, LibraryError&gt; {
         <span class="comment">// If the path is empty, return a zero-length string. This is the case
@@ -1268,15 +1407,27 @@
         }
 
         <span class="comment">// Get the resolutions of the copath nodes (i.e. the original child
-        // resolutions).
-        </span><span class="kw">let </span><span class="kw-2">mut </span>copath_resolutions = <span class="self">self</span>.copath_resolutions(leaf_index, <span class="kw-2">&amp;</span>HashSet::new());
+        // resolutions) and the corresponding public keys.
+        </span><span class="kw">let </span><span class="kw-2">mut </span>copath_resolutions = <span class="self">self
+            </span>.filtered_copath_resolutions(leaf_index, <span class="kw-2">&amp;</span>HashSet::new())
+            .into_iter()
+            .map(|resolution| {
+                resolution
+                    .into_iter()
+                    .map(|(<span class="kw">_</span>, node_ref)| <span class="kw">match </span>node_ref {
+                        NodeReference::Leaf(leaf) =&gt; leaf.public_key().clone(),
+                        NodeReference::Parent(parent) =&gt; parent.public_key().clone(),
+                    })
+                    .collect::&lt;Vec&lt;HpkePublicKey&gt;&gt;()
+            })
+            .collect::&lt;Vec&lt;Vec&lt;HpkePublicKey&gt;&gt;&gt;();
         <span class="comment">// There should be as many copath resolutions as nodes in the direct
         // path.
         </span><span class="macro">debug_assert_eq!</span>(path.len(), copath_resolutions.len());
         <span class="comment">// We go through the nodes in the direct path in reverse order and get
         // the corresponding copath resolution for each node.
         </span><span class="kw">let </span><span class="kw-2">mut </span>previous_parent_hash = <span class="macro">vec!</span>[];
-        <span class="kw">for </span>(path_node, resolution) <span class="kw">in </span>path
+        <span class="kw">for </span>((<span class="kw">_</span>, path_node), resolution) <span class="kw">in </span>path
             .iter_mut()
             .rev()
             .zip(copath_resolutions.iter_mut().rev())
@@ -1297,24 +1448,21 @@
     }
 
     <span class="doccomment">/// Helper function computing the resolution of a node with the given index.
-    /// If an exclusion list is given, do not add the public keys of the leaves
-    /// given in the list.
-    ///
-    /// Returns The list of HPKE public keys.
+    /// If an exclusion list is given, do not add the leaves given in the list.
     </span><span class="kw">fn </span>resolution(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         node_index: TreeNodeIndex,
         excluded_indices: <span class="kw-2">&amp;</span>HashSet&lt;<span class="kw-2">&amp;</span>LeafNodeIndex&gt;,
-    ) -&gt; Vec&lt;HpkePublicKey&gt; {
+    ) -&gt; Vec&lt;(TreeNodeIndex, NodeReference)&gt; {
         <span class="kw">match </span>node_index {
             TreeNodeIndex::Leaf(leaf_index) =&gt; {
                 <span class="comment">// If the node is a leaf, check if it is in the exclusion list.
                 </span><span class="kw">if </span>excluded_indices.contains(<span class="kw-2">&amp;</span>leaf_index) {
                     <span class="macro">vec!</span>[]
                 } <span class="kw">else </span>{
-                    <span class="comment">// If it&#39;s not, return its public key as its resolution.
+                    <span class="comment">// If it&#39;s not, return it as its resolution.
                     </span><span class="kw">if let </span><span class="prelude-val">Some</span>(leaf) = <span class="self">self</span>.diff.leaf(leaf_index).node() {
-                        <span class="macro">vec!</span>[leaf.public_key().clone()]
+                        <span class="macro">vec!</span>[(TreeNodeIndex::Leaf(leaf_index), NodeReference::Leaf(leaf))]
                     } <span class="kw">else </span>{
                         <span class="comment">// If it&#39;s a blank, return an empty vector.
                         </span><span class="macro">vec!</span>[]
@@ -1325,15 +1473,21 @@
                 <span class="kw">match </span><span class="self">self</span>.diff.parent(parent_index).node() {
                     <span class="prelude-val">Some</span>(parent) =&gt; {
                         <span class="comment">// If it&#39;s a non-blank parent node, get the unmerged
-                        // leaves, exclude them as necessary and add their
-                        // public keys to the resulting resolution.
-                        </span><span class="kw">let </span><span class="kw-2">mut </span>resolution = <span class="macro">vec!</span>[parent.public_key().clone()];
+                        // leaves, exclude them as necessary and add the node to
+                        // the resulting resolution.
+                        </span><span class="kw">let </span><span class="kw-2">mut </span>resolution = <span class="macro">vec!</span>[(
+                            TreeNodeIndex::Parent(parent_index),
+                            NodeReference::Parent(parent),
+                        )];
                         <span class="kw">for </span>leaf_index <span class="kw">in </span>parent.unmerged_leaves() {
                             <span class="kw">if </span>!excluded_indices.contains(<span class="kw-2">&amp;</span>leaf_index) {
                                 <span class="kw">let </span>leaf = <span class="self">self</span>.diff.leaf(<span class="kw-2">*</span>leaf_index);
                                 <span class="comment">// TODO #800: unmerged leaves should be checked
                                 </span><span class="kw">if let </span><span class="prelude-val">Some</span>(leaf_node) = leaf.node() {
-                                    resolution.push(leaf_node.public_key().clone())
+                                    resolution.push((
+                                        TreeNodeIndex::Leaf(<span class="kw-2">*</span>leaf_index),
+                                        NodeReference::Leaf(leaf_node),
+                                    ))
                                 } <span class="kw">else </span>{
                                     <span class="macro">debug_assert!</span>(<span class="bool-val">false</span>, <span class="string">&quot;Unmerged leaves should not be blank.&quot;</span>);
                                 }
@@ -1367,32 +1521,53 @@
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>copath_resolutions(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         leaf_index: LeafNodeIndex,
-        excluded_indices: <span class="kw-2">&amp;</span>HashSet&lt;<span class="kw-2">&amp;</span>LeafNodeIndex&gt;,
-    ) -&gt; Vec&lt;Vec&lt;HpkePublicKey&gt;&gt; {
+    ) -&gt; Vec&lt;Vec&lt;(TreeNodeIndex, NodeReference)&gt;&gt; {
         <span class="comment">// If we&#39;re the only node in the tree, there&#39;s no copath.
         </span><span class="kw">if </span><span class="self">self</span>.diff.leaf_count() == <span class="number">1 </span>{
             <span class="kw">return </span><span class="macro">vec!</span>[];
         }
 
-        <span class="comment">// We want the full path here, including the leaf itself, but not the
-        // root.
-        </span><span class="kw">let </span><span class="kw-2">mut </span>full_path = <span class="macro">vec!</span>[TreeNodeIndex::Leaf(leaf_index)];
-        <span class="kw">let </span><span class="kw-2">mut </span>direct_path = direct_path(leaf_index, <span class="self">self</span>.diff.size());
-        <span class="kw">if </span>!direct_path.is_empty() {
-            <span class="comment">// Remove root
-            </span>direct_path.pop();
+        <span class="comment">// Get the copath of the given leaf index and compute the resolution of
+        // each node.
+        </span><span class="self">self</span>.diff
+            .copath(leaf_index)
+            .into_iter()
+            .map(|node_index| <span class="self">self</span>.resolution(node_index, <span class="kw-2">&amp;</span>HashSet::new()))
+            .collect()
+    }
+
+    <span class="doccomment">/// Compute the copath resolutions, but leave out empty resolutions.
+    /// Additionally, resolutions are filtered by the given exclusion list.
+    </span><span class="kw">pub</span>(<span class="kw">super</span>) <span class="kw">fn </span>filtered_copath_resolutions(
+        <span class="kw-2">&amp;</span><span class="self">self</span>,
+        leaf_index: LeafNodeIndex,
+        exclusion_list: <span class="kw-2">&amp;</span>HashSet&lt;<span class="kw-2">&amp;</span>LeafNodeIndex&gt;,
+    ) -&gt; Vec&lt;Vec&lt;(TreeNodeIndex, NodeReference)&gt;&gt; {
+        <span class="comment">// If we&#39;re the only node in the tree, there&#39;s no copath.
+        </span><span class="kw">if </span><span class="self">self</span>.diff.leaf_count() == <span class="number">1 </span>{
+            <span class="kw">return </span><span class="macro">vec!</span>[];
         }
-        full_path.append(
-            <span class="kw-2">&amp;mut </span>direct_path
-                .iter()
-                .map(|i| TreeNodeIndex::Parent(<span class="kw-2">*</span>i))
-                .collect(),
-        );
 
         <span class="kw">let </span><span class="kw-2">mut </span>copath_resolutions = Vec::new();
         <span class="kw">for </span>node_index <span class="kw">in </span><span class="self">self</span>.diff.copath(leaf_index) {
-            <span class="kw">let </span>resolution = <span class="self">self</span>.resolution(node_index, excluded_indices);
-            copath_resolutions.push(resolution);
+            <span class="kw">let </span>resolution = <span class="self">self</span>.resolution(node_index, <span class="kw-2">&amp;</span>HashSet::new());
+            <span class="kw">if </span>!resolution.is_empty() {
+                <span class="kw">let </span>filtered_resolution = resolution
+                    .into_iter()
+                    .filter_map(|(index, node)| {
+                        <span class="kw">if let </span>TreeNodeIndex::Leaf(leaf_index) = index {
+                            <span class="kw">if </span>exclusion_list.contains(<span class="kw-2">&amp;</span>leaf_index) {
+                                <span class="prelude-val">None
+                            </span>} <span class="kw">else </span>{
+                                <span class="prelude-val">Some</span>((TreeNodeIndex::Leaf(leaf_index), node))
+                            }
+                        } <span class="kw">else </span>{
+                            <span class="prelude-val">Some</span>((index, node))
+                        }
+                    })
+                    .collect();
+                copath_resolutions.push(filtered_resolution);
+            }
         }
         copath_resolutions
     }
@@ -1591,16 +1766,20 @@
     <span class="doccomment">/// Returns the position of the subtree root shared by both given indices in
     /// the direct path of `leaf_index_1`.
     ///
-    /// Returns an error if the given leaf indices are identical or if either of
-    /// the given leaf indices is outside of the tree.
-    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>subtree_root_position(
+    /// Returns a [LibraryError] if there&#39;s an error in the tree math computation.
+    </span><span class="kw">pub</span>(<span class="kw">super</span>) <span class="kw">fn </span>subtree_root_position(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         leaf_index_1: LeafNodeIndex,
         leaf_index_2: LeafNodeIndex,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;usize, TreeSyncDiffError&gt; {
-        <span class="prelude-val">Ok</span>(<span class="self">self
-            </span>.diff
-            .subtree_root_position(leaf_index_1, leaf_index_2)<span class="question-mark">?</span>)
+        <span class="kw">let </span>subtree_root_node_index = <span class="self">self</span>.diff.lowest_common_ancestor(leaf_index_1, leaf_index_2);
+        <span class="kw">let </span>leaf_index_1_direct_path = <span class="self">self</span>.filtered_direct_path(leaf_index_1);
+
+        leaf_index_1_direct_path
+            .iter()
+            .position(|<span class="kw-2">&amp;</span>direct_path_node_index| direct_path_node_index == subtree_root_node_index)
+            <span class="comment">// The shared subtree root has to be in the direct path of both nodes.
+            </span>.ok_or_else(|| LibraryError::custom(<span class="string">&quot;index should be in the direct path&quot;</span>).into())
     }
 
     <span class="doccomment">/// Compute the position of the highest node in the tree in the filtered
@@ -1621,8 +1800,14 @@
             </span>.diff
             .subtree_root_copath_node(sender_leaf_index, <span class="self">self</span>.own_leaf_index);
 
-        <span class="kw">let </span>sender_copath_resolution =
-            <span class="self">self</span>.resolution(subtree_root_copath_node_id, excluded_indices);
+        <span class="kw">let </span>sender_copath_resolution: Vec&lt;VLBytes&gt; = <span class="self">self
+            </span>.resolution(subtree_root_copath_node_id, excluded_indices)
+            .into_iter()
+            .map(|(<span class="kw">_</span>, node_ref)| <span class="kw">match </span>node_ref {
+                NodeReference::Leaf(leaf) =&gt; leaf.public_key().clone(),
+                NodeReference::Parent(parent) =&gt; parent.public_key().clone(),
+            })
+            .collect();
 
         <span class="comment">// Get all of the public keys that we have secret keys for, i.e. our own
         // leaf pk, as well as potentially a number of public keys from our
@@ -1677,9 +1862,30 @@
             .collect()
     }
 
-    <span class="doccomment">/// Get the length of the direct path of the given [`LeafNodeIndex`].
-    </span><span class="kw">pub</span>(<span class="kw">super</span>) <span class="kw">fn </span>direct_path_len(<span class="kw-2">&amp;</span><span class="self">self</span>, leaf_index: LeafNodeIndex) -&gt; usize {
-        <span class="self">self</span>.diff.direct_path(leaf_index).len()
+    <span class="doccomment">/// Returns the filtered common path two leaf nodes share. If the leaves are
+    /// identical, the common path is the leaf&#39;s direct path.
+    </span><span class="kw">pub</span>(<span class="kw">super</span>) <span class="kw">fn </span>filtered_common_direct_path(
+        <span class="kw-2">&amp;</span><span class="self">self</span>,
+        leaf_index_1: LeafNodeIndex,
+        leaf_index_2: LeafNodeIndex,
+    ) -&gt; Vec&lt;ParentNodeIndex&gt; {
+        <span class="kw">let </span><span class="kw-2">mut </span>x_path = <span class="self">self</span>.filtered_direct_path(leaf_index_1);
+        <span class="kw">let </span><span class="kw-2">mut </span>y_path = <span class="self">self</span>.filtered_direct_path(leaf_index_2);
+        x_path.reverse();
+        y_path.reverse();
+
+        <span class="kw">let </span><span class="kw-2">mut </span>common_path = <span class="macro">vec!</span>[];
+
+        <span class="kw">for </span>(x, y) <span class="kw">in </span>x_path.iter().zip(y_path.iter()) {
+            <span class="kw">if </span>x == y {
+                common_path.push(<span class="kw-2">*</span>x);
+            } <span class="kw">else </span>{
+                <span class="kw">break</span>;
+            }
+        }
+
+        common_path.reverse();
+        common_path
     }
 }
 </code></pre></div>

@@ -260,6 +260,10 @@
 <span id="260">260</span>
 <span id="261">261</span>
 <span id="262">262</span>
+<span id="263">263</span>
+<span id="264">264</span>
+<span id="265">265</span>
+<span id="266">266</span>
 </pre><pre class="rust"><code><span class="doccomment">//! This module contains the [`ParentNode`] struct, its implementation, as well
 //! as the [`PlainUpdatePathNode`], a helper struct for the creation of
 //! [`UpdatePathNode`] instances.
@@ -273,7 +277,7 @@
 <span class="kw">use </span>tls_codec::{TlsSerialize, TlsSize, VLBytes};
 
 <span class="kw">use crate</span>::{
-    binary_tree::array_representation::LeafNodeIndex,
+    binary_tree::array_representation::{LeafNodeIndex, ParentNodeIndex},
     ciphersuite::{HpkePrivateKey, HpkePublicKey},
     error::LibraryError,
     messages::PathSecret,
@@ -350,8 +354,11 @@
 <span class="doccomment">/// The result of a path derivation result containing the vector of
 /// [`ParentNode`], as well as [`PlainUpdatePathNode`] instance and a
 /// [`CommitSecret`].
-</span><span class="kw">pub</span>(<span class="kw">in </span><span class="kw">crate</span>::treesync) <span class="kw">type </span>PathDerivationResult =
-    (Vec&lt;ParentNode&gt;, Vec&lt;PlainUpdatePathNode&gt;, CommitSecret);
+</span><span class="kw">pub</span>(<span class="kw">in </span><span class="kw">crate</span>::treesync) <span class="kw">type </span>PathDerivationResult = (
+    Vec&lt;(ParentNodeIndex, ParentNode)&gt;,
+    Vec&lt;PlainUpdatePathNode&gt;,
+    CommitSecret,
+);
 
 <span class="kw">impl </span>ParentNode {
     <span class="doccomment">/// Create a new [`ParentNode`].
@@ -377,12 +384,12 @@
         backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider,
         ciphersuite: Ciphersuite,
         path_secret: PathSecret,
-        path_length: usize,
+        path_indices: Vec&lt;ParentNodeIndex&gt;,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;PathDerivationResult, LibraryError&gt; {
         <span class="kw">let </span><span class="kw-2">mut </span>next_path_secret = path_secret;
-        <span class="kw">let </span><span class="kw-2">mut </span>path_secrets = Vec::with_capacity(path_length);
+        <span class="kw">let </span><span class="kw-2">mut </span>path_secrets = Vec::with_capacity(path_indices.len());
 
-        <span class="kw">for _ in </span><span class="number">0</span>..path_length {
+        <span class="kw">for _ in </span><span class="number">0</span>..path_indices.len() {
             <span class="kw">let </span>path_secret = next_path_secret;
             <span class="comment">// Derive the next path secret.
             </span>next_path_secret = path_secret.derive_path_secret(backend, ciphersuite)<span class="question-mark">?</span>;
@@ -392,7 +399,8 @@
         <span class="comment">// Iterate over the path secrets and derive a key pair
         </span><span class="kw">let </span>(path, update_path_nodes) = path_secrets
             .into_par_iter()
-            .map(|path_secret| {
+            .zip(path_indices)
+            .map(|(path_secret, index)| {
                 <span class="comment">// Derive a key pair from the path secret. This includes the
                 // intermediate derivation of a node secret.
                 </span><span class="kw">let </span>(public_key, private_key) =
@@ -404,9 +412,9 @@
                     public_key,
                     path_secret,
                 };
-                <span class="prelude-val">Ok</span>((parent_node, update_path_node))
+                <span class="prelude-val">Ok</span>(((index, parent_node), update_path_node))
             })
-            .collect::&lt;<span class="prelude-ty">Result</span>&lt;Vec&lt;(ParentNode, PlainUpdatePathNode)&gt;, LibraryError&gt;&gt;()<span class="question-mark">?
+            .collect::&lt;<span class="prelude-ty">Result</span>&lt;Vec&lt;((ParentNodeIndex, ParentNode), PlainUpdatePathNode)&gt;, LibraryError&gt;&gt;()<span class="question-mark">?
             </span>.into_iter()
             .unzip();
 

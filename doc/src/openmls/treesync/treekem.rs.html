@@ -374,6 +374,20 @@
 <span id="374">374</span>
 <span id="375">375</span>
 <span id="376">376</span>
+<span id="377">377</span>
+<span id="378">378</span>
+<span id="379">379</span>
+<span id="380">380</span>
+<span id="381">381</span>
+<span id="382">382</span>
+<span id="383">383</span>
+<span id="384">384</span>
+<span id="385">385</span>
+<span id="386">386</span>
+<span id="387">387</span>
+<span id="388">388</span>
+<span id="389">389</span>
+<span id="390">390</span>
 </pre><pre class="rust"><code><span class="doccomment">//! Module to encrypt and decrypt update paths for a [`TreeSyncDiff`] instance.
 //!
 //! # About
@@ -397,6 +411,7 @@
     error::LibraryError,
     messages::{proposals::AddProposal, EncryptedGroupSecrets, GroupSecrets, PathSecret},
     schedule::{psk::PreSharedKeyId, CommitSecret, JoinerSecret},
+    treesync::node::NodeReference,
     versions::ProtocolVersion,
 };
 
@@ -414,8 +429,6 @@
     /// included in the resulting [`UpdatePath`].
     ///
     /// Returns the encrypted path (i.e. an [`UpdatePath`] instance).
-    ///
-    /// Returns an error if the path does not have the same length as the copath resolution.
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>encrypt_path(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider,
@@ -424,7 +437,20 @@
         group_context: <span class="kw-2">&amp;</span>[u8],
         exclusion_list: <span class="kw-2">&amp;</span>HashSet&lt;<span class="kw-2">&amp;</span>LeafNodeIndex&gt;,
     ) -&gt; Vec&lt;UpdatePathNode&gt; {
-        <span class="kw">let </span>copath_resolutions = <span class="self">self</span>.copath_resolutions(<span class="self">self</span>.own_leaf_index(), exclusion_list);
+        <span class="comment">// Copath resolutions with the corresponding public keys.
+        </span><span class="kw">let </span>copath_resolutions = <span class="self">self
+            </span>.filtered_copath_resolutions(<span class="self">self</span>.own_leaf_index(), exclusion_list)
+            .into_iter()
+            .map(|resolution| {
+                resolution
+                    .into_iter()
+                    .map(|(<span class="kw">_</span>, node_ref)| <span class="kw">match </span>node_ref {
+                        NodeReference::Leaf(leaf) =&gt; leaf.public_key().clone(),
+                        NodeReference::Parent(parent) =&gt; parent.public_key().clone(),
+                    })
+                    .collect::&lt;Vec&lt;HpkePublicKey&gt;&gt;()
+            })
+            .collect::&lt;Vec&lt;Vec&lt;HpkePublicKey&gt;&gt;&gt;();
 
         <span class="comment">// There should be as many copath resolutions.
         </span><span class="macro">debug_assert_eq!</span>(copath_resolutions.len(), path.len());
@@ -459,7 +485,7 @@
         params: DecryptPathParams,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(Vec&lt;ParentNode&gt;, CommitSecret), ApplyUpdatePathError&gt; {
         <span class="comment">// ValSem202: Path must be the right length
-        </span><span class="kw">let </span>direct_path_length = <span class="self">self</span>.direct_path_len(params.sender_leaf_index);
+        </span><span class="kw">let </span>direct_path_length = <span class="self">self</span>.filtered_direct_path(params.sender_leaf_index).len();
         <span class="kw">if </span>direct_path_length != params.update_path.len() {
             <span class="kw">return </span><span class="prelude-val">Err</span>(ApplyUpdatePathError::PathLengthMismatch);
         }
@@ -473,7 +499,7 @@
             .get(path_position)
             <span class="comment">// We know the update path has the right length through validation, therefore there must be an element at this position
             // TODO #804
-            </span>.ok_or_else(|| LibraryError::custom(<span class="string">&quot;Expected to find ciphertext in update path&quot;</span>))<span class="question-mark">?</span>;
+            </span>.ok_or_else(|| LibraryError::custom(<span class="string">&quot;Expected to find ciphertext in update path 1&quot;</span>))<span class="question-mark">?</span>;
 
         <span class="kw">let </span>(decryption_key, resolution_position) = <span class="self">self
             </span>.decryption_key(params.sender_leaf_index, params.exclusion_list)
@@ -483,7 +509,7 @@
             .encrypted_path_secrets(resolution_position)
             <span class="comment">// We know the update path has the right length through validation, therefore there must be a ciphertext at this position
             // TODO #804
-            </span>.ok_or_else(|| LibraryError::custom(<span class="string">&quot;Expected to find ciphertext in update path&quot;</span>))<span class="question-mark">?</span>;
+            </span>.ok_or_else(|| LibraryError::custom(<span class="string">&quot;Expected to find ciphertext in update path 2&quot;</span>))<span class="question-mark">?</span>;
 
         <span class="comment">// ValSem203: Path secrets must decrypt correctly
         </span><span class="kw">let </span>path_secret = PathSecret::decrypt(
@@ -496,13 +522,14 @@
         )
         .map_err(|<span class="kw">_</span>| ApplyUpdatePathError::UnableToDecrypt)<span class="question-mark">?</span>;
 
-        <span class="kw">let </span>remaining_path_length = params.update_path.len() - path_position;
-        <span class="kw">let </span>(<span class="kw-2">mut </span>derived_path, _plain_update_path, commit_secret) =
-            ParentNode::derive_path(backend, ciphersuite, path_secret, remaining_path_length)<span class="question-mark">?</span>;
+        <span class="kw">let </span>common_path =
+            <span class="self">self</span>.filtered_common_direct_path(<span class="self">self</span>.own_leaf_index(), params.sender_leaf_index);
+        <span class="kw">let </span>(derived_path, _plain_update_path, commit_secret) =
+            ParentNode::derive_path(backend, ciphersuite, path_secret, common_path)<span class="question-mark">?</span>;
         <span class="comment">// We now check that the public keys in the update path and in the
         // derived path match up.
         // ValSem204: Public keys from Path must be verified and match the private keys from the direct path
-        </span><span class="kw">for </span>(update_parent_node, derived_parent_node) <span class="kw">in </span>params
+        </span><span class="kw">for </span>(update_parent_node, (<span class="kw">_</span>, derived_parent_node)) <span class="kw">in </span>params
             .update_path
             .iter()
             .skip(path_position)
@@ -513,19 +540,20 @@
             }
         }
 
+        <span class="kw">let </span>_update_path_len = params.update_path.len();
+
         <span class="comment">// Finally, we append the derived path to the part of the update path
         // below the first node that we have a private key for.
-        </span><span class="kw">let </span>_update_path_len = params.update_path.len();
-
-        <span class="kw">let </span><span class="kw-2">mut </span>path: Vec&lt;ParentNode&gt; = params
+        </span><span class="kw">let </span><span class="kw-2">mut </span>path: Vec&lt;ParentNode&gt; = params
             .update_path
             .into_iter()
             .take(path_position)
             .map(|update_path_node| update_path_node.public_key.into())
             .collect();
-        path.append(<span class="kw-2">&amp;mut </span>derived_path);
+        path.append(<span class="kw-2">&amp;mut </span>derived_path.into_iter().map(|(<span class="kw">_</span>, node)| node).collect());
 
-        <span class="macro">debug_assert_eq!</span>(path.len(), _update_path_len);
+        <span class="comment">// The output should have the same length as the input.
+        </span><span class="macro">debug_assert_eq!</span>(_update_path_len, path.len());
 
         <span class="prelude-val">Ok</span>((path, commit_secret))
     }
