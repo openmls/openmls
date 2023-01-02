@@ -107,4 +107,7 @@ pub enum InvalidExtensionError {
     /// The provided extension list contains duplicate extensions.
     #[error("The provided extension list contains duplicate extensions.")]
     Duplicate,
+    /// The specified extension could not be found.
+    #[error("The specified extension could not be found.")]
+    NotFound,
 }
