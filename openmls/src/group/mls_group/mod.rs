@@ -357,7 +357,7 @@ impl MlsGroup {
                     )
                     // We can be sure the encryption will work because the plaintext was created by us
                     .map_err(|_| LibraryError::custom("Malformed plaintext"))?;
-                MlsMessageOut::from(ciphertext)
+                MlsMessageOut::from_private_message(ciphertext, self.group.version())
             }
         };
         Ok(msg)

@@ -223,20 +223,18 @@ impl From<PublicMessage> for MlsMessageOut {
     }
 }
 
-impl From<PrivateMessage> for MlsMessageOut {
-    fn from(ciphertext: PrivateMessage) -> Self {
-        let body = MlsMessageBody::PrivateMessage(ciphertext);
+impl MlsMessageOut {
+    pub(crate) fn from_private_message(
+        private_message: PrivateMessage,
+        version: ProtocolVersion,
+    ) -> Self {
+        let body = MlsMessageBody::PrivateMessage(private_message);
 
         Self {
-            mls_message: MlsMessage {
-                body,
-                version: ProtocolVersion::Mls10,
-            },
+            mls_message: MlsMessage { body, version },
         }
     }
-}
 
-impl MlsMessageOut {
     /// Returns the wire format.
     pub fn wire_format(&self) -> WireFormat {
         self.mls_message.wire_format()
