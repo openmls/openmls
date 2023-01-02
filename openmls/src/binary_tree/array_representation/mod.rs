@@ -18,7 +18,7 @@ pub(crate) mod diff;
 pub(crate) mod sorted_iter;
 pub(crate) mod tree;
 
-pub(crate) use treemath::{direct_path, is_node_in_tree, ParentNodeIndex, TreeNodeIndex};
+pub(crate) use treemath::{is_node_in_tree, ParentNodeIndex, TreeNodeIndex};
 
 mod treemath;
 
