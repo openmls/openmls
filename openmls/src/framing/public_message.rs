@@ -29,7 +29,7 @@ use tls_codec::{
 )]
 pub(crate) struct MembershipTag(pub(crate) Mac);
 
-/// `PublicMessage` is a framing structure for MLS messages. It can contain
+/// [`PublicMessage`] is a framing structure for MLS messages. It can contain
 /// Proposals, Commits and application messages.
 ///
 /// 9. Message framing
@@ -43,6 +43,12 @@ pub(crate) struct MembershipTag(pub(crate) Mac);
 ///     optional<MAC> membership_tag;
 /// } PublicMessage;
 /// ```
+///
+/// [`PublicMessage`] differs slightly from the struct shown above in that it
+/// contains an [`FramedContentTbs`] struct rather than [`FramedContent`]. The
+/// extra metadata that [`FramedContentTbs`] holds helps in processing this
+/// message later. The extra data is accounted for (i.e. ignored) in the
+/// serialized/deserialization functions.
 #[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
 pub(crate) struct PublicMessage {
     content: FramedContentTbs,
