@@ -4,6 +4,7 @@
 //! as well as Proposals & the group info used for External Commits.
 
 use crate::{
+    binary_tree::array_representation::LeafNodeIndex,
     ciphersuite::hash_ref::KeyPackageRef,
     ciphersuite::{signable::*, *},
     error::LibraryError,
@@ -167,7 +168,7 @@ impl Commit {
     }
 }
 
-/// Confirmation tag field of MlsPlaintext. For type safety this is a wrapper
+/// Confirmation tag field of PublicMessage. For type safety this is a wrapper
 /// around a `Mac`.
 #[derive(
     Debug, PartialEq, Clone, Serialize, Deserialize, TlsDeserialize, TlsSerialize, TlsSize,
@@ -191,7 +192,7 @@ pub(crate) struct GroupInfoTBS {
     group_context: GroupContext,
     extensions: Vec<Extension>,
     confirmation_tag: ConfirmationTag,
-    signer: u32,
+    signer: LeafNodeIndex,
 }
 
 impl GroupInfoTBS {
@@ -200,7 +201,7 @@ impl GroupInfoTBS {
         group_context: GroupContext,
         extensions: &[Extension],
         confirmation_tag: ConfirmationTag,
-        signer: u32,
+        signer: LeafNodeIndex,
     ) -> Self {
         Self {
             group_context,
@@ -269,7 +270,7 @@ impl GroupInfo {
     }
 
     /// Returns the signer.
-    pub(crate) fn signer(&self) -> u32 {
+    pub(crate) fn signer(&self) -> LeafNodeIndex {
         self.payload.signer
     }
 
@@ -340,7 +341,7 @@ impl VerifiableGroupInfo {
     /// Get (unverified) signer of the verifiable group info.
     ///
     /// Note: This method should only be used when necessary to verify the group info signature.
-    pub(crate) fn signer(&self) -> u32 {
+    pub(crate) fn signer(&self) -> LeafNodeIndex {
         self.payload.signer
     }
 

@@ -5,9 +5,10 @@ use array_representation::{
     tree::{ABinaryTree, ABinaryTreeError},
 };
 
-// Crate
-pub(crate) use self::array_representation::diff::OutOfBoundsError;
+// Public
+pub use array_representation::LeafNodeIndex;
 
+// Crate
 pub(crate) mod array_representation;
 
 // Tests
@@ -19,14 +20,8 @@ mod test_binary_tree;
 
 /// We use this type alias as a convenience, so we can later swap out the tree
 /// representation with a feature-flag.
-pub(crate) type MlsBinaryTree<Node> = ABinaryTree<Node>;
-pub(crate) type MlsBinaryTreeDiff<'a, Node> = AbDiff<'a, Node>;
-pub(crate) type StagedMlsBinaryTreeDiff<Node> = StagedAbDiff<Node>;
+pub(crate) type MlsBinaryTree<L, P> = ABinaryTree<L, P>;
+pub(crate) type MlsBinaryTreeDiff<'a, L, P> = AbDiff<'a, L, P>;
+pub(crate) type StagedMlsBinaryTreeDiff<L, P> = StagedAbDiff<L, P>;
 pub(crate) type MlsBinaryTreeError = ABinaryTreeError;
 pub(crate) type MlsBinaryTreeDiffError = ABinaryTreeDiffError;
-
-/// Index type to index the leaves in the binary tree
-pub(crate) type LeafIndex = u32;
-
-/// A tree can be at most `2^32 - 1` nodes big.
-pub(crate) type TreeSize = u32;

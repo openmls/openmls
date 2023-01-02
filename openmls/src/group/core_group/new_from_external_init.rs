@@ -1,4 +1,5 @@
 use crate::{
+    binary_tree::array_representation::LeafNodeIndex,
     ciphersuite::signable::Verifiable,
     group::errors::ExternalCommitError,
     messages::proposals::{ExternalInitProposal, Proposal},
@@ -20,7 +21,7 @@ impl CoreGroup {
     /// `ExternalInit` proposal and commits it along with the given proposals by
     /// reference and by value.
     ///
-    /// Returns the new `CoreGroup` object, as well as the `MlsPlaintext`
+    /// Returns the new `CoreGroup` object, as well as the `PublicMessage`
     /// containing the commit.
     pub(crate) fn join_by_external_commit(
         backend: &impl OpenMlsCryptoProvider,
@@ -66,7 +67,6 @@ impl CoreGroup {
         let group_info: GroupInfo = {
             let group_info_signer_leaf = treesync
                 .leaf(verifiable_group_info.signer())
-                .map_err(|_| ExternalCommitError::UnknownSender)?
                 .ok_or(ExternalCommitError::UnknownSender)?
                 .credential();
 
@@ -119,7 +119,7 @@ impl CoreGroup {
             // We use a fake own index of 0 here, as we're not going to use the
             // tree for encryption until after the first commit. This issue is
             // tracked in #767.
-            0u32,
+            LeafNodeIndex::new(0u32),
         );
         let message_secrets_store = MessageSecretsStore::new_with_secret(0, message_secrets);
 

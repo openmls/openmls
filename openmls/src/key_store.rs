@@ -1,7 +1,7 @@
 //! Serialization for key store objects.
 
 use crate::{
-    credentials::CredentialBundle, key_packages::KeyPackageBundle, prelude::LibraryError,
+    credentials::CredentialBundle, key_packages::KeyPackage, prelude::LibraryError,
     schedule::psk::PskBundle,
 };
 
@@ -9,7 +9,7 @@ use openmls_traits::key_store::{FromKeyStoreValue, ToKeyStoreValue};
 
 // === OpenMLS Key Store Types
 
-impl FromKeyStoreValue for KeyPackageBundle {
+impl FromKeyStoreValue for KeyPackage {
     type Error = LibraryError;
     fn from_key_store_value(ksv: &[u8]) -> Result<Self, Self::Error> {
         serde_json::from_slice(ksv).map_err(|_| LibraryError::custom("Invalid key package bundle."))
@@ -23,7 +23,7 @@ impl FromKeyStoreValue for CredentialBundle {
     }
 }
 
-impl ToKeyStoreValue for KeyPackageBundle {
+impl ToKeyStoreValue for KeyPackage {
     type Error = LibraryError;
     fn to_key_store_value(&self) -> Result<Vec<u8>, Self::Error> {
         serde_json::to_vec(self)

@@ -21,8 +21,7 @@ fn test_free_leaf_computation(ciphersuite: Ciphersuite, backend: &impl OpenMlsCr
     )
     .expect("error creating credential_bundle");
 
-    let kpb_0 =
-        KeyPackageBundle::new(&[ciphersuite], &cb_0, backend, vec![]).expect("error creating kpb");
+    let kpb_0 = KeyPackageBundle::new(backend, ciphersuite, &cb_0);
 
     let cb_3 = CredentialBundle::new(
         "leaf3".as_bytes().to_vec(),
@@ -31,8 +30,7 @@ fn test_free_leaf_computation(ciphersuite: Ciphersuite, backend: &impl OpenMlsCr
         backend,
     )
     .expect("error creating credential_bundle");
-    let kpb_3 =
-        KeyPackageBundle::new(&[ciphersuite], &cb_3, backend, vec![]).expect("error creating kpb");
+    let kpb_3 = KeyPackageBundle::new(backend, ciphersuite, &cb_3);
 
     // Build a rudimentary tree with two populated and two empty leaf nodes.
     let nodes: Vec<Option<Node>> = vec![
@@ -60,18 +58,17 @@ fn test_free_leaf_computation(ciphersuite: Ciphersuite, backend: &impl OpenMlsCr
         backend,
     )
     .expect("error creating credential_bundle");
-    let kpb_2 =
-        KeyPackageBundle::new(&[ciphersuite], &cb_2, backend, vec![]).expect("error creating kpb");
+    let kpb_2 = KeyPackageBundle::new(backend, ciphersuite, &cb_2);
 
     let mut diff = tree.empty_diff();
     let free_leaf_index = diff.free_leaf_index();
     let added_leaf_index = diff
         .add_leaf(kpb_2.key_package().leaf_node().clone().into())
         .expect("error adding leaf");
-    assert_eq!(free_leaf_index, 1u32);
+    assert_eq!(free_leaf_index.u32(), 1u32);
     assert_eq!(free_leaf_index, added_leaf_index);
 
     let free_leaf_index = diff.free_leaf_index();
 
-    assert_eq!(free_leaf_index, 2u32);
+    assert_eq!(free_leaf_index.u32(), 2u32);
 }

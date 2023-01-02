@@ -12,7 +12,7 @@ use crate::{
     group::{errors::*, *},
 };
 
-use super::utils::{generate_credential_bundle, generate_key_package_bundle};
+use super::utils::{generate_credential_bundle, generate_key_package};
 
 // Creates a group with one member
 fn create_group(
@@ -32,7 +32,7 @@ fn create_group(
     .expect("An unexpected error occurred.");
 
     // Generate KeyPackages
-    let key_package = generate_key_package_bundle(&[ciphersuite], &credential, vec![], backend)
+    let key_package = generate_key_package(&[ciphersuite], &credential, vec![], backend)
         .expect("An unexpected error occurred.");
 
     // Define the MlsGroup configuration
@@ -41,16 +41,8 @@ fn create_group(
         .use_ratchet_tree_extension(true)
         .build();
 
-    MlsGroup::new_with_group_id(
-        backend,
-        &mls_group_config,
-        group_id,
-        key_package
-            .hash_ref(backend.crypto())
-            .expect("Could not hash KeyPackage.")
-            .as_slice(),
-    )
-    .expect("An unexpected error occurred.")
+    MlsGroup::new_with_group_id(backend, &mls_group_config, group_id, key_package)
+        .expect("An unexpected error occurred.")
 }
 
 // Takes an existing group, adds a new member and sends a message from the second member to the first one, returns that message
@@ -69,9 +61,8 @@ fn receive_message(
     .expect("An unexpected error occurred.");
 
     // Generate KeyPackages
-    let bob_key_package =
-        generate_key_package_bundle(&[ciphersuite], &bob_credential, vec![], backend)
-            .expect("An unexpected error occurred.");
+    let bob_key_package = generate_key_package(&[ciphersuite], &bob_credential, vec![], backend)
+        .expect("An unexpected error occurred.");
 
     let (_message, welcome) = alice_group
         .add_members(backend, &[bob_key_package])

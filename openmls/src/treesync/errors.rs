@@ -9,9 +9,6 @@ use crate::{binary_tree::MlsBinaryTreeDiffError, error::LibraryError};
 
 // === Public errors ===
 
-// Re-exporting OutOfBoundsError from the ABinaryTree
-pub(crate) use crate::binary_tree::OutOfBoundsError;
-
 /// Public tree error
 #[derive(Error, Debug, PartialEq, Eq, Clone)]
 pub enum PublicTreeError {
@@ -80,12 +77,6 @@ pub(crate) enum TreeSyncError {
     /// See [`MlsBinaryTreeError`] for more details.
     #[error(transparent)]
     BinaryTreeError(#[from] MlsBinaryTreeError),
-    /// See [`TreeSyncNodeError`] for more details.
-    #[error(transparent)]
-    TreeSyncNodeError(#[from] TreeSyncNodeError),
-    /// See [`NodeError`] for more details.
-    #[error(transparent)]
-    NodeTypeError(#[from] NodeError),
     /// See [`TreeSyncDiffError`] for more details.
     #[error(transparent)]
     TreeSyncDiffError(#[from] TreeSyncDiffError),
@@ -163,12 +154,6 @@ pub(crate) enum TreeSyncDiffError {
         "Couldn't find a fitting private key in the filtered resolution of the given leaf index."
     )]
     NoPrivateKeyFound,
-    /// See [`NodeError`] for more details.
-    #[error(transparent)]
-    NodeTypeError(#[from] NodeError),
-    /// See [`TreeSyncNodeError`] for more details.
-    #[error(transparent)]
-    TreeSyncNodeError(#[from] TreeSyncNodeError),
     /// See [`MlsBinaryTreeDiffError`] for more details.
     #[error(transparent)]
     TreeDiffError(#[from] MlsBinaryTreeDiffError),
@@ -178,9 +163,6 @@ pub(crate) enum TreeSyncDiffError {
     /// See [`MlsBinaryTreeError`] for more details.
     #[error(transparent)]
     CreationError(#[from] MlsBinaryTreeError),
-    /// See [`OutOfBoundsError`] for more details.
-    #[error(transparent)]
-    UnknownMember(#[from] OutOfBoundsError),
 }
 
 /// TreeKem error
@@ -199,19 +181,4 @@ pub(crate) enum TreeKemError {
     /// See [`PathSecretError`] for more details.
     #[error(transparent)]
     PathSecretError(#[from] PathSecretError),
-}
-
-/// Binary Tree error
-#[derive(Error, Debug, PartialEq, Clone)]
-#[allow(clippy::enum_variant_names)]
-pub(crate) enum NodeError {
-    /// See [`LibraryError`] for more details.
-    #[error(transparent)]
-    LibraryError(#[from] LibraryError),
-    /// This is not a leaf node.
-    #[error("This is not a leaf node.")]
-    AsLeafError,
-    /// This is not a parent node.
-    #[error("This is not a parent node.")]
-    AsParentError,
 }

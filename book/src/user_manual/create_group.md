@@ -7,7 +7,7 @@ In addition to the group configuration, the client should define all supported a
 In practice, the supported and required extensions are set by adding them to the initial `KeyPackage` of the creator:
 
 ```rust,no_run,noplayground
-{{#include ../../../openmls/tests/book_code.rs:create_key_package_bundle}}
+{{#include ../../../openmls/tests/book_code.rs:create_key_package}}
 ```
 
 After that, the group can be created:

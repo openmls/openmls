@@ -1,6 +1,41 @@
 //! # Message framing
 //!
 //! This module contains framing-related operations for MLS messages, including validation operations.
+//! The general structure of the framing process in OpenMLS closely mirrors the
+//! one described in Section 7 of the MLS specification. It can be visualized as follows:
+//!
+//! ```text
+//!                               Proposal        Commit     Application Data
+//!                                  |              |              |
+//!                                  +--------------+--------------+
+//!                                                 |
+//!                                                 V
+//!                                          FramedContent
+//!                                              |  |                -.
+//!                                              |  |                  |
+//!                                     +--------+  |                  |
+//!                                     |           |                  |
+//!                                     V           |                  +-- Asymmetric
+//!                           FramedContentAuthData |                  |   Sign / Verify
+//!                                     |           |                  |
+//!                                     +--------+  |                  |
+//!                                              |  |                  |
+//!                                              V  V                -'
+//!                                        AuthenticatedContent
+//!                                                 |                -.
+//!                                                 |                  |
+//!                                                 |                  |
+//!                                        +--------+--------+         +-- Symmetric
+//!                                        |                 |         |   Protect / Unprotect
+//!                                        V                 V         |
+//! Welcome  KeyPackage  GroupInfo   PublicMessage    PrivateMessage -'
+//!    |          |          |             |                 |
+//!    |          |          |             |                 |
+//!    +----------+----------+----+--------+-----------------+
+//!                               |
+//!                               V
+//!                           MLSMessage
+//! ```
 //!
 //!  - [`MlsMessageIn`]/[`MlsMessageOut`]: Unified message type for incoming & outgoing MLS messages
 //!  - [`ApplicationMessage`]: Application message received through a [`ProcessedMessage`]
@@ -13,15 +48,23 @@ use crate::schedule::{message_secrets::*, *};
 use serde::{Deserialize, Serialize};
 use tls_codec::*;
 
-pub(crate) mod ciphertext;
 pub(crate) mod codec;
 pub(crate) mod message;
-pub(crate) mod plaintext;
+pub(crate) mod mls_auth_content;
+pub(crate) mod mls_content;
+pub(crate) mod private_message;
+pub(crate) mod public_message;
 pub(crate) mod sender;
 pub(crate) mod validation;
-pub(crate) use ciphertext::*;
 pub(crate) use errors::*;
-pub(crate) use plaintext::*;
+pub(crate) use private_message::*;
+pub(crate) use public_message::*;
+
+#[cfg(any(feature = "test-utils", test))]
+pub(crate) use mls_auth_content::*;
+
+#[cfg(test)]
+pub(crate) use mls_content::*;
 
 // Crate
 pub(crate) use sender::*;
@@ -44,9 +87,9 @@ mod test_framing;
 #[repr(u8)]
 pub enum WireFormat {
     /// Plaintext message
-    MlsPlaintext = 1,
+    PublicMessage = 1,
     /// Encrypted message
-    MlsCiphertext = 2,
+    PrivateMessage = 2,
 }
 
 /// This struct is used to group common framing parameters

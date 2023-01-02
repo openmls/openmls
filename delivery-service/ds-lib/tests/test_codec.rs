@@ -1,5 +1,5 @@
 use ds_lib::{self, *};
-use openmls::prelude::*;
+use openmls::prelude::{config::CryptoConfig, *};
 use openmls_rust_crypto::OpenMlsRustCrypto;
 use openmls_traits::{types::SignatureScheme, OpenMlsCryptoProvider};
 use tls_codec::{Deserialize, Serialize};
@@ -16,16 +16,24 @@ fn test_client_info() {
         crypto,
     )
     .unwrap();
-    let client_key_package_bundle =
-        KeyPackageBundle::new(&[ciphersuite], &credential_bundle, crypto, vec![]).unwrap();
+    let client_key_package = KeyPackage::create(
+        CryptoConfig {
+            ciphersuite,
+            version: ProtocolVersion::default(),
+        },
+        crypto,
+        &credential_bundle,
+        vec![],
+        vec![],
+    )
+    .unwrap();
     let client_key_package = vec![(
-        client_key_package_bundle
-            .key_package()
+        client_key_package
             .hash_ref(crypto.crypto())
             .expect("Could not hash KeyPackage.")
             .as_slice()
             .to_vec(),
-        client_key_package_bundle.key_package().clone(),
+        client_key_package,
     )];
     let client_data = ClientInfo::new(client_name.to_string(), client_key_package);
 

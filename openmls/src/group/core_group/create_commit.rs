@@ -2,7 +2,7 @@ use openmls_traits::OpenMlsCryptoProvider;
 
 use crate::{
     ciphersuite::signable::Signable,
-    group::{core_group::*, errors::CreateCommitError},
+    group::{config::CryptoConfig, core_group::*, errors::CreateCommitError},
     treesync::{
         diff::TreeSyncDiff,
         node::{leaf_node::OpenMlsLeafNode, parent_node::PlainUpdatePathNode},
@@ -134,15 +134,19 @@ impl CoreGroup {
             // If this is an external commit we add a fresh leaf to the diff.
             // Generate a KeyPackageBundle to generate a payload from for later
             // path generation.
-            let key_package_bundle = KeyPackageBundle::new(
-                &[self.ciphersuite()],
-                params.credential_bundle(),
+            let key_package = KeyPackage::create(
+                CryptoConfig {
+                    ciphersuite,
+                    version: self.version(),
+                },
                 backend,
+                params.credential_bundle(),
+                vec![],
                 vec![],
             )
             .map_err(|_| LibraryError::custom("Unexpected KeyPackage error"))?;
 
-            let mut leaf_node: OpenMlsLeafNode = key_package_bundle.into();
+            let mut leaf_node: OpenMlsLeafNode = key_package.into();
             leaf_node.set_leaf_index(own_leaf_index);
             diff.add_leaf(leaf_node)
                 .map_err(|_| LibraryError::custom("Tree full: cannot add more members"))?;
@@ -170,7 +174,7 @@ impl CoreGroup {
                         params.credential_bundle(),
                         backend,
                     )?;
-                    diff.clear_tree_hash()?;
+                    diff.clear_tree_hash();
                 }
 
                 // Derive and apply an update path based on the previously
@@ -189,7 +193,7 @@ impl CoreGroup {
                     &plain_path,
                     &serialized_group_context,
                     &apply_proposals_values.exclusion_list(),
-                )?;
+                );
                 let leaf_node = diff.own_leaf().map_err(|_| LibraryError::custom("Couldn't find own leaf"))?.clone();
                 let encrypted_path = UpdatePath::new(leaf_node.into(),  encrypted_path);
                 PathProcessingResult {
@@ -223,8 +227,8 @@ impl CoreGroup {
         let mut provisional_epoch = self.group_context.epoch();
         provisional_epoch.increment();
 
-        // Build MlsAuthContent
-        let mut commit = MlsAuthContent::commit(
+        // Build AuthenticatedContent
+        let mut commit = AuthenticatedContent::commit(
             *params.framing_parameters(),
             sender,
             commit,
@@ -237,10 +241,10 @@ impl CoreGroup {
         let confirmed_transcript_hash = update_confirmed_transcript_hash(
             ciphersuite,
             backend,
-            // It is ok to a library error here, because we know the MlsPlaintext contains a
+            // It is ok to a library error here, because we know the PublicMessage contains a
             // Commit
             &ConfirmedTranscriptHashInput::try_from(&commit)
-                .map_err(|_| LibraryError::custom("MlsPlaintext did not contain a commit"))?,
+                .map_err(|_| LibraryError::custom("PublicMessage did not contain a commit"))?,
             &self.interim_transcript_hash,
         )?;
 
@@ -310,7 +314,7 @@ impl CoreGroup {
             // Create the ratchet tree extension if necessary
             let other_extensions: Vec<Extension> = if self.use_ratchet_tree_extension {
                 vec![Extension::RatchetTree(RatchetTreeExtension::new(
-                    diff.export_nodes()?,
+                    diff.export_nodes(),
                 ))]
             } else {
                 Vec::new()
@@ -410,7 +414,7 @@ impl CoreGroup {
     pub(crate) fn free_leaf_index<'a>(
         &self,
         mut inline_proposals: impl Iterator<Item = Option<&'a Proposal>>,
-    ) -> Result<u32, LibraryError> {
+    ) -> Result<LeafNodeIndex, LibraryError> {
         // Leftmost free leaf in the tree
         let free_leaf_index = self.treesync().free_leaf_index();
         // Returns the first remove proposal (if there is one)
