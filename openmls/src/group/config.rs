@@ -9,6 +9,7 @@ use crate::versions::ProtocolVersion;
 
 /// A config struct for commonly used values when performing cryptographic
 /// operations.
+#[derive(Debug, Clone, Copy)]
 pub struct CryptoConfig {
     /// The [`Ciphersuite`] used.
     pub ciphersuite: Ciphersuite,

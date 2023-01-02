@@ -494,7 +494,7 @@ fn test_valsem102(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
         match bob_and_charlie_share_keys {
             KeyUniqueness::NegativeSameKey => {
                 // Create a new key package for bob with the init key from Charlie.
-                bob_key_package = KeyPackage::new_from_keys_test(
+                bob_key_package = KeyPackage::new_from_init_key(
                     CryptoConfig {
                         ciphersuite,
                         version: ProtocolVersion::default(),
@@ -1062,11 +1062,11 @@ fn test_valsem104(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
     }
 }
 
-/// ValSem105:
+/// ValSem113:
 /// Add Proposal:
-/// HPKE init key in proposals must be unique among existing group members
+/// HPKE init key and encryption key must be different
 #[apply(ciphersuites_and_backends)]
-fn test_valsem105(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
+fn test_valsem113(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
     for alice_and_bob_share_keys in [
         KeyUniqueness::NegativeSameKey,
         KeyUniqueness::PositiveDifferentKey,
@@ -1079,26 +1079,39 @@ fn test_valsem105(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
 
         match alice_and_bob_share_keys {
             KeyUniqueness::NegativeSameKey => {
-                // Create a new key package for bob with the init key from Charlie.
-                bob_key_package = KeyPackage::new_from_keys_test(
-                    CryptoConfig {
-                        ciphersuite,
-                        version: ProtocolVersion::default(),
-                    },
-                    backend,
-                    &bob_credential_bundle,
-                    vec![],
-                    vec![],
-                    alice_key_package.hpke_init_key().as_slice().to_vec(),
-                )
-                .unwrap();
+                // Create a new key package for bob using the encryption key as init key.
+                bob_key_package = bob_key_package
+                    .clone()
+                    .into_with_init_key(
+                        CryptoConfig {
+                            ciphersuite,
+                            version: ProtocolVersion::default(),
+                        },
+                        backend,
+                        &bob_credential_bundle,
+                        bob_key_package
+                            .leaf_node()
+                            .encryption_key()
+                            .as_slice()
+                            .to_vec(),
+                    )
+                    .unwrap();
             }
             KeyUniqueness::PositiveDifferentKey => {
-                // don't need to do anything since the keys are already
+                // don't need to do anything since all keys are already
                 // different.
             }
             KeyUniqueness::PositiveSameKeyWithRemove => unreachable!(),
         }
+        eprintln!("bob kp init key: {:x?}", bob_key_package.hpke_init_key());
+        eprintln!(
+            "bob leaf node encryption key: {:x?}",
+            bob_key_package
+                .leaf_node()
+                .encryption_key()
+                .as_slice()
+                .to_vec()
+        );
 
         // 1. Alice creates a group and tries to add Bob to it
         let res = create_group_with_members(alice_key_package, &[bob_key_package], backend);
@@ -1106,11 +1119,11 @@ fn test_valsem105(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
         match alice_and_bob_share_keys {
             KeyUniqueness::NegativeSameKey => {
                 let err =
-                    res.expect_err("was able to add user with same HPKE init key as group member!");
+                    res.expect_err("was able to add user with colliding init and encryption keys!");
                 assert_eq!(
                     err,
                     AddMembersError::CreateCommitError(CreateCommitError::ProposalValidationError(
-                        ProposalValidationError::ExistingPublicKeyAddProposal
+                        ProposalValidationError::InitEncryptionKeyCollision
                     ))
                 );
             }
@@ -1129,7 +1142,7 @@ fn test_valsem105(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
     } = validation_test_setup(PURE_PLAINTEXT_WIRE_FORMAT_POLICY, ciphersuite, backend);
 
     // We now have alice create a commit. Then we artificially add an Add
-    // proposal with an existing HPKE public key.
+    // proposal with a leaf that has the same encryption key as an existing leaf.
 
     // Create the Commit.
     let serialized_update = alice_group
@@ -1147,7 +1160,7 @@ fn test_valsem105(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
     let original_plaintext = plaintext.clone();
 
     // We now pull bob's public key from his leaf.
-    let bob_public_key = bob_group
+    let bob_encryption_key = bob_group
         .group()
         .treesync()
         .own_leaf_node()
@@ -1160,8 +1173,7 @@ fn test_valsem105(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
         generate_credential_bundle_and_key_package("Dave".into(), ciphersuite, backend);
 
     // Insert Bob's public key into Dave's KPB and resign.
-    // XXX[FK]: Do we delete the private key because there's only one?
-    let dave_key_package = KeyPackage::new_from_keys_test(
+    let dave_key_package = KeyPackage::new_from_encryption_key(
         CryptoConfig {
             ciphersuite,
             version: ProtocolVersion::default(),
@@ -1169,8 +1181,7 @@ fn test_valsem105(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
         backend,
         &dave_credential_bundle,
         vec![],
-        vec![],
-        bob_public_key.into(),
+        bob_encryption_key,
     )
     .unwrap();
 
@@ -1179,8 +1190,8 @@ fn test_valsem105(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
         key_package: dave_key_package,
     });
 
-    // Artificially add a proposal trying to add someone with an existing HPKE
-    // public key.
+    // Artificially add a proposal trying to add someone with an existing
+    // encryption key.
     let verifiable_plaintext = insert_proposal_and_resign(
         backend,
         vec![ProposalOrRef::Proposal(add_proposal)],

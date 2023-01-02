@@ -10,7 +10,7 @@ use crate::{
     credentials::*,
     framing::mls_content::FramedContentBody,
     framing::{mls_auth_content::AuthenticatedContent, *},
-    group::*,
+    group::{config::CryptoConfig, *},
     key_packages::*,
     messages::proposals::*,
     messages::*,
@@ -126,16 +126,19 @@ pub fn generate_test_vector(ciphersuite: Ciphersuite) -> MessagesTestVector {
     // Create a proposal to update the user's KeyPackage
     let key_package_bundle = KeyPackageBundle::new(&crypto, ciphersuite_name, &credential_bundle);
     let key_package = key_package_bundle.key_package();
-    let update_proposal = UpdateProposal {
-        leaf_node: LeafNode::new(
-            key_package.hpke_init_key().clone(),
-            &credential_bundle,
-            LeafNodeSource::Update,
-            vec![],
-            &crypto,
-        )
-        .unwrap(),
-    };
+    let (leaf_node, _) = LeafNode::new(
+        CryptoConfig {
+            ciphersuite,
+            version: ProtocolVersion::Mls10,
+        },
+        &credential_bundle,
+        key_package.hpke_init_key().as_slice(),
+        LeafNodeSource::Update,
+        vec![],
+        &crypto,
+    )
+    .unwrap();
+    let update_proposal = UpdateProposal { leaf_node };
 
     // Create proposal to add a user
     let joiner_credential_bundle = CredentialBundle::new(

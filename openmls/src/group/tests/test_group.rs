@@ -543,8 +543,16 @@ fn group_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvid
             &create_commit_result.commit,
             &proposal_store,
             &[OpenMlsLeafNode::from_key_package_bundle(
-                bob_update_key_package_bundle,
+                backend,
+                bob_update_key_package_bundle
+                    .key_package()
+                    .hpke_init_key()
+                    .as_ref(),
                 group_bob.own_leaf_index(),
+                bob_update_key_package_bundle
+                    .key_package()
+                    .leaf_node()
+                    .clone(),
             )],
             backend,
         )

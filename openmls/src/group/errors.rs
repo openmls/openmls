@@ -70,9 +70,9 @@ pub enum WelcomeError {
     /// The PSK could not be found in the key store.
     #[error("The PSK could not be found in the key store.")]
     PskNotFound,
-    /// No matching KeyPackage was found in the key store.
-    #[error("No matching KeyPackage was found in the key store.")]
-    NoMatchingKeyPackage,
+    /// No matching encryption key was found in the key store.
+    #[error("No matching encryption key was found in the key store.")]
+    NoMatchingEncryptionKey,
     /// Failed to delete the KeyPackageBundle from the key store.
     #[error("Failed to delete the KeyPackageBundle from the key store.")]
     KeyStoreDeletionError,
@@ -284,9 +284,12 @@ pub enum ProposalValidationError {
     /// Signature key of the add proposal already existed in tree.
     #[error("Signature key of the add proposal already existed in tree.")]
     ExistingSignatureKeyAddProposal,
-    /// HPKE public key of the add proposal already existed in tree.
-    #[error("HPKE public key of the add proposal already existed in tree.")]
+    /// HPKE public key (init or encryption) of the add proposal already existed in tree.
+    #[error("HPKE public key (init or encryption) of the add proposal already existed in tree.")]
     ExistingPublicKeyAddProposal,
+    /// The HPKE init and encryption keys are the same.
+    #[error("The HPKE init and encryption keys are the same.")]
+    InitEncryptionKeyCollision,
     /// The identity of the update proposal did not match the existing identity.
     #[error("The identity of the update proposal did not match the existing identity.")]
     UpdateProposalIdentityMismatch,

@@ -133,13 +133,13 @@ impl MlsGroup {
                     .read(&hash_ref)
                     .map(|kp: KeyPackage| (kp, hash_ref))
             })
-            .ok_or(WelcomeError::NoMatchingKeyPackage)?;
+            .ok_or(WelcomeError::NoMatchingEncryptionKey)?;
 
         // TODO #751
         let private_key: Vec<u8> = backend
             .key_store()
             .read(key_package.hpke_init_key().as_slice())
-            .ok_or(WelcomeError::NoMatchingKeyPackage)?;
+            .ok_or(WelcomeError::NoMatchingEncryptionKey)?;
         let key_package_bundle = KeyPackageBundle {
             key_package,
             private_key: private_key.into(),

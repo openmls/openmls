@@ -37,6 +37,7 @@ mod test_proposals;
 use super::errors::CreateGroupContextExtProposalError;
 use crate::framing::mls_auth_content::VerifiableAuthenticatedContent;
 
+use crate::group::config::CryptoConfig;
 use crate::{
     binary_tree::array_representation::LeafNodeIndex,
     ciphersuite::{signable::Signable, HpkePublicKey},
@@ -222,7 +223,14 @@ impl CoreGroupBuilder {
         trace!(" >>> with {:?}, {:?}", ciphersuite, config);
         let (tree, commit_secret) = TreeSync::new(
             backend,
-            self.key_package_bundle,
+            CryptoConfig {
+                ciphersuite,
+                version,
+            },
+            self.key_package_bundle
+                .key_package()
+                .hpke_init_key()
+                .as_slice(),
             credential_bundle,
             self.lifetime.unwrap_or_default(),
             Capabilities::new(
