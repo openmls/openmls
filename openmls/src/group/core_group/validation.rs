@@ -209,12 +209,15 @@ impl CoreGroup {
             signature_key,
         } in self.treesync().full_leave_members()
         {
+            let has_remove_proposal = proposal_queue
+                .remove_proposals()
+                .any(|p| p.remove_proposal().removed == index);
             // ValSem103
-            if identity_set.contains(&identity) {
+            if identity_set.contains(&identity) && !has_remove_proposal {
                 return Err(ProposalValidationError::ExistingIdentityAddProposal);
             }
             // ValSem104
-            if signature_key_set.contains(&signature_key) {
+            if signature_key_set.contains(&signature_key) && !has_remove_proposal {
                 return Err(ProposalValidationError::ExistingSignatureKeyAddProposal);
             }
             // ValSem105
