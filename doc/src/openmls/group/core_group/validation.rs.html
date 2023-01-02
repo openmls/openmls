@@ -417,6 +417,9 @@
 <span id="417">417</span>
 <span id="418">418</span>
 <span id="419">419</span>
+<span id="420">420</span>
+<span id="421">421</span>
+<span id="422">422</span>
 </pre><pre class="rust"><code><span class="doccomment">//! This module contains validation functions for incoming messages
 //! as defined in &lt;https://github.com/openmls/openmls/wiki/Message-validation&gt;
 
@@ -628,12 +631,15 @@
             signature_key,
         } <span class="kw">in </span><span class="self">self</span>.treesync().full_leave_members()
         {
+            <span class="kw">let </span>has_remove_proposal = proposal_queue
+                .remove_proposals()
+                .any(|p| p.remove_proposal().removed == index);
             <span class="comment">// ValSem103
-            </span><span class="kw">if </span>identity_set.contains(<span class="kw-2">&amp;</span>identity) {
+            </span><span class="kw">if </span>identity_set.contains(<span class="kw-2">&amp;</span>identity) &amp;&amp; !has_remove_proposal {
                 <span class="kw">return </span><span class="prelude-val">Err</span>(ProposalValidationError::ExistingIdentityAddProposal);
             }
             <span class="comment">// ValSem104
-            </span><span class="kw">if </span>signature_key_set.contains(<span class="kw-2">&amp;</span>signature_key) {
+            </span><span class="kw">if </span>signature_key_set.contains(<span class="kw-2">&amp;</span>signature_key) &amp;&amp; !has_remove_proposal {
                 <span class="kw">return </span><span class="prelude-val">Err</span>(ProposalValidationError::ExistingSignatureKeyAddProposal);
             }
             <span class="comment">// ValSem105
