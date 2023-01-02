@@ -3,7 +3,7 @@
 //! A PublicMessage is a framing structure for MLS messages. It can contain
 //! Proposals, Commits and application messages.
 
-use crate::{error::LibraryError, group::errors::ValidationError};
+use crate::{error::LibraryError, group::errors::ValidationError, versions::ProtocolVersion};
 
 use super::{
     mls_auth_content::{
@@ -144,7 +144,12 @@ impl PublicMessage {
         }
     }
 
-    /// Returns a reference to the `content` field.
+    /// Returns a reference to the [`ProtocolVersion`].
+    pub(crate) fn protocol_version(&self) -> ProtocolVersion {
+        self.content.version
+    }
+
+    /// Returns the [`ContentType`] of the message.
     pub(crate) fn content_type(&self) -> ContentType {
         self.content.content.body.content_type()
     }
@@ -226,8 +231,9 @@ impl PublicMessage {
         &self.content.content.group_id
     }
 
-    /// Set the context for later verification. This should only be done for
-    /// messages with [`Sender::Member`] and [`Sender::NewMemberCommit`].
+    /// Set the context for later verification if applicable. If the sender type
+    /// is not [`Sender::Member`] or [`Sender::NewMemberCommit`], this function
+    /// will set the context to `None`.
     pub(super) fn set_context(&mut self, context: &[u8]) {
         let serialized_context =
             if matches!(self.sender(), Sender::NewMemberCommit | Sender::Member(_)) {

@@ -30,7 +30,7 @@ use crate::{error::LibraryError, versions::ProtocolVersion};
 /// ```
 #[derive(PartialEq, Debug, Clone, TlsSerialize, TlsSize, TlsDeserialize)]
 pub(crate) struct MlsMessage {
-    pub(crate) protocol_version: ProtocolVersion,
+    pub(crate) version: ProtocolVersion,
     pub(crate) body: MlsMessageBody,
 }
 
@@ -211,12 +211,13 @@ pub struct MlsMessageOut {
 
 impl From<PublicMessage> for MlsMessageOut {
     fn from(plaintext: PublicMessage) -> Self {
+        let protocol_version = plaintext.protocol_version();
         let body = MlsMessageBody::PublicMessage(plaintext);
 
         Self {
             mls_message: MlsMessage {
                 body,
-                protocol_version: ProtocolVersion::Mls10,
+                version: protocol_version,
             },
         }
     }
@@ -229,7 +230,7 @@ impl From<PrivateMessage> for MlsMessageOut {
         Self {
             mls_message: MlsMessage {
                 body,
-                protocol_version: ProtocolVersion::Mls10,
+                version: ProtocolVersion::Mls10,
             },
         }
     }
@@ -290,7 +291,7 @@ impl From<PublicMessage> for MlsMessageIn {
         Self {
             mls_message: MlsMessage {
                 body,
-                protocol_version: ProtocolVersion::Mls10,
+                version: ProtocolVersion::Mls10,
             },
         }
     }
@@ -304,7 +305,7 @@ impl From<PrivateMessage> for MlsMessageIn {
         Self {
             mls_message: MlsMessage {
                 body,
-                protocol_version: ProtocolVersion::Mls10,
+                version: ProtocolVersion::Mls10,
             },
         }
     }
