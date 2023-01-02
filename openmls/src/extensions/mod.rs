@@ -521,7 +521,7 @@ mod test {
             (vec![x.clone(), y.clone(), y.clone()], false),
             (vec![y.clone(), x.clone(), x.clone()], false),
             (vec![x.clone(), y.clone(), x.clone()], false),
-            (vec![y.clone(), x.clone(), y.clone()], false),
+            (vec![y.clone(), x, y], false),
         ];
 
         for (test, should_work) in tests.into_iter() {
