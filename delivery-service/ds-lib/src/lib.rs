@@ -65,6 +65,7 @@ impl ClientInfo {
 /// `Vec<Message>`. A `Message` is either an `MLSMessage` or a `Welcome` message
 /// (see OpenMLS) for details.
 #[derive(Debug)]
+#[allow(clippy::large_enum_variant)]
 pub enum Message {
     /// An `MLSMessage` is either an OpenMLS `PrivateMessage` or `PublicMessage`.
     MlsMessage(MlsMessageIn),
