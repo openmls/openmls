@@ -6,6 +6,7 @@ use crate::{
     error::LibraryError,
     group::{GroupEpoch, GroupId},
     messages::{proposals::Proposal, Commit},
+    versions::ProtocolVersion,
 };
 
 use std::{
@@ -195,8 +196,9 @@ impl<'a> AuthenticatedContentTbm<'a> {
     }
 }
 
-#[derive(PartialEq, Debug, Clone)]
+#[derive(PartialEq, Debug, Clone, Serialize, Deserialize)]
 pub(crate) struct FramedContentTbs {
+    pub(super) version: ProtocolVersion,
     pub(super) wire_format: WireFormat,
     pub(super) content: FramedContent,
     pub(super) serialized_context: Option<Vec<u8>>,
@@ -234,6 +236,7 @@ impl FramedContentTbs {
             body,
         };
         FramedContentTbs {
+            version: ProtocolVersion::Mls10,
             wire_format,
             content,
             serialized_context: None,
@@ -251,33 +254,13 @@ impl FramedContentTbs {
     pub(crate) fn epoch(&self) -> GroupEpoch {
         self.content.epoch
     }
-
-    pub(super) fn serialize_content_tbs<'a, W: Write>(
-        wire_format: WireFormat,
-        content: &FramedContent,
-        serialized_context: impl Into<Option<&'a [u8]>>,
-        buffer: &mut W,
-    ) -> Result<usize, tls_codec::Error> {
-        let mut written = wire_format.tls_serialize(buffer)?;
-        written += content.tls_serialize(buffer)?;
-        written += if let Some(serialized_context) = serialized_context.into() {
-            // Only members and new members joining via commit should have a context.
-            debug_assert!(matches!(
-                content.sender,
-                Sender::Member(_) | Sender::NewMemberCommit
-            ));
-            buffer.write(serialized_context)?
-        } else {
-            0
-        };
-        Ok(written)
-    }
 }
 
 impl Size for FramedContentTbs {
     #[inline]
     fn tls_serialized_len(&self) -> usize {
-        self.wire_format.tls_serialized_len()
+        self.version.tls_serialized_len()
+            + self.wire_format.tls_serialized_len()
             + self.content.tls_serialized_len()
             + if let Some(serialized_context) = &self.serialized_context {
                 serialized_context.tls_serialized_len()
@@ -289,11 +272,19 @@ impl Size for FramedContentTbs {
 
 impl TlsSerializeTrait for FramedContentTbs {
     fn tls_serialize<W: Write>(&self, writer: &mut W) -> Result<usize, tls_codec::Error> {
-        Self::serialize_content_tbs(
-            self.wire_format,
-            &self.content,
-            self.serialized_context.as_deref(),
-            writer,
-        )
+        let mut written = self.version.tls_serialize(writer)?;
+        written += self.wire_format.tls_serialize(writer)?;
+        written += self.content.tls_serialize(writer)?;
+        written += if let Some(serialized_context) = &self.serialized_context {
+            // Only members and new members joining via commit should have a context.
+            debug_assert!(matches!(
+                self.content.sender,
+                Sender::Member(_) | Sender::NewMemberCommit
+            ));
+            writer.write(serialized_context)?
+        } else {
+            0
+        };
+        Ok(written)
     }
 }

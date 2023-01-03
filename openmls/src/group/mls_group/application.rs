@@ -56,6 +56,9 @@ impl MlsGroup {
         // Since the state of the group might be changed, arm the state flag
         self.flag_state_change();
 
-        Ok(MlsMessageOut::from(ciphertext))
+        Ok(MlsMessageOut::from_private_message(
+            ciphertext,
+            self.group.version(),
+        ))
     }
 }
