@@ -14,17 +14,16 @@ fn test_store_key_package(ciphersuite: Ciphersuite, backend: &impl OpenMlsCrypto
     )
     .unwrap();
 
-    let key_package = KeyPackage::create(
-        config::CryptoConfig {
-            ciphersuite,
-            version: ProtocolVersion::default(),
-        },
-        backend,
-        &credential_bundle,
-        vec![],
-        vec![],
-    )
-    .unwrap();
+    let key_package = KeyPackage::builder()
+        .build(
+            config::CryptoConfig {
+                ciphersuite,
+                version: ProtocolVersion::default(),
+            },
+            backend,
+            &credential_bundle,
+        )
+        .unwrap();
     // ANCHOR_END: key_store_store
 
     // ANCHOR: key_store_delete

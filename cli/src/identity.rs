@@ -38,17 +38,16 @@ impl Identity {
         )
         .unwrap();
 
-        let key_package = KeyPackage::create(
-            CryptoConfig {
-                ciphersuite,
-                version: ProtocolVersion::default(),
-            },
-            crypto,
-            &credential_bundle,
-            vec![],
-            vec![],
-        )
-        .unwrap();
+        let key_package = KeyPackage::builder()
+            .build(
+                CryptoConfig {
+                    ciphersuite,
+                    version: ProtocolVersion::default(),
+                },
+                crypto,
+                &credential_bundle,
+            )
+            .unwrap();
 
         store_credential_bundle_in_keystore(crypto, &credential_bundle);
         Self {
@@ -62,17 +61,16 @@ impl Identity {
     pub fn update(&mut self, crypto: &OpenMlsRustCrypto) -> KeyPackage {
         let ciphersuite = self.kp.ciphersuite();
 
-        let key_package = KeyPackage::create(
-            CryptoConfig {
-                ciphersuite,
-                version: ProtocolVersion::default(),
-            },
-            crypto,
-            &self.credential,
-            vec![],
-            vec![],
-        )
-        .unwrap();
+        let key_package = KeyPackage::builder()
+            .build(
+                CryptoConfig {
+                    ciphersuite,
+                    version: ProtocolVersion::default(),
+                },
+                crypto,
+                &self.credential,
+            )
+            .unwrap();
 
         replace(&mut self.kp, key_package)
     }

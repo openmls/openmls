@@ -41,15 +41,13 @@
 //!     &backend,
 //! )
 //! .expect("Error creating credential.");
-//! let key_package = KeyPackage::create(
+//! let key_package = KeyPackage::builder().build(
 //!     CryptoConfig {
 //!         ciphersuite,
 //!         version: ProtocolVersion::default(),
 //!     },
 //!     &backend,
 //!     &credential_bundle,
-//!     vec![],
-//!     vec![],
 //! )
 //! .unwrap();
 //! ```
@@ -211,7 +209,7 @@ impl KeyPackage {
     }
 
     /// Create a new key package for the given `ciphersuite` and `identity`.
-    pub fn create(
+    fn create(
         config: CryptoConfig,
         backend: &impl OpenMlsCryptoProvider,
         credential: &CredentialBundle, // FIXME: make credential
@@ -565,17 +563,16 @@ impl KeyPackageBundle {
         ciphersuite: Ciphersuite,
         credential_bundle: &CredentialBundle,
     ) -> Self {
-        let key_package = KeyPackage::create(
-            CryptoConfig {
-                ciphersuite,
-                version: ProtocolVersion::default(),
-            },
-            backend,
-            credential_bundle,
-            vec![],
-            vec![],
-        )
-        .unwrap();
+        let key_package = KeyPackage::builder()
+            .build(
+                CryptoConfig {
+                    ciphersuite,
+                    version: ProtocolVersion::default(),
+                },
+                backend,
+                credential_bundle,
+            )
+            .unwrap();
         let private_key: Vec<u8> = backend
             .key_store()
             .read(key_package.hpke_init_key().as_slice())

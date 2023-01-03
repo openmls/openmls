@@ -364,16 +364,16 @@ pub(super) fn generate_key_package(
                 .expect("Error serializing signature key."),
         )
         .expect("An unexpected error occurred.");
-    KeyPackage::create(
-        CryptoConfig {
-            ciphersuite: ciphersuites[0],
-            version: ProtocolVersion::default(),
-        },
-        backend,
-        &credential_bundle,
-        extensions,
-        vec![], // FIXME: allow setting leaf node extensions.
-    )
+    KeyPackage::builder()
+        .key_package_extensions(extensions)
+        .build(
+            CryptoConfig {
+                ciphersuite: ciphersuites[0],
+                version: ProtocolVersion::default(),
+            },
+            backend,
+            &credential_bundle,
+        )
 }
 
 // Helper function to generate a CredentialBundle
