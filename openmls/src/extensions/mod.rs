@@ -20,7 +20,11 @@
 //! - [`ExternalPubExtension`] (GroupInfo extension)
 
 use serde::{Deserialize, Serialize};
-use std::{convert::TryFrom, fmt::Debug};
+use std::{
+    collections::{hash_map::Entry, HashMap},
+    fmt::Debug,
+    io::{Read, Write},
+};
 use tls_codec::*;
 
 // Private
@@ -166,6 +170,146 @@ pub enum Extension {
     ExternalSenders(ExternalSendersExtension),
 }
 
+/// A list of extensions with unique extension types.
+#[derive(Default, Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct Extensions {
+    map: HashMap<ExtensionType, Extension>,
+}
+
+impl Size for Extensions {
+    fn tls_serialized_len(&self) -> usize {
+        let out: Vec<&Extension> = self.map.values().collect();
+        out.tls_serialized_len()
+    }
+}
+
+impl tls_codec::Serialize for Extensions {
+    fn tls_serialize<W: Write>(&self, writer: &mut W) -> Result<usize, tls_codec::Error> {
+        let out: Vec<&Extension> = self.map.values().collect();
+        out.tls_serialize(writer)
+    }
+}
+
+impl tls_codec::Deserialize for Extensions {
+    fn tls_deserialize<R: Read>(bytes: &mut R) -> Result<Self, tls_codec::Error>
+    where
+        Self: Sized,
+    {
+        let candidate: Vec<Extension> = Vec::tls_deserialize(bytes)?;
+        Extensions::try_from(candidate)
+            .map_err(|_| tls_codec::Error::DecodingError("Found duplicate extensions".into()))
+    }
+}
+
+impl Extensions {
+    /// Add an extension to the extension list.
+    ///
+    /// Returns an error when there already is an extension with the same extension type.
+    pub fn add(&mut self, extension: Extension) -> Result<(), InvalidExtensionError> {
+        if let Entry::Vacant(e) = self.map.entry(extension.extension_type()) {
+            e.insert(extension);
+            Ok(())
+        } else {
+            Err(InvalidExtensionError::Duplicate)
+        }
+    }
+
+    /// Add an extension to the extension list (or replace an existing one.)
+    ///
+    /// Returns the replaced extension (if any).
+    pub fn add_or_replace(&mut self, extension: Extension) -> Option<Extension> {
+        self.map.insert(extension.extension_type(), extension)
+    }
+
+    /// Remove an extension from the extension list.
+    ///
+    /// Returns the removed extension or `None` when there is no extension with the given extension type.
+    pub fn remove(&mut self, extension_type: ExtensionType) -> Option<Extension> {
+        self.map.remove(&extension_type)
+    }
+
+    /// Replace an extension in the extension list.
+    ///
+    /// Returns the replaced extension or an error when there is no extension with the given extension type.
+    #[cfg(any(feature = "test-utils", test))]
+    pub fn replace(&mut self, extension: Extension) -> Result<Extension, InvalidExtensionError> {
+        let got = self.map.remove(&extension.extension_type());
+
+        match got {
+            Some(extension) => Ok(extension),
+            None => Err(InvalidExtensionError::NotFound),
+        }
+    }
+}
+
+impl TryFrom<Vec<Extension>> for Extensions {
+    type Error = InvalidExtensionError;
+
+    fn try_from(candidate: Vec<Extension>) -> Result<Self, Self::Error> {
+        let mut map = HashMap::new();
+
+        for extension in candidate.into_iter() {
+            if map.insert(extension.extension_type(), extension).is_some() {
+                return Err(InvalidExtensionError::Duplicate);
+            }
+        }
+
+        Ok(Self { map })
+    }
+}
+
+impl Extensions {
+    /// Get a reference to the [`ApplicationIdExtension`] if there is any.
+    pub fn application_id(&self) -> Option<&ApplicationIdExtension> {
+        self.map
+            .get(&ExtensionType::ApplicationId)
+            .and_then(|e| match e {
+                Extension::ApplicationId(e) => Some(e),
+                _ => None,
+            })
+    }
+
+    /// Get a reference to the [`RatchetTreeExtension`] if there is any.
+    pub fn ratchet_tree(&self) -> Option<&RatchetTreeExtension> {
+        self.map
+            .get(&ExtensionType::RatchetTree)
+            .and_then(|e| match e {
+                Extension::RatchetTree(e) => Some(e),
+                _ => None,
+            })
+    }
+
+    /// Get a reference to the [`RequiredCapabilitiesExtension`] if there is any.
+    pub fn required_capabilities(&self) -> Option<&RequiredCapabilitiesExtension> {
+        self.map
+            .get(&ExtensionType::RequiredCapabilities)
+            .and_then(|e| match e {
+                Extension::RequiredCapabilities(e) => Some(e),
+                _ => None,
+            })
+    }
+
+    /// Get a reference to the [`ExternalPubExtension`] if there is any.
+    pub fn external_pub(&self) -> Option<&ExternalPubExtension> {
+        self.map
+            .get(&ExtensionType::ExternalPub)
+            .and_then(|e| match e {
+                Extension::ExternalPub(e) => Some(e),
+                _ => None,
+            })
+    }
+
+    /// Get a reference to the [`ExternalSendersExtension`] if there is any.
+    pub fn external_senders(&self) -> Option<&ExternalSendersExtension> {
+        self.map
+            .get(&ExtensionType::ExternalSenders)
+            .and_then(|e| match e {
+                Extension::ExternalSenders(e) => Some(e),
+                _ => None,
+            })
+    }
+}
+
 impl Extension {
     /// Get a reference to this extension as [`ApplicationIdExtension`].
     /// Returns an [`ExtensionError::InvalidExtensionType`] if called on an
@@ -285,4 +429,77 @@ pub(crate) fn try_nodes_from_extensions(
     };
 
     Ok(nodes)
+}
+
+#[cfg(test)]
+mod test {
+    use crate::extensions::*;
+
+    #[test]
+    fn add() {
+        let mut extensions = Extensions::default();
+        extensions
+            .add(Extension::RequiredCapabilities(
+                RequiredCapabilitiesExtension::default(),
+            ))
+            .unwrap();
+        assert!(extensions
+            .add(Extension::RequiredCapabilities(
+                RequiredCapabilitiesExtension::default()
+            ))
+            .is_err());
+    }
+
+    #[test]
+    fn add_try_from() {
+        // Create two extensions with different extension types.
+        let x = Extension::ApplicationId(ApplicationIdExtension::new(b"Test"));
+        let y = Extension::RequiredCapabilities(RequiredCapabilitiesExtension::default());
+
+        let tests = [
+            (vec![], true),
+            (vec![x.clone()], true),
+            (vec![x.clone(), x.clone()], false),
+            (vec![x.clone(), x.clone(), x.clone()], false),
+            (vec![y.clone()], true),
+            (vec![y.clone(), y.clone()], false),
+            (vec![y.clone(), y.clone(), y.clone()], false),
+            (vec![x.clone(), y.clone()], true),
+            (vec![y.clone(), x.clone()], true),
+            (vec![x.clone(), x.clone(), y.clone()], false),
+            (vec![y.clone(), y.clone(), x.clone()], false),
+            (vec![x.clone(), y.clone(), y.clone()], false),
+            (vec![y.clone(), x.clone(), x.clone()], false),
+            (vec![x.clone(), y.clone(), x.clone()], false),
+            (vec![y.clone(), x, y], false),
+        ];
+
+        for (test, should_work) in tests.into_iter() {
+            // Test `add`.
+            {
+                let mut extensions = Extensions::default();
+
+                let mut works = true;
+                for ext in test.iter() {
+                    match extensions.add(ext.clone()) {
+                        Ok(_) => {}
+                        Err(InvalidExtensionError::Duplicate) => {
+                            works = false;
+                        }
+                        _ => panic!("This should have never happened."),
+                    }
+                }
+
+                println!("{:?}, {:?}", test.clone(), should_work);
+                assert_eq!(works, should_work);
+            }
+
+            // Test `try_from`.
+            if should_work {
+                assert!(Extensions::try_from(test).is_ok());
+            } else {
+                assert!(Extensions::try_from(test).is_err());
+            }
+        }
+    }
 }
