@@ -22,6 +22,13 @@ impl Size for Extension {
     }
 }
 
+impl Size for &Extension {
+    #[inline]
+    fn tls_serialized_len(&self) -> usize {
+        Size::tls_serialized_len(*self)
+    }
+}
+
 impl Serialize for Extension {
     fn tls_serialize<W: Write>(&self, writer: &mut W) -> Result<usize, tls_codec::Error> {
         // First write the extension type.
@@ -45,6 +52,12 @@ impl Serialize for Extension {
         TlsSliceU32(&extension_data)
             .tls_serialize(writer)
             .map(|l| l + written)
+    }
+}
+
+impl Serialize for &Extension {
+    fn tls_serialize<W: Write>(&self, writer: &mut W) -> Result<usize, tls_codec::Error> {
+        Extension::tls_serialize(*self, writer)
     }
 }
 

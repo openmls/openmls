@@ -20,7 +20,11 @@
 //! - [`ExternalPubExtension`] (GroupInfo extension)
 
 use serde::{Deserialize, Serialize};
-use std::{collections::BTreeSet, convert::TryFrom, fmt::Debug};
+use std::{
+    collections::HashMap,
+    fmt::Debug,
+    io::{Read, Write},
+};
 use tls_codec::*;
 
 // Private
@@ -167,23 +171,48 @@ pub enum Extension {
 }
 
 /// A list of extensions with unique extension types.
-#[derive(
-    Debug, Clone, PartialEq, Eq, Serialize, Deserialize, TlsSize, TlsSerialize, TlsDeserialize,
-)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Extensions {
-    inner: Vec<Extension>,
+    map: HashMap<ExtensionType, Extension>,
+}
+
+impl Size for Extensions {
+    fn tls_serialized_len(&self) -> usize {
+        let out: Vec<&Extension> = self.map.values().collect();
+        out.tls_serialized_len()
+    }
+}
+
+impl tls_codec::Serialize for Extensions {
+    fn tls_serialize<W: Write>(&self, writer: &mut W) -> Result<usize, tls_codec::Error> {
+        let out: Vec<&Extension> = self.map.values().collect();
+        out.tls_serialize(writer)
+    }
+}
+
+impl tls_codec::Deserialize for Extensions {
+    fn tls_deserialize<R: Read>(bytes: &mut R) -> Result<Self, tls_codec::Error>
+    where
+        Self: Sized,
+    {
+        let candidate: Vec<Extension> = Vec::tls_deserialize(bytes)?;
+        Extensions::try_from(candidate)
+            .map_err(|_| tls_codec::Error::DecodingError("Found duplicate extensions".into()))
+    }
 }
 
 impl Extensions {
     /// Create an extension list that is empty.
     pub fn empty() -> Self {
-        Self { inner: Vec::new() }
+        Self {
+            map: HashMap::new(),
+        }
     }
 
     /// Create an extension list that contains a single extension.
     pub fn single(extension: Extension) -> Self {
         Self {
-            inner: vec![extension],
+            map: HashMap::from([(extension.extension_type(), extension)]),
         }
     }
 
@@ -200,8 +229,8 @@ impl Extensions {
     ///
     /// Returns an error when there already is an extension with the same extension type.
     pub fn add(&mut self, extension: Extension) -> Result<(), InvalidExtensionError> {
-        if !self.contains(extension.extension_type()) {
-            self.inner.push(extension);
+        if !self.map.contains_key(&extension.extension_type()) {
+            self.map.insert(extension.extension_type(), extension);
             Ok(())
         } else {
             Err(InvalidExtensionError::Duplicate)
@@ -212,26 +241,14 @@ impl Extensions {
     ///
     /// Returns the replaced extension (if any).
     pub fn add_or_replace(&mut self, extension: Extension) -> Option<Extension> {
-        let replaced = self.remove(extension.extension_type()).ok();
-        self.inner.push(extension);
-        replaced
+        self.map.insert(extension.extension_type(), extension)
     }
 
     /// Remove an extension from the extension list.
     ///
-    /// Returns the removed extension or an error when there is no extension with the given extension type.
-    pub fn remove(
-        &mut self,
-        extension_type: ExtensionType,
-    ) -> Result<Extension, InvalidExtensionError> {
-        match self
-            .inner
-            .iter()
-            .position(|e| e.extension_type() == extension_type)
-        {
-            Some(position) => Ok(self.inner.remove(position)),
-            None => Err(InvalidExtensionError::NotFound),
-        }
+    /// Returns the removed extension or `None` when there is no extension with the given extension type.
+    pub fn remove(&mut self, extension_type: ExtensionType) -> Option<Extension> {
+        self.map.remove(&extension_type)
     }
 
     /// Replace an extension in the extension list.
@@ -239,51 +256,12 @@ impl Extensions {
     /// Returns the replaced extension or an error when there is no extension with the given extension type.
     #[cfg(any(feature = "test-utils", test))]
     pub fn replace(&mut self, extension: Extension) -> Result<Extension, InvalidExtensionError> {
-        let mut extension = extension;
+        let got = self.map.remove(&extension.extension_type());
 
-        match self
-            .inner
-            .iter()
-            .position(|e| e.extension_type() == extension.extension_type())
-        {
-            Some(position) => {
-                std::mem::swap(&mut self.inner[position], &mut extension);
-                Ok(extension)
-            }
+        match got {
+            Some(extension) => Ok(extension),
             None => Err(InvalidExtensionError::NotFound),
         }
-    }
-
-    // ---------------------------------------------------------------------------------------------
-
-    /// Return true if (and only if) the extension list contains the extension with the given type.
-    pub fn contains(&self, extension_type: ExtensionType) -> bool {
-        self.inner
-            .iter()
-            .any(|e| e.extension_type() == extension_type)
-    }
-
-    /// Check that the candidate extension list is valid.
-    ///
-    /// Specifically, the candidate list must ...
-    ///
-    /// * ... not contain duplicate extension types (ValSem012) ...
-    ///
-    /// ... to be valid.
-    pub fn validate(candidate: &[Extension]) -> Result<(), InvalidExtensionError> {
-        let mut map = BTreeSet::new();
-
-        // We iterate over all extensions ...
-        for extension_type in candidate.iter().map(Extension::extension_type) {
-            // ... and try to insert the extension type into our set.
-            if !map.insert(extension_type) {
-                // When insert returns false, an element of the same extension type was inserted
-                // before, which means that we found a duplicate.
-                return Err(InvalidExtensionError::Duplicate);
-            }
-        }
-
-        Ok(())
     }
 }
 
@@ -296,17 +274,23 @@ impl Default for Extensions {
 impl TryFrom<Vec<Extension>> for Extensions {
     type Error = InvalidExtensionError;
 
-    fn try_from(value: Vec<Extension>) -> Result<Self, Self::Error> {
-        Extensions::validate(&value)?;
+    fn try_from(candidate: Vec<Extension>) -> Result<Self, Self::Error> {
+        let mut map = HashMap::new();
 
-        Ok(Self { inner: value })
+        for extension in candidate.into_iter() {
+            if map.insert(extension.extension_type(), extension).is_some() {
+                return Err(InvalidExtensionError::Duplicate);
+            }
+        }
+
+        Ok(Self { map })
     }
 }
 
 impl Extensions {
     /// Get a reference to the [`ApplicationIdExtension`] if there is any.
     pub fn application_id(&self) -> Option<&ApplicationIdExtension> {
-        for extension in self.inner.iter() {
+        for extension in self.map.values() {
             if let Extension::ApplicationId(ext) = extension {
                 return Some(ext);
             }
@@ -317,7 +301,7 @@ impl Extensions {
 
     /// Get a reference to the [`RatchetTreeExtension`] if there is any.
     pub fn ratchet_tree(&self) -> Option<&RatchetTreeExtension> {
-        for extension in self.inner.iter() {
+        for extension in self.map.values() {
             if let Extension::RatchetTree(ext) = extension {
                 return Some(ext);
             }
@@ -328,7 +312,7 @@ impl Extensions {
 
     /// Get a reference to the [`RequiredCapabilitiesExtension`] if there is any.
     pub fn required_capabilities(&self) -> Option<&RequiredCapabilitiesExtension> {
-        for extension in self.inner.iter() {
+        for extension in self.map.values() {
             if let Extension::RequiredCapabilities(ext) = extension {
                 return Some(ext);
             }
@@ -339,7 +323,7 @@ impl Extensions {
 
     /// Get a reference to the [`ExternalPubExtension`] if there is any.
     pub fn external_pub(&self) -> Option<&ExternalPubExtension> {
-        for extension in self.inner.iter() {
+        for extension in self.map.values() {
             if let Extension::ExternalPub(ext) = extension {
                 return Some(ext);
             }
@@ -350,7 +334,7 @@ impl Extensions {
 
     /// Get a reference to the [`ExternalSendersExtension`] if there is any.
     pub fn external_senders(&self) -> Option<&ExternalSendersExtension> {
-        for extension in self.inner.iter() {
+        for extension in self.map.values() {
             if let Extension::ExternalSenders(ext) = extension {
                 return Some(ext);
             }
