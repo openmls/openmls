@@ -108,6 +108,9 @@
 <span id="108">108</span>
 <span id="109">109</span>
 <span id="110">110</span>
+<span id="111">111</span>
+<span id="112">112</span>
+<span id="113">113</span>
 </pre><pre class="rust"><code><span class="doccomment">//! # Extension errors.
 //!
 //! An `ExtensionError` is thrown when an extension is invalid (for example when
@@ -217,6 +220,9 @@
     <span class="doccomment">/// The provided extension list contains duplicate extensions.
     </span><span class="attribute">#[error(<span class="string">&quot;The provided extension list contains duplicate extensions.&quot;</span>)]
     </span>Duplicate,
+    <span class="doccomment">/// The specified extension could not be found.
+    </span><span class="attribute">#[error(<span class="string">&quot;The specified extension could not be found.&quot;</span>)]
+    </span>NotFound,
 }
 </code></pre></div>
 </section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-current-crate="openmls" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.66.0 (69f9c33d7 2022-12-12)" ></div></body></html>
