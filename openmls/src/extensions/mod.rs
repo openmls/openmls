@@ -202,15 +202,6 @@ impl tls_codec::Deserialize for Extensions {
 }
 
 impl Extensions {
-    /// Create an extension list that is empty.
-    pub fn empty() -> Self {
-        Self {
-            map: HashMap::new(),
-        }
-    }
-
-    // ---------------------------------------------------------------------------------------------
-
     /// Add an extension to the extension list.
     ///
     /// Returns an error when there already is an extension with the same extension type.
@@ -446,7 +437,7 @@ mod test {
 
     #[test]
     fn add() {
-        let mut extensions = Extensions::empty();
+        let mut extensions = Extensions::default();
         extensions
             .add(Extension::RequiredCapabilities(
                 RequiredCapabilitiesExtension::default(),
@@ -486,7 +477,7 @@ mod test {
         for (test, should_work) in tests.into_iter() {
             // Test `add`.
             {
-                let mut extensions = Extensions::empty();
+                let mut extensions = Extensions::default();
 
                 let mut works = true;
                 for ext in test.iter() {
