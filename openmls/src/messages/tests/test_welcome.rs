@@ -85,28 +85,26 @@ fn test_welcome_ciphersuite_mismatch(
     .expect("Could not create credential bundle.");
 
     // Create key packages
-    let alice_kp = KeyPackage::create(
-        CryptoConfig {
-            ciphersuite,
-            version: ProtocolVersion::default(),
-        },
-        backend,
-        &alice_credential_bundle,
-        vec![],
-        vec![],
-    )
-    .unwrap();
-    let bob_kp = KeyPackage::create(
-        CryptoConfig {
-            ciphersuite,
-            version: ProtocolVersion::default(),
-        },
-        backend,
-        &bob_credential_bundle,
-        vec![],
-        vec![],
-    )
-    .unwrap();
+    let alice_kp = KeyPackage::builder()
+        .build(
+            CryptoConfig {
+                ciphersuite,
+                version: ProtocolVersion::default(),
+            },
+            backend,
+            &alice_credential_bundle,
+        )
+        .unwrap();
+    let bob_kp = KeyPackage::builder()
+        .build(
+            CryptoConfig {
+                ciphersuite,
+                version: ProtocolVersion::default(),
+            },
+            backend,
+            &bob_credential_bundle,
+        )
+        .unwrap();
 
     let bob_private_key: Vec<u8> = backend
         .key_store()

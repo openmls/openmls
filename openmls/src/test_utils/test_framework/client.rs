@@ -67,17 +67,16 @@ impl Client {
             )
             .ok_or(ClientError::NoMatchingCredential)?;
 
-        let key_package = KeyPackage::create(
-            CryptoConfig {
-                ciphersuite: ciphersuites[0],
-                version: ProtocolVersion::default(),
-            },
-            &self.crypto,
-            &credential_bundle,
-            vec![],
-            vec![],
-        )
-        .unwrap();
+        let key_package = KeyPackage::builder()
+            .build(
+                CryptoConfig {
+                    ciphersuite: ciphersuites[0],
+                    version: ProtocolVersion::default(),
+                },
+                &self.crypto,
+                &credential_bundle,
+            )
+            .unwrap();
 
         Ok(key_package)
     }
@@ -105,17 +104,16 @@ impl Client {
                     .expect("Error serializing signature key."),
             )
             .ok_or(ClientError::NoMatchingCredential)?;
-        let key_package = KeyPackage::create(
-            CryptoConfig {
-                ciphersuite,
-                version: ProtocolVersion::default(),
-            },
-            &self.crypto,
-            &credential_bundle,
-            vec![],
-            vec![],
-        )
-        .unwrap();
+        let key_package = KeyPackage::builder()
+            .build(
+                CryptoConfig {
+                    ciphersuite,
+                    version: ProtocolVersion::default(),
+                },
+                &self.crypto,
+                &credential_bundle,
+            )
+            .unwrap();
         let group_state = MlsGroup::new(&self.crypto, &mls_group_config, key_package)?;
         let group_id = group_state.group_id().clone();
         self.groups
