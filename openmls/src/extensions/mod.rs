@@ -21,7 +21,7 @@
 
 use serde::{Deserialize, Serialize};
 use std::{
-    collections::HashMap,
+    collections::{hash_map::Entry, HashMap},
     fmt::Debug,
     io::{Read, Write},
 };
@@ -229,8 +229,8 @@ impl Extensions {
     ///
     /// Returns an error when there already is an extension with the same extension type.
     pub fn add(&mut self, extension: Extension) -> Result<(), InvalidExtensionError> {
-        if !self.map.contains_key(&extension.extension_type()) {
-            self.map.insert(extension.extension_type(), extension);
+        if let Entry::Vacant(e) = self.map.entry(extension.extension_type()) {
+            e.insert(extension);
             Ok(())
         } else {
             Err(InvalidExtensionError::Duplicate)
