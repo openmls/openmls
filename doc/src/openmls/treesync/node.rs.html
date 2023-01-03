@@ -22,6 +22,7 @@
 <span id="22">22</span>
 <span id="23">23</span>
 <span id="24">24</span>
+<span id="25">25</span>
 </pre><pre class="rust"><code><span class="doccomment">//! This module contains types and methods around the [`Node`] enum. The
 //! variants of the enum are `LeafNode` and [`ParentNode`], both of which are
 //! defined in the respective [`leaf_node`] and [`parent_node`] submodules.
@@ -36,6 +37,7 @@
 <span class="doccomment">/// Container enum for leaf and parent nodes.
 </span><span class="attribute">#[derive(Debug, PartialEq, Eq, Clone, Serialize, Deserialize)]
 #[allow(missing_docs)]
+#[allow(clippy::large_enum_variant)]
 </span><span class="kw">pub enum </span>Node {
     LeafNode(OpenMlsLeafNode),
     ParentNode(ParentNode),

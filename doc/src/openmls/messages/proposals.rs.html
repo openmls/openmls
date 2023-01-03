@@ -392,6 +392,7 @@
 <span id="392">392</span>
 <span id="393">393</span>
 <span id="394">394</span>
+<span id="395">395</span>
 </pre><pre class="rust"><code><span class="doccomment">//! # Proposals
 //!
 //! This module defines all the different types of Proposals.
@@ -749,6 +750,7 @@
 )]
 #[repr(u8)]
 #[allow(missing_docs)]
+#[allow(clippy::large_enum_variant)]
 </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">enum </span>ProposalOrRef {
     <span class="attribute">#[tls_codec(discriminant = <span class="number">1</span>)]
     </span>Proposal(Proposal),

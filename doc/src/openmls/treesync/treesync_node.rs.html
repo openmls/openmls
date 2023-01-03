@@ -219,6 +219,7 @@
 <span id="219">219</span>
 <span id="220">220</span>
 <span id="221">221</span>
+<span id="222">222</span>
 </pre><pre class="rust"><code><span class="doccomment">//! This module contains the [`TreeSyncNode`] struct and its implementation.
 
 </span><span class="kw">use </span>openmls_traits::{types::Ciphersuite, OpenMlsCryptoProvider};
@@ -232,7 +233,8 @@
 
 <span class="kw">use super</span>::{hashes::TreeHashInput, node::leaf_node::OpenMlsLeafNode, Node, ParentNode};
 
-<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">enum </span>TreeSyncNode {
+<span class="attribute">#[allow(clippy::large_enum_variant)]
+</span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">enum </span>TreeSyncNode {
     Leaf(TreeSyncLeafNode),
     Parent(TreeSyncParentNode),
 }
