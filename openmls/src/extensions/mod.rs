@@ -21,7 +21,7 @@
 
 use serde::{Deserialize, Serialize};
 use std::{
-    collections::{hash_map::Entry, HashMap},
+    collections::{btree_map::Entry, BTreeMap},
     fmt::Debug,
     io::{Read, Write},
 };
@@ -173,7 +173,7 @@ pub enum Extension {
 /// A list of extensions with unique extension types.
 #[derive(Default, Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Extensions {
-    map: HashMap<ExtensionType, Extension>,
+    map: BTreeMap<ExtensionType, Extension>,
 }
 
 impl Size for Extensions {
@@ -205,14 +205,14 @@ impl Extensions {
     /// Create an empty extension list.
     pub fn empty() -> Self {
         Self {
-            map: HashMap::new(),
+            map: BTreeMap::new(),
         }
     }
 
     /// Create an extension list with a single extension.
     pub fn single(extension: Extension) -> Self {
         Self {
-            map: HashMap::from([(extension.extension_type(), extension)]),
+            map: BTreeMap::from([(extension.extension_type(), extension)]),
         }
     }
 
@@ -221,6 +221,11 @@ impl Extensions {
     /// This function will fail when the list of extensions contains duplicate extension types.
     pub fn from_vec(extensions: Vec<Extension>) -> Result<Self, InvalidExtensionError> {
         extensions.try_into()
+    }
+
+    /// Returns an iterator over the extension list.
+    pub fn iter(&self) -> impl Iterator<Item = &Extension> {
+        self.map.values()
     }
 
     /// Add an extension to the extension list.
@@ -267,7 +272,7 @@ impl TryFrom<Vec<Extension>> for Extensions {
     type Error = InvalidExtensionError;
 
     fn try_from(candidate: Vec<Extension>) -> Result<Self, Self::Error> {
-        let mut map = HashMap::new();
+        let mut map = BTreeMap::new();
 
         for extension in candidate.into_iter() {
             if map.insert(extension.extension_type(), extension).is_some() {
@@ -454,6 +459,8 @@ pub(crate) fn try_nodes_from_extensions(
 
 #[cfg(test)]
 mod test {
+    use tls_codec::{Deserialize, Serialize};
+
     use crate::extensions::*;
 
     #[test]
@@ -521,6 +528,30 @@ mod test {
             } else {
                 assert!(Extensions::try_from(test).is_err());
             }
+        }
+    }
+
+    #[test]
+    fn ensure_ordering() {
+        // Create two extensions with different extension types.
+        let x = Extension::ApplicationId(ApplicationIdExtension::new(b"Test"));
+        let y = Extension::RatchetTree(RatchetTreeExtension::default());
+        let z = Extension::RequiredCapabilities(RequiredCapabilitiesExtension::default());
+
+        let candidates = [
+            vec![x.clone(), y.clone(), z.clone()],
+            vec![x.clone(), z.clone(), y.clone()],
+            vec![y.clone(), x.clone(), z.clone()],
+            vec![y.clone(), z.clone(), x.clone()],
+            vec![z.clone(), x.clone(), y.clone()],
+            vec![z.clone(), y.clone(), x.clone()],
+        ];
+
+        for candidate in candidates.into_iter() {
+            let candidate: Extensions = Extensions::try_from(candidate).unwrap();
+            let bytes = candidate.tls_serialize_detached().unwrap();
+            let got = Extensions::tls_deserialize(&mut bytes.as_slice()).unwrap();
+            assert_eq!(candidate, got);
         }
     }
 }
