@@ -51,8 +51,9 @@ fn generate_credential_bundle_and_key_package(
         )
         .expect("An unexpected error occurred.");
 
-    let key_package = generate_key_package(&[ciphersuite], &credential, vec![], backend)
-        .expect("Failed to generate KeyPackage.");
+    let key_package =
+        generate_key_package(&[ciphersuite], &credential, Extensions::empty(), backend)
+            .expect("Failed to generate KeyPackage.");
 
     (credential_bundle, key_package)
 }
@@ -98,7 +99,8 @@ fn new_test_group(
     .unwrap();
 
     // Generate KeyPackages
-    let key_package = generate_key_package(&[ciphersuite], &credential, vec![], backend).unwrap();
+    let key_package =
+        generate_key_package(&[ciphersuite], &credential, Extensions::empty(), backend).unwrap();
 
     // Define the MlsGroup configuration
     let mls_group_config = MlsGroupConfig::builder()
@@ -125,8 +127,13 @@ fn validation_test_setup(
     )
     .expect("An unexpected error occurred.");
 
-    let bob_key_package = generate_key_package(&[ciphersuite], &bob_credential, vec![], backend)
-        .expect("An unexpected error occurred.");
+    let bob_key_package = generate_key_package(
+        &[ciphersuite],
+        &bob_credential,
+        Extensions::empty(),
+        backend,
+    )
+    .expect("An unexpected error occurred.");
 
     let (_message, welcome) = alice_group
         .add_members(backend, &[bob_key_package])
@@ -501,8 +508,8 @@ fn test_valsem102(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
                     },
                     backend,
                     &bob_credential_bundle,
-                    vec![],
-                    vec![],
+                    Extensions::empty(),
+                    Extensions::empty(),
                     charlie_key_package.hpke_init_key().as_slice().to_vec(),
                 )
                 .unwrap();
@@ -1087,8 +1094,8 @@ fn test_valsem105(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
                     },
                     backend,
                     &bob_credential_bundle,
-                    vec![],
-                    vec![],
+                    Extensions::empty(),
+                    Extensions::empty(),
                     alice_key_package.hpke_init_key().as_slice().to_vec(),
                 )
                 .unwrap();
@@ -1168,8 +1175,8 @@ fn test_valsem105(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
         },
         backend,
         &dave_credential_bundle,
-        vec![],
-        vec![],
+        Extensions::empty(),
+        Extensions::empty(),
         bob_public_key.into(),
     )
     .unwrap();
@@ -1966,7 +1973,7 @@ fn test_valsem111(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
     let update_kp = generate_key_package(
         &[ciphersuite],
         alice_group.credential().expect("error fetching credential"),
-        vec![],
+        Extensions::empty(),
         backend,
     )
     .expect("error creating kpb");

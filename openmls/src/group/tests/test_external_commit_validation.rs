@@ -53,9 +53,13 @@ fn validation_test_setup(
     .expect("An unexpected error occurred.");
 
     // Generate KeyPackages
-    let alice_key_package =
-        generate_key_package(&[ciphersuite], &alice_credential, vec![], backend)
-            .expect("An unexpected error occurred.");
+    let alice_key_package = generate_key_package(
+        &[ciphersuite],
+        &alice_credential,
+        Extensions::empty(),
+        backend,
+    )
+    .expect("An unexpected error occurred.");
 
     // Define the MlsGroup configuration
 
@@ -255,7 +259,7 @@ fn test_valsem242(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
     let bob_key_package = generate_key_package(
         &[ciphersuite],
         bob_credential_bundle.credential(),
-        vec![],
+        Extensions::empty(),
         backend,
     )
     .unwrap();
@@ -273,8 +277,13 @@ fn test_valsem242(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
             backend,
         )
         .unwrap();
-        let charlie_key_package =
-            generate_key_package(&[ciphersuite], &charlie_credential, vec![], backend).unwrap();
+        let charlie_key_package = generate_key_package(
+            &[ciphersuite],
+            &charlie_credential,
+            Extensions::empty(),
+            backend,
+        )
+        .unwrap();
 
         ProposalOrRef::Proposal(Proposal::Add(AddProposal {
             key_package: charlie_key_package,
@@ -285,7 +294,7 @@ fn test_valsem242(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
         let bob_key_package = generate_key_package(
             &[ciphersuite],
             bob_credential_bundle.credential(),
-            vec![],
+            Extensions::empty(),
             backend,
         )
         .unwrap();
@@ -299,13 +308,15 @@ fn test_valsem242(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
             group_id: alice_group.group_id().clone(),
             version: Default::default(),
             ciphersuite,
-            extensions: alice_group.group().group_context_extensions().to_vec(),
+            extensions: alice_group.group().group_context_extensions().clone(),
         }))
     };
 
     let gce_proposal = || {
         ProposalOrRef::Proposal(Proposal::GroupContextExtensions(
-            GroupContextExtensionProposal::new(alice_group.group().group_context_extensions()),
+            GroupContextExtensionProposal::new(
+                alice_group.group().group_context_extensions().clone(),
+            ),
         ))
     };
 
@@ -395,7 +406,7 @@ fn test_valsem243(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
     let bob_key_package = generate_key_package(
         &[ciphersuite],
         bob_credential_bundle.credential(),
-        vec![],
+        Extensions::empty(),
         backend,
     )
     .expect("An unexpected error occurred.");
@@ -540,7 +551,7 @@ fn test_valsem244(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
     let bob_key_package = generate_key_package(
         &[ciphersuite],
         bob_credential_bundle.credential(),
-        vec![],
+        Extensions::empty(),
         backend,
     )
     .unwrap();
@@ -673,9 +684,13 @@ fn test_valsem246(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
     .expect("An unexpected error occurred.");
 
     // Generate KeyPackage
-    let bob_new_key_package =
-        generate_key_package(&[ciphersuite], &bob_new_credential, vec![], backend)
-            .expect("An unexpected error occurred.");
+    let bob_new_key_package = generate_key_package(
+        &[ciphersuite],
+        &bob_new_credential,
+        Extensions::empty(),
+        backend,
+    )
+    .expect("An unexpected error occurred.");
 
     if let Some(ref mut path) = content.path {
         path.set_leaf_node(bob_new_key_package.leaf_node().clone())

@@ -97,16 +97,16 @@ pub fn generate_test_vector(ciphersuite: Ciphersuite) -> MessagesTestVector {
                 .rand()
                 .random_vec(ciphersuite.hash_length())
                 .expect("An unexpected error occurred."),
-            &[Extension::RequiredCapabilities(
+            Extensions::single(Extension::RequiredCapabilities(
                 RequiredCapabilitiesExtension::default(),
-            )],
+            )),
         );
 
         GroupInfoTBS::new(
             group_context,
-            &[Extension::RatchetTree(RatchetTreeExtension::new(
+            Extensions::single(Extension::RatchetTree(RatchetTreeExtension::new(
                 ratchet_tree.clone(),
-            ))],
+            ))),
             ConfirmationTag(Mac {
                 mac_value: crypto
                     .rand()
@@ -131,7 +131,7 @@ pub fn generate_test_vector(ciphersuite: Ciphersuite) -> MessagesTestVector {
             key_package.hpke_init_key().clone(),
             &credential_bundle,
             LeafNodeSource::Update,
-            vec![],
+            Extensions::empty(),
             &crypto,
         )
         .unwrap(),
@@ -174,9 +174,9 @@ pub fn generate_test_vector(ciphersuite: Ciphersuite) -> MessagesTestVector {
         group_id: group.group_id().clone(),
         version: ProtocolVersion::Mls10,
         ciphersuite: ciphersuite_name,
-        extensions: vec![Extension::RatchetTree(RatchetTreeExtension::new(
+        extensions: Extensions::single(Extension::RatchetTree(RatchetTreeExtension::new(
             ratchet_tree.clone(),
-        ))],
+        ))),
     };
     // We don't support external init proposals yet.
     let external_init_proposal = tls_codec::TlsByteVecU16::new(Vec::new());

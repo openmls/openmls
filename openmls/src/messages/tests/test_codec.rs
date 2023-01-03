@@ -2,6 +2,7 @@ use openmls_rust_crypto::OpenMlsRustCrypto;
 use tls_codec::{Deserialize, Serialize};
 
 use crate::{
+    extensions::Extensions,
     group::GroupId,
     messages::{PreSharedKeyProposal, ProtocolVersion, ReInitProposal},
     schedule::psk::{ExternalPsk, PreSharedKeyId, Psk, ResumptionPsk, ResumptionPskUsage},
@@ -84,7 +85,7 @@ fn test_reinit_proposal_codec(ciphersuite: Ciphersuite, backend: &impl OpenMlsCr
         group_id: GroupId::random(backend),
         version: ProtocolVersion::default(),
         ciphersuite,
-        extensions: vec![],
+        extensions: Extensions::empty(),
     };
     let encoded = orig
         .tls_serialize_detached()

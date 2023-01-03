@@ -70,9 +70,9 @@ fn application_id_extension(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryp
     // Generate a valid KeyPackage.
     let id = b"application id" as &[u8];
     let key_package = KeyPackage::builder()
-        .leaf_node_extensions(vec![Extension::ApplicationId(ApplicationIdExtension::new(
-            id,
-        ))])
+        .leaf_node_extensions(Extensions::single(Extension::ApplicationId(
+            ApplicationIdExtension::new(id),
+        )))
         .build(
             CryptoConfig {
                 ciphersuite,

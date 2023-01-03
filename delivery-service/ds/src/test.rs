@@ -31,7 +31,7 @@ fn generate_credential(
 fn generate_key_package(
     ciphersuites: &[Ciphersuite],
     credential: &Credential,
-    extensions: Vec<Extension>,
+    extensions: Extensions,
     crypto_backend: &impl OpenMlsCryptoProvider,
 ) -> KeyPackage {
     let credential_bundle = crypto_backend
@@ -102,8 +102,12 @@ async fn test_list_clients() {
     )
     .unwrap();
     let client_id = credential_bundle.identity().to_vec();
-    let client_key_package =
-        generate_key_package(&[ciphersuite], &credential_bundle, vec![], crypto);
+    let client_key_package = generate_key_package(
+        &[ciphersuite],
+        &credential_bundle,
+        Extensions::empty(),
+        crypto,
+    );
     let client_key_package = vec![(
         client_key_package
             .hash_ref(crypto.crypto())
@@ -202,7 +206,8 @@ async fn test_group() {
             crypto,
         )
         .unwrap();
-        let client_key_package = generate_key_package(&[ciphersuite], &credential, vec![], crypto);
+        let client_key_package =
+            generate_key_package(&[ciphersuite], &credential, Extensions::empty(), crypto);
         let client_data = ClientInfo::new(
             client_name.to_string(),
             vec![(

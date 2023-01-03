@@ -5,8 +5,6 @@ use std::collections::HashSet;
 
 use crate::{
     binary_tree::array_representation::LeafNodeIndex,
-    error::LibraryError,
-    extensions::ExtensionType,
     framing::Sender,
     group::errors::ExternalCommitValidationError,
     group::errors::ValidationError,
@@ -180,20 +178,9 @@ impl CoreGroup {
             }
             // If there is a required capabilities extension, check if that one
             // is supported.
-            if let Some(required_capabilities_extension) = self
-                .group_context_extensions()
-                .iter()
-                .find(|&e| e.extension_type() == ExtensionType::RequiredCapabilities)
+            if let Some(required_capabilities) =
+                self.group_context_extensions().required_capabilities()
             {
-                let required_capabilities = required_capabilities_extension
-                    .as_required_capabilities_extension()
-                    .map_err(|_| {
-                        // Mismatches between Extensions and ExtensionTypes should be
-                        // caught when constructing KeyPackages.
-                        ProposalValidationError::LibraryError(LibraryError::custom(
-                            "ExtensionType didn't match extension content.",
-                        ))
-                    })?;
                 // Check if all required capabilities are supported.
                 if !capabilities.supports_required_capabilities(required_capabilities) {
                     log::error!("Tried to commit an Add proposal, where the `Capabilities` of the given `KeyPackage` do not fulfill the `RequiredCapabilities` of the group.");

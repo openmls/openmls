@@ -428,33 +428,16 @@ impl Ord for Extension {
     }
 }
 
-/// This function tries to extract a vector of nodes from the given slice of
-/// [`Extension`]s.
+/// This function tries to extract a vector of nodes from the given extensions.
 ///
-/// Returns the vector of nodes if it finds one and `None` otherwise. Returns an
-/// error if there is either no [`RatchetTreeExtension`] or more than one.
+/// Returns the vector of nodes if it finds one and `None` otherwise.
 pub(crate) fn try_nodes_from_extensions(
-    other_extensions: &[Extension],
-) -> Result<Option<Vec<Option<Node>>>, ExtensionError> {
-    let mut ratchet_tree_extensions = other_extensions
-        .iter()
-        .filter(|e| e.extension_type() == ExtensionType::RatchetTree);
-
-    let nodes = match ratchet_tree_extensions.next() {
-        Some(e) => Some(e.as_ratchet_tree_extension()?.as_slice().into()),
+    other_extensions: &Extensions,
+) -> Option<Vec<Option<Node>>> {
+    match other_extensions.ratchet_tree() {
+        Some(e) => Some(e.as_slice().into()),
         None => None,
-    };
-
-    if ratchet_tree_extensions.next().is_some() {
-        // Throw an error if there is more than one ratchet tree extension.
-        // This shouldn't be the case anyway, because extensions are checked
-        // for uniqueness when decoding them. We have to see if this makes
-        // problems later as it's not something required by the spec right
-        // now (Note issue #530 of the MLS spec.).
-        return Err(ExtensionError::DuplicateRatchetTreeExtension);
-    };
-
-    Ok(nodes)
+    }
 }
 
 #[cfg(test)]
