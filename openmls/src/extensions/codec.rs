@@ -25,7 +25,7 @@ impl Size for Extension {
 impl Size for &Extension {
     #[inline]
     fn tls_serialized_len(&self) -> usize {
-        Size::tls_serialized_len(*self)
+        Extension::tls_serialized_len(*self)
     }
 }
 
