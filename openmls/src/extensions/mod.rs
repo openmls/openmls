@@ -171,7 +171,7 @@ pub enum Extension {
 }
 
 /// A list of extensions with unique extension types.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Default, Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Extensions {
     map: HashMap<ExtensionType, Extension>,
 }
@@ -207,20 +207,6 @@ impl Extensions {
         Self {
             map: HashMap::new(),
         }
-    }
-
-    /// Create an extension list that contains a single extension.
-    pub fn single(extension: Extension) -> Self {
-        Self {
-            map: HashMap::from([(extension.extension_type(), extension)]),
-        }
-    }
-
-    /// Create an extension list that contains multiple extensions.
-    ///
-    /// This function will fail when the list of extensions contains duplicate extension types.
-    pub fn multi(extensions: Vec<Extension>) -> Result<Self, InvalidExtensionError> {
-        extensions.try_into()
     }
 
     // ---------------------------------------------------------------------------------------------
@@ -265,12 +251,6 @@ impl Extensions {
     }
 }
 
-impl Default for Extensions {
-    fn default() -> Self {
-        Self::empty()
-    }
-}
-
 impl TryFrom<Vec<Extension>> for Extensions {
     type Error = InvalidExtensionError;
 
@@ -290,57 +270,52 @@ impl TryFrom<Vec<Extension>> for Extensions {
 impl Extensions {
     /// Get a reference to the [`ApplicationIdExtension`] if there is any.
     pub fn application_id(&self) -> Option<&ApplicationIdExtension> {
-        for extension in self.map.values() {
-            if let Extension::ApplicationId(ext) = extension {
-                return Some(ext);
-            }
-        }
-
-        None
+        self.map
+            .get(&ExtensionType::ApplicationId)
+            .and_then(|e| match e {
+                Extension::ApplicationId(e) => Some(e),
+                _ => None,
+            })
     }
 
     /// Get a reference to the [`RatchetTreeExtension`] if there is any.
     pub fn ratchet_tree(&self) -> Option<&RatchetTreeExtension> {
-        for extension in self.map.values() {
-            if let Extension::RatchetTree(ext) = extension {
-                return Some(ext);
-            }
-        }
-
-        None
+        self.map
+            .get(&ExtensionType::RatchetTree)
+            .and_then(|e| match e {
+                Extension::RatchetTree(e) => Some(e),
+                _ => None,
+            })
     }
 
     /// Get a reference to the [`RequiredCapabilitiesExtension`] if there is any.
     pub fn required_capabilities(&self) -> Option<&RequiredCapabilitiesExtension> {
-        for extension in self.map.values() {
-            if let Extension::RequiredCapabilities(ext) = extension {
-                return Some(ext);
-            }
-        }
-
-        None
+        self.map
+            .get(&ExtensionType::RequiredCapabilities)
+            .and_then(|e| match e {
+                Extension::RequiredCapabilities(e) => Some(e),
+                _ => None,
+            })
     }
 
     /// Get a reference to the [`ExternalPubExtension`] if there is any.
     pub fn external_pub(&self) -> Option<&ExternalPubExtension> {
-        for extension in self.map.values() {
-            if let Extension::ExternalPub(ext) = extension {
-                return Some(ext);
-            }
-        }
-
-        None
+        self.map
+            .get(&ExtensionType::ExternalPub)
+            .and_then(|e| match e {
+                Extension::ExternalPub(e) => Some(e),
+                _ => None,
+            })
     }
 
     /// Get a reference to the [`ExternalSendersExtension`] if there is any.
     pub fn external_senders(&self) -> Option<&ExternalSendersExtension> {
-        for extension in self.map.values() {
-            if let Extension::ExternalSenders(ext) = extension {
-                return Some(ext);
-            }
-        }
-
-        None
+        self.map
+            .get(&ExtensionType::ExternalSenders)
+            .and_then(|e| match e {
+                Extension::ExternalSenders(e) => Some(e),
+                _ => None,
+            })
     }
 }
 
@@ -485,7 +460,7 @@ mod test {
     }
 
     #[test]
-    fn add_multi_and_try_from() {
+    fn add_try_from() {
         // Create two extensions with different extension types.
         let x = Extension::ApplicationId(ApplicationIdExtension::new(b"Test"));
         let y = Extension::RequiredCapabilities(RequiredCapabilitiesExtension::default());
@@ -528,12 +503,10 @@ mod test {
                 assert_eq!(works, should_work);
             }
 
-            // Test `multi` and `try_from`.
+            // Test `try_from`.
             if should_work {
-                assert!(Extensions::multi(test.clone()).is_ok());
                 assert!(Extensions::try_from(test).is_ok());
             } else {
-                assert!(Extensions::multi(test.clone()).is_err());
                 assert!(Extensions::try_from(test).is_err());
             }
         }
