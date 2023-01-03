@@ -56,7 +56,7 @@ fn codec_plaintext(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvide
         vec![1, 2, 3].into(),
         FramedContentBody::Application(vec![4, 5, 6].into()),
     )
-    .with_context(serialized_context.clone());
+    .with_context(serialized_context);
     let mut orig: PublicMessage = signature_input
         .sign(backend, &credential_bundle)
         .expect("Signing failed.")
@@ -66,8 +66,10 @@ fn codec_plaintext(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvide
         Secret::random(ciphersuite, backend, None /* MLS version */)
             .expect("Not enough randomness."),
     );
-    orig.set_membership_tag(backend, &serialized_context, &membership_key)
+    orig.set_membership_tag(backend, &membership_key)
         .expect("Error setting membership tag.");
+    // Strip the context so that we can compare with the freshly deserialized message.
+    orig.test_set_context(None);
 
     let enc = orig
         .tls_serialize_detached()
@@ -356,22 +358,18 @@ fn membership_tag(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
     .expect("An unexpected error occurred.")
     .into();
 
-    let serialized_context: Vec<u8> = group_context
-        .tls_serialize_detached()
-        .expect("An unexpected error occurred.");
-
     public_message
-        .set_membership_tag(backend, &serialized_context, &membership_key)
+        .set_membership_tag(backend, &membership_key)
         .expect("Error setting membership tag.");
 
     println!(
         "Membership tag error: {:?}",
-        public_message.verify_membership(backend, &membership_key, &serialized_context)
+        public_message.verify_membership(backend, &membership_key)
     );
 
     // Verify signature & membership tag
     assert!(public_message
-        .verify_membership(backend, &membership_key, &serialized_context)
+        .verify_membership(backend, &membership_key)
         .is_ok());
 
     // Change the content of the plaintext message
@@ -379,7 +377,7 @@ fn membership_tag(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
 
     // Expect the signature & membership tag verification to fail
     assert!(public_message
-        .verify_membership(backend, &membership_key, &serialized_context)
+        .verify_membership(backend, &membership_key)
         .is_err());
 }
 

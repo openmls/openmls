@@ -14,7 +14,7 @@ use tls_codec::{Deserialize, Serialize};
 
 use super::{mls_content::ContentType, *};
 
-use crate::error::LibraryError;
+use crate::{error::LibraryError, versions::ProtocolVersion};
 
 /// Unified message type for MLS messages.
 /// /// This is only used internally, externally we use either [`MlsMessageIn`] or
@@ -30,6 +30,7 @@ use crate::error::LibraryError;
 /// ```
 #[derive(PartialEq, Debug, Clone, TlsSerialize, TlsSize, TlsDeserialize)]
 pub(crate) struct MlsMessage {
+    pub(crate) version: ProtocolVersion,
     pub(crate) body: MlsMessageBody,
 }
 
@@ -60,7 +61,6 @@ pub(crate) struct MlsMessage {
 ///     }
 /// } MLSMessage;
 /// ```
-#[allow(clippy::large_enum_variant)] // TODO #979: Remove the clippy warning suppresion
 #[derive(Debug, PartialEq, Clone, TlsSerialize, TlsDeserialize, TlsSize)]
 #[repr(u8)]
 pub(crate) enum MlsMessageBody {
@@ -211,25 +211,30 @@ pub struct MlsMessageOut {
 
 impl From<PublicMessage> for MlsMessageOut {
     fn from(plaintext: PublicMessage) -> Self {
+        let protocol_version = plaintext.protocol_version();
         let body = MlsMessageBody::PublicMessage(plaintext);
 
         Self {
-            mls_message: MlsMessage { body },
-        }
-    }
-}
-
-impl From<PrivateMessage> for MlsMessageOut {
-    fn from(ciphertext: PrivateMessage) -> Self {
-        let body = MlsMessageBody::PrivateMessage(ciphertext);
-
-        Self {
-            mls_message: MlsMessage { body },
+            mls_message: MlsMessage {
+                body,
+                version: protocol_version,
+            },
         }
     }
 }
 
 impl MlsMessageOut {
+    pub(crate) fn from_private_message(
+        private_message: PrivateMessage,
+        version: ProtocolVersion,
+    ) -> Self {
+        let body = MlsMessageBody::PrivateMessage(private_message);
+
+        Self {
+            mls_message: MlsMessage { body, version },
+        }
+    }
+
     /// Returns the wire format.
     pub fn wire_format(&self) -> WireFormat {
         self.mls_message.wire_format()
@@ -282,7 +287,10 @@ impl From<PublicMessage> for MlsMessageIn {
         let body = MlsMessageBody::PublicMessage(plaintext);
 
         Self {
-            mls_message: MlsMessage { body },
+            mls_message: MlsMessage {
+                body,
+                version: ProtocolVersion::Mls10,
+            },
         }
     }
 }
@@ -293,7 +301,10 @@ impl From<PrivateMessage> for MlsMessageIn {
         let body = MlsMessageBody::PrivateMessage(ciphertext);
 
         Self {
-            mls_message: MlsMessage { body },
+            mls_message: MlsMessage {
+                body,
+                version: ProtocolVersion::Mls10,
+            },
         }
     }
 }
