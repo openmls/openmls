@@ -1,6 +1,13 @@
 name: Clippy
 
-on: push
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
 
 jobs:
   clippy_check:
@@ -8,7 +15,4 @@ jobs:
     steps:
       - uses: actions/checkout@v3
       - run: rustup component add clippy
-      - uses: actions-rs/clippy-check@v1
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}
-          args: -p openmls --tests -- -D warnings
+      - run: cargo clippy -p openmls --tests -- -D warnings
