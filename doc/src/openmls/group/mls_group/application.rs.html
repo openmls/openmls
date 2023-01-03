@@ -59,6 +59,9 @@
 <span id="59">59</span>
 <span id="60">60</span>
 <span id="61">61</span>
+<span id="62">62</span>
+<span id="63">63</span>
+<span id="64">64</span>
 </pre><pre class="rust"><code><span class="kw">use </span>tls_codec::Serialize;
 
 <span class="kw">use super</span>::{errors::CreateMessageError, <span class="kw-2">*</span>};
@@ -117,7 +120,10 @@
         <span class="comment">// Since the state of the group might be changed, arm the state flag
         </span><span class="self">self</span>.flag_state_change();
 
-        <span class="prelude-val">Ok</span>(MlsMessageOut::from(ciphertext))
+        <span class="prelude-val">Ok</span>(MlsMessageOut::from_private_message(
+            ciphertext,
+            <span class="self">self</span>.group.version(),
+        ))
     }
 }
 </code></pre></div>

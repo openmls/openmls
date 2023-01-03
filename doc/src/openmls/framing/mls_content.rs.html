@@ -288,15 +288,6 @@
 <span id="288">288</span>
 <span id="289">289</span>
 <span id="290">290</span>
-<span id="291">291</span>
-<span id="292">292</span>
-<span id="293">293</span>
-<span id="294">294</span>
-<span id="295">295</span>
-<span id="296">296</span>
-<span id="297">297</span>
-<span id="298">298</span>
-<span id="299">299</span>
 </pre><pre class="rust"><code><span class="doccomment">//! This module contains the [`FramedContent`] struct and associated helper structs
 //! such as [`FramedContentTbs`], as well as their implementations.
 
@@ -305,6 +296,7 @@
     error::LibraryError,
     group::{GroupEpoch, GroupId},
     messages::{proposals::Proposal, Commit},
+    versions::ProtocolVersion,
 };
 
 <span class="kw">use </span>std::{
@@ -494,8 +486,9 @@
     }
 }
 
-<span class="attribute">#[derive(PartialEq, Debug, Clone)]
+<span class="attribute">#[derive(PartialEq, Debug, Clone, Serialize, Deserialize)]
 </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct </span>FramedContentTbs {
+    <span class="kw">pub</span>(<span class="kw">super</span>) version: ProtocolVersion,
     <span class="kw">pub</span>(<span class="kw">super</span>) wire_format: WireFormat,
     <span class="kw">pub</span>(<span class="kw">super</span>) content: FramedContent,
     <span class="kw">pub</span>(<span class="kw">super</span>) serialized_context: <span class="prelude-ty">Option</span>&lt;Vec&lt;u8&gt;&gt;,
@@ -533,6 +526,7 @@
             body,
         };
         FramedContentTbs {
+            version: ProtocolVersion::Mls10,
             wire_format,
             content,
             serialized_context: <span class="prelude-val">None</span>,
@@ -550,33 +544,13 @@
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>epoch(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; GroupEpoch {
         <span class="self">self</span>.content.epoch
     }
-
-    <span class="kw">pub</span>(<span class="kw">super</span>) <span class="kw">fn </span>serialize_content_tbs&lt;<span class="lifetime">&#39;a</span>, W: Write&gt;(
-        wire_format: WireFormat,
-        content: <span class="kw-2">&amp;</span>FramedContent,
-        serialized_context: <span class="kw">impl </span>Into&lt;<span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8]&gt;&gt;,
-        buffer: <span class="kw-2">&amp;mut </span>W,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;usize, tls_codec::Error&gt; {
-        <span class="kw">let </span><span class="kw-2">mut </span>written = wire_format.tls_serialize(buffer)<span class="question-mark">?</span>;
-        written += content.tls_serialize(buffer)<span class="question-mark">?</span>;
-        written += <span class="kw">if let </span><span class="prelude-val">Some</span>(serialized_context) = serialized_context.into() {
-            <span class="comment">// Only members and new members joining via commit should have a context.
-            </span><span class="macro">debug_assert!</span>(<span class="macro">matches!</span>(
-                content.sender,
-                Sender::Member(<span class="kw">_</span>) | Sender::NewMemberCommit
-            ));
-            buffer.write(serialized_context)<span class="question-mark">?
-        </span>} <span class="kw">else </span>{
-            <span class="number">0
-        </span>};
-        <span class="prelude-val">Ok</span>(written)
-    }
 }
 
 <span class="kw">impl </span>Size <span class="kw">for </span>FramedContentTbs {
     <span class="attribute">#[inline]
     </span><span class="kw">fn </span>tls_serialized_len(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; usize {
-        <span class="self">self</span>.wire_format.tls_serialized_len()
+        <span class="self">self</span>.version.tls_serialized_len()
+            + <span class="self">self</span>.wire_format.tls_serialized_len()
             + <span class="self">self</span>.content.tls_serialized_len()
             + <span class="kw">if let </span><span class="prelude-val">Some</span>(serialized_context) = <span class="kw-2">&amp;</span><span class="self">self</span>.serialized_context {
                 serialized_context.tls_serialized_len()
@@ -588,12 +562,20 @@
 
 <span class="kw">impl </span>TlsSerializeTrait <span class="kw">for </span>FramedContentTbs {
     <span class="kw">fn </span>tls_serialize&lt;W: Write&gt;(<span class="kw-2">&amp;</span><span class="self">self</span>, writer: <span class="kw-2">&amp;mut </span>W) -&gt; <span class="prelude-ty">Result</span>&lt;usize, tls_codec::Error&gt; {
-        <span class="self">Self</span>::serialize_content_tbs(
-            <span class="self">self</span>.wire_format,
-            <span class="kw-2">&amp;</span><span class="self">self</span>.content,
-            <span class="self">self</span>.serialized_context.as_deref(),
-            writer,
-        )
+        <span class="kw">let </span><span class="kw-2">mut </span>written = <span class="self">self</span>.version.tls_serialize(writer)<span class="question-mark">?</span>;
+        written += <span class="self">self</span>.wire_format.tls_serialize(writer)<span class="question-mark">?</span>;
+        written += <span class="self">self</span>.content.tls_serialize(writer)<span class="question-mark">?</span>;
+        written += <span class="kw">if let </span><span class="prelude-val">Some</span>(serialized_context) = <span class="kw-2">&amp;</span><span class="self">self</span>.serialized_context {
+            <span class="comment">// Only members and new members joining via commit should have a context.
+            </span><span class="macro">debug_assert!</span>(<span class="macro">matches!</span>(
+                <span class="self">self</span>.content.sender,
+                Sender::Member(<span class="kw">_</span>) | Sender::NewMemberCommit
+            ));
+            writer.write(serialized_context)<span class="question-mark">?
+        </span>} <span class="kw">else </span>{
+            <span class="number">0
+        </span>};
+        <span class="prelude-val">Ok</span>(written)
     }
 }
 </code></pre></div>

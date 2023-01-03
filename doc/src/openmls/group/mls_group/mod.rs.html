@@ -427,7 +427,6 @@
 <span id="427">427</span>
 <span id="428">428</span>
 <span id="429">429</span>
-<span id="430">430</span>
 </pre><pre class="rust"><code><span class="doccomment">//! MLS Group
 //!
 //! This module contains [`MlsGroup`] and its submodules.
@@ -772,7 +771,6 @@
                 </span><span class="kw">if </span>plaintext.sender().is_member() {
                     plaintext.set_membership_tag(
                         backend,
-                        <span class="self">self</span>.group.message_secrets().serialized_context(),
                         <span class="self">self</span>.group.message_secrets().membership_key(),
                     )<span class="question-mark">?</span>;
                 }
@@ -788,7 +786,7 @@
                     )
                     <span class="comment">// We can be sure the encryption will work because the plaintext was created by us
                     </span>.map_err(|<span class="kw">_</span>| LibraryError::custom(<span class="string">&quot;Malformed plaintext&quot;</span>))<span class="question-mark">?</span>;
-                MlsMessageOut::from(ciphertext)
+                MlsMessageOut::from_private_message(ciphertext, <span class="self">self</span>.group.version())
             }
         };
         <span class="prelude-val">Ok</span>(msg)

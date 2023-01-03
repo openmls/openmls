@@ -879,7 +879,7 @@
         .map_err(|<span class="kw">_</span>| MessageDecryptionError::MalformedContent)
     }
 
-    <span class="doccomment">/// This function decrypts an [`PrivateMessage`] into an [`VerifiableAuthenticatedContent`].
+    <span class="doccomment">/// This function decrypts a [`PrivateMessage`] into a [`VerifiableAuthenticatedContent`].
     /// In order to get an [`FramedContent`] the result must be verified.
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>to_verifiable_content(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
