@@ -326,7 +326,7 @@ impl PrivateMessage {
         .map_err(|_| MessageDecryptionError::MalformedContent)
     }
 
-    /// This function decrypts an [`PrivateMessage`] into an [`VerifiableAuthenticatedContent`].
+    /// This function decrypts a [`PrivateMessage`] into a [`VerifiableAuthenticatedContent`].
     /// In order to get an [`FramedContent`] the result must be verified.
     pub(crate) fn to_verifiable_content(
         &self,

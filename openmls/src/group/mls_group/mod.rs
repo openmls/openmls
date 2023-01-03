@@ -342,7 +342,6 @@ impl MlsGroup {
                 if plaintext.sender().is_member() {
                     plaintext.set_membership_tag(
                         backend,
-                        self.group.message_secrets().serialized_context(),
                         self.group.message_secrets().membership_key(),
                     )?;
                 }
@@ -358,7 +357,7 @@ impl MlsGroup {
                     )
                     // We can be sure the encryption will work because the plaintext was created by us
                     .map_err(|_| LibraryError::custom("Malformed plaintext"))?;
-                MlsMessageOut::from(ciphertext)
+                MlsMessageOut::from_private_message(ciphertext, self.group.version())
             }
         };
         Ok(msg)

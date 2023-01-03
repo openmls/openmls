@@ -116,15 +116,10 @@ fn test_update_proposal_encoding(backend: &impl OpenMlsCryptoProvider) {
             .expect("Could not create proposal.")
             .into();
         update
-            .set_membership_tag(
-                backend,
-                &group_state
-                    .context()
-                    .tls_serialize_detached()
-                    .expect("error serializing context"),
-                group_state.message_secrets().membership_key(),
-            )
+            .set_membership_tag(backend, group_state.message_secrets().membership_key())
             .expect("error setting membership tag");
+        // Strip the context so that we can compare with the freshly deserialized message.
+        update.test_set_context(None);
         let update_encoded = update
             .tls_serialize_detached()
             .expect("Could not encode proposal.");
@@ -132,6 +127,7 @@ fn test_update_proposal_encoding(backend: &impl OpenMlsCryptoProvider) {
             Ok(a) => a,
             Err(err) => panic!("Error decoding MPLSPlaintext Update: {:?}", err),
         };
+
         assert_eq!(update, update_decoded);
     }
 }
@@ -167,15 +163,10 @@ fn test_add_proposal_encoding(backend: &impl OpenMlsCryptoProvider) {
             )
             .expect("Could not create proposal.")
             .into();
-        add.set_membership_tag(
-            backend,
-            &group_state
-                .context()
-                .tls_serialize_detached()
-                .expect("error serializing context"),
-            group_state.message_secrets().membership_key(),
-        )
-        .expect("error setting membership tag");
+        add.set_membership_tag(backend, group_state.message_secrets().membership_key())
+            .expect("error setting membership tag");
+        // Strip the context so that we can compare with the freshly deserialized message.
+        add.test_set_context(None);
         let add_encoded = add
             .tls_serialize_detached()
             .expect("Could not encode proposal.");
@@ -214,15 +205,10 @@ fn test_remove_proposal_encoding(backend: &impl OpenMlsCryptoProvider) {
             .expect("Could not create proposal.")
             .into();
         remove
-            .set_membership_tag(
-                backend,
-                &group_state
-                    .context()
-                    .tls_serialize_detached()
-                    .expect("error serializing context"),
-                group_state.message_secrets().membership_key(),
-            )
+            .set_membership_tag(backend, group_state.message_secrets().membership_key())
             .expect("error setting membership tag");
+        // Strip the context so that we can compare with the freshly deserialized message.
+        remove.test_set_context(None);
         let remove_encoded = remove
             .tls_serialize_detached()
             .expect("Could not encode proposal.");
@@ -302,15 +288,10 @@ fn test_commit_encoding(backend: &impl OpenMlsCryptoProvider) {
             .expect("An unexpected error occurred.");
         let mut commit: PublicMessage = create_commit_result.commit.into();
         commit
-            .set_membership_tag(
-                backend,
-                &group_state
-                    .context()
-                    .tls_serialize_detached()
-                    .expect("error serializing context"),
-                group_state.message_secrets().membership_key(),
-            )
+            .set_membership_tag(backend, group_state.message_secrets().membership_key())
             .expect("error setting membership tag");
+        // Strip the context so that we can compare with the freshly deserialized message.
+        commit.test_set_context(None);
         let commit_encoded = commit
             .tls_serialize_detached()
             .expect("An unexpected error occurred.");
