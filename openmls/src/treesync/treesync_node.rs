@@ -11,6 +11,7 @@ use crate::{
 
 use super::{hashes::TreeHashInput, node::leaf_node::OpenMlsLeafNode, Node, ParentNode};
 
+#[allow(clippy::large_enum_variant)]
 pub(crate) enum TreeSyncNode {
     Leaf(TreeSyncLeafNode),
     Parent(TreeSyncParentNode),
