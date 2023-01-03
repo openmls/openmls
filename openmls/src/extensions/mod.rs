@@ -202,6 +202,27 @@ impl tls_codec::Deserialize for Extensions {
 }
 
 impl Extensions {
+    /// Create an empty extension list.
+    pub fn empty() -> Self {
+        Self {
+            map: HashMap::new(),
+        }
+    }
+
+    /// Create an extension list with a single extension.
+    pub fn single(extension: Extension) -> Self {
+        Self {
+            map: HashMap::from([(extension.extension_type(), extension)]),
+        }
+    }
+
+    /// Create an extension list with multiple extensions.
+    ///
+    /// This function will fail when the list of extensions contains duplicate extension types.
+    pub fn from_vec(extensions: Vec<Extension>) -> Result<Self, InvalidExtensionError> {
+        extensions.try_into()
+    }
+
     /// Add an extension to the extension list.
     ///
     /// Returns an error when there already is an extension with the same extension type.
