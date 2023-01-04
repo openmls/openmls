@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"mod":[["errors","Key Package errors"]],"struct":[["KeyPackage","The key package struct."]]};
+window.SIDEBAR_ITEMS = {"mod":[["errors","Key Package errors"]],"struct":[["KeyPackage","The key package struct."],["KeyPackageBuilder","Builder that helps creating (and configuring) a [`KeyPackage`]."]]};

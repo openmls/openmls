@@ -182,8 +182,6 @@
 <span id="182">182</span>
 <span id="183">183</span>
 <span id="184">184</span>
-<span id="185">185</span>
-<span id="186">186</span>
 </pre><pre class="rust"><code><span class="attribute">#![doc = <span class="macro">include_str!</span>(<span class="string">&quot;../README.md&quot;</span>)]
 </span><span class="doccomment">//! ## Quick Start
 //! For a quick start to learn how OpenMLS works here&#39;s the basic code to set
@@ -239,15 +237,13 @@
 //!         .expect(&quot;An unexpected error occurred.&quot;);
 //!
 //!     // Create the key package
-//!     KeyPackage::create(
+//!     KeyPackage::builder().build(
 //!         CryptoConfig {
 //!             ciphersuite: ciphersuites[0],
 //!             version: ProtocolVersion::default(),
 //!         },
 //!         backend,
 //!         &amp;credential_bundle,
-//!         vec![],
-//!         vec![],
 //!     )
 //!     .unwrap()
 //! }

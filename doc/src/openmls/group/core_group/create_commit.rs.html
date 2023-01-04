@@ -440,7 +440,6 @@
 <span id="440">440</span>
 <span id="441">441</span>
 <span id="442">442</span>
-<span id="443">443</span>
 </pre><pre class="rust"><code><span class="kw">use </span>openmls_traits::OpenMlsCryptoProvider;
 
 <span class="kw">use crate</span>::{
@@ -577,17 +576,16 @@
             <span class="comment">// If this is an external commit we add a fresh leaf to the diff.
             // Generate a KeyPackageBundle to generate a payload from for later
             // path generation.
-            </span><span class="kw">let </span>key_package = KeyPackage::create(
-                CryptoConfig {
-                    ciphersuite,
-                    version: <span class="self">self</span>.version(),
-                },
-                backend,
-                params.credential_bundle(),
-                <span class="macro">vec!</span>[],
-                <span class="macro">vec!</span>[],
-            )
-            .map_err(|<span class="kw">_</span>| LibraryError::custom(<span class="string">&quot;Unexpected KeyPackage error&quot;</span>))<span class="question-mark">?</span>;
+            </span><span class="kw">let </span>key_package = KeyPackage::builder()
+                .build(
+                    CryptoConfig {
+                        ciphersuite,
+                        version: <span class="self">self</span>.version(),
+                    },
+                    backend,
+                    params.credential_bundle(),
+                )
+                .map_err(|<span class="kw">_</span>| LibraryError::custom(<span class="string">&quot;Unexpected KeyPackage error&quot;</span>))<span class="question-mark">?</span>;
 
             <span class="kw">let </span><span class="kw-2">mut </span>leaf_node: OpenMlsLeafNode = key_package.into();
             leaf_node.set_leaf_index(own_leaf_index);

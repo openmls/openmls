@@ -157,17 +157,16 @@
         .expect(&quot;An unexpected error occurred.&quot;);
 
     // Create the key package
-    KeyPackage::create(
-        CryptoConfig {
-            ciphersuite: ciphersuites[0],
-            version: ProtocolVersion::default(),
-        },
-        backend,
-        &amp;credential_bundle,
-        vec![],
-        vec![],
-    )
-    .unwrap()</code></pre>
+    KeyPackage::builder()
+        .build(
+            CryptoConfig {
+                ciphersuite: ciphersuites[0],
+                version: ProtocolVersion::default(),
+            },
+            backend,
+            &amp;credential_bundle,
+        )
+        .unwrap()</code></pre>
 <p>After that, the group can be created:</p>
 <pre><code class="language-rust no_run noplayground">    let mut alice_group = MlsGroup::new(backend, &amp;mls_group_config, alice_key_package)
         .expect(&quot;An unexpected error occurred.&quot;);</code></pre>

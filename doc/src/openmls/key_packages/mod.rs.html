@@ -534,6 +534,55 @@
 <span id="534">534</span>
 <span id="535">535</span>
 <span id="536">536</span>
+<span id="537">537</span>
+<span id="538">538</span>
+<span id="539">539</span>
+<span id="540">540</span>
+<span id="541">541</span>
+<span id="542">542</span>
+<span id="543">543</span>
+<span id="544">544</span>
+<span id="545">545</span>
+<span id="546">546</span>
+<span id="547">547</span>
+<span id="548">548</span>
+<span id="549">549</span>
+<span id="550">550</span>
+<span id="551">551</span>
+<span id="552">552</span>
+<span id="553">553</span>
+<span id="554">554</span>
+<span id="555">555</span>
+<span id="556">556</span>
+<span id="557">557</span>
+<span id="558">558</span>
+<span id="559">559</span>
+<span id="560">560</span>
+<span id="561">561</span>
+<span id="562">562</span>
+<span id="563">563</span>
+<span id="564">564</span>
+<span id="565">565</span>
+<span id="566">566</span>
+<span id="567">567</span>
+<span id="568">568</span>
+<span id="569">569</span>
+<span id="570">570</span>
+<span id="571">571</span>
+<span id="572">572</span>
+<span id="573">573</span>
+<span id="574">574</span>
+<span id="575">575</span>
+<span id="576">576</span>
+<span id="577">577</span>
+<span id="578">578</span>
+<span id="579">579</span>
+<span id="580">580</span>
+<span id="581">581</span>
+<span id="582">582</span>
+<span id="583">583</span>
+<span id="584">584</span>
+<span id="585">585</span>
 </pre><pre class="rust"><code><span class="doccomment">//! # Key Packages
 //!
 //! Key packages are pre-published public keys that provide some information
@@ -577,15 +626,13 @@
 //!     &amp;backend,
 //! )
 //! .expect(&quot;Error creating credential.&quot;);
-//! let key_package = KeyPackage::create(
+//! let key_package = KeyPackage::builder().build(
 //!     CryptoConfig {
 //!         ciphersuite,
 //!         version: ProtocolVersion::default(),
 //!     },
 //!     &amp;backend,
 //!     &amp;credential_bundle,
-//!     vec![],
-//!     vec![],
 //! )
 //! .unwrap();
 //! ```
@@ -739,8 +786,15 @@
 
 <span class="comment">// Public `KeyPackage` functions.
 </span><span class="kw">impl </span>KeyPackage {
+    <span class="doccomment">/// Create a key package builder.
+    ///
+    /// This is provided for convenience. You can also use [`KeyPackageBuilder::new`].
+    </span><span class="kw">pub fn </span>builder() -&gt; KeyPackageBuilder {
+        KeyPackageBuilder::new()
+    }
+
     <span class="doccomment">/// Create a new key package for the given `ciphersuite` and `identity`.
-    </span><span class="kw">pub fn </span>create(
+    </span><span class="kw">fn </span>create(
         config: CryptoConfig,
         backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider,
         credential: <span class="kw-2">&amp;</span>CredentialBundle, <span class="comment">// FIXME: make credential
@@ -1016,6 +1070,51 @@
     }
 }
 
+<span class="doccomment">/// Builder that helps creating (and configuring) a [`KeyPackage`].
+</span><span class="attribute">#[derive(Default, Debug, Clone, Serialize, Deserialize)]
+</span><span class="kw">pub struct </span>KeyPackageBuilder {
+    key_package_extensions: <span class="prelude-ty">Option</span>&lt;Vec&lt;Extension&gt;&gt;,
+    leaf_node_extensions: <span class="prelude-ty">Option</span>&lt;Vec&lt;Extension&gt;&gt;,
+}
+
+<span class="kw">impl </span>KeyPackageBuilder {
+    <span class="doccomment">/// Create a key package builder.
+    </span><span class="kw">pub fn </span>new() -&gt; <span class="self">Self </span>{
+        <span class="self">Self </span>{
+            key_package_extensions: <span class="prelude-val">None</span>,
+            leaf_node_extensions: <span class="prelude-val">None</span>,
+        }
+    }
+
+    <span class="doccomment">/// Set the key package extensions.
+    </span><span class="kw">pub fn </span>key_package_extensions(<span class="kw-2">mut </span><span class="self">self</span>, extensions: Vec&lt;Extension&gt;) -&gt; <span class="self">Self </span>{
+        <span class="self">self</span>.key_package_extensions = <span class="prelude-val">Some</span>(extensions);
+        <span class="self">self
+    </span>}
+
+    <span class="doccomment">/// Set the leaf node extensions.
+    </span><span class="kw">pub fn </span>leaf_node_extensions(<span class="kw-2">mut </span><span class="self">self</span>, extensions: Vec&lt;Extension&gt;) -&gt; <span class="self">Self </span>{
+        <span class="self">self</span>.leaf_node_extensions = <span class="prelude-val">Some</span>(extensions);
+        <span class="self">self
+    </span>}
+
+    <span class="doccomment">/// Finalize and build the key package.
+    </span><span class="kw">pub fn </span>build(
+        <span class="self">self</span>,
+        config: CryptoConfig,
+        backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider,
+        credential: <span class="kw-2">&amp;</span>CredentialBundle,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;KeyPackage, KeyPackageNewError&gt; {
+        KeyPackage::create(
+            config,
+            backend,
+            credential,
+            <span class="self">self</span>.key_package_extensions.unwrap_or_default(),
+            <span class="self">self</span>.leaf_node_extensions.unwrap_or_default(),
+        )
+    }
+}
+
 <span class="doccomment">/// A [`KeyPackageBundle`] contains a [`KeyPackage`] and the corresponding private
 /// key.
 </span><span class="attribute">#[derive(Debug, Clone, Serialize, Deserialize)]
@@ -1049,17 +1148,16 @@
         ciphersuite: Ciphersuite,
         credential_bundle: <span class="kw-2">&amp;</span>CredentialBundle,
     ) -&gt; <span class="self">Self </span>{
-        <span class="kw">let </span>key_package = KeyPackage::create(
-            CryptoConfig {
-                ciphersuite,
-                version: ProtocolVersion::default(),
-            },
-            backend,
-            credential_bundle,
-            <span class="macro">vec!</span>[],
-            <span class="macro">vec!</span>[],
-        )
-        .unwrap();
+        <span class="kw">let </span>key_package = KeyPackage::builder()
+            .build(
+                CryptoConfig {
+                    ciphersuite,
+                    version: ProtocolVersion::default(),
+                },
+                backend,
+                credential_bundle,
+            )
+            .unwrap();
         <span class="kw">let </span>private_key: Vec&lt;u8&gt; = backend
             .key_store()
             .read(key_package.hpke_init_key().as_slice())

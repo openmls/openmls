@@ -266,17 +266,16 @@ Currently, there are two implementations available through the <a href="https://
         .expect(&quot;An unexpected error occurred.&quot;);
 
     // Create the key package
-    KeyPackage::create(
-        CryptoConfig {
-            ciphersuite: ciphersuites[0],
-            version: ProtocolVersion::default(),
-        },
-        backend,
-        &amp;credential_bundle,
-        vec![],
-        vec![],
-    )
-    .unwrap()</code></pre>
+    KeyPackage::builder()
+        .build(
+            CryptoConfig {
+                ciphersuite: ciphersuites[0],
+                version: ProtocolVersion::default(),
+            },
+            backend,
+            &amp;credential_bundle,
+        )
+        .unwrap()</code></pre>
 <p>This will also store the private key for the key package in the key store.</p>
 <p>All functions and structs related to key packages can be found in the <a href="https://docs.rs/crate/openmls/latest/key_packages/index.html"><code>key_packages</code></a> module.</p>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="group-configuration"><a class="header" href="#group-configuration">Group configuration</a></h1>
@@ -317,17 +316,16 @@ Currently, there are two implementations available through the <a href="https://
         .expect(&quot;An unexpected error occurred.&quot;);
 
     // Create the key package
-    KeyPackage::create(
-        CryptoConfig {
-            ciphersuite: ciphersuites[0],
-            version: ProtocolVersion::default(),
-        },
-        backend,
-        &amp;credential_bundle,
-        vec![],
-        vec![],
-    )
-    .unwrap()</code></pre>
+    KeyPackage::builder()
+        .build(
+            CryptoConfig {
+                ciphersuite: ciphersuites[0],
+                version: ProtocolVersion::default(),
+            },
+            backend,
+            &amp;credential_bundle,
+        )
+        .unwrap()</code></pre>
 <p>After that, the group can be created:</p>
 <pre><code class="language-rust no_run noplayground">    let mut alice_group = MlsGroup::new(backend, &amp;mls_group_config, alice_key_package)
         .expect(&quot;An unexpected error occurred.&quot;);</code></pre>
@@ -674,17 +672,16 @@ to be provided as a byte slice.</p>
     )
     .unwrap();
 
-    let key_package = KeyPackage::create(
-        config::CryptoConfig {
-            ciphersuite,
-            version: ProtocolVersion::default(),
-        },
-        backend,
-        &amp;credential_bundle,
-        vec![],
-        vec![],
-    )
-    .unwrap();</code></pre>
+    let key_package = KeyPackage::builder()
+        .build(
+            config::CryptoConfig {
+                ciphersuite,
+                version: ProtocolVersion::default(),
+            },
+            backend,
+            &amp;credential_bundle,
+        )
+        .unwrap();</code></pre>
 <p>The <code>delete</code> is called with the identifier to delete a value.</p>
 <pre><code class="language-rust no_run noplayground">    // Delete the key package
     key_package

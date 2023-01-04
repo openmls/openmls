@@ -172,17 +172,16 @@
         .expect(&quot;An unexpected error occurred.&quot;);
 
     // Create the key package
-    KeyPackage::create(
-        CryptoConfig {
-            ciphersuite: ciphersuites[0],
-            version: ProtocolVersion::default(),
-        },
-        backend,
-        &amp;credential_bundle,
-        vec![],
-        vec![],
-    )
-    .unwrap()</code></pre>
+    KeyPackage::builder()
+        .build(
+            CryptoConfig {
+                ciphersuite: ciphersuites[0],
+                version: ProtocolVersion::default(),
+            },
+            backend,
+            &amp;credential_bundle,
+        )
+        .unwrap()</code></pre>
 <p>This will also store the private key for the key package in the key store.</p>
 <p>All functions and structs related to key packages can be found in the <a href="https://docs.rs/crate/openmls/latest/key_packages/index.html"><code>key_packages</code></a> module.</p>
 
