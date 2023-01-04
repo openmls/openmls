@@ -174,7 +174,6 @@ impl CoreGroup {
                         params.credential_bundle(),
                         backend,
                     )?;
-                    diff.clear_tree_hash();
                 }
 
                 // Derive and apply an update path based on the previously

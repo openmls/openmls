@@ -59,7 +59,6 @@ impl From<TreeSyncNode> for TreeNode<TreeSyncLeafNode, TreeSyncParentNode> {
 /// hash values. Blank nodes are represented by [`TreeSyncNode`] instances where
 /// `node = None`.
 pub(crate) struct TreeSyncLeafNode {
-    tree_hash: Option<Vec<u8>>,
     node: Option<OpenMlsLeafNode>,
 }
 
@@ -85,47 +84,25 @@ impl TreeSyncLeafNode {
         &mut self.node
     }
 
-    /// Return a reference to the cached tree hash.
-    pub(in crate::treesync) fn tree_hash(&self) -> Option<&[u8]> {
-        self.tree_hash.as_deref()
-    }
-
-    /// Replace the current `tree_hash` with `None`.
-    pub(in crate::treesync) fn erase_tree_hash(&mut self) {
-        self.tree_hash = None
-    }
-
     /// Compute the tree hash for this node, thus populating the `tree_hash`
     /// field.
     pub(in crate::treesync) fn compute_tree_hash(
-        &mut self,
+        &self,
         backend: &impl OpenMlsCryptoProvider,
         ciphersuite: Ciphersuite,
         leaf_index: LeafNodeIndex,
     ) -> Result<Vec<u8>, LibraryError> {
-        // If there's a cached tree hash, use that one.
-        if let Some(hash) = self.tree_hash() {
-            Ok(hash.to_vec())
-        } else {
-            // Otherwise compute it.
-            let hash_input = TreeHashInput::new_leaf(
-                &leaf_index,
-                self.node.as_ref().map(|node| &node.leaf_node),
-            );
-            let hash = hash_input.hash(backend, ciphersuite)?;
-            self.tree_hash = Some(hash.clone());
+        let hash_input =
+            TreeHashInput::new_leaf(&leaf_index, self.node.as_ref().map(|node| &node.leaf_node));
+        let hash = hash_input.hash(backend, ciphersuite)?;
 
-            Ok(hash)
-        }
+        Ok(hash)
     }
 }
 
 impl From<OpenMlsLeafNode> for TreeSyncLeafNode {
     fn from(node: OpenMlsLeafNode) -> Self {
-        Self {
-            tree_hash: None,
-            node: Some(node),
-        }
+        Self { node: Some(node) }
     }
 }
 
@@ -141,7 +118,6 @@ impl From<TreeSyncLeafNode> for Option<Node> {
 /// hash values. Blank nodes are represented by [`TreeSyncNode`] instances where
 /// `node = None`.
 pub(crate) struct TreeSyncParentNode {
-    tree_hash: Option<Vec<u8>>,
     node: Option<ParentNode>,
 }
 
@@ -169,49 +145,29 @@ impl TreeSyncParentNode {
         &mut self.node
     }
 
-    /// Return a reference to the cached tree hash.
-    pub(in crate::treesync) fn tree_hash(&self) -> Option<&[u8]> {
-        self.tree_hash.as_deref()
-    }
-
-    /// Replace the current `tree_hash` with `None`.
-    pub(in crate::treesync) fn erase_tree_hash(&mut self) {
-        self.tree_hash = None
-    }
-
     /// Compute the tree hash for this node, thus populating the `tree_hash`
     /// field.
     pub(in crate::treesync) fn compute_tree_hash(
-        &mut self,
+        &self,
         backend: &impl OpenMlsCryptoProvider,
         ciphersuite: Ciphersuite,
         left_hash: Vec<u8>,
         right_hash: Vec<u8>,
     ) -> Result<Vec<u8>, LibraryError> {
-        // If there's a cached tree hash, use that one.
-        if let Some(hash) = self.tree_hash() {
-            Ok(hash.to_vec())
-        } else {
-            // Otherwise compute it.
-            let hash_input = TreeHashInput::new_parent(
-                self.node.as_ref(),
-                VLByteSlice(&left_hash),
-                VLByteSlice(&right_hash),
-            );
-            let hash = hash_input.hash(backend, ciphersuite)?;
-            self.tree_hash = Some(hash.clone());
+        let hash_input = TreeHashInput::new_parent(
+            self.node.as_ref(),
+            VLByteSlice(&left_hash),
+            VLByteSlice(&right_hash),
+        );
+        let hash = hash_input.hash(backend, ciphersuite)?;
 
-            Ok(hash)
-        }
+        Ok(hash)
     }
 }
 
 impl From<ParentNode> for TreeSyncParentNode {
     fn from(node: ParentNode) -> Self {
-        Self {
-            tree_hash: None,
-            node: Some(node),
-        }
+        Self { node: Some(node) }
     }
 }
 
