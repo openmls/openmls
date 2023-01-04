@@ -53,7 +53,7 @@ impl GroupContext {
             epoch: epoch.into(),
             tree_hash: tree_hash.into(),
             confirmed_transcript_hash: confirmed_transcript_hash.into(),
-            extensions: extensions.into(),
+            extensions,
         }
     }
 

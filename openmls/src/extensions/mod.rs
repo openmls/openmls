@@ -434,10 +434,7 @@ impl Ord for Extension {
 pub(crate) fn try_nodes_from_extensions(
     other_extensions: &Extensions,
 ) -> Option<Vec<Option<Node>>> {
-    match other_extensions.ratchet_tree() {
-        Some(e) => Some(e.as_slice().into()),
-        None => None,
-    }
+    other_extensions.ratchet_tree().map(|e| e.as_slice().into())
 }
 
 #[cfg(test)]
@@ -527,7 +524,7 @@ mod test {
             vec![y.clone(), x.clone(), z.clone()],
             vec![y.clone(), z.clone(), x.clone()],
             vec![z.clone(), x.clone(), y.clone()],
-            vec![z.clone(), y.clone(), x.clone()],
+            vec![z, y, x],
         ];
 
         for candidate in candidates.into_iter() {

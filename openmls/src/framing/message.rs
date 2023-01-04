@@ -63,6 +63,7 @@ pub(crate) struct MlsMessage {
 /// ```
 #[derive(Debug, PartialEq, Clone, TlsSerialize, TlsDeserialize, TlsSize)]
 #[repr(u8)]
+#[allow(clippy::large_enum_variant)]
 pub(crate) enum MlsMessageBody {
     /// Plaintext message
     #[tls_codec(discriminant = 1)]

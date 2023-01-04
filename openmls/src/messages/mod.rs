@@ -203,7 +203,7 @@ impl GroupInfoTBS {
     ) -> Self {
         Self {
             group_context,
-            extensions: extensions.into(),
+            extensions,
             confirmation_tag,
             signer,
         }
