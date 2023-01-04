@@ -16,17 +16,16 @@ fn test_client_info() {
         crypto,
     )
     .unwrap();
-    let client_key_package = KeyPackage::create(
-        CryptoConfig {
-            ciphersuite,
-            version: ProtocolVersion::default(),
-        },
-        crypto,
-        &credential_bundle,
-        vec![],
-        vec![],
-    )
-    .unwrap();
+    let client_key_package = KeyPackage::builder()
+        .build(
+            CryptoConfig {
+                ciphersuite,
+                version: ProtocolVersion::default(),
+            },
+            crypto,
+            &credential_bundle,
+        )
+        .unwrap();
     let client_key_package = vec![(
         client_key_package
             .hash_ref(crypto.crypto())

@@ -41,15 +41,13 @@
 //!     &backend,
 //! )
 //! .expect("Error creating credential.");
-//! let key_package = KeyPackage::create(
+//! let key_package = KeyPackage::builder().build(
 //!     CryptoConfig {
 //!         ciphersuite,
 //!         version: ProtocolVersion::default(),
 //!     },
 //!     &backend,
 //!     &credential_bundle,
-//!     vec![],
-//!     vec![],
 //! )
 //! .unwrap();
 //! ```
@@ -203,8 +201,15 @@ impl Verifiable for KeyPackage {
 
 // Public `KeyPackage` functions.
 impl KeyPackage {
+    /// Create a key package builder.
+    ///
+    /// This is provided for convenience. You can also use [`KeyPackageBuilder::new`].
+    pub fn builder() -> KeyPackageBuilder {
+        KeyPackageBuilder::new()
+    }
+
     /// Create a new key package for the given `ciphersuite` and `identity`.
-    pub fn create(
+    fn create(
         config: CryptoConfig,
         backend: &impl OpenMlsCryptoProvider,
         credential: &CredentialBundle, // FIXME: make credential
@@ -480,6 +485,51 @@ impl KeyPackage {
     }
 }
 
+/// Builder that helps creating (and configuring) a [`KeyPackage`].
+#[derive(Default, Debug, Clone, Serialize, Deserialize)]
+pub struct KeyPackageBuilder {
+    key_package_extensions: Option<Vec<Extension>>,
+    leaf_node_extensions: Option<Vec<Extension>>,
+}
+
+impl KeyPackageBuilder {
+    /// Create a key package builder.
+    pub fn new() -> Self {
+        Self {
+            key_package_extensions: None,
+            leaf_node_extensions: None,
+        }
+    }
+
+    /// Set the key package extensions.
+    pub fn key_package_extensions(mut self, extensions: Vec<Extension>) -> Self {
+        self.key_package_extensions = Some(extensions);
+        self
+    }
+
+    /// Set the leaf node extensions.
+    pub fn leaf_node_extensions(mut self, extensions: Vec<Extension>) -> Self {
+        self.leaf_node_extensions = Some(extensions);
+        self
+    }
+
+    /// Finalize and build the key package.
+    pub fn build(
+        self,
+        config: CryptoConfig,
+        backend: &impl OpenMlsCryptoProvider,
+        credential: &CredentialBundle,
+    ) -> Result<KeyPackage, KeyPackageNewError> {
+        KeyPackage::create(
+            config,
+            backend,
+            credential,
+            self.key_package_extensions.unwrap_or_default(),
+            self.leaf_node_extensions.unwrap_or_default(),
+        )
+    }
+}
+
 /// A [`KeyPackageBundle`] contains a [`KeyPackage`] and the corresponding private
 /// key.
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -513,17 +563,16 @@ impl KeyPackageBundle {
         ciphersuite: Ciphersuite,
         credential_bundle: &CredentialBundle,
     ) -> Self {
-        let key_package = KeyPackage::create(
-            CryptoConfig {
-                ciphersuite,
-                version: ProtocolVersion::default(),
-            },
-            backend,
-            credential_bundle,
-            vec![],
-            vec![],
-        )
-        .unwrap();
+        let key_package = KeyPackage::builder()
+            .build(
+                CryptoConfig {
+                    ciphersuite,
+                    version: ProtocolVersion::default(),
+                },
+                backend,
+                credential_bundle,
+            )
+            .unwrap();
         let private_key: Vec<u8> = backend
             .key_store()
             .read(key_package.hpke_init_key().as_slice())

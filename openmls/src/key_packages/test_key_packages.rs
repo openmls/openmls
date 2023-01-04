@@ -18,17 +18,16 @@ fn key_package(
     .expect("An unexpected error occurred.");
 
     // Generate a valid KeyPackage.
-    let key_package = KeyPackage::create(
-        CryptoConfig {
-            ciphersuite,
-            version: ProtocolVersion::default(),
-        },
-        backend,
-        &credential_bundle,
-        vec![],
-        vec![],
-    )
-    .expect("An unexpected error occurred.");
+    let key_package = KeyPackage::builder()
+        .build(
+            CryptoConfig {
+                ciphersuite,
+                version: ProtocolVersion::default(),
+            },
+            backend,
+            &credential_bundle,
+        )
+        .expect("An unexpected error occurred.");
 
     (key_package, credential_bundle)
 }
@@ -70,17 +69,19 @@ fn application_id_extension(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryp
 
     // Generate a valid KeyPackage.
     let id = b"application id" as &[u8];
-    let key_package = KeyPackage::create(
-        CryptoConfig {
-            ciphersuite,
-            version: ProtocolVersion::default(),
-        },
-        backend,
-        &credential_bundle,
-        vec![],
-        vec![Extension::ApplicationId(ApplicationIdExtension::new(id))],
-    )
-    .expect("An unexpected error occurred.");
+    let key_package = KeyPackage::builder()
+        .leaf_node_extensions(vec![Extension::ApplicationId(ApplicationIdExtension::new(
+            id,
+        ))])
+        .build(
+            CryptoConfig {
+                ciphersuite,
+                version: ProtocolVersion::default(),
+            },
+            backend,
+            &credential_bundle,
+        )
+        .expect("An unexpected error occurred.");
 
     assert!(key_package
         .verify_no_out(backend, credential_bundle.credential())
@@ -114,15 +115,13 @@ fn test_mismatch(backend: &impl OpenMlsCryptoProvider) {
     .expect("Could not create credential bundle");
 
     assert_eq!(
-        KeyPackage::create(
+        KeyPackage::builder().build(
             CryptoConfig {
                 ciphersuite: ciphersuite_name,
                 version: ProtocolVersion::default(),
             },
             backend,
             &credential_bundle,
-            vec![],
-            vec![],
         ),
         Err(KeyPackageNewError::CiphersuiteSignatureSchemeMismatch)
     );
@@ -140,15 +139,14 @@ fn test_mismatch(backend: &impl OpenMlsCryptoProvider) {
     )
     .expect("Could not create credential bundle");
 
-    assert!(KeyPackage::create(
-        CryptoConfig {
-            ciphersuite: ciphersuite_name,
-            version: ProtocolVersion::default(),
-        },
-        backend,
-        &credential_bundle,
-        vec![],
-        vec![],
-    )
-    .is_ok());
+    assert!(KeyPackage::builder()
+        .build(
+            CryptoConfig {
+                ciphersuite: ciphersuite_name,
+                version: ProtocolVersion::default(),
+            },
+            backend,
+            &credential_bundle,
+        )
+        .is_ok());
 }

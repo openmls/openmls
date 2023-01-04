@@ -134,17 +134,16 @@ impl CoreGroup {
             // If this is an external commit we add a fresh leaf to the diff.
             // Generate a KeyPackageBundle to generate a payload from for later
             // path generation.
-            let key_package = KeyPackage::create(
-                CryptoConfig {
-                    ciphersuite,
-                    version: self.version(),
-                },
-                backend,
-                params.credential_bundle(),
-                vec![],
-                vec![],
-            )
-            .map_err(|_| LibraryError::custom("Unexpected KeyPackage error"))?;
+            let key_package = KeyPackage::builder()
+                .build(
+                    CryptoConfig {
+                        ciphersuite,
+                        version: self.version(),
+                    },
+                    backend,
+                    params.credential_bundle(),
+                )
+                .map_err(|_| LibraryError::custom("Unexpected KeyPackage error"))?;
 
             let mut leaf_node: OpenMlsLeafNode = key_package.into();
             leaf_node.set_leaf_index(own_leaf_index);
