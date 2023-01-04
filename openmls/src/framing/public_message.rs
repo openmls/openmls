@@ -150,11 +150,6 @@ impl PublicMessage {
         }
     }
 
-    /// Returns a reference to the [`ProtocolVersion`].
-    pub(crate) fn protocol_version(&self) -> ProtocolVersion {
-        self.content.version
-    }
-
     /// Returns the [`ContentType`] of the message.
     pub(crate) fn content_type(&self) -> ContentType {
         self.content.content.body.content_type()
@@ -163,6 +158,11 @@ impl PublicMessage {
     /// Get the sender of this message.
     pub(crate) fn sender(&self) -> &Sender {
         &self.content.content.sender
+    }
+
+    /// Get the MLS version of this message.
+    pub(crate) fn version(&self) -> ProtocolVersion {
+        self.content.version
     }
 
     #[cfg(test)]
@@ -251,7 +251,7 @@ impl PublicMessage {
     }
 
     #[cfg(any(feature = "test-utils", test))]
-    pub fn set_membership_tag_test(&mut self, membership_tag: MembershipTag) {
+    pub(crate) fn set_membership_tag_test(&mut self, membership_tag: MembershipTag) {
         self.membership_tag = Some(membership_tag);
     }
 

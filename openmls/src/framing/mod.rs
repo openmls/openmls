@@ -49,7 +49,8 @@ use serde::{Deserialize, Serialize};
 use tls_codec::*;
 
 pub(crate) mod codec;
-pub(crate) mod message;
+pub(crate) mod message_in;
+pub(crate) mod message_out;
 pub(crate) mod mls_auth_content;
 pub(crate) mod mls_content;
 pub(crate) mod private_message;
@@ -72,7 +73,8 @@ pub(crate) use sender::*;
 // Public
 pub mod errors;
 
-pub use message::*;
+pub use message_in::*;
+pub use message_out::*;
 pub use sender::*;
 pub use validation::*;
 
@@ -90,6 +92,12 @@ pub enum WireFormat {
     PublicMessage = 1,
     /// Encrypted message
     PrivateMessage = 2,
+    /// Welcome message
+    Welcome = 3,
+    /// Group information
+    GroupInfo = 4,
+    /// KeyPackage
+    KeyPackage = 5,
 }
 
 /// This struct is used to group common framing parameters
