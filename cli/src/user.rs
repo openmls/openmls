@@ -1,6 +1,6 @@
 use std::{cell::RefCell, collections::HashMap};
 
-use ds_lib::{ClientKeyPackages, GroupMessage, Message};
+use ds_lib::{ClientKeyPackages, GroupMessage};
 use openmls::prelude::*;
 use openmls_rust_crypto::OpenMlsRustCrypto;
 use openmls_traits::OpenMlsCryptoProvider;
@@ -141,13 +141,13 @@ impl User {
 
         // Go through the list of messages and process or store them.
         for message in self.backend.recv_msgs(self)?.drain(..) {
-            match message {
-                Message::Welcome(welcome) => {
+            match message.extract() {
+                MlsMessageContent::Welcome(welcome) => {
                     // Join the group. (Later we should ask the user to
                     // approve first ...)
                     self.join_group(welcome)?;
                 }
-                Message::MlsMessage(message) => {
+                MlsMessageContent::ProtocolMessage(message) => {
                     let mut groups = self.groups.borrow_mut();
 
                     let group = match groups.get_mut(message.group_id().as_slice()) {
@@ -197,6 +197,7 @@ impl User {
                         }
                     }
                 }
+                _ => panic!("Unsupported message type"),
             }
         }
         log::trace!("done with messages ...");

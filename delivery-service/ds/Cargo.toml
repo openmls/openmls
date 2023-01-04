@@ -20,7 +20,7 @@ clap = "2.33"
 base64 = "0.13"
 tls_codec = { version = "0.2.0", features = ["derive", "serde"] }
 
-openmls = { path = "../../openmls" }
+openmls = { path = "../../openmls", features = ["test-utils"] }
 
 ds-lib = { path = "../ds-lib/" }
 openmls_rust_crypto = { path = "../../openmls_rust_crypto" }

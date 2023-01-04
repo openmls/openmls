@@ -630,7 +630,7 @@ impl MlsClient for MlsClientImpl {
             .map_err(|_| Status::aborted("failed to deserialize ciphertext"))?;
         let processed_message = interop_group
             .group
-            .process_message(&self.crypto_provider, message)
+            .process_message(&self.crypto_provider, message.into())
             .map_err(into_status)?;
         let application_data = match processed_message.into_content() {
             ProcessedMessageContent::ApplicationMessage(application_message) => {
@@ -789,7 +789,7 @@ impl MlsClient for MlsClientImpl {
                 .map_err(|_| Status::aborted("failed to deserialize ciphertext"))?;
             let processed_message = interop_group
                 .group
-                .process_message(&self.crypto_provider, message)
+                .process_message(&self.crypto_provider, message.into())
                 .map_err(into_status)?;
             match processed_message.into_content() {
                 ProcessedMessageContent::ApplicationMessage(_) => unreachable!(),
@@ -840,7 +840,7 @@ impl MlsClient for MlsClientImpl {
                 .map_err(|_| Status::aborted("failed to deserialize ciphertext"))?;
             let processed_message = interop_group
                 .group
-                .process_message(&self.crypto_provider, message)
+                .process_message(&self.crypto_provider, message.into())
                 .map_err(into_status)?;
             match processed_message.into_content() {
                 ProcessedMessageContent::ApplicationMessage(_) => unreachable!(),
@@ -856,7 +856,7 @@ impl MlsClient for MlsClientImpl {
             .map_err(|_| Status::aborted("failed to deserialize ciphertext"))?;
         let processed_message = interop_group
             .group
-            .process_message(&self.crypto_provider, message)
+            .process_message(&self.crypto_provider, message.into())
             .map_err(into_status)?;
         match processed_message.into_content() {
             ProcessedMessageContent::ApplicationMessage(_) => unreachable!(),
