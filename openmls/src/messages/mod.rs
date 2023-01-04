@@ -241,6 +241,7 @@ impl Signable for GroupInfoTBS {
 /// } GroupInfo;
 /// ```
 #[derive(Debug, PartialEq, Clone)]
+#[cfg_attr(feature = "test-utils", derive(TlsDeserialize))]
 pub struct GroupInfo {
     payload: GroupInfoTBS,
     signature: Signature,
@@ -260,11 +261,6 @@ impl GroupInfo {
     /// Returns the confirmation tag.
     pub(crate) fn confirmation_tag(&self) -> &ConfirmationTag {
         &self.payload.confirmation_tag
-    }
-
-    /// Returns the signer.
-    pub(crate) fn signer(&self) -> LeafNodeIndex {
-        self.payload.signer
     }
 
     #[cfg(any(feature = "test-utils", test))]

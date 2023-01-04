@@ -6,7 +6,8 @@ use crate::{
     group::{config::CryptoConfig, errors::WelcomeError, GroupId, MlsGroup, MlsGroupConfigBuilder},
     key_packages::KeyPackage,
     messages::{
-        ConfirmationTag, EncryptedGroupSecrets, GroupInfo, GroupInfoTBS, GroupSecrets, Welcome,
+        ConfirmationTag, EncryptedGroupSecrets, GroupInfoTBS, GroupSecrets, VerifiableGroupInfo,
+        Welcome,
     },
     schedule::{psk::PskSecret, KeySchedule},
     versions::ProtocolVersion,
@@ -162,23 +163,24 @@ fn test_welcome_ciphersuite_mismatch(
     let group_info_bytes = welcome_key
         .aead_open(backend, welcome.encrypted_group_info(), &[], &welcome_nonce)
         .expect("Could not decrypt GroupInfo.");
-    let mut group_info = GroupInfo::tls_deserialize(&mut group_info_bytes.as_slice())
-        .expect("Could not deserialize GroupInfo.");
+    let mut verifiable_group_info =
+        VerifiableGroupInfo::tls_deserialize(&mut group_info_bytes.as_slice())
+            .expect("Could not deserialize GroupInfo.");
 
     // Manipulate the ciphersuite in the GroupInfo
-    group_info
+    verifiable_group_info
         .payload
         .group_context
         .set_ciphersuite(mismatched_ciphersuite);
 
     // === Reconstruct the Welcome message and try to process it ===
 
-    let group_info_bytes = group_info
+    let verifiable_group_info_bytes = verifiable_group_info
         .tls_serialize_detached()
         .expect("Could not serialize GroupInfo.");
 
     let encrypted_group_info = welcome_key
-        .aead_seal(backend, &group_info_bytes, &[], &welcome_nonce)
+        .aead_seal(backend, &verifiable_group_info_bytes, &[], &welcome_nonce)
         .expect("Could not encrypt GroupInfo.");
 
     welcome.encrypted_group_info = encrypted_group_info.into();
