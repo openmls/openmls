@@ -15,8 +15,8 @@ use crate::{
 };
 
 use super::{
-    mls_content::ContentType, proposals::ProposalQueue, CoreGroup, Member, MlsMessageIn,
-    ProposalValidationError, VerifiableAuthenticatedContent, WireFormat,
+    mls_content::ContentType, proposals::ProposalQueue, CoreGroup, Member, ProposalValidationError,
+    ProtocolMessage, VerifiableAuthenticatedContent, WireFormat,
 };
 
 impl CoreGroup {
@@ -25,7 +25,10 @@ impl CoreGroup {
     /// Checks the following semantic validation:
     ///  - ValSem002
     ///  - ValSem003
-    pub(crate) fn validate_framing(&self, message: &MlsMessageIn) -> Result<(), ValidationError> {
+    pub(crate) fn validate_framing(
+        &self,
+        message: &ProtocolMessage,
+    ) -> Result<(), ValidationError> {
         // ValSem002
         if message.group_id() != self.group_id() {
             return Err(ValidationError::WrongGroupId);

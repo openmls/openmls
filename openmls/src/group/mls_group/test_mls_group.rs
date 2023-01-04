@@ -176,7 +176,7 @@ fn remover(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
     let mut bob_group = MlsGroup::new_from_welcome(
         backend,
         &mls_group_config,
-        welcome,
+        welcome.into_welcome().expect("Unexpected message type."),
         Some(alice_group.export_ratchet_tree()),
     )
     .expect("Error creating group from Welcome");
@@ -188,7 +188,12 @@ fn remover(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
     };
 
     let alice_processed_message = alice_group
-        .process_message(backend, queued_messages.into())
+        .process_message(
+            backend,
+            queued_messages
+                .into_protocol_message()
+                .expect("Unexpected message type"),
+        )
         .expect("Could not process messages.");
     if let ProcessedMessageContent::StagedCommitMessage(staged_commit) =
         alice_processed_message.into_content()
@@ -205,7 +210,7 @@ fn remover(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
     let mut charlie_group = MlsGroup::new_from_welcome(
         backend,
         &mls_group_config,
-        welcome,
+        welcome.into_welcome().expect("Unexpected message type."),
         Some(bob_group.export_ratchet_tree()),
     )
     .expect("Error creating group from Welcome");
@@ -217,7 +222,12 @@ fn remover(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
         .expect("Could not propose removal");
 
     let charlie_processed_message = charlie_group
-        .process_message(backend, queued_messages.into())
+        .process_message(
+            backend,
+            queued_messages
+                .into_protocol_message()
+                .expect("Unexpected message type"),
+        )
         .expect("Could not process messages.");
 
     // Check that we received the correct proposals
@@ -359,19 +369,19 @@ fn test_invalid_plaintext(ciphersuite: Ciphersuite, backend: &impl OpenMlsCrypto
     // Right now the membership tag is verified first, wihich yields `VerificationError::InvalidMembershipTag`
     // error instead of a `CredentialError:InvalidSignature`.
     let mut msg_invalid_signature = mls_message.clone();
-    if let MlsMessageBody::PublicMessage(ref mut pt) = msg_invalid_signature.mls_message.body {
+    if let MlsMessageOutBody::PublicMessage(ref mut pt) = msg_invalid_signature.body {
         pt.invalidate_signature()
     };
 
     // Tamper with the message such that sender lookup fails
     let mut msg_invalid_sender = mls_message;
     let random_sender = Sender::build_member(LeafNodeIndex::new(987543210));
-    match &mut msg_invalid_sender.mls_message.body {
-        MlsMessageBody::PublicMessage(pt) => {
+    match &mut msg_invalid_sender.body {
+        MlsMessageOutBody::PublicMessage(pt) => {
             pt.set_sender(random_sender);
             pt.set_membership_tag(backend, membership_key).unwrap()
         }
-        MlsMessageBody::PrivateMessage(_) => panic!("This should be a plaintext!"),
+        _ => panic!("This should be a plaintext!"),
     };
 
     drop(client_groups);
@@ -381,7 +391,7 @@ fn test_invalid_plaintext(ciphersuite: Ciphersuite, backend: &impl OpenMlsCrypto
     let error = setup
         // We're the "no_client" id to prevent the original sender from treating
         // this message as his own and merging the pending commit.
-        .distribute_to_members("no_client".as_bytes(), group, &msg_invalid_signature)
+        .distribute_to_members("no_client".as_bytes(), group, &msg_invalid_signature.into())
         .expect_err("No error when distributing message with invalid signature.");
 
     assert_eq!(
@@ -394,7 +404,7 @@ fn test_invalid_plaintext(ciphersuite: Ciphersuite, backend: &impl OpenMlsCrypto
     let error = setup
         // We're the "no_client" id to prevent the original sender from treating
         // this message as his own and merging the pending commit.
-        .distribute_to_members("no_client".as_bytes(), group, &msg_invalid_sender)
+        .distribute_to_members("no_client".as_bytes(), group, &msg_invalid_sender.into())
         .expect_err("No error when distributing message with invalid signature.");
 
     assert_eq!(
@@ -449,7 +459,7 @@ fn test_pending_commit_logic(ciphersuite: Ciphersuite, backend: &impl OpenMlsCry
         .expect("error creating self-update proposal");
 
     let alice_processed_message = alice_group
-        .process_message(backend, proposal.into())
+        .process_message(backend, proposal.into_protocol_message().unwrap())
         .expect("Could not process messages.");
     assert!(alice_group.pending_commit().is_none());
 
@@ -544,7 +554,10 @@ fn test_pending_commit_logic(ciphersuite: Ciphersuite, backend: &impl OpenMlsCry
     let mut bob_group = MlsGroup::new_from_welcome(
         backend,
         &mls_group_config,
-        welcome_option.expect("no welcome after commit"),
+        welcome_option
+            .expect("no welcome after commit")
+            .into_welcome()
+            .expect("Unexpected message type."),
         Some(alice_group.export_ratchet_tree()),
     )
     .expect("error creating group from welcome");
@@ -568,7 +581,7 @@ fn test_pending_commit_logic(ciphersuite: Ciphersuite, backend: &impl OpenMlsCry
         .expect("error creating self-update commit");
 
     let alice_processed_message = alice_group
-        .process_message(backend, msg.into())
+        .process_message(backend, msg.into_protocol_message().unwrap())
         .expect("Could not process messages.");
     assert!(alice_group.pending_commit().is_some());
 
@@ -630,7 +643,7 @@ fn key_package_deletion(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoPr
     let _bob_group = MlsGroup::new_from_welcome(
         backend,
         &mls_group_config,
-        welcome,
+        welcome.into_welcome().expect("Unexpected message type."),
         Some(alice_group.export_ratchet_tree()),
     )
     .expect("Error creating group from Welcome");

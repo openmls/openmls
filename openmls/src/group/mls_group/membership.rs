@@ -20,14 +20,15 @@ impl MlsGroup {
     /// This operation results in a Commit with a `path`, i.e. it includes an
     /// update of the committer's leaf [KeyPackage].
     ///
-    /// If successful, it returns a tuple of [MlsMessageOut] and [Welcome].
+    /// If successful, it returns a tuple of [`MlsMessageOut`]s, where the first
+    /// contains the commit and the second one the [Welcome].
     ///
     /// Returns an error if there is a pending commit.
     pub fn add_members(
         &mut self,
         backend: &impl OpenMlsCryptoProvider,
         key_packages: &[KeyPackage],
-    ) -> Result<(MlsMessageOut, Welcome), AddMembersError> {
+    ) -> Result<(MlsMessageOut, MlsMessageOut), AddMembersError> {
         self.is_operational()?;
 
         if key_packages.is_empty() {
@@ -85,7 +86,10 @@ impl MlsGroup {
         // Since the state of the group might be changed, arm the state flag
         self.flag_state_change();
 
-        Ok((mls_messages, welcome))
+        Ok((
+            mls_messages,
+            MlsMessageOut::from_welcome(welcome, self.group.version()),
+        ))
     }
 
     /// Returns a reference to the own [`LeafNode`].
@@ -97,15 +101,17 @@ impl MlsGroup {
     ///
     /// Members are removed by providing the member's leaf index.
     ///
-    /// If successful, it returns a tuple of [`MlsMessageOut`] and an optional [`Welcome`].
-    /// The [Welcome] is [Some] when the queue of pending proposals contained add proposals
+    /// If successful, it returns a tuple of [`MlsMessageOut`] (containing the
+    /// commit) and an optional [`MlsMessageOut`] (containing the [`Welcome`]).
+    /// The [Welcome] is [Some] when the queue of pending proposals contained
+    /// add proposals
     ///
     /// Returns an error if there is a pending commit.
     pub fn remove_members(
         &mut self,
         backend: &impl OpenMlsCryptoProvider,
         members: &[LeafNodeIndex],
-    ) -> Result<(MlsMessageOut, Option<Welcome>), RemoveMembersError> {
+    ) -> Result<(MlsMessageOut, Option<MlsMessageOut>), RemoveMembersError> {
         self.is_operational()?;
 
         if members.is_empty() {
@@ -154,7 +160,12 @@ impl MlsGroup {
         // Since the state of the group might be changed, arm the state flag
         self.flag_state_change();
 
-        Ok((mls_message, create_commit_result.welcome_option))
+        Ok((
+            mls_message,
+            create_commit_result
+                .welcome_option
+                .map(|w| MlsMessageOut::from_welcome(w, self.group.version())),
+        ))
     }
 
     /// Creates proposals to add members to the group.

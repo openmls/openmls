@@ -20,7 +20,7 @@ impl MlsGroup {
     pub fn process_message(
         &mut self,
         backend: &impl OpenMlsCryptoProvider,
-        message: MlsMessageIn,
+        message: ProtocolMessage,
     ) -> Result<ProcessedMessage, ProcessMessageError> {
         // Make sure we are still a member of the group
         if !self.is_active() {
@@ -72,7 +72,7 @@ impl MlsGroup {
     pub fn commit_to_pending_proposals(
         &mut self,
         backend: &impl OpenMlsCryptoProvider,
-    ) -> Result<(MlsMessageOut, Option<Welcome>), CommitToPendingProposalsError> {
+    ) -> Result<(MlsMessageOut, Option<MlsMessageOut>), CommitToPendingProposalsError> {
         self.is_operational()?;
 
         let credential = self.credential()?;
@@ -108,7 +108,12 @@ impl MlsGroup {
         // Since the state of the group might be changed, arm the state flag
         self.flag_state_change();
 
-        Ok((mls_message, create_commit_result.welcome_option))
+        Ok((
+            mls_message,
+            create_commit_result
+                .welcome_option
+                .map(|w| MlsMessageOut::from_welcome(w, self.group.version())),
+        ))
     }
 
     /// Merge a [StagedCommit] into the group after inspection. As this advances

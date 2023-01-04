@@ -11,15 +11,17 @@ impl MlsGroup {
     /// An [`HpkePublicKey`] can optionally be provided.
     /// If not, a new one will be created on the fly.
     ///
-    /// If successful, it returns a tuple of [`MlsMessageOut`] and an optional [`Welcome`].
-    /// The [Welcome] is [Some] when the queue of pending proposals contained add proposals.
+    /// If successful, it returns a tuple of [`MlsMessageOut`] (containing the
+    /// commit) and an optional [`MlsMessageOut`] (containing the [`Welcome`]).
+    /// The [Welcome] is [Some] when the queue of pending proposals contained
+    /// add proposals
     ///
     /// Returns an error if there is a pending commit.
     pub fn self_update(
         &mut self,
         backend: &impl OpenMlsCryptoProvider,
         encryption_key: Option<HpkePublicKey>,
-    ) -> Result<(MlsMessageOut, Option<Welcome>), SelfUpdateError> {
+    ) -> Result<(MlsMessageOut, Option<MlsMessageOut>), SelfUpdateError> {
         self.is_operational()?;
 
         let credential = self.credential()?;
@@ -95,7 +97,12 @@ impl MlsGroup {
         // Since the state of the group might be changed, arm the state flag
         self.flag_state_change();
 
-        Ok((mls_message, create_commit_result.welcome_option))
+        Ok((
+            mls_message,
+            create_commit_result
+                .welcome_option
+                .map(|w| MlsMessageOut::from_welcome(w, self.group.version())),
+        ))
     }
 
     /// Creates a proposal to update the own leaf node.

@@ -27,7 +27,7 @@ impl CoreGroup {
     pub(crate) fn parse_message(
         &mut self,
         backend: &impl OpenMlsCryptoProvider,
-        message: MlsMessageIn,
+        message: ProtocolMessage,
         sender_ratchet_configuration: &SenderRatchetConfiguration,
     ) -> Result<UnverifiedMessage, ValidationError> {
         // Checks the following semantic validation:
@@ -40,8 +40,8 @@ impl CoreGroup {
         // Checks the following semantic validation:
         //  - ValSem006
         //  - ValSem007 MembershipTag presence
-        let decrypted_message = match message.mls_message.body {
-            MlsMessageBody::PublicMessage(public_message) => {
+        let decrypted_message = match message.body {
+            ProtocolMessageBody::PublicMessage(public_message) => {
                 // If the message is older than the current epoch, we need to fetch the correct secret tree first.
                 let message_secrets =
                     self.message_secrets_for_epoch(epoch).map_err(|e| match e {
@@ -57,7 +57,7 @@ impl CoreGroup {
                     backend,
                 )?
             }
-            MlsMessageBody::PrivateMessage(ciphertext) => {
+            ProtocolMessageBody::PrivateMessage(ciphertext) => {
                 // If the message is older than the current epoch, we need to fetch the correct secret tree first
                 DecryptedMessage::from_inbound_ciphertext(
                     ciphertext,
@@ -311,7 +311,7 @@ impl CoreGroup {
     pub(crate) fn process_message(
         &mut self,
         backend: &impl OpenMlsCryptoProvider,
-        message: MlsMessageIn,
+        message: ProtocolMessage,
         sender_ratchet_configuration: &SenderRatchetConfiguration,
         proposal_store: &ProposalStore,
         own_kpbs: &[OpenMlsLeafNode],
