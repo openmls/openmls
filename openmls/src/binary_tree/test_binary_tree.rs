@@ -2,7 +2,7 @@ use std::collections::HashSet;
 
 use crate::binary_tree::{
     array_representation::tree::{ABinaryTree, TreeNode},
-    MlsBinaryTree, MlsBinaryTreeDiffError, MlsBinaryTreeError,
+    MlsBinaryTree, MlsBinaryTreeError,
 };
 
 use super::{
@@ -42,13 +42,6 @@ fn test_tree_basics() {
             MlsBinaryTreeError::OutOfRange
         )
     }
-
-    // Test node export
-    let exported_nodes = tree1.export_nodes();
-    let tree2 =
-        MlsBinaryTree::new(exported_nodes).expect("error when creating tree from exported nodes.");
-
-    assert_eq!(tree1, tree2);
 
     // Node access
     assert_eq!(&1, tree1.leaf_by_index(LeafNodeIndex::new(0)));
@@ -90,37 +83,40 @@ fn test_diff_merging() {
     // Merging larger diffs.
 
     // Add a lot of leaves.
-    for index in 0..1000 {
-        diff.add_leaf(index, index)
-            .expect("error while adding large number of leaves");
+
+    // First we grow the tree
+    while diff.size().u32() < 1000 {
+        diff.grow_tree().expect("tree too big");
+    }
+
+    assert_eq!(diff.size().u32(), 1023);
+
+    // Then we replace the leaves
+    for index in 2..diff.size().leaf_count() {
+        diff.replace_leaf(LeafNodeIndex::new(index), index);
     }
 
     // Check that the leaves were actually added.
     let leaves: Vec<(LeafNodeIndex, &u32)> = diff.leaves().collect();
-
-    // Expect original 2 leaves + 1000 new ones
-    assert_eq!(leaves.len(), 2 + 1000);
 
     // Expect original leaves
     assert_eq!(leaves[0], (LeafNodeIndex::new(0), &2));
     assert_eq!(leaves[1], (LeafNodeIndex::new(1), &4));
 
     // Expect new leaves
-    assert_eq!(leaves[2], (LeafNodeIndex::new(2), &0));
-    assert_eq!(leaves[3], (LeafNodeIndex::new(3), &1));
-    assert_eq!(leaves[4], (LeafNodeIndex::new(4), &2));
+    assert_eq!(leaves[2], (LeafNodeIndex::new(2), &2));
+    assert_eq!(leaves[3], (LeafNodeIndex::new(3), &3));
+    assert_eq!(leaves[4], (LeafNodeIndex::new(4), &4));
 
     let first_leaf = leaves.first().expect("leaf vector is empty");
     let last_leaf = leaves.last().expect("leaf vector is empty");
     assert_eq!(first_leaf, &(LeafNodeIndex::new(0), &2));
-    assert_eq!(last_leaf, &(LeafNodeIndex::new(1001), &999));
+    assert_eq!(last_leaf, &(LeafNodeIndex::new(511), &511));
     assert_eq!(leaves.len(), diff.leaf_count() as usize);
 
-    // Remove some of them again
-    for _ in 0..200 {
-        diff.remove_leaf()
-            .expect("error while removing large number of leaves");
-    }
+    // Remove some of the leaves again by shrinking the tree
+    diff.shrink_tree().expect("could not shrink the tree");
+    assert_eq!(diff.size().u32(), 511);
 
     // Check that the leaves were actually removed.
     let leaves: Vec<(LeafNodeIndex, &u32)> = diff.leaves().collect();
@@ -128,11 +124,13 @@ fn test_diff_merging() {
     let first_leaf = leaves.first().expect("leaf vector is empty");
     let last_leaf = leaves.last().expect("leaf vector is empty");
     assert_eq!(first_leaf, &(LeafNodeIndex::new(0), &2));
-    assert_eq!(last_leaf, &(LeafNodeIndex::new(801), &799));
+    assert_eq!(last_leaf, &(LeafNodeIndex::new(255), &255));
     assert_eq!(leaves.len(), diff.leaf_count() as usize);
 
     let staged_diff = diff.into();
     tree.merge_diff(staged_diff);
+
+    assert_eq!(tree.size().u32(), 511);
 
     // Verify that the tree has changed post-merge.
     let leaves: Vec<(LeafNodeIndex, &u32)> = tree.leaves().collect();
@@ -140,14 +138,13 @@ fn test_diff_merging() {
     let first_leaf = leaves.first().expect("leaf vector is empty");
     let last_leaf = leaves.last().expect("leaf vector is empty");
     assert_eq!(first_leaf, &(LeafNodeIndex::new(0), &2));
-    assert_eq!(last_leaf, &(LeafNodeIndex::new(801), &799));
+    assert_eq!(last_leaf, &(LeafNodeIndex::new(255), &255));
 
     // Merging a diff that decreases the size of the tree.
 
     let mut diff = tree.empty_diff();
-    for _ in 0..800 {
-        diff.remove_leaf()
-            .expect("error while removing large number of leaves");
+    while diff.size().leaf_count() > 2 {
+        diff.shrink_tree().expect("could not shrink the tree");
     }
 
     let staged_diff = diff.into();
@@ -157,24 +154,7 @@ fn test_diff_merging() {
 }
 
 #[test]
-fn test_leaf_addition_and_removal_errors() {
-    let tree = MlsBinaryTree::new(vec![
-        TreeNode::Leaf(2),
-        TreeNode::Parent(0),
-        TreeNode::Leaf(4),
-    ])
-    .expect("error creating tree");
-    let mut diff = tree.empty_diff();
-
-    diff.remove_leaf().expect("error removing leaf");
-
-    // Should fail removing the last remaining leaf.
-    assert_eq!(
-        diff.remove_leaf()
-            .expect_err("no error trying to remove the last leaf in the diff"),
-        MlsBinaryTreeDiffError::TreeTooSmall
-    );
-
+fn test_new_tree_error() {
     // Let's test what happens when the tree is getting too large.
     let mut nodes: Vec<TreeNode<u32, u32>> = Vec::new();
 
@@ -220,29 +200,6 @@ fn test_diff_iter() {
     for i in 0..50 {
         assert!(parent_set.contains(&((i * 2) + 1)));
     }
-}
-
-#[test]
-fn test_export_diff_nodes() {
-    let nodes = (0..101)
-        .map(|i| {
-            if i % 2 == 0 {
-                TreeNode::Leaf(i)
-            } else {
-                TreeNode::Parent(i)
-            }
-        })
-        .collect();
-    let tree = MlsBinaryTree::new(nodes).expect("error creating tree");
-
-    let diff = tree.empty_diff();
-
-    let nodes = diff.export_nodes();
-
-    // If we re-export the nodes into a tree, we should end up with the same tree.
-    let new_tree = MlsBinaryTree::new(nodes).expect("error creating tree from exported nodes");
-
-    assert_eq!(tree, new_tree);
 }
 
 #[test]
