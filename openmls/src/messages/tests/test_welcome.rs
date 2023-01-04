@@ -118,13 +118,15 @@ fn test_welcome_ciphersuite_mismatch(
         MlsGroup::new_with_group_id(backend, &mls_group_config, group_id, alice_kp)
             .expect("An unexpected error occurred.");
 
-    let (_queued_message, mut welcome) = alice_group
+    let (_queued_message, welcome) = alice_group
         .add_members(backend, &[bob_kp.clone()])
         .expect("Could not add member to group.");
 
     alice_group
         .merge_pending_commit()
         .expect("error merging pending commit");
+
+    let mut welcome = welcome.into_welcome().expect("Unexpected message type.");
 
     let original_welcome = welcome.clone();
 

@@ -111,7 +111,7 @@
 //! // ... and invites Maxim.
 //! // The key package has to be retrieved from Maxim in some way. Most likely
 //! // via a server storing key packages for users.
-//! let (mls_message_out, welcome) = sasha_group
+//! let (mls_message_out, welcome_out) = sasha_group
 //!     .add_members(backend, &[maxim_key_package])
 //!     .expect("Could not add members.");
 //!
@@ -119,6 +119,22 @@
 //! sasha_group
 //!    .merge_pending_commit()
 //!    .expect("error merging pending commit");
+//!
+//! // Sascha serializes the [`MlsMessageOut`] containing the [`Welcome`].
+//! let serialized_welcome = welcome_out
+//!    .tls_serialize_detached()
+//!    .expect("Error serializing welcome");
+//!
+//! // Maxim can now de-serialize the message as an [`MlsMessageIn`] ...
+//! let mls_message_in = MlsMessageIn::tls_deserialize(&mut serialized_welcome.as_slice())
+//!    .expect("An unexpected error occurred.");
+//!
+//! // ... and inspect the message.
+//! let welcome = match mls_message_in.extract() {
+//!    MlsMessageContent::Welcome(welcome) => welcome,
+//!    // We know it's a welcome message, so we ignore all other cases.
+//!    _ => unreachable!("Unexpected message type."),
+//! };
 //!
 //! // Now Maxim can join the group.
 //!  let mut maxim_group = MlsGroup::new_from_welcome(

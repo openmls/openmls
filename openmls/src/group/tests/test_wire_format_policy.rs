@@ -50,7 +50,7 @@ fn receive_message(
     ciphersuite: Ciphersuite,
     backend: &impl OpenMlsCryptoProvider,
     alice_group: &mut MlsGroup,
-) -> MlsMessageOut {
+) -> MlsMessageIn {
     // Generate credential bundles
     let bob_credential = generate_credential_bundle(
         "Bob".into(),
@@ -76,13 +76,18 @@ fn receive_message(
         .wire_format_policy(alice_group.configuration().wire_format_policy())
         .build();
 
-    let mut bob_group = MlsGroup::new_from_welcome(backend, &mls_group_config, welcome, None)
-        .expect("error creating bob's group from welcome");
+    let mut bob_group = MlsGroup::new_from_welcome(
+        backend,
+        &mls_group_config,
+        welcome.into_welcome().expect("Unexpected message type."),
+        None,
+    )
+    .expect("error creating bob's group from welcome");
 
     let (message, _welcome) = bob_group
         .self_update(backend, None)
         .expect("An unexpected error occurred.");
-    message
+    message.into()
 }
 
 // Test positive cases with all valid (pure & mixed) policies

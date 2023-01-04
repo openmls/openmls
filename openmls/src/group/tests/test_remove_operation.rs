@@ -70,6 +70,8 @@ fn test_remove_operation_variants(ciphersuite: Ciphersuite, backend: &impl OpenM
             .merge_pending_commit()
             .expect("error merging pending commit");
 
+        let welcome = welcome.into_welcome().expect("Unexpected message type.");
+
         let mut bob_group = MlsGroup::new_from_welcome(
             backend,
             &mls_group_config,
@@ -107,7 +109,7 @@ fn test_remove_operation_variants(ciphersuite: Ciphersuite, backend: &impl OpenM
                 // Alice & Charlie store the pending proposal
                 for group in [&mut alice_group, &mut charlie_group] {
                     let processed_message = group
-                        .process_message(backend, message.clone().into())
+                        .process_message(backend, message.clone().into_protocol_message().unwrap())
                         .expect("Could not process message.");
 
                     match processed_message.into_content() {
@@ -163,7 +165,7 @@ fn test_remove_operation_variants(ciphersuite: Ciphersuite, backend: &impl OpenM
         // === Remove operation from Bob's perspective ===
 
         let bob_processed_message = bob_group
-            .process_message(backend, message.clone().into())
+            .process_message(backend, message.clone().into_protocol_message().unwrap())
             .expect("Could not process message.");
 
         match bob_processed_message.into_content() {
@@ -214,7 +216,7 @@ fn test_remove_operation_variants(ciphersuite: Ciphersuite, backend: &impl OpenM
         // === Remove operation from Charlie's perspective ===
 
         let charlie_processed_message = charlie_group
-            .process_message(backend, message.into())
+            .process_message(backend, message.into_protocol_message().unwrap())
             .expect("Could not process message.");
 
         match charlie_processed_message.into_content() {

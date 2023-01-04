@@ -84,7 +84,8 @@ fn validation_test_setup(
     let verifiable_group_info = alice_group
         .export_group_info(backend, false)
         .unwrap()
-        .into_verifiable_group_info();
+        .into_group_info()
+        .unwrap();
     let tree_option = alice_group.export_ratchet_tree();
 
     let (_bob_group, message) = MlsGroup::join_by_external_commit(
@@ -161,7 +162,7 @@ fn test_valsem240(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
     );
 
     // Have alice process the commit resulting from external init.
-    let message_in = MlsMessageIn::from(signed_plaintext);
+    let message_in = ProtocolMessage::from(signed_plaintext);
 
     let err = alice_group
         .process_message(backend, message_in)
@@ -176,7 +177,7 @@ fn test_valsem240(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
 
     // Positive case
     alice_group
-        .process_message(backend, MlsMessageIn::from(original_plaintext))
+        .process_message(backend, ProtocolMessage::from(original_plaintext))
         .expect("Unexpected error.");
 }
 
@@ -219,7 +220,7 @@ fn test_valsem241(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
         backend,
     );
     // Have alice process the commit resulting from external init.
-    let message_in = MlsMessageIn::from(signed_plaintext);
+    let message_in = ProtocolMessage::from(signed_plaintext);
 
     let err = alice_group
         .process_message(backend, message_in)
@@ -234,7 +235,7 @@ fn test_valsem241(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
 
     // Positive case
     alice_group
-        .process_message(backend, MlsMessageIn::from(original_plaintext))
+        .process_message(backend, ProtocolMessage::from(original_plaintext))
         .expect("Unexpected error.");
 }
 
@@ -319,7 +320,8 @@ fn test_valsem242(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
         let verifiable_group_info = alice_group
             .export_group_info(backend, true)
             .unwrap()
-            .into_verifiable_group_info();
+            .into_group_info()
+            .unwrap();
 
         let (_bob_group, message) = MlsGroup::join_by_external_commit(
             backend,
@@ -414,7 +416,8 @@ fn test_valsem243(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
     let verifiable_group_info = alice_group
         .export_group_info(backend, false)
         .unwrap()
-        .into_verifiable_group_info();
+        .into_group_info()
+        .unwrap();
     let tree_option = alice_group.export_ratchet_tree();
 
     let (_bob_group, message) = MlsGroup::join_by_external_commit(
@@ -477,7 +480,7 @@ fn test_valsem243(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
     );
 
     // Have alice process the commit resulting from external init.
-    let message_in = MlsMessageIn::from(signed_plaintext);
+    let message_in = ProtocolMessage::from(signed_plaintext);
 
     let err = alice_group.process_message(backend, message_in).expect_err(
         "Could process message despite the remove proposal targeting the wrong group member.",
@@ -515,7 +518,7 @@ fn test_valsem243(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
 
     // Positive case
     alice_group
-        .process_message(backend, MlsMessageIn::from(original_plaintext))
+        .process_message(backend, ProtocolMessage::from(original_plaintext))
         .expect("Unexpected error.");
 }
 
@@ -571,7 +574,7 @@ fn test_valsem244(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
     );
 
     // Have alice process the commit resulting from external init.
-    let message_in = MlsMessageIn::from(signed_plaintext);
+    let message_in = ProtocolMessage::from(signed_plaintext);
 
     // Expect error because the message can't be processed due to the external
     // commit including an external init proposal by reference.
@@ -588,7 +591,7 @@ fn test_valsem244(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
 
     // Positive case
     alice_group
-        .process_message(backend, MlsMessageIn::from(original_plaintext))
+        .process_message(backend, ProtocolMessage::from(original_plaintext))
         .unwrap();
 }
 
@@ -627,7 +630,7 @@ fn test_valsem245(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
     );
 
     // Have alice process the commit resulting from external init.
-    let message_in = MlsMessageIn::from(signed_plaintext);
+    let message_in = ProtocolMessage::from(signed_plaintext);
 
     let err = alice_group
         .process_message(backend, message_in)
@@ -640,7 +643,7 @@ fn test_valsem245(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
 
     // Positive case
     alice_group
-        .process_message(backend, MlsMessageIn::from(original_plaintext))
+        .process_message(backend, ProtocolMessage::from(original_plaintext))
         .expect("Unexpected error.");
 }
 
@@ -696,7 +699,7 @@ fn test_valsem246(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
     );
 
     // Have alice process the commit resulting from external init.
-    let message_in = MlsMessageIn::from(signed_plaintext);
+    let message_in = ProtocolMessage::from(signed_plaintext);
 
     let err = alice_group
         .process_message(backend, message_in)
@@ -739,7 +742,7 @@ fn test_valsem246(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
     // correct (which it only is, if alice is using the credential in the path
     // key package).
     alice_group
-        .process_message(backend, MlsMessageIn::from(original_plaintext))
+        .process_message(backend, ProtocolMessage::from(original_plaintext))
         .expect("Unexpected error.");
 }
 
@@ -760,7 +763,8 @@ fn test_pure_ciphertest(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoPr
     let verifiable_group_info = alice_group
         .export_group_info(backend, true)
         .unwrap()
-        .into_verifiable_group_info();
+        .into_group_info()
+        .unwrap();
 
     let (_bob_group, message) = MlsGroup::join_by_external_commit(
         backend,
@@ -772,8 +776,11 @@ fn test_pure_ciphertest(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoPr
     )
     .expect("Error initializing group externally.");
 
-    assert_eq!(message.wire_format(), WireFormat::PublicMessage);
+    let mls_message_in: MlsMessageIn = message.into();
+    assert_eq!(mls_message_in.wire_format(), WireFormat::PublicMessage);
 
     // Would fail if handshake message processing did not distinguish external messages
-    assert!(alice_group.process_message(backend, message.into()).is_ok());
+    assert!(alice_group
+        .process_message(backend, mls_message_in.into())
+        .is_ok());
 }

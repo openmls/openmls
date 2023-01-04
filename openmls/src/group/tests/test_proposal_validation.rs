@@ -14,7 +14,7 @@ use crate::{
     credentials::*,
     framing::{
         mls_content::FramedContentBody, MlsMessageIn, MlsMessageOut, ProcessedMessageContent,
-        PublicMessage, Sender,
+        ProtocolMessage, PublicMessage, Sender,
     },
     group::{config::CryptoConfig, errors::*, *},
     key_packages::*,
@@ -62,7 +62,7 @@ fn create_group_with_members(
     alice_key_package: KeyPackage,
     member_key_packages: &[KeyPackage],
     backend: &impl OpenMlsCryptoProvider,
-) -> Result<(MlsMessageOut, Welcome), AddMembersError> {
+) -> Result<(MlsMessageIn, Welcome), AddMembersError> {
     let mut alice_group = MlsGroup::new_with_group_id(
         backend,
         &MlsGroupConfig::default(),
@@ -71,7 +71,14 @@ fn create_group_with_members(
     )
     .expect("An unexpected error occurred.");
 
-    alice_group.add_members(backend, member_key_packages)
+    alice_group.add_members(backend, member_key_packages).map(
+        |(msg, welcome): (MlsMessageOut, MlsMessageOut)| {
+            (
+                msg.into(),
+                welcome.into_welcome().expect("Unexpected message type."),
+            )
+        },
+    )
 }
 
 struct ProposalValidationTestSetup {
@@ -144,7 +151,7 @@ fn validation_test_setup(
     let bob_group = MlsGroup::new_from_welcome(
         backend,
         &mls_group_config,
-        welcome,
+        welcome.into_welcome().expect("Unexpected message type."),
         Some(alice_group.export_ratchet_tree()),
     )
     .expect("error creating group from welcome");
@@ -283,7 +290,7 @@ fn test_valsem100(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
         &alice_group,
     );
 
-    let update_message_in = MlsMessageIn::from(verifiable_plaintext);
+    let update_message_in = ProtocolMessage::from(verifiable_plaintext);
 
     // Have bob process the resulting plaintext
     let err = bob_group
@@ -303,7 +310,7 @@ fn test_valsem100(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
 
     // Positive case
     bob_group
-        .process_message(backend, original_update_plaintext)
+        .process_message(backend, original_update_plaintext.into())
         .expect("Unexpected error.");
 }
 
@@ -453,7 +460,7 @@ fn test_valsem101(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
         &alice_group,
     );
 
-    let update_message_in = MlsMessageIn::from(verifiable_plaintext);
+    let update_message_in = ProtocolMessage::from(verifiable_plaintext);
 
     // Have bob process the resulting plaintext
     let err = bob_group
@@ -473,7 +480,7 @@ fn test_valsem101(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
 
     // Positive case
     bob_group
-        .process_message(backend, original_update_plaintext)
+        .process_message(backend, original_update_plaintext.into())
         .expect("Unexpected error.");
 }
 
@@ -589,7 +596,7 @@ fn test_valsem102(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
         &alice_group,
     );
 
-    let update_message_in = MlsMessageIn::from(verifiable_plaintext);
+    let update_message_in = ProtocolMessage::from(verifiable_plaintext);
 
     // Have bob process the resulting plaintext
     let err = bob_group
@@ -609,7 +616,7 @@ fn test_valsem102(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
 
     // Positive case
     bob_group
-        .process_message(backend, original_update_plaintext)
+        .process_message(backend, original_update_plaintext.into())
         .expect("Unexpected error.");
 }
 
@@ -794,11 +801,13 @@ fn test_valsem103(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
 
         let original_update_plaintext =
             MlsMessageIn::tls_deserialize(&mut serialized_update.as_slice())
-                .expect("Could not deserialize message.");
+                .expect("Could not deserialize message.")
+                .into_plaintext()
+                .expect("Unexpected message type.");
 
         // Positive case
         bob_group
-            .process_message(backend, original_update_plaintext)
+            .process_message(backend, original_update_plaintext.into())
             .expect("Unexpected error.");
     }
 }
@@ -1064,7 +1073,7 @@ fn test_valsem104(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
 
         // Positive case
         bob_group
-            .process_message(backend, original_update_plaintext)
+            .process_message(backend, original_update_plaintext.into())
             .expect("Unexpected error.");
     }
 }
@@ -1196,7 +1205,7 @@ fn test_valsem105(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
         &alice_group,
     );
 
-    let update_message_in = MlsMessageIn::from(verifiable_plaintext);
+    let update_message_in = ProtocolMessage::from(verifiable_plaintext);
 
     // Have bob process the resulting plaintext
     let err = bob_group
@@ -1216,7 +1225,7 @@ fn test_valsem105(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
 
     // Positive case
     bob_group
-        .process_message(backend, original_update_plaintext)
+        .process_message(backend, original_update_plaintext.into())
         .expect("Unexpected error.");
 }
 
@@ -1400,7 +1409,7 @@ fn test_valsem106(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
                 &alice_group,
             );
 
-            let update_message_in = MlsMessageIn::from(verifiable_plaintext);
+            let update_message_in = ProtocolMessage::from(verifiable_plaintext);
 
             // If we're including by reference, we have to sneak the proposal
             // into Bob's queue.
@@ -1442,7 +1451,7 @@ fn test_valsem106(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
 
             // Positive case
             bob_group
-                .process_message(backend, original_update_plaintext)
+                .process_message(backend, original_update_plaintext.into())
                 .expect("Unexpected error.");
         }
 
@@ -1628,7 +1637,7 @@ fn test_valsem108(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
         &alice_group,
     );
 
-    let update_message_in = MlsMessageIn::from(verifiable_plaintext);
+    let update_message_in = ProtocolMessage::from(verifiable_plaintext);
 
     // Have bob process the resulting plaintext
     let err = bob_group
@@ -1648,7 +1657,7 @@ fn test_valsem108(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
 
     // Positive case
     bob_group
-        .process_message(backend, original_update_plaintext)
+        .process_message(backend, original_update_plaintext.into())
         .expect("Unexpected error.");
 }
 
@@ -1710,7 +1719,7 @@ fn test_valsem109(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
 
     // Have Alice process this proposal.
     if let ProcessedMessageContent::ProposalMessage(proposal) = alice_group
-        .process_message(backend, update_proposal.into())
+        .process_message(backend, update_proposal.into_protocol_message().unwrap())
         .expect("error processing proposal")
         .into_content()
     {
@@ -1770,7 +1779,7 @@ fn test_valsem109(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
         &alice_group,
     );
 
-    let update_message_in = MlsMessageIn::from(verifiable_plaintext);
+    let update_message_in = ProtocolMessage::from(verifiable_plaintext);
 
     // Have bob process the resulting plaintext
     let err = bob_group
@@ -1790,7 +1799,7 @@ fn test_valsem109(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
 
     // Positive case
     bob_group
-        .process_message(backend, original_update_plaintext)
+        .process_message(backend, original_update_plaintext.into())
         .expect("Unexpected error.");
 }
 
@@ -1928,7 +1937,7 @@ fn test_valsem110(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
         &alice_group,
     );
 
-    let update_message_in = MlsMessageIn::from(verifiable_plaintext);
+    let update_message_in = ProtocolMessage::from(verifiable_plaintext);
 
     // Have bob process the resulting plaintext
     let err = bob_group
@@ -1948,7 +1957,7 @@ fn test_valsem110(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
 
     // Positive case
     bob_group
-        .process_message(backend, original_update_plaintext)
+        .process_message(backend, original_update_plaintext.into())
         .expect("Unexpected error.");
 }
 
@@ -2031,7 +2040,7 @@ fn test_valsem111(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
         &alice_group,
     );
 
-    let update_message_in = MlsMessageIn::from(verifiable_plaintext);
+    let update_message_in = ProtocolMessage::from(verifiable_plaintext);
 
     // Have bob process the resulting plaintext
     let err = bob_group
@@ -2092,7 +2101,7 @@ fn test_valsem111(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
         &alice_group,
     );
 
-    let update_message_in = MlsMessageIn::from(verifiable_plaintext);
+    let update_message_in = ProtocolMessage::from(verifiable_plaintext);
 
     // Have bob process the resulting plaintext
     let err = bob_group
@@ -2112,7 +2121,7 @@ fn test_valsem111(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
 
     // Positive case
     bob_group
-        .process_message(backend, original_update_plaintext)
+        .process_message(backend, original_update_plaintext.into())
         .expect("Unexpected error.");
 }
 
@@ -2156,7 +2165,7 @@ fn test_valsem112(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
     // Now let's change the sender type to NewMemberCommit.
     plaintext.set_sender(Sender::NewMemberCommit);
 
-    let update_message_in = MlsMessageIn::from(plaintext.clone());
+    let update_message_in = ProtocolMessage::from(plaintext.clone());
 
     // Have bob process the resulting plaintext
     let err = bob_group
@@ -2174,6 +2183,6 @@ fn test_valsem112(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
 
     // Positive case
     bob_group
-        .process_message(backend, MlsMessageIn::from(original_plaintext))
+        .process_message(backend, ProtocolMessage::from(original_plaintext))
         .expect("Unexpected error.");
 }

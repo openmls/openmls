@@ -16,7 +16,7 @@ use crate::{
     ciphersuite::hash_ref::KeyPackageRef,
     credentials::*,
     extensions::*,
-    framing::{mls_content::ContentType, MlsMessageIn, *},
+    framing::{mls_content::ContentType, ProtocolMessage, *},
     group::{config::CryptoConfig, *},
     key_packages::*,
     messages::*,
@@ -149,7 +149,7 @@ impl Client {
     /// messages.
     pub fn receive_messages_for_group(
         &self,
-        message: &MlsMessageIn,
+        message: &ProtocolMessage,
         sender_id: &[u8],
     ) -> Result<(), ClientError> {
         let mut group_states = self.groups.write().expect("An unexpected error occurred.");
@@ -209,14 +209,17 @@ impl Client {
         let group = groups
             .get_mut(group_id)
             .ok_or(ClientError::NoMatchingGroup)?;
-        let action_results = match action_type {
+        let (msg, welcome_option) = match action_type {
             ActionType::Commit => group.self_update(
                 &self.crypto,
                 key_package.map(|kp| kp.hpke_init_key().clone()),
             )?,
             ActionType::Proposal => (group.propose_self_update(&self.crypto, key_package)?, None),
         };
-        Ok(action_results)
+        Ok((
+            msg,
+            welcome_option.map(|w| w.into_welcome().expect("Unexpected message type.")),
+        ))
     }
 
     /// Have the client either propose or commit (depending on the
@@ -236,8 +239,15 @@ impl Client {
             .ok_or(ClientError::NoMatchingGroup)?;
         let action_results = match action_type {
             ActionType::Commit => {
-                let (messages, welcome) = group.add_members(&self.crypto, key_packages)?;
-                (vec![messages], Some(welcome))
+                let (messages, welcome_message) = group.add_members(&self.crypto, key_packages)?;
+                (
+                    vec![messages],
+                    Some(
+                        welcome_message
+                            .into_welcome()
+                            .expect("Unexpected message type."),
+                    ),
+                )
             }
             ActionType::Proposal => {
                 let mut messages = Vec::new();
@@ -269,7 +279,10 @@ impl Client {
         let action_results = match action_type {
             ActionType::Commit => {
                 let (message, welcome_option) = group.remove_members(&self.crypto, targets)?;
-                (vec![message], welcome_option)
+                (
+                    vec![message],
+                    welcome_option.map(|w| w.into_welcome().expect("Unexpected message type.")),
+                )
             }
             ActionType::Proposal => {
                 let mut messages = Vec::new();

@@ -246,7 +246,7 @@ fn book_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvide
     let mut bob_group = MlsGroup::new_from_welcome(
         backend,
         &mls_group_config,
-        welcome,
+        welcome.into_welcome().expect("Unexpected message type."),
         None, // We use the ratchet tree extension, so we don't provide a ratchet tree here
     )
     .expect("Error joining group from Welcome");
@@ -276,13 +276,13 @@ fn book_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvide
         .expect("Could not serialize message.");
 
     // ANCHOR: mls_message_in_from_bytes
-    let mls_message_in =
-        MlsMessageIn::try_from_bytes(&bytes).expect("Could not deserialize message.");
+    let mls_message = MlsMessageIn::try_from_bytes(&bytes).expect("Could not deserialize message.");
     // ANCHOR_END: mls_message_in_from_bytes
 
     // ANCHOR: process_message
+    let protocol_message: ProtocolMessage = mls_message.into();
     let processed_message = bob_group
-        .process_message(backend, mls_message_in)
+        .process_message(backend, protocol_message)
         .expect("Could not process message.");
     // ANCHOR_END: process_message
 
@@ -310,7 +310,12 @@ fn book_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvide
     // ANCHOR_END: self_update
 
     let alice_processed_message = alice_group
-        .process_message(backend, mls_message_out.into())
+        .process_message(
+            backend,
+            mls_message_out
+                .into_protocol_message()
+                .expect("Unexpected message type"),
+        )
         .expect("Could not process message.");
 
     // Check that we received the correct message
@@ -359,7 +364,12 @@ fn book_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvide
     // ANCHOR_END: propose_self_update
 
     let bob_processed_message = bob_group
-        .process_message(backend, mls_message_out.into())
+        .process_message(
+            backend,
+            mls_message_out
+                .into_protocol_message()
+                .expect("Unexpected message type"),
+        )
         .expect("Could not process message.");
 
     // Check that we received the correct proposals
@@ -395,7 +405,12 @@ fn book_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvide
     let _welcome_option = welcome_option;
 
     let bob_processed_message = bob_group
-        .process_message(backend, mls_message_out.into())
+        .process_message(
+            backend,
+            mls_message_out
+                .into_protocol_message()
+                .expect("Unexpected message type"),
+        )
         .expect("Could not process message.");
 
     // Check that we received the correct message
@@ -438,7 +453,12 @@ fn book_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvide
     };
 
     let alice_processed_message = alice_group
-        .process_message(backend, queued_message.into())
+        .process_message(
+            backend,
+            queued_message
+                .into_protocol_message()
+                .expect("Unexpected message type"),
+        )
         .expect("Could not process message.");
     bob_group
         .merge_pending_commit()
@@ -456,7 +476,7 @@ fn book_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvide
     let mut charlie_group = MlsGroup::new_from_welcome(
         backend,
         &mls_group_config,
-        welcome,
+        welcome.into_welcome().expect("Unexpected message type."),
         Some(bob_group.export_ratchet_tree()),
     )
     .expect("Error creating group from Welcome");
@@ -485,10 +505,21 @@ fn book_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvide
         .expect("Error creating application message");
 
     let _alice_processed_message = alice_group
-        .process_message(backend, queued_message.clone().into())
+        .process_message(
+            backend,
+            queued_message
+                .clone()
+                .into_protocol_message()
+                .expect("Unexpected message type"),
+        )
         .expect("Could not process message.");
     let _bob_processed_message = bob_group
-        .process_message(backend, queued_message.into())
+        .process_message(
+            backend,
+            queued_message
+                .into_protocol_message()
+                .expect("Unexpected message type"),
+        )
         .expect("Could not process message.");
 
     // === Charlie updates and commits ===
@@ -498,10 +529,21 @@ fn book_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvide
     };
 
     let alice_processed_message = alice_group
-        .process_message(backend, queued_message.clone().into())
+        .process_message(
+            backend,
+            queued_message
+                .clone()
+                .into_protocol_message()
+                .expect("Unexpected message type"),
+        )
         .expect("Could not process message.");
     let bob_processed_message = bob_group
-        .process_message(backend, queued_message.into())
+        .process_message(
+            backend,
+            queued_message
+                .into_protocol_message()
+                .expect("Unexpected message type"),
+        )
         .expect("Could not process message.");
     charlie_group
         .merge_pending_commit()
@@ -580,7 +622,13 @@ fn book_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvide
     assert!(bob_group.is_active());
 
     let alice_processed_message = alice_group
-        .process_message(backend, mls_message_out.clone().into())
+        .process_message(
+            backend,
+            mls_message_out
+                .clone()
+                .into_protocol_message()
+                .expect("Unexpected message type"),
+        )
         .expect("Could not process message.");
 
     // Check that alice can use the member list to check if the message is
@@ -603,7 +651,12 @@ fn book_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvide
     assert_eq!(sender_credential, &charlie_credential);
 
     let bob_processed_message = bob_group
-        .process_message(backend, mls_message_out.into())
+        .process_message(
+            backend,
+            mls_message_out
+                .into_protocol_message()
+                .expect("Unexpected message type"),
+        )
         .expect("Could not process message.");
     let charlies_leaf_index = charlie_group.own_leaf_index();
     charlie_group
@@ -714,7 +767,12 @@ fn book_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvide
     // ANCHOR_END: propose_remove
 
     let charlie_processed_message = charlie_group
-        .process_message(backend, mls_message_out.into())
+        .process_message(
+            backend,
+            mls_message_out
+                .into_protocol_message()
+                .expect("Unexpected message type"),
+        )
         .expect("Could not process message.");
 
     // Check that we received the correct proposals
@@ -747,7 +805,12 @@ fn book_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvide
     // ANCHOR_END: propose_add
 
     let charlie_processed_message = charlie_group
-        .process_message(backend, mls_message_out.into())
+        .process_message(
+            backend,
+            mls_message_out
+                .into_protocol_message()
+                .expect("Unexpected message type"),
+        )
         .expect("Could not process message.");
 
     // Check that we received the correct proposals
@@ -785,7 +848,12 @@ fn book_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvide
         .expect("Could not flush proposals");
 
     let charlie_processed_message = charlie_group
-        .process_message(backend, queued_message.into())
+        .process_message(
+            backend,
+            queued_message
+                .into_protocol_message()
+                .expect("Unexpected message type"),
+        )
         .expect("Could not process message.");
 
     // Merge Commit
@@ -814,7 +882,10 @@ fn book_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvide
     let mut bob_group = MlsGroup::new_from_welcome(
         backend,
         &mls_group_config,
-        welcome_option.expect("Welcome was not returned"),
+        welcome_option
+            .expect("Welcome was not returned")
+            .into_welcome()
+            .expect("Unexpected message type."),
         Some(alice_group.export_ratchet_tree()),
     )
     .expect("Error creating group from Welcome");
@@ -842,7 +913,12 @@ fn book_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvide
         .expect("Error creating application message");
 
     let bob_processed_message = bob_group
-        .process_message(backend, queued_message.into())
+        .process_message(
+            backend,
+            queued_message
+                .into_protocol_message()
+                .expect("Unexpected message type"),
+        )
         .expect("Could not process message.");
 
     // Get sender information
@@ -890,7 +966,12 @@ fn book_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvide
     // ANCHOR_END: leaving
 
     let alice_processed_message = alice_group
-        .process_message(backend, queued_message.into())
+        .process_message(
+            backend,
+            queued_message
+                .into_protocol_message()
+                .expect("Unexpected message type"),
+        )
         .expect("Could not process message.");
 
     // Store proposal
@@ -944,7 +1025,12 @@ fn book_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvide
         .expect("Could not merge Commit.");
 
     let bob_processed_message = bob_group
-        .process_message(backend, queued_message.into())
+        .process_message(
+            backend,
+            queued_message
+                .into_protocol_message()
+                .expect("Unexpected message type"),
+        )
         .expect("Could not process message.");
 
     // Check that we received the correct proposals
@@ -1008,7 +1094,12 @@ fn book_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvide
 
     // ANCHOR: decrypt_external_join_proposal
     let alice_processed_message = alice_group
-        .process_message(backend, proposal.into())
+        .process_message(
+            backend,
+            proposal
+                .into_protocol_message()
+                .expect("Unexpected message type."),
+        )
         .expect("Could not process message.");
     match alice_processed_message.into_content() {
         ProcessedMessageContent::ExternalJoinProposalMessage(proposal) => {
@@ -1022,9 +1113,16 @@ fn book_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvide
                 .expect("Could not merge commit");
             assert_eq!(alice_group.members().count(), 2);
 
-            let bob_group =
-                MlsGroup::new_from_welcome(backend, &mls_group_config, welcome.unwrap(), None)
-                    .expect("Bob could not join the group");
+            let bob_group = MlsGroup::new_from_welcome(
+                backend,
+                &mls_group_config,
+                welcome
+                    .unwrap()
+                    .into_welcome()
+                    .expect("Unexpected message type."),
+                None,
+            )
+            .expect("Bob could not join the group");
             assert_eq!(bob_group.members().count(), 2);
         }
         _ => unreachable!(),
@@ -1057,7 +1155,7 @@ fn book_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvide
     let mut bob_group = MlsGroup::new_from_welcome(
         backend,
         &mls_group_config,
-        welcome,
+        welcome.into_welcome().expect("Unexpected message type."),
         Some(alice_group.export_ratchet_tree()),
     )
     .expect("Could not create group from Welcome");

@@ -87,7 +87,7 @@ fn validation_test_setup(
     let bob_group = MlsGroup::new_from_welcome(
         backend,
         &mls_group_config,
-        welcome,
+        welcome.into_welcome().expect("Unexpected message type."),
         Some(alice_group.export_ratchet_tree()),
     )
     .expect("error creating bob's group from welcome");
@@ -131,7 +131,7 @@ fn test_valsem002(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
 
     plaintext.set_group_id(GroupId::from_slice(&[9, 9, 9]));
 
-    let message_in = MlsMessageIn::from(plaintext);
+    let message_in = ProtocolMessage::from(plaintext);
 
     let err = bob_group
         .process_message(backend, message_in)
@@ -144,7 +144,7 @@ fn test_valsem002(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
 
     // Positive case
     bob_group
-        .process_message(backend, MlsMessageIn::from(original_message))
+        .process_message(backend, ProtocolMessage::from(original_message))
         .expect("Unexpected error.");
 }
 
@@ -171,7 +171,7 @@ fn test_valsem003(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
         .expect("Could not merge commit.");
 
     let processed_message = bob_group
-        .process_message(backend, message.into())
+        .process_message(backend, message.into_protocol_message().unwrap())
         .expect("Could not process message.");
 
     if let ProcessedMessageContent::StagedCommitMessage(staged_commit) =
@@ -187,7 +187,7 @@ fn test_valsem003(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
         .self_update(backend, None)
         .expect("Could not add member.");
 
-    let current_epoch = message.epoch();
+    let current_epoch = alice_group.epoch();
 
     let serialized_message = message.tls_serialize_detached().unwrap();
     let mut plaintext = MlsMessageIn::tls_deserialize(&mut serialized_message.as_slice())
@@ -281,7 +281,7 @@ fn test_valsem004(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
         )
         .expect("Error setting membership tag.");
 
-    let message_in = MlsMessageIn::from(plaintext);
+    let message_in = ProtocolMessage::from(plaintext);
 
     let err = bob_group
         .process_message(backend, message_in)
@@ -294,7 +294,7 @@ fn test_valsem004(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
 
     // Positive case
     bob_group
-        .process_message(backend, MlsMessageIn::from(original_message))
+        .process_message(backend, ProtocolMessage::from(original_message))
         .expect("Unexpected error.");
 }
 
@@ -340,7 +340,7 @@ fn test_valsem005(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
         )
         .expect("Error setting membership tag.");
 
-    let message_in = MlsMessageIn::from(plaintext);
+    let message_in = ProtocolMessage::from(plaintext);
 
     let err = bob_group
         .process_message(backend, message_in)
@@ -353,7 +353,7 @@ fn test_valsem005(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
 
     // Positive case
     bob_group
-        .process_message(backend, MlsMessageIn::from(original_message))
+        .process_message(backend, ProtocolMessage::from(original_message))
         .expect("Unexpected error.");
 }
 
@@ -386,7 +386,7 @@ fn test_valsem006(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
 
     ciphertext.set_ciphertext(vec![1, 2, 3]);
 
-    let message_in = MlsMessageIn::from(ciphertext);
+    let message_in = ProtocolMessage::from(ciphertext);
 
     let err = bob_group
         .process_message(backend, message_in)
@@ -401,7 +401,7 @@ fn test_valsem006(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
 
     // Positive case
     bob_group
-        .process_message(backend, MlsMessageIn::from(original_message))
+        .process_message(backend, ProtocolMessage::from(original_message))
         .expect("Unexpected error.");
 }
 
@@ -434,7 +434,7 @@ fn test_valsem007(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
 
     plaintext.unset_membership_tag();
 
-    let message_in = MlsMessageIn::from(plaintext);
+    let message_in = ProtocolMessage::from(plaintext);
 
     let err = bob_group
         .process_message(backend, message_in)
@@ -447,7 +447,7 @@ fn test_valsem007(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
 
     // Positive case
     bob_group
-        .process_message(backend, MlsMessageIn::from(original_message))
+        .process_message(backend, ProtocolMessage::from(original_message))
         .expect("Unexpected error.");
 }
 
@@ -484,7 +484,7 @@ fn test_valsem008(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
             .expect("Could not compute membership tag."),
     ));
 
-    let message_in = MlsMessageIn::from(plaintext);
+    let message_in = ProtocolMessage::from(plaintext);
 
     let err = bob_group
         .process_message(backend, message_in)
@@ -497,7 +497,7 @@ fn test_valsem008(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
 
     // Positive case
     bob_group
-        .process_message(backend, MlsMessageIn::from(original_message))
+        .process_message(backend, ProtocolMessage::from(original_message))
         .expect("Unexpected error.");
 }
 
@@ -543,7 +543,7 @@ fn test_valsem009(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
         )
         .expect("Error setting membership tag.");
 
-    let message_in = MlsMessageIn::from(plaintext);
+    let message_in = ProtocolMessage::from(plaintext);
 
     let err = bob_group
         .process_message(backend, message_in)
@@ -556,7 +556,7 @@ fn test_valsem009(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
 
     // Positive case
     bob_group
-        .process_message(backend, MlsMessageIn::from(original_message))
+        .process_message(backend, ProtocolMessage::from(original_message))
         .expect("Unexpected error.");
 }
 
@@ -604,7 +604,7 @@ fn test_valsem010(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
         )
         .expect("Error setting membership tag.");
 
-    let message_in = MlsMessageIn::from(plaintext);
+    let message_in = ProtocolMessage::from(plaintext);
 
     let err = bob_group
         .process_message(backend, message_in)
@@ -614,6 +614,6 @@ fn test_valsem010(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
 
     // Positive case
     bob_group
-        .process_message(backend, MlsMessageIn::from(original_message))
+        .process_message(backend, ProtocolMessage::from(original_message))
         .expect("Unexpected error.");
 }

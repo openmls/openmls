@@ -278,16 +278,18 @@ impl MlsGroupTestSetup {
         // been removed from the group.
         sender_id: &[u8],
         group: &mut Group,
-        message: &MlsMessageOut,
+        message: &MlsMessageIn,
     ) -> Result<(), ClientError> {
         // Test serialization if mandated by config
-        let message = match self.use_codec {
+        let message: ProtocolMessage = match self.use_codec {
             CodecUse::SerializedMessages => {
-                let serialized_message =
-                    MlsMessageIn::from(message.clone()).tls_serialize_detached()?;
-                MlsMessageIn::tls_deserialize(&mut serialized_message.as_slice())?
+                let mls_message_out: MlsMessageOut = message.clone().into();
+                let serialized_message = mls_message_out.tls_serialize_detached()?;
+                let deserialized_message =
+                    MlsMessageIn::tls_deserialize(&mut serialized_message.as_slice())?;
+                deserialized_message.into()
             }
-            CodecUse::StructMessages => MlsMessageIn::from(message.clone()),
+            CodecUse::StructMessages => message.clone().into(),
         };
         let clients = self.clients.read().expect("An unexpected error occurred.");
         // Distribute message to all members, except to the sender in the case of application messages
@@ -374,7 +376,7 @@ impl MlsGroupTestSetup {
             .collect::<Vec<(Vec<u8>, MlsMessageOut)>>();
         drop(clients);
         for (sender_id, message) in messages {
-            self.distribute_to_members(&sender_id, group, &message)
+            self.distribute_to_members(&sender_id, group, &message.into())
                 .expect("Error sending messages to clients while checking group states.");
         }
     }
@@ -504,7 +506,7 @@ impl MlsGroupTestSetup {
             .expect("An unexpected error occurred.");
         let (messages, welcome_option) =
             client.self_update(action_type, &group.group_id, key_pair)?;
-        self.distribute_to_members(&client.identity, group, &messages)?;
+        self.distribute_to_members(&client.identity, group, &messages.into())?;
         if let Some(welcome) = welcome_option {
             self.deliver_welcome(welcome, group)?;
         }
@@ -549,8 +551,8 @@ impl MlsGroupTestSetup {
         }
         let (messages, welcome_option) =
             adder.add_members(action_type, &group.group_id, &key_packages)?;
-        for message in &messages {
-            self.distribute_to_members(adder_id, group, message)?;
+        for message in messages {
+            self.distribute_to_members(adder_id, group, &message.into())?;
         }
         if let Some(welcome) = welcome_option {
             self.deliver_welcome(welcome, group)?;
@@ -577,8 +579,8 @@ impl MlsGroupTestSetup {
             .expect("An unexpected error occurred.");
         let (messages, welcome_option) =
             remover.remove_members(action_type, &group.group_id, target_members)?;
-        for message in &messages {
-            self.distribute_to_members(remover_id, group, message)?;
+        for message in messages {
+            self.distribute_to_members(remover_id, group, &message.into())?;
         }
         if let Some(welcome) = welcome_option {
             self.deliver_welcome(welcome, group)?;
