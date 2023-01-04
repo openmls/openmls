@@ -63,28 +63,26 @@ fn test_past_secrets_in_group(ciphersuite: Ciphersuite, backend: &impl OpenMlsCr
 
         // Generate KeyPackages
 
-        let alice_key_package = KeyPackage::create(
-            CryptoConfig {
-                ciphersuite,
-                version: ProtocolVersion::default(),
-            },
-            backend,
-            &alice_credential_bundle,
-            vec![],
-            vec![],
-        )
-        .unwrap();
-        let bob_key_package = KeyPackage::create(
-            CryptoConfig {
-                ciphersuite,
-                version: ProtocolVersion::default(),
-            },
-            backend,
-            &bob_credential_bundle,
-            vec![],
-            vec![],
-        )
-        .unwrap();
+        let alice_key_package = KeyPackage::builder()
+            .build(
+                CryptoConfig {
+                    ciphersuite,
+                    version: ProtocolVersion::default(),
+                },
+                backend,
+                &alice_credential_bundle,
+            )
+            .unwrap();
+        let bob_key_package = KeyPackage::builder()
+            .build(
+                CryptoConfig {
+                    ciphersuite,
+                    version: ProtocolVersion::default(),
+                },
+                backend,
+                &bob_credential_bundle,
+            )
+            .unwrap();
 
         // Define the MlsGroup configuration
 

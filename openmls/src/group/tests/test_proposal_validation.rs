@@ -356,28 +356,26 @@ fn test_valsem101(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
         let charlie_credential_bundle =
             CredentialBundle::from_parts("Charlie".into(), charlie_signature_keypair);
 
-        let bob_key_package = KeyPackage::create(
-            CryptoConfig {
-                ciphersuite,
-                version: ProtocolVersion::default(),
-            },
-            backend,
-            &bob_credential_bundle,
-            vec![],
-            vec![],
-        )
-        .unwrap();
-        let charlie_key_package = KeyPackage::create(
-            CryptoConfig {
-                ciphersuite,
-                version: ProtocolVersion::default(),
-            },
-            backend,
-            &charlie_credential_bundle,
-            vec![],
-            vec![],
-        )
-        .unwrap();
+        let bob_key_package = KeyPackage::builder()
+            .build(
+                CryptoConfig {
+                    ciphersuite,
+                    version: ProtocolVersion::default(),
+                },
+                backend,
+                &bob_credential_bundle,
+            )
+            .unwrap();
+        let charlie_key_package = KeyPackage::builder()
+            .build(
+                CryptoConfig {
+                    ciphersuite,
+                    version: ProtocolVersion::default(),
+                },
+                backend,
+                &charlie_credential_bundle,
+            )
+            .unwrap();
 
         // 1. Alice creates a group and tries to add Bob and Charlie to it
         let res = create_group_with_members(
@@ -437,17 +435,16 @@ fn test_valsem101(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
     let dave_credential_bundle =
         CredentialBundle::from_parts("Dave".into(), charlie_credential_bundle.key_pair());
 
-    let dave_key_package = KeyPackage::create(
-        CryptoConfig {
-            ciphersuite,
-            version: ProtocolVersion::default(),
-        },
-        backend,
-        &dave_credential_bundle,
-        vec![],
-        vec![],
-    )
-    .unwrap();
+    let dave_key_package = KeyPackage::builder()
+        .build(
+            CryptoConfig {
+                ciphersuite,
+                version: ProtocolVersion::default(),
+            },
+            backend,
+            &dave_credential_bundle,
+        )
+        .unwrap();
     let second_add_proposal = Proposal::Add(AddProposal {
         key_package: dave_key_package,
     });
@@ -858,41 +855,38 @@ fn test_valsem104(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
             )
             .expect("An unexpected error occurred.");
 
-        let alice_key_package = KeyPackage::create(
-            CryptoConfig {
-                ciphersuite,
-                version: ProtocolVersion::default(),
-            },
-            backend,
-            &alice_credential_bundle,
-            vec![],
-            vec![],
-        )
-        .unwrap();
+        let alice_key_package = KeyPackage::builder()
+            .build(
+                CryptoConfig {
+                    ciphersuite,
+                    version: ProtocolVersion::default(),
+                },
+                backend,
+                &alice_credential_bundle,
+            )
+            .unwrap();
 
-        let bob_key_package = KeyPackage::create(
-            CryptoConfig {
-                ciphersuite,
-                version: ProtocolVersion::default(),
-            },
-            backend,
-            &bob_credential_bundle,
-            vec![],
-            vec![],
-        )
-        .unwrap();
+        let bob_key_package = KeyPackage::builder()
+            .build(
+                CryptoConfig {
+                    ciphersuite,
+                    version: ProtocolVersion::default(),
+                },
+                backend,
+                &bob_credential_bundle,
+            )
+            .unwrap();
 
-        let target_key_package = KeyPackage::create(
-            CryptoConfig {
-                ciphersuite,
-                version: ProtocolVersion::default(),
-            },
-            backend,
-            &target_credential_bundle,
-            vec![],
-            vec![],
-        )
-        .unwrap();
+        let target_key_package = KeyPackage::builder()
+            .build(
+                CryptoConfig {
+                    ciphersuite,
+                    version: ProtocolVersion::default(),
+                },
+                backend,
+                &target_credential_bundle,
+            )
+            .unwrap();
 
         // 1. Alice creates a group and tries to add Bob to it
         let mut alice_group = MlsGroup::new_with_group_id(
@@ -992,17 +986,16 @@ fn test_valsem104(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
         let dave_credential_bundle =
             CredentialBundle::from_parts("Dave".into(), bob_credential_bundle.key_pair());
 
-        let dave_key_package = KeyPackage::create(
-            CryptoConfig {
-                ciphersuite,
-                version: ProtocolVersion::default(),
-            },
-            backend,
-            &dave_credential_bundle,
-            vec![],
-            vec![],
-        )
-        .unwrap();
+        let dave_key_package = KeyPackage::builder()
+            .build(
+                CryptoConfig {
+                    ciphersuite,
+                    version: ProtocolVersion::default(),
+                },
+                backend,
+                &dave_credential_bundle,
+            )
+            .unwrap();
 
         let proposals = match alice_and_bob_share_keys {
             KeyUniqueness::NegativeSameKey => {
@@ -1700,17 +1693,16 @@ fn test_valsem109(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
         .store(&credential_id, &new_cb)
         .expect("An unexpected error occurred.");
 
-    let update_kp = KeyPackage::create(
-        CryptoConfig {
-            ciphersuite,
-            version: ProtocolVersion::default(),
-        },
-        backend,
-        &new_cb,
-        vec![],
-        vec![],
-    )
-    .unwrap();
+    let update_kp = KeyPackage::builder()
+        .build(
+            CryptoConfig {
+                ciphersuite,
+                version: ProtocolVersion::default(),
+            },
+            backend,
+            &new_cb,
+        )
+        .unwrap();
 
     // We first go the manual route
     let update_proposal = bob_group
@@ -1859,15 +1851,13 @@ fn test_valsem110(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
     //           Right now we can't do this because we don't have Bob's private
     //           key any more.
 
-    // let mut update_key_package = KeyPackage::create(
+    // let mut update_key_package = KeyPackage::builder().build(
     //     CryptoConfig {
     //         ciphersuite,
     //         version: ProtocolVersion::default(),
     //     },
     //     backend,
     //     &bob_credential_bundle,
-    //     vec![],
-    //     vec![],
     // )
     // .unwrap();
     // update_key_package.set_public_key(bob_leaf_node.encryption_key().clone());

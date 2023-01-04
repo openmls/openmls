@@ -29,17 +29,16 @@ fn test_external_commit(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoPr
             alice_cb
         };
 
-        let alice_key_package = KeyPackage::create(
-            config::CryptoConfig {
-                ciphersuite,
-                version: ProtocolVersion::default(),
-            },
-            backend,
-            &alice_cb,
-            vec![],
-            vec![],
-        )
-        .expect("Creation of key package failed.");
+        let alice_key_package = KeyPackage::builder()
+            .build(
+                config::CryptoConfig {
+                    ciphersuite,
+                    version: ProtocolVersion::default(),
+                },
+                backend,
+                &alice_cb,
+            )
+            .expect("Creation of key package failed.");
 
         MlsGroup::new(backend, &group_config, alice_key_package)
             .expect("An unexpected error occurred.")

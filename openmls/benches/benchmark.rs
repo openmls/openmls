@@ -27,17 +27,16 @@ fn criterion_kp_bundle(c: &mut Criterion, backend: &impl OpenMlsCryptoProvider) 
                         .expect("An unexpected error occurred.")
                     },
                     |credential_bundle: CredentialBundle| {
-                        let _key_package = KeyPackage::create(
-                            CryptoConfig {
-                                ciphersuite,
-                                version: ProtocolVersion::default(),
-                            },
-                            backend,
-                            &credential_bundle,
-                            vec![],
-                            vec![],
-                        )
-                        .expect("An unexpected error occurred.");
+                        let _key_package = KeyPackage::builder()
+                            .build(
+                                CryptoConfig {
+                                    ciphersuite,
+                                    version: ProtocolVersion::default(),
+                                },
+                                backend,
+                                &credential_bundle,
+                            )
+                            .expect("An unexpected error occurred.");
                     },
                 );
             },

@@ -401,17 +401,16 @@ impl MlsClient for MlsClientImpl {
         )
         .unwrap();
 
-        let key_package = KeyPackage::create(
-            CryptoConfig {
-                ciphersuite,
-                version: ProtocolVersion::default(),
-            },
-            &self.crypto_provider,
-            &credential_bundle,
-            vec![],
-            vec![],
-        )
-        .unwrap();
+        let key_package = KeyPackage::builder()
+            .build(
+                CryptoConfig {
+                    ciphersuite,
+                    version: ProtocolVersion::default(),
+                },
+                &self.crypto_provider,
+                &credential_bundle,
+            )
+            .unwrap();
         let wire_format_policy = wire_format_policy(create_group_request.encrypt_handshake);
         let mls_group_config = MlsGroupConfig::builder()
             .wire_format_policy(wire_format_policy)
@@ -453,17 +452,16 @@ impl MlsClient for MlsClientImpl {
             &self.crypto_provider,
         )
         .unwrap();
-        let key_package = KeyPackage::create(
-            CryptoConfig {
-                ciphersuite,
-                version: ProtocolVersion::default(),
-            },
-            &self.crypto_provider,
-            &credential_bundle,
-            vec![],
-            vec![],
-        )
-        .unwrap();
+        let key_package = KeyPackage::builder()
+            .build(
+                CryptoConfig {
+                    ciphersuite,
+                    version: ProtocolVersion::default(),
+                },
+                &self.crypto_provider,
+                &credential_bundle,
+            )
+            .unwrap();
         let mut transaction_id_map = self.transaction_id_map.lock().unwrap();
         let transaction_id = transaction_id_map.len() as u32;
         transaction_id_map.insert(
@@ -691,17 +689,16 @@ impl MlsClient for MlsClientImpl {
             .get_mut(update_proposal_request.state_id as usize)
             .ok_or_else(|| tonic::Status::new(tonic::Code::InvalidArgument, "unknown state_id"))?;
 
-        let key_package = KeyPackage::create(
-            CryptoConfig {
-                ciphersuite: interop_group.group.ciphersuite(),
-                version: ProtocolVersion::default(),
-            },
-            &self.crypto_provider,
-            &interop_group.credential_bundle,
-            vec![],
-            vec![],
-        )
-        .unwrap();
+        let key_package = KeyPackage::builder()
+            .build(
+                CryptoConfig {
+                    ciphersuite: interop_group.group.ciphersuite(),
+                    version: ProtocolVersion::default(),
+                },
+                &self.crypto_provider,
+                &interop_group.credential_bundle,
+            )
+            .unwrap();
         let mls_group_config = MlsGroupConfig::builder()
             .use_ratchet_tree_extension(true)
             .wire_format_policy(interop_group.wire_format_policy)

@@ -44,17 +44,17 @@ fn generate_key_package(
         )
         .expect("An unexpected error occurred.");
 
-    KeyPackage::create(
-        CryptoConfig {
-            ciphersuite: ciphersuites[0],
-            version: ProtocolVersion::default(),
-        },
-        crypto_backend,
-        &credential_bundle,
-        extensions,
-        vec![],
-    )
-    .unwrap()
+    KeyPackage::builder()
+        .key_package_extensions(extensions)
+        .build(
+            CryptoConfig {
+                ciphersuite: ciphersuites[0],
+                version: ProtocolVersion::default(),
+            },
+            crypto_backend,
+            &credential_bundle,
+        )
+        .unwrap()
 }
 
 #[actix_rt::test]

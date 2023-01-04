@@ -105,17 +105,16 @@ fn generate_key_package(
         .expect("An unexpected error occurred.");
 
     // Create the key package
-    KeyPackage::create(
-        CryptoConfig {
-            ciphersuite: ciphersuites[0],
-            version: ProtocolVersion::default(),
-        },
-        backend,
-        &credential_bundle,
-        vec![],
-        vec![],
-    )
-    .unwrap()
+    KeyPackage::builder()
+        .build(
+            CryptoConfig {
+                ciphersuite: ciphersuites[0],
+                version: ProtocolVersion::default(),
+            },
+            backend,
+            &credential_bundle,
+        )
+        .unwrap()
     // ANCHOR_END: create_key_package
 }
 

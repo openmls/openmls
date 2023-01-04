@@ -49,17 +49,17 @@ fn generate_key_package(
                 .expect("Error serializing signature key."),
         )
         .expect("An unexpected error occurred.");
-    KeyPackage::create(
-        CryptoConfig {
-            ciphersuite: ciphersuites[0],
-            version: ProtocolVersion::default(),
-        },
-        backend,
-        &credential_bundle,
-        extensions,
-        vec![],
-    )
-    .unwrap()
+    KeyPackage::builder()
+        .key_package_extensions(extensions)
+        .build(
+            CryptoConfig {
+                ciphersuite: ciphersuites[0],
+                version: ProtocolVersion::default(),
+            },
+            backend,
+            &credential_bundle,
+        )
+        .unwrap()
 }
 
 /// This test simulates various group operations like Add, Update, Remove in a
@@ -457,17 +457,16 @@ fn mls_group_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoPr
                     .unwrap(),
             )
             .unwrap();
-        let charlies_new_key_package = KeyPackage::create(
-            CryptoConfig {
-                ciphersuite,
-                version: ProtocolVersion::default(),
-            },
-            backend,
-            &charlie_credential_bundle,
-            vec![],
-            vec![],
-        )
-        .unwrap();
+        let charlies_new_key_package = KeyPackage::builder()
+            .build(
+                CryptoConfig {
+                    ciphersuite,
+                    version: ProtocolVersion::default(),
+                },
+                backend,
+                &charlie_credential_bundle,
+            )
+            .unwrap();
 
         // === Charlie updates and commits ===
         let (queued_message, welcome_option) = match charlie_group.self_update(
