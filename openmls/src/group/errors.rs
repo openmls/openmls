@@ -73,6 +73,9 @@ pub enum WelcomeError {
     /// No matching encryption key was found in the key store.
     #[error("No matching encryption key was found in the key store.")]
     NoMatchingEncryptionKey,
+    /// No matching key package was found in the key store.
+    #[error("No matching key package was found in the key store.")]
+    NoMatchingKeyPackage,
     /// Failed to delete the KeyPackageBundle from the key store.
     #[error("Failed to delete the KeyPackageBundle from the key store.")]
     KeyStoreDeletionError,

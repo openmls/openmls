@@ -3,7 +3,7 @@
 //! This module holds a number of types that are needed by the traits.
 
 use serde::{Deserialize, Serialize};
-use std::convert::{Infallible, TryFrom};
+use std::convert::TryFrom;
 use tls_codec::{
     Deserialize as TlsDeserializeTrait, Serialize as TlsSerializeTrait, TlsDeserialize,
     TlsSerialize, TlsSize, VLBytes,
