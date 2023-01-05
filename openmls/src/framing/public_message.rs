@@ -44,11 +44,11 @@ pub(crate) struct MembershipTag(pub(crate) Mac);
 /// } PublicMessage;
 /// ```
 ///
-/// [`PublicMessage`] differs slightly from the struct shown above in that it
-/// contains an [`FramedContentTbs`] struct rather than [`FramedContent`]. The
-/// extra metadata that [`FramedContentTbs`] holds helps in processing this
-/// message later. The extra data is accounted for (i.e. ignored) in the
-/// serialized/deserialization functions.
+// [`PublicMessage`] differs slightly from the struct shown above in that it
+// contains a [`FramedContentTbs`] struct rather than [`FramedContent`]. The
+// extra metadata that [`FramedContentTbs`] holds helps in processing this
+// message later. The extra data is accounted for (i.e. ignored) in the
+// serialized/deserialization functions.
 #[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
 pub struct PublicMessage {
     content: FramedContentTbs,
