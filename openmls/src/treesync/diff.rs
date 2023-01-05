@@ -30,13 +30,13 @@ use super::{
         parent_node::{ParentNode, PathDerivationResult, PlainUpdatePathNode},
         Node, NodeReference,
     },
-    treesync_node::{TreeSyncLeafNode, TreeSyncNode, TreeSyncParentNode},
+    treesync_node::{TreeSyncLeafNode, TreeSyncParentNode},
     TreeSync, TreeSyncParentHashError, TreeSyncSetPathError,
 };
 
 use crate::{
     binary_tree::{
-        array_representation::{LeafNodeIndex, ParentNodeIndex, TreeNodeIndex},
+        array_representation::{LeafNodeIndex, ParentNodeIndex, TreeNodeIndex, MIN_TREE_SIZE},
         MlsBinaryTreeDiff, StagedMlsBinaryTreeDiff,
     },
     ciphersuite::{HpkePrivateKey, HpkePublicKey, Secret},
@@ -115,41 +115,35 @@ impl<'a> TreeSyncDiff<'a> {
             .collect()
     }
 
-    /// Check if the right-most leaf and its parent are blank. If that is the
-    /// case, remove the right-most leaf and its parent until either the
-    /// right-most leaf or its parent are not blank anymore.
-    pub(crate) fn trim_tree(&mut self) {
+    /// Trims the tree by shrinking it until the last full leaf is in the
+    /// right part of the tree.
+    fn trim_tree(&mut self) {
         // Nothing to trim if there's only one leaf left.
-        if self.leaf_count() == 1 {
+        if self.leaf_count() == MIN_TREE_SIZE {
             return;
         }
 
-        // We reverse the nodes here to make sure we start with the right-most
-        let mut leaves = self
-            .diff
-            .leaves()
-            .collect::<Vec<(LeafNodeIndex, &TreeSyncLeafNode)>>();
-        leaves.reverse();
-        let mut parents = self
-            .diff
-            .parents()
-            .collect::<Vec<(ParentNodeIndex, &TreeSyncParentNode)>>();
-        parents.reverse();
+        let rightmost_full_leaf = self.rightmost_full_leaf();
 
-        let mut blank_leaf_counter = 0;
+        // We shrink the tree until the last full leaf is the right part of the
+        // tree
+        while self.diff.size().leaf_is_left(rightmost_full_leaf) {
+            let res = self.diff.shrink_tree();
+            // We should never run into an error here, since `leaf_is_left`
+            // returns false when the tree only has one leaf.
+            debug_assert!(res.is_ok());
+        }
+    }
 
-        for ((_, leaf), (_, parent)) in leaves.iter().zip(parents.iter()) {
-            if leaf.node().as_ref().is_none() && parent.node().as_ref().is_none() {
-                // Both leaf & parent are blank, so we want to remove them.
-                blank_leaf_counter += 1;
-            } else {
-                break;
+    /// Returns the index of the last full leaf in the tree.
+    fn rightmost_full_leaf(&self) -> LeafNodeIndex {
+        let mut index = LeafNodeIndex::new(0);
+        for (leaf_index, leaf) in self.diff.leaves() {
+            if leaf.node().as_ref().is_some() {
+                index = leaf_index;
             }
         }
-
-        for _ in 0..blank_leaf_counter {
-            debug_assert!(self.diff.remove_leaf().is_ok());
-        }
+        index
     }
 
     /// Returns the number of leaves in the tree that would result from merging
@@ -172,17 +166,17 @@ impl<'a> TreeSyncDiff<'a> {
     /// Find and return the index of either the left-most blank leaf, or, if
     /// there are no blank leaves, the leaf count.
     pub(crate) fn free_leaf_index(&self) -> LeafNodeIndex {
-        // Find a free leaf and fill it with the new key package.
-        let mut leaf_index_option = None;
+        let leaf_count = self.diff.leaves().count() as u32;
+
+        // Search for blank leaves in existing leaves
         for (leaf_index, leaf_id) in self.diff.leaves() {
             if leaf_id.node().is_none() {
-                leaf_index_option = Some(leaf_index);
-                break;
+                return leaf_index;
             }
         }
-        // If we found a free leaf, replace it with the new one, otherwise
-        // extend the tree.
-        leaf_index_option.unwrap_or_else(|| LeafNodeIndex::new(self.leaf_count()))
+
+        // Return the next free virtual blank leaf
+        LeafNodeIndex::new(leaf_count)
     }
 
     /// Adds a new leaf to the tree either by filling a blank leaf or by
@@ -199,14 +193,14 @@ impl<'a> TreeSyncDiff<'a> {
         // Find a free leaf and fill it with the new key package.
         let leaf_index = self.free_leaf_index();
         // If the free leaf index is within the tree, put the new leaf there,
-        // otherwise extend the tree.
-        if leaf_index.u32() < self.leaf_count() {
-            self.diff.replace_leaf(leaf_index, leaf_node.into())
-        } else {
+        // otherwise extend the tree first.
+        while leaf_index.u32() >= self.diff.size().leaf_count() {
             self.diff
-                .add_leaf(TreeSyncParentNode::blank(), leaf_node.into())
+                .grow_tree()
                 .map_err(|_| TreeSyncAddLeaf::TreeFull)?;
         }
+        self.diff.replace_leaf(leaf_index, leaf_node.into());
+
         // Add new unmerged leaves entry to all nodes in direct path. Also, wipe
         // the cached tree hash.
         for parent_index in self.diff.direct_path(leaf_index) {
@@ -215,22 +209,8 @@ impl<'a> TreeSyncDiff<'a> {
             if let Some(ref mut parent_node) = tsn.node_mut() {
                 parent_node.add_unmerged_leaf(leaf_index);
             }
-            tsn.erase_tree_hash();
         }
         Ok(leaf_index)
-    }
-
-    /// Clear the tree hash (root and own leaf index).
-    pub(crate) fn clear_tree_hash(&mut self) {
-        match self.diff.root() {
-            TreeNodeIndex::Leaf(leaf_index) => {
-                self.diff.leaf_mut(leaf_index).erase_tree_hash();
-            }
-            TreeNodeIndex::Parent(parent_index) => {
-                self.diff.parent_mut(parent_index).erase_tree_hash();
-            }
-        }
-        self.diff.leaf_mut(self.own_leaf_index()).erase_tree_hash();
     }
 
     /// Set the `own_leaf_index` to `leaf_index`. This has to be used with
@@ -578,7 +558,7 @@ impl<'a> TreeSyncDiff<'a> {
         leaf_index: LeafNodeIndex,
     ) -> Vec<Vec<(TreeNodeIndex, NodeReference)>> {
         // If we're the only node in the tree, there's no copath.
-        if self.diff.leaf_count() == 1 {
+        if self.diff.leaf_count() == MIN_TREE_SIZE {
             return vec![];
         }
 
@@ -755,33 +735,21 @@ impl<'a> TreeSyncDiff<'a> {
     ) -> Result<Vec<u8>, LibraryError> {
         match node_index {
             TreeNodeIndex::Leaf(leaf_index) => {
-                let leaf = self.diff.leaf_mut(leaf_index);
+                let leaf = self.diff.leaf(leaf_index);
 
-                if let Some(hash) = leaf.tree_hash() {
-                    // Return early if there's already a cached tree hash.
-                    Ok(hash.to_vec())
-                } else {
-                    leaf.compute_tree_hash(backend, ciphersuite, leaf_index)
-                }
+                leaf.compute_tree_hash(backend, ciphersuite, leaf_index)
             }
             TreeNodeIndex::Parent(parent_index) => {
+                // Compute left hash.
+                let left_child = self.diff.left_child(parent_index);
+                let left_hash = self.compute_tree_hash(backend, ciphersuite, left_child)?;
+                // Compute right hash.
+                let right_child = self.diff.right_child(parent_index);
+                let right_hash = self.compute_tree_hash(backend, ciphersuite, right_child)?;
+
                 let node = self.diff.parent(parent_index);
 
-                if let Some(hash) = node.tree_hash() {
-                    // Return early if there's already a cached tree hash.
-                    Ok(hash.to_vec())
-                } else {
-                    // Compute left hash.
-                    let left_child = self.diff.left_child(parent_index);
-                    let left_hash = self.compute_tree_hash(backend, ciphersuite, left_child)?;
-                    // Compute right hash.
-                    let right_child = self.diff.right_child(parent_index);
-                    let right_hash = self.compute_tree_hash(backend, ciphersuite, right_child)?;
-
-                    let node = self.diff.parent_mut(parent_index);
-
-                    node.compute_tree_hash(backend, ciphersuite, left_hash, right_hash)
-                }
+                node.compute_tree_hash(backend, ciphersuite, left_hash, right_hash)
             }
         }
     }
@@ -910,11 +878,51 @@ impl<'a> TreeSyncDiff<'a> {
     /// Returns a vector of all nodes in the tree resulting from merging this
     /// diff.
     pub(crate) fn export_nodes(&self) -> Vec<Option<Node>> {
-        self.diff
-            .export_nodes()
-            .into_iter()
-            .map(|node| TreeSyncNode::from(node).into())
-            .collect()
+        let mut nodes = Vec::new();
+
+        // Determine the index of the rightmost full leaf.
+        let max_length = self.rightmost_full_leaf();
+
+        // We take all the leaves including the rightmost full leaf, blank
+        // leaves beyond that are trimmed.
+        let mut leaves = self
+            .diff
+            .leaves()
+            .map(|(_, leaf)| leaf)
+            .take(max_length.usize() + 1);
+
+        // Get the first leaf.
+        if let Some(leaf) = leaves.next() {
+            nodes.push(leaf.node_without_private_key().map(Node::LeafNode));
+        } else {
+            // The tree was empty.
+            return vec![];
+        }
+
+        // Blank parent node used for padding
+        let default_parent = TreeSyncParentNode::default();
+
+        // Get the parents.
+        let parents = self
+            .diff
+            .parents()
+            // Drop the index
+            .map(|(_, parent)| parent)
+            // Take the parents up to the max length
+            .take(max_length.usize())
+            // Pad the parents with blank nodes if needed
+            .chain(
+                (self.diff.parents().count()..self.diff.leaves().count() - 1)
+                    .map(|_| &default_parent),
+            );
+
+        // Interleave the leaves and parents.
+        for (leaf, parent) in leaves.zip(parents) {
+            nodes.push(parent.node_without_private_key().map(Node::ParentNode));
+            nodes.push(leaf.node_without_private_key().map(Node::LeafNode));
+        }
+
+        nodes
     }
 
     /// Returns the filtered common path two leaf nodes share. If the leaves are
