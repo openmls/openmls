@@ -216,41 +216,6 @@
 <span id="216">216</span>
 <span id="217">217</span>
 <span id="218">218</span>
-<span id="219">219</span>
-<span id="220">220</span>
-<span id="221">221</span>
-<span id="222">222</span>
-<span id="223">223</span>
-<span id="224">224</span>
-<span id="225">225</span>
-<span id="226">226</span>
-<span id="227">227</span>
-<span id="228">228</span>
-<span id="229">229</span>
-<span id="230">230</span>
-<span id="231">231</span>
-<span id="232">232</span>
-<span id="233">233</span>
-<span id="234">234</span>
-<span id="235">235</span>
-<span id="236">236</span>
-<span id="237">237</span>
-<span id="238">238</span>
-<span id="239">239</span>
-<span id="240">240</span>
-<span id="241">241</span>
-<span id="242">242</span>
-<span id="243">243</span>
-<span id="244">244</span>
-<span id="245">245</span>
-<span id="246">246</span>
-<span id="247">247</span>
-<span id="248">248</span>
-<span id="249">249</span>
-<span id="250">250</span>
-<span id="251">251</span>
-<span id="252">252</span>
-<span id="253">253</span>
 </pre><pre class="rust"><code><span class="doccomment">//! A binary tree implementation for use with MLS.
 //!
 //! # About
@@ -343,7 +308,6 @@
     /// of the underlying binary tree. Returns the default value if the node
     /// cannot be found.
     </span><span class="kw">pub</span>(<span class="kw">in </span><span class="kw">crate</span>::binary_tree) <span class="kw">fn </span>leaf_by_index(<span class="kw-2">&amp;</span><span class="self">self</span>, leaf_index: LeafNodeIndex) -&gt; <span class="kw-2">&amp;</span>L {
-        <span class="macro">debug_assert!</span>(<span class="self">self</span>.leaf_nodes.get(leaf_index.usize()).is_some());
         <span class="self">self</span>.leaf_nodes
             .get(leaf_index.usize())
             .unwrap_or(<span class="kw-2">&amp;</span><span class="self">self</span>.default_leaf)
@@ -354,7 +318,6 @@
     /// representation of the underlying binary tree. Returns the default value
     /// if the node cannot be found.
     </span><span class="kw">pub</span>(<span class="kw">in </span><span class="kw">crate</span>::binary_tree) <span class="kw">fn </span>parent_by_index(<span class="kw-2">&amp;</span><span class="self">self</span>, parent_index: ParentNodeIndex) -&gt; <span class="kw-2">&amp;</span>P {
-        <span class="macro">debug_assert!</span>(<span class="self">self</span>.parent_nodes.get(parent_index.usize()).is_some());
         <span class="self">self</span>.parent_nodes
             .get(parent_index.usize())
             .unwrap_or(<span class="kw-2">&amp;</span><span class="self">self</span>.default_parent)
@@ -377,26 +340,6 @@
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>parent_count(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; u32 {
         <span class="comment">// This works, because the tree always has at least one leaf.
         </span><span class="self">self</span>.parent_nodes.len() <span class="kw">as </span>u32
-    }
-
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>export_nodes(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; Vec&lt;TreeNode&lt;L, P&gt;&gt; {
-        <span class="kw">let </span><span class="kw-2">mut </span>nodes = Vec::new();
-
-        <span class="kw">let </span>leaves = <span class="self">self</span>.leaf_nodes.iter();
-        <span class="kw">let </span>parents = <span class="self">self</span>.parent_nodes.iter();
-
-        <span class="comment">// Interleave the leaves and parents.
-        </span><span class="kw">for </span>(leaf, parent) <span class="kw">in </span>leaves.zip(parents) {
-            nodes.push(TreeNode::Leaf(leaf.clone()));
-            nodes.push(TreeNode::Parent(parent.clone()));
-        }
-
-        <span class="comment">// Add the least leaf
-        </span><span class="kw">if let </span><span class="prelude-val">Some</span>(last_leaf) = <span class="self">self</span>.leaf_nodes.last() {
-            nodes.push(TreeNode::Leaf(last_leaf.clone()));
-        }
-
-        nodes
     }
 
     <span class="doccomment">/// Returns an iterator over a tuple of the leaf index and a reference to a
@@ -429,32 +372,26 @@
     /// leaf or the maximum size of `u32::MAX`.
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>merge_diff(<span class="kw-2">&amp;mut </span><span class="self">self</span>, diff: StagedAbDiff&lt;L, P&gt;) {
         <span class="kw">let </span>tree_size = diff.tree_size();
+
         <span class="kw">let </span>(leaf_diff, parent_diff) = diff.into_diffs();
 
-        <span class="comment">// If the size of the diff is smaller than the tree, truncate the tree
-        // to the size of the diff.
-        </span><span class="self">self</span>.leaf_nodes.truncate(tree_size.leaf_count() <span class="kw">as </span>usize);
+        <span class="comment">// Resize the tree to the new size.
+        </span><span class="self">self</span>.leaf_nodes
+            .resize_with(tree_size.leaf_count() <span class="kw">as </span>usize, Default::default);
         <span class="self">self</span>.parent_nodes
-            .truncate(tree_size.parent_count() <span class="kw">as </span>usize);
+            .resize_with(tree_size.parent_count() <span class="kw">as </span>usize, Default::default);
 
         <span class="comment">// Merge leaves
         // Iterate over the BTreeMap in order of indices.
         </span><span class="kw">for </span>(leaf_index, diff_leaf) <span class="kw">in </span>leaf_diff.into_iter() {
             <span class="comment">// Assert that the node index is within the range of the tree.
-            </span><span class="macro">debug_assert!</span>(leaf_index.u32() &lt;= <span class="self">self</span>.leaf_count());
+            </span><span class="macro">debug_assert!</span>(leaf_index.u32() &lt; <span class="self">self</span>.leaf_count());
 
-            <span class="comment">// If the node would extend the tree, push it to the vector of nodes.
-            </span><span class="kw">if </span>leaf_index.u32() == <span class="self">self</span>.leaf_count() {
-                <span class="self">self</span>.leaf_nodes.push(diff_leaf);
-            } <span class="kw">else </span>{
-                <span class="comment">// If the node_index points to somewhere within the size of the
-                // tree, do a swap-remove.
-                </span><span class="kw">match </span><span class="self">self</span>.leaf_nodes.get_mut(leaf_index.usize()) {
-                    <span class="prelude-val">Some</span>(n) =&gt; <span class="kw-2">*</span>n = diff_leaf,
-                    <span class="prelude-val">None </span>=&gt; {
-                        <span class="comment">// Panic in debug mode
-                        </span><span class="macro">debug_assert!</span>(<span class="bool-val">false</span>);
-                    }
+            <span class="kw">match </span><span class="self">self</span>.leaf_nodes.get_mut(leaf_index.usize()) {
+                <span class="prelude-val">Some</span>(n) =&gt; <span class="kw-2">*</span>n = diff_leaf,
+                <span class="prelude-val">None </span>=&gt; {
+                    <span class="comment">// Panic in debug mode
+                    </span><span class="macro">debug_assert!</span>(<span class="bool-val">false</span>);
                 }
             }
         }
@@ -463,20 +400,13 @@
         // Iterate over the BTreeMap in order of indices.
         </span><span class="kw">for </span>(parent_index, diff_parent) <span class="kw">in </span>parent_diff.into_iter() {
             <span class="comment">// Assert that the node index is within the range of the tree.
-            </span><span class="macro">debug_assert!</span>(parent_index.u32() &lt;= <span class="self">self</span>.parent_count());
+            </span><span class="macro">debug_assert!</span>(parent_index.u32() &lt; <span class="self">self</span>.parent_count());
 
-            <span class="comment">// If the node would extend the tree, push it to the vector of nodes.
-            </span><span class="kw">if </span>parent_index.u32() == <span class="self">self</span>.parent_count() {
-                <span class="self">self</span>.parent_nodes.push(diff_parent);
-            } <span class="kw">else </span>{
-                <span class="comment">// If the node_index points to somewhere within the size of the
-                // tree, do a swap-remove.
-                </span><span class="kw">match </span><span class="self">self</span>.parent_nodes.get_mut(parent_index.usize()) {
-                    <span class="prelude-val">Some</span>(n) =&gt; <span class="kw-2">*</span>n = diff_parent,
-                    <span class="prelude-val">None </span>=&gt; {
-                        <span class="comment">// Panic in debug mode
-                        </span><span class="macro">debug_assert!</span>(<span class="bool-val">false</span>);
-                    }
+            <span class="kw">match </span><span class="self">self</span>.parent_nodes.get_mut(parent_index.usize()) {
+                <span class="prelude-val">Some</span>(n) =&gt; <span class="kw-2">*</span>n = diff_parent,
+                <span class="prelude-val">None </span>=&gt; {
+                    <span class="comment">// Panic in debug mode
+                    </span><span class="macro">debug_assert!</span>(<span class="bool-val">false</span>);
                 }
             }
         }

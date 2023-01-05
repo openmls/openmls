@@ -442,16 +442,12 @@
 <span id="442">442</span>
 <span id="443">443</span>
 <span id="444">444</span>
-<span id="445">445</span>
-<span id="446">446</span>
-<span id="447">447</span>
-<span id="448">448</span>
-<span id="449">449</span>
 </pre><pre class="rust"><code><span class="kw">use </span>serde::{Deserialize, Serialize};
 <span class="kw">use </span>std::cmp::Ordering;
 <span class="kw">use </span>tls_codec::{TlsDeserialize, TlsSerialize, TlsSize};
 
 <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">const </span>MAX_TREE_SIZE: u32 = <span class="number">1 </span>&lt;&lt; <span class="number">30</span>;
+<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">const </span>MIN_TREE_SIZE: u32 = <span class="number">1</span>;
 
 <span class="doccomment">/// LeafNodeIndex references a leaf node in a tree.
 </span><span class="attribute">#[derive(
@@ -615,10 +611,12 @@
 </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct </span>TreeSize(u32);
 
 <span class="kw">impl </span>TreeSize {
-    <span class="doccomment">/// Create a new `TreeSize` from a `u32`.
-    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>new(size: u32) -&gt; <span class="self">Self </span>{
-        <span class="macro">debug_assert!</span>(size % <span class="number">2 </span>== <span class="number">1 </span>|| size == <span class="number">0</span>);
-        TreeSize(size)
+    <span class="doccomment">/// Create a new `TreeSize` from `nodes`, which will be rounded up to the
+    /// next power of 2. The tree size then reflects the smallest tree that can
+    /// contain the number of nodes.
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>new(nodes: u32) -&gt; <span class="self">Self </span>{
+        <span class="kw">let </span>k = log2(nodes);
+        TreeSize((<span class="number">1 </span>&lt;&lt; (k + <span class="number">1</span>)) - <span class="number">1</span>)
     }
 
     <span class="doccomment">/// Return the number of leaf nodes in the tree.
@@ -632,28 +630,66 @@
     </span>}
 
     <span class="doccomment">/// Return the inner value as `u32`.
-    </span><span class="kw">pub</span>(<span class="kw">super</span>) <span class="kw">fn </span>u32(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; u32 {
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>u32(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; u32 {
         <span class="self">self</span>.<span class="number">0
+    </span>}
+
+    <span class="doccomment">/// Returns `true` if the leaf is in the left subtree and `false` otherwise.
+    /// If there is only one leaf in the tree, it returns `false`.
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>leaf_is_left(<span class="kw-2">&amp;</span><span class="self">self</span>, leaf_index: LeafNodeIndex) -&gt; bool {
+        leaf_index.u32() &lt; <span class="self">self</span>.leaf_count() / <span class="number">2
     </span>}
 
     <span class="doccomment">/// Increase the size.
     </span><span class="kw">pub</span>(<span class="kw">super</span>) <span class="kw">fn </span>inc(<span class="kw-2">&amp;mut </span><span class="self">self</span>) {
-        <span class="kw">if </span><span class="self">self</span>.<span class="number">0 </span>&gt;= <span class="number">1 </span>{
-            <span class="self">self</span>.<span class="number">0 </span>+= <span class="number">2</span>;
-        } <span class="kw">else </span>{
-            <span class="self">self</span>.<span class="number">0 </span>= <span class="number">1</span>;
-        }
+        <span class="self">self</span>.<span class="number">0 </span>= <span class="self">self</span>.<span class="number">0 </span>* <span class="number">2 </span>+ <span class="number">1</span>;
     }
 
     <span class="doccomment">/// Decrease the size.
     </span><span class="kw">pub</span>(<span class="kw">super</span>) <span class="kw">fn </span>dec(<span class="kw-2">&amp;mut </span><span class="self">self</span>) {
         <span class="macro">debug_assert!</span>(<span class="self">self</span>.<span class="number">0 </span>&gt;= <span class="number">2</span>);
         <span class="kw">if </span><span class="self">self</span>.<span class="number">0 </span>&gt;= <span class="number">2 </span>{
-            <span class="self">self</span>.<span class="number">0 </span>-= <span class="number">2</span>;
+            <span class="self">self</span>.<span class="number">0 </span>= (<span class="self">self</span>.<span class="number">0 </span>+ <span class="number">1</span>) / <span class="number">2 </span>- <span class="number">1</span>;
         } <span class="kw">else </span>{
             <span class="self">self</span>.<span class="number">0 </span>= <span class="number">0</span>;
         }
     }
+}
+
+<span class="attribute">#[test]
+</span><span class="kw">fn </span>tree_size() {
+    <span class="macro">assert_eq!</span>(TreeSize::new(<span class="number">1</span>).u32(), <span class="number">1</span>);
+    <span class="macro">assert_eq!</span>(TreeSize::new(<span class="number">3</span>).u32(), <span class="number">3</span>);
+    <span class="macro">assert_eq!</span>(TreeSize::new(<span class="number">5</span>).u32(), <span class="number">7</span>);
+    <span class="macro">assert_eq!</span>(TreeSize::new(<span class="number">7</span>).u32(), <span class="number">7</span>);
+    <span class="macro">assert_eq!</span>(TreeSize::new(<span class="number">9</span>).u32(), <span class="number">15</span>);
+    <span class="macro">assert_eq!</span>(TreeSize::new(<span class="number">11</span>).u32(), <span class="number">15</span>);
+    <span class="macro">assert_eq!</span>(TreeSize::new(<span class="number">13</span>).u32(), <span class="number">15</span>);
+    <span class="macro">assert_eq!</span>(TreeSize::new(<span class="number">15</span>).u32(), <span class="number">15</span>);
+    <span class="macro">assert_eq!</span>(TreeSize::new(<span class="number">17</span>).u32(), <span class="number">31</span>);
+}
+
+<span class="doccomment">/// Test if the leaf is in the left subtree.
+</span><span class="attribute">#[test]
+</span><span class="kw">fn </span>test_leaf_is_left() {
+    <span class="macro">assert!</span>(!TreeSize::new(<span class="number">1</span>).leaf_is_left(LeafNodeIndex::new(<span class="number">0</span>)));
+
+    <span class="macro">assert!</span>(TreeSize::new(<span class="number">3</span>).leaf_is_left(LeafNodeIndex::new(<span class="number">0</span>)));
+    <span class="macro">assert!</span>(!TreeSize::new(<span class="number">3</span>).leaf_is_left(LeafNodeIndex::new(<span class="number">1</span>)));
+
+    <span class="macro">assert!</span>(TreeSize::new(<span class="number">5</span>).leaf_is_left(LeafNodeIndex::new(<span class="number">0</span>)));
+    <span class="macro">assert!</span>(TreeSize::new(<span class="number">5</span>).leaf_is_left(LeafNodeIndex::new(<span class="number">1</span>)));
+    <span class="macro">assert!</span>(!TreeSize::new(<span class="number">5</span>).leaf_is_left(LeafNodeIndex::new(<span class="number">2</span>)));
+    <span class="macro">assert!</span>(!TreeSize::new(<span class="number">5</span>).leaf_is_left(LeafNodeIndex::new(<span class="number">3</span>)));
+
+    <span class="macro">assert!</span>(TreeSize::new(<span class="number">15</span>).leaf_is_left(LeafNodeIndex::new(<span class="number">0</span>)));
+    <span class="macro">assert!</span>(TreeSize::new(<span class="number">15</span>).leaf_is_left(LeafNodeIndex::new(<span class="number">1</span>)));
+    <span class="macro">assert!</span>(TreeSize::new(<span class="number">15</span>).leaf_is_left(LeafNodeIndex::new(<span class="number">2</span>)));
+    <span class="macro">assert!</span>(TreeSize::new(<span class="number">15</span>).leaf_is_left(LeafNodeIndex::new(<span class="number">3</span>)));
+    <span class="macro">assert!</span>(!TreeSize::new(<span class="number">15</span>).leaf_is_left(LeafNodeIndex::new(<span class="number">4</span>)));
+    <span class="macro">assert!</span>(!TreeSize::new(<span class="number">15</span>).leaf_is_left(LeafNodeIndex::new(<span class="number">5</span>)));
+    <span class="macro">assert!</span>(!TreeSize::new(<span class="number">15</span>).leaf_is_left(LeafNodeIndex::new(<span class="number">6</span>)));
+    <span class="macro">assert!</span>(!TreeSize::new(<span class="number">15</span>).leaf_is_left(LeafNodeIndex::new(<span class="number">7</span>)));
 }
 
 <span class="kw">fn </span>log2(x: u32) -&gt; usize {
@@ -693,86 +729,43 @@
     TreeNodeIndex::new(index)
 }
 
-<span class="kw">fn </span>left_helper(x: u32) -&gt; u32 {
-    <span class="kw">let </span>k = level(x);
-    <span class="macro">debug_assert!</span>(k &gt; <span class="number">0</span>);
-    x ^ (<span class="number">0x01 </span>&lt;&lt; (k - <span class="number">1</span>))
-}
-
-<span class="kw">pub</span>(<span class="kw">super</span>) <span class="kw">fn </span>right(index: ParentNodeIndex, size: TreeSize) -&gt; TreeNodeIndex {
-    <span class="kw">let </span>size = size.u32();
-    <span class="macro">debug_assert!</span>(size &gt; <span class="number">0</span>);
-    <span class="macro">debug_assert!</span>(index.to_tree_index() &lt; size);
+<span class="kw">pub</span>(<span class="kw">super</span>) <span class="kw">fn </span>right(index: ParentNodeIndex) -&gt; TreeNodeIndex {
     <span class="kw">let </span>x = index.to_tree_index();
     <span class="kw">let </span>k = level(x);
     <span class="macro">debug_assert!</span>(k &gt; <span class="number">0</span>);
-    <span class="kw">let </span><span class="kw-2">mut </span>r = x ^ (<span class="number">0x03 </span>&lt;&lt; (k - <span class="number">1</span>));
-    <span class="kw">while </span>r &gt;= size {
-        r = left_helper(r);
-    }
-    TreeNodeIndex::new(r)
-}
-
-<span class="comment">/*
-/// New treemath for full tree
-
-pub(super) fn right(index: ParentNodeIndex) -&gt; TreeNodeIndex {
-    let x = index.to_tree_index();
-    let k = level(x);
-    debug_assert!(k &gt; 0);
-    let index = x ^ (0x03 &lt;&lt; (k - 1));
+    <span class="kw">let </span>index = x ^ (<span class="number">0x03 </span>&lt;&lt; (k - <span class="number">1</span>));
     TreeNodeIndex::new(index)
 }
 
-/// Warning: There is no check about the tree size and whether the parent is
+<span class="doccomment">/// Warning: There is no check about the tree size and whether the parent is
 /// beyond the root
-pub(super) fn parent(x: TreeNodeIndex) -&gt; ParentNodeIndex {
-    let x = x.u32();
-    let k = level(x);
-    let b = (x &gt;&gt; (k + 1)) &amp; 0x01;
-    let index = (x | (1 &lt;&lt; k)) ^ (b &lt;&lt; (k + 1));
-    ParentNodeIndex::from_tree_index(index)
-} */
-
-// The parent here might be beyond the right edge of the tree.
-</span><span class="kw">fn </span>parent_step(x: u32) -&gt; u32 {
+</span><span class="kw">fn </span>parent(x: TreeNodeIndex) -&gt; ParentNodeIndex {
+    <span class="kw">let </span>x = x.u32();
     <span class="kw">let </span>k = level(x);
     <span class="kw">let </span>b = (x &gt;&gt; (k + <span class="number">1</span>)) &amp; <span class="number">0x01</span>;
-    (x | (<span class="number">1 </span>&lt;&lt; k)) ^ (b &lt;&lt; (k + <span class="number">1</span>))
+    <span class="kw">let </span>index = (x | (<span class="number">1 </span>&lt;&lt; k)) ^ (b &lt;&lt; (k + <span class="number">1</span>));
+    ParentNodeIndex::from_tree_index(index)
 }
 
 <span class="doccomment">/// Re-exported for testing.
 </span><span class="attribute">#[cfg(any(feature = <span class="string">&quot;test-utils&quot;</span>, test))]
-</span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>test_parent(index: TreeNodeIndex, size: TreeSize) -&gt; ParentNodeIndex {
-    parent(index, size)
+</span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>test_parent(index: TreeNodeIndex) -&gt; ParentNodeIndex {
+    parent(index)
 }
 
-<span class="comment">// This function is only safe to use if index &lt;= size.
-</span><span class="kw">fn </span>parent(index: TreeNodeIndex, size: TreeSize) -&gt; ParentNodeIndex {
-    <span class="kw">let </span>x = index.u32();
-    <span class="kw">let </span>n = size.u32();
-    <span class="kw">let </span><span class="kw-2">mut </span>p = parent_step(x);
-    <span class="kw">while </span>p &gt;= n {
-        <span class="kw">let </span>new_p = parent_step(p);
-        <span class="macro">debug_assert!</span>(new_p != p);
-        p = new_p;
-    }
-    ParentNodeIndex::from_tree_index(p)
-}
-
-<span class="doccomment">/// Re-exported for testing.
-</span><span class="attribute">#[cfg(any(feature = <span class="string">&quot;test-utils&quot;</span>, test))]
-</span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>test_sibling(index: TreeNodeIndex, size: TreeSize) -&gt; TreeNodeIndex {
-    sibling(index, size)
-}
-
-<span class="kw">fn </span>sibling(index: TreeNodeIndex, size: TreeSize) -&gt; TreeNodeIndex {
-    <span class="kw">let </span>p = parent(index, size);
+<span class="kw">fn </span>sibling(index: TreeNodeIndex) -&gt; TreeNodeIndex {
+    <span class="kw">let </span>p = parent(index);
     <span class="kw">match </span>index.u32().cmp(<span class="kw-2">&amp;</span>p.to_tree_index()) {
-        Ordering::Less =&gt; right(p, size),
+        Ordering::Less =&gt; right(p),
         Ordering::Greater =&gt; left(p),
         Ordering::Equal =&gt; left(p),
     }
+}
+
+<span class="doccomment">/// Re-exported for testing.
+</span><span class="attribute">#[cfg(any(feature = <span class="string">&quot;test-utils&quot;</span>, test))]
+</span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>test_sibling(index: TreeNodeIndex) -&gt; TreeNodeIndex {
+    sibling(index)
 }
 
 <span class="doccomment">/// Direct path from a node to the root.
@@ -783,7 +776,7 @@ pub(super) fn parent(x: TreeNodeIndex) -&gt; ParentNodeIndex {
     <span class="kw">let </span><span class="kw-2">mut </span>d = <span class="macro">vec!</span>[];
     <span class="kw">let </span><span class="kw-2">mut </span>x = node_index.to_tree_index();
     <span class="kw">while </span>x != r {
-        <span class="kw">let </span>parent = parent(TreeNodeIndex::new(x), size);
+        <span class="kw">let </span>parent = parent(TreeNodeIndex::new(x));
         d.push(parent);
         x = parent.to_tree_index();
     }
@@ -806,10 +799,7 @@ pub(super) fn parent(x: TreeNodeIndex) -&gt; ParentNodeIndex {
             .collect(),
     );
 
-    full_path
-        .into_iter()
-        .map(|node| sibling(node, size))
-        .collect()
+    full_path.into_iter().map(sibling).collect()
 }
 
 <span class="doccomment">/// Common ancestor of two leaf nodes, aka the node where their direct paths

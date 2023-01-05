@@ -943,6 +943,14 @@
 <span id="943">943</span>
 <span id="944">944</span>
 <span id="945">945</span>
+<span id="946">946</span>
+<span id="947">947</span>
+<span id="948">948</span>
+<span id="949">949</span>
+<span id="950">950</span>
+<span id="951">951</span>
+<span id="952">952</span>
+<span id="953">953</span>
 </pre><pre class="rust"><code><span class="doccomment">//! This module provides the diff functionality for [`TreeSync`].
 //!
 //! # About
@@ -975,13 +983,13 @@
         parent_node::{ParentNode, PathDerivationResult, PlainUpdatePathNode},
         Node, NodeReference,
     },
-    treesync_node::{TreeSyncLeafNode, TreeSyncNode, TreeSyncParentNode},
+    treesync_node::{TreeSyncLeafNode, TreeSyncParentNode},
     TreeSync, TreeSyncParentHashError, TreeSyncSetPathError,
 };
 
 <span class="kw">use crate</span>::{
     binary_tree::{
-        array_representation::{LeafNodeIndex, ParentNodeIndex, TreeNodeIndex},
+        array_representation::{LeafNodeIndex, ParentNodeIndex, TreeNodeIndex, MIN_TREE_SIZE},
         MlsBinaryTreeDiff, StagedMlsBinaryTreeDiff,
     },
     ciphersuite::{HpkePrivateKey, HpkePublicKey, Secret},
@@ -1060,41 +1068,35 @@
             .collect()
     }
 
-    <span class="doccomment">/// Check if the right-most leaf and its parent are blank. If that is the
-    /// case, remove the right-most leaf and its parent until either the
-    /// right-most leaf or its parent are not blank anymore.
-    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>trim_tree(<span class="kw-2">&amp;mut </span><span class="self">self</span>) {
+    <span class="doccomment">/// Trims the tree by shrinking it until the last full leaf is in the
+    /// right part of the tree.
+    </span><span class="kw">fn </span>trim_tree(<span class="kw-2">&amp;mut </span><span class="self">self</span>) {
         <span class="comment">// Nothing to trim if there&#39;s only one leaf left.
-        </span><span class="kw">if </span><span class="self">self</span>.leaf_count() == <span class="number">1 </span>{
+        </span><span class="kw">if </span><span class="self">self</span>.leaf_count() == MIN_TREE_SIZE {
             <span class="kw">return</span>;
         }
 
-        <span class="comment">// We reverse the nodes here to make sure we start with the right-most
-        </span><span class="kw">let </span><span class="kw-2">mut </span>leaves = <span class="self">self
-            </span>.diff
-            .leaves()
-            .collect::&lt;Vec&lt;(LeafNodeIndex, <span class="kw-2">&amp;</span>TreeSyncLeafNode)&gt;&gt;();
-        leaves.reverse();
-        <span class="kw">let </span><span class="kw-2">mut </span>parents = <span class="self">self
-            </span>.diff
-            .parents()
-            .collect::&lt;Vec&lt;(ParentNodeIndex, <span class="kw-2">&amp;</span>TreeSyncParentNode)&gt;&gt;();
-        parents.reverse();
+        <span class="kw">let </span>rightmost_full_leaf = <span class="self">self</span>.rightmost_full_leaf();
 
-        <span class="kw">let </span><span class="kw-2">mut </span>blank_leaf_counter = <span class="number">0</span>;
+        <span class="comment">// We shrink the tree until the last full leaf is the right part of the
+        // tree
+        </span><span class="kw">while </span><span class="self">self</span>.diff.size().leaf_is_left(rightmost_full_leaf) {
+            <span class="kw">let </span>res = <span class="self">self</span>.diff.shrink_tree();
+            <span class="comment">// We should never run into an error here, since `leaf_is_left`
+            // returns false when the tree only has one leaf.
+            </span><span class="macro">debug_assert!</span>(res.is_ok());
+        }
+    }
 
-        <span class="kw">for </span>((<span class="kw">_</span>, leaf), (<span class="kw">_</span>, parent)) <span class="kw">in </span>leaves.iter().zip(parents.iter()) {
-            <span class="kw">if </span>leaf.node().as_ref().is_none() &amp;&amp; parent.node().as_ref().is_none() {
-                <span class="comment">// Both leaf &amp; parent are blank, so we want to remove them.
-                </span>blank_leaf_counter += <span class="number">1</span>;
-            } <span class="kw">else </span>{
-                <span class="kw">break</span>;
+    <span class="doccomment">/// Returns the index of the last full leaf in the tree.
+    </span><span class="kw">fn </span>rightmost_full_leaf(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; LeafNodeIndex {
+        <span class="kw">let </span><span class="kw-2">mut </span>index = LeafNodeIndex::new(<span class="number">0</span>);
+        <span class="kw">for </span>(leaf_index, leaf) <span class="kw">in </span><span class="self">self</span>.diff.leaves() {
+            <span class="kw">if </span>leaf.node().as_ref().is_some() {
+                index = leaf_index;
             }
         }
-
-        <span class="kw">for _ in </span><span class="number">0</span>..blank_leaf_counter {
-            <span class="macro">debug_assert!</span>(<span class="self">self</span>.diff.remove_leaf().is_ok());
-        }
+        index
     }
 
     <span class="doccomment">/// Returns the number of leaves in the tree that would result from merging
@@ -1117,17 +1119,17 @@
     <span class="doccomment">/// Find and return the index of either the left-most blank leaf, or, if
     /// there are no blank leaves, the leaf count.
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>free_leaf_index(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; LeafNodeIndex {
-        <span class="comment">// Find a free leaf and fill it with the new key package.
-        </span><span class="kw">let </span><span class="kw-2">mut </span>leaf_index_option = <span class="prelude-val">None</span>;
-        <span class="kw">for </span>(leaf_index, leaf_id) <span class="kw">in </span><span class="self">self</span>.diff.leaves() {
+        <span class="kw">let </span>leaf_count = <span class="self">self</span>.diff.leaves().count() <span class="kw">as </span>u32;
+
+        <span class="comment">// Search for blank leaves in existing leaves
+        </span><span class="kw">for </span>(leaf_index, leaf_id) <span class="kw">in </span><span class="self">self</span>.diff.leaves() {
             <span class="kw">if </span>leaf_id.node().is_none() {
-                leaf_index_option = <span class="prelude-val">Some</span>(leaf_index);
-                <span class="kw">break</span>;
+                <span class="kw">return </span>leaf_index;
             }
         }
-        <span class="comment">// If we found a free leaf, replace it with the new one, otherwise
-        // extend the tree.
-        </span>leaf_index_option.unwrap_or_else(|| LeafNodeIndex::new(<span class="self">self</span>.leaf_count()))
+
+        <span class="comment">// Return the next free virtual blank leaf
+        </span>LeafNodeIndex::new(leaf_count)
     }
 
     <span class="doccomment">/// Adds a new leaf to the tree either by filling a blank leaf or by
@@ -1144,14 +1146,14 @@
         <span class="comment">// Find a free leaf and fill it with the new key package.
         </span><span class="kw">let </span>leaf_index = <span class="self">self</span>.free_leaf_index();
         <span class="comment">// If the free leaf index is within the tree, put the new leaf there,
-        // otherwise extend the tree.
-        </span><span class="kw">if </span>leaf_index.u32() &lt; <span class="self">self</span>.leaf_count() {
-            <span class="self">self</span>.diff.replace_leaf(leaf_index, leaf_node.into())
-        } <span class="kw">else </span>{
+        // otherwise extend the tree first.
+        </span><span class="kw">while </span>leaf_index.u32() &gt;= <span class="self">self</span>.diff.size().leaf_count() {
             <span class="self">self</span>.diff
-                .add_leaf(TreeSyncParentNode::blank(), leaf_node.into())
+                .grow_tree()
                 .map_err(|<span class="kw">_</span>| TreeSyncAddLeaf::TreeFull)<span class="question-mark">?</span>;
         }
+        <span class="self">self</span>.diff.replace_leaf(leaf_index, leaf_node.into());
+
         <span class="comment">// Add new unmerged leaves entry to all nodes in direct path. Also, wipe
         // the cached tree hash.
         </span><span class="kw">for </span>parent_index <span class="kw">in </span><span class="self">self</span>.diff.direct_path(leaf_index) {
@@ -1160,22 +1162,8 @@
             <span class="kw">if let </span><span class="prelude-val">Some</span>(<span class="kw-2">ref mut </span>parent_node) = tsn.node_mut() {
                 parent_node.add_unmerged_leaf(leaf_index);
             }
-            tsn.erase_tree_hash();
         }
         <span class="prelude-val">Ok</span>(leaf_index)
-    }
-
-    <span class="doccomment">/// Clear the tree hash (root and own leaf index).
-    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>clear_tree_hash(<span class="kw-2">&amp;mut </span><span class="self">self</span>) {
-        <span class="kw">match </span><span class="self">self</span>.diff.root() {
-            TreeNodeIndex::Leaf(leaf_index) =&gt; {
-                <span class="self">self</span>.diff.leaf_mut(leaf_index).erase_tree_hash();
-            }
-            TreeNodeIndex::Parent(parent_index) =&gt; {
-                <span class="self">self</span>.diff.parent_mut(parent_index).erase_tree_hash();
-            }
-        }
-        <span class="self">self</span>.diff.leaf_mut(<span class="self">self</span>.own_leaf_index()).erase_tree_hash();
     }
 
     <span class="doccomment">/// Set the `own_leaf_index` to `leaf_index`. This has to be used with
@@ -1523,7 +1511,7 @@
         leaf_index: LeafNodeIndex,
     ) -&gt; Vec&lt;Vec&lt;(TreeNodeIndex, NodeReference)&gt;&gt; {
         <span class="comment">// If we&#39;re the only node in the tree, there&#39;s no copath.
-        </span><span class="kw">if </span><span class="self">self</span>.diff.leaf_count() == <span class="number">1 </span>{
+        </span><span class="kw">if </span><span class="self">self</span>.diff.leaf_count() == MIN_TREE_SIZE {
             <span class="kw">return </span><span class="macro">vec!</span>[];
         }
 
@@ -1700,33 +1688,21 @@
     ) -&gt; <span class="prelude-ty">Result</span>&lt;Vec&lt;u8&gt;, LibraryError&gt; {
         <span class="kw">match </span>node_index {
             TreeNodeIndex::Leaf(leaf_index) =&gt; {
-                <span class="kw">let </span>leaf = <span class="self">self</span>.diff.leaf_mut(leaf_index);
+                <span class="kw">let </span>leaf = <span class="self">self</span>.diff.leaf(leaf_index);
 
-                <span class="kw">if let </span><span class="prelude-val">Some</span>(hash) = leaf.tree_hash() {
-                    <span class="comment">// Return early if there&#39;s already a cached tree hash.
-                    </span><span class="prelude-val">Ok</span>(hash.to_vec())
-                } <span class="kw">else </span>{
-                    leaf.compute_tree_hash(backend, ciphersuite, leaf_index)
-                }
+                leaf.compute_tree_hash(backend, ciphersuite, leaf_index)
             }
             TreeNodeIndex::Parent(parent_index) =&gt; {
+                <span class="comment">// Compute left hash.
+                </span><span class="kw">let </span>left_child = <span class="self">self</span>.diff.left_child(parent_index);
+                <span class="kw">let </span>left_hash = <span class="self">self</span>.compute_tree_hash(backend, ciphersuite, left_child)<span class="question-mark">?</span>;
+                <span class="comment">// Compute right hash.
+                </span><span class="kw">let </span>right_child = <span class="self">self</span>.diff.right_child(parent_index);
+                <span class="kw">let </span>right_hash = <span class="self">self</span>.compute_tree_hash(backend, ciphersuite, right_child)<span class="question-mark">?</span>;
+
                 <span class="kw">let </span>node = <span class="self">self</span>.diff.parent(parent_index);
 
-                <span class="kw">if let </span><span class="prelude-val">Some</span>(hash) = node.tree_hash() {
-                    <span class="comment">// Return early if there&#39;s already a cached tree hash.
-                    </span><span class="prelude-val">Ok</span>(hash.to_vec())
-                } <span class="kw">else </span>{
-                    <span class="comment">// Compute left hash.
-                    </span><span class="kw">let </span>left_child = <span class="self">self</span>.diff.left_child(parent_index);
-                    <span class="kw">let </span>left_hash = <span class="self">self</span>.compute_tree_hash(backend, ciphersuite, left_child)<span class="question-mark">?</span>;
-                    <span class="comment">// Compute right hash.
-                    </span><span class="kw">let </span>right_child = <span class="self">self</span>.diff.right_child(parent_index);
-                    <span class="kw">let </span>right_hash = <span class="self">self</span>.compute_tree_hash(backend, ciphersuite, right_child)<span class="question-mark">?</span>;
-
-                    <span class="kw">let </span>node = <span class="self">self</span>.diff.parent_mut(parent_index);
-
-                    node.compute_tree_hash(backend, ciphersuite, left_hash, right_hash)
-                }
+                node.compute_tree_hash(backend, ciphersuite, left_hash, right_hash)
             }
         }
     }
@@ -1855,11 +1831,51 @@
     <span class="doccomment">/// Returns a vector of all nodes in the tree resulting from merging this
     /// diff.
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>export_nodes(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; Vec&lt;<span class="prelude-ty">Option</span>&lt;Node&gt;&gt; {
-        <span class="self">self</span>.diff
-            .export_nodes()
-            .into_iter()
-            .map(|node| TreeSyncNode::from(node).into())
-            .collect()
+        <span class="kw">let </span><span class="kw-2">mut </span>nodes = Vec::new();
+
+        <span class="comment">// Determine the index of the rightmost full leaf.
+        </span><span class="kw">let </span>max_length = <span class="self">self</span>.rightmost_full_leaf();
+
+        <span class="comment">// We take all the leaves including the rightmost full leaf, blank
+        // leaves beyond that are trimmed.
+        </span><span class="kw">let </span><span class="kw-2">mut </span>leaves = <span class="self">self
+            </span>.diff
+            .leaves()
+            .map(|(<span class="kw">_</span>, leaf)| leaf)
+            .take(max_length.usize() + <span class="number">1</span>);
+
+        <span class="comment">// Get the first leaf.
+        </span><span class="kw">if let </span><span class="prelude-val">Some</span>(leaf) = leaves.next() {
+            nodes.push(leaf.node_without_private_key().map(Node::LeafNode));
+        } <span class="kw">else </span>{
+            <span class="comment">// The tree was empty.
+            </span><span class="kw">return </span><span class="macro">vec!</span>[];
+        }
+
+        <span class="comment">// Blank parent node used for padding
+        </span><span class="kw">let </span>default_parent = TreeSyncParentNode::default();
+
+        <span class="comment">// Get the parents.
+        </span><span class="kw">let </span>parents = <span class="self">self
+            </span>.diff
+            .parents()
+            <span class="comment">// Drop the index
+            </span>.map(|(<span class="kw">_</span>, parent)| parent)
+            <span class="comment">// Take the parents up to the max length
+            </span>.take(max_length.usize())
+            <span class="comment">// Pad the parents with blank nodes if needed
+            </span>.chain(
+                (<span class="self">self</span>.diff.parents().count()..<span class="self">self</span>.diff.leaves().count() - <span class="number">1</span>)
+                    .map(|<span class="kw">_</span>| <span class="kw-2">&amp;</span>default_parent),
+            );
+
+        <span class="comment">// Interleave the leaves and parents.
+        </span><span class="kw">for </span>(leaf, parent) <span class="kw">in </span>leaves.zip(parents) {
+            nodes.push(parent.node_without_private_key().map(Node::ParentNode));
+            nodes.push(leaf.node_without_private_key().map(Node::LeafNode));
+        }
+
+        nodes
     }
 
     <span class="doccomment">/// Returns the filtered common path two leaf nodes share. If the leaves are
