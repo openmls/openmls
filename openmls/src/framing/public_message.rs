@@ -66,7 +66,7 @@ impl PublicMessage {
         self.membership_tag = None;
     }
 
-    pub fn set_content(&mut self, content: FramedContentBody) {
+    pub(crate) fn set_content(&mut self, content: FramedContentBody) {
         self.content.content.body = content;
     }
 
@@ -74,7 +74,7 @@ impl PublicMessage {
         self.content.content.epoch = epoch.into();
     }
 
-    pub fn content(&self) -> &FramedContentBody {
+    pub(crate) fn content(&self) -> &FramedContentBody {
         &self.content.content.body
     }
 

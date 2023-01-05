@@ -71,6 +71,7 @@ pub(crate) enum MlsMessageOutBody {
 
     /// KeyPackage
     #[tls_codec(discriminant = 5)]
+    #[allow(dead_code)]
     KeyPackage(KeyPackage),
 }
 
