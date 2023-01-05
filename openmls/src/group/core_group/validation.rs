@@ -105,7 +105,6 @@ impl CoreGroup {
     ///  - ValSem102
     ///  - ValSem103
     ///  - ValSem104
-    ///  - ValSem105
     ///  - ValSem106
     pub(crate) fn validate_add_proposals(
         &self,
@@ -115,7 +114,8 @@ impl CoreGroup {
 
         let mut identity_set = HashSet::new();
         let mut signature_key_set = HashSet::new();
-        let mut public_key_set = HashSet::new();
+        let mut init_key_set = HashSet::new();
+        let mut encryption_key_set = HashSet::new();
         for add_proposal in add_proposals {
             let identity = add_proposal
                 .add_proposal()
@@ -140,14 +140,34 @@ impl CoreGroup {
             if !signature_key_set.insert(signature_key) {
                 return Err(ProposalValidationError::DuplicateSignatureKeyAddProposal);
             }
-            let public_key = add_proposal
+
+            let proposal_init_key = add_proposal
                 .add_proposal()
                 .key_package()
                 .hpke_init_key()
                 .as_slice()
                 .to_vec();
+            let proposal_encryption_key = add_proposal
+                .add_proposal()
+                .key_package()
+                .leaf_node()
+                .encryption_key();
+
+            // ValSem113
+            if proposal_init_key == proposal_encryption_key.as_ref() {
+                return Err(ProposalValidationError::InitEncryptionKeyCollision);
+            }
+
             // ValSem102
-            if !public_key_set.insert(public_key) {
+            if !init_key_set.insert(proposal_init_key) {
+                return Err(ProposalValidationError::DuplicatePublicKeyAddProposal);
+            }
+
+            // ValSem114
+            // Here we check that the encryption keys in the proposal are unique.
+            // Further down we check that the encryption keys in the proposals
+            // are not in the tree yet.
+            if !encryption_key_set.insert(proposal_encryption_key.as_slice().to_vec()) {
                 return Err(ProposalValidationError::DuplicatePublicKeyAddProposal);
             }
 
@@ -208,7 +228,7 @@ impl CoreGroup {
         for Member {
             index,
             identity,
-            encryption_key: _,
+            encryption_key,
             signature_key,
         } in self.treesync().full_leave_members()
         {
@@ -223,14 +243,8 @@ impl CoreGroup {
             if signature_key_set.contains(&signature_key) && !has_remove_proposal {
                 return Err(ProposalValidationError::ExistingSignatureKeyAddProposal);
             }
-            // ValSem105
-            let public_key = self
-                .treesync()
-                .leaf(index)
-                .ok_or(ProposalValidationError::UnknownMember)?
-                .public_key()
-                .as_slice();
-            if public_key_set.contains(public_key) {
+            // ValSem114
+            if encryption_key_set.contains(&encryption_key) {
                 return Err(ProposalValidationError::ExistingPublicKeyAddProposal);
             }
         }

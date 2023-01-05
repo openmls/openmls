@@ -107,9 +107,6 @@ fn mls_group_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoPr
         .expect("An unexpected error occurred.");
 
         // Generate KeyPackages
-        let alice_key_package =
-            generate_key_package(&[ciphersuite], &alice_credential, vec![], backend);
-
         let bob_key_package =
             generate_key_package(&[ciphersuite], &bob_credential, vec![], backend);
 
@@ -117,12 +114,17 @@ fn mls_group_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoPr
 
         let mls_group_config = MlsGroupConfig::builder()
             .wire_format_policy(*wire_format_policy)
+            .crypto_config(CryptoConfig::with_default_version(ciphersuite))
             .build();
 
         // === Alice creates a group ===
-        let mut alice_group =
-            MlsGroup::new_with_group_id(backend, &mls_group_config, group_id, alice_key_package)
-                .expect("An unexpected error occurred.");
+        let mut alice_group = MlsGroup::new_with_group_id(
+            backend,
+            &mls_group_config,
+            group_id,
+            alice_credential.signature_key(),
+        )
+        .expect("An unexpected error occurred.");
 
         // === Alice adds Bob ===
         let (_queued_message, welcome) = match alice_group.add_members(backend, &[bob_key_package])
@@ -999,17 +1001,17 @@ fn test_empty_input_errors(ciphersuite: Ciphersuite, backend: &impl OpenMlsCrypt
     )
     .expect("An unexpected error occurred.");
 
-    // Generate KeyPackages
-    let alice_key_package =
-        generate_key_package(&[ciphersuite], &alice_credential, vec![], backend);
-
     // Define the MlsGroup configuration
-    let mls_group_config = MlsGroupConfig::test_default();
+    let mls_group_config = MlsGroupConfig::test_default(ciphersuite);
 
     // === Alice creates a group ===
-    let mut alice_group =
-        MlsGroup::new_with_group_id(backend, &mls_group_config, group_id, alice_key_package)
-            .expect("An unexpected error occurred.");
+    let mut alice_group = MlsGroup::new_with_group_id(
+        backend,
+        &mls_group_config,
+        group_id,
+        alice_credential.signature_key(),
+    )
+    .expect("An unexpected error occurred.");
 
     assert_eq!(
         alice_group
@@ -1054,15 +1056,13 @@ fn mls_group_ratchet_tree_extension(
         .expect("An unexpected error occurred.");
 
         // Generate KeyPackages
-        let alice_key_package =
-            generate_key_package(&[ciphersuite], &alice_credential, vec![], backend);
-
         let bob_key_package =
             generate_key_package(&[ciphersuite], &bob_credential, vec![], backend);
 
         let mls_group_config = MlsGroupConfig::builder()
             .wire_format_policy(*wire_format_policy)
             .use_ratchet_tree_extension(true)
+            .crypto_config(CryptoConfig::with_default_version(ciphersuite))
             .build();
 
         // === Alice creates a group ===
@@ -1070,7 +1070,7 @@ fn mls_group_ratchet_tree_extension(
             backend,
             &mls_group_config,
             group_id.clone(),
-            alice_key_package,
+            alice_credential.signature_key(),
         )
         .expect("An unexpected error occurred.");
 
@@ -1110,18 +1110,19 @@ fn mls_group_ratchet_tree_extension(
         .expect("An unexpected error occurred.");
 
         // Generate KeyPackages
-        let alice_key_package =
-            generate_key_package(&[ciphersuite], &alice_credential, vec![], backend);
-
         let bob_key_package =
             generate_key_package(&[ciphersuite], &bob_credential, vec![], backend);
 
-        let mls_group_config = MlsGroupConfig::test_default();
+        let mls_group_config = MlsGroupConfig::test_default(ciphersuite);
 
         // === Alice creates a group ===
-        let mut alice_group =
-            MlsGroup::new_with_group_id(backend, &mls_group_config, group_id, alice_key_package)
-                .expect("An unexpected error occurred.");
+        let mut alice_group = MlsGroup::new_with_group_id(
+            backend,
+            &mls_group_config,
+            group_id,
+            alice_credential.signature_key(),
+        )
+        .expect("An unexpected error occurred.");
 
         // === Alice adds Bob ===
         let (_queued_message, welcome) = match alice_group.add_members(backend, &[bob_key_package])

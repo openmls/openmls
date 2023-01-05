@@ -114,7 +114,11 @@ impl Client {
                 &credential_bundle,
             )
             .unwrap();
-        let group_state = MlsGroup::new(&self.crypto, &mls_group_config, key_package)?;
+        let group_state = MlsGroup::new(
+            &self.crypto,
+            &mls_group_config,
+            key_package.leaf_node().signature_key(),
+        )?;
         let group_id = group_state.group_id().clone();
         self.groups
             .write()

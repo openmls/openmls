@@ -54,9 +54,6 @@ fn ratchet_tree_extension(ciphersuite: Ciphersuite, backend: &impl OpenMlsCrypto
     .expect("An unexpected error occurred.");
 
     // Generate KeyPackages
-    let alice_key_package_bundle =
-        KeyPackageBundle::new(backend, ciphersuite, &alice_credential_bundle);
-
     let bob_key_package_bundle =
         KeyPackageBundle::new(backend, ciphersuite, &bob_credential_bundle);
     let bob_key_package = bob_key_package_bundle.key_package();
@@ -66,10 +63,13 @@ fn ratchet_tree_extension(ciphersuite: Ciphersuite, backend: &impl OpenMlsCrypto
     };
 
     // === Alice creates a group with the ratchet tree extension ===
-    let mut alice_group = CoreGroup::builder(GroupId::random(backend), alice_key_package_bundle)
-        .with_config(config)
-        .build(&alice_credential_bundle, backend)
-        .expect("Error creating group.");
+    let mut alice_group = CoreGroup::builder(
+        GroupId::random(backend),
+        config::CryptoConfig::with_default_version(ciphersuite),
+    )
+    .with_config(config)
+    .build(&alice_credential_bundle, backend)
+    .expect("Error creating group.");
 
     // === Alice adds Bob ===
     let bob_add_proposal = alice_group
@@ -125,9 +125,6 @@ fn ratchet_tree_extension(ciphersuite: Ciphersuite, backend: &impl OpenMlsCrypto
     // === Alice creates a group without the ratchet tree extension ===
 
     // Generate KeyPackages
-    let alice_key_package_bundle =
-        KeyPackageBundle::new(backend, ciphersuite, &alice_credential_bundle);
-
     let bob_key_package_bundle =
         KeyPackageBundle::new(backend, ciphersuite, &bob_credential_bundle);
     let bob_key_package = bob_key_package_bundle.key_package();
@@ -136,10 +133,13 @@ fn ratchet_tree_extension(ciphersuite: Ciphersuite, backend: &impl OpenMlsCrypto
         add_ratchet_tree_extension: false,
     };
 
-    let mut alice_group = CoreGroup::builder(GroupId::random(backend), alice_key_package_bundle)
-        .with_config(config)
-        .build(&alice_credential_bundle, backend)
-        .expect("Error creating group.");
+    let mut alice_group = CoreGroup::builder(
+        GroupId::random(backend),
+        config::CryptoConfig::with_default_version(ciphersuite),
+    )
+    .with_config(config)
+    .build(&alice_credential_bundle, backend)
+    .expect("Error creating group.");
 
     // === Alice adds Bob ===
     let bob_add_proposal = alice_group

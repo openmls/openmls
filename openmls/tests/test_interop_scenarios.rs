@@ -10,10 +10,6 @@ use openmls::{
 // The tests are conducted for every available ciphersuite, but currently only
 // using BasicCredentials. We can change the test setup once #134 is fixed.
 
-fn default_mls_group_config() -> MlsGroupConfig {
-    MlsGroupConfig::test_default()
-}
-
 // # 1:1 join
 // A:    Create group
 // B->A: KeyPackage
@@ -24,7 +20,7 @@ fn one_to_one_join(ciphersuite: Ciphersuite) {
     println!("Testing ciphersuite {:?}", ciphersuite);
     let number_of_clients = 2;
     let setup = MlsGroupTestSetup::new(
-        default_mls_group_config(),
+        MlsGroupConfig::test_default(ciphersuite),
         number_of_clients,
         CodecUse::StructMessages,
     );
@@ -71,7 +67,7 @@ fn three_party_join(ciphersuite: Ciphersuite) {
 
     let number_of_clients = 3;
     let setup = MlsGroupTestSetup::new(
-        default_mls_group_config(),
+        MlsGroupConfig::test_default(ciphersuite),
         number_of_clients,
         CodecUse::StructMessages,
     );
@@ -127,7 +123,7 @@ fn multiple_joins(ciphersuite: Ciphersuite) {
 
     let number_of_clients = 3;
     let setup = MlsGroupTestSetup::new(
-        default_mls_group_config(),
+        MlsGroupConfig::test_default(ciphersuite),
         number_of_clients,
         CodecUse::StructMessages,
     );
@@ -175,7 +171,7 @@ fn update(ciphersuite: Ciphersuite) {
 
     let number_of_clients = 2;
     let setup = MlsGroupTestSetup::new(
-        default_mls_group_config(),
+        MlsGroupConfig::test_default(ciphersuite),
         number_of_clients,
         CodecUse::StructMessages,
     );
@@ -218,7 +214,7 @@ fn remove(ciphersuite: Ciphersuite) {
 
     let number_of_clients = 2;
     let setup = MlsGroupTestSetup::new(
-        default_mls_group_config(),
+        MlsGroupConfig::test_default(ciphersuite),
         number_of_clients,
         CodecUse::StructMessages,
     );
@@ -275,7 +271,7 @@ fn large_group_lifecycle(ciphersuite: Ciphersuite) {
     // "Large" is 20 for now.
     let number_of_clients = 20;
     let setup = MlsGroupTestSetup::new(
-        default_mls_group_config(),
+        MlsGroupConfig::test_default(ciphersuite),
         number_of_clients,
         CodecUse::StructMessages,
     );

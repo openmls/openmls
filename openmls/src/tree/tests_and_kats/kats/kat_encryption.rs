@@ -83,7 +83,6 @@ use crate::{
     credentials::{CredentialBundle, CredentialType},
     framing::*,
     group::*,
-    key_packages::KeyPackageBundle,
     messages::proposals::Proposal,
     schedule::{EncryptionSecret, SenderDataSecret},
     test_utils::*,
@@ -140,6 +139,8 @@ fn group(
     ciphersuite: Ciphersuite,
     backend: &impl OpenMlsCryptoProvider,
 ) -> (CoreGroup, CredentialBundle) {
+    use crate::group::config::CryptoConfig;
+
     let credential_bundle = CredentialBundle::new(
         "Kreator".into(),
         CredentialType::Basic,
@@ -147,11 +148,13 @@ fn group(
         backend,
     )
     .expect("An unexpected error occurred.");
-    let key_package_bundle = KeyPackageBundle::new(backend, ciphersuite, &credential_bundle);
     (
-        CoreGroup::builder(GroupId::random(backend), key_package_bundle)
-            .build(&credential_bundle, backend)
-            .expect("Error creating CoreGroup"),
+        CoreGroup::builder(
+            GroupId::random(backend),
+            CryptoConfig::with_default_version(ciphersuite),
+        )
+        .build(&credential_bundle, backend)
+        .expect("Error creating CoreGroup"),
         credential_bundle,
     )
 }
@@ -162,6 +165,8 @@ fn receiver_group(
     backend: &impl OpenMlsCryptoProvider,
     group_id: &GroupId,
 ) -> CoreGroup {
+    use crate::group::config::CryptoConfig;
+
     let credential_bundle = CredentialBundle::new(
         "Receiver".into(),
         CredentialType::Basic,
@@ -169,10 +174,12 @@ fn receiver_group(
         backend,
     )
     .expect("An unexpected error occurred.");
-    let key_package_bundle = KeyPackageBundle::new(backend, ciphersuite, &credential_bundle);
-    CoreGroup::builder(group_id.clone(), key_package_bundle)
-        .build(&credential_bundle, backend)
-        .expect("Error creating CoreGroup")
+    CoreGroup::builder(
+        group_id.clone(),
+        CryptoConfig::with_default_version(ciphersuite),
+    )
+    .build(&credential_bundle, backend)
+    .expect("Error creating CoreGroup")
 }
 
 // XXX: we could be more creative in generating these messages.

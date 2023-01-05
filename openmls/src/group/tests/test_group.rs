@@ -2,7 +2,7 @@ use crate::{
     ciphersuite::signable::Verifiable,
     credentials::*,
     framing::*,
-    group::{tests::tree_printing::print_tree, *},
+    group::{config::CryptoConfig, tests::tree_printing::print_tree, *},
     key_packages::*,
     test_utils::*,
     tree::sender_ratchet::SenderRatchetConfiguration,
@@ -34,9 +34,6 @@ fn create_commit_optional_path(ciphersuite: Ciphersuite, backend: &impl OpenMlsC
     .expect("An unexpected error occurred.");
 
     // Generate KeyPackages
-    let alice_key_package_bundle =
-        KeyPackageBundle::new(backend, ciphersuite, &alice_credential_bundle);
-
     let bob_key_package_bundle =
         KeyPackageBundle::new(backend, ciphersuite, &bob_credential_bundle);
     let bob_key_package = bob_key_package_bundle.key_package();
@@ -47,9 +44,12 @@ fn create_commit_optional_path(ciphersuite: Ciphersuite, backend: &impl OpenMlsC
     assert!(alice_update_key_package.verify(backend,).is_ok());
 
     // Alice creates a group
-    let mut group_alice = CoreGroup::builder(GroupId::random(backend), alice_key_package_bundle)
-        .build(&alice_credential_bundle, backend)
-        .expect("Error creating CoreGroup.");
+    let mut group_alice = CoreGroup::builder(
+        GroupId::random(backend),
+        CryptoConfig::with_default_version(ciphersuite),
+    )
+    .build(&alice_credential_bundle, backend)
+    .expect("Error creating CoreGroup.");
 
     // Alice proposes to add Bob with forced self-update
     // Even though there are only Add Proposals, this should generated a path field
@@ -209,13 +209,13 @@ fn basic_group_setup(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvi
         KeyPackageBundle::new(backend, ciphersuite, &bob_credential_bundle);
     let bob_key_package = bob_key_package_bundle.key_package();
 
-    let alice_key_package_bundle =
-        KeyPackageBundle::new(backend, ciphersuite, &alice_credential_bundle);
-
     // Alice creates a group
-    let group_alice = CoreGroup::builder(GroupId::random(backend), alice_key_package_bundle)
-        .build(&alice_credential_bundle, backend)
-        .expect("Error creating CoreGroup.");
+    let group_alice = CoreGroup::builder(
+        GroupId::random(backend),
+        CryptoConfig::with_default_version(ciphersuite),
+    )
+    .build(&alice_credential_bundle, backend)
+    .expect("Error creating CoreGroup.");
 
     // Alice adds Bob
     let bob_add_proposal = group_alice
@@ -279,17 +279,17 @@ fn group_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvid
     .expect("An unexpected error occurred.");
 
     // Generate KeyPackages
-    let alice_key_package_bundle =
-        KeyPackageBundle::new(backend, ciphersuite, &alice_credential_bundle);
-
     let bob_key_package_bundle =
         KeyPackageBundle::new(backend, ciphersuite, &bob_credential_bundle);
     let bob_key_package = bob_key_package_bundle.key_package();
 
     // === Alice creates a group ===
-    let mut group_alice = CoreGroup::builder(GroupId::random(backend), alice_key_package_bundle)
-        .build(&alice_credential_bundle, backend)
-        .expect("Error creating CoreGroup.");
+    let mut group_alice = CoreGroup::builder(
+        GroupId::random(backend),
+        CryptoConfig::with_default_version(ciphersuite),
+    )
+    .build(&alice_credential_bundle, backend)
+    .expect("Error creating CoreGroup.");
 
     // === Alice adds Bob ===
     let bob_add_proposal = group_alice
@@ -543,8 +543,17 @@ fn group_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvid
             &create_commit_result.commit,
             &proposal_store,
             &[OpenMlsLeafNode::from_key_package_bundle(
-                bob_update_key_package_bundle,
+                backend,
+                bob_update_key_package_bundle
+                    .key_package()
+                    .leaf_node()
+                    .signature_key()
+                    .as_slice(),
                 group_bob.own_leaf_index(),
+                bob_update_key_package_bundle
+                    .key_package()
+                    .leaf_node()
+                    .clone(),
             )],
             backend,
         )
