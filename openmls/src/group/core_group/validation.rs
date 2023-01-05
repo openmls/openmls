@@ -161,6 +161,9 @@ impl CoreGroup {
             }
 
             // ValSem114
+            // Here we check that the encryption keys in the proposal are unique.
+            // Further down we check that the encryption keys in the proposals
+            // are not in the tree yet.
             if !encryption_key_set.insert(proposal_encryption_key.as_slice().to_vec()) {
                 return Err(ProposalValidationError::DuplicatePublicKeyAddProposal);
             }

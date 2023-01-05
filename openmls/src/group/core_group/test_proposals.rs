@@ -1,4 +1,4 @@
-use crate::test_utils::*;
+use crate::{group::config::CryptoConfig, test_utils::*};
 use openmls_rust_crypto::OpenMlsRustCrypto;
 use openmls_traits::{types::Ciphersuite, OpenMlsCryptoProvider};
 
@@ -274,14 +274,15 @@ fn test_required_unsupported_proposals(
     let required_capabilities = RequiredCapabilitiesExtension::new(extensions, proposals);
 
     // This must fail because we don't actually support AppAck proposals
-    let e = CoreGroup::builder(GroupId::random(backend), alice_key_package_bundle)
-        .with_required_capabilities(required_capabilities)
-        .build(
-            &alice_credential_bundle,
-            backend)
-        .expect_err(
-            "CoreGroup creation must fail because AppAck proposals aren't supported in OpenMLS yet.",
-        );
+    let e = CoreGroup::builder(
+        GroupId::random(backend),
+        CryptoConfig::with_default_version(ciphersuite),
+    )
+    .with_required_capabilities(required_capabilities)
+    .build(&alice_credential_bundle, backend)
+    .expect_err(
+        "CoreGroup creation must fail because AppAck proposals aren't supported in OpenMLS yet.",
+    );
     assert_eq!(e, CoreGroupBuildError::UnsupportedProposalType)
 }
 
@@ -313,10 +314,13 @@ fn test_required_extension_key_package_mismatch(
     ];
     let required_capabilities = RequiredCapabilitiesExtension::new(extensions, proposals);
 
-    let alice_group = CoreGroup::builder(GroupId::random(backend), alice_key_package_bundle)
-        .with_required_capabilities(required_capabilities)
-        .build(&alice_credential_bundle, backend)
-        .expect("Error creating CoreGroup.");
+    let alice_group = CoreGroup::builder(
+        GroupId::random(backend),
+        CryptoConfig::with_default_version(ciphersuite),
+    )
+    .with_required_capabilities(required_capabilities)
+    .build(&alice_credential_bundle, backend)
+    .expect("Error creating CoreGroup.");
 
     let e = alice_group
         .create_add_proposal(
@@ -353,10 +357,13 @@ fn test_group_context_extensions(ciphersuite: Ciphersuite, backend: &impl OpenMl
     ];
     let required_capabilities = RequiredCapabilitiesExtension::new(extensions, proposals);
 
-    let mut alice_group = CoreGroup::builder(GroupId::random(backend), alice_key_package_bundle)
-        .with_required_capabilities(required_capabilities)
-        .build(&alice_credential_bundle, backend)
-        .expect("Error creating CoreGroup.");
+    let mut alice_group = CoreGroup::builder(
+        GroupId::random(backend),
+        CryptoConfig::with_default_version(ciphersuite),
+    )
+    .with_required_capabilities(required_capabilities)
+    .build(&alice_credential_bundle, backend)
+    .expect("Error creating CoreGroup.");
 
     let bob_add_proposal = alice_group
         .create_add_proposal(
@@ -428,10 +435,13 @@ fn test_group_context_extension_proposal_fails(
     ];
     let required_capabilities = RequiredCapabilitiesExtension::new(&[], proposals);
 
-    let mut alice_group = CoreGroup::builder(GroupId::random(backend), alice_key_package_bundle)
-        .with_required_capabilities(required_capabilities)
-        .build(&alice_credential_bundle, backend)
-        .expect("Error creating CoreGroup.");
+    let mut alice_group = CoreGroup::builder(
+        GroupId::random(backend),
+        CryptoConfig::with_default_version(ciphersuite),
+    )
+    .with_required_capabilities(required_capabilities)
+    .build(&alice_credential_bundle, backend)
+    .expect("Error creating CoreGroup.");
 
     // TODO: openmls/openmls#1130 add a test for unsupported required capabilities.
     //       We can't test this right now because we don't have a capability
@@ -534,9 +544,12 @@ fn test_group_context_extension_proposal(
         KeyPackageBundle::new(backend, ciphersuite, &alice_credential_bundle);
     let bob_key_package = bob_key_package_bundle.key_package();
 
-    let mut alice_group = CoreGroup::builder(GroupId::random(backend), alice_key_package_bundle)
-        .build(&alice_credential_bundle, backend)
-        .expect("Error creating CoreGroup.");
+    let mut alice_group = CoreGroup::builder(
+        GroupId::random(backend),
+        CryptoConfig::with_default_version(ciphersuite),
+    )
+    .build(&alice_credential_bundle, backend)
+    .expect("Error creating CoreGroup.");
 
     // Adding Bob
     let bob_add_proposal = alice_group

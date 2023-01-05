@@ -17,3 +17,14 @@ pub struct CryptoConfig {
     /// The MLS [`ProtocolVersion`] used.
     pub version: ProtocolVersion,
 }
+
+impl CryptoConfig {
+    /// Create a new crypto config with the given ciphersuite and the default
+    /// protocol version.
+    pub fn with_default_version(ciphersuite: Ciphersuite) -> Self {
+        Self {
+            ciphersuite,
+            version: ProtocolVersion::default(),
+        }
+    }
+}

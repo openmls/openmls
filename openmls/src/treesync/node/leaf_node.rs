@@ -1,6 +1,8 @@
 //! This module contains the [`LeafNode`] struct and its implementation.
 use openmls_traits::{
-    crypto::OpenMlsCrypto, key_store::OpenMlsKeyStore, types::Ciphersuite, OpenMlsCryptoProvider,
+    crypto::OpenMlsCrypto,
+    types::{Ciphersuite, HpkeKeyPair},
+    OpenMlsCryptoProvider,
 };
 use serde::{Deserialize, Serialize};
 use tls_codec::{
@@ -400,17 +402,15 @@ impl LeafNode {
     /// it.
     ///
     /// This function generates a fresh HPKE key pair for the leaf node and
-    /// stores the private key in the key store with the key package's public
-    /// key (b"leaf_node" || `init_key`) as key.
-    /// The private key is also returned to be used directly.
+    /// returns the HPKE key pair along with the new leaf node.
+    /// The caller is responsible for storing the private key.
     pub(crate) fn new(
         config: CryptoConfig,
         credential_bundle: &CredentialBundle,
-        init_key: &[u8],
         leaf_node_source: LeafNodeSource,
         extensions: Vec<Extension>,
         backend: &impl OpenMlsCryptoProvider,
-    ) -> Result<(Self, Vec<u8>), LibraryError> {
+    ) -> Result<(Self, HpkeKeyPair), LibraryError> {
         // Create a new encryption key pair.
         let ikm = Secret::random(config.ciphersuite, backend, config.version)
             .map_err(LibraryError::unexpected_crypto_error)?;
@@ -419,22 +419,14 @@ impl LeafNode {
             .derive_hpke_keypair(config.ciphersuite.hpke_config(), ikm.as_slice());
 
         let leaf_node = Self::new_with_key(
-            encryption_key_pair.public.clone().into(), // XXX: would be nicer not to clone here.
+            encryption_key_pair.public.clone().into(),
             credential_bundle,
             leaf_node_source,
             extensions,
             backend,
         )?;
 
-        // Store the encryption key pair in the key store.
-        backend
-            .key_store()
-            .store(&Self::encryption_key_label(init_key), &encryption_key_pair)
-            .map_err(|_| {
-                LibraryError::custom("Unable to store private encryption key into the key store.")
-            })?;
-
-        Ok((leaf_node, encryption_key_pair.private))
+        Ok((leaf_node, encryption_key_pair))
     }
 
     /// Create a new leaf node with a given HPKE encryption key pair.
@@ -722,19 +714,18 @@ impl OpenMlsLeafNode {
         leaf_node_source: LeafNodeSource,
         backend: &impl OpenMlsCryptoProvider,
         credential_bundle: &CredentialBundle,
-        init_key: &[u8],
     ) -> Result<Self, LibraryError> {
-        let (leaf_node, private_key) = LeafNode::new(
+        let (leaf_node, encryption_key_pair) = LeafNode::new(
             config,
             credential_bundle,
-            init_key,
             leaf_node_source,
             Vec::new(),
             backend,
         )?;
+
         Ok(Self {
             leaf_node,
-            private_key: Some(private_key.into()),
+            private_key: Some(encryption_key_pair.private.into()),
             leaf_index: Some(LeafNodeIndex::new(0)),
         })
     }
@@ -945,6 +936,14 @@ impl OpenMlsLeafNode {
         self.leaf_node.encryption_key()
     }
 
+    /// Returns a copy of the encryption key pair.
+    pub(crate) fn encryption_key_pair(&self) -> Option<HpkeKeyPair> {
+        self.private_key.as_ref().map(|private| HpkeKeyPair {
+            private: private.clone().into(),
+            public: self.leaf_node.encryption_key().clone().into(),
+        })
+    }
+
     /// Replace the public key in the leaf node and re-sign.
     #[cfg(any(feature = "test-utils", test))]
     pub fn set_public_key(
@@ -981,6 +980,8 @@ impl OpenMlsLeafNode {
         leaf_node: LeafNode,
     ) -> Self {
         // Get the encryption key pair from the leaf.
+
+        use openmls_traits::key_store::OpenMlsKeyStore;
         let encryption_key_pair: crate::prelude::HpkeKeyPair = backend
             .key_store()
             .read(&LeafNode::encryption_key_label(init_key))

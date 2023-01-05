@@ -34,10 +34,13 @@ fn test_core_group_persistence(ciphersuite: Ciphersuite, backend: &impl OpenMlsC
         KeyPackageBundle::new(backend, ciphersuite, &alice_credential_bundle);
 
     // Alice creates a group
-    let alice_group = CoreGroup::builder(GroupId::random(backend), alice_key_package_bundle)
-        .with_extensions(vec![])
-        .build(&alice_credential_bundle, backend)
-        .expect("Error creating group.");
+    let alice_group = CoreGroup::builder(
+        GroupId::random(backend),
+        config::CryptoConfig::with_default_version(ciphersuite),
+    )
+    .with_extensions(vec![])
+    .build(&alice_credential_bundle, backend)
+    .expect("Error creating group.");
 
     let mut file_out = tempfile::NamedTempFile::new().expect("Could not create file");
     alice_group
@@ -197,9 +200,12 @@ fn test_update_path(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvid
     let bob_key_package = bob_key_package_bundle.key_package();
 
     // === Alice creates a group ===
-    let mut alice_group = CoreGroup::builder(GroupId::random(backend), alice_key_package_bundle)
-        .build(&alice_credential_bundle, backend)
-        .expect("Error creating group.");
+    let mut alice_group = CoreGroup::builder(
+        GroupId::random(backend),
+        config::CryptoConfig::with_default_version(ciphersuite),
+    )
+    .build(&alice_credential_bundle, backend)
+    .expect("Error creating group.");
 
     // === Alice adds Bob ===
     let bob_add_proposal = alice_group
@@ -379,10 +385,13 @@ fn test_psks(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
             &psk_bundle,
         )
         .expect("An unexpected error occured.");
-    let mut alice_group = CoreGroup::builder(GroupId::random(backend), alice_key_package_bundle)
-        .with_psk(vec![preshared_key_id.clone()])
-        .build(&alice_credential_bundle, backend)
-        .expect("Error creating group.");
+    let mut alice_group = CoreGroup::builder(
+        GroupId::random(backend),
+        config::CryptoConfig::with_default_version(ciphersuite),
+    )
+    .with_psk(vec![preshared_key_id.clone()])
+    .build(&alice_credential_bundle, backend)
+    .expect("Error creating group.");
 
     // === Alice creates a PSK proposal ===
     log::info!(" >>> Creating psk proposal ...");
@@ -503,9 +512,12 @@ fn test_staged_commit_creation(ciphersuite: Ciphersuite, backend: &impl OpenMlsC
     let bob_key_package = bob_key_package_bundle.key_package();
 
     // === Alice creates a group ===
-    let mut alice_group = CoreGroup::builder(GroupId::random(backend), alice_key_package_bundle)
-        .build(&alice_credential_bundle, backend)
-        .expect("Error creating group.");
+    let mut alice_group = CoreGroup::builder(
+        GroupId::random(backend),
+        config::CryptoConfig::with_default_version(ciphersuite),
+    )
+    .build(&alice_credential_bundle, backend)
+    .expect("Error creating group.");
 
     // === Alice adds Bob ===
     let bob_add_proposal = alice_group
@@ -578,9 +590,12 @@ fn test_own_commit_processing(ciphersuite: Ciphersuite, backend: &impl OpenMlsCr
         KeyPackageBundle::new(backend, ciphersuite, &alice_credential_bundle);
 
     // === Alice creates a group ===
-    let alice_group = CoreGroup::builder(GroupId::random(backend), alice_key_package_bundle)
-        .build(&alice_credential_bundle, backend)
-        .expect("Error creating group.");
+    let alice_group = CoreGroup::builder(
+        GroupId::random(backend),
+        config::CryptoConfig::with_default_version(ciphersuite),
+    )
+    .build(&alice_credential_bundle, backend)
+    .expect("Error creating group.");
 
     let proposal_store = ProposalStore::default();
     // Alice creates a commit
@@ -636,9 +651,12 @@ fn test_proposal_application_after_self_was_removed(
     let (_, bob_kpb) = setup_client("Bob", ciphersuite, backend);
     let (_, charlie_kpb) = setup_client("Charlie", ciphersuite, backend);
 
-    let mut alice_group = CoreGroup::builder(GroupId::random(backend), alice_kpb)
-        .build(&alice_credential_bundle, backend)
-        .expect("Error creating CoreGroup.");
+    let mut alice_group = CoreGroup::builder(
+        GroupId::random(backend),
+        config::CryptoConfig::with_default_version(ciphersuite),
+    )
+    .build(&alice_credential_bundle, backend)
+    .expect("Error creating CoreGroup.");
 
     // Adding Bob
     let bob_add_proposal = alice_group

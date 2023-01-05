@@ -93,7 +93,6 @@ impl TreeSync {
     pub(crate) fn new(
         backend: &impl OpenMlsCryptoProvider,
         config: CryptoConfig,
-        init_key: &[u8],
         credential_bundle: &CredentialBundle,
         life_time: Lifetime,
         capabilities: Capabilities,
@@ -105,7 +104,6 @@ impl TreeSync {
             LeafNodeSource::KeyPackage(life_time),
             backend,
             credential_bundle,
-            init_key,
         )?;
         leaf.add_capabilities(capabilities);
         extensions
@@ -121,8 +119,7 @@ impl TreeSync {
             .into();
         let nodes = vec![TreeSyncNode::from(node).into()];
         let tree = MlsBinaryTree::new(nodes)
-            .map_err(|_| PublicTreeError::MalformedTree)
-            .unwrap();
+            .map_err(|_| LibraryError::custom("Unexpected error creating the binary tree."))?;
         let mut tree_sync = Self {
             tree,
             tree_hash: vec![],
@@ -156,8 +153,8 @@ impl TreeSync {
 
     /// Create a new [`TreeSync`] instance from a given slice of `Option<Node>`,
     /// as well as a `LeafNodeIndex` representing the source of the node slice and
-    /// the `KeyPackageBundle` representing this client in the group. If a
-    /// [`PathSecret`] is passed via `path_secret_option`, it will derive the
+    /// the encryption key pair representing this client's leaf node in the group.
+    /// If a [`PathSecret`] is passed via `path_secret_option`, it will derive the
     /// private keys in the nodes of the direct path of the sender that it
     /// shares with this client.
     ///

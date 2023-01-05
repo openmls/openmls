@@ -1063,10 +1063,11 @@ fn test_valsem104(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
 }
 
 /// ValSem113:
-/// Add Proposal:
-/// HPKE init key and encryption key must be different
+/// Add Proposal: HPKE init key and encryption key must be different
+/// ValSem114:
+/// Add Proposal: Encryption key must be unique in the tree
 #[apply(ciphersuites_and_backends)]
-fn test_valsem113(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
+fn test_valsem113_valsem114(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
     for alice_and_bob_share_keys in [
         KeyUniqueness::NegativeSameKey,
         KeyUniqueness::PositiveDifferentKey,

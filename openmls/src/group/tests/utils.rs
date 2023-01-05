@@ -152,7 +152,7 @@ pub(crate) fn setup(config: TestSetupConfig, backend: &impl OpenMlsCryptoProvide
         // Initialize the group state for the initial member.
         let core_group = CoreGroup::builder(
             GroupId::from_slice(&group_id.to_be_bytes()),
-            initial_key_package_bundle,
+            CryptoConfig::with_default_version(group_config.ciphersuite),
         )
         .with_config(group_config.config)
         .build(initial_credential_bundle, backend)

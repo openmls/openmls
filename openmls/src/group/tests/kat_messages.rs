@@ -76,10 +76,13 @@ pub fn generate_test_vector(ciphersuite: Ciphersuite) -> MessagesTestVector {
     let lifetime = Lifetime::default();
 
     // Let's create a group
-    let mut group = CoreGroup::builder(GroupId::random(&crypto), key_package_bundle)
-        .with_max_past_epoch_secrets(2)
-        .build(&credential_bundle, &crypto)
-        .expect("Could not create group.");
+    let mut group = CoreGroup::builder(
+        GroupId::random(&crypto),
+        CryptoConfig::with_default_version(ciphersuite),
+    )
+    .with_max_past_epoch_secrets(2)
+    .build(&credential_bundle, &crypto)
+    .expect("Could not create group.");
 
     let ratchet_tree: Vec<Option<Node>> = group.treesync().export_nodes();
 
@@ -126,13 +129,12 @@ pub fn generate_test_vector(ciphersuite: Ciphersuite) -> MessagesTestVector {
     // Create a proposal to update the user's KeyPackage
     let key_package_bundle = KeyPackageBundle::new(&crypto, ciphersuite_name, &credential_bundle);
     let key_package = key_package_bundle.key_package();
-    let (leaf_node, _) = LeafNode::new(
+    let (leaf_node, _encryption_key_pair) = LeafNode::new(
         CryptoConfig {
             ciphersuite,
             version: ProtocolVersion::Mls10,
         },
         &credential_bundle,
-        key_package.hpke_init_key().as_slice(),
         LeafNodeSource::Update,
         vec![],
         &crypto,

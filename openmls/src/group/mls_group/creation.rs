@@ -1,9 +1,11 @@
 use crate::{
     group::{
+        config::CryptoConfig,
         core_group::create_commit_params::CreateCommitParams,
         errors::{CoreGroupBuildError, ExternalCommitError, WelcomeError},
     },
     messages::VerifiableGroupInfo,
+    treesync::LeafNode,
 };
 use tls_codec::Serialize;
 
@@ -72,10 +74,7 @@ impl MlsGroup {
         };
         let group = CoreGroup::builder(
             group_id,
-            KeyPackageBundle {
-                key_package,
-                private_key: private_hpke_init_key.into(),
-            },
+            CryptoConfig::with_default_version(key_package.ciphersuite()),
         )
         .with_config(group_config)
         .with_required_capabilities(mls_group_config.required_capabilities.clone())
@@ -94,6 +93,24 @@ impl MlsGroup {
                 LibraryError::custom("Unexpected PSK error").into()
             }
         })?;
+
+        // Store the encryption key pair of the own leaf node in the key store.
+        backend
+            .key_store()
+            .store(
+                &LeafNode::encryption_key_label(key_package.hpke_init_key().as_slice()),
+                &group
+                    .treesync()
+                    .own_leaf_node()
+                    .map(|leaf| leaf.encryption_key_pair())
+                    .flatten()
+                    .ok_or(LibraryError::custom(
+                        "Invalid tree - unable to get own leaf encryption key pair",
+                    ))?,
+            )
+            .map_err(|_| {
+                LibraryError::custom("Unable to store private encryption key into the key store.")
+            })?;
 
         let resumption_psk_store =
             ResumptionPskStore::new(mls_group_config.number_of_resumption_psks);
