@@ -456,8 +456,8 @@ impl LeafNode {
     }
 
     /// Returns the `signature_key` as byte slice.
-    pub fn signature_key(&self) -> &[u8] {
-        self.payload.signature_key.as_slice()
+    pub fn signature_key(&self) -> &SignaturePublicKey {
+        &self.payload.signature_key
     }
 
     /// Returns the `signature_key` as byte slice.
@@ -975,7 +975,7 @@ impl OpenMlsLeafNode {
     #[cfg(test)]
     pub(crate) fn from_key_package_bundle(
         backend: &impl OpenMlsCryptoProvider,
-        init_key: &[u8],
+        signature_key: &[u8],
         leaf_index: LeafNodeIndex,
         leaf_node: LeafNode,
     ) -> Self {
@@ -984,7 +984,7 @@ impl OpenMlsLeafNode {
         use openmls_traits::key_store::OpenMlsKeyStore;
         let encryption_key_pair: crate::prelude::HpkeKeyPair = backend
             .key_store()
-            .read(&LeafNode::encryption_key_label(init_key))
+            .read(&LeafNode::encryption_key_label(signature_key))
             .unwrap();
         Self {
             leaf_node,

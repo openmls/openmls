@@ -426,7 +426,7 @@ impl KeyPackage {
             credential,
             extensions,
             leaf_node_extensions,
-            init_key.clone(),
+            init_key,
         )?;
 
         // Store the key package in the key store with the hash reference as id
@@ -443,7 +443,7 @@ impl KeyPackage {
         backend
             .key_store()
             .store(
-                &LeafNode::encryption_key_label(&init_key),
+                &LeafNode::encryption_key_label(key_package.leaf_node().signature_key().as_slice()),
                 &encryption_key_pair,
             )
             .map_err(|_| {
@@ -631,7 +631,7 @@ impl KeyPackageBuilder {
         backend
             .key_store()
             .store(
-                &LeafNode::encryption_key_label(key_package.hpke_init_key().as_slice()),
+                &LeafNode::encryption_key_label(key_package.leaf_node().signature_key().as_slice()),
                 &encryption_key_pair,
             )
             .map_err(|_| {

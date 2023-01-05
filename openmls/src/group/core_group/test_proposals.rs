@@ -265,8 +265,7 @@ fn test_required_unsupported_proposals(
     ciphersuite: Ciphersuite,
     backend: &impl OpenMlsCryptoProvider,
 ) {
-    let (alice_credential_bundle, alice_key_package_bundle) =
-        setup_client("Alice", ciphersuite, backend);
+    let (alice_credential_bundle, _) = setup_client("Alice", ciphersuite, backend);
 
     // Set required capabilities
     let extensions = &[];
@@ -295,8 +294,7 @@ fn test_required_extension_key_package_mismatch(
     let group_aad = b"Alice's test group";
     let framing_parameters = FramingParameters::new(group_aad, WireFormat::PublicMessage);
 
-    let (alice_credential_bundle, alice_key_package_bundle) =
-        setup_client("Alice", ciphersuite, backend);
+    let (alice_credential_bundle, _) = setup_client("Alice", ciphersuite, backend);
     let (_bob_credential_bundle, bob_key_package_bundle) =
         setup_client("Bob", ciphersuite, backend);
     let bob_key_package = bob_key_package_bundle.key_package();
@@ -339,8 +337,7 @@ fn test_group_context_extensions(ciphersuite: Ciphersuite, backend: &impl OpenMl
     let group_aad = b"Alice's test group";
     let framing_parameters = FramingParameters::new(group_aad, WireFormat::PublicMessage);
 
-    let (alice_credential_bundle, alice_key_package_bundle) =
-        setup_client("Alice", ciphersuite, backend);
+    let (alice_credential_bundle, _) = setup_client("Alice", ciphersuite, backend);
     let (bob_credential_bundle, _) = setup_client("Bob", ciphersuite, backend);
 
     let bob_key_package_bundle =
@@ -418,8 +415,7 @@ fn test_group_context_extension_proposal_fails(
     let group_aad = b"Alice's test group";
     let framing_parameters = FramingParameters::new(group_aad, WireFormat::PublicMessage);
 
-    let (alice_credential_bundle, alice_key_package_bundle) =
-        setup_client("Alice", ciphersuite, backend);
+    let (alice_credential_bundle, _) = setup_client("Alice", ciphersuite, backend);
     let (bob_credential_bundle, _) = setup_client("Bob", ciphersuite, backend);
 
     let bob_key_package_bundle =
@@ -540,8 +536,6 @@ fn test_group_context_extension_proposal(
 
     let bob_key_package_bundle =
         KeyPackageBundle::new(backend, ciphersuite, &bob_credential_bundle);
-    let alice_key_package_bundle =
-        KeyPackageBundle::new(backend, ciphersuite, &alice_credential_bundle);
     let bob_key_package = bob_key_package_bundle.key_package();
 
     let mut alice_group = CoreGroup::builder(

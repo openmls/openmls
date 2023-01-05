@@ -1,6 +1,5 @@
 use crate::{
     group::{
-        config::CryptoConfig,
         core_group::create_commit_params::CreateCommitParams,
         errors::{CoreGroupBuildError, ExternalCommitError, WelcomeError},
     },
@@ -19,94 +18,77 @@ impl MlsGroup {
     /// This function removes the private key corresponding to the
     /// `key_package` from the key store.
     ///
-    /// Returns an error ([`NewGroupError::NoMatchingKeyPackage`]) if the
-    /// private key for the [`KeyPackage`] can not be found.
+    /// Returns an error ([`NewGroupError::NoMatchingCredentialBundle`]) if the
+    /// private key for the [`SignaturePublicKey`] can not be found.
     pub fn new(
         backend: &impl OpenMlsCryptoProvider,
         mls_group_config: &MlsGroupConfig,
-        key_package: KeyPackage,
+        signature_key: &SignaturePublicKey,
     ) -> Result<Self, NewGroupError> {
         Self::new_with_group_id(
             backend,
             mls_group_config,
             GroupId::random(backend),
-            key_package,
+            signature_key,
         )
     }
 
     /// Creates a new group with a given group ID with the creator as the only member.
     ///
-    /// Returns an error ([`NewGroupError::NoMatchingKeyPackage`]) if the
-    /// private key for the [`KeyPackage`] can not be found.
+    /// Returns an error ([`NewGroupError::NoMatchingCredentialBundle`]) if the
+    /// private key for the [`SignaturePublicKey`] can not be found.
     pub fn new_with_group_id(
         backend: &impl OpenMlsCryptoProvider,
         mls_group_config: &MlsGroupConfig,
         group_id: GroupId,
-        key_package: KeyPackage,
+        signature_key: &SignaturePublicKey,
     ) -> Result<Self, NewGroupError> {
         // TODO #751
-
-        // Read and delete the private key for the key package.
-        let private_hpke_init_key: Vec<u8> = backend
-            .key_store()
-            .read(key_package.hpke_init_key().as_ref())
-            .ok_or(NewGroupError::NoMatchingKeyPackage)?;
-        backend
-            .key_store()
-            .delete(key_package.hpke_init_key().as_ref())
-            .map_err(|_| NewGroupError::KeyStoreDeletionError)?;
-
-        let credential_bundle: CredentialBundle = backend
-            .key_store()
-            .read(
-                &key_package
-                    .leaf_node()
-                    .credential()
-                    .signature_key()
-                    .tls_serialize_detached()
-                    .map_err(|_| {
-                        LibraryError::custom("Unable to serialize signature public key")
-                    })?,
-            )
-            .ok_or(NewGroupError::NoMatchingCredentialBundle)?;
+        let credential_bundle: CredentialBundle =
+            backend
+                .key_store()
+                .read(&signature_key.tls_serialize_detached().map_err(|_| {
+                    LibraryError::custom("Unable to serialize signature public key")
+                })?)
+                .ok_or(NewGroupError::NoMatchingCredentialBundle)?;
         let group_config = CoreGroupConfig {
             add_ratchet_tree_extension: mls_group_config.use_ratchet_tree_extension,
         };
-        let group = CoreGroup::builder(
-            group_id,
-            CryptoConfig::with_default_version(key_package.ciphersuite()),
-        )
-        .with_config(group_config)
-        .with_required_capabilities(mls_group_config.required_capabilities.clone())
-        .with_max_past_epoch_secrets(mls_group_config.max_past_epochs)
-        .with_lifetime(*mls_group_config.lifetime())
-        .build(&credential_bundle, backend)
-        .map_err(|e| match e {
-            CoreGroupBuildError::LibraryError(e) => e.into(),
-            CoreGroupBuildError::UnsupportedProposalType => NewGroupError::UnsupportedProposalType,
-            CoreGroupBuildError::UnsupportedExtensionType => {
-                NewGroupError::UnsupportedExtensionType
-            }
-            // We don't support PSKs yet
-            CoreGroupBuildError::PskError(e) => {
-                log::debug!("Unexpected PSK error: {:?}", e);
-                LibraryError::custom("Unexpected PSK error").into()
-            }
-        })?;
+        let group = CoreGroup::builder(group_id, mls_group_config.crypto_config)
+            .with_config(group_config)
+            .with_required_capabilities(mls_group_config.required_capabilities.clone())
+            .with_max_past_epoch_secrets(mls_group_config.max_past_epochs)
+            .with_lifetime(*mls_group_config.lifetime())
+            .build(&credential_bundle, backend)
+            .map_err(|e| match e {
+                CoreGroupBuildError::LibraryError(e) => e.into(),
+                CoreGroupBuildError::UnsupportedProposalType => {
+                    NewGroupError::UnsupportedProposalType
+                }
+                CoreGroupBuildError::UnsupportedExtensionType => {
+                    NewGroupError::UnsupportedExtensionType
+                }
+                // We don't support PSKs yet
+                CoreGroupBuildError::PskError(e) => {
+                    log::debug!("Unexpected PSK error: {:?}", e);
+                    LibraryError::custom("Unexpected PSK error").into()
+                }
+            })?;
 
         // Store the encryption key pair of the own leaf node in the key store.
         backend
             .key_store()
             .store(
-                &LeafNode::encryption_key_label(key_package.hpke_init_key().as_slice()),
+                &LeafNode::encryption_key_label(signature_key.as_slice()),
                 &group
                     .treesync()
                     .own_leaf_node()
-                    .map(|leaf| leaf.encryption_key_pair())
-                    .flatten()
-                    .ok_or(LibraryError::custom(
-                        "Invalid tree - unable to get own leaf encryption key pair",
-                    ))?,
+                    .and_then(|leaf| leaf.encryption_key_pair())
+                    .ok_or_else(|| {
+                        LibraryError::custom(
+                            "Invalid tree - unable to get own leaf encryption key pair",
+                        )
+                    })?,
             )
             .map_err(|_| {
                 LibraryError::custom("Unable to store private encryption key into the key store.")

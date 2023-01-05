@@ -34,9 +34,6 @@ fn create_commit_optional_path(ciphersuite: Ciphersuite, backend: &impl OpenMlsC
     .expect("An unexpected error occurred.");
 
     // Generate KeyPackages
-    let alice_key_package_bundle =
-        KeyPackageBundle::new(backend, ciphersuite, &alice_credential_bundle);
-
     let bob_key_package_bundle =
         KeyPackageBundle::new(backend, ciphersuite, &bob_credential_bundle);
     let bob_key_package = bob_key_package_bundle.key_package();
@@ -212,9 +209,6 @@ fn basic_group_setup(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvi
         KeyPackageBundle::new(backend, ciphersuite, &bob_credential_bundle);
     let bob_key_package = bob_key_package_bundle.key_package();
 
-    let alice_key_package_bundle =
-        KeyPackageBundle::new(backend, ciphersuite, &alice_credential_bundle);
-
     // Alice creates a group
     let group_alice = CoreGroup::builder(
         GroupId::random(backend),
@@ -285,9 +279,6 @@ fn group_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvid
     .expect("An unexpected error occurred.");
 
     // Generate KeyPackages
-    let alice_key_package_bundle =
-        KeyPackageBundle::new(backend, ciphersuite, &alice_credential_bundle);
-
     let bob_key_package_bundle =
         KeyPackageBundle::new(backend, ciphersuite, &bob_credential_bundle);
     let bob_key_package = bob_key_package_bundle.key_package();
@@ -555,8 +546,9 @@ fn group_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvid
                 backend,
                 bob_update_key_package_bundle
                     .key_package()
-                    .hpke_init_key()
-                    .as_ref(),
+                    .leaf_node()
+                    .signature_key()
+                    .as_slice(),
                 group_bob.own_leaf_index(),
                 bob_update_key_package_bundle
                     .key_package()

@@ -70,7 +70,6 @@ pub fn generate_test_vector(ciphersuite: Ciphersuite) -> MessagesTestVector {
         &crypto,
     )
     .expect("An unexpected error occurred.");
-    let key_package_bundle = KeyPackageBundle::new(&crypto, ciphersuite_name, &credential_bundle);
     // TODO(#1149, #1051)
     // let capabilities = CapabilitiesExtension::default();
     let lifetime = Lifetime::default();

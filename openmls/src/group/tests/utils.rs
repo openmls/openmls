@@ -134,16 +134,6 @@ pub(crate) fn setup(config: TestSetupConfig, backend: &impl OpenMlsCryptoProvide
             .get(group_config.members[0].name)
             .expect("An unexpected error occurred.")
             .borrow_mut();
-        // Pull the inital member's KeyPackage from the key_store.
-        let initial_key_package = key_store
-            .remove(&(group_config.members[0].name, group_config.ciphersuite))
-            .expect("An unexpected error occurred.")
-            .pop()
-            .expect("An unexpected error occurred.");
-        // Figure out which KeyPackageBundle that key package corresponds to.
-        let initial_key_package_bundle = initial_group_member
-            .find_key_package_bundle(&initial_key_package, backend)
-            .expect("An unexpected error occurred.");
         // Get the credential bundle corresponding to the ciphersuite.
         let initial_credential_bundle = initial_group_member
             .credential_bundles

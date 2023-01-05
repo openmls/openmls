@@ -12,7 +12,7 @@ use crate::{
     binary_tree::LeafNodeIndex,
     credentials::*,
     framing::*,
-    group::{errors::*, *},
+    group::{errors::*, *, config::CryptoConfig},
     key_packages::*,
 };
 
@@ -64,6 +64,7 @@ fn validation_test_setup(
     // Define the MlsGroup configuration
     let mls_group_config = MlsGroupConfig::builder()
         .wire_format_policy(wire_format_policy)
+        .crypto_config(CryptoConfig::with_default_version(ciphersuite))
         .build();
 
     // === Alice creates a group ===
@@ -71,7 +72,7 @@ fn validation_test_setup(
         backend,
         &mls_group_config,
         group_id,
-        alice_key_package.clone(),
+        alice_credential.signature_key(),
     )
     .expect("An unexpected error occurred.");
 

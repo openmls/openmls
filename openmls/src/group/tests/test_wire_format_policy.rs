@@ -9,7 +9,7 @@ use rstest_reuse::{self, *};
 use crate::{
     credentials::*,
     framing::*,
-    group::{errors::*, *},
+    group::{errors::*, *, config::CryptoConfig},
 };
 
 use super::utils::{generate_credential_bundle, generate_key_package};
@@ -31,18 +31,20 @@ fn create_group(
     )
     .expect("An unexpected error occurred.");
 
-    // Generate KeyPackages
-    let key_package = generate_key_package(&[ciphersuite], &credential, vec![], backend)
-        .expect("An unexpected error occurred.");
-
     // Define the MlsGroup configuration
     let mls_group_config = MlsGroupConfig::builder()
         .wire_format_policy(wire_format_policy)
         .use_ratchet_tree_extension(true)
+        .crypto_config(CryptoConfig::with_default_version(ciphersuite))
         .build();
 
-    MlsGroup::new_with_group_id(backend, &mls_group_config, group_id, key_package)
-        .expect("An unexpected error occurred.")
+    MlsGroup::new_with_group_id(
+        backend,
+        &mls_group_config,
+        group_id,
+        credential.signature_key(),
+    )
+    .expect("An unexpected error occurred.")
 }
 
 // Takes an existing group, adds a new member and sends a message from the second member to the first one, returns that message
@@ -74,6 +76,7 @@ fn receive_message(
 
     let mls_group_config = MlsGroupConfig::builder()
         .wire_format_policy(alice_group.configuration().wire_format_policy())
+        .crypto_config(CryptoConfig::with_default_version(ciphersuite))
         .build();
 
     let mut bob_group = MlsGroup::new_from_welcome(backend, &mls_group_config, welcome, None)

@@ -30,7 +30,11 @@ impl CoreGroup {
         let encryption_key_pair: HpkeKeyPair = backend
             .key_store()
             .read(&LeafNode::encryption_key_label(
-                key_package_bundle.key_package.hpke_init_key().as_slice(),
+                key_package_bundle
+                    .key_package
+                    .leaf_node()
+                    .signature_key()
+                    .as_slice(),
             ))
             .ok_or(WelcomeError::NoMatchingEncryptionKey)?;
         backend

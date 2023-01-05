@@ -83,7 +83,6 @@ use crate::{
     credentials::{CredentialBundle, CredentialType},
     framing::*,
     group::*,
-    key_packages::KeyPackageBundle,
     messages::proposals::Proposal,
     schedule::{EncryptionSecret, SenderDataSecret},
     test_utils::*,
@@ -149,7 +148,6 @@ fn group(
         backend,
     )
     .expect("An unexpected error occurred.");
-    let key_package_bundle = KeyPackageBundle::new(backend, ciphersuite, &credential_bundle);
     (
         CoreGroup::builder(
             GroupId::random(backend),
@@ -176,7 +174,6 @@ fn receiver_group(
         backend,
     )
     .expect("An unexpected error occurred.");
-    let key_package_bundle = KeyPackageBundle::new(backend, ciphersuite, &credential_bundle);
     CoreGroup::builder(
         group_id.clone(),
         CryptoConfig::with_default_version(ciphersuite),

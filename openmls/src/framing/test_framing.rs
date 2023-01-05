@@ -419,9 +419,6 @@ fn unknown_sender(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
         KeyPackageBundle::new(backend, ciphersuite, &charlie_credential_bundle);
     let charlie_key_package = charlie_key_package_bundle.key_package();
 
-    let alice_key_package_bundle =
-        KeyPackageBundle::new(backend, ciphersuite, &alice_credential_bundle);
-
     // Alice creates a group
     let mut group_alice = CoreGroup::builder(
         GroupId::random(backend),
@@ -609,9 +606,6 @@ fn confirmation_tag_presence(ciphersuite: Ciphersuite, backend: &impl OpenMlsCry
         KeyPackageBundle::new(backend, ciphersuite, &bob_credential_bundle);
     let bob_key_package = bob_key_package_bundle.key_package();
 
-    let alice_key_package_bundle =
-        KeyPackageBundle::new(backend, ciphersuite, &alice_credential_bundle);
-
     // Alice creates a group
     let mut group_alice = CoreGroup::builder(
         GroupId::random(backend),
@@ -709,9 +703,6 @@ fn invalid_plaintext_signature(ciphersuite: Ciphersuite, backend: &impl OpenMlsC
     let bob_key_package_bundle =
         KeyPackageBundle::new(backend, ciphersuite, &bob_credential_bundle);
     let bob_key_package = bob_key_package_bundle.key_package();
-
-    let alice_key_package_bundle =
-        KeyPackageBundle::new(backend, ciphersuite, &alice_credential_bundle);
 
     // Alice creates a group
     let mut group_alice = CoreGroup::builder(

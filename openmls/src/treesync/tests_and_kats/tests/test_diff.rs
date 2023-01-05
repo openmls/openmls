@@ -55,7 +55,7 @@ fn test_free_leaf_computation(ciphersuite: Ciphersuite, backend: &impl OpenMlsCr
     let encryption_key_pair: HpkeKeyPair = backend
         .key_store()
         .read(&LeafNode::encryption_key_label(
-            kpb_0.key_package.hpke_init_key().as_slice(),
+            cb_0.credential().signature_key().as_slice(),
         ))
         .unwrap();
 

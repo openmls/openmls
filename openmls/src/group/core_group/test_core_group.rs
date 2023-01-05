@@ -29,10 +29,6 @@ fn test_core_group_persistence(ciphersuite: Ciphersuite, backend: &impl OpenMlsC
     )
     .expect("An unexpected error occurred.");
 
-    // Generate KeyPackages
-    let alice_key_package_bundle =
-        KeyPackageBundle::new(backend, ciphersuite, &alice_credential_bundle);
-
     // Alice creates a group
     let alice_group = CoreGroup::builder(
         GroupId::random(backend),
@@ -192,9 +188,6 @@ fn test_update_path(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvid
     .expect("An unexpected error occurred.");
 
     // Generate KeyPackages
-    let alice_key_package_bundle =
-        KeyPackageBundle::new(backend, ciphersuite, &alice_credential_bundle);
-
     let bob_key_package_bundle =
         KeyPackageBundle::new(backend, ciphersuite, &bob_credential_bundle);
     let bob_key_package = bob_key_package_bundle.key_package();
@@ -359,9 +352,6 @@ fn test_psks(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
     .expect("An unexpected error occurred.");
 
     // Generate KeyPackages
-    let alice_key_package_bundle =
-        KeyPackageBundle::new(backend, ciphersuite, &alice_credential_bundle);
-
     let bob_key_package_bundle =
         KeyPackageBundle::new(backend, ciphersuite, &bob_credential_bundle);
     let bob_key_package = bob_key_package_bundle.key_package();
@@ -504,9 +494,6 @@ fn test_staged_commit_creation(ciphersuite: Ciphersuite, backend: &impl OpenMlsC
     .expect("An unexpected error occurred.");
 
     // Generate KeyPackages
-    let alice_key_package_bundle =
-        KeyPackageBundle::new(backend, ciphersuite, &alice_credential_bundle);
-
     let bob_key_package_bundle =
         KeyPackageBundle::new(backend, ciphersuite, &bob_credential_bundle);
     let bob_key_package = bob_key_package_bundle.key_package();
@@ -585,10 +572,6 @@ fn test_own_commit_processing(ciphersuite: Ciphersuite, backend: &impl OpenMlsCr
     )
     .expect("An unexpected error occurred.");
 
-    // Generate KeyPackages
-    let alice_key_package_bundle =
-        KeyPackageBundle::new(backend, ciphersuite, &alice_credential_bundle);
-
     // === Alice creates a group ===
     let alice_group = CoreGroup::builder(
         GroupId::random(backend),
@@ -647,7 +630,7 @@ fn test_proposal_application_after_self_was_removed(
     let group_aad = b"Alice's test group";
     let framing_parameters = FramingParameters::new(group_aad, WireFormat::PublicMessage);
 
-    let (alice_credential_bundle, alice_kpb) = setup_client("Alice", ciphersuite, backend);
+    let (alice_credential_bundle, _) = setup_client("Alice", ciphersuite, backend);
     let (_, bob_kpb) = setup_client("Bob", ciphersuite, backend);
     let (_, charlie_kpb) = setup_client("Charlie", ciphersuite, backend);
 
