@@ -715,8 +715,8 @@ fn test_partial_proposal_commit(ciphersuite: Ciphersuite, backend: &impl OpenMls
     let remaining_proposal = alice_group
         .proposal_store
         .proposals()
-        .cloned()
         .next()
+        .cloned()
         .unwrap();
     alice_group.proposal_store.empty();
     alice_group.proposal_store.add(remaining_proposal);
