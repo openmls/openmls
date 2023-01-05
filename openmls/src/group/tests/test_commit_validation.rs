@@ -674,3 +674,65 @@ fn test_valsem205(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
         .process_message(backend, ProtocolMessage::from(original_plaintext))
         .expect("Unexpected error.");
 }
+
+// this ensures that a member can process commits not containing all the stored proposals
+#[apply(ciphersuites_and_backends)]
+fn test_partial_proposal_commit(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
+    // Test with PublicMessage
+    let CommitValidationTestSetup {
+        mut alice_group,
+        mut bob_group,
+        ..
+    } = validation_test_setup(PURE_PLAINTEXT_WIRE_FORMAT_POLICY, ciphersuite, backend);
+
+    let charlie_index = alice_group
+        .members()
+        .find(|m| m.identity == b"Charlie")
+        .unwrap()
+        .index;
+
+    // Create first proposal in Alice's group
+    let proposal_1 = alice_group
+        .propose_remove_member(backend, charlie_index)
+        .unwrap();
+    let proposal_1 = bob_group
+        .process_message(backend, proposal_1.into())
+        .unwrap();
+    match proposal_1.into_content() {
+        ProcessedMessageContent::ProposalMessage(p) => bob_group.store_pending_proposal(*p),
+        _ => unreachable!(),
+    }
+
+    // Create second proposal in Alice's group
+    let proposal_2 = alice_group.propose_self_update(backend, None).unwrap();
+    let proposal_2 = bob_group
+        .process_message(backend, proposal_2.into())
+        .unwrap();
+    match proposal_2.into_content() {
+        ProcessedMessageContent::ProposalMessage(p) => bob_group.store_pending_proposal(*p),
+        _ => unreachable!(),
+    }
+
+    // Alice creates a commit with only a subset of the epoch's proposals. Bob should still be able to process it.
+    let remaining_proposal = alice_group
+        .proposal_store
+        .proposals()
+        .next()
+        .cloned()
+        .unwrap();
+    alice_group.proposal_store.empty();
+    alice_group.proposal_store.add(remaining_proposal);
+    let (commit, _) = alice_group.commit_to_pending_proposals(backend).unwrap();
+    // Alice herself should be able to merge the commit
+    alice_group
+        .merge_pending_commit()
+        .expect("Commits with partial proposals are not supported");
+
+    // Bob should be able to process the commit
+    bob_group
+        .process_message(backend, commit.into())
+        .expect("Commits with partial proposals are not supported");
+    bob_group
+        .merge_pending_commit()
+        .expect("Commits with partial proposals are not supported");
+}

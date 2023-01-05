@@ -78,16 +78,16 @@ pub fn generate_test_vector(n_leaves: u32) -> TreeMathTestVector {
                 // Leaves don't have children
                 test_vector.left.push(None);
                 test_vector.right.push(None);
-                // Exclude root & small trees
-                let parent = if i > 0 && i != root(n_nodes).test_u32() {
-                    Some(test_parent(tree_index, n_nodes).u32())
+                // Exclude root
+                let parent = if i != root(n_nodes).test_u32() {
+                    Some(test_parent(tree_index).test_to_tree_index())
                 } else {
                     None
                 };
                 test_vector.parent.push(parent);
-                // Exclude root & small trees
-                let sibling = if i > 0 && i != root(n_nodes).test_u32() {
-                    Some(test_sibling(tree_index, n_nodes).test_u32())
+                // Exclude root
+                let sibling = if i != root(n_nodes).test_u32() {
+                    Some(test_sibling(tree_index).test_u32())
                 } else {
                     None
                 };
@@ -95,19 +95,17 @@ pub fn generate_test_vector(n_leaves: u32) -> TreeMathTestVector {
             }
             TreeNodeIndex::Parent(parent_index) => {
                 test_vector.left.push(Some(left(parent_index).test_u32()));
-                test_vector
-                    .right
-                    .push(Some(right(parent_index, n_nodes).test_u32()));
+                test_vector.right.push(Some(right(parent_index).test_u32()));
                 // Exclude root
                 let parent = if i != root(n_nodes).test_u32() {
-                    Some(test_parent(tree_index, n_nodes).u32())
+                    Some(test_parent(tree_index).test_to_tree_index())
                 } else {
                     None
                 };
                 test_vector.parent.push(parent);
                 // Exclude root
                 let sibling = if i != root(n_nodes).test_u32() {
-                    Some(test_sibling(tree_index, n_nodes).test_u32())
+                    Some(test_sibling(tree_index).test_u32())
                 } else {
                     None
                 };
@@ -123,8 +121,8 @@ pub fn generate_test_vector(n_leaves: u32) -> TreeMathTestVector {
 fn write_test_vectors() {
     let mut tests = Vec::new();
 
-    for n_leaves in 1..99 {
-        let test_vector = generate_test_vector(n_leaves);
+    for n_leaves in 0..10 {
+        let test_vector = generate_test_vector(1 << n_leaves);
         tests.push(test_vector);
     }
 
@@ -134,7 +132,7 @@ fn write_test_vectors() {
 #[cfg(any(feature = "test-utils", test))]
 pub fn run_test_vector(test_vector: TreeMathTestVector) -> Result<(), TmTestVectorError> {
     let n_leaves = test_vector.n_leaves as usize;
-    let n_nodes = node_width(n_leaves);
+    let n_nodes = TreeSize::new(node_width(n_leaves) as u32);
     if test_vector.n_nodes != node_width(n_leaves) as u32 {
         return Err(TmTestVectorError::TreeSizeMismatch);
     }
@@ -144,9 +142,8 @@ pub fn run_test_vector(test_vector: TreeMathTestVector) -> Result<(), TmTestVect
         }
     }
 
-    for i in 0..n_nodes {
+    for i in 0..n_nodes.u32() as usize {
         let tree_index = TreeNodeIndex::test_new(i as u32);
-        let size = TreeSize::new(n_nodes as u32);
         match tree_index {
             TreeNodeIndex::Leaf(_) => {
                 if test_vector.left[i].is_some() {
@@ -156,17 +153,14 @@ pub fn run_test_vector(test_vector: TreeMathTestVector) -> Result<(), TmTestVect
                     return Err(TmTestVectorError::RightIndexMismatch);
                 }
 
-                if i > 0
-                    && i != root(size).test_usize()
-                    && test_vector.parent[i]
-                        != Some(test_parent(tree_index, size).test_to_tree_index())
+                if i != root(n_nodes).test_usize()
+                    && test_vector.parent[i] != Some(test_parent(tree_index).test_to_tree_index())
                 {
                     return Err(TmTestVectorError::ParentIndexMismatch);
                 }
 
-                if i > 0
-                    && i != root(size).test_usize()
-                    && test_vector.sibling[i] != Some(test_sibling(tree_index, size).test_u32())
+                if i != root(n_nodes).test_usize()
+                    && test_vector.sibling[i] != Some(test_sibling(tree_index).test_u32())
                 {
                     return Err(TmTestVectorError::SiblingIndexMismatch);
                 }
@@ -175,19 +169,18 @@ pub fn run_test_vector(test_vector: TreeMathTestVector) -> Result<(), TmTestVect
                 if test_vector.left[i] != Some(left(parent_index).test_u32()) {
                     return Err(TmTestVectorError::LeftIndexMismatch);
                 }
-                if test_vector.right[i] != Some(right(parent_index, size).test_u32()) {
+                if test_vector.right[i] != Some(right(parent_index).test_u32()) {
                     return Err(TmTestVectorError::RightIndexMismatch);
                 }
 
-                if i != root(size).test_usize()
-                    && test_vector.parent[i]
-                        != Some(test_parent(tree_index, size).test_to_tree_index())
+                if i != root(n_nodes).test_usize()
+                    && test_vector.parent[i] != Some(test_parent(tree_index).test_to_tree_index())
                 {
                     return Err(TmTestVectorError::ParentIndexMismatch);
                 }
 
-                if i != root(size).test_usize()
-                    && test_vector.sibling[i] != Some(test_sibling(tree_index, size).test_u32())
+                if i != root(n_nodes).test_usize()
+                    && test_vector.sibling[i] != Some(test_sibling(tree_index).test_u32())
                 {
                     return Err(TmTestVectorError::SiblingIndexMismatch);
                 }
@@ -206,10 +199,6 @@ fn read_test_vectors_tm() {
             Err(e) => panic!("Error while checking tree math test vector.\n{:?}", e),
         }
     }
-
-    // mlspp test vector
-    let tv: TreeMathTestVector = read("test_vectors/mlspp/mlspp_treemath.json");
-    run_test_vector(tv).expect("Error while checking key schedule test vector.");
 }
 
 #[cfg(any(feature = "test-utils", test))]

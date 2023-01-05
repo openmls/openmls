@@ -383,6 +383,17 @@ impl TreeSync {
             .collect()
     }
 
+    /// Returns the index of the last full leaf in the tree.
+    fn rightmost_full_leaf(&self) -> LeafNodeIndex {
+        let mut index = LeafNodeIndex::new(0);
+        for (leaf_index, leaf) in self.tree.leaves() {
+            if leaf.node().as_ref().is_some() {
+                index = leaf_index;
+            }
+        }
+        index
+    }
+
     /// Returns a list of [`Member`]s containing only full nodes.
     ///
     /// XXX: For performance reasons we probably want to have this in a borrowing
@@ -434,15 +445,51 @@ impl TreeSync {
     /// Returns the nodes in the tree ordered according to the
     /// array-representation of the underlying binary tree.
     pub fn export_nodes(&self) -> Vec<Option<Node>> {
-        self.tree
-            .export_nodes()
-            .iter()
-            // Filter out private keys
-            .map(|node| match node {
-                TreeNode::Leaf(leaf) => leaf.node_without_private_key().map(Node::LeafNode),
-                TreeNode::Parent(parent) => parent.node_without_private_key().map(Node::ParentNode),
-            })
-            .collect()
+        let mut nodes = Vec::new();
+
+        // Determine the index of the rightmost full leaf.
+        let max_length = self.rightmost_full_leaf();
+
+        // We take all the leaves including the rightmost full leaf, blank
+        // leaves beyond that are trimmed.
+        let mut leaves = self
+            .tree
+            .leaves()
+            .map(|(_, leaf)| leaf)
+            .take(max_length.usize() + 1);
+
+        // Get the first leaf.
+        if let Some(leaf) = leaves.next() {
+            nodes.push(leaf.node_without_private_key().map(Node::LeafNode));
+        } else {
+            // The tree was empty.
+            return vec![];
+        }
+
+        // Blank parent node used for padding
+        let default_parent = TreeSyncParentNode::default();
+
+        // Get the parents.
+        let parents = self
+            .tree
+            .parents()
+            // Drop the index
+            .map(|(_, parent)| parent)
+            // Take the parents up to the max length
+            .take(max_length.usize())
+            // Pad the parents with blank nodes if needed
+            .chain(
+                (self.tree.parents().count()..self.tree.leaves().count() - 1)
+                    .map(|_| &default_parent),
+            );
+
+        // Interleave the leaves and parents.
+        for (leaf, parent) in leaves.zip(parents) {
+            nodes.push(parent.node_without_private_key().map(Node::ParentNode));
+            nodes.push(leaf.node_without_private_key().map(Node::LeafNode));
+        }
+
+        nodes
     }
 
     /// Returns the leaf index of this client.
