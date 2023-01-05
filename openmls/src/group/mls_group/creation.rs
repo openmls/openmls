@@ -1,4 +1,5 @@
 use crate::{
+    ciphersuite::signature::SignaturePublicKey,
     group::{
         core_group::create_commit_params::CreateCommitParams,
         errors::{CoreGroupBuildError, ExternalCommitError, WelcomeError},
