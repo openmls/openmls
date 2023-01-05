@@ -13,7 +13,7 @@ use crate::{
     ciphersuite::{hash_ref::ProposalRef, signable::Verifiable},
     credentials::{errors::*, *},
     framing::*,
-    group::{errors::*, tests::utils::resign_external_commit, *, config::CryptoConfig},
+    group::{config::CryptoConfig, errors::*, tests::utils::resign_external_commit, *},
     messages::proposals::*,
 };
 

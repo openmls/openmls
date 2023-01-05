@@ -12,7 +12,7 @@ use crate::{
     binary_tree::LeafNodeIndex,
     credentials::*,
     framing::*,
-    group::{errors::*, *, config::CryptoConfig},
+    group::{config::CryptoConfig, errors::*, *},
     key_packages::*,
 };
 

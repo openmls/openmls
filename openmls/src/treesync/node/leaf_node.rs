@@ -392,7 +392,8 @@ impl LeafNode {
     /// Get the identifier to search for the encryption key pair in the key
     /// store.
     pub fn encryption_key_label(id: &[u8]) -> Vec<u8> {
-        let mut kp_key = b"leaf_node".to_vec();
+        const ENCRYPTION_KEY_LABEL: &[u8; 9] = b"leaf_node";
+        let mut kp_key = ENCRYPTION_KEY_LABEL.to_vec();
         kp_key.extend_from_slice(id);
         kp_key
     }

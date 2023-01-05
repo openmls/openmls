@@ -9,7 +9,7 @@ use rstest_reuse::{self, *};
 use crate::{
     credentials::*,
     framing::*,
-    group::{errors::*, *, config::CryptoConfig},
+    group::{config::CryptoConfig, errors::*, *},
 };
 
 use super::utils::{generate_credential_bundle, generate_key_package};
