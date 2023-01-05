@@ -127,7 +127,8 @@ impl MlsMessageOut {
     pub fn into_protocol_message(self) -> Option<ProtocolMessage> {
         let mls_message_in: MlsMessageIn = self.into();
         match mls_message_in.extract() {
-            MlsMessageContent::ProtocolMessage(pm) => Some(pm),
+            MlsMessageInBody::PublicMessage(pm) => Some(pm.into()),
+            MlsMessageInBody::PrivateMessage(pm) => Some(pm.into()),
             _ => None,
         }
     }
@@ -156,14 +157,12 @@ impl MlsMessageOut {
 impl From<MlsMessageIn> for MlsMessageOut {
     fn from(mls_message: MlsMessageIn) -> Self {
         let version = mls_message.version;
-        let body = match mls_message.extract() {
-            MlsMessageContent::ProtocolMessage(pm) => match pm.body {
-                ProtocolMessageBody::PrivateMessage(m) => MlsMessageOutBody::PrivateMessage(m),
-                ProtocolMessageBody::PublicMessage(m) => MlsMessageOutBody::PublicMessage(m),
-            },
-            MlsMessageContent::Welcome(w) => MlsMessageOutBody::Welcome(w),
-            MlsMessageContent::GroupInfo(gi) => MlsMessageOutBody::GroupInfo(gi.into()),
-            MlsMessageContent::KeyPackage(kp) => MlsMessageOutBody::KeyPackage(kp),
+        let body = match mls_message.body {
+            MlsMessageInBody::Welcome(w) => MlsMessageOutBody::Welcome(w),
+            MlsMessageInBody::GroupInfo(gi) => MlsMessageOutBody::GroupInfo(gi.into()),
+            MlsMessageInBody::KeyPackage(kp) => MlsMessageOutBody::KeyPackage(kp),
+            MlsMessageInBody::PublicMessage(pm) => MlsMessageOutBody::PublicMessage(pm),
+            MlsMessageInBody::PrivateMessage(pm) => MlsMessageOutBody::PrivateMessage(pm),
         };
         Self { version, body }
     }

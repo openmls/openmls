@@ -6,13 +6,12 @@
 //! implements `MLSMessage`, but for outputs.
 //!
 //! The [`MlsMessageIn`] struct is meant to be deserialized upon receiving it
-//! from the DS. After deserialization, its content (either a
-//! [`ProtocolMessage`], [`KeyPackage`], [`Welcome`] or [`GroupInfo`]) can be
+//! from the DS. After deserialization, its content (either a [`PublicMessage`],
+//! [`PrivateMessage`], [`KeyPackage`], [`Welcome`] or [`GroupInfo`]) can be
 //! extracted via [`MlsMessageIn::extract()`] for use with the [`MlsGroup`] API.
 //!
-//! If an [`MlsMessageIn`] contains a [`ProtocolMessage`],
-//! [`ProtocolMessage::group_id()`] can be used to determine which group can be
-//! used to process the message.
+//! If an [`MlsMessageIn`] contains a [`PublicMessage`] or [`PrivateMessage`],
+//! can be used to determine which group can be used to process the message.
 
 use tls_codec::Deserialize;
 
@@ -21,8 +20,7 @@ use super::{mls_content::ContentType, *};
 use crate::{key_packages::KeyPackage, versions::ProtocolVersion};
 
 /// Before use with the [`MlsGroup`] API, the message has to be unpacked via
-/// `extract` to yield either a [`Welcome`] message, a [`KeyPackage`], a
-/// [`GroupInfo`] or a [`ProtocolMessage`].
+/// `extract` to yield its [`MlsMessageInBody`].
 ///
 /// ```c
 /// // draft-ietf-mls-protocol-17
@@ -71,7 +69,7 @@ pub struct MlsMessageIn {
 /// ```
 #[derive(Debug, PartialEq, Clone, TlsSerialize, TlsDeserialize, TlsSize)]
 #[repr(u8)]
-pub(crate) enum MlsMessageInBody {
+pub enum MlsMessageInBody {
     /// Plaintext message
     #[tls_codec(discriminant = 1)]
     PublicMessage(PublicMessage),
@@ -93,21 +91,6 @@ pub(crate) enum MlsMessageInBody {
     KeyPackage(KeyPackage),
 }
 
-/// Enum containing the possible contents of an [`MlsMessageIn`].
-pub enum MlsMessageContent {
-    /// Protocl message (handshake or application message)
-    ProtocolMessage(ProtocolMessage),
-
-    /// Welcome message
-    Welcome(Welcome),
-
-    /// Group information
-    GroupInfo(VerifiableGroupInfo),
-
-    /// KeyPackage
-    KeyPackage(KeyPackage),
-}
-
 impl MlsMessageIn {
     /// Returns the wire format.
     pub fn wire_format(&self) -> WireFormat {
@@ -122,14 +105,8 @@ impl MlsMessageIn {
 
     /// Extract the content of an [`MlsMessageIn`] after deserialization for use
     /// with the [`MlsGroup`] API.
-    pub fn extract(self) -> MlsMessageContent {
-        match self.body {
-            MlsMessageInBody::PublicMessage(m) => MlsMessageContent::ProtocolMessage(m.into()),
-            MlsMessageInBody::PrivateMessage(m) => MlsMessageContent::ProtocolMessage(m.into()),
-            MlsMessageInBody::Welcome(w) => MlsMessageContent::Welcome(w),
-            MlsMessageInBody::GroupInfo(g) => MlsMessageContent::GroupInfo(g),
-            MlsMessageInBody::KeyPackage(k) => MlsMessageContent::KeyPackage(k),
-        }
+    pub fn extract(self) -> MlsMessageInBody {
+        self.body
     }
 
     /// Tries to deserialize from a byte slice. Returns [`MlsMessageError::UnableToDecode`] on failure.
@@ -162,7 +139,9 @@ impl MlsMessageIn {
     }
 }
 
-/// Struct containing a message for use with `process_message` and an [`MlsGroup`].
+/// Struct containing a message for use with `process_message` and an
+/// [`MlsGroup`]. Both [`PublicMessage`] and [`PrivateMessage`] implement
+/// [`Into<ProtocolMessage>`].
 #[derive(Debug, Clone)]
 pub struct ProtocolMessage {
     pub(crate) body: ProtocolMessageBody,

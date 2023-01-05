@@ -20,7 +20,7 @@ impl MlsGroup {
     pub fn process_message(
         &mut self,
         backend: &impl OpenMlsCryptoProvider,
-        message: ProtocolMessage,
+        message: impl Into<ProtocolMessage>,
     ) -> Result<ProcessedMessage, ProcessMessageError> {
         // Make sure we are still a member of the group
         if !self.is_active() {
@@ -28,6 +28,7 @@ impl MlsGroup {
                 MlsGroupStateError::UseAfterEviction,
             ));
         }
+        let message = message.into();
 
         // Check that handshake messages are compatible with the incoming wire format policy
         if !message.is_external()

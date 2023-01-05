@@ -50,7 +50,7 @@ pub(crate) struct MembershipTag(pub(crate) Mac);
 /// message later. The extra data is accounted for (i.e. ignored) in the
 /// serialized/deserialization functions.
 #[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
-pub(crate) struct PublicMessage {
+pub struct PublicMessage {
     content: FramedContentTbs,
     auth: FramedContentAuthData,
     membership_tag: Option<MembershipTag>,

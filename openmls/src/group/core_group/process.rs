@@ -27,9 +27,10 @@ impl CoreGroup {
     pub(crate) fn parse_message(
         &mut self,
         backend: &impl OpenMlsCryptoProvider,
-        message: ProtocolMessage,
+        message: impl Into<ProtocolMessage>,
         sender_ratchet_configuration: &SenderRatchetConfiguration,
     ) -> Result<UnverifiedMessage, ValidationError> {
+        let message: ProtocolMessage = message.into();
         // Checks the following semantic validation:
         //  - ValSem002
         //  - ValSem003
@@ -311,13 +312,13 @@ impl CoreGroup {
     pub(crate) fn process_message(
         &mut self,
         backend: &impl OpenMlsCryptoProvider,
-        message: ProtocolMessage,
+        message: impl Into<ProtocolMessage>,
         sender_ratchet_configuration: &SenderRatchetConfiguration,
         proposal_store: &ProposalStore,
         own_kpbs: &[OpenMlsLeafNode],
     ) -> Result<ProcessedMessage, ProcessMessageError> {
         let unverified_message = self
-            .parse_message(backend, message, sender_ratchet_configuration)
+            .parse_message(backend, message.into(), sender_ratchet_configuration)
             .map_err(ProcessMessageError::from)?;
         self.process_unverified_message(unverified_message, proposal_store, own_kpbs, backend)
     }
