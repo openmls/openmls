@@ -200,7 +200,7 @@ fn test_valsem003(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
     // Set the epoch too high
     plaintext.set_epoch(current_epoch.as_u64() + 1);
     let err = bob_group
-        .process_message(backend, plaintext.clone().into())
+        .process_message(backend, plaintext.clone())
         .expect_err("Could parse message despite wrong epoch.");
     assert_eq!(
         err,
@@ -210,7 +210,7 @@ fn test_valsem003(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
     // Set the epoch too low
     plaintext.set_epoch(current_epoch.as_u64() - 1);
     let err = bob_group
-        .process_message(backend, plaintext.into())
+        .process_message(backend, plaintext)
         .expect_err("Could parse message despite wrong epoch.");
     assert_eq!(
         err,
@@ -219,7 +219,7 @@ fn test_valsem003(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
 
     // Positive case
     let processed_msg = bob_group
-        .process_message(backend, original_message.clone().into())
+        .process_message(backend, original_message.clone())
         .unwrap();
 
     if let ProcessedMessageContent::StagedCommitMessage(staged_commit) =
@@ -231,7 +231,7 @@ fn test_valsem003(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
     }
 
     // Processing a commit twice should fail i.e. an epoch can only be used once in a commit message
-    let process_twice = bob_group.process_message(backend, original_message.into());
+    let process_twice = bob_group.process_message(backend, original_message);
     assert_eq!(
         process_twice.unwrap_err(),
         ProcessMessageError::ValidationError(ValidationError::WrongEpoch)

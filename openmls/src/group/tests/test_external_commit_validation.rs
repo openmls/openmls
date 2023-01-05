@@ -364,7 +364,7 @@ fn test_valsem242(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
             backend,
         );
 
-        let processed_msg = alice_group.process_message(backend, signed_plaintext.into());
+        let processed_msg = alice_group.process_message(backend, signed_plaintext);
 
         assert_eq!(
             processed_msg.unwrap_err(),
@@ -375,7 +375,7 @@ fn test_valsem242(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
 
         // Positive case
         alice_group
-            .process_message(backend, original_plaintext.into())
+            .process_message(backend, original_plaintext)
             .unwrap();
     }
 }
@@ -780,7 +780,5 @@ fn test_pure_ciphertest(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoPr
     assert_eq!(mls_message_in.wire_format(), WireFormat::PublicMessage);
 
     // Would fail if handshake message processing did not distinguish external messages
-    assert!(alice_group
-        .process_message(backend, mls_message_in.into())
-        .is_ok());
+    assert!(alice_group.process_message(backend, mls_message_in).is_ok());
 }

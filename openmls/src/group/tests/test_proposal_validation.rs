@@ -310,7 +310,7 @@ fn test_valsem100(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
 
     // Positive case
     bob_group
-        .process_message(backend, original_update_plaintext.into())
+        .process_message(backend, original_update_plaintext)
         .expect("Unexpected error.");
 }
 
@@ -477,7 +477,7 @@ fn test_valsem101(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
 
     // Positive case
     bob_group
-        .process_message(backend, original_update_plaintext.into())
+        .process_message(backend, original_update_plaintext)
         .expect("Unexpected error.");
 }
 
@@ -613,7 +613,7 @@ fn test_valsem102(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
 
     // Positive case
     bob_group
-        .process_message(backend, original_update_plaintext.into())
+        .process_message(backend, original_update_plaintext)
         .expect("Unexpected error.");
 }
 
@@ -776,7 +776,7 @@ fn test_valsem103(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
             KeyUniqueness::NegativeSameKey => {
                 // Have bob process the resulting plaintext
                 let err = bob_group
-                    .process_message(backend, verifiable_plaintext.into())
+                    .process_message(backend, verifiable_plaintext)
                     .expect_err("Could process message despite modified public key in path.");
 
                 assert_eq!(
@@ -788,7 +788,7 @@ fn test_valsem103(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
             }
             KeyUniqueness::PositiveSameKeyWithRemove => {
                 bob_group
-                    .process_message(backend, verifiable_plaintext.into())
+                    .process_message(backend, verifiable_plaintext)
                     .expect(
                         "Could not process message despite having a remove proposal in the commit",
                     );
@@ -804,7 +804,7 @@ fn test_valsem103(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
 
         // Positive case
         bob_group
-            .process_message(backend, original_update_plaintext.into())
+            .process_message(backend, original_update_plaintext)
             .expect("Unexpected error.");
     }
 }
@@ -1040,7 +1040,7 @@ fn test_valsem104(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
             KeyUniqueness::NegativeSameKey => {
                 // Have bob process the resulting plaintext
                 let err = bob_group
-                    .process_message(backend, verifiable_plaintext.into())
+                    .process_message(backend, verifiable_plaintext)
                     .expect_err("Could process message despite modified public key in path.");
 
                 assert_eq!(
@@ -1052,7 +1052,7 @@ fn test_valsem104(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
             }
             KeyUniqueness::PositiveSameKeyWithRemove => {
                 bob_group
-                    .process_message(backend, verifiable_plaintext.into())
+                    .process_message(backend, verifiable_plaintext)
                     .expect(
                         "Could not process message despite having a remove proposal in the commit",
                     );
@@ -1066,7 +1066,7 @@ fn test_valsem104(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
 
         // Positive case
         bob_group
-            .process_message(backend, original_update_plaintext.into())
+            .process_message(backend, original_update_plaintext)
             .expect("Unexpected error.");
     }
 }
@@ -1218,7 +1218,7 @@ fn test_valsem105(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
 
     // Positive case
     bob_group
-        .process_message(backend, original_update_plaintext.into())
+        .process_message(backend, original_update_plaintext)
         .expect("Unexpected error.");
 }
 
@@ -1444,7 +1444,7 @@ fn test_valsem106(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
 
             // Positive case
             bob_group
-                .process_message(backend, original_update_plaintext.into())
+                .process_message(backend, original_update_plaintext)
                 .expect("Unexpected error.");
         }
 
@@ -1650,7 +1650,7 @@ fn test_valsem108(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
 
     // Positive case
     bob_group
-        .process_message(backend, original_update_plaintext.into())
+        .process_message(backend, original_update_plaintext)
         .expect("Unexpected error.");
 }
 
@@ -1791,7 +1791,7 @@ fn test_valsem109(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
 
     // Positive case
     bob_group
-        .process_message(backend, original_update_plaintext.into())
+        .process_message(backend, original_update_plaintext)
         .expect("Unexpected error.");
 }
 
@@ -1947,7 +1947,7 @@ fn test_valsem110(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
 
     // Positive case
     bob_group
-        .process_message(backend, original_update_plaintext.into())
+        .process_message(backend, original_update_plaintext)
         .expect("Unexpected error.");
 }
 
@@ -2111,7 +2111,7 @@ fn test_valsem111(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
 
     // Positive case
     bob_group
-        .process_message(backend, original_update_plaintext.into())
+        .process_message(backend, original_update_plaintext)
         .expect("Unexpected error.");
 }
 

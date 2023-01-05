@@ -139,62 +139,70 @@ impl User {
 
         let mut messages_out = Vec::new();
 
+        let mut process_protocol_message = |message: ProtocolMessage| {
+            let mut groups = self.groups.borrow_mut();
+
+            let group = match groups.get_mut(message.group_id().as_slice()) {
+                Some(g) => g,
+                None => {
+                    log::error!(
+                        "Error getting group {:?} for a message. Dropping message.",
+                        message.group_id()
+                    );
+                    return Err("error");
+                }
+            };
+            let mut mls_group = group.mls_group.borrow_mut();
+
+            let processed_message = match mls_group.process_message(&self.crypto, message) {
+                Ok(msg) => msg,
+                Err(e) => {
+                    log::error!(
+                        "Error processing unverified message: {:?} -  Dropping message.",
+                        e
+                    );
+                    return Err("error");
+                }
+            };
+
+            match processed_message.into_content() {
+                ProcessedMessageContent::ApplicationMessage(application_message) => {
+                    let application_message =
+                        String::from_utf8(application_message.into_bytes()).unwrap();
+                    if group_name.is_none() || group_name.clone().unwrap() == group.group_name {
+                        messages_out.push(application_message.clone());
+                    }
+                    group.conversation.add(application_message);
+                }
+                ProcessedMessageContent::ProposalMessage(_proposal_ptr) => {
+                    // intentionally left blank.
+                }
+                ProcessedMessageContent::ExternalJoinProposalMessage(_external_proposal_ptr) => {
+                    // intentionally left blank.
+                }
+                ProcessedMessageContent::StagedCommitMessage(commit_ptr) => {
+                    mls_group.merge_staged_commit(*commit_ptr);
+                }
+            }
+            Ok(())
+        };
+
         // Go through the list of messages and process or store them.
         for message in self.backend.recv_msgs(self)?.drain(..) {
             match message.extract() {
-                MlsMessageContent::Welcome(welcome) => {
+                MlsMessageInBody::Welcome(welcome) => {
                     // Join the group. (Later we should ask the user to
                     // approve first ...)
                     self.join_group(welcome)?;
                 }
-                MlsMessageContent::ProtocolMessage(message) => {
-                    let mut groups = self.groups.borrow_mut();
-
-                    let group = match groups.get_mut(message.group_id().as_slice()) {
-                        Some(g) => g,
-                        None => {
-                            log::error!(
-                                "Error getting group {:?} for a message. Dropping message.",
-                                message.group_id()
-                            );
-                            continue;
-                        }
-                    };
-                    let mut mls_group = group.mls_group.borrow_mut();
-
-                    let processed_message = match mls_group.process_message(&self.crypto, message) {
-                        Ok(msg) => msg,
-                        Err(e) => {
-                            log::error!(
-                                "Error processing unverified message: {:?} -  Dropping message.",
-                                e
-                            );
-                            continue;
-                        }
-                    };
-
-                    match processed_message.into_content() {
-                        ProcessedMessageContent::ApplicationMessage(application_message) => {
-                            let application_message =
-                                String::from_utf8(application_message.into_bytes()).unwrap();
-                            if group_name.is_none()
-                                || group_name.clone().unwrap() == group.group_name
-                            {
-                                messages_out.push(application_message.clone());
-                            }
-                            group.conversation.add(application_message);
-                        }
-                        ProcessedMessageContent::ProposalMessage(_proposal_ptr) => {
-                            // intentionally left blank.
-                        }
-                        ProcessedMessageContent::ExternalJoinProposalMessage(
-                            _external_proposal_ptr,
-                        ) => {
-                            // intentionally left blank.
-                        }
-                        ProcessedMessageContent::StagedCommitMessage(commit_ptr) => {
-                            mls_group.merge_staged_commit(*commit_ptr);
-                        }
+                MlsMessageInBody::PrivateMessage(message) => {
+                    if process_protocol_message(message.into()).is_err() {
+                        continue;
+                    }
+                }
+                MlsMessageInBody::PublicMessage(message) => {
+                    if process_protocol_message(message.into()).is_err() {
+                        continue;
                     }
                 }
                 _ => panic!("Unsupported message type"),
