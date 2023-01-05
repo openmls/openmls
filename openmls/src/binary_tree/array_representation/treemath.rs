@@ -3,6 +3,7 @@ use std::cmp::Ordering;
 use tls_codec::{TlsDeserialize, TlsSerialize, TlsSize};
 
 pub(crate) const MAX_TREE_SIZE: u32 = 1 << 30;
+pub(crate) const MIN_TREE_SIZE: u32 = 1;
 
 /// LeafNodeIndex references a leaf node in a tree.
 #[derive(
@@ -166,9 +167,11 @@ impl PartialOrd for TreeNodeIndex {
 pub(crate) struct TreeSize(u32);
 
 impl TreeSize {
-    /// Create a new `TreeSize` from a `u32`.
-    pub(crate) fn new(size: u32) -> Self {
-        let k = log2(size);
+    /// Create a new `TreeSize` from `nodes`, which will be rounded up to the
+    /// next power of 2. The tree size then reflects the smallest tree that can
+    /// contain the number of nodes.
+    pub(crate) fn new(nodes: u32) -> Self {
+        let k = log2(nodes);
         TreeSize((1 << (k + 1)) - 1)
     }
 
@@ -188,6 +191,7 @@ impl TreeSize {
     }
 
     /// Returns `true` if the leaf is in the left subtree and `false` otherwise.
+    /// If there is only one leaf in the tree, it returns `false`.
     pub(crate) fn leaf_is_left(&self, leaf_index: LeafNodeIndex) -> bool {
         leaf_index.u32() < self.leaf_count() / 2
     }

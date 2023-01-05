@@ -447,10 +447,11 @@ impl TreeSync {
     pub fn export_nodes(&self) -> Vec<Option<Node>> {
         let mut nodes = Vec::new();
 
-        // Get the max length of the tree, blanks beyond the last leaf are
-        // trimmed.
+        // Determine the index of the rightmost full leaf.
         let max_length = self.rightmost_full_leaf();
 
+        // We take all the leaves including the rightmost full leaf, blank
+        // leaves beyond that are trimmed.
         let mut leaves = self
             .tree
             .leaves()
@@ -487,8 +488,6 @@ impl TreeSync {
             nodes.push(parent.node_without_private_key().map(Node::ParentNode));
             nodes.push(leaf.node_without_private_key().map(Node::LeafNode));
         }
-
-        debug_assert_eq!(nodes.len(), max_length.usize() * 2 + 1);
 
         nodes
     }

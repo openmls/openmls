@@ -36,7 +36,7 @@ use super::{
 
 use crate::{
     binary_tree::{
-        array_representation::{LeafNodeIndex, ParentNodeIndex, TreeNodeIndex},
+        array_representation::{LeafNodeIndex, ParentNodeIndex, TreeNodeIndex, MIN_TREE_SIZE},
         MlsBinaryTreeDiff, StagedMlsBinaryTreeDiff,
     },
     ciphersuite::{HpkePrivateKey, HpkePublicKey, Secret},
@@ -119,7 +119,7 @@ impl<'a> TreeSyncDiff<'a> {
     /// right part of the tree.
     fn trim_tree(&mut self) {
         // Nothing to trim if there's only one leaf left.
-        if self.leaf_count() == 1 {
+        if self.leaf_count() == MIN_TREE_SIZE {
             return;
         }
 
@@ -129,6 +129,8 @@ impl<'a> TreeSyncDiff<'a> {
         // tree
         while self.diff.size().leaf_is_left(rightmost_full_leaf) {
             let res = self.diff.shrink_tree();
+            // We should never run into an error here, since `leaf_is_left`
+            // returns false when the tree only has one leaf.
             debug_assert!(res.is_ok());
         }
     }
@@ -556,7 +558,7 @@ impl<'a> TreeSyncDiff<'a> {
         leaf_index: LeafNodeIndex,
     ) -> Vec<Vec<(TreeNodeIndex, NodeReference)>> {
         // If we're the only node in the tree, there's no copath.
-        if self.diff.leaf_count() == 1 {
+        if self.diff.leaf_count() == MIN_TREE_SIZE {
             return vec![];
         }
 
@@ -878,10 +880,11 @@ impl<'a> TreeSyncDiff<'a> {
     pub(crate) fn export_nodes(&self) -> Vec<Option<Node>> {
         let mut nodes = Vec::new();
 
-        // Get the max length of the tree, blanks beyond the last leaf are
-        // trimmed.
+        // Determine the index of the rightmost full leaf.
         let max_length = self.rightmost_full_leaf();
 
+        // We take all the leaves including the rightmost full leaf, blank
+        // leaves beyond that are trimmed.
         let mut leaves = self
             .diff
             .leaves()

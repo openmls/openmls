@@ -20,14 +20,14 @@ use serde::{Deserialize, Serialize};
 use std::{collections::BTreeMap, fmt::Debug};
 use thiserror::Error;
 
-use crate::{binary_tree::array_representation::treemath::MAX_TREE_SIZE, error::LibraryError};
+use crate::error::LibraryError;
 
 use super::{
     sorted_iter::sorted_iter,
     tree::{ABinaryTree, ABinaryTreeError},
     treemath::{
         common_direct_path, copath, direct_path, left, lowest_common_ancestor, right, root,
-        LeafNodeIndex, ParentNodeIndex, TreeNodeIndex, TreeSize,
+        LeafNodeIndex, ParentNodeIndex, TreeNodeIndex, TreeSize, MAX_TREE_SIZE, MIN_TREE_SIZE,
     },
 };
 
@@ -123,7 +123,7 @@ impl<'a, L: Clone + Debug + Default, P: Clone + Debug + Default> AbDiff<'a, L, P
     /// Returns an error if the diff only has one leaf left.
     pub(crate) fn shrink_tree(&mut self) -> Result<(), ABinaryTreeDiffError> {
         // First make sure that the tree isn't getting too small.
-        if self.size().u32() <= 1 {
+        if self.size().u32() <= MIN_TREE_SIZE {
             return Err(ABinaryTreeDiffError::TreeTooSmall);
         }
         self.size.dec();

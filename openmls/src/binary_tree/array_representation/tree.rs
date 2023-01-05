@@ -90,8 +90,6 @@ impl<L: Clone + Debug + Default, P: Clone + Debug + Default> ABinaryTree<L, P> {
     /// of the underlying binary tree. Returns the default value if the node
     /// cannot be found.
     pub(in crate::binary_tree) fn leaf_by_index(&self, leaf_index: LeafNodeIndex) -> &L {
-        //debug_assert!(self.leaf_nodes.get(leaf_index.usize()).is_some());
-        // FIXME
         self.leaf_nodes
             .get(leaf_index.usize())
             .unwrap_or(&self.default_leaf)
@@ -102,8 +100,6 @@ impl<L: Clone + Debug + Default, P: Clone + Debug + Default> ABinaryTree<L, P> {
     /// representation of the underlying binary tree. Returns the default value
     /// if the node cannot be found.
     pub(in crate::binary_tree) fn parent_by_index(&self, parent_index: ParentNodeIndex) -> &P {
-        //debug_assert!(self.parent_nodes.get(parent_index.usize()).is_some());
-        // FIXME
         self.parent_nodes
             .get(parent_index.usize())
             .unwrap_or(&self.default_parent)
