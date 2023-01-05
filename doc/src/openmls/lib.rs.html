@@ -180,8 +180,6 @@
 <span id="180">180</span>
 <span id="181">181</span>
 <span id="182">182</span>
-<span id="183">183</span>
-<span id="184">184</span>
 </pre><pre class="rust"><code><span class="attribute">#![doc = <span class="macro">include_str!</span>(<span class="string">&quot;../README.md&quot;</span>)]
 </span><span class="doccomment">//! ## Quick Start
 //! For a quick start to learn how OpenMLS works here&#39;s the basic code to set
@@ -269,8 +267,6 @@
 //! // in MLS
 //!
 //! // Generate KeyPackages
-//! let sasha_key_package = generate_key_package(&amp;[ciphersuite], &amp;sasha_credential, backend);
-//!
 //! let maxim_key_package = generate_key_package(&amp;[ciphersuite], &amp;maxim_credential, backend);
 //!
 //! // Now Sasha starts a new group ...
@@ -286,7 +282,7 @@
 //! let mut sasha_group = MlsGroup::new(
 //!     backend,
 //!     &amp;MlsGroupConfig::default(),
-//!     sasha_key_package,
+//!     sasha_credential.signature_key(),
 //! )
 //! .expect(&quot;An unexpected error occurred.&quot;);
 //!

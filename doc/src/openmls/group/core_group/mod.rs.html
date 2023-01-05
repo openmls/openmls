@@ -800,6 +800,7 @@
 <span id="800">800</span>
 <span id="801">801</span>
 <span id="802">802</span>
+<span id="803">803</span>
 </pre><pre class="rust"><code><span class="doccomment">//! ### Don&#39;t Panic!
 //!
 //! Functions in this module should never panic. However, if there is a bug in
@@ -839,6 +840,7 @@
 </span><span class="kw">use </span><span class="kw">super</span>::errors::CreateGroupContextExtProposalError;
 <span class="kw">use </span><span class="kw">crate</span>::framing::mls_auth_content::VerifiableAuthenticatedContent;
 
+<span class="kw">use </span><span class="kw">crate</span>::group::config::CryptoConfig;
 <span class="kw">use crate</span>::{
     binary_tree::array_representation::LeafNodeIndex,
     ciphersuite::{signable::Signable, HpkePublicKey},
@@ -939,9 +941,9 @@
 
 <span class="doccomment">/// Builder for [`CoreGroup`].
 </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct </span>CoreGroupBuilder {
-    key_package_bundle: KeyPackageBundle,
     own_leaf_extensions: Vec&lt;Extension&gt;,
     group_id: GroupId,
+    crypto_config: CryptoConfig,
     config: <span class="prelude-ty">Option</span>&lt;CoreGroupConfig&gt;,
     psk_ids: Vec&lt;PreSharedKeyId&gt;,
     version: <span class="prelude-ty">Option</span>&lt;ProtocolVersion&gt;,
@@ -952,9 +954,8 @@
 
 <span class="kw">impl </span>CoreGroupBuilder {
     <span class="doccomment">/// Create a new [`CoreGroupBuilder`].
-    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>new(group_id: GroupId, key_package_bundle: KeyPackageBundle) -&gt; <span class="self">Self </span>{
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>new(group_id: GroupId, crypto_config: CryptoConfig) -&gt; <span class="self">Self </span>{
         <span class="self">Self </span>{
-            key_package_bundle,
             group_id,
             config: <span class="prelude-val">None</span>,
             psk_ids: <span class="macro">vec!</span>[],
@@ -963,6 +964,7 @@
             max_past_epochs: <span class="number">0</span>,
             own_leaf_extensions: <span class="macro">vec!</span>[],
             lifetime: <span class="prelude-val">None</span>,
+            crypto_config,
         }
     }
     <span class="doccomment">/// Set the [`CoreGroupConfig`] of the [`CoreGroup`].
@@ -1012,7 +1014,7 @@
         credential_bundle: <span class="kw-2">&amp;</span>CredentialBundle,
         backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;CoreGroup, CoreGroupBuildError&gt; {
-        <span class="kw">let </span>ciphersuite = <span class="self">self</span>.key_package_bundle.key_package().ciphersuite();
+        <span class="kw">let </span>ciphersuite = <span class="self">self</span>.crypto_config.ciphersuite;
         <span class="kw">let </span>config = <span class="self">self</span>.config.unwrap_or_default();
         <span class="kw">let </span>capabilities = <span class="self">self
             </span>.required_capabilities
@@ -1024,7 +1026,10 @@
         <span class="macro">trace!</span>(<span class="string">&quot; &gt;&gt;&gt; with {:?}, {:?}&quot;</span>, ciphersuite, config);
         <span class="kw">let </span>(tree, commit_secret) = TreeSync::new(
             backend,
-            <span class="self">self</span>.key_package_bundle,
+            CryptoConfig {
+                ciphersuite,
+                version,
+            },
             credential_bundle,
             <span class="self">self</span>.lifetime.unwrap_or_default(),
             Capabilities::new(
@@ -1103,11 +1108,8 @@
 <span class="doccomment">/// Public [`CoreGroup`] functions.
 </span><span class="kw">impl </span>CoreGroup {
     <span class="doccomment">/// Get a builder for [`CoreGroup`].
-    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>builder(
-        group_id: GroupId,
-        key_package_bundle: KeyPackageBundle,
-    ) -&gt; CoreGroupBuilder {
-        CoreGroupBuilder::new(group_id, key_package_bundle)
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>builder(group_id: GroupId, crypto_config: CryptoConfig) -&gt; CoreGroupBuilder {
+        CoreGroupBuilder::new(group_id, crypto_config)
     }
 
     <span class="comment">// === Create handshake messages ===

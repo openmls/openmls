@@ -229,11 +229,13 @@
 <span id="229">229</span>
 <span id="230">230</span>
 </pre><pre class="rust"><code><span class="kw">use crate</span>::{
+    ciphersuite::signature::SignaturePublicKey,
     group::{
         core_group::create_commit_params::CreateCommitParams,
         errors::{CoreGroupBuildError, ExternalCommitError, WelcomeError},
     },
     messages::VerifiableGroupInfo,
+    treesync::LeafNode,
 };
 <span class="kw">use </span>tls_codec::Serialize;
 
@@ -247,83 +249,81 @@
     /// This function removes the private key corresponding to the
     /// `key_package` from the key store.
     ///
-    /// Returns an error ([`NewGroupError::NoMatchingKeyPackage`]) if the
-    /// private key for the [`KeyPackage`] can not be found.
+    /// Returns an error ([`NewGroupError::NoMatchingCredentialBundle`]) if the
+    /// private key for the [`SignaturePublicKey`] can not be found.
     </span><span class="kw">pub fn </span>new(
         backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider,
         mls_group_config: <span class="kw-2">&amp;</span>MlsGroupConfig,
-        key_package: KeyPackage,
+        signature_key: <span class="kw-2">&amp;</span>SignaturePublicKey,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, NewGroupError&gt; {
         <span class="self">Self</span>::new_with_group_id(
             backend,
             mls_group_config,
             GroupId::random(backend),
-            key_package,
+            signature_key,
         )
     }
 
     <span class="doccomment">/// Creates a new group with a given group ID with the creator as the only member.
     ///
-    /// Returns an error ([`NewGroupError::NoMatchingKeyPackage`]) if the
-    /// private key for the [`KeyPackage`] can not be found.
+    /// Returns an error ([`NewGroupError::NoMatchingCredentialBundle`]) if the
+    /// private key for the [`SignaturePublicKey`] can not be found.
     </span><span class="kw">pub fn </span>new_with_group_id(
         backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider,
         mls_group_config: <span class="kw-2">&amp;</span>MlsGroupConfig,
         group_id: GroupId,
-        key_package: KeyPackage,
+        signature_key: <span class="kw-2">&amp;</span>SignaturePublicKey,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, NewGroupError&gt; {
         <span class="comment">// TODO #751
-
-        // Read and delete the private key for the key package.
-        </span><span class="kw">let </span>private_hpke_init_key: Vec&lt;u8&gt; = backend
-            .key_store()
-            .read(key_package.hpke_init_key().as_ref())
-            .ok_or(NewGroupError::NoMatchingKeyPackage)<span class="question-mark">?</span>;
-        backend
-            .key_store()
-            .delete(key_package.hpke_init_key().as_ref())
-            .map_err(|<span class="kw">_</span>| NewGroupError::KeyStoreDeletionError)<span class="question-mark">?</span>;
-
-        <span class="kw">let </span>credential_bundle: CredentialBundle = backend
-            .key_store()
-            .read(
-                <span class="kw-2">&amp;</span>key_package
-                    .leaf_node()
-                    .credential()
-                    .signature_key()
-                    .tls_serialize_detached()
-                    .map_err(|<span class="kw">_</span>| {
-                        LibraryError::custom(<span class="string">&quot;Unable to serialize signature public key&quot;</span>)
-                    })<span class="question-mark">?</span>,
-            )
-            .ok_or(NewGroupError::NoMatchingCredentialBundle)<span class="question-mark">?</span>;
+        </span><span class="kw">let </span>credential_bundle: CredentialBundle =
+            backend
+                .key_store()
+                .read(<span class="kw-2">&amp;</span>signature_key.tls_serialize_detached().map_err(|<span class="kw">_</span>| {
+                    LibraryError::custom(<span class="string">&quot;Unable to serialize signature public key&quot;</span>)
+                })<span class="question-mark">?</span>)
+                .ok_or(NewGroupError::NoMatchingCredentialBundle)<span class="question-mark">?</span>;
         <span class="kw">let </span>group_config = CoreGroupConfig {
             add_ratchet_tree_extension: mls_group_config.use_ratchet_tree_extension,
         };
-        <span class="kw">let </span>group = CoreGroup::builder(
-            group_id,
-            KeyPackageBundle {
-                key_package,
-                private_key: private_hpke_init_key.into(),
-            },
-        )
-        .with_config(group_config)
-        .with_required_capabilities(mls_group_config.required_capabilities.clone())
-        .with_max_past_epoch_secrets(mls_group_config.max_past_epochs)
-        .with_lifetime(<span class="kw-2">*</span>mls_group_config.lifetime())
-        .build(<span class="kw-2">&amp;</span>credential_bundle, backend)
-        .map_err(|e| <span class="kw">match </span>e {
-            CoreGroupBuildError::LibraryError(e) =&gt; e.into(),
-            CoreGroupBuildError::UnsupportedProposalType =&gt; NewGroupError::UnsupportedProposalType,
-            CoreGroupBuildError::UnsupportedExtensionType =&gt; {
-                NewGroupError::UnsupportedExtensionType
-            }
-            <span class="comment">// We don&#39;t support PSKs yet
-            </span>CoreGroupBuildError::PskError(e) =&gt; {
-                <span class="macro">log::debug!</span>(<span class="string">&quot;Unexpected PSK error: {:?}&quot;</span>, e);
-                LibraryError::custom(<span class="string">&quot;Unexpected PSK error&quot;</span>).into()
-            }
-        })<span class="question-mark">?</span>;
+        <span class="kw">let </span>group = CoreGroup::builder(group_id, mls_group_config.crypto_config)
+            .with_config(group_config)
+            .with_required_capabilities(mls_group_config.required_capabilities.clone())
+            .with_max_past_epoch_secrets(mls_group_config.max_past_epochs)
+            .with_lifetime(<span class="kw-2">*</span>mls_group_config.lifetime())
+            .build(<span class="kw-2">&amp;</span>credential_bundle, backend)
+            .map_err(|e| <span class="kw">match </span>e {
+                CoreGroupBuildError::LibraryError(e) =&gt; e.into(),
+                CoreGroupBuildError::UnsupportedProposalType =&gt; {
+                    NewGroupError::UnsupportedProposalType
+                }
+                CoreGroupBuildError::UnsupportedExtensionType =&gt; {
+                    NewGroupError::UnsupportedExtensionType
+                }
+                <span class="comment">// We don&#39;t support PSKs yet
+                </span>CoreGroupBuildError::PskError(e) =&gt; {
+                    <span class="macro">log::debug!</span>(<span class="string">&quot;Unexpected PSK error: {:?}&quot;</span>, e);
+                    LibraryError::custom(<span class="string">&quot;Unexpected PSK error&quot;</span>).into()
+                }
+            })<span class="question-mark">?</span>;
+
+        <span class="comment">// Store the encryption key pair of the own leaf node in the key store.
+        </span>backend
+            .key_store()
+            .store(
+                <span class="kw-2">&amp;</span>LeafNode::encryption_key_label(signature_key.as_slice()),
+                <span class="kw-2">&amp;</span>group
+                    .treesync()
+                    .own_leaf_node()
+                    .and_then(|leaf| leaf.encryption_key_pair())
+                    .ok_or_else(|| {
+                        LibraryError::custom(
+                            <span class="string">&quot;Invalid tree - unable to get own leaf encryption key pair&quot;</span>,
+                        )
+                    })<span class="question-mark">?</span>,
+            )
+            .map_err(|<span class="kw">_</span>| {
+                LibraryError::custom(<span class="string">&quot;Unable to store private encryption key into the key store.&quot;</span>)
+            })<span class="question-mark">?</span>;
 
         <span class="kw">let </span>resumption_psk_store =
             ResumptionPskStore::new(mls_group_config.number_of_resumption_psks);

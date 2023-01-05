@@ -467,6 +467,12 @@
 <span id="467">467</span>
 <span id="468">468</span>
 <span id="469">469</span>
+<span id="470">470</span>
+<span id="471">471</span>
+<span id="472">472</span>
+<span id="473">473</span>
+<span id="474">474</span>
+<span id="475">475</span>
 </pre><pre class="rust"><code><span class="doccomment">//! # MLS group errors
 //!
 //! This module contains errors that originate at lower levels and are partially re-exported in errors thrown by functions of the `MlsGroup` API.
@@ -539,8 +545,11 @@
     <span class="doccomment">/// The PSK could not be found in the key store.
     </span><span class="attribute">#[error(<span class="string">&quot;The PSK could not be found in the key store.&quot;</span>)]
     </span>PskNotFound,
-    <span class="doccomment">/// No matching KeyPackage was found in the key store.
-    </span><span class="attribute">#[error(<span class="string">&quot;No matching KeyPackage was found in the key store.&quot;</span>)]
+    <span class="doccomment">/// No matching encryption key was found in the key store.
+    </span><span class="attribute">#[error(<span class="string">&quot;No matching encryption key was found in the key store.&quot;</span>)]
+    </span>NoMatchingEncryptionKey,
+    <span class="doccomment">/// No matching key package was found in the key store.
+    </span><span class="attribute">#[error(<span class="string">&quot;No matching key package was found in the key store.&quot;</span>)]
     </span>NoMatchingKeyPackage,
     <span class="doccomment">/// Failed to delete the KeyPackageBundle from the key store.
     </span><span class="attribute">#[error(<span class="string">&quot;Failed to delete the KeyPackageBundle from the key store.&quot;</span>)]
@@ -753,9 +762,12 @@
     <span class="doccomment">/// Signature key of the add proposal already existed in tree.
     </span><span class="attribute">#[error(<span class="string">&quot;Signature key of the add proposal already existed in tree.&quot;</span>)]
     </span>ExistingSignatureKeyAddProposal,
-    <span class="doccomment">/// HPKE public key of the add proposal already existed in tree.
-    </span><span class="attribute">#[error(<span class="string">&quot;HPKE public key of the add proposal already existed in tree.&quot;</span>)]
+    <span class="doccomment">/// HPKE public key (init or encryption) of the add proposal already existed in tree.
+    </span><span class="attribute">#[error(<span class="string">&quot;HPKE public key (init or encryption) of the add proposal already existed in tree.&quot;</span>)]
     </span>ExistingPublicKeyAddProposal,
+    <span class="doccomment">/// The HPKE init and encryption keys are the same.
+    </span><span class="attribute">#[error(<span class="string">&quot;The HPKE init and encryption keys are the same.&quot;</span>)]
+    </span>InitEncryptionKeyCollision,
     <span class="doccomment">/// The identity of the update proposal did not match the existing identity.
     </span><span class="attribute">#[error(<span class="string">&quot;The identity of the update proposal did not match the existing identity.&quot;</span>)]
     </span>UpdateProposalIdentityMismatch,

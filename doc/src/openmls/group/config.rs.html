@@ -16,23 +16,67 @@
 <span id="16">16</span>
 <span id="17">17</span>
 <span id="18">18</span>
+<span id="19">19</span>
+<span id="20">20</span>
+<span id="21">21</span>
+<span id="22">22</span>
+<span id="23">23</span>
+<span id="24">24</span>
+<span id="25">25</span>
+<span id="26">26</span>
+<span id="27">27</span>
+<span id="28">28</span>
+<span id="29">29</span>
+<span id="30">30</span>
+<span id="31">31</span>
+<span id="32">32</span>
+<span id="33">33</span>
+<span id="34">34</span>
+<span id="35">35</span>
+<span id="36">36</span>
+<span id="37">37</span>
+<span id="38">38</span>
+<span id="39">39</span>
+<span id="40">40</span>
 </pre><pre class="rust"><code><span class="doccomment">//! # Group Configurations
 //!
 //! This modules holds helper structs to group together configurations and
 //! parameters.
 
 </span><span class="kw">use </span>openmls_traits::types::Ciphersuite;
+<span class="kw">use </span>serde::{Deserialize, Serialize};
 
 <span class="kw">use </span><span class="kw">crate</span>::versions::ProtocolVersion;
 
 <span class="doccomment">/// A config struct for commonly used values when performing cryptographic
 /// operations.
+</span><span class="attribute">#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
 </span><span class="kw">pub struct </span>CryptoConfig {
     <span class="doccomment">/// The [`Ciphersuite`] used.
     </span><span class="kw">pub </span>ciphersuite: Ciphersuite,
 
     <span class="doccomment">/// The MLS [`ProtocolVersion`] used.
     </span><span class="kw">pub </span>version: ProtocolVersion,
+}
+
+<span class="kw">impl </span>CryptoConfig {
+    <span class="doccomment">/// Create a new crypto config with the given ciphersuite and the default
+    /// protocol version.
+    </span><span class="kw">pub fn </span>with_default_version(ciphersuite: Ciphersuite) -&gt; <span class="self">Self </span>{
+        <span class="self">Self </span>{
+            ciphersuite,
+            version: ProtocolVersion::default(),
+        }
+    }
+}
+
+<span class="kw">impl </span>Default <span class="kw">for </span>CryptoConfig {
+    <span class="kw">fn </span>default() -&gt; <span class="self">Self </span>{
+        <span class="self">Self </span>{
+            ciphersuite: Ciphersuite::MLS_128_DHKEMX25519_AES128GCM_SHA256_Ed25519,
+            version: ProtocolVersion::default(),
+        }
+    }
 }
 </code></pre></div>
 </section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-current-crate="openmls" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.66.0 (69f9c33d7 2022-12-12)" ></div></body></html>

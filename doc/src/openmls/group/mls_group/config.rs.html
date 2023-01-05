@@ -300,6 +300,21 @@
 <span id="300">300</span>
 <span id="301">301</span>
 <span id="302">302</span>
+<span id="303">303</span>
+<span id="304">304</span>
+<span id="305">305</span>
+<span id="306">306</span>
+<span id="307">307</span>
+<span id="308">308</span>
+<span id="309">309</span>
+<span id="310">310</span>
+<span id="311">311</span>
+<span id="312">312</span>
+<span id="313">313</span>
+<span id="314">314</span>
+<span id="315">315</span>
+<span id="316">316</span>
+<span id="317">317</span>
 </pre><pre class="rust"><code><span class="doccomment">//! Configuration module for [`MlsGroup`] configurations.
 //!
 //! ## Building an MlsGroupConfig
@@ -331,7 +346,8 @@
 
 </span><span class="kw">use super</span>::<span class="kw-2">*</span>;
 <span class="kw">use crate</span>::{
-    tree::sender_ratchet::SenderRatchetConfiguration, treesync::node::leaf_node::Lifetime,
+    group::config::CryptoConfig, tree::sender_ratchet::SenderRatchetConfiguration,
+    treesync::node::leaf_node::Lifetime,
 };
 <span class="kw">use </span>serde::{Deserialize, Serialize};
 
@@ -357,6 +373,8 @@
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) sender_ratchet_configuration: SenderRatchetConfiguration,
     <span class="doccomment">/// Lifetime of the own leaf node
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) lifetime: Lifetime,
+    <span class="doccomment">/// Ciphersuite and protocol version
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) crypto_config: CryptoConfig,
 }
 
 <span class="kw">impl </span>MlsGroupConfig {
@@ -400,13 +418,19 @@
         <span class="kw-2">&amp;</span><span class="self">self</span>.lifetime
     }
 
+    <span class="doccomment">/// Returns the [`CryptoConfig`].
+    </span><span class="kw">pub fn </span>crypto_config(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>CryptoConfig {
+        <span class="kw-2">&amp;</span><span class="self">self</span>.crypto_config
+    }
+
     <span class="attribute">#[cfg(any(feature = <span class="string">&quot;test-utils&quot;</span>, test))]
-    </span><span class="kw">pub fn </span>test_default() -&gt; <span class="self">Self </span>{
+    </span><span class="kw">pub fn </span>test_default(ciphersuite: Ciphersuite) -&gt; <span class="self">Self </span>{
         <span class="self">Self</span>::builder()
             .wire_format_policy(WireFormatPolicy::new(
                 OutgoingWireFormatPolicy::AlwaysPlaintext,
                 IncomingWireFormatPolicy::Mixed,
             ))
+            .crypto_config(CryptoConfig::with_default_version(ciphersuite))
             .build()
     }
 }
@@ -476,6 +500,12 @@
     <span class="doccomment">/// Sets the `lifetime` property of the MlsGroupConfig.
     </span><span class="kw">pub fn </span>lifetime(<span class="kw-2">mut </span><span class="self">self</span>, lifetime: Lifetime) -&gt; <span class="self">Self </span>{
         <span class="self">self</span>.config.lifetime = lifetime;
+        <span class="self">self
+    </span>}
+
+    <span class="doccomment">/// Sets the `crypto_config` property of the MlsGroupConfig.
+    </span><span class="kw">pub fn </span>crypto_config(<span class="kw-2">mut </span><span class="self">self</span>, config: CryptoConfig) -&gt; <span class="self">Self </span>{
+        <span class="self">self</span>.config.crypto_config = config;
         <span class="self">self
     </span>}
 

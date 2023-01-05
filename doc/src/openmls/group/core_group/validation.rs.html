@@ -420,6 +420,20 @@
 <span id="420">420</span>
 <span id="421">421</span>
 <span id="422">422</span>
+<span id="423">423</span>
+<span id="424">424</span>
+<span id="425">425</span>
+<span id="426">426</span>
+<span id="427">427</span>
+<span id="428">428</span>
+<span id="429">429</span>
+<span id="430">430</span>
+<span id="431">431</span>
+<span id="432">432</span>
+<span id="433">433</span>
+<span id="434">434</span>
+<span id="435">435</span>
+<span id="436">436</span>
 </pre><pre class="rust"><code><span class="doccomment">//! This module contains validation functions for incoming messages
 //! as defined in &lt;https://github.com/openmls/openmls/wiki/Message-validation&gt;
 
@@ -524,7 +538,6 @@
     ///  - ValSem102
     ///  - ValSem103
     ///  - ValSem104
-    ///  - ValSem105
     ///  - ValSem106
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>validate_add_proposals(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
@@ -534,7 +547,8 @@
 
         <span class="kw">let </span><span class="kw-2">mut </span>identity_set = HashSet::new();
         <span class="kw">let </span><span class="kw-2">mut </span>signature_key_set = HashSet::new();
-        <span class="kw">let </span><span class="kw-2">mut </span>public_key_set = HashSet::new();
+        <span class="kw">let </span><span class="kw-2">mut </span>init_key_set = HashSet::new();
+        <span class="kw">let </span><span class="kw-2">mut </span>encryption_key_set = HashSet::new();
         <span class="kw">for </span>add_proposal <span class="kw">in </span>add_proposals {
             <span class="kw">let </span>identity = add_proposal
                 .add_proposal()
@@ -559,14 +573,34 @@
             </span><span class="kw">if </span>!signature_key_set.insert(signature_key) {
                 <span class="kw">return </span><span class="prelude-val">Err</span>(ProposalValidationError::DuplicateSignatureKeyAddProposal);
             }
-            <span class="kw">let </span>public_key = add_proposal
+
+            <span class="kw">let </span>proposal_init_key = add_proposal
                 .add_proposal()
                 .key_package()
                 .hpke_init_key()
                 .as_slice()
                 .to_vec();
+            <span class="kw">let </span>proposal_encryption_key = add_proposal
+                .add_proposal()
+                .key_package()
+                .leaf_node()
+                .encryption_key();
+
+            <span class="comment">// ValSem113
+            </span><span class="kw">if </span>proposal_init_key == proposal_encryption_key.as_ref() {
+                <span class="kw">return </span><span class="prelude-val">Err</span>(ProposalValidationError::InitEncryptionKeyCollision);
+            }
+
             <span class="comment">// ValSem102
-            </span><span class="kw">if </span>!public_key_set.insert(public_key) {
+            </span><span class="kw">if </span>!init_key_set.insert(proposal_init_key) {
+                <span class="kw">return </span><span class="prelude-val">Err</span>(ProposalValidationError::DuplicatePublicKeyAddProposal);
+            }
+
+            <span class="comment">// ValSem114
+            // Here we check that the encryption keys in the proposal are unique.
+            // Further down we check that the encryption keys in the proposals
+            // are not in the tree yet.
+            </span><span class="kw">if </span>!encryption_key_set.insert(proposal_encryption_key.as_slice().to_vec()) {
                 <span class="kw">return </span><span class="prelude-val">Err</span>(ProposalValidationError::DuplicatePublicKeyAddProposal);
             }
 
@@ -627,7 +661,7 @@
         <span class="kw">for </span>Member {
             index,
             identity,
-            encryption_key: <span class="kw">_</span>,
+            encryption_key,
             signature_key,
         } <span class="kw">in </span><span class="self">self</span>.treesync().full_leave_members()
         {
@@ -642,14 +676,8 @@
             </span><span class="kw">if </span>signature_key_set.contains(<span class="kw-2">&amp;</span>signature_key) &amp;&amp; !has_remove_proposal {
                 <span class="kw">return </span><span class="prelude-val">Err</span>(ProposalValidationError::ExistingSignatureKeyAddProposal);
             }
-            <span class="comment">// ValSem105
-            </span><span class="kw">let </span>public_key = <span class="self">self
-                </span>.treesync()
-                .leaf(index)
-                .ok_or(ProposalValidationError::UnknownMember)<span class="question-mark">?
-                </span>.public_key()
-                .as_slice();
-            <span class="kw">if </span>public_key_set.contains(public_key) {
+            <span class="comment">// ValSem114
+            </span><span class="kw">if </span>encryption_key_set.contains(<span class="kw-2">&amp;</span>encryption_key) {
                 <span class="kw">return </span><span class="prelude-val">Err</span>(ProposalValidationError::ExistingPublicKeyAddProposal);
             }
         }

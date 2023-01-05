@@ -161,6 +161,7 @@
             10,   // out_of_order_tolerance
             2000, // maximum_forward_distance
         ))
+        .crypto_config(CryptoConfig::with_default_version(ciphersuite))
         .use_ratchet_tree_extension(true)
         .build();</code></pre>
 

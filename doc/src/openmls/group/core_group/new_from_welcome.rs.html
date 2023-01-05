@@ -232,8 +232,25 @@
 <span id="232">232</span>
 <span id="233">233</span>
 <span id="234">234</span>
+<span id="235">235</span>
+<span id="236">236</span>
+<span id="237">237</span>
+<span id="238">238</span>
+<span id="239">239</span>
+<span id="240">240</span>
+<span id="241">241</span>
+<span id="242">242</span>
+<span id="243">243</span>
+<span id="244">244</span>
+<span id="245">245</span>
+<span id="246">246</span>
+<span id="247">247</span>
+<span id="248">248</span>
+<span id="249">249</span>
+<span id="250">250</span>
+<span id="251">251</span>
 </pre><pre class="rust"><code><span class="kw">use </span>log::debug;
-<span class="kw">use </span>openmls_traits::crypto::OpenMlsCrypto;
+<span class="kw">use </span>openmls_traits::{crypto::OpenMlsCrypto, key_store::OpenMlsKeyStore, types::HpkeKeyPair};
 <span class="kw">use </span>tls_codec::Deserialize;
 
 <span class="kw">use crate</span>::{
@@ -259,6 +276,23 @@
         }
 
         <span class="kw">let </span>ciphersuite = welcome.ciphersuite();
+
+        <span class="comment">// Read the encryption key pair from the key store and delete it there.
+        </span><span class="kw">let </span>encryption_key_pair: HpkeKeyPair = backend
+            .key_store()
+            .read(<span class="kw-2">&amp;</span>LeafNode::encryption_key_label(
+                key_package_bundle
+                    .key_package
+                    .leaf_node()
+                    .signature_key()
+                    .as_slice(),
+            ))
+            .ok_or(WelcomeError::NoMatchingEncryptionKey)<span class="question-mark">?</span>;
+        backend
+            .key_store()
+            .delete(key_package_bundle.key_package.hpke_init_key().as_slice())
+            <span class="comment">// This error really shouldn&#39;t happen. We just read the value.
+            </span>.map_err(|<span class="kw">_</span>| WelcomeError::NoMatchingEncryptionKey)<span class="question-mark">?</span>;
 
         <span class="comment">// Find key_package in welcome secrets
         </span><span class="kw">let </span>egs = <span class="kw">if let </span><span class="prelude-val">Some</span>(egs) = <span class="self">Self</span>::find_key_package_from_welcome_secrets(
@@ -371,7 +405,7 @@
             <span class="kw-2">&amp;</span>nodes,
             group_info.signer(),
             path_secret_option,
-            key_package_bundle,
+            encryption_key_pair,
         )
         .map_err(|e| <span class="kw">match </span>e {
             TreeSyncFromNodesError::LibraryError(e) =&gt; e.into(),
