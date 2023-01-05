@@ -40,16 +40,16 @@ The following is a list of the individual semantic validation steps performed by
 
 | ValidationStep | Description                                                 | Implemented | Tested | Test File                                            |
 | -------------- | ----------------------------------------------------------- | ----------- | ------ | ---------------------------------------------------- |
-| `ValSem002`    | Group id                                                    | ✅           | ✅      | `openmls/src/group/tests/test_framing_validation.rs` |
-| `ValSem003`    | Epoch                                                       | ✅           | ✅      | `openmls/src/group/tests/test_framing_validation.rs` |
-| `ValSem004`    | Sender: Member: check the sender points to a non-blank leaf | ✅           | ✅      | `openmls/src/group/tests/test_framing_validation.rs` |
-| `ValSem005`    | Application messages must use ciphertext                    | ✅           | ✅      | `openmls/src/group/tests/test_framing_validation.rs` |
-| `ValSem006`    | Ciphertext: decryption needs to work                        | ✅           | ✅      | `openmls/src/group/tests/test_framing_validation.rs` |
-| `ValSem007`    | Membership tag presence                                     | ✅           | ✅      | `openmls/src/group/tests/test_framing_validation.rs` |
-| `ValSem008`    | Membership tag verification                                 | ✅           | ✅      | `openmls/src/group/tests/test_framing_validation.rs` |
-| `ValSem009`    | Confirmation tag presence                                   | ✅           | ✅      | `openmls/src/group/tests/test_framing_validation.rs` |
-| `ValSem010`    | Signature verification                                      | ✅           | ✅      | `openmls/src/group/tests/test_framing_validation.rs` |
-| `ValSem011`    | PrivateContentTbe padding must be all-zero                  | ✅           | ✅      | `openmls/src/group/tests/test_framing.rs`            |
+| `ValSem002`    | Group id                                                    | ✅          | ✅     | `openmls/src/group/tests/test_framing_validation.rs` |
+| `ValSem003`    | Epoch                                                       | ✅          | ✅     | `openmls/src/group/tests/test_framing_validation.rs` |
+| `ValSem004`    | Sender: Member: check the sender points to a non-blank leaf | ✅          | ✅     | `openmls/src/group/tests/test_framing_validation.rs` |
+| `ValSem005`    | Application messages must use ciphertext                    | ✅          | ✅     | `openmls/src/group/tests/test_framing_validation.rs` |
+| `ValSem006`    | Ciphertext: decryption needs to work                        | ✅          | ✅     | `openmls/src/group/tests/test_framing_validation.rs` |
+| `ValSem007`    | Membership tag presence                                     | ✅          | ✅     | `openmls/src/group/tests/test_framing_validation.rs` |
+| `ValSem008`    | Membership tag verification                                 | ✅          | ✅     | `openmls/src/group/tests/test_framing_validation.rs` |
+| `ValSem009`    | Confirmation tag presence                                   | ✅          | ✅     | `openmls/src/group/tests/test_framing_validation.rs` |
+| `ValSem010`    | Signature verification                                      | ✅          | ✅     | `openmls/src/group/tests/test_framing_validation.rs` |
+| `ValSem011`    | PrivateContentTbe padding must be all-zero                  | ✅          | ✅     | `openmls/src/group/tests/test_framing.rs`            |
 
 ### Semantic validation of proposals covered by a Commit
 
@@ -60,7 +60,6 @@ The following is a list of the individual semantic validation steps performed by
 | `ValSem102`    | Add Proposal: HPKE init key in proposals must be unique among proposals                     | ✅          | ✅     | `openmls/src/group/tests/test_proposal_validation.rs` |
 | `ValSem103`    | Add Proposal: Identity in proposals must be unique among existing group members             | ✅          | ✅     | `openmls/src/group/tests/test_proposal_validation.rs` |
 | `ValSem104`    | Add Proposal: Signature public key in proposals must be unique among existing group members | ✅          | ✅     | `openmls/src/group/tests/test_proposal_validation.rs` |
-| `ValSem105`    | Add Proposal: HPKE init key in proposals must be unique among existing group members        | ✅          | ✅     | `openmls/src/group/tests/test_proposal_validation.rs` |
 | `ValSem106`    | Add Proposal: required capabilities                                                         | ✅          | ✅     | `openmls/src/group/tests/test_proposal_validation.rs` |
 | `ValSem107`    | Remove Proposal: Removed member must be unique among proposals                              | ✅          | ✅     | `openmls/src/group/tests/test_proposal_validation.rs` |
 | `ValSem108`    | Remove Proposal: Removed member must be an existing group member                            | ✅          | ✅     | `openmls/src/group/tests/test_proposal_validation.rs` |
@@ -68,6 +67,8 @@ The following is a list of the individual semantic validation steps performed by
 | `ValSem110`    | Update Proposal: HPKE init key must be unique among existing members                        | ✅          | ✅     | `openmls/src/group/tests/test_proposal_validation.rs` |
 | `ValSem111`    | Update Proposal: The sender of a full Commit must not include own update proposals          | ✅          | ✅     | `openmls/src/group/tests/test_proposal_validation.rs` |
 | `ValSem112`    | Update Proposal: The sender of a standalone update proposal must be of type member          | ✅          | ✅     | `openmls/src/group/tests/test_proposal_validation.rs` |
+| `ValSem113`    | Add Proposal: Init key and encryption key must be different                                 | ✅          | ✅     | `openmls/src/group/tests/test_proposal_validation.rs` |
+| `ValSem114`    | Add Proposal: Encryption key must be unique in the tree                                     | ✅          | ✅     | `openmls/src/group/tests/test_proposal_validation.rs` |
 
 ### Commit message validation
 

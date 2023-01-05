@@ -97,6 +97,13 @@ impl<'a> TreeSyncDiff<'a> {
         // ValSem202: Path must be the right length
         let direct_path_length = self.filtered_direct_path(params.sender_leaf_index).len();
         if direct_path_length != params.update_path.len() {
+            // XXX: Rewrite tests to allow for debug asserts.
+            // debug_assert!(
+            //     false,
+            //     "Path length mismatch {} != {}",
+            //     direct_path_length,
+            //     params.update_path.len()
+            // );
             return Err(ApplyUpdatePathError::PathLengthMismatch);
         }
 

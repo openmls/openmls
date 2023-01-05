@@ -1,5 +1,5 @@
 use log::debug;
-use openmls_traits::crypto::OpenMlsCrypto;
+use openmls_traits::{crypto::OpenMlsCrypto, key_store::OpenMlsKeyStore, types::HpkeKeyPair};
 use tls_codec::Deserialize;
 
 use crate::{
@@ -25,6 +25,23 @@ impl CoreGroup {
         }
 
         let ciphersuite = welcome.ciphersuite();
+
+        // Read the encryption key pair from the key store and delete it there.
+        let encryption_key_pair: HpkeKeyPair = backend
+            .key_store()
+            .read(&LeafNode::encryption_key_label(
+                key_package_bundle
+                    .key_package
+                    .leaf_node()
+                    .signature_key()
+                    .as_slice(),
+            ))
+            .ok_or(WelcomeError::NoMatchingEncryptionKey)?;
+        backend
+            .key_store()
+            .delete(key_package_bundle.key_package.hpke_init_key().as_slice())
+            // This error really shouldn't happen. We just read the value.
+            .map_err(|_| WelcomeError::NoMatchingEncryptionKey)?;
 
         // Find key_package in welcome secrets
         let egs = if let Some(egs) = Self::find_key_package_from_welcome_secrets(
@@ -137,7 +154,7 @@ impl CoreGroup {
             &nodes,
             group_info.signer(),
             path_secret_option,
-            key_package_bundle,
+            encryption_key_pair,
         )
         .map_err(|e| match e {
             TreeSyncFromNodesError::LibraryError(e) => e.into(),

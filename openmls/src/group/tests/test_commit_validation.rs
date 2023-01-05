@@ -12,7 +12,7 @@ use crate::{
     ciphersuite::signable::Signable,
     credentials::*,
     framing::*,
-    group::{errors::*, *},
+    group::{config::CryptoConfig, errors::*, *},
     messages::proposals::*,
     schedule::psk::*,
     treesync::errors::ApplyUpdatePathError,
@@ -60,10 +60,6 @@ fn validation_test_setup(
     .expect("An unexpected error occurred.");
 
     // Generate KeyPackages
-    let alice_key_package =
-        generate_key_package(&[ciphersuite], &alice_credential, vec![], backend)
-            .expect("An unexpected error occurred.");
-
     let bob_key_package = generate_key_package(&[ciphersuite], &bob_credential, vec![], backend)
         .expect("An unexpected error occurred.");
 
@@ -75,12 +71,17 @@ fn validation_test_setup(
 
     let mls_group_config = MlsGroupConfig::builder()
         .wire_format_policy(wire_format_policy)
+        .crypto_config(CryptoConfig::with_default_version(ciphersuite))
         .build();
 
     // === Alice creates a group ===
-    let mut alice_group =
-        MlsGroup::new_with_group_id(backend, &mls_group_config, group_id, alice_key_package)
-            .expect("An unexpected error occurred.");
+    let mut alice_group = MlsGroup::new_with_group_id(
+        backend,
+        &mls_group_config,
+        group_id,
+        alice_credential.signature_key(),
+    )
+    .expect("An unexpected error occurred.");
 
     let (_message, welcome) = alice_group
         .add_members(backend, &[bob_key_package, charlie_key_package])

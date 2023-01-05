@@ -4,7 +4,9 @@ use openmls::{prelude::*, test_utils::*, *};
 fn test_external_commit(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
     // Alice creates a new group ...
     let alice_group = {
-        let group_config = MlsGroupConfig::default();
+        let group_config = MlsGroupConfigBuilder::new()
+            .crypto_config(CryptoConfig::with_default_version(ciphersuite))
+            .build();
 
         let alice_cb = {
             let alice_cb = CredentialBundle::new(
@@ -29,19 +31,12 @@ fn test_external_commit(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoPr
             alice_cb
         };
 
-        let alice_key_package = KeyPackage::builder()
-            .build(
-                config::CryptoConfig {
-                    ciphersuite,
-                    version: ProtocolVersion::default(),
-                },
-                backend,
-                &alice_cb,
-            )
-            .expect("Creation of key package failed.");
-
-        MlsGroup::new(backend, &group_config, alice_key_package)
-            .expect("An unexpected error occurred.")
+        MlsGroup::new(
+            backend,
+            &group_config,
+            alice_cb.credential().signature_key(),
+        )
+        .expect("An unexpected error occurred.")
     };
 
     // ... and exports a group info (with ratchet_tree).
@@ -85,7 +80,9 @@ fn test_external_commit(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoPr
             backend,
             None,
             verifiable_group_info,
-            &MlsGroupConfig::default(),
+            &MlsGroupConfigBuilder::new()
+                .crypto_config(CryptoConfig::with_default_version(ciphersuite))
+                .build(),
             b"",
             &bob_cb,
         )
@@ -106,7 +103,9 @@ fn test_external_commit(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoPr
             backend,
             None,
             verifiable_group_info_broken,
-            &MlsGroupConfig::default(),
+            &MlsGroupConfigBuilder::new()
+                .crypto_config(CryptoConfig::with_default_version(ciphersuite))
+                .build(),
             b"",
             &bob_cb,
         )

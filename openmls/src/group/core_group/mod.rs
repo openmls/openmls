@@ -37,6 +37,7 @@ mod test_proposals;
 use super::errors::CreateGroupContextExtProposalError;
 use crate::framing::mls_auth_content::VerifiableAuthenticatedContent;
 
+use crate::group::config::CryptoConfig;
 use crate::{
     binary_tree::array_representation::LeafNodeIndex,
     ciphersuite::{signable::Signable, HpkePublicKey},
@@ -137,9 +138,9 @@ pub(crate) struct CoreGroup {
 
 /// Builder for [`CoreGroup`].
 pub(crate) struct CoreGroupBuilder {
-    key_package_bundle: KeyPackageBundle,
     own_leaf_extensions: Vec<Extension>,
     group_id: GroupId,
+    crypto_config: CryptoConfig,
     config: Option<CoreGroupConfig>,
     psk_ids: Vec<PreSharedKeyId>,
     version: Option<ProtocolVersion>,
@@ -150,9 +151,8 @@ pub(crate) struct CoreGroupBuilder {
 
 impl CoreGroupBuilder {
     /// Create a new [`CoreGroupBuilder`].
-    pub(crate) fn new(group_id: GroupId, key_package_bundle: KeyPackageBundle) -> Self {
+    pub(crate) fn new(group_id: GroupId, crypto_config: CryptoConfig) -> Self {
         Self {
-            key_package_bundle,
             group_id,
             config: None,
             psk_ids: vec![],
@@ -161,6 +161,7 @@ impl CoreGroupBuilder {
             max_past_epochs: 0,
             own_leaf_extensions: vec![],
             lifetime: None,
+            crypto_config,
         }
     }
     /// Set the [`CoreGroupConfig`] of the [`CoreGroup`].
@@ -210,7 +211,7 @@ impl CoreGroupBuilder {
         credential_bundle: &CredentialBundle,
         backend: &impl OpenMlsCryptoProvider,
     ) -> Result<CoreGroup, CoreGroupBuildError> {
-        let ciphersuite = self.key_package_bundle.key_package().ciphersuite();
+        let ciphersuite = self.crypto_config.ciphersuite;
         let config = self.config.unwrap_or_default();
         let capabilities = self
             .required_capabilities
@@ -222,7 +223,10 @@ impl CoreGroupBuilder {
         trace!(" >>> with {:?}, {:?}", ciphersuite, config);
         let (tree, commit_secret) = TreeSync::new(
             backend,
-            self.key_package_bundle,
+            CryptoConfig {
+                ciphersuite,
+                version,
+            },
             credential_bundle,
             self.lifetime.unwrap_or_default(),
             Capabilities::new(
@@ -301,11 +305,8 @@ impl CoreGroupBuilder {
 /// Public [`CoreGroup`] functions.
 impl CoreGroup {
     /// Get a builder for [`CoreGroup`].
-    pub(crate) fn builder(
-        group_id: GroupId,
-        key_package_bundle: KeyPackageBundle,
-    ) -> CoreGroupBuilder {
-        CoreGroupBuilder::new(group_id, key_package_bundle)
+    pub(crate) fn builder(group_id: GroupId, crypto_config: CryptoConfig) -> CoreGroupBuilder {
+        CoreGroupBuilder::new(group_id, crypto_config)
     }
 
     // === Create handshake messages ===

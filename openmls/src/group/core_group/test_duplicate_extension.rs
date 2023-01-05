@@ -35,9 +35,6 @@ fn duplicate_ratchet_tree_extension(
     .expect("An unexpected error occurred.");
 
     // Generate KeyPackages
-    let alice_key_package_bundle =
-        KeyPackageBundle::new(backend, ciphersuite, &alice_credential_bundle);
-
     let bob_key_package_bundle =
         KeyPackageBundle::new(backend, ciphersuite, &bob_credential_bundle);
     let bob_key_package = bob_key_package_bundle.key_package();
@@ -48,10 +45,13 @@ fn duplicate_ratchet_tree_extension(
 
     let framing_parameters = FramingParameters::new(group_aad, WireFormat::PublicMessage);
 
-    let mut alice_group = CoreGroup::builder(GroupId::random(backend), alice_key_package_bundle)
-        .with_config(config)
-        .build(&alice_credential_bundle, backend)
-        .expect("Error creating group.");
+    let mut alice_group = CoreGroup::builder(
+        GroupId::random(backend),
+        config::CryptoConfig::with_default_version(ciphersuite),
+    )
+    .with_config(config)
+    .build(&alice_credential_bundle, backend)
+    .expect("Error creating group.");
 
     // === Alice adds Bob ===
     let bob_add_proposal = alice_group

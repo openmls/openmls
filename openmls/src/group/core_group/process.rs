@@ -103,7 +103,6 @@ impl CoreGroup {
     ///  - ValSem102
     ///  - ValSem103
     ///  - ValSem104
-    ///  - ValSem105
     ///  - ValSem106
     ///  - ValSem107
     ///  - ValSem108
@@ -170,7 +169,6 @@ impl CoreGroup {
                         //  - ValSem102
                         //  - ValSem103
                         //  - ValSem104
-                        //  - ValSem105
                         //  - ValSem106
                         //  - ValSem107
                         //  - ValSem108
@@ -286,7 +284,6 @@ impl CoreGroup {
     ///  - ValSem102
     ///  - ValSem103
     ///  - ValSem104
-    ///  - ValSem105
     ///  - ValSem106
     ///  - ValSem107
     ///  - ValSem108

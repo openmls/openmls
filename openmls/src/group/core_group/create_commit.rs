@@ -101,7 +101,6 @@ impl CoreGroup {
         // ValSem102
         // ValSem103
         // ValSem104
-        // ValSem105
         // ValSem106
         self.validate_add_proposals(&proposal_queue)?;
         // ValSem107
