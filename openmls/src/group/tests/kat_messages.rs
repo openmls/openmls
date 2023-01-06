@@ -468,18 +468,19 @@ pub fn run_test_vector(tv: MessagesTestVector) -> Result<(), MessagesTestVectorE
         return Err(MessagesTestVectorError::RatchetTreeEncodingMismatch);
     }
 
-    // GroupInfo
-    let tv_group_info = hex_to_bytes(&tv.group_info);
-    let my_group_info = GroupInfo::tls_deserialize(&mut tv_group_info.as_slice())
-        .expect("An unexpected error occurred.")
-        .tls_serialize_detached()
-        .expect("An unexpected error occurred.");
-    if tv_group_info != my_group_info {
-        log::error!("  GroupInfo encoding mismatch");
-        log::debug!("    Encoded: {:x?}", my_group_info);
-        log::debug!("    Expected: {:x?}", tv_group_info);
+    // VerifiableGroupInfo
+    let tv_verifiable_group_info = hex_to_bytes(&tv.group_info);
+    let my_verifiable_group_info =
+        VerifiableGroupInfo::tls_deserialize(&mut tv_verifiable_group_info.as_slice())
+            .expect("An unexpected error occurred.")
+            .tls_serialize_detached()
+            .expect("An unexpected error occurred.");
+    if tv_verifiable_group_info != my_verifiable_group_info {
+        log::error!("  VerifiableGroupInfo encoding mismatch");
+        log::debug!("    Encoded: {:x?}", my_verifiable_group_info);
+        log::debug!("    Expected: {:x?}", tv_verifiable_group_info);
         if cfg!(test) {
-            panic!("GroupInfo encoding mismatch");
+            panic!("VerifiableGroupInfo encoding mismatch");
         }
         return Err(MessagesTestVectorError::GroupInfoEncodingMismatch);
     }

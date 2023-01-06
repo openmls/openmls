@@ -95,16 +95,18 @@ impl CoreGroup {
         let group_info_bytes = welcome_key
             .aead_open(backend, welcome.encrypted_group_info(), &[], &welcome_nonce)
             .map_err(|_| WelcomeError::GroupInfoDecryptionFailure)?;
-        let group_info = GroupInfo::tls_deserialize(&mut group_info_bytes.as_slice())
-            .map_err(|_| WelcomeError::MalformedWelcomeMessage)?;
+        let verifiable_group_info =
+            VerifiableGroupInfo::tls_deserialize(&mut group_info_bytes.as_slice())
+                .map_err(|_| WelcomeError::MalformedWelcomeMessage)?;
 
-        if ciphersuite != group_info.group_context().ciphersuite() {
+        if ciphersuite != verifiable_group_info.ciphersuite() {
             return Err(WelcomeError::GroupInfoCiphersuiteMismatch);
         }
 
         // Make sure that we can support the required capabilities in the group info.
-        let group_context_extensions = group_info.group_context().extensions();
-        if let Some(required_capabilities) = group_context_extensions.required_capabilities() {
+        if let Some(required_capabilities) =
+            verifiable_group_info.extensions().required_capabilities()
+        {
             required_capabilities
                 .check_support()
                 .map_err(|_| WelcomeError::UnsupportedCapability)?;
@@ -126,7 +128,7 @@ impl CoreGroup {
         // this group. Note that this is not strictly necessary. But there's
         // currently no other mechanism to enable the extension.
         let (nodes, enable_ratchet_tree_extension) =
-            match try_nodes_from_extensions(group_info.extensions()) {
+            match try_nodes_from_extensions(verifiable_group_info.extensions()) {
                 Some(nodes) => (nodes, true),
                 None => match nodes_option {
                     Some(n) => (n, false),
@@ -140,7 +142,7 @@ impl CoreGroup {
             backend,
             ciphersuite,
             &nodes,
-            group_info.signer(),
+            verifiable_group_info.signer(),
             path_secret_option,
             encryption_key_pair,
         )
@@ -149,15 +151,16 @@ impl CoreGroup {
             TreeSyncFromNodesError::PublicTreeError(e) => WelcomeError::PublicTreeError(e),
         })?;
 
-        let signer_credential = tree
-            .leaf(group_info.signer())
-            .ok_or(WelcomeError::UnknownSender)?
-            .credential();
+        let group_info: GroupInfo = {
+            let signer_credential = tree
+                .leaf(verifiable_group_info.signer())
+                .ok_or(WelcomeError::UnknownSender)?
+                .credential();
 
-        // Verify GroupInfo signature
-        group_info
-            .verify_no_out(backend, signer_credential)
-            .map_err(|_| WelcomeError::InvalidGroupInfoSignature)?;
+            verifiable_group_info
+                .verify(backend, signer_credential)
+                .map_err(|_| WelcomeError::InvalidGroupInfoSignature)?
+        };
 
         // Compute state
         let group_context = GroupContext::new(
@@ -169,7 +172,7 @@ impl CoreGroup {
                 .group_context()
                 .confirmed_transcript_hash()
                 .to_vec(),
-            group_context_extensions.clone(),
+            group_info.group_context().extensions().clone(),
         );
 
         let serialized_group_context = group_context
