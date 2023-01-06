@@ -351,7 +351,7 @@ impl KeyPackage {
         &self,
         required_extensions: &[ExtensionType],
     ) -> Result<(), KeyPackageExtensionSupportError> {
-        for required_extension in required_extensions.into_iter() {
+        for required_extension in required_extensions.iter() {
             if !self.extensions().contains(*required_extension) {
                 return Err(KeyPackageExtensionSupportError::UnsupportedExtension);
             }
