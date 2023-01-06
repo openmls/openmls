@@ -115,6 +115,17 @@ impl MlsMessageOut {
         }
     }
 
+    /// Serializes the message to a byte vector. Returns [`MlsMessageError::UnableToEncode`] on failure.
+    pub fn to_bytes(&self) -> Result<Vec<u8>, MlsMessageError> {
+        self.tls_serialize_detached()
+            .map_err(|_| MlsMessageError::UnableToEncode)
+    }
+}
+
+// Convenience functions for tests and test-utils
+
+#[cfg(any(feature = "test-utils", test))]
+impl MlsMessageOut {
     /// Turn an [`MlsMessageOut`] into a [`Welcome`].
     #[cfg(any(feature = "test-utils", test))]
     pub fn into_welcome(self) -> Option<Welcome> {
@@ -142,12 +153,6 @@ impl MlsMessageOut {
             }
             _ => None,
         }
-    }
-
-    /// Serializes the message to a byte vector. Returns [`MlsMessageError::UnableToEncode`] on failure.
-    pub fn to_bytes(&self) -> Result<Vec<u8>, MlsMessageError> {
-        self.tls_serialize_detached()
-            .map_err(|_| MlsMessageError::UnableToEncode)
     }
 }
 
