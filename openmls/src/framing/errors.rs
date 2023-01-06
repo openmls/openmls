@@ -68,12 +68,12 @@ pub enum SenderError {
 }
 
 /// MlsMessage error
-#[derive(Error, Debug, PartialEq, Clone)]
+#[derive(Error, Debug, Clone)]
 pub enum MlsMessageError {
-    /// See [`LibraryError`] for more details.
-    #[error(transparent)]
-    LibraryError(#[from] LibraryError),
     /// The message could not be decoded.
     #[error("The message could not be decoded.")]
     UnableToDecode,
+    /// The message (or one of its parts) is too large to be encoded.
+    #[error("The message (or one of its parts) is too large to be encoded.")]
+    UnableToEncode,
 }

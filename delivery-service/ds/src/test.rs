@@ -1,6 +1,6 @@
 use super::*;
 use actix_web::{dev::Body, http::StatusCode, test, web, web::Bytes, App};
-use openmls::prelude::config::CryptoConfig;
+use openmls::{prelude::config::CryptoConfig, prelude_test::WireFormat};
 use openmls_rust_crypto::OpenMlsRustCrypto;
 use openmls_traits::key_store::OpenMlsKeyStore;
 use openmls_traits::types::SignatureScheme;
@@ -292,8 +292,8 @@ async fn test_group() {
 
     let response_body = response.response_mut().take_body();
     let response_body = response_body.as_ref().unwrap();
-    let mut messages: Vec<Message> = match response_body {
-        Body::Bytes(b) => TlsVecU16::<Message>::tls_deserialize(&mut b.as_ref())
+    let mut messages: Vec<MlsMessageIn> = match response_body {
+        Body::Bytes(b) => TlsVecU16::<MlsMessageIn>::tls_deserialize(&mut b.as_ref())
             .expect("Invalid message list")
             .into(),
         _ => panic!("Unexpected server response."),
@@ -301,19 +301,18 @@ async fn test_group() {
 
     let welcome_message = messages
         .iter()
-        .position(|m| matches!(m, Message::Welcome(_)))
+        .position(|m| matches!(m.wire_format(), WireFormat::Welcome))
         .expect("Didn't get a welcome message from the server.");
-    let welcome_message = match messages.remove(welcome_message) {
-        Message::Welcome(m) => m,
-        _ => panic!("This is not a welcome message."),
-    };
-    assert_eq!(welcome_msg, welcome_message);
+    let welcome_message = messages.remove(welcome_message);
+    assert_eq!(welcome_msg, welcome_message.into());
     assert!(messages.is_empty());
 
     let mut group_on_client2 = MlsGroup::new_from_welcome(
         crypto,
         &mls_group_config,
-        welcome_msg,
+        welcome_msg
+            .into_welcome()
+            .expect("Unexpected message type."),
         Some(group.export_ratchet_tree()), // delivered out of band
     )
     .expect("Error creating group from Welcome");
@@ -348,8 +347,8 @@ async fn test_group() {
 
     let response_body = response.response_mut().take_body();
     let response_body = response_body.as_ref().unwrap();
-    let mut messages: Vec<Message> = match response_body {
-        Body::Bytes(b) => TlsVecU16::<Message>::tls_deserialize(&mut b.as_ref())
+    let mut messages: Vec<MlsMessageIn> = match response_body {
+        Body::Bytes(b) => TlsVecU16::<MlsMessageIn>::tls_deserialize(&mut b.as_ref())
             .expect("Invalid message list")
             .into(),
         _ => panic!("Unexpected server response."),
@@ -357,17 +356,23 @@ async fn test_group() {
 
     let mls_message = messages
         .iter()
-        .position(|m| matches!(m, Message::MlsMessage(_)))
+        .position(|m| {
+            matches!(
+                m.wire_format(),
+                WireFormat::PublicMessage | WireFormat::PrivateMessage
+            )
+        })
         .expect("Didn't get an MLS application message from the server.");
-    let mls_message = match messages.remove(mls_message) {
-        Message::MlsMessage(m) => m,
+    let protocol_message: ProtocolMessage = match messages.remove(mls_message).extract() {
+        MlsMessageInBody::PrivateMessage(m) => m.into(),
+        MlsMessageInBody::PublicMessage(m) => m.into(),
         _ => panic!("This is not an MLS message."),
     };
     assert!(messages.is_empty());
 
     // Decrypt the message on Client1
     let processed_message = group
-        .process_message(crypto, mls_message)
+        .process_message(crypto, protocol_message)
         .expect("Could not process unverified message.");
     if let ProcessedMessageContent::ApplicationMessage(application_message) =
         processed_message.into_content()

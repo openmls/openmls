@@ -7,7 +7,7 @@ use super::{
 };
 
 use ds_lib::*;
-use openmls::prelude::*;
+use openmls::{prelude::*, prelude_test::MlsMessageOut};
 
 pub struct Backend {
     ds_url: Url,
@@ -53,7 +53,7 @@ impl Backend {
     }
 
     /// Send a welcome message.
-    pub fn send_welcome(&self, welcome_msg: &Welcome) -> Result<(), String> {
+    pub fn send_welcome(&self, welcome_msg: &MlsMessageOut) -> Result<(), String> {
         let mut url = self.ds_url.clone();
         url.set_path("/send/welcome");
 
@@ -73,14 +73,14 @@ impl Backend {
     }
 
     /// Get a list of all new messages for the user.
-    pub fn recv_msgs(&self, user: &User) -> Result<Vec<Message>, String> {
+    pub fn recv_msgs(&self, user: &User) -> Result<Vec<MlsMessageIn>, String> {
         let mut url = self.ds_url.clone();
         let path = "/recv/".to_string()
             + &base64::encode_config(user.identity.borrow().credential(), base64::URL_SAFE);
         url.set_path(&path);
 
         let response = get(&url)?;
-        match TlsVecU16::<Message>::tls_deserialize(&mut response.as_slice()) {
+        match TlsVecU16::<MlsMessageIn>::tls_deserialize(&mut response.as_slice()) {
             Ok(r) => Ok(r.into()),
             Err(e) => Err(format!("Invalid message list: {:?}", e)),
         }
