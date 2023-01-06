@@ -164,8 +164,7 @@ fn test_welcome_ciphersuite_mismatch(
         .aead_open(backend, welcome.encrypted_group_info(), &[], &welcome_nonce)
         .expect("Could not decrypt GroupInfo.");
     let mut verifiable_group_info =
-        VerifiableGroupInfo::tls_deserialize(&mut group_info_bytes.as_slice())
-            .expect("Could not deserialize GroupInfo.");
+        VerifiableGroupInfo::tls_deserialize(&mut group_info_bytes.as_slice()).unwrap();
 
     // Manipulate the ciphersuite in the GroupInfo
     verifiable_group_info
@@ -175,15 +174,13 @@ fn test_welcome_ciphersuite_mismatch(
 
     // === Reconstruct the Welcome message and try to process it ===
 
-    let verifiable_group_info_bytes = verifiable_group_info
-        .tls_serialize_detached()
-        .expect("Could not serialize GroupInfo.");
+    let verifiable_group_info_bytes = verifiable_group_info.tls_serialize_detached().unwrap();
 
-    let encrypted_group_info = welcome_key
+    let encrypted_verifiable_group_info = welcome_key
         .aead_seal(backend, &verifiable_group_info_bytes, &[], &welcome_nonce)
-        .expect("Could not encrypt GroupInfo.");
+        .unwrap();
 
-    welcome.encrypted_group_info = encrypted_group_info.into();
+    welcome.encrypted_group_info = encrypted_verifiable_group_info.into();
 
     // Bob tries to join the group
     let err = MlsGroup::new_from_welcome(
