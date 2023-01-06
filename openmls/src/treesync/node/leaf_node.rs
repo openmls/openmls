@@ -708,7 +708,7 @@ impl OpenMlsLeafNode {
     /// Add new extension to this leaf node.
     /// The `new_extension` is add to the existing [`Extension`]s. If the
     /// [`Extension`] exists, it is overridden.
-    pub(crate) fn add_extensions(&mut self, new_extension: Extension) {
+    pub(crate) fn add_extension(&mut self, new_extension: Extension) {
         self.leaf_node
             .payload
             .extensions

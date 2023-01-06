@@ -115,7 +115,7 @@ impl TreeSync {
         leaf.add_capabilities(capabilities);
         extensions
             .iter()
-            .for_each(|extension| leaf.add_extensions(extension.clone()));
+            .for_each(|extension| leaf.add_extension(extension.clone()));
 
         let node = Node::LeafNode(leaf);
         let path_secret: PathSecret = Secret::random(key_package.ciphersuite(), backend, None)
