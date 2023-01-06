@@ -10,7 +10,7 @@ use crate::{
     credentials::*,
     framing::mls_content::FramedContentBody,
     framing::{mls_auth_content::AuthenticatedContent, *},
-    group::*,
+    group::{config::CryptoConfig, *},
     key_packages::*,
     messages::proposals::*,
     messages::*,
@@ -70,16 +70,18 @@ pub fn generate_test_vector(ciphersuite: Ciphersuite) -> MessagesTestVector {
         &crypto,
     )
     .expect("An unexpected error occurred.");
-    let key_package_bundle = KeyPackageBundle::new(&crypto, ciphersuite_name, &credential_bundle);
     // TODO(#1149, #1051)
     // let capabilities = CapabilitiesExtension::default();
     let lifetime = Lifetime::default();
 
     // Let's create a group
-    let mut group = CoreGroup::builder(GroupId::random(&crypto), key_package_bundle)
-        .with_max_past_epoch_secrets(2)
-        .build(&credential_bundle, &crypto)
-        .expect("Could not create group.");
+    let mut group = CoreGroup::builder(
+        GroupId::random(&crypto),
+        CryptoConfig::with_default_version(ciphersuite),
+    )
+    .with_max_past_epoch_secrets(2)
+    .build(&credential_bundle, &crypto)
+    .expect("Could not create group.");
 
     let ratchet_tree: Vec<Option<Node>> = group.treesync().export_nodes();
 
@@ -126,16 +128,18 @@ pub fn generate_test_vector(ciphersuite: Ciphersuite) -> MessagesTestVector {
     // Create a proposal to update the user's KeyPackage
     let key_package_bundle = KeyPackageBundle::new(&crypto, ciphersuite_name, &credential_bundle);
     let key_package = key_package_bundle.key_package();
-    let update_proposal = UpdateProposal {
-        leaf_node: LeafNode::new(
-            key_package.hpke_init_key().clone(),
-            &credential_bundle,
-            LeafNodeSource::Update,
-            Extensions::empty(),
-            &crypto,
-        )
-        .unwrap(),
-    };
+    let (leaf_node, _encryption_key_pair) = LeafNode::new(
+        CryptoConfig {
+            ciphersuite,
+            version: ProtocolVersion::Mls10,
+        },
+        &credential_bundle,
+        LeafNodeSource::Update,
+        Extensions::empty(),
+        &crypto,
+    )
+    .unwrap();
+    let update_proposal = UpdateProposal { leaf_node };
 
     // Create proposal to add a user
     let joiner_credential_bundle = CredentialBundle::new(

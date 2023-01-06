@@ -235,9 +235,13 @@ async fn test_group() {
     // Client1 creates MyFirstGroup
     let group_id = GroupId::from_slice(b"MyFirstGroup");
     let group_ciphersuite = key_packages[0].ciphersuite();
-    let mut group =
-        MlsGroup::new_with_group_id(crypto, &mls_group_config, group_id, key_packages.remove(0))
-            .expect("An unexpected error occurred.");
+    let mut group = MlsGroup::new_with_group_id(
+        crypto,
+        &mls_group_config,
+        group_id,
+        credentials.remove(0).signature_key(),
+    )
+    .expect("An unexpected error occurred.");
 
     // === Client1 invites Client2 ===
     // First we need to get the key package for Client2 from the DS.

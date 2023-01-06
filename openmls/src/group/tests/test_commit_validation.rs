@@ -12,7 +12,7 @@ use crate::{
     ciphersuite::signable::Signable,
     credentials::*,
     framing::*,
-    group::{errors::*, *},
+    group::{config::CryptoConfig, errors::*, *},
     messages::proposals::*,
     schedule::psk::*,
     treesync::errors::ApplyUpdatePathError,
@@ -60,14 +60,6 @@ fn validation_test_setup(
     .expect("An unexpected error occurred.");
 
     // Generate KeyPackages
-    let alice_key_package = generate_key_package(
-        &[ciphersuite],
-        &alice_credential,
-        Extensions::empty(),
-        backend,
-    )
-    .expect("An unexpected error occurred.");
-
     let bob_key_package = generate_key_package(
         &[ciphersuite],
         &bob_credential,
@@ -88,12 +80,17 @@ fn validation_test_setup(
 
     let mls_group_config = MlsGroupConfig::builder()
         .wire_format_policy(wire_format_policy)
+        .crypto_config(CryptoConfig::with_default_version(ciphersuite))
         .build();
 
     // === Alice creates a group ===
-    let mut alice_group =
-        MlsGroup::new_with_group_id(backend, &mls_group_config, group_id, alice_key_package)
-            .expect("An unexpected error occurred.");
+    let mut alice_group = MlsGroup::new_with_group_id(
+        backend,
+        &mls_group_config,
+        group_id,
+        alice_credential.signature_key(),
+    )
+    .expect("An unexpected error occurred.");
 
     let (_message, welcome) = alice_group
         .add_members(backend, &[bob_key_package, charlie_key_package])
@@ -691,4 +688,66 @@ fn test_valsem205(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
     bob_group
         .process_message(backend, MlsMessageIn::from(original_plaintext))
         .expect("Unexpected error.");
+}
+
+// this ensures that a member can process commits not containing all the stored proposals
+#[apply(ciphersuites_and_backends)]
+fn test_partial_proposal_commit(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
+    // Test with PublicMessage
+    let CommitValidationTestSetup {
+        mut alice_group,
+        mut bob_group,
+        ..
+    } = validation_test_setup(PURE_PLAINTEXT_WIRE_FORMAT_POLICY, ciphersuite, backend);
+
+    let charlie_index = alice_group
+        .members()
+        .find(|m| m.identity == b"Charlie")
+        .unwrap()
+        .index;
+
+    // Create first proposal in Alice's group
+    let proposal_1 = alice_group
+        .propose_remove_member(backend, charlie_index)
+        .unwrap();
+    let proposal_1 = bob_group
+        .process_message(backend, proposal_1.into())
+        .unwrap();
+    match proposal_1.into_content() {
+        ProcessedMessageContent::ProposalMessage(p) => bob_group.store_pending_proposal(*p),
+        _ => unreachable!(),
+    }
+
+    // Create second proposal in Alice's group
+    let proposal_2 = alice_group.propose_self_update(backend, None).unwrap();
+    let proposal_2 = bob_group
+        .process_message(backend, proposal_2.into())
+        .unwrap();
+    match proposal_2.into_content() {
+        ProcessedMessageContent::ProposalMessage(p) => bob_group.store_pending_proposal(*p),
+        _ => unreachable!(),
+    }
+
+    // Alice creates a commit with only a subset of the epoch's proposals. Bob should still be able to process it.
+    let remaining_proposal = alice_group
+        .proposal_store
+        .proposals()
+        .next()
+        .cloned()
+        .unwrap();
+    alice_group.proposal_store.empty();
+    alice_group.proposal_store.add(remaining_proposal);
+    let (commit, _) = alice_group.commit_to_pending_proposals(backend).unwrap();
+    // Alice herself should be able to merge the commit
+    alice_group
+        .merge_pending_commit()
+        .expect("Commits with partial proposals are not supported");
+
+    // Bob should be able to process the commit
+    bob_group
+        .process_message(backend, commit.into())
+        .expect("Commits with partial proposals are not supported");
+    bob_group
+        .merge_pending_commit()
+        .expect("Commits with partial proposals are not supported");
 }

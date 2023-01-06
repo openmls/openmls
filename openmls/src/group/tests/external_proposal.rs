@@ -7,7 +7,7 @@ use crate::{
     binary_tree::LeafNodeIndex,
     credentials::*,
     framing::*,
-    group::{errors::*, *},
+    group::{config::CryptoConfig, errors::*, *},
     messages::{
         external_proposals::*,
         proposals::{AddProposal, Proposal, ProposalType},
@@ -41,16 +41,19 @@ fn new_test_group(
     )
     .unwrap();
 
-    // Generate KeyPackages
-    let key_package =
-        generate_key_package(&[ciphersuite], &credential, Extensions::empty(), backend).unwrap();
-
     // Define the MlsGroup configuration
     let mls_group_config = MlsGroupConfig::builder()
         .wire_format_policy(wire_format_policy)
+        .crypto_config(CryptoConfig::with_default_version(ciphersuite))
         .build();
 
-    MlsGroup::new_with_group_id(backend, &mls_group_config, group_id, key_package).unwrap()
+    MlsGroup::new_with_group_id(
+        backend,
+        &mls_group_config,
+        group_id,
+        credential.signature_key(),
+    )
+    .unwrap()
 }
 
 // Validation test setup
@@ -89,6 +92,7 @@ fn validation_test_setup(
     // Define the MlsGroup configuration
     let mls_group_config = MlsGroupConfig::builder()
         .wire_format_policy(wire_format_policy)
+        .crypto_config(CryptoConfig::with_default_version(ciphersuite))
         .build();
 
     let bob_group = MlsGroup::new_from_welcome(
@@ -196,7 +200,10 @@ fn external_add_proposal_should_succeed(
         assert_eq!(bob_group.members().count(), 3);
 
         // Finally, Charlie can join with the Welcome
-        let cfg = MlsGroupConfig::builder().wire_format_policy(policy).build();
+        let cfg = MlsGroupConfig::builder()
+            .wire_format_policy(policy)
+            .crypto_config(CryptoConfig::with_default_version(ciphersuite))
+            .build();
         let charlie_group = MlsGroup::new_from_welcome(
             backend,
             &cfg,

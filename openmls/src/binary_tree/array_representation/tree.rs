@@ -90,7 +90,6 @@ impl<L: Clone + Debug + Default, P: Clone + Debug + Default> ABinaryTree<L, P> {
     /// of the underlying binary tree. Returns the default value if the node
     /// cannot be found.
     pub(in crate::binary_tree) fn leaf_by_index(&self, leaf_index: LeafNodeIndex) -> &L {
-        debug_assert!(self.leaf_nodes.get(leaf_index.usize()).is_some());
         self.leaf_nodes
             .get(leaf_index.usize())
             .unwrap_or(&self.default_leaf)
@@ -101,7 +100,6 @@ impl<L: Clone + Debug + Default, P: Clone + Debug + Default> ABinaryTree<L, P> {
     /// representation of the underlying binary tree. Returns the default value
     /// if the node cannot be found.
     pub(in crate::binary_tree) fn parent_by_index(&self, parent_index: ParentNodeIndex) -> &P {
-        debug_assert!(self.parent_nodes.get(parent_index.usize()).is_some());
         self.parent_nodes
             .get(parent_index.usize())
             .unwrap_or(&self.default_parent)
@@ -124,26 +122,6 @@ impl<L: Clone + Debug + Default, P: Clone + Debug + Default> ABinaryTree<L, P> {
     pub(crate) fn parent_count(&self) -> u32 {
         // This works, because the tree always has at least one leaf.
         self.parent_nodes.len() as u32
-    }
-
-    pub(crate) fn export_nodes(&self) -> Vec<TreeNode<L, P>> {
-        let mut nodes = Vec::new();
-
-        let leaves = self.leaf_nodes.iter();
-        let parents = self.parent_nodes.iter();
-
-        // Interleave the leaves and parents.
-        for (leaf, parent) in leaves.zip(parents) {
-            nodes.push(TreeNode::Leaf(leaf.clone()));
-            nodes.push(TreeNode::Parent(parent.clone()));
-        }
-
-        // Add the least leaf
-        if let Some(last_leaf) = self.leaf_nodes.last() {
-            nodes.push(TreeNode::Leaf(last_leaf.clone()));
-        }
-
-        nodes
     }
 
     /// Returns an iterator over a tuple of the leaf index and a reference to a
@@ -176,32 +154,26 @@ impl<L: Clone + Debug + Default, P: Clone + Debug + Default> ABinaryTree<L, P> {
     /// leaf or the maximum size of `u32::MAX`.
     pub(crate) fn merge_diff(&mut self, diff: StagedAbDiff<L, P>) {
         let tree_size = diff.tree_size();
+
         let (leaf_diff, parent_diff) = diff.into_diffs();
 
-        // If the size of the diff is smaller than the tree, truncate the tree
-        // to the size of the diff.
-        self.leaf_nodes.truncate(tree_size.leaf_count() as usize);
+        // Resize the tree to the new size.
+        self.leaf_nodes
+            .resize_with(tree_size.leaf_count() as usize, Default::default);
         self.parent_nodes
-            .truncate(tree_size.parent_count() as usize);
+            .resize_with(tree_size.parent_count() as usize, Default::default);
 
         // Merge leaves
         // Iterate over the BTreeMap in order of indices.
         for (leaf_index, diff_leaf) in leaf_diff.into_iter() {
             // Assert that the node index is within the range of the tree.
-            debug_assert!(leaf_index.u32() <= self.leaf_count());
+            debug_assert!(leaf_index.u32() < self.leaf_count());
 
-            // If the node would extend the tree, push it to the vector of nodes.
-            if leaf_index.u32() == self.leaf_count() {
-                self.leaf_nodes.push(diff_leaf);
-            } else {
-                // If the node_index points to somewhere within the size of the
-                // tree, do a swap-remove.
-                match self.leaf_nodes.get_mut(leaf_index.usize()) {
-                    Some(n) => *n = diff_leaf,
-                    None => {
-                        // Panic in debug mode
-                        debug_assert!(false);
-                    }
+            match self.leaf_nodes.get_mut(leaf_index.usize()) {
+                Some(n) => *n = diff_leaf,
+                None => {
+                    // Panic in debug mode
+                    debug_assert!(false);
                 }
             }
         }
@@ -210,20 +182,13 @@ impl<L: Clone + Debug + Default, P: Clone + Debug + Default> ABinaryTree<L, P> {
         // Iterate over the BTreeMap in order of indices.
         for (parent_index, diff_parent) in parent_diff.into_iter() {
             // Assert that the node index is within the range of the tree.
-            debug_assert!(parent_index.u32() <= self.parent_count());
+            debug_assert!(parent_index.u32() < self.parent_count());
 
-            // If the node would extend the tree, push it to the vector of nodes.
-            if parent_index.u32() == self.parent_count() {
-                self.parent_nodes.push(diff_parent);
-            } else {
-                // If the node_index points to somewhere within the size of the
-                // tree, do a swap-remove.
-                match self.parent_nodes.get_mut(parent_index.usize()) {
-                    Some(n) => *n = diff_parent,
-                    None => {
-                        // Panic in debug mode
-                        debug_assert!(false);
-                    }
+            match self.parent_nodes.get_mut(parent_index.usize()) {
+                Some(n) => *n = diff_parent,
+                None => {
+                    // Panic in debug mode
+                    debug_assert!(false);
                 }
             }
         }

@@ -1,6 +1,6 @@
 use tls_codec::{Deserialize, Serialize};
 
-use crate::{credentials::*, key_packages::*, messages::*, test_utils::*};
+use crate::{credentials::*, group::config::CryptoConfig, messages::*, test_utils::*};
 
 /// Tests the creation of an [UnverifiedGroupInfo] and verifies it was correctly signed.
 #[apply(ciphersuites_and_backends)]
@@ -13,14 +13,13 @@ fn export_group_info(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvi
     )
     .unwrap();
 
-    let alice_key_package_bundle =
-        KeyPackageBundle::new(backend, ciphersuite, &alice_credential_bundle);
-
     // Alice creates a group
-    let group_alice: CoreGroup =
-        CoreGroup::builder(GroupId::random(backend), alice_key_package_bundle)
-            .build(&alice_credential_bundle, backend)
-            .unwrap();
+    let group_alice: CoreGroup = CoreGroup::builder(
+        GroupId::random(backend),
+        CryptoConfig::with_default_version(ciphersuite),
+    )
+    .build(&alice_credential_bundle, backend)
+    .unwrap();
 
     let group_info: GroupInfo = group_alice
         .export_group_info(backend, &alice_credential_bundle, true)

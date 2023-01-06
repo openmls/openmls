@@ -101,7 +101,6 @@ impl CoreGroup {
         // ValSem102
         // ValSem103
         // ValSem104
-        // ValSem105
         // ValSem106
         self.validate_add_proposals(&proposal_queue)?;
         // ValSem107
@@ -173,7 +172,6 @@ impl CoreGroup {
                         params.credential_bundle(),
                         backend,
                     )?;
-                    diff.clear_tree_hash();
                 }
 
                 // Derive and apply an update path based on the previously

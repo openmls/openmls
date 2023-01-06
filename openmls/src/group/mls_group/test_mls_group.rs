@@ -88,12 +88,16 @@ fn test_mls_group_persistence(ciphersuite: Ciphersuite, backend: &impl OpenMlsCr
     );
 
     // Define the MlsGroup configuration
-    let mls_group_config = MlsGroupConfig::test_default();
+    let mls_group_config = MlsGroupConfig::test_default(ciphersuite);
 
     // === Alice creates a group ===
-    let mut alice_group =
-        MlsGroup::new_with_group_id(backend, &mls_group_config, group_id, alice_key_package)
-            .expect("An unexpected error occurred.");
+    let mut alice_group = MlsGroup::new_with_group_id(
+        backend,
+        &mls_group_config,
+        group_id,
+        alice_key_package.leaf_node().signature_key(),
+    )
+    .expect("An unexpected error occurred.");
 
     // Check the internal state has changed
     assert_eq!(alice_group.state_changed(), InnerState::Changed);
@@ -174,12 +178,18 @@ fn remover(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
     );
 
     // Define the MlsGroup configuration
-    let mls_group_config = MlsGroupConfig::default();
+    let mls_group_config = MlsGroupConfigBuilder::new()
+        .crypto_config(CryptoConfig::with_default_version(ciphersuite))
+        .build();
 
     // === Alice creates a group ===
-    let mut alice_group =
-        MlsGroup::new_with_group_id(backend, &mls_group_config, group_id, alice_key_package)
-            .expect("An unexpected error occurred.");
+    let mut alice_group = MlsGroup::new_with_group_id(
+        backend,
+        &mls_group_config,
+        group_id,
+        alice_key_package.leaf_node().signature_key(),
+    )
+    .expect("An unexpected error occurred.");
 
     // === Alice adds Bob ===
     let (_queued_message, welcome) = alice_group
@@ -307,12 +317,16 @@ fn export_secret(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider)
     );
 
     // Define the MlsGroup configuration
-    let mls_group_config = MlsGroupConfig::test_default();
+    let mls_group_config = MlsGroupConfig::test_default(ciphersuite);
 
     // === Alice creates a group ===
-    let alice_group =
-        MlsGroup::new_with_group_id(backend, &mls_group_config, group_id, alice_key_package)
-            .expect("An unexpected error occurred.");
+    let alice_group = MlsGroup::new_with_group_id(
+        backend,
+        &mls_group_config,
+        group_id,
+        alice_key_package.leaf_node().signature_key(),
+    )
+    .expect("An unexpected error occurred.");
 
     assert!(
         alice_group
@@ -335,7 +349,7 @@ fn export_secret(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider)
 #[apply(ciphersuites_and_backends)]
 fn test_invalid_plaintext(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
     // Some basic setup functions for the MlsGroup.
-    let mls_group_config = MlsGroupConfig::test_default();
+    let mls_group_config = MlsGroupConfig::test_default(ciphersuite);
 
     let number_of_clients = 20;
     let setup = MlsGroupTestSetup::new(
@@ -463,12 +477,16 @@ fn test_pending_commit_logic(ciphersuite: Ciphersuite, backend: &impl OpenMlsCry
     );
 
     // Define the MlsGroup configuration
-    let mls_group_config = MlsGroupConfig::test_default();
+    let mls_group_config = MlsGroupConfig::test_default(ciphersuite);
 
     // === Alice creates a group ===
-    let mut alice_group =
-        MlsGroup::new_with_group_id(backend, &mls_group_config, group_id, alice_key_package)
-            .expect("An unexpected error occurred.");
+    let mut alice_group = MlsGroup::new_with_group_id(
+        backend,
+        &mls_group_config,
+        group_id,
+        alice_key_package.leaf_node().signature_key(),
+    )
+    .expect("An unexpected error occurred.");
 
     // There should be no pending commit after group creation.
     assert!(alice_group.pending_commit().is_none());
@@ -651,12 +669,18 @@ fn key_package_deletion(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoPr
     );
 
     // Define the MlsGroup configuration
-    let mls_group_config = MlsGroupConfig::default();
+    let mls_group_config = MlsGroupConfigBuilder::new()
+        .crypto_config(CryptoConfig::with_default_version(ciphersuite))
+        .build();
 
     // === Alice creates a group ===
-    let mut alice_group =
-        MlsGroup::new_with_group_id(backend, &mls_group_config, group_id, alice_key_package)
-            .unwrap();
+    let mut alice_group = MlsGroup::new_with_group_id(
+        backend,
+        &mls_group_config,
+        group_id,
+        alice_key_package.leaf_node().signature_key(),
+    )
+    .unwrap();
 
     // === Alice adds Bob ===
     let (_queued_message, welcome) = alice_group

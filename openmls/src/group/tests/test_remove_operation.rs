@@ -1,7 +1,13 @@
 //! This module tests the classification of remove operations with RemoveOperation
 
 use super::utils::{generate_credential_bundle, generate_key_package};
-use crate::{credentials::*, framing::*, group::*, test_utils::*, *};
+use crate::{
+    credentials::*,
+    framing::*,
+    group::{config::CryptoConfig, *},
+    test_utils::*,
+    *,
+};
 use openmls_rust_crypto::OpenMlsRustCrypto;
 
 // Tests the different variants of the RemoveOperation enum.
@@ -43,13 +49,6 @@ fn test_remove_operation_variants(ciphersuite: Ciphersuite, backend: &impl OpenM
         .expect("An unexpected error occurred.");
 
         // Generate KeyPackages
-        let alice_key_package = generate_key_package(
-            &[ciphersuite],
-            &alice_credential,
-            Extensions::empty(),
-            backend,
-        )
-        .expect("An unexpected error occurred.");
         let bob_key_package = generate_key_package(
             &[ciphersuite],
             &bob_credential,
@@ -66,12 +65,18 @@ fn test_remove_operation_variants(ciphersuite: Ciphersuite, backend: &impl OpenM
         .expect("An unexpected error occurred.");
 
         // Define the MlsGroup configuration
-        let mls_group_config = MlsGroupConfig::default();
+        let mls_group_config = MlsGroupConfigBuilder::new()
+            .crypto_config(CryptoConfig::with_default_version(ciphersuite))
+            .build();
 
         // === Alice creates a group ===
-        let mut alice_group =
-            MlsGroup::new_with_group_id(backend, &mls_group_config, group_id, alice_key_package)
-                .expect("An unexpected error occurred.");
+        let mut alice_group = MlsGroup::new_with_group_id(
+            backend,
+            &mls_group_config,
+            group_id,
+            alice_credential.signature_key(),
+        )
+        .expect("An unexpected error occurred.");
 
         // === Alice adds Bob & Charlie ===
 

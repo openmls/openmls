@@ -401,16 +401,6 @@ impl MlsClient for MlsClientImpl {
         )
         .unwrap();
 
-        let key_package = KeyPackage::builder()
-            .build(
-                CryptoConfig {
-                    ciphersuite,
-                    version: ProtocolVersion::default(),
-                },
-                &self.crypto_provider,
-                &credential_bundle,
-            )
-            .unwrap();
         let wire_format_policy = wire_format_policy(create_group_request.encrypt_handshake);
         let mls_group_config = MlsGroupConfig::builder()
             .wire_format_policy(wire_format_policy)
@@ -420,7 +410,7 @@ impl MlsClient for MlsClientImpl {
             &self.crypto_provider,
             &mls_group_config,
             GroupId::from_slice(&create_group_request.group_id),
-            key_package,
+            credential_bundle.credential().signature_key(),
         )
         .map_err(into_status)?;
 

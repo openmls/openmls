@@ -19,7 +19,7 @@
 // encryption and decryption of updates to the tree.
 
 use openmls_traits::{
-    types::{Ciphersuite, CryptoError},
+    types::{Ciphersuite, CryptoError, HpkeKeyPair},
     OpenMlsCryptoProvider,
 };
 use serde::{Deserialize, Serialize};
@@ -34,8 +34,7 @@ use crate::{
     error::LibraryError,
     extensions::Extensions,
     framing::SenderError,
-    group::Member,
-    key_packages::KeyPackageBundle,
+    group::{config::CryptoConfig, Member},
     messages::{PathSecret, PathSecretError},
     schedule::CommitSecret,
 };
@@ -87,54 +86,49 @@ pub(crate) struct TreeSync {
 }
 
 impl TreeSync {
-    /// Create a new tree from a `KeyPackageBundle`.
+    /// Create a new tree with an own leaf for the given credential.
     ///
     /// Returns the resulting [`TreeSync`] instance, as well as the
     /// corresponding [`CommitSecret`].
     pub(crate) fn new(
         backend: &impl OpenMlsCryptoProvider,
-        key_package_bundle: KeyPackageBundle,
+        config: CryptoConfig,
         credential_bundle: &CredentialBundle,
         life_time: Lifetime,
         capabilities: Capabilities,
         extensions: Extensions,
     ) -> Result<(Self, CommitSecret), LibraryError> {
-        let key_package = key_package_bundle.key_package();
-        // We generate our own leaf without a private key for now. The private
-        // key is set in the `from_nodes` constructor below.
         let mut leaf = OpenMlsLeafNode::new(
-            key_package_bundle.key_package().hpke_init_key().clone(),
-            credential_bundle.credential().signature_key().clone(),
-            credential_bundle.credential().clone(),
+            config,
             // Creation of a group is considered to be from a key package.
             LeafNodeSource::KeyPackage(life_time),
             backend,
             credential_bundle,
         )?;
-        leaf.set_leaf_index(LeafNodeIndex::new(0));
         leaf.add_capabilities(capabilities);
         extensions
             .iter()
             .for_each(|extension| leaf.add_extension(extension.clone()));
 
         let node = Node::LeafNode(leaf);
-        let path_secret: PathSecret = Secret::random(key_package.ciphersuite(), backend, None)
+        let path_secret: PathSecret = Secret::random(config.ciphersuite, backend, None)
             .map_err(LibraryError::unexpected_crypto_error)?
             .into();
         let commit_secret: CommitSecret = path_secret
-            .derive_path_secret(backend, key_package.ciphersuite())?
+            .derive_path_secret(backend, config.ciphersuite)?
             .into();
-        let node_options = vec![Some(node)];
-        Ok((
-            Self::from_nodes(
-                backend,
-                key_package.ciphersuite(),
-                &node_options,
-                key_package_bundle,
-            )
-            .map_err(|_| LibraryError::custom("Malformed empty tree"))?,
-            commit_secret,
-        ))
+        let nodes = vec![TreeSyncNode::from(node).into()];
+        let tree = MlsBinaryTree::new(nodes)
+            .map_err(|_| LibraryError::custom("Unexpected error creating the binary tree."))?;
+        let mut tree_sync = Self {
+            tree,
+            tree_hash: vec![],
+            own_leaf_index: LeafNodeIndex::new(0),
+        };
+        // Populate tree hash caches.
+        tree_sync.populate_parent_hashes(backend, config.ciphersuite)?;
+
+        Ok((tree_sync, commit_secret))
     }
 
     /// Return the tree hash of the root node of the tree.
@@ -159,8 +153,8 @@ impl TreeSync {
 
     /// Create a new [`TreeSync`] instance from a given slice of `Option<Node>`,
     /// as well as a `LeafNodeIndex` representing the source of the node slice and
-    /// the `KeyPackageBundle` representing this client in the group. If a
-    /// [`PathSecret`] is passed via `path_secret_option`, it will derive the
+    /// the encryption key pair representing this client's leaf node in the group.
+    /// If a [`PathSecret`] is passed via `path_secret_option`, it will derive the
     /// private keys in the nodes of the direct path of the sender that it
     /// shares with this client.
     ///
@@ -175,10 +169,10 @@ impl TreeSync {
         node_options: &[Option<Node>],
         sender_index: LeafNodeIndex,
         path_secret_option: impl Into<Option<PathSecret>>,
-        key_package_bundle: KeyPackageBundle,
+        encryption_key_pair: HpkeKeyPair,
     ) -> Result<(Self, Option<CommitSecret>), TreeSyncFromNodesError> {
         let mut tree_sync =
-            Self::from_nodes(backend, ciphersuite, node_options, key_package_bundle)?;
+            Self::from_nodes(backend, ciphersuite, node_options, encryption_key_pair)?;
 
         // Populate the tree with secrets and derive a commit secret if a path
         // secret is given.
@@ -202,14 +196,13 @@ impl TreeSync {
     }
 
     /// A helper function that generates a [`TreeSync`] instance from the given
-    /// slice of nodes. It verifies that the [`KeyPackage`] of the given
-    /// [`KeyPackageBundle`] is present in the tree and that the invariants
-    /// documented in [`TreeSync`] hold.
+    /// slice of nodes. It verifies that the provided encryption key is present
+    /// in the tree and that the invariants documented in [`TreeSync`] hold.
     fn from_nodes(
         backend: &impl OpenMlsCryptoProvider,
         ciphersuite: Ciphersuite,
         node_options: &[Option<Node>],
-        key_package_bundle: KeyPackageBundle,
+        encryption_key_pair: HpkeKeyPair,
     ) -> Result<Self, TreeSyncFromNodesError> {
         // TODO #800: Unmerged leaves should be checked
         // Before we can instantiate the TreeSync instance, we have to figure
@@ -217,23 +210,18 @@ impl TreeSync {
         let mut ts_nodes: Vec<TreeNode<TreeSyncLeafNode, TreeSyncParentNode>> =
             Vec::with_capacity(node_options.len());
         let mut own_index_option = None;
-        let own_key_package = key_package_bundle.key_package;
-        let mut private_key = Some(key_package_bundle.private_key);
-        // Check if our own key package is in the tree.
+
+        // Check that our own encryption key is in the tree.
         for (node_index, node_option) in node_options.iter().enumerate() {
             let ts_node_option: TreeNode<TreeSyncLeafNode, TreeSyncParentNode> = match node_option {
                 Some(node) => {
                     let mut node = node.clone();
                     if let Node::LeafNode(ref mut leaf_node) = node {
                         let leaf_index = LeafNodeIndex::new((node_index / 2) as u32);
-                        if leaf_node.public_key() == own_key_package.hpke_init_key() {
-                            // Check if there's a duplicate
-                            if let Some(private_key) = private_key.take() {
-                                own_index_option = Some(leaf_index);
-                                leaf_node.set_private_key(private_key);
-                            } else {
-                                return Err(PublicTreeError::DuplicateKeyPackage.into());
-                            }
+                        if leaf_node.public_key().as_ref() == encryption_key_pair.public {
+                            own_index_option = Some(leaf_index);
+                            // XXX: we shouldn't have to clone here.
+                            leaf_node.set_private_key(encryption_key_pair.private.clone().into());
                         }
                         leaf_node.set_leaf_index(leaf_index);
                     }
@@ -269,6 +257,7 @@ impl TreeSync {
             tree_sync.populate_parent_hashes(backend, ciphersuite)?;
             Ok(tree_sync)
         } else {
+            debug_assert!(false, "Unable to find key package.");
             Err(PublicTreeError::MissingKeyPackage.into())
         }
     }
@@ -383,6 +372,17 @@ impl TreeSync {
             .collect()
     }
 
+    /// Returns the index of the last full leaf in the tree.
+    fn rightmost_full_leaf(&self) -> LeafNodeIndex {
+        let mut index = LeafNodeIndex::new(0);
+        for (leaf_index, leaf) in self.tree.leaves() {
+            if leaf.node().as_ref().is_some() {
+                index = leaf_index;
+            }
+        }
+        index
+    }
+
     /// Returns a list of [`Member`]s containing only full nodes.
     ///
     /// XXX: For performance reasons we probably want to have this in a borrowing
@@ -434,15 +434,51 @@ impl TreeSync {
     /// Returns the nodes in the tree ordered according to the
     /// array-representation of the underlying binary tree.
     pub fn export_nodes(&self) -> Vec<Option<Node>> {
-        self.tree
-            .export_nodes()
-            .iter()
-            // Filter out private keys
-            .map(|node| match node {
-                TreeNode::Leaf(leaf) => leaf.node_without_private_key().map(Node::LeafNode),
-                TreeNode::Parent(parent) => parent.node_without_private_key().map(Node::ParentNode),
-            })
-            .collect()
+        let mut nodes = Vec::new();
+
+        // Determine the index of the rightmost full leaf.
+        let max_length = self.rightmost_full_leaf();
+
+        // We take all the leaves including the rightmost full leaf, blank
+        // leaves beyond that are trimmed.
+        let mut leaves = self
+            .tree
+            .leaves()
+            .map(|(_, leaf)| leaf)
+            .take(max_length.usize() + 1);
+
+        // Get the first leaf.
+        if let Some(leaf) = leaves.next() {
+            nodes.push(leaf.node_without_private_key().map(Node::LeafNode));
+        } else {
+            // The tree was empty.
+            return vec![];
+        }
+
+        // Blank parent node used for padding
+        let default_parent = TreeSyncParentNode::default();
+
+        // Get the parents.
+        let parents = self
+            .tree
+            .parents()
+            // Drop the index
+            .map(|(_, parent)| parent)
+            // Take the parents up to the max length
+            .take(max_length.usize())
+            // Pad the parents with blank nodes if needed
+            .chain(
+                (self.tree.parents().count()..self.tree.leaves().count() - 1)
+                    .map(|_| &default_parent),
+            );
+
+        // Interleave the leaves and parents.
+        for (leaf, parent) in leaves.zip(parents) {
+            nodes.push(parent.node_without_private_key().map(Node::ParentNode));
+            nodes.push(leaf.node_without_private_key().map(Node::LeafNode));
+        }
+
+        nodes
     }
 
     /// Returns the leaf index of this client.

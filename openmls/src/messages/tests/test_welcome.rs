@@ -3,7 +3,7 @@ use crate::{
     ciphersuite::{hash_ref::KeyPackageRef, signable::Signable, AeadKey, AeadNonce, Mac, Secret},
     credentials::{errors::CredentialError, CredentialBundle, CredentialType},
     extensions::Extensions,
-    group::{config::CryptoConfig, errors::WelcomeError, GroupId, MlsGroup, MlsGroupConfig},
+    group::{config::CryptoConfig, errors::WelcomeError, GroupId, MlsGroup, MlsGroupConfigBuilder},
     key_packages::KeyPackage,
     messages::{
         ConfirmationTag, EncryptedGroupSecrets, GroupInfo, GroupInfoTBS, GroupSecrets, Welcome,
@@ -66,7 +66,9 @@ fn test_welcome_ciphersuite_mismatch(
     };
 
     let group_id = GroupId::random(backend);
-    let mls_group_config = MlsGroupConfig::default();
+    let mls_group_config = MlsGroupConfigBuilder::new()
+        .crypto_config(CryptoConfig::with_default_version(ciphersuite))
+        .build();
 
     // Create credential bundles
     let alice_credential_bundle = generate_credential_bundle(
@@ -86,16 +88,6 @@ fn test_welcome_ciphersuite_mismatch(
     .expect("Could not create credential bundle.");
 
     // Create key packages
-    let alice_kp = KeyPackage::builder()
-        .build(
-            CryptoConfig {
-                ciphersuite,
-                version: ProtocolVersion::default(),
-            },
-            backend,
-            &alice_credential_bundle,
-        )
-        .unwrap();
     let bob_kp = KeyPackage::builder()
         .build(
             CryptoConfig {
@@ -113,9 +105,13 @@ fn test_welcome_ciphersuite_mismatch(
         .unwrap();
 
     // === Alice creates a group  and adds Bob ===
-    let mut alice_group =
-        MlsGroup::new_with_group_id(backend, &mls_group_config, group_id, alice_kp)
-            .expect("An unexpected error occurred.");
+    let mut alice_group = MlsGroup::new_with_group_id(
+        backend,
+        &mls_group_config,
+        group_id,
+        alice_credential_bundle.credential().signature_key(),
+    )
+    .expect("An unexpected error occurred.");
 
     let (_queued_message, mut welcome) = alice_group
         .add_members(backend, &[bob_kp.clone()])

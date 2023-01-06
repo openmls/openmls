@@ -85,8 +85,6 @@
 //! // in MLS
 //!
 //! // Generate KeyPackages
-//! let sasha_key_package = generate_key_package(&[ciphersuite], &sasha_credential, backend);
-//!
 //! let maxim_key_package = generate_key_package(&[ciphersuite], &maxim_credential, backend);
 //!
 //! // Now Sasha starts a new group ...
@@ -102,7 +100,7 @@
 //! let mut sasha_group = MlsGroup::new(
 //!     backend,
 //!     &MlsGroupConfig::default(),
-//!     sasha_key_package,
+//!     sasha_credential.signature_key(),
 //! )
 //! .expect("An unexpected error occurred.");
 //!
