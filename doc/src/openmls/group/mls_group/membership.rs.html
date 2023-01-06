@@ -380,6 +380,17 @@
 <span id="380">380</span>
 <span id="381">381</span>
 <span id="382">382</span>
+<span id="383">383</span>
+<span id="384">384</span>
+<span id="385">385</span>
+<span id="386">386</span>
+<span id="387">387</span>
+<span id="388">388</span>
+<span id="389">389</span>
+<span id="390">390</span>
+<span id="391">391</span>
+<span id="392">392</span>
+<span id="393">393</span>
 </pre><pre class="rust"><code><span class="doccomment">//! MLS group membership
 //!
 //! This module contains membership-related operations and exposes [`RemoveOperation`].
@@ -402,14 +413,15 @@
     /// This operation results in a Commit with a `path`, i.e. it includes an
     /// update of the committer&#39;s leaf [KeyPackage].
     ///
-    /// If successful, it returns a tuple of [MlsMessageOut] and [Welcome].
+    /// If successful, it returns a tuple of [`MlsMessageOut`]s, where the first
+    /// contains the commit and the second one the [Welcome].
     ///
     /// Returns an error if there is a pending commit.
     </span><span class="kw">pub fn </span>add_members(
         <span class="kw-2">&amp;mut </span><span class="self">self</span>,
         backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider,
         key_packages: <span class="kw-2">&amp;</span>[KeyPackage],
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;(MlsMessageOut, Welcome), AddMembersError&gt; {
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;(MlsMessageOut, MlsMessageOut), AddMembersError&gt; {
         <span class="self">self</span>.is_operational()<span class="question-mark">?</span>;
 
         <span class="kw">if </span>key_packages.is_empty() {
@@ -467,7 +479,10 @@
         <span class="comment">// Since the state of the group might be changed, arm the state flag
         </span><span class="self">self</span>.flag_state_change();
 
-        <span class="prelude-val">Ok</span>((mls_messages, welcome))
+        <span class="prelude-val">Ok</span>((
+            mls_messages,
+            MlsMessageOut::from_welcome(welcome, <span class="self">self</span>.group.version()),
+        ))
     }
 
     <span class="doccomment">/// Returns a reference to the own [`LeafNode`].
@@ -479,15 +494,17 @@
     ///
     /// Members are removed by providing the member&#39;s leaf index.
     ///
-    /// If successful, it returns a tuple of [`MlsMessageOut`] and an optional [`Welcome`].
-    /// The [Welcome] is [Some] when the queue of pending proposals contained add proposals
+    /// If successful, it returns a tuple of [`MlsMessageOut`] (containing the
+    /// commit) and an optional [`MlsMessageOut`] (containing the [`Welcome`]).
+    /// The [Welcome] is [Some] when the queue of pending proposals contained
+    /// add proposals
     ///
     /// Returns an error if there is a pending commit.
     </span><span class="kw">pub fn </span>remove_members(
         <span class="kw-2">&amp;mut </span><span class="self">self</span>,
         backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider,
         members: <span class="kw-2">&amp;</span>[LeafNodeIndex],
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;(MlsMessageOut, <span class="prelude-ty">Option</span>&lt;Welcome&gt;), RemoveMembersError&gt; {
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;(MlsMessageOut, <span class="prelude-ty">Option</span>&lt;MlsMessageOut&gt;), RemoveMembersError&gt; {
         <span class="self">self</span>.is_operational()<span class="question-mark">?</span>;
 
         <span class="kw">if </span>members.is_empty() {
@@ -536,7 +553,12 @@
         <span class="comment">// Since the state of the group might be changed, arm the state flag
         </span><span class="self">self</span>.flag_state_change();
 
-        <span class="prelude-val">Ok</span>((mls_message, create_commit_result.welcome_option))
+        <span class="prelude-val">Ok</span>((
+            mls_message,
+            create_commit_result
+                .welcome_option
+                .map(|w| MlsMessageOut::from_welcome(w, <span class="self">self</span>.group.version())),
+        ))
     }
 
     <span class="doccomment">/// Creates proposals to add members to the group.

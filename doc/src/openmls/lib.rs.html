@@ -180,6 +180,22 @@
 <span id="180">180</span>
 <span id="181">181</span>
 <span id="182">182</span>
+<span id="183">183</span>
+<span id="184">184</span>
+<span id="185">185</span>
+<span id="186">186</span>
+<span id="187">187</span>
+<span id="188">188</span>
+<span id="189">189</span>
+<span id="190">190</span>
+<span id="191">191</span>
+<span id="192">192</span>
+<span id="193">193</span>
+<span id="194">194</span>
+<span id="195">195</span>
+<span id="196">196</span>
+<span id="197">197</span>
+<span id="198">198</span>
 </pre><pre class="rust"><code><span class="attribute">#![doc = <span class="macro">include_str!</span>(<span class="string">&quot;../README.md&quot;</span>)]
 </span><span class="doccomment">//! ## Quick Start
 //! For a quick start to learn how OpenMLS works here&#39;s the basic code to set
@@ -289,7 +305,7 @@
 //! // ... and invites Maxim.
 //! // The key package has to be retrieved from Maxim in some way. Most likely
 //! // via a server storing key packages for users.
-//! let (mls_message_out, welcome) = sasha_group
+//! let (mls_message_out, welcome_out) = sasha_group
 //!     .add_members(backend, &amp;[maxim_key_package])
 //!     .expect(&quot;Could not add members.&quot;);
 //!
@@ -297,6 +313,22 @@
 //! sasha_group
 //!    .merge_pending_commit()
 //!    .expect(&quot;error merging pending commit&quot;);
+//!
+//! // Sascha serializes the [`MlsMessageOut`] containing the [`Welcome`].
+//! let serialized_welcome = welcome_out
+//!    .tls_serialize_detached()
+//!    .expect(&quot;Error serializing welcome&quot;);
+//!
+//! // Maxim can now de-serialize the message as an [`MlsMessageIn`] ...
+//! let mls_message_in = MlsMessageIn::tls_deserialize(&amp;mut serialized_welcome.as_slice())
+//!    .expect(&quot;An unexpected error occurred.&quot;);
+//!
+//! // ... and inspect the message.
+//! let welcome = match mls_message_in.extract() {
+//!    MlsMessageInBody::Welcome(welcome) =&gt; welcome,
+//!    // We know it&#39;s a welcome message, so we ignore all other cases.
+//!    _ =&gt; unreachable!(&quot;Unexpected message type.&quot;),
+//! };
 //!
 //! // Now Maxim can join the group.
 //!  let mut maxim_group = MlsGroup::new_from_welcome(

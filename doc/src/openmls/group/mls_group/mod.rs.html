@@ -756,7 +756,7 @@
 
 <span class="comment">// Private methods of MlsGroup
 </span><span class="kw">impl </span>MlsGroup {
-    <span class="doccomment">/// Converts PublicMessage to MlsMessageOut. Depending on whether handshake
+    <span class="doccomment">/// Converts PublicMessage to MlsMessage. Depending on whether handshake
     /// message should be encrypted, PublicMessage messages are encrypted to
     /// PrivateMessage first.
     </span><span class="kw">fn </span>content_to_mls_message(
@@ -774,7 +774,7 @@
                         <span class="self">self</span>.group.message_secrets().membership_key(),
                     )<span class="question-mark">?</span>;
                 }
-                MlsMessageOut::from(plaintext)
+                plaintext.into()
             }
             OutgoingWireFormatPolicy::AlwaysCiphertext =&gt; {
                 <span class="kw">let </span>ciphertext = <span class="self">self

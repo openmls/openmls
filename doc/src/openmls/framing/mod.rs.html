@@ -115,6 +115,14 @@
 <span id="115">115</span>
 <span id="116">116</span>
 <span id="117">117</span>
+<span id="118">118</span>
+<span id="119">119</span>
+<span id="120">120</span>
+<span id="121">121</span>
+<span id="122">122</span>
+<span id="123">123</span>
+<span id="124">124</span>
+<span id="125">125</span>
 </pre><pre class="rust"><code><span class="doccomment">//! # Message framing
 //!
 //! This module contains framing-related operations for MLS messages, including validation operations.
@@ -166,7 +174,8 @@
 <span class="kw">use </span>tls_codec::<span class="kw-2">*</span>;
 
 <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">mod </span>codec;
-<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">mod </span>message;
+<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">mod </span>message_in;
+<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">mod </span>message_out;
 <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">mod </span>mls_auth_content;
 <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">mod </span>mls_content;
 <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">mod </span>private_message;
@@ -174,8 +183,8 @@
 <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">mod </span>sender;
 <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">mod </span>validation;
 <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">use </span>errors::<span class="kw-2">*</span>;
-<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">use </span>private_message::<span class="kw-2">*</span>;
-<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">use </span>public_message::<span class="kw-2">*</span>;
+<span class="kw">pub use </span>private_message::<span class="kw-2">*</span>;
+<span class="kw">pub use </span>public_message::<span class="kw-2">*</span>;
 
 <span class="attribute">#[cfg(any(feature = <span class="string">&quot;test-utils&quot;</span>, test))]
 </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">use </span>mls_auth_content::<span class="kw-2">*</span>;
@@ -189,7 +198,8 @@
 <span class="comment">// Public
 </span><span class="kw">pub mod </span>errors;
 
-<span class="kw">pub use </span>message::<span class="kw-2">*</span>;
+<span class="kw">pub use </span>message_in::<span class="kw-2">*</span>;
+<span class="kw">pub use </span>message_out::<span class="kw-2">*</span>;
 <span class="kw">pub use </span>sender::<span class="kw-2">*</span>;
 <span class="kw">pub use </span>validation::<span class="kw-2">*</span>;
 
@@ -207,6 +217,12 @@
     </span>PublicMessage = <span class="number">1</span>,
     <span class="doccomment">/// Encrypted message
     </span>PrivateMessage = <span class="number">2</span>,
+    <span class="doccomment">/// Welcome message
+    </span>Welcome = <span class="number">3</span>,
+    <span class="doccomment">/// Group information
+    </span>GroupInfo = <span class="number">4</span>,
+    <span class="doccomment">/// KeyPackage
+    </span>KeyPackage = <span class="number">5</span>,
 }
 
 <span class="doccomment">/// This struct is used to group common framing parameters

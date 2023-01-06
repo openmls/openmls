@@ -590,8 +590,8 @@
 ///     opaque ciphertext&lt;V&gt;;
 /// } PrivateMessage;
 /// ```
-</span><span class="attribute">#[derive(Debug, PartialEq, Clone, TlsSerialize, TlsSize, TlsDeserialize)]
-</span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct </span>PrivateMessage {
+</span><span class="attribute">#[derive(Debug, PartialEq, Eq, Clone, TlsSerialize, TlsSize, TlsDeserialize)]
+</span><span class="kw">pub struct </span>PrivateMessage {
     group_id: GroupId,
     epoch: GroupEpoch,
     content_type: ContentType,

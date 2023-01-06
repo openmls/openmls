@@ -145,15 +145,15 @@
 <p>Processing of incoming messages happens in different phases:</p>
 <h2 id="deserializing-messages"><a class="header" href="#deserializing-messages">Deserializing messages</a></h2>
 <p>Incoming messages can be deserialized from byte slices into an <code>MlsMessageIn</code>:</p>
-<pre><code class="language-rust no_run noplayground">    let mls_message_in =
-        MlsMessageIn::try_from_bytes(&amp;bytes).expect(&quot;Could not deserialize message.&quot;);</code></pre>
+<pre><code class="language-rust no_run noplayground">    let mls_message = MlsMessageIn::try_from_bytes(&amp;bytes).expect(&quot;Could not deserialize message.&quot;);</code></pre>
 <p>If the message is malformed, the function will fail with an error.</p>
 <h2 id="processing-messages"><a class="header" href="#processing-messages">Processing messages</a></h2>
 <p>In the next step, the message needs to be processed. If the message was
 encrypted, it will be decrypted automatically. This step performs all syntactic
 and semantic validation checks and verifies the message's signature:</p>
-<pre><code class="language-rust no_run noplayground">    let processed_message = bob_group
-        .process_message(backend, mls_message_in)
+<pre><code class="language-rust no_run noplayground">    let protocol_message: ProtocolMessage = mls_message.into();
+    let processed_message = bob_group
+        .process_message(backend, protocol_message)
         .expect(&quot;Could not process message.&quot;);</code></pre>
 <h2 id="interpreting-the-processed-message"><a class="header" href="#interpreting-the-processed-message">Interpreting the processed message</a></h2>
 <p>In the last step, the message is ready for inspection. The <code>ProcessedMessage</code>

@@ -168,7 +168,12 @@ proposals are crafted by outsiders, they are always plaintext messages.</p>
 <p>It is then up to the group members to validate the proposal and commit it.
 Note that in this scenario it is up to the application to define a proper authorization policy to grant the sender.</p>
 <pre><code class="language-rust no_run noplayground">    let alice_processed_message = alice_group
-        .process_message(backend, proposal.into())
+        .process_message(
+            backend,
+            proposal
+                .into_protocol_message()
+                .expect(&quot;Unexpected message type.&quot;),
+        )
         .expect(&quot;Could not process message.&quot;);
     match alice_processed_message.into_content() {
         ProcessedMessageContent::ExternalJoinProposalMessage(proposal) =&gt; {
@@ -182,9 +187,16 @@ Note that in this scenario it is up to the application to define a proper author
                 .expect(&quot;Could not merge commit&quot;);
             assert_eq!(alice_group.members().count(), 2);
 
-            let bob_group =
-                MlsGroup::new_from_welcome(backend, &amp;mls_group_config, welcome.unwrap(), None)
-                    .expect(&quot;Bob could not join the group&quot;);
+            let bob_group = MlsGroup::new_from_welcome(
+                backend,
+                &amp;mls_group_config,
+                welcome
+                    .unwrap()
+                    .into_welcome()
+                    .expect(&quot;Unexpected message type.&quot;),
+                None,
+            )
+            .expect(&quot;Bob could not join the group&quot;);
             assert_eq!(bob_group.members().count(), 2);
         }
         _ =&gt; unreachable!(),

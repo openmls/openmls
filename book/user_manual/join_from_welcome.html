@@ -147,7 +147,7 @@ If the group configuration does not use the ratchet tree extension, the ratchet 
 <pre><code class="language-rust no_run noplayground">    let mut bob_group = MlsGroup::new_from_welcome(
         backend,
         &amp;mls_group_config,
-        welcome,
+        welcome.into_welcome().expect(&quot;Unexpected message type.&quot;),
         None, // We use the ratchet tree extension, so we don't provide a ratchet tree here
     )
     .expect(&quot;Error joining group from Welcome&quot;);</code></pre>

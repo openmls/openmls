@@ -154,6 +154,12 @@
 <span id="154">154</span>
 <span id="155">155</span>
 <span id="156">156</span>
+<span id="157">157</span>
+<span id="158">158</span>
+<span id="159">159</span>
+<span id="160">160</span>
+<span id="161">161</span>
+<span id="162">162</span>
 </pre><pre class="rust"><code><span class="doccomment">//! Processing functions of an [`MlsGroup`] for incoming messages.
 
 </span><span class="kw">use </span>std::mem;
@@ -176,7 +182,7 @@
     </span><span class="kw">pub fn </span>process_message(
         <span class="kw-2">&amp;mut </span><span class="self">self</span>,
         backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider,
-        message: MlsMessageIn,
+        message: <span class="kw">impl </span>Into&lt;ProtocolMessage&gt;,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;ProcessedMessage, ProcessMessageError&gt; {
         <span class="comment">// Make sure we are still a member of the group
         </span><span class="kw">if </span>!<span class="self">self</span>.is_active() {
@@ -184,6 +190,7 @@
                 MlsGroupStateError::UseAfterEviction,
             ));
         }
+        <span class="kw">let </span>message = message.into();
 
         <span class="comment">// Check that handshake messages are compatible with the incoming wire format policy
         </span><span class="kw">if </span>!message.is_external()
@@ -228,7 +235,7 @@
     </span><span class="kw">pub fn </span>commit_to_pending_proposals(
         <span class="kw-2">&amp;mut </span><span class="self">self</span>,
         backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;(MlsMessageOut, <span class="prelude-ty">Option</span>&lt;Welcome&gt;), CommitToPendingProposalsError&gt; {
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;(MlsMessageOut, <span class="prelude-ty">Option</span>&lt;MlsMessageOut&gt;), CommitToPendingProposalsError&gt; {
         <span class="self">self</span>.is_operational()<span class="question-mark">?</span>;
 
         <span class="kw">let </span>credential = <span class="self">self</span>.credential()<span class="question-mark">?</span>;
@@ -264,7 +271,12 @@
         <span class="comment">// Since the state of the group might be changed, arm the state flag
         </span><span class="self">self</span>.flag_state_change();
 
-        <span class="prelude-val">Ok</span>((mls_message, create_commit_result.welcome_option))
+        <span class="prelude-val">Ok</span>((
+            mls_message,
+            create_commit_result
+                .welcome_option
+                .map(|w| MlsMessageOut::from_welcome(w, <span class="self">self</span>.group.version())),
+        ))
     }
 
     <span class="doccomment">/// Merge a [StagedCommit] into the group after inspection. As this advances

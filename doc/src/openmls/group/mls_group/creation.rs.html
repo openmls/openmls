@@ -226,8 +226,6 @@
 <span id="226">226</span>
 <span id="227">227</span>
 <span id="228">228</span>
-<span id="229">229</span>
-<span id="230">230</span>
 </pre><pre class="rust"><code><span class="kw">use crate</span>::{
     ciphersuite::signature::SignaturePublicKey,
     group::{
@@ -452,10 +450,8 @@
             state_changed: InnerState::Changed,
         };
 
-        <span class="prelude-val">Ok</span>((
-            mls_group,
-            PublicMessage::from(create_commit_result.commit).into(),
-        ))
+        <span class="kw">let </span>public_message: PublicMessage = create_commit_result.commit.into();
+        <span class="prelude-val">Ok</span>((mls_group, public_message.into()))
     }
 }
 </code></pre></div>

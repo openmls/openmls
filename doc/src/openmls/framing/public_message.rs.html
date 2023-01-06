@@ -420,13 +420,13 @@
 /// } PublicMessage;
 /// ```
 ///
-/// [`PublicMessage`] differs slightly from the struct shown above in that it
-/// contains an [`FramedContentTbs`] struct rather than [`FramedContent`]. The
-/// extra metadata that [`FramedContentTbs`] holds helps in processing this
-/// message later. The extra data is accounted for (i.e. ignored) in the
-/// serialized/deserialization functions.
+</span><span class="comment">// [`PublicMessage`] differs slightly from the struct shown above in that it
+// contains a [`FramedContentTbs`] struct rather than [`FramedContent`]. The
+// extra metadata that [`FramedContentTbs`] holds helps in processing this
+// message later. The extra data is accounted for (i.e. ignored) in the
+// serialized/deserialization functions.
 </span><span class="attribute">#[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
-</span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct </span>PublicMessage {
+</span><span class="kw">pub struct </span>PublicMessage {
     content: FramedContentTbs,
     auth: FramedContentAuthData,
     membership_tag: <span class="prelude-ty">Option</span>&lt;MembershipTag&gt;,
@@ -442,7 +442,7 @@
         <span class="self">self</span>.membership_tag = <span class="prelude-val">None</span>;
     }
 
-    <span class="kw">pub fn </span>set_content(<span class="kw-2">&amp;mut </span><span class="self">self</span>, content: FramedContentBody) {
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>set_content(<span class="kw-2">&amp;mut </span><span class="self">self</span>, content: FramedContentBody) {
         <span class="self">self</span>.content.content.body = content;
     }
 
@@ -450,7 +450,7 @@
         <span class="self">self</span>.content.content.epoch = epoch.into();
     }
 
-    <span class="kw">pub fn </span>content(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>FramedContentBody {
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>content(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>FramedContentBody {
         <span class="kw-2">&amp;</span><span class="self">self</span>.content.content.body
     }
 
@@ -526,11 +526,6 @@
         }
     }
 
-    <span class="doccomment">/// Returns a reference to the [`ProtocolVersion`].
-    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>protocol_version(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; ProtocolVersion {
-        <span class="self">self</span>.content.version
-    }
-
     <span class="doccomment">/// Returns the [`ContentType`] of the message.
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>content_type(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; ContentType {
         <span class="self">self</span>.content.content.body.content_type()
@@ -539,6 +534,11 @@
     <span class="doccomment">/// Get the sender of this message.
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>sender(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>Sender {
         <span class="kw-2">&amp;</span><span class="self">self</span>.content.content.sender
+    }
+
+    <span class="doccomment">/// Get the MLS version of this message.
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>version(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; ProtocolVersion {
+        <span class="self">self</span>.content.version
     }
 
     <span class="attribute">#[cfg(test)]
@@ -627,7 +627,7 @@
     }
 
     <span class="attribute">#[cfg(any(feature = <span class="string">&quot;test-utils&quot;</span>, test))]
-    </span><span class="kw">pub fn </span>set_membership_tag_test(<span class="kw-2">&amp;mut </span><span class="self">self</span>, membership_tag: MembershipTag) {
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>set_membership_tag_test(<span class="kw-2">&amp;mut </span><span class="self">self</span>, membership_tag: MembershipTag) {
         <span class="self">self</span>.membership_tag = <span class="prelude-val">Some</span>(membership_tag);
     }
 

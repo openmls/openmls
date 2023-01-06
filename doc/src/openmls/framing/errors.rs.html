@@ -147,14 +147,14 @@
 }
 
 <span class="doccomment">/// MlsMessage error
-</span><span class="attribute">#[derive(Error, Debug, PartialEq, Clone)]
+</span><span class="attribute">#[derive(Error, Debug, Clone)]
 </span><span class="kw">pub enum </span>MlsMessageError {
-    <span class="doccomment">/// See [`LibraryError`] for more details.
-    </span><span class="attribute">#[error(transparent)]
-    </span>LibraryError(<span class="attribute">#[from] </span>LibraryError),
     <span class="doccomment">/// The message could not be decoded.
     </span><span class="attribute">#[error(<span class="string">&quot;The message could not be decoded.&quot;</span>)]
     </span>UnableToDecode,
+    <span class="doccomment">/// The message (or one of its parts) is too large to be encoded.
+    </span><span class="attribute">#[error(<span class="string">&quot;The message (or one of its parts) is too large to be encoded.&quot;</span>)]
+    </span>UnableToEncode,
 }
 </code></pre></div>
 </section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-current-crate="openmls" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.66.0 (69f9c33d7 2022-12-12)" ></div></body></html>

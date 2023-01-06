@@ -434,6 +434,9 @@
 <span id="434">434</span>
 <span id="435">435</span>
 <span id="436">436</span>
+<span id="437">437</span>
+<span id="438">438</span>
+<span id="439">439</span>
 </pre><pre class="rust"><code><span class="doccomment">//! This module contains validation functions for incoming messages
 //! as defined in &lt;https://github.com/openmls/openmls/wiki/Message-validation&gt;
 
@@ -451,8 +454,8 @@
 };
 
 <span class="kw">use super</span>::{
-    mls_content::ContentType, proposals::ProposalQueue, CoreGroup, Member, MlsMessageIn,
-    ProposalValidationError, VerifiableAuthenticatedContent, WireFormat,
+    mls_content::ContentType, proposals::ProposalQueue, CoreGroup, Member, ProposalValidationError,
+    ProtocolMessage, VerifiableAuthenticatedContent, WireFormat,
 };
 
 <span class="kw">impl </span>CoreGroup {
@@ -461,7 +464,10 @@
     </span><span class="doccomment">/// Checks the following semantic validation:
     ///  - ValSem002
     ///  - ValSem003
-    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>validate_framing(<span class="kw-2">&amp;</span><span class="self">self</span>, message: <span class="kw-2">&amp;</span>MlsMessageIn) -&gt; <span class="prelude-ty">Result</span>&lt;(), ValidationError&gt; {
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>validate_framing(
+        <span class="kw-2">&amp;</span><span class="self">self</span>,
+        message: <span class="kw-2">&amp;</span>ProtocolMessage,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;(), ValidationError&gt; {
         <span class="comment">// ValSem002
         </span><span class="kw">if </span>message.group_id() != <span class="self">self</span>.group_id() {
             <span class="kw">return </span><span class="prelude-val">Err</span>(ValidationError::WrongGroupId);

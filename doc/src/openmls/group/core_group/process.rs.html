@@ -339,6 +339,7 @@
 <span id="339">339</span>
 <span id="340">340</span>
 <span id="341">341</span>
+<span id="342">342</span>
 </pre><pre class="rust"><code><span class="kw">use </span>core_group::{proposals::QueuedProposal, staged_commit::StagedCommit};
 
 <span class="kw">use crate</span>::{
@@ -368,9 +369,10 @@
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>parse_message(
         <span class="kw-2">&amp;mut </span><span class="self">self</span>,
         backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider,
-        message: MlsMessageIn,
+        message: <span class="kw">impl </span>Into&lt;ProtocolMessage&gt;,
         sender_ratchet_configuration: <span class="kw-2">&amp;</span>SenderRatchetConfiguration,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;UnverifiedMessage, ValidationError&gt; {
+        <span class="kw">let </span>message: ProtocolMessage = message.into();
         <span class="comment">// Checks the following semantic validation:
         //  - ValSem002
         //  - ValSem003
@@ -381,8 +383,8 @@
         <span class="comment">// Checks the following semantic validation:
         //  - ValSem006
         //  - ValSem007 MembershipTag presence
-        </span><span class="kw">let </span>decrypted_message = <span class="kw">match </span>message.mls_message.body {
-            MlsMessageBody::PublicMessage(public_message) =&gt; {
+        </span><span class="kw">let </span>decrypted_message = <span class="kw">match </span>message {
+            ProtocolMessage::PublicMessage(public_message) =&gt; {
                 <span class="comment">// If the message is older than the current epoch, we need to fetch the correct secret tree first.
                 </span><span class="kw">let </span>message_secrets =
                     <span class="self">self</span>.message_secrets_for_epoch(epoch).map_err(|e| <span class="kw">match </span>e {
@@ -398,7 +400,7 @@
                     backend,
                 )<span class="question-mark">?
             </span>}
-            MlsMessageBody::PrivateMessage(ciphertext) =&gt; {
+            ProtocolMessage::PrivateMessage(ciphertext) =&gt; {
                 <span class="comment">// If the message is older than the current epoch, we need to fetch the correct secret tree first
                 </span>DecryptedMessage::from_inbound_ciphertext(
                     ciphertext,
@@ -649,13 +651,13 @@
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>process_message(
         <span class="kw-2">&amp;mut </span><span class="self">self</span>,
         backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider,
-        message: MlsMessageIn,
+        message: <span class="kw">impl </span>Into&lt;ProtocolMessage&gt;,
         sender_ratchet_configuration: <span class="kw-2">&amp;</span>SenderRatchetConfiguration,
         proposal_store: <span class="kw-2">&amp;</span>ProposalStore,
         own_kpbs: <span class="kw-2">&amp;</span>[OpenMlsLeafNode],
     ) -&gt; <span class="prelude-ty">Result</span>&lt;ProcessedMessage, ProcessMessageError&gt; {
         <span class="kw">let </span>unverified_message = <span class="self">self
-            </span>.parse_message(backend, message, sender_ratchet_configuration)
+            </span>.parse_message(backend, message.into(), sender_ratchet_configuration)
             .map_err(ProcessMessageError::from)<span class="question-mark">?</span>;
         <span class="self">self</span>.process_unverified_message(unverified_message, proposal_store, own_kpbs, backend)
     }

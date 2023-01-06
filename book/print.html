@@ -349,7 +349,7 @@ If the group configuration does not use the ratchet tree extension, the ratchet 
 <pre><code class="language-rust no_run noplayground">    let mut bob_group = MlsGroup::new_from_welcome(
         backend,
         &amp;mls_group_config,
-        welcome,
+        welcome.into_welcome().expect(&quot;Unexpected message type.&quot;),
         None, // We use the ratchet tree extension, so we don't provide a ratchet tree here
     )
     .expect(&quot;Error joining group from Welcome&quot;);</code></pre>
@@ -382,7 +382,12 @@ proposals are crafted by outsiders, they are always plaintext messages.</p>
 <p>It is then up to the group members to validate the proposal and commit it.
 Note that in this scenario it is up to the application to define a proper authorization policy to grant the sender.</p>
 <pre><code class="language-rust no_run noplayground">    let alice_processed_message = alice_group
-        .process_message(backend, proposal.into())
+        .process_message(
+            backend,
+            proposal
+                .into_protocol_message()
+                .expect(&quot;Unexpected message type.&quot;),
+        )
         .expect(&quot;Could not process message.&quot;);
     match alice_processed_message.into_content() {
         ProcessedMessageContent::ExternalJoinProposalMessage(proposal) =&gt; {
@@ -396,9 +401,16 @@ Note that in this scenario it is up to the application to define a proper author
                 .expect(&quot;Could not merge commit&quot;);
             assert_eq!(alice_group.members().count(), 2);
 
-            let bob_group =
-                MlsGroup::new_from_welcome(backend, &amp;mls_group_config, welcome.unwrap(), None)
-                    .expect(&quot;Bob could not join the group&quot;);
+            let bob_group = MlsGroup::new_from_welcome(
+                backend,
+                &amp;mls_group_config,
+                welcome
+                    .unwrap()
+                    .into_welcome()
+                    .expect(&quot;Unexpected message type.&quot;),
+                None,
+            )
+            .expect(&quot;Bob could not join the group&quot;);
             assert_eq!(bob_group.members().count(), 2);
         }
         _ =&gt; unreachable!(),
@@ -509,15 +521,15 @@ If the Commit message also covers Add Proposals previously received in the epoch
 <p>Processing of incoming messages happens in different phases:</p>
 <h2 id="deserializing-messages"><a class="header" href="#deserializing-messages">Deserializing messages</a></h2>
 <p>Incoming messages can be deserialized from byte slices into an <code>MlsMessageIn</code>:</p>
-<pre><code class="language-rust no_run noplayground">    let mls_message_in =
-        MlsMessageIn::try_from_bytes(&amp;bytes).expect(&quot;Could not deserialize message.&quot;);</code></pre>
+<pre><code class="language-rust no_run noplayground">    let mls_message = MlsMessageIn::try_from_bytes(&amp;bytes).expect(&quot;Could not deserialize message.&quot;);</code></pre>
 <p>If the message is malformed, the function will fail with an error.</p>
 <h2 id="processing-messages"><a class="header" href="#processing-messages">Processing messages</a></h2>
 <p>In the next step, the message needs to be processed. If the message was
 encrypted, it will be decrypted automatically. This step performs all syntactic
 and semantic validation checks and verifies the message's signature:</p>
-<pre><code class="language-rust no_run noplayground">    let processed_message = bob_group
-        .process_message(backend, mls_message_in)
+<pre><code class="language-rust no_run noplayground">    let protocol_message: ProtocolMessage = mls_message.into();
+    let processed_message = bob_group
+        .process_message(backend, protocol_message)
         .expect(&quot;Could not process message.&quot;);</code></pre>
 <h2 id="interpreting-the-processed-message"><a class="header" href="#interpreting-the-processed-message">Interpreting the processed message</a></h2>
 <p>In the last step, the message is ready for inspection. The <code>ProcessedMessage</code>
