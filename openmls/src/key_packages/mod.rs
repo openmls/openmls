@@ -351,16 +351,12 @@ impl KeyPackage {
         &self,
         required_extensions: &[ExtensionType],
     ) -> Result<(), KeyPackageExtensionSupportError> {
-        let my_extension_types: Vec<ExtensionType> = self
-            .extensions()
-            .iter()
-            .map(|ext| ext.extension_type())
-            .collect();
-        for required in required_extensions.iter() {
-            if !my_extension_types.iter().any(|e| e == required) {
+        for required_extension in required_extensions.into_iter() {
+            if !self.extensions().contains(*required_extension) {
                 return Err(KeyPackageExtensionSupportError::UnsupportedExtension);
             }
         }
+
         Ok(())
     }
 

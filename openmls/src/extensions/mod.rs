@@ -266,6 +266,11 @@ impl Extensions {
             None => Err(InvalidExtensionError::NotFound),
         }
     }
+
+    /// Returns `true` iff the extension list contains an extension with the given extension type.
+    pub fn contains(&self, extension_type: ExtensionType) -> bool {
+        self.map.contains_key(&extension_type)
+    }
 }
 
 impl TryFrom<Vec<Extension>> for Extensions {
