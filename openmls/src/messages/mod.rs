@@ -277,20 +277,6 @@ impl GroupInfo {
     }
 }
 
-impl Verifiable for GroupInfo {
-    fn unsigned_payload(&self) -> Result<Vec<u8>, tls_codec::Error> {
-        self.payload.unsigned_payload()
-    }
-
-    fn signature(&self) -> &Signature {
-        &self.signature
-    }
-
-    fn label(&self) -> &str {
-        SIGNATURE_GROUP_INFO_LABEL
-    }
-}
-
 impl SignedStruct<GroupInfoTBS> for GroupInfo {
     fn from_payload(payload: GroupInfoTBS, signature: Signature) -> Self {
         Self { payload, signature }
