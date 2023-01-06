@@ -153,7 +153,9 @@ impl MlsMessageIn {
 /// [`Into<ProtocolMessage>`].
 #[derive(Debug, Clone)]
 pub enum ProtocolMessage {
+    /// A [`ProtocolMessage`] containing a [`PrivateMessage`].
     PrivateMessage(PrivateMessage),
+    /// A [`ProtocolMessage`] containing a [`PublicMessage`].
     PublicMessage(PublicMessage),
 }
 
@@ -219,5 +221,16 @@ impl From<PrivateMessage> for ProtocolMessage {
 impl From<PublicMessage> for ProtocolMessage {
     fn from(public_message: PublicMessage) -> Self {
         ProtocolMessage::PublicMessage(public_message)
+    }
+}
+
+#[cfg(any(feature = "test-utils", test))]
+impl From<MlsMessageIn> for ProtocolMessage {
+    fn from(msg: MlsMessageIn) -> Self {
+        match msg.body {
+            MlsMessageInBody::PublicMessage(m) => ProtocolMessage::PublicMessage(m),
+            MlsMessageInBody::PrivateMessage(m) => ProtocolMessage::PrivateMessage(m),
+            _ => panic!("Wrong message type"),
+        }
     }
 }
