@@ -98,7 +98,7 @@ fn validation_test_setup(
     let bob_group = MlsGroup::new_from_welcome(
         backend,
         &mls_group_config,
-        welcome,
+        welcome.into_welcome().expect("Unexpected message type."),
         Some(alice_group.export_ratchet_tree()),
     )
     .expect("error creating group from welcome");
@@ -156,11 +156,11 @@ fn external_add_proposal_should_succeed(
                 && matches!(msg.content(), FramedContentBody::Proposal(p) if p.proposal_type() == ProposalType::Add)
         };
         assert!(
-            matches!(proposal.mls_message.body, MlsMessageBody::PublicMessage(ref msg) if verify_proposal(msg))
+            matches!(proposal.body, MlsMessageOutBody::PublicMessage(ref msg) if verify_proposal(msg))
         );
 
         let msg = alice_group
-            .process_message(backend, proposal.clone().into())
+            .process_message(backend, proposal.clone().into_protocol_message().unwrap())
             .unwrap();
 
         match msg.into_content() {
@@ -175,7 +175,9 @@ fn external_add_proposal_should_succeed(
             _ => unreachable!(),
         }
 
-        let msg = bob_group.process_message(backend, proposal.into()).unwrap();
+        let msg = bob_group
+            .process_message(backend, proposal.into_protocol_message().unwrap())
+            .unwrap();
 
         match msg.into_content() {
             ProcessedMessageContent::ExternalJoinProposalMessage(proposal) => {
@@ -190,7 +192,9 @@ fn external_add_proposal_should_succeed(
         assert_eq!(alice_group.members().count(), 3);
 
         // Bob will also process the commit
-        let msg = bob_group.process_message(backend, commit.into()).unwrap();
+        let msg = bob_group
+            .process_message(backend, commit.into_protocol_message().unwrap())
+            .unwrap();
         match msg.into_content() {
             ProcessedMessageContent::StagedCommitMessage(commit) => {
                 bob_group.merge_staged_commit(*commit)
@@ -207,7 +211,7 @@ fn external_add_proposal_should_succeed(
         let charlie_group = MlsGroup::new_from_welcome(
             backend,
             &cfg,
-            welcome.unwrap(),
+            welcome.unwrap().into_welcome().unwrap(),
             Some(alice_group.export_ratchet_tree()),
         )
         .unwrap();
@@ -261,7 +265,7 @@ fn external_add_proposal_should_be_signed_by_key_package_it_references(
     // fails because the message was not signed by the same credential as the one in the Add proposal
     assert!(matches!(
         alice_group
-            .process_message(backend, invalid_proposal.into())
+            .process_message(backend, invalid_proposal.into_protocol_message().unwrap())
             .unwrap_err(),
         ProcessMessageError::InvalidSignature
     ));
@@ -314,7 +318,7 @@ fn new_member_proposal_sender_should_be_reserved_for_join_proposals(
     )
     .unwrap();
 
-    if let MlsMessageBody::PublicMessage(plaintext) = &join_proposal.mls_message.body {
+    if let MlsMessageOutBody::PublicMessage(plaintext) = &join_proposal.body {
         // Make sure it's an add proposal...
         assert!(matches!(
             plaintext.content(),
@@ -326,7 +330,7 @@ fn new_member_proposal_sender_should_be_reserved_for_join_proposals(
 
         // Finally check that the message can be processed without errors
         assert!(bob_group
-            .process_message(backend, join_proposal.into())
+            .process_message(backend, join_proposal.into_protocol_message().unwrap())
             .is_ok());
     } else {
         panic!()
@@ -337,12 +341,10 @@ fn new_member_proposal_sender_should_be_reserved_for_join_proposals(
     let remove_proposal = alice_group
         .propose_remove_member(backend, LeafNodeIndex::new(1))
         .unwrap();
-    if let MlsMessageBody::PublicMessage(mut plaintext) = remove_proposal.mls_message.body {
+    if let MlsMessageOutBody::PublicMessage(mut plaintext) = remove_proposal.body {
         plaintext.set_sender(Sender::NewMemberProposal);
         assert!(matches!(
-            bob_group
-                .process_message(backend, plaintext.into())
-                .unwrap_err(),
+            bob_group.process_message(backend, plaintext).unwrap_err(),
             ProcessMessageError::ValidationError(ValidationError::NotAnExternalAddProposal)
         ));
     } else {
@@ -352,12 +354,10 @@ fn new_member_proposal_sender_should_be_reserved_for_join_proposals(
 
     // Update proposal cannot have a 'new_member_proposal' sender
     let update_proposal = alice_group.propose_self_update(backend, None).unwrap();
-    if let MlsMessageBody::PublicMessage(mut plaintext) = update_proposal.mls_message.body {
+    if let MlsMessageOutBody::PublicMessage(mut plaintext) = update_proposal.body {
         plaintext.set_sender(Sender::NewMemberProposal);
         assert!(matches!(
-            bob_group
-                .process_message(backend, plaintext.into())
-                .unwrap_err(),
+            bob_group.process_message(backend, plaintext).unwrap_err(),
             ProcessMessageError::ValidationError(ValidationError::NotAnExternalAddProposal)
         ));
     } else {

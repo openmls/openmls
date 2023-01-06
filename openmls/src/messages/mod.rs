@@ -185,7 +185,7 @@ pub struct ConfirmationTag(pub(crate) Mac);
 ///     uint32 signer;
 /// } GroupInfoTBS;
 /// ```
-#[derive(Clone, TlsDeserialize, TlsSerialize, TlsSize)]
+#[derive(Debug, PartialEq, Clone, TlsDeserialize, TlsSerialize, TlsSize)]
 pub(crate) struct GroupInfoTBS {
     group_context: GroupContext,
     extensions: Extensions,
@@ -240,6 +240,7 @@ impl Signable for GroupInfoTBS {
 ///     opaque signature<V>;
 /// } GroupInfo;
 /// ```
+#[derive(Debug, PartialEq, Clone)]
 pub struct GroupInfo {
     payload: GroupInfoTBS,
     signature: Signature,
@@ -266,7 +267,7 @@ impl GroupInfo {
         self.payload.signer
     }
 
-    #[cfg(test)]
+    #[cfg(any(feature = "test-utils", test))]
     pub(crate) fn into_verifiable_group_info(self) -> VerifiableGroupInfo {
         VerifiableGroupInfo {
             payload: GroupInfoTBS {
@@ -306,7 +307,7 @@ impl SignedStruct<GroupInfoTBS> for GroupInfo {
 /// [`CredentialBundle`](crate::credentials::CredentialBundle) of the signer. When receiving a
 /// serialized group info, it can only be deserialized into a [`VerifiableGroupInfo`], which can
 /// then be turned into a group info as described above.
-#[derive(Clone, TlsDeserialize, TlsSerialize, TlsSize)]
+#[derive(Debug, PartialEq, Clone, TlsDeserialize, TlsSerialize, TlsSize)]
 pub struct VerifiableGroupInfo {
     payload: GroupInfoTBS,
     signature: Signature,
@@ -338,6 +339,16 @@ impl VerifiableGroupInfo {
     #[cfg(test)]
     pub(crate) fn break_signature(&mut self) {
         self.signature.modify(b"");
+    }
+}
+
+#[cfg(any(feature = "test-utils", test))]
+impl From<VerifiableGroupInfo> for GroupInfo {
+    fn from(vgi: VerifiableGroupInfo) -> Self {
+        GroupInfo {
+            payload: vgi.payload,
+            signature: vgi.signature,
+        }
     }
 }
 

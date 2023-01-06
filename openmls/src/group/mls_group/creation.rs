@@ -222,9 +222,7 @@ impl MlsGroup {
             state_changed: InnerState::Changed,
         };
 
-        Ok((
-            mls_group,
-            PublicMessage::from(create_commit_result.commit).into(),
-        ))
+        let public_message: PublicMessage = create_commit_result.commit.into();
+        Ok((mls_group, public_message.into()))
     }
 }

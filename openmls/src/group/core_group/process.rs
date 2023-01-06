@@ -27,9 +27,10 @@ impl CoreGroup {
     pub(crate) fn parse_message(
         &mut self,
         backend: &impl OpenMlsCryptoProvider,
-        message: MlsMessageIn,
+        message: impl Into<ProtocolMessage>,
         sender_ratchet_configuration: &SenderRatchetConfiguration,
     ) -> Result<UnverifiedMessage, ValidationError> {
+        let message: ProtocolMessage = message.into();
         // Checks the following semantic validation:
         //  - ValSem002
         //  - ValSem003
@@ -40,8 +41,8 @@ impl CoreGroup {
         // Checks the following semantic validation:
         //  - ValSem006
         //  - ValSem007 MembershipTag presence
-        let decrypted_message = match message.mls_message.body {
-            MlsMessageBody::PublicMessage(public_message) => {
+        let decrypted_message = match message {
+            ProtocolMessage::PublicMessage(public_message) => {
                 // If the message is older than the current epoch, we need to fetch the correct secret tree first.
                 let message_secrets =
                     self.message_secrets_for_epoch(epoch).map_err(|e| match e {
@@ -57,7 +58,7 @@ impl CoreGroup {
                     backend,
                 )?
             }
-            MlsMessageBody::PrivateMessage(ciphertext) => {
+            ProtocolMessage::PrivateMessage(ciphertext) => {
                 // If the message is older than the current epoch, we need to fetch the correct secret tree first
                 DecryptedMessage::from_inbound_ciphertext(
                     ciphertext,
@@ -308,13 +309,13 @@ impl CoreGroup {
     pub(crate) fn process_message(
         &mut self,
         backend: &impl OpenMlsCryptoProvider,
-        message: MlsMessageIn,
+        message: impl Into<ProtocolMessage>,
         sender_ratchet_configuration: &SenderRatchetConfiguration,
         proposal_store: &ProposalStore,
         own_kpbs: &[OpenMlsLeafNode],
     ) -> Result<ProcessedMessage, ProcessMessageError> {
         let unverified_message = self
-            .parse_message(backend, message, sender_ratchet_configuration)
+            .parse_message(backend, message.into(), sender_ratchet_configuration)
             .map_err(ProcessMessageError::from)?;
         self.process_unverified_message(unverified_message, proposal_store, own_kpbs, backend)
     }

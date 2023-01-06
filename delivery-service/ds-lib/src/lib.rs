@@ -20,7 +20,7 @@ pub struct ClientInfo {
     pub key_packages: ClientKeyPackages,
     pub id: Vec<u8>,
     pub msgs: Vec<MlsMessageIn>,
-    pub welcome_queue: Vec<Welcome>,
+    pub welcome_queue: Vec<MlsMessageIn>,
 }
 
 /// The DS returns a list of key packages for a client as `ClientKeyPackages`.
@@ -61,30 +61,6 @@ impl ClientInfo {
     }
 }
 
-/// The DS returns a list of messages on `/recv/{name}`, which is a
-/// `Vec<Message>`. A `Message` is either an `MLSMessage` or a `Welcome` message
-/// (see OpenMLS) for details.
-#[derive(Debug)]
-#[allow(clippy::large_enum_variant)]
-pub enum Message {
-    /// An `MLSMessage` is either an OpenMLS `PrivateMessage` or `PublicMessage`.
-    MlsMessage(MlsMessageIn),
-
-    /// An OpenMLS `Welcome` message.
-    Welcome(Welcome),
-}
-
-/// Enum defining encodings for the different message types/
-#[derive(Debug, Clone, Copy, TlsSerialize, TlsDeserialize, TlsSize)]
-#[repr(u8)]
-pub enum MessageType {
-    /// An MlsMessage message.
-    MlsMessage = 0,
-
-    /// A Welcome message.
-    Welcome = 2,
-}
-
 /// An core group message.
 /// This is an `MLSMessage` plus the list of recipients as a vector of client
 /// names.
@@ -106,19 +82,6 @@ impl GroupMessage {
                 .collect::<Vec<TlsByteVecU32>>()
                 .into(),
         }
-    }
-
-    pub fn group_id(&self) -> &GroupId {
-        self.msg.group_id()
-    }
-
-    pub fn epoch(&self) -> GroupEpoch {
-        self.msg.epoch()
-    }
-
-    /// Returns `true` if this is a handshake message and `false` otherwise.
-    pub fn is_handshake_message(&self) -> bool {
-        self.msg.is_handshake_message()
     }
 }
 
@@ -147,43 +110,6 @@ impl tls_codec::Deserialize for ClientInfo {
             .map(|(e1, e2)| (e1.into(), e2))
             .collect();
         Ok(Self::new(client_name, key_packages))
-    }
-}
-
-impl tls_codec::Size for Message {
-    fn tls_serialized_len(&self) -> usize {
-        MessageType::Welcome.tls_serialized_len()
-            + match self {
-                Message::MlsMessage(mm) => mm.tls_serialized_len(),
-                Message::Welcome(w) => w.tls_serialized_len(),
-            }
-    }
-}
-
-impl tls_codec::Serialize for Message {
-    fn tls_serialize<W: std::io::Write>(&self, writer: &mut W) -> Result<usize, tls_codec::Error> {
-        let written;
-        match self {
-            Message::MlsMessage(m) => {
-                written = MessageType::MlsMessage.tls_serialize(writer)?;
-                m.tls_serialize(writer)
-            }
-            Message::Welcome(m) => {
-                written = MessageType::Welcome.tls_serialize(writer)?;
-                m.tls_serialize(writer)
-            }
-        }
-        .map(|l| l + written)
-    }
-}
-
-impl tls_codec::Deserialize for Message {
-    fn tls_deserialize<R: std::io::Read>(bytes: &mut R) -> Result<Self, tls_codec::Error> {
-        let msg_type = MessageType::tls_deserialize(bytes)?;
-        Ok(match msg_type {
-            MessageType::MlsMessage => Message::MlsMessage(MlsMessageIn::tls_deserialize(bytes)?),
-            MessageType::Welcome => Message::Welcome(Welcome::tls_deserialize(bytes)?),
-        })
     }
 }
 

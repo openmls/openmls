@@ -37,8 +37,8 @@ use super::*;
 ///     opaque ciphertext<V>;
 /// } PrivateMessage;
 /// ```
-#[derive(Debug, PartialEq, Clone, TlsSerialize, TlsSize, TlsDeserialize)]
-pub(crate) struct PrivateMessage {
+#[derive(Debug, PartialEq, Eq, Clone, TlsSerialize, TlsSize, TlsDeserialize)]
+pub struct PrivateMessage {
     group_id: GroupId,
     epoch: GroupEpoch,
     content_type: ContentType,
