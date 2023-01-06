@@ -137,73 +137,70 @@ impl MlsMessageIn {
             _ => None,
         }
     }
+
+    #[cfg(any(feature = "test-utils", test))]
+    pub fn into_protocol_message(self) -> Option<ProtocolMessage> {
+        match self.body {
+            MlsMessageInBody::PublicMessage(m) => Some(m.into()),
+            MlsMessageInBody::PrivateMessage(m) => Some(m.into()),
+            _ => None,
+        }
+    }
 }
 
-/// Struct containing a message for use with `process_message` and an
+/// Enum containing a message for use with `process_message` and an
 /// [`MlsGroup`]. Both [`PublicMessage`] and [`PrivateMessage`] implement
 /// [`Into<ProtocolMessage>`].
 #[derive(Debug, Clone)]
-pub struct ProtocolMessage {
-    pub(crate) body: ProtocolMessageBody,
-}
-
-/// Body of a [`ProtocolMessage`].
-#[derive(Debug, Clone)]
-pub(crate) enum ProtocolMessageBody {
+pub enum ProtocolMessage {
     PrivateMessage(PrivateMessage),
     PublicMessage(PublicMessage),
-}
-
-impl From<ProtocolMessageBody> for ProtocolMessage {
-    fn from(body: ProtocolMessageBody) -> Self {
-        Self { body }
-    }
 }
 
 impl ProtocolMessage {
     /// Returns the wire format.
     pub fn wire_format(&self) -> WireFormat {
-        match self.body {
-            ProtocolMessageBody::PrivateMessage(_) => WireFormat::PrivateMessage,
-            ProtocolMessageBody::PublicMessage(_) => WireFormat::PublicMessage,
+        match self {
+            ProtocolMessage::PrivateMessage(_) => WireFormat::PrivateMessage,
+            ProtocolMessage::PublicMessage(_) => WireFormat::PublicMessage,
         }
     }
 
     /// Returns the group ID.
     pub fn group_id(&self) -> &GroupId {
-        match self.body {
-            ProtocolMessageBody::PrivateMessage(ref m) => m.group_id(),
-            ProtocolMessageBody::PublicMessage(ref m) => m.group_id(),
+        match self {
+            ProtocolMessage::PrivateMessage(ref m) => m.group_id(),
+            ProtocolMessage::PublicMessage(ref m) => m.group_id(),
         }
     }
 
     /// Returns the epoch.
     pub fn epoch(&self) -> GroupEpoch {
-        match self.body {
-            ProtocolMessageBody::PrivateMessage(ref m) => m.epoch(),
-            ProtocolMessageBody::PublicMessage(ref m) => m.epoch(),
+        match self {
+            ProtocolMessage::PrivateMessage(ref m) => m.epoch(),
+            ProtocolMessage::PublicMessage(ref m) => m.epoch(),
         }
     }
 
     /// Returns the content type.
     pub fn content_type(&self) -> ContentType {
-        match self.body {
-            ProtocolMessageBody::PrivateMessage(ref m) => m.content_type(),
-            ProtocolMessageBody::PublicMessage(ref m) => m.content_type(),
+        match self {
+            ProtocolMessage::PrivateMessage(ref m) => m.content_type(),
+            ProtocolMessage::PublicMessage(ref m) => m.content_type(),
         }
     }
 
     /// Returns `true` if this is either an external proposal or external commit
     pub fn is_external(&self) -> bool {
-        match &self.body {
-            ProtocolMessageBody::PublicMessage(p) => {
+        match &self {
+            ProtocolMessage::PublicMessage(p) => {
                 matches!(
                     p.sender(),
                     Sender::NewMemberProposal | Sender::NewMemberCommit | Sender::External(_)
                 )
             }
             // external message cannot be encrypted
-            ProtocolMessageBody::PrivateMessage(_) => false,
+            ProtocolMessage::PrivateMessage(_) => false,
         }
     }
 
@@ -215,27 +212,12 @@ impl ProtocolMessage {
 
 impl From<PrivateMessage> for ProtocolMessage {
     fn from(private_message: PrivateMessage) -> Self {
-        Self {
-            body: ProtocolMessageBody::PrivateMessage(private_message),
-        }
+        ProtocolMessage::PrivateMessage(private_message)
     }
 }
 
 impl From<PublicMessage> for ProtocolMessage {
     fn from(public_message: PublicMessage) -> Self {
-        Self {
-            body: ProtocolMessageBody::PublicMessage(public_message),
-        }
-    }
-}
-
-#[cfg(any(feature = "test-utils", test))]
-impl From<MlsMessageIn> for ProtocolMessage {
-    fn from(msg: MlsMessageIn) -> Self {
-        match msg.body {
-            MlsMessageInBody::PublicMessage(m) => ProtocolMessageBody::PublicMessage(m).into(),
-            MlsMessageInBody::PrivateMessage(m) => ProtocolMessageBody::PrivateMessage(m).into(),
-            _ => panic!("Wrong message type"),
-        }
+        ProtocolMessage::PublicMessage(public_message)
     }
 }

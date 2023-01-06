@@ -41,8 +41,8 @@ impl CoreGroup {
         // Checks the following semantic validation:
         //  - ValSem006
         //  - ValSem007 MembershipTag presence
-        let decrypted_message = match message.body {
-            ProtocolMessageBody::PublicMessage(public_message) => {
+        let decrypted_message = match message {
+            ProtocolMessage::PublicMessage(public_message) => {
                 // If the message is older than the current epoch, we need to fetch the correct secret tree first.
                 let message_secrets =
                     self.message_secrets_for_epoch(epoch).map_err(|e| match e {
@@ -58,7 +58,7 @@ impl CoreGroup {
                     backend,
                 )?
             }
-            ProtocolMessageBody::PrivateMessage(ciphertext) => {
+            ProtocolMessage::PrivateMessage(ciphertext) => {
                 // If the message is older than the current epoch, we need to fetch the correct secret tree first
                 DecryptedMessage::from_inbound_ciphertext(
                     ciphertext,

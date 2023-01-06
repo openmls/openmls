@@ -285,12 +285,13 @@ impl MlsGroupTestSetup {
             CodecUse::SerializedMessages => {
                 let mls_message_out: MlsMessageOut = message.clone().into();
                 let serialized_message = mls_message_out.tls_serialize_detached()?;
-                let deserialized_message =
-                    MlsMessageIn::tls_deserialize(&mut serialized_message.as_slice())?;
-                deserialized_message.into()
+
+                MlsMessageIn::tls_deserialize(&mut serialized_message.as_slice())?
             }
-            CodecUse::StructMessages => message.clone().into(),
-        };
+            CodecUse::StructMessages => message.clone(),
+        }
+        .into_protocol_message()
+        .expect("Unexptected message type.");
         let clients = self.clients.read().expect("An unexpected error occurred.");
         // Distribute message to all members, except to the sender in the case of application messages
         let results: Result<Vec<_>, _> = group
