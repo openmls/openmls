@@ -439,6 +439,7 @@ pub(crate) fn try_nodes_from_extensions(
 
 #[cfg(test)]
 mod test {
+    use itertools::Itertools;
     use tls_codec::{Deserialize, Serialize};
 
     use crate::extensions::*;
@@ -460,7 +461,8 @@ mod test {
 
     #[test]
     fn add_try_from() {
-        // Create two extensions with different extension types.
+        // Create some extensions with different extension types and test that
+        // duplicates are rejected. The extension content does not matter in this test.
         let x = Extension::ApplicationId(ApplicationIdExtension::new(b"Test"));
         let y = Extension::RequiredCapabilities(RequiredCapabilitiesExtension::default());
 
@@ -513,21 +515,19 @@ mod test {
 
     #[test]
     fn ensure_ordering() {
-        // Create two extensions with different extension types.
+        // Create some extensions with different extension types and test
+        // that all permutations keep their order after being (de)serialized.
+        // The extension content does not matter in this test.
         let x = Extension::ApplicationId(ApplicationIdExtension::new(b"Test"));
         let y = Extension::RatchetTree(RatchetTreeExtension::default());
         let z = Extension::RequiredCapabilities(RequiredCapabilitiesExtension::default());
 
-        let candidates = [
-            vec![x.clone(), y.clone(), z.clone()],
-            vec![x.clone(), z.clone(), y.clone()],
-            vec![y.clone(), x.clone(), z.clone()],
-            vec![y.clone(), z.clone(), x.clone()],
-            vec![z.clone(), x.clone(), y.clone()],
-            vec![z, y, x],
-        ];
-
-        for candidate in candidates.into_iter() {
+        for candidate in [x, y, z]
+            .into_iter()
+            .permutations(3)
+            .into_iter()
+            .collect::<Vec<_>>()
+        {
             let candidate: Extensions = Extensions::try_from(candidate).unwrap();
             let bytes = candidate.tls_serialize_detached().unwrap();
             let got = Extensions::tls_deserialize(&mut bytes.as_slice()).unwrap();
