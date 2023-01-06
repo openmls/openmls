@@ -29,7 +29,8 @@
 
 use super::*;
 use crate::{
-    tree::sender_ratchet::SenderRatchetConfiguration, treesync::node::leaf_node::Lifetime,
+    group::config::CryptoConfig, tree::sender_ratchet::SenderRatchetConfiguration,
+    treesync::node::leaf_node::Lifetime,
 };
 use serde::{Deserialize, Serialize};
 
@@ -55,6 +56,8 @@ pub struct MlsGroupConfig {
     pub(crate) sender_ratchet_configuration: SenderRatchetConfiguration,
     /// Lifetime of the own leaf node
     pub(crate) lifetime: Lifetime,
+    /// Ciphersuite and protocol version
+    pub(crate) crypto_config: CryptoConfig,
 }
 
 impl MlsGroupConfig {
@@ -98,13 +101,19 @@ impl MlsGroupConfig {
         &self.lifetime
     }
 
+    /// Returns the [`CryptoConfig`].
+    pub fn crypto_config(&self) -> &CryptoConfig {
+        &self.crypto_config
+    }
+
     #[cfg(any(feature = "test-utils", test))]
-    pub fn test_default() -> Self {
+    pub fn test_default(ciphersuite: Ciphersuite) -> Self {
         Self::builder()
             .wire_format_policy(WireFormatPolicy::new(
                 OutgoingWireFormatPolicy::AlwaysPlaintext,
                 IncomingWireFormatPolicy::Mixed,
             ))
+            .crypto_config(CryptoConfig::with_default_version(ciphersuite))
             .build()
     }
 }
@@ -174,6 +183,12 @@ impl MlsGroupConfigBuilder {
     /// Sets the `lifetime` property of the MlsGroupConfig.
     pub fn lifetime(mut self, lifetime: Lifetime) -> Self {
         self.config.lifetime = lifetime;
+        self
+    }
+
+    /// Sets the `crypto_config` property of the MlsGroupConfig.
+    pub fn crypto_config(mut self, config: CryptoConfig) -> Self {
+        self.config.crypto_config = config;
         self
     }
 

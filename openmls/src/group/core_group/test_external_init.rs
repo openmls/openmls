@@ -1,7 +1,7 @@
 use crate::{
     credentials::{CredentialBundle, CredentialType},
     framing::{FramingParameters, WireFormat},
-    group::{errors::ExternalCommitError, GroupId},
+    group::{config::CryptoConfig, errors::ExternalCommitError, GroupId},
     key_packages::KeyPackageBundle,
     messages::proposals::{ProposalOrRef, ProposalType},
     test_utils::*,
@@ -39,9 +39,6 @@ fn test_external_init(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProv
     .expect("An unexpected error occurred.");
 
     // Generate KeyPackages
-    let alice_key_package_bundle =
-        KeyPackageBundle::new(backend, ciphersuite, &alice_credential_bundle);
-
     let bob_key_package_bundle =
         KeyPackageBundle::new(backend, ciphersuite, &bob_credential_bundle);
     let bob_key_package = bob_key_package_bundle.key_package();
@@ -49,9 +46,10 @@ fn test_external_init(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProv
     // === Alice creates a group ===
     let group_id = GroupId::random(backend);
 
-    let mut group_alice = CoreGroup::builder(group_id, alice_key_package_bundle)
-        .build(&alice_credential_bundle, backend)
-        .expect("An unexpected error occurred.");
+    let mut group_alice =
+        CoreGroup::builder(group_id, CryptoConfig::with_default_version(ciphersuite))
+            .build(&alice_credential_bundle, backend)
+            .expect("An unexpected error occurred.");
 
     // === Alice adds Bob ===
     let bob_add_proposal = group_alice
@@ -258,16 +256,13 @@ fn test_external_init_single_member_group(
     )
     .expect("An unexpected error occurred.");
 
-    // Generate KeyPackages
-    let alice_key_package_bundle =
-        KeyPackageBundle::new(backend, ciphersuite, &alice_credential_bundle);
-
     // === Alice creates a group ===
     let group_id = GroupId::random(backend);
 
-    let mut group_alice = CoreGroup::builder(group_id, alice_key_package_bundle)
-        .build(&alice_credential_bundle, backend)
-        .expect("An unexpected error occurred.");
+    let mut group_alice =
+        CoreGroup::builder(group_id, CryptoConfig::with_default_version(ciphersuite))
+            .build(&alice_credential_bundle, backend)
+            .expect("An unexpected error occurred.");
 
     // Now set up charly and try to init externally.
     // Define credential bundles
@@ -350,9 +345,6 @@ fn test_external_init_broken_signature(
     .expect("An unexpected error occurred.");
 
     // Generate KeyPackages
-    let alice_key_package_bundle =
-        KeyPackageBundle::new(backend, ciphersuite, &alice_credential_bundle);
-
     let bob_key_package_bundle =
         KeyPackageBundle::new(backend, ciphersuite, &bob_credential_bundle);
     let bob_key_package = bob_key_package_bundle.key_package();
@@ -360,9 +352,10 @@ fn test_external_init_broken_signature(
     // === Alice creates a group ===
     let group_id = GroupId::random(backend);
 
-    let mut group_alice = CoreGroup::builder(group_id, alice_key_package_bundle)
-        .build(&alice_credential_bundle, backend)
-        .expect("An unexpected error occurred.");
+    let mut group_alice =
+        CoreGroup::builder(group_id, CryptoConfig::with_default_version(ciphersuite))
+            .build(&alice_credential_bundle, backend)
+            .expect("An unexpected error occurred.");
 
     // === Alice adds Bob ===
     let bob_add_proposal = group_alice

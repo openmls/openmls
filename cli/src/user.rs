@@ -250,7 +250,7 @@ impl User {
             &self.crypto,
             &group_config,
             GroupId::from_slice(group_id),
-            kp,
+            kp.leaf_node().signature_key(),
         )
         .expect("Failed to create MlsGroup");
         mls_group.set_aad(group_aad.as_slice());
