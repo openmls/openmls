@@ -17,9 +17,6 @@ use thiserror::Error;
 /// Extension error
 #[derive(Error, Debug, PartialEq, Clone)]
 pub enum ExtensionError {
-    /// Found a duplicate ratchet tree extension.
-    #[error("Found a duplicate ratchet tree extension.")]
-    DuplicateRatchetTreeExtension,
     /// Unsupported proposal type in required capabilities.
     #[error("Unsupported proposal type in required capabilities.")]
     UnsupportedProposalType,

@@ -18,6 +18,7 @@ use crate::{
     },
     credentials::{Credential, CredentialBundle, CredentialType},
     error::LibraryError,
+    extensions::Extensions,
     extensions::{Extension, ExtensionType, RequiredCapabilitiesExtension},
     group::{config::CryptoConfig, GroupId},
     key_packages::KeyPackage,
@@ -302,7 +303,7 @@ struct LeafNodePayload {
     credential: Credential,
     capabilities: Capabilities,
     leaf_node_source: LeafNodeSource,
-    extensions: Vec<Extension>,
+    extensions: Extensions,
 }
 
 #[derive(Debug)]
@@ -409,7 +410,7 @@ impl LeafNode {
         config: CryptoConfig,
         credential_bundle: &CredentialBundle,
         leaf_node_source: LeafNodeSource,
-        extensions: Vec<Extension>,
+        extensions: Extensions,
         backend: &impl OpenMlsCryptoProvider,
     ) -> Result<(Self, HpkeKeyPair), LibraryError> {
         // Create a new encryption key pair.
@@ -436,7 +437,7 @@ impl LeafNode {
         encryption_key: HpkePublicKey,
         credential_bundle: &CredentialBundle,
         leaf_node_source: LeafNodeSource,
-        extensions: Vec<Extension>,
+        extensions: Extensions,
         backend: &impl OpenMlsCryptoProvider,
     ) -> Result<Self, LibraryError> {
         let leaf_node_tbs = LeafNodeTbs::new(
@@ -536,7 +537,7 @@ impl LeafNode {
         encryption_key: HpkePublicKey,
         credential_bundle: &CredentialBundle,
         leaf_node_source: LeafNodeSource,
-        extensions: Vec<Extension>,
+        extensions: Extensions,
         backend: &impl OpenMlsCryptoProvider,
     ) -> Result<Self, LibraryError> {
         Self::new_with_key(
@@ -655,7 +656,7 @@ impl LeafNodeTbs {
         credential: Credential,
         capabilities: Capabilities,
         leaf_node_source: LeafNodeSource,
-        extensions: Vec<Extension>,
+        extensions: Extensions,
     ) -> Result<Self, LibraryError> {
         let payload = LeafNodePayload {
             encryption_key,
@@ -720,7 +721,7 @@ impl OpenMlsLeafNode {
             config,
             credential_bundle,
             leaf_node_source,
-            Vec::new(),
+            Extensions::empty(),
             backend,
         )?;
 
@@ -741,18 +742,11 @@ impl OpenMlsLeafNode {
     /// Add new extension to this leaf node.
     /// The `new_extension` is add to the existing [`Extension`]s. If the
     /// [`Extension`] exists, it is overridden.
-    pub(crate) fn add_extensions(&mut self, new_extension: Extension) {
-        let old_extension = self
-            .leaf_node
+    pub(crate) fn add_extension(&mut self, new_extension: Extension) {
+        self.leaf_node
             .payload
             .extensions
-            .iter_mut()
-            .find(|e| e.extension_type() == new_extension.extension_type());
-        if let Some(old_extension) = old_extension {
-            *old_extension = new_extension;
-        } else {
-            self.leaf_node.payload.extensions.push(new_extension);
-        }
+            .add_or_replace(new_extension);
     }
 
     /// Return a reference to the `encryption_key` of this [`LeafNode`].

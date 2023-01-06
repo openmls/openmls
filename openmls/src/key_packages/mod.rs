@@ -85,7 +85,8 @@ use crate::{
     },
     credentials::*,
     error::LibraryError,
-    extensions::{Extension, ExtensionType},
+    extensions::ExtensionType,
+    extensions::Extensions,
     group::config::CryptoConfig,
     treesync::{
         node::leaf_node::{LeafNodeSource, Lifetime},
@@ -136,7 +137,7 @@ struct KeyPackageTBS {
     ciphersuite: Ciphersuite,
     init_key: HpkePublicKey,
     leaf_node: LeafNode,
-    extensions: Vec<Extension>,
+    extensions: Extensions,
 }
 
 impl Signable for KeyPackageTBS {
@@ -216,8 +217,8 @@ impl KeyPackage {
         config: CryptoConfig,
         backend: &impl OpenMlsCryptoProvider,
         credential: &CredentialBundle, // FIXME: make credential
-        extensions: Vec<Extension>,
-        leaf_node_extensions: Vec<Extension>,
+        extensions: Extensions,
+        leaf_node_extensions: Extensions,
     ) -> Result<((Self, HpkeKeyPair), Vec<u8>), KeyPackageNewError> {
         if SignatureScheme::from(config.ciphersuite) != credential.credential().signature_scheme() {
             return Err(KeyPackageNewError::CiphersuiteSignatureSchemeMismatch);
@@ -256,8 +257,8 @@ impl KeyPackage {
         config: CryptoConfig,
         backend: &impl OpenMlsCryptoProvider,
         credential: &CredentialBundle, // FIXME: make credential
-        extensions: Vec<Extension>,
-        leaf_node_extensions: Vec<Extension>,
+        extensions: Extensions,
+        leaf_node_extensions: Extensions,
         init_key: Vec<u8>,
     ) -> Result<(Self, HpkeKeyPair), KeyPackageNewError> {
         // We don't need the private key here. It's stored in the key store for
@@ -340,8 +341,8 @@ impl KeyPackage {
     }
 
     /// Get a reference to the extensions of this key package.
-    pub fn extensions(&self) -> &[Extension] {
-        self.payload.extensions.as_slice()
+    pub fn extensions(&self) -> &Extensions {
+        &self.payload.extensions
     }
 
     /// Check whether the this key package supports all the required extensions
@@ -350,12 +351,12 @@ impl KeyPackage {
         &self,
         required_extensions: &[ExtensionType],
     ) -> Result<(), KeyPackageExtensionSupportError> {
-        let my_extension_types = self.extensions().iter().map(|ext| ext.extension_type());
-        for required in required_extensions.iter() {
-            if !my_extension_types.clone().any(|e| &e == required) {
+        for required_extension in required_extensions.iter() {
+            if !self.extensions().contains(*required_extension) {
                 return Err(KeyPackageExtensionSupportError::UnsupportedExtension);
             }
         }
+
         Ok(())
     }
 
@@ -391,17 +392,6 @@ impl KeyPackage {
 
 /// Crate visible `KeyPackage` functions.
 impl KeyPackage {
-    /// Get a reference to the extension of `extension_type`.
-    /// Returns `Some(extension)` if present and `None` if the extension is not
-    /// present.
-    pub(crate) fn _extension_with_type(&self, extension_type: ExtensionType) -> Option<&Extension> {
-        self.payload
-            .extensions
-            .as_slice()
-            .iter()
-            .find(|&e| e.extension_type() == extension_type)
-    }
-
     /// Get the `ProtocolVersion`.
     pub(crate) fn protocol_version(&self) -> ProtocolVersion {
         self.payload.protocol_version
@@ -416,8 +406,8 @@ impl KeyPackage {
         config: CryptoConfig,
         backend: &impl OpenMlsCryptoProvider,
         credential: &CredentialBundle, // FIXME: make credential
-        extensions: Vec<Extension>,
-        leaf_node_extensions: Vec<Extension>,
+        extensions: Extensions,
+        leaf_node_extensions: Extensions,
         init_key: Vec<u8>,
     ) -> Result<Self, KeyPackageNewError> {
         let (key_package, encryption_key_pair) = Self::new_from_keys(
@@ -459,7 +449,7 @@ impl KeyPackage {
         config: CryptoConfig,
         backend: &impl OpenMlsCryptoProvider,
         credential: &CredentialBundle, // FIXME: make credential
-        extensions: Vec<Extension>,
+        extensions: Extensions,
         encryption_key: tls_codec::VLBytes,
     ) -> Result<Self, KeyPackageNewError> {
         // Create a new HPKE init key pair
@@ -481,7 +471,7 @@ impl KeyPackage {
             encryption_key,
             credential,
             LeafNodeSource::KeyPackage(Lifetime::default()),
-            vec![],
+            Extensions::empty(),
             backend,
         )
         .unwrap();
@@ -521,7 +511,7 @@ impl KeyPackage {
             ciphersuite: config.ciphersuite,
             init_key: init_key.into(),
             leaf_node: self.leaf_node().clone(),
-            extensions: self.extensions().to_vec(),
+            extensions: self.extensions().clone(),
         };
 
         let key_package = key_package.sign(backend, credential)?;
@@ -538,19 +528,6 @@ impl KeyPackage {
             .leaf_node
             .set_credential(credential.credential().clone());
         self.payload.sign(backend, credential).unwrap()
-    }
-
-    /// Remove an extension from the KeyPackage.
-    pub fn remove_extension(&mut self, extension_type: ExtensionType) {
-        self.payload
-            .extensions
-            .retain(|e| e.extension_type() != extension_type);
-    }
-
-    /// Add (or replace) an extension to the KeyPackage.
-    pub fn add_extension(&mut self, extension: Extension) {
-        self.remove_extension(extension.extension_type());
-        self.payload.extensions.push(extension);
     }
 
     /// Replace the public key in the KeyPackage.
@@ -577,8 +554,8 @@ impl KeyPackage {
 /// Builder that helps creating (and configuring) a [`KeyPackage`].
 #[derive(Default, Debug, Clone, Serialize, Deserialize)]
 pub struct KeyPackageBuilder {
-    key_package_extensions: Option<Vec<Extension>>,
-    leaf_node_extensions: Option<Vec<Extension>>,
+    key_package_extensions: Option<Extensions>,
+    leaf_node_extensions: Option<Extensions>,
 }
 
 impl KeyPackageBuilder {
@@ -591,13 +568,13 @@ impl KeyPackageBuilder {
     }
 
     /// Set the key package extensions.
-    pub fn key_package_extensions(mut self, extensions: Vec<Extension>) -> Self {
+    pub fn key_package_extensions(mut self, extensions: Extensions) -> Self {
         self.key_package_extensions = Some(extensions);
         self
     }
 
     /// Set the leaf node extensions.
-    pub fn leaf_node_extensions(mut self, extensions: Vec<Extension>) -> Self {
+    pub fn leaf_node_extensions(mut self, extensions: Extensions) -> Self {
         self.leaf_node_extensions = Some(extensions);
         self
     }

@@ -40,7 +40,7 @@ impl tls_codec::Deserialize for KeyPackage {
         let ciphersuite = Ciphersuite::tls_deserialize(bytes)?;
         let hpke_init_key = HpkePublicKey::tls_deserialize(bytes)?;
         let leaf_node = LeafNode::tls_deserialize(bytes)?;
-        let extensions = Vec::<Extension>::tls_deserialize(bytes)?;
+        let extensions = Extensions::tls_deserialize(bytes)?;
         let signature = Signature::tls_deserialize(bytes)?;
         let payload = KeyPackageTBS {
             protocol_version,

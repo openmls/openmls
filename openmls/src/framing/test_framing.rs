@@ -11,6 +11,7 @@ use crate::{
     binary_tree::LeafNodeIndex,
     ciphersuite::signable::Signable,
     credentials::errors::CredentialError,
+    extensions::Extensions,
     framing::*,
     group::{
         core_group::{
@@ -42,7 +43,7 @@ fn codec_plaintext(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvide
         1,
         vec![],
         vec![],
-        &[],
+        Extensions::empty(),
     );
 
     let serialized_context = group_context
@@ -97,7 +98,7 @@ fn codec_ciphertext(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvid
         1,
         vec![],
         vec![],
-        &[],
+        Extensions::empty(),
     );
 
     let serialized_context = group_context
@@ -305,7 +306,7 @@ fn create_content(
         1,
         vec![],
         vec![],
-        &[],
+        Extensions::empty(),
     );
     let serialized_context = group_context
         .tls_serialize_detached()
@@ -341,7 +342,7 @@ fn membership_tag(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
         1,
         vec![],
         vec![],
-        &[],
+        Extensions::empty(),
     );
     let membership_key = MembershipKey::from_secret(
         Secret::random(ciphersuite, backend, None /* MLS version */)

@@ -2,6 +2,7 @@ use crate::{
     binary_tree::LeafNodeIndex,
     ciphersuite::{hash_ref::KeyPackageRef, signable::Signable, AeadKey, AeadNonce, Mac, Secret},
     credentials::{errors::CredentialError, CredentialBundle, CredentialType},
+    extensions::Extensions,
     group::{config::CryptoConfig, errors::WelcomeError, GroupId, MlsGroup, MlsGroupConfigBuilder},
     key_packages::KeyPackage,
     messages::{
@@ -236,12 +237,12 @@ fn test_welcome_message_with_version(
             123,
             vec![1, 2, 3, 4, 5, 6, 7, 8, 9],
             vec![1, 1, 1],
-            &Vec::new(),
+            Extensions::empty(),
         );
 
         GroupInfoTBS::new(
             group_context,
-            &Vec::new(),
+            Extensions::empty(),
             ConfirmationTag(Mac {
                 mac_value: vec![1, 2, 3, 4, 5].into(),
             }),

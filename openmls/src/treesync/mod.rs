@@ -32,7 +32,7 @@ use crate::{
     ciphersuite::Secret,
     credentials::CredentialBundle,
     error::LibraryError,
-    extensions::Extension,
+    extensions::Extensions,
     framing::SenderError,
     group::{config::CryptoConfig, Member},
     messages::{PathSecret, PathSecretError},
@@ -96,7 +96,7 @@ impl TreeSync {
         credential_bundle: &CredentialBundle,
         life_time: Lifetime,
         capabilities: Capabilities,
-        extensions: Vec<Extension>,
+        extensions: Extensions,
     ) -> Result<(Self, CommitSecret), LibraryError> {
         let mut leaf = OpenMlsLeafNode::new(
             config,
@@ -107,8 +107,8 @@ impl TreeSync {
         )?;
         leaf.add_capabilities(capabilities);
         extensions
-            .into_iter()
-            .for_each(|extension| leaf.add_extensions(extension));
+            .iter()
+            .for_each(|extension| leaf.add_extension(extension.clone()));
 
         let node = Node::LeafNode(leaf);
         let path_secret: PathSecret = Secret::random(config.ciphersuite, backend, None)
