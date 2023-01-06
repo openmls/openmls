@@ -237,6 +237,9 @@
 <span id="237">237</span>
 <span id="238">238</span>
 <span id="239">239</span>
+<span id="240">240</span>
+<span id="241">241</span>
+<span id="242">242</span>
 </pre><pre class="rust"><code><span class="kw">use </span>log::debug;
 <span class="kw">use </span>openmls_traits::{crypto::OpenMlsCrypto, key_store::OpenMlsKeyStore, types::HpkeKeyPair};
 <span class="kw">use </span>tls_codec::Deserialize;
@@ -334,16 +337,18 @@
         <span class="kw">let </span>group_info_bytes = welcome_key
             .aead_open(backend, welcome.encrypted_group_info(), <span class="kw-2">&amp;</span>[], <span class="kw-2">&amp;</span>welcome_nonce)
             .map_err(|<span class="kw">_</span>| WelcomeError::GroupInfoDecryptionFailure)<span class="question-mark">?</span>;
-        <span class="kw">let </span>group_info = GroupInfo::tls_deserialize(<span class="kw-2">&amp;mut </span>group_info_bytes.as_slice())
-            .map_err(|<span class="kw">_</span>| WelcomeError::MalformedWelcomeMessage)<span class="question-mark">?</span>;
+        <span class="kw">let </span>verifiable_group_info =
+            VerifiableGroupInfo::tls_deserialize(<span class="kw-2">&amp;mut </span>group_info_bytes.as_slice())
+                .map_err(|<span class="kw">_</span>| WelcomeError::MalformedWelcomeMessage)<span class="question-mark">?</span>;
 
-        <span class="kw">if </span>ciphersuite != group_info.group_context().ciphersuite() {
+        <span class="kw">if </span>ciphersuite != verifiable_group_info.ciphersuite() {
             <span class="kw">return </span><span class="prelude-val">Err</span>(WelcomeError::GroupInfoCiphersuiteMismatch);
         }
 
         <span class="comment">// Make sure that we can support the required capabilities in the group info.
-        </span><span class="kw">let </span>group_context_extensions = group_info.group_context().extensions();
-        <span class="kw">if let </span><span class="prelude-val">Some</span>(required_capabilities) = group_context_extensions.required_capabilities() {
+        </span><span class="kw">if let </span><span class="prelude-val">Some</span>(required_capabilities) =
+            verifiable_group_info.extensions().required_capabilities()
+        {
             required_capabilities
                 .check_support()
                 .map_err(|<span class="kw">_</span>| WelcomeError::UnsupportedCapability)<span class="question-mark">?</span>;
@@ -365,7 +370,7 @@
         // this group. Note that this is not strictly necessary. But there&#39;s
         // currently no other mechanism to enable the extension.
         </span><span class="kw">let </span>(nodes, enable_ratchet_tree_extension) =
-            <span class="kw">match </span>try_nodes_from_extensions(group_info.extensions()) {
+            <span class="kw">match </span>try_nodes_from_extensions(verifiable_group_info.extensions()) {
                 <span class="prelude-val">Some</span>(nodes) =&gt; (nodes, <span class="bool-val">true</span>),
                 <span class="prelude-val">None </span>=&gt; <span class="kw">match </span>nodes_option {
                     <span class="prelude-val">Some</span>(n) =&gt; (n, <span class="bool-val">false</span>),
@@ -379,7 +384,7 @@
             backend,
             ciphersuite,
             <span class="kw-2">&amp;</span>nodes,
-            group_info.signer(),
+            verifiable_group_info.signer(),
             path_secret_option,
             encryption_key_pair,
         )
@@ -388,15 +393,16 @@
             TreeSyncFromNodesError::PublicTreeError(e) =&gt; WelcomeError::PublicTreeError(e),
         })<span class="question-mark">?</span>;
 
-        <span class="kw">let </span>signer_credential = tree
-            .leaf(group_info.signer())
-            .ok_or(WelcomeError::UnknownSender)<span class="question-mark">?
-            </span>.credential();
+        <span class="kw">let </span>group_info: GroupInfo = {
+            <span class="kw">let </span>signer_credential = tree
+                .leaf(verifiable_group_info.signer())
+                .ok_or(WelcomeError::UnknownSender)<span class="question-mark">?
+                </span>.credential();
 
-        <span class="comment">// Verify GroupInfo signature
-        </span>group_info
-            .verify_no_out(backend, signer_credential)
-            .map_err(|<span class="kw">_</span>| WelcomeError::InvalidGroupInfoSignature)<span class="question-mark">?</span>;
+            verifiable_group_info
+                .verify(backend, signer_credential)
+                .map_err(|<span class="kw">_</span>| WelcomeError::InvalidGroupInfoSignature)<span class="question-mark">?
+        </span>};
 
         <span class="comment">// Compute state
         </span><span class="kw">let </span>group_context = GroupContext::new(
@@ -408,7 +414,7 @@
                 .group_context()
                 .confirmed_transcript_hash()
                 .to_vec(),
-            group_context_extensions.clone(),
+            group_info.group_context().extensions().clone(),
         );
 
         <span class="kw">let </span>serialized_group_context = group_context

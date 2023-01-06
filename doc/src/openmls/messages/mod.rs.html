@@ -575,10 +575,6 @@
 <span id="575">575</span>
 <span id="576">576</span>
 <span id="577">577</span>
-<span id="578">578</span>
-<span id="579">579</span>
-<span id="580">580</span>
-<span id="581">581</span>
 </pre><pre class="rust"><code><span class="doccomment">//! # Messages
 //!
 //! This module contains the types and implementations for Commit &amp; Welcome messages,
@@ -822,6 +818,7 @@
 /// } GroupInfo;
 /// ```
 </span><span class="attribute">#[derive(Debug, PartialEq, Clone)]
+#[cfg_attr(feature = <span class="string">&quot;test-utils&quot;</span>, derive(TlsDeserialize))]
 </span><span class="kw">pub struct </span>GroupInfo {
     payload: GroupInfoTBS,
     signature: Signature,
@@ -841,11 +838,6 @@
     <span class="doccomment">/// Returns the confirmation tag.
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>confirmation_tag(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>ConfirmationTag {
         <span class="kw-2">&amp;</span><span class="self">self</span>.payload.confirmation_tag
-    }
-
-    <span class="doccomment">/// Returns the signer.
-    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>signer(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; LeafNodeIndex {
-        <span class="self">self</span>.payload.signer
     }
 
     <span class="attribute">#[cfg(any(feature = <span class="string">&quot;test-utils&quot;</span>, test))]
