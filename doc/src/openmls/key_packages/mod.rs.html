@@ -670,29 +670,6 @@
 <span id="670">670</span>
 <span id="671">671</span>
 <span id="672">672</span>
-<span id="673">673</span>
-<span id="674">674</span>
-<span id="675">675</span>
-<span id="676">676</span>
-<span id="677">677</span>
-<span id="678">678</span>
-<span id="679">679</span>
-<span id="680">680</span>
-<span id="681">681</span>
-<span id="682">682</span>
-<span id="683">683</span>
-<span id="684">684</span>
-<span id="685">685</span>
-<span id="686">686</span>
-<span id="687">687</span>
-<span id="688">688</span>
-<span id="689">689</span>
-<span id="690">690</span>
-<span id="691">691</span>
-<span id="692">692</span>
-<span id="693">693</span>
-<span id="694">694</span>
-<span id="695">695</span>
 </pre><pre class="rust"><code><span class="doccomment">//! # Key Packages
 //!
 //! Key packages are pre-published public keys that provide some information
@@ -780,7 +757,8 @@
     },
     credentials::<span class="kw-2">*</span>,
     error::LibraryError,
-    extensions::{Extension, ExtensionType},
+    extensions::ExtensionType,
+    extensions::Extensions,
     group::config::CryptoConfig,
     treesync::{
         node::leaf_node::{LeafNodeSource, Lifetime},
@@ -831,7 +809,7 @@
     ciphersuite: Ciphersuite,
     init_key: HpkePublicKey,
     leaf_node: LeafNode,
-    extensions: Vec&lt;Extension&gt;,
+    extensions: Extensions,
 }
 
 <span class="kw">impl </span>Signable <span class="kw">for </span>KeyPackageTBS {
@@ -911,8 +889,8 @@
         config: CryptoConfig,
         backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider,
         credential: <span class="kw-2">&amp;</span>CredentialBundle, <span class="comment">// FIXME: make credential
-        </span>extensions: Vec&lt;Extension&gt;,
-        leaf_node_extensions: Vec&lt;Extension&gt;,
+        </span>extensions: Extensions,
+        leaf_node_extensions: Extensions,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;((<span class="self">Self</span>, HpkeKeyPair), Vec&lt;u8&gt;), KeyPackageNewError&gt; {
         <span class="kw">if </span>SignatureScheme::from(config.ciphersuite) != credential.credential().signature_scheme() {
             <span class="kw">return </span><span class="prelude-val">Err</span>(KeyPackageNewError::CiphersuiteSignatureSchemeMismatch);
@@ -951,8 +929,8 @@
         config: CryptoConfig,
         backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider,
         credential: <span class="kw-2">&amp;</span>CredentialBundle, <span class="comment">// FIXME: make credential
-        </span>extensions: Vec&lt;Extension&gt;,
-        leaf_node_extensions: Vec&lt;Extension&gt;,
+        </span>extensions: Extensions,
+        leaf_node_extensions: Extensions,
         init_key: Vec&lt;u8&gt;,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(<span class="self">Self</span>, HpkeKeyPair), KeyPackageNewError&gt; {
         <span class="comment">// We don&#39;t need the private key here. It&#39;s stored in the key store for
@@ -1035,8 +1013,8 @@
     }
 
     <span class="doccomment">/// Get a reference to the extensions of this key package.
-    </span><span class="kw">pub fn </span>extensions(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>[Extension] {
-        <span class="self">self</span>.payload.extensions.as_slice()
+    </span><span class="kw">pub fn </span>extensions(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>Extensions {
+        <span class="kw-2">&amp;</span><span class="self">self</span>.payload.extensions
     }
 
     <span class="doccomment">/// Check whether the this key package supports all the required extensions
@@ -1045,12 +1023,12 @@
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         required_extensions: <span class="kw-2">&amp;</span>[ExtensionType],
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(), KeyPackageExtensionSupportError&gt; {
-        <span class="kw">let </span>my_extension_types = <span class="self">self</span>.extensions().iter().map(|ext| ext.extension_type());
-        <span class="kw">for </span>required <span class="kw">in </span>required_extensions.iter() {
-            <span class="kw">if </span>!my_extension_types.clone().any(|e| <span class="kw-2">&amp;</span>e == required) {
+        <span class="kw">for </span>required_extension <span class="kw">in </span>required_extensions.iter() {
+            <span class="kw">if </span>!<span class="self">self</span>.extensions().contains(<span class="kw-2">*</span>required_extension) {
                 <span class="kw">return </span><span class="prelude-val">Err</span>(KeyPackageExtensionSupportError::UnsupportedExtension);
             }
         }
+
         <span class="prelude-val">Ok</span>(())
     }
 
@@ -1086,17 +1064,6 @@
 
 <span class="doccomment">/// Crate visible `KeyPackage` functions.
 </span><span class="kw">impl </span>KeyPackage {
-    <span class="doccomment">/// Get a reference to the extension of `extension_type`.
-    /// Returns `Some(extension)` if present and `None` if the extension is not
-    /// present.
-    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>_extension_with_type(<span class="kw-2">&amp;</span><span class="self">self</span>, extension_type: ExtensionType) -&gt; <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>Extension&gt; {
-        <span class="self">self</span>.payload
-            .extensions
-            .as_slice()
-            .iter()
-            .find(|<span class="kw-2">&amp;</span>e| e.extension_type() == extension_type)
-    }
-
     <span class="doccomment">/// Get the `ProtocolVersion`.
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>protocol_version(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; ProtocolVersion {
         <span class="self">self</span>.payload.protocol_version
@@ -1111,8 +1078,8 @@
         config: CryptoConfig,
         backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider,
         credential: <span class="kw-2">&amp;</span>CredentialBundle, <span class="comment">// FIXME: make credential
-        </span>extensions: Vec&lt;Extension&gt;,
-        leaf_node_extensions: Vec&lt;Extension&gt;,
+        </span>extensions: Extensions,
+        leaf_node_extensions: Extensions,
         init_key: Vec&lt;u8&gt;,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, KeyPackageNewError&gt; {
         <span class="kw">let </span>(key_package, encryption_key_pair) = <span class="self">Self</span>::new_from_keys(
@@ -1154,7 +1121,7 @@
         config: CryptoConfig,
         backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider,
         credential: <span class="kw-2">&amp;</span>CredentialBundle, <span class="comment">// FIXME: make credential
-        </span>extensions: Vec&lt;Extension&gt;,
+        </span>extensions: Extensions,
         encryption_key: tls_codec::VLBytes,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, KeyPackageNewError&gt; {
         <span class="comment">// Create a new HPKE init key pair
@@ -1176,7 +1143,7 @@
             encryption_key,
             credential,
             LeafNodeSource::KeyPackage(Lifetime::default()),
-            <span class="macro">vec!</span>[],
+            Extensions::empty(),
             backend,
         )
         .unwrap();
@@ -1216,7 +1183,7 @@
             ciphersuite: config.ciphersuite,
             init_key: init_key.into(),
             leaf_node: <span class="self">self</span>.leaf_node().clone(),
-            extensions: <span class="self">self</span>.extensions().to_vec(),
+            extensions: <span class="self">self</span>.extensions().clone(),
         };
 
         <span class="kw">let </span>key_package = key_package.sign(backend, credential)<span class="question-mark">?</span>;
@@ -1233,19 +1200,6 @@
             .leaf_node
             .set_credential(credential.credential().clone());
         <span class="self">self</span>.payload.sign(backend, credential).unwrap()
-    }
-
-    <span class="doccomment">/// Remove an extension from the KeyPackage.
-    </span><span class="kw">pub fn </span>remove_extension(<span class="kw-2">&amp;mut </span><span class="self">self</span>, extension_type: ExtensionType) {
-        <span class="self">self</span>.payload
-            .extensions
-            .retain(|e| e.extension_type() != extension_type);
-    }
-
-    <span class="doccomment">/// Add (or replace) an extension to the KeyPackage.
-    </span><span class="kw">pub fn </span>add_extension(<span class="kw-2">&amp;mut </span><span class="self">self</span>, extension: Extension) {
-        <span class="self">self</span>.remove_extension(extension.extension_type());
-        <span class="self">self</span>.payload.extensions.push(extension);
     }
 
     <span class="doccomment">/// Replace the public key in the KeyPackage.
@@ -1272,8 +1226,8 @@
 <span class="doccomment">/// Builder that helps creating (and configuring) a [`KeyPackage`].
 </span><span class="attribute">#[derive(Default, Debug, Clone, Serialize, Deserialize)]
 </span><span class="kw">pub struct </span>KeyPackageBuilder {
-    key_package_extensions: <span class="prelude-ty">Option</span>&lt;Vec&lt;Extension&gt;&gt;,
-    leaf_node_extensions: <span class="prelude-ty">Option</span>&lt;Vec&lt;Extension&gt;&gt;,
+    key_package_extensions: <span class="prelude-ty">Option</span>&lt;Extensions&gt;,
+    leaf_node_extensions: <span class="prelude-ty">Option</span>&lt;Extensions&gt;,
 }
 
 <span class="kw">impl </span>KeyPackageBuilder {
@@ -1286,13 +1240,13 @@
     }
 
     <span class="doccomment">/// Set the key package extensions.
-    </span><span class="kw">pub fn </span>key_package_extensions(<span class="kw-2">mut </span><span class="self">self</span>, extensions: Vec&lt;Extension&gt;) -&gt; <span class="self">Self </span>{
+    </span><span class="kw">pub fn </span>key_package_extensions(<span class="kw-2">mut </span><span class="self">self</span>, extensions: Extensions) -&gt; <span class="self">Self </span>{
         <span class="self">self</span>.key_package_extensions = <span class="prelude-val">Some</span>(extensions);
         <span class="self">self
     </span>}
 
     <span class="doccomment">/// Set the leaf node extensions.
-    </span><span class="kw">pub fn </span>leaf_node_extensions(<span class="kw-2">mut </span><span class="self">self</span>, extensions: Vec&lt;Extension&gt;) -&gt; <span class="self">Self </span>{
+    </span><span class="kw">pub fn </span>leaf_node_extensions(<span class="kw-2">mut </span><span class="self">self</span>, extensions: Extensions) -&gt; <span class="self">Self </span>{
         <span class="self">self</span>.leaf_node_extensions = <span class="prelude-val">Some</span>(extensions);
         <span class="self">self
     </span>}

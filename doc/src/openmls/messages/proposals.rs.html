@@ -391,8 +391,6 @@
 <span id="391">391</span>
 <span id="392">392</span>
 <span id="393">393</span>
-<span id="394">394</span>
-<span id="395">395</span>
 </pre><pre class="rust"><code><span class="doccomment">//! # Proposals
 //!
 //! This module defines all the different types of Proposals.
@@ -404,7 +402,7 @@
     binary_tree::array_representation::LeafNodeIndex,
     ciphersuite::hash_ref::{make_proposal_ref, KeyPackageRef, ProposalRef},
     error::LibraryError,
-    extensions::Extension,
+    extensions::Extensions,
     group::GroupId,
     key_packages::<span class="kw-2">*</span>,
     prelude::LeafNode,
@@ -648,7 +646,7 @@
     <span class="kw">pub</span>(<span class="kw">crate</span>) group_id: GroupId,
     <span class="kw">pub</span>(<span class="kw">crate</span>) version: ProtocolVersion,
     <span class="kw">pub</span>(<span class="kw">crate</span>) ciphersuite: Ciphersuite,
-    <span class="kw">pub</span>(<span class="kw">crate</span>) extensions: Vec&lt;Extension&gt;,
+    <span class="kw">pub</span>(<span class="kw">crate</span>) extensions: Extensions,
 }
 
 <span class="doccomment">/// ExternalInit Proposal.
@@ -700,16 +698,14 @@
     Debug, PartialEq, Eq, Clone, Serialize, Deserialize, TlsDeserialize, TlsSerialize, TlsSize,
 )]
 </span><span class="kw">pub struct </span>GroupContextExtensionProposal {
-    extensions: Vec&lt;Extension&gt;,
+    extensions: Extensions,
 }
 
 <span class="kw">impl </span>GroupContextExtensionProposal {
     <span class="doccomment">/// Create a new [`GroupContextExtensionProposal`].
     </span><span class="attribute">#[cfg(test)]
-    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>new(extensions: <span class="kw-2">&amp;</span>[Extension]) -&gt; <span class="self">Self </span>{
-        <span class="self">Self </span>{
-            extensions: extensions.into(),
-        }
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>new(extensions: Extensions) -&gt; <span class="self">Self </span>{
+        <span class="self">Self </span>{ extensions }
     }
 }
 

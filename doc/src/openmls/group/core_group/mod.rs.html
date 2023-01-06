@@ -799,8 +799,6 @@
 <span id="799">799</span>
 <span id="800">800</span>
 <span id="801">801</span>
-<span id="802">802</span>
-<span id="803">803</span>
 </pre><pre class="rust"><code><span class="doccomment">//! ### Don&#39;t Panic!
 //!
 //! Functions in this module should never panic. However, if there is a bug in
@@ -827,8 +825,6 @@
 </span><span class="kw">mod </span>test_core_group;
 <span class="attribute">#[cfg(test)]
 </span><span class="kw">mod </span>test_create_commit_params;
-<span class="attribute">#[cfg(test)]
-</span><span class="kw">mod </span>test_duplicate_extension;
 <span class="attribute">#[cfg(test)]
 </span><span class="kw">mod </span>test_external_init;
 <span class="attribute">#[cfg(test)]
@@ -941,7 +937,7 @@
 
 <span class="doccomment">/// Builder for [`CoreGroup`].
 </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct </span>CoreGroupBuilder {
-    own_leaf_extensions: Vec&lt;Extension&gt;,
+    own_leaf_extensions: Extensions,
     group_id: GroupId,
     crypto_config: CryptoConfig,
     config: <span class="prelude-ty">Option</span>&lt;CoreGroupConfig&gt;,
@@ -962,7 +958,7 @@
             version: <span class="prelude-val">None</span>,
             required_capabilities: <span class="prelude-val">None</span>,
             max_past_epochs: <span class="number">0</span>,
-            own_leaf_extensions: <span class="macro">vec!</span>[],
+            own_leaf_extensions: Extensions::empty(),
             lifetime: <span class="prelude-val">None</span>,
             crypto_config,
         }
@@ -994,12 +990,6 @@
     <span class="doccomment">/// Set the [`Lifetime`] for the own leaf in the group.
     </span><span class="kw">pub fn </span>with_lifetime(<span class="kw-2">mut </span><span class="self">self</span>, lifetime: Lifetime) -&gt; <span class="self">Self </span>{
         <span class="self">self</span>.lifetime = <span class="prelude-val">Some</span>(lifetime);
-        <span class="self">self
-    </span>}
-    <span class="doccomment">/// Set extensions for the own leaf in the group.
-    </span><span class="attribute">#[cfg(test)]
-    </span><span class="kw">pub fn </span>with_extensions(<span class="kw-2">mut </span><span class="self">self</span>, extensions: Vec&lt;Extension&gt;) -&gt; <span class="self">Self </span>{
-        <span class="self">self</span>.own_leaf_extensions = extensions;
         <span class="self">self
     </span>}
 
@@ -1050,7 +1040,8 @@
             }
             <span class="kw">_ </span>=&gt; LibraryError::custom(<span class="string">&quot;Unexpected ExtensionError&quot;</span>).into(),
         })<span class="question-mark">?</span>;
-        <span class="kw">let </span>required_capabilities = <span class="kw-2">&amp;</span>[Extension::RequiredCapabilities(required_capabilities)];
+        <span class="kw">let </span>required_capabilities =
+            Extensions::single(Extension::RequiredCapabilities(required_capabilities));
 
         <span class="kw">let </span>group_context = GroupContext::create_initial_group_context(
             ciphersuite,
@@ -1228,7 +1219,7 @@
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         framing_parameters: FramingParameters,
         credential_bundle: <span class="kw-2">&amp;</span>CredentialBundle,
-        extensions: <span class="kw-2">&amp;</span>[Extension],
+        extensions: Extensions,
         backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;AuthenticatedContent, CreateGroupContextExtProposalError&gt; {
         <span class="comment">// Ensure that the group supports all the extensions that are wanted.
@@ -1373,16 +1364,21 @@
             };
 
             <span class="kw">if </span>with_ratchet_tree {
-                <span class="macro">vec!</span>[ratchet_tree_extension(), external_pub_extension()]
-            } <span class="kw">else </span>{
-                <span class="macro">vec!</span>[external_pub_extension()]
+                Extensions::from_vec(<span class="macro">vec!</span>[ratchet_tree_extension(), external_pub_extension()])
+                    .map_err(|<span class="kw">_</span>| {
+                        LibraryError::custom(
+                            <span class="string">&quot;There should not have been duplicate extensions here.&quot;</span>,
+                        )
+                    })<span class="question-mark">?
+            </span>} <span class="kw">else </span>{
+                Extensions::single(external_pub_extension())
             }
         };
 
         <span class="comment">// Create to-be-signed group info.
         </span><span class="kw">let </span>group_info_tbs = GroupInfoTBS::new(
             <span class="self">self</span>.group_context.clone(),
-            <span class="kw-2">&amp;</span>extensions,
+            extensions,
             <span class="self">self</span>.message_secrets()
                 .confirmation_key()
                 .tag(backend, <span class="self">self</span>.context().confirmed_transcript_hash())
@@ -1443,7 +1439,7 @@
     }
 
     <span class="doccomment">/// Get the group context extensions.
-    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>group_context_extensions(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>[Extension] {
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>group_context_extensions(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>Extensions {
         <span class="self">self</span>.group_context.extensions()
     }
 

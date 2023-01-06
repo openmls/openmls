@@ -542,7 +542,7 @@
     ciphersuite::Secret,
     credentials::CredentialBundle,
     error::LibraryError,
-    extensions::Extension,
+    extensions::Extensions,
     framing::SenderError,
     group::{config::CryptoConfig, Member},
     messages::{PathSecret, PathSecretError},
@@ -606,7 +606,7 @@
         credential_bundle: <span class="kw-2">&amp;</span>CredentialBundle,
         life_time: Lifetime,
         capabilities: Capabilities,
-        extensions: Vec&lt;Extension&gt;,
+        extensions: Extensions,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(<span class="self">Self</span>, CommitSecret), LibraryError&gt; {
         <span class="kw">let </span><span class="kw-2">mut </span>leaf = OpenMlsLeafNode::new(
             config,
@@ -617,8 +617,8 @@
         )<span class="question-mark">?</span>;
         leaf.add_capabilities(capabilities);
         extensions
-            .into_iter()
-            .for_each(|extension| leaf.add_extensions(extension));
+            .iter()
+            .for_each(|extension| leaf.add_extension(extension.clone()));
 
         <span class="kw">let </span>node = Node::LeafNode(leaf);
         <span class="kw">let </span>path_secret: PathSecret = Secret::random(config.ciphersuite, backend, <span class="prelude-val">None</span>)

@@ -102,7 +102,7 @@
         <span class="kw">let </span>ciphersuite = Ciphersuite::tls_deserialize(bytes)<span class="question-mark">?</span>;
         <span class="kw">let </span>hpke_init_key = HpkePublicKey::tls_deserialize(bytes)<span class="question-mark">?</span>;
         <span class="kw">let </span>leaf_node = LeafNode::tls_deserialize(bytes)<span class="question-mark">?</span>;
-        <span class="kw">let </span>extensions = Vec::&lt;Extension&gt;::tls_deserialize(bytes)<span class="question-mark">?</span>;
+        <span class="kw">let </span>extensions = Extensions::tls_deserialize(bytes)<span class="question-mark">?</span>;
         <span class="kw">let </span>signature = Signature::tls_deserialize(bytes)<span class="question-mark">?</span>;
         <span class="kw">let </span>payload = KeyPackageTBS {
             protocol_version,

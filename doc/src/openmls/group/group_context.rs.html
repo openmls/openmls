@@ -114,9 +114,6 @@
 <span id="114">114</span>
 <span id="115">115</span>
 <span id="116">116</span>
-<span id="117">117</span>
-<span id="118">118</span>
-<span id="119">119</span>
 </pre><pre class="rust"><code><span class="doccomment">//! # Group Context
 //!
 //! TODO: #779
@@ -137,7 +134,7 @@
     epoch: GroupEpoch,
     tree_hash: VLBytes,
     confirmed_transcript_hash: VLBytes,
-    extensions: Vec&lt;Extension&gt;,
+    extensions: Extensions,
 }
 
 <span class="attribute">#[cfg(any(feature = <span class="string">&quot;test-utils&quot;</span>, test))]
@@ -163,7 +160,7 @@
         epoch: <span class="kw">impl </span>Into&lt;GroupEpoch&gt;,
         tree_hash: Vec&lt;u8&gt;,
         confirmed_transcript_hash: Vec&lt;u8&gt;,
-        extensions: <span class="kw-2">&amp;</span>[Extension],
+        extensions: Extensions,
     ) -&gt; <span class="self">Self </span>{
         GroupContext {
             ciphersuite,
@@ -172,7 +169,7 @@
             epoch: epoch.into(),
             tree_hash: tree_hash.into(),
             confirmed_transcript_hash: confirmed_transcript_hash.into(),
-            extensions: extensions.into(),
+            extensions,
         }
     }
 
@@ -181,7 +178,7 @@
         ciphersuite: Ciphersuite,
         group_id: GroupId,
         tree_hash: Vec&lt;u8&gt;,
-        extensions: <span class="kw-2">&amp;</span>[Extension],
+        extensions: Extensions,
     ) -&gt; <span class="self">Self </span>{
         <span class="self">Self</span>::new(
             ciphersuite,
@@ -224,16 +221,13 @@
     }
 
     <span class="doccomment">/// Return the extensions.
-    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>extensions(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>[Extension] {
-        <span class="self">self</span>.extensions.as_slice()
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>extensions(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>Extensions {
+        <span class="kw-2">&amp;</span><span class="self">self</span>.extensions
     }
 
     <span class="doccomment">/// Get the required capabilities extension.
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>required_capabilities(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>RequiredCapabilitiesExtension&gt; {
-        <span class="self">self</span>.extensions
-            .iter()
-            .find(|e| e.extension_type() == ExtensionType::RequiredCapabilities)
-            .and_then(|e| e.as_required_capabilities_extension().ok())
+        <span class="self">self</span>.extensions.required_capabilities()
     }
 }
 </code></pre></div>

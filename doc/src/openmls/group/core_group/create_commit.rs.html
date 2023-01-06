@@ -695,7 +695,7 @@
             provisional_epoch,
             tree_hash.clone(),
             confirmed_transcript_hash.clone(),
-            <span class="self">self</span>.group_context.extensions(),
+            <span class="self">self</span>.group_context.extensions().clone(),
         );
 
         <span class="kw">let </span>joiner_secret = JoinerSecret::new(
@@ -749,12 +749,12 @@
         <span class="comment">// Check if new members were added and, if so, create welcome messages
         </span><span class="kw">let </span>welcome_option = <span class="kw">if </span>!plaintext_secrets.is_empty() {
             <span class="comment">// Create the ratchet tree extension if necessary
-            </span><span class="kw">let </span>other_extensions: Vec&lt;Extension&gt; = <span class="kw">if </span><span class="self">self</span>.use_ratchet_tree_extension {
-                <span class="macro">vec!</span>[Extension::RatchetTree(RatchetTreeExtension::new(
+            </span><span class="kw">let </span>other_extensions: Extensions = <span class="kw">if </span><span class="self">self</span>.use_ratchet_tree_extension {
+                Extensions::single(Extension::RatchetTree(RatchetTreeExtension::new(
                     diff.export_nodes(),
-                ))]
+                )))
             } <span class="kw">else </span>{
-                Vec::new()
+                Extensions::empty()
             };
             <span class="comment">// Create to-be-signed group info.
             </span><span class="kw">let </span>group_info_tbs = {
@@ -764,12 +764,12 @@
                     provisional_group_context.epoch(),
                     tree_hash,
                     confirmed_transcript_hash.clone(),
-                    <span class="self">self</span>.group_context_extensions(),
+                    <span class="self">self</span>.group_context_extensions().clone(),
                 );
 
                 GroupInfoTBS::new(
                     group_context,
-                    <span class="kw-2">&amp;</span>other_extensions,
+                    other_extensions,
                     confirmation_tag.clone(),
                     diff.own_leaf_index(),
                 )

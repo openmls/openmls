@@ -108,9 +108,6 @@
 <span id="108">108</span>
 <span id="109">109</span>
 <span id="110">110</span>
-<span id="111">111</span>
-<span id="112">112</span>
-<span id="113">113</span>
 </pre><pre class="rust"><code><span class="doccomment">//! # Extension errors.
 //!
 //! An `ExtensionError` is thrown when an extension is invalid (for example when
@@ -130,9 +127,6 @@
 <span class="doccomment">/// Extension error
 </span><span class="attribute">#[derive(Error, Debug, PartialEq, Clone)]
 </span><span class="kw">pub enum </span>ExtensionError {
-    <span class="doccomment">/// Found a duplicate ratchet tree extension.
-    </span><span class="attribute">#[error(<span class="string">&quot;Found a duplicate ratchet tree extension.&quot;</span>)]
-    </span>DuplicateRatchetTreeExtension,
     <span class="doccomment">/// Unsupported proposal type in required capabilities.
     </span><span class="attribute">#[error(<span class="string">&quot;Unsupported proposal type in required capabilities.&quot;</span>)]
     </span>UnsupportedProposalType,

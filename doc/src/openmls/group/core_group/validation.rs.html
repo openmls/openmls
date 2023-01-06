@@ -424,19 +424,6 @@
 <span id="424">424</span>
 <span id="425">425</span>
 <span id="426">426</span>
-<span id="427">427</span>
-<span id="428">428</span>
-<span id="429">429</span>
-<span id="430">430</span>
-<span id="431">431</span>
-<span id="432">432</span>
-<span id="433">433</span>
-<span id="434">434</span>
-<span id="435">435</span>
-<span id="436">436</span>
-<span id="437">437</span>
-<span id="438">438</span>
-<span id="439">439</span>
 </pre><pre class="rust"><code><span class="doccomment">//! This module contains validation functions for incoming messages
 //! as defined in &lt;https://github.com/openmls/openmls/wiki/Message-validation&gt;
 
@@ -444,8 +431,6 @@
 
 <span class="kw">use crate</span>::{
     binary_tree::array_representation::LeafNodeIndex,
-    error::LibraryError,
-    extensions::ExtensionType,
     framing::Sender,
     group::errors::ExternalCommitValidationError,
     group::errors::ValidationError,
@@ -642,20 +627,9 @@
             }
             <span class="comment">// If there is a required capabilities extension, check if that one
             // is supported.
-            </span><span class="kw">if let </span><span class="prelude-val">Some</span>(required_capabilities_extension) = <span class="self">self
-                </span>.group_context_extensions()
-                .iter()
-                .find(|<span class="kw-2">&amp;</span>e| e.extension_type() == ExtensionType::RequiredCapabilities)
+            </span><span class="kw">if let </span><span class="prelude-val">Some</span>(required_capabilities) =
+                <span class="self">self</span>.group_context_extensions().required_capabilities()
             {
-                <span class="kw">let </span>required_capabilities = required_capabilities_extension
-                    .as_required_capabilities_extension()
-                    .map_err(|<span class="kw">_</span>| {
-                        <span class="comment">// Mismatches between Extensions and ExtensionTypes should be
-                        // caught when constructing KeyPackages.
-                        </span>ProposalValidationError::LibraryError(LibraryError::custom(
-                            <span class="string">&quot;ExtensionType didn&#39;t match extension content.&quot;</span>,
-                        ))
-                    })<span class="question-mark">?</span>;
                 <span class="comment">// Check if all required capabilities are supported.
                 </span><span class="kw">if </span>!capabilities.supports_required_capabilities(required_capabilities) {
                     <span class="macro">log::error!</span>(<span class="string">&quot;Tried to commit an Add proposal, where the `Capabilities` of the given `KeyPackage` do not fulfill the `RequiredCapabilities` of the group.&quot;</span>);

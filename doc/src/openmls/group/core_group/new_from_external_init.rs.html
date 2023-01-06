@@ -173,23 +173,6 @@
 <span id="173">173</span>
 <span id="174">174</span>
 <span id="175">175</span>
-<span id="176">176</span>
-<span id="177">177</span>
-<span id="178">178</span>
-<span id="179">179</span>
-<span id="180">180</span>
-<span id="181">181</span>
-<span id="182">182</span>
-<span id="183">183</span>
-<span id="184">184</span>
-<span id="185">185</span>
-<span id="186">186</span>
-<span id="187">187</span>
-<span id="188">188</span>
-<span id="189">189</span>
-<span id="190">190</span>
-<span id="191">191</span>
-<span id="192">192</span>
 </pre><pre class="rust"><code><span class="kw">use crate</span>::{
     binary_tree::array_representation::LeafNodeIndex,
     ciphersuite::signable::Verifiable,
@@ -229,13 +212,7 @@
         // If we got a ratchet tree extension in the welcome, we enable it for
         // this group. Note that this is not strictly necessary. But there&#39;s
         // currently no other mechanism to enable the extension.
-        </span><span class="kw">let </span>extension_tree_option = try_nodes_from_extensions(verifiable_group_info.extensions())
-            .map_err(|e| <span class="kw">match </span>e {
-            ExtensionError::DuplicateRatchetTreeExtension =&gt; {
-                ExternalCommitError::DuplicateRatchetTreeExtension
-            }
-            <span class="kw">_ </span>=&gt; LibraryError::custom(<span class="string">&quot;Unexpected extension error&quot;</span>).into(),
-        })<span class="question-mark">?</span>;
+        </span><span class="kw">let </span>extension_tree_option = try_nodes_from_extensions(verifiable_group_info.extensions());
         <span class="kw">let </span>(nodes, enable_ratchet_tree_extension) = <span class="kw">match </span>extension_tree_option {
             <span class="prelude-val">Some</span>(nodes) =&gt; (nodes, <span class="bool-val">true</span>),
             <span class="prelude-val">None </span>=&gt; <span class="kw">match </span>tree_option {
@@ -276,22 +253,11 @@
         }
 
         <span class="comment">// Obtain external_pub from GroupInfo extensions.
-        // TODO(#720): Check for duplicates.
-        </span><span class="kw">let </span>external_pub = {
-            <span class="kw">let </span>ext = group_info
-                .extensions()
-                .iter()
-                .find(|ext| <span class="macro">matches!</span>(ext, Extension::ExternalPub(<span class="kw">_</span>)))
-                .ok_or(ExternalCommitError::MissingExternalPub)<span class="question-mark">?
-                </span>.as_external_pub_extension()
-                .map_err(|<span class="kw">_</span>| {
-                    LibraryError::custom(
-                        <span class="string">&quot;We found an `ExternalPub` so `as_external_pub_extension` must not fail.&quot;</span>,
-                    )
-                })<span class="question-mark">?</span>;
-
-            ext.external_pub()
-        };
+        </span><span class="kw">let </span>external_pub = group_info
+            .extensions()
+            .external_pub()
+            .ok_or(ExternalCommitError::MissingExternalPub)<span class="question-mark">?
+            </span>.external_pub();
 
         <span class="kw">let </span>(init_secret, kem_output) =
             InitSecret::from_group_info(backend, <span class="kw-2">&amp;</span>group_info, external_pub.as_slice())

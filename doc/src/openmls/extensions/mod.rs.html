@@ -503,6 +503,43 @@
 <span id="503">503</span>
 <span id="504">504</span>
 <span id="505">505</span>
+<span id="506">506</span>
+<span id="507">507</span>
+<span id="508">508</span>
+<span id="509">509</span>
+<span id="510">510</span>
+<span id="511">511</span>
+<span id="512">512</span>
+<span id="513">513</span>
+<span id="514">514</span>
+<span id="515">515</span>
+<span id="516">516</span>
+<span id="517">517</span>
+<span id="518">518</span>
+<span id="519">519</span>
+<span id="520">520</span>
+<span id="521">521</span>
+<span id="522">522</span>
+<span id="523">523</span>
+<span id="524">524</span>
+<span id="525">525</span>
+<span id="526">526</span>
+<span id="527">527</span>
+<span id="528">528</span>
+<span id="529">529</span>
+<span id="530">530</span>
+<span id="531">531</span>
+<span id="532">532</span>
+<span id="533">533</span>
+<span id="534">534</span>
+<span id="535">535</span>
+<span id="536">536</span>
+<span id="537">537</span>
+<span id="538">538</span>
+<span id="539">539</span>
+<span id="540">540</span>
+<span id="541">541</span>
+<span id="542">542</span>
 </pre><pre class="rust"><code><span class="doccomment">//! # Extensions
 //!
 //! In MLS, extensions appear in the following places:
@@ -526,7 +563,7 @@
 
 </span><span class="kw">use </span>serde::{Deserialize, Serialize};
 <span class="kw">use </span>std::{
-    collections::{hash_map::Entry, HashMap},
+    collections::{btree_map::Entry, BTreeMap},
     fmt::Debug,
     io::{Read, Write},
 };
@@ -678,7 +715,7 @@
 <span class="doccomment">/// A list of extensions with unique extension types.
 </span><span class="attribute">#[derive(Default, Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 </span><span class="kw">pub struct </span>Extensions {
-    map: HashMap&lt;ExtensionType, Extension&gt;,
+    map: BTreeMap&lt;ExtensionType, Extension&gt;,
 }
 
 <span class="kw">impl </span>Size <span class="kw">for </span>Extensions {
@@ -707,6 +744,32 @@
 }
 
 <span class="kw">impl </span>Extensions {
+    <span class="doccomment">/// Create an empty extension list.
+    </span><span class="kw">pub fn </span>empty() -&gt; <span class="self">Self </span>{
+        <span class="self">Self </span>{
+            map: BTreeMap::new(),
+        }
+    }
+
+    <span class="doccomment">/// Create an extension list with a single extension.
+    </span><span class="kw">pub fn </span>single(extension: Extension) -&gt; <span class="self">Self </span>{
+        <span class="self">Self </span>{
+            map: BTreeMap::from([(extension.extension_type(), extension)]),
+        }
+    }
+
+    <span class="doccomment">/// Create an extension list with multiple extensions.
+    ///
+    /// This function will fail when the list of extensions contains duplicate extension types.
+    </span><span class="kw">pub fn </span>from_vec(extensions: Vec&lt;Extension&gt;) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, InvalidExtensionError&gt; {
+        extensions.try_into()
+    }
+
+    <span class="doccomment">/// Returns an iterator over the extension list.
+    </span><span class="kw">pub fn </span>iter(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw">impl </span>Iterator&lt;Item = <span class="kw-2">&amp;</span>Extension&gt; {
+        <span class="self">self</span>.map.values()
+    }
+
     <span class="doccomment">/// Add an extension to the extension list.
     ///
     /// Returns an error when there already is an extension with the same extension type.
@@ -745,13 +808,18 @@
             <span class="prelude-val">None </span>=&gt; <span class="prelude-val">Err</span>(InvalidExtensionError::NotFound),
         }
     }
+
+    <span class="doccomment">/// Returns `true` iff the extension list contains an extension with the given extension type.
+    </span><span class="kw">pub fn </span>contains(<span class="kw-2">&amp;</span><span class="self">self</span>, extension_type: ExtensionType) -&gt; bool {
+        <span class="self">self</span>.map.contains_key(<span class="kw-2">&amp;</span>extension_type)
+    }
 }
 
 <span class="kw">impl </span>TryFrom&lt;Vec&lt;Extension&gt;&gt; <span class="kw">for </span>Extensions {
     <span class="kw">type </span>Error = InvalidExtensionError;
 
     <span class="kw">fn </span>try_from(candidate: Vec&lt;Extension&gt;) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, <span class="self">Self</span>::Error&gt; {
-        <span class="kw">let </span><span class="kw-2">mut </span>map = HashMap::new();
+        <span class="kw">let </span><span class="kw-2">mut </span>map = BTreeMap::new();
 
         <span class="kw">for </span>extension <span class="kw">in </span>candidate.into_iter() {
             <span class="kw">if </span>map.insert(extension.extension_type(), extension).is_some() {
@@ -907,37 +975,20 @@
     }
 }
 
-<span class="doccomment">/// This function tries to extract a vector of nodes from the given slice of
-/// [`Extension`]s.
+<span class="doccomment">/// This function tries to extract a vector of nodes from the given extensions.
 ///
-/// Returns the vector of nodes if it finds one and `None` otherwise. Returns an
-/// error if there is either no [`RatchetTreeExtension`] or more than one.
+/// Returns the vector of nodes if it finds one and `None` otherwise.
 </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>try_nodes_from_extensions(
-    other_extensions: <span class="kw-2">&amp;</span>[Extension],
-) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="prelude-ty">Option</span>&lt;Vec&lt;<span class="prelude-ty">Option</span>&lt;Node&gt;&gt;&gt;, ExtensionError&gt; {
-    <span class="kw">let </span><span class="kw-2">mut </span>ratchet_tree_extensions = other_extensions
-        .iter()
-        .filter(|e| e.extension_type() == ExtensionType::RatchetTree);
-
-    <span class="kw">let </span>nodes = <span class="kw">match </span>ratchet_tree_extensions.next() {
-        <span class="prelude-val">Some</span>(e) =&gt; <span class="prelude-val">Some</span>(e.as_ratchet_tree_extension()<span class="question-mark">?</span>.as_slice().into()),
-        <span class="prelude-val">None </span>=&gt; <span class="prelude-val">None</span>,
-    };
-
-    <span class="kw">if </span>ratchet_tree_extensions.next().is_some() {
-        <span class="comment">// Throw an error if there is more than one ratchet tree extension.
-        // This shouldn&#39;t be the case anyway, because extensions are checked
-        // for uniqueness when decoding them. We have to see if this makes
-        // problems later as it&#39;s not something required by the spec right
-        // now (Note issue #530 of the MLS spec.).
-        </span><span class="kw">return </span><span class="prelude-val">Err</span>(ExtensionError::DuplicateRatchetTreeExtension);
-    };
-
-    <span class="prelude-val">Ok</span>(nodes)
+    other_extensions: <span class="kw-2">&amp;</span>Extensions,
+) -&gt; <span class="prelude-ty">Option</span>&lt;Vec&lt;<span class="prelude-ty">Option</span>&lt;Node&gt;&gt;&gt; {
+    other_extensions.ratchet_tree().map(|e| e.as_slice().into())
 }
 
 <span class="attribute">#[cfg(test)]
 </span><span class="kw">mod </span>test {
+    <span class="kw">use </span>itertools::Itertools;
+    <span class="kw">use </span>tls_codec::{Deserialize, Serialize};
+
     <span class="kw">use </span><span class="kw">crate</span>::extensions::<span class="kw-2">*</span>;
 
     <span class="attribute">#[test]
@@ -957,26 +1008,27 @@
 
     <span class="attribute">#[test]
     </span><span class="kw">fn </span>add_try_from() {
-        <span class="comment">// Create two extensions with different extension types.
-        </span><span class="kw">let </span>x = Extension::ApplicationId(ApplicationIdExtension::new(<span class="string">b&quot;Test&quot;</span>));
-        <span class="kw">let </span>y = Extension::RequiredCapabilities(RequiredCapabilitiesExtension::default());
+        <span class="comment">// Create some extensions with different extension types and test that
+        // duplicates are rejected. The extension content does not matter in this test.
+        </span><span class="kw">let </span>ext_x = Extension::ApplicationId(ApplicationIdExtension::new(<span class="string">b&quot;Test&quot;</span>));
+        <span class="kw">let </span>ext_y = Extension::RequiredCapabilities(RequiredCapabilitiesExtension::default());
 
         <span class="kw">let </span>tests = [
             (<span class="macro">vec!</span>[], <span class="bool-val">true</span>),
-            (<span class="macro">vec!</span>[x.clone()], <span class="bool-val">true</span>),
-            (<span class="macro">vec!</span>[x.clone(), x.clone()], <span class="bool-val">false</span>),
-            (<span class="macro">vec!</span>[x.clone(), x.clone(), x.clone()], <span class="bool-val">false</span>),
-            (<span class="macro">vec!</span>[y.clone()], <span class="bool-val">true</span>),
-            (<span class="macro">vec!</span>[y.clone(), y.clone()], <span class="bool-val">false</span>),
-            (<span class="macro">vec!</span>[y.clone(), y.clone(), y.clone()], <span class="bool-val">false</span>),
-            (<span class="macro">vec!</span>[x.clone(), y.clone()], <span class="bool-val">true</span>),
-            (<span class="macro">vec!</span>[y.clone(), x.clone()], <span class="bool-val">true</span>),
-            (<span class="macro">vec!</span>[x.clone(), x.clone(), y.clone()], <span class="bool-val">false</span>),
-            (<span class="macro">vec!</span>[y.clone(), y.clone(), x.clone()], <span class="bool-val">false</span>),
-            (<span class="macro">vec!</span>[x.clone(), y.clone(), y.clone()], <span class="bool-val">false</span>),
-            (<span class="macro">vec!</span>[y.clone(), x.clone(), x.clone()], <span class="bool-val">false</span>),
-            (<span class="macro">vec!</span>[x.clone(), y.clone(), x.clone()], <span class="bool-val">false</span>),
-            (<span class="macro">vec!</span>[y.clone(), x, y], <span class="bool-val">false</span>),
+            (<span class="macro">vec!</span>[ext_x.clone()], <span class="bool-val">true</span>),
+            (<span class="macro">vec!</span>[ext_x.clone(), ext_x.clone()], <span class="bool-val">false</span>),
+            (<span class="macro">vec!</span>[ext_x.clone(), ext_x.clone(), ext_x.clone()], <span class="bool-val">false</span>),
+            (<span class="macro">vec!</span>[ext_y.clone()], <span class="bool-val">true</span>),
+            (<span class="macro">vec!</span>[ext_y.clone(), ext_y.clone()], <span class="bool-val">false</span>),
+            (<span class="macro">vec!</span>[ext_y.clone(), ext_y.clone(), ext_y.clone()], <span class="bool-val">false</span>),
+            (<span class="macro">vec!</span>[ext_x.clone(), ext_y.clone()], <span class="bool-val">true</span>),
+            (<span class="macro">vec!</span>[ext_y.clone(), ext_x.clone()], <span class="bool-val">true</span>),
+            (<span class="macro">vec!</span>[ext_x.clone(), ext_x.clone(), ext_y.clone()], <span class="bool-val">false</span>),
+            (<span class="macro">vec!</span>[ext_y.clone(), ext_y.clone(), ext_x.clone()], <span class="bool-val">false</span>),
+            (<span class="macro">vec!</span>[ext_x.clone(), ext_y.clone(), ext_y.clone()], <span class="bool-val">false</span>),
+            (<span class="macro">vec!</span>[ext_y.clone(), ext_x.clone(), ext_x.clone()], <span class="bool-val">false</span>),
+            (<span class="macro">vec!</span>[ext_x.clone(), ext_y.clone(), ext_x.clone()], <span class="bool-val">false</span>),
+            (<span class="macro">vec!</span>[ext_y.clone(), ext_x, ext_y], <span class="bool-val">false</span>),
         ];
 
         <span class="kw">for </span>(test, should_work) <span class="kw">in </span>tests.into_iter() {
@@ -1005,6 +1057,28 @@
             } <span class="kw">else </span>{
                 <span class="macro">assert!</span>(Extensions::try_from(test).is_err());
             }
+        }
+    }
+
+    <span class="attribute">#[test]
+    </span><span class="kw">fn </span>ensure_ordering() {
+        <span class="comment">// Create some extensions with different extension types and test
+        // that all permutations keep their order after being (de)serialized.
+        // The extension content does not matter in this test.
+        </span><span class="kw">let </span>ext_x = Extension::ApplicationId(ApplicationIdExtension::new(<span class="string">b&quot;Test&quot;</span>));
+        <span class="kw">let </span>ext_y = Extension::RatchetTree(RatchetTreeExtension::default());
+        <span class="kw">let </span>ext_z = Extension::RequiredCapabilities(RequiredCapabilitiesExtension::default());
+
+        <span class="kw">for </span>candidate <span class="kw">in </span>[ext_x, ext_y, ext_z]
+            .into_iter()
+            .permutations(<span class="number">3</span>)
+            .into_iter()
+            .collect::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;()
+        {
+            <span class="kw">let </span>candidate: Extensions = Extensions::try_from(candidate).unwrap();
+            <span class="kw">let </span>bytes = candidate.tls_serialize_detached().unwrap();
+            <span class="kw">let </span>got = Extensions::tls_deserialize(<span class="kw-2">&amp;mut </span>bytes.as_slice()).unwrap();
+            <span class="macro">assert_eq!</span>(candidate, got);
         }
     }
 }

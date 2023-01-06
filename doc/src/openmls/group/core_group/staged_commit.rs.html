@@ -838,7 +838,7 @@
             provisional_epoch,
             diff.compute_tree_hashes(backend, ciphersuite)<span class="question-mark">?</span>,
             confirmed_transcript_hash.clone(),
-            <span class="self">self</span>.group_context.extensions(),
+            <span class="self">self</span>.group_context.extensions().clone(),
         );
 
         <span class="comment">// Prepare the PskSecret

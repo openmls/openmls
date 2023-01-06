@@ -579,24 +579,6 @@
 <span id="579">579</span>
 <span id="580">580</span>
 <span id="581">581</span>
-<span id="582">582</span>
-<span id="583">583</span>
-<span id="584">584</span>
-<span id="585">585</span>
-<span id="586">586</span>
-<span id="587">587</span>
-<span id="588">588</span>
-<span id="589">589</span>
-<span id="590">590</span>
-<span id="591">591</span>
-<span id="592">592</span>
-<span id="593">593</span>
-<span id="594">594</span>
-<span id="595">595</span>
-<span id="596">596</span>
-<span id="597">597</span>
-<span id="598">598</span>
-<span id="599">599</span>
 </pre><pre class="rust"><code><span class="doccomment">//! # Messages
 //!
 //! This module contains the types and implementations for Commit &amp; Welcome messages,
@@ -633,8 +615,6 @@
 <span class="comment">// Tests
 </span><span class="attribute">#[cfg(test)]
 </span><span class="kw">mod </span>tests;
-<span class="attribute">#[cfg(test)]
-</span><span class="kw">use </span><span class="kw">crate</span>::credentials::CredentialBundle;
 <span class="attribute">#[cfg(any(feature = <span class="string">&quot;test-utils&quot;</span>, test))]
 </span><span class="kw">use </span><span class="kw">crate</span>::schedule::psk::{ExternalPsk, Psk};
 
@@ -789,7 +769,7 @@
 </span><span class="attribute">#[derive(Debug, PartialEq, Clone, TlsDeserialize, TlsSerialize, TlsSize)]
 </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct </span>GroupInfoTBS {
     group_context: GroupContext,
-    extensions: Vec&lt;Extension&gt;,
+    extensions: Extensions,
     confirmation_tag: ConfirmationTag,
     signer: LeafNodeIndex,
 }
@@ -798,13 +778,13 @@
     <span class="doccomment">/// Create a new to-be-signed group info.
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>new(
         group_context: GroupContext,
-        extensions: <span class="kw-2">&amp;</span>[Extension],
+        extensions: Extensions,
         confirmation_tag: ConfirmationTag,
         signer: LeafNodeIndex,
     ) -&gt; <span class="self">Self </span>{
         <span class="self">Self </span>{
             group_context,
-            extensions: extensions.into(),
+            extensions,
             confirmation_tag,
             signer,
         }
@@ -854,14 +834,8 @@
     }
 
     <span class="doccomment">/// Returns the extensions.
-    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>extensions(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>[Extension] {
-        <span class="self">self</span>.payload.extensions.as_slice()
-    }
-
-    <span class="doccomment">/// Set the extensions.
-    </span><span class="attribute">#[cfg(test)]
-    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>set_extensions(<span class="kw-2">&amp;mut </span><span class="self">self</span>, extensions: Vec&lt;Extension&gt;) {
-        <span class="self">self</span>.payload.extensions = extensions;
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>extensions(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>Extensions {
+        <span class="kw-2">&amp;</span><span class="self">self</span>.payload.extensions
     }
 
     <span class="doccomment">/// Returns the confirmation tag.
@@ -874,18 +848,8 @@
         <span class="self">self</span>.payload.signer
     }
 
-    <span class="doccomment">/// Re-sign the group info.
-    </span><span class="attribute">#[cfg(test)]
-    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>re_sign(
-        <span class="self">self</span>,
-        credential_bundle: <span class="kw-2">&amp;</span>CredentialBundle,
-        backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, LibraryError&gt; {
-        <span class="self">self</span>.payload.sign(backend, credential_bundle)
-    }
-
     <span class="attribute">#[cfg(any(feature = <span class="string">&quot;test-utils&quot;</span>, test))]
-    </span><span class="kw">pub fn </span>into_verifiable_group_info(<span class="self">self</span>) -&gt; VerifiableGroupInfo {
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>into_verifiable_group_info(<span class="self">self</span>) -&gt; VerifiableGroupInfo {
         VerifiableGroupInfo {
             payload: GroupInfoTBS {
                 group_context: <span class="self">self</span>.payload.group_context,
@@ -948,8 +912,8 @@
     <span class="doccomment">/// Get (unverified) extensions of the verifiable group info.
     ///
     /// Note: This method should only be used when necessary to verify the group info signature.
-    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>extensions(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>[Extension] {
-        <span class="self">self</span>.payload.extensions.as_slice()
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>extensions(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>Extensions {
+        <span class="kw-2">&amp;</span><span class="self">self</span>.payload.extensions
     }
 
     <span class="doccomment">/// Break the signature for testing purposes.
