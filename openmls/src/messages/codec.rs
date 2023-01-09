@@ -28,14 +28,6 @@ impl tls_codec::Serialize for GroupInfo {
     }
 }
 
-impl tls_codec::Deserialize for GroupInfo {
-    fn tls_deserialize<R: Read>(bytes: &mut R) -> Result<Self, tls_codec::Error> {
-        let payload = GroupInfoTBS::tls_deserialize(bytes)?;
-        let signature = Signature::tls_deserialize(bytes)?;
-        Ok(GroupInfo { payload, signature })
-    }
-}
-
 impl tls_codec::Size for Proposal {
     #[inline]
     fn tls_serialized_len(&self) -> usize {

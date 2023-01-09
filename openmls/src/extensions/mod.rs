@@ -21,7 +21,7 @@
 
 use serde::{Deserialize, Serialize};
 use std::{
-    collections::{hash_map::Entry, HashMap},
+    collections::{btree_map::Entry, BTreeMap},
     fmt::Debug,
     io::{Read, Write},
 };
@@ -173,7 +173,7 @@ pub enum Extension {
 /// A list of extensions with unique extension types.
 #[derive(Default, Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Extensions {
-    map: HashMap<ExtensionType, Extension>,
+    map: BTreeMap<ExtensionType, Extension>,
 }
 
 impl Size for Extensions {
@@ -202,6 +202,32 @@ impl tls_codec::Deserialize for Extensions {
 }
 
 impl Extensions {
+    /// Create an empty extension list.
+    pub fn empty() -> Self {
+        Self {
+            map: BTreeMap::new(),
+        }
+    }
+
+    /// Create an extension list with a single extension.
+    pub fn single(extension: Extension) -> Self {
+        Self {
+            map: BTreeMap::from([(extension.extension_type(), extension)]),
+        }
+    }
+
+    /// Create an extension list with multiple extensions.
+    ///
+    /// This function will fail when the list of extensions contains duplicate extension types.
+    pub fn from_vec(extensions: Vec<Extension>) -> Result<Self, InvalidExtensionError> {
+        extensions.try_into()
+    }
+
+    /// Returns an iterator over the extension list.
+    pub fn iter(&self) -> impl Iterator<Item = &Extension> {
+        self.map.values()
+    }
+
     /// Add an extension to the extension list.
     ///
     /// Returns an error when there already is an extension with the same extension type.
@@ -240,13 +266,18 @@ impl Extensions {
             None => Err(InvalidExtensionError::NotFound),
         }
     }
+
+    /// Returns `true` iff the extension list contains an extension with the given extension type.
+    pub fn contains(&self, extension_type: ExtensionType) -> bool {
+        self.map.contains_key(&extension_type)
+    }
 }
 
 impl TryFrom<Vec<Extension>> for Extensions {
     type Error = InvalidExtensionError;
 
     fn try_from(candidate: Vec<Extension>) -> Result<Self, Self::Error> {
-        let mut map = HashMap::new();
+        let mut map = BTreeMap::new();
 
         for extension in candidate.into_iter() {
             if map.insert(extension.extension_type(), extension).is_some() {
@@ -402,37 +433,20 @@ impl Ord for Extension {
     }
 }
 
-/// This function tries to extract a vector of nodes from the given slice of
-/// [`Extension`]s.
+/// This function tries to extract a vector of nodes from the given extensions.
 ///
-/// Returns the vector of nodes if it finds one and `None` otherwise. Returns an
-/// error if there is either no [`RatchetTreeExtension`] or more than one.
+/// Returns the vector of nodes if it finds one and `None` otherwise.
 pub(crate) fn try_nodes_from_extensions(
-    other_extensions: &[Extension],
-) -> Result<Option<Vec<Option<Node>>>, ExtensionError> {
-    let mut ratchet_tree_extensions = other_extensions
-        .iter()
-        .filter(|e| e.extension_type() == ExtensionType::RatchetTree);
-
-    let nodes = match ratchet_tree_extensions.next() {
-        Some(e) => Some(e.as_ratchet_tree_extension()?.as_slice().into()),
-        None => None,
-    };
-
-    if ratchet_tree_extensions.next().is_some() {
-        // Throw an error if there is more than one ratchet tree extension.
-        // This shouldn't be the case anyway, because extensions are checked
-        // for uniqueness when decoding them. We have to see if this makes
-        // problems later as it's not something required by the spec right
-        // now (Note issue #530 of the MLS spec.).
-        return Err(ExtensionError::DuplicateRatchetTreeExtension);
-    };
-
-    Ok(nodes)
+    other_extensions: &Extensions,
+) -> Option<Vec<Option<Node>>> {
+    other_extensions.ratchet_tree().map(|e| e.as_slice().into())
 }
 
 #[cfg(test)]
 mod test {
+    use itertools::Itertools;
+    use tls_codec::{Deserialize, Serialize};
+
     use crate::extensions::*;
 
     #[test]
@@ -452,26 +466,27 @@ mod test {
 
     #[test]
     fn add_try_from() {
-        // Create two extensions with different extension types.
-        let x = Extension::ApplicationId(ApplicationIdExtension::new(b"Test"));
-        let y = Extension::RequiredCapabilities(RequiredCapabilitiesExtension::default());
+        // Create some extensions with different extension types and test that
+        // duplicates are rejected. The extension content does not matter in this test.
+        let ext_x = Extension::ApplicationId(ApplicationIdExtension::new(b"Test"));
+        let ext_y = Extension::RequiredCapabilities(RequiredCapabilitiesExtension::default());
 
         let tests = [
             (vec![], true),
-            (vec![x.clone()], true),
-            (vec![x.clone(), x.clone()], false),
-            (vec![x.clone(), x.clone(), x.clone()], false),
-            (vec![y.clone()], true),
-            (vec![y.clone(), y.clone()], false),
-            (vec![y.clone(), y.clone(), y.clone()], false),
-            (vec![x.clone(), y.clone()], true),
-            (vec![y.clone(), x.clone()], true),
-            (vec![x.clone(), x.clone(), y.clone()], false),
-            (vec![y.clone(), y.clone(), x.clone()], false),
-            (vec![x.clone(), y.clone(), y.clone()], false),
-            (vec![y.clone(), x.clone(), x.clone()], false),
-            (vec![x.clone(), y.clone(), x.clone()], false),
-            (vec![y.clone(), x, y], false),
+            (vec![ext_x.clone()], true),
+            (vec![ext_x.clone(), ext_x.clone()], false),
+            (vec![ext_x.clone(), ext_x.clone(), ext_x.clone()], false),
+            (vec![ext_y.clone()], true),
+            (vec![ext_y.clone(), ext_y.clone()], false),
+            (vec![ext_y.clone(), ext_y.clone(), ext_y.clone()], false),
+            (vec![ext_x.clone(), ext_y.clone()], true),
+            (vec![ext_y.clone(), ext_x.clone()], true),
+            (vec![ext_x.clone(), ext_x.clone(), ext_y.clone()], false),
+            (vec![ext_y.clone(), ext_y.clone(), ext_x.clone()], false),
+            (vec![ext_x.clone(), ext_y.clone(), ext_y.clone()], false),
+            (vec![ext_y.clone(), ext_x.clone(), ext_x.clone()], false),
+            (vec![ext_x.clone(), ext_y.clone(), ext_x.clone()], false),
+            (vec![ext_y.clone(), ext_x, ext_y], false),
         ];
 
         for (test, should_work) in tests.into_iter() {
@@ -500,6 +515,28 @@ mod test {
             } else {
                 assert!(Extensions::try_from(test).is_err());
             }
+        }
+    }
+
+    #[test]
+    fn ensure_ordering() {
+        // Create some extensions with different extension types and test
+        // that all permutations keep their order after being (de)serialized.
+        // The extension content does not matter in this test.
+        let ext_x = Extension::ApplicationId(ApplicationIdExtension::new(b"Test"));
+        let ext_y = Extension::RatchetTree(RatchetTreeExtension::default());
+        let ext_z = Extension::RequiredCapabilities(RequiredCapabilitiesExtension::default());
+
+        for candidate in [ext_x, ext_y, ext_z]
+            .into_iter()
+            .permutations(3)
+            .into_iter()
+            .collect::<Vec<_>>()
+        {
+            let candidate: Extensions = Extensions::try_from(candidate).unwrap();
+            let bytes = candidate.tls_serialize_detached().unwrap();
+            let got = Extensions::tls_deserialize(&mut bytes.as_slice()).unwrap();
+            assert_eq!(candidate, got);
         }
     }
 }

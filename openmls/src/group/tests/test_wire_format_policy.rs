@@ -63,8 +63,13 @@ fn receive_message(
     .expect("An unexpected error occurred.");
 
     // Generate KeyPackages
-    let bob_key_package = generate_key_package(&[ciphersuite], &bob_credential, vec![], backend)
-        .expect("An unexpected error occurred.");
+    let bob_key_package = generate_key_package(
+        &[ciphersuite],
+        &bob_credential,
+        Extensions::empty(),
+        backend,
+    )
+    .expect("An unexpected error occurred.");
 
     let (_message, welcome) = alice_group
         .add_members(backend, &[bob_key_package])

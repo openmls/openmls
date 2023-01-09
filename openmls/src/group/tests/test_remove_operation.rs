@@ -49,12 +49,20 @@ fn test_remove_operation_variants(ciphersuite: Ciphersuite, backend: &impl OpenM
         .expect("An unexpected error occurred.");
 
         // Generate KeyPackages
-        let bob_key_package =
-            generate_key_package(&[ciphersuite], &bob_credential, vec![], backend)
-                .expect("An unexpected error occurred.");
-        let charlie_key_package =
-            generate_key_package(&[ciphersuite], &charlie_credential, vec![], backend)
-                .expect("An unexpected error occurred.");
+        let bob_key_package = generate_key_package(
+            &[ciphersuite],
+            &bob_credential,
+            Extensions::empty(),
+            backend,
+        )
+        .expect("An unexpected error occurred.");
+        let charlie_key_package = generate_key_package(
+            &[ciphersuite],
+            &charlie_credential,
+            Extensions::empty(),
+            backend,
+        )
+        .expect("An unexpected error occurred.");
 
         // Define the MlsGroup configuration
         let mls_group_config = MlsGroupConfigBuilder::new()

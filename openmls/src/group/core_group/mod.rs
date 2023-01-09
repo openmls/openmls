@@ -25,8 +25,6 @@ mod test_core_group;
 #[cfg(test)]
 mod test_create_commit_params;
 #[cfg(test)]
-mod test_duplicate_extension;
-#[cfg(test)]
 mod test_external_init;
 #[cfg(test)]
 mod test_past_secrets;
@@ -138,7 +136,7 @@ pub(crate) struct CoreGroup {
 
 /// Builder for [`CoreGroup`].
 pub(crate) struct CoreGroupBuilder {
-    own_leaf_extensions: Vec<Extension>,
+    own_leaf_extensions: Extensions,
     group_id: GroupId,
     crypto_config: CryptoConfig,
     config: Option<CoreGroupConfig>,
@@ -159,7 +157,7 @@ impl CoreGroupBuilder {
             version: None,
             required_capabilities: None,
             max_past_epochs: 0,
-            own_leaf_extensions: vec![],
+            own_leaf_extensions: Extensions::empty(),
             lifetime: None,
             crypto_config,
         }
@@ -191,12 +189,6 @@ impl CoreGroupBuilder {
     /// Set the [`Lifetime`] for the own leaf in the group.
     pub fn with_lifetime(mut self, lifetime: Lifetime) -> Self {
         self.lifetime = Some(lifetime);
-        self
-    }
-    /// Set extensions for the own leaf in the group.
-    #[cfg(test)]
-    pub fn with_extensions(mut self, extensions: Vec<Extension>) -> Self {
-        self.own_leaf_extensions = extensions;
         self
     }
 
@@ -247,7 +239,8 @@ impl CoreGroupBuilder {
             }
             _ => LibraryError::custom("Unexpected ExtensionError").into(),
         })?;
-        let required_capabilities = &[Extension::RequiredCapabilities(required_capabilities)];
+        let required_capabilities =
+            Extensions::single(Extension::RequiredCapabilities(required_capabilities));
 
         let group_context = GroupContext::create_initial_group_context(
             ciphersuite,
@@ -425,7 +418,7 @@ impl CoreGroup {
         &self,
         framing_parameters: FramingParameters,
         credential_bundle: &CredentialBundle,
-        extensions: &[Extension],
+        extensions: Extensions,
         backend: &impl OpenMlsCryptoProvider,
     ) -> Result<AuthenticatedContent, CreateGroupContextExtProposalError> {
         // Ensure that the group supports all the extensions that are wanted.
@@ -570,16 +563,21 @@ impl CoreGroup {
             };
 
             if with_ratchet_tree {
-                vec![ratchet_tree_extension(), external_pub_extension()]
+                Extensions::from_vec(vec![ratchet_tree_extension(), external_pub_extension()])
+                    .map_err(|_| {
+                        LibraryError::custom(
+                            "There should not have been duplicate extensions here.",
+                        )
+                    })?
             } else {
-                vec![external_pub_extension()]
+                Extensions::single(external_pub_extension())
             }
         };
 
         // Create to-be-signed group info.
         let group_info_tbs = GroupInfoTBS::new(
             self.group_context.clone(),
-            &extensions,
+            extensions,
             self.message_secrets()
                 .confirmation_key()
                 .tag(backend, self.context().confirmed_transcript_hash())
@@ -640,7 +638,7 @@ impl CoreGroup {
     }
 
     /// Get the group context extensions.
-    pub(crate) fn group_context_extensions(&self) -> &[Extension] {
+    pub(crate) fn group_context_extensions(&self) -> &Extensions {
         self.group_context.extensions()
     }
 

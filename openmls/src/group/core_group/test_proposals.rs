@@ -7,6 +7,7 @@ use crate::{
     binary_tree::LeafNodeIndex,
     ciphersuite::hash_ref::ProposalRef,
     credentials::{CredentialBundle, CredentialType},
+    extensions::Extensions,
     extensions::{Extension, ExtensionType, RequiredCapabilitiesExtension},
     framing::sender::Sender,
     framing::{mls_auth_content::AuthenticatedContent, FramingParameters, WireFormat},
@@ -61,7 +62,7 @@ fn proposal_queue_functions(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryp
         0,
         vec![],
         vec![],
-        &[],
+        Extensions::empty(),
     );
 
     // Let's create some proposals
@@ -187,7 +188,7 @@ fn proposal_queue_order(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoPr
         0,
         vec![],
         vec![],
-        &[],
+        Extensions::empty(),
     );
 
     // Let's create some proposals
@@ -596,7 +597,7 @@ fn test_group_context_extension_proposal(
         .create_group_context_ext_proposal(
             framing_parameters,
             &alice_credential_bundle,
-            &[required_application_id],
+            Extensions::single(required_application_id),
             backend,
         )
         .expect("Error creating gce proposal.");

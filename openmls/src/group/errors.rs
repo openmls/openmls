@@ -61,9 +61,6 @@ pub enum WelcomeError {
     /// Unsupported extensions found in the KeyPackage of another member.
     #[error("Unsupported extensions found in the KeyPackage of another member.")]
     UnsupportedExtensions,
-    /// A duplicate ratchet tree was found.
-    #[error("A duplicate ratchet tree was found.")]
-    DuplicateRatchetTreeExtension,
     /// More than 2^16 PSKs were provided.
     #[error("More than 2^16 PSKs were provided.")]
     PskTooManyKeys,
@@ -111,9 +108,6 @@ pub enum ExternalCommitError {
     /// The signature over the given group info is invalid.
     #[error("The signature over the given group info is invalid.")]
     InvalidGroupInfoSignature,
-    /// A duplicate ratchet tree was found.
-    #[error("A duplicate ratchet tree was found.")]
-    DuplicateRatchetTreeExtension,
     /// Error creating external commit.
     #[error("Error creating external commit.")]
     CommitError,

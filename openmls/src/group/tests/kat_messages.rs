@@ -99,16 +99,16 @@ pub fn generate_test_vector(ciphersuite: Ciphersuite) -> MessagesTestVector {
                 .rand()
                 .random_vec(ciphersuite.hash_length())
                 .expect("An unexpected error occurred."),
-            &[Extension::RequiredCapabilities(
+            Extensions::single(Extension::RequiredCapabilities(
                 RequiredCapabilitiesExtension::default(),
-            )],
+            )),
         );
 
         GroupInfoTBS::new(
             group_context,
-            &[Extension::RatchetTree(RatchetTreeExtension::new(
+            Extensions::single(Extension::RatchetTree(RatchetTreeExtension::new(
                 ratchet_tree.clone(),
-            ))],
+            ))),
             ConfirmationTag(Mac {
                 mac_value: crypto
                     .rand()
@@ -135,7 +135,7 @@ pub fn generate_test_vector(ciphersuite: Ciphersuite) -> MessagesTestVector {
         },
         &credential_bundle,
         LeafNodeSource::Update,
-        vec![],
+        Extensions::empty(),
         &crypto,
     )
     .unwrap();
@@ -178,9 +178,9 @@ pub fn generate_test_vector(ciphersuite: Ciphersuite) -> MessagesTestVector {
         group_id: group.group_id().clone(),
         version: ProtocolVersion::Mls10,
         ciphersuite: ciphersuite_name,
-        extensions: vec![Extension::RatchetTree(RatchetTreeExtension::new(
+        extensions: Extensions::single(Extension::RatchetTree(RatchetTreeExtension::new(
             ratchet_tree.clone(),
-        ))],
+        ))),
     };
     // We don't support external init proposals yet.
     let external_init_proposal = tls_codec::TlsByteVecU16::new(Vec::new());
@@ -468,18 +468,19 @@ pub fn run_test_vector(tv: MessagesTestVector) -> Result<(), MessagesTestVectorE
         return Err(MessagesTestVectorError::RatchetTreeEncodingMismatch);
     }
 
-    // GroupInfo
-    let tv_group_info = hex_to_bytes(&tv.group_info);
-    let my_group_info = GroupInfo::tls_deserialize(&mut tv_group_info.as_slice())
-        .expect("An unexpected error occurred.")
-        .tls_serialize_detached()
-        .expect("An unexpected error occurred.");
-    if tv_group_info != my_group_info {
-        log::error!("  GroupInfo encoding mismatch");
-        log::debug!("    Encoded: {:x?}", my_group_info);
-        log::debug!("    Expected: {:x?}", tv_group_info);
+    // VerifiableGroupInfo
+    let tv_verifiable_group_info = hex_to_bytes(&tv.group_info);
+    let my_verifiable_group_info =
+        VerifiableGroupInfo::tls_deserialize(&mut tv_verifiable_group_info.as_slice())
+            .expect("An unexpected error occurred.")
+            .tls_serialize_detached()
+            .expect("An unexpected error occurred.");
+    if tv_verifiable_group_info != my_verifiable_group_info {
+        log::error!("  VerifiableGroupInfo encoding mismatch");
+        log::debug!("    Encoded: {:x?}", my_verifiable_group_info);
+        log::debug!("    Expected: {:x?}", tv_verifiable_group_info);
         if cfg!(test) {
-            panic!("GroupInfo encoding mismatch");
+            panic!("VerifiableGroupInfo encoding mismatch");
         }
         return Err(MessagesTestVectorError::GroupInfoEncodingMismatch);
     }
