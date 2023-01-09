@@ -561,20 +561,6 @@
 <span id="561">561</span>
 <span id="562">562</span>
 <span id="563">563</span>
-<span id="564">564</span>
-<span id="565">565</span>
-<span id="566">566</span>
-<span id="567">567</span>
-<span id="568">568</span>
-<span id="569">569</span>
-<span id="570">570</span>
-<span id="571">571</span>
-<span id="572">572</span>
-<span id="573">573</span>
-<span id="574">574</span>
-<span id="575">575</span>
-<span id="576">576</span>
-<span id="577">577</span>
 </pre><pre class="rust"><code><span class="doccomment">//! # Messages
 //!
 //! This module contains the types and implementations for Commit &amp; Welcome messages,
@@ -851,20 +837,6 @@
             },
             signature: <span class="self">self</span>.signature,
         }
-    }
-}
-
-<span class="kw">impl </span>Verifiable <span class="kw">for </span>GroupInfo {
-    <span class="kw">fn </span>unsigned_payload(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;Vec&lt;u8&gt;, tls_codec::Error&gt; {
-        <span class="self">self</span>.payload.unsigned_payload()
-    }
-
-    <span class="kw">fn </span>signature(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>Signature {
-        <span class="kw-2">&amp;</span><span class="self">self</span>.signature
-    }
-
-    <span class="kw">fn </span>label(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>str {
-        SIGNATURE_GROUP_INFO_LABEL
     }
 }
 
