@@ -34,8 +34,6 @@ pub mod proposals;
 // Tests
 #[cfg(test)]
 mod tests;
-#[cfg(test)]
-use crate::credentials::CredentialBundle;
 #[cfg(any(feature = "test-utils", test))]
 use crate::schedule::psk::{ExternalPsk, Psk};
 
@@ -190,7 +188,7 @@ pub struct ConfirmationTag(pub(crate) Mac);
 #[derive(Debug, PartialEq, Clone, TlsDeserialize, TlsSerialize, TlsSize)]
 pub(crate) struct GroupInfoTBS {
     group_context: GroupContext,
-    extensions: Vec<Extension>,
+    extensions: Extensions,
     confirmation_tag: ConfirmationTag,
     signer: LeafNodeIndex,
 }
@@ -199,13 +197,13 @@ impl GroupInfoTBS {
     /// Create a new to-be-signed group info.
     pub(crate) fn new(
         group_context: GroupContext,
-        extensions: &[Extension],
+        extensions: Extensions,
         confirmation_tag: ConfirmationTag,
         signer: LeafNodeIndex,
     ) -> Self {
         Self {
             group_context,
-            extensions: extensions.into(),
+            extensions,
             confirmation_tag,
             signer,
         }
@@ -243,6 +241,7 @@ impl Signable for GroupInfoTBS {
 /// } GroupInfo;
 /// ```
 #[derive(Debug, PartialEq, Clone)]
+#[cfg_attr(feature = "test-utils", derive(TlsDeserialize))]
 pub struct GroupInfo {
     payload: GroupInfoTBS,
     signature: Signature,
@@ -255,14 +254,8 @@ impl GroupInfo {
     }
 
     /// Returns the extensions.
-    pub(crate) fn extensions(&self) -> &[Extension] {
-        self.payload.extensions.as_slice()
-    }
-
-    /// Set the extensions.
-    #[cfg(test)]
-    pub(crate) fn set_extensions(&mut self, extensions: Vec<Extension>) {
-        self.payload.extensions = extensions;
+    pub(crate) fn extensions(&self) -> &Extensions {
+        &self.payload.extensions
     }
 
     /// Returns the confirmation tag.
@@ -270,23 +263,8 @@ impl GroupInfo {
         &self.payload.confirmation_tag
     }
 
-    /// Returns the signer.
-    pub(crate) fn signer(&self) -> LeafNodeIndex {
-        self.payload.signer
-    }
-
-    /// Re-sign the group info.
-    #[cfg(test)]
-    pub(crate) fn re_sign(
-        self,
-        credential_bundle: &CredentialBundle,
-        backend: &impl OpenMlsCryptoProvider,
-    ) -> Result<Self, LibraryError> {
-        self.payload.sign(backend, credential_bundle)
-    }
-
     #[cfg(any(feature = "test-utils", test))]
-    pub fn into_verifiable_group_info(self) -> VerifiableGroupInfo {
+    pub(crate) fn into_verifiable_group_info(self) -> VerifiableGroupInfo {
         VerifiableGroupInfo {
             payload: GroupInfoTBS {
                 group_context: self.payload.group_context,
@@ -296,20 +274,6 @@ impl GroupInfo {
             },
             signature: self.signature,
         }
-    }
-}
-
-impl Verifiable for GroupInfo {
-    fn unsigned_payload(&self) -> Result<Vec<u8>, tls_codec::Error> {
-        self.payload.unsigned_payload()
-    }
-
-    fn signature(&self) -> &Signature {
-        &self.signature
-    }
-
-    fn label(&self) -> &str {
-        SIGNATURE_GROUP_INFO_LABEL
     }
 }
 
@@ -349,8 +313,8 @@ impl VerifiableGroupInfo {
     /// Get (unverified) extensions of the verifiable group info.
     ///
     /// Note: This method should only be used when necessary to verify the group info signature.
-    pub(crate) fn extensions(&self) -> &[Extension] {
-        self.payload.extensions.as_slice()
+    pub(crate) fn extensions(&self) -> &Extensions {
+        &self.payload.extensions
     }
 
     /// Break the signature for testing purposes.

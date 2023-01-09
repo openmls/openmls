@@ -41,7 +41,7 @@ fn generate_key_package(
     backend: &impl OpenMlsCryptoProvider,
     ciphersuites: &[Ciphersuite],
     credential: &Credential,
-    extensions: Vec<Extension>, // TODO[FK]: #819 allow setting leaf node extensions
+    extensions: Extensions, // TODO[FK]: #819 allow setting leaf node extensions
 ) -> KeyPackage {
     let credential_bundle = backend
         .key_store()
@@ -80,8 +80,12 @@ fn test_mls_group_persistence(ciphersuite: Ciphersuite, backend: &impl OpenMlsCr
     .expect("An unexpected error occurred.");
 
     // Generate KeyPackages
-    let alice_key_package =
-        generate_key_package(backend, &[ciphersuite], &alice_credential, vec![]);
+    let alice_key_package = generate_key_package(
+        backend,
+        &[ciphersuite],
+        &alice_credential,
+        Extensions::empty(),
+    );
 
     // Define the MlsGroup configuration
     let mls_group_config = MlsGroupConfig::test_default(ciphersuite);
@@ -152,13 +156,26 @@ fn remover(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
     .expect("An unexpected error occurred.");
 
     // Generate KeyPackages
-    let alice_key_package =
-        generate_key_package(backend, &[ciphersuite], &alice_credential, vec![]);
+    let alice_key_package = generate_key_package(
+        backend,
+        &[ciphersuite],
+        &alice_credential,
+        Extensions::empty(),
+    );
 
-    let bob_key_package = generate_key_package(backend, &[ciphersuite], &bob_credential, vec![]);
+    let bob_key_package = generate_key_package(
+        backend,
+        &[ciphersuite],
+        &bob_credential,
+        Extensions::empty(),
+    );
 
-    let charlie_key_package =
-        generate_key_package(backend, &[ciphersuite], &charlie_credential, vec![]);
+    let charlie_key_package = generate_key_package(
+        backend,
+        &[ciphersuite],
+        &charlie_credential,
+        Extensions::empty(),
+    );
 
     // Define the MlsGroup configuration
     let mls_group_config = MlsGroupConfigBuilder::new()
@@ -302,8 +319,12 @@ fn export_secret(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider)
     .expect("An unexpected error occurred.");
 
     // Generate KeyPackages
-    let alice_key_package =
-        generate_key_package(backend, &[ciphersuite], &alice_credential, vec![]);
+    let alice_key_package = generate_key_package(
+        backend,
+        &[ciphersuite],
+        &alice_credential,
+        Extensions::empty(),
+    );
 
     // Define the MlsGroup configuration
     let mls_group_config = MlsGroupConfig::test_default(ciphersuite);
@@ -451,10 +472,19 @@ fn test_pending_commit_logic(ciphersuite: Ciphersuite, backend: &impl OpenMlsCry
     .expect("An unexpected error occurred.");
 
     // Generate KeyPackages
-    let alice_key_package =
-        generate_key_package(backend, &[ciphersuite], &alice_credential, vec![]);
+    let alice_key_package = generate_key_package(
+        backend,
+        &[ciphersuite],
+        &alice_credential,
+        Extensions::empty(),
+    );
 
-    let bob_key_package = generate_key_package(backend, &[ciphersuite], &bob_credential, vec![]);
+    let bob_key_package = generate_key_package(
+        backend,
+        &[ciphersuite],
+        &bob_credential,
+        Extensions::empty(),
+    );
 
     // Define the MlsGroup configuration
     let mls_group_config = MlsGroupConfig::test_default(ciphersuite);
@@ -637,10 +667,19 @@ fn key_package_deletion(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoPr
     .expect("An unexpected error occurred.");
 
     // Generate KeyPackages
-    let alice_key_package =
-        generate_key_package(backend, &[ciphersuite], &alice_credential, vec![]);
+    let alice_key_package = generate_key_package(
+        backend,
+        &[ciphersuite],
+        &alice_credential,
+        Extensions::empty(),
+    );
 
-    let bob_key_package = generate_key_package(backend, &[ciphersuite], &bob_credential, vec![]);
+    let bob_key_package = generate_key_package(
+        backend,
+        &[ciphersuite],
+        &bob_credential,
+        Extensions::empty(),
+    );
 
     // Define the MlsGroup configuration
     let mls_group_config = MlsGroupConfigBuilder::new()

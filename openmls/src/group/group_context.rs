@@ -18,7 +18,7 @@ pub struct GroupContext {
     epoch: GroupEpoch,
     tree_hash: VLBytes,
     confirmed_transcript_hash: VLBytes,
-    extensions: Vec<Extension>,
+    extensions: Extensions,
 }
 
 #[cfg(any(feature = "test-utils", test))]
@@ -44,7 +44,7 @@ impl GroupContext {
         epoch: impl Into<GroupEpoch>,
         tree_hash: Vec<u8>,
         confirmed_transcript_hash: Vec<u8>,
-        extensions: &[Extension],
+        extensions: Extensions,
     ) -> Self {
         GroupContext {
             ciphersuite,
@@ -53,7 +53,7 @@ impl GroupContext {
             epoch: epoch.into(),
             tree_hash: tree_hash.into(),
             confirmed_transcript_hash: confirmed_transcript_hash.into(),
-            extensions: extensions.into(),
+            extensions,
         }
     }
 
@@ -62,7 +62,7 @@ impl GroupContext {
         ciphersuite: Ciphersuite,
         group_id: GroupId,
         tree_hash: Vec<u8>,
-        extensions: &[Extension],
+        extensions: Extensions,
     ) -> Self {
         Self::new(
             ciphersuite,
@@ -105,15 +105,12 @@ impl GroupContext {
     }
 
     /// Return the extensions.
-    pub(crate) fn extensions(&self) -> &[Extension] {
-        self.extensions.as_slice()
+    pub(crate) fn extensions(&self) -> &Extensions {
+        &self.extensions
     }
 
     /// Get the required capabilities extension.
     pub(crate) fn required_capabilities(&self) -> Option<&RequiredCapabilitiesExtension> {
-        self.extensions
-            .iter()
-            .find(|e| e.extension_type() == ExtensionType::RequiredCapabilities)
-            .and_then(|e| e.as_required_capabilities_extension().ok())
+        self.extensions.required_capabilities()
     }
 }

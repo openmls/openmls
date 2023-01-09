@@ -342,7 +342,7 @@ pub(super) fn generate_credential_bundle(
 pub(super) fn generate_key_package(
     ciphersuites: &[Ciphersuite],
     credential: &Credential,
-    extensions: Vec<Extension>,
+    extensions: Extensions,
     backend: &impl OpenMlsCryptoProvider,
 ) -> Result<KeyPackage, KeyPackageNewError> {
     let credential_bundle = backend

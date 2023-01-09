@@ -34,7 +34,6 @@ fn test_core_group_persistence(ciphersuite: Ciphersuite, backend: &impl OpenMlsC
         GroupId::random(backend),
         config::CryptoConfig::with_default_version(ciphersuite),
     )
-    .with_extensions(vec![])
     .build(&alice_credential_bundle, backend)
     .expect("Error creating group.");
 
@@ -72,7 +71,7 @@ fn test_failed_groupinfo_decryption(
     let group_id = GroupId::random(backend);
     let tree_hash = vec![1, 2, 3, 4, 5, 6, 7, 8, 9];
     let confirmed_transcript_hash = vec![1, 1, 1];
-    let extensions = Vec::new();
+    let extensions = Extensions::empty();
     let confirmation_tag = ConfirmationTag(Mac {
         mac_value: vec![1, 2, 3, 4, 5, 6, 7, 8, 9].into(),
     });
@@ -94,12 +93,12 @@ fn test_failed_groupinfo_decryption(
             epoch,
             tree_hash,
             confirmed_transcript_hash,
-            &Vec::new(),
+            Extensions::empty(),
         );
 
         GroupInfoTBS::new(
             group_context,
-            &extensions,
+            extensions,
             confirmation_tag,
             LeafNodeIndex::new(0),
         )

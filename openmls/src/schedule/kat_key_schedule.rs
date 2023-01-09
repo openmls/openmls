@@ -5,7 +5,7 @@
 //!
 //! If values are not present, they are encoded as empty strings.
 
-use crate::{ciphersuite::*, group::*, schedule::*, test_utils::*};
+use crate::{ciphersuite::*, extensions::Extensions, group::*, schedule::*, test_utils::*};
 
 #[cfg(test)]
 use crate::test_utils::{read, write};
@@ -146,7 +146,7 @@ fn generate(
         epoch,
         tree_hash.to_vec(),
         confirmed_transcript_hash.clone(),
-        &[], // Extensions
+        Extensions::empty(),
     );
 
     let serialized_group_context = group_context
@@ -398,7 +398,7 @@ pub fn run_test_vector(
             i as u64,
             tree_hash.to_vec(),
             confirmed_transcript_hash.clone(),
-            &[], // Extensions
+            Extensions::empty(),
         );
 
         let expected_group_context = hex_to_bytes(&epoch.group_context);
