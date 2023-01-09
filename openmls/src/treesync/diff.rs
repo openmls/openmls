@@ -461,19 +461,11 @@ impl<'a> TreeSyncDiff<'a> {
         // We go through the nodes in the direct path in reverse order and get
         // the corresponding tree hash for each copath node.
         let mut previous_parent_hash = vec![];
-        for ((parent_index, path_node), original_sibling_tree_hash) in path
+        for ((_, path_node), original_sibling_tree_hash) in path
             .iter_mut()
             .rev()
             .zip(copath_tree_hashes.iter_mut().rev())
         {
-            if !previous_parent_hash.is_empty() {
-                println!(
-                    "Parent index: {}, parent hash: {:?}",
-                    parent_index.usize(),
-                    &previous_parent_hash[0..2]
-                );
-            }
-
             path_node.set_parent_hash(previous_parent_hash);
             let parent_hash =
                 path_node.compute_parent_hash(backend, ciphersuite, original_sibling_tree_hash)?;
