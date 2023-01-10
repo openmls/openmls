@@ -615,14 +615,14 @@ impl<'a> TreeSyncDiff<'a> {
         //
         // We need to consider all nodes in the the descendants list (the
         // resolution), since we cannot determine which descedant was the
-        // previous noe in the update path when the original commit occurred.
+        // previous one in the update path when the original commit occurred.
         //
         // We look at both righ & left subtree of a give node separately and
         // compute the original sibling tree hash for the sibling of the subtree
-        // head.
+        // root.
         //
-        // The parent hash for a given node is valid, when exactly on descendant
-        // carries the parent has it its parent hash field.
+        // The parent hash for a given node is valid, when exactly one descendant
+        // carries the parent hash it its parent hash field.
         for (parent_index, tree_sync_parent_node) in self.diff.parents() {
             if let Some(parent_node) = tree_sync_parent_node.node() {
                 // We consider both children of the parent node. One of them is
