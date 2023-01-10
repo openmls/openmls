@@ -100,7 +100,7 @@ impl FramedContentAuthData {
 /// If we want to serialize a spec-compliant AuthenticatedContent, we have to
 /// manually ignore the extra fields in the TBS (i.e. context and later
 /// ProtocolVersion).
-#[derive(PartialEq, Debug, Clone, TlsSerialize, TlsSize)]
+#[derive(PartialEq, Debug, Clone)]
 pub(crate) struct AuthenticatedContent {
     pub(super) tbs: FramedContentTbs,
     pub(super) auth: FramedContentAuthData,
@@ -284,6 +284,23 @@ impl AuthenticatedContent {
 impl From<VerifiableAuthenticatedContent> for AuthenticatedContent {
     fn from(v: VerifiableAuthenticatedContent) -> Self {
         v.auth_content
+    }
+}
+
+impl Size for AuthenticatedContent {
+    fn tls_serialized_len(&self) -> usize {
+        // We implement Size manually, because [`AuthenticatedContent`] doesn't
+        // contain [`ProtocolVersion`].
+        self.tbs.tls_serialized_len_without_version() + self.auth.tls_serialized_len()
+    }
+}
+
+impl TlsSerializeTrait for AuthenticatedContent {
+    fn tls_serialize<W: Write>(&self, writer: &mut W) -> Result<usize, tls_codec::Error> {
+        // We implement TLS serialization manually, because
+        // [`AuthenticatedContent`] doesn't contain [`ProtocolVersion`].
+        let written = self.tbs.tls_serialize_without_version(writer)?;
+        self.auth.tls_serialize(writer).map(|l| l + written)
     }
 }
 

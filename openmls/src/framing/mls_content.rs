@@ -254,26 +254,14 @@ impl FramedContentTbs {
     pub(crate) fn epoch(&self) -> GroupEpoch {
         self.content.epoch
     }
-}
 
-impl Size for FramedContentTbs {
-    #[inline]
-    fn tls_serialized_len(&self) -> usize {
-        self.version.tls_serialized_len()
-            + self.wire_format.tls_serialized_len()
-            + self.content.tls_serialized_len()
-            + if let Some(serialized_context) = &self.serialized_context {
-                serialized_context.tls_serialized_len()
-            } else {
-                0
-            }
-    }
-}
-
-impl TlsSerializeTrait for FramedContentTbs {
-    fn tls_serialize<W: Write>(&self, writer: &mut W) -> Result<usize, tls_codec::Error> {
-        let mut written = self.version.tls_serialize(writer)?;
-        written += self.wire_format.tls_serialize(writer)?;
+    /// Serialize the [`FramedContentTbs`] without [`ProtocolVersion`]. This is
+    /// required for the serialization of [`AuthenticatedContent`].
+    pub fn tls_serialize_without_version<W: Write>(
+        &self,
+        writer: &mut W,
+    ) -> Result<usize, tls_codec::Error> {
+        let mut written = self.wire_format.tls_serialize(writer)?;
         written += self.content.tls_serialize(writer)?;
         written += if let Some(serialized_context) = &self.serialized_context {
             // Only members and new members joining via commit should have a context.
@@ -286,5 +274,32 @@ impl TlsSerializeTrait for FramedContentTbs {
             0
         };
         Ok(written)
+    }
+
+    /// Compute the length of [`FramedContentTbs`] without [`ProtocolVersion`].
+    /// This is required for the serialization of [`AuthenticatedContent`].
+    pub fn tls_serialized_len_without_version(&self) -> usize {
+        self.wire_format.tls_serialized_len()
+            + self.content.tls_serialized_len()
+            + if let Some(serialized_context) = &self.serialized_context {
+                serialized_context.tls_serialized_len()
+            } else {
+                0
+            }
+    }
+}
+
+impl Size for FramedContentTbs {
+    #[inline]
+    fn tls_serialized_len(&self) -> usize {
+        self.version.tls_serialized_len() + self.tls_serialized_len_without_version()
+    }
+}
+
+impl TlsSerializeTrait for FramedContentTbs {
+    fn tls_serialize<W: Write>(&self, writer: &mut W) -> Result<usize, tls_codec::Error> {
+        let written = self.version.tls_serialize(writer)?;
+        self.tls_serialize_without_version(writer)
+            .map(|l| l + written)
     }
 }
