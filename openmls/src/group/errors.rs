@@ -3,6 +3,7 @@
 //! This module contains errors that originate at lower levels and are partially re-exported in errors thrown by functions of the `MlsGroup` API.
 
 use crate::{
+    ciphersuite::signable::SignatureError,
     error::LibraryError,
     extensions::errors::ExtensionError,
     framing::errors::{MessageDecryptionError, SenderError},
@@ -202,6 +203,9 @@ pub enum CreateCommitError {
     /// See [`ProposalValidationError`] for more details.
     #[error(transparent)]
     ProposalValidationError(#[from] ProposalValidationError),
+    /// See [`SignatureError`] for more details.
+    #[error(transparent)]
+    SignatureError(#[from] SignatureError),
 }
 
 /// Validation error

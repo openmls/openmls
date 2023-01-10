@@ -742,7 +742,7 @@ fn test_valsem246(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
         backend,
     )
     .unwrap();
-    let verification_result: Result<AuthenticatedContent, signable::Error> =
+    let verification_result: Result<AuthenticatedContent, _> =
         decrypted_message.verifiable_content().clone().verify(
             backend,
             bob_credential_bundle.credential().signature_key(),

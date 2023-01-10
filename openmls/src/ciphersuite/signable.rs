@@ -29,23 +29,22 @@
 //! [`tls_codec::Deserialize`] trait.
 
 use openmls_traits::{crypto::OpenMlsCrypto, types::SignatureScheme, OpenMlsCryptoProvider};
+use thiserror::Error;
 use tls_codec::Serialize;
 
-use crate::{
-    ciphersuite::{SignContent, Signature, SignaturePublicKey},
-    credentials::CredentialBundle,
-    error::LibraryError,
-};
+use crate::ciphersuite::{SignContent, Signature, SignaturePrivateKey, SignaturePublicKey};
 
 /// Signature generation and verification errors.
 /// The only information relayed with this error is whether the signature
 /// verification or generation failed.
-#[derive(Debug, PartialEq, Eq)]
-pub enum Error {
+#[derive(Error, Debug, PartialEq, Eq, Clone)]
+pub enum SignatureError {
     /// Signature verification failed
+    #[error("Signature verification failed.")]
     VerificationError,
     /// Signature generation failed
-    GeneratingError,
+    #[error("Signature generation failed.")]
+    SigningError,
 }
 
 /// This trait must be implemented by all structs that contain a self-signature.
@@ -92,23 +91,23 @@ pub trait Signable: Sized {
     /// Return the string label used for labeled signing.
     fn label(&self) -> &str;
 
-    /// Sign the payload with the given `id`.
+    /// Sign the payload with the given `private_key`.
     ///
     /// Returns a `Signature`.
     fn sign(
         self,
         backend: &impl OpenMlsCryptoProvider,
-        credential_bundle: &CredentialBundle,
-    ) -> Result<Self::SignedOutput, LibraryError>
+        private_key: &SignaturePrivateKey,
+    ) -> Result<Self::SignedOutput, SignatureError>
     where
         Self::SignedOutput: SignedStruct<Self>,
     {
         let payload = self
             .unsigned_payload()
-            .map_err(LibraryError::missing_bound_check)?;
-        let signature = credential_bundle
-            .sign(backend, &payload, self.label())
-            .map_err(LibraryError::unexpected_crypto_error)?;
+            .map_err(|_| SignatureError::SigningError)?;
+        let signature = private_key
+            .sign_with_label(backend, &SignContent::new(self.label(), payload.into()))
+            .map_err(|_| SignatureError::SigningError)?;
         Ok(Self::SignedOutput::from_payload(self, signature))
     }
 }
@@ -143,7 +142,7 @@ pub trait Verifiable: Sized {
         backend: &impl OpenMlsCryptoProvider,
         public_key: &SignaturePublicKey,
         signature_scheme: SignatureScheme,
-    ) -> Result<T, Error>
+    ) -> Result<T, SignatureError>
     where
         T: VerifiedStruct<Self>,
     {
@@ -162,7 +161,7 @@ pub trait Verifiable: Sized {
         backend: &impl OpenMlsCryptoProvider,
         public_key: &SignaturePublicKey,
         signature_scheme: SignatureScheme,
-    ) -> Result<(), Error> {
+    ) -> Result<(), SignatureError> {
         verify(self, backend, signature_scheme, public_key)
     }
 }
@@ -172,16 +171,16 @@ fn verify(
     backend: &impl OpenMlsCryptoProvider,
     signature_scheme: SignatureScheme,
     public_key: &SignaturePublicKey,
-) -> Result<(), Error> {
+) -> Result<(), SignatureError> {
     let payload = verifiable
         .unsigned_payload()
-        .map_err(|_| Error::VerificationError)?;
+        .map_err(|_| SignatureError::VerificationError)?;
     let sign_content = SignContent::new(verifiable.label(), payload.into());
     let payload = match sign_content.tls_serialize_detached() {
         Ok(p) => p,
         Err(e) => {
             log::error!("Serializing SignContent failed, {:?}", e);
-            return Err(Error::VerificationError);
+            return Err(SignatureError::VerificationError);
         }
     };
     backend
@@ -192,6 +191,6 @@ fn verify(
             public_key.as_slice(),
             verifiable.signature().value(),
         )
-        .map_err(|_| Error::VerificationError)?;
+        .map_err(|_| SignatureError::VerificationError)?;
     Ok(())
 }

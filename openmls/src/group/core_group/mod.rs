@@ -586,7 +586,9 @@ impl CoreGroup {
         );
 
         // Sign to-be-signed group info.
-        group_info_tbs.sign(backend, credential_bundle)
+        group_info_tbs
+            .sign(backend, credential_bundle.signature_private_key())
+            .map_err(|_| LibraryError::custom("Signing failed"))
     }
 
     /// Returns the epoch authenticator

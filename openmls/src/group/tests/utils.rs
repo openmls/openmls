@@ -397,7 +397,7 @@ pub(crate) fn resign_message(
 ) -> PublicMessage {
     use prelude::signable::Signable;
 
-    let alice_credential_bundle = backend
+    let alice_credential_bundle: CredentialBundle = backend
         .key_store()
         .read(
             &alice_group
@@ -417,7 +417,7 @@ pub(crate) fn resign_message(
     let tbs: FramedContentTbs = plaintext.into();
     let mut signed_plaintext: AuthenticatedContent = tbs
         .with_context(serialized_context)
-        .sign(backend, &alice_credential_bundle)
+        .sign(backend, alice_credential_bundle.signature_private_key())
         .expect("Error signing modified payload.");
 
     // Set old confirmation tag
@@ -453,10 +453,10 @@ pub(crate) fn resign_external_commit(
     let tbs: FramedContentTbs = plaintext.into();
     let mut signed_plaintext: AuthenticatedContent = if let Some(context) = serialized_context {
         tbs.with_context(context)
-            .sign(backend, bob_credential_bundle)
+            .sign(backend, bob_credential_bundle.signature_private_key())
             .expect("Error signing modified payload.")
     } else {
-        tbs.sign(backend, bob_credential_bundle)
+        tbs.sign(backend, bob_credential_bundle.signature_private_key())
             .expect("Error signing modified payload.")
     };
 

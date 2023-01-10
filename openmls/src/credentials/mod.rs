@@ -30,10 +30,7 @@
 //! There are multiple [`CredentialType`]s, although OpenMLS currently only
 //! supports the [`BasicCredential`].
 
-use openmls_traits::{
-    types::{CryptoError, SignatureScheme},
-    OpenMlsCryptoProvider,
-};
+use openmls_traits::{types::SignatureScheme, OpenMlsCryptoProvider};
 use serde::{Deserialize, Serialize};
 use std::convert::TryFrom;
 #[cfg(test)]
@@ -271,17 +268,6 @@ impl CredentialBundle {
         (self.credential, self.signature_private_key)
     }
 
-    /// Signs the given message `msg` using the private key of the credential bundle.
-    pub(crate) fn sign(
-        &self,
-        backend: &impl OpenMlsCryptoProvider,
-        msg: &[u8],
-        label: &str,
-    ) -> Result<Signature, CryptoError> {
-        self.signature_private_key
-            .sign_with_label(backend, &SignContent::new(label, msg.into()))
-    }
-
     /// Returns the key pair of the given credential bundle.
     #[cfg(any(feature = "test-utils", test))]
     pub fn key_pair(&self) -> SignatureKeypair {
@@ -292,5 +278,10 @@ impl CredentialBundle {
             .into_signature_public_key_enriched(self.credential().signature_scheme());
         let private_key = self.signature_private_key.clone();
         SignatureKeypair::from_parts(public_key, private_key)
+    }
+
+    /// Get a reference to the signature private key of this credential bundle.
+    pub(crate) fn signature_private_key(&self) -> &SignaturePrivateKey {
+        &self.signature_private_key
     }
 }
