@@ -451,24 +451,22 @@ impl<'a> TreeSyncDiff<'a> {
         debug_assert_eq!(filtered_copath.len(), path.len());
 
         // For every copath node, compute the tree hash.
-        let mut copath_tree_hashes = filtered_copath
-            .into_iter()
-            .map(|node_index| {
-                self.compute_tree_hash(backend, ciphersuite, node_index, &HashSet::new())
-            })
-            .collect::<Result<Vec<_>, _>>()?;
+        let copath_tree_hashes = filtered_copath.into_iter().map(|node_index| {
+            self.compute_tree_hash(backend, ciphersuite, node_index, &HashSet::new())
+        });
 
         // We go through the nodes in the direct path in reverse order and get
         // the corresponding tree hash for each copath node.
         let mut previous_parent_hash = vec![];
-        for ((_, path_node), original_sibling_tree_hash) in path
-            .iter_mut()
-            .rev()
-            .zip(copath_tree_hashes.iter_mut().rev())
+        for ((_, path_node), original_sibling_tree_hash) in
+            path.iter_mut().rev().zip(copath_tree_hashes.rev())
         {
             path_node.set_parent_hash(previous_parent_hash);
-            let parent_hash =
-                path_node.compute_parent_hash(backend, ciphersuite, original_sibling_tree_hash)?;
+            let parent_hash = path_node.compute_parent_hash(
+                backend,
+                ciphersuite,
+                &original_sibling_tree_hash?,
+            )?;
             previous_parent_hash = parent_hash
         }
         // The final hash is the one of the leaf's parent.
@@ -625,24 +623,35 @@ impl<'a> TreeSyncDiff<'a> {
         // carries the parent hash it its parent hash field.
         for (parent_index, tree_sync_parent_node) in self.diff.parents() {
             if let Some(parent_node) = tree_sync_parent_node.node() {
-                // We consider both children of the parent node. One of them is
+                // We consider both children of the parent node. One of them
+                // takes the role of the descendant, whose resolution carries
+                // the parent hash. The other one is the descendants sibling,
+                // whose original tree hash is used to compute the parent hash.
                 let left_child = self.diff.left_child(parent_index);
                 let right_child = self.diff.right_child(parent_index);
 
+                // We exclude the unmerged leaves from the parent node for the
+                // following computations. Those leaves were obviously addede
+                // after the parent node was populated during a commit and must
+                // therefore be removed to recreate the tree state at the time
+                // of the commit.
                 let exclusion_list = HashSet::from_iter(parent_node.unmerged_leaves().iter());
 
+                // Compute the original tree hash (oth) for the left and right child.
                 let oth_left =
                     self.compute_tree_hash(backend, ciphersuite, left_child, &exclusion_list)?;
 
                 let oth_right =
                     self.compute_tree_hash(backend, ciphersuite, right_child, &exclusion_list)?;
 
+                // Compute the parent hash for both child roles.
                 let parent_hash_left =
                     parent_node.compute_parent_hash(backend, ciphersuite, &oth_right)?;
 
                 let parent_hash_right =
                     parent_node.compute_parent_hash(backend, ciphersuite, &oth_left)?;
 
+                // Compute the resolution for both children.
                 let left_resolution = self.resolution(left_child, &exclusion_list);
 
                 let right_resolution = self.resolution(right_child, &exclusion_list);
