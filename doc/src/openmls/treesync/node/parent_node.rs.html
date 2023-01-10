@@ -264,6 +264,12 @@
 <span id="264">264</span>
 <span id="265">265</span>
 <span id="266">266</span>
+<span id="267">267</span>
+<span id="268">268</span>
+<span id="269">269</span>
+<span id="270">270</span>
+<span id="271">271</span>
+<span id="272">272</span>
 </pre><pre class="rust"><code><span class="doccomment">//! This module contains the [`ParentNode`] struct, its implementation, as well
 //! as the [`PlainUpdatePathNode`], a helper struct for the creation of
 //! [`UpdatePathNode`] instances.
@@ -438,8 +444,13 @@
     }
 
     <span class="doccomment">/// Get the list of unmerged leaves.
-    </span><span class="kw">pub</span>(<span class="kw">in </span><span class="kw">crate</span>::treesync) <span class="kw">fn </span>unmerged_leaves(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>[LeafNodeIndex] {
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>unmerged_leaves(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>[LeafNodeIndex] {
         <span class="self">self</span>.unmerged_leaves.list()
+    }
+
+    <span class="doccomment">/// Set the list of unmerged leaves.
+    </span><span class="kw">pub</span>(<span class="kw">in </span><span class="kw">crate</span>::treesync) <span class="kw">fn </span>set_unmerged_leaves(<span class="kw-2">&amp;mut </span><span class="self">self</span>, unmerged_leaves: Vec&lt;LeafNodeIndex&gt;) {
+        <span class="self">self</span>.unmerged_leaves.set_list(unmerged_leaves);
     }
 
     <span class="doccomment">/// Add a [`LeafNodeIndex`] to the node&#39;s list of unmerged leaves.
@@ -452,11 +463,13 @@
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider,
         ciphersuite: Ciphersuite,
-        parent_hash: <span class="kw-2">&amp;</span>[u8],
-        original_child_resolution: <span class="kw-2">&amp;</span>[HpkePublicKey],
+        original_child_resolution: <span class="kw-2">&amp;</span>[u8],
     ) -&gt; <span class="prelude-ty">Result</span>&lt;Vec&lt;u8&gt;, LibraryError&gt; {
-        <span class="kw">let </span>parent_hash_input =
-            ParentHashInput::new(<span class="kw-2">&amp;</span><span class="self">self</span>.encryption_key, parent_hash, original_child_resolution);
+        <span class="kw">let </span>parent_hash_input = ParentHashInput::new(
+            <span class="kw-2">&amp;</span><span class="self">self</span>.encryption_key,
+            <span class="self">self</span>.parent_hash(),
+            original_child_resolution,
+        );
         parent_hash_input.hash(backend, ciphersuite)
     }
 
@@ -506,7 +519,6 @@
     }
 
     <span class="doccomment">/// Set the list of unmerged leaves.
-    </span><span class="attribute">#[cfg(test)]
     </span><span class="kw">pub</span>(<span class="kw">in </span><span class="kw">crate</span>::treesync) <span class="kw">fn </span>set_list(<span class="kw-2">&amp;mut </span><span class="self">self</span>, list: Vec&lt;LeafNodeIndex&gt;) {
         <span class="self">self</span>.list = list;
     }

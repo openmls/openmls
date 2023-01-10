@@ -176,9 +176,38 @@
 <span id="176">176</span>
 <span id="177">177</span>
 <span id="178">178</span>
+<span id="179">179</span>
+<span id="180">180</span>
+<span id="181">181</span>
+<span id="182">182</span>
+<span id="183">183</span>
+<span id="184">184</span>
+<span id="185">185</span>
+<span id="186">186</span>
+<span id="187">187</span>
+<span id="188">188</span>
+<span id="189">189</span>
+<span id="190">190</span>
+<span id="191">191</span>
+<span id="192">192</span>
+<span id="193">193</span>
+<span id="194">194</span>
+<span id="195">195</span>
+<span id="196">196</span>
+<span id="197">197</span>
+<span id="198">198</span>
+<span id="199">199</span>
+<span id="200">200</span>
+<span id="201">201</span>
+<span id="202">202</span>
+<span id="203">203</span>
+<span id="204">204</span>
+<span id="205">205</span>
 </pre><pre class="rust"><code><span class="doccomment">//! This module contains the [`TreeSyncNode`] struct and its implementation.
 
-</span><span class="kw">use </span>openmls_traits::{types::Ciphersuite, OpenMlsCryptoProvider};
+</span><span class="kw">use </span>std::collections::HashSet;
+
+<span class="kw">use </span>openmls_traits::{types::Ciphersuite, OpenMlsCryptoProvider};
 <span class="kw">use </span>serde::{Deserialize, Serialize};
 <span class="kw">use </span>tls_codec::VLByteSlice;
 
@@ -323,21 +352,46 @@
         <span class="kw-2">&amp;mut </span><span class="self">self</span>.node
     }
 
-    <span class="doccomment">/// Compute the tree hash for this node, thus populating the `tree_hash`
-    /// field.
+    <span class="doccomment">/// Compute the tree hash for this node. Leaf nodes from the exclusion list
+    /// are filtered out.
     </span><span class="kw">pub</span>(<span class="kw">in </span><span class="kw">crate</span>::treesync) <span class="kw">fn </span>compute_tree_hash(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider,
         ciphersuite: Ciphersuite,
         left_hash: Vec&lt;u8&gt;,
         right_hash: Vec&lt;u8&gt;,
+        exclusion_list: <span class="kw-2">&amp;</span>HashSet&lt;<span class="kw-2">&amp;</span>LeafNodeIndex&gt;,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;Vec&lt;u8&gt;, LibraryError&gt; {
-        <span class="kw">let </span>hash_input = TreeHashInput::new_parent(
-            <span class="self">self</span>.node.as_ref(),
-            VLByteSlice(<span class="kw-2">&amp;</span>left_hash),
-            VLByteSlice(<span class="kw-2">&amp;</span>right_hash),
-        );
-        <span class="kw">let </span>hash = hash_input.hash(backend, ciphersuite)<span class="question-mark">?</span>;
+        <span class="kw">let </span>hash = <span class="kw">if </span>exclusion_list.is_empty() {
+            <span class="comment">// If the exclusion list is empty, we can just use the parent node
+            </span>TreeHashInput::new_parent(
+                <span class="self">self</span>.node.as_ref(),
+                VLByteSlice(<span class="kw-2">&amp;</span>left_hash),
+                VLByteSlice(<span class="kw-2">&amp;</span>right_hash),
+            )
+            .hash(backend, ciphersuite)<span class="question-mark">?
+        </span>} <span class="kw">else if let </span><span class="prelude-val">Some</span>(parent_node) = <span class="self">self</span>.node.as_ref() {
+            <span class="comment">// If the exclusion list is not empty, we need to create a new
+            // parent node without the excluded indices in the unmerged leaves.
+            </span><span class="kw">let </span><span class="kw-2">mut </span>new_node = parent_node.clone();
+            <span class="kw">let </span>unmerged_leaves = new_node
+                .unmerged_leaves()
+                .iter()
+                .filter(|leaf| !exclusion_list.contains(leaf))
+                .cloned()
+                .collect();
+            new_node.set_unmerged_leaves(unmerged_leaves);
+            TreeHashInput::new_parent(
+                <span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span>new_node),
+                VLByteSlice(<span class="kw-2">&amp;</span>left_hash),
+                VLByteSlice(<span class="kw-2">&amp;</span>right_hash),
+            )
+            .hash(backend, ciphersuite)<span class="question-mark">?
+        </span>} <span class="kw">else </span>{
+            <span class="comment">// If the node is blank
+            </span>TreeHashInput::new_parent(<span class="prelude-val">None</span>, VLByteSlice(<span class="kw-2">&amp;</span>left_hash), VLByteSlice(<span class="kw-2">&amp;</span>right_hash))
+                .hash(backend, ciphersuite)<span class="question-mark">?
+        </span>};
 
         <span class="prelude-val">Ok</span>(hash)
     }

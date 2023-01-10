@@ -159,10 +159,19 @@
 <span id="159">159</span>
 <span id="160">160</span>
 <span id="161">161</span>
+<span id="162">162</span>
+<span id="163">163</span>
+<span id="164">164</span>
+<span id="165">165</span>
+<span id="166">166</span>
+<span id="167">167</span>
+<span id="168">168</span>
+<span id="169">169</span>
+<span id="170">170</span>
 </pre><pre class="rust"><code><span class="doccomment">//! This module contains helper structs and functions related to parent hashing
 //! and tree hashing.
 </span><span class="kw">use </span>openmls_traits::{crypto::OpenMlsCrypto, types::Ciphersuite, OpenMlsCryptoProvider};
-<span class="kw">use </span>tls_codec::{Serialize, TlsSerialize, TlsSize, TlsSliceU32, TlsSliceU8, VLByteSlice};
+<span class="kw">use </span>tls_codec::{Serialize, TlsSerialize, TlsSize, VLByteSlice};
 
 <span class="kw">use crate</span>::{
     binary_tree::array_representation::LeafNodeIndex, ciphersuite::HpkePublicKey,
@@ -173,11 +182,20 @@
 
 <span class="doccomment">/// Helper struct that can be serialized in the course of parent hash
 /// computation.
+///
+/// ```c
+/// // draft-ietf-mls-protocol-17
+/// struct {
+/// HPKEPublicKey encryption_key;
+///     opaque parent_hash&lt;V&gt;;
+///     opaque original_sibling_tree_hash&lt;V&gt;;
+/// } ParentHashInput;
+/// ```
 </span><span class="attribute">#[derive(TlsSerialize, TlsSize)]
 </span><span class="kw">pub</span>(<span class="kw">super</span>) <span class="kw">struct </span>ParentHashInput&lt;<span class="lifetime">&#39;a</span>&gt; {
     public_key: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>HpkePublicKey,
-    parent_hash: TlsSliceU8&lt;<span class="lifetime">&#39;a</span>, u8&gt;,
-    original_child_resolution: TlsSliceU32&lt;<span class="lifetime">&#39;a</span>, HpkePublicKey&gt;,
+    parent_hash: VLByteSlice&lt;<span class="lifetime">&#39;a</span>&gt;,
+    original_sibling_tree_hash: VLByteSlice&lt;<span class="lifetime">&#39;a</span>&gt;,
 }
 
 <span class="kw">impl</span>&lt;<span class="lifetime">&#39;a</span>&gt; ParentHashInput&lt;<span class="lifetime">&#39;a</span>&gt; {
@@ -185,12 +203,12 @@
     </span><span class="kw">pub</span>(<span class="kw">super</span>) <span class="kw">fn </span>new(
         public_key: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>HpkePublicKey,
         parent_hash: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8],
-        original_child_resolution: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[HpkePublicKey],
+        original_sibling_tree_hash: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8],
     ) -&gt; <span class="self">Self </span>{
         <span class="self">Self </span>{
             public_key,
-            parent_hash: TlsSliceU8(parent_hash),
-            original_child_resolution: TlsSliceU32(original_child_resolution),
+            parent_hash: VLByteSlice(parent_hash),
+            original_sibling_tree_hash: VLByteSlice(original_sibling_tree_hash),
         }
     }
 
