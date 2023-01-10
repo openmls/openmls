@@ -119,33 +119,6 @@ pub struct Credential {
 }
 
 impl Credential {
-    /// Verifies a signature of a given payload against the public key contained
-    /// in a credential.
-    ///
-    /// Returns an error if the signature is invalid.
-    pub fn verify(
-        &self,
-        backend: &impl OpenMlsCryptoProvider,
-        payload: &[u8],
-        signature: &Signature,
-        label: &str,
-    ) -> Result<(), CredentialError> {
-        match &self.credential {
-            MlsCredentialType::Basic(basic_credential) => {
-                let signature_public_key_enriched = basic_credential
-                    .public_key
-                    .clone()
-                    .into_signature_public_key_enriched(basic_credential.signature_scheme);
-
-                signature_public_key_enriched
-                    .verify_with_label(backend, signature, &SignContent::new(label, payload.into()))
-                    .map_err(|_| CredentialError::InvalidSignature)
-            }
-            // TODO: implement verification for X509 certificates. See issue #134.
-            MlsCredentialType::X509(_) => panic!("X509 certificates are not yet implemented."),
-        }
-    }
-
     /// Returns the identity of a given credential.
     pub fn identity(&self) -> &[u8] {
         match &self.credential {

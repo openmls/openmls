@@ -65,7 +65,11 @@ impl CoreGroup {
                 .credential();
 
             verifiable_group_info
-                .verify(backend, group_info_signer_leaf)
+                .verify(
+                    backend,
+                    group_info_signer_leaf.signature_key(),
+                    ciphersuite.signature_algorithm(),
+                )
                 .map_err(|_| ExternalCommitError::InvalidGroupInfoSignature)?
         };
 

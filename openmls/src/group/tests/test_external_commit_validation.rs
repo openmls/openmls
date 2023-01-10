@@ -11,7 +11,7 @@ use rstest_reuse::{self, *};
 
 use crate::{
     ciphersuite::{hash_ref::ProposalRef, signable::Verifiable},
-    credentials::{errors::*, *},
+    credentials::*,
     framing::*,
     group::{config::CryptoConfig, errors::*, tests::utils::resign_external_commit, *},
     messages::proposals::*,
@@ -742,10 +742,12 @@ fn test_valsem246(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
         backend,
     )
     .unwrap();
-    let verification_result: Result<AuthenticatedContent, CredentialError> = decrypted_message
-        .verifiable_content()
-        .clone()
-        .verify(backend, bob_credential_bundle.credential());
+    let verification_result: Result<AuthenticatedContent, signable::Error> =
+        decrypted_message.verifiable_content().clone().verify(
+            backend,
+            bob_credential_bundle.credential().signature_key(),
+            bob_credential_bundle.credential().signature_scheme(),
+        );
     assert!(verification_result.is_ok());
 
     // Positive case

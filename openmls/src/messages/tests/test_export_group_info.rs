@@ -31,6 +31,10 @@ fn export_group_info(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvi
     };
 
     let _: GroupInfo = verifiable_group_info
-        .verify(backend, alice_credential_bundle.credential())
+        .verify(
+            backend,
+            alice_credential_bundle.credential().signature_key(),
+            alice_credential_bundle.credential().signature_scheme(),
+        )
         .expect("signature verification should succeed");
 }

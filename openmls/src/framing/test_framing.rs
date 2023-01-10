@@ -10,7 +10,6 @@ use tls_codec::{Deserialize, Serialize};
 use crate::{
     binary_tree::LeafNodeIndex,
     ciphersuite::signable::Signable,
-    credentials::errors::CredentialError,
     extensions::Extensions,
     framing::*,
     group::{
@@ -263,12 +262,15 @@ fn wire_format_checks(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProv
         .expect("Could not decrypt PrivateMessage.");
 
     // We expect the signature to fail since the original content was signed with a different wire format.
-    let result: Result<AuthenticatedContent, CredentialError> =
-        verifiable_plaintext.verify(backend, &credential);
+    let result: Result<AuthenticatedContent, signable::Error> = verifiable_plaintext.verify(
+        backend,
+        credential.signature_key(),
+        credential.signature_scheme(),
+    );
 
     assert_eq!(
         result.expect_err("Verification successful despite wrong wire format."),
-        CredentialError::InvalidSignature
+        signable::Error::VerificationError
     );
 
     message_secrets.replace_secret_tree(sender_secret_tree);

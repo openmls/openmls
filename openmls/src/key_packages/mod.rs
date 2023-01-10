@@ -332,12 +332,16 @@ impl KeyPackage {
         }
 
         // Verify the signature on this key package.
-        <Self as Verifiable>::verify_no_out(self, backend, self.leaf_node().credential()).map_err(
-            |_| {
-                log::error!("Key package signature is invalid.");
-                KeyPackageVerifyError::InvalidSignature
-            },
+        <Self as Verifiable>::verify_no_out(
+            self,
+            backend,
+            self.leaf_node().signature_key(),
+            self.leaf_node().credential().signature_scheme(),
         )
+        .map_err(|_| {
+            log::error!("Key package signature is invalid.");
+            KeyPackageVerifyError::InvalidSignature
+        })
     }
 
     /// Get a reference to the extensions of this key package.

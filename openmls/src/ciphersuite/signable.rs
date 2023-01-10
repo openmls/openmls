@@ -28,15 +28,25 @@
 //! Similarly, only the [`Verifiable`] struct should implement the
 //! [`tls_codec::Deserialize`] trait.
 
-use openmls_traits::OpenMlsCryptoProvider;
+use openmls_traits::{crypto::OpenMlsCrypto, types::SignatureScheme, OpenMlsCryptoProvider};
+use tls_codec::Serialize;
 
 use crate::{
-    ciphersuite::Signature,
-    credentials::{errors::CredentialError, Credential, CredentialBundle},
+    ciphersuite::{SignContent, Signature, SignaturePublicKey},
+    credentials::CredentialBundle,
     error::LibraryError,
 };
 
-use super::OpenMlsSignaturePublicKey;
+/// Signature generation and verification errors.
+/// The only information relayed with this error is whether the signature
+/// verification or generation failed.
+#[derive(Debug, PartialEq, Eq)]
+pub enum Error {
+    /// Signature verification failed
+    VerificationError,
+    /// Signature generation failed
+    GeneratingError,
+}
 
 /// This trait must be implemented by all structs that contain a self-signature.
 pub trait SignedStruct<T> {
@@ -131,38 +141,13 @@ pub trait Verifiable: Sized {
     fn verify<T>(
         self,
         backend: &impl OpenMlsCryptoProvider,
-        credential: &Credential,
-    ) -> Result<T, CredentialError>
+        public_key: &SignaturePublicKey,
+        signature_scheme: SignatureScheme,
+    ) -> Result<T, Error>
     where
         T: VerifiedStruct<Self>,
     {
-        let payload = self
-            .unsigned_payload()
-            .map_err(LibraryError::missing_bound_check)?;
-        credential.verify(backend, &payload, self.signature(), self.label())?;
-        Ok(T::from_verifiable(self, T::SealingType::default()))
-    }
-
-    /// Verifies the payload against the given `SignatureKey`.
-    /// The signature is fetched via the [`Verifiable::signature()`] function and
-    /// the payload via [`Verifiable::unsigned_payload()`].
-    ///
-    /// Returns `Ok(Self::VerifiedOutput)` if the signature is valid and
-    /// `CredentialError::InvalidSignature` otherwise.
-    fn verify_with_key<T>(
-        self,
-        backend: &impl OpenMlsCryptoProvider,
-        signature_public_key: &OpenMlsSignaturePublicKey,
-    ) -> Result<T, CredentialError>
-    where
-        T: VerifiedStruct<Self>,
-    {
-        let payload = self
-            .unsigned_payload()
-            .map_err(LibraryError::missing_bound_check)?;
-        signature_public_key
-            .verify(backend, self.signature(), &payload)
-            .map_err(|_| CredentialError::InvalidSignature)?;
+        verify(&self, backend, signature_scheme, public_key)?;
         Ok(T::from_verifiable(self, T::SealingType::default()))
     }
 
@@ -175,11 +160,38 @@ pub trait Verifiable: Sized {
     fn verify_no_out(
         &self,
         backend: &impl OpenMlsCryptoProvider,
-        credential: &Credential,
-    ) -> Result<(), CredentialError> {
-        let payload = self
-            .unsigned_payload()
-            .map_err(LibraryError::missing_bound_check)?;
-        credential.verify(backend, &payload, self.signature(), self.label())
+        public_key: &SignaturePublicKey,
+        signature_scheme: SignatureScheme,
+    ) -> Result<(), Error> {
+        verify(self, backend, signature_scheme, public_key)
     }
+}
+
+fn verify(
+    verifiable: &impl Verifiable,
+    backend: &impl OpenMlsCryptoProvider,
+    signature_scheme: SignatureScheme,
+    public_key: &SignaturePublicKey,
+) -> Result<(), Error> {
+    let payload = verifiable
+        .unsigned_payload()
+        .map_err(|_| Error::VerificationError)?;
+    let sign_content = SignContent::new(verifiable.label(), payload.into());
+    let payload = match sign_content.tls_serialize_detached() {
+        Ok(p) => p,
+        Err(e) => {
+            log::error!("Serializing SignContent failed, {:?}", e);
+            return Err(Error::VerificationError);
+        }
+    };
+    backend
+        .crypto()
+        .verify_signature(
+            signature_scheme,
+            &payload,
+            public_key.as_slice(),
+            verifiable.signature().value(),
+        )
+        .map_err(|_| Error::VerificationError)?;
+    Ok(())
 }
