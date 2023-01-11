@@ -19,7 +19,7 @@ use crate::{
     test_utils::*,
     tree::sender_ratchet::*,
     treesync::node::{
-        leaf_node::{LeafNodeSource, Lifetime},
+        leaf_node::{Capabilities, LeafNodeSource, Lifetime},
         Node,
     },
     versions::ProtocolVersion,
@@ -135,6 +135,7 @@ pub fn generate_test_vector(ciphersuite: Ciphersuite) -> MessagesTestVector {
         },
         &credential_bundle,
         LeafNodeSource::Update,
+        Capabilities::default(),
         Extensions::empty(),
         &crypto,
     )

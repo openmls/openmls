@@ -89,7 +89,7 @@ use crate::{
     extensions::Extensions,
     group::config::CryptoConfig,
     treesync::{
-        node::leaf_node::{LeafNodeSource, Lifetime},
+        node::leaf_node::{Capabilities, LeafNodeSource, Lifetime},
         LeafNode,
     },
     versions::ProtocolVersion,
@@ -267,6 +267,7 @@ impl KeyPackage {
             config,
             credential, // FIXME
             LeafNodeSource::KeyPackage(Lifetime::default()),
+            Capabilities::default(),
             leaf_node_extensions,
             backend,
         )?;
@@ -475,6 +476,7 @@ impl KeyPackage {
             encryption_key,
             credential,
             LeafNodeSource::KeyPackage(Lifetime::default()),
+            Capabilities::default(),
             Extensions::empty(),
             backend,
         )
