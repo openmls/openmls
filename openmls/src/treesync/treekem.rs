@@ -10,7 +10,7 @@ use tls_codec::{TlsDeserialize, TlsSerialize, TlsSize};
 
 use openmls_traits::{
     crypto::OpenMlsCrypto,
-    types::{Ciphersuite, HpkeCiphertext},
+    types::{Ciphersuite, HpkeCiphertext, HpkeKeyPair},
     OpenMlsCryptoProvider,
 };
 use serde::{Deserialize, Serialize};
@@ -93,7 +93,8 @@ impl<'a> TreeSyncDiff<'a> {
         backend: &impl OpenMlsCryptoProvider,
         ciphersuite: Ciphersuite,
         params: DecryptPathParams,
-    ) -> Result<(Vec<ParentNode>, CommitSecret), ApplyUpdatePathError> {
+        owned_keys: &[HpkeKeyPair],
+    ) -> Result<(Vec<ParentNode>, Vec<HpkeKeyPair>, CommitSecret), ApplyUpdatePathError> {
         // ValSem202: Path must be the right length
         let direct_path_length = self.filtered_direct_path(params.sender_leaf_index).len();
         if direct_path_length != params.update_path.len() {
@@ -119,7 +120,7 @@ impl<'a> TreeSyncDiff<'a> {
             .ok_or_else(|| LibraryError::custom("Expected to find ciphertext in update path 1"))?;
 
         let (decryption_key, resolution_position) = self
-            .decryption_key(params.sender_leaf_index, params.exclusion_list)
+            .decryption_key(params.sender_leaf_index, params.exclusion_list, owned_keys)
             // TODO #804
             .map_err(|_| LibraryError::custom("Expected sender to be in the tree"))?;
         let ciphertext = update_path_node
@@ -134,14 +135,14 @@ impl<'a> TreeSyncDiff<'a> {
             ciphersuite,
             params.version,
             ciphertext,
-            decryption_key,
+            &decryption_key,
             params.group_context,
         )
         .map_err(|_| ApplyUpdatePathError::UnableToDecrypt)?;
 
         let common_path =
             self.filtered_common_direct_path(self.own_leaf_index(), params.sender_leaf_index);
-        let (derived_path, _plain_update_path, commit_secret) =
+        let (derived_path, _plain_update_path, keypairs, commit_secret) =
             ParentNode::derive_path(backend, ciphersuite, path_secret, common_path)?;
         // We now check that the public keys in the update path and in the
         // derived path match up.
@@ -172,7 +173,7 @@ impl<'a> TreeSyncDiff<'a> {
         // The output should have the same length as the input.
         debug_assert_eq!(_update_path_len, path.len());
 
-        Ok((path, commit_secret))
+        Ok((path, keypairs, commit_secret))
     }
 }
 

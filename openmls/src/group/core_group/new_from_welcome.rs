@@ -6,7 +6,10 @@ use crate::{
     ciphersuite::{hash_ref::HashReference, signable::Verifiable},
     group::{core_group::*, errors::WelcomeError},
     schedule::errors::PskError,
-    treesync::{errors::TreeSyncFromNodesError, node::Node},
+    treesync::{
+        errors::{PublicTreeError, TreeSyncFromNodesError, TreeSyncSetPathError},
+        node::Node,
+    },
 };
 
 impl CoreGroup {
@@ -136,20 +139,42 @@ impl CoreGroup {
                 },
             };
 
-        // Commit secret is ignored when joining a group, since we already have
-        // the joiner_secret.
-        let (tree, _commit_secret_option) = TreeSync::from_nodes_with_secrets(
+        let tree = TreeSync::from_nodes(
             backend,
             ciphersuite,
             &nodes,
-            verifiable_group_info.signer(),
-            path_secret_option,
-            encryption_key_pair,
+            encryption_key_pair.public.into(),
         )
         .map_err(|e| match e {
             TreeSyncFromNodesError::LibraryError(e) => e.into(),
             TreeSyncFromNodesError::PublicTreeError(e) => WelcomeError::PublicTreeError(e),
         })?;
+
+        let diff = tree.empty_diff();
+
+        // If we got a path secret, derive the path (which also checks if the
+        // public keys match) and store the derived keys in the key store.
+        if let Some(path_secret) = path_secret_option {
+            let (keypairs, _commit_secret) = diff
+                .derive_path_secrets(
+                    backend,
+                    ciphersuite,
+                    path_secret,
+                    verifiable_group_info.signer(),
+                )
+                .map_err(|e| match e {
+                    TreeSyncSetPathError::LibraryError(e) => e.into(),
+                    TreeSyncSetPathError::PublicKeyMismatch => {
+                        WelcomeError::PublicTreeError(PublicTreeError::PublicKeyMismatch)
+                    }
+                })?;
+            for keypair in keypairs {
+                backend
+                    .key_store()
+                    .store(&keypair.public, &keypair.private)
+                    .map_err(|e| WelcomeError::KeyStorageError)?;
+            }
+        }
 
         let group_info: GroupInfo = {
             let signer_credential = tree

@@ -2,7 +2,7 @@
 //! as the [`PlainUpdatePathNode`], a helper struct for the creation of
 //! [`UpdatePathNode`] instances.
 use openmls_traits::{
-    types::{Ciphersuite, HpkeCiphertext},
+    types::{Ciphersuite, HpkeCiphertext, HpkeKeyPair},
     OpenMlsCryptoProvider,
 };
 use rayon::prelude::*;
@@ -28,14 +28,6 @@ pub struct ParentNode {
     pub(super) parent_hash: VLBytes,
     pub(super) unmerged_leaves: UnmergedLeaves,
     private_key_option: Option<HpkePrivateKey>,
-}
-
-impl From<(HpkePublicKey, HpkePrivateKey)> for ParentNode {
-    fn from((public_key, private_key): (HpkePublicKey, HpkePrivateKey)) -> Self {
-        let mut parent_node: ParentNode = public_key.into();
-        parent_node.set_private_key(private_key);
-        parent_node
-    }
 }
 
 impl From<HpkePublicKey> for ParentNode {
@@ -91,6 +83,7 @@ impl PlainUpdatePathNode {
 pub(in crate::treesync) type PathDerivationResult = (
     Vec<(ParentNodeIndex, ParentNode)>,
     Vec<PlainUpdatePathNode>,
+    Vec<HpkeKeyPair>,
     CommitSecret,
 );
 
@@ -113,7 +106,7 @@ impl ParentNode {
     /// the first node is immediately derived from the given `path_secret`.
     ///
     /// Returns the resulting vector of [`ParentNode`] instances, as well as the
-    /// intermediary `PathSecret`s and the [`CommitSecret`].
+    /// intermediary [`PathSecret`]s, and the [`CommitSecret`].
     pub(crate) fn derive_path(
         backend: &impl OpenMlsCryptoProvider,
         ciphersuite: Ciphersuite,
@@ -130,6 +123,8 @@ impl ParentNode {
             path_secrets.push(path_secret);
         }
 
+        let mut keypairs = vec![];
+
         // Iterate over the path secrets and derive a key pair
         let (path, update_path_nodes) = path_secrets
             .into_par_iter()
@@ -139,13 +134,17 @@ impl ParentNode {
                 // intermediate derivation of a node secret.
                 let (public_key, private_key) =
                     path_secret.derive_key_pair(backend, ciphersuite)?;
-                let parent_node = ParentNode::from((public_key.clone(), private_key));
+                let parent_node = ParentNode::from(public_key.clone());
                 // Store the current path secret and the derived public key for
                 // later encryption.
                 let update_path_node = PlainUpdatePathNode {
-                    public_key,
+                    public_key: public_key.clone(),
                     path_secret,
                 };
+                keypairs.push(HpkeKeyPair {
+                    private: private_key.into(),
+                    public: public_key.into(),
+                });
                 Ok(((index, parent_node), update_path_node))
             })
             .collect::<Result<Vec<((ParentNodeIndex, ParentNode), PlainUpdatePathNode)>, LibraryError>>()?
@@ -153,7 +152,7 @@ impl ParentNode {
             .unzip();
 
         let commit_secret = next_path_secret.into();
-        Ok((path, update_path_nodes, commit_secret))
+        Ok((path, update_path_nodes, keypairs, commit_secret))
     }
 
     /// Return a reference to the `public_key` of this node.
@@ -164,11 +163,6 @@ impl ParentNode {
     /// Return a reference to the potential `private_key` of this node.
     pub(in crate::treesync) fn private_key(&self) -> Option<&HpkePrivateKey> {
         self.private_key_option.as_ref()
-    }
-
-    /// Set the `private_key` of this node to the given key.
-    pub(in crate::treesync) fn set_private_key(&mut self, private_key: HpkePrivateKey) {
-        self.private_key_option = Some(private_key)
     }
 
     /// Get the list of unmerged leaves.

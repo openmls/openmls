@@ -76,6 +76,9 @@ pub enum WelcomeError {
     /// Failed to delete the KeyPackageBundle from the key store.
     #[error("Failed to delete the KeyPackageBundle from the key store.")]
     KeyStoreDeletionError,
+    /// Failed to store HPKE private keys in the key store.
+    #[error("Failed to store HPKE private keys in the key store.")]
+    KeyStorageError,
     /// This error indicates the public tree is invalid. See [`PublicTreeError`] for more details.
     #[error(transparent)]
     PublicTreeError(#[from] PublicTreeError),

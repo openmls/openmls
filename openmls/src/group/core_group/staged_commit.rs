@@ -1,3 +1,6 @@
+use openmls_traits::key_store::OpenMlsKeyStore;
+use openmls_traits::types::HpkeKeyPair;
+
 use crate::ciphersuite::signable::Verifiable;
 use crate::framing::mls_content::FramedContentBody;
 use crate::treesync::errors::TreeSyncAddLeaf;
@@ -196,7 +199,7 @@ impl CoreGroup {
         }
 
         // Determine if Commit has a path
-        let commit_secret = if let Some(path) = commit.path.clone() {
+        let (commit_secret, new_keypairs) = if let Some(path) = commit.path.clone() {
             // Verify the leaf node and PublicMessage membership tag
             // Note that the signature must have been verified already.
             // TODO #106: Support external members
@@ -266,11 +269,20 @@ impl CoreGroup {
                 exclusion_list: &apply_proposals_values.exclusion_list(),
                 group_context: &serialized_context,
             };
+
+            let owned_public_keys = diff.owned_hpke_keys();
+
+            // Load all the HPKE keys we have from the key store.
+            let owned_keypairs: Vec<HpkeKeyPair> = owned_public_keys
+                .iter()
+                .filter_map(|&pk| backend.key_store().read(pk.as_slice()))
+                .collect();
+
             // ValSem202: Path must be the right length
             // ValSem203: Path secrets must decrypt correctly
             // ValSem204: Public keys from Path must be verified and match the private keys from the direct path
-            let (plain_path, commit_secret) =
-                diff.decrypt_path(backend, ciphersuite, decrypt_path_params)?;
+            let (plain_path, new_keypairs, commit_secret) =
+                diff.decrypt_path(backend, ciphersuite, decrypt_path_params, &owned_keypairs)?;
             diff.apply_received_update_path(
                 backend,
                 ciphersuite,
@@ -278,13 +290,16 @@ impl CoreGroup {
                 leaf_node,
                 plain_path,
             )?;
-            commit_secret
+            (commit_secret, new_keypairs)
         } else {
             if apply_proposals_values.path_required {
                 // ValSem201
                 return Err(StageCommitError::RequiredPathNotFound);
             }
-            CommitSecret::zero_secret(ciphersuite, self.mls_version)
+            (
+                CommitSecret::zero_secret(ciphersuite, self.mls_version),
+                vec![],
+            )
         };
 
         // Check if we need to include the init secret from an external commit
@@ -389,6 +404,7 @@ impl CoreGroup {
                 message_secrets: provisional_message_secrets,
                 interim_transcript_hash,
                 staged_diff,
+                new_keypairs,
             }));
 
         Ok(StagedCommit::new(
@@ -499,6 +515,7 @@ pub(crate) struct MemberStagedCommitState {
     message_secrets: MessageSecrets,
     interim_transcript_hash: Vec<u8>,
     staged_diff: StagedTreeSyncDiff,
+    new_keypairs: Vec<HpkeKeyPair>,
 }
 
 impl MemberStagedCommitState {
@@ -508,6 +525,7 @@ impl MemberStagedCommitState {
         message_secrets: MessageSecrets,
         interim_transcript_hash: Vec<u8>,
         staged_diff: StagedTreeSyncDiff,
+        new_keypairs: Vec<HpkeKeyPair>,
     ) -> Self {
         Self {
             group_context,
@@ -515,6 +533,7 @@ impl MemberStagedCommitState {
             message_secrets,
             interim_transcript_hash,
             staged_diff,
+            new_keypairs,
         }
     }
 }

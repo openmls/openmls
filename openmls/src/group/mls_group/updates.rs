@@ -49,16 +49,8 @@ impl MlsGroup {
                     })?
                     .clone();
 
-                // FIXME[FK]: The OpenMlsLeafNode should go away. Then we don't
-                //            need the private key here anymore. (#819)
-                let private_key: Vec<u8> = backend
-                    .key_store()
-                    .read(encryption_key.as_slice())
-                    .ok_or(SelfUpdateError::KeyStoreError)?;
-                let private_key: VLBytes = private_key.into();
-
-                own_leaf.update_encryption_key(
-                    (&encryption_key, &private_key),
+                own_leaf.update_and_re_sign(
+                    &encryption_key,
                     &credential_bundle,
                     group_id,
                     backend,
@@ -151,13 +143,8 @@ impl MlsGroup {
             .ok_or_else(|| LibraryError::custom("The tree is broken. Couldn't find own leaf."))?
             .clone();
         if let Some(key_package) = key_package {
-            let private_key: Vec<u8> = backend
-                .key_store()
-                .read(key_package.hpke_init_key().as_slice())
-                .ok_or(ProposeSelfUpdateError::KeyStoreError)?;
-            let private_key: VLBytes = private_key.into();
-            rekeyed_own_leaf.update_encryption_key(
-                (&private_key, key_package.hpke_init_key()),
+            rekeyed_own_leaf.update_and_re_sign(
+                key_package.hpke_init_key(),
                 &credential_bundle,
                 self.group_id().clone(),
                 backend,

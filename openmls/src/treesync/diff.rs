@@ -17,7 +17,10 @@
 //! functions that are not expected to fail and throw an error, will still
 //! return a [`Result`] since they may throw a
 //! [`LibraryError`](TreeSyncDiffError::LibraryError).
-use openmls_traits::{types::Ciphersuite, OpenMlsCryptoProvider};
+use openmls_traits::{
+    types::{Ciphersuite, HpkeKeyPair},
+    OpenMlsCryptoProvider,
+};
 use serde::{Deserialize, Serialize};
 use tls_codec::VLBytes;
 
@@ -269,7 +272,8 @@ impl<'a> TreeSyncDiff<'a> {
     ) -> Result<UpdatePathResult, LibraryError> {
         debug_assert!(self.own_leaf().is_ok(), "Tree diff is missing own leaf");
 
-        let (path, update_path_nodes, commit_secret) = self.derive_path(backend, ciphersuite)?;
+        let (path, update_path_nodes, keypairs, commit_secret) =
+            self.derive_path(backend, ciphersuite)?;
 
         let parent_hash =
             self.process_update_path(backend, ciphersuite, self.own_leaf_index, path)?;
@@ -365,20 +369,22 @@ impl<'a> TreeSyncDiff<'a> {
     ///
     /// Returns TreeSyncSetPathError::LibraryError if the sender_index is not
     /// in the tree.
-    pub(super) fn set_path_secrets(
-        &mut self,
+    pub(crate) fn derive_path_secrets(
+        &self,
         backend: &impl OpenMlsCryptoProvider,
         ciphersuite: Ciphersuite,
         mut path_secret: PathSecret,
         sender_index: LeafNodeIndex,
-    ) -> Result<CommitSecret, TreeSyncSetPathError> {
+    ) -> Result<(Vec<HpkeKeyPair>, CommitSecret), TreeSyncSetPathError> {
         // We assume both nodes are in the tree, since the sender_index must be in the tree
+        // Skip the nodes in the subtree path for which we are an unmerged leaf.
         let subtree_path = self.diff.subtree_path(self.own_leaf_index, sender_index);
+        let keypairs = Vec::new();
         for parent_index in subtree_path {
             // We know the node is in the diff, since it is in the subtree path
-            let tsn = self.diff.parent_mut(parent_index);
+            let tsn = self.diff.parent(parent_index);
             // We only care about non-blank nodes.
-            if let Some(ref mut parent_node) = tsn.node_mut() {
+            if let Some(ref mut parent_node) = tsn.node() {
                 // If our own leaf index is not in the list of unmerged leaves
                 // then we should have the secret for this node.
                 if !parent_node.unmerged_leaves().contains(&self.own_leaf_index) {
@@ -391,7 +397,10 @@ impl<'a> TreeSyncDiff<'a> {
                     } else {
                         // If everything is ok, set the private key and derive
                         // the next path secret.
-                        parent_node.set_private_key(private_key);
+                        keypairs.push(HpkeKeyPair {
+                            private: private_key.into(),
+                            public: public_key.into(),
+                        });
                         path_secret = path_secret.derive_path_secret(backend, ciphersuite)?;
                     }
                 };
@@ -399,7 +408,7 @@ impl<'a> TreeSyncDiff<'a> {
                 // leaves, go to the next node.
             }
         }
-        Ok(path_secret.into())
+        Ok((keypairs, path_secret.into()))
     }
 
     /// A helper function that filters the unmerged leaves of the given node
@@ -816,7 +825,8 @@ impl<'a> TreeSyncDiff<'a> {
         &self,
         sender_leaf_index: LeafNodeIndex,
         excluded_indices: &HashSet<&LeafNodeIndex>,
-    ) -> Result<(&HpkePrivateKey, usize), TreeSyncDiffError> {
+        owned_keys: &[HpkeKeyPair],
+    ) -> Result<(HpkePrivateKey, usize), TreeSyncDiffError> {
         // Get the copath node of the sender that is in our direct path, as well
         // as its position in our direct path.
         let subtree_root_copath_node_id = self
@@ -832,46 +842,19 @@ impl<'a> TreeSyncDiff<'a> {
             })
             .collect();
 
-        // Get all of the public keys that we have secret keys for, i.e. our own
-        // leaf pk, as well as potentially a number of public keys from our
-        // direct path.
-        let mut own_node_ids = vec![TreeNodeIndex::Leaf(self.own_leaf_index)];
-
-        own_node_ids.append(
-            &mut self
-                .diff
-                .direct_path(self.own_leaf_index)
-                .iter()
-                .map(|node| TreeNodeIndex::Parent(*node))
-                .collect(),
-        );
-        for node_index in own_node_ids {
-            // If the node is blank, skip it.
-            // If we don't have the private key, skip it.
-            if let Some((Some(private_key), public_key)) = match node_index {
-                TreeNodeIndex::Leaf(leaf_index) => self
-                    .diff
-                    .leaf(leaf_index)
-                    .node()
-                    .as_ref()
-                    .map(|node| (node.private_key(), node.public_key())),
-                TreeNodeIndex::Parent(parent_index) => self
-                    .diff
-                    .parent(parent_index)
-                    .node()
-                    .as_ref()
-                    .map(|node| (node.private_key(), node.public_key())),
-            } {
-                // If we do have the private key, check if the key is in the
-                // resolution.
-                if let Some(resolution_position) = sender_copath_resolution
+        if let Some((resolution_position, private_key)) = sender_copath_resolution
+            .iter()
+            .enumerate()
+            .filter_map(|(position, pk)| {
+                owned_keys
                     .iter()
-                    .position(|pk| pk == public_key)
-                {
-                    return Ok((private_key, resolution_position));
-                };
-            }
-        }
+                    .find(|&owned_keypair| owned_keypair.public.as_slice() == pk.as_slice())
+                    .map(|keypair| (position, keypair.private))
+            })
+            .next()
+        {
+            return Ok((private_key.into(), resolution_position));
+        };
         Err(TreeSyncDiffError::NoPrivateKeyFound)
     }
 
@@ -949,5 +932,28 @@ impl<'a> TreeSyncDiff<'a> {
 
         common_path.reverse();
         common_path
+    }
+
+    /// Return an iterator over references to all [`HpkePublicKey`]s for which
+    /// we should have the corresponding private keys.
+    pub(crate) fn owned_hpke_keys(&self) -> Vec<&HpkePublicKey> {
+        let mut owned_keys = if let Some(leaf) = self.diff.leaf(self.own_leaf_index).node() {
+            vec![leaf.public_key()]
+        } else {
+            // If our own leaf is empty, we don't expect to own any other keys.
+            return vec![];
+        };
+        owned_keys.append(
+            &mut self
+                .filtered_direct_path(self.own_leaf_index())
+                .iter()
+                // Filter out all blanks.
+                .filter_map(|&parent_index| self.diff.parent(parent_index).node().as_ref())
+                // Filter all nodes where our leaf is an unmerged leaf.
+                .filter(|&node| node.unmerged_leaves().contains(&self.own_leaf_index))
+                .map(|parent_node| parent_node.public_key())
+                .collect(),
+        );
+        owned_keys
     }
 }
