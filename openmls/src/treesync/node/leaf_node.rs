@@ -252,7 +252,7 @@ pub(crate) struct TreePosition {
 /// ```
 #[derive(Debug)]
 pub(crate) enum TreeInfoTbs {
-    KeyPackage(),
+    KeyPackage,
     Update(TreePosition),
     Commit(TreePosition),
 }
@@ -340,7 +340,7 @@ impl TlsSerializeTrait for LeafNodeTbs {
     fn tls_serialize<W: std::io::Write>(&self, writer: &mut W) -> Result<usize, tls_codec::Error> {
         let written = self.payload.tls_serialize(writer)?;
         match &self.tree_info {
-            TreeInfoTbs::KeyPackage() => Ok(written),
+            TreeInfoTbs::KeyPackage => Ok(written),
             TreeInfoTbs::Update(p) | TreeInfoTbs::Commit(p) => {
                 p.tls_serialize(writer).map(|b| written + b)
             }
@@ -352,7 +352,7 @@ impl tls_codec::Size for LeafNodeTbs {
     fn tls_serialized_len(&self) -> usize {
         let len = self.payload.tls_serialized_len();
         match &self.tree_info {
-            TreeInfoTbs::KeyPackage() => len,
+            TreeInfoTbs::KeyPackage => len,
             TreeInfoTbs::Update(p) | TreeInfoTbs::Commit(p) => p.tls_serialized_len() + len,
         }
     }
@@ -365,7 +365,7 @@ impl TlsDeserializeTrait for LeafNodeTbs {
     {
         let payload = LeafNodePayload::tls_deserialize(bytes)?;
         let tree_info = match payload.leaf_node_source {
-            LeafNodeSource::KeyPackage(_) => TreeInfoTbs::KeyPackage(),
+            LeafNodeSource::KeyPackage(_) => TreeInfoTbs::KeyPackage,
             LeafNodeSource::Update => TreeInfoTbs::Update(TreePosition::tls_deserialize(bytes)?),
             LeafNodeSource::Commit(_) => TreeInfoTbs::Commit(TreePosition::tls_deserialize(bytes)?),
         };
@@ -738,7 +738,7 @@ impl LeafNodeTbs {
             leaf_node_source,
             extensions,
         };
-        let tree_info = TreeInfoTbs::KeyPackage();
+        let tree_info = TreeInfoTbs::KeyPackage;
         let tbs = LeafNodeTbs { payload, tree_info };
         Ok(tbs)
     }
@@ -1005,7 +1005,7 @@ impl OpenMlsLeafNode {
         backend: &impl OpenMlsCryptoProvider,
         credential_bundle: &CredentialBundle,
     ) {
-        let mut tbs = LeafNodeTbs::from(self.leaf_node.clone(), TreeInfoTbs::KeyPackage());
+        let mut tbs = LeafNodeTbs::from(self.leaf_node.clone(), TreeInfoTbs::KeyPackage);
         tbs.payload.encryption_key = public_key;
         self.leaf_node = tbs
             .sign(backend, credential_bundle.signature_private_key())
