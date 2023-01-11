@@ -418,6 +418,10 @@
 <span id="418">418</span>
 <span id="419">419</span>
 <span id="420">420</span>
+<span id="421">421</span>
+<span id="422">422</span>
+<span id="423">423</span>
+<span id="424">424</span>
 </pre><pre class="rust"><code><span class="doccomment">//! # MLS content authentication
 //!
 //! This module contains structs and implementation that pertain to content
@@ -553,7 +557,9 @@
             content_tbs = content_tbs.with_context(serialized_context);
         }
 
-        content_tbs.sign(backend, credential_bundle)
+        content_tbs
+            .sign(backend, credential_bundle.signature_private_key())
+            .map_err(|<span class="kw">_</span>| LibraryError::custom(<span class="string">&quot;Signing failed&quot;</span>))
     }
 
     <span class="doccomment">/// This constructor builds an `AuthenticatedContent` containing an application
@@ -619,7 +625,9 @@
             body,
         );
 
-        content_tbs.sign(backend, credential_bundle)
+        content_tbs
+            .sign(backend, credential_bundle.signature_private_key())
+            .map_err(|<span class="kw">_</span>| LibraryError::custom(<span class="string">&quot;Signing failed&quot;</span>))
     }
 
     <span class="doccomment">/// This constructor builds an `PublicMessage` containing a Commit. If the
@@ -839,4 +847,4 @@
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-current-crate="openmls" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.66.0 (69f9c33d7 2022-12-12)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-current-crate="openmls" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.66.1 (90743e729 2023-01-10)" ></div></body></html>

@@ -183,6 +183,17 @@
 <span id="183">183</span>
 <span id="184">184</span>
 <span id="185">185</span>
+<span id="186">186</span>
+<span id="187">187</span>
+<span id="188">188</span>
+<span id="189">189</span>
+<span id="190">190</span>
+<span id="191">191</span>
+<span id="192">192</span>
+<span id="193">193</span>
+<span id="194">194</span>
+<span id="195">195</span>
+<span id="196">196</span>
 </pre><pre class="rust"><code><span class="doccomment">//! This module defines traits used for signing and verifying
 //! structs from the MLS protocol spec.
 //!
@@ -213,15 +224,24 @@
 //! Similarly, only the [`Verifiable`] struct should implement the
 //! [`tls_codec::Deserialize`] trait.
 
-</span><span class="kw">use </span>openmls_traits::OpenMlsCryptoProvider;
+</span><span class="kw">use </span>openmls_traits::{crypto::OpenMlsCrypto, types::SignatureScheme, OpenMlsCryptoProvider};
+<span class="kw">use </span>thiserror::Error;
+<span class="kw">use </span>tls_codec::Serialize;
 
-<span class="kw">use crate</span>::{
-    ciphersuite::Signature,
-    credentials::{errors::CredentialError, Credential, CredentialBundle},
-    error::LibraryError,
-};
+<span class="kw">use </span><span class="kw">crate</span>::ciphersuite::{SignContent, Signature, SignaturePrivateKey, SignaturePublicKey};
 
-<span class="kw">use </span><span class="kw">super</span>::OpenMlsSignaturePublicKey;
+<span class="doccomment">/// Signature generation and verification errors.
+/// The only information relayed with this error is whether the signature
+/// verification or generation failed.
+</span><span class="attribute">#[derive(Error, Debug, PartialEq, Eq, Clone)]
+</span><span class="kw">pub enum </span>SignatureError {
+    <span class="doccomment">/// Signature verification failed
+    </span><span class="attribute">#[error(<span class="string">&quot;Signature verification failed.&quot;</span>)]
+    </span>VerificationError,
+    <span class="doccomment">/// Signature generation failed
+    </span><span class="attribute">#[error(<span class="string">&quot;Signature generation failed.&quot;</span>)]
+    </span>SigningError,
+}
 
 <span class="doccomment">/// This trait must be implemented by all structs that contain a self-signature.
 </span><span class="kw">pub trait </span>SignedStruct&lt;T&gt; {
@@ -267,23 +287,23 @@
     <span class="doccomment">/// Return the string label used for labeled signing.
     </span><span class="kw">fn </span>label(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>str;
 
-    <span class="doccomment">/// Sign the payload with the given `id`.
+    <span class="doccomment">/// Sign the payload with the given `private_key`.
     ///
     /// Returns a `Signature`.
     </span><span class="kw">fn </span>sign(
         <span class="self">self</span>,
         backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider,
-        credential_bundle: <span class="kw-2">&amp;</span>CredentialBundle,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>::SignedOutput, LibraryError&gt;
+        private_key: <span class="kw-2">&amp;</span>SignaturePrivateKey,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>::SignedOutput, SignatureError&gt;
     <span class="kw">where
         </span><span class="self">Self</span>::SignedOutput: SignedStruct&lt;<span class="self">Self</span>&gt;,
     {
         <span class="kw">let </span>payload = <span class="self">self
             </span>.unsigned_payload()
-            .map_err(LibraryError::missing_bound_check)<span class="question-mark">?</span>;
-        <span class="kw">let </span>signature = credential_bundle
-            .sign(backend, <span class="kw-2">&amp;</span>payload, <span class="self">self</span>.label())
-            .map_err(LibraryError::unexpected_crypto_error)<span class="question-mark">?</span>;
+            .map_err(|<span class="kw">_</span>| SignatureError::SigningError)<span class="question-mark">?</span>;
+        <span class="kw">let </span>signature = private_key
+            .sign_with_label(backend, <span class="kw-2">&amp;</span>SignContent::new(<span class="self">self</span>.label(), payload.into()))
+            .map_err(|<span class="kw">_</span>| SignatureError::SigningError)<span class="question-mark">?</span>;
         <span class="prelude-val">Ok</span>(<span class="self">Self</span>::SignedOutput::from_payload(<span class="self">self</span>, signature))
     }
 }
@@ -316,38 +336,13 @@
     </span><span class="kw">fn </span>verify&lt;T&gt;(
         <span class="self">self</span>,
         backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider,
-        credential: <span class="kw-2">&amp;</span>Credential,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;T, CredentialError&gt;
+        public_key: <span class="kw-2">&amp;</span>SignaturePublicKey,
+        signature_scheme: SignatureScheme,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;T, SignatureError&gt;
     <span class="kw">where
         </span>T: VerifiedStruct&lt;<span class="self">Self</span>&gt;,
     {
-        <span class="kw">let </span>payload = <span class="self">self
-            </span>.unsigned_payload()
-            .map_err(LibraryError::missing_bound_check)<span class="question-mark">?</span>;
-        credential.verify(backend, <span class="kw-2">&amp;</span>payload, <span class="self">self</span>.signature(), <span class="self">self</span>.label())<span class="question-mark">?</span>;
-        <span class="prelude-val">Ok</span>(T::from_verifiable(<span class="self">self</span>, T::SealingType::default()))
-    }
-
-    <span class="doccomment">/// Verifies the payload against the given `SignatureKey`.
-    /// The signature is fetched via the [`Verifiable::signature()`] function and
-    /// the payload via [`Verifiable::unsigned_payload()`].
-    ///
-    /// Returns `Ok(Self::VerifiedOutput)` if the signature is valid and
-    /// `CredentialError::InvalidSignature` otherwise.
-    </span><span class="kw">fn </span>verify_with_key&lt;T&gt;(
-        <span class="self">self</span>,
-        backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider,
-        signature_public_key: <span class="kw-2">&amp;</span>OpenMlsSignaturePublicKey,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;T, CredentialError&gt;
-    <span class="kw">where
-        </span>T: VerifiedStruct&lt;<span class="self">Self</span>&gt;,
-    {
-        <span class="kw">let </span>payload = <span class="self">self
-            </span>.unsigned_payload()
-            .map_err(LibraryError::missing_bound_check)<span class="question-mark">?</span>;
-        signature_public_key
-            .verify(backend, <span class="self">self</span>.signature(), <span class="kw-2">&amp;</span>payload)
-            .map_err(|<span class="kw">_</span>| CredentialError::InvalidSignature)<span class="question-mark">?</span>;
+        verify(<span class="kw-2">&amp;</span><span class="self">self</span>, backend, signature_scheme, public_key)<span class="question-mark">?</span>;
         <span class="prelude-val">Ok</span>(T::from_verifiable(<span class="self">self</span>, T::SealingType::default()))
     }
 
@@ -360,13 +355,40 @@
     </span><span class="kw">fn </span>verify_no_out(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider,
-        credential: <span class="kw-2">&amp;</span>Credential,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;(), CredentialError&gt; {
-        <span class="kw">let </span>payload = <span class="self">self
-            </span>.unsigned_payload()
-            .map_err(LibraryError::missing_bound_check)<span class="question-mark">?</span>;
-        credential.verify(backend, <span class="kw-2">&amp;</span>payload, <span class="self">self</span>.signature(), <span class="self">self</span>.label())
+        public_key: <span class="kw-2">&amp;</span>SignaturePublicKey,
+        signature_scheme: SignatureScheme,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;(), SignatureError&gt; {
+        verify(<span class="self">self</span>, backend, signature_scheme, public_key)
     }
 }
+
+<span class="kw">fn </span>verify(
+    verifiable: <span class="kw-2">&amp;</span><span class="kw">impl </span>Verifiable,
+    backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider,
+    signature_scheme: SignatureScheme,
+    public_key: <span class="kw-2">&amp;</span>SignaturePublicKey,
+) -&gt; <span class="prelude-ty">Result</span>&lt;(), SignatureError&gt; {
+    <span class="kw">let </span>payload = verifiable
+        .unsigned_payload()
+        .map_err(|<span class="kw">_</span>| SignatureError::VerificationError)<span class="question-mark">?</span>;
+    <span class="kw">let </span>sign_content = SignContent::new(verifiable.label(), payload.into());
+    <span class="kw">let </span>payload = <span class="kw">match </span>sign_content.tls_serialize_detached() {
+        <span class="prelude-val">Ok</span>(p) =&gt; p,
+        <span class="prelude-val">Err</span>(e) =&gt; {
+            <span class="macro">log::error!</span>(<span class="string">&quot;Serializing SignContent failed, {:?}&quot;</span>, e);
+            <span class="kw">return </span><span class="prelude-val">Err</span>(SignatureError::VerificationError);
+        }
+    };
+    backend
+        .crypto()
+        .verify_signature(
+            signature_scheme,
+            <span class="kw-2">&amp;</span>payload,
+            public_key.as_slice(),
+            verifiable.signature().value(),
+        )
+        .map_err(|<span class="kw">_</span>| SignatureError::VerificationError)<span class="question-mark">?</span>;
+    <span class="prelude-val">Ok</span>(())
+}
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-current-crate="openmls" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.66.0 (69f9c33d7 2022-12-12)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-current-crate="openmls" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.66.1 (90743e729 2023-01-10)" ></div></body></html>

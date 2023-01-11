@@ -993,6 +993,14 @@
 <span id="993">993</span>
 <span id="994">994</span>
 <span id="995">995</span>
+<span id="996">996</span>
+<span id="997">997</span>
+<span id="998">998</span>
+<span id="999">999</span>
+<span id="1000">1000</span>
+<span id="1001">1001</span>
+<span id="1002">1002</span>
+<span id="1003">1003</span>
 </pre><pre class="rust"><code><span class="doccomment">//! This module contains the [`LeafNode`] struct and its implementation.
 </span><span class="kw">use </span>openmls_traits::{
     crypto::OpenMlsCrypto,
@@ -1444,7 +1452,9 @@
             extensions,
         )<span class="question-mark">?</span>;
 
-        leaf_node_tbs.sign(backend, credential_bundle)
+        leaf_node_tbs
+            .sign(backend, credential_bundle.signature_private_key())
+            .map_err(|<span class="kw">_</span>| LibraryError::custom(<span class="string">&quot;Signing failed&quot;</span>))
     }
 
     <span class="doccomment">/// Returns the `encryption_key`.
@@ -1769,7 +1779,9 @@
         </span>leaf_node_tbs.payload.credential = credential_bundle.credential().clone();
 
         <span class="comment">// Set the new signed leaf node with the new encryption key
-        </span><span class="self">self</span>.leaf_node = leaf_node_tbs.sign(backend, credential_bundle)<span class="question-mark">?</span>;
+        </span><span class="self">self</span>.leaf_node = leaf_node_tbs
+            .sign(backend, credential_bundle.signature_private_key())
+            .map_err(|<span class="kw">_</span>| LibraryError::custom(<span class="string">&quot;Signing failed&quot;</span>))<span class="question-mark">?</span>;
         <span class="comment">// and store the new corresponding private key.
         </span><span class="self">self</span>.private_key = <span class="prelude-val">Some</span>(new_encryption_key.<span class="number">0</span>.clone());
         <span class="prelude-val">Ok</span>(())
@@ -1905,7 +1917,9 @@
                     .ok_or_else(|| LibraryError::custom(<span class="string">&quot;Missing leaf index in own leaf&quot;</span>))<span class="question-mark">?</span>,
             }),
         );
-        <span class="self">self</span>.leaf_node = tbs.sign(backend, credential_bundle)<span class="question-mark">?</span>;
+        <span class="self">self</span>.leaf_node = tbs
+            .sign(backend, credential_bundle.signature_private_key())
+            .map_err(|<span class="kw">_</span>| LibraryError::custom(<span class="string">&quot;Signing failed&quot;</span>))<span class="question-mark">?</span>;
 
         <span class="prelude-val">Ok</span>(())
     }
@@ -1944,7 +1958,9 @@
     ) {
         <span class="kw">let </span><span class="kw-2">mut </span>tbs = LeafNodeTbs::from(<span class="self">self</span>.leaf_node.clone(), TreeInfoTbs::KeyPackage());
         tbs.payload.encryption_key = public_key;
-        <span class="self">self</span>.leaf_node = tbs.sign(backend, credential_bundle).unwrap();
+        <span class="self">self</span>.leaf_node = tbs
+            .sign(backend, credential_bundle.signature_private_key())
+            .unwrap();
     }
 
     <span class="doccomment">/// Replace the public key in the leaf node and re-sign.
@@ -1989,4 +2005,4 @@
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../../../" data-current-crate="openmls" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.66.0 (69f9c33d7 2022-12-12)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../../../" data-current-crate="openmls" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.66.1 (90743e729 2023-01-10)" ></div></body></html>

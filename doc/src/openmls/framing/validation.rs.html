@@ -498,6 +498,14 @@
 <span id="498">498</span>
 <span id="499">499</span>
 <span id="500">500</span>
+<span id="501">501</span>
+<span id="502">502</span>
+<span id="503">503</span>
+<span id="504">504</span>
+<span id="505">505</span>
+<span id="506">506</span>
+<span id="507">507</span>
+<span id="508">508</span>
 </pre><pre class="rust"><code><span class="doccomment">//! # Validation steps for incoming messages
 //!
 //! ```text
@@ -792,7 +800,11 @@
     ) -&gt; <span class="prelude-ty">Result</span>&lt;VerifiedMemberMessage, ValidationError&gt; {
         <span class="comment">// ValSem010
         </span><span class="self">self</span>.verifiable_content
-            .verify(backend, <span class="kw-2">&amp;</span><span class="self">self</span>.credential)
+            .verify(
+                backend,
+                <span class="self">self</span>.credential.signature_key(),
+                <span class="self">self</span>.credential.signature_scheme(),
+            )
             .map(|authenticated_content| VerifiedMemberMessage {
                 authenticated_content,
             })
@@ -830,7 +842,11 @@
         <span class="comment">// ValSem010
         </span><span class="kw">let </span>verified_external_message = <span class="self">self
             </span>.verifiable_content
-            .verify(backend, <span class="kw-2">&amp;</span><span class="self">self</span>.credential)
+            .verify(
+                backend,
+                <span class="self">self</span>.credential.signature_key(),
+                <span class="self">self</span>.credential.signature_scheme(),
+            )
             .map(|authenticated_content| VerifiedExternalMessage {
                 authenticated_content,
             })
@@ -999,4 +1015,4 @@
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-current-crate="openmls" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.66.0 (69f9c33d7 2022-12-12)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-current-crate="openmls" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.66.1 (90743e729 2023-01-10)" ></div></body></html>

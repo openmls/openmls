@@ -670,6 +670,12 @@
 <span id="670">670</span>
 <span id="671">671</span>
 <span id="672">672</span>
+<span id="673">673</span>
+<span id="674">674</span>
+<span id="675">675</span>
+<span id="676">676</span>
+<span id="677">677</span>
+<span id="678">678</span>
 </pre><pre class="rust"><code><span class="doccomment">//! # Key Packages
 //!
 //! Key packages are pre-published public keys that provide some information
@@ -951,7 +957,7 @@
             extensions,
         };
 
-        <span class="kw">let </span>key_package = key_package.sign(backend, credential)<span class="question-mark">?</span>;
+        <span class="kw">let </span>key_package = key_package.sign(backend, credential.signature_private_key())<span class="question-mark">?</span>;
 
         <span class="prelude-val">Ok</span>((key_package, encryption_key_pair))
     }
@@ -1004,12 +1010,16 @@
         }
 
         <span class="comment">// Verify the signature on this key package.
-        </span>&lt;<span class="self">Self </span><span class="kw">as </span>Verifiable&gt;::verify_no_out(<span class="self">self</span>, backend, <span class="self">self</span>.leaf_node().credential()).map_err(
-            |<span class="kw">_</span>| {
-                <span class="macro">log::error!</span>(<span class="string">&quot;Key package signature is invalid.&quot;</span>);
-                KeyPackageVerifyError::InvalidSignature
-            },
+        </span>&lt;<span class="self">Self </span><span class="kw">as </span>Verifiable&gt;::verify_no_out(
+            <span class="self">self</span>,
+            backend,
+            <span class="self">self</span>.leaf_node().signature_key(),
+            <span class="self">self</span>.leaf_node().credential().signature_scheme(),
         )
+        .map_err(|<span class="kw">_</span>| {
+            <span class="macro">log::error!</span>(<span class="string">&quot;Key package signature is invalid.&quot;</span>);
+            KeyPackageVerifyError::InvalidSignature
+        })
     }
 
     <span class="doccomment">/// Get a reference to the extensions of this key package.
@@ -1156,7 +1166,7 @@
             extensions,
         };
 
-        <span class="kw">let </span>key_package = key_package.sign(backend, credential)<span class="question-mark">?</span>;
+        <span class="kw">let </span>key_package = key_package.sign(backend, credential.signature_private_key())<span class="question-mark">?</span>;
 
         <span class="comment">// Store the key package in the key store with the hash reference as id
         // for retrieval when parsing welcome messages.
@@ -1186,7 +1196,7 @@
             extensions: <span class="self">self</span>.extensions().clone(),
         };
 
-        <span class="kw">let </span>key_package = key_package.sign(backend, credential)<span class="question-mark">?</span>;
+        <span class="kw">let </span>key_package = key_package.sign(backend, credential.signature_private_key())<span class="question-mark">?</span>;
         <span class="prelude-val">Ok</span>(key_package)
     }
 
@@ -1199,7 +1209,9 @@
         <span class="self">self</span>.payload
             .leaf_node
             .set_credential(credential.credential().clone());
-        <span class="self">self</span>.payload.sign(backend, credential).unwrap()
+        <span class="self">self</span>.payload
+            .sign(backend, credential.signature_private_key())
+            .unwrap()
     }
 
     <span class="doccomment">/// Replace the public key in the KeyPackage.
@@ -1343,4 +1355,4 @@
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-current-crate="openmls" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.66.0 (69f9c33d7 2022-12-12)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-current-crate="openmls" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.66.1 (90743e729 2023-01-10)" ></div></body></html>

@@ -518,6 +518,10 @@
 <span id="518">518</span>
 <span id="519">519</span>
 <span id="520">520</span>
+<span id="521">521</span>
+<span id="522">522</span>
+<span id="523">523</span>
+<span id="524">524</span>
 </pre><pre class="rust"><code><span class="kw">use </span><span class="kw">crate</span>::ciphersuite::signable::Verifiable;
 <span class="kw">use </span><span class="kw">crate</span>::framing::mls_content::FramedContentBody;
 <span class="kw">use </span><span class="kw">crate</span>::treesync::errors::TreeSyncAddLeaf;
@@ -733,7 +737,11 @@
                 signature: leaf_node.signature(),
             };
             <span class="kw">if </span>verifiable_leaf_node
-                .verify_no_out(backend, leaf_node.credential())
+                .verify_no_out(
+                    backend,
+                    leaf_node.signature_key(),
+                    leaf_node.credential().signature_scheme(),
+                )
                 .is_err()
             {
                 <span class="macro">debug_assert!</span>(
@@ -1039,4 +1047,4 @@
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../../../" data-current-crate="openmls" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.66.0 (69f9c33d7 2022-12-12)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../../../" data-current-crate="openmls" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.66.1 (90743e729 2023-01-10)" ></div></body></html>

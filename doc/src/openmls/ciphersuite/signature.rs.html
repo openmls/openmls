@@ -315,6 +315,13 @@
 <span id="315">315</span>
 <span id="316">316</span>
 <span id="317">317</span>
+<span id="318">318</span>
+<span id="319">319</span>
+<span id="320">320</span>
+<span id="321">321</span>
+<span id="322">322</span>
+<span id="323">323</span>
+<span id="324">324</span>
 </pre><pre class="rust"><code><span class="doccomment">//! Signatures.
 //!
 //! This module contains structs for creating signature keys, issuing signatures and verifying them.
@@ -430,6 +437,13 @@
         <span class="self">self</span>.value = value.to_vec().into();
     }
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>as_slice(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>[u8] {
+        <span class="self">self</span>.value.as_slice()
+    }
+}
+
+<span class="kw">impl </span>Signature {
+    <span class="doccomment">/// Get this signature as slice.
+    </span><span class="kw">pub</span>(<span class="kw">super</span>) <span class="kw">fn </span>value(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>[u8] {
         <span class="self">self</span>.value.as_slice()
     }
 }
@@ -633,4 +647,4 @@
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-current-crate="openmls" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.66.0 (69f9c33d7 2022-12-12)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-current-crate="openmls" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.66.1 (90743e729 2023-01-10)" ></div></body></html>

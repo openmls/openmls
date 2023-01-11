@@ -438,6 +438,7 @@
 <span id="438">438</span>
 <span id="439">439</span>
 <span id="440">440</span>
+<span id="441">441</span>
 </pre><pre class="rust"><code><span class="kw">use </span>openmls_traits::OpenMlsCryptoProvider;
 
 <span class="kw">use crate</span>::{
@@ -775,7 +776,8 @@
                 )
             };
             <span class="comment">// Sign to-be-signed group info.
-            </span><span class="kw">let </span>group_info = group_info_tbs.sign(backend, params.credential_bundle())<span class="question-mark">?</span>;
+            </span><span class="kw">let </span>group_info =
+                group_info_tbs.sign(backend, params.credential_bundle().signature_private_key())<span class="question-mark">?</span>;
 
             <span class="comment">// Encrypt GroupInfo object
             </span><span class="kw">let </span>(welcome_key, welcome_nonce) = welcome_secret
@@ -879,4 +881,4 @@
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../../../" data-current-crate="openmls" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.66.0 (69f9c33d7 2022-12-12)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../../../" data-current-crate="openmls" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.66.1 (90743e729 2023-01-10)" ></div></body></html>

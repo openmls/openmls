@@ -240,6 +240,10 @@
 <span id="240">240</span>
 <span id="241">241</span>
 <span id="242">242</span>
+<span id="243">243</span>
+<span id="244">244</span>
+<span id="245">245</span>
+<span id="246">246</span>
 </pre><pre class="rust"><code><span class="kw">use </span>log::debug;
 <span class="kw">use </span>openmls_traits::{crypto::OpenMlsCrypto, key_store::OpenMlsKeyStore, types::HpkeKeyPair};
 <span class="kw">use </span>tls_codec::Deserialize;
@@ -400,7 +404,11 @@
                 </span>.credential();
 
             verifiable_group_info
-                .verify(backend, signer_credential)
+                .verify(
+                    backend,
+                    signer_credential.signature_key(),
+                    ciphersuite.signature_algorithm(),
+                )
                 .map_err(|<span class="kw">_</span>| WelcomeError::InvalidGroupInfoSignature)<span class="question-mark">?
         </span>};
 
@@ -483,4 +491,4 @@
     </span>}
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../../../" data-current-crate="openmls" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.66.0 (69f9c33d7 2022-12-12)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../../../" data-current-crate="openmls" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.66.1 (90743e729 2023-01-10)" ></div></body></html>

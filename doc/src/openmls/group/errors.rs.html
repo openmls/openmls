@@ -467,11 +467,16 @@
 <span id="467">467</span>
 <span id="468">468</span>
 <span id="469">469</span>
+<span id="470">470</span>
+<span id="471">471</span>
+<span id="472">472</span>
+<span id="473">473</span>
 </pre><pre class="rust"><code><span class="doccomment">//! # MLS group errors
 //!
 //! This module contains errors that originate at lower levels and are partially re-exported in errors thrown by functions of the `MlsGroup` API.
 
 </span><span class="kw">use crate</span>::{
+    ciphersuite::signable::SignatureError,
     error::LibraryError,
     extensions::errors::ExtensionError,
     framing::errors::{MessageDecryptionError, SenderError},
@@ -671,6 +676,9 @@
     <span class="doccomment">/// See [`ProposalValidationError`] for more details.
     </span><span class="attribute">#[error(transparent)]
     </span>ProposalValidationError(<span class="attribute">#[from] </span>ProposalValidationError),
+    <span class="doccomment">/// See [`SignatureError`] for more details.
+    </span><span class="attribute">#[error(transparent)]
+    </span>SignatureError(<span class="attribute">#[from] </span>SignatureError),
 }
 
 <span class="doccomment">/// Validation error
@@ -937,4 +945,4 @@
     </span>Extension(<span class="attribute">#[from] </span>ExtensionError),
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-current-crate="openmls" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.66.0 (69f9c33d7 2022-12-12)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-current-crate="openmls" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.66.1 (90743e729 2023-01-10)" ></div></body></html>

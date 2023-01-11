@@ -55,13 +55,16 @@
 <span id="55">55</span>
 <span id="56">56</span>
 <span id="57">57</span>
+<span id="58">58</span>
+<span id="59">59</span>
+<span id="60">60</span>
 </pre><pre class="rust"><code><span class="doccomment">//! # Key Package errors
 //!
 //! `KeyPackageError` are thrown on errors handling `KeyPackage`s.
 
 </span><span class="kw">use </span>thiserror::Error;
 
-<span class="kw">use </span><span class="kw">crate</span>::error::LibraryError;
+<span class="kw">use crate</span>::{ciphersuite::signable::SignatureError, error::LibraryError};
 
 <span class="doccomment">/// KeyPackage verify error
 </span><span class="attribute">#[derive(Error, Debug, PartialEq, Clone)]
@@ -103,6 +106,9 @@
     <span class="doccomment">/// Accessing the key store failed.
     </span><span class="attribute">#[error(<span class="string">&quot;Accessing the key store failed.&quot;</span>)]
     </span>KeyStoreError,
+    <span class="doccomment">/// See [`SignatureError`] for more details.
+    </span><span class="attribute">#[error(transparent)]
+    </span>SignatureError(<span class="attribute">#[from] </span>SignatureError),
 }
 
 <span class="doccomment">/// KeyPackage new error
@@ -113,4 +119,4 @@
     </span>KeyStoreError,
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-current-crate="openmls" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.66.0 (69f9c33d7 2022-12-12)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-current-crate="openmls" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.66.1 (90743e729 2023-01-10)" ></div></body></html>
