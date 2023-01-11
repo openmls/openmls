@@ -370,7 +370,11 @@ fn group_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvid
         .expect("An unexpected error occurred.")
         .credential();
     let mls_plaintext_bob: AuthenticatedContent = verifiable_plaintext
-        .verify(backend, credential)
+        .verify(
+            backend,
+            credential.signature_key(),
+            credential.signature_scheme(),
+        )
         .expect("An unexpected error occurred.");
 
     assert!(matches!(
@@ -678,7 +682,11 @@ fn group_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvid
         .credential();
 
     let mls_plaintext_alice: AuthenticatedContent = verifiable_plaintext
-        .verify(backend, credential)
+        .verify(
+            backend,
+            credential.signature_key(),
+            credential.signature_scheme(),
+        )
         .expect("An unexpected error occurred.");
 
     assert!(matches!(
@@ -700,7 +708,11 @@ fn group_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvid
         .expect("An unexpected error occurred.")
         .credential();
     let mls_plaintext_bob: AuthenticatedContent = verifiable_plaintext
-        .verify(backend, credential)
+        .verify(
+            backend,
+            credential.signature_key(),
+            credential.signature_scheme(),
+        )
         .expect("An unexpected error occurred.");
 
     assert!(matches!(

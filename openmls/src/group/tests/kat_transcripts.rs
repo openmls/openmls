@@ -251,7 +251,11 @@ pub fn run_test_vector(
         .cloned()
         .expect("Confirmation tag is missing");
     let content: AuthenticatedContent = commit
-        .verify(backend, &credential)
+        .verify(
+            backend,
+            credential.signature_key(),
+            credential.signature_scheme(),
+        )
         .expect("Invalid signature on PublicMessage commit");
 
     //let my_confirmation_tag = confirmation_key.tag(&confirmed_transcript_hash_before);

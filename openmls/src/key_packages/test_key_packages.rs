@@ -37,7 +37,11 @@ fn generate_key_package(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoPr
     let (key_package, credential_bundle) = key_package(ciphersuite, backend);
 
     assert!(key_package
-        .verify_no_out(backend, credential_bundle.credential())
+        .verify_no_out(
+            backend,
+            credential_bundle.credential().signature_key(),
+            credential_bundle.credential().signature_scheme()
+        )
         .is_ok());
     // TODO[FK]: #819 #133 replace with `validate`
     assert!(KeyPackage::verify(&key_package, backend).is_ok());
@@ -84,7 +88,11 @@ fn application_id_extension(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryp
         .expect("An unexpected error occurred.");
 
     assert!(key_package
-        .verify_no_out(backend, credential_bundle.credential())
+        .verify_no_out(
+            backend,
+            credential_bundle.credential().signature_key(),
+            credential_bundle.credential().signature_scheme()
+        )
         .is_ok());
     // TODO[FK]: #819 #133 replace with `validate`
     assert!(KeyPackage::verify(&key_package, backend).is_ok());

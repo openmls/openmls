@@ -449,7 +449,9 @@ impl LeafNode {
             extensions,
         )?;
 
-        leaf_node_tbs.sign(backend, credential_bundle)
+        leaf_node_tbs
+            .sign(backend, credential_bundle.signature_private_key())
+            .map_err(|_| LibraryError::custom("Signing failed"))
     }
 
     /// Returns the `encryption_key`.
@@ -774,7 +776,9 @@ impl OpenMlsLeafNode {
         leaf_node_tbs.payload.credential = credential_bundle.credential().clone();
 
         // Set the new signed leaf node with the new encryption key
-        self.leaf_node = leaf_node_tbs.sign(backend, credential_bundle)?;
+        self.leaf_node = leaf_node_tbs
+            .sign(backend, credential_bundle.signature_private_key())
+            .map_err(|_| LibraryError::custom("Signing failed"))?;
         // and store the new corresponding private key.
         self.private_key = Some(new_encryption_key.0.clone());
         Ok(())
@@ -910,7 +914,9 @@ impl OpenMlsLeafNode {
                     .ok_or_else(|| LibraryError::custom("Missing leaf index in own leaf"))?,
             }),
         );
-        self.leaf_node = tbs.sign(backend, credential_bundle)?;
+        self.leaf_node = tbs
+            .sign(backend, credential_bundle.signature_private_key())
+            .map_err(|_| LibraryError::custom("Signing failed"))?;
 
         Ok(())
     }
@@ -949,7 +955,9 @@ impl OpenMlsLeafNode {
     ) {
         let mut tbs = LeafNodeTbs::from(self.leaf_node.clone(), TreeInfoTbs::KeyPackage());
         tbs.payload.encryption_key = public_key;
-        self.leaf_node = tbs.sign(backend, credential_bundle).unwrap();
+        self.leaf_node = tbs
+            .sign(backend, credential_bundle.signature_private_key())
+            .unwrap();
     }
 
     /// Replace the public key in the leaf node and re-sign.

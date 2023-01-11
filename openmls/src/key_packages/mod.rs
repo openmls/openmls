@@ -279,7 +279,7 @@ impl KeyPackage {
             extensions,
         };
 
-        let key_package = key_package.sign(backend, credential)?;
+        let key_package = key_package.sign(backend, credential.signature_private_key())?;
 
         Ok((key_package, encryption_key_pair))
     }
@@ -332,12 +332,16 @@ impl KeyPackage {
         }
 
         // Verify the signature on this key package.
-        <Self as Verifiable>::verify_no_out(self, backend, self.leaf_node().credential()).map_err(
-            |_| {
-                log::error!("Key package signature is invalid.");
-                KeyPackageVerifyError::InvalidSignature
-            },
+        <Self as Verifiable>::verify_no_out(
+            self,
+            backend,
+            self.leaf_node().signature_key(),
+            self.leaf_node().credential().signature_scheme(),
         )
+        .map_err(|_| {
+            log::error!("Key package signature is invalid.");
+            KeyPackageVerifyError::InvalidSignature
+        })
     }
 
     /// Get a reference to the extensions of this key package.
@@ -484,7 +488,7 @@ impl KeyPackage {
             extensions,
         };
 
-        let key_package = key_package.sign(backend, credential)?;
+        let key_package = key_package.sign(backend, credential.signature_private_key())?;
 
         // Store the key package in the key store with the hash reference as id
         // for retrieval when parsing welcome messages.
@@ -514,7 +518,7 @@ impl KeyPackage {
             extensions: self.extensions().clone(),
         };
 
-        let key_package = key_package.sign(backend, credential)?;
+        let key_package = key_package.sign(backend, credential.signature_private_key())?;
         Ok(key_package)
     }
 
@@ -527,7 +531,9 @@ impl KeyPackage {
         self.payload
             .leaf_node
             .set_credential(credential.credential().clone());
-        self.payload.sign(backend, credential).unwrap()
+        self.payload
+            .sign(backend, credential.signature_private_key())
+            .unwrap()
     }
 
     /// Replace the public key in the KeyPackage.
