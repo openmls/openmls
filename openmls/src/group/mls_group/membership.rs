@@ -5,7 +5,9 @@
 use core_group::create_commit_params::CreateCommitParams;
 use tls_codec::Serialize;
 
-use crate::{binary_tree::array_representation::LeafNodeIndex, treesync::LeafNode};
+use crate::{
+    binary_tree::array_representation::LeafNodeIndex, messages::GroupInfo, treesync::LeafNode,
+};
 
 use super::{
     errors::{AddMembersError, LeaveGroupError, RemoveMembersError},
@@ -20,15 +22,16 @@ impl MlsGroup {
     /// This operation results in a Commit with a `path`, i.e. it includes an
     /// update of the committer's leaf [KeyPackage].
     ///
-    /// If successful, it returns a tuple of [`MlsMessageOut`]s, where the first
-    /// contains the commit and the second one the [Welcome].
+    /// If successful, it returns a triple of [`MlsMessageOut`]s, where the first
+    /// contains the commit, the second one the [Welcome] and the third an optional [GroupInfo] that
+    /// will be [Some] if the group has the `RatchetTree` required capability.
     ///
     /// Returns an error if there is a pending commit.
     pub fn add_members(
         &mut self,
         backend: &impl OpenMlsCryptoProvider,
         key_packages: &[KeyPackage],
-    ) -> Result<(MlsMessageOut, MlsMessageOut), AddMembersError> {
+    ) -> Result<(MlsMessageOut, MlsMessageOut, Option<GroupInfo>), AddMembersError> {
         self.is_operational()?;
 
         if key_packages.is_empty() {
@@ -89,6 +92,7 @@ impl MlsGroup {
         Ok((
             mls_messages,
             MlsMessageOut::from_welcome(welcome, self.group.version()),
+            create_commit_result.group_info,
         ))
     }
 
@@ -102,16 +106,19 @@ impl MlsGroup {
     /// Members are removed by providing the member's leaf index.
     ///
     /// If successful, it returns a tuple of [`MlsMessageOut`] (containing the
-    /// commit) and an optional [`MlsMessageOut`] (containing the [`Welcome`]).
+    /// commit), an optional [`MlsMessageOut`] (containing the [`Welcome`]) and the current
+    /// [GroupInfo].
     /// The [Welcome] is [Some] when the queue of pending proposals contained
     /// add proposals
+    /// The [GroupInfo] is [Some] if the group has the `RatchetTree` required capability.
+
     ///
     /// Returns an error if there is a pending commit.
     pub fn remove_members(
         &mut self,
         backend: &impl OpenMlsCryptoProvider,
         members: &[LeafNodeIndex],
-    ) -> Result<(MlsMessageOut, Option<MlsMessageOut>), RemoveMembersError> {
+    ) -> Result<(MlsMessageOut, Option<MlsMessageOut>, Option<GroupInfo>), RemoveMembersError> {
         self.is_operational()?;
 
         if members.is_empty() {
@@ -165,6 +172,7 @@ impl MlsGroup {
             create_commit_result
                 .welcome_option
                 .map(|w| MlsMessageOut::from_welcome(w, self.group.version())),
+            create_commit_result.group_info,
         ))
     }
 

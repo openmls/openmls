@@ -1,7 +1,9 @@
 use core_group::create_commit_params::CreateCommitParams;
 use tls_codec::Serialize;
 
-use crate::{ciphersuite::HpkePublicKey, treesync::LeafNode, versions::ProtocolVersion};
+use crate::{
+    ciphersuite::HpkePublicKey, messages::GroupInfo, prelude::LeafNode, versions::ProtocolVersion,
+};
 
 use super::*;
 
@@ -11,17 +13,18 @@ impl MlsGroup {
     /// An [`HpkePublicKey`] can optionally be provided.
     /// If not, a new one will be created on the fly.
     ///
-    /// If successful, it returns a tuple of [`MlsMessageOut`] (containing the
-    /// commit) and an optional [`MlsMessageOut`] (containing the [`Welcome`]).
+    /// If successful, it returns a triple of [`MlsMessageOut`] (containing the
+    /// commit), an optional [`MlsMessageOut`] (containing the [`Welcome`]) and the [GroupInfo].
     /// The [Welcome] is [Some] when the queue of pending proposals contained
     /// add proposals
+    /// The [GroupInfo] is [Some] if the group has the `RatchetTree` required capability.
     ///
     /// Returns an error if there is a pending commit.
     pub fn self_update(
         &mut self,
         backend: &impl OpenMlsCryptoProvider,
         encryption_key: Option<HpkePublicKey>,
-    ) -> Result<(MlsMessageOut, Option<MlsMessageOut>), SelfUpdateError> {
+    ) -> Result<(MlsMessageOut, Option<MlsMessageOut>, Option<GroupInfo>), SelfUpdateError> {
         self.is_operational()?;
 
         let credential = self.credential()?;
@@ -102,6 +105,7 @@ impl MlsGroup {
             create_commit_result
                 .welcome_option
                 .map(|w| MlsMessageOut::from_welcome(w, self.group.version())),
+            create_commit_result.group_info,
         ))
     }
 

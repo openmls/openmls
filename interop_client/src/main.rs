@@ -793,7 +793,7 @@ impl MlsClient for MlsClientImpl {
 
         // TODO #692: The interop client cannot process these proposals yet.
 
-        let (commit, welcome_option) = interop_group
+        let (commit, welcome_option, _group_info) = interop_group
             .group
             .self_update(&self.crypto_provider, None)
             .map_err(into_status)?;

@@ -192,7 +192,7 @@ fn remover(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
     .expect("An unexpected error occurred.");
 
     // === Alice adds Bob ===
-    let (_queued_message, welcome) = alice_group
+    let (_queued_message, welcome, _group_info) = alice_group
         .add_members(backend, &[bob_key_package])
         .expect("Could not add member to group.");
 
@@ -209,10 +209,9 @@ fn remover(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
     .expect("Error creating group from Welcome");
 
     // === Bob adds Charlie ===
-    let (queued_messages, welcome) = match bob_group.add_members(backend, &[charlie_key_package]) {
-        Ok((qm, welcome)) => (qm, welcome),
-        Err(e) => panic!("Could not add member to group: {:?}", e),
-    };
+    let (queued_messages, welcome, _group_info) = bob_group
+        .add_members(backend, &[charlie_key_package])
+        .unwrap();
 
     let alice_processed_message = alice_group
         .process_message(
@@ -280,7 +279,7 @@ fn remover(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
     }
 
     // Charlie commits
-    let (_queued_messages, _welcome) = charlie_group
+    let (_queued_messages, _welcome, _group_info) = charlie_group
         .commit_to_pending_proposals(backend)
         .expect("Could not commit proposal");
 
@@ -390,7 +389,7 @@ fn test_invalid_plaintext(ciphersuite: Ciphersuite, backend: &impl OpenMlsCrypto
         .read()
         .expect("An unexpected error occurred.");
 
-    let (mls_message, _welcome_option) = client
+    let (mls_message, _welcome_option, _group_info) = client
         .self_update(Commit, &group_id, None)
         .expect("error creating self update");
 
@@ -523,7 +522,7 @@ fn test_pending_commit_logic(ciphersuite: Ciphersuite, backend: &impl OpenMlsCry
     assert!(alice_group.pending_commit().is_none());
 
     println!("\nCreating commit with add proposal.");
-    let (_msg, _welcome_option) = alice_group
+    let (_msg, _welcome_option, _group_info) = alice_group
         .self_update(backend, None)
         .expect("error creating self-update commit");
     println!("Done creating commit.");
@@ -588,7 +587,7 @@ fn test_pending_commit_logic(ciphersuite: Ciphersuite, backend: &impl OpenMlsCry
     assert!(alice_group.pending_commit().is_none());
 
     // Creating a new commit should commit the same proposals.
-    let (_msg, welcome_option) = alice_group
+    let (_msg, welcome_option, _group_info) = alice_group
         .self_update(backend, None)
         .expect("error creating self-update commit");
 
@@ -620,11 +619,11 @@ fn test_pending_commit_logic(ciphersuite: Ciphersuite, backend: &impl OpenMlsCry
     );
 
     // While a commit is pending, merging Bob's commit should clear the pending commit.
-    let (_msg, _welcome_option) = alice_group
+    let (_msg, _welcome_option, _group_info) = alice_group
         .self_update(backend, None)
         .expect("error creating self-update commit");
 
-    let (msg, _welcome_option) = bob_group
+    let (msg, _welcome_option, _group_info) = bob_group
         .self_update(backend, None)
         .expect("error creating self-update commit");
 
@@ -696,7 +695,7 @@ fn key_package_deletion(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoPr
     .unwrap();
 
     // === Alice adds Bob ===
-    let (_queued_message, welcome) = alice_group
+    let (_queued_message, welcome, _group_info) = alice_group
         .add_members(backend, &[bob_key_package.clone()])
         .unwrap();
 

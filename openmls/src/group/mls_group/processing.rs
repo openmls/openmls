@@ -5,6 +5,8 @@ use std::mem;
 use core_group::{create_commit_params::CreateCommitParams, staged_commit::StagedCommit};
 use tls_codec::Serialize;
 
+use crate::messages::GroupInfo;
+
 use super::{errors::ProcessMessageError, *};
 
 impl MlsGroup {
@@ -73,7 +75,10 @@ impl MlsGroup {
     pub fn commit_to_pending_proposals(
         &mut self,
         backend: &impl OpenMlsCryptoProvider,
-    ) -> Result<(MlsMessageOut, Option<MlsMessageOut>), CommitToPendingProposalsError> {
+    ) -> Result<
+        (MlsMessageOut, Option<MlsMessageOut>, Option<GroupInfo>),
+        CommitToPendingProposalsError,
+    > {
         self.is_operational()?;
 
         let credential = self.credential()?;
@@ -114,6 +119,7 @@ impl MlsGroup {
             create_commit_result
                 .welcome_option
                 .map(|w| MlsMessageOut::from_welcome(w, self.group.version())),
+            create_commit_result.group_info,
         ))
     }
 

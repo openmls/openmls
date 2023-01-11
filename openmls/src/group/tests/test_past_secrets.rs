@@ -84,13 +84,13 @@ fn test_past_secrets_in_group(ciphersuite: Ciphersuite, backend: &impl OpenMlsCr
         let mut alice_group = MlsGroup::new_with_group_id(
             backend,
             &mls_group_config,
-            group_id,
+            group_id.clone(),
             alice_credential.signature_key(),
         )
         .expect("An unexpected error occurred.");
 
         // Alice adds Bob
-        let (_message, welcome) = alice_group
+        let (_message, welcome, _group_info) = alice_group
             .add_members(backend, &[bob_key_package])
             .expect("An unexpected error occurred.");
 
@@ -118,7 +118,7 @@ fn test_past_secrets_in_group(ciphersuite: Ciphersuite, backend: &impl OpenMlsCr
 
             application_messages.push(application_message.into_protocol_message().unwrap());
 
-            let (message, _welcome) = alice_group
+            let (message, _welcome, _group_info) = alice_group
                 .self_update(backend, None)
                 .expect("An unexpected error occurred.");
 

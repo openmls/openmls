@@ -294,7 +294,7 @@ impl User {
             None => return Err(format!("No group with name {} known.", group)),
         };
 
-        let (out_messages, welcome) = group
+        let (out_messages, welcome, _group_info) = group
             .mls_group
             .borrow_mut()
             .add_members(&self.crypto, &[joiner_key_package])
