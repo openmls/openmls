@@ -253,6 +253,27 @@ pub(crate) struct TreePosition {
     leaf_index: LeafNodeIndex,
 }
 
+/// Helper struct that holds additional information required to sign a leaf node.
+///
+/// ```c
+/// // draft-ietf-mls-protocol-17
+/// struct {
+///     // ... continued from [`LeafNodeTbs`] ...
+///
+///     select (LeafNodeTBS.leaf_node_source) {
+///         case key_package:
+///             struct{};
+///
+///         case update:
+///             opaque group_id<V>;
+///             uint32 leaf_index;
+///
+///         case commit:
+///             opaque group_id<V>;
+///             uint32 leaf_index;
+///     };
+/// } LeafNodeTBS;
+/// ```
 #[derive(Debug)]
 pub(crate) enum TreeInfoTbs {
     KeyPackage(),
@@ -306,6 +327,33 @@ struct LeafNodePayload {
     extensions: Extensions,
 }
 
+/// To-be-signed leaf node.
+///
+/// ```c
+/// // draft-ietf-mls-protocol-17
+/// struct {
+///     HPKEPublicKey encryption_key;
+///     SignaturePublicKey signature_key;
+///     Credential credential;
+///     Capabilities capabilities;
+///
+///     LeafNodeSource leaf_node_source;
+///     select (LeafNodeTBS.leaf_node_source) {
+///         case key_package:
+///             Lifetime lifetime;
+///
+///         case update:
+///             struct{};
+///
+///         case commit:
+///             opaque parent_hash<V>;
+///     };
+///
+///     Extension extensions<V>;
+///
+///     // ... continued in [`TreeInfoTbs`] ...
+/// } LeafNodeTBS;
+/// ```
 #[derive(Debug)]
 pub struct LeafNodeTbs {
     payload: LeafNodePayload,
@@ -351,7 +399,8 @@ impl TlsDeserializeTrait for LeafNodeTbs {
 
 /// This struct implements the MLS leaf node.
 ///
-/// ```text
+/// ```c
+/// // draft-ietf-mls-protocol-17
 /// struct {
 ///     HPKEPublicKey encryption_key;
 ///     SignaturePublicKey signature_key;
