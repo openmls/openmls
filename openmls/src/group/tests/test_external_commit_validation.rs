@@ -746,7 +746,7 @@ fn test_valsem246(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
         decrypted_message.verifiable_content().clone().verify(
             backend,
             bob_credential_bundle.credential().signature_key(),
-            bob_credential_bundle.credential().signature_scheme(),
+            ciphersuite.signature_algorithm(),
         );
     assert!(verification_result.is_ok());
 

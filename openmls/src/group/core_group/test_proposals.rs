@@ -54,7 +54,9 @@ fn proposal_queue_functions(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryp
     let alice_update_key_package_bundle =
         KeyPackageBundle::new(backend, ciphersuite, &alice_credential_bundle);
     let alice_update_key_package = alice_update_key_package_bundle.key_package();
-    assert!(alice_update_key_package.verify(backend).is_ok());
+    assert!(alice_update_key_package
+        .verify(backend, ciphersuite)
+        .is_ok());
 
     let group_context = GroupContext::new(
         ciphersuite,
@@ -180,7 +182,9 @@ fn proposal_queue_order(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoPr
     let alice_update_key_package_bundle =
         KeyPackageBundle::new(backend, ciphersuite, &alice_credential_bundle);
     let alice_update_key_package = alice_update_key_package_bundle.key_package();
-    assert!(alice_update_key_package.verify(backend).is_ok());
+    assert!(alice_update_key_package
+        .verify(backend, ciphersuite)
+        .is_ok());
 
     let group_context = GroupContext::new(
         ciphersuite,

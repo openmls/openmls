@@ -35,7 +35,7 @@ use serde::{Deserialize, Serialize};
 use std::convert::TryFrom;
 #[cfg(test)]
 use tls_codec::Serialize as TlsSerializeTrait;
-use tls_codec::{TlsByteVecU16, TlsDeserialize, TlsSerialize, TlsSize};
+use tls_codec::{TlsDeserialize, TlsSerialize, TlsSize, VLBytes};
 
 use crate::{ciphersuite::*, error::LibraryError};
 
@@ -125,15 +125,6 @@ impl Credential {
         }
     }
 
-    /// Returns the signature scheme used by the credential.
-    pub fn signature_scheme(&self) -> SignatureScheme {
-        match &self.credential {
-            MlsCredentialType::Basic(basic_credential) => basic_credential.signature_scheme,
-            // TODO: implement getter for signature scheme for X509 certificates. See issue #134.
-            MlsCredentialType::X509(_) => panic!("X509 certificates are not yet implemented."),
-        }
-    }
-
     /// Returns the public key contained in the credential.
     pub fn signature_key(&self) -> &SignaturePublicKey {
         match &self.credential {
@@ -162,30 +153,8 @@ impl From<MlsCredentialType> for Credential {
 /// with the corresponding signature scheme.
 #[derive(Debug, Clone, Eq, Serialize, Deserialize, TlsSerialize, TlsDeserialize, TlsSize)]
 pub struct BasicCredential {
-    identity: TlsByteVecU16,
-    signature_scheme: SignatureScheme,
+    identity: VLBytes,
     public_key: SignaturePublicKey,
-}
-
-impl BasicCredential {
-    /// Verifies a signature issued by a [`BasicCredential`].
-    ///
-    /// Returns a [`CredentialError`] if the verification fails.
-    pub fn verify(
-        &self,
-        backend: &impl OpenMlsCryptoProvider,
-        payload: &[u8],
-        signature: &Signature,
-    ) -> Result<(), CredentialError> {
-        let signature_public_key_enriched = self
-            .public_key
-            .clone()
-            .into_signature_public_key_enriched(self.signature_scheme);
-
-        signature_public_key_enriched
-            .verify(backend, signature, payload)
-            .map_err(|_| CredentialError::InvalidSignature)
-    }
 }
 
 impl PartialEq for BasicCredential {
@@ -223,7 +192,6 @@ impl CredentialBundle {
         let mls_credential = match credential_type {
             CredentialType::Basic => BasicCredential {
                 identity: identity.into(),
-                signature_scheme,
                 public_key: public_key.into(),
             },
             _ => return Err(CredentialError::UnsupportedCredentialType),
@@ -245,7 +213,6 @@ impl CredentialBundle {
         let (signature_private_key, public_key) = keypair.into_tuple();
         let basic_credential = BasicCredential {
             identity: identity.into(),
-            signature_scheme: public_key.signature_scheme(),
             public_key: public_key.into(),
         };
         let credential = Credential {
@@ -270,12 +237,12 @@ impl CredentialBundle {
 
     /// Returns the key pair of the given credential bundle.
     #[cfg(any(feature = "test-utils", test))]
-    pub fn key_pair(&self) -> SignatureKeypair {
+    pub fn key_pair(&self, ciphersuite: openmls_traits::types::Ciphersuite) -> SignatureKeypair {
         let public_key = self
             .credential()
             .signature_key()
             .clone()
-            .into_signature_public_key_enriched(self.credential().signature_scheme());
+            .into_signature_public_key_enriched(ciphersuite.signature_algorithm());
         let private_key = self.signature_private_key.clone();
         SignatureKeypair::from_parts(public_key, private_key)
     }

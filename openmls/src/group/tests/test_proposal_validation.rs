@@ -448,8 +448,10 @@ fn test_valsem101(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
 
     // Now let's create a second proposal and insert it into the commit. We want
     // a different hpke key, different identity, but the same signature key.
-    let dave_credential_bundle =
-        CredentialBundle::from_parts("Dave".into(), charlie_credential_bundle.key_pair());
+    let dave_credential_bundle = CredentialBundle::from_parts(
+        "Dave".into(),
+        charlie_credential_bundle.key_pair(ciphersuite),
+    );
 
     let dave_key_package = KeyPackage::builder()
         .build(

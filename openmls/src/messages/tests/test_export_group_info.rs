@@ -34,7 +34,7 @@ fn export_group_info(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvi
         .verify(
             backend,
             alice_credential_bundle.credential().signature_key(),
-            alice_credential_bundle.credential().signature_scheme(),
+            ciphersuite.signature_algorithm(),
         )
         .expect("signature verification should succeed");
 }

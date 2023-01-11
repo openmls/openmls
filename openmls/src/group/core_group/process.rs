@@ -147,7 +147,7 @@ impl CoreGroup {
                 //  - ValSem010
                 //  - ValSem246 (as part of ValSem010)
                 let plaintext = unverified_message
-                    .into_verified(backend)
+                    .into_verified(backend, self.ciphersuite)
                     .map_err(|_| ProcessMessageError::InvalidSignature)?
                     .take_authenticated_content();
 
@@ -217,7 +217,7 @@ impl CoreGroup {
                 let credential = unverified_new_member_message.credential().clone();
                 // Signature verification
                 let verified_new_member_message = unverified_new_member_message
-                    .into_verified(backend)
+                    .into_verified(backend, self.ciphersuite())
                     .map_err(|_| ProcessMessageError::InvalidSignature)?;
                 let sender = verified_new_member_message
                     .authenticated_content()

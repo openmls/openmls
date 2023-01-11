@@ -220,7 +220,7 @@ impl CoreGroup {
                     .verify_no_out(
                         backend,
                         leaf_node.signature_key(),
-                        leaf_node.credential().signature_scheme(),
+                        self.ciphersuite().signature_algorithm(),
                     )
                     .is_err()
                 {

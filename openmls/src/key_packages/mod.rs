@@ -98,10 +98,7 @@ use crate::{
     versions::ProtocolVersion,
 };
 use openmls_traits::{
-    crypto::OpenMlsCrypto,
-    key_store::OpenMlsKeyStore,
-    types::{Ciphersuite, SignatureScheme},
-    OpenMlsCryptoProvider,
+    crypto::OpenMlsCrypto, key_store::OpenMlsKeyStore, types::Ciphersuite, OpenMlsCryptoProvider,
 };
 use serde::{Deserialize, Serialize};
 use tls_codec::{
@@ -233,10 +230,6 @@ impl KeyPackage {
         extensions: Extensions,
         leaf_node_extensions: Extensions,
     ) -> Result<KeyPackageCreationResult, KeyPackageNewError<KeyStore::Error>> {
-        if SignatureScheme::from(config.ciphersuite) != credential.credential().signature_scheme() {
-            return Err(KeyPackageNewError::CiphersuiteSignatureSchemeMismatch);
-        }
-
         // Create a new HPKE key pair
         let ikm = Secret::random(config.ciphersuite, backend, config.version)
             .map_err(LibraryError::unexpected_crypto_error)?;
@@ -319,6 +312,7 @@ impl KeyPackage {
     pub fn verify(
         &self,
         backend: &impl OpenMlsCryptoProvider,
+        ciphersuite: Ciphersuite,
     ) -> Result<(), KeyPackageVerifyError> {
         // Extension included in the extensions or leaf_node.extensions fields
         // MUST be included in the leaf_node.capabilities field.
@@ -348,7 +342,7 @@ impl KeyPackage {
             self,
             backend,
             self.leaf_node().signature_key(),
-            self.leaf_node().credential().signature_scheme(),
+            ciphersuite.signature_algorithm(),
         )
         .map_err(|_| {
             log::error!("Key package signature is invalid.");

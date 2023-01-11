@@ -28,7 +28,7 @@ fn credential_with_signature_keypair(
         credential
             .signature_key()
             .clone()
-            .into_signature_public_key_enriched(credential.signature_scheme()),
+            .into_signature_public_key_enriched(ciphersuite.signature_algorithm()),
         original_public_key
     );
 }

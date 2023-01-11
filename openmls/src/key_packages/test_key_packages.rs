@@ -40,11 +40,11 @@ fn generate_key_package(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoPr
         .verify_no_out(
             backend,
             credential_bundle.credential().signature_key(),
-            credential_bundle.credential().signature_scheme()
+            ciphersuite.signature_algorithm()
         )
         .is_ok());
     // TODO[FK]: #819 #133 replace with `validate`
-    assert!(KeyPackage::verify(&key_package, backend).is_ok());
+    assert!(KeyPackage::verify(&key_package, backend, ciphersuite).is_ok());
 }
 
 #[apply(ciphersuites_and_backends)]
@@ -91,11 +91,11 @@ fn application_id_extension(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryp
         .verify_no_out(
             backend,
             credential_bundle.credential().signature_key(),
-            credential_bundle.credential().signature_scheme()
+            ciphersuite.signature_algorithm()
         )
         .is_ok());
     // TODO[FK]: #819 #133 replace with `validate`
-    assert!(KeyPackage::verify(&key_package, backend).is_ok());
+    assert!(KeyPackage::verify(&key_package, backend, ciphersuite).is_ok());
 
     // Check ID
     assert_eq!(
@@ -106,56 +106,4 @@ fn application_id_extension(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryp
             .application_id()
             .map(|e| e.as_slice())
     );
-}
-
-#[apply(backends)]
-fn test_mismatch(backend: &impl OpenMlsCryptoProvider) {
-    // === KeyPackage negative test ===
-
-    let ciphersuite_name = Ciphersuite::MLS_128_DHKEMX25519_AES128GCM_SHA256_Ed25519;
-    let signature_scheme = SignatureScheme::ECDSA_SECP256R1_SHA256;
-
-    let credential_bundle = CredentialBundle::new(
-        vec![1, 2, 3],
-        CredentialType::Basic,
-        signature_scheme,
-        backend,
-    )
-    .expect("Could not create credential bundle");
-
-    assert_eq!(
-        KeyPackage::builder().build(
-            CryptoConfig {
-                ciphersuite: ciphersuite_name,
-                version: ProtocolVersion::default(),
-            },
-            backend,
-            &credential_bundle,
-        ),
-        Err(KeyPackageNewError::CiphersuiteSignatureSchemeMismatch)
-    );
-
-    // === KeyPackage positive test ===
-
-    let ciphersuite_name = Ciphersuite::MLS_128_DHKEMX25519_AES128GCM_SHA256_Ed25519;
-    let signature_scheme = SignatureScheme::ED25519;
-
-    let credential_bundle = CredentialBundle::new(
-        vec![1, 2, 3],
-        CredentialType::Basic,
-        signature_scheme,
-        backend,
-    )
-    .expect("Could not create credential bundle");
-
-    assert!(KeyPackage::builder()
-        .build(
-            CryptoConfig {
-                ciphersuite: ciphersuite_name,
-                version: ProtocolVersion::default(),
-            },
-            backend,
-            &credential_bundle,
-        )
-        .is_ok());
 }

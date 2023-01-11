@@ -41,7 +41,9 @@ fn create_commit_optional_path(ciphersuite: Ciphersuite, backend: &impl OpenMlsC
     let alice_update_key_package_bundle =
         KeyPackageBundle::new(backend, ciphersuite, &alice_credential_bundle);
     let alice_update_key_package = alice_update_key_package_bundle.key_package();
-    assert!(alice_update_key_package.verify(backend,).is_ok());
+    assert!(alice_update_key_package
+        .verify(backend, ciphersuite)
+        .is_ok());
 
     // Alice creates a group
     let mut group_alice = CoreGroup::builder(
@@ -373,7 +375,7 @@ fn group_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvid
         .verify(
             backend,
             credential.signature_key(),
-            credential.signature_scheme(),
+            ciphersuite.signature_algorithm(),
         )
         .expect("An unexpected error occurred.");
 
@@ -683,7 +685,7 @@ fn group_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvid
         .verify(
             backend,
             credential.signature_key(),
-            credential.signature_scheme(),
+            ciphersuite.signature_algorithm(),
         )
         .expect("An unexpected error occurred.");
 
@@ -709,7 +711,7 @@ fn group_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvid
         .verify(
             backend,
             credential.signature_key(),
-            credential.signature_scheme(),
+            ciphersuite.signature_algorithm(),
         )
         .expect("An unexpected error occurred.");
 

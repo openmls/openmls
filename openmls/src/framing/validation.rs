@@ -41,7 +41,7 @@
 
 use crate::{group::errors::ValidationError, tree::index::SecretTreeLeafIndex, treesync::TreeSync};
 use core_group::{proposals::QueuedProposal, staged_commit::StagedCommit};
-use openmls_traits::OpenMlsCryptoProvider;
+use openmls_traits::{types::Ciphersuite, OpenMlsCryptoProvider};
 
 use crate::{
     ciphersuite::signable::Verifiable, error::LibraryError,
@@ -289,13 +289,14 @@ impl UnverifiedGroupMessage {
     pub(crate) fn into_verified(
         self,
         backend: &impl OpenMlsCryptoProvider,
+        ciphersuite: Ciphersuite,
     ) -> Result<VerifiedMemberMessage, ValidationError> {
         // ValSem010
         self.verifiable_content
             .verify(
                 backend,
                 self.credential.signature_key(),
-                self.credential.signature_scheme(),
+                ciphersuite.signature_algorithm(),
             )
             .map(|authenticated_content| VerifiedMemberMessage {
                 authenticated_content,
@@ -330,6 +331,7 @@ impl UnverifiedNewMemberMessage {
     pub(crate) fn into_verified(
         self,
         backend: &impl OpenMlsCryptoProvider,
+        ciphersuite: Ciphersuite,
     ) -> Result<VerifiedExternalMessage, ValidationError> {
         // ValSem010
         let verified_external_message = self
@@ -337,7 +339,7 @@ impl UnverifiedNewMemberMessage {
             .verify(
                 backend,
                 self.credential.signature_key(),
-                self.credential.signature_scheme(),
+                ciphersuite.signature_algorithm(),
             )
             .map(|authenticated_content| VerifiedExternalMessage {
                 authenticated_content,

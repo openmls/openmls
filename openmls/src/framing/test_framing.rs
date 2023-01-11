@@ -265,7 +265,7 @@ fn wire_format_checks(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProv
     let result: Result<AuthenticatedContent, SignatureError> = verifiable_plaintext.verify(
         backend,
         credential.signature_key(),
-        credential.signature_scheme(),
+        ciphersuite.signature_algorithm(),
     );
 
     assert_eq!(
