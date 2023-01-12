@@ -195,10 +195,12 @@
 <span id="195">195</span>
 <span id="196">196</span>
 <span id="197">197</span>
+<span id="198">198</span>
+<span id="199">199</span>
 </pre><pre class="rust"><code><span class="kw">use </span>core_group::create_commit_params::CreateCommitParams;
 <span class="kw">use </span>tls_codec::Serialize;
 
-<span class="kw">use crate</span>::{ciphersuite::HpkePublicKey, versions::ProtocolVersion};
+<span class="kw">use crate</span>::{ciphersuite::HpkePublicKey, treesync::LeafNode, versions::ProtocolVersion};
 
 <span class="kw">use super</span>::<span class="kw-2">*</span>;
 
@@ -306,13 +308,13 @@
     </span><span class="kw">pub fn </span>propose_self_update(
         <span class="kw-2">&amp;mut </span><span class="self">self</span>,
         backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider,
-        key_package: <span class="prelude-ty">Option</span>&lt;KeyPackage&gt;, <span class="comment">// FIXME[FK]: #819 this must be a leaf node.
-    </span>) -&gt; <span class="prelude-ty">Result</span>&lt;MlsMessageOut, ProposeSelfUpdateError&gt; {
+        leaf_node: <span class="prelude-ty">Option</span>&lt;LeafNode&gt;,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;MlsMessageOut, ProposeSelfUpdateError&gt; {
         <span class="self">self</span>.is_operational()<span class="question-mark">?</span>;
 
-        <span class="kw">let </span>credential = <span class="kw">if let </span><span class="prelude-val">Some</span>(kp) = <span class="kw-2">&amp;</span>key_package {
+        <span class="kw">let </span>credential = <span class="kw">if let </span><span class="prelude-val">Some</span>(leaf) = <span class="kw-2">&amp;</span>leaf_node {
             <span class="comment">// If there&#39;s a key pair use the credential in there.
-            </span>kp.leaf_node().credential()
+            </span>leaf.credential()
         } <span class="kw">else </span>{
             <span class="comment">// Use the old credential.
             </span><span class="self">self</span>.credential()<span class="question-mark">?
@@ -342,19 +344,21 @@
 
         <span class="comment">// Here we clone our own leaf to rekey it such that we don&#39;t change the
         // tree.
-        // The new leaf node will be applied later when the proposal is commited.
+        // The new leaf node will be applied later when the proposal is committed.
         </span><span class="kw">let </span><span class="kw-2">mut </span>rekeyed_own_leaf = tree
             .own_leaf_node()
             .ok_or_else(|| LibraryError::custom(<span class="string">&quot;The tree is broken. Couldn&#39;t find own leaf.&quot;</span>))<span class="question-mark">?
             </span>.clone();
-        <span class="kw">if let </span><span class="prelude-val">Some</span>(key_package) = key_package {
+        <span class="kw">if let </span><span class="prelude-val">Some</span>(leaf) = leaf_node {
             <span class="kw">let </span>private_key: Vec&lt;u8&gt; = backend
                 .key_store()
-                .read(key_package.hpke_init_key().as_slice())
+                .read(<span class="kw-2">&amp;</span>LeafNode::encryption_key_label(
+                    leaf.signature_key().as_slice(),
+                ))
                 .ok_or(ProposeSelfUpdateError::KeyStoreError)<span class="question-mark">?</span>;
             <span class="kw">let </span>private_key: VLBytes = private_key.into();
             rekeyed_own_leaf.update_encryption_key(
-                (<span class="kw-2">&amp;</span>private_key, key_package.hpke_init_key()),
+                (<span class="kw-2">&amp;</span>private_key, leaf.encryption_key()),
                 <span class="kw-2">&amp;</span>credential_bundle,
                 <span class="self">self</span>.group_id().clone(),
                 backend,

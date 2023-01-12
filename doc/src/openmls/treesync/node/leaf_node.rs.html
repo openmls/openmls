@@ -1001,9 +1001,47 @@
 <span id="1001">1001</span>
 <span id="1002">1002</span>
 <span id="1003">1003</span>
+<span id="1004">1004</span>
+<span id="1005">1005</span>
+<span id="1006">1006</span>
+<span id="1007">1007</span>
+<span id="1008">1008</span>
+<span id="1009">1009</span>
+<span id="1010">1010</span>
+<span id="1011">1011</span>
+<span id="1012">1012</span>
+<span id="1013">1013</span>
+<span id="1014">1014</span>
+<span id="1015">1015</span>
+<span id="1016">1016</span>
+<span id="1017">1017</span>
+<span id="1018">1018</span>
+<span id="1019">1019</span>
+<span id="1020">1020</span>
+<span id="1021">1021</span>
+<span id="1022">1022</span>
+<span id="1023">1023</span>
+<span id="1024">1024</span>
+<span id="1025">1025</span>
+<span id="1026">1026</span>
+<span id="1027">1027</span>
+<span id="1028">1028</span>
+<span id="1029">1029</span>
+<span id="1030">1030</span>
+<span id="1031">1031</span>
+<span id="1032">1032</span>
+<span id="1033">1033</span>
+<span id="1034">1034</span>
+<span id="1035">1035</span>
+<span id="1036">1036</span>
+<span id="1037">1037</span>
+<span id="1038">1038</span>
+<span id="1039">1039</span>
+<span id="1040">1040</span>
 </pre><pre class="rust"><code><span class="doccomment">//! This module contains the [`LeafNode`] struct and its implementation.
 </span><span class="kw">use </span>openmls_traits::{
     crypto::OpenMlsCrypto,
+    key_store::OpenMlsKeyStore,
     types::{Ciphersuite, HpkeKeyPair},
     OpenMlsCryptoProvider,
 };
@@ -1400,6 +1438,44 @@
         <span class="kw">let </span><span class="kw-2">mut </span>kp_key = ENCRYPTION_KEY_LABEL.to_vec();
         kp_key.extend_from_slice(id);
         kp_key
+    }
+
+    <span class="doccomment">/// Generate a fresh leaf node.
+    ///
+    /// This includes generating a new encryption key pair that is stored in the
+    /// key store.
+    ///
+    /// This function can be used when generating an update. In most other cases
+    /// a leaf node should be generated as part of a new [`KeyPackage`].
+    </span><span class="kw">pub fn </span>generate(
+        config: CryptoConfig,
+        credential_bundle: <span class="kw-2">&amp;</span>CredentialBundle,
+        extensions: Extensions,
+        backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, LibraryError&gt; {
+        <span class="comment">// Note that this function is supposed to be used in the public API only
+        // because it is interacting with the key store.
+
+        </span><span class="kw">let </span>(leaf_node, encryption_key_pair) = <span class="self">Self</span>::new(
+            config,
+            credential_bundle,
+            LeafNodeSource::Update,
+            extensions,
+            backend,
+        )<span class="question-mark">?</span>;
+
+        <span class="comment">// Store the encryption key pair in the key store.
+        </span>backend
+            .key_store()
+            .store(
+                <span class="kw-2">&amp;</span><span class="self">Self</span>::encryption_key_label(leaf_node.signature_key().as_slice()),
+                <span class="kw-2">&amp;</span>encryption_key_pair,
+            )
+            .map_err(|<span class="kw">_</span>| {
+                LibraryError::custom(<span class="string">&quot;Unable to store private encryption key into the key store.&quot;</span>)
+            })<span class="question-mark">?</span>;
+
+        <span class="prelude-val">Ok</span>(leaf_node)
     }
 
     <span class="doccomment">/// Create a new [`LeafNode`].
@@ -1986,9 +2062,7 @@
         leaf_node: LeafNode,
     ) -&gt; <span class="self">Self </span>{
         <span class="comment">// Get the encryption key pair from the leaf.
-
-        </span><span class="kw">use </span>openmls_traits::key_store::OpenMlsKeyStore;
-        <span class="kw">let </span>encryption_key_pair: <span class="kw">crate</span>::prelude::HpkeKeyPair = backend
+        </span><span class="kw">let </span>encryption_key_pair: <span class="kw">crate</span>::prelude::HpkeKeyPair = backend
             .key_store()
             .read(<span class="kw-2">&amp;</span>LeafNode::encryption_key_label(signature_key))
             .unwrap();
