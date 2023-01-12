@@ -413,6 +413,9 @@ impl LeafNode {
         extensions: Extensions,
         backend: &impl OpenMlsCryptoProvider,
     ) -> Result<Self, LibraryError> {
+        // Note that this function is supposed to be used in the public API only
+        // because it is interacting with the key store.
+
         let (leaf_node, encryption_key_pair) = Self::new(
             config,
             credential_bundle,
