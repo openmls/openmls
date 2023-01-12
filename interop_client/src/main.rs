@@ -696,7 +696,7 @@ impl MlsClient for MlsClientImpl {
         interop_group.group.set_configuration(&mls_group_config);
         let proposal = interop_group
             .group
-            .propose_self_update(&self.crypto_provider, Some(key_package.clone()))
+            .propose_self_update(&self.crypto_provider, Some(key_package.leaf_node().clone()))
             .map_err(into_status)?
             .to_bytes()
             .unwrap();

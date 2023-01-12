@@ -1,7 +1,7 @@
 use core_group::create_commit_params::CreateCommitParams;
 use tls_codec::Serialize;
 
-use crate::{ciphersuite::HpkePublicKey, versions::ProtocolVersion};
+use crate::{ciphersuite::HpkePublicKey, treesync::LeafNode, versions::ProtocolVersion};
 
 use super::*;
 
@@ -109,13 +109,13 @@ impl MlsGroup {
     pub fn propose_self_update(
         &mut self,
         backend: &impl OpenMlsCryptoProvider,
-        key_package: Option<KeyPackage>, // FIXME[FK]: #819 this must be a leaf node.
+        leaf_node: Option<LeafNode>,
     ) -> Result<MlsMessageOut, ProposeSelfUpdateError> {
         self.is_operational()?;
 
-        let credential = if let Some(kp) = &key_package {
+        let credential = if let Some(leaf) = &leaf_node {
             // If there's a key pair use the credential in there.
-            kp.leaf_node().credential()
+            leaf.credential()
         } else {
             // Use the old credential.
             self.credential()?
@@ -145,19 +145,21 @@ impl MlsGroup {
 
         // Here we clone our own leaf to rekey it such that we don't change the
         // tree.
-        // The new leaf node will be applied later when the proposal is commited.
+        // The new leaf node will be applied later when the proposal is committed.
         let mut rekeyed_own_leaf = tree
             .own_leaf_node()
             .ok_or_else(|| LibraryError::custom("The tree is broken. Couldn't find own leaf."))?
             .clone();
-        if let Some(key_package) = key_package {
+        if let Some(leaf) = leaf_node {
             let private_key: Vec<u8> = backend
                 .key_store()
-                .read(key_package.hpke_init_key().as_slice())
+                .read(&LeafNode::encryption_key_label(
+                    leaf.signature_key().as_slice(),
+                ))
                 .ok_or(ProposeSelfUpdateError::KeyStoreError)?;
             let private_key: VLBytes = private_key.into();
             rekeyed_own_leaf.update_encryption_key(
-                (&private_key, key_package.hpke_init_key()),
+                (&private_key, leaf.encryption_key()),
                 &credential_bundle,
                 self.group_id().clone(),
                 backend,

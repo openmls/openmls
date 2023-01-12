@@ -22,7 +22,7 @@ use crate::{
         proposals::{AddProposal, Proposal, ProposalOrRef, RemoveProposal, UpdateProposal},
         Welcome,
     },
-    treesync::errors::ApplyUpdatePathError,
+    treesync::{errors::ApplyUpdatePathError, LeafNode},
     versions::ProtocolVersion,
 };
 
@@ -1722,21 +1722,21 @@ fn test_valsem109(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
         .store(&credential_id, &new_cb)
         .expect("An unexpected error occurred.");
 
-    let update_kp = KeyPackage::builder()
-        .build(
-            CryptoConfig {
-                ciphersuite,
-                version: ProtocolVersion::default(),
-            },
-            backend,
-            &new_cb,
-        )
-        .unwrap();
+    let update_leaf_node = LeafNode::generate(
+        CryptoConfig {
+            ciphersuite,
+            version: ProtocolVersion::default(),
+        },
+        &new_cb,
+        Extensions::default(),
+        backend,
+    )
+    .unwrap();
 
     // We first go the manual route
     let update_proposal = bob_group
-        .propose_self_update(backend, Some(update_kp))
-        .expect("error while creating remove proposal");
+        .propose_self_update(backend, Some(update_leaf_node))
+        .expect("error while creating update proposal");
 
     // Have Alice process this proposal.
     if let ProcessedMessageContent::ProposalMessage(proposal) = alice_group
