@@ -1,6 +1,7 @@
 //! This module contains the [`LeafNode`] struct and its implementation.
 use openmls_traits::{
     crypto::OpenMlsCrypto,
+    key_store::OpenMlsKeyStore,
     types::{Ciphersuite, HpkeKeyPair},
     OpenMlsCryptoProvider,
 };
@@ -421,6 +422,44 @@ impl LeafNode {
         let mut kp_key = ENCRYPTION_KEY_LABEL.to_vec();
         kp_key.extend_from_slice(id);
         kp_key
+    }
+
+    /// Generate a fresh leaf node.
+    ///
+    /// This includes generating a new encryption key pair that is stored in the
+    /// key store.
+    ///
+    /// This function can be used when generating an update. In most other cases
+    /// a leaf node should be generated as part of a new [`KeyPackage`].
+    pub fn generate(
+        config: CryptoConfig,
+        credential_bundle: &CredentialBundle,
+        extensions: Extensions,
+        backend: &impl OpenMlsCryptoProvider,
+    ) -> Result<Self, LibraryError> {
+        // Note that this function is supposed to be used in the public API only
+        // because it is interacting with the key store.
+
+        let (leaf_node, encryption_key_pair) = Self::new(
+            config,
+            credential_bundle,
+            LeafNodeSource::Update,
+            extensions,
+            backend,
+        )?;
+
+        // Store the encryption key pair in the key store.
+        backend
+            .key_store()
+            .store(
+                &Self::encryption_key_label(leaf_node.signature_key().as_slice()),
+                &encryption_key_pair,
+            )
+            .map_err(|_| {
+                LibraryError::custom("Unable to store private encryption key into the key store.")
+            })?;
+
+        Ok(leaf_node)
     }
 
     /// Create a new [`LeafNode`].
@@ -994,8 +1033,6 @@ impl OpenMlsLeafNode {
         leaf_node: LeafNode,
     ) -> Self {
         // Get the encryption key pair from the leaf.
-
-        use openmls_traits::key_store::OpenMlsKeyStore;
         let encryption_key_pair: crate::prelude::HpkeKeyPair = backend
             .key_store()
             .read(&LeafNode::encryption_key_label(signature_key))
