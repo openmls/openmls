@@ -25,6 +25,7 @@ use crate::{
     treesync::{errors::ApplyUpdatePathError, LeafNode},
     versions::ProtocolVersion,
 };
+use crate::treesync::node::leaf_node::Capabilities;
 
 use super::utils::{generate_credential_bundle, generate_key_package, resign_message};
 
@@ -1728,6 +1729,7 @@ fn test_valsem109(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
             version: ProtocolVersion::default(),
         },
         &new_cb,
+        Capabilities::default(),
         Extensions::default(),
         backend,
     )

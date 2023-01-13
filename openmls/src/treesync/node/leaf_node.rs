@@ -434,6 +434,7 @@ impl LeafNode {
     pub fn generate(
         config: CryptoConfig,
         credential_bundle: &CredentialBundle,
+        capabilities: Capabilities,
         extensions: Extensions,
         backend: &impl OpenMlsCryptoProvider,
     ) -> Result<Self, LibraryError> {
@@ -444,6 +445,7 @@ impl LeafNode {
             config,
             credential_bundle,
             LeafNodeSource::Update,
+            capabilities,
             extensions,
             backend,
         )?;
