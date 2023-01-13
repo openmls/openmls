@@ -738,10 +738,6 @@ impl From<KeyPackage> for OpenMlsLeafNode {
 
 impl OpenMlsLeafNode {
     /// Generate a new [`OpenMlsLeafNode`] for a new tree.
-    ///
-    /// Note that no [`Capabilities`] or [`Extension`]s are added.
-    /// [`Capabilities`] and [`Extension`]s can be added later with
-    /// [`add_capabilities()`] and [`add_extension`].
     pub(crate) fn new(
         config: CryptoConfig,
         leaf_node_source: LeafNodeSource,
