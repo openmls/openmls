@@ -506,8 +506,6 @@
 <span id="506">506</span>
 <span id="507">507</span>
 <span id="508">508</span>
-<span id="509">509</span>
-<span id="510">510</span>
 </pre><pre class="rust"><code><span class="doccomment">//! This module implements the ratchet tree component of MLS.
 //!
 //! It exposes the [`Node`] enum that can contain either a [`LeafNode`] or a [`ParentNode`].
@@ -608,17 +606,15 @@
         capabilities: Capabilities,
         extensions: Extensions,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(<span class="self">Self</span>, CommitSecret), LibraryError&gt; {
-        <span class="kw">let </span><span class="kw-2">mut </span>leaf = OpenMlsLeafNode::new(
+        <span class="kw">let </span>leaf = OpenMlsLeafNode::new(
             config,
             <span class="comment">// Creation of a group is considered to be from a key package.
             </span>LeafNodeSource::KeyPackage(life_time),
             backend,
             credential_bundle,
+            capabilities,
+            extensions,
         )<span class="question-mark">?</span>;
-        leaf.add_capabilities(capabilities);
-        extensions
-            .iter()
-            .for_each(|extension| leaf.add_extension(extension.clone()));
 
         <span class="kw">let </span>node = Node::LeafNode(leaf);
         <span class="kw">let </span>path_secret: PathSecret = Secret::random(config.ciphersuite, backend, <span class="prelude-val">None</span>)

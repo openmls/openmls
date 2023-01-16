@@ -1038,6 +1038,19 @@
 <span id="1038">1038</span>
 <span id="1039">1039</span>
 <span id="1040">1040</span>
+<span id="1041">1041</span>
+<span id="1042">1042</span>
+<span id="1043">1043</span>
+<span id="1044">1044</span>
+<span id="1045">1045</span>
+<span id="1046">1046</span>
+<span id="1047">1047</span>
+<span id="1048">1048</span>
+<span id="1049">1049</span>
+<span id="1050">1050</span>
+<span id="1051">1051</span>
+<span id="1052">1052</span>
+<span id="1053">1053</span>
 </pre><pre class="rust"><code><span class="doccomment">//! This module contains the [`LeafNode`] struct and its implementation.
 </span><span class="kw">use </span>openmls_traits::{
     crypto::OpenMlsCrypto,
@@ -1211,31 +1224,6 @@
         <span class="kw-2">&amp;</span><span class="self">self</span>.credentials
     }
 
-    <span class="doccomment">/// Add new capabilities to this leaf node.
-    /// The `new_capabilities` are merged into the existing [`Capabilities`] and
-    /// duplicates are ignored.
-    </span><span class="kw">fn </span>add(<span class="kw-2">&amp;mut </span><span class="self">self</span>, <span class="kw-2">mut </span>new_capabilities: Capabilities) {
-        <span class="self">self</span>.versions.append(<span class="kw-2">&amp;mut </span>new_capabilities.versions);
-        <span class="self">self</span>.versions.sort();
-        <span class="self">self</span>.versions.dedup();
-
-        <span class="self">self</span>.ciphersuites.append(<span class="kw-2">&amp;mut </span>new_capabilities.ciphersuites);
-        <span class="self">self</span>.ciphersuites.sort();
-        <span class="self">self</span>.ciphersuites.dedup();
-
-        <span class="self">self</span>.extensions.append(<span class="kw-2">&amp;mut </span>new_capabilities.extensions);
-        <span class="self">self</span>.extensions.sort();
-        <span class="self">self</span>.extensions.dedup();
-
-        <span class="self">self</span>.proposals.append(<span class="kw-2">&amp;mut </span>new_capabilities.proposals);
-        <span class="self">self</span>.proposals.sort();
-        <span class="self">self</span>.proposals.dedup();
-
-        <span class="self">self</span>.credentials.append(<span class="kw-2">&amp;mut </span>new_capabilities.credentials);
-        <span class="self">self</span>.credentials.sort();
-        <span class="self">self</span>.credentials.dedup();
-    }
-
     <span class="doccomment">/// Check if these [`Capabilities`] support all the capabilities
     /// required by the given [`RequiredCapabilities`] extension. Returns
     /// `true` if that is the case and `false` otherwise.
@@ -1294,7 +1282,28 @@
     leaf_index: LeafNodeIndex,
 }
 
-<span class="attribute">#[derive(Debug)]
+<span class="doccomment">/// Helper struct that holds additional information required to sign a leaf node.
+///
+/// ```c
+/// // draft-ietf-mls-protocol-17
+/// struct {
+///     // ... continued from [`LeafNodeTbs`] ...
+///
+///     select (LeafNodeTBS.leaf_node_source) {
+///         case key_package:
+///             struct{};
+///
+///         case update:
+///             opaque group_id&lt;V&gt;;
+///             uint32 leaf_index;
+///
+///         case commit:
+///             opaque group_id&lt;V&gt;;
+///             uint32 leaf_index;
+///     };
+/// } LeafNodeTBS;
+/// ```
+</span><span class="attribute">#[derive(Debug)]
 </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">enum </span>TreeInfoTbs {
     KeyPackage(),
     Update(TreePosition),
@@ -1347,7 +1356,34 @@
     extensions: Extensions,
 }
 
-<span class="attribute">#[derive(Debug)]
+<span class="doccomment">/// To-be-signed leaf node.
+///
+/// ```c
+/// // draft-ietf-mls-protocol-17
+/// struct {
+///     HPKEPublicKey encryption_key;
+///     SignaturePublicKey signature_key;
+///     Credential credential;
+///     Capabilities capabilities;
+///
+///     LeafNodeSource leaf_node_source;
+///     select (LeafNodeTBS.leaf_node_source) {
+///         case key_package:
+///             Lifetime lifetime;
+///
+///         case update:
+///             struct{};
+///
+///         case commit:
+///             opaque parent_hash&lt;V&gt;;
+///     };
+///
+///     Extension extensions&lt;V&gt;;
+///
+///     // ... continued in [`TreeInfoTbs`] ...
+/// } LeafNodeTBS;
+/// ```
+</span><span class="attribute">#[derive(Debug)]
 </span><span class="kw">pub struct </span>LeafNodeTbs {
     payload: LeafNodePayload,
     tree_info: TreeInfoTbs,
@@ -1392,7 +1428,8 @@
 
 <span class="doccomment">/// This struct implements the MLS leaf node.
 ///
-/// ```text
+/// ```c
+/// // draft-ietf-mls-protocol-17
 /// struct {
 ///     HPKEPublicKey encryption_key;
 ///     SignaturePublicKey signature_key;
@@ -1450,6 +1487,7 @@
     </span><span class="kw">pub fn </span>generate(
         config: CryptoConfig,
         credential_bundle: <span class="kw-2">&amp;</span>CredentialBundle,
+        capabilities: Capabilities,
         extensions: Extensions,
         backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, LibraryError&gt; {
@@ -1460,6 +1498,7 @@
             config,
             credential_bundle,
             LeafNodeSource::Update,
+            capabilities,
             extensions,
             backend,
         )<span class="question-mark">?</span>;
@@ -1489,6 +1528,7 @@
         config: CryptoConfig,
         credential_bundle: <span class="kw-2">&amp;</span>CredentialBundle,
         leaf_node_source: LeafNodeSource,
+        capabilities: Capabilities,
         extensions: Extensions,
         backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(<span class="self">Self</span>, HpkeKeyPair), LibraryError&gt; {
@@ -1503,6 +1543,7 @@
             encryption_key_pair.public.clone().into(),
             credential_bundle,
             leaf_node_source,
+            capabilities,
             extensions,
             backend,
         )<span class="question-mark">?</span>;
@@ -1516,6 +1557,7 @@
         encryption_key: HpkePublicKey,
         credential_bundle: <span class="kw-2">&amp;</span>CredentialBundle,
         leaf_node_source: LeafNodeSource,
+        capabilities: Capabilities,
         extensions: Extensions,
         backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, LibraryError&gt; {
@@ -1523,8 +1565,8 @@
             encryption_key,
             credential_bundle.credential().signature_key().clone(),
             credential_bundle.credential().clone(),
-            Capabilities::default(), <span class="comment">// XXX: add function to allow pass this in
-            </span>leaf_node_source,
+            capabilities,
+            leaf_node_source,
             extensions,
         )<span class="question-mark">?</span>;
 
@@ -1618,6 +1660,7 @@
         encryption_key: HpkePublicKey,
         credential_bundle: <span class="kw-2">&amp;</span>CredentialBundle,
         leaf_node_source: LeafNodeSource,
+        capabilities: Capabilities,
         extensions: Extensions,
         backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, LibraryError&gt; {
@@ -1625,6 +1668,7 @@
             encryption_key,
             credential_bundle,
             leaf_node_source,
+            capabilities,
             extensions,
             backend,
         )
@@ -1788,21 +1832,20 @@
 
 <span class="kw">impl </span>OpenMlsLeafNode {
     <span class="doccomment">/// Generate a new [`OpenMlsLeafNode`] for a new tree.
-    ///
-    /// Note that no [`Capabilities`] or [`Extension`]s are added.
-    /// [`Capabilities`] and [`Extension`]s can be added later with
-    /// [`add_capabilities()`] and [`add_extension`].
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>new(
         config: CryptoConfig,
         leaf_node_source: LeafNodeSource,
         backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider,
         credential_bundle: <span class="kw-2">&amp;</span>CredentialBundle,
+        capabilities: Capabilities,
+        extensions: Extensions,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, LibraryError&gt; {
         <span class="kw">let </span>(leaf_node, encryption_key_pair) = LeafNode::new(
             config,
             credential_bundle,
             leaf_node_source,
-            Extensions::empty(),
+            capabilities,
+            extensions,
             backend,
         )<span class="question-mark">?</span>;
 
@@ -1811,23 +1854,6 @@
             private_key: <span class="prelude-val">Some</span>(encryption_key_pair.private.into()),
             leaf_index: <span class="prelude-val">Some</span>(LeafNodeIndex::new(<span class="number">0</span>)),
         })
-    }
-
-    <span class="doccomment">/// Add new capabilities to this leaf node.
-    /// The `new_capabilities` are merged into the existing [`Capabilities`] and
-    /// duplicates are ignored.
-    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>add_capabilities(<span class="kw-2">&amp;mut </span><span class="self">self</span>, new_capabilities: Capabilities) {
-        <span class="self">self</span>.leaf_node.payload.capabilities.add(new_capabilities);
-    }
-
-    <span class="doccomment">/// Add new extension to this leaf node.
-    /// The `new_extension` is add to the existing [`Extension`]s. If the
-    /// [`Extension`] exists, it is overridden.
-    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>add_extension(<span class="kw-2">&amp;mut </span><span class="self">self</span>, new_extension: Extension) {
-        <span class="self">self</span>.leaf_node
-            .payload
-            .extensions
-            .add_or_replace(new_extension);
     }
 
     <span class="doccomment">/// Return a reference to the `encryption_key` of this [`LeafNode`].

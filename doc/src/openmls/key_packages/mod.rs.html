@@ -676,6 +676,8 @@
 <span id="676">676</span>
 <span id="677">677</span>
 <span id="678">678</span>
+<span id="679">679</span>
+<span id="680">680</span>
 </pre><pre class="rust"><code><span class="doccomment">//! # Key Packages
 //!
 //! Key packages are pre-published public keys that provide some information
@@ -767,7 +769,7 @@
     extensions::Extensions,
     group::config::CryptoConfig,
     treesync::{
-        node::leaf_node::{LeafNodeSource, Lifetime},
+        node::leaf_node::{Capabilities, LeafNodeSource, Lifetime},
         LeafNode,
     },
     versions::ProtocolVersion,
@@ -945,6 +947,7 @@
             config,
             credential, <span class="comment">// FIXME
             </span>LeafNodeSource::KeyPackage(Lifetime::default()),
+            Capabilities::default(),
             leaf_node_extensions,
             backend,
         )<span class="question-mark">?</span>;
@@ -1153,6 +1156,7 @@
             encryption_key,
             credential,
             LeafNodeSource::KeyPackage(Lifetime::default()),
+            Capabilities::default(),
             Extensions::empty(),
             backend,
         )
