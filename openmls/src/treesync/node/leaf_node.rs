@@ -473,26 +473,6 @@ impl LeafNode {
             .map_err(|_| LibraryError::custom("Signing failed"))
     }
 
-    /// Expose [`new_with_key`] for tests.
-    #[cfg(any(feature = "test-utils", test))]
-    pub(crate) fn create_new_with_key(
-        encryption_key: HpkePublicKey,
-        credential_bundle: &CredentialBundle,
-        leaf_node_source: LeafNodeSource,
-        capabilities: Capabilities,
-        extensions: Extensions,
-        backend: &impl OpenMlsCryptoProvider,
-    ) -> Result<Self, LibraryError> {
-        Self::new_with_key(
-            encryption_key,
-            credential_bundle,
-            leaf_node_source,
-            capabilities,
-            extensions,
-            backend,
-        )
-    }
-
     /// Generate a fresh leaf node.
     ///
     /// This includes generating a new encryption key pair that is stored in the
@@ -658,6 +638,28 @@ impl LeafNode {
             .iter()
             .any(|pt| pt == proposal_type)
             || default_proposals().iter().any(|pt| pt == proposal_type)
+    }
+}
+
+#[cfg(any(feature = "test-utils", test))]
+impl LeafNode {
+    /// Expose [`new_with_key`] for tests.
+    pub(crate) fn create_new_with_key(
+        encryption_key: HpkePublicKey,
+        credential_bundle: &CredentialBundle,
+        leaf_node_source: LeafNodeSource,
+        capabilities: Capabilities,
+        extensions: Extensions,
+        backend: &impl OpenMlsCryptoProvider,
+    ) -> Result<Self, LibraryError> {
+        Self::new_with_key(
+            encryption_key,
+            credential_bundle,
+            leaf_node_source,
+            capabilities,
+            extensions,
+            backend,
+        )
     }
 }
 
