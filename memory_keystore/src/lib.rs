@@ -8,7 +8,7 @@ pub struct MemoryKeyStore {
 
 impl OpenMlsKeyStore for MemoryKeyStore {
     /// The error type returned by the [`OpenMlsKeyStore`].
-    type Error = Error;
+    type Error = MemoryKeyStoreError;
 
     /// Store a value `v` that implements the [`KeyStoreValue`] trait for
     /// serialization for ID `k`.
@@ -17,7 +17,7 @@ impl OpenMlsKeyStore for MemoryKeyStore {
     fn store<V: ToKeyStoreValue>(&self, k: &[u8], v: &V) -> Result<(), Self::Error> {
         let value = v
             .to_key_store_value()
-            .map_err(|_| Error::SerializationError)?;
+            .map_err(|_| MemoryKeyStoreError::SerializationError)?;
         // We unwrap here, because this is the only function claiming a write
         // lock on `credential_bundles`. It only holds the lock very briefly and
         // should not panic during that period.
@@ -55,7 +55,7 @@ impl OpenMlsKeyStore for MemoryKeyStore {
 
 /// Errors thrown by the key store.
 #[derive(thiserror::Error, Debug, Copy, Clone, PartialEq, Eq)]
-pub enum Error {
+pub enum MemoryKeyStoreError {
     #[error("The key store does not allow storing serialized values.")]
     UnsupportedValueTypeBytes,
     #[error("Updating is not supported by this key store.")]

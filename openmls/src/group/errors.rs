@@ -6,7 +6,7 @@ use crate::{
     error::LibraryError,
     extensions::errors::ExtensionError,
     framing::errors::{MessageDecryptionError, SenderError},
-    key_packages::errors::KeyPackageExtensionSupportError,
+    key_packages::errors::{KeyPackageExtensionSupportError, KeyPackageNewError},
     schedule::errors::PskError,
     treesync::errors::*,
 };
@@ -18,7 +18,7 @@ pub use super::mls_group::errors::*;
 
 /// Welcome error
 #[derive(Error, Debug, PartialEq, Clone)]
-pub enum WelcomeError {
+pub enum WelcomeError<KeyStoreError> {
     /// See [`LibraryError`] for more details.
     #[error(transparent)]
     LibraryError(#[from] LibraryError),
@@ -73,12 +73,9 @@ pub enum WelcomeError {
     /// No matching key package was found in the key store.
     #[error("No matching key package was found in the key store.")]
     NoMatchingKeyPackage,
-    /// Failed to delete the KeyPackageBundle from the key store.
-    #[error("Failed to delete the KeyPackageBundle from the key store.")]
-    KeyStoreDeletionError,
-    /// Failed to store HPKE private keys in the key store.
-    #[error("Failed to store HPKE private keys in the key store.")]
-    KeyStorageError,
+    /// Error accessing the key store.
+    #[error("Error accessing the key store.")]
+    KeyStoreError(KeyStoreError),
     /// This error indicates the public tree is invalid. See [`PublicTreeError`] for more details.
     #[error(transparent)]
     PublicTreeError(#[from] PublicTreeError),
@@ -179,11 +176,14 @@ pub enum StageCommitError {
     /// See [`ApplyUpdatePathError`] for more details.
     #[error(transparent)]
     UpdatePathError(#[from] ApplyUpdatePathError),
+    /// Missing decryption key.
+    #[error("Missing decryption key.")]
+    MissingDecryptionKey,
 }
 
 /// Create commit error
 #[derive(Error, Debug, PartialEq, Clone)]
-pub enum CreateCommitError {
+pub enum CreateCommitError<KeyStoreError> {
     /// See [`LibraryError`] for more details.
     #[error(transparent)]
     LibraryError(#[from] LibraryError),
@@ -205,6 +205,15 @@ pub enum CreateCommitError {
     /// See [`ProposalValidationError`] for more details.
     #[error(transparent)]
     ProposalValidationError(#[from] ProposalValidationError),
+    /// CredentialBundle and group ciphersuite are incompatible.
+    #[error("CredentialBundle and group ciphersuite are incompatible.")]
+    IncompatibleCredential,
+    /// Error interacting with the key store.
+    #[error("Error interacting with the key store.")]
+    KeyStoreError(KeyStoreError),
+    /// See [`KeyPackageNewError`] for more details.
+    #[error(transparent)]
+    KeyPackageGenerationError(#[from] KeyPackageNewError<KeyStoreError>),
 }
 
 /// Validation error
@@ -426,7 +435,7 @@ pub(crate) enum ApplyProposalsError {
 
 // Core group build error
 #[derive(Error, Debug, PartialEq, Clone)]
-pub(crate) enum CoreGroupBuildError {
+pub(crate) enum CoreGroupBuildError<KeyStoreError> {
     /// See [`LibraryError`] for more details.
     #[error(transparent)]
     LibraryError(#[from] LibraryError),
@@ -439,6 +448,9 @@ pub(crate) enum CoreGroupBuildError {
     /// See [`PskError`] for more details.
     #[error(transparent)]
     PskError(#[from] PskError),
+    /// Error storing leaf private key in key store.
+    #[error("Error storing leaf private key in key store.")]
+    KeyStoreError(KeyStoreError),
 }
 
 // CoreGroup parse message error

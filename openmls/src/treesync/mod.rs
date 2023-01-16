@@ -41,7 +41,10 @@ use crate::{
 
 use self::{
     diff::{StagedTreeSyncDiff, TreeSyncDiff},
-    node::leaf_node::{Capabilities, LeafNodeSource, Lifetime, OpenMlsLeafNode},
+    node::{
+        encryption_keys::{EncryptionKey, EncryptionKeyPair},
+        leaf_node::{Capabilities, LeafNodeSource, Lifetime, OpenMlsLeafNode},
+    },
     treesync_node::{TreeSyncLeafNode, TreeSyncNode, TreeSyncParentNode},
 };
 
@@ -97,7 +100,7 @@ impl TreeSync {
         life_time: Lifetime,
         capabilities: Capabilities,
         extensions: Extensions,
-    ) -> Result<(Self, CommitSecret), LibraryError> {
+    ) -> Result<(Self, CommitSecret, EncryptionKeyPair), LibraryError> {
         let (mut leaf, encryption_key_pair) = OpenMlsLeafNode::new(
             config,
             // Creation of a group is considered to be from a key package.
@@ -128,7 +131,7 @@ impl TreeSync {
         // Populate tree hash caches.
         tree_sync.populate_parent_hashes(backend, config.ciphersuite)?;
 
-        Ok((tree_sync, commit_secret))
+        Ok((tree_sync, commit_secret, encryption_key_pair))
     }
 
     /// Return the tree hash of the root node of the tree.
@@ -403,7 +406,7 @@ impl TreeSync {
 
         // Get the first leaf.
         if let Some(leaf) = leaves.next() {
-            nodes.push(leaf.node_without_private_key().map(Node::LeafNode));
+            nodes.push(leaf.node().clone().map(Node::LeafNode));
         } else {
             // The tree was empty.
             return vec![];
@@ -428,8 +431,8 @@ impl TreeSync {
 
         // Interleave the leaves and parents.
         for (leaf, parent) in leaves.zip(parents) {
-            nodes.push(parent.node_without_private_key().map(Node::ParentNode));
-            nodes.push(leaf.node_without_private_key().map(Node::LeafNode));
+            nodes.push(parent.node().clone().map(Node::ParentNode));
+            nodes.push(leaf.node().clone().map(Node::LeafNode));
         }
 
         nodes
@@ -462,15 +465,12 @@ impl TreeSync {
         is_node_in_tree(leaf_index.into(), self.tree.size())
     }
 
-    /// Return an iterator over references to all [`HpkePublicKey`]s for which
-    /// we should have the corresponding private keys.
-    pub(crate) fn owned_hpke_keys(&self) -> Vec<HpkePublicKey> {
-        // FIXME: This is a temporary measure. Neither the creation of a diff
-        // nor the clone should be necessary.
+    /// Return a vector containing all [`HpkePublicKey`]s for which we should
+    /// have the corresponding private keys.
+    pub(crate) fn owned_encryption_keys(&self) -> Vec<EncryptionKey> {
         self.empty_diff()
-            .owned_hpke_keys()
-            .iter()
-            .map(|&pk| pk.clone())
-            .collect()
+            .owned_encryption_keys()
+            .cloned()
+            .collect::<Vec<EncryptionKey>>()
     }
 }

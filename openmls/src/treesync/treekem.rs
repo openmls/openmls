@@ -10,7 +10,7 @@ use tls_codec::{TlsDeserialize, TlsSerialize, TlsSize};
 
 use openmls_traits::{
     crypto::OpenMlsCrypto,
-    types::{Ciphersuite, HpkeCiphertext, HpkeKeyPair},
+    types::{Ciphersuite, HpkeCiphertext},
     OpenMlsCryptoProvider,
 };
 use serde::{Deserialize, Serialize};
@@ -27,7 +27,10 @@ use crate::{
 
 use super::{
     diff::TreeSyncDiff,
-    node::parent_node::{ParentNode, PlainUpdatePathNode},
+    node::{
+        encryption_keys::{EncryptionKey, EncryptionKeyPair},
+        parent_node::{ParentNode, PlainUpdatePathNode},
+    },
     ApplyUpdatePathError, LeafNode,
 };
 
@@ -93,8 +96,8 @@ impl<'a> TreeSyncDiff<'a> {
         backend: &impl OpenMlsCryptoProvider,
         ciphersuite: Ciphersuite,
         params: DecryptPathParams,
-        owned_keys: &[HpkeKeyPair],
-    ) -> Result<(Vec<ParentNode>, Vec<HpkeKeyPair>, CommitSecret), ApplyUpdatePathError> {
+        owned_keys: &[EncryptionKeyPair],
+    ) -> Result<(Vec<ParentNode>, Vec<EncryptionKeyPair>, CommitSecret), ApplyUpdatePathError> {
         // ValSem202: Path must be the right length
         let direct_path_length = self.filtered_direct_path(params.sender_leaf_index).len();
         if direct_path_length != params.update_path.len() {
@@ -135,7 +138,7 @@ impl<'a> TreeSyncDiff<'a> {
             ciphersuite,
             params.version,
             ciphertext,
-            &decryption_key,
+            decryption_key,
             params.group_context,
         )
         .map_err(|_| ApplyUpdatePathError::UnableToDecrypt)?;
@@ -197,7 +200,7 @@ pub(crate) struct DecryptPathParams<'a> {
     Debug, Eq, PartialEq, Clone, Serialize, Deserialize, TlsDeserialize, TlsSerialize, TlsSize,
 )]
 pub struct UpdatePathNode {
-    pub(super) public_key: HpkePublicKey,
+    pub(super) public_key: EncryptionKey,
     pub(super) encrypted_path_secrets: Vec<HpkeCiphertext>,
 }
 
@@ -209,7 +212,7 @@ impl UpdatePathNode {
 
     /// Return the `public_key`.
     fn public_key(&self) -> &HpkePublicKey {
-        &self.public_key
+        self.public_key.key()
     }
 
     /// Flip the last byte of every `encrypted_path_secret` in this node.

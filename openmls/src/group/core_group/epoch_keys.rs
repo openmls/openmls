@@ -45,7 +45,6 @@ pub(crate) struct EpochPrivateKeys {
 
 impl EpochPrivateKeys {
     pub(crate) fn new(
-        backend: &impl OpenMlsCryptoProvider,
         ciphersuite: Ciphersuite,
         version: ProtocolVersion,
         epoch: GroupEpoch,

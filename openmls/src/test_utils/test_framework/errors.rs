@@ -1,6 +1,8 @@
+use openmls_traits::key_store::OpenMlsKeyStore;
 use thiserror::Error;
 
 use crate::{error::LibraryError, group::errors::*};
+use openmls_rust_crypto::{MemoryKeyStore, MemoryKeyStoreError};
 
 /// Setup error
 #[derive(Error, Debug, PartialEq, Clone)]
@@ -50,7 +52,7 @@ pub enum ClientError {
     NoCiphersuite,
     /// See [`WelcomeError`] for more details.
     #[error(transparent)]
-    FailedToJoinGroup(#[from] WelcomeError),
+    FailedToJoinGroup(#[from] WelcomeError<MemoryKeyStoreError>),
     #[error(transparent)]
     TlsCodecError(#[from] tls_codec::Error),
     /// See [`ProcessMessageError`] for more details.
@@ -61,10 +63,10 @@ pub enum ClientError {
     MlsGroupStateError(#[from] MlsGroupStateError),
     /// See [`AddMembersError`] for more details.
     #[error(transparent)]
-    AddMembersError(#[from] AddMembersError),
+    AddMembersError(#[from] AddMembersError<MemoryKeyStoreError>),
     /// See [`RemoveMembersError`] for more details.
     #[error(transparent)]
-    RemoveMembersError(#[from] RemoveMembersError),
+    RemoveMembersError(#[from] RemoveMembersError<MemoryKeyStoreError>),
     /// See [`ProposeAddMemberError`] for more details.
     #[error(transparent)]
     ProposeAddMemberError(#[from] ProposeAddMemberError),
@@ -76,13 +78,19 @@ pub enum ClientError {
     ExportSecretError(#[from] ExportSecretError),
     /// See [`NewGroupError`] for more details.
     #[error(transparent)]
-    NewGroupError(#[from] NewGroupError),
+    NewGroupError(#[from] NewGroupError<MemoryKeyStoreError>),
     /// See [`SelfUpdateError`] for more details.
     #[error(transparent)]
-    SelfUpdateError(#[from] SelfUpdateError),
+    SelfUpdateError(#[from] SelfUpdateError<MemoryKeyStoreError>),
     /// See [`ProposeSelfUpdateError`] for more details.
     #[error(transparent)]
     ProposeSelfUpdateError(#[from] ProposeSelfUpdateError),
+    /// See [`MergePendingCommitError`] for more details.
+    #[error(transparent)]
+    MergePendingCommitError(#[from] MergePendingCommitError<MemoryKeyStoreError>),
+    /// See [`MemoryKeyStoreError`] for more details.
+    #[error(transparent)]
+    KeyStoreError(#[from] MemoryKeyStoreError),
     /// See [`LibraryError`] for more details.
     #[error(transparent)]
     LibraryError(#[from] LibraryError),

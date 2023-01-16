@@ -13,7 +13,7 @@ mod validation;
 // Crate
 pub(crate) mod create_commit;
 pub(crate) mod create_commit_params;
-pub(crate) mod epoch_keys;
+//pub(crate) mod epoch_keys;
 pub(crate) mod new_from_external_init;
 pub(crate) mod past_secrets;
 pub(crate) mod process;
@@ -59,6 +59,7 @@ use crate::{
 
 use self::{past_secrets::MessageSecretsStore, staged_commit::StagedCommit};
 use log::{debug, trace};
+use openmls_traits::key_store::OpenMlsKeyStore;
 use openmls_traits::{crypto::OpenMlsCrypto, types::Ciphersuite};
 use serde::{Deserialize, Serialize};
 #[cfg(test)]
@@ -199,11 +200,11 @@ impl CoreGroupBuilder {
     ///
     /// This function performs cryptographic operations and there requires an
     /// [`OpenMlsCryptoProvider`].
-    pub(crate) fn build(
+    pub(crate) fn build<KeyStore: OpenMlsKeyStore>(
         self,
         credential_bundle: &CredentialBundle,
-        backend: &impl OpenMlsCryptoProvider,
-    ) -> Result<CoreGroup, CoreGroupBuildError> {
+        backend: &impl OpenMlsCryptoProvider<KeyStoreProvider = KeyStore>,
+    ) -> Result<CoreGroup, CoreGroupBuildError<KeyStore::Error>> {
         let ciphersuite = self.crypto_config.ciphersuite;
         let config = self.config.unwrap_or_default();
         let capabilities = self
@@ -214,7 +215,7 @@ impl CoreGroupBuilder {
 
         debug!("Created group {:x?}", self.group_id);
         trace!(" >>> with {:?}, {:?}", ciphersuite, config);
-        let (tree, commit_secret) = TreeSync::new(
+        let (tree, commit_secret, leaf_keypair) = TreeSync::new(
             backend,
             CryptoConfig {
                 ciphersuite,
@@ -231,6 +232,11 @@ impl CoreGroupBuilder {
             ),
             self.own_leaf_extensions,
         )?;
+
+        // Store the private key of the own leaf in the key store.
+        leaf_keypair
+            .write_to_key_store(backend)
+            .map_err(CoreGroupBuildError::KeyStoreError)?;
 
         let required_capabilities = self.required_capabilities.unwrap_or_default();
         required_capabilities.check_support().map_err(|e| match e {

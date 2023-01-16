@@ -5,7 +5,10 @@ use crate::{
     group::{config::CryptoConfig, core_group::*, errors::CreateCommitError},
     treesync::{
         diff::TreeSyncDiff,
-        node::{leaf_node::OpenMlsLeafNode, parent_node::PlainUpdatePathNode},
+        node::{
+            encryption_keys::EncryptionKeyPair, leaf_node::OpenMlsLeafNode,
+            parent_node::PlainUpdatePathNode,
+        },
         treekem::{PlaintextSecret, UpdatePath},
     },
     versions::ProtocolVersion,
@@ -24,14 +27,15 @@ struct PathProcessingResult {
     commit_secret: Option<CommitSecret>,
     encrypted_path: Option<UpdatePath>,
     plain_path: Option<Vec<PlainUpdatePathNode>>,
+    new_keypairs: Vec<EncryptionKeyPair>,
 }
 
 impl CoreGroup {
-    pub(crate) fn create_commit(
+    pub(crate) fn create_commit<KeyStore: OpenMlsKeyStore>(
         &self,
         params: CreateCommitParams,
-        backend: &impl OpenMlsCryptoProvider,
-    ) -> Result<CreateCommitResult, CreateCommitError> {
+        backend: &impl OpenMlsCryptoProvider<KeyStoreProvider = KeyStore>,
+    ) -> Result<CreateCommitResult, CreateCommitError<KeyStore::Error>> {
         let ciphersuite = self.ciphersuite();
 
         // If this is an external commit, we don't have an `own_leaf_index` set
@@ -133,16 +137,14 @@ impl CoreGroup {
             // If this is an external commit we add a fresh leaf to the diff.
             // Generate a KeyPackageBundle to generate a payload from for later
             // path generation.
-            let key_package = KeyPackage::builder()
-                .build(
-                    CryptoConfig {
-                        ciphersuite,
-                        version: self.version(),
-                    },
-                    backend,
-                    params.credential_bundle(),
-                )
-                .map_err(|_| LibraryError::custom("Unexpected KeyPackage error"))?;
+            let key_package = KeyPackage::builder().build(
+                CryptoConfig {
+                    ciphersuite,
+                    version: self.version(),
+                },
+                backend,
+                params.credential_bundle(),
+            )?;
 
             let mut leaf_node: OpenMlsLeafNode = key_package.into();
             leaf_node.set_leaf_index(own_leaf_index);
@@ -165,18 +167,19 @@ impl CoreGroup {
                     let own_diff_leaf = diff
                         .own_leaf_mut()
                         .map_err(|_| LibraryError::custom("Unable to get own leaf from diff"))?;
-                    own_diff_leaf.rekey(
+                    let private_key: Vec<u8> = own_diff_leaf.rekey(
                         self.group_id(),
                         self.ciphersuite,
                         ProtocolVersion::default(), // XXX: openmls/openmls#1065
                         params.credential_bundle(),
                         backend,
-                    )?;
+                    )?.into();
+                    backend.key_store().store(own_diff_leaf.encryption_key().as_slice(), &private_key).map_err(CreateCommitError::KeyStoreError)?;
                 }
 
                 // Derive and apply an update path based on the previously
                 // generated new leaf.
-                let (plain_path, commit_secret) = diff.apply_own_update_path(
+                let (plain_path, new_keypairs, commit_secret) = diff.apply_own_update_path(
                     backend,
                     ciphersuite,
                     self.group_id().clone(),
@@ -197,6 +200,7 @@ impl CoreGroup {
                     commit_secret: Some(commit_secret),
                     encrypted_path: Some(encrypted_path),
                     plain_path: Some(plain_path),
+                    new_keypairs,
                 }
             } else {
                 // If path is not needed, return empty path processing results
@@ -388,6 +392,7 @@ impl CoreGroup {
             provisional_message_secrets,
             provisional_interim_transcript_hash,
             diff.into_staged_diff(backend, ciphersuite)?,
+            path_processing_result.new_keypairs,
         );
         let staged_commit = StagedCommit::new(
             proposal_queue,

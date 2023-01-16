@@ -1,9 +1,9 @@
 use openmls_traits::key_store::OpenMlsKeyStore;
-use openmls_traits::types::HpkeKeyPair;
 
 use crate::ciphersuite::signable::Verifiable;
 use crate::framing::mls_content::FramedContentBody;
 use crate::treesync::errors::TreeSyncAddLeaf;
+use crate::treesync::node::encryption_keys::EncryptionKeyPair;
 use crate::treesync::node::leaf_node::{
     LeafNodeTbs, OpenMlsLeafNode, TreeInfoTbs, VerifiableLeafNodeTbs,
 };
@@ -270,13 +270,14 @@ impl CoreGroup {
                 group_context: &serialized_context,
             };
 
-            let owned_public_keys = diff.owned_hpke_keys();
-
             // Load all the HPKE keys we have from the key store.
-            let owned_keypairs: Vec<HpkeKeyPair> = owned_public_keys
-                .iter()
-                .filter_map(|&pk| backend.key_store().read(pk.as_slice()))
-                .collect();
+            let owned_encryption_keys = diff.owned_encryption_keys();
+            let owned_keypairs: Vec<EncryptionKeyPair> = owned_encryption_keys
+                .map(|encryption_key| {
+                    EncryptionKeyPair::read_from_key_store(backend, encryption_key)
+                        .ok_or(StageCommitError::MissingDecryptionKey)
+                })
+                .collect::<Result<Vec<EncryptionKeyPair>, StageCommitError>>()?;
 
             // ValSem202: Path must be the right length
             // ValSem203: Path secrets must decrypt correctly
@@ -419,11 +420,15 @@ impl CoreGroup {
     ///
     /// This function should not fail and only returns a [`Result`], because it
     /// might throw a `LibraryError`.
-    pub(crate) fn merge_commit(&mut self, staged_commit: StagedCommit) -> Option<MessageSecrets> {
+    pub(crate) fn merge_commit<KeyStore: OpenMlsKeyStore>(
+        &mut self,
+        backend: &impl OpenMlsCryptoProvider<KeyStoreProvider = KeyStore>,
+        staged_commit: StagedCommit,
+    ) -> Result<Option<MessageSecrets>, KeyStore::Error> {
         match staged_commit.state {
             StagedCommitState::SelfRemoved(staged_diff) => {
                 self.tree.merge_diff(*staged_diff);
-                None
+                Ok(None)
             }
             StagedCommitState::GroupMember(state) => {
                 self.group_context = state.group_context;
@@ -436,10 +441,42 @@ impl CoreGroup {
                     self.message_secrets_store.message_secrets_mut(),
                 );
 
+                // TODO #1194: Group storage and key storage should be
+                // correlated s.t. there is no divergence between key material
+                // and group state.
+
+                // Write new private keys into the key store.
+                state
+                    .new_keypairs
+                    .into_iter()
+                    .map(|new_keypair| {
+                        backend
+                            .key_store()
+                            .store(new_keypair.public_key().as_slice(), &new_keypair)
+                    })
+                    .collect::<Result<Vec<()>, KeyStore::Error>>()?;
+
+                // Figure out which keys we have before the diff.
+                let old_owned_pks = self.tree.owned_encryption_keys();
+
                 self.interim_transcript_hash = state.interim_transcript_hash;
 
                 self.tree.merge_diff(state.staged_diff);
-                Some(message_secrets)
+
+                // Get all keys that are no longer in the tree and delete them.
+                let new_owned_pks = self.tree.owned_encryption_keys();
+                old_owned_pks
+                    .into_iter()
+                    .map(|pk| {
+                        if !new_owned_pks.contains(&pk) {
+                            backend.key_store().delete(pk.as_slice())
+                        } else {
+                            Ok(())
+                        }
+                    })
+                    .collect::<Result<Vec<()>, KeyStore::Error>>()?;
+
+                Ok(Some(message_secrets))
             }
         }
     }
@@ -515,7 +552,7 @@ pub(crate) struct MemberStagedCommitState {
     message_secrets: MessageSecrets,
     interim_transcript_hash: Vec<u8>,
     staged_diff: StagedTreeSyncDiff,
-    new_keypairs: Vec<HpkeKeyPair>,
+    new_keypairs: Vec<EncryptionKeyPair>,
 }
 
 impl MemberStagedCommitState {
@@ -525,7 +562,7 @@ impl MemberStagedCommitState {
         message_secrets: MessageSecrets,
         interim_transcript_hash: Vec<u8>,
         staged_diff: StagedTreeSyncDiff,
-        new_keypairs: Vec<HpkeKeyPair>,
+        new_keypairs: Vec<EncryptionKeyPair>,
     ) -> Self {
         Self {
             group_context,

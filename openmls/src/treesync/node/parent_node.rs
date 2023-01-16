@@ -2,7 +2,7 @@
 //! as the [`PlainUpdatePathNode`], a helper struct for the creation of
 //! [`UpdatePathNode`] instances.
 use openmls_traits::{
-    types::{Ciphersuite, HpkeCiphertext, HpkeKeyPair},
+    types::{Ciphersuite, HpkeCiphertext},
     OpenMlsCryptoProvider,
 };
 use rayon::prelude::*;
@@ -12,31 +12,31 @@ use tls_codec::{TlsSerialize, TlsSize, VLBytes};
 
 use crate::{
     binary_tree::array_representation::{LeafNodeIndex, ParentNodeIndex},
-    ciphersuite::{HpkePrivateKey, HpkePublicKey},
+    ciphersuite::HpkePublicKey,
     error::LibraryError,
     messages::PathSecret,
     schedule::CommitSecret,
     treesync::{hashes::ParentHashInput, treekem::UpdatePathNode},
 };
 
+use super::encryption_keys::{EncryptionKey, EncryptionKeyPair};
+
 /// This struct implements the MLS parent node. It contains its public key,
 /// parent hash and unmerged leaves. Additionally, it may contain the private
 /// key corresponding to the public key.
 #[derive(Debug, Eq, PartialEq, Clone, Serialize, Deserialize)]
 pub struct ParentNode {
-    pub(super) encryption_key: HpkePublicKey,
+    pub(super) encryption_key: EncryptionKey,
     pub(super) parent_hash: VLBytes,
     pub(super) unmerged_leaves: UnmergedLeaves,
-    private_key_option: Option<HpkePrivateKey>,
 }
 
-impl From<HpkePublicKey> for ParentNode {
-    fn from(public_key: HpkePublicKey) -> Self {
+impl From<EncryptionKey> for ParentNode {
+    fn from(public_key: EncryptionKey) -> Self {
         Self {
             encryption_key: public_key,
             parent_hash: vec![].into(),
             unmerged_leaves: UnmergedLeaves::new(),
-            private_key_option: None,
         }
     }
 }
@@ -44,7 +44,7 @@ impl From<HpkePublicKey> for ParentNode {
 /// Helper struct for the encryption of a [`ParentNode`].
 #[derive(Debug)]
 pub(crate) struct PlainUpdatePathNode {
-    public_key: HpkePublicKey,
+    public_key: EncryptionKey,
     path_secret: PathSecret,
 }
 
@@ -83,7 +83,7 @@ impl PlainUpdatePathNode {
 pub(in crate::treesync) type PathDerivationResult = (
     Vec<(ParentNodeIndex, ParentNode)>,
     Vec<PlainUpdatePathNode>,
-    Vec<HpkeKeyPair>,
+    Vec<EncryptionKeyPair>,
     CommitSecret,
 );
 
@@ -95,10 +95,9 @@ impl ParentNode {
         unmerged_leaves: UnmergedLeaves,
     ) -> Self {
         Self {
-            encryption_key: public_key,
+            encryption_key: public_key.into(),
             parent_hash,
             unmerged_leaves,
-            private_key_option: None,
         }
     }
 
@@ -123,33 +122,39 @@ impl ParentNode {
             path_secrets.push(path_secret);
         }
 
-        let mut keypairs = vec![];
+        type PathDerivationResults = (
+            Vec<((ParentNodeIndex, ParentNode), EncryptionKeyPair)>,
+            Vec<PlainUpdatePathNode>,
+        );
 
         // Iterate over the path secrets and derive a key pair
-        let (path, update_path_nodes) = path_secrets
+        let (path_with_keypairs, update_path_nodes): PathDerivationResults = path_secrets
             .into_par_iter()
             .zip(path_indices)
             .map(|(path_secret, index)| {
                 // Derive a key pair from the path secret. This includes the
                 // intermediate derivation of a node secret.
-                let (public_key, private_key) =
-                    path_secret.derive_key_pair(backend, ciphersuite)?;
-                let parent_node = ParentNode::from(public_key.clone());
+                let keypair = path_secret.derive_key_pair(backend, ciphersuite)?;
+                let parent_node = ParentNode::from(keypair.public_key().clone());
                 // Store the current path secret and the derived public key for
                 // later encryption.
                 let update_path_node = PlainUpdatePathNode {
-                    public_key: public_key.clone(),
+                    public_key: keypair.public_key().clone(),
                     path_secret,
                 };
-                keypairs.push(HpkeKeyPair {
-                    private: private_key.into(),
-                    public: public_key.into(),
-                });
-                Ok(((index, parent_node), update_path_node))
+                Ok((((index, parent_node), keypair), update_path_node))
             })
-            .collect::<Result<Vec<((ParentNodeIndex, ParentNode), PlainUpdatePathNode)>, LibraryError>>()?
+            .collect::<Result<
+                Vec<(
+                    ((ParentNodeIndex, ParentNode), EncryptionKeyPair),
+                    PlainUpdatePathNode,
+                )>,
+                LibraryError,
+            >>()?
             .into_iter()
             .unzip();
+
+        let (path, keypairs) = path_with_keypairs.into_iter().unzip();
 
         let commit_secret = next_path_secret.into();
         Ok((path, update_path_nodes, keypairs, commit_secret))
@@ -157,12 +162,12 @@ impl ParentNode {
 
     /// Return a reference to the `public_key` of this node.
     pub(crate) fn public_key(&self) -> &HpkePublicKey {
-        &self.encryption_key
+        self.encryption_key.key()
     }
 
-    /// Return a reference to the potential `private_key` of this node.
-    pub(in crate::treesync) fn private_key(&self) -> Option<&HpkePrivateKey> {
-        self.private_key_option.as_ref()
+    /// Return a reference to the `public_key` of this node.
+    pub(crate) fn encryption_key(&self) -> &EncryptionKey {
+        &self.encryption_key
     }
 
     /// Get the list of unmerged leaves.
@@ -183,8 +188,11 @@ impl ParentNode {
         parent_hash: &[u8],
         original_child_resolution: &[HpkePublicKey],
     ) -> Result<Vec<u8>, LibraryError> {
-        let parent_hash_input =
-            ParentHashInput::new(&self.encryption_key, parent_hash, original_child_resolution);
+        let parent_hash_input = ParentHashInput::new(
+            self.encryption_key.key(),
+            parent_hash,
+            original_child_resolution,
+        );
         parent_hash_input.hash(backend, ciphersuite)
     }
 
@@ -196,17 +204,6 @@ impl ParentNode {
     /// Get the parent hash value of this node.
     pub(crate) fn parent_hash(&self) -> &[u8] {
         self.parent_hash.as_slice()
-    }
-
-    /// Create and return a clone of this node without any potentially contained
-    /// private key material.
-    pub(in crate::treesync) fn clone_without_private_key(&self) -> Self {
-        Self {
-            encryption_key: self.public_key().clone(),
-            parent_hash: self.parent_hash.clone(),
-            unmerged_leaves: self.unmerged_leaves.clone(),
-            private_key_option: None,
-        }
     }
 }
 

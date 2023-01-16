@@ -14,12 +14,12 @@ use crate::{
 
 impl CoreGroup {
     // Join a group from a welcome message
-    pub fn new_from_welcome(
+    pub fn new_from_welcome<KeyStore: OpenMlsKeyStore>(
         welcome: Welcome,
         nodes_option: Option<Vec<Option<Node>>>,
         key_package_bundle: KeyPackageBundle,
-        backend: &impl OpenMlsCryptoProvider,
-    ) -> Result<Self, WelcomeError> {
+        backend: &impl OpenMlsCryptoProvider<KeyStoreProvider = KeyStore>,
+    ) -> Result<Self, WelcomeError<KeyStore::Error>> {
         log::debug!("CoreGroup::new_from_welcome_internal");
         let mls_version = *welcome.version();
         if mls_version != ProtocolVersion::Mls10 {
@@ -169,10 +169,9 @@ impl CoreGroup {
                     }
                 })?;
             for keypair in keypairs {
-                backend
-                    .key_store()
-                    .store(&keypair.public, &keypair.private)
-                    .map_err(|e| WelcomeError::KeyStorageError)?;
+                keypair
+                    .write_to_key_store(backend)
+                    .map_err(WelcomeError::KeyStoreError)?;
             }
         }
 

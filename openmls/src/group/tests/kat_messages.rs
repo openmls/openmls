@@ -214,7 +214,13 @@ pub fn generate_test_vector(ciphersuite: Ciphersuite) -> MessagesTestVector {
     let create_commit_result = group
         .create_commit(params, &crypto)
         .expect("An unexpected error occurred.");
-    group.merge_staged_commit(create_commit_result.staged_commit, &mut proposal_store);
+    group
+        .merge_staged_commit(
+            &crypto,
+            create_commit_result.staged_commit,
+            &mut proposal_store,
+        )
+        .unwrap();
     let commit = if let FramedContentBody::Commit(commit) = create_commit_result.commit.content() {
         commit.clone()
     } else {

@@ -73,12 +73,6 @@ impl TreeSyncLeafNode {
         &self.node
     }
 
-    /// Return a copy of this node, but remove any potential private key
-    /// material contained in the `Node`.
-    pub(in crate::treesync) fn node_without_private_key(&self) -> Option<OpenMlsLeafNode> {
-        self.node.as_ref().map(|node| node.clone_public())
-    }
-
     /// Return a mutable reference to the contained `Option<Node>`.
     pub(in crate::treesync) fn node_mut(&mut self) -> &mut Option<OpenMlsLeafNode> {
         &mut self.node
@@ -130,14 +124,6 @@ impl TreeSyncParentNode {
     /// Return a reference to the contained `Option<Node>`.
     pub(in crate::treesync) fn node(&self) -> &Option<ParentNode> {
         &self.node
-    }
-
-    /// Return a copy of this node, but remove any potential private key
-    /// material contained in the `Node`.
-    pub(in crate::treesync) fn node_without_private_key(&self) -> Option<ParentNode> {
-        self.node
-            .as_ref()
-            .map(|node| node.clone_without_private_key())
     }
 
     /// Return a mutable reference to the contained `Option<Node>`.

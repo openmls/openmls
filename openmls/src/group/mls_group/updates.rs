@@ -17,11 +17,11 @@ impl MlsGroup {
     /// add proposals
     ///
     /// Returns an error if there is a pending commit.
-    pub fn self_update(
+    pub fn self_update<KeyStore: OpenMlsKeyStore>(
         &mut self,
-        backend: &impl OpenMlsCryptoProvider,
+        backend: &impl OpenMlsCryptoProvider<KeyStoreProvider = KeyStore>,
         encryption_key: Option<HpkePublicKey>,
-    ) -> Result<(MlsMessageOut, Option<MlsMessageOut>), SelfUpdateError> {
+    ) -> Result<(MlsMessageOut, Option<MlsMessageOut>), SelfUpdateError<KeyStore::Error>> {
         self.is_operational()?;
 
         let credential = self.credential()?;
@@ -150,13 +150,19 @@ impl MlsGroup {
                 backend,
             )?
         } else {
-            rekeyed_own_leaf.rekey(
-                self.group_id(),
-                self.ciphersuite(),
-                ProtocolVersion::default(), // XXX: openmls/openmls#1065
-                &credential_bundle,
-                backend,
-            )?
+            let private_key: Vec<u8> = rekeyed_own_leaf
+                .rekey(
+                    self.group_id(),
+                    self.ciphersuite(),
+                    ProtocolVersion::default(), // XXX: openmls/openmls#1065
+                    &credential_bundle,
+                    backend,
+                )?
+                .into();
+            backend
+                .key_store()
+                .store(rekeyed_own_leaf.encryption_key().as_slice(), &private_key)
+                .map_err(|_| ProposeSelfUpdateError::KeyStoreError)?;
         };
 
         let update_proposal = self.group.create_update_proposal(
