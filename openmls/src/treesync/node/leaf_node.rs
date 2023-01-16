@@ -180,7 +180,7 @@ impl Capabilities {
     ) -> bool {
         // Check if all required extensions are supported.
         if required_capabilities
-            .extensions()
+            .extension_types()
             .iter()
             .any(|e| !self.extensions().contains(e))
         {
@@ -188,7 +188,7 @@ impl Capabilities {
         }
         // Check if all required proposals are supported.
         if required_capabilities
-            .proposals()
+            .proposal_types()
             .iter()
             .any(|p| !self.proposals().contains(p))
         {
@@ -572,12 +572,12 @@ impl LeafNode {
         required_capabilities: impl Into<Option<&'a RequiredCapabilitiesExtension>>,
     ) -> Result<(), TreeSyncError> {
         if let Some(required_capabilities) = required_capabilities.into() {
-            for required_extension in required_capabilities.extensions() {
+            for required_extension in required_capabilities.extension_types() {
                 if !self.supports_extension(required_extension) {
                     return Err(TreeSyncError::UnsupportedExtension);
                 }
             }
-            for required_proposal in required_capabilities.proposals() {
+            for required_proposal in required_capabilities.proposal_types() {
                 if !self.supports_proposal(required_proposal) {
                     return Err(TreeSyncError::UnsupportedProposal);
                 }

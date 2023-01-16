@@ -18,6 +18,15 @@ use super::{Deserialize, ExtensionError, ExtensionType, Serialize};
 /// extensions can be updated, a GroupContextExtensions proposal is invalid if it
 /// contains a required capabilities extension that requires capabilities not
 /// supported by all current members.
+///
+/// ```c
+/// // draft-ietf-mls-protocol-17
+/// struct {
+///     ExtensionType extension_types<V>;
+///     ProposalType proposal_types<V>;
+///     CredentialType credential_types<V>;
+/// } RequiredCapabilities;
+/// ```
 #[derive(
     PartialEq,
     Eq,
@@ -31,37 +40,37 @@ use super::{Deserialize, ExtensionError, ExtensionType, Serialize};
     TlsSize,
 )]
 pub struct RequiredCapabilitiesExtension {
-    extensions: Vec<ExtensionType>,
-    proposals: Vec<ProposalType>,
+    extension_types: Vec<ExtensionType>,
+    proposal_types: Vec<ProposalType>,
 }
 
 impl RequiredCapabilitiesExtension {
     /// Creates a new [`RequiredCapabilitiesExtension`] from extension and proposal types.
-    pub fn new(extensions: &[ExtensionType], proposals: &[ProposalType]) -> Self {
+    pub fn new(extension_types: &[ExtensionType], proposal_types: &[ProposalType]) -> Self {
         Self {
-            extensions: extensions.into(),
-            proposals: proposals.into(),
+            extension_types: extension_types.into(),
+            proposal_types: proposal_types.into(),
         }
     }
 
     /// Get a slice with the required extension types.
-    pub(crate) fn extensions(&self) -> &[ExtensionType] {
-        self.extensions.as_slice()
+    pub(crate) fn extension_types(&self) -> &[ExtensionType] {
+        self.extension_types.as_slice()
     }
 
     /// Get a slice with the required proposal types.
-    pub(crate) fn proposals(&self) -> &[ProposalType] {
-        self.proposals.as_slice()
+    pub(crate) fn proposal_types(&self) -> &[ProposalType] {
+        self.proposal_types.as_slice()
     }
 
     /// Check if all extension and proposal types are supported.
     pub(crate) fn check_support(&self) -> Result<(), ExtensionError> {
-        for extension in self.extensions() {
+        for extension in self.extension_types() {
             if !extension.is_supported() {
                 return Err(ExtensionError::UnsupportedExtensionType);
             }
         }
-        for proposal in self.proposals() {
+        for proposal in self.proposal_types() {
             if !proposal.is_supported() {
                 return Err(ExtensionError::UnsupportedProposalType);
             }
