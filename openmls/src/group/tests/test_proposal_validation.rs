@@ -22,7 +22,7 @@ use crate::{
         proposals::{AddProposal, Proposal, ProposalOrRef, RemoveProposal, UpdateProposal},
         Welcome,
     },
-    treesync::{errors::ApplyUpdatePathError, LeafNode},
+    treesync::{errors::ApplyUpdatePathError, node::leaf_node::Capabilities, LeafNode},
     versions::ProtocolVersion,
 };
 
@@ -1728,6 +1728,7 @@ fn test_valsem109(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
             version: ProtocolVersion::default(),
         },
         &new_cb,
+        Capabilities::default(),
         Extensions::default(),
         backend,
     )

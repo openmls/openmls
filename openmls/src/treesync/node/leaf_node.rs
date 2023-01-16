@@ -171,31 +171,6 @@ impl Capabilities {
         &self.credentials
     }
 
-    /// Add new capabilities to this leaf node.
-    /// The `new_capabilities` are merged into the existing [`Capabilities`] and
-    /// duplicates are ignored.
-    fn add(&mut self, mut new_capabilities: Capabilities) {
-        self.versions.append(&mut new_capabilities.versions);
-        self.versions.sort();
-        self.versions.dedup();
-
-        self.ciphersuites.append(&mut new_capabilities.ciphersuites);
-        self.ciphersuites.sort();
-        self.ciphersuites.dedup();
-
-        self.extensions.append(&mut new_capabilities.extensions);
-        self.extensions.sort();
-        self.extensions.dedup();
-
-        self.proposals.append(&mut new_capabilities.proposals);
-        self.proposals.sort();
-        self.proposals.dedup();
-
-        self.credentials.append(&mut new_capabilities.credentials);
-        self.credentials.sort();
-        self.credentials.dedup();
-    }
-
     /// Check if these [`Capabilities`] support all the capabilities
     /// required by the given [`RequiredCapabilities`] extension. Returns
     /// `true` if that is the case and `false` otherwise.
@@ -254,6 +229,27 @@ pub(crate) struct TreePosition {
     leaf_index: LeafNodeIndex,
 }
 
+/// Helper struct that holds additional information required to sign a leaf node.
+///
+/// ```c
+/// // draft-ietf-mls-protocol-17
+/// struct {
+///     // ... continued from [`LeafNodeTbs`] ...
+///
+///     select (LeafNodeTBS.leaf_node_source) {
+///         case key_package:
+///             struct{};
+///
+///         case update:
+///             opaque group_id<V>;
+///             uint32 leaf_index;
+///
+///         case commit:
+///             opaque group_id<V>;
+///             uint32 leaf_index;
+///     };
+/// } LeafNodeTBS;
+/// ```
 #[derive(Debug)]
 pub(crate) enum TreeInfoTbs {
     KeyPackage(),
@@ -307,6 +303,33 @@ struct LeafNodePayload {
     extensions: Extensions,
 }
 
+/// To-be-signed leaf node.
+///
+/// ```c
+/// // draft-ietf-mls-protocol-17
+/// struct {
+///     HPKEPublicKey encryption_key;
+///     SignaturePublicKey signature_key;
+///     Credential credential;
+///     Capabilities capabilities;
+///
+///     LeafNodeSource leaf_node_source;
+///     select (LeafNodeTBS.leaf_node_source) {
+///         case key_package:
+///             Lifetime lifetime;
+///
+///         case update:
+///             struct{};
+///
+///         case commit:
+///             opaque parent_hash<V>;
+///     };
+///
+///     Extension extensions<V>;
+///
+///     // ... continued in [`TreeInfoTbs`] ...
+/// } LeafNodeTBS;
+/// ```
 #[derive(Debug)]
 pub struct LeafNodeTbs {
     payload: LeafNodePayload,
@@ -352,7 +375,8 @@ impl TlsDeserializeTrait for LeafNodeTbs {
 
 /// This struct implements the MLS leaf node.
 ///
-/// ```text
+/// ```c
+/// // draft-ietf-mls-protocol-17
 /// struct {
 ///     HPKEPublicKey encryption_key;
 ///     SignaturePublicKey signature_key;
@@ -410,6 +434,7 @@ impl LeafNode {
     pub fn generate(
         config: CryptoConfig,
         credential_bundle: &CredentialBundle,
+        capabilities: Capabilities,
         extensions: Extensions,
         backend: &impl OpenMlsCryptoProvider,
     ) -> Result<Self, LibraryError> {
@@ -420,6 +445,7 @@ impl LeafNode {
             config,
             credential_bundle,
             LeafNodeSource::Update,
+            capabilities,
             extensions,
             backend,
         )?;
@@ -449,6 +475,7 @@ impl LeafNode {
         config: CryptoConfig,
         credential_bundle: &CredentialBundle,
         leaf_node_source: LeafNodeSource,
+        capabilities: Capabilities,
         extensions: Extensions,
         backend: &impl OpenMlsCryptoProvider,
     ) -> Result<(Self, HpkeKeyPair), LibraryError> {
@@ -463,6 +490,7 @@ impl LeafNode {
             encryption_key_pair.public.clone().into(),
             credential_bundle,
             leaf_node_source,
+            capabilities,
             extensions,
             backend,
         )?;
@@ -476,6 +504,7 @@ impl LeafNode {
         encryption_key: HpkePublicKey,
         credential_bundle: &CredentialBundle,
         leaf_node_source: LeafNodeSource,
+        capabilities: Capabilities,
         extensions: Extensions,
         backend: &impl OpenMlsCryptoProvider,
     ) -> Result<Self, LibraryError> {
@@ -483,7 +512,7 @@ impl LeafNode {
             encryption_key,
             credential_bundle.credential().signature_key().clone(),
             credential_bundle.credential().clone(),
-            Capabilities::default(), // XXX: add function to allow pass this in
+            capabilities,
             leaf_node_source,
             extensions,
         )?;
@@ -578,6 +607,7 @@ impl LeafNode {
         encryption_key: HpkePublicKey,
         credential_bundle: &CredentialBundle,
         leaf_node_source: LeafNodeSource,
+        capabilities: Capabilities,
         extensions: Extensions,
         backend: &impl OpenMlsCryptoProvider,
     ) -> Result<Self, LibraryError> {
@@ -585,6 +615,7 @@ impl LeafNode {
             encryption_key,
             credential_bundle,
             leaf_node_source,
+            capabilities,
             extensions,
             backend,
         )
@@ -748,21 +779,20 @@ impl From<KeyPackage> for OpenMlsLeafNode {
 
 impl OpenMlsLeafNode {
     /// Generate a new [`OpenMlsLeafNode`] for a new tree.
-    ///
-    /// Note that no [`Capabilities`] or [`Extension`]s are added.
-    /// [`Capabilities`] and [`Extension`]s can be added later with
-    /// [`add_capabilities()`] and [`add_extension`].
     pub(crate) fn new(
         config: CryptoConfig,
         leaf_node_source: LeafNodeSource,
         backend: &impl OpenMlsCryptoProvider,
         credential_bundle: &CredentialBundle,
+        capabilities: Capabilities,
+        extensions: Extensions,
     ) -> Result<Self, LibraryError> {
         let (leaf_node, encryption_key_pair) = LeafNode::new(
             config,
             credential_bundle,
             leaf_node_source,
-            Extensions::empty(),
+            capabilities,
+            extensions,
             backend,
         )?;
 
@@ -771,23 +801,6 @@ impl OpenMlsLeafNode {
             private_key: Some(encryption_key_pair.private.into()),
             leaf_index: Some(LeafNodeIndex::new(0)),
         })
-    }
-
-    /// Add new capabilities to this leaf node.
-    /// The `new_capabilities` are merged into the existing [`Capabilities`] and
-    /// duplicates are ignored.
-    pub(crate) fn add_capabilities(&mut self, new_capabilities: Capabilities) {
-        self.leaf_node.payload.capabilities.add(new_capabilities);
-    }
-
-    /// Add new extension to this leaf node.
-    /// The `new_extension` is add to the existing [`Extension`]s. If the
-    /// [`Extension`] exists, it is overridden.
-    pub(crate) fn add_extension(&mut self, new_extension: Extension) {
-        self.leaf_node
-            .payload
-            .extensions
-            .add_or_replace(new_extension);
     }
 
     /// Return a reference to the `encryption_key` of this [`LeafNode`].
