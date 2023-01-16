@@ -415,55 +415,6 @@ impl From<OpenMlsLeafNode> for LeafNode {
 }
 
 impl LeafNode {
-    /// Get the identifier to search for the encryption key pair in the key
-    /// store.
-    pub fn encryption_key_label(id: &[u8]) -> Vec<u8> {
-        const ENCRYPTION_KEY_LABEL: &[u8; 9] = b"leaf_node";
-        let mut kp_key = ENCRYPTION_KEY_LABEL.to_vec();
-        kp_key.extend_from_slice(id);
-        kp_key
-    }
-
-    /// Generate a fresh leaf node.
-    ///
-    /// This includes generating a new encryption key pair that is stored in the
-    /// key store.
-    ///
-    /// This function can be used when generating an update. In most other cases
-    /// a leaf node should be generated as part of a new [`KeyPackage`].
-    pub fn generate(
-        config: CryptoConfig,
-        credential_bundle: &CredentialBundle,
-        capabilities: Capabilities,
-        extensions: Extensions,
-        backend: &impl OpenMlsCryptoProvider,
-    ) -> Result<Self, LibraryError> {
-        // Note that this function is supposed to be used in the public API only
-        // because it is interacting with the key store.
-
-        let (leaf_node, encryption_key_pair) = Self::new(
-            config,
-            credential_bundle,
-            LeafNodeSource::Update,
-            capabilities,
-            extensions,
-            backend,
-        )?;
-
-        // Store the encryption key pair in the key store.
-        backend
-            .key_store()
-            .store(
-                &Self::encryption_key_label(leaf_node.signature_key().as_slice()),
-                &encryption_key_pair,
-            )
-            .map_err(|_| {
-                LibraryError::custom("Unable to store private encryption key into the key store.")
-            })?;
-
-        Ok(leaf_node)
-    }
-
     /// Create a new [`LeafNode`].
     /// This first creates a `LeadNodeTbs` and returns the result of signing
     /// it.
@@ -522,9 +473,78 @@ impl LeafNode {
             .map_err(|_| LibraryError::custom("Signing failed"))
     }
 
+    /// Expose [`new_with_key`] for tests.
+    #[cfg(any(feature = "test-utils", test))]
+    pub(crate) fn create_new_with_key(
+        encryption_key: HpkePublicKey,
+        credential_bundle: &CredentialBundle,
+        leaf_node_source: LeafNodeSource,
+        capabilities: Capabilities,
+        extensions: Extensions,
+        backend: &impl OpenMlsCryptoProvider,
+    ) -> Result<Self, LibraryError> {
+        Self::new_with_key(
+            encryption_key,
+            credential_bundle,
+            leaf_node_source,
+            capabilities,
+            extensions,
+            backend,
+        )
+    }
+
+    /// Generate a fresh leaf node.
+    ///
+    /// This includes generating a new encryption key pair that is stored in the
+    /// key store.
+    ///
+    /// This function can be used when generating an update. In most other cases
+    /// a leaf node should be generated as part of a new [`KeyPackage`].
+    pub fn generate(
+        config: CryptoConfig,
+        credential_bundle: &CredentialBundle,
+        capabilities: Capabilities,
+        extensions: Extensions,
+        backend: &impl OpenMlsCryptoProvider,
+    ) -> Result<Self, LibraryError> {
+        // Note that this function is supposed to be used in the public API only
+        // because it is interacting with the key store.
+
+        let (leaf_node, encryption_key_pair) = Self::new(
+            config,
+            credential_bundle,
+            LeafNodeSource::Update,
+            capabilities,
+            extensions,
+            backend,
+        )?;
+
+        // Store the encryption key pair in the key store.
+        backend
+            .key_store()
+            .store(
+                &Self::encryption_key_label(leaf_node.signature_key().as_slice()),
+                &encryption_key_pair,
+            )
+            .map_err(|_| {
+                LibraryError::custom("Unable to store private encryption key into the key store.")
+            })?;
+
+        Ok(leaf_node)
+    }
+
     /// Returns the `encryption_key`.
     pub fn encryption_key(&self) -> &HpkePublicKey {
         &self.payload.encryption_key
+    }
+
+    /// Get the identifier to search for the encryption key pair in the key
+    /// store.
+    pub fn encryption_key_label(id: &[u8]) -> Vec<u8> {
+        const ENCRYPTION_KEY_LABEL: &[u8; 9] = b"leaf_node";
+        let mut kp_key = ENCRYPTION_KEY_LABEL.to_vec();
+        kp_key.extend_from_slice(id);
+        kp_key
     }
 
     /// Returns the `signature_key` as byte slice.
@@ -537,6 +557,12 @@ impl LeafNode {
         &self.payload.credential
     }
 
+    /// Replace the credential in the KeyPackage.
+    #[cfg(any(feature = "test-utils", test))]
+    pub(crate) fn set_credential(&mut self, credential: Credential) {
+        self.payload.credential = credential;
+    }
+
     /// Returns the `parent_hash` as byte slice or `None`.
     pub fn parent_hash(&self) -> Option<&[u8]> {
         match &self.payload.leaf_node_source {
@@ -544,26 +570,38 @@ impl LeafNode {
             _ => None,
         }
     }
-
-    /// Returns `true` if the [`ExtensionType`] is supported by this leaf node.
-    pub(crate) fn supports_extension(&self, extension_type: &ExtensionType) -> bool {
-        self.payload
-            .capabilities
-            .extensions
-            .iter()
-            .any(|et| et == extension_type)
-            || default_extensions().iter().any(|et| et == extension_type)
+    /// Returns the [`Lifetime`] if present.
+    /// `None` otherwise.
+    pub(crate) fn life_time(&self) -> Option<&Lifetime> {
+        if let LeafNodeSource::KeyPackage(life_time) = &self.payload.leaf_node_source {
+            Some(life_time)
+        } else {
+            None
+        }
     }
 
-    /// Returns `true` if the [`ProposalType`] is supported by this leaf node.
-    pub(crate) fn supports_proposal(&self, proposal_type: &ProposalType) -> bool {
-        self.payload
-            .capabilities
-            .proposals
-            .iter()
-            .any(|pt| pt == proposal_type)
-            || default_proposals().iter().any(|pt| pt == proposal_type)
+    /// Returns a reference to the [`Signature`] of this leaf.
+    pub fn signature(&self) -> &Signature {
+        &self.signature
     }
+
+    /// Return a reference to [`Capabilities`].
+    pub(crate) fn capabilities(&self) -> &Capabilities {
+        &self.payload.capabilities
+    }
+
+    /// Return a mutable reference to [`Capabilities`].
+    #[cfg(test)]
+    pub fn capabilities_mut(&mut self) -> &mut Capabilities {
+        &mut self.payload.capabilities
+    }
+
+    /// Return a reference to the leaf node extensions.
+    pub fn extensions(&self) -> &Extensions {
+        &self.payload.extensions
+    }
+
+    // ----- Validation ----------------------------------------------------------------------------
 
     /// Check that all extensions that are required, are supported by this leaf
     /// node.
@@ -601,61 +639,24 @@ impl LeafNode {
         Ok(())
     }
 
-    /// Expose [`new_with_key`] for tests.
-    #[cfg(any(feature = "test-utils", test))]
-    pub(crate) fn create_new_with_key(
-        encryption_key: HpkePublicKey,
-        credential_bundle: &CredentialBundle,
-        leaf_node_source: LeafNodeSource,
-        capabilities: Capabilities,
-        extensions: Extensions,
-        backend: &impl OpenMlsCryptoProvider,
-    ) -> Result<Self, LibraryError> {
-        Self::new_with_key(
-            encryption_key,
-            credential_bundle,
-            leaf_node_source,
-            capabilities,
-            extensions,
-            backend,
-        )
+    /// Returns `true` if the [`ExtensionType`] is supported by this leaf node.
+    pub(crate) fn supports_extension(&self, extension_type: &ExtensionType) -> bool {
+        self.payload
+            .capabilities
+            .extensions
+            .iter()
+            .any(|et| et == extension_type)
+            || default_extensions().iter().any(|et| et == extension_type)
     }
 
-    /// Returns the [`Lifetime`] if present.
-    /// `None` otherwise.
-    pub(crate) fn life_time(&self) -> Option<&Lifetime> {
-        if let LeafNodeSource::KeyPackage(life_time) = &self.payload.leaf_node_source {
-            Some(life_time)
-        } else {
-            None
-        }
-    }
-
-    /// Returns a reference to the [`Signature`] of this leaf.
-    pub fn signature(&self) -> &Signature {
-        &self.signature
-    }
-
-    /// Return a reference to [`Capabilities`].
-    pub(crate) fn capabilities(&self) -> &Capabilities {
-        &self.payload.capabilities
-    }
-
-    /// Return a mutable reference to [`Capabilities`].
-    #[cfg(test)]
-    pub fn capabilities_mut(&mut self) -> &mut Capabilities {
-        &mut self.payload.capabilities
-    }
-
-    /// Replace the credential in the KeyPackage.
-    #[cfg(any(feature = "test-utils", test))]
-    pub(crate) fn set_credential(&mut self, credential: Credential) {
-        self.payload.credential = credential;
-    }
-
-    /// Return a reference to the leaf node extensions.
-    pub fn extensions(&self) -> &Extensions {
-        &self.payload.extensions
+    /// Returns `true` if the [`ProposalType`] is supported by this leaf node.
+    pub(crate) fn supports_proposal(&self, proposal_type: &ProposalType) -> bool {
+        self.payload
+            .capabilities
+            .proposals
+            .iter()
+            .any(|pt| pt == proposal_type)
+            || default_proposals().iter().any(|pt| pt == proposal_type)
     }
 }
 
