@@ -20,7 +20,7 @@ use crate::{
     credentials::{Credential, CredentialBundle, CredentialType},
     error::LibraryError,
     extensions::Extensions,
-    extensions::{Extension, ExtensionType, RequiredCapabilitiesExtension},
+    extensions::{ExtensionType, RequiredCapabilitiesExtension},
     group::{config::CryptoConfig, GroupId},
     key_packages::KeyPackage,
     messages::proposals::ProposalType,
