@@ -1,6 +1,6 @@
 use tls_codec::{TlsDeserialize, TlsSerialize, TlsSize};
 
-use crate::messages::proposals::ProposalType;
+use crate::{credentials::CredentialType, messages::proposals::ProposalType};
 
 use super::{Deserialize, ExtensionError, ExtensionType, Serialize};
 
@@ -42,14 +42,20 @@ use super::{Deserialize, ExtensionError, ExtensionType, Serialize};
 pub struct RequiredCapabilitiesExtension {
     extension_types: Vec<ExtensionType>,
     proposal_types: Vec<ProposalType>,
+    credential_types: Vec<CredentialType>,
 }
 
 impl RequiredCapabilitiesExtension {
     /// Creates a new [`RequiredCapabilitiesExtension`] from extension and proposal types.
-    pub fn new(extension_types: &[ExtensionType], proposal_types: &[ProposalType]) -> Self {
+    pub fn new(
+        extension_types: &[ExtensionType],
+        proposal_types: &[ProposalType],
+        credential_types: &[CredentialType],
+    ) -> Self {
         Self {
             extension_types: extension_types.into(),
             proposal_types: proposal_types.into(),
+            credential_types: credential_types.into(),
         }
     }
 
@@ -61,6 +67,12 @@ impl RequiredCapabilitiesExtension {
     /// Get a slice with the required proposal types.
     pub(crate) fn proposal_types(&self) -> &[ProposalType] {
         self.proposal_types.as_slice()
+    }
+
+    /// Get a slice with the required credential types.
+    #[allow(unused)]
+    pub(crate) fn credential_types(&self) -> &[CredentialType] {
+        self.credential_types.as_slice()
     }
 
     /// Check if all extension and proposal types are supported.
