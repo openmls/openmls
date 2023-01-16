@@ -271,7 +271,9 @@ fn test_required_unsupported_proposals(
     // Set required capabilities
     let extensions = &[];
     let proposals = &[ProposalType::GroupContextExtensions, ProposalType::AppAck];
-    let required_capabilities = RequiredCapabilitiesExtension::new(extensions, proposals);
+    let credentials = &[CredentialType::Basic];
+    let required_capabilities =
+        RequiredCapabilitiesExtension::new(extensions, proposals, credentials);
 
     // This must fail because we don't actually support AppAck proposals
     let e = CoreGroup::builder(
@@ -311,7 +313,9 @@ fn test_required_extension_key_package_mismatch(
         ProposalType::Remove,
         ProposalType::Update,
     ];
-    let required_capabilities = RequiredCapabilitiesExtension::new(extensions, proposals);
+    let credentials = &[CredentialType::Basic];
+    let required_capabilities =
+        RequiredCapabilitiesExtension::new(extensions, proposals, credentials);
 
     let alice_group = CoreGroup::builder(
         GroupId::random(backend),
@@ -353,7 +357,9 @@ fn test_group_context_extensions(ciphersuite: Ciphersuite, backend: &impl OpenMl
         ProposalType::Remove,
         ProposalType::Update,
     ];
-    let required_capabilities = RequiredCapabilitiesExtension::new(extensions, proposals);
+    let credentials = &[CredentialType::Basic];
+    let required_capabilities =
+        RequiredCapabilitiesExtension::new(extensions, proposals, credentials);
 
     let mut alice_group = CoreGroup::builder(
         GroupId::random(backend),
@@ -430,7 +436,8 @@ fn test_group_context_extension_proposal_fails(
         ProposalType::Remove,
         ProposalType::Update,
     ];
-    let required_capabilities = RequiredCapabilitiesExtension::new(&[], proposals);
+    let credentials = &[CredentialType::Basic];
+    let required_capabilities = RequiredCapabilitiesExtension::new(&[], proposals, credentials);
 
     let mut alice_group = CoreGroup::builder(
         GroupId::random(backend),
@@ -590,9 +597,12 @@ fn test_group_context_extension_proposal(
     .expect("Error joining group.");
 
     // Alice adds a required capability.
-    let required_application_id = Extension::RequiredCapabilities(
-        RequiredCapabilitiesExtension::new(&[ExtensionType::ApplicationId], &[]),
-    );
+    let required_application_id =
+        Extension::RequiredCapabilities(RequiredCapabilitiesExtension::new(
+            &[ExtensionType::ApplicationId],
+            &[],
+            &[CredentialType::Basic],
+        ));
     let gce_proposal = alice_group
         .create_group_context_ext_proposal(
             framing_parameters,
