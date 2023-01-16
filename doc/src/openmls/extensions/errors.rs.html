@@ -93,21 +93,6 @@
 <span id="93">93</span>
 <span id="94">94</span>
 <span id="95">95</span>
-<span id="96">96</span>
-<span id="97">97</span>
-<span id="98">98</span>
-<span id="99">99</span>
-<span id="100">100</span>
-<span id="101">101</span>
-<span id="102">102</span>
-<span id="103">103</span>
-<span id="104">104</span>
-<span id="105">105</span>
-<span id="106">106</span>
-<span id="107">107</span>
-<span id="108">108</span>
-<span id="109">109</span>
-<span id="110">110</span>
 </pre><pre class="rust"><code><span class="doccomment">//! # Extension errors.
 //!
 //! An `ExtensionError` is thrown when an extension is invalid (for example when
@@ -115,7 +100,6 @@
 //!
 //! `ExtensionError` holds individual errors for each extension.
 //! * `CapabilitiesExtensionError`
-//! * `LifetimeExtensionError`
 //! * `KeyPackageIdError`
 //! * `ParentHashError`
 //! * `RatchetTreeError`
@@ -142,9 +126,6 @@
     <span class="doccomment">/// See [`CapabilitiesExtensionError`] for more details.
     </span><span class="attribute">#[error(transparent)]
     </span>Capabilities(<span class="attribute">#[from] </span>CapabilitiesExtensionError),
-    <span class="doccomment">/// See [`LifetimeExtensionError`] for more details.
-    </span><span class="attribute">#[error(transparent)]
-    </span>Lifetime(<span class="attribute">#[from] </span>LifetimeExtensionError),
     <span class="doccomment">/// See [`KeyPackageIdError`] for more details.
     </span><span class="attribute">#[error(transparent)]
     </span>KeyPackageId(<span class="attribute">#[from] </span>KeyPackageIdError),
@@ -157,17 +138,6 @@
     <span class="doccomment">/// See [`InvalidExtensionError`] for more details.
     </span><span class="attribute">#[error(transparent)]
     </span>InvalidExtension(<span class="attribute">#[from] </span>InvalidExtensionError),
-}
-
-<span class="doccomment">/// Lifetime extension error
-</span><span class="attribute">#[derive(Error, Debug, PartialEq, Eq, Clone)]
-</span><span class="kw">pub enum </span>LifetimeExtensionError {
-    <span class="doccomment">/// Invalid lifetime extensions.
-    </span><span class="attribute">#[error(<span class="string">&quot;Invalid lifetime extensions.&quot;</span>)]
-    </span>Invalid,
-    <span class="doccomment">/// Lifetime extension is expired.
-    </span><span class="attribute">#[error(<span class="string">&quot;Lifetime extension is expired.&quot;</span>)]
-    </span>Expired,
 }
 
 <span class="doccomment">/// Capabilities extension error
