@@ -1011,7 +1011,7 @@
         <span class="kw">let </span>capabilities = <span class="self">self
             </span>.required_capabilities
             .as_ref()
-            .map(|re| re.extensions());
+            .map(|re| re.extension_types());
         <span class="kw">let </span>version = <span class="self">self</span>.version.unwrap_or_default();
 
         <span class="macro">debug!</span>(<span class="string">&quot;Created group {:x?}&quot;</span>, <span class="self">self</span>.group_id);
@@ -1240,7 +1240,7 @@
             <span class="comment">// Ensure that all other leaf nodes support all the required
             // extensions as well.
             </span><span class="self">self</span>.treesync()
-                .check_extension_support(required_capabilities.extensions())<span class="question-mark">?</span>;
+                .check_extension_support(required_capabilities.extension_types())<span class="question-mark">?</span>;
         }
         <span class="kw">let </span>proposal = GroupContextExtensionProposal::new(extensions);
         <span class="kw">let </span>proposal = Proposal::GroupContextExtensions(proposal);

@@ -1233,7 +1233,7 @@
     ) -&gt; bool {
         <span class="comment">// Check if all required extensions are supported.
         </span><span class="kw">if </span>required_capabilities
-            .extensions()
+            .extension_types()
             .iter()
             .any(|e| !<span class="self">self</span>.extensions().contains(e))
         {
@@ -1241,7 +1241,7 @@
         }
         <span class="comment">// Check if all required proposals are supported.
         </span><span class="kw">if </span>required_capabilities
-            .proposals()
+            .proposal_types()
             .iter()
             .any(|p| !<span class="self">self</span>.proposals().contains(p))
         {
@@ -1625,12 +1625,12 @@
         required_capabilities: <span class="kw">impl </span>Into&lt;<span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>RequiredCapabilitiesExtension&gt;&gt;,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(), TreeSyncError&gt; {
         <span class="kw">if let </span><span class="prelude-val">Some</span>(required_capabilities) = required_capabilities.into() {
-            <span class="kw">for </span>required_extension <span class="kw">in </span>required_capabilities.extensions() {
+            <span class="kw">for </span>required_extension <span class="kw">in </span>required_capabilities.extension_types() {
                 <span class="kw">if </span>!<span class="self">self</span>.supports_extension(required_extension) {
                     <span class="kw">return </span><span class="prelude-val">Err</span>(TreeSyncError::UnsupportedExtension);
                 }
             }
-            <span class="kw">for </span>required_proposal <span class="kw">in </span>required_capabilities.proposals() {
+            <span class="kw">for </span>required_proposal <span class="kw">in </span>required_capabilities.proposal_types() {
                 <span class="kw">if </span>!<span class="self">self</span>.supports_proposal(required_proposal) {
                     <span class="kw">return </span><span class="prelude-val">Err</span>(TreeSyncError::UnsupportedProposal);
                 }
