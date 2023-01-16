@@ -570,6 +570,7 @@ impl LeafNode {
             _ => None,
         }
     }
+
     /// Returns the [`Lifetime`] if present.
     /// `None` otherwise.
     pub(crate) fn life_time(&self) -> Option<&Lifetime> {
