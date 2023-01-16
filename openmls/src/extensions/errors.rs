@@ -5,7 +5,6 @@
 //!
 //! `ExtensionError` holds individual errors for each extension.
 //! * `CapabilitiesExtensionError`
-//! * `LifetimeExtensionError`
 //! * `KeyPackageIdError`
 //! * `ParentHashError`
 //! * `RatchetTreeError`
@@ -32,9 +31,6 @@ pub enum ExtensionError {
     /// See [`CapabilitiesExtensionError`] for more details.
     #[error(transparent)]
     Capabilities(#[from] CapabilitiesExtensionError),
-    /// See [`LifetimeExtensionError`] for more details.
-    #[error(transparent)]
-    Lifetime(#[from] LifetimeExtensionError),
     /// See [`KeyPackageIdError`] for more details.
     #[error(transparent)]
     KeyPackageId(#[from] KeyPackageIdError),
@@ -47,17 +43,6 @@ pub enum ExtensionError {
     /// See [`InvalidExtensionError`] for more details.
     #[error(transparent)]
     InvalidExtension(#[from] InvalidExtensionError),
-}
-
-/// Lifetime extension error
-#[derive(Error, Debug, PartialEq, Eq, Clone)]
-pub enum LifetimeExtensionError {
-    /// Invalid lifetime extensions.
-    #[error("Invalid lifetime extensions.")]
-    Invalid,
-    /// Lifetime extension is expired.
-    #[error("Lifetime extension is expired.")]
-    Expired,
 }
 
 /// Capabilities extension error
