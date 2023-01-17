@@ -846,6 +846,14 @@ impl OpenMlsLeafNode {
         self.leaf_node.credential()
     }
 
+    /// Get a clone of this [`OpenMlsLeafNode`] without the private information.
+    pub(in crate::treesync) fn clone_public(&self) -> Self {
+        Self {
+            leaf_node: self.leaf_node.clone(),
+            leaf_index: None,
+        }
+    }
+
     /// Get the [`LeafNode`] as reference.
     pub(crate) fn leaf_node(&self) -> &LeafNode {
         &self.leaf_node

@@ -270,20 +270,48 @@ impl CoreGroup {
                 group_context: &serialized_context,
             };
 
-            // Load all the HPKE keys we have from the key store.
+            // All keys from the previous epoch are potential decryption keypairs.
             let old_epoch_keypairs = self
                 .read_epoch_keypairs(backend)
                 .ok_or(StageCommitError::MissingDecryptionKey)?;
 
+            // If we are processing an update proposal that originally came from
+            // us, the keypair corresponding to the leaf in the update is also a
+            // potential decryption keypair.
+            let own_keypairs = own_leaf_nodes
+                .iter()
+                .map(|leaf_node| {
+                    EncryptionKeyPair::read_from_key_store(backend, leaf_node.encryption_key())
+                        .ok_or(StageCommitError::MissingDecryptionKey)
+                })
+                .collect::<Result<Vec<EncryptionKeyPair>, StageCommitError>>()?;
+
+            let decryption_keypairs: Vec<&EncryptionKeyPair> = old_epoch_keypairs
+                .iter()
+                .chain(own_keypairs.iter())
+                .collect();
+
             // ValSem202: Path must be the right length
             // ValSem203: Path secrets must decrypt correctly
             // ValSem204: Public keys from Path must be verified and match the private keys from the direct path
-            let (plain_path, new_epoch_keypairs, commit_secret) = diff.decrypt_path(
+            let (plain_path, mut new_epoch_keypairs, commit_secret) = diff.decrypt_path(
                 backend,
                 ciphersuite,
                 decrypt_path_params,
-                &old_epoch_keypairs,
+                &decryption_keypairs,
             )?;
+
+            // Check if one of our update proposals was applied. If so, its
+            // encryption keypair should be part of the new keypairs that are
+            // stored for the next epoch.
+            if let Ok(leaf) = diff.own_leaf() {
+                for own_keypair in own_keypairs {
+                    if leaf.encryption_key() == own_keypair.public_key() {
+                        new_epoch_keypairs.push(own_keypair)
+                    }
+                }
+            }
+
             diff.apply_received_update_path(
                 backend,
                 ciphersuite,
@@ -428,7 +456,6 @@ impl CoreGroup {
         // Get all keypairs from the old epoch, so we can later store the ones
         // that are still relevant in the new epoch.
         let old_epoch_keypairs = self.read_epoch_keypairs(backend).unwrap_or(vec![]);
-        debug_assert!(!old_epoch_keypairs.is_empty());
         match staged_commit.state {
             StagedCommitState::SelfRemoved(staged_diff) => {
                 self.tree.merge_diff(*staged_diff);

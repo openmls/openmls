@@ -96,7 +96,7 @@ impl<'a> TreeSyncDiff<'a> {
         backend: &impl OpenMlsCryptoProvider,
         ciphersuite: Ciphersuite,
         params: DecryptPathParams,
-        owned_keys: &[EncryptionKeyPair],
+        owned_keys: &[&EncryptionKeyPair],
     ) -> Result<(Vec<ParentNode>, Vec<EncryptionKeyPair>, CommitSecret), ApplyUpdatePathError> {
         // ValSem202: Path must be the right length
         let direct_path_length = self.filtered_direct_path(params.sender_leaf_index).len();

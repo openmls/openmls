@@ -822,7 +822,7 @@ impl<'a> TreeSyncDiff<'a> {
         &self,
         sender_leaf_index: LeafNodeIndex,
         excluded_indices: &HashSet<&LeafNodeIndex>,
-        owned_keys: &'private_key [EncryptionKeyPair],
+        owned_keys: &'private_key [&EncryptionKeyPair],
     ) -> Result<(&'private_key EncryptionPrivateKey, usize), TreeSyncDiffError> {
         // Get the copath node of the sender that is in our direct path, as well
         // as its position in our direct path.

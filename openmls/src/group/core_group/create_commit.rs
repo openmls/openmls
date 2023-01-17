@@ -175,8 +175,17 @@ impl CoreGroup {
                         backend,
                     )?;
                     vec![encryption_keypair]
-                }else {
-                    vec![]
+                } else {
+                    // If we're not in the tree, we just load
+                    // KeyPackage we prepared earlier.
+                    let own_leaf = diff.own_leaf()
+                        // We should have a leaf in the diff
+                        .map_err(|_| LibraryError::custom("Unable to get own leaf from diff"))?;
+                    let encryption_keypair = EncryptionKeyPair::read_from_key_store(backend, own_leaf.encryption_key())
+                        // There should be a key in the store, since we added
+                        // one when generating the KeyPackage earlier.
+                        .ok_or(LibraryError::custom("Unable to get own leaf from diff"))?;
+                    vec![encryption_keypair]
                 };
 
                 // Derive and apply an update path based on the previously

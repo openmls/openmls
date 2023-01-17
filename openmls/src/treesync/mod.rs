@@ -406,7 +406,7 @@ impl TreeSync {
 
         // Get the first leaf.
         if let Some(leaf) = leaves.next() {
-            nodes.push(leaf.node().clone().map(Node::LeafNode));
+            nodes.push(leaf.node_without_index().map(Node::LeafNode));
         } else {
             // The tree was empty.
             return vec![];
@@ -432,7 +432,7 @@ impl TreeSync {
         // Interleave the leaves and parents.
         for (leaf, parent) in leaves.zip(parents) {
             nodes.push(parent.node().clone().map(Node::ParentNode));
-            nodes.push(leaf.node().clone().map(Node::LeafNode));
+            nodes.push(leaf.node_without_index().clone().map(Node::LeafNode));
         }
 
         nodes
