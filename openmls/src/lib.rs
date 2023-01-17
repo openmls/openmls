@@ -176,7 +176,6 @@ pub mod test_utils;
 mod utils;
 
 pub mod error;
-pub mod ks_test;
 
 // Public
 pub mod ciphersuite;

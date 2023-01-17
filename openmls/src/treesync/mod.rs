@@ -29,7 +29,7 @@ use crate::{
         array_representation::{is_node_in_tree, tree::TreeNode, LeafNodeIndex},
         MlsBinaryTree, MlsBinaryTreeError,
     },
-    ciphersuite::{HpkePublicKey, Secret},
+    ciphersuite::Secret,
     credentials::CredentialBundle,
     error::LibraryError,
     extensions::Extensions,
@@ -161,7 +161,7 @@ impl TreeSync {
         backend: &impl OpenMlsCryptoProvider,
         ciphersuite: Ciphersuite,
         node_options: &[Option<Node>],
-        encryption_key: HpkePublicKey,
+        encryption_key: &EncryptionKey,
     ) -> Result<Self, TreeSyncFromNodesError> {
         // TODO #800: Unmerged leaves should be checked
         // Before we can instantiate the TreeSync instance, we have to figure
@@ -177,7 +177,7 @@ impl TreeSync {
                     let mut node = node.clone();
                     if let Node::LeafNode(ref mut leaf_node) = node {
                         let leaf_index = LeafNodeIndex::new((node_index / 2) as u32);
-                        if leaf_node.public_key().as_ref() == encryption_key.as_slice() {
+                        if leaf_node.encryption_key() == encryption_key {
                             own_index_option = Some(leaf_index);
                         }
                         leaf_node.set_leaf_index(leaf_index);

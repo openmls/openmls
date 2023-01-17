@@ -271,19 +271,19 @@ impl CoreGroup {
             };
 
             // Load all the HPKE keys we have from the key store.
-            let owned_encryption_keys = diff.owned_encryption_keys();
-            let owned_keypairs: Vec<EncryptionKeyPair> = owned_encryption_keys
-                .map(|encryption_key| {
-                    EncryptionKeyPair::read_from_key_store(backend, encryption_key)
-                        .ok_or(StageCommitError::MissingDecryptionKey)
-                })
-                .collect::<Result<Vec<EncryptionKeyPair>, StageCommitError>>()?;
+            let old_epoch_keypairs = self
+                .read_epoch_keypairs(backend)
+                .ok_or(StageCommitError::MissingDecryptionKey)?;
 
             // ValSem202: Path must be the right length
             // ValSem203: Path secrets must decrypt correctly
             // ValSem204: Public keys from Path must be verified and match the private keys from the direct path
-            let (plain_path, new_keypairs, commit_secret) =
-                diff.decrypt_path(backend, ciphersuite, decrypt_path_params, &owned_keypairs)?;
+            let (plain_path, new_epoch_keypairs, commit_secret) = diff.decrypt_path(
+                backend,
+                ciphersuite,
+                decrypt_path_params,
+                &old_epoch_keypairs,
+            )?;
             diff.apply_received_update_path(
                 backend,
                 ciphersuite,
@@ -291,7 +291,7 @@ impl CoreGroup {
                 leaf_node,
                 plain_path,
             )?;
-            (commit_secret, new_keypairs)
+            (commit_secret, new_epoch_keypairs)
         } else {
             if apply_proposals_values.path_required {
                 // ValSem201
@@ -425,6 +425,10 @@ impl CoreGroup {
         backend: &impl OpenMlsCryptoProvider<KeyStoreProvider = KeyStore>,
         staged_commit: StagedCommit,
     ) -> Result<Option<MessageSecrets>, KeyStore::Error> {
+        // Get all keypairs from the old epoch, so we can later store the ones
+        // that are still relevant in the new epoch.
+        let old_epoch_keypairs = self.read_epoch_keypairs(backend).unwrap_or(vec![]);
+        debug_assert!(!old_epoch_keypairs.is_empty());
         match staged_commit.state {
             StagedCommitState::SelfRemoved(staged_diff) => {
                 self.tree.merge_diff(*staged_diff);
@@ -441,40 +445,28 @@ impl CoreGroup {
                     self.message_secrets_store.message_secrets_mut(),
                 );
 
-                // TODO #1194: Group storage and key storage should be
-                // correlated s.t. there is no divergence between key material
-                // and group state.
-
-                // Write new private keys into the key store.
-                state
-                    .new_keypairs
-                    .into_iter()
-                    .map(|new_keypair| {
-                        backend
-                            .key_store()
-                            .store(new_keypair.public_key().as_slice(), &new_keypair)
-                    })
-                    .collect::<Result<Vec<()>, KeyStore::Error>>()?;
-
-                // Figure out which keys we have before the diff.
-                let old_owned_pks = self.tree.owned_encryption_keys();
-
                 self.interim_transcript_hash = state.interim_transcript_hash;
 
                 self.tree.merge_diff(state.staged_diff);
 
-                // Get all keys that are no longer in the tree and delete them.
-                let new_owned_pks = self.tree.owned_encryption_keys();
-                old_owned_pks
-                    .into_iter()
-                    .map(|pk| {
-                        if !new_owned_pks.contains(&pk) {
-                            backend.key_store().delete(pk.as_slice())
-                        } else {
-                            Ok(())
-                        }
-                    })
-                    .collect::<Result<Vec<()>, KeyStore::Error>>()?;
+                // TODO #1194: Group storage and key storage should be
+                // correlated s.t. there is no divergence between key material
+                // and group state.
+
+                // Figure out which keys we need in the new epoch.
+                let new_owned_encryption_keys = self.tree.owned_encryption_keys();
+                // From the old and new keys, keep the ones that are still relevant in the new epoch.
+                let epoch_keypairs: Vec<&EncryptionKeyPair> = old_epoch_keypairs
+                    .iter()
+                    .chain(state.new_keypairs.iter())
+                    .filter(|&keypair| new_owned_encryption_keys.contains(keypair.public_key()))
+                    .collect();
+                // We should have private keys for all owned encryption keys.
+                debug_assert_eq!(new_owned_encryption_keys.len(), epoch_keypairs.len());
+                // Store the relevant keys under the new epoch
+                self.store_epoch_keypairs(backend, epoch_keypairs.as_slice())?;
+                // Delete the old keys.
+                self.delete_previous_epoch_keypairs(backend)?;
 
                 Ok(Some(message_secrets))
             }

@@ -37,6 +37,7 @@ use super::errors::CreateGroupContextExtProposalError;
 use crate::framing::mls_auth_content::VerifiableAuthenticatedContent;
 
 use crate::group::config::CryptoConfig;
+use crate::treesync::node::encryption_keys::EncryptionKeyPair;
 use crate::{
     binary_tree::array_representation::LeafNodeIndex,
     ciphersuite::{signable::Signable, HpkePublicKey},
@@ -233,11 +234,6 @@ impl CoreGroupBuilder {
             self.own_leaf_extensions,
         )?;
 
-        // Store the private key of the own leaf in the key store.
-        leaf_keypair
-            .write_to_key_store(backend)
-            .map_err(CoreGroupBuildError::KeyStoreError)?;
-
         let required_capabilities = self.required_capabilities.unwrap_or_default();
         required_capabilities.check_support().map_err(|e| match e {
             ExtensionError::UnsupportedProposalType => CoreGroupBuildError::UnsupportedProposalType,
@@ -289,7 +285,7 @@ impl CoreGroupBuilder {
 
         let interim_transcript_hash = vec![];
 
-        Ok(CoreGroup {
+        let group = CoreGroup {
             ciphersuite,
             group_context,
             group_epoch_secrets,
@@ -298,7 +294,14 @@ impl CoreGroupBuilder {
             use_ratchet_tree_extension: config.add_ratchet_tree_extension,
             mls_version: version,
             message_secrets_store,
-        })
+        };
+
+        // Store the private key of the own leaf in the key store as an epoch keypair.
+        group
+            .store_epoch_keypairs(backend, &[&leaf_keypair])
+            .map_err(CoreGroupBuildError::KeyStoreError)?;
+
+        Ok(group)
     }
 }
 
@@ -741,6 +744,50 @@ impl CoreGroup {
             // available to the caller.
             Ok((self.message_secrets_store.message_secrets_mut(), &[]))
         }
+    }
+
+    /// Store the given [`EncryptionKeyPair`]s in the `backend`'s key store
+    /// indexed by this group's [`GroupId`] and [`GroupEpoch`].
+    ///
+    /// Returns an error if access to the key store fails.
+    pub(super) fn store_epoch_keypairs<KeyStore: OpenMlsKeyStore>(
+        &self,
+        backend: &impl OpenMlsCryptoProvider<KeyStoreProvider = KeyStore>,
+        keypair_references: &[&EncryptionKeyPair],
+    ) -> Result<(), KeyStore::Error> {
+        backend.key_store().store_epoch_keys(
+            self.group_id().as_slice(),
+            self.context().epoch().as_u64(),
+            keypair_references,
+        )
+    }
+
+    /// Read the [`EncryptionKeyPair`]s of this group and its current
+    /// [`GroupEpoch`] from the `backend`'s key store.
+    ///
+    /// Returns `None` if access to the key store fails.
+    pub(super) fn read_epoch_keypairs<KeyStore: OpenMlsKeyStore>(
+        &self,
+        backend: &impl OpenMlsCryptoProvider<KeyStoreProvider = KeyStore>,
+    ) -> Option<Vec<EncryptionKeyPair>> {
+        backend.key_store().read_epoch_keys(
+            self.group_id().as_slice(),
+            self.group_context.epoch().as_u64(),
+        )
+    }
+
+    /// Delete the [`EncryptionKeyPair`]s from the previous [`GroupEpoch`] from
+    /// the `backend`'s key store.
+    ///
+    /// Returns an error if access to the key store fails.
+    pub(super) fn delete_previous_epoch_keypairs<KeyStore: OpenMlsKeyStore>(
+        &self,
+        backend: &impl OpenMlsCryptoProvider<KeyStoreProvider = KeyStore>,
+    ) -> Result<(), KeyStore::Error> {
+        backend.key_store().delete_epoch_keys(
+            self.group_id().as_slice(),
+            self.context().epoch().as_u64() - 1,
+        )
     }
 
     #[cfg(any(feature = "test-utils", test))]

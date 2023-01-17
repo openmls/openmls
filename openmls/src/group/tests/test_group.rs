@@ -121,7 +121,7 @@ fn create_commit_optional_path(ciphersuite: Ciphersuite, backend: &impl OpenMlsC
 
     // Alice applies the Commit without the forced self-update
     group_alice
-        .merge_commit(create_commit_result.staged_commit)
+        .merge_commit(backend, create_commit_result.staged_commit)
         .expect("error merging pending commit");
     let ratchet_tree = group_alice.treesync().export_nodes();
 
@@ -178,7 +178,7 @@ fn create_commit_optional_path(ciphersuite: Ciphersuite, backend: &impl OpenMlsC
 
     // Apply UpdateProposal
     group_alice
-        .merge_commit(create_commit_result.staged_commit)
+        .merge_commit(backend, create_commit_result.staged_commit)
         .expect("error merging pending commit");
 }
 
@@ -324,7 +324,7 @@ fn group_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvid
     assert!(create_commit_result.welcome_option.is_some());
 
     group_alice
-        .merge_commit(create_commit_result.staged_commit)
+        .merge_commit(backend, create_commit_result.staged_commit)
         .expect("error merging own commits");
     let ratchet_tree = group_alice.treesync().export_nodes();
 
@@ -423,11 +423,11 @@ fn group_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvid
         .stage_commit(&create_commit_result.commit, &proposal_store, &[], backend)
         .expect("Error applying commit (Alice)");
     group_alice
-        .merge_commit(staged_commit)
+        .merge_commit(backend, staged_commit)
         .expect("error merging commit");
 
     group_bob
-        .merge_commit(create_commit_result.staged_commit)
+        .merge_commit(backend, create_commit_result.staged_commit)
         .expect("error merging own commits");
 
     // Make sure that both groups have the same public tree
@@ -474,13 +474,13 @@ fn group_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvid
     assert!(commit.has_path());
 
     group_alice
-        .merge_commit(create_commit_result.staged_commit)
+        .merge_commit(backend, create_commit_result.staged_commit)
         .expect("error merging own commits");
     let staged_commit = group_bob
         .stage_commit(&create_commit_result.commit, &proposal_store, &[], backend)
         .expect("Error applying commit (Bob)");
     group_bob
-        .merge_commit(staged_commit)
+        .merge_commit(backend, staged_commit)
         .expect("error merging commit");
 
     // Make sure that both groups have the same public tree
@@ -530,7 +530,7 @@ fn group_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvid
     assert!(commit.has_path());
 
     group_alice
-        .merge_commit(create_commit_result.staged_commit)
+        .merge_commit(backend, create_commit_result.staged_commit)
         .expect("error merging own commits");
 
     proposal_store.add(
@@ -538,28 +538,26 @@ fn group_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvid
             .expect("Could not create StagedProposal."),
     );
 
+    let (leaf_node, encryption_keypair) = OpenMlsLeafNode::from_key_package_bundle(
+        backend,
+        group_bob.own_leaf_index(),
+        bob_update_key_package_bundle
+            .key_package()
+            .leaf_node()
+            .clone(),
+    );
+    encryption_keypair.write_to_key_store(backend).unwrap();
+
     let staged_commit = group_bob
         .stage_commit(
             &create_commit_result.commit,
             &proposal_store,
-            &[OpenMlsLeafNode::from_key_package_bundle(
-                backend,
-                bob_update_key_package_bundle
-                    .key_package()
-                    .leaf_node()
-                    .signature_key()
-                    .as_slice(),
-                group_bob.own_leaf_index(),
-                bob_update_key_package_bundle
-                    .key_package()
-                    .leaf_node()
-                    .clone(),
-            )],
+            &[leaf_node],
             backend,
         )
         .expect("Error applying commit (Bob)");
     group_bob
-        .merge_commit(staged_commit)
+        .merge_commit(backend, staged_commit)
         .expect("error merging commit");
 
     // Make sure that both groups have the same public tree
@@ -621,10 +619,10 @@ fn group_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvid
         .stage_commit(&create_commit_result.commit, &proposal_store, &[], backend)
         .expect("Error applying commit (Alice)");
     group_alice
-        .merge_commit(staged_commit)
+        .merge_commit(backend, staged_commit)
         .expect("error merging commit");
     group_bob
-        .merge_commit(create_commit_result.staged_commit)
+        .merge_commit(backend, create_commit_result.staged_commit)
         .expect("error merging own commits");
 
     let ratchet_tree = group_alice.treesync().export_nodes();
@@ -751,16 +749,16 @@ fn group_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvid
         .stage_commit(&create_commit_result.commit, &proposal_store, &[], backend)
         .expect("Error applying commit (Alice)");
     group_alice
-        .merge_commit(staged_commit)
+        .merge_commit(backend, staged_commit)
         .expect("error merging commit");
     let staged_commit = group_bob
         .stage_commit(&create_commit_result.commit, &proposal_store, &[], backend)
         .expect("Error applying commit (Bob)");
     group_bob
-        .merge_commit(staged_commit)
+        .merge_commit(backend, staged_commit)
         .expect("error merging commit");
     group_charlie
-        .merge_commit(create_commit_result.staged_commit)
+        .merge_commit(backend, create_commit_result.staged_commit)
         .expect("error merging own commits");
 
     // Make sure that all groups have the same public tree
@@ -812,14 +810,14 @@ fn group_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvid
         .stage_commit(&create_commit_result.commit, &proposal_store, &[], backend)
         .expect("Error applying commit (Alice)");
     group_alice
-        .merge_commit(staged_commit)
+        .merge_commit(backend, staged_commit)
         .expect("error merging commit");
     assert!(group_bob
         .stage_commit(&create_commit_result.commit, &proposal_store, &[], backend,)
         .expect("Could not stage commit.")
         .self_removed());
     group_charlie
-        .merge_commit(create_commit_result.staged_commit)
+        .merge_commit(backend, create_commit_result.staged_commit)
         .expect("error merging own commits");
 
     // Make sure that all groups have the same public tree

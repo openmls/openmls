@@ -1,5 +1,5 @@
 //! This module contains the [`LeafNode`] struct and its implementation.
-use openmls_traits::{crypto::OpenMlsCrypto, types::Ciphersuite, OpenMlsCryptoProvider};
+use openmls_traits::{types::Ciphersuite, OpenMlsCryptoProvider};
 use serde::{Deserialize, Serialize};
 use tls_codec::{
     Deserialize as TlsDeserializeTrait, Serialize as TlsSerializeTrait, TlsDeserialize,
@@ -10,7 +10,7 @@ use crate::{
     binary_tree::array_representation::LeafNodeIndex,
     ciphersuite::{
         signable::{Signable, SignedStruct, Verifiable},
-        HpkePrivateKey, HpkePublicKey, Secret, Signature, SignaturePublicKey,
+        HpkePublicKey, Secret, Signature, SignaturePublicKey,
     },
     credentials::{Credential, CredentialBundle, CredentialType},
     error::LibraryError,
@@ -388,15 +388,6 @@ impl From<OpenMlsLeafNode> for LeafNode {
 }
 
 impl LeafNode {
-    /// Get the identifier to search for the encryption key pair in the key
-    /// store.
-    pub fn encryption_key_label(id: &[u8]) -> Vec<u8> {
-        const ENCRYPTION_KEY_LABEL: &[u8; 9] = b"leaf_node";
-        let mut kp_key = ENCRYPTION_KEY_LABEL.to_vec();
-        kp_key.extend_from_slice(id);
-        kp_key
-    }
-
     /// Create a new [`LeafNode`].
     /// This first creates a `LeadNodeTbs` and returns the result of signing
     /// it.
@@ -530,14 +521,14 @@ impl LeafNode {
     /// Expose [`new_with_key`] for tests.
     #[cfg(any(feature = "test-utils", test))]
     pub(crate) fn create_new_with_key(
-        encryption_key: HpkePublicKey,
+        encryption_key: EncryptionKey,
         credential_bundle: &CredentialBundle,
         leaf_node_source: LeafNodeSource,
         extensions: Extensions,
         backend: &impl OpenMlsCryptoProvider,
     ) -> Result<Self, LibraryError> {
         Self::new_with_key(
-            encryption_key.into(),
+            encryption_key,
             credential_bundle,
             leaf_node_source,
             extensions,
@@ -753,7 +744,7 @@ impl OpenMlsLeafNode {
     /// Update the `encryption_key` in this leaf node and re-signs it.
     pub(crate) fn update_and_re_sign(
         &mut self,
-        new_encryption_key: &HpkePublicKey,
+        new_encryption_key: &EncryptionKey,
         credential_bundle: &CredentialBundle,
         group_id: GroupId,
         backend: &impl OpenMlsCryptoProvider,
@@ -761,7 +752,7 @@ impl OpenMlsLeafNode {
         let tree_info = self.update_tree_info(group_id)?;
         // TODO: If we could take out the leaf_node without cloning, this would all be nicer.
         let mut leaf_node_tbs = LeafNodeTbs::from(self.leaf_node.clone(), tree_info);
-        leaf_node_tbs.payload.encryption_key = new_encryption_key.clone().into();
+        leaf_node_tbs.payload.encryption_key = new_encryption_key.clone();
 
         // Update credential
         // TODO: #133 ValSem109 check that the identity is the same.
@@ -782,7 +773,7 @@ impl OpenMlsLeafNode {
         protocol_version: ProtocolVersion,
         credential_bundle: &CredentialBundle,
         backend: &impl OpenMlsCryptoProvider,
-    ) -> Result<HpkePrivateKey, LibraryError> {
+    ) -> Result<EncryptionKeyPair, LibraryError> {
         if !self
             .leaf_node
             .payload
@@ -808,18 +799,16 @@ impl OpenMlsLeafNode {
         }
         let encryption_secret = Secret::random(ciphersuite, backend, protocol_version)
             .map_err(LibraryError::unexpected_crypto_error)?;
-        let key_pair = backend
-            .crypto()
-            .derive_hpke_keypair(ciphersuite.hpke_config(), encryption_secret.as_slice());
+        let key_pair = EncryptionKeyPair::derive(backend, ciphersuite, encryption_secret);
 
         self.update_and_re_sign(
-            &key_pair.public.into(),
+            key_pair.public_key(),
             credential_bundle,
             group_id.clone(),
             backend,
         )?;
 
-        Ok(key_pair.private.into())
+        Ok(key_pair)
     }
 
     /// Create the [`TreeInfoTbs`] for an update for this leaf.
@@ -926,23 +915,19 @@ impl OpenMlsLeafNode {
     #[cfg(test)]
     pub(crate) fn from_key_package_bundle(
         backend: &impl OpenMlsCryptoProvider,
-        signature_key: &[u8],
         leaf_index: LeafNodeIndex,
         leaf_node: LeafNode,
-    ) -> (Self, HpkePrivateKey) {
+    ) -> (Self, EncryptionKeyPair) {
         // Get the encryption key pair from the leaf.
+        let encryption_key_pair =
+            EncryptionKeyPair::read_from_key_store(backend, leaf_node.encryption_key()).unwrap();
 
-        use openmls_traits::key_store::OpenMlsKeyStore;
-        let encryption_key_pair: crate::prelude::HpkeKeyPair = backend
-            .key_store()
-            .read(&LeafNode::encryption_key_label(signature_key))
-            .unwrap();
         (
             Self {
                 leaf_node,
                 leaf_index: Some(leaf_index),
             },
-            encryption_key_pair.private.into(),
+            encryption_key_pair,
         )
     }
 

@@ -246,7 +246,7 @@ impl UpdatePathNode {
             .expect("An unexpected error occurred.");
         last_bits ^= 0xff;
         new_pk_serialized.push(last_bits);
-        self.public_key = HpkePublicKey::tls_deserialize(&mut new_pk_serialized.as_slice())
+        self.public_key = EncryptionKey::tls_deserialize(&mut new_pk_serialized.as_slice())
             .expect("error deserializing pk");
     }
 }

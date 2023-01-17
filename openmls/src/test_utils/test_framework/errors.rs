@@ -84,7 +84,7 @@ pub enum ClientError {
     SelfUpdateError(#[from] SelfUpdateError<MemoryKeyStoreError>),
     /// See [`ProposeSelfUpdateError`] for more details.
     #[error(transparent)]
-    ProposeSelfUpdateError(#[from] ProposeSelfUpdateError),
+    ProposeSelfUpdateError(#[from] ProposeSelfUpdateError<MemoryKeyStoreError>),
     /// See [`MergePendingCommitError`] for more details.
     #[error(transparent)]
     MergePendingCommitError(#[from] MergePendingCommitError<MemoryKeyStoreError>),

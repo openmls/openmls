@@ -119,7 +119,7 @@ fn test_welcome_ciphersuite_mismatch(
         .expect("Could not add member to group.");
 
     alice_group
-        .merge_pending_commit()
+        .merge_pending_commit(backend)
         .expect("error merging pending commit");
 
     let mut welcome = welcome.into_welcome().expect("Unexpected message type.");

@@ -91,7 +91,7 @@ fn validation_test_setup(
         .expect("Could not add member.");
 
     alice_group
-        .merge_pending_commit()
+        .merge_pending_commit(backend)
         .expect("error merging pending commit");
 
     let bob_group = MlsGroup::new_from_welcome(
@@ -174,10 +174,10 @@ fn test_valsem003(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
     let (message, _welcome) = alice_group
         .self_update(backend, None)
         .expect("Could not self update.");
-    alice_group.merge_pending_commit().unwrap();
+    alice_group.merge_pending_commit(backend).unwrap();
 
     alice_group
-        .merge_pending_commit()
+        .merge_pending_commit(backend)
         .expect("Could not merge commit.");
 
     let processed_message = bob_group
@@ -187,7 +187,9 @@ fn test_valsem003(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
     if let ProcessedMessageContent::StagedCommitMessage(staged_commit) =
         processed_message.into_content()
     {
-        bob_group.merge_staged_commit(*staged_commit);
+        bob_group
+            .merge_staged_commit(backend, *staged_commit)
+            .expect("Error merging commit.");
     } else {
         unreachable!("Expected StagedCommit.");
     }
@@ -235,7 +237,9 @@ fn test_valsem003(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
     if let ProcessedMessageContent::StagedCommitMessage(staged_commit) =
         processed_msg.into_content()
     {
-        bob_group.merge_staged_commit(*staged_commit);
+        bob_group
+            .merge_staged_commit(backend, *staged_commit)
+            .unwrap();
     } else {
         unreachable!();
     }

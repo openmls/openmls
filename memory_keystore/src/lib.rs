@@ -1,9 +1,12 @@
 use openmls_traits::key_store::{FromKeyStoreValue, OpenMlsKeyStore, ToKeyStoreValue};
 use std::{collections::HashMap, sync::RwLock};
 
+type EpochStoreIndex = (Vec<u8>, u64); // GroupId and GroupEpoch
+
 #[derive(Debug, Default)]
 pub struct MemoryKeyStore {
     values: RwLock<HashMap<Vec<u8>, Vec<u8>>>,
+    epoch_values: RwLock<HashMap<EpochStoreIndex, Vec<Vec<u8>>>>,
 }
 
 impl OpenMlsKeyStore for MemoryKeyStore {
@@ -49,6 +52,46 @@ impl OpenMlsKeyStore for MemoryKeyStore {
         // We just delete both ...
         let mut values = self.values.write().unwrap();
         values.remove(k);
+        Ok(())
+    }
+
+    fn read_epoch_keys<V: FromKeyStoreValue>(&self, group_id: &[u8], epoch: u64) -> Option<Vec<V>> {
+        let epoch_store = self.epoch_values.read().unwrap();
+        if let Some(values) = epoch_store.get(&(group_id.to_vec(), epoch)) {
+            values
+                .iter()
+                .map(|value| V::from_key_store_value(value))
+                .collect::<Result<Vec<V>, V::Error>>()
+                .map(Some)
+                .unwrap_or(None)
+        } else {
+            None
+        }
+    }
+
+    fn delete_epoch_keys(&self, group_id: &[u8], epoch: u64) -> Result<(), Self::Error> {
+        let mut epoch_store = self.epoch_values.write().unwrap();
+        epoch_store.remove(&(group_id.to_vec(), epoch));
+        Ok(())
+    }
+
+    fn store_epoch_keys<V: ToKeyStoreValue>(
+        &self,
+        group_id: &[u8],
+        epoch: u64,
+        encryption_keys: &[&V],
+    ) -> Result<(), Self::Error> {
+        let mut epoch_store = self.epoch_values.write().unwrap();
+        epoch_store.insert(
+            (group_id.to_vec(), epoch),
+            encryption_keys
+                .iter()
+                .map(|&bytes| {
+                    V::to_key_store_value(bytes)
+                        .map_err(|_| MemoryKeyStoreError::SerializationError)
+                })
+                .collect::<Result<Vec<Vec<u8>>, Self::Error>>()?,
+        );
         Ok(())
     }
 }

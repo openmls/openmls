@@ -162,29 +162,33 @@ impl CoreGroup {
                 || contains_own_updates
                 || params.force_self_update()
             {
-                if params.commit_type() != CommitType::External {
+                let mut new_keypairs = if params.commit_type() != CommitType::External {
                     // If we're in the tree, we rekey our existing leaf.
                     let own_diff_leaf = diff
                         .own_leaf_mut()
                         .map_err(|_| LibraryError::custom("Unable to get own leaf from diff"))?;
-                    let private_key: Vec<u8> = own_diff_leaf.rekey(
+                    let encryption_keypair = own_diff_leaf.rekey(
                         self.group_id(),
                         self.ciphersuite,
                         ProtocolVersion::default(), // XXX: openmls/openmls#1065
                         params.credential_bundle(),
                         backend,
-                    )?.into();
-                    backend.key_store().store(own_diff_leaf.encryption_key().as_slice(), &private_key).map_err(CreateCommitError::KeyStoreError)?;
-                }
+                    )?;
+                    vec![encryption_keypair]
+                }else {
+                    vec![]
+                };
 
                 // Derive and apply an update path based on the previously
                 // generated new leaf.
-                let (plain_path, new_keypairs, commit_secret) = diff.apply_own_update_path(
+                let (plain_path, mut new_parent_keypairs, commit_secret) = diff.apply_own_update_path(
                     backend,
                     ciphersuite,
                     self.group_id().clone(),
                     params.credential_bundle(),
                 )?;
+
+                new_keypairs.append(&mut new_parent_keypairs);
 
                 // Encrypt the path to the correct recipient nodes.
                 let encrypted_path = diff.encrypt_path(

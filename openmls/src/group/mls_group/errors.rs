@@ -229,7 +229,7 @@ pub enum SelfUpdateError<KeyStoreError> {
 
 /// Propose self update error
 #[derive(Error, Debug, PartialEq, Clone)]
-pub enum ProposeSelfUpdateError {
+pub enum ProposeSelfUpdateError<KeyStoreError> {
     /// See [`LibraryError`] for more details.
     #[error(transparent)]
     LibraryError(#[from] LibraryError),
@@ -241,7 +241,7 @@ pub enum ProposeSelfUpdateError {
     GroupStateError(#[from] MlsGroupStateError),
     /// Error accessing the key store.
     #[error("Error accessing the key store.")]
-    KeyStoreError,
+    KeyStoreError(KeyStoreError),
 }
 
 /// Commit to pending proposals error

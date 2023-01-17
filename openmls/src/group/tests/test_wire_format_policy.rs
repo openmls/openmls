@@ -76,7 +76,7 @@ fn receive_message(
         .expect("Could not add member.");
 
     alice_group
-        .merge_pending_commit()
+        .merge_pending_commit(backend)
         .expect("error merging pending commit");
 
     let mls_group_config = MlsGroupConfig::builder()

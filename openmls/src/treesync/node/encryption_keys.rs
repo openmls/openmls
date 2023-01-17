@@ -75,21 +75,49 @@ pub struct EncryptionKeyPair {
     private_key: EncryptionPrivateKey,
 }
 
+const ENCRYPTION_KEY_LABEL: &[u8; 19] = b"leaf_encryption_key";
+
 impl EncryptionKeyPair {
+    /// Write the [`EncryptionKeyPair`] to the key store of the `backend`. This
+    /// function is meant to store standalone keypairs, not ones that are
+    /// already in use with an MLS group.
+    ///
+    /// Returns a key store error if access to the key store fails.
     pub fn write_to_key_store<KeyStore: OpenMlsKeyStore>(
         &self,
         backend: &impl OpenMlsCryptoProvider<KeyStoreProvider = KeyStore>,
     ) -> Result<(), KeyStore::Error> {
-        backend
-            .key_store()
-            .store(self.public_key.key.as_slice(), self)
+        let mut key_store_index = ENCRYPTION_KEY_LABEL.to_vec();
+        key_store_index.extend_from_slice(self.public_key().as_slice());
+        backend.key_store().store(&key_store_index, self)
     }
 
+    /// Read the [`EncryptionKeyPair`] from the key store of the `backend`. This
+    /// function is meant to read standalone keypairs, not ones that are
+    /// already in use with an MLS group.
+    ///
+    /// Returns `None` if the keypair cannot be read from the store.
     pub fn read_from_key_store(
         backend: &impl OpenMlsCryptoProvider,
         encryption_key: &EncryptionKey,
     ) -> Option<EncryptionKeyPair> {
-        backend.key_store().read(encryption_key.key.as_slice())
+        let mut key_store_index = ENCRYPTION_KEY_LABEL.to_vec();
+        key_store_index.extend_from_slice(encryption_key.as_slice());
+        backend.key_store().read(&key_store_index)
+    }
+
+    /// Delete the [`EncryptionKeyPair`] from the key store of the `backend`.
+    /// This function is meant to delete standalone keypairs, not ones that are
+    /// already in use with an MLS group.
+    ///
+    /// Returns a key store error if access to the key store fails.
+    pub fn delete_from_key_store<KeyStore: OpenMlsKeyStore>(
+        &self,
+        backend: &impl OpenMlsCryptoProvider<KeyStoreProvider = KeyStore>,
+    ) -> Result<(), KeyStore::Error> {
+        let mut key_store_index = ENCRYPTION_KEY_LABEL.to_vec();
+        key_store_index.extend_from_slice(self.public_key().as_slice());
+        backend.key_store().delete(&key_store_index)
     }
 
     pub fn public_key(&self) -> &EncryptionKey {

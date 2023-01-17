@@ -95,7 +95,7 @@ fn test_past_secrets_in_group(ciphersuite: Ciphersuite, backend: &impl OpenMlsCr
             .expect("An unexpected error occurred.");
 
         alice_group
-            .merge_pending_commit()
+            .merge_pending_commit(backend)
             .expect("error merging pending commit");
 
         let mut bob_group = MlsGroup::new_from_welcome(
@@ -125,7 +125,7 @@ fn test_past_secrets_in_group(ciphersuite: Ciphersuite, backend: &impl OpenMlsCr
             update_commits.push(message.clone());
 
             alice_group
-                .merge_pending_commit()
+                .merge_pending_commit(backend)
                 .expect("error merging pending commit");
         }
 
@@ -139,7 +139,9 @@ fn test_past_secrets_in_group(ciphersuite: Ciphersuite, backend: &impl OpenMlsCr
             if let ProcessedMessageContent::StagedCommitMessage(staged_commit) =
                 bob_processed_message.into_content()
             {
-                bob_group.merge_staged_commit(*staged_commit);
+                bob_group
+                    .merge_staged_commit(backend, *staged_commit)
+                    .expect("Error merging commit.");
             } else {
                 unreachable!("Expected a StagedCommit.");
             }

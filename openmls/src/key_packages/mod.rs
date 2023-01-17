@@ -90,7 +90,7 @@ use crate::{
     group::config::CryptoConfig,
     treesync::{
         node::{
-            encryption_keys::EncryptionKeyPair,
+            encryption_keys::{EncryptionKey, EncryptionKeyPair},
             leaf_node::{LeafNodeSource, Lifetime},
         },
         LeafNode,
@@ -437,12 +437,8 @@ impl KeyPackage {
             .map_err(KeyPackageNewError::KeyStoreError)?;
 
         // Store the encryption key pair in the key store.
-        backend
-            .key_store()
-            .store(
-                &LeafNode::encryption_key_label(key_package.leaf_node().signature_key().as_slice()),
-                &encryption_key_pair,
-            )
+        encryption_key_pair
+            .write_to_key_store(backend)
             .map_err(KeyPackageNewError::KeyStoreError)?;
 
         Ok(key_package)
@@ -455,7 +451,7 @@ impl KeyPackage {
         backend: &impl OpenMlsCryptoProvider<KeyStoreProvider = KeyStore>,
         credential: &CredentialBundle, // FIXME: make credential
         extensions: Extensions,
-        encryption_key: tls_codec::VLBytes,
+        encryption_key: EncryptionKey,
     ) -> Result<Self, KeyPackageNewError<KeyStore::Error>> {
         // Create a new HPKE init key pair
         let ikm = Secret::random(config.ciphersuite, backend, config.version).unwrap();
@@ -614,12 +610,8 @@ impl KeyPackageBuilder {
             .map_err(KeyPackageNewError::KeyStoreError)?;
 
         // Store the encryption key pair in the key store.
-        backend
-            .key_store()
-            .store(
-                &LeafNode::encryption_key_label(key_package.leaf_node().signature_key().as_slice()),
-                &encryption_keypair,
-            )
+        encryption_keypair
+            .write_to_key_store(backend)
             .map_err(KeyPackageNewError::KeyStoreError)?;
 
         // Store the private part of the init_key into the key store.

@@ -328,13 +328,15 @@ fn book_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvide
         assert_eq!(update.credential(), &bob_credential);
 
         // Merge staged Commit
-        alice_group.merge_staged_commit(*staged_commit);
+        alice_group
+            .merge_staged_commit(backend, *staged_commit)
+            .expect("Error merging staged commit.");
     } else {
         unreachable!("Expected a StagedCommit.");
     }
 
     bob_group
-        .merge_pending_commit()
+        .merge_pending_commit(backend)
         .expect("error merging pending commit");
 
     // Check we didn't receive a Welcome message
@@ -422,13 +424,15 @@ fn book_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvide
         // Check that Alice updated
         assert_eq!(update.credential(), &alice_credential);
 
-        bob_group.merge_staged_commit(*staged_commit);
+        bob_group
+            .merge_staged_commit(backend, *staged_commit)
+            .expect("Error merging staged commit.");
     } else {
         unreachable!("Expected a StagedCommit.");
     }
 
     alice_group
-        .merge_pending_commit()
+        .merge_pending_commit(backend)
         .expect("error merging pending commit");
 
     // Check that both groups have the same state
@@ -460,14 +464,16 @@ fn book_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvide
         )
         .expect("Could not process message.");
     bob_group
-        .merge_pending_commit()
+        .merge_pending_commit(backend)
         .expect("error merging pending commit");
 
     // Merge Commit
     if let ProcessedMessageContent::StagedCommitMessage(staged_commit) =
         alice_processed_message.into_content()
     {
-        alice_group.merge_staged_commit(*staged_commit);
+        alice_group
+            .merge_staged_commit(backend, *staged_commit)
+            .expect("Error merging staged commit.");
     } else {
         unreachable!("Expected a StagedCommit.");
     }
@@ -545,14 +551,16 @@ fn book_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvide
         )
         .expect("Could not process message.");
     charlie_group
-        .merge_pending_commit()
+        .merge_pending_commit(backend)
         .expect("error merging pending commit");
 
     // Merge Commit
     if let ProcessedMessageContent::StagedCommitMessage(staged_commit) =
         alice_processed_message.into_content()
     {
-        alice_group.merge_staged_commit(*staged_commit);
+        alice_group
+            .merge_staged_commit(backend, *staged_commit)
+            .expect("Error merging staged commit.");
     } else {
         unreachable!("Expected a StagedCommit.");
     }
@@ -561,7 +569,9 @@ fn book_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvide
     if let ProcessedMessageContent::StagedCommitMessage(staged_commit) =
         bob_processed_message.into_content()
     {
-        bob_group.merge_staged_commit(*staged_commit);
+        bob_group
+            .merge_staged_commit(backend, *staged_commit)
+            .expect("Error merging staged commit.");
     } else {
         unreachable!("Expected a StagedCommit.");
     }
@@ -659,7 +669,7 @@ fn book_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvide
         .expect("Could not process message.");
     let charlies_leaf_index = charlie_group.own_leaf_index();
     charlie_group
-        .merge_pending_commit()
+        .merge_pending_commit(backend)
         .expect("error merging pending commit");
 
     // Check that we receive the correct proposal for Alice
@@ -683,7 +693,9 @@ fn book_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvide
             Sender::Member(member) if *member == charlies_leaf_index
         ));
         // Merge staged commit
-        alice_group.merge_staged_commit(*staged_commit);
+        alice_group
+            .merge_staged_commit(backend, *staged_commit)
+            .expect("Error merging staged commit.");
     }
     // ANCHOR_END: inspect_staged_commit
     else {
@@ -717,7 +729,9 @@ fn book_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvide
         }
 
         // Merge staged Commit
-        bob_group.merge_staged_commit(*staged_commit);
+        bob_group
+            .merge_staged_commit(backend, *staged_commit)
+            .expect("Error merging staged commit.");
     } else {
         unreachable!("Expected a StagedCommit.");
     }
@@ -857,14 +871,16 @@ fn book_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvide
 
     // Merge Commit
     alice_group
-        .merge_pending_commit()
+        .merge_pending_commit(backend)
         .expect("error merging pending commit");
 
     // Merge Commit
     if let ProcessedMessageContent::StagedCommitMessage(staged_commit) =
         charlie_processed_message.into_content()
     {
-        charlie_group.merge_staged_commit(*staged_commit);
+        charlie_group
+            .merge_staged_commit(backend, *staged_commit)
+            .expect("Error merging staged commit.");
     } else {
         unreachable!("Expected a StagedCommit.");
     }
@@ -1020,7 +1036,7 @@ fn book_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvide
     }
 
     alice_group
-        .merge_pending_commit()
+        .merge_pending_commit(backend)
         .expect("Could not merge Commit.");
 
     let bob_processed_message = bob_group
@@ -1052,7 +1068,9 @@ fn book_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvide
         ));
         assert!(staged_commit.self_removed());
         // Merge staged Commit
-        bob_group.merge_staged_commit(*staged_commit);
+        bob_group
+            .merge_staged_commit(backend, *staged_commit)
+            .expect("Error merging staged commit.");
     } else {
         unreachable!("Expected a StagedCommit.");
     }
@@ -1108,7 +1126,7 @@ fn book_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvide
                 .expect("Could not commit");
             assert_eq!(alice_group.members().count(), 1);
             alice_group
-                .merge_pending_commit()
+                .merge_pending_commit(backend)
                 .expect("Could not merge commit");
             assert_eq!(alice_group.members().count(), 2);
 
@@ -1132,7 +1150,7 @@ fn book_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvide
         .remove_members(backend, &[LeafNodeIndex::new(1)])
         .expect("Could not remove Bob");
     alice_group
-        .merge_pending_commit()
+        .merge_pending_commit(backend)
         .expect("Could not nerge commit");
     assert_eq!(alice_group.members().count(), 1);
 
@@ -1148,7 +1166,7 @@ fn book_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvide
 
     // Merge Commit
     alice_group
-        .merge_pending_commit()
+        .merge_pending_commit(backend)
         .expect("error merging pending commit");
 
     let mut bob_group = MlsGroup::new_from_welcome(

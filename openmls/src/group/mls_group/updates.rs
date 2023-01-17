@@ -50,7 +50,7 @@ impl MlsGroup {
                     .clone();
 
                 own_leaf.update_and_re_sign(
-                    &encryption_key,
+                    &encryption_key.into(),
                     &credential_bundle,
                     group_id,
                     backend,
@@ -98,11 +98,11 @@ impl MlsGroup {
     }
 
     /// Creates a proposal to update the own leaf node.
-    pub fn propose_self_update(
+    pub fn propose_self_update<KeyStore: OpenMlsKeyStore>(
         &mut self,
-        backend: &impl OpenMlsCryptoProvider,
+        backend: &impl OpenMlsCryptoProvider<KeyStoreProvider = KeyStore>,
         key_package: Option<KeyPackage>, // FIXME[FK]: #819 this must be a leaf node.
-    ) -> Result<MlsMessageOut, ProposeSelfUpdateError> {
+    ) -> Result<MlsMessageOut, ProposeSelfUpdateError<KeyStore::Error>> {
         self.is_operational()?;
 
         let credential = if let Some(kp) = &key_package {
@@ -138,41 +138,38 @@ impl MlsGroup {
         // Here we clone our own leaf to rekey it such that we don't change the
         // tree.
         // The new leaf node will be applied later when the proposal is commited.
-        let mut rekeyed_own_leaf = tree
+        let mut own_leaf = tree
             .own_leaf_node()
             .ok_or_else(|| LibraryError::custom("The tree is broken. Couldn't find own leaf."))?
             .clone();
         if let Some(key_package) = key_package {
-            rekeyed_own_leaf.update_and_re_sign(
-                key_package.hpke_init_key(),
+            own_leaf.update_and_re_sign(
+                key_package.leaf_node().encryption_key(),
                 &credential_bundle,
                 self.group_id().clone(),
                 backend,
             )?
         } else {
-            let private_key: Vec<u8> = rekeyed_own_leaf
-                .rekey(
-                    self.group_id(),
-                    self.ciphersuite(),
-                    ProtocolVersion::default(), // XXX: openmls/openmls#1065
-                    &credential_bundle,
-                    backend,
-                )?
-                .into();
-            backend
-                .key_store()
-                .store(rekeyed_own_leaf.encryption_key().as_slice(), &private_key)
-                .map_err(|_| ProposeSelfUpdateError::KeyStoreError)?;
+            let keypair = own_leaf.rekey(
+                self.group_id(),
+                self.ciphersuite(),
+                ProtocolVersion::default(), // XXX: openmls/openmls#1065
+                &credential_bundle,
+                backend,
+            )?;
+            keypair
+                .write_to_key_store(backend)
+                .map_err(ProposeSelfUpdateError::KeyStoreError)?;
         };
 
         let update_proposal = self.group.create_update_proposal(
             self.framing_parameters(),
             &old_credential_bundle,
-            rekeyed_own_leaf.leaf_node().clone(),
+            own_leaf.leaf_node().clone(),
             backend,
         )?;
 
-        self.own_leaf_nodes.push(rekeyed_own_leaf);
+        self.own_leaf_nodes.push(own_leaf);
         self.proposal_store
             .add(QueuedProposal::from_authenticated_content(
                 self.ciphersuite(),

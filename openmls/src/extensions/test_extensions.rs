@@ -97,7 +97,7 @@ fn ratchet_tree_extension(ciphersuite: Ciphersuite, backend: &impl OpenMlsCrypto
         .expect("Error creating commit");
 
     alice_group
-        .merge_commit(create_commit_result.staged_commit)
+        .merge_commit(backend, create_commit_result.staged_commit)
         .expect("error merging commit");
 
     let bob_group = match CoreGroup::new_from_welcome(
@@ -167,7 +167,7 @@ fn ratchet_tree_extension(ciphersuite: Ciphersuite, backend: &impl OpenMlsCrypto
         .expect("Error creating commit");
 
     alice_group
-        .merge_commit(create_commit_result.staged_commit)
+        .merge_commit(backend, create_commit_result.staged_commit)
         .expect("error merging commit");
 
     let error = CoreGroup::new_from_welcome(

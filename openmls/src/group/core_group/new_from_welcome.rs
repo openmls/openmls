@@ -1,5 +1,5 @@
 use log::debug;
-use openmls_traits::{crypto::OpenMlsCrypto, key_store::OpenMlsKeyStore, types::HpkeKeyPair};
+use openmls_traits::{crypto::OpenMlsCrypto, key_store::OpenMlsKeyStore};
 use tls_codec::Deserialize;
 
 use crate::{
@@ -8,7 +8,7 @@ use crate::{
     schedule::errors::PskError,
     treesync::{
         errors::{PublicTreeError, TreeSyncFromNodesError, TreeSyncSetPathError},
-        node::Node,
+        node::{encryption_keys::EncryptionKeyPair, Node},
     },
 };
 
@@ -29,20 +29,13 @@ impl CoreGroup {
         let ciphersuite = welcome.ciphersuite();
 
         // Read the encryption key pair from the key store and delete it there.
-        let encryption_key_pair: HpkeKeyPair = backend
-            .key_store()
-            .read(&LeafNode::encryption_key_label(
-                key_package_bundle
-                    .key_package
-                    .leaf_node()
-                    .signature_key()
-                    .as_slice(),
-            ))
-            .ok_or(WelcomeError::NoMatchingEncryptionKey)?;
-        backend
-            .key_store()
-            .delete(key_package_bundle.key_package.hpke_init_key().as_slice())
-            // This error really shouldn't happen. We just read the value.
+        let leaf_keypair = EncryptionKeyPair::read_from_key_store(
+            backend,
+            key_package_bundle.key_package.leaf_node().encryption_key(),
+        )
+        .ok_or(WelcomeError::NoMatchingEncryptionKey)?;
+        leaf_keypair
+            .delete_from_key_store(backend)
             .map_err(|_| WelcomeError::NoMatchingEncryptionKey)?;
 
         // Find key_package in welcome secrets
@@ -139,23 +132,18 @@ impl CoreGroup {
                 },
             };
 
-        let tree = TreeSync::from_nodes(
-            backend,
-            ciphersuite,
-            &nodes,
-            encryption_key_pair.public.into(),
-        )
-        .map_err(|e| match e {
-            TreeSyncFromNodesError::LibraryError(e) => e.into(),
-            TreeSyncFromNodesError::PublicTreeError(e) => WelcomeError::PublicTreeError(e),
-        })?;
+        let tree = TreeSync::from_nodes(backend, ciphersuite, &nodes, leaf_keypair.public_key())
+            .map_err(|e| match e {
+                TreeSyncFromNodesError::LibraryError(e) => e.into(),
+                TreeSyncFromNodesError::PublicTreeError(e) => WelcomeError::PublicTreeError(e),
+            })?;
 
         let diff = tree.empty_diff();
 
         // If we got a path secret, derive the path (which also checks if the
         // public keys match) and store the derived keys in the key store.
-        if let Some(path_secret) = path_secret_option {
-            let (keypairs, _commit_secret) = diff
+        let group_keypairs = if let Some(path_secret) = path_secret_option {
+            let (path_keypairs, _commit_secret) = diff
                 .derive_path_secrets(
                     backend,
                     ciphersuite,
@@ -168,12 +156,13 @@ impl CoreGroup {
                         WelcomeError::PublicTreeError(PublicTreeError::PublicKeyMismatch)
                     }
                 })?;
-            for keypair in keypairs {
-                keypair
-                    .write_to_key_store(backend)
-                    .map_err(WelcomeError::KeyStoreError)?;
-            }
-        }
+            vec![leaf_keypair]
+                .into_iter()
+                .chain(path_keypairs.into_iter())
+                .collect()
+        } else {
+            vec![leaf_keypair]
+        };
 
         let group_info: GroupInfo = {
             let signer_credential = tree
@@ -185,6 +174,8 @@ impl CoreGroup {
                 .verify(backend, signer_credential)
                 .map_err(|_| WelcomeError::InvalidGroupInfoSignature)?
         };
+
+        let keypair_references: Vec<&EncryptionKeyPair> = group_keypairs.iter().collect();
 
         // Compute state
         let group_context = GroupContext::new(
@@ -237,7 +228,7 @@ impl CoreGroup {
         } else {
             let message_secrets_store = MessageSecretsStore::new_with_secret(0, message_secrets);
 
-            Ok(CoreGroup {
+            let group = CoreGroup {
                 ciphersuite,
                 group_context,
                 group_epoch_secrets,
@@ -246,7 +237,12 @@ impl CoreGroup {
                 use_ratchet_tree_extension: enable_ratchet_tree_extension,
                 mls_version,
                 message_secrets_store,
-            })
+            };
+            group
+                .store_epoch_keypairs(backend, keypair_references.as_slice())
+                .map_err(WelcomeError::KeyStoreError)?;
+
+            Ok(group)
         }
     }
 
