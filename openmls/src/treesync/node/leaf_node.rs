@@ -537,12 +537,6 @@ impl LeafNode {
         &self.payload.credential
     }
 
-    /// Replace the credential in the KeyPackage.
-    #[cfg(any(feature = "test-utils", test))]
-    pub(crate) fn set_credential(&mut self, credential: Credential) {
-        self.payload.credential = credential;
-    }
-
     /// Returns the `parent_hash` as byte slice or `None`.
     pub fn parent_hash(&self) -> Option<&[u8]> {
         match &self.payload.leaf_node_source {
@@ -569,12 +563,6 @@ impl LeafNode {
     /// Return a reference to [`Capabilities`].
     pub(crate) fn capabilities(&self) -> &Capabilities {
         &self.payload.capabilities
-    }
-
-    /// Return a mutable reference to [`Capabilities`].
-    #[cfg(test)]
-    pub fn capabilities_mut(&mut self) -> &mut Capabilities {
-        &mut self.payload.capabilities
     }
 
     /// Return a reference to the leaf node extensions.
@@ -605,21 +593,6 @@ impl LeafNode {
         Ok(())
     }
 
-    /// Check whether the this leaf node supports all the required extensions
-    /// in the provided list.
-    #[cfg(test)]
-    pub(crate) fn check_extension_support(
-        &self,
-        extensions: &[ExtensionType],
-    ) -> Result<(), TreeSyncError> {
-        for required in extensions.iter() {
-            if !self.supports_extension(required) {
-                return Err(TreeSyncError::UnsupportedExtension);
-            }
-        }
-        Ok(())
-    }
-
     /// Returns `true` if the [`ExtensionType`] is supported by this leaf node.
     pub(crate) fn supports_extension(&self, extension_type: &ExtensionType) -> bool {
         self.payload
@@ -641,9 +614,9 @@ impl LeafNode {
     }
 }
 
-#[cfg(any(feature = "test-utils", test))]
 impl LeafNode {
     /// Expose [`new_with_key`] for tests.
+    #[cfg(any(feature = "test-utils", test))]
     pub(crate) fn create_new_with_key(
         encryption_key: HpkePublicKey,
         credential_bundle: &CredentialBundle,
@@ -660,6 +633,33 @@ impl LeafNode {
             extensions,
             backend,
         )
+    }
+
+    /// Replace the credential in the KeyPackage.
+    #[cfg(any(feature = "test-utils", test))]
+    pub(crate) fn set_credential(&mut self, credential: Credential) {
+        self.payload.credential = credential;
+    }
+
+    /// Return a mutable reference to [`Capabilities`].
+    #[cfg(test)]
+    pub fn capabilities_mut(&mut self) -> &mut Capabilities {
+        &mut self.payload.capabilities
+    }
+
+    /// Check whether the this leaf node supports all the required extensions
+    /// in the provided list.
+    #[cfg(test)]
+    pub(crate) fn check_extension_support(
+        &self,
+        extensions: &[ExtensionType],
+    ) -> Result<(), TreeSyncError> {
+        for required in extensions.iter() {
+            if !self.supports_extension(required) {
+                return Err(TreeSyncError::UnsupportedExtension);
+            }
+        }
+        Ok(())
     }
 }
 
