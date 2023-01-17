@@ -755,6 +755,8 @@ impl CoreGroup {
         keypair_references: &[&EncryptionKeyPair],
     ) -> Result<(), KeyStore::Error> {
         backend.key_store().store_epoch_keys(
+            // Retrieving our identity should not fail.
+            self.own_identity().unwrap_or(&[]),
             self.group_id().as_slice(),
             self.context().epoch().as_u64(),
             keypair_references,
@@ -770,6 +772,8 @@ impl CoreGroup {
         backend: &impl OpenMlsCryptoProvider<KeyStoreProvider = KeyStore>,
     ) -> Option<Vec<EncryptionKeyPair>> {
         backend.key_store().read_epoch_keys(
+            // Retrieving our identity should not fail.
+            self.own_identity().unwrap_or(&[]),
             self.group_id().as_slice(),
             self.group_context.epoch().as_u64(),
         )
@@ -784,6 +788,8 @@ impl CoreGroup {
         backend: &impl OpenMlsCryptoProvider<KeyStoreProvider = KeyStore>,
     ) -> Result<(), KeyStore::Error> {
         backend.key_store().delete_epoch_keys(
+            // Retrieving our identity should not fail.
+            self.own_identity().unwrap_or(&[]),
             self.group_id().as_slice(),
             self.context().epoch().as_u64() - 1,
         )

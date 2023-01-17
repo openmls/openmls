@@ -182,6 +182,9 @@ fn test_welcome_ciphersuite_mismatch(
 
     welcome.encrypted_group_info = encrypted_verifiable_group_info.into();
 
+    // Create backup of encryption keypair, s.t. we can process the welcome a second time after failing.
+    //let encryption_keypair = EncryptionKeyPair::read_from_key_store(backend, encryption_key);
+
     // Bob tries to join the group
     let err = MlsGroup::new_from_welcome(
         backend,

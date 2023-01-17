@@ -1,7 +1,7 @@
 use openmls_traits::key_store::{FromKeyStoreValue, OpenMlsKeyStore, ToKeyStoreValue};
 use std::{collections::HashMap, sync::RwLock};
 
-type EpochStoreIndex = (Vec<u8>, u64); // GroupId and GroupEpoch
+type EpochStoreIndex = (Vec<u8>, Vec<u8>, u64); // Identity, GroupId and GroupEpoch
 
 #[derive(Debug, Default)]
 pub struct MemoryKeyStore {
@@ -55,9 +55,14 @@ impl OpenMlsKeyStore for MemoryKeyStore {
         Ok(())
     }
 
-    fn read_epoch_keys<V: FromKeyStoreValue>(&self, group_id: &[u8], epoch: u64) -> Option<Vec<V>> {
+    fn read_epoch_keys<V: FromKeyStoreValue>(
+        &self,
+        identity: &[u8],
+        group_id: &[u8],
+        epoch: u64,
+    ) -> Option<Vec<V>> {
         let epoch_store = self.epoch_values.read().unwrap();
-        if let Some(values) = epoch_store.get(&(group_id.to_vec(), epoch)) {
+        if let Some(values) = epoch_store.get(&(identity.to_vec(), group_id.to_vec(), epoch)) {
             values
                 .iter()
                 .map(|value| V::from_key_store_value(value))
@@ -69,21 +74,27 @@ impl OpenMlsKeyStore for MemoryKeyStore {
         }
     }
 
-    fn delete_epoch_keys(&self, group_id: &[u8], epoch: u64) -> Result<(), Self::Error> {
+    fn delete_epoch_keys(
+        &self,
+        identity: &[u8],
+        group_id: &[u8],
+        epoch: u64,
+    ) -> Result<(), Self::Error> {
         let mut epoch_store = self.epoch_values.write().unwrap();
-        epoch_store.remove(&(group_id.to_vec(), epoch));
+        epoch_store.remove(&(identity.to_vec(), group_id.to_vec(), epoch));
         Ok(())
     }
 
     fn store_epoch_keys<V: ToKeyStoreValue>(
         &self,
+        identity: &[u8],
         group_id: &[u8],
         epoch: u64,
         encryption_keys: &[&V],
     ) -> Result<(), Self::Error> {
         let mut epoch_store = self.epoch_values.write().unwrap();
         epoch_store.insert(
-            (group_id.to_vec(), epoch),
+            (identity.to_vec(), group_id.to_vec(), epoch),
             encryption_keys
                 .iter()
                 .map(|&bytes| {

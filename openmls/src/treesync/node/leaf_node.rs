@@ -668,7 +668,6 @@ impl LeafNodeTbs {
 )]
 pub struct OpenMlsLeafNode {
     pub(in crate::treesync) leaf_node: LeafNode,
-    //private_key: Option<HpkePrivateKey>,
     leaf_index: Option<LeafNodeIndex>,
 }
 

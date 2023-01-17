@@ -28,16 +28,6 @@ impl CoreGroup {
 
         let ciphersuite = welcome.ciphersuite();
 
-        // Read the encryption key pair from the key store and delete it there.
-        let leaf_keypair = EncryptionKeyPair::read_from_key_store(
-            backend,
-            key_package_bundle.key_package.leaf_node().encryption_key(),
-        )
-        .ok_or(WelcomeError::NoMatchingEncryptionKey)?;
-        leaf_keypair
-            .delete_from_key_store(backend)
-            .map_err(|_| WelcomeError::NoMatchingEncryptionKey)?;
-
         // Find key_package in welcome secrets
         let egs = if let Some(egs) = Self::find_key_package_from_welcome_secrets(
             key_package_bundle
@@ -132,13 +122,31 @@ impl CoreGroup {
                 },
             };
 
-        let tree = TreeSync::from_nodes(backend, ciphersuite, &nodes, leaf_keypair.public_key())
-            .map_err(|e| match e {
-                TreeSyncFromNodesError::LibraryError(e) => e.into(),
-                TreeSyncFromNodesError::PublicTreeError(e) => WelcomeError::PublicTreeError(e),
-            })?;
+        let tree = TreeSync::from_nodes(
+            backend,
+            ciphersuite,
+            &nodes,
+            key_package_bundle
+                .key_package()
+                .leaf_node()
+                .encryption_key(),
+        )
+        .map_err(|e| match e {
+            TreeSyncFromNodesError::LibraryError(e) => e.into(),
+            TreeSyncFromNodesError::PublicTreeError(e) => WelcomeError::PublicTreeError(e),
+        })?;
 
         let diff = tree.empty_diff();
+
+        // Read the encryption key pair from the key store and delete it there.
+        let leaf_keypair = EncryptionKeyPair::read_from_key_store(
+            backend,
+            key_package_bundle.key_package.leaf_node().encryption_key(),
+        )
+        .ok_or(WelcomeError::NoMatchingEncryptionKey)?;
+        leaf_keypair
+            .delete_from_key_store(backend)
+            .map_err(|_| WelcomeError::NoMatchingEncryptionKey)?;
 
         // If we got a path secret, derive the path (which also checks if the
         // public keys match) and store the derived keys in the key store.
