@@ -13,7 +13,6 @@ mod validation;
 // Crate
 pub(crate) mod create_commit;
 pub(crate) mod create_commit_params;
-//pub(crate) mod epoch_keys;
 pub(crate) mod new_from_external_init;
 pub(crate) mod past_secrets;
 pub(crate) mod process;
