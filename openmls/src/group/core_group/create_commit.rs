@@ -184,7 +184,7 @@ impl CoreGroup {
                     let encryption_keypair = EncryptionKeyPair::read_from_key_store(backend, own_leaf.encryption_key())
                         // There should be a key in the store, since we added
                         // one when generating the KeyPackage earlier.
-                        .ok_or(LibraryError::custom("Unable to get own leaf from diff"))?;
+                        .ok_or_else(|| LibraryError::custom("Unable to get own leaf from diff"))?;
                     vec![encryption_keypair]
                 };
 

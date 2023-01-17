@@ -193,7 +193,7 @@ impl ParentNode {
         original_child_resolution: &[u8],
     ) -> Result<Vec<u8>, LibraryError> {
         let parent_hash_input = ParentHashInput::new(
-            &self.encryption_key.key(),
+            self.encryption_key.key(),
             self.parent_hash(),
             original_child_resolution,
         );

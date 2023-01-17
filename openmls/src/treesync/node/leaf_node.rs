@@ -893,13 +893,6 @@ impl OpenMlsLeafNode {
             })
     }
 
-    /// Return a reference to the `private_key` corresponding to the
-    /// [`KeyPackage`] in this node.
-    #[cfg(not(any(feature = "test-utils", test)))]
-    pub(in crate::treesync) fn private_key(&self) -> Option<&HpkePrivateKey> {
-        self.private_key.as_ref()
-    }
-
     /// Get a reference to the leaf's [`Credential`].
     pub(crate) fn credential(&self) -> &Credential {
         self.leaf_node.credential()

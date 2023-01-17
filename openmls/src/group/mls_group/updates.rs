@@ -53,7 +53,7 @@ impl MlsGroup {
                     .clone();
 
                 own_leaf.update_and_re_sign(
-                    &encryption_key.into(),
+                    &encryption_key,
                     &credential_bundle,
                     group_id,
                     backend,

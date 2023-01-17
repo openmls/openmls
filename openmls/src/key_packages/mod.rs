@@ -90,7 +90,7 @@ use crate::{
     group::config::CryptoConfig,
     treesync::{
         node::{
-            encryption_keys::{EncryptionKey, EncryptionKeyPair},
+            encryption_keys::EncryptionKeyPair,
             leaf_node::{Capabilities, LeafNodeSource, Lifetime},
         },
         LeafNode,
@@ -107,6 +107,9 @@ use serde::{Deserialize, Serialize};
 use tls_codec::{
     Deserialize as TlsDeserializeTrait, Serialize as TlsSerializeTrait, TlsSerialize, TlsSize,
 };
+
+#[cfg(any(feature = "test-utils", test))]
+use crate::treesync::node::encryption_keys::EncryptionKey;
 
 // Private
 mod codec;

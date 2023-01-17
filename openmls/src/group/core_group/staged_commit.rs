@@ -459,7 +459,7 @@ impl CoreGroup {
     ) -> Result<Option<MessageSecrets>, KeyStore::Error> {
         // Get all keypairs from the old epoch, so we can later store the ones
         // that are still relevant in the new epoch.
-        let old_epoch_keypairs = self.read_epoch_keypairs(backend).unwrap_or(vec![]);
+        let old_epoch_keypairs = self.read_epoch_keypairs(backend).unwrap_or_default();
         match staged_commit.state {
             StagedCommitState::SelfRemoved(staged_diff) => {
                 self.tree.merge_diff(*staged_diff);
