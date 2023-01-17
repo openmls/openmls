@@ -20,7 +20,7 @@ use crate::{
     group::{config::CryptoConfig, *},
     key_packages::*,
     messages::*,
-    treesync::node::Node,
+    treesync::{node::Node, LeafNode},
     versions::ProtocolVersion,
 };
 
@@ -205,7 +205,7 @@ impl Client {
         &self,
         action_type: ActionType,
         group_id: &GroupId,
-        key_package: Option<KeyPackage>,
+        leaf_node: Option<LeafNode>,
     ) -> Result<(MlsMessageOut, Option<Welcome>), ClientError> {
         let mut groups = self.groups.write().expect("An unexpected error occurred.");
         let group = groups
@@ -214,9 +214,9 @@ impl Client {
         let (msg, welcome_option) = match action_type {
             ActionType::Commit => group.self_update(
                 &self.crypto,
-                key_package.map(|kp| kp.hpke_init_key().clone()),
+                leaf_node.map(|leaf| leaf.encryption_key().clone()),
             )?,
-            ActionType::Proposal => (group.propose_self_update(&self.crypto, key_package)?, None),
+            ActionType::Proposal => (group.propose_self_update(&self.crypto, leaf_node)?, None),
         };
         Ok((
             msg,

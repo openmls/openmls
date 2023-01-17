@@ -127,7 +127,7 @@ fn test_failed_groupinfo_decryption(
     );
 
     let group_info = group_info_tbs
-        .sign(backend, &alice_credential_bundle)
+        .sign(backend, alice_credential_bundle.signature_private_key())
         .expect("Error signing group info");
 
     // Mess with the ciphertext by flipping the last byte.

@@ -117,6 +117,13 @@ impl Signature {
     }
 }
 
+impl Signature {
+    /// Get this signature as slice.
+    pub(super) fn value(&self) -> &[u8] {
+        self.value.as_slice()
+    }
+}
+
 impl<T> SignedStruct<T> for Signature {
     fn from_payload(_payload: T, signature: Signature) -> Self {
         signature

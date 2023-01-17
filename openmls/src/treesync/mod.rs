@@ -101,17 +101,15 @@ impl TreeSync {
         capabilities: Capabilities,
         extensions: Extensions,
     ) -> Result<(Self, CommitSecret, EncryptionKeyPair), LibraryError> {
-        let (mut leaf, encryption_key_pair) = OpenMlsLeafNode::new(
+        let (leaf, encryption_key_pair) = OpenMlsLeafNode::new(
             config,
             // Creation of a group is considered to be from a key package.
             LeafNodeSource::KeyPackage(life_time),
             backend,
             credential_bundle,
+            capabilities,
+            extensions,
         )?;
-        leaf.add_capabilities(capabilities);
-        extensions
-            .iter()
-            .for_each(|extension| leaf.add_extension(extension.clone()));
 
         let node = Node::LeafNode(leaf);
         let path_secret: PathSecret = Secret::random(config.ciphersuite, backend, None)

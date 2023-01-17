@@ -1,5 +1,7 @@
 //! This module contains the [`TreeSyncNode`] struct and its implementation.
 
+use std::collections::HashSet;
+
 use openmls_traits::{types::Ciphersuite, OpenMlsCryptoProvider};
 use serde::{Deserialize, Serialize};
 use tls_codec::VLByteSlice;
@@ -137,21 +139,46 @@ impl TreeSyncParentNode {
         &mut self.node
     }
 
-    /// Compute the tree hash for this node, thus populating the `tree_hash`
-    /// field.
+    /// Compute the tree hash for this node. Leaf nodes from the exclusion list
+    /// are filtered out.
     pub(in crate::treesync) fn compute_tree_hash(
         &self,
         backend: &impl OpenMlsCryptoProvider,
         ciphersuite: Ciphersuite,
         left_hash: Vec<u8>,
         right_hash: Vec<u8>,
+        exclusion_list: &HashSet<&LeafNodeIndex>,
     ) -> Result<Vec<u8>, LibraryError> {
-        let hash_input = TreeHashInput::new_parent(
-            self.node.as_ref(),
-            VLByteSlice(&left_hash),
-            VLByteSlice(&right_hash),
-        );
-        let hash = hash_input.hash(backend, ciphersuite)?;
+        let hash = if exclusion_list.is_empty() {
+            // If the exclusion list is empty, we can just use the parent node
+            TreeHashInput::new_parent(
+                self.node.as_ref(),
+                VLByteSlice(&left_hash),
+                VLByteSlice(&right_hash),
+            )
+            .hash(backend, ciphersuite)?
+        } else if let Some(parent_node) = self.node.as_ref() {
+            // If the exclusion list is not empty, we need to create a new
+            // parent node without the excluded indices in the unmerged leaves.
+            let mut new_node = parent_node.clone();
+            let unmerged_leaves = new_node
+                .unmerged_leaves()
+                .iter()
+                .filter(|leaf| !exclusion_list.contains(leaf))
+                .cloned()
+                .collect();
+            new_node.set_unmerged_leaves(unmerged_leaves);
+            TreeHashInput::new_parent(
+                Some(&new_node),
+                VLByteSlice(&left_hash),
+                VLByteSlice(&right_hash),
+            )
+            .hash(backend, ciphersuite)?
+        } else {
+            // If the node is blank
+            TreeHashInput::new_parent(None, VLByteSlice(&left_hash), VLByteSlice(&right_hash))
+                .hash(backend, ciphersuite)?
+        };
 
         Ok(hash)
     }

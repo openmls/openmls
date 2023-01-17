@@ -171,8 +171,13 @@ impl ParentNode {
     }
 
     /// Get the list of unmerged leaves.
-    pub(in crate::treesync) fn unmerged_leaves(&self) -> &[LeafNodeIndex] {
+    pub(crate) fn unmerged_leaves(&self) -> &[LeafNodeIndex] {
         self.unmerged_leaves.list()
+    }
+
+    /// Set the list of unmerged leaves.
+    pub(in crate::treesync) fn set_unmerged_leaves(&mut self, unmerged_leaves: Vec<LeafNodeIndex>) {
+        self.unmerged_leaves.set_list(unmerged_leaves);
     }
 
     /// Add a [`LeafNodeIndex`] to the node's list of unmerged leaves.
@@ -185,12 +190,11 @@ impl ParentNode {
         &self,
         backend: &impl OpenMlsCryptoProvider,
         ciphersuite: Ciphersuite,
-        parent_hash: &[u8],
-        original_child_resolution: &[HpkePublicKey],
+        original_child_resolution: &[u8],
     ) -> Result<Vec<u8>, LibraryError> {
         let parent_hash_input = ParentHashInput::new(
-            self.encryption_key.key(),
-            parent_hash,
+            &self.encryption_key.key(),
+            self.parent_hash(),
             original_child_resolution,
         );
         parent_hash_input.hash(backend, ciphersuite)
@@ -231,7 +235,6 @@ impl UnmergedLeaves {
     }
 
     /// Set the list of unmerged leaves.
-    #[cfg(test)]
     pub(in crate::treesync) fn set_list(&mut self, list: Vec<LeafNodeIndex>) {
         self.list = list;
     }

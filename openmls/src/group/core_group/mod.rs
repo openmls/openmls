@@ -210,7 +210,7 @@ impl CoreGroupBuilder {
         let capabilities = self
             .required_capabilities
             .as_ref()
-            .map(|re| re.extensions());
+            .map(|re| re.extension_types());
         let version = self.version.unwrap_or_default();
 
         debug!("Created group {:x?}", self.group_id);
@@ -446,7 +446,7 @@ impl CoreGroup {
             // Ensure that all other leaf nodes support all the required
             // extensions as well.
             self.treesync()
-                .check_extension_support(required_capabilities.extensions())?;
+                .check_extension_support(required_capabilities.extension_types())?;
         }
         let proposal = GroupContextExtensionProposal::new(extensions);
         let proposal = Proposal::GroupContextExtensions(proposal);
@@ -595,7 +595,9 @@ impl CoreGroup {
         );
 
         // Sign to-be-signed group info.
-        group_info_tbs.sign(backend, credential_bundle)
+        group_info_tbs
+            .sign(backend, credential_bundle.signature_private_key())
+            .map_err(|_| LibraryError::custom("Signing failed"))
     }
 
     /// Returns the epoch authenticator

@@ -179,7 +179,11 @@ impl CoreGroup {
                 .credential();
 
             verifiable_group_info
-                .verify(backend, signer_credential)
+                .verify(
+                    backend,
+                    signer_credential.signature_key(),
+                    ciphersuite.signature_algorithm(),
+                )
                 .map_err(|_| WelcomeError::InvalidGroupInfoSignature)?
         };
 

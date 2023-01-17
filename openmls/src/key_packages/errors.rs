@@ -4,7 +4,7 @@
 
 use thiserror::Error;
 
-use crate::error::LibraryError;
+use crate::{ciphersuite::signable::SignatureError, error::LibraryError};
 
 /// KeyPackage verify error
 #[derive(Error, Debug, PartialEq, Clone)]
@@ -46,4 +46,7 @@ pub enum KeyPackageNewError<KeyStoreError> {
     /// Accessing the key store failed.
     #[error("Accessing the key store failed.")]
     KeyStoreError(KeyStoreError),
+    /// See [`SignatureError`] for more details.
+    #[error(transparent)]
+    SignatureError(#[from] SignatureError),
 }

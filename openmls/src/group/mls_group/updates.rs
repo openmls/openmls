@@ -1,14 +1,17 @@
 use core_group::create_commit_params::CreateCommitParams;
 use tls_codec::Serialize;
 
-use crate::{ciphersuite::HpkePublicKey, versions::ProtocolVersion};
+use crate::{
+    treesync::{node::encryption_keys::EncryptionKey, LeafNode},
+    versions::ProtocolVersion,
+};
 
 use super::*;
 
 impl MlsGroup {
     /// Updates the own leaf node.
     ///
-    /// An [`HpkePublicKey`] can optionally be provided.
+    /// An [`EncryptionKey`] can optionally be provided.
     /// If not, a new one will be created on the fly.
     ///
     /// If successful, it returns a tuple of [`MlsMessageOut`] (containing the
@@ -20,7 +23,7 @@ impl MlsGroup {
     pub fn self_update<KeyStore: OpenMlsKeyStore>(
         &mut self,
         backend: &impl OpenMlsCryptoProvider<KeyStoreProvider = KeyStore>,
-        encryption_key: Option<HpkePublicKey>,
+        encryption_key: Option<EncryptionKey>,
     ) -> Result<(MlsMessageOut, Option<MlsMessageOut>), SelfUpdateError<KeyStore::Error>> {
         self.is_operational()?;
 
@@ -101,13 +104,13 @@ impl MlsGroup {
     pub fn propose_self_update<KeyStore: OpenMlsKeyStore>(
         &mut self,
         backend: &impl OpenMlsCryptoProvider<KeyStoreProvider = KeyStore>,
-        key_package: Option<KeyPackage>, // FIXME[FK]: #819 this must be a leaf node.
+        leaf_node: Option<LeafNode>,
     ) -> Result<MlsMessageOut, ProposeSelfUpdateError<KeyStore::Error>> {
         self.is_operational()?;
 
-        let credential = if let Some(kp) = &key_package {
+        let credential = if let Some(leaf) = &leaf_node {
             // If there's a key pair use the credential in there.
-            kp.leaf_node().credential()
+            leaf.credential()
         } else {
             // Use the old credential.
             self.credential()?
@@ -142,9 +145,9 @@ impl MlsGroup {
             .own_leaf_node()
             .ok_or_else(|| LibraryError::custom("The tree is broken. Couldn't find own leaf."))?
             .clone();
-        if let Some(key_package) = key_package {
+        if let Some(leaf) = leaf_node {
             own_leaf.update_and_re_sign(
-                key_package.leaf_node().encryption_key(),
+                leaf.encryption_key(),
                 &credential_bundle,
                 self.group_id().clone(),
                 backend,

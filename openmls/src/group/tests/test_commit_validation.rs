@@ -188,7 +188,7 @@ fn test_valsem200(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
 
     plaintext.set_content(FramedContentBody::Commit(commit_content));
 
-    let alice_credential_bundle = backend
+    let alice_credential_bundle: CredentialBundle = backend
         .key_store()
         .read(
             &alice_group
@@ -209,7 +209,7 @@ fn test_valsem200(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
     let tbs: FramedContentTbs = plaintext.into();
     let mut signed_plaintext: AuthenticatedContent = tbs
         .with_context(serialized_context)
-        .sign(backend, &alice_credential_bundle)
+        .sign(backend, alice_credential_bundle.signature_private_key())
         .expect("Error signing modified payload.");
 
     // Set old confirmation tag

@@ -487,7 +487,12 @@ fn mls_group_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoPr
         // === Charlie updates and commits ===
         let (queued_message, welcome_option) = match charlie_group.self_update(
             backend,
-            Some(charlies_new_key_package.hpke_init_key().clone()),
+            Some(
+                charlies_new_key_package
+                    .leaf_node()
+                    .encryption_key()
+                    .clone(),
+            ),
         ) {
             Ok(qm) => qm,
             Err(e) => panic!("Error performing self-update: {:?}", e),

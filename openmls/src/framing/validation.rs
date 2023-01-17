@@ -292,7 +292,11 @@ impl UnverifiedGroupMessage {
     ) -> Result<VerifiedMemberMessage, ValidationError> {
         // ValSem010
         self.verifiable_content
-            .verify(backend, &self.credential)
+            .verify(
+                backend,
+                self.credential.signature_key(),
+                self.credential.signature_scheme(),
+            )
             .map(|authenticated_content| VerifiedMemberMessage {
                 authenticated_content,
             })
@@ -330,7 +334,11 @@ impl UnverifiedNewMemberMessage {
         // ValSem010
         let verified_external_message = self
             .verifiable_content
-            .verify(backend, &self.credential)
+            .verify(
+                backend,
+                self.credential.signature_key(),
+                self.credential.signature_scheme(),
+            )
             .map(|authenticated_content| VerifiedExternalMessage {
                 authenticated_content,
             })

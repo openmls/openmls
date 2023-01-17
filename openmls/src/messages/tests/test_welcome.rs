@@ -261,7 +261,7 @@ fn test_welcome_message_with_version(
     )
     .expect("An unexpected error occurred.");
     let group_info = group_info_tbs
-        .sign(backend, &credential_bundle)
+        .sign(backend, credential_bundle.signature_private_key())
         .expect("Error signing GroupInfo");
 
     // Generate key and nonce for the symmetric cipher.

@@ -19,7 +19,7 @@ use crate::{
     test_utils::*,
     tree::sender_ratchet::*,
     treesync::node::{
-        leaf_node::{LeafNodeSource, Lifetime},
+        leaf_node::{Capabilities, LeafNodeSource, Lifetime},
         Node,
     },
     versions::ProtocolVersion,
@@ -120,7 +120,7 @@ pub fn generate_test_vector(ciphersuite: Ciphersuite) -> MessagesTestVector {
         )
     };
     let group_info = group_info_tbs
-        .sign(&crypto, &credential_bundle)
+        .sign(&crypto, credential_bundle.signature_private_key())
         .expect("An unexpected error occurred.");
     let group_secrets =
         GroupSecrets::random_encoded(ciphersuite, &crypto, ProtocolVersion::default());
@@ -135,6 +135,7 @@ pub fn generate_test_vector(ciphersuite: Ciphersuite) -> MessagesTestVector {
         },
         &credential_bundle,
         LeafNodeSource::Update,
+        Capabilities::default(),
         Extensions::empty(),
         &crypto,
     )

@@ -352,7 +352,8 @@ impl CoreGroup {
                 )
             };
             // Sign to-be-signed group info.
-            let group_info = group_info_tbs.sign(backend, params.credential_bundle())?;
+            let group_info =
+                group_info_tbs.sign(backend, params.credential_bundle().signature_private_key())?;
 
             // Encrypt GroupInfo object
             let (welcome_key, welcome_nonce) = welcome_secret

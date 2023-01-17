@@ -216,7 +216,11 @@ impl CoreGroup {
                 signature: leaf_node.signature(),
             };
             if verifiable_leaf_node
-                .verify_no_out(backend, leaf_node.credential())
+                .verify_no_out(
+                    backend,
+                    leaf_node.signature_key(),
+                    leaf_node.credential().signature_scheme(),
+                )
                 .is_err()
             {
                 debug_assert!(
