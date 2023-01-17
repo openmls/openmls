@@ -1,7 +1,7 @@
 use core_group::create_commit_params::CreateCommitParams;
 use tls_codec::Serialize;
 
-use crate::{treesync::LeafNode, versions::ProtocolVersion};
+use crate::{ciphersuite::HpkePublicKey, treesync::LeafNode, versions::ProtocolVersion};
 
 use super::*;
 
