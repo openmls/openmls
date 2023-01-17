@@ -1,17 +1,14 @@
 use core_group::create_commit_params::CreateCommitParams;
 use tls_codec::Serialize;
 
-use crate::{
-    treesync::{node::encryption_keys::EncryptionKey, LeafNode},
-    versions::ProtocolVersion,
-};
+use crate::{treesync::LeafNode, versions::ProtocolVersion};
 
 use super::*;
 
 impl MlsGroup {
     /// Updates the own leaf node.
     ///
-    /// An [`EncryptionKey`] can optionally be provided.
+    /// An [`HpkePublicKey`] can optionally be provided.
     /// If not, a new one will be created on the fly.
     ///
     /// If successful, it returns a tuple of [`MlsMessageOut`] (containing the
@@ -23,7 +20,7 @@ impl MlsGroup {
     pub fn self_update<KeyStore: OpenMlsKeyStore>(
         &mut self,
         backend: &impl OpenMlsCryptoProvider<KeyStoreProvider = KeyStore>,
-        encryption_key: Option<EncryptionKey>,
+        encryption_key: Option<HpkePublicKey>,
     ) -> Result<(MlsMessageOut, Option<MlsMessageOut>), SelfUpdateError<KeyStore::Error>> {
         self.is_operational()?;
 
@@ -53,7 +50,7 @@ impl MlsGroup {
                     .clone();
 
                 own_leaf.update_and_re_sign(
-                    &encryption_key,
+                    &encryption_key.into(),
                     &credential_bundle,
                     group_id,
                     backend,

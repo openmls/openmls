@@ -214,7 +214,7 @@ impl Client {
         let (msg, welcome_option) = match action_type {
             ActionType::Commit => group.self_update(
                 &self.crypto,
-                leaf_node.map(|leaf| leaf.encryption_key().clone()),
+                leaf_node.map(|leaf| leaf.encryption_key().key().clone()),
             )?,
             ActionType::Proposal => (group.propose_self_update(&self.crypto, leaf_node)?, None),
         };

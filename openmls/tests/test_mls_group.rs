@@ -491,6 +491,7 @@ fn mls_group_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoPr
                 charlies_new_key_package
                     .leaf_node()
                     .encryption_key()
+                    .key()
                     .clone(),
             ),
         ) {

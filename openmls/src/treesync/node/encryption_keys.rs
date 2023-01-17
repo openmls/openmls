@@ -9,6 +9,8 @@ use crate::ciphersuite::{HpkePrivateKey, HpkePublicKey, Secret};
 use crate::error::LibraryError;
 use crate::versions::ProtocolVersion;
 
+/// [`EncryptionKey`] contains an HPKE public key that allows the encryption of
+/// path secrets in MLS commits.
 #[derive(
     Debug, Clone, Serialize, Deserialize, TlsSerialize, TlsDeserialize, TlsSize, PartialEq, Eq,
 )]
