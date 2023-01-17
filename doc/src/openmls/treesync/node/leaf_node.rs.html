@@ -1049,8 +1049,6 @@
 <span id="1049">1049</span>
 <span id="1050">1050</span>
 <span id="1051">1051</span>
-<span id="1052">1052</span>
-<span id="1053">1053</span>
 </pre><pre class="rust"><code><span class="doccomment">//! This module contains the [`LeafNode`] struct and its implementation.
 </span><span class="kw">use </span>openmls_traits::{
     crypto::OpenMlsCrypto,
@@ -1073,7 +1071,7 @@
     credentials::{Credential, CredentialBundle, CredentialType},
     error::LibraryError,
     extensions::Extensions,
-    extensions::{Extension, ExtensionType, RequiredCapabilitiesExtension},
+    extensions::{ExtensionType, RequiredCapabilitiesExtension},
     group::{config::CryptoConfig, GroupId},
     key_packages::KeyPackage,
     messages::proposals::ProposalType,
@@ -1305,7 +1303,7 @@
 /// ```
 </span><span class="attribute">#[derive(Debug)]
 </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">enum </span>TreeInfoTbs {
-    KeyPackage(),
+    KeyPackage,
     Update(TreePosition),
     Commit(TreePosition),
 }
@@ -1393,7 +1391,7 @@
     <span class="kw">fn </span>tls_serialize&lt;W: std::io::Write&gt;(<span class="kw-2">&amp;</span><span class="self">self</span>, writer: <span class="kw-2">&amp;mut </span>W) -&gt; <span class="prelude-ty">Result</span>&lt;usize, tls_codec::Error&gt; {
         <span class="kw">let </span>written = <span class="self">self</span>.payload.tls_serialize(writer)<span class="question-mark">?</span>;
         <span class="kw">match </span><span class="kw-2">&amp;</span><span class="self">self</span>.tree_info {
-            TreeInfoTbs::KeyPackage() =&gt; <span class="prelude-val">Ok</span>(written),
+            TreeInfoTbs::KeyPackage =&gt; <span class="prelude-val">Ok</span>(written),
             TreeInfoTbs::Update(p) | TreeInfoTbs::Commit(p) =&gt; {
                 p.tls_serialize(writer).map(|b| written + b)
             }
@@ -1405,7 +1403,7 @@
     <span class="kw">fn </span>tls_serialized_len(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; usize {
         <span class="kw">let </span>len = <span class="self">self</span>.payload.tls_serialized_len();
         <span class="kw">match </span><span class="kw-2">&amp;</span><span class="self">self</span>.tree_info {
-            TreeInfoTbs::KeyPackage() =&gt; len,
+            TreeInfoTbs::KeyPackage =&gt; len,
             TreeInfoTbs::Update(p) | TreeInfoTbs::Commit(p) =&gt; p.tls_serialized_len() + len,
         }
     }
@@ -1418,7 +1416,7 @@
     {
         <span class="kw">let </span>payload = LeafNodePayload::tls_deserialize(bytes)<span class="question-mark">?</span>;
         <span class="kw">let </span>tree_info = <span class="kw">match </span>payload.leaf_node_source {
-            LeafNodeSource::KeyPackage(<span class="kw">_</span>) =&gt; TreeInfoTbs::KeyPackage(),
+            LeafNodeSource::KeyPackage(<span class="kw">_</span>) =&gt; TreeInfoTbs::KeyPackage,
             LeafNodeSource::Update =&gt; TreeInfoTbs::Update(TreePosition::tls_deserialize(bytes)<span class="question-mark">?</span>),
             LeafNodeSource::Commit(<span class="kw">_</span>) =&gt; TreeInfoTbs::Commit(TreePosition::tls_deserialize(bytes)<span class="question-mark">?</span>),
         };
@@ -1468,55 +1466,6 @@
 }
 
 <span class="kw">impl </span>LeafNode {
-    <span class="doccomment">/// Get the identifier to search for the encryption key pair in the key
-    /// store.
-    </span><span class="kw">pub fn </span>encryption_key_label(id: <span class="kw-2">&amp;</span>[u8]) -&gt; Vec&lt;u8&gt; {
-        <span class="kw">const </span>ENCRYPTION_KEY_LABEL: <span class="kw-2">&amp;</span>[u8; <span class="number">9</span>] = <span class="string">b&quot;leaf_node&quot;</span>;
-        <span class="kw">let </span><span class="kw-2">mut </span>kp_key = ENCRYPTION_KEY_LABEL.to_vec();
-        kp_key.extend_from_slice(id);
-        kp_key
-    }
-
-    <span class="doccomment">/// Generate a fresh leaf node.
-    ///
-    /// This includes generating a new encryption key pair that is stored in the
-    /// key store.
-    ///
-    /// This function can be used when generating an update. In most other cases
-    /// a leaf node should be generated as part of a new [`KeyPackage`].
-    </span><span class="kw">pub fn </span>generate(
-        config: CryptoConfig,
-        credential_bundle: <span class="kw-2">&amp;</span>CredentialBundle,
-        capabilities: Capabilities,
-        extensions: Extensions,
-        backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, LibraryError&gt; {
-        <span class="comment">// Note that this function is supposed to be used in the public API only
-        // because it is interacting with the key store.
-
-        </span><span class="kw">let </span>(leaf_node, encryption_key_pair) = <span class="self">Self</span>::new(
-            config,
-            credential_bundle,
-            LeafNodeSource::Update,
-            capabilities,
-            extensions,
-            backend,
-        )<span class="question-mark">?</span>;
-
-        <span class="comment">// Store the encryption key pair in the key store.
-        </span>backend
-            .key_store()
-            .store(
-                <span class="kw-2">&amp;</span><span class="self">Self</span>::encryption_key_label(leaf_node.signature_key().as_slice()),
-                <span class="kw-2">&amp;</span>encryption_key_pair,
-            )
-            .map_err(|<span class="kw">_</span>| {
-                LibraryError::custom(<span class="string">&quot;Unable to store private encryption key into the key store.&quot;</span>)
-            })<span class="question-mark">?</span>;
-
-        <span class="prelude-val">Ok</span>(leaf_node)
-    }
-
     <span class="doccomment">/// Create a new [`LeafNode`].
     /// This first creates a `LeadNodeTbs` and returns the result of signing
     /// it.
@@ -1575,9 +1524,58 @@
             .map_err(|<span class="kw">_</span>| LibraryError::custom(<span class="string">&quot;Signing failed&quot;</span>))
     }
 
+    <span class="doccomment">/// Generate a fresh leaf node.
+    ///
+    /// This includes generating a new encryption key pair that is stored in the
+    /// key store.
+    ///
+    /// This function can be used when generating an update. In most other cases
+    /// a leaf node should be generated as part of a new [`KeyPackage`].
+    </span><span class="kw">pub fn </span>generate(
+        config: CryptoConfig,
+        credential_bundle: <span class="kw-2">&amp;</span>CredentialBundle,
+        capabilities: Capabilities,
+        extensions: Extensions,
+        backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, LibraryError&gt; {
+        <span class="comment">// Note that this function is supposed to be used in the public API only
+        // because it is interacting with the key store.
+
+        </span><span class="kw">let </span>(leaf_node, encryption_key_pair) = <span class="self">Self</span>::new(
+            config,
+            credential_bundle,
+            LeafNodeSource::Update,
+            capabilities,
+            extensions,
+            backend,
+        )<span class="question-mark">?</span>;
+
+        <span class="comment">// Store the encryption key pair in the key store.
+        </span>backend
+            .key_store()
+            .store(
+                <span class="kw-2">&amp;</span><span class="self">Self</span>::encryption_key_label(leaf_node.signature_key().as_slice()),
+                <span class="kw-2">&amp;</span>encryption_key_pair,
+            )
+            .map_err(|<span class="kw">_</span>| {
+                LibraryError::custom(<span class="string">&quot;Unable to store private encryption key into the key store.&quot;</span>)
+            })<span class="question-mark">?</span>;
+
+        <span class="prelude-val">Ok</span>(leaf_node)
+    }
+
     <span class="doccomment">/// Returns the `encryption_key`.
     </span><span class="kw">pub fn </span>encryption_key(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>HpkePublicKey {
         <span class="kw-2">&amp;</span><span class="self">self</span>.payload.encryption_key
+    }
+
+    <span class="doccomment">/// Get the identifier to search for the encryption key pair in the key
+    /// store.
+    </span><span class="kw">pub fn </span>encryption_key_label(id: <span class="kw-2">&amp;</span>[u8]) -&gt; Vec&lt;u8&gt; {
+        <span class="kw">const </span>ENCRYPTION_KEY_LABEL: <span class="kw-2">&amp;</span>[u8; <span class="number">9</span>] = <span class="string">b&quot;leaf_node&quot;</span>;
+        <span class="kw">let </span><span class="kw-2">mut </span>kp_key = ENCRYPTION_KEY_LABEL.to_vec();
+        kp_key.extend_from_slice(id);
+        kp_key
     }
 
     <span class="doccomment">/// Returns the `signature_key` as byte slice.
@@ -1596,82 +1594,6 @@
             LeafNodeSource::Commit(ph) =&gt; <span class="prelude-val">Some</span>(ph.as_slice()),
             <span class="kw">_ </span>=&gt; <span class="prelude-val">None</span>,
         }
-    }
-
-    <span class="doccomment">/// Returns `true` if the [`ExtensionType`] is supported by this leaf node.
-    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>supports_extension(<span class="kw-2">&amp;</span><span class="self">self</span>, extension_type: <span class="kw-2">&amp;</span>ExtensionType) -&gt; bool {
-        <span class="self">self</span>.payload
-            .capabilities
-            .extensions
-            .iter()
-            .any(|et| et == extension_type)
-            || default_extensions().iter().any(|et| et == extension_type)
-    }
-
-    <span class="doccomment">/// Returns `true` if the [`ProposalType`] is supported by this leaf node.
-    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>supports_proposal(<span class="kw-2">&amp;</span><span class="self">self</span>, proposal_type: <span class="kw-2">&amp;</span>ProposalType) -&gt; bool {
-        <span class="self">self</span>.payload
-            .capabilities
-            .proposals
-            .iter()
-            .any(|pt| pt == proposal_type)
-            || default_proposals().iter().any(|pt| pt == proposal_type)
-    }
-
-    <span class="doccomment">/// Check that all extensions that are required, are supported by this leaf
-    /// node.
-    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>validate_required_capabilities&lt;<span class="lifetime">&#39;a</span>&gt;(
-        <span class="kw-2">&amp;</span><span class="self">self</span>,
-        required_capabilities: <span class="kw">impl </span>Into&lt;<span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>RequiredCapabilitiesExtension&gt;&gt;,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;(), TreeSyncError&gt; {
-        <span class="kw">if let </span><span class="prelude-val">Some</span>(required_capabilities) = required_capabilities.into() {
-            <span class="kw">for </span>required_extension <span class="kw">in </span>required_capabilities.extension_types() {
-                <span class="kw">if </span>!<span class="self">self</span>.supports_extension(required_extension) {
-                    <span class="kw">return </span><span class="prelude-val">Err</span>(TreeSyncError::UnsupportedExtension);
-                }
-            }
-            <span class="kw">for </span>required_proposal <span class="kw">in </span>required_capabilities.proposal_types() {
-                <span class="kw">if </span>!<span class="self">self</span>.supports_proposal(required_proposal) {
-                    <span class="kw">return </span><span class="prelude-val">Err</span>(TreeSyncError::UnsupportedProposal);
-                }
-            }
-        }
-        <span class="prelude-val">Ok</span>(())
-    }
-
-    <span class="doccomment">/// Check whether the this leaf node supports all the required extensions
-    /// in the provided list.
-    </span><span class="attribute">#[cfg(test)]
-    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>check_extension_support(
-        <span class="kw-2">&amp;</span><span class="self">self</span>,
-        extensions: <span class="kw-2">&amp;</span>[ExtensionType],
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;(), TreeSyncError&gt; {
-        <span class="kw">for </span>required <span class="kw">in </span>extensions.iter() {
-            <span class="kw">if </span>!<span class="self">self</span>.supports_extension(required) {
-                <span class="kw">return </span><span class="prelude-val">Err</span>(TreeSyncError::UnsupportedExtension);
-            }
-        }
-        <span class="prelude-val">Ok</span>(())
-    }
-
-    <span class="doccomment">/// Expose [`new_with_key`] for tests.
-    </span><span class="attribute">#[cfg(any(feature = <span class="string">&quot;test-utils&quot;</span>, test))]
-    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>create_new_with_key(
-        encryption_key: HpkePublicKey,
-        credential_bundle: <span class="kw-2">&amp;</span>CredentialBundle,
-        leaf_node_source: LeafNodeSource,
-        capabilities: Capabilities,
-        extensions: Extensions,
-        backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, LibraryError&gt; {
-        <span class="self">Self</span>::new_with_key(
-            encryption_key,
-            credential_bundle,
-            leaf_node_source,
-            capabilities,
-            extensions,
-            backend,
-        )
     }
 
     <span class="doccomment">/// Returns the [`Lifetime`] if present.
@@ -1694,15 +1616,80 @@
         <span class="kw-2">&amp;</span><span class="self">self</span>.payload.capabilities
     }
 
-    <span class="doccomment">/// Get the extension with the given `type` in this leaf.
-    ///
-    ///
-    /// Returns `None` if no extension of the requested type is present.
-    </span><span class="kw">pub fn </span>extension_by_type(<span class="kw-2">&amp;</span><span class="self">self</span>, extension_type: ExtensionType) -&gt; <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>Extension&gt; {
+    <span class="doccomment">/// Return a reference to the leaf node extensions.
+    </span><span class="kw">pub fn </span>extensions(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>Extensions {
+        <span class="kw-2">&amp;</span><span class="self">self</span>.payload.extensions
+    }
+
+    <span class="comment">// ----- Validation ----------------------------------------------------------------------------
+
+    </span><span class="doccomment">/// Check that all extensions that are required, are supported by this leaf
+    /// node.
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>validate_required_capabilities&lt;<span class="lifetime">&#39;a</span>&gt;(
+        <span class="kw-2">&amp;</span><span class="self">self</span>,
+        required_capabilities: <span class="kw">impl </span>Into&lt;<span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>RequiredCapabilitiesExtension&gt;&gt;,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;(), TreeSyncError&gt; {
+        <span class="kw">if let </span><span class="prelude-val">Some</span>(required_capabilities) = required_capabilities.into() {
+            <span class="kw">for </span>required_extension <span class="kw">in </span>required_capabilities.extension_types() {
+                <span class="kw">if </span>!<span class="self">self</span>.supports_extension(required_extension) {
+                    <span class="kw">return </span><span class="prelude-val">Err</span>(TreeSyncError::UnsupportedExtension);
+                }
+            }
+            <span class="kw">for </span>required_proposal <span class="kw">in </span>required_capabilities.proposal_types() {
+                <span class="kw">if </span>!<span class="self">self</span>.supports_proposal(required_proposal) {
+                    <span class="kw">return </span><span class="prelude-val">Err</span>(TreeSyncError::UnsupportedProposal);
+                }
+            }
+        }
+        <span class="prelude-val">Ok</span>(())
+    }
+
+    <span class="doccomment">/// Returns `true` if the [`ExtensionType`] is supported by this leaf node.
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>supports_extension(<span class="kw-2">&amp;</span><span class="self">self</span>, extension_type: <span class="kw-2">&amp;</span>ExtensionType) -&gt; bool {
         <span class="self">self</span>.payload
+            .capabilities
             .extensions
             .iter()
-            .find(|<span class="kw-2">&amp;</span>e| e.extension_type() == extension_type)
+            .any(|et| et == extension_type)
+            || default_extensions().iter().any(|et| et == extension_type)
+    }
+
+    <span class="doccomment">/// Returns `true` if the [`ProposalType`] is supported by this leaf node.
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>supports_proposal(<span class="kw-2">&amp;</span><span class="self">self</span>, proposal_type: <span class="kw-2">&amp;</span>ProposalType) -&gt; bool {
+        <span class="self">self</span>.payload
+            .capabilities
+            .proposals
+            .iter()
+            .any(|pt| pt == proposal_type)
+            || default_proposals().iter().any(|pt| pt == proposal_type)
+    }
+}
+
+<span class="kw">impl </span>LeafNode {
+    <span class="doccomment">/// Expose [`new_with_key`] for tests.
+    </span><span class="attribute">#[cfg(any(feature = <span class="string">&quot;test-utils&quot;</span>, test))]
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>create_new_with_key(
+        encryption_key: HpkePublicKey,
+        credential_bundle: <span class="kw-2">&amp;</span>CredentialBundle,
+        leaf_node_source: LeafNodeSource,
+        capabilities: Capabilities,
+        extensions: Extensions,
+        backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, LibraryError&gt; {
+        <span class="self">Self</span>::new_with_key(
+            encryption_key,
+            credential_bundle,
+            leaf_node_source,
+            capabilities,
+            extensions,
+            backend,
+        )
+    }
+
+    <span class="doccomment">/// Replace the credential in the KeyPackage.
+    </span><span class="attribute">#[cfg(any(feature = <span class="string">&quot;test-utils&quot;</span>, test))]
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>set_credential(<span class="kw-2">&amp;mut </span><span class="self">self</span>, credential: Credential) {
+        <span class="self">self</span>.payload.credential = credential;
     }
 
     <span class="doccomment">/// Return a mutable reference to [`Capabilities`].
@@ -1711,10 +1698,19 @@
         <span class="kw-2">&amp;mut </span><span class="self">self</span>.payload.capabilities
     }
 
-    <span class="doccomment">/// Replace the credential in the KeyPackage.
-    </span><span class="attribute">#[cfg(any(feature = <span class="string">&quot;test-utils&quot;</span>, test))]
-    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>set_credential(<span class="kw-2">&amp;mut </span><span class="self">self</span>, credential: Credential) {
-        <span class="self">self</span>.payload.credential = credential;
+    <span class="doccomment">/// Check whether the this leaf node supports all the required extensions
+    /// in the provided list.
+    </span><span class="attribute">#[cfg(test)]
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>check_extension_support(
+        <span class="kw-2">&amp;</span><span class="self">self</span>,
+        extensions: <span class="kw-2">&amp;</span>[ExtensionType],
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;(), TreeSyncError&gt; {
+        <span class="kw">for </span>required <span class="kw">in </span>extensions.iter() {
+            <span class="kw">if </span>!<span class="self">self</span>.supports_extension(required) {
+                <span class="kw">return </span><span class="prelude-val">Err</span>(TreeSyncError::UnsupportedExtension);
+            }
+        }
+        <span class="prelude-val">Ok</span>(())
     }
 }
 
@@ -1791,7 +1787,7 @@
             leaf_node_source,
             extensions,
         };
-        <span class="kw">let </span>tree_info = TreeInfoTbs::KeyPackage();
+        <span class="kw">let </span>tree_info = TreeInfoTbs::KeyPackage;
         <span class="kw">let </span>tbs = LeafNodeTbs { payload, tree_info };
         <span class="prelude-val">Ok</span>(tbs)
     }
@@ -2058,7 +2054,7 @@
         backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider,
         credential_bundle: <span class="kw-2">&amp;</span>CredentialBundle,
     ) {
-        <span class="kw">let </span><span class="kw-2">mut </span>tbs = LeafNodeTbs::from(<span class="self">self</span>.leaf_node.clone(), TreeInfoTbs::KeyPackage());
+        <span class="kw">let </span><span class="kw-2">mut </span>tbs = LeafNodeTbs::from(<span class="self">self</span>.leaf_node.clone(), TreeInfoTbs::KeyPackage);
         tbs.payload.encryption_key = public_key;
         <span class="self">self</span>.leaf_node = tbs
             .sign(backend, credential_bundle.signature_private_key())
