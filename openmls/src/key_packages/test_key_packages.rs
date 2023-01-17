@@ -102,8 +102,9 @@ fn application_id_extension(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryp
         Some(id),
         key_package
             .leaf_node()
-            .extension_by_type(ExtensionType::ApplicationId)
-            .map(|e| e.as_application_id_extension().unwrap().as_slice())
+            .extensions()
+            .application_id()
+            .map(|e| e.as_slice())
     );
 }
 

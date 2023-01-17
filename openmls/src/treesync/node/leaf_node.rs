@@ -20,7 +20,7 @@ use crate::{
     credentials::{Credential, CredentialBundle, CredentialType},
     error::LibraryError,
     extensions::Extensions,
-    extensions::{Extension, ExtensionType, RequiredCapabilitiesExtension},
+    extensions::{ExtensionType, RequiredCapabilitiesExtension},
     group::{config::CryptoConfig, GroupId},
     key_packages::KeyPackage,
     messages::proposals::ProposalType,
@@ -252,7 +252,7 @@ pub(crate) struct TreePosition {
 /// ```
 #[derive(Debug)]
 pub(crate) enum TreeInfoTbs {
-    KeyPackage(),
+    KeyPackage,
     Update(TreePosition),
     Commit(TreePosition),
 }
@@ -340,7 +340,7 @@ impl TlsSerializeTrait for LeafNodeTbs {
     fn tls_serialize<W: std::io::Write>(&self, writer: &mut W) -> Result<usize, tls_codec::Error> {
         let written = self.payload.tls_serialize(writer)?;
         match &self.tree_info {
-            TreeInfoTbs::KeyPackage() => Ok(written),
+            TreeInfoTbs::KeyPackage => Ok(written),
             TreeInfoTbs::Update(p) | TreeInfoTbs::Commit(p) => {
                 p.tls_serialize(writer).map(|b| written + b)
             }
@@ -352,7 +352,7 @@ impl tls_codec::Size for LeafNodeTbs {
     fn tls_serialized_len(&self) -> usize {
         let len = self.payload.tls_serialized_len();
         match &self.tree_info {
-            TreeInfoTbs::KeyPackage() => len,
+            TreeInfoTbs::KeyPackage => len,
             TreeInfoTbs::Update(p) | TreeInfoTbs::Commit(p) => p.tls_serialized_len() + len,
         }
     }
@@ -365,7 +365,7 @@ impl TlsDeserializeTrait for LeafNodeTbs {
     {
         let payload = LeafNodePayload::tls_deserialize(bytes)?;
         let tree_info = match payload.leaf_node_source {
-            LeafNodeSource::KeyPackage(_) => TreeInfoTbs::KeyPackage(),
+            LeafNodeSource::KeyPackage(_) => TreeInfoTbs::KeyPackage,
             LeafNodeSource::Update => TreeInfoTbs::Update(TreePosition::tls_deserialize(bytes)?),
             LeafNodeSource::Commit(_) => TreeInfoTbs::Commit(TreePosition::tls_deserialize(bytes)?),
         };
@@ -415,55 +415,6 @@ impl From<OpenMlsLeafNode> for LeafNode {
 }
 
 impl LeafNode {
-    /// Get the identifier to search for the encryption key pair in the key
-    /// store.
-    pub fn encryption_key_label(id: &[u8]) -> Vec<u8> {
-        const ENCRYPTION_KEY_LABEL: &[u8; 9] = b"leaf_node";
-        let mut kp_key = ENCRYPTION_KEY_LABEL.to_vec();
-        kp_key.extend_from_slice(id);
-        kp_key
-    }
-
-    /// Generate a fresh leaf node.
-    ///
-    /// This includes generating a new encryption key pair that is stored in the
-    /// key store.
-    ///
-    /// This function can be used when generating an update. In most other cases
-    /// a leaf node should be generated as part of a new [`KeyPackage`].
-    pub fn generate(
-        config: CryptoConfig,
-        credential_bundle: &CredentialBundle,
-        capabilities: Capabilities,
-        extensions: Extensions,
-        backend: &impl OpenMlsCryptoProvider,
-    ) -> Result<Self, LibraryError> {
-        // Note that this function is supposed to be used in the public API only
-        // because it is interacting with the key store.
-
-        let (leaf_node, encryption_key_pair) = Self::new(
-            config,
-            credential_bundle,
-            LeafNodeSource::Update,
-            capabilities,
-            extensions,
-            backend,
-        )?;
-
-        // Store the encryption key pair in the key store.
-        backend
-            .key_store()
-            .store(
-                &Self::encryption_key_label(leaf_node.signature_key().as_slice()),
-                &encryption_key_pair,
-            )
-            .map_err(|_| {
-                LibraryError::custom("Unable to store private encryption key into the key store.")
-            })?;
-
-        Ok(leaf_node)
-    }
-
     /// Create a new [`LeafNode`].
     /// This first creates a `LeadNodeTbs` and returns the result of signing
     /// it.
@@ -522,9 +473,58 @@ impl LeafNode {
             .map_err(|_| LibraryError::custom("Signing failed"))
     }
 
+    /// Generate a fresh leaf node.
+    ///
+    /// This includes generating a new encryption key pair that is stored in the
+    /// key store.
+    ///
+    /// This function can be used when generating an update. In most other cases
+    /// a leaf node should be generated as part of a new [`KeyPackage`].
+    pub fn generate(
+        config: CryptoConfig,
+        credential_bundle: &CredentialBundle,
+        capabilities: Capabilities,
+        extensions: Extensions,
+        backend: &impl OpenMlsCryptoProvider,
+    ) -> Result<Self, LibraryError> {
+        // Note that this function is supposed to be used in the public API only
+        // because it is interacting with the key store.
+
+        let (leaf_node, encryption_key_pair) = Self::new(
+            config,
+            credential_bundle,
+            LeafNodeSource::Update,
+            capabilities,
+            extensions,
+            backend,
+        )?;
+
+        // Store the encryption key pair in the key store.
+        backend
+            .key_store()
+            .store(
+                &Self::encryption_key_label(leaf_node.signature_key().as_slice()),
+                &encryption_key_pair,
+            )
+            .map_err(|_| {
+                LibraryError::custom("Unable to store private encryption key into the key store.")
+            })?;
+
+        Ok(leaf_node)
+    }
+
     /// Returns the `encryption_key`.
     pub fn encryption_key(&self) -> &HpkePublicKey {
         &self.payload.encryption_key
+    }
+
+    /// Get the identifier to search for the encryption key pair in the key
+    /// store.
+    pub fn encryption_key_label(id: &[u8]) -> Vec<u8> {
+        const ENCRYPTION_KEY_LABEL: &[u8; 9] = b"leaf_node";
+        let mut kp_key = ENCRYPTION_KEY_LABEL.to_vec();
+        kp_key.extend_from_slice(id);
+        kp_key
     }
 
     /// Returns the `signature_key` as byte slice.
@@ -543,82 +543,6 @@ impl LeafNode {
             LeafNodeSource::Commit(ph) => Some(ph.as_slice()),
             _ => None,
         }
-    }
-
-    /// Returns `true` if the [`ExtensionType`] is supported by this leaf node.
-    pub(crate) fn supports_extension(&self, extension_type: &ExtensionType) -> bool {
-        self.payload
-            .capabilities
-            .extensions
-            .iter()
-            .any(|et| et == extension_type)
-            || default_extensions().iter().any(|et| et == extension_type)
-    }
-
-    /// Returns `true` if the [`ProposalType`] is supported by this leaf node.
-    pub(crate) fn supports_proposal(&self, proposal_type: &ProposalType) -> bool {
-        self.payload
-            .capabilities
-            .proposals
-            .iter()
-            .any(|pt| pt == proposal_type)
-            || default_proposals().iter().any(|pt| pt == proposal_type)
-    }
-
-    /// Check that all extensions that are required, are supported by this leaf
-    /// node.
-    pub(crate) fn validate_required_capabilities<'a>(
-        &self,
-        required_capabilities: impl Into<Option<&'a RequiredCapabilitiesExtension>>,
-    ) -> Result<(), TreeSyncError> {
-        if let Some(required_capabilities) = required_capabilities.into() {
-            for required_extension in required_capabilities.extension_types() {
-                if !self.supports_extension(required_extension) {
-                    return Err(TreeSyncError::UnsupportedExtension);
-                }
-            }
-            for required_proposal in required_capabilities.proposal_types() {
-                if !self.supports_proposal(required_proposal) {
-                    return Err(TreeSyncError::UnsupportedProposal);
-                }
-            }
-        }
-        Ok(())
-    }
-
-    /// Check whether the this leaf node supports all the required extensions
-    /// in the provided list.
-    #[cfg(test)]
-    pub(crate) fn check_extension_support(
-        &self,
-        extensions: &[ExtensionType],
-    ) -> Result<(), TreeSyncError> {
-        for required in extensions.iter() {
-            if !self.supports_extension(required) {
-                return Err(TreeSyncError::UnsupportedExtension);
-            }
-        }
-        Ok(())
-    }
-
-    /// Expose [`new_with_key`] for tests.
-    #[cfg(any(feature = "test-utils", test))]
-    pub(crate) fn create_new_with_key(
-        encryption_key: HpkePublicKey,
-        credential_bundle: &CredentialBundle,
-        leaf_node_source: LeafNodeSource,
-        capabilities: Capabilities,
-        extensions: Extensions,
-        backend: &impl OpenMlsCryptoProvider,
-    ) -> Result<Self, LibraryError> {
-        Self::new_with_key(
-            encryption_key,
-            credential_bundle,
-            leaf_node_source,
-            capabilities,
-            extensions,
-            backend,
-        )
     }
 
     /// Returns the [`Lifetime`] if present.
@@ -641,15 +565,80 @@ impl LeafNode {
         &self.payload.capabilities
     }
 
-    /// Get the extension with the given `type` in this leaf.
-    ///
-    ///
-    /// Returns `None` if no extension of the requested type is present.
-    pub fn extension_by_type(&self, extension_type: ExtensionType) -> Option<&Extension> {
+    /// Return a reference to the leaf node extensions.
+    pub fn extensions(&self) -> &Extensions {
+        &self.payload.extensions
+    }
+
+    // ----- Validation ----------------------------------------------------------------------------
+
+    /// Check that all extensions that are required, are supported by this leaf
+    /// node.
+    pub(crate) fn validate_required_capabilities<'a>(
+        &self,
+        required_capabilities: impl Into<Option<&'a RequiredCapabilitiesExtension>>,
+    ) -> Result<(), TreeSyncError> {
+        if let Some(required_capabilities) = required_capabilities.into() {
+            for required_extension in required_capabilities.extension_types() {
+                if !self.supports_extension(required_extension) {
+                    return Err(TreeSyncError::UnsupportedExtension);
+                }
+            }
+            for required_proposal in required_capabilities.proposal_types() {
+                if !self.supports_proposal(required_proposal) {
+                    return Err(TreeSyncError::UnsupportedProposal);
+                }
+            }
+        }
+        Ok(())
+    }
+
+    /// Returns `true` if the [`ExtensionType`] is supported by this leaf node.
+    pub(crate) fn supports_extension(&self, extension_type: &ExtensionType) -> bool {
         self.payload
+            .capabilities
             .extensions
             .iter()
-            .find(|&e| e.extension_type() == extension_type)
+            .any(|et| et == extension_type)
+            || default_extensions().iter().any(|et| et == extension_type)
+    }
+
+    /// Returns `true` if the [`ProposalType`] is supported by this leaf node.
+    pub(crate) fn supports_proposal(&self, proposal_type: &ProposalType) -> bool {
+        self.payload
+            .capabilities
+            .proposals
+            .iter()
+            .any(|pt| pt == proposal_type)
+            || default_proposals().iter().any(|pt| pt == proposal_type)
+    }
+}
+
+impl LeafNode {
+    /// Expose [`new_with_key`] for tests.
+    #[cfg(any(feature = "test-utils", test))]
+    pub(crate) fn create_new_with_key(
+        encryption_key: HpkePublicKey,
+        credential_bundle: &CredentialBundle,
+        leaf_node_source: LeafNodeSource,
+        capabilities: Capabilities,
+        extensions: Extensions,
+        backend: &impl OpenMlsCryptoProvider,
+    ) -> Result<Self, LibraryError> {
+        Self::new_with_key(
+            encryption_key,
+            credential_bundle,
+            leaf_node_source,
+            capabilities,
+            extensions,
+            backend,
+        )
+    }
+
+    /// Replace the credential in the KeyPackage.
+    #[cfg(any(feature = "test-utils", test))]
+    pub(crate) fn set_credential(&mut self, credential: Credential) {
+        self.payload.credential = credential;
     }
 
     /// Return a mutable reference to [`Capabilities`].
@@ -658,10 +647,19 @@ impl LeafNode {
         &mut self.payload.capabilities
     }
 
-    /// Replace the credential in the KeyPackage.
-    #[cfg(any(feature = "test-utils", test))]
-    pub(crate) fn set_credential(&mut self, credential: Credential) {
-        self.payload.credential = credential;
+    /// Check whether the this leaf node supports all the required extensions
+    /// in the provided list.
+    #[cfg(test)]
+    pub(crate) fn check_extension_support(
+        &self,
+        extensions: &[ExtensionType],
+    ) -> Result<(), TreeSyncError> {
+        for required in extensions.iter() {
+            if !self.supports_extension(required) {
+                return Err(TreeSyncError::UnsupportedExtension);
+            }
+        }
+        Ok(())
     }
 }
 
@@ -738,7 +736,7 @@ impl LeafNodeTbs {
             leaf_node_source,
             extensions,
         };
-        let tree_info = TreeInfoTbs::KeyPackage();
+        let tree_info = TreeInfoTbs::KeyPackage;
         let tbs = LeafNodeTbs { payload, tree_info };
         Ok(tbs)
     }
@@ -1005,7 +1003,7 @@ impl OpenMlsLeafNode {
         backend: &impl OpenMlsCryptoProvider,
         credential_bundle: &CredentialBundle,
     ) {
-        let mut tbs = LeafNodeTbs::from(self.leaf_node.clone(), TreeInfoTbs::KeyPackage());
+        let mut tbs = LeafNodeTbs::from(self.leaf_node.clone(), TreeInfoTbs::KeyPackage);
         tbs.payload.encryption_key = public_key;
         self.leaf_node = tbs
             .sign(backend, credential_bundle.signature_private_key())
