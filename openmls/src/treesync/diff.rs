@@ -836,7 +836,6 @@ impl<'a> TreeSyncDiff<'a> {
             })
             .next()
         {
-            debug_assert_eq!(position, resolution_position);
             return Ok((private_key, resolution_position));
         };
         Err(TreeSyncDiffError::NoPrivateKeyFound)
