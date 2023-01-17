@@ -825,16 +825,6 @@ impl<'a> TreeSyncDiff<'a> {
             })
             .collect();
 
-        // TODO: REMOVE BEFORE MERGING PR.
-        let position = sender_copath_resolution
-            .iter()
-            .position(|pk| {
-                owned_keys
-                    .iter()
-                    .any(|owned_keypair| owned_keypair.public_key() == pk)
-            })
-            .unwrap();
-
         if let Some((resolution_position, private_key)) = sender_copath_resolution
             .iter()
             .enumerate()
