@@ -223,7 +223,7 @@ fn mls_group_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoPr
         }
 
         // === Bob updates and commits ===
-        let (queued_message, welcome_option) = bob_group.self_update(backend, None).unwrap();
+        let (queued_message, welcome_option) = bob_group.self_update(backend).unwrap();
 
         let alice_processed_message = alice_group
             .process_message(
@@ -464,37 +464,9 @@ fn mls_group_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoPr
             )
             .expect("Could not process message.");
 
-        let charlie_credential_bundle: CredentialBundle = backend
-            .key_store()
-            .read(
-                &charlie_credential
-                    .signature_key()
-                    .tls_serialize_detached()
-                    .unwrap(),
-            )
-            .unwrap();
-        let charlies_new_key_package = KeyPackage::builder()
-            .build(
-                CryptoConfig {
-                    ciphersuite,
-                    version: ProtocolVersion::default(),
-                },
-                backend,
-                &charlie_credential_bundle,
-            )
-            .unwrap();
 
         // === Charlie updates and commits ===
-        let (queued_message, welcome_option) = match charlie_group.self_update(
-            backend,
-            Some(
-                charlies_new_key_package
-                    .leaf_node()
-                    .encryption_key()
-                    .key()
-                    .clone(),
-            ),
-        ) {
+        let (queued_message, welcome_option) = match charlie_group.self_update(backend) {
             Ok(qm) => qm,
             Err(e) => panic!("Error performing self-update: {:?}", e),
         };

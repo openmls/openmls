@@ -301,10 +301,7 @@ fn book_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvide
     // === Bob updates and commits ===
     // ANCHOR: self_update
     let (mls_message_out, welcome_option) = bob_group
-        .self_update(
-            backend,
-            None, // We don't provide a key package, it will be created on the fly instead
-        )
+        .self_update(backend)
         .expect("Could not update own key package.");
     // ANCHOR_END: self_update
 
@@ -528,7 +525,7 @@ fn book_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvide
         .expect("Could not process message.");
 
     // === Charlie updates and commits ===
-    let (queued_message, welcome_option) = match charlie_group.self_update(backend, None) {
+    let (queued_message, welcome_option) = match charlie_group.self_update(backend) {
         Ok(qm) => qm,
         Err(e) => panic!("Error performing self-update: {:?}", e),
     };

@@ -526,7 +526,7 @@ fn test_pending_commit_logic(ciphersuite: Ciphersuite, backend: &impl OpenMlsCry
 
     println!("\nCreating commit with add proposal.");
     let (_msg, _welcome_option) = alice_group
-        .self_update(backend, None)
+        .self_update(backend)
         .expect("error creating self-update commit");
     println!("Done creating commit.");
 
@@ -571,7 +571,7 @@ fn test_pending_commit_logic(ciphersuite: Ciphersuite, backend: &impl OpenMlsCry
         CommitToPendingProposalsError::GroupStateError(MlsGroupStateError::PendingCommit)
     );
     let error = alice_group
-        .self_update(backend, None)
+        .self_update(backend)
         .expect_err("no error committing while a commit is pending");
     assert_eq!(
         error,
@@ -591,7 +591,7 @@ fn test_pending_commit_logic(ciphersuite: Ciphersuite, backend: &impl OpenMlsCry
 
     // Creating a new commit should commit the same proposals.
     let (_msg, welcome_option) = alice_group
-        .self_update(backend, None)
+        .self_update(backend)
         .expect("error creating self-update commit");
 
     // Merging the pending commit should clear the pending commit and we should
@@ -623,11 +623,11 @@ fn test_pending_commit_logic(ciphersuite: Ciphersuite, backend: &impl OpenMlsCry
 
     // While a commit is pending, merging Bob's commit should clear the pending commit.
     let (_msg, _welcome_option) = alice_group
-        .self_update(backend, None)
+        .self_update(backend)
         .expect("error creating self-update commit");
 
     let (msg, _welcome_option) = bob_group
-        .self_update(backend, None)
+        .self_update(backend)
         .expect("error creating self-update commit");
 
     let alice_processed_message = alice_group

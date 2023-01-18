@@ -513,7 +513,7 @@ impl LeafNode {
     }
 
     /// Returns the `encryption_key`.
-    pub fn encryption_key(&self) -> &EncryptionKey {
+    pub(crate) fn encryption_key(&self) -> &EncryptionKey {
         &self.payload.encryption_key
     }
 
@@ -606,7 +606,7 @@ impl LeafNode {
 
 impl LeafNode {
     /// Expose [`new_with_key`] for tests.
-    #[cfg(any(feature = "test-utils", test))]
+    #[cfg(test)]
     pub(crate) fn create_new_with_key(
         encryption_key: EncryptionKey,
         credential_bundle: &CredentialBundle,
@@ -952,7 +952,7 @@ impl OpenMlsLeafNode {
     }
 
     /// Returns a reference to the encryption key of the leaf node.
-    pub fn encryption_key(&self) -> &EncryptionKey {
+    pub(crate) fn encryption_key(&self) -> &EncryptionKey {
         self.leaf_node.encryption_key()
     }
 

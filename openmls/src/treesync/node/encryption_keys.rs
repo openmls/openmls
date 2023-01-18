@@ -15,18 +15,18 @@ use crate::versions::ProtocolVersion;
 #[derive(
     Debug, Clone, Serialize, Deserialize, TlsSerialize, TlsDeserialize, TlsSize, PartialEq, Eq,
 )]
-pub struct EncryptionKey {
+pub(crate) struct EncryptionKey {
     key: HpkePublicKey,
 }
 
 impl EncryptionKey {
     /// Return the internal [`HpkePublicKey`].
-    pub fn key(&self) -> &HpkePublicKey {
+    pub(crate) fn key(&self) -> &HpkePublicKey {
         &self.key
     }
 
     /// Return the internal [`HpkePublicKey`] as slice.
-    pub fn as_slice(&self) -> &[u8] {
+    pub(crate) fn as_slice(&self) -> &[u8] {
         self.key.as_slice()
     }
 
@@ -42,7 +42,7 @@ impl EncryptionKey {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct EncryptionPrivateKey {
+pub(crate) struct EncryptionPrivateKey {
     key: HpkePrivateKey,
 }
 
@@ -85,7 +85,7 @@ impl From<HpkePublicKey> for EncryptionKey {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct EncryptionKeyPair {
+pub(crate) struct EncryptionKeyPair {
     public_key: EncryptionKey,
     private_key: EncryptionPrivateKey,
 }
@@ -98,7 +98,7 @@ impl EncryptionKeyPair {
     /// already in use with an MLS group.
     ///
     /// Returns a key store error if access to the key store fails.
-    pub fn write_to_key_store<KeyStore: OpenMlsKeyStore>(
+    pub(crate) fn write_to_key_store<KeyStore: OpenMlsKeyStore>(
         &self,
         backend: &impl OpenMlsCryptoProvider<KeyStoreProvider = KeyStore>,
     ) -> Result<(), KeyStore::Error> {
@@ -112,7 +112,7 @@ impl EncryptionKeyPair {
     /// already in use with an MLS group.
     ///
     /// Returns `None` if the keypair cannot be read from the store.
-    pub fn read_from_key_store(
+    pub(crate) fn read_from_key_store(
         backend: &impl OpenMlsCryptoProvider,
         encryption_key: &EncryptionKey,
     ) -> Option<EncryptionKeyPair> {
@@ -126,7 +126,7 @@ impl EncryptionKeyPair {
     /// already in use with an MLS group.
     ///
     /// Returns a key store error if access to the key store fails.
-    pub fn delete_from_key_store<KeyStore: OpenMlsKeyStore>(
+    pub(crate) fn delete_from_key_store<KeyStore: OpenMlsKeyStore>(
         &self,
         backend: &impl OpenMlsCryptoProvider<KeyStoreProvider = KeyStore>,
     ) -> Result<(), KeyStore::Error> {
@@ -135,11 +135,11 @@ impl EncryptionKeyPair {
             .delete(&self.public_key().to_bytes_with_prefix())
     }
 
-    pub fn public_key(&self) -> &EncryptionKey {
+    pub(crate) fn public_key(&self) -> &EncryptionKey {
         &self.public_key
     }
 
-    pub fn private_key(&self) -> &EncryptionPrivateKey {
+    pub(crate) fn private_key(&self) -> &EncryptionPrivateKey {
         &self.private_key
     }
 

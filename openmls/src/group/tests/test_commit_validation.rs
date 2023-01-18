@@ -163,7 +163,7 @@ fn test_valsem200(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
 
     // Now let's stick it in the commit.
     let serialized_message = alice_group
-        .self_update(backend, None)
+        .self_update(backend)
         .expect("Error creating self-update")
         .tls_serialize_detached()
         .expect("Could not serialize message.");
@@ -444,7 +444,7 @@ fn test_valsem202(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
 
     // Create the self-update
     let serialized_update = alice_group
-        .self_update(backend, None)
+        .self_update(backend)
         .expect("Error creating self-update")
         .tls_serialize_detached()
         .expect("Could not serialize message.");
@@ -508,7 +508,7 @@ fn test_valsem203(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
 
     // Create the self-update
     let serialized_update = alice_group
-        .self_update(backend, None)
+        .self_update(backend)
         .expect("Error creating self-update")
         .tls_serialize_detached()
         .expect("Could not serialize message.");
@@ -574,7 +574,7 @@ fn test_valsem204(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
 
     // Create the self-update
     let serialized_update = alice_group
-        .self_update(backend, None)
+        .self_update(backend)
         .expect("Error creating self-update")
         .tls_serialize_detached()
         .expect("Could not serialize message.");
@@ -640,7 +640,7 @@ fn test_valsem205(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
 
     // Create the self-update
     let serialized_update = alice_group
-        .self_update(backend, None)
+        .self_update(backend)
         .expect("Error creating self-update")
         .tls_serialize_detached()
         .expect("Could not serialize message.");

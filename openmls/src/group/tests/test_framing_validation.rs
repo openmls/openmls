@@ -125,7 +125,7 @@ fn test_valsem002(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
     } = validation_test_setup(PURE_PLAINTEXT_WIRE_FORMAT_POLICY, ciphersuite, backend);
 
     let (message, _welcome) = alice_group
-        .self_update(backend, None)
+        .self_update(backend)
         .expect("Could not self-update.");
 
     let serialized_message = message
@@ -172,7 +172,7 @@ fn test_valsem003(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
 
     // Alice needs to create a new message that Bob can process.
     let (message, _welcome) = alice_group
-        .self_update(backend, None)
+        .self_update(backend)
         .expect("Could not self update.");
     alice_group.merge_pending_commit(backend).unwrap();
 
@@ -196,7 +196,7 @@ fn test_valsem003(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
 
     // Do a second Commit to increase the epoch number
     let (message, _welcome) = alice_group
-        .self_update(backend, None)
+        .self_update(backend)
         .expect("Could not add member.");
 
     let current_epoch = alice_group.epoch();
@@ -265,7 +265,7 @@ fn test_valsem004(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
     } = validation_test_setup(PURE_PLAINTEXT_WIRE_FORMAT_POLICY, ciphersuite, backend);
 
     let (message, _welcome) = alice_group
-        .self_update(backend, None)
+        .self_update(backend)
         .expect("Could not self-update.");
 
     let serialized_message = message
@@ -325,7 +325,7 @@ fn test_valsem005(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
     } = validation_test_setup(PURE_PLAINTEXT_WIRE_FORMAT_POLICY, ciphersuite, backend);
 
     let (message, _welcome) = alice_group
-        .self_update(backend, None)
+        .self_update(backend)
         .expect("Could not self-update.");
 
     let serialized_message = message
@@ -432,7 +432,7 @@ fn test_valsem007(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
     } = validation_test_setup(PURE_PLAINTEXT_WIRE_FORMAT_POLICY, ciphersuite, backend);
 
     let (message, _welcome) = alice_group
-        .self_update(backend, None)
+        .self_update(backend)
         .expect("Could not self-update.");
 
     let serialized_message = message
@@ -479,7 +479,7 @@ fn test_valsem008(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
 
     // Alice needs to create a new message that Bob can process.
     let (message, _welcome) = alice_group
-        .self_update(backend, None)
+        .self_update(backend)
         .expect("Could not self-update.");
 
     let serialized_message = message
@@ -528,7 +528,7 @@ fn test_valsem009(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
     } = validation_test_setup(PURE_PLAINTEXT_WIRE_FORMAT_POLICY, ciphersuite, backend);
 
     let (message, _welcome) = alice_group
-        .self_update(backend, None)
+        .self_update(backend)
         .expect("Could not self-update.");
 
     let serialized_message = message
@@ -588,7 +588,7 @@ fn test_valsem010(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
 
     // Alice needs to create a new message that Bob can process.
     let (message, _welcome) = alice_group
-        .self_update(backend, None)
+        .self_update(backend)
         .expect("Could not self update.");
 
     let serialized_message = message

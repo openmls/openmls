@@ -108,7 +108,7 @@ use tls_codec::{
     Deserialize as TlsDeserializeTrait, Serialize as TlsSerializeTrait, TlsSerialize, TlsSize,
 };
 
-#[cfg(any(feature = "test-utils", test))]
+#[cfg(test)]
 use crate::treesync::node::encryption_keys::EncryptionKey;
 
 // Private
@@ -454,7 +454,8 @@ impl KeyPackage {
 
     /// Create new key package with a leaf node encryption key set to the
     /// provided `encryption_key`.
-    pub fn new_from_encryption_key<KeyStore: OpenMlsKeyStore>(
+    #[cfg(test)]
+    pub(crate) fn new_from_encryption_key<KeyStore: OpenMlsKeyStore>(
         config: CryptoConfig,
         backend: &impl OpenMlsCryptoProvider<KeyStoreProvider = KeyStore>,
         credential: &CredentialBundle, // FIXME: make credential

@@ -119,7 +119,7 @@ fn test_past_secrets_in_group(ciphersuite: Ciphersuite, backend: &impl OpenMlsCr
             application_messages.push(application_message.into_protocol_message().unwrap());
 
             let (message, _welcome) = alice_group
-                .self_update(backend, None)
+                .self_update(backend)
                 .expect("An unexpected error occurred.");
 
             update_commits.push(message.clone());
