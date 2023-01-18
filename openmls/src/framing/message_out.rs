@@ -11,11 +11,10 @@ use tls_codec::Serialize;
 
 use super::*;
 
-use crate::{
-    key_packages::KeyPackage,
-    messages::group_info::{GroupInfo, VerifiableGroupInfo},
-    versions::ProtocolVersion,
-};
+use crate::{key_packages::KeyPackage, messages::group_info::GroupInfo, versions::ProtocolVersion};
+
+#[cfg(any(feature = "test-utils", test))]
+use crate::messages::group_info::VerifiableGroupInfo;
 
 /// An [`MlsMessageOut`] is typically returned from an [`MlsGroup`] function and
 /// meant to be serialized and sent to the DS.

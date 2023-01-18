@@ -1,3 +1,5 @@
+//! This module contains all types related to group info handling.
+
 use openmls_traits::types::Ciphersuite;
 use tls_codec::{Serialize, TlsDeserialize, TlsSerialize, TlsSize};
 
