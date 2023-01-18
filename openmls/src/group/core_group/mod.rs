@@ -756,9 +756,11 @@ impl CoreGroup {
         backend: &impl OpenMlsCryptoProvider<KeyStoreProvider = KeyStore>,
         keypair_references: &[EncryptionKeyPair],
     ) -> Result<(), KeyStore::Error> {
+        // Retrieving our identity should not fail.
+        let own_identity = self.own_identity().unwrap_or_default();
+        debug_assert_ne!(own_identity, &[0u8; 0]);
         backend.key_store().store_epoch_keys(
-            // Retrieving our identity should not fail.
-            self.own_identity().unwrap_or(&[]),
+            own_identity,
             self.group_id().as_slice(),
             self.context().epoch().as_u64(),
             keypair_references,
