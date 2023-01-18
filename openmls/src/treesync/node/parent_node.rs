@@ -8,7 +8,7 @@ use openmls_traits::{
 use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
 use thiserror::*;
-use tls_codec::{TlsSerialize, TlsSize, VLBytes};
+use tls_codec::{TlsDeserialize, TlsSerialize, TlsSize, VLBytes};
 
 use crate::{
     binary_tree::array_representation::{LeafNodeIndex, ParentNodeIndex},
@@ -24,7 +24,9 @@ use super::encryption_keys::{EncryptionKey, EncryptionKeyPair};
 /// This struct implements the MLS parent node. It contains its public key,
 /// parent hash and unmerged leaves. Additionally, it may contain the private
 /// key corresponding to the public key.
-#[derive(Debug, Eq, PartialEq, Clone, Serialize, Deserialize)]
+#[derive(
+    Debug, Eq, PartialEq, Clone, Serialize, Deserialize, TlsSerialize, TlsDeserialize, TlsSize,
+)]
 pub struct ParentNode {
     pub(super) encryption_key: EncryptionKey,
     pub(super) parent_hash: VLBytes,
@@ -88,19 +90,6 @@ pub(in crate::treesync) type PathDerivationResult = (
 );
 
 impl ParentNode {
-    /// Create a new [`ParentNode`].
-    pub(super) fn new(
-        public_key: HpkePublicKey,
-        parent_hash: VLBytes,
-        unmerged_leaves: UnmergedLeaves,
-    ) -> Self {
-        Self {
-            encryption_key: public_key.into(),
-            parent_hash,
-            unmerged_leaves,
-        }
-    }
-
     /// Derives a path from the given path secret, where the `node_secret` of
     /// the first node is immediately derived from the given `path_secret`.
     ///
