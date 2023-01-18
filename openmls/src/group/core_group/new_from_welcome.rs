@@ -187,8 +187,6 @@ impl CoreGroup {
                 .map_err(|_| WelcomeError::InvalidGroupInfoSignature)?
         };
 
-        let keypair_references: Vec<&EncryptionKeyPair> = group_keypairs.iter().collect();
-
         // Compute state
         let group_context = GroupContext::new(
             ciphersuite,
@@ -251,7 +249,7 @@ impl CoreGroup {
                 message_secrets_store,
             };
             group
-                .store_epoch_keypairs(backend, keypair_references.as_slice())
+                .store_epoch_keypairs(backend, group_keypairs.as_slice())
                 .map_err(WelcomeError::KeyStoreError)?;
 
             Ok(group)

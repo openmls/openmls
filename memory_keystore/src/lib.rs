@@ -90,14 +90,14 @@ impl OpenMlsKeyStore for MemoryKeyStore {
         identity: &[u8],
         group_id: &[u8],
         epoch: u64,
-        encryption_keys: &[&V],
+        encryption_keys: &[V],
     ) -> Result<(), Self::Error> {
         let mut epoch_store = self.epoch_values.write().unwrap();
         epoch_store.insert(
             (identity.to_vec(), group_id.to_vec(), epoch),
             encryption_keys
                 .iter()
-                .map(|&bytes| {
+                .map(|bytes| {
                     V::to_key_store_value(bytes)
                         .map_err(|_| MemoryKeyStoreError::SerializationError)
                 })

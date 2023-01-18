@@ -297,7 +297,7 @@ impl CoreGroupBuilder {
 
         // Store the private key of the own leaf in the key store as an epoch keypair.
         group
-            .store_epoch_keypairs(backend, &[&leaf_keypair])
+            .store_epoch_keypairs(backend, &[leaf_keypair])
             .map_err(CoreGroupBuildError::KeyStoreError)?;
 
         Ok(group)
@@ -754,7 +754,7 @@ impl CoreGroup {
     pub(super) fn store_epoch_keypairs<KeyStore: OpenMlsKeyStore>(
         &self,
         backend: &impl OpenMlsCryptoProvider<KeyStoreProvider = KeyStore>,
-        keypair_references: &[&EncryptionKeyPair],
+        keypair_references: &[EncryptionKeyPair],
     ) -> Result<(), KeyStore::Error> {
         backend.key_store().store_epoch_keys(
             // Retrieving our identity should not fail.

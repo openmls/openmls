@@ -32,7 +32,7 @@ pub trait OpenMlsKeyStore: Send + Sync + Debug {
         identity: &[u8],
         group_id: &[u8],
         epoch: u64,
-        encryption_keys: &[&V],
+        encryption_keys: &[V],
     ) -> Result<(), Self::Error>;
 
     /// Delete all encryption keys associated with the given identity, epoch and
