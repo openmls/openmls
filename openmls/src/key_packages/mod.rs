@@ -218,6 +218,7 @@ impl KeyPackage {
         backend: &impl OpenMlsCryptoProvider,
         credential: &CredentialBundle, // FIXME: make credential
         extensions: Extensions,
+        leaf_node_capabilities: Capabilities,
         leaf_node_extensions: Extensions,
     ) -> Result<((Self, HpkeKeyPair), Vec<u8>), KeyPackageNewError> {
         if SignatureScheme::from(config.ciphersuite) != credential.credential().signature_scheme() {
@@ -237,6 +238,7 @@ impl KeyPackage {
                 backend,
                 credential,
                 extensions,
+                leaf_node_capabilities,
                 leaf_node_extensions,
                 init_key.public,
             )?,
@@ -258,6 +260,7 @@ impl KeyPackage {
         backend: &impl OpenMlsCryptoProvider,
         credential: &CredentialBundle, // FIXME: make credential
         extensions: Extensions,
+        leaf_node_capabilities: Capabilities,
         leaf_node_extensions: Extensions,
         init_key: Vec<u8>,
     ) -> Result<(Self, HpkeKeyPair), KeyPackageNewError> {
@@ -267,7 +270,7 @@ impl KeyPackage {
             config,
             credential, // FIXME
             LeafNodeSource::KeyPackage(Lifetime::default()),
-            Capabilities::default(),
+            leaf_node_capabilities,
             leaf_node_extensions,
             backend,
         )?;
@@ -412,6 +415,7 @@ impl KeyPackage {
         backend: &impl OpenMlsCryptoProvider,
         credential: &CredentialBundle, // FIXME: make credential
         extensions: Extensions,
+        leaf_node_capabilities: Capabilities,
         leaf_node_extensions: Extensions,
         init_key: Vec<u8>,
     ) -> Result<Self, KeyPackageNewError> {
@@ -420,6 +424,7 @@ impl KeyPackage {
             backend,
             credential,
             extensions,
+            leaf_node_capabilities,
             leaf_node_extensions,
             init_key,
         )?;
@@ -455,6 +460,8 @@ impl KeyPackage {
         backend: &impl OpenMlsCryptoProvider,
         credential: &CredentialBundle, // FIXME: make credential
         extensions: Extensions,
+        leaf_node_capabilities: Capabilities,
+        leaf_node_extensions: Extensions,
         encryption_key: tls_codec::VLBytes,
     ) -> Result<Self, KeyPackageNewError> {
         // Create a new HPKE init key pair
@@ -476,8 +483,8 @@ impl KeyPackage {
             encryption_key,
             credential,
             LeafNodeSource::KeyPackage(Lifetime::default()),
-            Capabilities::default(),
-            Extensions::empty(),
+            leaf_node_capabilities,
+            leaf_node_extensions,
             backend,
         )
         .unwrap();
@@ -563,6 +570,7 @@ impl KeyPackage {
 #[derive(Default, Debug, Clone, Serialize, Deserialize)]
 pub struct KeyPackageBuilder {
     key_package_extensions: Option<Extensions>,
+    leaf_node_capabilities: Option<Capabilities>,
     leaf_node_extensions: Option<Extensions>,
 }
 
@@ -571,6 +579,7 @@ impl KeyPackageBuilder {
     pub fn new() -> Self {
         Self {
             key_package_extensions: None,
+            leaf_node_capabilities: None,
             leaf_node_extensions: None,
         }
     }
@@ -578,6 +587,12 @@ impl KeyPackageBuilder {
     /// Set the key package extensions.
     pub fn key_package_extensions(mut self, extensions: Extensions) -> Self {
         self.key_package_extensions = Some(extensions);
+        self
+    }
+
+    /// Set the leaf node capabilities.
+    pub fn leaf_node_capabilities(mut self, capabilities: Capabilities) -> Self {
+        self.leaf_node_capabilities = Some(capabilities);
         self
     }
 
@@ -599,6 +614,7 @@ impl KeyPackageBuilder {
             backend,
             credential,
             self.key_package_extensions.unwrap_or_default(),
+            self.leaf_node_capabilities.unwrap_or_default(),
             self.leaf_node_extensions.unwrap_or_default(),
         )?;
 
