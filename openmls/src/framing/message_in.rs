@@ -17,7 +17,9 @@ use tls_codec::Deserialize;
 
 use super::{mls_content::ContentType, *};
 
-use crate::{key_packages::KeyPackage, versions::ProtocolVersion};
+use crate::{
+    key_packages::KeyPackage, messages::group_info::VerifiableGroupInfo, versions::ProtocolVersion,
+};
 
 /// Before use with the [`MlsGroup`] API, the message has to be unpacked via
 /// `extract` to yield its [`MlsMessageInBody`].

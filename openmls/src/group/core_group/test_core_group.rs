@@ -11,7 +11,7 @@ use crate::{
     framing::*,
     group::{errors::*, *},
     key_packages::*,
-    messages::*,
+    messages::{group_info::GroupInfoTBS, *},
     schedule::psk::*,
     test_utils::*,
     treesync::errors::ApplyUpdatePathError,

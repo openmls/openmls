@@ -1,6 +1,14 @@
 use tls_codec::{Deserialize, Serialize};
 
-use crate::{credentials::*, group::config::CryptoConfig, messages::*, test_utils::*};
+use crate::{
+    ciphersuite::signable::Verifiable,
+    credentials::*,
+    group::config::CryptoConfig,
+    group::{CoreGroup, GroupId},
+    messages::group_info::{GroupInfo, VerifiableGroupInfo},
+    messages::*,
+    test_utils::*,
+};
 
 /// Tests the creation of an [UnverifiedGroupInfo] and verifies it was correctly signed.
 #[apply(ciphersuites_and_backends)]
