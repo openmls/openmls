@@ -12,7 +12,7 @@ use crate::{
     binary_tree::array_representation::LeafNodeIndex,
     ciphersuite::{
         signable::{Signable, SignedStruct, Verifiable},
-        HpkePublicKey, Secret, Signature, SignaturePublicKey,
+        HpkePublicKey, Signature, SignaturePublicKey,
     },
     credentials::{Credential, CredentialBundle, CredentialType},
     error::LibraryError,
@@ -440,9 +440,7 @@ impl LeafNode {
         backend: &impl OpenMlsCryptoProvider,
     ) -> Result<(Self, EncryptionKeyPair), LibraryError> {
         // Create a new encryption key pair.
-        let ikm = Secret::random(config.ciphersuite, backend, config.version)
-            .map_err(LibraryError::unexpected_crypto_error)?;
-        let encryption_key_pair = EncryptionKeyPair::derive(backend, config.ciphersuite, ikm);
+        let encryption_key_pair = EncryptionKeyPair::random(backend, config)?;
 
         let leaf_node = Self::new_with_key(
             encryption_key_pair.public_key().clone(),
@@ -855,9 +853,13 @@ impl OpenMlsLeafNode {
                 "Ciphersuite or protocol version is not supported by this leaf node.",
             ));
         }
-        let encryption_secret = Secret::random(ciphersuite, backend, protocol_version)
-            .map_err(LibraryError::unexpected_crypto_error)?;
-        let key_pair = EncryptionKeyPair::derive(backend, ciphersuite, encryption_secret);
+        let key_pair = EncryptionKeyPair::random(
+            backend,
+            CryptoConfig {
+                ciphersuite,
+                version: protocol_version,
+            },
+        )?;
 
         self.update_and_re_sign(
             key_pair.public_key(),

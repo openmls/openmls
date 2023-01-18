@@ -7,6 +7,7 @@ use tls_codec::{TlsDeserialize, TlsSerialize, TlsSize, VLBytes};
 
 use crate::ciphersuite::{HpkePrivateKey, HpkePublicKey, Secret};
 use crate::error::LibraryError;
+use crate::group::config::CryptoConfig;
 use crate::versions::ProtocolVersion;
 
 /// [`EncryptionKey`] contains an HPKE public key that allows the encryption of
@@ -19,12 +20,24 @@ pub struct EncryptionKey {
 }
 
 impl EncryptionKey {
+    /// Return the internal [`HpkePublicKey`].
     pub fn key(&self) -> &HpkePublicKey {
         &self.key
     }
 
+    /// Return the internal [`HpkePublicKey`] as slice.
     pub fn as_slice(&self) -> &[u8] {
         self.key.as_slice()
+    }
+
+    /// Helper function to prefix the given (serialized) [`EncryptionKey`] with
+    /// the `ENCRYPTION_KEY_LABEL`.
+    ///
+    /// Returns the resulting bytes.
+    fn to_bytes_with_prefix(&self) -> Vec<u8> {
+        let mut key_store_index = ENCRYPTION_KEY_LABEL.to_vec();
+        key_store_index.extend_from_slice(self.as_slice());
+        key_store_index
     }
 }
 
@@ -89,9 +102,9 @@ impl EncryptionKeyPair {
         &self,
         backend: &impl OpenMlsCryptoProvider<KeyStoreProvider = KeyStore>,
     ) -> Result<(), KeyStore::Error> {
-        let mut key_store_index = ENCRYPTION_KEY_LABEL.to_vec();
-        key_store_index.extend_from_slice(self.public_key().as_slice());
-        backend.key_store().store(&key_store_index, self)
+        backend
+            .key_store()
+            .store(&self.public_key().to_bytes_with_prefix(), self)
     }
 
     /// Read the [`EncryptionKeyPair`] from the key store of the `backend`. This
@@ -103,9 +116,9 @@ impl EncryptionKeyPair {
         backend: &impl OpenMlsCryptoProvider,
         encryption_key: &EncryptionKey,
     ) -> Option<EncryptionKeyPair> {
-        let mut key_store_index = ENCRYPTION_KEY_LABEL.to_vec();
-        key_store_index.extend_from_slice(encryption_key.as_slice());
-        backend.key_store().read(&key_store_index)
+        backend
+            .key_store()
+            .read(&encryption_key.to_bytes_with_prefix())
     }
 
     /// Delete the [`EncryptionKeyPair`] from the key store of the `backend`.
@@ -117,9 +130,9 @@ impl EncryptionKeyPair {
         &self,
         backend: &impl OpenMlsCryptoProvider<KeyStoreProvider = KeyStore>,
     ) -> Result<(), KeyStore::Error> {
-        let mut key_store_index = ENCRYPTION_KEY_LABEL.to_vec();
-        key_store_index.extend_from_slice(self.public_key().as_slice());
-        backend.key_store().delete(&key_store_index)
+        backend
+            .key_store()
+            .delete(&self.public_key().to_bytes_with_prefix())
     }
 
     pub fn public_key(&self) -> &EncryptionKey {
@@ -130,15 +143,16 @@ impl EncryptionKeyPair {
         &self.private_key
     }
 
-    pub(crate) fn derive(
+    pub(crate) fn random(
         backend: &impl OpenMlsCryptoProvider,
-        ciphersuite: Ciphersuite,
-        ikm: Secret,
-    ) -> Self {
-        backend
+        config: CryptoConfig,
+    ) -> Result<Self, LibraryError> {
+        let ikm = Secret::random(config.ciphersuite, backend, config.version)
+            .map_err(LibraryError::unexpected_crypto_error)?;
+        Ok(backend
             .crypto()
-            .derive_hpke_keypair(ciphersuite.hpke_config(), ikm.as_slice())
-            .into()
+            .derive_hpke_keypair(config.ciphersuite.hpke_config(), ikm.as_slice())
+            .into())
     }
 }
 

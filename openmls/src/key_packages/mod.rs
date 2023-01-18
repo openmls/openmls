@@ -515,7 +515,7 @@ impl KeyPackage {
         backend: &impl OpenMlsCryptoProvider<KeyStoreProvider = KeyStore>,
         credential: &CredentialBundle, // FIXME: make credential
         init_key: Vec<u8>,
-    ) -> Result<Self, KeyPackageNewError<KeyStore>> {
+    ) -> Result<Self, KeyPackageNewError<KeyStore::Error>> {
         let key_package = KeyPackageTBS {
             protocol_version: config.version,
             ciphersuite: config.ciphersuite,
