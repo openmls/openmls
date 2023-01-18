@@ -464,7 +464,6 @@ fn mls_group_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoPr
             )
             .expect("Could not process message.");
 
-
         // === Charlie updates and commits ===
         let (queued_message, welcome_option) = match charlie_group.self_update(backend) {
             Ok(qm) => qm,
