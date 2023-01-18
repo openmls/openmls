@@ -1,5 +1,4 @@
 use openmls_traits::types::Ciphersuite;
-use std::io::Write;
 use tls_codec::{Serialize, TlsDeserialize, TlsSerialize, TlsSize};
 
 use crate::{
@@ -21,7 +20,8 @@ const SIGNATURE_GROUP_INFO_LABEL: &str = "GroupInfoTBS";
 /// [`CredentialBundle`](crate::credentials::CredentialBundle) of the signer. When receiving a
 /// serialized group info, it can only be deserialized into a [`VerifiableGroupInfo`], which can
 /// then be turned into a group info as described above.
-#[derive(Debug, PartialEq, Clone, TlsDeserialize, TlsSerialize, TlsSize)]
+#[derive(Debug, PartialEq, Clone, TlsDeserialize, TlsSize)]
+#[cfg_attr(any(test, feature = "test-utils"), derive(TlsSerialize))]
 pub struct VerifiableGroupInfo {
     payload: GroupInfoTBS,
     signature: Signature,
@@ -88,7 +88,7 @@ impl From<VerifiableGroupInfo> for GroupInfo {
 ///     opaque signature<V>;
 /// } GroupInfo;
 /// ```
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq, Clone, TlsSerialize, TlsSize)]
 #[cfg_attr(feature = "test-utils", derive(TlsDeserialize))]
 pub struct GroupInfo {
     payload: GroupInfoTBS,
@@ -217,29 +217,4 @@ impl VerifiedStruct<VerifiableGroupInfo> for GroupInfo {
 mod private_mod {
     #[derive(Default)]
     pub struct Seal;
-}
-
-// -------------------------------------------------------------------------------------------------
-
-impl tls_codec::Size for GroupInfo {
-    #[inline]
-    fn tls_serialized_len(&self) -> usize {
-        let payload_len = match self.payload.unsigned_payload() {
-            Ok(p) => p.len(),
-            Err(e) => {
-                log::error!("Unable to get unsigned payload from GroupInfo {:?}", e);
-                0
-            }
-        };
-        payload_len + self.signature.tls_serialized_len()
-    }
-}
-
-impl tls_codec::Serialize for GroupInfo {
-    fn tls_serialize<W: Write>(&self, writer: &mut W) -> Result<usize, tls_codec::Error> {
-        let unsigned_payload = &self.payload.unsigned_payload()?;
-        let written = writer.write(unsigned_payload)?;
-        debug_assert_eq!(written, unsigned_payload.len());
-        self.signature.tls_serialize(writer).map(|l| l + written)
-    }
 }
