@@ -15,7 +15,7 @@ pub trait ToKeyStoreValue {
 /// The Key Store trait
 pub trait OpenMlsKeyStore: Send + Sync + Debug {
     /// The error type returned by the [`OpenMlsKeyStore`].
-    type Error: std::error::Error + Debug + PartialEq + Clone;
+    type Error: std::error::Error + Debug + PartialEq;
 
     /// Load all encryption keys associated with the given client identity (i.e.
     /// a byte vector uniquely identifying the client), epoch and group ID from
