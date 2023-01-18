@@ -69,7 +69,8 @@ pub struct MlsMessageIn {
 ///     }
 /// } MLSMessage;
 /// ```
-#[derive(Debug, PartialEq, Clone, TlsSerialize, TlsDeserialize, TlsSize)]
+#[derive(Debug, PartialEq, Clone, TlsDeserialize, TlsSize)]
+#[cfg_attr(feature = "test-utils", derive(TlsSerialize))]
 #[repr(u8)]
 pub enum MlsMessageInBody {
     /// Plaintext message

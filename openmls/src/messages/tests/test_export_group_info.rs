@@ -3,10 +3,11 @@ use tls_codec::{Deserialize, Serialize};
 use crate::{
     ciphersuite::signable::Verifiable,
     credentials::*,
-    group::config::CryptoConfig,
-    group::{CoreGroup, GroupId},
-    messages::group_info::{GroupInfo, VerifiableGroupInfo},
-    messages::*,
+    group::{config::CryptoConfig, CoreGroup, GroupId},
+    messages::{
+        group_info::{GroupInfo, VerifiableGroupInfo},
+        *,
+    },
     test_utils::*,
 };
 
