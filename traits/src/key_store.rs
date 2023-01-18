@@ -13,7 +13,7 @@ pub trait ToKeyStoreValue {
 }
 
 /// The Key Store trait
-pub trait OpenMlsKeyStore: Send + Sync + Debug {
+pub trait OpenMlsKeyStore: Send + Sync {
     /// The error type returned by the [`OpenMlsKeyStore`].
     type Error: std::error::Error + Debug + PartialEq;
 
