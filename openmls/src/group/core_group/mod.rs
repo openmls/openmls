@@ -331,8 +331,7 @@ impl CoreGroup {
     ) -> Result<AuthenticatedContent, CreateAddProposalError> {
         joiner_key_package
             .leaf_node()
-            .validate_required_capabilities(self.required_capabilities())
-            .map_err(|_| CreateAddProposalError::UnsupportedExtensions)?;
+            .validate_required_capabilities(self.required_capabilities())?;
         let add_proposal = AddProposal {
             key_package: joiner_key_package,
         };
