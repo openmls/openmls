@@ -409,7 +409,9 @@ impl CoreGroup {
             provisional_interim_transcript_hash,
             diff.into_staged_diff(backend, ciphersuite)?,
             path_processing_result.new_keypairs,
-            None, /* The committer is not allowed to include their own update proposal, so there is no extra keypair to store here. */
+            // The committer is not allowed to include their own update
+            // proposal, so there is no extra keypair to store here.
+            None,
         );
         let staged_commit = StagedCommit::new(
             proposal_queue,
