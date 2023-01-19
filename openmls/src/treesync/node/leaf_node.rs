@@ -976,9 +976,9 @@ impl OpenMlsLeafNode {
         self.leaf_index = Some(leaf_index);
     }
 
-    /// Generate a leaf from a [`KeyPackageBundle`] and the leaf index.
+    /// Generate a leaf from a [`LeafNode`] and the leaf index.
     #[cfg(test)]
-    pub(crate) fn from_key_package_bundle(
+    pub(crate) fn from_leaf_node(
         backend: &impl OpenMlsCryptoProvider,
         leaf_index: LeafNodeIndex,
         leaf_node: LeafNode,

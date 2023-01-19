@@ -542,7 +542,7 @@ fn group_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvid
             .expect("Could not create StagedProposal."),
     );
 
-    let (leaf_node, encryption_keypair) = OpenMlsLeafNode::from_key_package_bundle(
+    let (leaf_node, encryption_keypair) = OpenMlsLeafNode::from_leaf_node(
         backend,
         group_bob.own_leaf_index(),
         bob_update_key_package_bundle
