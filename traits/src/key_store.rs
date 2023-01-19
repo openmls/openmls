@@ -25,7 +25,7 @@ pub trait OpenMlsKeyStore: Send + Sync {
         identity: &[u8],
         group_id: &[u8],
         epoch: u64,
-    ) -> Option<Vec<V>>;
+    ) -> Vec<V>;
 
     /// Store all encryption keys associated with the given client identity
     /// (i.e.  a byte vector uniquely identifying the client), epoch and group

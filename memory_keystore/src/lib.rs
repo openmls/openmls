@@ -60,17 +60,16 @@ impl OpenMlsKeyStore for MemoryKeyStore {
         identity: &[u8],
         group_id: &[u8],
         epoch: u64,
-    ) -> Option<Vec<V>> {
+    ) -> Vec<V> {
         let epoch_store = self.epoch_values.read().unwrap();
         if let Some(values) = epoch_store.get(&(identity.to_vec(), group_id.to_vec(), epoch)) {
             values
                 .iter()
                 .map(|value| V::from_key_store_value(value))
                 .collect::<Result<Vec<V>, V::Error>>()
-                .map(Some)
-                .unwrap_or(None)
+                .unwrap_or_default()
         } else {
-            None
+            vec![]
         }
     }
 

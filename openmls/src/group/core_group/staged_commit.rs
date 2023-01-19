@@ -276,9 +276,7 @@ impl CoreGroup {
                 };
 
                 // All keys from the previous epoch are potential decryption keypairs.
-                let old_epoch_keypairs = self
-                    .read_epoch_keypairs(backend)
-                    .ok_or(StageCommitError::MissingDecryptionKey)?;
+                let old_epoch_keypairs = self.read_epoch_keypairs(backend);
 
                 // If we are processing an update proposal that originally came from
                 // us, the keypair corresponding to the leaf in the update is also a
@@ -470,7 +468,7 @@ impl CoreGroup {
     ) -> Result<Option<MessageSecrets>, KeyStore::Error> {
         // Get all keypairs from the old epoch, so we can later store the ones
         // that are still relevant in the new epoch.
-        let old_epoch_keypairs = self.read_epoch_keypairs(backend).unwrap_or_default();
+        let old_epoch_keypairs = self.read_epoch_keypairs(backend);
         match staged_commit.state {
             StagedCommitState::SelfRemoved(staged_diff) => {
                 self.tree.merge_diff(*staged_diff);

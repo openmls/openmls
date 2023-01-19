@@ -774,7 +774,7 @@ impl CoreGroup {
     pub(super) fn read_epoch_keypairs<KeyStore: OpenMlsKeyStore>(
         &self,
         backend: &impl OpenMlsCryptoProvider<KeyStoreProvider = KeyStore>,
-    ) -> Option<Vec<EncryptionKeyPair>> {
+    ) -> Vec<EncryptionKeyPair> {
         // Retrieving our identity should not fail.
         let own_identity = self.own_identity().unwrap_or_default();
         debug_assert_ne!(own_identity, &[0u8; 0]);
