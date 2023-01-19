@@ -312,17 +312,16 @@ impl CoreGroup {
                 // addition to the removal of the keypairs of the previous
                 // epoch.
                 let new_leaf_keypair_option = if let Ok(leaf) = diff.own_leaf() {
-                    own_keypairs
-                        .into_iter()
-                        .filter_map(|keypair| {
-                            if leaf.encryption_key() == keypair.public_key() {
-                                Some(keypair)
-                            } else {
-                                None
-                            }
-                        })
-                        .next()
+                    own_keypairs.into_iter().find_map(|keypair| {
+                        if leaf.encryption_key() == keypair.public_key() {
+                            Some(keypair)
+                        } else {
+                            None
+                        }
+                    })
                 } else {
+                    // We should have an own leaf at this point.
+                    debug_assert!(false);
                     None
                 };
 
