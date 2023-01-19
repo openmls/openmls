@@ -126,6 +126,7 @@ impl MlsGroup {
                 &credential_bundle,
                 backend,
             )?;
+            // TODO #1207: Move to the top of the function.
             keypair
                 .write_to_key_store(backend)
                 .map_err(ProposeSelfUpdateError::KeyStoreError)?;
