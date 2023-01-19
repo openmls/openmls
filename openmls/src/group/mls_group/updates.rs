@@ -105,7 +105,8 @@ impl MlsGroup {
 
         // Here we clone our own leaf to rekey it such that we don't change the
         // tree.
-        // The new leaf node will be applied later when the proposal is commited.
+        // The new leaf node will be applied later when the proposal is
+        // committed.
         let mut own_leaf = tree
             .own_leaf_node()
             .ok_or_else(|| LibraryError::custom("The tree is broken. Couldn't find own leaf."))?
