@@ -8,15 +8,16 @@ use super::*;
 impl MlsGroup {
     /// Updates the own leaf node.
     ///
-    /// A [`LeafNode`] can optionally be provided.
-    /// If not, a new one will be created on the fly.
-    ///
     /// If successful, it returns a tuple of [`MlsMessageOut`] (containing the
     /// commit) and an optional [`MlsMessageOut`] (containing the [`Welcome`]).
     /// The [Welcome] is [Some] when the queue of pending proposals contained
     /// add proposals
     ///
     /// Returns an error if there is a pending commit.
+    ///
+    /// TODO #1208 : The caller should be able to optionally provide a
+    /// [`LeafNode`] here, so that things like extensions can be changed via
+    /// commit.
     pub fn self_update<KeyStore: OpenMlsKeyStore>(
         &mut self,
         backend: &impl OpenMlsCryptoProvider<KeyStoreProvider = KeyStore>,
