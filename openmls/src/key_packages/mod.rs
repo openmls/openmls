@@ -209,10 +209,11 @@ impl Verifiable for KeyPackage {
     }
 }
 
-struct KeyPackageCreationResult {
-    key_package: KeyPackage,
-    encryption_keypair: EncryptionKeyPair,
-    init_private_key: Vec<u8>,
+/// Helper struct containing the results of building a new [`KeyPackage`].
+pub(crate) struct KeyPackageCreationResult {
+    pub key_package: KeyPackage,
+    pub encryption_keypair: EncryptionKeyPair,
+    pub init_private_key: Vec<u8>,
 }
 
 // Public `KeyPackage` functions.
@@ -225,7 +226,7 @@ impl KeyPackage {
     }
 
     /// Create a new key package for the given `ciphersuite` and `identity`.
-    fn create<KeyStore: OpenMlsKeyStore>(
+    pub(crate) fn create<KeyStore: OpenMlsKeyStore>(
         config: CryptoConfig,
         backend: &impl OpenMlsCryptoProvider<KeyStoreProvider = KeyStore>,
         credential: &CredentialBundle, // FIXME: make credential
@@ -590,6 +591,21 @@ impl KeyPackageBuilder {
     pub fn leaf_node_extensions(mut self, extensions: Extensions) -> Self {
         self.leaf_node_extensions = Some(extensions);
         self
+    }
+
+    pub(crate) fn build_without_key_storage<KeyStore: OpenMlsKeyStore>(
+        self,
+        config: CryptoConfig,
+        backend: &impl OpenMlsCryptoProvider<KeyStoreProvider = KeyStore>,
+        credential: &CredentialBundle, // FIXME: make credential
+    ) -> Result<KeyPackageCreationResult, KeyPackageNewError<KeyStore::Error>> {
+        KeyPackage::create(
+            config,
+            backend,
+            credential,
+            self.key_package_extensions.unwrap_or_default(),
+            self.leaf_node_extensions.unwrap_or_default(),
+        )
     }
 
     /// Finalize and build the key package.

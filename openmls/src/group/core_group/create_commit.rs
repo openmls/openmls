@@ -133,11 +133,17 @@ impl CoreGroup {
         }
 
         // Update keys in the leaf.
-        if params.commit_type() == CommitType::External {
+        let external_commit_keypair_option = if params.commit_type() == CommitType::External {
             // If this is an external commit we add a fresh leaf to the diff.
             // Generate a KeyPackageBundle to generate a payload from for later
             // path generation.
-            let key_package = KeyPackage::builder().build(
+            let KeyPackageCreationResult {
+                key_package,
+                encryption_keypair,
+                // The KeyPackage is immediately put into the group. No need for
+                // the init key.
+                init_private_key: _,
+            } = KeyPackage::builder().build_without_key_storage(
                 CryptoConfig {
                     ciphersuite,
                     version: self.version(),
@@ -150,7 +156,10 @@ impl CoreGroup {
             leaf_node.set_leaf_index(own_leaf_index);
             diff.add_leaf(leaf_node)
                 .map_err(|_| LibraryError::custom("Tree full: cannot add more members"))?;
-        }
+            Some(encryption_keypair)
+        } else {
+            None
+        };
 
         let serialized_group_context = self
             .group_context
@@ -162,8 +171,12 @@ impl CoreGroup {
                 || contains_own_updates
                 || params.force_self_update()
             {
-                let mut new_keypairs = if params.commit_type() != CommitType::External {
-                    // If we're in the tree, we rekey our existing leaf.
+                let mut new_keypairs = if let Some(encryption_keypair) = external_commit_keypair_option {
+                    // If this is an external commit, we need to add the keypair
+                    // we generated earlier.
+                    vec![encryption_keypair]
+                } else {
+                    // If we're already in the tree, we rekey our existing leaf.
                     let own_diff_leaf = diff
                         .own_leaf_mut()
                         .map_err(|_| LibraryError::custom("Unable to get own leaf from diff"))?;
@@ -174,17 +187,6 @@ impl CoreGroup {
                         params.credential_bundle(),
                         backend,
                     )?;
-                    vec![encryption_keypair]
-                } else {
-                    // If we're not in the tree, we just load
-                    // KeyPackage we prepared earlier.
-                    let own_leaf = diff.own_leaf()
-                        // We should have a leaf in the diff
-                        .map_err(|_| LibraryError::custom("Unable to get own leaf from diff"))?;
-                    let encryption_keypair = EncryptionKeyPair::read_from_key_store(backend, own_leaf.encryption_key())
-                        // There should be a key in the store, since we added
-                        // one when generating the KeyPackage earlier.
-                        .ok_or_else(|| LibraryError::custom("Unable to get own leaf from diff"))?;
                     vec![encryption_keypair]
                 };
 
