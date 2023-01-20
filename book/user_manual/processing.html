@@ -213,7 +213,9 @@ sender, and authenticated data. It also exposes the message's content. There are
             Sender::Member(member) if *member == charlies_leaf_index
         ));
         // Merge staged commit
-        alice_group.merge_staged_commit(*staged_commit);
+        alice_group
+            .merge_staged_commit(backend, *staged_commit)
+            .expect(&quot;Error merging staged commit.&quot;);
     }</code></pre>
 <h3 id="interpreting-remove-operations"><a class="header" href="#interpreting-remove-operations">Interpreting remove operations</a></h3>
 <p>Remove operations can have different meanings, such as:</p>
@@ -249,7 +251,9 @@ sender, and authenticated data. It also exposes the message's content. There are
         }
 
         // Merge staged Commit
-        bob_group.merge_staged_commit(*staged_commit);
+        bob_group
+            .merge_staged_commit(backend, *staged_commit)
+            .expect(&quot;Error merging staged commit.&quot;);
     } else {
         unreachable!(&quot;Expected a StagedCommit.&quot;);
     }</code></pre>

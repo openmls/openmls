@@ -160,12 +160,28 @@
 <span id="160">160</span>
 <span id="161">161</span>
 <span id="162">162</span>
+<span id="163">163</span>
+<span id="164">164</span>
+<span id="165">165</span>
+<span id="166">166</span>
+<span id="167">167</span>
+<span id="168">168</span>
+<span id="169">169</span>
+<span id="170">170</span>
+<span id="171">171</span>
+<span id="172">172</span>
+<span id="173">173</span>
+<span id="174">174</span>
+<span id="175">175</span>
+<span id="176">176</span>
 </pre><pre class="rust"><code><span class="doccomment">//! Processing functions of an [`MlsGroup`] for incoming messages.
 
 </span><span class="kw">use </span>std::mem;
 
 <span class="kw">use </span>core_group::{create_commit_params::CreateCommitParams, staged_commit::StagedCommit};
 <span class="kw">use </span>tls_codec::Serialize;
+
+<span class="kw">use </span><span class="kw">crate</span>::group::errors::MergeCommitError;
 
 <span class="kw">use super</span>::{errors::ProcessMessageError, <span class="kw-2">*</span>};
 
@@ -232,10 +248,13 @@
     /// currently stored in the group&#39;s [ProposalStore].
     ///
     /// Returns an error if there is a pending commit.
-    </span><span class="kw">pub fn </span>commit_to_pending_proposals(
+    </span><span class="kw">pub fn </span>commit_to_pending_proposals&lt;KeyStore: OpenMlsKeyStore&gt;(
         <span class="kw-2">&amp;mut </span><span class="self">self</span>,
-        backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;(MlsMessageOut, <span class="prelude-ty">Option</span>&lt;MlsMessageOut&gt;), CommitToPendingProposalsError&gt; {
+        backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider&lt;KeyStoreProvider = KeyStore&gt;,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;
+        (MlsMessageOut, <span class="prelude-ty">Option</span>&lt;MlsMessageOut&gt;),
+        CommitToPendingProposalsError&lt;KeyStore::Error&gt;,
+    &gt; {
         <span class="self">self</span>.is_operational()<span class="question-mark">?</span>;
 
         <span class="kw">let </span>credential = <span class="self">self</span>.credential()<span class="question-mark">?</span>;
@@ -281,7 +300,11 @@
 
     <span class="doccomment">/// Merge a [StagedCommit] into the group after inspection. As this advances
     /// the epoch of the group, it also clears any pending commits.
-    </span><span class="kw">pub fn </span>merge_staged_commit(<span class="kw-2">&amp;mut </span><span class="self">self</span>, staged_commit: StagedCommit) {
+    </span><span class="kw">pub fn </span>merge_staged_commit&lt;KeyStore: OpenMlsKeyStore&gt;(
+        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
+        backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider&lt;KeyStoreProvider = KeyStore&gt;,
+        staged_commit: StagedCommit,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;(), MergeCommitError&lt;KeyStore::Error&gt;&gt; {
         <span class="comment">// Check if we were removed from the group
         </span><span class="kw">if </span>staged_commit.self_removed() {
             <span class="self">self</span>.group_state = MlsGroupState::Inactive;
@@ -292,7 +315,7 @@
 
         <span class="comment">// Merge staged commit
         </span><span class="self">self</span>.group
-            .merge_staged_commit(staged_commit, <span class="kw-2">&amp;mut </span><span class="self">self</span>.proposal_store);
+            .merge_staged_commit(backend, staged_commit, <span class="kw-2">&amp;mut </span><span class="self">self</span>.proposal_store)<span class="question-mark">?</span>;
 
         <span class="comment">// Extract and store the resumption psk for the current epoch
         </span><span class="kw">let </span>resumption_psk = <span class="self">self</span>.group.group_epoch_secrets().resumption_psk();
@@ -304,20 +327,25 @@
 
         <span class="comment">// Delete a potential pending commit
         </span><span class="self">self</span>.clear_pending_commit();
+
+        <span class="prelude-val">Ok</span>(())
     }
 
     <span class="doccomment">/// Merges the pending [`StagedCommit`] if there is one, and
     /// clears the field by setting it to `None`.
-    </span><span class="kw">pub fn </span>merge_pending_commit(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;(), MlsGroupStateError&gt; {
+    </span><span class="kw">pub fn </span>merge_pending_commit&lt;KeyStore: OpenMlsKeyStore&gt;(
+        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
+        backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider&lt;KeyStoreProvider = KeyStore&gt;,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;(), MergePendingCommitError&lt;KeyStore::Error&gt;&gt; {
         <span class="kw">match </span><span class="kw-2">&amp;</span><span class="self">self</span>.group_state {
             MlsGroupState::PendingCommit(<span class="kw">_</span>) =&gt; {
                 <span class="kw">let </span>old_state = mem::replace(<span class="kw-2">&amp;mut </span><span class="self">self</span>.group_state, MlsGroupState::Operational);
                 <span class="kw">if let </span>MlsGroupState::PendingCommit(pending_commit_state) = old_state {
-                    <span class="self">self</span>.merge_staged_commit((<span class="kw-2">*</span>pending_commit_state).into());
+                    <span class="self">self</span>.merge_staged_commit(backend, (<span class="kw-2">*</span>pending_commit_state).into())<span class="question-mark">?</span>;
                 }
                 <span class="prelude-val">Ok</span>(())
             }
-            MlsGroupState::Inactive =&gt; <span class="prelude-val">Err</span>(MlsGroupStateError::UseAfterEviction),
+            MlsGroupState::Inactive =&gt; <span class="prelude-val">Err</span>(MlsGroupStateError::UseAfterEviction)<span class="question-mark">?</span>,
             MlsGroupState::Operational =&gt; <span class="prelude-val">Ok</span>(()),
         }
     }

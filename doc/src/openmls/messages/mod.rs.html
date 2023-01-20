@@ -559,8 +559,6 @@
 <span id="559">559</span>
 <span id="560">560</span>
 <span id="561">561</span>
-<span id="562">562</span>
-<span id="563">563</span>
 </pre><pre class="rust"><code><span class="doccomment">//! # Messages
 //!
 //! This module contains the types and implementations for Commit &amp; Welcome messages,
@@ -574,7 +572,10 @@
     extensions::<span class="kw-2">*</span>,
     group::<span class="kw-2">*</span>,
     schedule::{psk::PreSharedKeyId, JoinerSecret},
-    treesync::treekem::UpdatePath,
+    treesync::{
+        node::encryption_keys::{EncryptionKeyPair, EncryptionPrivateKey},
+        treekem::UpdatePath,
+    },
     versions::ProtocolVersion,
 };
 <span class="kw">use </span>openmls_traits::{
@@ -954,7 +955,7 @@
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider,
         ciphersuite: Ciphersuite,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;(HpkePublicKey, HpkePrivateKey), LibraryError&gt; {
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;EncryptionKeyPair, LibraryError&gt; {
         <span class="kw">let </span>node_secret = <span class="self">self
             </span>.path_secret
             .kdf_expand_label(backend, <span class="string">&quot;node&quot;</span>, <span class="kw-2">&amp;</span>[], ciphersuite.hash_length())
@@ -966,7 +967,8 @@
         <span class="prelude-val">Ok</span>((
             HpkePublicKey::from(key_pair.public),
             HpkePrivateKey::from(key_pair.private),
-        ))
+        )
+            .into())
     }
 
     <span class="doccomment">/// Derives a path secret.
@@ -1016,18 +1018,12 @@
         ciphersuite: Ciphersuite,
         version: ProtocolVersion,
         ciphertext: <span class="kw-2">&amp;</span>HpkeCiphertext,
-        private_key: <span class="kw-2">&amp;</span>HpkePrivateKey,
+        private_key: <span class="kw-2">&amp;</span>EncryptionPrivateKey,
         group_context: <span class="kw-2">&amp;</span>[u8],
     ) -&gt; <span class="prelude-ty">Result</span>&lt;PathSecret, PathSecretError&gt; {
         <span class="comment">// ValSem203: Path secrets must decrypt correctly
-        </span><span class="kw">let </span>secret_bytes = backend.crypto().hpke_open(
-            ciphersuite.hpke_config(),
-            ciphertext,
-            private_key.as_slice(),
-            group_context,
-            <span class="kw-2">&amp;</span>[],
-        )<span class="question-mark">?</span>;
-        <span class="kw">let </span>path_secret = Secret::from_slice(<span class="kw-2">&amp;</span>secret_bytes, version, ciphersuite);
+        </span><span class="kw">let </span>path_secret =
+            private_key.decrypt(backend, ciphersuite, version, ciphertext, group_context)<span class="question-mark">?</span>;
         <span class="prelude-val">Ok</span>(<span class="self">Self </span>{ path_secret })
     }
 }

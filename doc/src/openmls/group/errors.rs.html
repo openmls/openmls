@@ -471,6 +471,29 @@
 <span id="471">471</span>
 <span id="472">472</span>
 <span id="473">473</span>
+<span id="474">474</span>
+<span id="475">475</span>
+<span id="476">476</span>
+<span id="477">477</span>
+<span id="478">478</span>
+<span id="479">479</span>
+<span id="480">480</span>
+<span id="481">481</span>
+<span id="482">482</span>
+<span id="483">483</span>
+<span id="484">484</span>
+<span id="485">485</span>
+<span id="486">486</span>
+<span id="487">487</span>
+<span id="488">488</span>
+<span id="489">489</span>
+<span id="490">490</span>
+<span id="491">491</span>
+<span id="492">492</span>
+<span id="493">493</span>
+<span id="494">494</span>
+<span id="495">495</span>
+<span id="496">496</span>
 </pre><pre class="rust"><code><span class="doccomment">//! # MLS group errors
 //!
 //! This module contains errors that originate at lower levels and are partially re-exported in errors thrown by functions of the `MlsGroup` API.
@@ -480,7 +503,7 @@
     error::LibraryError,
     extensions::errors::ExtensionError,
     framing::errors::{MessageDecryptionError, SenderError},
-    key_packages::errors::KeyPackageExtensionSupportError,
+    key_packages::errors::{KeyPackageExtensionSupportError, KeyPackageNewError},
     schedule::errors::PskError,
     treesync::errors::<span class="kw-2">*</span>,
 };
@@ -492,7 +515,7 @@
 
 <span class="doccomment">/// Welcome error
 </span><span class="attribute">#[derive(Error, Debug, PartialEq, Clone)]
-</span><span class="kw">pub enum </span>WelcomeError {
+</span><span class="kw">pub enum </span>WelcomeError&lt;KeyStoreError&gt; {
     <span class="doccomment">/// See [`LibraryError`] for more details.
     </span><span class="attribute">#[error(transparent)]
     </span>LibraryError(<span class="attribute">#[from] </span>LibraryError),
@@ -547,9 +570,9 @@
     <span class="doccomment">/// No matching key package was found in the key store.
     </span><span class="attribute">#[error(<span class="string">&quot;No matching key package was found in the key store.&quot;</span>)]
     </span>NoMatchingKeyPackage,
-    <span class="doccomment">/// Failed to delete the KeyPackageBundle from the key store.
-    </span><span class="attribute">#[error(<span class="string">&quot;Failed to delete the KeyPackageBundle from the key store.&quot;</span>)]
-    </span>KeyStoreDeletionError,
+    <span class="doccomment">/// Error accessing the key store.
+    </span><span class="attribute">#[error(<span class="string">&quot;Error accessing the key store.&quot;</span>)]
+    </span>KeyStoreError(KeyStoreError),
     <span class="doccomment">/// This error indicates the public tree is invalid. See [`PublicTreeError`] for more details.
     </span><span class="attribute">#[error(transparent)]
     </span>PublicTreeError(<span class="attribute">#[from] </span>PublicTreeError),
@@ -650,11 +673,14 @@
     <span class="doccomment">/// See [`ApplyUpdatePathError`] for more details.
     </span><span class="attribute">#[error(transparent)]
     </span>UpdatePathError(<span class="attribute">#[from] </span>ApplyUpdatePathError),
+    <span class="doccomment">/// Missing decryption key.
+    </span><span class="attribute">#[error(<span class="string">&quot;Missing decryption key.&quot;</span>)]
+    </span>MissingDecryptionKey,
 }
 
 <span class="doccomment">/// Create commit error
 </span><span class="attribute">#[derive(Error, Debug, PartialEq, Clone)]
-</span><span class="kw">pub enum </span>CreateCommitError {
+</span><span class="kw">pub enum </span>CreateCommitError&lt;KeyStoreError&gt; {
     <span class="doccomment">/// See [`LibraryError`] for more details.
     </span><span class="attribute">#[error(transparent)]
     </span>LibraryError(<span class="attribute">#[from] </span>LibraryError),
@@ -676,6 +702,12 @@
     <span class="doccomment">/// See [`ProposalValidationError`] for more details.
     </span><span class="attribute">#[error(transparent)]
     </span>ProposalValidationError(<span class="attribute">#[from] </span>ProposalValidationError),
+    <span class="doccomment">/// Error interacting with the key store.
+    </span><span class="attribute">#[error(<span class="string">&quot;Error interacting with the key store.&quot;</span>)]
+    </span>KeyStoreError(KeyStoreError),
+    <span class="doccomment">/// See [`KeyPackageNewError`] for more details.
+    </span><span class="attribute">#[error(transparent)]
+    </span>KeyPackageGenerationError(<span class="attribute">#[from] </span>KeyPackageNewError&lt;KeyStoreError&gt;),
     <span class="doccomment">/// See [`SignatureError`] for more details.
     </span><span class="attribute">#[error(transparent)]
     </span>SignatureError(<span class="attribute">#[from] </span>SignatureError),
@@ -900,7 +932,7 @@
 
 <span class="comment">// Core group build error
 </span><span class="attribute">#[derive(Error, Debug, PartialEq, Clone)]
-</span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">enum </span>CoreGroupBuildError {
+</span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">enum </span>CoreGroupBuildError&lt;KeyStoreError&gt; {
     <span class="doccomment">/// See [`LibraryError`] for more details.
     </span><span class="attribute">#[error(transparent)]
     </span>LibraryError(<span class="attribute">#[from] </span>LibraryError),
@@ -913,6 +945,9 @@
     <span class="doccomment">/// See [`PskError`] for more details.
     </span><span class="attribute">#[error(transparent)]
     </span>PskError(<span class="attribute">#[from] </span>PskError),
+    <span class="doccomment">/// Error storing leaf private key in key store.
+    </span><span class="attribute">#[error(<span class="string">&quot;Error storing leaf private key in key store.&quot;</span>)]
+    </span>KeyStoreError(KeyStoreError),
 }
 
 <span class="comment">// CoreGroup parse message error
@@ -943,6 +978,17 @@
     <span class="doccomment">/// See [`ExtensionError`] for more details.
     </span><span class="attribute">#[error(transparent)]
     </span>Extension(<span class="attribute">#[from] </span>ExtensionError),
+}
+
+<span class="doccomment">/// Error merging a commit.
+</span><span class="attribute">#[derive(Error, Debug, PartialEq, Clone)]
+</span><span class="kw">pub enum </span>MergeCommitError&lt;KeyStoreError&gt; {
+    <span class="doccomment">/// See [`LibraryError`] for more details.
+    </span><span class="attribute">#[error(transparent)]
+    </span>LibraryError(<span class="attribute">#[from] </span>LibraryError),
+    <span class="doccomment">/// Error accessing the key store.
+    </span><span class="attribute">#[error(<span class="string">&quot;Error accessing the key store.&quot;</span>)]
+    </span>KeyStoreError(KeyStoreError),
 }
 </code></pre></div>
 </section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-current-crate="openmls" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.66.1 (90743e729 2023-01-10)" ></div></body></html>

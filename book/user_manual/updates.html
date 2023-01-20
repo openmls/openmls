@@ -146,10 +146,7 @@
 <p>Members can update their own leaf key package atomically with the <code>.self_update()</code> function.
 The application can optionally provide a <code>KeyPackage</code> manually. If not, a key package will be created on the fly with the same extensions as the current one but with a fresh HPKE init key.</p>
 <pre><code class="language-rust no_run noplayground">    let (mls_message_out, welcome_option) = bob_group
-        .self_update(
-            backend,
-            None, // We don't provide a key package, it will be created on the fly instead
-        )
+        .self_update(backend)
         .expect(&quot;Could not update own key package.&quot;);</code></pre>
 <p>The function returns the tuple <code>(MlsMessageOut, Option&lt;Welcome&gt;)</code>. The <code>MlsMessageOut</code> contains a Commit message that needs to be fanned out to existing group members.
 Even though the member updates its own key package only in this operation, the Commit message could potentially also cover Add Proposals that were previously received in the epoch. Therefore the function can also optionally return a <code>Welcome</code> message. The <code>Welcome</code> message must be sent to the newly added members.</p>

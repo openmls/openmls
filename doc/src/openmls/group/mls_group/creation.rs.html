@@ -207,25 +207,6 @@
 <span id="207">207</span>
 <span id="208">208</span>
 <span id="209">209</span>
-<span id="210">210</span>
-<span id="211">211</span>
-<span id="212">212</span>
-<span id="213">213</span>
-<span id="214">214</span>
-<span id="215">215</span>
-<span id="216">216</span>
-<span id="217">217</span>
-<span id="218">218</span>
-<span id="219">219</span>
-<span id="220">220</span>
-<span id="221">221</span>
-<span id="222">222</span>
-<span id="223">223</span>
-<span id="224">224</span>
-<span id="225">225</span>
-<span id="226">226</span>
-<span id="227">227</span>
-<span id="228">228</span>
 </pre><pre class="rust"><code><span class="kw">use crate</span>::{
     ciphersuite::signature::SignaturePublicKey,
     group::{
@@ -233,7 +214,6 @@
         errors::{CoreGroupBuildError, ExternalCommitError, WelcomeError},
     },
     messages::VerifiableGroupInfo,
-    treesync::LeafNode,
 };
 <span class="kw">use </span>tls_codec::Serialize;
 
@@ -249,11 +229,11 @@
     ///
     /// Returns an error ([`NewGroupError::NoMatchingCredentialBundle`]) if the
     /// private key for the [`SignaturePublicKey`] can not be found.
-    </span><span class="kw">pub fn </span>new(
-        backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider,
+    </span><span class="kw">pub fn </span>new&lt;KeyStore: OpenMlsKeyStore&gt;(
+        backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider&lt;KeyStoreProvider = KeyStore&gt;,
         mls_group_config: <span class="kw-2">&amp;</span>MlsGroupConfig,
         signature_key: <span class="kw-2">&amp;</span>SignaturePublicKey,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, NewGroupError&gt; {
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, NewGroupError&lt;KeyStore::Error&gt;&gt; {
         <span class="self">Self</span>::new_with_group_id(
             backend,
             mls_group_config,
@@ -266,12 +246,12 @@
     ///
     /// Returns an error ([`NewGroupError::NoMatchingCredentialBundle`]) if the
     /// private key for the [`SignaturePublicKey`] can not be found.
-    </span><span class="kw">pub fn </span>new_with_group_id(
-        backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider,
+    </span><span class="kw">pub fn </span>new_with_group_id&lt;KeyStore: OpenMlsKeyStore&gt;(
+        backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider&lt;KeyStoreProvider = KeyStore&gt;,
         mls_group_config: <span class="kw-2">&amp;</span>MlsGroupConfig,
         group_id: GroupId,
         signature_key: <span class="kw-2">&amp;</span>SignaturePublicKey,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, NewGroupError&gt; {
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, NewGroupError&lt;KeyStore::Error&gt;&gt; {
         <span class="comment">// TODO #751
         </span><span class="kw">let </span>credential_bundle: CredentialBundle =
             backend
@@ -302,25 +282,7 @@
                     <span class="macro">log::debug!</span>(<span class="string">&quot;Unexpected PSK error: {:?}&quot;</span>, e);
                     LibraryError::custom(<span class="string">&quot;Unexpected PSK error&quot;</span>).into()
                 }
-            })<span class="question-mark">?</span>;
-
-        <span class="comment">// Store the encryption key pair of the own leaf node in the key store.
-        </span>backend
-            .key_store()
-            .store(
-                <span class="kw-2">&amp;</span>LeafNode::encryption_key_label(signature_key.as_slice()),
-                <span class="kw-2">&amp;</span>group
-                    .treesync()
-                    .own_leaf_node()
-                    .and_then(|leaf| leaf.encryption_key_pair())
-                    .ok_or_else(|| {
-                        LibraryError::custom(
-                            <span class="string">&quot;Invalid tree - unable to get own leaf encryption key pair&quot;</span>,
-                        )
-                    })<span class="question-mark">?</span>,
-            )
-            .map_err(|<span class="kw">_</span>| {
-                LibraryError::custom(<span class="string">&quot;Unable to store private encryption key into the key store.&quot;</span>)
+                CoreGroupBuildError::KeyStoreError(e) =&gt; NewGroupError::KeyStoreError(e),
             })<span class="question-mark">?</span>;
 
         <span class="kw">let </span>resumption_psk_store =
@@ -343,12 +305,12 @@
     <span class="doccomment">/// Creates a new group from a [`Welcome`] message. Returns an error
     /// ([`WelcomeError::NoMatchingKeyPackage`]) if no [`KeyPackage`]
     /// can be found.
-    </span><span class="kw">pub fn </span>new_from_welcome(
-        backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider,
+    </span><span class="kw">pub fn </span>new_from_welcome&lt;KeyStore: OpenMlsKeyStore&gt;(
+        backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider&lt;KeyStoreProvider = KeyStore&gt;,
         mls_group_config: <span class="kw-2">&amp;</span>MlsGroupConfig,
         welcome: Welcome,
         ratchet_tree: <span class="prelude-ty">Option</span>&lt;Vec&lt;<span class="prelude-ty">Option</span>&lt;Node&gt;&gt;&gt;,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, WelcomeError&gt; {
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, WelcomeError&lt;KeyStore::Error&gt;&gt; {
         <span class="kw">let </span>resumption_psk_store =
             ResumptionPskStore::new(mls_group_config.number_of_resumption_psks);
         <span class="kw">let </span>(key_package, <span class="kw">_</span>) = welcome
@@ -378,7 +340,7 @@
         </span>key_package_bundle
             .key_package
             .delete(backend)
-            .map_err(|<span class="kw">_</span>| WelcomeError::KeyStoreDeletionError)<span class="question-mark">?</span>;
+            .map_err(WelcomeError::KeyStoreError)<span class="question-mark">?</span>;
 
         <span class="kw">let </span><span class="kw-2">mut </span>group =
             CoreGroup::new_from_welcome(welcome, ratchet_tree, key_package_bundle, backend)<span class="question-mark">?</span>;

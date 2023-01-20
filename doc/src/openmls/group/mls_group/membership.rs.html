@@ -417,11 +417,11 @@
     /// contains the commit and the second one the [Welcome].
     ///
     /// Returns an error if there is a pending commit.
-    </span><span class="kw">pub fn </span>add_members(
+    </span><span class="kw">pub fn </span>add_members&lt;KeyStore: OpenMlsKeyStore&gt;(
         <span class="kw-2">&amp;mut </span><span class="self">self</span>,
-        backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider,
+        backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider&lt;KeyStoreProvider = KeyStore&gt;,
         key_packages: <span class="kw-2">&amp;</span>[KeyPackage],
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;(MlsMessageOut, MlsMessageOut), AddMembersError&gt; {
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;(MlsMessageOut, MlsMessageOut), AddMembersError&lt;KeyStore::Error&gt;&gt; {
         <span class="self">self</span>.is_operational()<span class="question-mark">?</span>;
 
         <span class="kw">if </span>key_packages.is_empty() {
@@ -500,11 +500,11 @@
     /// add proposals
     ///
     /// Returns an error if there is a pending commit.
-    </span><span class="kw">pub fn </span>remove_members(
+    </span><span class="kw">pub fn </span>remove_members&lt;KeyStore: OpenMlsKeyStore&gt;(
         <span class="kw-2">&amp;mut </span><span class="self">self</span>,
-        backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider,
+        backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider&lt;KeyStoreProvider = KeyStore&gt;,
         members: <span class="kw-2">&amp;</span>[LeafNodeIndex],
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;(MlsMessageOut, <span class="prelude-ty">Option</span>&lt;MlsMessageOut&gt;), RemoveMembersError&gt; {
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;(MlsMessageOut, <span class="prelude-ty">Option</span>&lt;MlsMessageOut&gt;), RemoveMembersError&lt;KeyStore::Error&gt;&gt; {
         <span class="self">self</span>.is_operational()<span class="question-mark">?</span>;
 
         <span class="kw">if </span>members.is_empty() {

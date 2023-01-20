@@ -244,49 +244,77 @@
 <span id="244">244</span>
 <span id="245">245</span>
 <span id="246">246</span>
+<span id="247">247</span>
+<span id="248">248</span>
+<span id="249">249</span>
+<span id="250">250</span>
+<span id="251">251</span>
+<span id="252">252</span>
+<span id="253">253</span>
+<span id="254">254</span>
+<span id="255">255</span>
+<span id="256">256</span>
+<span id="257">257</span>
+<span id="258">258</span>
+<span id="259">259</span>
+<span id="260">260</span>
+<span id="261">261</span>
+<span id="262">262</span>
+<span id="263">263</span>
+<span id="264">264</span>
+<span id="265">265</span>
+<span id="266">266</span>
+<span id="267">267</span>
+<span id="268">268</span>
+<span id="269">269</span>
+<span id="270">270</span>
+<span id="271">271</span>
+<span id="272">272</span>
+<span id="273">273</span>
+<span id="274">274</span>
+<span id="275">275</span>
 </pre><pre class="rust"><code><span class="kw">use </span>log::debug;
-<span class="kw">use </span>openmls_traits::{crypto::OpenMlsCrypto, key_store::OpenMlsKeyStore, types::HpkeKeyPair};
+<span class="kw">use </span>openmls_traits::{crypto::OpenMlsCrypto, key_store::OpenMlsKeyStore};
 <span class="kw">use </span>tls_codec::Deserialize;
 
 <span class="kw">use crate</span>::{
     ciphersuite::{hash_ref::HashReference, signable::Verifiable},
     group::{core_group::<span class="kw-2">*</span>, errors::WelcomeError},
     schedule::errors::PskError,
-    treesync::{errors::TreeSyncFromNodesError, node::Node},
+    treesync::{
+        errors::{PublicTreeError, TreeSyncFromNodesError, TreeSyncSetPathError},
+        node::{encryption_keys::EncryptionKeyPair, Node},
+    },
 };
 
 <span class="kw">impl </span>CoreGroup {
     <span class="comment">// Join a group from a welcome message
-    </span><span class="kw">pub fn </span>new_from_welcome(
+    </span><span class="kw">pub fn </span>new_from_welcome&lt;KeyStore: OpenMlsKeyStore&gt;(
         welcome: Welcome,
         nodes_option: <span class="prelude-ty">Option</span>&lt;Vec&lt;<span class="prelude-ty">Option</span>&lt;Node&gt;&gt;&gt;,
         key_package_bundle: KeyPackageBundle,
-        backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, WelcomeError&gt; {
+        backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider&lt;KeyStoreProvider = KeyStore&gt;,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, WelcomeError&lt;KeyStore::Error&gt;&gt; {
         <span class="macro">log::debug!</span>(<span class="string">&quot;CoreGroup::new_from_welcome_internal&quot;</span>);
+
+        <span class="comment">// Read the encryption key pair from the key store and delete it there.
+        // TODO #1207: Key store access happens as early as possible so it can
+        // be pulled up later more easily.
+        </span><span class="kw">let </span>leaf_keypair = EncryptionKeyPair::read_from_key_store(
+            backend,
+            key_package_bundle.key_package.leaf_node().encryption_key(),
+        )
+        .ok_or(WelcomeError::NoMatchingEncryptionKey)<span class="question-mark">?</span>;
+        leaf_keypair
+            .delete_from_key_store(backend)
+            .map_err(|<span class="kw">_</span>| WelcomeError::NoMatchingEncryptionKey)<span class="question-mark">?</span>;
+
         <span class="kw">let </span>mls_version = <span class="kw-2">*</span>welcome.version();
         <span class="kw">if </span>mls_version != ProtocolVersion::Mls10 {
             <span class="kw">return </span><span class="prelude-val">Err</span>(WelcomeError::UnsupportedMlsVersion);
         }
 
         <span class="kw">let </span>ciphersuite = welcome.ciphersuite();
-
-        <span class="comment">// Read the encryption key pair from the key store and delete it there.
-        </span><span class="kw">let </span>encryption_key_pair: HpkeKeyPair = backend
-            .key_store()
-            .read(<span class="kw-2">&amp;</span>LeafNode::encryption_key_label(
-                key_package_bundle
-                    .key_package
-                    .leaf_node()
-                    .signature_key()
-                    .as_slice(),
-            ))
-            .ok_or(WelcomeError::NoMatchingEncryptionKey)<span class="question-mark">?</span>;
-        backend
-            .key_store()
-            .delete(key_package_bundle.key_package.hpke_init_key().as_slice())
-            <span class="comment">// This error really shouldn&#39;t happen. We just read the value.
-            </span>.map_err(|<span class="kw">_</span>| WelcomeError::NoMatchingEncryptionKey)<span class="question-mark">?</span>;
 
         <span class="comment">// Find key_package in welcome secrets
         </span><span class="kw">let </span>egs = <span class="kw">if let </span><span class="prelude-val">Some</span>(egs) = <span class="self">Self</span>::find_key_package_from_welcome_secrets(
@@ -382,20 +410,45 @@
                 },
             };
 
-        <span class="comment">// Commit secret is ignored when joining a group, since we already have
-        // the joiner_secret.
-        </span><span class="kw">let </span>(tree, _commit_secret_option) = TreeSync::from_nodes_with_secrets(
+        <span class="kw">let </span>tree = TreeSync::from_nodes(
             backend,
             ciphersuite,
             <span class="kw-2">&amp;</span>nodes,
-            verifiable_group_info.signer(),
-            path_secret_option,
-            encryption_key_pair,
+            key_package_bundle
+                .key_package()
+                .leaf_node()
+                .encryption_key(),
         )
         .map_err(|e| <span class="kw">match </span>e {
             TreeSyncFromNodesError::LibraryError(e) =&gt; e.into(),
             TreeSyncFromNodesError::PublicTreeError(e) =&gt; WelcomeError::PublicTreeError(e),
         })<span class="question-mark">?</span>;
+
+        <span class="kw">let </span>diff = tree.empty_diff();
+
+        <span class="comment">// If we got a path secret, derive the path (which also checks if the
+        // public keys match) and store the derived keys in the key store.
+        </span><span class="kw">let </span>group_keypairs = <span class="kw">if let </span><span class="prelude-val">Some</span>(path_secret) = path_secret_option {
+            <span class="kw">let </span>(path_keypairs, _commit_secret) = diff
+                .derive_path_secrets(
+                    backend,
+                    ciphersuite,
+                    path_secret,
+                    verifiable_group_info.signer(),
+                )
+                .map_err(|e| <span class="kw">match </span>e {
+                    TreeSyncSetPathError::LibraryError(e) =&gt; e.into(),
+                    TreeSyncSetPathError::PublicKeyMismatch =&gt; {
+                        WelcomeError::PublicTreeError(PublicTreeError::PublicKeyMismatch)
+                    }
+                })<span class="question-mark">?</span>;
+            <span class="macro">vec!</span>[leaf_keypair]
+                .into_iter()
+                .chain(path_keypairs.into_iter())
+                .collect()
+        } <span class="kw">else </span>{
+            <span class="macro">vec!</span>[leaf_keypair]
+        };
 
         <span class="kw">let </span>group_info: GroupInfo = {
             <span class="kw">let </span>signer_credential = tree
@@ -463,7 +516,7 @@
         } <span class="kw">else </span>{
             <span class="kw">let </span>message_secrets_store = MessageSecretsStore::new_with_secret(<span class="number">0</span>, message_secrets);
 
-            <span class="prelude-val">Ok</span>(CoreGroup {
+            <span class="kw">let </span>group = CoreGroup {
                 ciphersuite,
                 group_context,
                 group_epoch_secrets,
@@ -472,7 +525,12 @@
                 use_ratchet_tree_extension: enable_ratchet_tree_extension,
                 mls_version,
                 message_secrets_store,
-            })
+            };
+            group
+                .store_epoch_keypairs(backend, group_keypairs.as_slice())
+                .map_err(WelcomeError::KeyStoreError)<span class="question-mark">?</span>;
+
+            <span class="prelude-val">Ok</span>(group)
         }
     }
 

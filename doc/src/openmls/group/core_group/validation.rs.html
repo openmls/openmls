@@ -578,7 +578,7 @@
                 .encryption_key();
 
             <span class="comment">// ValSem113
-            </span><span class="kw">if </span>proposal_init_key == proposal_encryption_key.as_ref() {
+            </span><span class="kw">if </span>proposal_init_key == proposal_encryption_key.as_slice() {
                 <span class="kw">return </span><span class="prelude-val">Err</span>(ProposalValidationError::InitEncryptionKeyCollision);
             }
 

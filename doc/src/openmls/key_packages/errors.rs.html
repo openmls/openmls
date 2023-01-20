@@ -50,14 +50,6 @@
 <span id="50">50</span>
 <span id="51">51</span>
 <span id="52">52</span>
-<span id="53">53</span>
-<span id="54">54</span>
-<span id="55">55</span>
-<span id="56">56</span>
-<span id="57">57</span>
-<span id="58">58</span>
-<span id="59">59</span>
-<span id="60">60</span>
 </pre><pre class="rust"><code><span class="doccomment">//! # Key Package errors
 //!
 //! `KeyPackageError` are thrown on errors handling `KeyPackage`s.
@@ -96,7 +88,7 @@
 
 <span class="doccomment">/// KeyPackage new error
 </span><span class="attribute">#[derive(Error, Debug, PartialEq, Clone)]
-</span><span class="kw">pub enum </span>KeyPackageNewError {
+</span><span class="kw">pub enum </span>KeyPackageNewError&lt;KeyStoreError&gt; {
     <span class="doccomment">/// See [`LibraryError`] for more details.
     </span><span class="attribute">#[error(transparent)]
     </span>LibraryError(<span class="attribute">#[from] </span>LibraryError),
@@ -105,18 +97,10 @@
     </span>CiphersuiteSignatureSchemeMismatch,
     <span class="doccomment">/// Accessing the key store failed.
     </span><span class="attribute">#[error(<span class="string">&quot;Accessing the key store failed.&quot;</span>)]
-    </span>KeyStoreError,
+    </span>KeyStoreError(KeyStoreError),
     <span class="doccomment">/// See [`SignatureError`] for more details.
     </span><span class="attribute">#[error(transparent)]
     </span>SignatureError(<span class="attribute">#[from] </span>SignatureError),
-}
-
-<span class="doccomment">/// KeyPackage new error
-</span><span class="attribute">#[derive(Error, Debug, PartialEq, Eq, Clone)]
-</span><span class="kw">pub enum </span>KeyPackageDeleteError {
-    <span class="doccomment">/// Accessing the key store failed.
-    </span><span class="attribute">#[error(<span class="string">&quot;Accessing the key store failed.&quot;</span>)]
-    </span>KeyStoreError,
 }
 </code></pre></div>
 </section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-current-crate="openmls" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.66.1 (90743e729 2023-01-10)" ></div></body></html>

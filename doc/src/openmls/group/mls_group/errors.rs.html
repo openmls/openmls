@@ -277,6 +277,17 @@
 <span id="277">277</span>
 <span id="278">278</span>
 <span id="279">279</span>
+<span id="280">280</span>
+<span id="281">281</span>
+<span id="282">282</span>
+<span id="283">283</span>
+<span id="284">284</span>
+<span id="285">285</span>
+<span id="286">286</span>
+<span id="287">287</span>
+<span id="288">288</span>
+<span id="289">289</span>
+<span id="290">290</span>
 </pre><pre class="rust"><code><span class="doccomment">//! # MlsGroup errors
 //!
 //! This module defines the public errors that can be returned from all calls
@@ -286,13 +297,13 @@
 
 </span><span class="kw">use crate</span>::{
     error::LibraryError,
-    group::errors::{CreateCommitError, StageCommitError, ValidationError},
+    group::errors::{CreateCommitError, MergeCommitError, StageCommitError, ValidationError},
 };
 <span class="kw">use </span>thiserror::Error;
 
 <span class="doccomment">/// New group error
 </span><span class="attribute">#[derive(Error, Debug, PartialEq, Clone)]
-</span><span class="kw">pub enum </span>NewGroupError {
+</span><span class="kw">pub enum </span>NewGroupError&lt;KeyStoreError&gt; {
     <span class="doccomment">/// See [`LibraryError`] for more details.
     </span><span class="attribute">#[error(transparent)]
     </span>LibraryError(<span class="attribute">#[from] </span>LibraryError),
@@ -302,9 +313,9 @@
     <span class="doccomment">/// No matching CredentialBundle was found in the key store.
     </span><span class="attribute">#[error(<span class="string">&quot;No matching CredentialBundle was found in the key store.&quot;</span>)]
     </span>NoMatchingCredentialBundle,
-    <span class="doccomment">/// Failed to delete the KeyPackageBundle from the key store.
-    </span><span class="attribute">#[error(<span class="string">&quot;Failed to delete the KeyPackageBundle from the key store.&quot;</span>)]
-    </span>KeyStoreDeletionError,
+    <span class="doccomment">/// Error accessing the key store.
+    </span><span class="attribute">#[error(<span class="string">&quot;Error accessing the key store.&quot;</span>)]
+    </span>KeyStoreError(KeyStoreError),
     <span class="doccomment">/// Unsupported proposal type in required capabilities.
     </span><span class="attribute">#[error(<span class="string">&quot;Unsupported proposal type in required capabilities.&quot;</span>)]
     </span>UnsupportedProposalType,
@@ -342,6 +353,17 @@
     <span class="doccomment">/// Can&#39;t execute operation because there is no pending commit.
     </span><span class="attribute">#[error(<span class="string">&quot;Can&#39;t execute operation because there is no pending commit&quot;</span>)]
     </span>NoPendingCommit,
+}
+
+<span class="doccomment">/// Error merging pending commit
+</span><span class="attribute">#[derive(Error, Debug, PartialEq, Clone)]
+</span><span class="kw">pub enum </span>MergePendingCommitError&lt;KeyStoreError&gt; {
+    <span class="doccomment">/// See [`MlsGroupStateError`] for more details.
+    </span><span class="attribute">#[error(transparent)]
+    </span>MlsGroupStateError(<span class="attribute">#[from] </span>MlsGroupStateError),
+    <span class="doccomment">/// See [`MergeCommitError`] for more details.
+    </span><span class="attribute">#[error(transparent)]
+    </span>MergeCommitError(<span class="attribute">#[from] </span>MergeCommitError&lt;KeyStoreError&gt;),
 }
 
 <span class="doccomment">/// Process message error
@@ -386,7 +408,7 @@
 
 <span class="doccomment">/// Add members error
 </span><span class="attribute">#[derive(Error, Debug, PartialEq, Clone)]
-</span><span class="kw">pub enum </span>AddMembersError {
+</span><span class="kw">pub enum </span>AddMembersError&lt;KeyStoreError&gt; {
     <span class="doccomment">/// See [`LibraryError`] for more details.
     </span><span class="attribute">#[error(transparent)]
     </span>LibraryError(<span class="attribute">#[from] </span>LibraryError),
@@ -398,7 +420,7 @@
     </span>EmptyInput(<span class="attribute">#[from] </span>EmptyInputError),
     <span class="doccomment">/// See [`CreateCommitError`] for more details.
     </span><span class="attribute">#[error(transparent)]
-    </span>CreateCommitError(<span class="attribute">#[from] </span>CreateCommitError),
+    </span>CreateCommitError(<span class="attribute">#[from] </span>CreateCommitError&lt;KeyStoreError&gt;),
     <span class="doccomment">/// See [`MlsGroupStateError`] for more details.
     </span><span class="attribute">#[error(transparent)]
     </span>GroupStateError(<span class="attribute">#[from] </span>MlsGroupStateError),
@@ -440,7 +462,7 @@
 
 <span class="doccomment">/// Remove members error
 </span><span class="attribute">#[derive(Error, Debug, PartialEq, Clone)]
-</span><span class="kw">pub enum </span>RemoveMembersError {
+</span><span class="kw">pub enum </span>RemoveMembersError&lt;KeyStoreError&gt; {
     <span class="doccomment">/// See [`LibraryError`] for more details.
     </span><span class="attribute">#[error(transparent)]
     </span>LibraryError(<span class="attribute">#[from] </span>LibraryError),
@@ -452,7 +474,7 @@
     </span>EmptyInput(<span class="attribute">#[from] </span>EmptyInputError),
     <span class="doccomment">/// See [`CreateCommitError`] for more details.
     </span><span class="attribute">#[error(transparent)]
-    </span>CreateCommitError(<span class="attribute">#[from] </span>CreateCommitError),
+    </span>CreateCommitError(<span class="attribute">#[from] </span>CreateCommitError&lt;KeyStoreError&gt;),
     <span class="doccomment">/// See [`MlsGroupStateError`] for more details.
     </span><span class="attribute">#[error(transparent)]
     </span>GroupStateError(<span class="attribute">#[from] </span>MlsGroupStateError),
@@ -477,7 +499,7 @@
 
 <span class="doccomment">/// Self update error
 </span><span class="attribute">#[derive(Error, Debug, PartialEq, Clone)]
-</span><span class="kw">pub enum </span>SelfUpdateError {
+</span><span class="kw">pub enum </span>SelfUpdateError&lt;KeyStoreError&gt; {
     <span class="doccomment">/// See [`LibraryError`] for more details.
     </span><span class="attribute">#[error(transparent)]
     </span>LibraryError(<span class="attribute">#[from] </span>LibraryError),
@@ -486,7 +508,7 @@
     </span>NoMatchingCredentialBundle,
     <span class="doccomment">/// See [`CreateCommitError`] for more details.
     </span><span class="attribute">#[error(transparent)]
-    </span>CreateCommitError(<span class="attribute">#[from] </span>CreateCommitError),
+    </span>CreateCommitError(<span class="attribute">#[from] </span>CreateCommitError&lt;KeyStoreError&gt;),
     <span class="doccomment">/// See [`MlsGroupStateError`] for more details.
     </span><span class="attribute">#[error(transparent)]
     </span>GroupStateError(<span class="attribute">#[from] </span>MlsGroupStateError),
@@ -497,7 +519,7 @@
 
 <span class="doccomment">/// Propose self update error
 </span><span class="attribute">#[derive(Error, Debug, PartialEq, Clone)]
-</span><span class="kw">pub enum </span>ProposeSelfUpdateError {
+</span><span class="kw">pub enum </span>ProposeSelfUpdateError&lt;KeyStoreError&gt; {
     <span class="doccomment">/// See [`LibraryError`] for more details.
     </span><span class="attribute">#[error(transparent)]
     </span>LibraryError(<span class="attribute">#[from] </span>LibraryError),
@@ -509,12 +531,12 @@
     </span>GroupStateError(<span class="attribute">#[from] </span>MlsGroupStateError),
     <span class="doccomment">/// Error accessing the key store.
     </span><span class="attribute">#[error(<span class="string">&quot;Error accessing the key store.&quot;</span>)]
-    </span>KeyStoreError,
+    </span>KeyStoreError(KeyStoreError),
 }
 
 <span class="doccomment">/// Commit to pending proposals error
 </span><span class="attribute">#[derive(Error, Debug, PartialEq, Clone)]
-</span><span class="kw">pub enum </span>CommitToPendingProposalsError {
+</span><span class="kw">pub enum </span>CommitToPendingProposalsError&lt;KeyStoreError&gt; {
     <span class="doccomment">/// See [`LibraryError`] for more details.
     </span><span class="attribute">#[error(transparent)]
     </span>LibraryError(<span class="attribute">#[from] </span>LibraryError),
@@ -523,7 +545,7 @@
     </span>NoMatchingCredentialBundle,
     <span class="doccomment">/// See [`CreateCommitError`] for more details.
     </span><span class="attribute">#[error(transparent)]
-    </span>CreateCommitError(<span class="attribute">#[from] </span>CreateCommitError),
+    </span>CreateCommitError(<span class="attribute">#[from] </span>CreateCommitError&lt;KeyStoreError&gt;),
     <span class="doccomment">/// See [`MlsGroupStateError`] for more details.
     </span><span class="attribute">#[error(transparent)]
     </span>GroupStateError(<span class="attribute">#[from] </span>MlsGroupStateError),

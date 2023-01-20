@@ -155,60 +155,15 @@
 <span id="155">155</span>
 <span id="156">156</span>
 <span id="157">157</span>
-<span id="158">158</span>
-<span id="159">159</span>
-<span id="160">160</span>
-<span id="161">161</span>
-<span id="162">162</span>
-<span id="163">163</span>
-<span id="164">164</span>
-<span id="165">165</span>
-<span id="166">166</span>
-<span id="167">167</span>
-<span id="168">168</span>
-<span id="169">169</span>
-<span id="170">170</span>
-<span id="171">171</span>
-<span id="172">172</span>
-<span id="173">173</span>
-<span id="174">174</span>
-<span id="175">175</span>
-<span id="176">176</span>
-<span id="177">177</span>
-<span id="178">178</span>
-<span id="179">179</span>
-<span id="180">180</span>
-<span id="181">181</span>
-<span id="182">182</span>
-<span id="183">183</span>
-<span id="184">184</span>
-<span id="185">185</span>
-<span id="186">186</span>
-<span id="187">187</span>
-<span id="188">188</span>
-<span id="189">189</span>
-<span id="190">190</span>
-<span id="191">191</span>
-<span id="192">192</span>
-<span id="193">193</span>
-<span id="194">194</span>
-<span id="195">195</span>
-<span id="196">196</span>
-<span id="197">197</span>
-<span id="198">198</span>
-<span id="199">199</span>
 </pre><pre class="rust"><code><span class="kw">use </span>core_group::create_commit_params::CreateCommitParams;
 <span class="kw">use </span>tls_codec::Serialize;
 
-<span class="kw">use crate</span>::{ciphersuite::HpkePublicKey, treesync::LeafNode, versions::ProtocolVersion};
+<span class="kw">use crate</span>::{treesync::LeafNode, versions::ProtocolVersion};
 
 <span class="kw">use super</span>::<span class="kw-2">*</span>;
 
 <span class="kw">impl </span>MlsGroup {
     <span class="doccomment">/// Updates the own leaf node.
-    ///
-    /// An [`HpkePublicKey`] can optionally be provided.
-    /// If not, a new one will be created on the fly.
     ///
     /// If successful, it returns a tuple of [`MlsMessageOut`] (containing the
     /// commit) and an optional [`MlsMessageOut`] (containing the [`Welcome`]).
@@ -216,11 +171,14 @@
     /// add proposals
     ///
     /// Returns an error if there is a pending commit.
-    </span><span class="kw">pub fn </span>self_update(
+    ///
+    /// TODO #1208 : The caller should be able to optionally provide a
+    /// [`LeafNode`] here, so that things like extensions can be changed via
+    /// commit.
+    </span><span class="kw">pub fn </span>self_update&lt;KeyStore: OpenMlsKeyStore&gt;(
         <span class="kw-2">&amp;mut </span><span class="self">self</span>,
-        backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider,
-        encryption_key: <span class="prelude-ty">Option</span>&lt;HpkePublicKey&gt;,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;(MlsMessageOut, <span class="prelude-ty">Option</span>&lt;MlsMessageOut&gt;), SelfUpdateError&gt; {
+        backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider&lt;KeyStoreProvider = KeyStore&gt;,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;(MlsMessageOut, <span class="prelude-ty">Option</span>&lt;MlsMessageOut&gt;), SelfUpdateError&lt;KeyStore::Error&gt;&gt; {
         <span class="self">self</span>.is_operational()<span class="question-mark">?</span>;
 
         <span class="kw">let </span>credential = <span class="self">self</span>.credential()<span class="question-mark">?</span>;
@@ -234,54 +192,14 @@
             )
             .ok_or(SelfUpdateError::NoMatchingCredentialBundle)<span class="question-mark">?</span>;
 
+        <span class="kw">let </span>params = CreateCommitParams::builder()
+            .framing_parameters(<span class="self">self</span>.framing_parameters())
+            .credential_bundle(<span class="kw-2">&amp;</span>credential_bundle)
+            .proposal_store(<span class="kw-2">&amp;</span><span class="self">self</span>.proposal_store)
+            .build();
         <span class="comment">// Create Commit over all proposals. If a `KeyPackageBundle` was passed
         // in, use it to create an update proposal by value. TODO #751
-        </span><span class="kw">let </span>create_commit_result = <span class="kw">match </span>encryption_key {
-            <span class="prelude-val">Some</span>(encryption_key) =&gt; {
-                <span class="kw">let </span>group_id = <span class="self">self</span>.group_id().clone();
-                <span class="kw">let </span><span class="kw-2">mut </span>own_leaf = <span class="self">self
-                    </span>.group
-                    .treesync()
-                    .own_leaf_node()
-                    .ok_or_else(|| {
-                        LibraryError::custom(<span class="string">&quot;The tree is broken. Couldn&#39;t find own leaf.&quot;</span>)
-                    })<span class="question-mark">?
-                    </span>.clone();
-
-                <span class="comment">// FIXME[FK]: The OpenMlsLeafNode should go away. Then we don&#39;t
-                //            need the private key here anymore. (#819)
-                </span><span class="kw">let </span>private_key: Vec&lt;u8&gt; = backend
-                    .key_store()
-                    .read(encryption_key.as_slice())
-                    .ok_or(SelfUpdateError::KeyStoreError)<span class="question-mark">?</span>;
-                <span class="kw">let </span>private_key: VLBytes = private_key.into();
-
-                own_leaf.update_encryption_key(
-                    (<span class="kw-2">&amp;</span>encryption_key, <span class="kw-2">&amp;</span>private_key),
-                    <span class="kw-2">&amp;</span>credential_bundle,
-                    group_id,
-                    backend,
-                )<span class="question-mark">?</span>;
-                <span class="kw">let </span>update_proposal = Proposal::Update(UpdateProposal {
-                    leaf_node: own_leaf.leaf_node().clone(),
-                });
-                <span class="kw">let </span>params = CreateCommitParams::builder()
-                    .framing_parameters(<span class="self">self</span>.framing_parameters())
-                    .credential_bundle(<span class="kw-2">&amp;</span>credential_bundle)
-                    .proposal_store(<span class="kw-2">&amp;</span><span class="self">self</span>.proposal_store)
-                    .inline_proposals(<span class="macro">vec!</span>[update_proposal])
-                    .build();
-                <span class="self">self</span>.group.create_commit(params, backend)<span class="question-mark">?
-            </span>}
-            <span class="prelude-val">None </span>=&gt; {
-                <span class="kw">let </span>params = CreateCommitParams::builder()
-                    .framing_parameters(<span class="self">self</span>.framing_parameters())
-                    .credential_bundle(<span class="kw-2">&amp;</span>credential_bundle)
-                    .proposal_store(<span class="kw-2">&amp;</span><span class="self">self</span>.proposal_store)
-                    .build();
-                <span class="self">self</span>.group.create_commit(params, backend)<span class="question-mark">?
-            </span>}
-        };
+        </span><span class="kw">let </span>create_commit_result = <span class="self">self</span>.group.create_commit(params, backend)<span class="question-mark">?</span>;
 
         <span class="comment">// Convert PublicMessage messages to MLSMessage and encrypt them if required by
         // the configuration
@@ -305,11 +223,11 @@
     }
 
     <span class="doccomment">/// Creates a proposal to update the own leaf node.
-    </span><span class="kw">pub fn </span>propose_self_update(
+    </span><span class="kw">pub fn </span>propose_self_update&lt;KeyStore: OpenMlsKeyStore&gt;(
         <span class="kw-2">&amp;mut </span><span class="self">self</span>,
-        backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider,
+        backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider&lt;KeyStoreProvider = KeyStore&gt;,
         leaf_node: <span class="prelude-ty">Option</span>&lt;LeafNode&gt;,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;MlsMessageOut, ProposeSelfUpdateError&gt; {
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;MlsMessageOut, ProposeSelfUpdateError&lt;KeyStore::Error&gt;&gt; {
         <span class="self">self</span>.is_operational()<span class="question-mark">?</span>;
 
         <span class="kw">let </span>credential = <span class="kw">if let </span><span class="prelude-val">Some</span>(leaf) = <span class="kw-2">&amp;</span>leaf_node {
@@ -344,43 +262,41 @@
 
         <span class="comment">// Here we clone our own leaf to rekey it such that we don&#39;t change the
         // tree.
-        // The new leaf node will be applied later when the proposal is committed.
-        </span><span class="kw">let </span><span class="kw-2">mut </span>rekeyed_own_leaf = tree
+        // The new leaf node will be applied later when the proposal is
+        // committed.
+        </span><span class="kw">let </span><span class="kw-2">mut </span>own_leaf = tree
             .own_leaf_node()
             .ok_or_else(|| LibraryError::custom(<span class="string">&quot;The tree is broken. Couldn&#39;t find own leaf.&quot;</span>))<span class="question-mark">?
             </span>.clone();
         <span class="kw">if let </span><span class="prelude-val">Some</span>(leaf) = leaf_node {
-            <span class="kw">let </span>private_key: Vec&lt;u8&gt; = backend
-                .key_store()
-                .read(<span class="kw-2">&amp;</span>LeafNode::encryption_key_label(
-                    leaf.signature_key().as_slice(),
-                ))
-                .ok_or(ProposeSelfUpdateError::KeyStoreError)<span class="question-mark">?</span>;
-            <span class="kw">let </span>private_key: VLBytes = private_key.into();
-            rekeyed_own_leaf.update_encryption_key(
-                (<span class="kw-2">&amp;</span>private_key, leaf.encryption_key()),
+            own_leaf.update_and_re_sign(
+                leaf.encryption_key(),
                 <span class="kw-2">&amp;</span>credential_bundle,
                 <span class="self">self</span>.group_id().clone(),
                 backend,
             )<span class="question-mark">?
         </span>} <span class="kw">else </span>{
-            rekeyed_own_leaf.rekey(
+            <span class="kw">let </span>keypair = own_leaf.rekey(
                 <span class="self">self</span>.group_id(),
                 <span class="self">self</span>.ciphersuite(),
                 ProtocolVersion::default(), <span class="comment">// XXX: openmls/openmls#1065
                 </span><span class="kw-2">&amp;</span>credential_bundle,
                 backend,
-            )<span class="question-mark">?
-        </span>};
+            )<span class="question-mark">?</span>;
+            <span class="comment">// TODO #1207: Move to the top of the function.
+            </span>keypair
+                .write_to_key_store(backend)
+                .map_err(ProposeSelfUpdateError::KeyStoreError)<span class="question-mark">?</span>;
+        };
 
         <span class="kw">let </span>update_proposal = <span class="self">self</span>.group.create_update_proposal(
             <span class="self">self</span>.framing_parameters(),
             <span class="kw-2">&amp;</span>old_credential_bundle,
-            rekeyed_own_leaf.leaf_node().clone(),
+            own_leaf.leaf_node().clone(),
             backend,
         )<span class="question-mark">?</span>;
 
-        <span class="self">self</span>.own_leaf_nodes.push(rekeyed_own_leaf);
+        <span class="self">self</span>.own_leaf_nodes.push(own_leaf);
         <span class="self">self</span>.proposal_store
             .add(QueuedProposal::from_authenticated_content(
                 <span class="self">self</span>.ciphersuite(),

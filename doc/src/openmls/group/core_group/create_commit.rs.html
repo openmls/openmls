@@ -439,6 +439,29 @@
 <span id="439">439</span>
 <span id="440">440</span>
 <span id="441">441</span>
+<span id="442">442</span>
+<span id="443">443</span>
+<span id="444">444</span>
+<span id="445">445</span>
+<span id="446">446</span>
+<span id="447">447</span>
+<span id="448">448</span>
+<span id="449">449</span>
+<span id="450">450</span>
+<span id="451">451</span>
+<span id="452">452</span>
+<span id="453">453</span>
+<span id="454">454</span>
+<span id="455">455</span>
+<span id="456">456</span>
+<span id="457">457</span>
+<span id="458">458</span>
+<span id="459">459</span>
+<span id="460">460</span>
+<span id="461">461</span>
+<span id="462">462</span>
+<span id="463">463</span>
+<span id="464">464</span>
 </pre><pre class="rust"><code><span class="kw">use </span>openmls_traits::OpenMlsCryptoProvider;
 
 <span class="kw">use crate</span>::{
@@ -446,7 +469,10 @@
     group::{config::CryptoConfig, core_group::<span class="kw-2">*</span>, errors::CreateCommitError},
     treesync::{
         diff::TreeSyncDiff,
-        node::{leaf_node::OpenMlsLeafNode, parent_node::PlainUpdatePathNode},
+        node::{
+            encryption_keys::EncryptionKeyPair, leaf_node::OpenMlsLeafNode,
+            parent_node::PlainUpdatePathNode,
+        },
         treekem::{PlaintextSecret, UpdatePath},
     },
     versions::ProtocolVersion,
@@ -465,14 +491,15 @@
     commit_secret: <span class="prelude-ty">Option</span>&lt;CommitSecret&gt;,
     encrypted_path: <span class="prelude-ty">Option</span>&lt;UpdatePath&gt;,
     plain_path: <span class="prelude-ty">Option</span>&lt;Vec&lt;PlainUpdatePathNode&gt;&gt;,
+    new_keypairs: Vec&lt;EncryptionKeyPair&gt;,
 }
 
 <span class="kw">impl </span>CoreGroup {
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>create_commit(
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>create_commit&lt;KeyStore: OpenMlsKeyStore&gt;(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         params: CreateCommitParams,
-        backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;CreateCommitResult, CreateCommitError&gt; {
+        backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider&lt;KeyStoreProvider = KeyStore&gt;,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;CreateCommitResult, CreateCommitError&lt;KeyStore::Error&gt;&gt; {
         <span class="kw">let </span>ciphersuite = <span class="self">self</span>.ciphersuite();
 
         <span class="comment">// If this is an external commit, we don&#39;t have an `own_leaf_index` set
@@ -570,26 +597,33 @@
         }
 
         <span class="comment">// Update keys in the leaf.
-        </span><span class="kw">if </span>params.commit_type() == CommitType::External {
+        </span><span class="kw">let </span>external_commit_keypair_option = <span class="kw">if </span>params.commit_type() == CommitType::External {
             <span class="comment">// If this is an external commit we add a fresh leaf to the diff.
             // Generate a KeyPackageBundle to generate a payload from for later
             // path generation.
-            </span><span class="kw">let </span>key_package = KeyPackage::builder()
-                .build(
-                    CryptoConfig {
-                        ciphersuite,
-                        version: <span class="self">self</span>.version(),
-                    },
-                    backend,
-                    params.credential_bundle(),
-                )
-                .map_err(|<span class="kw">_</span>| LibraryError::custom(<span class="string">&quot;Unexpected KeyPackage error&quot;</span>))<span class="question-mark">?</span>;
+            </span><span class="kw">let </span>KeyPackageCreationResult {
+                key_package,
+                encryption_keypair,
+                <span class="comment">// The KeyPackage is immediately put into the group. No need for
+                // the init key.
+                </span>init_private_key: <span class="kw">_</span>,
+            } = KeyPackage::builder().build_without_key_storage(
+                CryptoConfig {
+                    ciphersuite,
+                    version: <span class="self">self</span>.version(),
+                },
+                backend,
+                params.credential_bundle(),
+            )<span class="question-mark">?</span>;
 
             <span class="kw">let </span><span class="kw-2">mut </span>leaf_node: OpenMlsLeafNode = key_package.into();
             leaf_node.set_leaf_index(own_leaf_index);
             diff.add_leaf(leaf_node)
                 .map_err(|<span class="kw">_</span>| LibraryError::custom(<span class="string">&quot;Tree full: cannot add more members&quot;</span>))<span class="question-mark">?</span>;
-        }
+            <span class="prelude-val">Some</span>(encryption_keypair)
+        } <span class="kw">else </span>{
+            <span class="prelude-val">None
+        </span>};
 
         <span class="kw">let </span>serialized_group_context = <span class="self">self
             </span>.group_context
@@ -601,28 +635,35 @@
                 || contains_own_updates
                 || params.force_self_update()
             {
-                <span class="kw">if </span>params.commit_type() != CommitType::External {
-                    <span class="comment">// If we&#39;re in the tree, we rekey our existing leaf.
+                <span class="kw">let </span><span class="kw-2">mut </span>new_keypairs = <span class="kw">if let </span><span class="prelude-val">Some</span>(encryption_keypair) = external_commit_keypair_option {
+                    <span class="comment">// If this is an external commit, we need to add the keypair
+                    // we generated earlier.
+                    </span><span class="macro">vec!</span>[encryption_keypair]
+                } <span class="kw">else </span>{
+                    <span class="comment">// If we&#39;re already in the tree, we rekey our existing leaf.
                     </span><span class="kw">let </span>own_diff_leaf = diff
                         .own_leaf_mut()
                         .map_err(|<span class="kw">_</span>| LibraryError::custom(<span class="string">&quot;Unable to get own leaf from diff&quot;</span>))<span class="question-mark">?</span>;
-                    own_diff_leaf.rekey(
+                    <span class="kw">let </span>encryption_keypair = own_diff_leaf.rekey(
                         <span class="self">self</span>.group_id(),
                         <span class="self">self</span>.ciphersuite,
                         ProtocolVersion::default(), <span class="comment">// XXX: openmls/openmls#1065
                         </span>params.credential_bundle(),
                         backend,
                     )<span class="question-mark">?</span>;
-                }
+                    <span class="macro">vec!</span>[encryption_keypair]
+                };
 
                 <span class="comment">// Derive and apply an update path based on the previously
                 // generated new leaf.
-                </span><span class="kw">let </span>(plain_path, commit_secret) = diff.apply_own_update_path(
+                </span><span class="kw">let </span>(plain_path, <span class="kw-2">mut </span>new_parent_keypairs, commit_secret) = diff.apply_own_update_path(
                     backend,
                     ciphersuite,
                     <span class="self">self</span>.group_id().clone(),
                     params.credential_bundle(),
                 )<span class="question-mark">?</span>;
+
+                new_keypairs.append(<span class="kw-2">&amp;mut </span>new_parent_keypairs);
 
                 <span class="comment">// Encrypt the path to the correct recipient nodes.
                 </span><span class="kw">let </span>encrypted_path = diff.encrypt_path(
@@ -638,6 +679,7 @@
                     commit_secret: <span class="prelude-val">Some</span>(commit_secret),
                     encrypted_path: <span class="prelude-val">Some</span>(encrypted_path),
                     plain_path: <span class="prelude-val">Some</span>(plain_path),
+                    new_keypairs,
                 }
             } <span class="kw">else </span>{
                 <span class="comment">// If path is not needed, return empty path processing results
@@ -830,6 +872,10 @@
             provisional_message_secrets,
             provisional_interim_transcript_hash,
             diff.into_staged_diff(backend, ciphersuite)<span class="question-mark">?</span>,
+            path_processing_result.new_keypairs,
+            <span class="comment">// The committer is not allowed to include their own update
+            // proposal, so there is no extra keypair to store here.
+            </span><span class="prelude-val">None</span>,
         );
         <span class="kw">let </span>staged_commit = StagedCommit::new(
             proposal_queue,

@@ -183,7 +183,7 @@ Note that in this scenario it is up to the application to define a proper author
                 .expect(&quot;Could not commit&quot;);
             assert_eq!(alice_group.members().count(), 1);
             alice_group
-                .merge_pending_commit()
+                .merge_pending_commit(backend)
                 .expect(&quot;Could not merge commit&quot;);
             assert_eq!(alice_group.members().count(), 2);
 

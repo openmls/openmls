@@ -340,11 +340,19 @@
 <span id="340">340</span>
 <span id="341">341</span>
 <span id="342">342</span>
+<span id="343">343</span>
+<span id="344">344</span>
+<span id="345">345</span>
+<span id="346">346</span>
+<span id="347">347</span>
 </pre><pre class="rust"><code><span class="kw">use </span>core_group::{proposals::QueuedProposal, staged_commit::StagedCommit};
 
 <span class="kw">use crate</span>::{
     framing::mls_content::FramedContentBody,
-    group::{errors::ValidationError, mls_group::errors::ProcessMessageError},
+    group::{
+        errors::{MergeCommitError, ValidationError},
+        mls_group::errors::ProcessMessageError,
+    },
     treesync::node::leaf_node::OpenMlsLeafNode,
 };
 
@@ -663,23 +671,25 @@
     }
 
     <span class="doccomment">/// Merge a [StagedCommit] into the group after inspection
-    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>merge_staged_commit(
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>merge_staged_commit&lt;KeyStore: OpenMlsKeyStore&gt;(
         <span class="kw-2">&amp;mut </span><span class="self">self</span>,
+        backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider&lt;KeyStoreProvider = KeyStore&gt;,
         staged_commit: StagedCommit,
         proposal_store: <span class="kw-2">&amp;mut </span>ProposalStore,
-    ) {
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;(), MergeCommitError&lt;KeyStore::Error&gt;&gt; {
         <span class="comment">// Save the past epoch
         </span><span class="kw">let </span>past_epoch = <span class="self">self</span>.context().epoch();
         <span class="comment">// Get all the full leaves
         </span><span class="kw">let </span>leaves = <span class="self">self</span>.treesync().full_leave_members().collect();
         <span class="comment">// Merge the staged commit into the group state and store the secret tree from the
         // previous epoch in the message secrets store.
-        </span><span class="kw">if let </span><span class="prelude-val">Some</span>(message_secrets) = <span class="self">self</span>.merge_commit(staged_commit) {
+        </span><span class="kw">if let </span><span class="prelude-val">Some</span>(message_secrets) = <span class="self">self</span>.merge_commit(backend, staged_commit)<span class="question-mark">? </span>{
             <span class="self">self</span>.message_secrets_store
                 .add(past_epoch, message_secrets, leaves);
         }
         <span class="comment">// Empty the proposal store
         </span>proposal_store.empty();
+        <span class="prelude-val">Ok</span>(())
     }
 }
 </code></pre></div>

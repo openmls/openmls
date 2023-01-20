@@ -395,6 +395,10 @@
 <span id="395">395</span>
 <span id="396">396</span>
 <span id="397">397</span>
+<span id="398">398</span>
+<span id="399">399</span>
+<span id="400">400</span>
+<span id="401">401</span>
 </pre><pre class="rust"><code><span class="doccomment">//! Module to encrypt and decrypt update paths for a [`TreeSyncDiff`] instance.
 //!
 //! # About
@@ -424,7 +428,10 @@
 
 <span class="kw">use super</span>::{
     diff::TreeSyncDiff,
-    node::parent_node::{ParentNode, PlainUpdatePathNode},
+    node::{
+        encryption_keys::{EncryptionKey, EncryptionKeyPair},
+        parent_node::{ParentNode, PlainUpdatePathNode},
+    },
     ApplyUpdatePathError, LeafNode,
 };
 
@@ -490,7 +497,8 @@
         backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider,
         ciphersuite: Ciphersuite,
         params: DecryptPathParams,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;(Vec&lt;ParentNode&gt;, CommitSecret), ApplyUpdatePathError&gt; {
+        owned_keys: <span class="kw-2">&amp;</span>[<span class="kw-2">&amp;</span>EncryptionKeyPair],
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;(Vec&lt;ParentNode&gt;, Vec&lt;EncryptionKeyPair&gt;, CommitSecret), ApplyUpdatePathError&gt; {
         <span class="comment">// ValSem202: Path must be the right length
         </span><span class="kw">let </span>direct_path_length = <span class="self">self</span>.filtered_direct_path(params.sender_leaf_index).len();
         <span class="kw">if </span>direct_path_length != params.update_path.len() {
@@ -516,7 +524,7 @@
             </span>.ok_or_else(|| LibraryError::custom(<span class="string">&quot;Expected to find ciphertext in update path 1&quot;</span>))<span class="question-mark">?</span>;
 
         <span class="kw">let </span>(decryption_key, resolution_position) = <span class="self">self
-            </span>.decryption_key(params.sender_leaf_index, params.exclusion_list)
+            </span>.decryption_key(params.sender_leaf_index, params.exclusion_list, owned_keys)
             <span class="comment">// TODO #804
             </span>.map_err(|<span class="kw">_</span>| LibraryError::custom(<span class="string">&quot;Expected sender to be in the tree&quot;</span>))<span class="question-mark">?</span>;
         <span class="kw">let </span>ciphertext = update_path_node
@@ -538,7 +546,7 @@
 
         <span class="kw">let </span>common_path =
             <span class="self">self</span>.filtered_common_direct_path(<span class="self">self</span>.own_leaf_index(), params.sender_leaf_index);
-        <span class="kw">let </span>(derived_path, _plain_update_path, commit_secret) =
+        <span class="kw">let </span>(derived_path, _plain_update_path, keypairs, commit_secret) =
             ParentNode::derive_path(backend, ciphersuite, path_secret, common_path)<span class="question-mark">?</span>;
         <span class="comment">// We now check that the public keys in the update path and in the
         // derived path match up.
@@ -569,7 +577,7 @@
         <span class="comment">// The output should have the same length as the input.
         </span><span class="macro">debug_assert_eq!</span>(_update_path_len, path.len());
 
-        <span class="prelude-val">Ok</span>((path, commit_secret))
+        <span class="prelude-val">Ok</span>((path, keypairs, commit_secret))
     }
 }
 
@@ -593,7 +601,7 @@
     Debug, Eq, PartialEq, Clone, Serialize, Deserialize, TlsDeserialize, TlsSerialize, TlsSize,
 )]
 </span><span class="kw">pub struct </span>UpdatePathNode {
-    <span class="kw">pub</span>(<span class="kw">super</span>) public_key: HpkePublicKey,
+    <span class="kw">pub</span>(<span class="kw">super</span>) public_key: EncryptionKey,
     <span class="kw">pub</span>(<span class="kw">super</span>) encrypted_path_secrets: Vec&lt;HpkeCiphertext&gt;,
 }
 
@@ -605,7 +613,7 @@
 
     <span class="doccomment">/// Return the `public_key`.
     </span><span class="kw">fn </span>public_key(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>HpkePublicKey {
-        <span class="kw-2">&amp;</span><span class="self">self</span>.public_key
+        <span class="self">self</span>.public_key.key()
     }
 
     <span class="doccomment">/// Flip the last byte of every `encrypted_path_secret` in this node.
@@ -639,7 +647,7 @@
             .expect(<span class="string">&quot;An unexpected error occurred.&quot;</span>);
         last_bits ^= <span class="number">0xff</span>;
         new_pk_serialized.push(last_bits);
-        <span class="self">self</span>.public_key = HpkePublicKey::tls_deserialize(<span class="kw-2">&amp;mut </span>new_pk_serialized.as_slice())
+        <span class="self">self</span>.public_key = EncryptionKey::tls_deserialize(<span class="kw-2">&amp;mut </span>new_pk_serialized.as_slice())
             .expect(<span class="string">&quot;error deserializing pk&quot;</span>);
     }
 }

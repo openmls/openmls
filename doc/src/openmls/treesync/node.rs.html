@@ -23,6 +23,7 @@
 <span id="23">23</span>
 <span id="24">24</span>
 <span id="25">25</span>
+<span id="26">26</span>
 </pre><pre class="rust"><code><span class="doccomment">//! This module contains types and methods around the [`Node`] enum. The
 //! variants of the enum are `LeafNode` and [`ParentNode`], both of which are
 //! defined in the respective [`leaf_node`] and [`parent_node`] submodules.
@@ -31,6 +32,7 @@
 <span class="kw">use </span><span class="self">self</span>::{leaf_node::OpenMlsLeafNode, parent_node::ParentNode};
 
 <span class="kw">mod </span>codec;
+<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">mod </span>encryption_keys;
 <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">mod </span>leaf_node;
 <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">mod </span>parent_node;
 

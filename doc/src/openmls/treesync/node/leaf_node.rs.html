@@ -1001,72 +1001,21 @@
 <span id="1001">1001</span>
 <span id="1002">1002</span>
 <span id="1003">1003</span>
-<span id="1004">1004</span>
-<span id="1005">1005</span>
-<span id="1006">1006</span>
-<span id="1007">1007</span>
-<span id="1008">1008</span>
-<span id="1009">1009</span>
-<span id="1010">1010</span>
-<span id="1011">1011</span>
-<span id="1012">1012</span>
-<span id="1013">1013</span>
-<span id="1014">1014</span>
-<span id="1015">1015</span>
-<span id="1016">1016</span>
-<span id="1017">1017</span>
-<span id="1018">1018</span>
-<span id="1019">1019</span>
-<span id="1020">1020</span>
-<span id="1021">1021</span>
-<span id="1022">1022</span>
-<span id="1023">1023</span>
-<span id="1024">1024</span>
-<span id="1025">1025</span>
-<span id="1026">1026</span>
-<span id="1027">1027</span>
-<span id="1028">1028</span>
-<span id="1029">1029</span>
-<span id="1030">1030</span>
-<span id="1031">1031</span>
-<span id="1032">1032</span>
-<span id="1033">1033</span>
-<span id="1034">1034</span>
-<span id="1035">1035</span>
-<span id="1036">1036</span>
-<span id="1037">1037</span>
-<span id="1038">1038</span>
-<span id="1039">1039</span>
-<span id="1040">1040</span>
-<span id="1041">1041</span>
-<span id="1042">1042</span>
-<span id="1043">1043</span>
-<span id="1044">1044</span>
-<span id="1045">1045</span>
-<span id="1046">1046</span>
-<span id="1047">1047</span>
-<span id="1048">1048</span>
-<span id="1049">1049</span>
-<span id="1050">1050</span>
-<span id="1051">1051</span>
 </pre><pre class="rust"><code><span class="doccomment">//! This module contains the [`LeafNode`] struct and its implementation.
-</span><span class="kw">use </span>openmls_traits::{
-    crypto::OpenMlsCrypto,
-    key_store::OpenMlsKeyStore,
-    types::{Ciphersuite, HpkeKeyPair},
-    OpenMlsCryptoProvider,
-};
+</span><span class="kw">use </span>openmls_traits::{key_store::OpenMlsKeyStore, types::Ciphersuite, OpenMlsCryptoProvider};
 <span class="kw">use </span>serde::{Deserialize, Serialize};
 <span class="kw">use </span>tls_codec::{
     Deserialize <span class="kw">as </span>TlsDeserializeTrait, Serialize <span class="kw">as </span>TlsSerializeTrait, TlsDeserialize,
     TlsSerialize, TlsSize, VLBytes,
 };
 
+<span class="kw">use </span>thiserror::Error;
+
 <span class="kw">use crate</span>::{
     binary_tree::array_representation::LeafNodeIndex,
     ciphersuite::{
         signable::{Signable, SignedStruct, Verifiable},
-        HpkePrivateKey, HpkePublicKey, Secret, Signature, SignaturePublicKey,
+        HpkePublicKey, Signature, SignaturePublicKey,
     },
     credentials::{Credential, CredentialBundle, CredentialType},
     error::LibraryError,
@@ -1081,6 +1030,18 @@
 
 <span class="kw">mod </span>lifetime;
 <span class="kw">pub use </span><span class="self">self</span>::lifetime::Lifetime;
+
+<span class="kw">use </span><span class="kw">super</span>::encryption_keys::{EncryptionKey, EncryptionKeyPair};
+
+<span class="attribute">#[derive(Error, Debug, PartialEq, Clone)]
+</span><span class="kw">pub enum </span>LeafNodeGenerationError&lt;KeyStoreError&gt; {
+    <span class="doccomment">/// See [`LibraryError`] for more details.
+    </span><span class="attribute">#[error(transparent)]
+    </span>LibraryError(<span class="attribute">#[from] </span>LibraryError),
+    <span class="doccomment">/// Error storing leaf private key in key store.
+    </span><span class="attribute">#[error(<span class="string">&quot;Error storing leaf private key in key store.&quot;</span>)]
+    </span>KeyStoreError(KeyStoreError),
+}
 
 <span class="doccomment">/// Capabilities of [`LeafNode`]s.
 ///
@@ -1346,7 +1307,7 @@
     Debug, Clone, PartialEq, Eq, Serialize, Deserialize, TlsSerialize, TlsDeserialize, TlsSize,
 )]
 </span><span class="kw">struct </span>LeafNodePayload {
-    encryption_key: HpkePublicKey,
+    encryption_key: EncryptionKey,
     signature_key: SignaturePublicKey,
     credential: Credential,
     capabilities: Capabilities,
@@ -1480,16 +1441,12 @@
         capabilities: Capabilities,
         extensions: Extensions,
         backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;(<span class="self">Self</span>, HpkeKeyPair), LibraryError&gt; {
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;(<span class="self">Self</span>, EncryptionKeyPair), LibraryError&gt; {
         <span class="comment">// Create a new encryption key pair.
-        </span><span class="kw">let </span>ikm = Secret::random(config.ciphersuite, backend, config.version)
-            .map_err(LibraryError::unexpected_crypto_error)<span class="question-mark">?</span>;
-        <span class="kw">let </span>encryption_key_pair = backend
-            .crypto()
-            .derive_hpke_keypair(config.ciphersuite.hpke_config(), ikm.as_slice());
+        </span><span class="kw">let </span>encryption_key_pair = EncryptionKeyPair::random(backend, config)<span class="question-mark">?</span>;
 
         <span class="kw">let </span>leaf_node = <span class="self">Self</span>::new_with_key(
-            encryption_key_pair.public.clone().into(),
+            encryption_key_pair.public_key().clone(),
             credential_bundle,
             leaf_node_source,
             capabilities,
@@ -1503,7 +1460,7 @@
     <span class="doccomment">/// Create a new leaf node with a given HPKE encryption key pair.
     /// The key pair must be stored in the key store by the caller.
     </span><span class="kw">fn </span>new_with_key(
-        encryption_key: HpkePublicKey,
+        encryption_key: EncryptionKey,
         credential_bundle: <span class="kw-2">&amp;</span>CredentialBundle,
         leaf_node_source: LeafNodeSource,
         capabilities: Capabilities,
@@ -1531,13 +1488,13 @@
     ///
     /// This function can be used when generating an update. In most other cases
     /// a leaf node should be generated as part of a new [`KeyPackage`].
-    </span><span class="kw">pub fn </span>generate(
+    </span><span class="kw">pub fn </span>generate&lt;KeyStore: OpenMlsKeyStore&gt;(
         config: CryptoConfig,
         credential_bundle: <span class="kw-2">&amp;</span>CredentialBundle,
         capabilities: Capabilities,
         extensions: Extensions,
-        backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, LibraryError&gt; {
+        backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider&lt;KeyStoreProvider = KeyStore&gt;,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, LeafNodeGenerationError&lt;KeyStore::Error&gt;&gt; {
         <span class="comment">// Note that this function is supposed to be used in the public API only
         // because it is interacting with the key store.
 
@@ -1551,31 +1508,16 @@
         )<span class="question-mark">?</span>;
 
         <span class="comment">// Store the encryption key pair in the key store.
-        </span>backend
-            .key_store()
-            .store(
-                <span class="kw-2">&amp;</span><span class="self">Self</span>::encryption_key_label(leaf_node.signature_key().as_slice()),
-                <span class="kw-2">&amp;</span>encryption_key_pair,
-            )
-            .map_err(|<span class="kw">_</span>| {
-                LibraryError::custom(<span class="string">&quot;Unable to store private encryption key into the key store.&quot;</span>)
-            })<span class="question-mark">?</span>;
+        </span>encryption_key_pair
+            .write_to_key_store(backend)
+            .map_err(LeafNodeGenerationError::KeyStoreError)<span class="question-mark">?</span>;
 
         <span class="prelude-val">Ok</span>(leaf_node)
     }
 
     <span class="doccomment">/// Returns the `encryption_key`.
-    </span><span class="kw">pub fn </span>encryption_key(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>HpkePublicKey {
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>encryption_key(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>EncryptionKey {
         <span class="kw-2">&amp;</span><span class="self">self</span>.payload.encryption_key
-    }
-
-    <span class="doccomment">/// Get the identifier to search for the encryption key pair in the key
-    /// store.
-    </span><span class="kw">pub fn </span>encryption_key_label(id: <span class="kw-2">&amp;</span>[u8]) -&gt; Vec&lt;u8&gt; {
-        <span class="kw">const </span>ENCRYPTION_KEY_LABEL: <span class="kw-2">&amp;</span>[u8; <span class="number">9</span>] = <span class="string">b&quot;leaf_node&quot;</span>;
-        <span class="kw">let </span><span class="kw-2">mut </span>kp_key = ENCRYPTION_KEY_LABEL.to_vec();
-        kp_key.extend_from_slice(id);
-        kp_key
     }
 
     <span class="doccomment">/// Returns the `signature_key` as byte slice.
@@ -1667,9 +1609,9 @@
 
 <span class="kw">impl </span>LeafNode {
     <span class="doccomment">/// Expose [`new_with_key`] for tests.
-    </span><span class="attribute">#[cfg(any(feature = <span class="string">&quot;test-utils&quot;</span>, test))]
+    </span><span class="attribute">#[cfg(test)]
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>create_new_with_key(
-        encryption_key: HpkePublicKey,
+        encryption_key: EncryptionKey,
         credential_bundle: <span class="kw-2">&amp;</span>CredentialBundle,
         leaf_node_source: LeafNodeSource,
         capabilities: Capabilities,
@@ -1772,7 +1714,7 @@
     <span class="doccomment">/// Build a new [`LeafNodeTbs`] from a [`KeyPackage`] and [`Credential`].
     /// To get the [`LeafNode`] call [`LeafNode::sign`].
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>new(
-        encryption_key: HpkePublicKey,
+        encryption_key: EncryptionKey,
         signature_key: SignaturePublicKey,
         credential: Credential,
         capabilities: Capabilities,
@@ -1802,7 +1744,6 @@
 )]
 </span><span class="kw">pub struct </span>OpenMlsLeafNode {
     <span class="kw">pub</span>(<span class="kw">in </span><span class="kw">crate</span>::treesync) leaf_node: LeafNode,
-    private_key: <span class="prelude-ty">Option</span>&lt;HpkePrivateKey&gt;,
     leaf_index: <span class="prelude-ty">Option</span>&lt;LeafNodeIndex&gt;,
 }
 
@@ -1810,7 +1751,6 @@
     <span class="kw">fn </span>from(leaf_node: LeafNode) -&gt; <span class="self">Self </span>{
         <span class="self">Self </span>{
             leaf_node,
-            private_key: <span class="prelude-val">None</span>,
             leaf_index: <span class="prelude-val">None</span>,
         }
     }
@@ -1820,7 +1760,6 @@
     <span class="kw">fn </span>from(key_package: KeyPackage) -&gt; <span class="self">Self </span>{
         <span class="self">Self </span>{
             leaf_node: key_package.leaf_node().clone(),
-            private_key: <span class="prelude-val">None</span>,
             leaf_index: <span class="prelude-val">None</span>,
         }
     }
@@ -1835,7 +1774,7 @@
         credential_bundle: <span class="kw-2">&amp;</span>CredentialBundle,
         capabilities: Capabilities,
         extensions: Extensions,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, LibraryError&gt; {
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;(<span class="self">Self</span>, EncryptionKeyPair), LibraryError&gt; {
         <span class="kw">let </span>(leaf_node, encryption_key_pair) = LeafNode::new(
             config,
             credential_bundle,
@@ -1845,24 +1784,24 @@
             backend,
         )<span class="question-mark">?</span>;
 
-        <span class="prelude-val">Ok</span>(<span class="self">Self </span>{
-            leaf_node,
-            private_key: <span class="prelude-val">Some</span>(encryption_key_pair.private.into()),
-            leaf_index: <span class="prelude-val">Some</span>(LeafNodeIndex::new(<span class="number">0</span>)),
-        })
+        <span class="prelude-val">Ok</span>((
+            <span class="self">Self </span>{
+                leaf_node,
+                leaf_index: <span class="prelude-val">Some</span>(LeafNodeIndex::new(<span class="number">0</span>)),
+            },
+            encryption_key_pair,
+        ))
     }
 
     <span class="doccomment">/// Return a reference to the `encryption_key` of this [`LeafNode`].
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>public_key(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>HpkePublicKey {
-        <span class="kw-2">&amp;</span><span class="self">self</span>.leaf_node.payload.encryption_key
+        <span class="self">self</span>.leaf_node.payload.encryption_key.key()
     }
 
-    <span class="doccomment">/// Update the `encryption_key` in this leaf node.
-    ///
-    /// This signs the new leaf node as well.
-    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>update_encryption_key(
+    <span class="doccomment">/// Update the `encryption_key` in this leaf node and re-signs it.
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>update_and_re_sign(
         <span class="kw-2">&amp;mut </span><span class="self">self</span>,
-        new_encryption_key: (<span class="kw-2">&amp;</span>VLBytes, <span class="kw-2">&amp;</span>HpkePublicKey),
+        new_encryption_key: <span class="kw-2">&amp;</span>EncryptionKey,
         credential_bundle: <span class="kw-2">&amp;</span>CredentialBundle,
         group_id: GroupId,
         backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider,
@@ -1870,7 +1809,7 @@
         <span class="kw">let </span>tree_info = <span class="self">self</span>.update_tree_info(group_id)<span class="question-mark">?</span>;
         <span class="comment">// TODO: If we could take out the leaf_node without cloning, this would all be nicer.
         </span><span class="kw">let </span><span class="kw-2">mut </span>leaf_node_tbs = LeafNodeTbs::from(<span class="self">self</span>.leaf_node.clone(), tree_info);
-        leaf_node_tbs.payload.encryption_key = new_encryption_key.<span class="number">1</span>.clone();
+        leaf_node_tbs.payload.encryption_key = new_encryption_key.clone();
 
         <span class="comment">// Update credential
         // TODO: #133 ValSem109 check that the identity is the same.
@@ -1880,8 +1819,6 @@
         </span><span class="self">self</span>.leaf_node = leaf_node_tbs
             .sign(backend, credential_bundle.signature_private_key())
             .map_err(|<span class="kw">_</span>| LibraryError::custom(<span class="string">&quot;Signing failed&quot;</span>))<span class="question-mark">?</span>;
-        <span class="comment">// and store the new corresponding private key.
-        </span><span class="self">self</span>.private_key = <span class="prelude-val">Some</span>(new_encryption_key.<span class="number">0</span>.clone());
         <span class="prelude-val">Ok</span>(())
     }
 
@@ -1895,7 +1832,7 @@
         protocol_version: ProtocolVersion,
         credential_bundle: <span class="kw-2">&amp;</span>CredentialBundle,
         backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;(), LibraryError&gt; {
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;EncryptionKeyPair, LibraryError&gt; {
         <span class="kw">if </span>!<span class="self">self
             </span>.leaf_node
             .payload
@@ -1919,18 +1856,22 @@
                 <span class="string">&quot;Ciphersuite or protocol version is not supported by this leaf node.&quot;</span>,
             ));
         }
-        <span class="kw">let </span>encryption_secret = Secret::random(ciphersuite, backend, protocol_version)
-            .map_err(LibraryError::unexpected_crypto_error)<span class="question-mark">?</span>;
-        <span class="kw">let </span>key_pair = backend
-            .crypto()
-            .derive_hpke_keypair(ciphersuite.hpke_config(), encryption_secret.as_slice());
+        <span class="kw">let </span>key_pair = EncryptionKeyPair::random(
+            backend,
+            CryptoConfig {
+                ciphersuite,
+                version: protocol_version,
+            },
+        )<span class="question-mark">?</span>;
 
-        <span class="self">self</span>.update_encryption_key(
-            (<span class="kw-2">&amp;</span>key_pair.private.into(), <span class="kw-2">&amp;</span>key_pair.public.into()),
+        <span class="self">self</span>.update_and_re_sign(
+            key_pair.public_key(),
             credential_bundle,
             group_id.clone(),
             backend,
-        )
+        )<span class="question-mark">?</span>;
+
+        <span class="prelude-val">Ok</span>(key_pair)
     }
 
     <span class="doccomment">/// Create the [`TreeInfoTbs`] for an update for this leaf.
@@ -1957,25 +1898,6 @@
             })
     }
 
-    <span class="doccomment">/// Return a reference to the `private_key` corresponding to the
-    /// [`KeyPackage`] in this node.
-    </span><span class="attribute">#[cfg(not(any(feature = <span class="string">&quot;test-utils&quot;</span>, test)))]
-    </span><span class="kw">pub</span>(<span class="kw">in </span><span class="kw">crate</span>::treesync) <span class="kw">fn </span>private_key(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>HpkePrivateKey&gt; {
-        <span class="self">self</span>.private_key.as_ref()
-    }
-
-    <span class="doccomment">/// Return a reference to the `private_key` corresponding to the
-    /// [`KeyPackage`] in this node.
-    </span><span class="attribute">#[cfg(any(feature = <span class="string">&quot;test-utils&quot;</span>, test))]
-    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>private_key(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>HpkePrivateKey&gt; {
-        <span class="self">self</span>.private_key.as_ref()
-    }
-
-    <span class="doccomment">/// Set the private key in this node.
-    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>set_private_key(<span class="kw-2">&amp;mut </span><span class="self">self</span>, private_key: HpkePrivateKey) {
-        <span class="self">self</span>.private_key = <span class="prelude-val">Some</span>(private_key)
-    }
-
     <span class="doccomment">/// Get a reference to the leaf&#39;s [`Credential`].
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>credential(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>Credential {
         <span class="self">self</span>.leaf_node.credential()
@@ -1985,7 +1907,6 @@
     </span><span class="kw">pub</span>(<span class="kw">in </span><span class="kw">crate</span>::treesync) <span class="kw">fn </span>clone_public(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="self">Self </span>{
         <span class="self">Self </span>{
             leaf_node: <span class="self">self</span>.leaf_node.clone(),
-            private_key: <span class="prelude-val">None</span>,
             leaf_index: <span class="prelude-val">None</span>,
         }
     }
@@ -2034,16 +1955,8 @@
     }
 
     <span class="doccomment">/// Returns a reference to the encryption key of the leaf node.
-    </span><span class="kw">pub fn </span>encryption_key(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>HpkePublicKey {
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>encryption_key(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>EncryptionKey {
         <span class="self">self</span>.leaf_node.encryption_key()
-    }
-
-    <span class="doccomment">/// Returns a copy of the encryption key pair.
-    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>encryption_key_pair(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;HpkeKeyPair&gt; {
-        <span class="self">self</span>.private_key.as_ref().map(|private| HpkeKeyPair {
-            private: private.clone().into(),
-            public: <span class="self">self</span>.leaf_node.encryption_key().clone().into(),
-        })
     }
 
     <span class="doccomment">/// Replace the public key in the leaf node and re-sign.
@@ -2055,19 +1968,10 @@
         credential_bundle: <span class="kw-2">&amp;</span>CredentialBundle,
     ) {
         <span class="kw">let </span><span class="kw-2">mut </span>tbs = LeafNodeTbs::from(<span class="self">self</span>.leaf_node.clone(), TreeInfoTbs::KeyPackage);
-        tbs.payload.encryption_key = public_key;
+        tbs.payload.encryption_key = public_key.into();
         <span class="self">self</span>.leaf_node = tbs
             .sign(backend, credential_bundle.signature_private_key())
             .unwrap();
-    }
-
-    <span class="doccomment">/// Replace the public key in the leaf node and re-sign.
-    </span><span class="attribute">#[cfg(any(feature = <span class="string">&quot;test-utils&quot;</span>, test))]
-    </span><span class="kw">pub fn </span>key_pair(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; openmls_traits::types::HpkeKeyPair {
-        openmls_traits::types::HpkeKeyPair {
-            private: <span class="self">self</span>.private_key.as_ref().unwrap().clone().into(),
-            public: <span class="self">self</span>.encryption_key().clone().into(),
-        }
     }
 
     <span class="doccomment">/// Set the leaf index for this leaf.
@@ -2075,24 +1979,24 @@
         <span class="self">self</span>.leaf_index = <span class="prelude-val">Some</span>(leaf_index);
     }
 
-    <span class="doccomment">/// Generate a leaf from a [`KeyPackageBundle`] and the leaf index.
+    <span class="doccomment">/// Generate a leaf from a [`LeafNode`] and the leaf index.
     </span><span class="attribute">#[cfg(test)]
-    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>from_key_package_bundle(
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>from_leaf_node(
         backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider,
-        signature_key: <span class="kw-2">&amp;</span>[u8],
         leaf_index: LeafNodeIndex,
         leaf_node: LeafNode,
-    ) -&gt; <span class="self">Self </span>{
+    ) -&gt; (<span class="self">Self</span>, EncryptionKeyPair) {
         <span class="comment">// Get the encryption key pair from the leaf.
-        </span><span class="kw">let </span>encryption_key_pair: <span class="kw">crate</span>::prelude::HpkeKeyPair = backend
-            .key_store()
-            .read(<span class="kw-2">&amp;</span>LeafNode::encryption_key_label(signature_key))
-            .unwrap();
-        <span class="self">Self </span>{
-            leaf_node,
-            private_key: <span class="prelude-val">Some</span>(encryption_key_pair.private.into()),
-            leaf_index: <span class="prelude-val">Some</span>(leaf_index),
-        }
+        </span><span class="kw">let </span>encryption_key_pair =
+            EncryptionKeyPair::read_from_key_store(backend, leaf_node.encryption_key()).unwrap();
+
+        (
+            <span class="self">Self </span>{
+                leaf_node,
+                leaf_index: <span class="prelude-val">Some</span>(leaf_index),
+            },
+            encryption_key_pair,
+        )
     }
 
     <span class="doccomment">/// Get a list of supported cipher suites.

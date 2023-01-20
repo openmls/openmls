@@ -195,14 +195,6 @@
 <span id="195">195</span>
 <span id="196">196</span>
 <span id="197">197</span>
-<span id="198">198</span>
-<span id="199">199</span>
-<span id="200">200</span>
-<span id="201">201</span>
-<span id="202">202</span>
-<span id="203">203</span>
-<span id="204">204</span>
-<span id="205">205</span>
 </pre><pre class="rust"><code><span class="doccomment">//! This module contains the [`TreeSyncNode`] struct and its implementation.
 
 </span><span class="kw">use </span>std::collections::HashSet;
@@ -282,7 +274,7 @@
 
     <span class="doccomment">/// Return a copy of this node, but remove any potential private key
     /// material contained in the `Node`.
-    </span><span class="kw">pub</span>(<span class="kw">in </span><span class="kw">crate</span>::treesync) <span class="kw">fn </span>node_without_private_key(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;OpenMlsLeafNode&gt; {
+    </span><span class="kw">pub</span>(<span class="kw">in </span><span class="kw">crate</span>::treesync) <span class="kw">fn </span>node_without_index(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;OpenMlsLeafNode&gt; {
         <span class="self">self</span>.node.as_ref().map(|node| node.clone_public())
     }
 
@@ -337,14 +329,6 @@
     <span class="doccomment">/// Return a reference to the contained `Option&lt;Node&gt;`.
     </span><span class="kw">pub</span>(<span class="kw">in </span><span class="kw">crate</span>::treesync) <span class="kw">fn </span>node(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span><span class="prelude-ty">Option</span>&lt;ParentNode&gt; {
         <span class="kw-2">&amp;</span><span class="self">self</span>.node
-    }
-
-    <span class="doccomment">/// Return a copy of this node, but remove any potential private key
-    /// material contained in the `Node`.
-    </span><span class="kw">pub</span>(<span class="kw">in </span><span class="kw">crate</span>::treesync) <span class="kw">fn </span>node_without_private_key(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;ParentNode&gt; {
-        <span class="self">self</span>.node
-            .as_ref()
-            .map(|node| node.clone_without_private_key())
     }
 
     <span class="doccomment">/// Return a mutable reference to the contained `Option&lt;Node&gt;`.

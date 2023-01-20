@@ -67,48 +67,7 @@
 <span id="67">67</span>
 <span id="68">68</span>
 <span id="69">69</span>
-<span id="70">70</span>
-<span id="71">71</span>
-<span id="72">72</span>
-<span id="73">73</span>
-<span id="74">74</span>
-<span id="75">75</span>
-<span id="76">76</span>
-<span id="77">77</span>
-<span id="78">78</span>
-<span id="79">79</span>
-<span id="80">80</span>
-<span id="81">81</span>
-<span id="82">82</span>
-<span id="83">83</span>
-<span id="84">84</span>
-<span id="85">85</span>
-<span id="86">86</span>
-<span id="87">87</span>
-<span id="88">88</span>
-<span id="89">89</span>
-<span id="90">90</span>
-<span id="91">91</span>
-<span id="92">92</span>
-<span id="93">93</span>
-<span id="94">94</span>
-<span id="95">95</span>
-<span id="96">96</span>
-<span id="97">97</span>
-<span id="98">98</span>
-<span id="99">99</span>
-<span id="100">100</span>
-<span id="101">101</span>
-<span id="102">102</span>
-<span id="103">103</span>
-<span id="104">104</span>
-<span id="105">105</span>
-<span id="106">106</span>
-<span id="107">107</span>
-<span id="108">108</span>
-</pre><pre class="rust"><code><span class="kw">use </span>tls_codec::{TlsDeserialize, TlsSerialize, TlsSize, VLBytes};
-
-<span class="kw">use </span><span class="kw">crate</span>::ciphersuite::HpkePublicKey;
+</pre><pre class="rust"><code><span class="kw">use </span>tls_codec::{TlsDeserialize, TlsSerialize, TlsSize};
 
 <span class="kw">use super</span>::{
     leaf_node::OpenMlsLeafNode,
@@ -164,44 +123,7 @@
 
 <span class="comment">// Implementations for `ParentNode`
 
-</span><span class="kw">impl </span>tls_codec::Size <span class="kw">for </span>ParentNode {
-    <span class="kw">fn </span>tls_serialized_len(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; usize {
-        <span class="self">self</span>.public_key().tls_serialized_len()
-            + <span class="self">self</span>.parent_hash.tls_serialized_len()
-            + <span class="self">self</span>.unmerged_leaves.tls_serialized_len()
-    }
-}
-
-<span class="kw">impl </span>tls_codec::Size <span class="kw">for </span><span class="kw-2">&amp;</span>ParentNode {
-    <span class="kw">fn </span>tls_serialized_len(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; usize {
-        (<span class="kw-2">*</span><span class="self">self</span>).tls_serialized_len()
-    }
-}
-
-<span class="kw">impl </span>tls_codec::Serialize <span class="kw">for </span><span class="kw-2">&amp;</span>ParentNode {
-    <span class="kw">fn </span>tls_serialize&lt;W: std::io::Write&gt;(<span class="kw-2">&amp;</span><span class="self">self</span>, writer: <span class="kw-2">&amp;mut </span>W) -&gt; <span class="prelude-ty">Result</span>&lt;usize, tls_codec::Error&gt; {
-        <span class="kw">let </span><span class="kw-2">mut </span>written = <span class="self">self</span>.public_key().tls_serialize(writer)<span class="question-mark">?</span>;
-        written += <span class="self">self</span>.parent_hash.tls_serialize(writer)<span class="question-mark">?</span>;
-        <span class="self">self</span>.unmerged_leaves
-            .tls_serialize(writer)
-            .map(|l| l + written)
-    }
-}
-
-<span class="kw">impl </span>tls_codec::Deserialize <span class="kw">for </span>ParentNode {
-    <span class="kw">fn </span>tls_deserialize&lt;R: std::io::Read&gt;(bytes: <span class="kw-2">&amp;mut </span>R) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, tls_codec::Error&gt;
-    <span class="kw">where
-        </span><span class="self">Self</span>: Sized,
-    {
-        <span class="kw">let </span>public_key = HpkePublicKey::tls_deserialize(bytes)<span class="question-mark">?</span>;
-        <span class="kw">let </span>parent_hash = VLBytes::tls_deserialize(bytes)<span class="question-mark">?</span>;
-        <span class="kw">let </span>unmerged_leaves = UnmergedLeaves::tls_deserialize(bytes)<span class="question-mark">?</span>;
-
-        <span class="prelude-val">Ok</span>(<span class="self">Self</span>::new(public_key, parent_hash, unmerged_leaves))
-    }
-}
-
-<span class="kw">impl </span>tls_codec::Deserialize <span class="kw">for </span>UnmergedLeaves {
+</span><span class="kw">impl </span>tls_codec::Deserialize <span class="kw">for </span>UnmergedLeaves {
     <span class="kw">fn </span>tls_deserialize&lt;R: std::io::Read&gt;(bytes: <span class="kw-2">&amp;mut </span>R) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, tls_codec::Error&gt;
     <span class="kw">where
         </span><span class="self">Self</span>: Sized,

@@ -678,6 +678,25 @@
 <span id="678">678</span>
 <span id="679">679</span>
 <span id="680">680</span>
+<span id="681">681</span>
+<span id="682">682</span>
+<span id="683">683</span>
+<span id="684">684</span>
+<span id="685">685</span>
+<span id="686">686</span>
+<span id="687">687</span>
+<span id="688">688</span>
+<span id="689">689</span>
+<span id="690">690</span>
+<span id="691">691</span>
+<span id="692">692</span>
+<span id="693">693</span>
+<span id="694">694</span>
+<span id="695">695</span>
+<span id="696">696</span>
+<span id="697">697</span>
+<span id="698">698</span>
+<span id="699">699</span>
 </pre><pre class="rust"><code><span class="doccomment">//! # Key Packages
 //!
 //! Key packages are pre-published public keys that provide some information
@@ -769,7 +788,10 @@
     extensions::Extensions,
     group::config::CryptoConfig,
     treesync::{
-        node::leaf_node::{Capabilities, LeafNodeSource, Lifetime},
+        node::{
+            encryption_keys::EncryptionKeyPair,
+            leaf_node::{Capabilities, LeafNodeSource, Lifetime},
+        },
         LeafNode,
     },
     versions::ProtocolVersion,
@@ -777,13 +799,16 @@
 <span class="kw">use </span>openmls_traits::{
     crypto::OpenMlsCrypto,
     key_store::OpenMlsKeyStore,
-    types::{Ciphersuite, HpkeKeyPair, SignatureScheme},
+    types::{Ciphersuite, SignatureScheme},
     OpenMlsCryptoProvider,
 };
 <span class="kw">use </span>serde::{Deserialize, Serialize};
 <span class="kw">use </span>tls_codec::{
     Deserialize <span class="kw">as </span>TlsDeserializeTrait, Serialize <span class="kw">as </span>TlsSerializeTrait, TlsSerialize, TlsSize,
 };
+
+<span class="attribute">#[cfg(test)]
+</span><span class="kw">use </span><span class="kw">crate</span>::treesync::node::encryption_keys::EncryptionKey;
 
 <span class="comment">// Private
 </span><span class="kw">mod </span>codec;
@@ -883,6 +908,13 @@
     }
 }
 
+<span class="doccomment">/// Helper struct containing the results of building a new [`KeyPackage`].
+</span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct </span>KeyPackageCreationResult {
+    <span class="kw">pub </span>key_package: KeyPackage,
+    <span class="kw">pub </span>encryption_keypair: EncryptionKeyPair,
+    <span class="kw">pub </span>init_private_key: Vec&lt;u8&gt;,
+}
+
 <span class="comment">// Public `KeyPackage` functions.
 </span><span class="kw">impl </span>KeyPackage {
     <span class="doccomment">/// Create a key package builder.
@@ -893,13 +925,13 @@
     }
 
     <span class="doccomment">/// Create a new key package for the given `ciphersuite` and `identity`.
-    </span><span class="kw">fn </span>create(
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>create&lt;KeyStore: OpenMlsKeyStore&gt;(
         config: CryptoConfig,
-        backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider,
+        backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider&lt;KeyStoreProvider = KeyStore&gt;,
         credential: <span class="kw-2">&amp;</span>CredentialBundle, <span class="comment">// FIXME: make credential
         </span>extensions: Extensions,
         leaf_node_extensions: Extensions,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;((<span class="self">Self</span>, HpkeKeyPair), Vec&lt;u8&gt;), KeyPackageNewError&gt; {
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;KeyPackageCreationResult, KeyPackageNewError&lt;KeyStore::Error&gt;&gt; {
         <span class="kw">if </span>SignatureScheme::from(config.ciphersuite) != credential.credential().signature_scheme() {
             <span class="kw">return </span><span class="prelude-val">Err</span>(KeyPackageNewError::CiphersuiteSignatureSchemeMismatch);
         }
@@ -910,18 +942,20 @@
         <span class="kw">let </span>init_key = backend
             .crypto()
             .derive_hpke_keypair(config.ciphersuite.hpke_config(), ikm.as_slice());
+        <span class="kw">let </span>(key_package, encryption_keypair) = <span class="self">Self</span>::new_from_keys(
+            config,
+            backend,
+            credential,
+            extensions,
+            leaf_node_extensions,
+            init_key.public,
+        )<span class="question-mark">?</span>;
 
-        <span class="prelude-val">Ok</span>((
-            <span class="self">Self</span>::new_from_keys(
-                config,
-                backend,
-                credential,
-                extensions,
-                leaf_node_extensions,
-                init_key.public,
-            )<span class="question-mark">?</span>,
-            init_key.private,
-        ))
+        <span class="prelude-val">Ok</span>(KeyPackageCreationResult {
+            key_package,
+            encryption_keypair,
+            init_private_key: init_key.private,
+        })
     }
 
     <span class="doccomment">/// Create a new key package for the given `ciphersuite` and `identity`.
@@ -933,14 +967,14 @@
     /// encryption key ([`HpkeKeyPair`]) of the leaf node.
     ///
     /// The caller is responsible for storing the new values.
-    </span><span class="kw">fn </span>new_from_keys(
+    </span><span class="kw">fn </span>new_from_keys&lt;KeyStore: OpenMlsKeyStore&gt;(
         config: CryptoConfig,
-        backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider,
+        backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider&lt;KeyStoreProvider = KeyStore&gt;,
         credential: <span class="kw-2">&amp;</span>CredentialBundle, <span class="comment">// FIXME: make credential
         </span>extensions: Extensions,
         leaf_node_extensions: Extensions,
         init_key: Vec&lt;u8&gt;,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;(<span class="self">Self</span>, HpkeKeyPair), KeyPackageNewError&gt; {
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;(<span class="self">Self</span>, EncryptionKeyPair), KeyPackageNewError&lt;KeyStore::Error&gt;&gt; {
         <span class="comment">// We don&#39;t need the private key here. It&#39;s stored in the key store for
         // use later when creating a group with this key package.
         </span><span class="kw">let </span>(leaf_node, encryption_key_pair) = LeafNode::new(
@@ -966,18 +1000,14 @@
     }
 
     <span class="doccomment">/// Delete this key package and its private key from the key store.
-    </span><span class="kw">pub fn </span>delete(
+    </span><span class="kw">pub fn </span>delete&lt;KeyStore: OpenMlsKeyStore&gt;(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;(), KeyPackageDeleteError&gt; {
+        backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider&lt;KeyStoreProvider = KeyStore&gt;,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;(), KeyStore::Error&gt; {
         backend
             .key_store()
-            .delete(<span class="self">self</span>.hash_ref(backend.crypto()).unwrap().as_slice())
-            .map_err(|<span class="kw">_</span>| KeyPackageDeleteError::KeyStoreError)<span class="question-mark">?</span>;
-        backend
-            .key_store()
-            .delete(<span class="self">self</span>.hpke_init_key().as_slice())
-            .map_err(|<span class="kw">_</span>| KeyPackageDeleteError::KeyStoreError)
+            .delete(<span class="self">self</span>.hash_ref(backend.crypto()).unwrap().as_slice())<span class="question-mark">?</span>;
+        backend.key_store().delete(<span class="self">self</span>.hpke_init_key().as_slice())
     }
 
     <span class="doccomment">/// Verify that this key package is valid:
@@ -1087,14 +1117,14 @@
 </span><span class="attribute">#[cfg(any(feature = <span class="string">&quot;test-utils&quot;</span>, test))]
 </span><span class="kw">impl </span>KeyPackage {
     <span class="doccomment">/// Generate a new key package with a given init key
-    </span><span class="kw">pub fn </span>new_from_init_key(
+    </span><span class="kw">pub fn </span>new_from_init_key&lt;KeyStore: OpenMlsKeyStore&gt;(
         config: CryptoConfig,
-        backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider,
+        backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider&lt;KeyStoreProvider = KeyStore&gt;,
         credential: <span class="kw-2">&amp;</span>CredentialBundle, <span class="comment">// FIXME: make credential
         </span>extensions: Extensions,
         leaf_node_extensions: Extensions,
         init_key: Vec&lt;u8&gt;,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, KeyPackageNewError&gt; {
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, KeyPackageNewError&lt;KeyStore::Error&gt;&gt; {
         <span class="kw">let </span>(key_package, encryption_key_pair) = <span class="self">Self</span>::new_from_keys(
             config,
             backend,
@@ -1112,31 +1142,26 @@
                 key_package.hash_ref(backend.crypto())<span class="question-mark">?</span>.as_slice(),
                 <span class="kw-2">&amp;</span>key_package,
             )
-            .map_err(|<span class="kw">_</span>| KeyPackageNewError::KeyStoreError)<span class="question-mark">?</span>;
+            .map_err(KeyPackageNewError::KeyStoreError)<span class="question-mark">?</span>;
 
         <span class="comment">// Store the encryption key pair in the key store.
-        </span>backend
-            .key_store()
-            .store(
-                <span class="kw-2">&amp;</span>LeafNode::encryption_key_label(key_package.leaf_node().signature_key().as_slice()),
-                <span class="kw-2">&amp;</span>encryption_key_pair,
-            )
-            .map_err(|<span class="kw">_</span>| {
-                LibraryError::custom(<span class="string">&quot;Unable to store private encryption key into the key store.&quot;</span>)
-            })<span class="question-mark">?</span>;
+        </span>encryption_key_pair
+            .write_to_key_store(backend)
+            .map_err(KeyPackageNewError::KeyStoreError)<span class="question-mark">?</span>;
 
         <span class="prelude-val">Ok</span>(key_package)
     }
 
     <span class="doccomment">/// Create new key package with a leaf node encryption key set to the
     /// provided `encryption_key`.
-    </span><span class="kw">pub fn </span>new_from_encryption_key(
+    </span><span class="attribute">#[cfg(test)]
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>new_from_encryption_key&lt;KeyStore: OpenMlsKeyStore&gt;(
         config: CryptoConfig,
-        backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider,
+        backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider&lt;KeyStoreProvider = KeyStore&gt;,
         credential: <span class="kw-2">&amp;</span>CredentialBundle, <span class="comment">// FIXME: make credential
         </span>extensions: Extensions,
-        encryption_key: tls_codec::VLBytes,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, KeyPackageNewError&gt; {
+        encryption_key: EncryptionKey,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, KeyPackageNewError&lt;KeyStore::Error&gt;&gt; {
         <span class="comment">// Create a new HPKE init key pair
         </span><span class="kw">let </span>ikm = Secret::random(config.ciphersuite, backend, config.version).unwrap();
         <span class="kw">let </span>init_key = backend
@@ -1148,7 +1173,7 @@
         </span>backend
             .key_store()
             .store(<span class="kw-2">&amp;</span>init_key.public, <span class="kw-2">&amp;</span>init_key.private)
-            .unwrap();
+            .map_err(KeyPackageNewError::KeyStoreError)<span class="question-mark">?</span>;
 
         <span class="comment">// We don&#39;t need the private key here. It&#39;s stored in the key store for
         // use later when creating a group with this key package.
@@ -1180,18 +1205,18 @@
                 key_package.hash_ref(backend.crypto())<span class="question-mark">?</span>.as_slice(),
                 <span class="kw-2">&amp;</span>key_package,
             )
-            .map_err(|<span class="kw">_</span>| KeyPackageNewError::KeyStoreError)<span class="question-mark">?</span>;
+            .map_err(KeyPackageNewError::KeyStoreError)<span class="question-mark">?</span>;
 
         <span class="prelude-val">Ok</span>(key_package)
     }
 
-    <span class="kw">pub fn </span>into_with_init_key(
+    <span class="kw">pub fn </span>into_with_init_key&lt;KeyStore: OpenMlsKeyStore&gt;(
         <span class="self">self</span>,
         config: CryptoConfig,
-        backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider,
+        backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider&lt;KeyStoreProvider = KeyStore&gt;,
         credential: <span class="kw-2">&amp;</span>CredentialBundle, <span class="comment">// FIXME: make credential
         </span>init_key: Vec&lt;u8&gt;,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, KeyPackageNewError&gt; {
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, KeyPackageNewError&lt;KeyStore::Error&gt;&gt; {
         <span class="kw">let </span>key_package = KeyPackageTBS {
             protocol_version: config.version,
             ciphersuite: config.ciphersuite,
@@ -1267,14 +1292,33 @@
         <span class="self">self
     </span>}
 
-    <span class="doccomment">/// Finalize and build the key package.
-    </span><span class="kw">pub fn </span>build(
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>build_without_key_storage&lt;KeyStore: OpenMlsKeyStore&gt;(
         <span class="self">self</span>,
         config: CryptoConfig,
-        backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider,
+        backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider&lt;KeyStoreProvider = KeyStore&gt;,
+        credential: <span class="kw-2">&amp;</span>CredentialBundle, <span class="comment">// FIXME: make credential
+    </span>) -&gt; <span class="prelude-ty">Result</span>&lt;KeyPackageCreationResult, KeyPackageNewError&lt;KeyStore::Error&gt;&gt; {
+        KeyPackage::create(
+            config,
+            backend,
+            credential,
+            <span class="self">self</span>.key_package_extensions.unwrap_or_default(),
+            <span class="self">self</span>.leaf_node_extensions.unwrap_or_default(),
+        )
+    }
+
+    <span class="doccomment">/// Finalize and build the key package.
+    </span><span class="kw">pub fn </span>build&lt;KeyStore: OpenMlsKeyStore&gt;(
+        <span class="self">self</span>,
+        config: CryptoConfig,
+        backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider&lt;KeyStoreProvider = KeyStore&gt;,
         credential: <span class="kw-2">&amp;</span>CredentialBundle,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;KeyPackage, KeyPackageNewError&gt; {
-        <span class="kw">let </span>((key_package, encryption_key_pair), private_init_key) = KeyPackage::create(
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;KeyPackage, KeyPackageNewError&lt;KeyStore::Error&gt;&gt; {
+        <span class="kw">let </span>KeyPackageCreationResult {
+            key_package,
+            encryption_keypair,
+            init_private_key,
+        } = KeyPackage::create(
             config,
             backend,
             credential,
@@ -1290,25 +1334,19 @@
                 key_package.hash_ref(backend.crypto())<span class="question-mark">?</span>.as_slice(),
                 <span class="kw-2">&amp;</span>key_package,
             )
-            .map_err(|<span class="kw">_</span>| KeyPackageNewError::KeyStoreError)<span class="question-mark">?</span>;
+            .map_err(KeyPackageNewError::KeyStoreError)<span class="question-mark">?</span>;
 
         <span class="comment">// Store the encryption key pair in the key store.
-        </span>backend
-            .key_store()
-            .store(
-                <span class="kw-2">&amp;</span>LeafNode::encryption_key_label(key_package.leaf_node().signature_key().as_slice()),
-                <span class="kw-2">&amp;</span>encryption_key_pair,
-            )
-            .map_err(|<span class="kw">_</span>| {
-                LibraryError::custom(<span class="string">&quot;Unable to store private encryption key into the key store.&quot;</span>)
-            })<span class="question-mark">?</span>;
+        </span>encryption_keypair
+            .write_to_key_store(backend)
+            .map_err(KeyPackageNewError::KeyStoreError)<span class="question-mark">?</span>;
 
         <span class="comment">// Store the private part of the init_key into the key store.
         // The key is the public key.
         </span>backend
             .key_store()
-            .store(key_package.hpke_init_key().as_slice(), <span class="kw-2">&amp;</span>private_init_key)
-            .map_err(|<span class="kw">_</span>| KeyPackageNewError::KeyStoreError)<span class="question-mark">?</span>;
+            .store(key_package.hpke_init_key().as_slice(), <span class="kw-2">&amp;</span>init_private_key)
+            .map_err(KeyPackageNewError::KeyStoreError)<span class="question-mark">?</span>;
 
         <span class="prelude-val">Ok</span>(key_package)
     }

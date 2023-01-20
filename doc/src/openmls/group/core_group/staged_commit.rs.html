@@ -522,9 +522,120 @@
 <span id="522">522</span>
 <span id="523">523</span>
 <span id="524">524</span>
-</pre><pre class="rust"><code><span class="kw">use </span><span class="kw">crate</span>::ciphersuite::signable::Verifiable;
+<span id="525">525</span>
+<span id="526">526</span>
+<span id="527">527</span>
+<span id="528">528</span>
+<span id="529">529</span>
+<span id="530">530</span>
+<span id="531">531</span>
+<span id="532">532</span>
+<span id="533">533</span>
+<span id="534">534</span>
+<span id="535">535</span>
+<span id="536">536</span>
+<span id="537">537</span>
+<span id="538">538</span>
+<span id="539">539</span>
+<span id="540">540</span>
+<span id="541">541</span>
+<span id="542">542</span>
+<span id="543">543</span>
+<span id="544">544</span>
+<span id="545">545</span>
+<span id="546">546</span>
+<span id="547">547</span>
+<span id="548">548</span>
+<span id="549">549</span>
+<span id="550">550</span>
+<span id="551">551</span>
+<span id="552">552</span>
+<span id="553">553</span>
+<span id="554">554</span>
+<span id="555">555</span>
+<span id="556">556</span>
+<span id="557">557</span>
+<span id="558">558</span>
+<span id="559">559</span>
+<span id="560">560</span>
+<span id="561">561</span>
+<span id="562">562</span>
+<span id="563">563</span>
+<span id="564">564</span>
+<span id="565">565</span>
+<span id="566">566</span>
+<span id="567">567</span>
+<span id="568">568</span>
+<span id="569">569</span>
+<span id="570">570</span>
+<span id="571">571</span>
+<span id="572">572</span>
+<span id="573">573</span>
+<span id="574">574</span>
+<span id="575">575</span>
+<span id="576">576</span>
+<span id="577">577</span>
+<span id="578">578</span>
+<span id="579">579</span>
+<span id="580">580</span>
+<span id="581">581</span>
+<span id="582">582</span>
+<span id="583">583</span>
+<span id="584">584</span>
+<span id="585">585</span>
+<span id="586">586</span>
+<span id="587">587</span>
+<span id="588">588</span>
+<span id="589">589</span>
+<span id="590">590</span>
+<span id="591">591</span>
+<span id="592">592</span>
+<span id="593">593</span>
+<span id="594">594</span>
+<span id="595">595</span>
+<span id="596">596</span>
+<span id="597">597</span>
+<span id="598">598</span>
+<span id="599">599</span>
+<span id="600">600</span>
+<span id="601">601</span>
+<span id="602">602</span>
+<span id="603">603</span>
+<span id="604">604</span>
+<span id="605">605</span>
+<span id="606">606</span>
+<span id="607">607</span>
+<span id="608">608</span>
+<span id="609">609</span>
+<span id="610">610</span>
+<span id="611">611</span>
+<span id="612">612</span>
+<span id="613">613</span>
+<span id="614">614</span>
+<span id="615">615</span>
+<span id="616">616</span>
+<span id="617">617</span>
+<span id="618">618</span>
+<span id="619">619</span>
+<span id="620">620</span>
+<span id="621">621</span>
+<span id="622">622</span>
+<span id="623">623</span>
+<span id="624">624</span>
+<span id="625">625</span>
+<span id="626">626</span>
+<span id="627">627</span>
+<span id="628">628</span>
+<span id="629">629</span>
+<span id="630">630</span>
+<span id="631">631</span>
+<span id="632">632</span>
+</pre><pre class="rust"><code><span class="kw">use </span>openmls_traits::key_store::OpenMlsKeyStore;
+
+<span class="kw">use </span><span class="kw">crate</span>::ciphersuite::signable::Verifiable;
 <span class="kw">use </span><span class="kw">crate</span>::framing::mls_content::FramedContentBody;
 <span class="kw">use </span><span class="kw">crate</span>::treesync::errors::TreeSyncAddLeaf;
+<span class="kw">use </span><span class="kw">crate</span>::treesync::node::encryption_keys::EncryptionKeyPair;
 <span class="kw">use </span><span class="kw">crate</span>::treesync::node::leaf_node::{
     LeafNodeTbs, OpenMlsLeafNode, TreeInfoTbs, VerifiableLeafNodeTbs,
 };
@@ -720,100 +831,149 @@
         }
 
         <span class="comment">// Determine if Commit has a path
-        </span><span class="kw">let </span>commit_secret = <span class="kw">if let </span><span class="prelude-val">Some</span>(path) = commit.path.clone() {
-            <span class="comment">// Verify the leaf node and PublicMessage membership tag
-            // Note that the signature must have been verified already.
-            // TODO #106: Support external members
-            </span><span class="kw">let </span>leaf_node = path.leaf_node();
-            <span class="comment">// TODO: The clone here is unnecessary. But the leaf node structs are
-            //       already too complex. This should be cleaned up in a follow
-            //       up.
-            </span><span class="kw">let </span>tbs = LeafNodeTbs::from(
-                leaf_node.clone(),
-                TreeInfoTbs::commit(<span class="self">self</span>.group_id().clone(), sender_index),
-            );
-            <span class="kw">let </span>verifiable_leaf_node = VerifiableLeafNodeTbs {
-                tbs: <span class="kw-2">&amp;</span>tbs,
-                signature: leaf_node.signature(),
-            };
-            <span class="kw">if </span>verifiable_leaf_node
-                .verify_no_out(
-                    backend,
-                    leaf_node.signature_key(),
-                    leaf_node.credential().signature_scheme(),
-                )
-                .is_err()
-            {
-                <span class="macro">debug_assert!</span>(
-                    <span class="bool-val">false</span>,
-                    <span class="string">&quot;Verification failed of leaf node in commit path.\n\
-                     Leaf node identity: {:?} ({})&quot;</span>,
-                    leaf_node.credential().identity(),
-                    String::from_utf8(leaf_node.credential().identity().to_vec())
-                        .unwrap_or_default()
+        </span><span class="kw">let </span>(commit_secret, new_keypairs, new_leaf_keypair_option) =
+            <span class="kw">if let </span><span class="prelude-val">Some</span>(path) = commit.path.clone() {
+                <span class="comment">// Verify the leaf node and PublicMessage membership tag
+                // Note that the signature must have been verified already.
+                // TODO #106: Support external members
+                </span><span class="kw">let </span>leaf_node = path.leaf_node();
+                <span class="comment">// TODO: The clone here is unnecessary. But the leaf node structs are
+                //       already too complex. This should be cleaned up in a follow
+                //       up.
+                </span><span class="kw">let </span>tbs = LeafNodeTbs::from(
+                    leaf_node.clone(),
+                    TreeInfoTbs::commit(<span class="self">self</span>.group_id().clone(), sender_index),
                 );
-                <span class="kw">return </span><span class="prelude-val">Err</span>(StageCommitError::PathLeafNodeVerificationFailure);
-            }
-            <span class="kw">let </span>serialized_context = <span class="self">self
-                </span>.group_context
-                .tls_serialize_detached()
-                .map_err(LibraryError::missing_bound_check)<span class="question-mark">?</span>;
-
-            <span class="kw">let </span>(leaf_node, update_path_nodes) = path.into_parts();
-
-            <span class="comment">// Make sure that the new path key package is valid
-            </span><span class="self">self</span>.validate_path_key_package(sender_index, <span class="kw-2">&amp;</span>leaf_node, public_key_set, sender)<span class="question-mark">?</span>;
-
-            <span class="comment">// If the committer is a `NewMemberCommit`, we have to add the leaf to
-            // the tree before we can apply or even decrypt an update path.
-            // While `apply_received_update_path` will happily update a
-            // blank leaf, we still have to call `add_leaf` here in case
-            // there are no blanks and the new member extended the tree to
-            // fit in.
-            </span><span class="kw">if </span>apply_proposals_values.external_init_secret_option.is_some() {
-                <span class="comment">// TODO: Can we do without the clone here?
-                //       The leaf node is always replaced in apply_received_update_path
-                //       below, which isn&#39;t necessary. This should be refactored.
-                </span><span class="kw">let </span>sender_leaf_index =
-                    diff.add_leaf(leaf_node.clone().into())
-                        .map_err(|e| <span class="kw">match </span>e {
-                            TreeSyncAddLeaf::LibraryError(e) =&gt; e.into(),
-                            TreeSyncAddLeaf::TreeFull =&gt; StageCommitError::TooManyNewMembers,
-                        })<span class="question-mark">?</span>;
-                <span class="comment">// The new member should have the same index as the claimed sender index.
-                </span><span class="kw">if </span>sender_leaf_index != sender_index {
-                    <span class="kw">return </span><span class="prelude-val">Err</span>(StageCommitError::InconsistentSenderIndex);
+                <span class="kw">let </span>verifiable_leaf_node = VerifiableLeafNodeTbs {
+                    tbs: <span class="kw-2">&amp;</span>tbs,
+                    signature: leaf_node.signature(),
+                };
+                <span class="kw">if </span>verifiable_leaf_node
+                    .verify_no_out(
+                        backend,
+                        leaf_node.signature_key(),
+                        leaf_node.credential().signature_scheme(),
+                    )
+                    .is_err()
+                {
+                    <span class="macro">debug_assert!</span>(
+                        <span class="bool-val">false</span>,
+                        <span class="string">&quot;Verification failed of leaf node in commit path.\n\
+                     Leaf node identity: {:?} ({})&quot;</span>,
+                        leaf_node.credential().identity(),
+                        String::from_utf8(leaf_node.credential().identity().to_vec())
+                            .unwrap_or_default()
+                    );
+                    <span class="kw">return </span><span class="prelude-val">Err</span>(StageCommitError::PathLeafNodeVerificationFailure);
                 }
-            }
+                <span class="kw">let </span>serialized_context = <span class="self">self
+                    </span>.group_context
+                    .tls_serialize_detached()
+                    .map_err(LibraryError::missing_bound_check)<span class="question-mark">?</span>;
 
-            <span class="comment">// Decrypt the UpdatePath
-            </span><span class="kw">let </span>decrypt_path_params = DecryptPathParams {
-                version: <span class="self">self</span>.mls_version,
-                update_path: update_path_nodes,
-                sender_leaf_index: sender_index,
-                exclusion_list: <span class="kw-2">&amp;</span>apply_proposals_values.exclusion_list(),
-                group_context: <span class="kw-2">&amp;</span>serialized_context,
+                <span class="kw">let </span>(leaf_node, update_path_nodes) = path.into_parts();
+
+                <span class="comment">// Make sure that the new path key package is valid
+                </span><span class="self">self</span>.validate_path_key_package(sender_index, <span class="kw-2">&amp;</span>leaf_node, public_key_set, sender)<span class="question-mark">?</span>;
+
+                <span class="comment">// If the committer is a `NewMemberCommit`, we have to add the leaf to
+                // the tree before we can apply or even decrypt an update path.
+                // While `apply_received_update_path` will happily update a
+                // blank leaf, we still have to call `add_leaf` here in case
+                // there are no blanks and the new member extended the tree to
+                // fit in.
+                </span><span class="kw">if </span>apply_proposals_values.external_init_secret_option.is_some() {
+                    <span class="comment">// TODO: Can we do without the clone here?
+                    //       The leaf node is always replaced in apply_received_update_path
+                    //       below, which isn&#39;t necessary. This should be refactored.
+                    </span><span class="kw">let </span>sender_leaf_index =
+                        diff.add_leaf(leaf_node.clone().into())
+                            .map_err(|e| <span class="kw">match </span>e {
+                                TreeSyncAddLeaf::LibraryError(e) =&gt; e.into(),
+                                TreeSyncAddLeaf::TreeFull =&gt; StageCommitError::TooManyNewMembers,
+                            })<span class="question-mark">?</span>;
+                    <span class="comment">// The new member should have the same index as the claimed sender index.
+                    </span><span class="kw">if </span>sender_leaf_index != sender_index {
+                        <span class="kw">return </span><span class="prelude-val">Err</span>(StageCommitError::InconsistentSenderIndex);
+                    }
+                }
+
+                <span class="comment">// Decrypt the UpdatePath
+                </span><span class="kw">let </span>decrypt_path_params = DecryptPathParams {
+                    version: <span class="self">self</span>.mls_version,
+                    update_path: update_path_nodes,
+                    sender_leaf_index: sender_index,
+                    exclusion_list: <span class="kw-2">&amp;</span>apply_proposals_values.exclusion_list(),
+                    group_context: <span class="kw-2">&amp;</span>serialized_context,
+                };
+
+                <span class="comment">// All keys from the previous epoch are potential decryption keypairs.
+                </span><span class="kw">let </span>old_epoch_keypairs = <span class="self">self</span>.read_epoch_keypairs(backend);
+
+                <span class="comment">// If we are processing an update proposal that originally came from
+                // us, the keypair corresponding to the leaf in the update is also a
+                // potential decryption keypair.
+                </span><span class="kw">let </span>own_keypairs = own_leaf_nodes
+                    .iter()
+                    .map(|leaf_node| {
+                        EncryptionKeyPair::read_from_key_store(backend, leaf_node.encryption_key())
+                            .ok_or(StageCommitError::MissingDecryptionKey)
+                    })
+                    .collect::&lt;<span class="prelude-ty">Result</span>&lt;Vec&lt;EncryptionKeyPair&gt;, StageCommitError&gt;&gt;()<span class="question-mark">?</span>;
+
+                <span class="kw">let </span>decryption_keypairs: Vec&lt;<span class="kw-2">&amp;</span>EncryptionKeyPair&gt; = old_epoch_keypairs
+                    .iter()
+                    .chain(own_keypairs.iter())
+                    .collect();
+
+                <span class="comment">// ValSem202: Path must be the right length
+                // ValSem203: Path secrets must decrypt correctly
+                // ValSem204: Public keys from Path must be verified and match the private keys from the direct path
+                </span><span class="kw">let </span>(plain_path, new_epoch_keypairs, commit_secret) = diff.decrypt_path(
+                    backend,
+                    ciphersuite,
+                    decrypt_path_params,
+                    <span class="kw-2">&amp;</span>decryption_keypairs,
+                )<span class="question-mark">?</span>;
+
+                <span class="comment">// Check if one of our update proposals was applied. If so, we
+                // need to store that keypair separately, because after merging
+                // it needs to be removed from the key store separately and in
+                // addition to the removal of the keypairs of the previous
+                // epoch.
+                </span><span class="kw">let </span>new_leaf_keypair_option = <span class="kw">if let </span><span class="prelude-val">Ok</span>(leaf) = diff.own_leaf() {
+                    own_keypairs.into_iter().find_map(|keypair| {
+                        <span class="kw">if </span>leaf.encryption_key() == keypair.public_key() {
+                            <span class="prelude-val">Some</span>(keypair)
+                        } <span class="kw">else </span>{
+                            <span class="prelude-val">None
+                        </span>}
+                    })
+                } <span class="kw">else </span>{
+                    <span class="comment">// We should have an own leaf at this point.
+                    </span><span class="macro">debug_assert!</span>(<span class="bool-val">false</span>);
+                    <span class="prelude-val">None
+                </span>};
+
+                diff.apply_received_update_path(
+                    backend,
+                    ciphersuite,
+                    sender_index,
+                    leaf_node,
+                    plain_path,
+                )<span class="question-mark">?</span>;
+                (commit_secret, new_epoch_keypairs, new_leaf_keypair_option)
+            } <span class="kw">else </span>{
+                <span class="kw">if </span>apply_proposals_values.path_required {
+                    <span class="comment">// ValSem201
+                    </span><span class="kw">return </span><span class="prelude-val">Err</span>(StageCommitError::RequiredPathNotFound);
+                }
+                (
+                    CommitSecret::zero_secret(ciphersuite, <span class="self">self</span>.mls_version),
+                    <span class="macro">vec!</span>[],
+                    <span class="prelude-val">None</span>,
+                )
             };
-            <span class="comment">// ValSem202: Path must be the right length
-            // ValSem203: Path secrets must decrypt correctly
-            // ValSem204: Public keys from Path must be verified and match the private keys from the direct path
-            </span><span class="kw">let </span>(plain_path, commit_secret) =
-                diff.decrypt_path(backend, ciphersuite, decrypt_path_params)<span class="question-mark">?</span>;
-            diff.apply_received_update_path(
-                backend,
-                ciphersuite,
-                sender_index,
-                leaf_node,
-                plain_path,
-            )<span class="question-mark">?</span>;
-            commit_secret
-        } <span class="kw">else </span>{
-            <span class="kw">if </span>apply_proposals_values.path_required {
-                <span class="comment">// ValSem201
-                </span><span class="kw">return </span><span class="prelude-val">Err</span>(StageCommitError::RequiredPathNotFound);
-            }
-            CommitSecret::zero_secret(ciphersuite, <span class="self">self</span>.mls_version)
-        };
 
         <span class="comment">// Check if we need to include the init secret from an external commit
         // we applied earlier or if we use the one from the previous epoch.
@@ -917,6 +1077,8 @@
                 message_secrets: provisional_message_secrets,
                 interim_transcript_hash,
                 staged_diff,
+                new_keypairs,
+                new_leaf_keypair_option,
             }));
 
         <span class="prelude-val">Ok</span>(StagedCommit::new(
@@ -931,12 +1093,19 @@
     ///
     /// This function should not fail and only returns a [`Result`], because it
     /// might throw a `LibraryError`.
-    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>merge_commit(<span class="kw-2">&amp;mut </span><span class="self">self</span>, staged_commit: StagedCommit) -&gt; <span class="prelude-ty">Option</span>&lt;MessageSecrets&gt; {
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>merge_commit&lt;KeyStore: OpenMlsKeyStore&gt;(
+        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
+        backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider&lt;KeyStoreProvider = KeyStore&gt;,
+        staged_commit: StagedCommit,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="prelude-ty">Option</span>&lt;MessageSecrets&gt;, MergeCommitError&lt;KeyStore::Error&gt;&gt; {
+        <span class="comment">// Get all keypairs from the old epoch, so we can later store the ones
+        // that are still relevant in the new epoch.
+        </span><span class="kw">let </span>old_epoch_keypairs = <span class="self">self</span>.read_epoch_keypairs(backend);
         <span class="kw">match </span>staged_commit.state {
             StagedCommitState::SelfRemoved(staged_diff) =&gt; {
                 <span class="self">self</span>.tree.merge_diff(<span class="kw-2">*</span>staged_diff);
-                <span class="prelude-val">None
-            </span>}
+                <span class="prelude-val">Ok</span>(<span class="prelude-val">None</span>)
+            }
             StagedCommitState::GroupMember(state) =&gt; {
                 <span class="self">self</span>.group_context = state.group_context;
                 <span class="self">self</span>.group_epoch_secrets = state.group_epoch_secrets;
@@ -951,7 +1120,48 @@
                 <span class="self">self</span>.interim_transcript_hash = state.interim_transcript_hash;
 
                 <span class="self">self</span>.tree.merge_diff(state.staged_diff);
-                <span class="prelude-val">Some</span>(message_secrets)
+
+                <span class="comment">// TODO #1194: Group storage and key storage should be
+                // correlated s.t. there is no divergence between key material
+                // and group state.
+
+                </span><span class="kw">let </span>leaf_keypair = <span class="kw">if let </span><span class="prelude-val">Some</span>(keypair) = <span class="kw-2">&amp;</span>state.new_leaf_keypair_option {
+                    <span class="macro">vec!</span>[keypair.clone()]
+                } <span class="kw">else </span>{
+                    <span class="macro">vec!</span>[]
+                };
+
+                <span class="comment">// Figure out which keys we need in the new epoch.
+                </span><span class="kw">let </span>new_owned_encryption_keys = <span class="self">self</span>.tree.owned_encryption_keys();
+                <span class="comment">// From the old and new keys, keep the ones that are still relevant in the new epoch.
+                </span><span class="kw">let </span>epoch_keypairs: Vec&lt;EncryptionKeyPair&gt; = old_epoch_keypairs
+                    .into_iter()
+                    .chain(state.new_keypairs.into_iter())
+                    .chain(leaf_keypair.into_iter())
+                    .filter(|keypair| new_owned_encryption_keys.contains(keypair.public_key()))
+                    .collect();
+                <span class="comment">// We should have private keys for all owned encryption keys.
+
+                </span><span class="macro">debug_assert_eq!</span>(new_owned_encryption_keys.len(), epoch_keypairs.len());
+                <span class="kw">if </span>new_owned_encryption_keys.len() != epoch_keypairs.len() {
+                    <span class="kw">return </span><span class="prelude-val">Err</span>(LibraryError::custom(
+                        <span class="string">&quot;We should have all the private key material we need.&quot;</span>,
+                    )
+                    .into());
+                }
+                <span class="comment">// Store the relevant keys under the new epoch
+                </span><span class="self">self</span>.store_epoch_keypairs(backend, epoch_keypairs.as_slice())
+                    .map_err(MergeCommitError::KeyStoreError)<span class="question-mark">?</span>;
+                <span class="comment">// Delete the old keys.
+                </span><span class="self">self</span>.delete_previous_epoch_keypairs(backend)
+                    .map_err(MergeCommitError::KeyStoreError)<span class="question-mark">?</span>;
+                <span class="kw">if let </span><span class="prelude-val">Some</span>(keypair) = state.new_leaf_keypair_option {
+                    keypair
+                        .delete_from_key_store(backend)
+                        .map_err(MergeCommitError::KeyStoreError)<span class="question-mark">?</span>;
+                }
+
+                <span class="prelude-val">Ok</span>(<span class="prelude-val">Some</span>(message_secrets))
             }
         }
     }
@@ -1027,6 +1237,8 @@
     message_secrets: MessageSecrets,
     interim_transcript_hash: Vec&lt;u8&gt;,
     staged_diff: StagedTreeSyncDiff,
+    new_keypairs: Vec&lt;EncryptionKeyPair&gt;,
+    new_leaf_keypair_option: <span class="prelude-ty">Option</span>&lt;EncryptionKeyPair&gt;,
 }
 
 <span class="kw">impl </span>MemberStagedCommitState {
@@ -1036,6 +1248,8 @@
         message_secrets: MessageSecrets,
         interim_transcript_hash: Vec&lt;u8&gt;,
         staged_diff: StagedTreeSyncDiff,
+        new_keypairs: Vec&lt;EncryptionKeyPair&gt;,
+        new_leaf_keypair_option: <span class="prelude-ty">Option</span>&lt;EncryptionKeyPair&gt;,
     ) -&gt; <span class="self">Self </span>{
         <span class="self">Self </span>{
             group_context,
@@ -1043,6 +1257,8 @@
             message_secrets,
             interim_transcript_hash,
             staged_diff,
+            new_keypairs,
+            new_leaf_keypair_option,
         }
     }
 }

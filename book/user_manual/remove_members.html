@@ -181,7 +181,9 @@ Even though members were removed in this operation, the Commit message could pot
         }
 
         // Merge staged Commit
-        bob_group.merge_staged_commit(*staged_commit);
+        bob_group
+            .merge_staged_commit(backend, *staged_commit)
+            .expect(&quot;Error merging staged commit.&quot;);
     } else {
         unreachable!(&quot;Expected a StagedCommit.&quot;);
     }

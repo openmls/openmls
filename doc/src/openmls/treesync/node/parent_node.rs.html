@@ -247,29 +247,6 @@
 <span id="247">247</span>
 <span id="248">248</span>
 <span id="249">249</span>
-<span id="250">250</span>
-<span id="251">251</span>
-<span id="252">252</span>
-<span id="253">253</span>
-<span id="254">254</span>
-<span id="255">255</span>
-<span id="256">256</span>
-<span id="257">257</span>
-<span id="258">258</span>
-<span id="259">259</span>
-<span id="260">260</span>
-<span id="261">261</span>
-<span id="262">262</span>
-<span id="263">263</span>
-<span id="264">264</span>
-<span id="265">265</span>
-<span id="266">266</span>
-<span id="267">267</span>
-<span id="268">268</span>
-<span id="269">269</span>
-<span id="270">270</span>
-<span id="271">271</span>
-<span id="272">272</span>
 </pre><pre class="rust"><code><span class="doccomment">//! This module contains the [`ParentNode`] struct, its implementation, as well
 //! as the [`PlainUpdatePathNode`], a helper struct for the creation of
 //! [`UpdatePathNode`] instances.
@@ -280,43 +257,37 @@
 <span class="kw">use </span>rayon::prelude::<span class="kw-2">*</span>;
 <span class="kw">use </span>serde::{Deserialize, Serialize};
 <span class="kw">use </span>thiserror::<span class="kw-2">*</span>;
-<span class="kw">use </span>tls_codec::{TlsSerialize, TlsSize, VLBytes};
+<span class="kw">use </span>tls_codec::{TlsDeserialize, TlsSerialize, TlsSize, VLBytes};
 
 <span class="kw">use crate</span>::{
     binary_tree::array_representation::{LeafNodeIndex, ParentNodeIndex},
-    ciphersuite::{HpkePrivateKey, HpkePublicKey},
+    ciphersuite::HpkePublicKey,
     error::LibraryError,
     messages::PathSecret,
     schedule::CommitSecret,
     treesync::{hashes::ParentHashInput, treekem::UpdatePathNode},
 };
 
+<span class="kw">use </span><span class="kw">super</span>::encryption_keys::{EncryptionKey, EncryptionKeyPair};
+
 <span class="doccomment">/// This struct implements the MLS parent node. It contains its public key,
 /// parent hash and unmerged leaves. Additionally, it may contain the private
 /// key corresponding to the public key.
-</span><span class="attribute">#[derive(Debug, Eq, PartialEq, Clone, Serialize, Deserialize)]
+</span><span class="attribute">#[derive(
+    Debug, Eq, PartialEq, Clone, Serialize, Deserialize, TlsSerialize, TlsDeserialize, TlsSize,
+)]
 </span><span class="kw">pub struct </span>ParentNode {
-    <span class="kw">pub</span>(<span class="kw">super</span>) encryption_key: HpkePublicKey,
+    <span class="kw">pub</span>(<span class="kw">super</span>) encryption_key: EncryptionKey,
     <span class="kw">pub</span>(<span class="kw">super</span>) parent_hash: VLBytes,
     <span class="kw">pub</span>(<span class="kw">super</span>) unmerged_leaves: UnmergedLeaves,
-    private_key_option: <span class="prelude-ty">Option</span>&lt;HpkePrivateKey&gt;,
 }
 
-<span class="kw">impl </span>From&lt;(HpkePublicKey, HpkePrivateKey)&gt; <span class="kw">for </span>ParentNode {
-    <span class="kw">fn </span>from((public_key, private_key): (HpkePublicKey, HpkePrivateKey)) -&gt; <span class="self">Self </span>{
-        <span class="kw">let </span><span class="kw-2">mut </span>parent_node: ParentNode = public_key.into();
-        parent_node.set_private_key(private_key);
-        parent_node
-    }
-}
-
-<span class="kw">impl </span>From&lt;HpkePublicKey&gt; <span class="kw">for </span>ParentNode {
-    <span class="kw">fn </span>from(public_key: HpkePublicKey) -&gt; <span class="self">Self </span>{
+<span class="kw">impl </span>From&lt;EncryptionKey&gt; <span class="kw">for </span>ParentNode {
+    <span class="kw">fn </span>from(public_key: EncryptionKey) -&gt; <span class="self">Self </span>{
         <span class="self">Self </span>{
             encryption_key: public_key,
             parent_hash: <span class="macro">vec!</span>[].into(),
             unmerged_leaves: UnmergedLeaves::new(),
-            private_key_option: <span class="prelude-val">None</span>,
         }
     }
 }
@@ -324,7 +295,7 @@
 <span class="doccomment">/// Helper struct for the encryption of a [`ParentNode`].
 </span><span class="attribute">#[derive(Debug)]
 </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct </span>PlainUpdatePathNode {
-    public_key: HpkePublicKey,
+    public_key: EncryptionKey,
     path_secret: PathSecret,
 }
 
@@ -363,29 +334,16 @@
 </span><span class="kw">pub</span>(<span class="kw">in </span><span class="kw">crate</span>::treesync) <span class="kw">type </span>PathDerivationResult = (
     Vec&lt;(ParentNodeIndex, ParentNode)&gt;,
     Vec&lt;PlainUpdatePathNode&gt;,
+    Vec&lt;EncryptionKeyPair&gt;,
     CommitSecret,
 );
 
 <span class="kw">impl </span>ParentNode {
-    <span class="doccomment">/// Create a new [`ParentNode`].
-    </span><span class="kw">pub</span>(<span class="kw">super</span>) <span class="kw">fn </span>new(
-        public_key: HpkePublicKey,
-        parent_hash: VLBytes,
-        unmerged_leaves: UnmergedLeaves,
-    ) -&gt; <span class="self">Self </span>{
-        <span class="self">Self </span>{
-            encryption_key: public_key,
-            parent_hash,
-            unmerged_leaves,
-            private_key_option: <span class="prelude-val">None</span>,
-        }
-    }
-
     <span class="doccomment">/// Derives a path from the given path secret, where the `node_secret` of
     /// the first node is immediately derived from the given `path_secret`.
     ///
     /// Returns the resulting vector of [`ParentNode`] instances, as well as the
-    /// intermediary `PathSecret`s and the [`CommitSecret`].
+    /// intermediary [`PathSecret`]s, and the [`CommitSecret`].
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>derive_path(
         backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider,
         ciphersuite: Ciphersuite,
@@ -402,45 +360,52 @@
             path_secrets.push(path_secret);
         }
 
+        <span class="kw">type </span>PathDerivationResults = (
+            Vec&lt;((ParentNodeIndex, ParentNode), EncryptionKeyPair)&gt;,
+            Vec&lt;PlainUpdatePathNode&gt;,
+        );
+
         <span class="comment">// Iterate over the path secrets and derive a key pair
-        </span><span class="kw">let </span>(path, update_path_nodes) = path_secrets
+        </span><span class="kw">let </span>(path_with_keypairs, update_path_nodes): PathDerivationResults = path_secrets
             .into_par_iter()
             .zip(path_indices)
             .map(|(path_secret, index)| {
                 <span class="comment">// Derive a key pair from the path secret. This includes the
                 // intermediate derivation of a node secret.
-                </span><span class="kw">let </span>(public_key, private_key) =
-                    path_secret.derive_key_pair(backend, ciphersuite)<span class="question-mark">?</span>;
-                <span class="kw">let </span>parent_node = ParentNode::from((public_key.clone(), private_key));
+                </span><span class="kw">let </span>keypair = path_secret.derive_key_pair(backend, ciphersuite)<span class="question-mark">?</span>;
+                <span class="kw">let </span>parent_node = ParentNode::from(keypair.public_key().clone());
                 <span class="comment">// Store the current path secret and the derived public key for
                 // later encryption.
                 </span><span class="kw">let </span>update_path_node = PlainUpdatePathNode {
-                    public_key,
+                    public_key: keypair.public_key().clone(),
                     path_secret,
                 };
-                <span class="prelude-val">Ok</span>(((index, parent_node), update_path_node))
+                <span class="prelude-val">Ok</span>((((index, parent_node), keypair), update_path_node))
             })
-            .collect::&lt;<span class="prelude-ty">Result</span>&lt;Vec&lt;((ParentNodeIndex, ParentNode), PlainUpdatePathNode)&gt;, LibraryError&gt;&gt;()<span class="question-mark">?
+            .collect::&lt;<span class="prelude-ty">Result</span>&lt;
+                Vec&lt;(
+                    ((ParentNodeIndex, ParentNode), EncryptionKeyPair),
+                    PlainUpdatePathNode,
+                )&gt;,
+                LibraryError,
+            &gt;&gt;()<span class="question-mark">?
             </span>.into_iter()
             .unzip();
 
+        <span class="kw">let </span>(path, keypairs) = path_with_keypairs.into_iter().unzip();
+
         <span class="kw">let </span>commit_secret = next_path_secret.into();
-        <span class="prelude-val">Ok</span>((path, update_path_nodes, commit_secret))
+        <span class="prelude-val">Ok</span>((path, update_path_nodes, keypairs, commit_secret))
     }
 
     <span class="doccomment">/// Return a reference to the `public_key` of this node.
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>public_key(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>HpkePublicKey {
+        <span class="self">self</span>.encryption_key.key()
+    }
+
+    <span class="doccomment">/// Return a reference to the `public_key` of this node.
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>encryption_key(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>EncryptionKey {
         <span class="kw-2">&amp;</span><span class="self">self</span>.encryption_key
-    }
-
-    <span class="doccomment">/// Return a reference to the potential `private_key` of this node.
-    </span><span class="kw">pub</span>(<span class="kw">in </span><span class="kw">crate</span>::treesync) <span class="kw">fn </span>private_key(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>HpkePrivateKey&gt; {
-        <span class="self">self</span>.private_key_option.as_ref()
-    }
-
-    <span class="doccomment">/// Set the `private_key` of this node to the given key.
-    </span><span class="kw">pub</span>(<span class="kw">in </span><span class="kw">crate</span>::treesync) <span class="kw">fn </span>set_private_key(<span class="kw-2">&amp;mut </span><span class="self">self</span>, private_key: HpkePrivateKey) {
-        <span class="self">self</span>.private_key_option = <span class="prelude-val">Some</span>(private_key)
     }
 
     <span class="doccomment">/// Get the list of unmerged leaves.
@@ -466,7 +431,7 @@
         original_child_resolution: <span class="kw-2">&amp;</span>[u8],
     ) -&gt; <span class="prelude-ty">Result</span>&lt;Vec&lt;u8&gt;, LibraryError&gt; {
         <span class="kw">let </span>parent_hash_input = ParentHashInput::new(
-            <span class="kw-2">&amp;</span><span class="self">self</span>.encryption_key,
+            <span class="self">self</span>.encryption_key.key(),
             <span class="self">self</span>.parent_hash(),
             original_child_resolution,
         );
@@ -481,17 +446,6 @@
     <span class="doccomment">/// Get the parent hash value of this node.
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>parent_hash(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>[u8] {
         <span class="self">self</span>.parent_hash.as_slice()
-    }
-
-    <span class="doccomment">/// Create and return a clone of this node without any potentially contained
-    /// private key material.
-    </span><span class="kw">pub</span>(<span class="kw">in </span><span class="kw">crate</span>::treesync) <span class="kw">fn </span>clone_without_private_key(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="self">Self </span>{
-        <span class="self">Self </span>{
-            encryption_key: <span class="self">self</span>.public_key().clone(),
-            parent_hash: <span class="self">self</span>.parent_hash.clone(),
-            unmerged_leaves: <span class="self">self</span>.unmerged_leaves.clone(),
-            private_key_option: <span class="prelude-val">None</span>,
-        }
     }
 }
 

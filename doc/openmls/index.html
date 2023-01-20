@@ -164,7 +164,7 @@ up to parties and have them create a group.</p>
 
 <span class="comment">// Sasha merges the pending commit that adds Maxim.
 </span>sasha_group
-   .merge_pending_commit()
+   .merge_pending_commit(backend)
    .expect(<span class="string">&quot;error merging pending commit&quot;</span>);
 
 <span class="comment">// Sascha serializes the [`MlsMessageOut`] containing the [`Welcome`].

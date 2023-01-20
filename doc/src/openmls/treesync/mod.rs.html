@@ -472,40 +472,6 @@
 <span id="472">472</span>
 <span id="473">473</span>
 <span id="474">474</span>
-<span id="475">475</span>
-<span id="476">476</span>
-<span id="477">477</span>
-<span id="478">478</span>
-<span id="479">479</span>
-<span id="480">480</span>
-<span id="481">481</span>
-<span id="482">482</span>
-<span id="483">483</span>
-<span id="484">484</span>
-<span id="485">485</span>
-<span id="486">486</span>
-<span id="487">487</span>
-<span id="488">488</span>
-<span id="489">489</span>
-<span id="490">490</span>
-<span id="491">491</span>
-<span id="492">492</span>
-<span id="493">493</span>
-<span id="494">494</span>
-<span id="495">495</span>
-<span id="496">496</span>
-<span id="497">497</span>
-<span id="498">498</span>
-<span id="499">499</span>
-<span id="500">500</span>
-<span id="501">501</span>
-<span id="502">502</span>
-<span id="503">503</span>
-<span id="504">504</span>
-<span id="505">505</span>
-<span id="506">506</span>
-<span id="507">507</span>
-<span id="508">508</span>
 </pre><pre class="rust"><code><span class="doccomment">//! This module implements the ratchet tree component of MLS.
 //!
 //! It exposes the [`Node`] enum that can contain either a [`LeafNode`] or a [`ParentNode`].
@@ -527,7 +493,7 @@
 // encryption and decryption of updates to the tree.
 
 </span><span class="kw">use </span>openmls_traits::{
-    types::{Ciphersuite, CryptoError, HpkeKeyPair},
+    types::{Ciphersuite, CryptoError},
     OpenMlsCryptoProvider,
 };
 <span class="kw">use </span>serde::{Deserialize, Serialize};
@@ -549,7 +515,10 @@
 
 <span class="kw">use </span><span class="self">self</span>::{
     diff::{StagedTreeSyncDiff, TreeSyncDiff},
-    node::leaf_node::{Capabilities, LeafNodeSource, Lifetime, OpenMlsLeafNode},
+    node::{
+        encryption_keys::{EncryptionKey, EncryptionKeyPair},
+        leaf_node::{Capabilities, LeafNodeSource, Lifetime, OpenMlsLeafNode},
+    },
     treesync_node::{TreeSyncLeafNode, TreeSyncNode, TreeSyncParentNode},
 };
 
@@ -605,8 +574,8 @@
         life_time: Lifetime,
         capabilities: Capabilities,
         extensions: Extensions,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;(<span class="self">Self</span>, CommitSecret), LibraryError&gt; {
-        <span class="kw">let </span>leaf = OpenMlsLeafNode::new(
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;(<span class="self">Self</span>, CommitSecret, EncryptionKeyPair), LibraryError&gt; {
+        <span class="kw">let </span>(leaf, encryption_key_pair) = OpenMlsLeafNode::new(
             config,
             <span class="comment">// Creation of a group is considered to be from a key package.
             </span>LeafNodeSource::KeyPackage(life_time),
@@ -634,7 +603,7 @@
         <span class="comment">// Populate tree hash caches.
         </span>tree_sync.populate_parent_hashes(backend, config.ciphersuite)<span class="question-mark">?</span>;
 
-        <span class="prelude-val">Ok</span>((tree_sync, commit_secret))
+        <span class="prelude-val">Ok</span>((tree_sync, commit_secret, encryption_key_pair))
     }
 
     <span class="doccomment">/// Return the tree hash of the root node of the tree.
@@ -657,58 +626,14 @@
         <span class="self">self</span>.into()
     }
 
-    <span class="doccomment">/// Create a new [`TreeSync`] instance from a given slice of `Option&lt;Node&gt;`,
-    /// as well as a `LeafNodeIndex` representing the source of the node slice and
-    /// the encryption key pair representing this client&#39;s leaf node in the group.
-    /// If a [`PathSecret`] is passed via `path_secret_option`, it will derive the
-    /// private keys in the nodes of the direct path of the sender that it
-    /// shares with this client.
-    ///
-    /// Returns the new [`TreeSync`] instance or an error if one of the
-    /// invariants is not true (see [`TreeSync`]).
-    ///
-    /// Returns TreeSyncFromNodesError::LibraryError if the input parameters are
-    /// malformed.
-    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>from_nodes_with_secrets(
-        backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider,
-        ciphersuite: Ciphersuite,
-        node_options: <span class="kw-2">&amp;</span>[<span class="prelude-ty">Option</span>&lt;Node&gt;],
-        sender_index: LeafNodeIndex,
-        path_secret_option: <span class="kw">impl </span>Into&lt;<span class="prelude-ty">Option</span>&lt;PathSecret&gt;&gt;,
-        encryption_key_pair: HpkeKeyPair,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;(<span class="self">Self</span>, <span class="prelude-ty">Option</span>&lt;CommitSecret&gt;), TreeSyncFromNodesError&gt; {
-        <span class="kw">let </span><span class="kw-2">mut </span>tree_sync =
-            <span class="self">Self</span>::from_nodes(backend, ciphersuite, node_options, encryption_key_pair)<span class="question-mark">?</span>;
-
-        <span class="comment">// Populate the tree with secrets and derive a commit secret if a path
-        // secret is given.
-        </span><span class="kw">let </span>commit_secret = <span class="kw">if let </span><span class="prelude-val">Some</span>(path_secret) = path_secret_option.into() {
-            <span class="kw">let </span><span class="kw-2">mut </span>diff = tree_sync.empty_diff();
-            <span class="kw">let </span>commit_secret = diff
-                .set_path_secrets(backend, ciphersuite, path_secret, sender_index)
-                .map_err(|e| <span class="kw">match </span>e {
-                    TreeSyncSetPathError::LibraryError(e) =&gt; e.into(),
-                    TreeSyncSetPathError::PublicKeyMismatch =&gt; {
-                        TreeSyncFromNodesError::from(PublicTreeError::PublicKeyMismatch)
-                    }
-                })<span class="question-mark">?</span>;
-            <span class="kw">let </span>staged_diff = diff.into_staged_diff(backend, ciphersuite)<span class="question-mark">?</span>;
-            tree_sync.merge_diff(staged_diff);
-            <span class="prelude-val">Some</span>(commit_secret)
-        } <span class="kw">else </span>{
-            <span class="prelude-val">None
-        </span>};
-        <span class="prelude-val">Ok</span>((tree_sync, commit_secret))
-    }
-
     <span class="doccomment">/// A helper function that generates a [`TreeSync`] instance from the given
     /// slice of nodes. It verifies that the provided encryption key is present
     /// in the tree and that the invariants documented in [`TreeSync`] hold.
-    </span><span class="kw">fn </span>from_nodes(
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>from_nodes(
         backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider,
         ciphersuite: Ciphersuite,
         node_options: <span class="kw-2">&amp;</span>[<span class="prelude-ty">Option</span>&lt;Node&gt;],
-        encryption_key_pair: HpkeKeyPair,
+        encryption_key: <span class="kw-2">&amp;</span>EncryptionKey,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, TreeSyncFromNodesError&gt; {
         <span class="comment">// TODO #800: Unmerged leaves should be checked
         // Before we can instantiate the TreeSync instance, we have to figure
@@ -724,10 +649,8 @@
                     <span class="kw">let </span><span class="kw-2">mut </span>node = node.clone();
                     <span class="kw">if let </span>Node::LeafNode(<span class="kw-2">ref mut </span>leaf_node) = node {
                         <span class="kw">let </span>leaf_index = LeafNodeIndex::new((node_index / <span class="number">2</span>) <span class="kw">as </span>u32);
-                        <span class="kw">if </span>leaf_node.public_key().as_ref() == encryption_key_pair.public {
+                        <span class="kw">if </span>leaf_node.encryption_key() == encryption_key {
                             own_index_option = <span class="prelude-val">Some</span>(leaf_index);
-                            <span class="comment">// XXX: we shouldn&#39;t have to clone here.
-                            </span>leaf_node.set_private_key(encryption_key_pair.private.clone().into());
                         }
                         leaf_node.set_leaf_index(leaf_index);
                     }
@@ -955,7 +878,7 @@
 
         <span class="comment">// Get the first leaf.
         </span><span class="kw">if let </span><span class="prelude-val">Some</span>(leaf) = leaves.next() {
-            nodes.push(leaf.node_without_private_key().map(Node::LeafNode));
+            nodes.push(leaf.node_without_index().map(Node::LeafNode));
         } <span class="kw">else </span>{
             <span class="comment">// The tree was empty.
             </span><span class="kw">return </span><span class="macro">vec!</span>[];
@@ -980,8 +903,8 @@
 
         <span class="comment">// Interleave the leaves and parents.
         </span><span class="kw">for </span>(leaf, parent) <span class="kw">in </span>leaves.zip(parents) {
-            nodes.push(parent.node_without_private_key().map(Node::ParentNode));
-            nodes.push(leaf.node_without_private_key().map(Node::LeafNode));
+            nodes.push(parent.node().clone().map(Node::ParentNode));
+            nodes.push(leaf.node_without_index().clone().map(Node::LeafNode));
         }
 
         nodes
@@ -1012,6 +935,15 @@
     /// tree or empty.
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>is_leaf_in_tree(<span class="kw-2">&amp;</span><span class="self">self</span>, leaf_index: LeafNodeIndex) -&gt; bool {
         is_node_in_tree(leaf_index.into(), <span class="self">self</span>.tree.size())
+    }
+
+    <span class="doccomment">/// Return a vector containing all [`HpkePublicKey`]s for which we should
+    /// have the corresponding private keys.
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>owned_encryption_keys(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; Vec&lt;EncryptionKey&gt; {
+        <span class="self">self</span>.empty_diff()
+            .owned_encryption_keys()
+            .cloned()
+            .collect::&lt;Vec&lt;EncryptionKey&gt;&gt;()
     }
 }
 </code></pre></div>
