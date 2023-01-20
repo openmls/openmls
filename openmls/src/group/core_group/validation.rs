@@ -130,7 +130,6 @@ impl CoreGroup {
                 .add_proposal()
                 .key_package()
                 .leaf_node()
-                .credential()
                 .signature_key()
                 .as_slice()
                 .to_vec();

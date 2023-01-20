@@ -40,7 +40,6 @@ use crate::{
         MlsBinaryTreeDiff, StagedMlsBinaryTreeDiff,
     },
     ciphersuite::Secret,
-    credentials::CredentialBundle,
     error::LibraryError,
     group::GroupId,
     messages::PathSecret,
@@ -294,7 +293,6 @@ impl<'a> TreeSyncDiff<'a> {
         backend: &impl OpenMlsCryptoProvider,
         ciphersuite: Ciphersuite,
         group_id: GroupId,
-        credential_bundle: &CredentialBundle,
     ) -> Result<UpdatePathResult, LibraryError> {
         debug_assert!(self.own_leaf().is_ok(), "Tree diff is missing own leaf");
 
@@ -306,7 +304,7 @@ impl<'a> TreeSyncDiff<'a> {
 
         self.own_leaf_mut()
             .map_err(|_| LibraryError::custom("Didn't find own leaf in diff."))?
-            .update_parent_hash(&parent_hash, group_id, credential_bundle, backend)?;
+            .update_parent_hash(&parent_hash, group_id, backend.signer())?;
 
         Ok((update_path_nodes, keypairs, commit_secret))
     }

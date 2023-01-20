@@ -5,13 +5,12 @@
 //! `Add` (from external sender), `Remove` & `ReInit are not yet implemented`
 
 use crate::{
-    credentials::CredentialBundle,
     framing::{mls_auth_content::AuthenticatedContent, MlsMessageOut, PublicMessage},
     group::{mls_group::errors::ProposeAddMemberError, GroupEpoch, GroupId},
     key_packages::KeyPackage,
     messages::{AddProposal, Proposal},
 };
-use openmls_traits::OpenMlsCryptoProvider;
+use openmls_traits::signatures::ByteSigner;
 
 /// External Add Proposal where sender is [NewMemberProposal](crate::prelude::Sender::NewMemberProposal). A client
 /// outside the group can request joining the group. This proposal should then be committed by a
@@ -27,21 +26,19 @@ impl JoinProposal {
     /// * `key_package` - of the joiner
     /// * `group_id` - unique group identifier of the group to join
     /// * `epoch` - group's epoch
-    /// * `credential` - of the sender to sign the message
+    /// * `signer` - of the sender to sign the message
     #[allow(clippy::new_ret_no_self)]
     pub fn new(
         key_package: KeyPackage,
         group_id: GroupId,
         epoch: GroupEpoch,
-        credential: &CredentialBundle,
-        backend: &impl OpenMlsCryptoProvider,
+        signer: &impl ByteSigner,
     ) -> Result<MlsMessageOut, ProposeAddMemberError> {
         AuthenticatedContent::new_external_proposal(
             Proposal::Add(AddProposal { key_package }),
-            credential,
             group_id,
             epoch,
-            backend,
+            signer,
         )
         .map(PublicMessage::from)
         .map(MlsMessageOut::from)

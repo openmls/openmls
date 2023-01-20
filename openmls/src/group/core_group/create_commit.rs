@@ -33,7 +33,7 @@ struct PathProcessingResult {
 impl CoreGroup {
     pub(crate) fn create_commit<KeyStore: OpenMlsKeyStore>(
         &self,
-        params: CreateCommitParams,
+        mut params: CreateCommitParams,
         backend: &impl OpenMlsCryptoProvider<KeyStoreProvider = KeyStore>,
     ) -> Result<CreateCommitResult, CreateCommitError<KeyStore::Error>> {
         let ciphersuite = self.ciphersuite();
@@ -149,7 +149,12 @@ impl CoreGroup {
                     version: self.version(),
                 },
                 backend,
-                params.credential_bundle(),
+                params
+                    .signature_key()
+                    .ok_or(CreateCommitError::MissingSignatureKey)?,
+                params
+                    .credential()
+                    .ok_or(CreateCommitError::MissingCredential)?,
             )?;
 
             let mut leaf_node: OpenMlsLeafNode = key_package.into();
@@ -184,7 +189,6 @@ impl CoreGroup {
                         self.group_id(),
                         self.ciphersuite,
                         ProtocolVersion::default(), // XXX: openmls/openmls#1065
-                        params.credential_bundle(),
                         backend,
                     )?;
                     vec![encryption_keypair]
@@ -196,7 +200,6 @@ impl CoreGroup {
                     backend,
                     ciphersuite,
                     self.group_id().clone(),
-                    params.credential_bundle(),
                 )?;
 
                 new_keypairs.append(&mut new_parent_keypairs);
@@ -248,9 +251,8 @@ impl CoreGroup {
             *params.framing_parameters(),
             sender,
             commit,
-            params.credential_bundle(),
             self.context(),
-            backend,
+            backend.signer(),
         )?;
 
         // Calculate the confirmed transcript hash
@@ -354,8 +356,7 @@ impl CoreGroup {
                 )
             };
             // Sign to-be-signed group info.
-            let group_info =
-                group_info_tbs.sign(backend, params.credential_bundle().signature_private_key())?;
+            let group_info = group_info_tbs.sign(backend.signer())?;
 
             // Encrypt GroupInfo object
             let (welcome_key, welcome_nonce) = welcome_secret

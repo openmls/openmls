@@ -123,6 +123,7 @@ impl TryFrom<u16> for SignatureScheme {
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
 pub enum Error {
     CryptoError(CryptoError),
+    InvalidSignature,
 }
 
 /// Crypto errors.

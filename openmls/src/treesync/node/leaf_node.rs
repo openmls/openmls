@@ -1,5 +1,7 @@
 //! This module contains the [`LeafNode`] struct and its implementation.
-use openmls_traits::{key_store::OpenMlsKeyStore, types::Ciphersuite, OpenMlsCryptoProvider};
+use openmls_traits::{
+    key_store::OpenMlsKeyStore, signatures::ByteSigner, types::Ciphersuite, OpenMlsCryptoProvider,
+};
 use serde::{Deserialize, Serialize};
 use tls_codec::{
     Deserialize as TlsDeserializeTrait, Serialize as TlsSerializeTrait, TlsDeserialize,
@@ -14,13 +16,14 @@ use crate::{
         signable::{Signable, SignedStruct, Verifiable},
         HpkePublicKey, Signature, SignaturePublicKey,
     },
-    credentials::{Credential, CredentialBundle, CredentialType},
+    credentials::{Credential, CredentialType},
     error::LibraryError,
     extensions::Extensions,
     extensions::{ExtensionType, RequiredCapabilitiesExtension},
     group::{config::CryptoConfig, GroupId},
     key_packages::KeyPackage,
     messages::proposals::ProposalType,
+    prelude::PublicTreeError,
     treesync::errors::TreeSyncError,
     versions::ProtocolVersion,
 };
@@ -433,7 +436,8 @@ impl LeafNode {
     /// The caller is responsible for storing the private key.
     pub(crate) fn new(
         config: CryptoConfig,
-        credential_bundle: &CredentialBundle,
+        credential: Credential,
+        signature_key: SignaturePublicKey,
         leaf_node_source: LeafNodeSource,
         capabilities: Capabilities,
         extensions: Extensions,
@@ -444,11 +448,12 @@ impl LeafNode {
 
         let leaf_node = Self::new_with_key(
             encryption_key_pair.public_key().clone(),
-            credential_bundle,
+            credential,
+            signature_key,
             leaf_node_source,
             capabilities,
             extensions,
-            backend,
+            backend.signer(),
         )?;
 
         Ok((leaf_node, encryption_key_pair))
@@ -458,23 +463,24 @@ impl LeafNode {
     /// The key pair must be stored in the key store by the caller.
     fn new_with_key(
         encryption_key: EncryptionKey,
-        credential_bundle: &CredentialBundle,
+        credential: Credential,
+        signature_key: SignaturePublicKey,
         leaf_node_source: LeafNodeSource,
         capabilities: Capabilities,
         extensions: Extensions,
-        backend: &impl OpenMlsCryptoProvider,
+        signer: &impl ByteSigner,
     ) -> Result<Self, LibraryError> {
         let leaf_node_tbs = LeafNodeTbs::new(
             encryption_key,
-            credential_bundle.credential().signature_key().clone(),
-            credential_bundle.credential().clone(),
+            signature_key,
+            credential,
             capabilities,
             leaf_node_source,
             extensions,
         )?;
 
         leaf_node_tbs
-            .sign(backend, credential_bundle.signature_private_key())
+            .sign(signer)
             .map_err(|_| LibraryError::custom("Signing failed"))
     }
 
@@ -487,7 +493,8 @@ impl LeafNode {
     /// a leaf node should be generated as part of a new [`KeyPackage`].
     pub fn generate<KeyStore: OpenMlsKeyStore>(
         config: CryptoConfig,
-        credential_bundle: &CredentialBundle,
+        credential: Credential,
+        signature_key: SignaturePublicKey,
         capabilities: Capabilities,
         extensions: Extensions,
         backend: &impl OpenMlsCryptoProvider<KeyStoreProvider = KeyStore>,
@@ -497,7 +504,8 @@ impl LeafNode {
 
         let (leaf_node, encryption_key_pair) = Self::new(
             config,
-            credential_bundle,
+            credential,
+            signature_key,
             LeafNodeSource::Update,
             capabilities,
             extensions,
@@ -609,7 +617,8 @@ impl LeafNode {
     #[cfg(test)]
     pub(crate) fn create_new_with_key(
         encryption_key: EncryptionKey,
-        credential_bundle: &CredentialBundle,
+        credential: Credential,
+        signature_key: SignaturePublicKey,
         leaf_node_source: LeafNodeSource,
         capabilities: Capabilities,
         extensions: Extensions,
@@ -617,7 +626,8 @@ impl LeafNode {
     ) -> Result<Self, LibraryError> {
         Self::new_with_key(
             encryption_key,
-            credential_bundle,
+            credential,
+            signature_key,
             leaf_node_source,
             capabilities,
             extensions,
@@ -768,13 +778,15 @@ impl OpenMlsLeafNode {
         config: CryptoConfig,
         leaf_node_source: LeafNodeSource,
         backend: &impl OpenMlsCryptoProvider,
-        credential_bundle: &CredentialBundle,
+        credential: Credential,
+        signature_key: SignaturePublicKey,
         capabilities: Capabilities,
         extensions: Extensions,
     ) -> Result<(Self, EncryptionKeyPair), LibraryError> {
         let (leaf_node, encryption_key_pair) = LeafNode::new(
             config,
-            credential_bundle,
+            credential,
+            signature_key,
             leaf_node_source,
             capabilities,
             extensions,
@@ -796,26 +808,41 @@ impl OpenMlsLeafNode {
     }
 
     /// Update the `encryption_key` in this leaf node and re-signs it.
+    ///
+    /// Optionally, a new leaf node can be provided to update more values such as
+    /// the credential.
     pub(crate) fn update_and_re_sign(
         &mut self,
-        new_encryption_key: &EncryptionKey,
-        credential_bundle: &CredentialBundle,
+        new_encryption_key: impl Into<Option<EncryptionKey>>,
+        leaf_node: impl Into<Option<LeafNode>>,
         group_id: GroupId,
-        backend: &impl OpenMlsCryptoProvider,
-    ) -> Result<(), LibraryError> {
+        signer: &impl ByteSigner,
+    ) -> Result<(), PublicTreeError> {
         let tree_info = self.update_tree_info(group_id)?;
         // TODO: If we could take out the leaf_node without cloning, this would all be nicer.
         let mut leaf_node_tbs = LeafNodeTbs::from(self.leaf_node.clone(), tree_info);
-        leaf_node_tbs.payload.encryption_key = new_encryption_key.clone();
 
         // Update credential
-        // TODO: #133 ValSem109 check that the identity is the same.
-        leaf_node_tbs.payload.credential = credential_bundle.credential().clone();
+        // ValSem109 check that the identity is the same.
+        if let Some(leaf_node) = leaf_node.into() {
+            if leaf_node.credential().identity() != leaf_node_tbs.payload.credential.identity() {
+                return Err(PublicTreeError::IdentityMismatch);
+            }
+            leaf_node_tbs.payload.credential = leaf_node.credential().clone();
+            leaf_node_tbs.payload.encryption_key = leaf_node.encryption_key().clone();
+        } else {
+            if let Some(new_encryption_key) = new_encryption_key.into() {
+                // If there's no new leaf, the encryption key must be provided
+                // explicitly.
+                leaf_node_tbs.payload.encryption_key = new_encryption_key;
+            } else {
+                return Err(LibraryError::custom(
+                    "update_and_re_sign needs to be called with a new leaf node or a new encryption key. Neither was the case.").into());
+            }
+        }
 
         // Set the new signed leaf node with the new encryption key
-        self.leaf_node = leaf_node_tbs
-            .sign(backend, credential_bundle.signature_private_key())
-            .map_err(|_| LibraryError::custom("Signing failed"))?;
+        self.leaf_node = leaf_node_tbs.sign(signer)?;
         Ok(())
     }
 
@@ -827,9 +854,8 @@ impl OpenMlsLeafNode {
         group_id: &GroupId,
         ciphersuite: Ciphersuite,
         protocol_version: ProtocolVersion,
-        credential_bundle: &CredentialBundle,
         backend: &impl OpenMlsCryptoProvider,
-    ) -> Result<EncryptionKeyPair, LibraryError> {
+    ) -> Result<EncryptionKeyPair, PublicTreeError> {
         if !self
             .leaf_node
             .payload
@@ -851,7 +877,8 @@ impl OpenMlsLeafNode {
             );
             return Err(LibraryError::custom(
                 "Ciphersuite or protocol version is not supported by this leaf node.",
-            ));
+            )
+            .into());
         }
         let key_pair = EncryptionKeyPair::random(
             backend,
@@ -862,10 +889,10 @@ impl OpenMlsLeafNode {
         )?;
 
         self.update_and_re_sign(
-            key_pair.public_key(),
-            credential_bundle,
+            key_pair.public_key().clone(),
+            None,
             group_id.clone(),
-            backend,
+            backend.signer(),
         )?;
 
         Ok(key_pair)
@@ -920,8 +947,7 @@ impl OpenMlsLeafNode {
         &mut self,
         parent_hash: &[u8],
         group_id: GroupId,
-        credential_bundle: &CredentialBundle,
-        backend: &impl OpenMlsCryptoProvider,
+        signer: &impl ByteSigner,
     ) -> Result<(), LibraryError> {
         self.leaf_node.payload.leaf_node_source = LeafNodeSource::Commit(parent_hash.into());
         let tbs = LeafNodeTbs::from(
@@ -934,7 +960,7 @@ impl OpenMlsLeafNode {
             }),
         );
         self.leaf_node = tbs
-            .sign(backend, credential_bundle.signature_private_key())
+            .sign(signer)
             .map_err(|_| LibraryError::custom("Signing failed"))?;
 
         Ok(())
@@ -958,17 +984,10 @@ impl OpenMlsLeafNode {
 
     /// Replace the public key in the leaf node and re-sign.
     #[cfg(any(feature = "test-utils", test))]
-    pub fn set_public_key(
-        &mut self,
-        public_key: HpkePublicKey,
-        backend: &impl OpenMlsCryptoProvider,
-        credential_bundle: &CredentialBundle,
-    ) {
+    pub fn set_public_key(&mut self, public_key: HpkePublicKey, signer: &impl ByteSigner) {
         let mut tbs = LeafNodeTbs::from(self.leaf_node.clone(), TreeInfoTbs::KeyPackage);
         tbs.payload.encryption_key = public_key.into();
-        self.leaf_node = tbs
-            .sign(backend, credential_bundle.signature_private_key())
-            .unwrap();
+        self.leaf_node = tbs.sign(signer).unwrap();
     }
 
     /// Set the leaf index for this leaf.

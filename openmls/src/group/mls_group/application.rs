@@ -1,5 +1,3 @@
-use tls_codec::Serialize;
-
 use super::{errors::CreateMessageError, *};
 
 impl MlsGroup {
@@ -27,26 +25,11 @@ impl MlsGroup {
             ));
         }
 
-        let credential = self
-            .credential()
-            // We checked we are in the right group state before
-            .map_err(|_| LibraryError::custom("Wrong group state"))?;
-        let credential_bundle: CredentialBundle = backend
-            .key_store()
-            .read(
-                &credential
-                    .signature_key()
-                    .tls_serialize_detached()
-                    .map_err(LibraryError::missing_bound_check)?,
-            )
-            .ok_or(CreateMessageError::NoMatchingCredentialBundle)?;
-
         let ciphertext = self
             .group
             .create_application_message(
                 &self.aad,
                 message,
-                &credential_bundle,
                 self.configuration().padding_size(),
                 backend,
             )

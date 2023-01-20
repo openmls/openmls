@@ -28,11 +28,16 @@
 //! Similarly, only the [`Verifiable`] struct should implement the
 //! [`tls_codec::Deserialize`] trait.
 
-use openmls_traits::{crypto::OpenMlsCrypto, types::SignatureScheme, OpenMlsCryptoProvider};
+use openmls_traits::{
+    crypto::OpenMlsCrypto,
+    signatures::{ByteSigner, ByteVerifier},
+    types::SignatureScheme,
+    OpenMlsCryptoProvider,
+};
 use thiserror::Error;
 use tls_codec::Serialize;
 
-use crate::ciphersuite::{SignContent, Signature, SignaturePrivateKey, SignaturePublicKey};
+use crate::ciphersuite::{SignContent, Signature, SignaturePublicKey};
 
 /// Signature generation and verification errors.
 /// The only information relayed with this error is whether the signature
@@ -94,21 +99,25 @@ pub trait Signable: Sized {
     /// Sign the payload with the given `private_key`.
     ///
     /// Returns a `Signature`.
-    fn sign(
-        self,
-        backend: &impl OpenMlsCryptoProvider,
-        private_key: &SignaturePrivateKey,
-    ) -> Result<Self::SignedOutput, SignatureError>
+    fn sign(self, signer: &impl ByteSigner) -> Result<Self::SignedOutput, SignatureError>
     where
         Self::SignedOutput: SignedStruct<Self>,
     {
         let payload = self
             .unsigned_payload()
             .map_err(|_| SignatureError::SigningError)?;
-        let signature = private_key
-            .sign_with_label(backend, &SignContent::new(self.label(), payload.into()))
+        let payload = match SignContent::new(self.label(), payload.into()).tls_serialize_detached()
+        {
+            Ok(p) => p,
+            Err(e) => {
+                log::error!("Serializing SignContent failed, {:?}", e);
+                return Err(SignatureError::SigningError);
+            }
+        };
+        let signature = signer
+            .sign(&payload)
             .map_err(|_| SignatureError::SigningError)?;
-        Ok(Self::SignedOutput::from_payload(self, signature))
+        Ok(Self::SignedOutput::from_payload(self, signature.into()))
     }
 }
 
@@ -137,16 +146,11 @@ pub trait Verifiable: Sized {
     ///
     /// Returns `Ok(Self::VerifiedOutput)` if the signature is valid and
     /// `CredentialError::InvalidSignature` otherwise.
-    fn verify<T>(
-        self,
-        backend: &impl OpenMlsCryptoProvider,
-        public_key: &SignaturePublicKey,
-        signature_scheme: SignatureScheme,
-    ) -> Result<T, SignatureError>
+    fn verify<T>(self, verifier: &impl ByteVerifier) -> Result<T, SignatureError>
     where
         T: VerifiedStruct<Self>,
     {
-        verify(&self, backend, signature_scheme, public_key)?;
+        verify(&self, verifier)?;
         Ok(T::from_verifiable(self, T::SealingType::default()))
     }
 
@@ -156,21 +160,14 @@ pub trait Verifiable: Sized {
     ///
     /// Returns `Ok(())` if the signature is valid and
     /// `CredentialError::InvalidSignature` otherwise.
-    fn verify_no_out(
-        &self,
-        backend: &impl OpenMlsCryptoProvider,
-        public_key: &SignaturePublicKey,
-        signature_scheme: SignatureScheme,
-    ) -> Result<(), SignatureError> {
-        verify(self, backend, signature_scheme, public_key)
+    fn verify_no_out(&self, verifier: &impl ByteVerifier) -> Result<(), SignatureError> {
+        verify(self, verifier)
     }
 }
 
 fn verify(
     verifiable: &impl Verifiable,
-    backend: &impl OpenMlsCryptoProvider,
-    signature_scheme: SignatureScheme,
-    public_key: &SignaturePublicKey,
+    verifier: &impl ByteVerifier,
 ) -> Result<(), SignatureError> {
     let payload = verifiable
         .unsigned_payload()
@@ -183,14 +180,7 @@ fn verify(
             return Err(SignatureError::VerificationError);
         }
     };
-    backend
-        .crypto()
-        .verify_signature(
-            signature_scheme,
-            &payload,
-            public_key.as_slice(),
-            verifiable.signature().value(),
-        )
-        .map_err(|_| SignatureError::VerificationError)?;
-    Ok(())
+    verifier
+        .verify(&payload, verifiable.signature().value())
+        .map_err(|_| SignatureError::VerificationError)
 }

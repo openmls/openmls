@@ -6,7 +6,6 @@ use crate::{
     },
     messages::VerifiableGroupInfo,
 };
-use tls_codec::Serialize;
 
 use super::*;
 
@@ -23,13 +22,15 @@ impl MlsGroup {
     pub fn new<KeyStore: OpenMlsKeyStore>(
         backend: &impl OpenMlsCryptoProvider<KeyStoreProvider = KeyStore>,
         mls_group_config: &MlsGroupConfig,
-        signature_key: &SignaturePublicKey,
+        signature_key: SignaturePublicKey,
+        credential: Credential,
     ) -> Result<Self, NewGroupError<KeyStore::Error>> {
         Self::new_with_group_id(
             backend,
             mls_group_config,
             GroupId::random(backend),
             signature_key,
+            credential,
         )
     }
 
@@ -41,40 +42,38 @@ impl MlsGroup {
         backend: &impl OpenMlsCryptoProvider<KeyStoreProvider = KeyStore>,
         mls_group_config: &MlsGroupConfig,
         group_id: GroupId,
-        signature_key: &SignaturePublicKey,
+        signature_key: SignaturePublicKey,
+        credential: Credential,
     ) -> Result<Self, NewGroupError<KeyStore::Error>> {
         // TODO #751
-        let credential_bundle: CredentialBundle =
-            backend
-                .key_store()
-                .read(&signature_key.tls_serialize_detached().map_err(|_| {
-                    LibraryError::custom("Unable to serialize signature public key")
-                })?)
-                .ok_or(NewGroupError::NoMatchingCredentialBundle)?;
         let group_config = CoreGroupConfig {
             add_ratchet_tree_extension: mls_group_config.use_ratchet_tree_extension,
         };
-        let group = CoreGroup::builder(group_id, mls_group_config.crypto_config)
-            .with_config(group_config)
-            .with_required_capabilities(mls_group_config.required_capabilities.clone())
-            .with_max_past_epoch_secrets(mls_group_config.max_past_epochs)
-            .with_lifetime(*mls_group_config.lifetime())
-            .build(&credential_bundle, backend)
-            .map_err(|e| match e {
-                CoreGroupBuildError::LibraryError(e) => e.into(),
-                CoreGroupBuildError::UnsupportedProposalType => {
-                    NewGroupError::UnsupportedProposalType
-                }
-                CoreGroupBuildError::UnsupportedExtensionType => {
-                    NewGroupError::UnsupportedExtensionType
-                }
-                // We don't support PSKs yet
-                CoreGroupBuildError::PskError(e) => {
-                    log::debug!("Unexpected PSK error: {:?}", e);
-                    LibraryError::custom("Unexpected PSK error").into()
-                }
-                CoreGroupBuildError::KeyStoreError(e) => NewGroupError::KeyStoreError(e),
-            })?;
+
+        let group = CoreGroup::builder(
+            group_id,
+            mls_group_config.crypto_config,
+            credential,
+            signature_key,
+        )
+        .with_config(group_config)
+        .with_required_capabilities(mls_group_config.required_capabilities.clone())
+        .with_max_past_epoch_secrets(mls_group_config.max_past_epochs)
+        .with_lifetime(*mls_group_config.lifetime())
+        .build(backend)
+        .map_err(|e| match e {
+            CoreGroupBuildError::LibraryError(e) => e.into(),
+            CoreGroupBuildError::UnsupportedProposalType => NewGroupError::UnsupportedProposalType,
+            CoreGroupBuildError::UnsupportedExtensionType => {
+                NewGroupError::UnsupportedExtensionType
+            }
+            // We don't support PSKs yet
+            CoreGroupBuildError::PskError(e) => {
+                log::debug!("Unexpected PSK error: {:?}", e);
+                LibraryError::custom("Unexpected PSK error").into()
+            }
+            CoreGroupBuildError::KeyStoreError(e) => NewGroupError::KeyStoreError(e),
+        })?;
 
         let resumption_psk_store =
             ResumptionPskStore::new(mls_group_config.number_of_resumption_psks);
@@ -168,7 +167,8 @@ impl MlsGroup {
         verifiable_group_info: VerifiableGroupInfo,
         mls_group_config: &MlsGroupConfig,
         aad: &[u8],
-        credential_bundle: &CredentialBundle,
+        credential: Credential,
+        signature_key: SignaturePublicKey,
     ) -> Result<(Self, MlsMessageOut), ExternalCommitError> {
         let resumption_psk_store =
             ResumptionPskStore::new(mls_group_config.number_of_resumption_psks);
@@ -179,8 +179,9 @@ impl MlsGroup {
         let proposal_store = ProposalStore::new();
         let params = CreateCommitParams::builder()
             .framing_parameters(framing_parameters)
-            .credential_bundle(credential_bundle)
             .proposal_store(&proposal_store)
+            .credential(credential)
+            .signature_key(signature_key)
             .build();
         let (mut group, create_commit_result) = CoreGroup::join_by_external_commit(
             backend,

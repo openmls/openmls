@@ -8,7 +8,7 @@ use super::{
 };
 use crate::{
     binary_tree::array_representation::LeafNodeIndex,
-    credentials::{Credential, CredentialBundle},
+    credentials::Credential,
     error::LibraryError,
     framing::{mls_auth_content::AuthenticatedContent, *},
     group::*,

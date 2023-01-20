@@ -28,5 +28,5 @@ fn test_credential_bundle_from_parts(
     let keypair = SignatureKeypair::new(signature_scheme, backend)
         .expect("Could not create signature keypair.");
 
-    let _credential_bundle = CredentialBundle::from_parts(vec![1, 2, 3], keypair);
+    let _credential_bundle = CredentialBundle::new(vec![1, 2, 3], keypair);
 }

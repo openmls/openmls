@@ -6,6 +6,7 @@
 pub mod crypto;
 pub mod key_store;
 pub mod random;
+pub mod signatures;
 pub mod types;
 
 /// The OpenMLS Crypto Provider Trait
@@ -16,6 +17,8 @@ pub trait OpenMlsCryptoProvider: Send + Sync {
     type CryptoProvider: crypto::OpenMlsCrypto;
     type RandProvider: random::OpenMlsRand;
     type KeyStoreProvider: key_store::OpenMlsKeyStore;
+    type Signer: signatures::ByteSigner;
+    type Verifier: signatures::ByteVerifier;
 
     /// Get the crypto provider.
     fn crypto(&self) -> &Self::CryptoProvider;
@@ -25,4 +28,10 @@ pub trait OpenMlsCryptoProvider: Send + Sync {
 
     /// Get the key store provider.
     fn key_store(&self) -> &Self::KeyStoreProvider;
+
+    /// Get the signer.
+    fn signer(&self) -> &Self::Signer;
+
+    /// Get the verifier.
+    fn verifier(&self) -> &Self::Verifier;
 }

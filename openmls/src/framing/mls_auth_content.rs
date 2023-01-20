@@ -18,10 +18,10 @@ use super::{PrivateMessage, PublicMessage};
 
 use super::{
     mls_content::{ContentType, FramedContentBody, FramedContentTbs},
-    AddProposal, Commit, ConfirmationTag, Credential, CredentialBundle, FramingParameters,
-    GroupContext, GroupEpoch, GroupId, Proposal, Sender, Signature, WireFormat,
+    AddProposal, Commit, ConfirmationTag, Credential, FramingParameters, GroupContext, GroupEpoch,
+    GroupId, Proposal, Sender, Signature, WireFormat,
 };
-use openmls_traits::OpenMlsCryptoProvider;
+use openmls_traits::signatures::ByteSigner;
 use std::io::{Read, Write};
 
 use serde::{Deserialize, Serialize};
@@ -113,9 +113,8 @@ impl AuthenticatedContent {
         framing_parameters: FramingParameters,
         sender: Sender,
         body: FramedContentBody,
-        credential_bundle: &CredentialBundle,
         context: &GroupContext,
-        backend: &impl OpenMlsCryptoProvider,
+        signer: &impl ByteSigner,
     ) -> Result<Self, LibraryError> {
         let mut content_tbs = FramedContentTbs::new(
             framing_parameters.wire_format(),
@@ -134,7 +133,7 @@ impl AuthenticatedContent {
         }
 
         content_tbs
-            .sign(backend, credential_bundle.signature_private_key())
+            .sign(signer)
             .map_err(|_| LibraryError::custom("Signing failed"))
     }
 
@@ -144,9 +143,8 @@ impl AuthenticatedContent {
         sender_leaf_index: LeafNodeIndex,
         authenticated_data: &[u8],
         application_message: &[u8],
-        credential_bundle: &CredentialBundle,
         context: &GroupContext,
-        backend: &impl OpenMlsCryptoProvider,
+        signer: &impl ByteSigner,
     ) -> Result<Self, LibraryError> {
         let framing_parameters =
             FramingParameters::new(authenticated_data, WireFormat::PrivateMessage);
@@ -154,9 +152,8 @@ impl AuthenticatedContent {
             framing_parameters,
             Sender::Member(sender_leaf_index),
             FramedContentBody::Application(application_message.into()),
-            credential_bundle,
             context,
-            backend,
+            signer,
         )
     }
 
@@ -166,17 +163,15 @@ impl AuthenticatedContent {
         framing_parameters: FramingParameters,
         sender_leaf_index: LeafNodeIndex,
         proposal: Proposal,
-        credential_bundle: &CredentialBundle,
         context: &GroupContext,
-        backend: &impl OpenMlsCryptoProvider,
+        signer: &impl ByteSigner,
     ) -> Result<Self, LibraryError> {
         Self::new_and_sign(
             framing_parameters,
             Sender::Member(sender_leaf_index),
             FramedContentBody::Proposal(proposal),
-            credential_bundle,
             context,
-            backend,
+            signer,
         )
     }
 
@@ -185,10 +180,9 @@ impl AuthenticatedContent {
     // TODO #151/#106: We don't support preconfigured senders yet
     pub(crate) fn new_external_proposal(
         proposal: Proposal,
-        credential_bundle: &CredentialBundle,
         group_id: GroupId,
         epoch: GroupEpoch,
-        backend: &impl OpenMlsCryptoProvider,
+        signer: &impl ByteSigner,
     ) -> Result<Self, LibraryError> {
         let body = FramedContentBody::Proposal(proposal);
 
@@ -202,7 +196,7 @@ impl AuthenticatedContent {
         );
 
         content_tbs
-            .sign(backend, credential_bundle.signature_private_key())
+            .sign(signer)
             .map_err(|_| LibraryError::custom("Signing failed"))
     }
 
@@ -215,17 +209,15 @@ impl AuthenticatedContent {
         framing_parameters: FramingParameters,
         sender: Sender,
         commit: Commit,
-        credential_bundle: &CredentialBundle,
         context: &GroupContext,
-        backend: &impl OpenMlsCryptoProvider,
+        signer: &impl ByteSigner,
     ) -> Result<Self, LibraryError> {
         Self::new_and_sign(
             framing_parameters,
             sender,
             FramedContentBody::Commit(commit),
-            credential_bundle,
             context,
-            backend,
+            signer,
         )
     }
 

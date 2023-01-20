@@ -41,7 +41,7 @@
 
 use crate::{group::errors::ValidationError, tree::index::SecretTreeLeafIndex, treesync::TreeSync};
 use core_group::{proposals::QueuedProposal, staged_commit::StagedCommit};
-use openmls_traits::{types::Ciphersuite, OpenMlsCryptoProvider};
+use openmls_traits::{signatures::ByteVerifier, types::Ciphersuite, OpenMlsCryptoProvider};
 
 use crate::{
     ciphersuite::signable::Verifiable, error::LibraryError,
@@ -288,27 +288,15 @@ impl UnverifiedGroupMessage {
     ///  - ValSem010
     pub(crate) fn into_verified(
         self,
-        backend: &impl OpenMlsCryptoProvider,
-        ciphersuite: Ciphersuite,
+        verifier: &impl ByteVerifier,
     ) -> Result<VerifiedMemberMessage, ValidationError> {
         // ValSem010
         self.verifiable_content
-            .verify(
-                backend,
-                self.credential.signature_key(),
-                ciphersuite.signature_algorithm(),
-            )
+            .verify(verifier)
             .map(|authenticated_content| VerifiedMemberMessage {
                 authenticated_content,
             })
             .map_err(|_| ValidationError::InvalidSignature)
-        // XXX: We have tests checking for errors here. But really we should
-        //      rewrite them.
-        // debug_assert!(
-        //     verified_member_message.is_ok(),
-        //     "Verifying signature on UnverifiedGroupMessage failed with {:?}",
-        //     verified_member_message
-        // );
     }
 
     /// Returns the credential.
@@ -330,17 +318,12 @@ impl UnverifiedNewMemberMessage {
     /// - ValSem010
     pub(crate) fn into_verified(
         self,
-        backend: &impl OpenMlsCryptoProvider,
-        ciphersuite: Ciphersuite,
+        verifier: &impl ByteVerifier,
     ) -> Result<VerifiedExternalMessage, ValidationError> {
         // ValSem010
         let verified_external_message = self
             .verifiable_content
-            .verify(
-                backend,
-                self.credential.signature_key(),
-                ciphersuite.signature_algorithm(),
-            )
+            .verify(verifier)
             .map(|authenticated_content| VerifiedExternalMessage {
                 authenticated_content,
             })

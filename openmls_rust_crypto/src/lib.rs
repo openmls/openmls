@@ -7,7 +7,9 @@ pub use openmls_memory_keystore::{MemoryKeyStore, MemoryKeyStoreError};
 use openmls_traits::OpenMlsCryptoProvider;
 
 mod provider;
+mod signature;
 pub use provider::*;
+pub use signature::*;
 
 #[derive(Default, Debug)]
 pub struct OpenMlsRustCrypto {
@@ -19,6 +21,8 @@ impl OpenMlsCryptoProvider for OpenMlsRustCrypto {
     type CryptoProvider = RustCrypto;
     type RandProvider = RustCrypto;
     type KeyStoreProvider = MemoryKeyStore;
+    type Signer = RustCryptoSigner;
+    type Verifier = RustCryptoVerifier;
 
     fn crypto(&self) -> &Self::CryptoProvider {
         &self.crypto
@@ -30,5 +34,13 @@ impl OpenMlsCryptoProvider for OpenMlsRustCrypto {
 
     fn key_store(&self) -> &Self::KeyStoreProvider {
         &self.key_store
+    }
+
+    fn signer(&self) -> &Self::Signer {
+        todo!()
+    }
+
+    fn verifier(&self) -> &Self::Verifier {
+        todo!()
     }
 }

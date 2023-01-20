@@ -14,6 +14,14 @@ pub struct Signature {
     value: VLBytes,
 }
 
+impl From<Vec<u8>> for Signature {
+    fn from(value: Vec<u8>) -> Self {
+        Self {
+            value: value.into(),
+        }
+    }
+}
+
 /// Labeled signature content.
 ///
 /// ```text
@@ -156,6 +164,16 @@ impl SignatureKeypair {
     /// Get the private and public key objects
     pub fn into_tuple(self) -> (SignaturePrivateKey, OpenMlsSignaturePublicKey) {
         (self.private_key, self.public_key)
+    }
+
+    /// Returns a reference to the signature private key.
+    pub fn private_key(&self) -> &SignaturePrivateKey {
+        &self.private_key
+    }
+
+    /// Returns a reference to the signature public key.
+    pub fn public_key(&self) -> &OpenMlsSignaturePublicKey {
+        &self.public_key
     }
 }
 

@@ -8,6 +8,7 @@
 use crate::{
     error::LibraryError,
     group::errors::{CreateCommitError, MergeCommitError, StageCommitError, ValidationError},
+    treesync::errors::PublicTreeError,
 };
 use thiserror::Error;
 
@@ -242,6 +243,9 @@ pub enum ProposeSelfUpdateError<KeyStoreError> {
     /// Error accessing the key store.
     #[error("Error accessing the key store.")]
     KeyStoreError(KeyStoreError),
+    /// See [`PublicTreeError`] for more details.
+    #[error(transparent)]
+    PublicTreeError(#[from] PublicTreeError),
 }
 
 /// Commit to pending proposals error

@@ -3,7 +3,6 @@
 use std::mem;
 
 use core_group::{create_commit_params::CreateCommitParams, staged_commit::StagedCommit};
-use tls_codec::Serialize;
 
 use crate::group::errors::MergeCommitError;
 
@@ -81,22 +80,10 @@ impl MlsGroup {
     > {
         self.is_operational()?;
 
-        let credential = self.credential()?;
-        let credential_bundle: CredentialBundle = backend
-            .key_store()
-            .read(
-                &credential
-                    .signature_key()
-                    .tls_serialize_detached()
-                    .map_err(LibraryError::missing_bound_check)?,
-            )
-            .ok_or(CommitToPendingProposalsError::NoMatchingCredentialBundle)?;
-
         // Create Commit over all pending proposals
         // TODO #751
         let params = CreateCommitParams::builder()
             .framing_parameters(self.framing_parameters())
-            .credential_bundle(&credential_bundle)
             .proposal_store(&self.proposal_store)
             .build();
         let create_commit_result = self.group.create_commit(params, backend)?;
