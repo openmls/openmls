@@ -88,6 +88,9 @@ pub enum ClientError {
     /// See [`MergePendingCommitError`] for more details.
     #[error(transparent)]
     MergePendingCommitError(#[from] MergePendingCommitError<MemoryKeyStoreError>),
+    /// See [`MergeCommitError`] for more details.
+    #[error(transparent)]
+    MergeCommitError(#[from] MergeCommitError<MemoryKeyStoreError>),
     /// See [`MemoryKeyStoreError`] for more details.
     #[error(transparent)]
     KeyStoreError(#[from] MemoryKeyStoreError),

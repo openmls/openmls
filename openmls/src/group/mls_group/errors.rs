@@ -7,7 +7,7 @@
 
 use crate::{
     error::LibraryError,
-    group::errors::{CreateCommitError, StageCommitError, ValidationError},
+    group::errors::{CreateCommitError, MergeCommitError, StageCommitError, ValidationError},
 };
 use thiserror::Error;
 
@@ -71,9 +71,9 @@ pub enum MergePendingCommitError<KeyStoreError> {
     /// See [`MlsGroupStateError`] for more details.
     #[error(transparent)]
     MlsGroupStateError(#[from] MlsGroupStateError),
-    /// Error accessing key store.
-    #[error("See KeyStoreError for more details.")]
-    KeyStoreError(KeyStoreError),
+    /// See [`MergeCommitError`] for more details.
+    #[error(transparent)]
+    MergeCommitError(#[from] MergeCommitError<KeyStoreError>),
 }
 
 /// Process message error

@@ -5,6 +5,8 @@ use std::mem;
 use core_group::{create_commit_params::CreateCommitParams, staged_commit::StagedCommit};
 use tls_codec::Serialize;
 
+use crate::group::errors::MergeCommitError;
+
 use super::{errors::ProcessMessageError, *};
 
 impl MlsGroup {
@@ -126,7 +128,7 @@ impl MlsGroup {
         &mut self,
         backend: &impl OpenMlsCryptoProvider<KeyStoreProvider = KeyStore>,
         staged_commit: StagedCommit,
-    ) -> Result<(), KeyStore::Error> {
+    ) -> Result<(), MergeCommitError<KeyStore::Error>> {
         // Check if we were removed from the group
         if staged_commit.self_removed() {
             self.group_state = MlsGroupState::Inactive;
@@ -163,8 +165,7 @@ impl MlsGroup {
             MlsGroupState::PendingCommit(_) => {
                 let old_state = mem::replace(&mut self.group_state, MlsGroupState::Operational);
                 if let MlsGroupState::PendingCommit(pending_commit_state) = old_state {
-                    self.merge_staged_commit(backend, (*pending_commit_state).into())
-                        .map_err(MergePendingCommitError::KeyStoreError)?;
+                    self.merge_staged_commit(backend, (*pending_commit_state).into())?;
                 }
                 Ok(())
             }

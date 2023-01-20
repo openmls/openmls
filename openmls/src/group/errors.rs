@@ -483,3 +483,14 @@ pub(crate) enum CreateGroupContextExtProposalError {
     #[error(transparent)]
     Extension(#[from] ExtensionError),
 }
+
+/// Error merging a commit.
+#[derive(Error, Debug, PartialEq, Clone)]
+pub enum MergeCommitError<KeyStoreError> {
+    /// See [`LibraryError`] for more details.
+    #[error(transparent)]
+    LibraryError(#[from] LibraryError),
+    /// Error accessing the key store.
+    #[error("Error accessing the key store.")]
+    KeyStoreError(KeyStoreError),
+}

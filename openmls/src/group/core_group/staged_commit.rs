@@ -465,7 +465,7 @@ impl CoreGroup {
         &mut self,
         backend: &impl OpenMlsCryptoProvider<KeyStoreProvider = KeyStore>,
         staged_commit: StagedCommit,
-    ) -> Result<Option<MessageSecrets>, KeyStore::Error> {
+    ) -> Result<Option<MessageSecrets>, MergeCommitError<KeyStore::Error>> {
         // Get all keypairs from the old epoch, so we can later store the ones
         // that are still relevant in the new epoch.
         let old_epoch_keypairs = self.read_epoch_keypairs(backend);
@@ -509,13 +509,22 @@ impl CoreGroup {
                     .filter(|keypair| new_owned_encryption_keys.contains(keypair.public_key()))
                     .collect();
                 // We should have private keys for all owned encryption keys.
-                debug_assert_eq!(new_owned_encryption_keys.len(), epoch_keypairs.len());
+                if new_owned_encryption_keys.len() != epoch_keypairs.len() {
+                    return Err(LibraryError::custom(
+                        "We should have all the private key material we need.",
+                    )
+                    .into());
+                }
                 // Store the relevant keys under the new epoch
-                self.store_epoch_keypairs(backend, epoch_keypairs.as_slice())?;
+                self.store_epoch_keypairs(backend, epoch_keypairs.as_slice())
+                    .map_err(MergeCommitError::KeyStoreError)?;
                 // Delete the old keys.
-                self.delete_previous_epoch_keypairs(backend)?;
+                self.delete_previous_epoch_keypairs(backend)
+                    .map_err(MergeCommitError::KeyStoreError)?;
                 if let Some(keypair) = state.new_leaf_keypair_option {
-                    keypair.delete_from_key_store(backend)?;
+                    keypair
+                        .delete_from_key_store(backend)
+                        .map_err(MergeCommitError::KeyStoreError)?;
                 }
 
                 Ok(Some(message_secrets))

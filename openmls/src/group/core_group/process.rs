@@ -2,7 +2,10 @@ use core_group::{proposals::QueuedProposal, staged_commit::StagedCommit};
 
 use crate::{
     framing::mls_content::FramedContentBody,
-    group::{errors::ValidationError, mls_group::errors::ProcessMessageError},
+    group::{
+        errors::{MergeCommitError, ValidationError},
+        mls_group::errors::ProcessMessageError,
+    },
     treesync::node::leaf_node::OpenMlsLeafNode,
 };
 
@@ -326,7 +329,7 @@ impl CoreGroup {
         backend: &impl OpenMlsCryptoProvider<KeyStoreProvider = KeyStore>,
         staged_commit: StagedCommit,
         proposal_store: &mut ProposalStore,
-    ) -> Result<(), KeyStore::Error> {
+    ) -> Result<(), MergeCommitError<KeyStore::Error>> {
         // Save the past epoch
         let past_epoch = self.context().epoch();
         // Get all the full leaves
