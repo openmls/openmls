@@ -509,6 +509,8 @@ impl CoreGroup {
                     .filter(|keypair| new_owned_encryption_keys.contains(keypair.public_key()))
                     .collect();
                 // We should have private keys for all owned encryption keys.
+
+                debug_assert_eq!(new_owned_encryption_keys.len(), epoch_keypairs.len());
                 if new_owned_encryption_keys.len() != epoch_keypairs.len() {
                     return Err(LibraryError::custom(
                         "We should have all the private key material we need.",
