@@ -410,9 +410,6 @@ impl CoreGroup {
             commit_update_leaf_node,
         );
 
-        // TODO: check for the required capabilities if RatchetTree is supported and return the
-        // group info only if it supports. Right now OpenMls doesn't support specifying the
-        // required capabilities
         Ok(CreateCommitResult {
             commit,
             welcome_option,

@@ -17,7 +17,7 @@ impl MlsGroup {
     /// commit), an optional [`MlsMessageOut`] (containing the [`Welcome`]) and the [GroupInfo].
     /// The [Welcome] is [Some] when the queue of pending proposals contained
     /// add proposals
-    /// The [GroupInfo] is [Some] if the group has the `RatchetTree` required capability.
+    /// The [GroupInfo] is [Some] if the group has the `use_ratchet_tree_extension` flag set.
     ///
     /// Returns an error if there is a pending commit.
     pub fn self_update(
