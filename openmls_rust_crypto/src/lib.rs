@@ -21,8 +21,8 @@ impl OpenMlsCryptoProvider for OpenMlsRustCrypto {
     type CryptoProvider = RustCrypto;
     type RandProvider = RustCrypto;
     type KeyStoreProvider = MemoryKeyStore;
-    type Signer = RustCryptoSigner;
-    type Verifier = RustCryptoVerifier;
+    type Signer = Signatures;
+    type Verifier = Signatures;
 
     fn crypto(&self) -> &Self::CryptoProvider {
         &self.crypto

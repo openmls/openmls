@@ -3,10 +3,10 @@
 //! that client perform certain MLS operations.
 use std::{collections::HashMap, sync::RwLock};
 
-use openmls_rust_crypto::OpenMlsRustCrypto;
+use openmls_rust_crypto::{OpenMlsRustCrypto, Signatures};
 use openmls_traits::{
     key_store::OpenMlsKeyStore,
-    types::{Ciphersuite, HpkeKeyPair},
+    types::{Ciphersuite, HpkeKeyPair, SignatureScheme},
     OpenMlsCryptoProvider,
 };
 use tls_codec::Serialize;
@@ -20,11 +20,21 @@ use crate::{
     group::{config::CryptoConfig, *},
     key_packages::*,
     messages::*,
-    treesync::{node::Node, LeafNode},
+    treesync::{
+        node::{leaf_node::Capabilities, Node},
+        LeafNode,
+    },
     versions::ProtocolVersion,
 };
 
 use super::{errors::ClientError, ActionType};
+
+#[derive(Debug)]
+pub struct CredentialPP {
+    pub credential: Credential,
+    pub public_key: Vec<u8>,
+    pub signature_scheme: SignatureScheme,
+}
 
 #[derive(Debug)]
 /// The client contains the necessary state for a client in the context of MLS.
@@ -35,46 +45,33 @@ pub struct Client {
     /// Name of the client.
     pub identity: Vec<u8>,
     /// Ciphersuites supported by the client.
-    pub credentials: HashMap<Ciphersuite, Credential>,
+    pub credentials: HashMap<Ciphersuite, CredentialPP>,
     pub crypto: OpenMlsRustCrypto,
     pub groups: RwLock<HashMap<GroupId, MlsGroup>>,
 }
 
 impl Client {
-    /// Generate a fresh key package bundle and store it in
-    /// `self.key_package_bundles`. The first ciphersuite determines the
-    /// credential used to generate the `KeyPackageBundle`. Returns the
-    /// corresponding `KeyPackage`.
+    /// Generate a fresh key package and return it.
+    /// The first ciphersuite determines the
+    /// credential used to generate the `KeyPackage`.
     pub fn get_fresh_key_package(
         &self,
-        ciphersuites: &[Ciphersuite],
+        ciphersuite: Ciphersuite,
     ) -> Result<KeyPackage, ClientError> {
-        if ciphersuites.is_empty() {
-            return Err(ClientError::NoCiphersuite);
-        }
         let credential = self
             .credentials
-            .get(&ciphersuites[0])
+            .get(&ciphersuite)
             .ok_or(ClientError::CiphersuiteNotSupported)?;
-        let credential_bundle: CredentialBundle = self
-            .crypto
-            .key_store()
-            .read(
-                &credential
-                    .signature_key()
-                    .tls_serialize_detached()
-                    .expect("Error serializing signature key."),
-            )
-            .ok_or(ClientError::NoMatchingCredential)?;
 
         let key_package = KeyPackage::builder()
             .build(
                 CryptoConfig {
-                    ciphersuite: ciphersuites[0],
+                    ciphersuite,
                     version: ProtocolVersion::default(),
                 },
                 &self.crypto,
-                &credential_bundle,
+                credential.public_key.clone().into(),
+                credential.credential.clone(),
             )
             .unwrap();
 
@@ -94,30 +91,12 @@ impl Client {
             .credentials
             .get(&ciphersuite)
             .ok_or(ClientError::CiphersuiteNotSupported)?;
-        let credential_bundle: CredentialBundle = self
-            .crypto
-            .key_store()
-            .read(
-                &credential
-                    .signature_key()
-                    .tls_serialize_detached()
-                    .expect("Error serializing signature key."),
-            )
-            .ok_or(ClientError::NoMatchingCredential)?;
-        let key_package = KeyPackage::builder()
-            .build(
-                CryptoConfig {
-                    ciphersuite,
-                    version: ProtocolVersion::default(),
-                },
-                &self.crypto,
-                &credential_bundle,
-            )
-            .unwrap();
+
         let group_state = MlsGroup::new(
             &self.crypto,
             &mls_group_config,
-            key_package.leaf_node().signature_key(),
+            credential.public_key.clone().into(),
+            credential.credential.clone(),
         )?;
         let group_id = group_state.group_id().clone();
         self.groups

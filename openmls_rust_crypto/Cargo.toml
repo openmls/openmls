@@ -26,4 +26,5 @@ rand_chacha = { version = "0.3" }
 hpke = { version = "0.1.0", package = "hpke-rs", default-features = false, features = ["hazmat", "serialization"] }
 hpke-rs-crypto = { version = "0.1.1" }
 hpke-rs-rust-crypto = { version = "0.1.1" }
+tls_codec = { version = "0.2.0", features = ["derive", "serde", "mls"] }
 thiserror = "1.0"

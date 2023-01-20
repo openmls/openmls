@@ -32,7 +32,7 @@ use crate::{
     treesync::{node::Node, LeafNode},
 };
 use ::rand::{rngs::OsRng, RngCore};
-use openmls_rust_crypto::OpenMlsRustCrypto;
+use openmls_rust_crypto::{OpenMlsRustCrypto, Signatures};
 use openmls_traits::{
     crypto::OpenMlsCrypto,
     key_store::OpenMlsKeyStore,
@@ -134,25 +134,25 @@ impl MlsGroupTestSetup {
             let crypto = OpenMlsRustCrypto::default();
             let mut credentials = HashMap::new();
             for ciphersuite in crypto.crypto().supported_ciphersuites().iter() {
-                let cb = CredentialBundle::new(
+                let credential = Credential::new(
                     identity.clone(),
                     CredentialType::Basic,
-                    SignatureScheme::from(*ciphersuite),
+                    ciphersuite.signature_algorithm(),
                     &crypto,
                 )
-                .expect("An unexpected error occurred.");
-                let credential = cb.credential().clone();
-                crypto
-                    .key_store()
-                    .store(
-                        &cb.credential()
-                            .signature_key()
-                            .tls_serialize_detached()
-                            .expect("Error serializing signature key."),
-                        &cb,
-                    )
-                    .expect("An unexpected error occurred.");
-                credentials.insert(*ciphersuite, credential);
+                .unwrap();
+                let signature_keys =
+                    Signatures::new(ciphersuite.signature_algorithm(), crypto.crypto()).unwrap();
+                signature_keys.store(crypto.key_store()).unwrap();
+                
+                credentials.insert(
+                    *ciphersuite,
+                    CredentialPP {
+                        credential,
+                        public_key: signature_keys.public().to_vec(),
+                        signature_scheme: signature_keys.signature_scheme(),
+                    },
+                );
             }
             let client = Client {
                 identity: identity.clone(),
@@ -182,7 +182,7 @@ impl MlsGroupTestSetup {
         client: &Client,
         ciphersuite: Ciphersuite,
     ) -> Result<KeyPackage, SetupError> {
-        let key_package = client.get_fresh_key_package(&[ciphersuite])?;
+        let key_package = client.get_fresh_key_package(ciphersuite)?;
         self.waiting_for_welcome
             .write()
             .expect("An unexpected error occurred.")

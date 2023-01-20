@@ -324,7 +324,7 @@ fn create_content(
     .with_context(serialized_context);
 
     let content = signature_input
-        .sign(backend, credential_bundle.signature_private_key())
+        .sign(backend.signer())
         .expect("Signing failed.");
     (content, credential_bundle.credential().clone())
 }

@@ -74,6 +74,22 @@ pub struct SignaturePublicKey {
     pub(in crate::ciphersuite) value: VLBytes,
 }
 
+impl From<Vec<u8>> for SignaturePublicKey {
+    fn from(value: Vec<u8>) -> Self {
+        Self {
+            value: value.into(),
+        }
+    }
+}
+
+impl From<&[u8]> for SignaturePublicKey {
+    fn from(value: &[u8]) -> Self {
+        Self {
+            value: value.into(),
+        }
+    }
+}
+
 impl SignaturePublicKey {
     /// Convert the "raw" signature into an enriched form, [OpenMlsSignaturePublicKey], that
     /// already contains the signature scheme.
