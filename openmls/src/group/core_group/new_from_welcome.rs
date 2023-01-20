@@ -21,6 +21,19 @@ impl CoreGroup {
         backend: &impl OpenMlsCryptoProvider<KeyStoreProvider = KeyStore>,
     ) -> Result<Self, WelcomeError<KeyStore::Error>> {
         log::debug!("CoreGroup::new_from_welcome_internal");
+
+        // Read the encryption key pair from the key store and delete it there.
+        // TODO #1207: Key store access happens as early as possible so it can
+        // be pulled up later more easily.
+        let leaf_keypair = EncryptionKeyPair::read_from_key_store(
+            backend,
+            key_package_bundle.key_package.leaf_node().encryption_key(),
+        )
+        .ok_or(WelcomeError::NoMatchingEncryptionKey)?;
+        leaf_keypair
+            .delete_from_key_store(backend)
+            .map_err(|_| WelcomeError::NoMatchingEncryptionKey)?;
+
         let mls_version = *welcome.version();
         if mls_version != ProtocolVersion::Mls10 {
             return Err(WelcomeError::UnsupportedMlsVersion);
@@ -137,16 +150,6 @@ impl CoreGroup {
         })?;
 
         let diff = tree.empty_diff();
-
-        // Read the encryption key pair from the key store and delete it there.
-        let leaf_keypair = EncryptionKeyPair::read_from_key_store(
-            backend,
-            key_package_bundle.key_package.leaf_node().encryption_key(),
-        )
-        .ok_or(WelcomeError::NoMatchingEncryptionKey)?;
-        leaf_keypair
-            .delete_from_key_store(backend)
-            .map_err(|_| WelcomeError::NoMatchingEncryptionKey)?;
 
         // If we got a path secret, derive the path (which also checks if the
         // public keys match) and store the derived keys in the key store.

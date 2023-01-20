@@ -10,6 +10,7 @@ use crate::{
         Welcome,
     },
     schedule::{psk::PskSecret, KeySchedule},
+    treesync::node::encryption_keys::EncryptionKeyPair,
     versions::ProtocolVersion,
 };
 
@@ -182,6 +183,11 @@ fn test_welcome_ciphersuite_mismatch(
 
     welcome.encrypted_group_info = encrypted_verifiable_group_info.into();
 
+    // Create backup of encryption keypair, s.t. we can process the welcome a second time after failing.
+    let encryption_keypair =
+        EncryptionKeyPair::read_from_key_store(backend, bob_kp.leaf_node().encryption_key())
+            .unwrap();
+
     // Bob tries to join the group
     let err = MlsGroup::new_from_welcome(
         backend,
@@ -195,8 +201,8 @@ fn test_welcome_ciphersuite_mismatch(
 
     // === Process the original Welcome ===
 
-    // We need to store the key package key again because it has been consumed
-    // already
+    // We need to store the key package and its encryption key again because it
+    // has been consumed already.
     backend
         .key_store()
         .store(
@@ -208,6 +214,8 @@ fn test_welcome_ciphersuite_mismatch(
         .key_store()
         .store(bob_kp.hpke_init_key().as_slice(), &bob_private_key)
         .unwrap();
+
+    encryption_keypair.write_to_key_store(backend).unwrap();
 
     let _group = MlsGroup::new_from_welcome(
         backend,
