@@ -354,7 +354,7 @@ fn test_welcome_message_encoding(backend: &impl OpenMlsCryptoProvider) {
             .expect("An unexpected error occurred.");
         // Alice applies the commit
         group_state
-            .merge_commit(create_commit_result.staged_commit)
+            .merge_commit(backend, create_commit_result.staged_commit)
             .expect("error merging own commits");
 
         // Welcome messages

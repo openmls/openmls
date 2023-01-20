@@ -232,7 +232,7 @@ pub struct HpkeCiphertext {
 }
 
 /// Helper holding a (private, public) key pair as byte vectors.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct HpkeKeyPair {
     pub private: Vec<u8>,
     pub public: Vec<u8>,

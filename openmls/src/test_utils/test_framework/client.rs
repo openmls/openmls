@@ -160,7 +160,7 @@ impl Client {
             .get_mut(group_id)
             .ok_or(ClientError::NoMatchingGroup)?;
         if sender_id == self.identity && message.content_type() == ContentType::Commit {
-            group_state.merge_pending_commit()?
+            group_state.merge_pending_commit(&self.crypto)?
         } else {
             if message.content_type() == ContentType::Commit {
                 // Clear any potential pending commits.
@@ -178,7 +178,7 @@ impl Client {
                     group_state.store_pending_proposal(*staged_proposal);
                 }
                 ProcessedMessageContent::StagedCommitMessage(staged_commit) => {
-                    group_state.merge_staged_commit(*staged_commit);
+                    group_state.merge_staged_commit(&self.crypto, *staged_commit)?;
                 }
             }
         }
@@ -212,10 +212,7 @@ impl Client {
             .get_mut(group_id)
             .ok_or(ClientError::NoMatchingGroup)?;
         let (msg, welcome_option) = match action_type {
-            ActionType::Commit => group.self_update(
-                &self.crypto,
-                leaf_node.map(|leaf| leaf.encryption_key().clone()),
-            )?,
+            ActionType::Commit => group.self_update(&self.crypto)?,
             ActionType::Proposal => (group.propose_self_update(&self.crypto, leaf_node)?, None),
         };
         Ok((

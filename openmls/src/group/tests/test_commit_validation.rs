@@ -97,7 +97,7 @@ fn validation_test_setup(
         .expect("error adding Bob to group");
 
     alice_group
-        .merge_pending_commit()
+        .merge_pending_commit(backend)
         .expect("error merging pending commit");
 
     let welcome = welcome.into_welcome().expect("Unexpected message type.");
@@ -163,7 +163,7 @@ fn test_valsem200(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
 
     // Now let's stick it in the commit.
     let serialized_message = alice_group
-        .self_update(backend, None)
+        .self_update(backend)
         .expect("Error creating self-update")
         .tls_serialize_detached()
         .expect("Could not serialize message.");
@@ -444,7 +444,7 @@ fn test_valsem202(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
 
     // Create the self-update
     let serialized_update = alice_group
-        .self_update(backend, None)
+        .self_update(backend)
         .expect("Error creating self-update")
         .tls_serialize_detached()
         .expect("Could not serialize message.");
@@ -508,7 +508,7 @@ fn test_valsem203(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
 
     // Create the self-update
     let serialized_update = alice_group
-        .self_update(backend, None)
+        .self_update(backend)
         .expect("Error creating self-update")
         .tls_serialize_detached()
         .expect("Could not serialize message.");
@@ -574,7 +574,7 @@ fn test_valsem204(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
 
     // Create the self-update
     let serialized_update = alice_group
-        .self_update(backend, None)
+        .self_update(backend)
         .expect("Error creating self-update")
         .tls_serialize_detached()
         .expect("Could not serialize message.");
@@ -640,7 +640,7 @@ fn test_valsem205(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
 
     // Create the self-update
     let serialized_update = alice_group
-        .self_update(backend, None)
+        .self_update(backend)
         .expect("Error creating self-update")
         .tls_serialize_detached()
         .expect("Could not serialize message.");
@@ -742,7 +742,7 @@ fn test_partial_proposal_commit(ciphersuite: Ciphersuite, backend: &impl OpenMls
     let (commit, _) = alice_group.commit_to_pending_proposals(backend).unwrap();
     // Alice herself should be able to merge the commit
     alice_group
-        .merge_pending_commit()
+        .merge_pending_commit(backend)
         .expect("Commits with partial proposals are not supported");
 
     // Bob should be able to process the commit
@@ -750,6 +750,6 @@ fn test_partial_proposal_commit(ciphersuite: Ciphersuite, backend: &impl OpenMls
         .process_message(backend, commit.into_protocol_message().unwrap())
         .expect("Commits with partial proposals are not supported");
     bob_group
-        .merge_pending_commit()
+        .merge_pending_commit(backend)
         .expect("Commits with partial proposals are not supported");
 }
