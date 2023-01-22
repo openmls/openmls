@@ -1,7 +1,6 @@
 //! A couple of simple tests on how to interact with the key store.
 use openmls::{prelude::*, test_utils::*, *};
 use openmls_basic_credential::BasicCredential;
-use openmls_traits::{key_store::OpenMlsKeyStore, types::SignatureScheme};
 
 #[apply(ciphersuites_and_backends)]
 fn test_store_key_package(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
@@ -18,7 +17,7 @@ fn test_store_key_package(ciphersuite: Ciphersuite, backend: &impl OpenMlsCrypto
             },
             backend,
             &signature_keys,
-            signature_keys.public().clone().into(),
+            signature_keys.to_public_vec().into(),
             credential,
         )
         .unwrap();

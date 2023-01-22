@@ -23,13 +23,8 @@ fn create_group(
     let group_id = GroupId::from_slice(b"Test Group");
 
     // Generate credential bundles
-    let credential = generate_credential_bundle(
-        "Alice".into(),
-        CredentialType::Basic,
-        ciphersuite.signature_algorithm(),
-        backend,
-    )
-    .expect("An unexpected error occurred.");
+    let (credential, signer, pk) =
+        generate_credential_bundle("Alice".into(), ciphersuite.signature_algorithm(), backend);
 
     // Define the MlsGroup configuration
     let mls_group_config = MlsGroupConfig::builder()
@@ -54,20 +49,17 @@ fn receive_message(
     alice_group: &mut MlsGroup,
 ) -> MlsMessageIn {
     // Generate credential bundles
-    let bob_credential = generate_credential_bundle(
-        "Bob".into(),
-        CredentialType::Basic,
-        ciphersuite.signature_algorithm(),
-        backend,
-    )
-    .expect("An unexpected error occurred.");
+    let (bob_credential, bob_signer, bob_pk) =
+        generate_credential_bundle("Bob".into(), ciphersuite.signature_algorithm(), backend);
 
     // Generate KeyPackages
     let bob_key_package = generate_key_package(
-        &[ciphersuite],
+        ciphersuite,
         &bob_credential,
         Extensions::empty(),
         backend,
+        &bob_signer,
+        bob_pk.into(),
     )
     .expect("An unexpected error occurred.");
 

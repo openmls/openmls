@@ -1,6 +1,7 @@
 //! This module tests the validation of proposals as defined in
 //! https://openmls.tech/book/message_validation.html#semantic-validation-of-proposals-covered-by-a-commit
 
+use openmls_basic_credential::BasicCredential;
 use openmls_rust_crypto::OpenMlsRustCrypto;
 use openmls_traits::{key_store::OpenMlsKeyStore, types::Ciphersuite, OpenMlsCryptoProvider};
 
@@ -33,29 +34,20 @@ fn generate_credential_bundle_and_key_package(
     identity: Vec<u8>,
     ciphersuite: Ciphersuite,
     backend: &impl OpenMlsCryptoProvider,
-) -> (CredentialBundle, KeyPackage) {
-    let credential = generate_credential_bundle(
-        identity,
-        CredentialType::Basic,
-        ciphersuite.signature_algorithm(),
+) -> (Credential, KeyPackage, BasicCredential, OpenMlsSignaturePublicKey) {
+    let (credential, signer, pk) =
+        generate_credential_bundle(identity, ciphersuite.signature_algorithm(), backend);
+
+    let key_package = generate_key_package(
+        ciphersuite,
+        &credential,
+        Extensions::empty(),
         backend,
-    )
-    .expect("Failed to generate CredentialBundle.");
-    let credential_bundle = backend
-        .key_store()
-        .read::<CredentialBundle>(
-            &credential
-                .signature_key()
-                .tls_serialize_detached()
-                .expect("Error serializing signature key."),
-        )
-        .expect("An unexpected error occurred.");
+        &signer,
+        pk.into(),
+    );
 
-    let key_package =
-        generate_key_package(&[ciphersuite], &credential, Extensions::empty(), backend)
-            .expect("Failed to generate KeyPackage.");
-
-    (credential_bundle, key_package)
+    (credential, key_package, signer, pk)
 }
 
 /// Helper function to create a group and try to add `members` to it.

@@ -461,7 +461,7 @@ impl KeyPackage {
         config: CryptoConfig,
         backend: &impl OpenMlsCryptoProvider<KeyStoreProvider = KeyStore>,
         signer: &impl ByteSigner,
-        credential: &Credential,
+        credential: Credential,
         signature_key: SignaturePublicKey,
         extensions: Extensions,
         encryption_key: EncryptionKey,
@@ -500,7 +500,7 @@ impl KeyPackage {
             extensions,
         };
 
-        let key_package = key_package.sign(backend.signer())?;
+        let key_package = key_package.sign(signer)?;
 
         // Store the key package in the key store with the hash reference as id
         // for retrieval when parsing welcome messages.
@@ -673,7 +673,7 @@ impl KeyPackageBundle {
     }
 }
 
-#[cfg(any(feature = "test-utils", test))]
+#[cfg(test)]
 impl KeyPackageBundle {
     pub(crate) fn new(
         backend: &impl OpenMlsCryptoProvider,
@@ -702,5 +702,9 @@ impl KeyPackageBundle {
             key_package,
             private_key: private_key.into(),
         }
+    }
+
+    pub fn private_key(&self) -> &HpkePrivateKey {
+        &self.private_key
     }
 }

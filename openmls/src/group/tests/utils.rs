@@ -8,19 +8,16 @@ use std::cell::RefCell;
 use std::collections::HashMap;
 
 use crate::{
-    credentials::{errors::*, *},
-    framing::*,
-    group::*,
-    key_packages::{errors::*, *},
-    test_utils::*,
-    *,
+    credentials::*, framing::*, group::*, key_packages::*, test_utils::*,
+    versions::ProtocolVersion, *,
 };
 use ::rand::rngs::OsRng;
 use ::rand::RngCore;
-use openmls_traits::key_store::OpenMlsKeyStore;
+use config::CryptoConfig;
+use openmls_basic_credential::BasicCredential as BasicCredentialWithKeys;
 use openmls_traits::types::SignatureScheme;
 use openmls_traits::OpenMlsCryptoProvider;
-use prelude::{config::CryptoConfig, ProtocolVersion};
+use openmls_traits::{key_store::OpenMlsKeyStore, signatures::ByteSigner};
 use tls_codec::Serialize;
 
 /// Configuration of a client meant to be used in a test setup.
@@ -48,7 +45,7 @@ pub(crate) struct TestSetupConfig {
 
 /// A client in a test setup.
 pub(crate) struct TestClient {
-    pub(crate) credential_bundles: HashMap<Ciphersuite, CredentialBundle>,
+    pub(crate) credentials: HashMap<Ciphersuite, (Credential, BasicCredentialWithKeys)>,
     pub(crate) key_package_bundles: RefCell<Vec<KeyPackageBundle>>,
     pub(crate) group_states: RefCell<HashMap<GroupId, CoreGroup>>,
 }
@@ -89,35 +86,42 @@ pub(crate) fn setup(config: TestSetupConfig, backend: &impl OpenMlsCryptoProvide
     // Initialize the clients for which we have configurations.
     for client in config.clients {
         // Set up the client
-        let mut credential_bundles = HashMap::new();
+        let mut credentials = HashMap::new();
         let mut key_package_bundles = Vec::new();
         // This currently creates a credential bundle per ciphersuite, (not per
         // signature scheme), as well as 10 KeyPackages per ciphersuite.
         for ciphersuite in client.ciphersuites {
             // Create a credential_bundle for the given ciphersuite.
-            let credential_bundle = CredentialBundle::new(
+            let CredentialWithKeys {
+                credential,
+                signer,
+                signature_key,
+            } = generate_credential_bundle(
                 client.name.as_bytes().to_vec(),
-                CredentialType::Basic,
-                SignatureScheme::from(ciphersuite),
+                ciphersuite.signature_algorithm(),
                 backend,
-            )
-            .expect("An unexpected error occurred.");
+            );
             // Create a number of key packages.
             let mut key_packages = Vec::new();
             for _ in 0..KEY_PACKAGE_COUNT {
-                let key_package_bundle: KeyPackageBundle =
-                    KeyPackageBundle::new(backend, ciphersuite, &credential_bundle);
+                let key_package_bundle: KeyPackageBundle = KeyPackageBundle::new(
+                    backend,
+                    &signer,
+                    ciphersuite,
+                    credential.clone(),
+                    signer.to_public_vec().into(),
+                );
                 key_packages.push(key_package_bundle.key_package().clone());
                 key_package_bundles.push(key_package_bundle);
             }
             // Register the freshly created KeyPackages in the KeyStore.
             key_store.insert((client.name, ciphersuite), key_packages);
             // Store the credential bundle.
-            credential_bundles.insert(ciphersuite, credential_bundle);
+            credentials.insert(ciphersuite, (credential, signer));
         }
         // Create the client.
         let test_client = TestClient {
-            credential_bundles,
+            credentials,
             key_package_bundles: RefCell::new(key_package_bundles),
             group_states: RefCell::new(HashMap::new()),
         };
@@ -135,17 +139,19 @@ pub(crate) fn setup(config: TestSetupConfig, backend: &impl OpenMlsCryptoProvide
             .expect("An unexpected error occurred.")
             .borrow_mut();
         // Get the credential bundle corresponding to the ciphersuite.
-        let initial_credential_bundle = initial_group_member
-            .credential_bundles
+        let (credential, signer) = initial_group_member
+            .credentials
             .get(&group_config.ciphersuite)
             .expect("An unexpected error occurred.");
         // Initialize the group state for the initial member.
         let core_group = CoreGroup::builder(
             GroupId::from_slice(&group_id.to_be_bytes()),
             CryptoConfig::with_default_version(group_config.ciphersuite),
+            credential.clone(),
+            signer.public().clone().into(),
         )
         .with_config(group_config.config)
-        .build(initial_credential_bundle, backend)
+        .build(backend, signer)
         .expect("Error creating new CoreGroup");
         let mut proposal_list = Vec::new();
         let group_aad = b"";
@@ -176,12 +182,7 @@ pub(crate) fn setup(config: TestSetupConfig, backend: &impl OpenMlsCryptoProvide
                 // Have the initial member create an Add proposal using the new
                 // KeyPackage.
                 let add_proposal = core_group
-                    .create_add_proposal(
-                        framing_parameters,
-                        initial_credential_bundle,
-                        next_member_key_package,
-                        backend,
-                    )
+                    .create_add_proposal(framing_parameters, next_member_key_package, signer)
                     .expect("An unexpected error occurred.");
                 proposal_list.push(add_proposal);
             }
@@ -200,11 +201,10 @@ pub(crate) fn setup(config: TestSetupConfig, backend: &impl OpenMlsCryptoProvide
             }
             let params = CreateCommitParams::builder()
                 .framing_parameters(framing_parameters)
-                .credential_bundle(initial_credential_bundle)
                 .proposal_store(&proposal_store)
                 .build();
             let create_commit_result = core_group
-                .create_commit(params, backend)
+                .create_commit(params, backend, signer)
                 .expect("An unexpected error occurred.");
             let welcome = create_commit_result
                 .welcome_option
@@ -322,76 +322,58 @@ fn test_setup(backend: &impl OpenMlsCryptoProvider) {
     let _test_setup = setup(test_setup_config, backend);
 }
 
+pub(super) struct CredentialWithKeys {
+    pub(super) credential: Credential,
+    pub(super) signer: BasicCredentialWithKeys,
+    pub(super) signature_key: OpenMlsSignaturePublicKey,
+}
+
 // Helper function to generate a CredentialBundle
 pub(super) fn generate_credential_bundle(
     identity: Vec<u8>,
-    credential_type: CredentialType,
     signature_scheme: SignatureScheme,
     backend: &impl OpenMlsCryptoProvider,
-) -> Result<Credential, CredentialError> {
-    let cb = CredentialBundle::new(identity, credential_type, signature_scheme, backend)?;
-    let credential = cb.credential().clone();
-    backend
-        .key_store()
-        .store(
-            &credential
-                .signature_key()
-                .tls_serialize_detached()
-                .expect("Error serializing signature key."),
-            &cb,
-        )
-        .expect("An unexpected error occurred.");
-    Ok(credential)
+) -> CredentialWithKeys {
+    let (credential, signer) = {
+        let credential = Credential::new(identity.into(), CredentialType::Basic).unwrap();
+        let signature_keys =
+            BasicCredentialWithKeys::new(signature_scheme, backend.crypto()).unwrap();
+        signature_keys.store(backend.key_store()).unwrap();
+
+        (credential, signature_keys)
+    };
+    let signature_key =
+        OpenMlsSignaturePublicKey::new(signer.to_public_vec().into(), signature_scheme).unwrap();
+
+    CredentialWithKeys {
+        credential,
+        signer,
+        signature_key,
+    }
 }
 
 // Helper function to generate a KeyPackageBundle
 pub(super) fn generate_key_package<KeyStore: OpenMlsKeyStore>(
-    ciphersuites: &[Ciphersuite],
-    credential: &Credential,
+    ciphersuite: Ciphersuite,
+    credential: Credential,
     extensions: Extensions,
     backend: &impl OpenMlsCryptoProvider<KeyStoreProvider = KeyStore>,
-) -> Result<KeyPackage, KeyPackageNewError<KeyStore::Error>> {
-    let credential_bundle = backend
-        .key_store()
-        .read(
-            &credential
-                .signature_key()
-                .tls_serialize_detached()
-                .expect("Error serializing signature key."),
-        )
-        .expect("An unexpected error occurred.");
+    signer: &impl ByteSigner,
+    signature_key: SignaturePublicKey,
+) -> KeyPackage {
     KeyPackage::builder()
         .key_package_extensions(extensions)
         .build(
             CryptoConfig {
-                ciphersuite: ciphersuites[0],
+                ciphersuite: ciphersuite,
                 version: ProtocolVersion::default(),
             },
             backend,
-            &credential_bundle,
+            signer,
+            signature_key,
+            credential,
         )
-}
-
-// Helper function to generate a CredentialBundle
-pub(super) fn get_credential_bundle(
-    identity: Vec<u8>,
-    credential_type: CredentialType,
-    signature_scheme: SignatureScheme,
-    backend: &impl OpenMlsCryptoProvider,
-) -> Result<CredentialBundle, CredentialError> {
-    let cb = CredentialBundle::new(identity, credential_type, signature_scheme, backend)?;
-    let credential = cb.credential().clone();
-    backend
-        .key_store()
-        .store(
-            &credential
-                .signature_key()
-                .tls_serialize_detached()
-                .expect("Error serializing signature key."),
-            &cb,
-        )
-        .expect("An unexpected error occurred.");
-    Ok(cb)
+        .unwrap()
 }
 
 #[cfg(test)]
@@ -400,20 +382,10 @@ pub(crate) fn resign_message(
     plaintext: PublicMessage,
     original_plaintext: &PublicMessage,
     backend: &impl OpenMlsCryptoProvider,
+    signer: &impl ByteSigner,
 ) -> PublicMessage {
     use prelude::signable::Signable;
 
-    let alice_credential_bundle: CredentialBundle = backend
-        .key_store()
-        .read(
-            &alice_group
-                .credential()
-                .expect("error retrieving credential")
-                .signature_key()
-                .tls_serialize_detached()
-                .expect("error serializing credential"),
-        )
-        .expect("error retrieving credential bundle");
     let serialized_context = alice_group
         .export_group_context()
         .tls_serialize_detached()
@@ -423,7 +395,7 @@ pub(crate) fn resign_message(
     let tbs: FramedContentTbs = plaintext.into();
     let mut signed_plaintext: AuthenticatedContent = tbs
         .with_context(serialized_context)
-        .sign(backend, alice_credential_bundle.signature_private_key())
+        .sign(signer)
         .expect("Error signing modified payload.");
 
     // Set old confirmation tag
@@ -446,7 +418,7 @@ pub(crate) fn resign_message(
 
 #[cfg(test)]
 pub(crate) fn resign_external_commit(
-    bob_credential_bundle: &CredentialBundle,
+    signer: &impl ByteSigner,
     plaintext: PublicMessage,
     original_plaintext: &PublicMessage,
     serialized_context: Vec<u8>,
@@ -459,11 +431,10 @@ pub(crate) fn resign_external_commit(
     let tbs: FramedContentTbs = plaintext.into();
     let mut signed_plaintext: AuthenticatedContent = if let Some(context) = serialized_context {
         tbs.with_context(context)
-            .sign(backend, bob_credential_bundle.signature_private_key())
+            .sign(signer)
             .expect("Error signing modified payload.")
     } else {
-        tbs.sign(backend, bob_credential_bundle.signature_private_key())
-            .expect("Error signing modified payload.")
+        tbs.sign(signer).expect("Error signing modified payload.")
     };
 
     // Set old confirmation tag

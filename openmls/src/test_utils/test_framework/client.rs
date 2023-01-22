@@ -131,23 +131,8 @@ impl Client {
         welcome: Welcome,
         ratchet_tree: Option<Vec<Option<Node>>>,
     ) -> Result<(), ClientError> {
-        let credential = self
-            .credentials
-            .get(&mls_group_config.crypto_config().ciphersuite)
-            .ok_or(ClientError::CiphersuiteNotSupported)?;
-        let verifier = BasicCredential::read(
-            self.crypto.key_store(),
-            &credential.public_key,
-            credential.signature_scheme,
-        )
-        .unwrap();
-        let new_group: MlsGroup = MlsGroup::new_from_welcome(
-            &self.crypto,
-            &verifier,
-            &mls_group_config,
-            welcome,
-            ratchet_tree,
-        )?;
+        let new_group: MlsGroup =
+            MlsGroup::new_from_welcome(&self.crypto, &mls_group_config, welcome, ratchet_tree)?;
         self.groups
             .write()
             .expect("An unexpected error occurred.")
@@ -175,18 +160,8 @@ impl Client {
                 // Clear any potential pending commits.
                 group_state.clear_pending_commit();
             }
-            // Get the signature public key to read the verifier from the
-            // key store.
-            let signature_pk = group_state.own_leaf().unwrap().signature_key();
-            let verifier = BasicCredential::read(
-                self.crypto.key_store(),
-                signature_pk.as_slice(),
-                group_state.ciphersuite().signature_algorithm(),
-            )
-            .unwrap();
             // Process the message.
-            let processed_message =
-                group_state.process_message(&self.crypto, &verifier, message.clone())?;
+            let processed_message = group_state.process_message(&self.crypto, message.clone())?;
 
             match processed_message.into_content() {
                 ProcessedMessageContent::ApplicationMessage(_) => {}

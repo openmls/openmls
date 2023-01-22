@@ -148,7 +148,7 @@ fn book_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvide
         ciphersuite,
         bob_credential,
         &bob_signature_keys,
-        bob_signature_keys.public().clone().into(),
+        bob_signature_keys.to_public_vec().into(),
         backend,
     );
 
@@ -170,7 +170,7 @@ fn book_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvide
         backend,
         &alice_signature_keys,
         &mls_group_config,
-        alice_signature_keys.public().clone().into(),
+        alice_signature_keys.to_public_vec().into(),
         alice_credential,
     )
     .expect("An unexpected error occurred.");
@@ -186,7 +186,7 @@ fn book_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvide
             &alice_signature_keys,
             &mls_group_config,
             group_id,
-            alice_signature_keys.public().clone().into(),
+            alice_signature_keys.to_public_vec().into(),
             alice_credential,
         )
         .expect("An unexpected error occurred.");
@@ -1091,7 +1091,7 @@ fn book_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvide
         bob_credential,
         backend,
         &signature_keys,
-        signature_keys.public().clone().into(),
+        signature_keys.to_public_vec().into(),
     );
 
     // ANCHOR: external_join_proposal

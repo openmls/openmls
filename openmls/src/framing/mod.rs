@@ -80,7 +80,7 @@ pub use validation::*;
 
 // Tests
 #[cfg(test)]
-mod test_framing;
+pub(crate) mod test_framing;
 
 /// Wire format of MLS messages.
 #[derive(

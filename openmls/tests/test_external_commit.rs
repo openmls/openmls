@@ -18,7 +18,7 @@ fn test_external_commit(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoPr
         backend,
         &alice_signature_keys,
         &group_config,
-        alice_signature_keys.public().clone().into(),
+        alice_signature_keys.to_public_vec().into(),
         alice_credential,
     )
     .expect("An unexpected error occurred.");
@@ -79,7 +79,7 @@ fn test_external_commit(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoPr
                 .build(),
             b"",
             bob_credential,
-            bob_signature_keys.public().clone().into(),
+            bob_signature_keys.to_public_vec().into(),
         )
         .unwrap();
     }
@@ -103,7 +103,7 @@ fn test_external_commit(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoPr
                 .build(),
             b"",
             bob_credential,
-            bob_signature_keys.public().clone().into(),
+            bob_signature_keys.to_public_vec().into(),
         )
         .unwrap_err();
 

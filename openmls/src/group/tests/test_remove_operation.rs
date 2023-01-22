@@ -24,45 +24,35 @@ fn test_remove_operation_variants(ciphersuite: Ciphersuite, backend: &impl OpenM
         let group_id = GroupId::from_slice(b"Test Group");
 
         // Generate credential bundles
-        let alice_credential = generate_credential_bundle(
-            "Alice".into(),
-            CredentialType::Basic,
-            ciphersuite.signature_algorithm(),
-            backend,
-        )
-        .expect("An unexpected error occurred.");
+        let (alice_credential, alice_signer, alice_pk) =
+            generate_credential_bundle("Alice".into(), ciphersuite.signature_algorithm(), backend);
 
-        let bob_credential = generate_credential_bundle(
-            "Bob".into(),
-            CredentialType::Basic,
-            ciphersuite.signature_algorithm(),
-            backend,
-        )
-        .expect("An unexpected error occurred.");
+        let (bob_credential, bob_signer, bob_pk) =
+            generate_credential_bundle("Bob".into(), ciphersuite.signature_algorithm(), backend);
 
-        let charlie_credential = generate_credential_bundle(
+        let (charlie_credential, charlie_signer, charlie_pk) = generate_credential_bundle(
             "Charlie".into(),
-            CredentialType::Basic,
             ciphersuite.signature_algorithm(),
             backend,
-        )
-        .expect("An unexpected error occurred.");
+        );
 
         // Generate KeyPackages
         let bob_key_package = generate_key_package(
-            &[ciphersuite],
+            ciphersuite,
             &bob_credential,
             Extensions::empty(),
             backend,
-        )
-        .expect("An unexpected error occurred.");
+            &bob_signer,
+            bob_pk.into(),
+        );
         let charlie_key_package = generate_key_package(
-            &[ciphersuite],
+            ciphersuite,
             &charlie_credential,
             Extensions::empty(),
             backend,
-        )
-        .expect("An unexpected error occurred.");
+            &charlie_signer,
+            charlie_pk.into(),
+        );
 
         // Define the MlsGroup configuration
         let mls_group_config = MlsGroupConfigBuilder::new()
@@ -72,9 +62,11 @@ fn test_remove_operation_variants(ciphersuite: Ciphersuite, backend: &impl OpenM
         // === Alice creates a group ===
         let mut alice_group = MlsGroup::new_with_group_id(
             backend,
+            &alice_signer,
             &mls_group_config,
             group_id,
-            alice_credential.signature_key(),
+            alice_pk.into(),
+            alice_credential,
         )
         .expect("An unexpected error occurred.");
 

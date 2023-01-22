@@ -485,6 +485,30 @@ impl LeafNode {
             .map_err(|_| LibraryError::custom("Signing failed"))
     }
 
+    /// Generate a fresh leaf node with a fresh encryption key but otherwise
+    /// the same properties as the current leaf node.
+    ///
+    /// The newly generated encryption key pair is stored in the key store.
+    ///
+    /// This function can be used when generating an update. In most other cases
+    /// a leaf node should be generated as part of a new [`KeyPackage`].
+    pub fn updated<KeyStore: OpenMlsKeyStore>(
+        &self,
+        config: CryptoConfig,
+        backend: &impl OpenMlsCryptoProvider<KeyStoreProvider = KeyStore>,
+        signer: &impl ByteSigner,
+    ) -> Result<Self, LeafNodeGenerationError<KeyStore::Error>> {
+        Self::generate(
+            config,
+            self.payload.credential.clone(),
+            self.payload.signature_key.clone(),
+            self.payload.capabilities.clone(),
+            self.payload.extensions.clone(),
+            backend,
+            signer,
+        )
+    }
+
     /// Generate a fresh leaf node.
     ///
     /// This includes generating a new encryption key pair that is stored in the

@@ -28,7 +28,7 @@ fn test_free_leaf_computation(ciphersuite: Ciphersuite, backend: &impl OpenMlsCr
         &sk_0,
         ciphersuite,
         c_0,
-        sk_0.public().clone().into(),
+        sk_0.to_public_vec().into(),
     );
 
     let (c_3, sk_3) = new_credential(
@@ -42,7 +42,7 @@ fn test_free_leaf_computation(ciphersuite: Ciphersuite, backend: &impl OpenMlsCr
         &sk_3,
         ciphersuite,
         c_3,
-        sk_3.public().clone().into(),
+        sk_3.to_public_vec().into(),
     );
 
     // Build a rudimentary tree with two populated and two empty leaf nodes.
@@ -88,7 +88,7 @@ fn test_free_leaf_computation(ciphersuite: Ciphersuite, backend: &impl OpenMlsCr
         &sk_2,
         ciphersuite,
         c_2,
-        sk_2.public().clone().into(),
+        sk_2.to_public_vec().into(),
     );
 
     let mut diff = tree.empty_diff();

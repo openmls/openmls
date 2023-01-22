@@ -65,7 +65,7 @@ fn padding(backend: &impl OpenMlsCryptoProvider) {
         // Create a message in each group and test the padding.
         for group_state in alice.group_states.borrow_mut().values_mut() {
             let credential_bundle = alice
-                .credential_bundles
+                .credentials
                 .get(&group_state.ciphersuite())
                 .expect("An unexpected error occurred.");
             for _ in 0..10 {

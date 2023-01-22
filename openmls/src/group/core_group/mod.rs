@@ -21,7 +21,7 @@ pub(crate) mod staged_commit;
 
 // Tests
 #[cfg(test)]
-mod test_core_group;
+pub(crate) mod test_core_group;
 #[cfg(test)]
 mod test_create_commit_params;
 #[cfg(test)]

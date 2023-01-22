@@ -22,8 +22,8 @@ pub(crate) fn key_package(
             },
             backend,
             &signer,
-            signer.public().clone().into(),
-            credential,
+            signer.to_public_vec().into(),
+            credential.clone(),
         )
         .expect("An unexpected error occurred.");
 
@@ -46,7 +46,7 @@ fn generate_key_package(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoPr
 
 #[apply(ciphersuites_and_backends)]
 fn serialization(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
-    let (key_package, _) = key_package(ciphersuite, backend);
+    let (key_package, _, _) = key_package(ciphersuite, backend);
 
     let encoded = key_package
         .tls_serialize_detached()
@@ -82,7 +82,7 @@ fn application_id_extension(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryp
             },
             backend,
             &signature_keys,
-            signature_keys.public().clone().into(),
+            signature_keys.to_public_vec().into(),
             credential.clone(),
         )
         .expect("An unexpected error occurred.");
