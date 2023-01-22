@@ -28,16 +28,11 @@
 //! Similarly, only the [`Verifiable`] struct should implement the
 //! [`tls_codec::Deserialize`] trait.
 
-use openmls_traits::{
-    crypto::OpenMlsCrypto,
-    signatures::{ByteSigner, ByteVerifier},
-    types::SignatureScheme,
-    OpenMlsCryptoProvider,
-};
+use openmls_traits::{crypto::OpenMlsCrypto, signatures::ByteSigner};
 use thiserror::Error;
 use tls_codec::Serialize;
 
-use crate::ciphersuite::{SignContent, Signature, SignaturePublicKey};
+use crate::ciphersuite::{OpenMlsSignaturePublicKey, SignContent, Signature};
 
 /// Signature generation and verification errors.
 /// The only information relayed with this error is whether the signature
@@ -146,11 +141,15 @@ pub trait Verifiable: Sized {
     ///
     /// Returns `Ok(Self::VerifiedOutput)` if the signature is valid and
     /// `CredentialError::InvalidSignature` otherwise.
-    fn verify<T>(self, verifier: &impl ByteVerifier) -> Result<T, SignatureError>
+    fn verify<T>(
+        self,
+        crypto: &impl OpenMlsCrypto,
+        pk: &OpenMlsSignaturePublicKey,
+    ) -> Result<T, SignatureError>
     where
         T: VerifiedStruct<Self>,
     {
-        verify(&self, verifier)?;
+        verify(crypto, &self, pk)?;
         Ok(T::from_verifiable(self, T::SealingType::default()))
     }
 
@@ -160,14 +159,19 @@ pub trait Verifiable: Sized {
     ///
     /// Returns `Ok(())` if the signature is valid and
     /// `CredentialError::InvalidSignature` otherwise.
-    fn verify_no_out(&self, verifier: &impl ByteVerifier) -> Result<(), SignatureError> {
-        verify(self, verifier)
+    fn verify_no_out(
+        &self,
+        crypto: &impl OpenMlsCrypto,
+        pk: &OpenMlsSignaturePublicKey,
+    ) -> Result<(), SignatureError> {
+        verify(crypto, self, pk)
     }
 }
 
 fn verify(
+    crypto: &impl OpenMlsCrypto,
     verifiable: &impl Verifiable,
-    verifier: &impl ByteVerifier,
+    pk: &OpenMlsSignaturePublicKey,
 ) -> Result<(), SignatureError> {
     let payload = verifiable
         .unsigned_payload()
@@ -180,7 +184,12 @@ fn verify(
             return Err(SignatureError::VerificationError);
         }
     };
-    verifier
-        .verify(&payload, verifiable.signature().value())
+    crypto
+        .verify_signature(
+            pk.signature_scheme(),
+            &payload,
+            pk.as_slice(),
+            verifiable.signature().value(),
+        )
         .map_err(|_| SignatureError::VerificationError)
 }

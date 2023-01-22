@@ -3,6 +3,7 @@
 //! This module contains membership-related operations and exposes [`RemoveOperation`].
 
 use core_group::create_commit_params::CreateCommitParams;
+use openmls_traits::signatures::ByteSigner;
 
 use crate::{binary_tree::array_representation::LeafNodeIndex, treesync::LeafNode};
 
@@ -26,6 +27,7 @@ impl MlsGroup {
     pub fn add_members<KeyStore: OpenMlsKeyStore>(
         &mut self,
         backend: &impl OpenMlsCryptoProvider<KeyStoreProvider = KeyStore>,
+        signer: &impl ByteSigner,
         key_packages: &[KeyPackage],
     ) -> Result<(MlsMessageOut, MlsMessageOut), AddMembersError<KeyStore::Error>> {
         self.is_operational()?;
@@ -51,7 +53,7 @@ impl MlsGroup {
             .proposal_store(&self.proposal_store)
             .inline_proposals(inline_proposals)
             .build();
-        let create_commit_result = self.group.create_commit(params, backend)?;
+        let create_commit_result = self.group.create_commit(params, backend, signer)?;
 
         let welcome = match create_commit_result.welcome_option {
             Some(welcome) => welcome,
@@ -97,6 +99,7 @@ impl MlsGroup {
     pub fn remove_members<KeyStore: OpenMlsKeyStore>(
         &mut self,
         backend: &impl OpenMlsCryptoProvider<KeyStoreProvider = KeyStore>,
+        signer: &impl ByteSigner,
         members: &[LeafNodeIndex],
     ) -> Result<(MlsMessageOut, Option<MlsMessageOut>), RemoveMembersError<KeyStore::Error>> {
         self.is_operational()?;
@@ -120,7 +123,7 @@ impl MlsGroup {
             .proposal_store(&self.proposal_store)
             .inline_proposals(inline_proposals)
             .build();
-        let create_commit_result = self.group.create_commit(params, backend)?;
+        let create_commit_result = self.group.create_commit(params, backend, signer)?;
 
         // Convert PublicMessage messages to MLSMessage and encrypt them if required by
         // the configuration
@@ -149,17 +152,14 @@ impl MlsGroup {
     pub fn propose_add_member(
         &mut self,
         backend: &impl OpenMlsCryptoProvider,
+        signer: &impl ByteSigner,
         key_package: &KeyPackage,
     ) -> Result<MlsMessageOut, ProposeAddMemberError> {
         self.is_operational()?;
 
         let add_proposal = self
             .group
-            .create_add_proposal(
-                self.framing_parameters(),
-                key_package.clone(),
-                backend.signer(),
-            )
+            .create_add_proposal(self.framing_parameters(), key_package.clone(), signer)
             .map_err(|e| match e {
                 crate::group::errors::CreateAddProposalError::LibraryError(e) => e.into(),
                 crate::group::errors::CreateAddProposalError::UnsupportedExtensions => {
@@ -189,13 +189,14 @@ impl MlsGroup {
     pub fn propose_remove_member(
         &mut self,
         backend: &impl OpenMlsCryptoProvider,
+        signer: &impl ByteSigner,
         member: LeafNodeIndex,
     ) -> Result<MlsMessageOut, ProposeRemoveMemberError> {
         self.is_operational()?;
 
         let remove_proposal = self
             .group
-            .create_remove_proposal(self.framing_parameters(), member, backend.signer())
+            .create_remove_proposal(self.framing_parameters(), member, signer)
             .map_err(|_| ProposeRemoveMemberError::UnknownMember)?;
 
         self.proposal_store
@@ -222,13 +223,14 @@ impl MlsGroup {
     pub fn leave_group(
         &mut self,
         backend: &impl OpenMlsCryptoProvider,
+        signer: &impl ByteSigner,
     ) -> Result<MlsMessageOut, LeaveGroupError> {
         self.is_operational()?;
 
         let removed = self.group.own_leaf_index();
         let remove_proposal = self
             .group
-            .create_remove_proposal(self.framing_parameters(), removed, backend.signer())
+            .create_remove_proposal(self.framing_parameters(), removed, signer)
             .map_err(|_| LibraryError::custom("Creating a self removal should not fail"))?;
 
         self.proposal_store

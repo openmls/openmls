@@ -25,6 +25,7 @@ getrandom = { version = "0.2", features = ["js"] }
 itertools = { version = "0.10", optional = true }
 openmls_rust_crypto = { version = "0.1.0", path = "../openmls_rust_crypto", optional = true }
 openmls_evercrypt = { version = "0.1.0", path = "../evercrypt_backend", optional = true }
+openmls_basic_credential = { version = "0.1.0", path = "../basic_credential", optional = true }
 rstest = {version = "^0.16", optional = true}
 rstest_reuse = {version = "0.4", optional = true}
 rayon = "^1.5.0"
@@ -34,7 +35,7 @@ backtrace = "0.3"
 [features]
 default = []
 crypto-subtle = [] # Enable subtle crypto APIs that have to be used with care.
-test-utils = ["itertools", "openmls_rust_crypto", "rand", "rstest", "rstest_reuse"]
+test-utils = ["itertools", "openmls_rust_crypto", "rand", "rstest", "rstest_reuse", "openmls_basic_credential"]
 evercrypt = ["openmls_evercrypt"] # Evercrypt needs to be enabled individually
 crypto-debug = [] # ☣️ Enable logging of sensitive cryptographic information
 content-debug = [] # ☣️ Enable logging of sensitive message content

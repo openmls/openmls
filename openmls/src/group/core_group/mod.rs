@@ -213,6 +213,7 @@ impl CoreGroupBuilder {
     pub(crate) fn build<KeyStore: OpenMlsKeyStore>(
         self,
         backend: &impl OpenMlsCryptoProvider<KeyStoreProvider = KeyStore>,
+        signer: &impl ByteSigner,
     ) -> Result<CoreGroup, CoreGroupBuildError<KeyStore::Error>> {
         let ciphersuite = self.crypto_config.ciphersuite;
         let config = self.config.unwrap_or_default();
@@ -226,6 +227,7 @@ impl CoreGroupBuilder {
         trace!(" >>> with {:?}, {:?}", ciphersuite, config);
         let (tree, commit_secret, leaf_keypair) = TreeSync::new(
             backend,
+            signer,
             CryptoConfig {
                 ciphersuite,
                 version,
@@ -415,7 +417,7 @@ impl CoreGroup {
         &self,
         framing_parameters: FramingParameters,
         psk: PreSharedKeyId,
-        signer: &impl OpenMlsCryptoProvider,
+        signer: &impl ByteSigner,
     ) -> Result<AuthenticatedContent, LibraryError> {
         let presharedkey_proposal = PreSharedKeyProposal::new(psk);
         let proposal = Proposal::PreSharedKey(presharedkey_proposal);
@@ -473,13 +475,14 @@ impl CoreGroup {
         msg: &[u8],
         padding_size: usize,
         backend: &impl OpenMlsCryptoProvider,
+        signer: &impl ByteSigner,
     ) -> Result<PrivateMessage, MessageEncryptionError> {
         let public_message = AuthenticatedContent::new_application(
             self.own_leaf_index(),
             aad,
             msg,
             self.context(),
-            backend.signer(),
+            signer,
         )?;
         self.encrypt(public_message, padding_size, backend)
     }
@@ -557,6 +560,7 @@ impl CoreGroup {
     pub(crate) fn export_group_info(
         &self,
         backend: &impl OpenMlsCryptoProvider,
+        signer: &impl ByteSigner,
         with_ratchet_tree: bool,
     ) -> Result<GroupInfo, LibraryError> {
         let extensions = {
@@ -598,7 +602,7 @@ impl CoreGroup {
 
         // Sign to-be-signed group info.
         group_info_tbs
-            .sign(backend.signer())
+            .sign(signer)
             .map_err(|_| LibraryError::custom("Signing failed"))
     }
 

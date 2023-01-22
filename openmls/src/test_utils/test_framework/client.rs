@@ -3,7 +3,8 @@
 //! that client perform certain MLS operations.
 use std::{collections::HashMap, sync::RwLock};
 
-use openmls_rust_crypto::{OpenMlsRustCrypto, Signatures};
+use openmls_basic_credential::BasicCredential;
+use openmls_rust_crypto::OpenMlsRustCrypto;
 use openmls_traits::{
     key_store::OpenMlsKeyStore,
     types::{Ciphersuite, HpkeKeyPair, SignatureScheme},
@@ -62,6 +63,12 @@ impl Client {
             .credentials
             .get(&ciphersuite)
             .ok_or(ClientError::CiphersuiteNotSupported)?;
+        let keys = BasicCredential::read(
+            self.crypto.key_store(),
+            &credential.public_key,
+            credential.signature_scheme,
+        )
+        .unwrap();
 
         let key_package = KeyPackage::builder()
             .build(
@@ -70,6 +77,7 @@ impl Client {
                     version: ProtocolVersion::default(),
                 },
                 &self.crypto,
+                &keys,
                 credential.public_key.clone().into(),
                 credential.credential.clone(),
             )
@@ -91,9 +99,16 @@ impl Client {
             .credentials
             .get(&ciphersuite)
             .ok_or(ClientError::CiphersuiteNotSupported)?;
+        let signer = BasicCredential::read(
+            self.crypto.key_store(),
+            &credential.public_key,
+            credential.signature_scheme,
+        )
+        .unwrap();
 
         let group_state = MlsGroup::new(
             &self.crypto,
+            &signer,
             &mls_group_config,
             credential.public_key.clone().into(),
             credential.credential.clone(),
@@ -116,8 +131,23 @@ impl Client {
         welcome: Welcome,
         ratchet_tree: Option<Vec<Option<Node>>>,
     ) -> Result<(), ClientError> {
-        let new_group: MlsGroup =
-            MlsGroup::new_from_welcome(&self.crypto, &mls_group_config, welcome, ratchet_tree)?;
+        let credential = self
+            .credentials
+            .get(&mls_group_config.crypto_config().ciphersuite)
+            .ok_or(ClientError::CiphersuiteNotSupported)?;
+        let verifier = BasicCredential::read(
+            self.crypto.key_store(),
+            &credential.public_key,
+            credential.signature_scheme,
+        )
+        .unwrap();
+        let new_group: MlsGroup = MlsGroup::new_from_welcome(
+            &self.crypto,
+            &verifier,
+            &mls_group_config,
+            welcome,
+            ratchet_tree,
+        )?;
         self.groups
             .write()
             .expect("An unexpected error occurred.")
@@ -145,8 +175,18 @@ impl Client {
                 // Clear any potential pending commits.
                 group_state.clear_pending_commit();
             }
+            // Get the signature public key to read the verifier from the
+            // key store.
+            let signature_pk = group_state.own_leaf().unwrap().signature_key();
+            let verifier = BasicCredential::read(
+                self.crypto.key_store(),
+                signature_pk.as_slice(),
+                group_state.ciphersuite().signature_algorithm(),
+            )
+            .unwrap();
             // Process the message.
-            let processed_message = group_state.process_message(&self.crypto, message.clone())?;
+            let processed_message =
+                group_state.process_message(&self.crypto, &verifier, message.clone())?;
 
             match processed_message.into_content() {
                 ProcessedMessageContent::ApplicationMessage(_) => {}
@@ -190,9 +230,21 @@ impl Client {
         let group = groups
             .get_mut(group_id)
             .ok_or(ClientError::NoMatchingGroup)?;
+        // Get the signature public key to read the signer from the
+        // key store.
+        let signature_pk = group.own_leaf().unwrap().signature_key();
+        let signer = BasicCredential::read(
+            self.crypto.key_store(),
+            signature_pk.as_slice(),
+            group.ciphersuite().signature_algorithm(),
+        )
+        .unwrap();
         let (msg, welcome_option) = match action_type {
-            ActionType::Commit => group.self_update(&self.crypto)?,
-            ActionType::Proposal => (group.propose_self_update(&self.crypto, leaf_node)?, None),
+            ActionType::Commit => group.self_update(&self.crypto, &signer)?,
+            ActionType::Proposal => (
+                group.propose_self_update(&self.crypto, &signer, leaf_node)?,
+                None,
+            ),
         };
         Ok((
             msg,
@@ -215,9 +267,19 @@ impl Client {
         let group = groups
             .get_mut(group_id)
             .ok_or(ClientError::NoMatchingGroup)?;
+        // Get the signature public key to read the signer from the
+        // key store.
+        let signature_pk = group.own_leaf().unwrap().signature_key();
+        let signer = BasicCredential::read(
+            self.crypto.key_store(),
+            signature_pk.as_slice(),
+            group.ciphersuite().signature_algorithm(),
+        )
+        .unwrap();
         let action_results = match action_type {
             ActionType::Commit => {
-                let (messages, welcome_message) = group.add_members(&self.crypto, key_packages)?;
+                let (messages, welcome_message) =
+                    group.add_members(&self.crypto, &signer, key_packages)?;
                 (
                     vec![messages],
                     Some(
@@ -230,7 +292,7 @@ impl Client {
             ActionType::Proposal => {
                 let mut messages = Vec::new();
                 for key_package in key_packages {
-                    let message = group.propose_add_member(&self.crypto, key_package)?;
+                    let message = group.propose_add_member(&self.crypto, &signer, key_package)?;
                     messages.push(message);
                 }
                 (messages, None)
@@ -254,9 +316,19 @@ impl Client {
         let group = groups
             .get_mut(group_id)
             .ok_or(ClientError::NoMatchingGroup)?;
+        // Get the signature public key to read the signer from the
+        // key store.
+        let signature_pk = group.own_leaf().unwrap().signature_key();
+        let signer = BasicCredential::read(
+            self.crypto.key_store(),
+            signature_pk.as_slice(),
+            group.ciphersuite().signature_algorithm(),
+        )
+        .unwrap();
         let action_results = match action_type {
             ActionType::Commit => {
-                let (message, welcome_option) = group.remove_members(&self.crypto, targets)?;
+                let (message, welcome_option) =
+                    group.remove_members(&self.crypto, &signer, targets)?;
                 (
                     vec![message],
                     welcome_option.map(|w| w.into_welcome().expect("Unexpected message type.")),
@@ -265,7 +337,7 @@ impl Client {
             ActionType::Proposal => {
                 let mut messages = Vec::new();
                 for target in targets {
-                    let message = group.propose_remove_member(&self.crypto, *target)?;
+                    let message = group.propose_remove_member(&self.crypto, &signer, *target)?;
                     messages.push(message);
                 }
                 (messages, None)

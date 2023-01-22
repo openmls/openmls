@@ -16,8 +16,6 @@ impl OpenMlsCryptoProvider for OpenMlsEvercrypt {
     type CryptoProvider = EvercryptProvider;
     type RandProvider = EvercryptProvider;
     type KeyStoreProvider = MemoryKeyStore;
-    type Signer = EvercryptSigner;
-    type Verifier = EvercryptVerifier;
 
     fn crypto(&self) -> &Self::CryptoProvider {
         &self.crypto
@@ -29,13 +27,5 @@ impl OpenMlsCryptoProvider for OpenMlsEvercrypt {
 
     fn key_store(&self) -> &Self::KeyStoreProvider {
         &self.key_store
-    }
-
-    fn signer(&self) -> &Self::Signer {
-        todo!()
-    }
-
-    fn verifier(&self) -> &Self::Verifier {
-        todo!()
     }
 }

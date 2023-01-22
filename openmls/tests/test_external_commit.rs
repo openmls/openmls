@@ -3,45 +3,31 @@ use openmls::{prelude::*, test_utils::*, *};
 #[apply(ciphersuites_and_backends)]
 fn test_external_commit(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
     // Alice creates a new group ...
-    let alice_group = {
-        let group_config = MlsGroupConfigBuilder::new()
-            .crypto_config(CryptoConfig::with_default_version(ciphersuite))
-            .build();
+    let group_config = MlsGroupConfigBuilder::new()
+        .crypto_config(CryptoConfig::with_default_version(ciphersuite))
+        .build();
 
-        let alice_cb = {
-            let alice_cb = CredentialBundle::new(
-                b"Alice".to_vec(),
-                CredentialType::Basic,
-                ciphersuite.signature_algorithm(),
-                backend,
-            )
-            .expect("Creation of credential bundle failed.");
+    let (alice_credential, alice_signature_keys) = openmls::credentials::test_utils::new_credential(
+        backend,
+        b"Alice",
+        CredentialType::Basic,
+        ciphersuite.signature_algorithm(),
+    );
 
-            let index = alice_cb
-                .credential()
-                .signature_key()
-                .tls_serialize_detached()
-                .expect("Serialization of signature public key failed.");
-
-            backend
-                .key_store()
-                .store(&index, &alice_cb)
-                .expect("Storing of signature public key failed.");
-
-            alice_cb
-        };
-
-        MlsGroup::new(
-            backend,
-            &group_config,
-            alice_cb.credential().signature_key(),
-        )
-        .expect("An unexpected error occurred.")
-    };
+    let alice_group = MlsGroup::new(
+        backend,
+        &alice_signature_keys,
+        &group_config,
+        alice_signature_keys.public().clone().into(),
+        alice_credential,
+    )
+    .expect("An unexpected error occurred.");
 
     // ... and exports a group info (with ratchet_tree).
     let verifiable_group_info = {
-        let group_info = alice_group.export_group_info(backend, true).unwrap();
+        let group_info = alice_group
+            .export_group_info(backend, &alice_signature_keys, true)
+            .unwrap();
 
         let serialized_group_info = group_info.tls_serialize_detached().unwrap();
 
@@ -52,7 +38,9 @@ fn test_external_commit(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoPr
     };
 
     let verifiable_group_info_broken = {
-        let group_info = alice_group.export_group_info(backend, true).unwrap();
+        let group_info = alice_group
+            .export_group_info(backend, &alice_signature_keys, true)
+            .unwrap();
 
         let serialized_group_info = {
             let mut tmp = group_info.tls_serialize_detached().unwrap();
@@ -74,46 +62,48 @@ fn test_external_commit(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoPr
 
     // Now, Bob wants to join Alice' group by an external commit. (Positive case.)
     {
-        let bob_cb = CredentialBundle::new(
-            b"Bob".to_vec(),
+        let (bob_credential, bob_signature_keys) = openmls::credentials::test_utils::new_credential(
+            backend,
+            b"Bob",
             CredentialType::Basic,
             ciphersuite.signature_algorithm(),
-            backend,
-        )
-        .expect("Creation of credential bundle failed.");
+        );
 
         let (_bob_group, _) = MlsGroup::join_by_external_commit(
             backend,
+            &bob_signature_keys,
             None,
             verifiable_group_info,
             &MlsGroupConfigBuilder::new()
                 .crypto_config(CryptoConfig::with_default_version(ciphersuite))
                 .build(),
             b"",
-            &bob_cb,
+            bob_credential,
+            bob_signature_keys.public().clone().into(),
         )
         .unwrap();
     }
 
     // Now, Bob wants to join Alice' group by an external commit. (Negative case, broken signature.)
     {
-        let bob_cb = CredentialBundle::new(
-            b"Bob".to_vec(),
+        let (bob_credential, bob_signature_keys) = openmls::credentials::test_utils::new_credential(
+            backend,
+            b"Bob",
             CredentialType::Basic,
             ciphersuite.signature_algorithm(),
-            backend,
-        )
-        .expect("Creation of credential bundle failed.");
+        );
 
         let got_error = MlsGroup::join_by_external_commit(
             backend,
+            &bob_signature_keys,
             None,
             verifiable_group_info_broken,
             &MlsGroupConfigBuilder::new()
                 .crypto_config(CryptoConfig::with_default_version(ciphersuite))
                 .build(),
             b"",
-            &bob_cb,
+            bob_credential,
+            bob_signature_keys.public().clone().into(),
         )
         .unwrap_err();
 

@@ -19,6 +19,7 @@
 // encryption and decryption of updates to the tree.
 
 use openmls_traits::{
+    signatures::ByteSigner,
     types::{Ciphersuite, CryptoError},
     OpenMlsCryptoProvider,
 };
@@ -96,6 +97,7 @@ impl TreeSync {
     /// corresponding [`CommitSecret`].
     pub(crate) fn new(
         backend: &impl OpenMlsCryptoProvider,
+        signer: &impl ByteSigner,
         config: CryptoConfig,
         credential: Credential,
         signature_key: SignaturePublicKey,
@@ -108,6 +110,7 @@ impl TreeSync {
             // Creation of a group is considered to be from a key package.
             LeafNodeSource::KeyPackage(life_time),
             backend,
+            signer,
             credential,
             signature_key,
             capabilities,

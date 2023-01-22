@@ -35,6 +35,7 @@ impl CoreGroup {
         &self,
         mut params: CreateCommitParams,
         backend: &impl OpenMlsCryptoProvider<KeyStoreProvider = KeyStore>,
+        signer: &impl ByteSigner,
     ) -> Result<CreateCommitResult, CreateCommitError<KeyStore::Error>> {
         let ciphersuite = self.ciphersuite();
 
@@ -149,6 +150,7 @@ impl CoreGroup {
                     version: self.version(),
                 },
                 backend,
+                signer,
                 params
                     .signature_key()
                     .ok_or(CreateCommitError::MissingSignatureKey)?,
@@ -190,6 +192,7 @@ impl CoreGroup {
                         self.ciphersuite,
                         ProtocolVersion::default(), // XXX: openmls/openmls#1065
                         backend,
+                        signer
                     )?;
                     vec![encryption_keypair]
                 };
@@ -198,6 +201,7 @@ impl CoreGroup {
                 // generated new leaf.
                 let (plain_path, mut new_parent_keypairs, commit_secret) = diff.apply_own_update_path(
                     backend,
+                    signer,
                     ciphersuite,
                     self.group_id().clone(),
                 )?;
@@ -252,7 +256,7 @@ impl CoreGroup {
             sender,
             commit,
             self.context(),
-            backend.signer(),
+            signer,
         )?;
 
         // Calculate the confirmed transcript hash
@@ -356,7 +360,7 @@ impl CoreGroup {
                 )
             };
             // Sign to-be-signed group info.
-            let group_info = group_info_tbs.sign(backend.signer())?;
+            let group_info = group_info_tbs.sign(signer)?;
 
             // Encrypt GroupInfo object
             let (welcome_key, welcome_nonce) = welcome_secret

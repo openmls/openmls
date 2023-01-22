@@ -41,7 +41,7 @@
 
 use crate::{group::errors::ValidationError, tree::index::SecretTreeLeafIndex, treesync::TreeSync};
 use core_group::{proposals::QueuedProposal, staged_commit::StagedCommit};
-use openmls_traits::{signatures::ByteVerifier, types::Ciphersuite, OpenMlsCryptoProvider};
+use openmls_traits::{crypto::OpenMlsCrypto, OpenMlsCryptoProvider};
 
 use crate::{
     ciphersuite::signable::Verifiable, error::LibraryError,
@@ -148,16 +148,22 @@ impl DecryptedMessage {
     ///  - ValSem245
     ///  - Prepares ValSem246 by setting the right credential. The remainder
     ///    of ValSem246 is validated as part of ValSem010.
+    ///
+    /// Returns the [`Credential`] and the leaf's [`SignaturePublicKey`].
     pub(crate) fn credential(
         &self,
         treesync: &TreeSync,
         old_leaves: &[Member],
-    ) -> Result<Credential, ValidationError> {
+    ) -> Result<(Credential, SignaturePublicKey), ValidationError> {
         let sender = self.sender();
         match sender {
             Sender::Member(leaf_index) => {
                 match treesync.leaf(*leaf_index) {
-                    Some(sender_leaf) => Ok(sender_leaf.credential().clone()),
+                    Some(sender_leaf) => {
+                        let credential = sender_leaf.credential().clone();
+                        let pk = sender_leaf.signature_key().clone();
+                        Ok((credential, pk))
+                    }
                     None => {
                         // This might not actually be an error but the sender's
                         // key package changed. Let's check old leaves we still
@@ -171,7 +177,11 @@ impl DecryptedMessage {
                             .find(|&old_member| *leaf_index == old_member.index)
                         {
                             match treesync.leaf(*index) {
-                                Some(node) => Ok(node.credential().clone()),
+                                Some(node) => {
+                                    let credential = node.credential().clone();
+                                    let pk = node.signature_key().clone();
+                                    Ok((credential, pk))
+                                }
                                 None => Err(ValidationError::UnknownMember),
                             }
                         } else {
@@ -203,10 +213,13 @@ impl DecryptedMessage {
 /// Partially checked and potentially decrypted message (if it was originally encrypted).
 /// Use this to inspect the [`Credential`] of the message sender
 /// and the optional `aad` if the original message was encrypted.
+/// The [`OpenMlsSignaturePublicKey`] is used to verify the signature of the
+/// message.
 #[derive(Debug, Clone)]
 pub(crate) struct UnverifiedMessage {
     verifiable_content: VerifiableAuthenticatedContent,
     credential: Option<Credential>,
+    sender_pk: OpenMlsSignaturePublicKey,
 }
 
 impl UnverifiedMessage {
@@ -214,16 +227,24 @@ impl UnverifiedMessage {
     pub(crate) fn from_decrypted_message(
         decrypted_message: DecryptedMessage,
         credential: Option<Credential>,
+        sender_pk: OpenMlsSignaturePublicKey,
     ) -> Self {
         UnverifiedMessage {
             verifiable_content: decrypted_message.verifiable_content,
             credential,
+            sender_pk,
         }
     }
 
     /// Decomposes an [UnverifiedMessage] into its parts.
-    pub(crate) fn into_parts(self) -> (VerifiableAuthenticatedContent, Option<Credential>) {
-        (self.verifiable_content, self.credential)
+    pub(crate) fn into_parts(
+        self,
+    ) -> (
+        VerifiableAuthenticatedContent,
+        Option<Credential>,
+        OpenMlsSignaturePublicKey,
+    ) {
+        (self.verifiable_content, self.credential, self.sender_pk)
     }
 }
 
@@ -249,7 +270,7 @@ impl UnverifiedContextMessage {
         unverified_message: UnverifiedMessage,
     ) -> Result<Self, LibraryError> {
         // Decompose UnverifiedMessage
-        let (verifiable_content, credential_option) = unverified_message.into_parts();
+        let (verifiable_content, credential_option, sender_pk) = unverified_message.into_parts();
         match verifiable_content.sender() {
             Sender::Member(_) => {
                 Ok(UnverifiedContextMessage::Group(UnverifiedGroupMessage {
@@ -257,6 +278,7 @@ impl UnverifiedContextMessage {
                     // If the message type is `Member` it always contains credentials
                     credential: credential_option
                         .ok_or_else(|| LibraryError::custom("Expected credential"))?,
+                    sender_pk,
                 }))
             }
             // TODO #151/#106: We don't support external senders yet
@@ -268,6 +290,7 @@ impl UnverifiedContextMessage {
                         // If the message type is `NewMemberCommit` or `NewMemberProposal` it always contains credentials
                         credential: credential_option
                             .ok_or_else(|| LibraryError::custom("Expected credential"))?,
+                        sender_pk,
                     },
                 ))
             }
@@ -279,6 +302,7 @@ impl UnverifiedContextMessage {
 pub(crate) struct UnverifiedGroupMessage {
     verifiable_content: VerifiableAuthenticatedContent,
     credential: Credential,
+    sender_pk: OpenMlsSignaturePublicKey,
 }
 
 impl UnverifiedGroupMessage {
@@ -288,11 +312,11 @@ impl UnverifiedGroupMessage {
     ///  - ValSem010
     pub(crate) fn into_verified(
         self,
-        verifier: &impl ByteVerifier,
+        crypto: &impl OpenMlsCrypto,
     ) -> Result<VerifiedMemberMessage, ValidationError> {
         // ValSem010
         self.verifiable_content
-            .verify(verifier)
+            .verify(crypto, &self.sender_pk)
             .map(|authenticated_content| VerifiedMemberMessage {
                 authenticated_content,
             })
@@ -309,6 +333,7 @@ impl UnverifiedGroupMessage {
 pub(crate) struct UnverifiedNewMemberMessage {
     verifiable_content: VerifiableAuthenticatedContent,
     credential: Credential,
+    sender_pk: OpenMlsSignaturePublicKey,
 }
 
 impl UnverifiedNewMemberMessage {
@@ -318,12 +343,12 @@ impl UnverifiedNewMemberMessage {
     /// - ValSem010
     pub(crate) fn into_verified(
         self,
-        verifier: &impl ByteVerifier,
+        crypto: &impl OpenMlsCrypto,
     ) -> Result<VerifiedExternalMessage, ValidationError> {
         // ValSem010
         let verified_external_message = self
             .verifiable_content
-            .verify(verifier)
+            .verify(crypto, &self.sender_pk)
             .map(|authenticated_content| VerifiedExternalMessage {
                 authenticated_content,
             })

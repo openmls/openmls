@@ -442,6 +442,7 @@ impl LeafNode {
         capabilities: Capabilities,
         extensions: Extensions,
         backend: &impl OpenMlsCryptoProvider,
+        signer: &impl ByteSigner,
     ) -> Result<(Self, EncryptionKeyPair), LibraryError> {
         // Create a new encryption key pair.
         let encryption_key_pair = EncryptionKeyPair::random(backend, config)?;
@@ -453,7 +454,7 @@ impl LeafNode {
             leaf_node_source,
             capabilities,
             extensions,
-            backend.signer(),
+            signer,
         )?;
 
         Ok((leaf_node, encryption_key_pair))
@@ -498,6 +499,7 @@ impl LeafNode {
         capabilities: Capabilities,
         extensions: Extensions,
         backend: &impl OpenMlsCryptoProvider<KeyStoreProvider = KeyStore>,
+        signer: &impl ByteSigner,
     ) -> Result<Self, LeafNodeGenerationError<KeyStore::Error>> {
         // Note that this function is supposed to be used in the public API only
         // because it is interacting with the key store.
@@ -510,6 +512,7 @@ impl LeafNode {
             capabilities,
             extensions,
             backend,
+            signer,
         )?;
 
         // Store the encryption key pair in the key store.
@@ -622,7 +625,7 @@ impl LeafNode {
         leaf_node_source: LeafNodeSource,
         capabilities: Capabilities,
         extensions: Extensions,
-        backend: &impl OpenMlsCryptoProvider,
+        signer: &impl ByteSigner,
     ) -> Result<Self, LibraryError> {
         Self::new_with_key(
             encryption_key,
@@ -631,7 +634,7 @@ impl LeafNode {
             leaf_node_source,
             capabilities,
             extensions,
-            backend,
+            signer,
         )
     }
 
@@ -778,6 +781,7 @@ impl OpenMlsLeafNode {
         config: CryptoConfig,
         leaf_node_source: LeafNodeSource,
         backend: &impl OpenMlsCryptoProvider,
+        signer: &impl ByteSigner,
         credential: Credential,
         signature_key: SignaturePublicKey,
         capabilities: Capabilities,
@@ -791,6 +795,7 @@ impl OpenMlsLeafNode {
             capabilities,
             extensions,
             backend,
+            signer,
         )?;
 
         Ok((
@@ -855,6 +860,7 @@ impl OpenMlsLeafNode {
         ciphersuite: Ciphersuite,
         protocol_version: ProtocolVersion,
         backend: &impl OpenMlsCryptoProvider,
+        signer: &impl ByteSigner,
     ) -> Result<EncryptionKeyPair, PublicTreeError> {
         if !self
             .leaf_node
@@ -892,7 +898,7 @@ impl OpenMlsLeafNode {
             key_pair.public_key().clone(),
             None,
             group_id.clone(),
-            backend.signer(),
+            signer,
         )?;
 
         Ok(key_pair)
@@ -925,6 +931,11 @@ impl OpenMlsLeafNode {
     /// Get a reference to the leaf's [`Credential`].
     pub(crate) fn credential(&self) -> &Credential {
         self.leaf_node.credential()
+    }
+
+    /// Get a reference to the leaf's signature key.
+    pub(crate) fn signature_key(&self) -> &SignaturePublicKey {
+        self.leaf_node.signature_key()
     }
 
     /// Get a clone of this [`OpenMlsLeafNode`] without the private information.

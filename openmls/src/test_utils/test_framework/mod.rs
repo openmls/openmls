@@ -32,7 +32,8 @@ use crate::{
     treesync::{node::Node, LeafNode},
 };
 use ::rand::{rngs::OsRng, RngCore};
-use openmls_rust_crypto::{OpenMlsRustCrypto, Signatures};
+use openmls_basic_credential::BasicCredential;
+use openmls_rust_crypto::OpenMlsRustCrypto;
 use openmls_traits::{
     crypto::OpenMlsCrypto,
     key_store::OpenMlsKeyStore,
@@ -134,17 +135,12 @@ impl MlsGroupTestSetup {
             let crypto = OpenMlsRustCrypto::default();
             let mut credentials = HashMap::new();
             for ciphersuite in crypto.crypto().supported_ciphersuites().iter() {
-                let credential = Credential::new(
-                    identity.clone(),
-                    CredentialType::Basic,
-                    ciphersuite.signature_algorithm(),
-                    &crypto,
-                )
-                .unwrap();
+                let credential = Credential::new(identity.clone(), CredentialType::Basic).unwrap();
                 let signature_keys =
-                    Signatures::new(ciphersuite.signature_algorithm(), crypto.crypto()).unwrap();
+                    BasicCredential::new(ciphersuite.signature_algorithm(), crypto.crypto())
+                        .unwrap();
                 signature_keys.store(crypto.key_store()).unwrap();
-                
+
                 credentials.insert(
                     *ciphersuite,
                     CredentialPP {
@@ -366,8 +362,17 @@ impl MlsGroupTestSetup {
                             .expect("An unexpected error occurred."),
                         group.exporter_secret
                     );
+                    // Get the signature public key to read the signer from the
+                    // key store.
+                    let signature_pk = group_state.own_leaf().unwrap().signature_key();
+                    let signer = BasicCredential::read(
+                        m.crypto.key_store(),
+                        signature_pk.as_slice(),
+                        group_state.ciphersuite().signature_algorithm(),
+                    )
+                    .unwrap();
                     let message = group_state
-                        .create_message(&m.crypto, "Hello World!".as_bytes())
+                        .create_message(&m.crypto, &signer, "Hello World!".as_bytes())
                         .expect("Error composing message while checking group states.");
                     Some((m_id.to_vec(), message))
                 } else {

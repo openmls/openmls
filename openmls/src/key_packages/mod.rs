@@ -98,10 +98,7 @@ use crate::{
     versions::ProtocolVersion,
 };
 use openmls_traits::{
-    crypto::OpenMlsCrypto,
-    key_store::OpenMlsKeyStore,
-    signatures::{ByteSigner, ByteVerifier},
-    types::Ciphersuite,
+    crypto::OpenMlsCrypto, key_store::OpenMlsKeyStore, signatures::ByteSigner, types::Ciphersuite,
     OpenMlsCryptoProvider,
 };
 use serde::{Deserialize, Serialize};
@@ -230,6 +227,7 @@ impl KeyPackage {
     pub(crate) fn create<KeyStore: OpenMlsKeyStore>(
         config: CryptoConfig,
         backend: &impl OpenMlsCryptoProvider<KeyStoreProvider = KeyStore>,
+        signer: &impl ByteSigner,
         credential: Credential,
         signature_key: SignaturePublicKey,
         extensions: Extensions,
@@ -244,6 +242,7 @@ impl KeyPackage {
         let (key_package, encryption_keypair) = Self::new_from_keys(
             config,
             backend,
+            signer,
             credential,
             signature_key,
             extensions,
@@ -270,6 +269,7 @@ impl KeyPackage {
     fn new_from_keys<KeyStore: OpenMlsKeyStore>(
         config: CryptoConfig,
         backend: &impl OpenMlsCryptoProvider<KeyStoreProvider = KeyStore>,
+        signer: &impl ByteSigner,
         credential: Credential,
         signature_key: SignaturePublicKey,
         extensions: Extensions,
@@ -286,6 +286,7 @@ impl KeyPackage {
             Capabilities::default(),
             leaf_node_extensions,
             backend,
+            signer,
         )?;
 
         let key_package = KeyPackageTBS {
@@ -296,7 +297,7 @@ impl KeyPackage {
             extensions,
         };
 
-        let key_package = key_package.sign(backend.signer())?;
+        let key_package = key_package.sign(signer)?;
 
         Ok((key_package, encryption_key_pair))
     }
@@ -317,11 +318,7 @@ impl KeyPackage {
     /// * verify that all extensions are supported by the leaf node
     /// * make sure that the lifetime is valid
     /// Returns `Ok(())` if all checks succeed and `KeyPackageError` otherwise
-    pub fn verify(
-        &self,
-        verifier: &impl ByteVerifier,
-        ciphersuite: Ciphersuite,
-    ) -> Result<(), KeyPackageVerifyError> {
+    pub fn verify(&self, crypto: &impl OpenMlsCrypto) -> Result<(), KeyPackageVerifyError> {
         // Extension included in the extensions or leaf_node.extensions fields
         // MUST be included in the leaf_node.capabilities field.
         for extension in self.payload.extensions.iter() {
@@ -346,7 +343,11 @@ impl KeyPackage {
         }
 
         // Verify the signature on this key package.
-        <Self as Verifiable>::verify_no_out(self, verifier).map_err(|_| {
+        let pk = OpenMlsSignaturePublicKey::from_signature_key(
+            self.leaf_node().signature_key().clone(),
+            self.ciphersuite().signature_algorithm(),
+        );
+        <Self as Verifiable>::verify_no_out(self, crypto, &pk).map_err(|_| {
             log::error!("Key package signature is invalid.");
             KeyPackageVerifyError::InvalidSignature
         })
@@ -417,6 +418,7 @@ impl KeyPackage {
     pub fn new_from_init_key<KeyStore: OpenMlsKeyStore>(
         config: CryptoConfig,
         backend: &impl OpenMlsCryptoProvider<KeyStoreProvider = KeyStore>,
+        signer: &impl ByteSigner,
         credential: Credential,
         signature_key: SignaturePublicKey,
         extensions: Extensions,
@@ -426,6 +428,7 @@ impl KeyPackage {
         let (key_package, encryption_key_pair) = Self::new_from_keys(
             config,
             backend,
+            signer,
             credential,
             signature_key,
             extensions,
@@ -457,6 +460,7 @@ impl KeyPackage {
     pub(crate) fn new_from_encryption_key<KeyStore: OpenMlsKeyStore>(
         config: CryptoConfig,
         backend: &impl OpenMlsCryptoProvider<KeyStoreProvider = KeyStore>,
+        signer: &impl ByteSigner,
         credential: &Credential,
         signature_key: SignaturePublicKey,
         extensions: Extensions,
@@ -484,7 +488,7 @@ impl KeyPackage {
             LeafNodeSource::KeyPackage(Lifetime::default()),
             Capabilities::default(),
             Extensions::empty(),
-            backend,
+            signer,
         )
         .unwrap();
 
@@ -588,12 +592,14 @@ impl KeyPackageBuilder {
         self,
         config: CryptoConfig,
         backend: &impl OpenMlsCryptoProvider<KeyStoreProvider = KeyStore>,
+        signer: &impl ByteSigner,
         signature_key: SignaturePublicKey,
         credential: Credential,
     ) -> Result<KeyPackageCreationResult, KeyPackageNewError<KeyStore::Error>> {
         KeyPackage::create(
             config,
             backend,
+            signer,
             credential,
             signature_key,
             self.key_package_extensions.unwrap_or_default(),
@@ -606,6 +612,7 @@ impl KeyPackageBuilder {
         self,
         config: CryptoConfig,
         backend: &impl OpenMlsCryptoProvider<KeyStoreProvider = KeyStore>,
+        signer: &impl ByteSigner,
         signature_key: SignaturePublicKey,
         credential: Credential,
     ) -> Result<KeyPackage, KeyPackageNewError<KeyStore::Error>> {
@@ -616,6 +623,7 @@ impl KeyPackageBuilder {
         } = KeyPackage::create(
             config,
             backend,
+            signer,
             credential,
             signature_key,
             self.key_package_extensions.unwrap_or_default(),
@@ -669,6 +677,7 @@ impl KeyPackageBundle {
 impl KeyPackageBundle {
     pub(crate) fn new(
         backend: &impl OpenMlsCryptoProvider,
+        signer: &impl ByteSigner,
         ciphersuite: Ciphersuite,
         credential: Credential,
         signature_key: SignaturePublicKey,
@@ -680,6 +689,7 @@ impl KeyPackageBundle {
                     version: ProtocolVersion::default(),
                 },
                 backend,
+                signer,
                 signature_key,
                 credential,
             )

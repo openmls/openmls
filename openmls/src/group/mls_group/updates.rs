@@ -1,4 +1,5 @@
 use core_group::create_commit_params::CreateCommitParams;
+use openmls_traits::signatures::ByteSigner;
 
 use crate::{treesync::LeafNode, versions::ProtocolVersion};
 
@@ -20,6 +21,7 @@ impl MlsGroup {
     pub fn self_update<KeyStore: OpenMlsKeyStore>(
         &mut self,
         backend: &impl OpenMlsCryptoProvider<KeyStoreProvider = KeyStore>,
+        signer: &impl ByteSigner,
     ) -> Result<(MlsMessageOut, Option<MlsMessageOut>), SelfUpdateError<KeyStore::Error>> {
         self.is_operational()?;
 
@@ -27,9 +29,9 @@ impl MlsGroup {
             .framing_parameters(self.framing_parameters())
             .proposal_store(&self.proposal_store)
             .build();
-        // Create Commit over all proposals. If a `KeyPackageBundle` was passed
-        // in, use it to create an update proposal by value. TODO #751
-        let create_commit_result = self.group.create_commit(params, backend)?;
+        // Create Commit over all proposals.
+        // TODO #751
+        let create_commit_result = self.group.create_commit(params, backend, signer)?;
 
         // Convert PublicMessage messages to MLSMessage and encrypt them if required by
         // the configuration
@@ -56,11 +58,12 @@ impl MlsGroup {
     pub fn propose_self_update<KeyStore: OpenMlsKeyStore>(
         &mut self,
         backend: &impl OpenMlsCryptoProvider<KeyStoreProvider = KeyStore>,
+        signer: &impl ByteSigner,
         leaf_node: Option<LeafNode>,
     ) -> Result<MlsMessageOut, ProposeSelfUpdateError<KeyStore::Error>> {
         self.is_operational()?;
 
-        let old_credential = self.credential()?;
+        // let old_credential = self.credential()?;
         let tree = self.group.treesync();
 
         // Here we clone our own leaf to rekey it such that we don't change the
@@ -72,13 +75,14 @@ impl MlsGroup {
             .ok_or_else(|| LibraryError::custom("The tree is broken. Couldn't find own leaf."))?
             .clone();
         if let Some(leaf) = leaf_node {
-            own_leaf.update_and_re_sign(None, leaf, self.group_id().clone(), backend.signer())?
+            own_leaf.update_and_re_sign(None, leaf, self.group_id().clone(), signer)?
         } else {
             let keypair = own_leaf.rekey(
                 self.group_id(),
                 self.ciphersuite(),
                 ProtocolVersion::default(), // XXX: openmls/openmls#1065
                 backend,
+                signer,
             )?;
             // TODO #1207: Move to the top of the function.
             keypair
@@ -89,7 +93,7 @@ impl MlsGroup {
         let update_proposal = self.group.create_update_proposal(
             self.framing_parameters(),
             own_leaf.leaf_node().clone(),
-            backend.signer(),
+            signer,
         )?;
 
         self.own_leaf_nodes.push(own_leaf);

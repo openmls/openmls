@@ -1,6 +1,5 @@
 use openmls_rust_crypto::OpenMlsRustCrypto;
 use openmls_traits::{key_store::OpenMlsKeyStore, types::SignatureScheme, OpenMlsCryptoProvider};
-use tls_codec::Serialize;
 
 use crate::{
     binary_tree::LeafNodeIndex,

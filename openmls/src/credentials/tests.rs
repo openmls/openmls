@@ -18,15 +18,3 @@ fn test_protocol_version() {
     assert_eq!(mls10_e[0], 1);
     assert_eq!(default_e[0], 1);
 }
-
-#[apply(ciphersuites_and_backends)]
-fn test_credential_bundle_from_parts(
-    ciphersuite: Ciphersuite,
-    backend: &impl OpenMlsCryptoProvider,
-) {
-    let signature_scheme = ciphersuite.signature_algorithm();
-    let keypair = SignatureKeypair::new(signature_scheme, backend)
-        .expect("Could not create signature keypair.");
-
-    let _credential_bundle = CredentialBundle::new(vec![1, 2, 3], keypair);
-}

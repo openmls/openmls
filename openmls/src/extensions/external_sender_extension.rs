@@ -33,11 +33,12 @@ pub type ExternalSendersExtension = Vec<ExternalSender>;
 
 #[cfg(test)]
 mod test {
+    use openmls_basic_credential::BasicCredential;
     use openmls_rust_crypto::OpenMlsRustCrypto;
-    use openmls_traits::types::SignatureScheme;
+    use openmls_traits::{types::SignatureScheme, OpenMlsCryptoProvider};
     use tls_codec::{Deserialize, Serialize};
 
-    use crate::credentials::{CredentialBundle, CredentialType};
+    use crate::credentials::CredentialType;
 
     use super::*;
 
@@ -49,18 +50,12 @@ mod test {
             let mut external_sender_extensions = Vec::new();
 
             for _ in 0..8 {
-                let credential_bundle = CredentialBundle::new(
-                    b"Alice".to_vec(),
-                    CredentialType::Basic,
-                    SignatureScheme::ED25519,
-                    &backend,
-                )
-                .expect("Creation of credential bundle failed.");
-
-                let credential = credential_bundle.credential().clone();
+                let credential = Credential::new(b"Alice".to_vec(), CredentialType::Basic).unwrap();
+                let signature_keys =
+                    BasicCredential::new(SignatureScheme::ED25519, backend.crypto()).unwrap();
 
                 external_sender_extensions.push(ExternalSender {
-                    signature_key: credential.signature_key().clone(),
+                    signature_key: signature_keys.public().clone().into(),
                     credential,
                 });
             }

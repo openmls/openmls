@@ -1,6 +1,6 @@
 use crate::{
     binary_tree::array_representation::LeafNodeIndex,
-    ciphersuite::signable::Verifiable,
+    ciphersuite::{signable::Verifiable, OpenMlsSignaturePublicKey},
     group::errors::ExternalCommitError,
     messages::proposals::{ExternalInitProposal, Proposal},
     treesync::{errors::TreeSyncFromNodesError, node::Node},
@@ -25,6 +25,7 @@ impl CoreGroup {
     /// containing the commit.
     pub(crate) fn join_by_external_commit(
         backend: &impl OpenMlsCryptoProvider,
+        signer: &impl ByteSigner,
         mut params: CreateCommitParams,
         tree_option: Option<&[Option<Node>]>,
         verifiable_group_info: VerifiableGroupInfo,
@@ -59,13 +60,17 @@ impl CoreGroup {
         )?;
 
         let group_info: GroupInfo = {
-            let group_info_signer_leaf = treesync
+            let group_info_signer_pk = treesync
                 .leaf(verifiable_group_info.signer())
                 .ok_or(ExternalCommitError::UnknownSender)?
-                .credential();
+                .signature_key();
+            let group_info_signer_pk = OpenMlsSignaturePublicKey::from_signature_key(
+                group_info_signer_pk.clone(),
+                ciphersuite.signature_algorithm(),
+            );
 
             verifiable_group_info
-                .verify(backend.verifier())
+                .verify(backend.crypto(), &group_info_signer_pk)
                 .map_err(|_| ExternalCommitError::InvalidGroupInfoSignature)?
         };
 
@@ -167,7 +172,7 @@ impl CoreGroup {
             .build();
 
         // Immediately create the commit to add ourselves to the group.
-        let create_commit_result = group.create_commit(params, backend);
+        let create_commit_result = group.create_commit(params, backend, signer);
         debug_assert!(
             create_commit_result.is_ok(),
             "Error creating commit {:?}",

@@ -8,7 +8,7 @@
 //! [`PublicMessage`] can be accessed by processing functions of OpenMLS.
 use crate::{
     binary_tree::LeafNodeIndex,
-    ciphersuite::signable::{Signable, SignedStruct, Verifiable, VerifiedStruct},
+    ciphersuite::{signable::{Signable, SignedStruct, Verifiable, VerifiedStruct}, SignaturePublicKey},
     error::LibraryError,
     group::errors::ValidationError,
 };
@@ -309,22 +309,28 @@ impl VerifiableAuthenticatedContent {
         self.auth_content.tbs.epoch()
     }
 
-    /// Returns the [`Credential`] contained in the [`VerifiableAuthenticatedContent`]
-    /// if the `sender_type` is either [`Sender::NewMemberCommit`] or
-    /// [`Sender::NewMemberProposal`].
+    /// Returns the [`Credential`] and the [`SignaturePublicKey`] contained in
+    /// the [`VerifiableAuthenticatedContent`] if the `sender_type` is either
+    /// [`Sender::NewMemberCommit`] or [`Sender::NewMemberProposal`].
     ///
     /// Returns a [`ValidationError`] if
     /// * the sender type is not one of the above,
     /// * the content type doesn't match the sender type, or
     /// * if it's a NewMemberCommit and the Commit doesn't contain a `path`.
-    pub(crate) fn new_member_credential(&self) -> Result<Credential, ValidationError> {
+    pub(crate) fn new_member_credential(
+        &self,
+    ) -> Result<(Credential, SignaturePublicKey), ValidationError> {
         match self.auth_content.tbs.content.sender {
             Sender::NewMemberCommit => {
                 // only external commits can have a sender type `NewMemberCommit`
                 match &self.auth_content.tbs.content.body {
                     FramedContentBody::Commit(Commit { path, .. }) => path
                         .as_ref()
-                        .map(|p| p.leaf_node().credential().clone())
+                        .map(|p| {
+                            let credential = p.leaf_node().credential().clone();
+                            let pk = p.leaf_node().signature_key().clone();
+                            (credential, pk)
+                        })
                         .ok_or(ValidationError::NoPath),
                     _ => Err(ValidationError::NotACommit),
                 }
@@ -333,7 +339,9 @@ impl VerifiableAuthenticatedContent {
                 // only External Add proposals can have a sender type `NewMemberProposal`
                 match &self.auth_content.tbs.content.body {
                     FramedContentBody::Proposal(Proposal::Add(AddProposal { key_package })) => {
-                        Ok(key_package.leaf_node().credential().clone())
+                        let credential = key_package.leaf_node().credential().clone();
+                        let pk = key_package.leaf_node().signature_key().clone();
+                        Ok((credential, pk))
                     }
                     _ => Err(ValidationError::NotAnExternalAddProposal),
                 }

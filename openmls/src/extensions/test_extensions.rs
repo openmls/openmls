@@ -38,24 +38,27 @@ fn ratchet_tree_extension(ciphersuite: Ciphersuite, backend: &impl OpenMlsCrypto
     let framing_parameters = FramingParameters::new(group_aad, WireFormat::PublicMessage);
 
     // Define credential bundles
-    let alice_credential_bundle = CredentialBundle::new(
-        "Alice".into(),
+    let (alice_credential, alice_signature_keys) = test_utils::new_credential(
+        backend,
+        b"Alice",
         CredentialType::Basic,
         ciphersuite.signature_algorithm(),
+    );
+    let (bob_credential, bob_signature_keys) = test_utils::new_credential(
         backend,
-    )
-    .expect("An unexpected error occurred.");
-    let bob_credential_bundle = CredentialBundle::new(
-        "Bob".into(),
+        b"Bob",
         CredentialType::Basic,
         ciphersuite.signature_algorithm(),
-        backend,
-    )
-    .expect("An unexpected error occurred.");
+    );
 
     // Generate KeyPackages
-    let bob_key_package_bundle =
-        KeyPackageBundle::new(backend, ciphersuite, &bob_credential_bundle);
+    let bob_key_package_bundle = KeyPackageBundle::new(
+        backend,
+        &bob_signature_keys,
+        ciphersuite,
+        bob_credential,
+        bob_signature_keys.public().clone().into(),
+    );
     let bob_key_package = bob_key_package_bundle.key_package();
 
     let config = CoreGroupConfig {
@@ -125,8 +128,13 @@ fn ratchet_tree_extension(ciphersuite: Ciphersuite, backend: &impl OpenMlsCrypto
     // === Alice creates a group without the ratchet tree extension ===
 
     // Generate KeyPackages
-    let bob_key_package_bundle =
-        KeyPackageBundle::new(backend, ciphersuite, &bob_credential_bundle);
+    let bob_key_package_bundle = KeyPackageBundle::new(
+        backend,
+        &bob_signature_keys,
+        ciphersuite,
+        bob_credential,
+        bob_signature_keys.public().clone().into(),
+    );
     let bob_key_package = bob_key_package_bundle.key_package();
 
     let config = CoreGroupConfig {

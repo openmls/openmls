@@ -1,3 +1,5 @@
+use openmls_traits::signatures::ByteSigner;
+
 use super::{errors::CreateMessageError, *};
 
 impl MlsGroup {
@@ -12,6 +14,7 @@ impl MlsGroup {
     pub fn create_message(
         &mut self,
         backend: &impl OpenMlsCryptoProvider,
+        signer: &impl ByteSigner,
         message: &[u8],
     ) -> Result<MlsMessageOut, CreateMessageError> {
         if !self.is_active() {
@@ -32,6 +35,7 @@ impl MlsGroup {
                 message,
                 self.configuration().padding_size(),
                 backend,
+                signer,
             )
             // We know the application message is wellformed and we have the key material of the current epoch
             .map_err(|_| LibraryError::custom("Malformed plaintext"))?;

@@ -1,21 +1,17 @@
 use crate::test_utils::*;
+use openmls_basic_credential::BasicCredential;
 use openmls_rust_crypto::OpenMlsRustCrypto;
 use tls_codec::Deserialize;
 
 use crate::{extensions::*, key_packages::*};
 
 /// Helper function to generate key packages
-fn key_package(
+pub(crate) fn key_package(
     ciphersuite: Ciphersuite,
     backend: &impl OpenMlsCryptoProvider,
-) -> (KeyPackage, CredentialBundle) {
-    let credential_bundle = CredentialBundle::new(
-        b"Sasha".to_vec(),
-        CredentialType::Basic,
-        ciphersuite.into(),
-        backend,
-    )
-    .expect("An unexpected error occurred.");
+) -> (KeyPackage, Credential, BasicCredential) {
+    let credential = Credential::new(b"Sasha".to_vec(), CredentialType::Basic).unwrap();
+    let signer = BasicCredential::new(ciphersuite.signature_algorithm(), backend.crypto()).unwrap();
 
     // Generate a valid KeyPackage.
     let key_package = KeyPackage::builder()
@@ -25,26 +21,27 @@ fn key_package(
                 version: ProtocolVersion::default(),
             },
             backend,
-            &credential_bundle,
+            &signer,
+            signer.public().clone().into(),
+            credential,
         )
         .expect("An unexpected error occurred.");
 
-    (key_package, credential_bundle)
+    (key_package, credential, signer)
 }
 
 #[apply(ciphersuites_and_backends)]
 fn generate_key_package(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
-    let (key_package, credential_bundle) = key_package(ciphersuite, backend);
+    let (key_package, credential, signature_keys) = key_package(ciphersuite, backend);
 
-    assert!(key_package
-        .verify_no_out(
-            backend,
-            credential_bundle.credential().signature_key(),
-            ciphersuite.signature_algorithm()
-        )
-        .is_ok());
+    let pk = OpenMlsSignaturePublicKey::new(
+        signature_keys.public().into(),
+        ciphersuite.signature_algorithm(),
+    )
+    .unwrap();
+    assert!(key_package.verify_no_out(backend.crypto(), &pk).is_ok());
     // TODO[FK]: #819 #133 replace with `validate`
-    assert!(KeyPackage::verify(&key_package, backend, ciphersuite).is_ok());
+    assert!(KeyPackage::verify(&key_package, backend.crypto()).is_ok());
 }
 
 #[apply(ciphersuites_and_backends)]
@@ -62,14 +59,15 @@ fn serialization(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider)
 
 #[apply(ciphersuites_and_backends)]
 fn application_id_extension(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
-    // This is a leaf node extension but it is set through the key package.
-    let credential_bundle = CredentialBundle::new(
-        b"Sasha".to_vec(),
-        CredentialType::Basic,
-        ciphersuite.into(),
-        backend,
+    let credential = Credential::new(b"Sasha".to_vec(), CredentialType::Basic)
+        .expect("An unexpected error occurred.");
+    let signature_keys =
+        BasicCredential::new(ciphersuite.signature_algorithm(), backend.crypto()).unwrap();
+    let pk = OpenMlsSignaturePublicKey::new(
+        signature_keys.public().into(),
+        ciphersuite.signature_algorithm(),
     )
-    .expect("An unexpected error occurred.");
+    .unwrap();
 
     // Generate a valid KeyPackage.
     let id = b"application id" as &[u8];
@@ -83,19 +81,15 @@ fn application_id_extension(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryp
                 version: ProtocolVersion::default(),
             },
             backend,
-            &credential_bundle,
+            &signature_keys,
+            signature_keys.public().clone().into(),
+            credential.clone(),
         )
         .expect("An unexpected error occurred.");
 
-    assert!(key_package
-        .verify_no_out(
-            backend,
-            credential_bundle.credential().signature_key(),
-            ciphersuite.signature_algorithm()
-        )
-        .is_ok());
+    assert!(key_package.verify_no_out(backend.crypto(), &pk).is_ok());
     // TODO[FK]: #819 #133 replace with `validate`
-    assert!(KeyPackage::verify(&key_package, backend, ciphersuite).is_ok());
+    assert!(KeyPackage::verify(&key_package, backend.crypto()).is_ok());
 
     // Check ID
     assert_eq!(

@@ -120,6 +120,7 @@ impl From<OpenMlsSignaturePublicKey> for SignaturePublicKey {
 /// A public signature key.
 #[derive(Eq, PartialEq, Hash, Debug, Clone, Serialize, Deserialize)]
 pub struct OpenMlsSignaturePublicKey {
+    // FIXME: only borrow the value.
     signature_scheme: SignatureScheme,
     pub(in crate::ciphersuite) value: VLBytes,
 }
@@ -261,6 +262,14 @@ impl OpenMlsSignaturePublicKey {
             value,
             signature_scheme,
         })
+    }
+
+    /// Create a new signature public key from raw key.
+    pub fn from_signature_key(key: SignaturePublicKey, signature_scheme: SignatureScheme) -> Self {
+        Self {
+            value: key.value,
+            signature_scheme,
+        }
     }
 
     /// Verify a [`Signature`] on the [`SignContent`] with this public key

@@ -28,7 +28,6 @@
 //! supports the [`BasicCredential`].
 // TODO[FK]: update all the comments here.
 
-use openmls_traits::{types::SignatureScheme, OpenMlsCryptoProvider};
 use serde::{Deserialize, Serialize};
 use std::convert::TryFrom;
 #[cfg(test)]
@@ -154,8 +153,6 @@ impl Credential {
     pub fn new(
         identity: Vec<u8>,
         credential_type: CredentialType,
-        signature_scheme: SignatureScheme,
-        backend: &impl OpenMlsCryptoProvider,
     ) -> Result<Self, CredentialError> {
         let mls_credential = match credential_type {
             CredentialType::Basic => BasicCredential {
@@ -200,11 +197,37 @@ impl From<MlsCredentialType> for Credential {
 /// Note that this credential does not contain any key material or any other
 /// information.
 ///
-/// OpenMLS provides a [`BasicCredentialKeyPair`] for convenience. But it does
-/// not have to be used for [`BasicCredential`]s.
+/// OpenMLS provides an implementation of signature keys for convenience in the
+/// `openmls_basic_credential` crate.
 #[derive(
     Debug, Clone, PartialEq, Eq, Serialize, Deserialize, TlsSerialize, TlsDeserialize, TlsSize,
 )]
 pub struct BasicCredential {
     identity: VLBytes,
+}
+
+#[cfg(any(test, feature = "test-utils"))]
+pub mod test_utils {
+    use openmls_basic_credential::BasicCredential;
+    use openmls_traits::{types::SignatureScheme, OpenMlsCryptoProvider};
+
+    use super::{Credential, CredentialType};
+
+    /// Convenience function that generates a new credential and a key pair for
+    /// it (using the basic credential crate).
+    /// The signature keys are stored in the key store.
+    ///
+    /// Returns the [`Credential`] and the [`BasicCredential`](openmls_basic_credential::BasicCredential).
+    pub fn new_credential(
+        backend: &impl OpenMlsCryptoProvider,
+        identity: &[u8],
+        credential_type: CredentialType,
+        signature_scheme: SignatureScheme,
+    ) -> (Credential, BasicCredential) {
+        let credential = Credential::new(identity.into(), credential_type).unwrap();
+        let signature_keys = BasicCredential::new(signature_scheme, backend.crypto()).unwrap();
+        signature_keys.store(backend.key_store()).unwrap();
+
+        (credential, signature_keys)
+    }
 }

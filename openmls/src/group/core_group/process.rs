@@ -1,6 +1,7 @@
 use core_group::{proposals::QueuedProposal, staged_commit::StagedCommit};
 
 use crate::{
+    ciphersuite::OpenMlsSignaturePublicKey,
     framing::mls_content::FramedContentBody,
     group::{
         errors::{MergeCommitError, ValidationError},
@@ -85,15 +86,20 @@ impl CoreGroup {
         //  - Prepares ValSem246 by setting the right credential. The remainder
         //    of ValSem246 is validated as part of ValSem010.
         // External senders are not supported yet #106/#151.
-        let credential = decrypted_message.credential(
+        let (credential, pk) = decrypted_message.credential(
             self.treesync(),
             self.message_secrets_store
                 .leaves_for_epoch(decrypted_message.verifiable_content().epoch()),
         )?;
+        let pk = OpenMlsSignaturePublicKey::from_signature_key(
+            pk,
+            self.ciphersuite.signature_algorithm(),
+        );
 
         Ok(UnverifiedMessage::from_decrypted_message(
             decrypted_message,
             Some(credential),
+            pk,
         ))
     }
 
@@ -147,7 +153,7 @@ impl CoreGroup {
                 //  - ValSem010
                 //  - ValSem246 (as part of ValSem010)
                 let plaintext = unverified_message
-                    .into_verified(backend.verifier())
+                    .into_verified(backend.crypto())
                     .map_err(|_| ProcessMessageError::InvalidSignature)?
                     .take_authenticated_content();
 
@@ -217,7 +223,7 @@ impl CoreGroup {
                 let credential = unverified_new_member_message.credential().clone();
                 // Signature verification
                 let verified_new_member_message = unverified_new_member_message
-                    .into_verified(backend.verifier())
+                    .into_verified(backend.crypto())
                     .map_err(|_| ProcessMessageError::InvalidSignature)?;
                 let sender = verified_new_member_message
                     .authenticated_content()

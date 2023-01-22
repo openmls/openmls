@@ -1,6 +1,6 @@
 use openmls_traits::key_store::OpenMlsKeyStore;
 
-use crate::ciphersuite::signable::Verifiable;
+use crate::ciphersuite::{signable::Verifiable, OpenMlsSignaturePublicKey};
 use crate::framing::mls_content::FramedContentBody;
 use crate::treesync::errors::TreeSyncAddLeaf;
 use crate::treesync::node::encryption_keys::EncryptionKeyPair;
@@ -216,8 +216,12 @@ impl CoreGroup {
                     tbs: &tbs,
                     signature: leaf_node.signature(),
                 };
+                let pk = OpenMlsSignaturePublicKey::from_signature_key(
+                    leaf_node.signature_key().clone(),
+                    self.ciphersuite.signature_algorithm(),
+                );
                 if verifiable_leaf_node
-                    .verify_no_out(backend.verifier())
+                    .verify_no_out(backend.crypto(), &pk)
                     .is_err()
                 {
                     debug_assert!(

@@ -3,7 +3,7 @@ use openmls_traits::{crypto::OpenMlsCrypto, key_store::OpenMlsKeyStore};
 use tls_codec::Deserialize;
 
 use crate::{
-    ciphersuite::{hash_ref::HashReference, signable::Verifiable},
+    ciphersuite::{hash_ref::HashReference, signable::Verifiable, OpenMlsSignaturePublicKey},
     group::{core_group::*, errors::WelcomeError},
     schedule::errors::PskError,
     treesync::{
@@ -176,13 +176,17 @@ impl CoreGroup {
         };
 
         let group_info: GroupInfo = {
-            let signer_credential = tree
+            let signature_key = tree
                 .leaf(verifiable_group_info.signer())
                 .ok_or(WelcomeError::UnknownSender)?
-                .credential();
+                .signature_key();
+            let group_info_signer_pk = OpenMlsSignaturePublicKey::from_signature_key(
+                signature_key.clone(),
+                ciphersuite.signature_algorithm(),
+            );
 
             verifiable_group_info
-                .verify(backend.verifier())
+                .verify(backend.crypto(), &group_info_signer_pk)
                 .map_err(|_| WelcomeError::InvalidGroupInfoSignature)?
         };
 

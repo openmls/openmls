@@ -1,3 +1,5 @@
+use openmls_traits::signatures::ByteSigner;
+
 use crate::{group::errors::ExporterError, schedule::EpochAuthenticator};
 
 use super::*;
@@ -52,11 +54,12 @@ impl MlsGroup {
     pub fn export_group_info(
         &self,
         backend: &impl OpenMlsCryptoProvider,
+        signer: &impl ByteSigner,
         with_ratchet_tree: bool,
     ) -> Result<MlsMessageOut, ExportGroupInfoError> {
         Ok(self
             .group
-            .export_group_info(backend, with_ratchet_tree)?
+            .export_group_info(backend, signer, with_ratchet_tree)?
             .into())
     }
 }

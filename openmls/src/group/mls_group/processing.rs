@@ -3,6 +3,7 @@
 use std::mem;
 
 use core_group::{create_commit_params::CreateCommitParams, staged_commit::StagedCommit};
+use openmls_traits::signatures::ByteSigner;
 
 use crate::group::errors::MergeCommitError;
 
@@ -74,6 +75,7 @@ impl MlsGroup {
     pub fn commit_to_pending_proposals<KeyStore: OpenMlsKeyStore>(
         &mut self,
         backend: &impl OpenMlsCryptoProvider<KeyStoreProvider = KeyStore>,
+        signer: &impl ByteSigner,
     ) -> Result<
         (MlsMessageOut, Option<MlsMessageOut>),
         CommitToPendingProposalsError<KeyStore::Error>,
@@ -86,7 +88,7 @@ impl MlsGroup {
             .framing_parameters(self.framing_parameters())
             .proposal_store(&self.proposal_store)
             .build();
-        let create_commit_result = self.group.create_commit(params, backend)?;
+        let create_commit_result = self.group.create_commit(params, backend, signer)?;
 
         // Convert PublicMessage messages to MLSMessage and encrypt them if required by
         // the configuration
