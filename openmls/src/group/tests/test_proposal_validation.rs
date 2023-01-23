@@ -525,6 +525,7 @@ fn test_valsem102(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
                     backend,
                     &bob_credential_bundle,
                     Extensions::empty(),
+                    Capabilities::default(),
                     Extensions::empty(),
                     charlie_key_package.hpke_init_key().as_slice().to_vec(),
                 )
@@ -1207,6 +1208,8 @@ fn test_valsem113_valsem114(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryp
         },
         backend,
         &dave_credential_bundle,
+        Extensions::empty(),
+        Capabilities::default(),
         Extensions::empty(),
         bob_encryption_key,
     )
