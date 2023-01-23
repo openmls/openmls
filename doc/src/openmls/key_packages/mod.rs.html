@@ -697,6 +697,23 @@
 <span id="697">697</span>
 <span id="698">698</span>
 <span id="699">699</span>
+<span id="700">700</span>
+<span id="701">701</span>
+<span id="702">702</span>
+<span id="703">703</span>
+<span id="704">704</span>
+<span id="705">705</span>
+<span id="706">706</span>
+<span id="707">707</span>
+<span id="708">708</span>
+<span id="709">709</span>
+<span id="710">710</span>
+<span id="711">711</span>
+<span id="712">712</span>
+<span id="713">713</span>
+<span id="714">714</span>
+<span id="715">715</span>
+<span id="716">716</span>
 </pre><pre class="rust"><code><span class="doccomment">//! # Key Packages
 //!
 //! Key packages are pre-published public keys that provide some information
@@ -930,6 +947,7 @@
         backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider&lt;KeyStoreProvider = KeyStore&gt;,
         credential: <span class="kw-2">&amp;</span>CredentialBundle, <span class="comment">// FIXME: make credential
         </span>extensions: Extensions,
+        leaf_node_capabilities: Capabilities,
         leaf_node_extensions: Extensions,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;KeyPackageCreationResult, KeyPackageNewError&lt;KeyStore::Error&gt;&gt; {
         <span class="kw">if </span>SignatureScheme::from(config.ciphersuite) != credential.credential().signature_scheme() {
@@ -947,6 +965,7 @@
             backend,
             credential,
             extensions,
+            leaf_node_capabilities,
             leaf_node_extensions,
             init_key.public,
         )<span class="question-mark">?</span>;
@@ -972,6 +991,7 @@
         backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider&lt;KeyStoreProvider = KeyStore&gt;,
         credential: <span class="kw-2">&amp;</span>CredentialBundle, <span class="comment">// FIXME: make credential
         </span>extensions: Extensions,
+        leaf_node_capabilities: Capabilities,
         leaf_node_extensions: Extensions,
         init_key: Vec&lt;u8&gt;,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(<span class="self">Self</span>, EncryptionKeyPair), KeyPackageNewError&lt;KeyStore::Error&gt;&gt; {
@@ -981,7 +1001,7 @@
             config,
             credential, <span class="comment">// FIXME
             </span>LeafNodeSource::KeyPackage(Lifetime::default()),
-            Capabilities::default(),
+            leaf_node_capabilities,
             leaf_node_extensions,
             backend,
         )<span class="question-mark">?</span>;
@@ -1122,6 +1142,7 @@
         backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider&lt;KeyStoreProvider = KeyStore&gt;,
         credential: <span class="kw-2">&amp;</span>CredentialBundle, <span class="comment">// FIXME: make credential
         </span>extensions: Extensions,
+        leaf_node_capabilities: Capabilities,
         leaf_node_extensions: Extensions,
         init_key: Vec&lt;u8&gt;,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, KeyPackageNewError&lt;KeyStore::Error&gt;&gt; {
@@ -1130,6 +1151,7 @@
             backend,
             credential,
             extensions,
+            leaf_node_capabilities,
             leaf_node_extensions,
             init_key,
         )<span class="question-mark">?</span>;
@@ -1160,6 +1182,8 @@
         backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider&lt;KeyStoreProvider = KeyStore&gt;,
         credential: <span class="kw-2">&amp;</span>CredentialBundle, <span class="comment">// FIXME: make credential
         </span>extensions: Extensions,
+        leaf_node_capabilities: Capabilities,
+        leaf_node_extensions: Extensions,
         encryption_key: EncryptionKey,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, KeyPackageNewError&lt;KeyStore::Error&gt;&gt; {
         <span class="comment">// Create a new HPKE init key pair
@@ -1181,8 +1205,8 @@
             encryption_key,
             credential,
             LeafNodeSource::KeyPackage(Lifetime::default()),
-            Capabilities::default(),
-            Extensions::empty(),
+            leaf_node_capabilities,
+            leaf_node_extensions,
             backend,
         )
         .unwrap();
@@ -1268,6 +1292,7 @@
 </span><span class="attribute">#[derive(Default, Debug, Clone, Serialize, Deserialize)]
 </span><span class="kw">pub struct </span>KeyPackageBuilder {
     key_package_extensions: <span class="prelude-ty">Option</span>&lt;Extensions&gt;,
+    leaf_node_capabilities: <span class="prelude-ty">Option</span>&lt;Capabilities&gt;,
     leaf_node_extensions: <span class="prelude-ty">Option</span>&lt;Extensions&gt;,
 }
 
@@ -1276,6 +1301,7 @@
     </span><span class="kw">pub fn </span>new() -&gt; <span class="self">Self </span>{
         <span class="self">Self </span>{
             key_package_extensions: <span class="prelude-val">None</span>,
+            leaf_node_capabilities: <span class="prelude-val">None</span>,
             leaf_node_extensions: <span class="prelude-val">None</span>,
         }
     }
@@ -1283,6 +1309,12 @@
     <span class="doccomment">/// Set the key package extensions.
     </span><span class="kw">pub fn </span>key_package_extensions(<span class="kw-2">mut </span><span class="self">self</span>, extensions: Extensions) -&gt; <span class="self">Self </span>{
         <span class="self">self</span>.key_package_extensions = <span class="prelude-val">Some</span>(extensions);
+        <span class="self">self
+    </span>}
+
+    <span class="doccomment">/// Set the leaf node capabilities.
+    </span><span class="kw">pub fn </span>leaf_node_capabilities(<span class="kw-2">mut </span><span class="self">self</span>, capabilities: Capabilities) -&gt; <span class="self">Self </span>{
+        <span class="self">self</span>.leaf_node_capabilities = <span class="prelude-val">Some</span>(capabilities);
         <span class="self">self
     </span>}
 
@@ -1303,6 +1335,7 @@
             backend,
             credential,
             <span class="self">self</span>.key_package_extensions.unwrap_or_default(),
+            <span class="self">self</span>.leaf_node_capabilities.unwrap_or_default(),
             <span class="self">self</span>.leaf_node_extensions.unwrap_or_default(),
         )
     }
@@ -1323,6 +1356,7 @@
             backend,
             credential,
             <span class="self">self</span>.key_package_extensions.unwrap_or_default(),
+            <span class="self">self</span>.leaf_node_capabilities.unwrap_or_default(),
             <span class="self">self</span>.leaf_node_extensions.unwrap_or_default(),
         )<span class="question-mark">?</span>;
 
