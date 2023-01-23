@@ -43,7 +43,12 @@ fn that_commit_secret_is_derived_from_end_of_update_path_not_root() {
     let D = create_member(b"D");
 
     // `A` creates a group with `B`, `C`, and `D` ...
-    let mut A_group = MlsGroup::new(&A.backend, &mls_group_config, A.key_package.clone()).unwrap();
+    let mut A_group = MlsGroup::new(
+        &A.backend,
+        &mls_group_config,
+        &A.credential_bundle.credential().signature_key(),
+    )
+    .unwrap();
     A_group.print_tree("A (after new)");
 
     let (_, welcome) = A_group
@@ -57,15 +62,20 @@ fn that_commit_secret_is_derived_from_end_of_update_path_not_root() {
         )
         .expect("Adding members failed.");
 
-    A_group.merge_pending_commit().unwrap();
+    A_group.merge_pending_commit(&A.backend).unwrap();
     A_group.print_tree("A (after add_members)");
 
     // ---------------------------------------------------------------------------------------------
 
     // ... and then `C` removes `A` and `B`.
     let mut C_group = {
-        MlsGroup::new_from_welcome(&C.backend, &mls_group_config, welcome, None)
-            .expect("Joining the group failed.")
+        MlsGroup::new_from_welcome(
+            &C.backend,
+            &mls_group_config,
+            welcome.into_welcome().unwrap(),
+            None,
+        )
+        .expect("Joining the group failed.")
     };
     C_group.print_tree("C (after new)");
 
@@ -75,7 +85,7 @@ fn that_commit_secret_is_derived_from_end_of_update_path_not_root() {
         .remove_members(&C.backend, &[A, B])
         .expect("Removal of members failed.");
 
-    C_group.merge_pending_commit().unwrap();
+    C_group.merge_pending_commit(&C.backend).unwrap();
     C_group.print_tree("C (after remove)");
 
     // This leaves C and D as the only leaves in the tree.
@@ -137,7 +147,7 @@ fn generate_key_package(
     KeyPackage::builder()
         .build(
             CryptoConfig {
-                ciphersuite: Ciphersuite::MLS_128_DHKEMX25519_CHACHA20POLY1305_SHA256_Ed25519,
+                ciphersuite: Ciphersuite::MLS_128_DHKEMX25519_AES128GCM_SHA256_Ed25519,
                 version: ProtocolVersion::default(),
             },
             backend,
