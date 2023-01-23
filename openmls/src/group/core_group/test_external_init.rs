@@ -171,7 +171,7 @@ fn test_external_init_single_member_group(
     ciphersuite: Ciphersuite,
     backend: &impl OpenMlsCryptoProvider,
 ) {
-    let (group_alice, alice_credential, alice_signer, alice_pk) =
+    let (group_alice, alice_credential_with_key, alice_signer, alice_pk) =
         setup_alice_group(ciphersuite, backend);
 
     // Framing parameters

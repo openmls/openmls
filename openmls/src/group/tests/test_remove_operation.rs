@@ -24,13 +24,13 @@ fn test_remove_operation_variants(ciphersuite: Ciphersuite, backend: &impl OpenM
         let group_id = GroupId::from_slice(b"Test Group");
 
         // Generate credential bundles
-        let (alice_credential, alice_signer, alice_pk) =
+        let alice_credential_with_key_and_signer =
             generate_credential_bundle("Alice".into(), ciphersuite.signature_algorithm(), backend);
 
-        let (bob_credential, bob_signer, bob_pk) =
+        let bob_credential_with_key_and_signer =
             generate_credential_bundle("Bob".into(), ciphersuite.signature_algorithm(), backend);
 
-        let (charlie_credential, charlie_signer, charlie_pk) = generate_credential_bundle(
+        let charlie_credential_with_key_and_signer = generate_credential_bundle(
             "Charlie".into(),
             ciphersuite.signature_algorithm(),
             backend,
@@ -39,19 +39,15 @@ fn test_remove_operation_variants(ciphersuite: Ciphersuite, backend: &impl OpenM
         // Generate KeyPackages
         let bob_key_package = generate_key_package(
             ciphersuite,
-            &bob_credential,
             Extensions::empty(),
             backend,
-            &bob_signer,
-            bob_pk.into(),
+            bob_credential_with_key_and_signer,
         );
         let charlie_key_package = generate_key_package(
             ciphersuite,
-            &charlie_credential,
             Extensions::empty(),
             backend,
-            &charlie_signer,
-            charlie_pk.into(),
+            charlie_credential_with_key_and_signer,
         );
 
         // Define the MlsGroup configuration
@@ -62,18 +58,21 @@ fn test_remove_operation_variants(ciphersuite: Ciphersuite, backend: &impl OpenM
         // === Alice creates a group ===
         let mut alice_group = MlsGroup::new_with_group_id(
             backend,
-            &alice_signer,
+            &alice_credential_with_key_and_signer.signer,
             &mls_group_config,
             group_id,
-            alice_pk.into(),
-            alice_credential,
+            alice_credential_with_key_and_signer.credential_with_key,
         )
         .expect("An unexpected error occurred.");
 
         // === Alice adds Bob & Charlie ===
 
         let (_message, welcome, _group_info) = alice_group
-            .add_members(backend, &[bob_key_package, charlie_key_package])
+            .add_members(
+                backend,
+                &alice_credential_with_key_and_signer.signer,
+                &[bob_key_package, charlie_key_package],
+            )
             .expect("An unexpected error occurred.");
         alice_group
             .merge_pending_commit(backend)
@@ -106,13 +105,17 @@ fn test_remove_operation_variants(ciphersuite: Ciphersuite, backend: &impl OpenM
         let (message, _welcome, _group_info) = match test_case {
             // Alice removes Bob
             TestCase::Remove => alice_group
-                .remove_members(backend, &[bob_index])
+                .remove_members(
+                    backend,
+                    &alice_credential_with_key_and_signer.signer,
+                    &[bob_index],
+                )
                 .expect("Could not remove members."),
             // Bob leaves
             TestCase::Leave => {
                 // Bob leaves the group
                 let message = bob_group
-                    .leave_group(backend)
+                    .leave_group(backend, &bob_credential_with_key_and_signer.signer)
                     .expect("Could not leave group.");
 
                 // Alice & Charlie store the pending proposal
@@ -131,7 +134,10 @@ fn test_remove_operation_variants(ciphersuite: Ciphersuite, backend: &impl OpenM
 
                 // Alice commits to Bob's proposal
                 alice_group
-                    .commit_to_pending_proposals(backend)
+                    .commit_to_pending_proposals(
+                        backend,
+                        &alice_credential_with_key_and_signer.signer,
+                    )
                     .expect("An unexpected error occurred.")
             }
         };

@@ -38,13 +38,8 @@ fn proposal_queue_functions(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryp
         setup_client("Bob", ciphersuite, backend);
 
     let bob_key_package = bob_key_package_bundle.key_package();
-    let alice_update_key_package_bundle = KeyPackageBundle::new(
-        backend,
-        &alice_signer,
-        ciphersuite,
-        alice_credential,
-        alice_pk.into(),
-    );
+    let alice_update_key_package_bundle =
+        KeyPackageBundle::new(backend, &alice_signer, ciphersuite, alice_credential);
     let alice_update_key_package = alice_update_key_package_bundle.key_package();
     assert!(alice_update_key_package.verify(backend.crypto()).is_ok());
 
@@ -166,13 +161,8 @@ fn proposal_queue_order(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoPr
         setup_client("Bob", ciphersuite, backend);
 
     let bob_key_package = bob_key_package_bundle.key_package();
-    let alice_update_key_package_bundle = KeyPackageBundle::new(
-        backend,
-        &alice_signer,
-        ciphersuite,
-        alice_credential,
-        alice_pk.into(),
-    );
+    let alice_update_key_package_bundle =
+        KeyPackageBundle::new(backend, &alice_signer, ciphersuite, alice_credential);
     let alice_update_key_package = alice_update_key_package_bundle.key_package();
     assert!(alice_update_key_package.verify(backend.crypto()).is_ok());
 
@@ -272,7 +262,6 @@ fn test_required_unsupported_proposals(
         GroupId::random(backend),
         CryptoConfig::with_default_version(ciphersuite),
         alice_credential,
-        alice_pk.into(),
     )
     .with_required_capabilities(required_capabilities)
     .build(backend, &alice_signer)
@@ -315,7 +304,6 @@ fn test_required_extension_key_package_mismatch(
         GroupId::random(backend),
         CryptoConfig::with_default_version(ciphersuite),
         alice_credential,
-        alice_pk.into(),
     )
     .with_required_capabilities(required_capabilities)
     .build(backend, &alice_signer)
@@ -359,7 +347,6 @@ fn test_group_context_extensions(ciphersuite: Ciphersuite, backend: &impl OpenMl
         GroupId::random(backend),
         CryptoConfig::with_default_version(ciphersuite),
         alice_credential,
-        alice_pk.into(),
     )
     .with_required_capabilities(required_capabilities)
     .build(backend, &alice_signer)
@@ -432,7 +419,6 @@ fn test_group_context_extension_proposal_fails(
         GroupId::random(backend),
         CryptoConfig::with_default_version(ciphersuite),
         alice_credential,
-        alice_pk.into(),
     )
     .with_required_capabilities(required_capabilities)
     .build(backend, &alice_signer)
@@ -534,7 +520,6 @@ fn test_group_context_extension_proposal(
         GroupId::random(backend),
         CryptoConfig::with_default_version(ciphersuite),
         alice_credential,
-        alice_pk.into(),
     )
     .build(backend, &alice_signer)
     .expect("Error creating CoreGroup.");

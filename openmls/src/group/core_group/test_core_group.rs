@@ -24,7 +24,7 @@ pub(crate) fn setup_alice_group(
     backend: &impl OpenMlsCryptoProvider,
 ) -> (
     CoreGroup,
-    Credential,
+    CredentialWithKey,
     BasicCredential,
     OpenMlsSignaturePublicKey,
 ) {
@@ -46,7 +46,6 @@ pub(crate) fn setup_alice_group(
         GroupId::random(backend),
         config::CryptoConfig::with_default_version(ciphersuite),
         alice_credential_with_key,
-        alice_signature_keys.to_public_vec().into(),
     )
     .build(backend, &alice_signature_keys)
     .expect("Error creating group.");
@@ -97,7 +96,7 @@ fn test_failed_groupinfo_decryption(
     });
 
     // Create credentials and keys
-    let (alice_credential, alice_signature_keys) = test_utils::new_credential(
+    let (alice_credential_with_key, alice_signature_keys) = test_utils::new_credential(
         backend,
         b"Alice",
         CredentialType::Basic,
@@ -108,8 +107,7 @@ fn test_failed_groupinfo_decryption(
         backend,
         &alice_signature_keys,
         ciphersuite,
-        alice_credential,
-        alice_signature_keys.to_public_vec().into(),
+        alice_credential_with_key,
     );
 
     let group_info_tbs = {
@@ -283,19 +281,19 @@ fn setup_alice_bob(
     ciphersuite: Ciphersuite,
     backend: &impl OpenMlsCryptoProvider,
 ) -> (
-    Credential,
+    CredentialWithKey,
     BasicCredential,
     KeyPackageBundle,
     BasicCredential,
 ) {
     // Create credentials and keys
-    let (alice_credential, alice_signature_keys) = test_utils::new_credential(
+    let (alice_credential_with_key, alice_signer) = test_utils::new_credential(
         backend,
         b"Alice",
         CredentialType::Basic,
         ciphersuite.signature_algorithm(),
     );
-    let (bob_credential, bob_signature_keys) = test_utils::new_credential(
+    let (bob_credential_with_key, bob_signer) = test_utils::new_credential(
         backend,
         b"Bob",
         CredentialType::Basic,
@@ -303,20 +301,15 @@ fn setup_alice_bob(
     );
 
     // Generate Bob's KeyPackage
-    let bob_key_package_bundle = KeyPackageBundle::new(
-        backend,
-        &bob_signature_keys,
-        ciphersuite,
-        bob_credential,
-        bob_signature_keys.to_public_vec().into(),
-    );
+    let bob_key_package_bundle =
+        KeyPackageBundle::new(backend, &bob_signer, ciphersuite, bob_credential_with_key);
     let bob_key_package = bob_key_package_bundle.key_package();
 
     (
-        alice_credential,
-        alice_signature_keys,
+        alice_credential_with_key,
+        alice_signer,
         bob_key_package_bundle,
-        bob_signature_keys,
+        bob_signer,
     )
 }
 
@@ -327,8 +320,12 @@ fn test_psks(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
     let group_aad = b"Alice's test group";
     let framing_parameters = FramingParameters::new(group_aad, WireFormat::PublicMessage);
 
-    let (alice_credential, alice_signature_keys, bob_key_package_bundle, bob_signature_keys) =
-        setup_alice_bob(ciphersuite, backend);
+    let (
+        alice_credential_with_key,
+        alice_signature_keys,
+        bob_key_package_bundle,
+        bob_signature_keys,
+    ) = setup_alice_bob(ciphersuite, backend);
 
     // === Alice creates a group with a PSK ===
     let psk_id = vec![1u8, 2, 3];
@@ -352,8 +349,7 @@ fn test_psks(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
     let mut alice_group = CoreGroup::builder(
         GroupId::random(backend),
         config::CryptoConfig::with_default_version(ciphersuite),
-        alice_credential,
-        alice_signature_keys.to_public_vec().into(),
+        alice_credential_with_key,
     )
     .with_psk(vec![preshared_key_id.clone()])
     .build(backend, &alice_signature_keys)
@@ -448,15 +444,14 @@ fn test_staged_commit_creation(ciphersuite: Ciphersuite, backend: &impl OpenMlsC
     let group_aad = b"Alice's test group";
     let framing_parameters = FramingParameters::new(group_aad, WireFormat::PublicMessage);
 
-    let (alice_credential, alice_signature_keys, bob_key_package_bundle, _) =
+    let (alice_credential_with_key, alice_signature_keys, bob_key_package_bundle, _) =
         setup_alice_bob(ciphersuite, backend);
 
     // === Alice creates a group ===
     let mut alice_group = CoreGroup::builder(
         GroupId::random(backend),
         config::CryptoConfig::with_default_version(ciphersuite),
-        alice_credential,
-        alice_signature_keys.to_public_vec().into(),
+        alice_credential_with_key,
     )
     .build(backend, &alice_signature_keys)
     .expect("Error creating group.");
@@ -517,7 +512,7 @@ fn test_own_commit_processing(ciphersuite: Ciphersuite, backend: &impl OpenMlsCr
     let framing_parameters = FramingParameters::new(group_aad, WireFormat::PublicMessage);
 
     // Create credentials and keys
-    let (alice_credential, alice_signature_keys) = test_utils::new_credential(
+    let (alice_credential_with_key, alice_signature_keys) = test_utils::new_credential(
         backend,
         b"Alice",
         CredentialType::Basic,
@@ -528,8 +523,7 @@ fn test_own_commit_processing(ciphersuite: Ciphersuite, backend: &impl OpenMlsCr
     let alice_group = CoreGroup::builder(
         GroupId::random(backend),
         config::CryptoConfig::with_default_version(ciphersuite),
-        alice_credential,
-        alice_signature_keys.to_public_vec().into(),
+        alice_credential_with_key,
     )
     .build(backend, &alice_signature_keys)
     .expect("Error creating group.");
@@ -557,12 +551,12 @@ pub(crate) fn setup_client(
     ciphersuite: Ciphersuite,
     backend: &impl OpenMlsCryptoProvider,
 ) -> (
-    Credential,
+    CredentialWithKey,
     KeyPackageBundle,
     BasicCredential,
     OpenMlsSignaturePublicKey,
 ) {
-    let (credential, signature_keys) = test_utils::new_credential(
+    let (credential_with_key, signature_keys) = test_utils::new_credential(
         backend,
         id.as_bytes(),
         CredentialType::Basic,
@@ -575,14 +569,9 @@ pub(crate) fn setup_client(
     .unwrap();
 
     // Generate the KeyPackage
-    let key_package_bundle = KeyPackageBundle::new(
-        backend,
-        &signature_keys,
-        ciphersuite,
-        credential,
-        signature_keys.to_public_vec().into(),
-    );
-    (credential, key_package_bundle, signature_keys, pk)
+    let key_package_bundle =
+        KeyPackageBundle::new(backend, &signature_keys, ciphersuite, credential_with_key);
+    (credential_with_key, key_package_bundle, signature_keys, pk)
 }
 
 #[apply(ciphersuites_and_backends)]
@@ -600,7 +589,7 @@ fn test_proposal_application_after_self_was_removed(
     let group_aad = b"Alice's test group";
     let framing_parameters = FramingParameters::new(group_aad, WireFormat::PublicMessage);
 
-    let (alice_credential, _, alice_signature_keys, pk) =
+    let (alice_credential_with_key, _, alice_signature_keys, pk) =
         setup_client("Alice", ciphersuite, backend);
     let (_, bob_kpb, _, _) = setup_client("Bob", ciphersuite, backend);
     let (_, charlie_kpb, _, _) = setup_client("Charlie", ciphersuite, backend);
@@ -608,8 +597,7 @@ fn test_proposal_application_after_self_was_removed(
     let mut alice_group = CoreGroup::builder(
         GroupId::random(backend),
         config::CryptoConfig::with_default_version(ciphersuite),
-        alice_credential,
-        pk.into(),
+        alice_credential_with_key,
     )
     .build(backend, &alice_signature_keys)
     .expect("Error creating CoreGroup.");

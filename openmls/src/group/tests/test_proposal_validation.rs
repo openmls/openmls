@@ -1,9 +1,10 @@
 //! This module tests the validation of proposals as defined in
 //! https://openmls.tech/book/message_validation.html#semantic-validation-of-proposals-covered-by-a-commit
 
-use openmls_basic_credential::BasicCredential;
 use openmls_rust_crypto::OpenMlsRustCrypto;
-use openmls_traits::{key_store::OpenMlsKeyStore, types::Ciphersuite, OpenMlsCryptoProvider};
+use openmls_traits::{
+    key_store::OpenMlsKeyStore, signatures::ByteSigner, types::Ciphersuite, OpenMlsCryptoProvider,
+};
 
 use rstest::*;
 use rstest_reuse::{self, *};
@@ -27,48 +28,53 @@ use crate::{
     versions::ProtocolVersion,
 };
 
-use super::utils::{generate_credential_bundle, generate_key_package, resign_message};
+use super::utils::{
+    generate_credential_bundle, generate_key_package, resign_message, CredentialWithKeyAndSigner,
+};
 
 /// Helper function to generate and output CredentialBundle and KeyPackage
 fn generate_credential_bundle_and_key_package(
     identity: Vec<u8>,
     ciphersuite: Ciphersuite,
     backend: &impl OpenMlsCryptoProvider,
-) -> (Credential, KeyPackage, BasicCredential, OpenMlsSignaturePublicKey) {
-    let (credential, signer, pk) =
+) -> (CredentialWithKeyAndSigner, KeyPackage) {
+    let credential_with_key_and_signer =
         generate_credential_bundle(identity, ciphersuite.signature_algorithm(), backend);
 
     let key_package = generate_key_package(
         ciphersuite,
-        &credential,
         Extensions::empty(),
         backend,
-        &signer,
-        pk.into(),
+        credential_with_key_and_signer,
     );
 
-    (credential, key_package, signer, pk)
+    (credential_with_key_and_signer, key_package)
 }
 
 /// Helper function to create a group and try to add `members` to it.
 fn create_group_with_members<KeyStore: OpenMlsKeyStore>(
     ciphersuite: Ciphersuite,
-    alice_credential: &Credential,
+    alice_credential_with_key_and_signer: &CredentialWithKeyAndSigner,
     member_key_packages: &[KeyPackage],
     backend: &impl OpenMlsCryptoProvider<KeyStoreProvider = KeyStore>,
 ) -> Result<(MlsMessageIn, Welcome), AddMembersError<KeyStore::Error>> {
     let mut alice_group = MlsGroup::new_with_group_id(
         backend,
+        &alice_credential_with_key_and_signer.signer,
         &MlsGroupConfigBuilder::new()
             .crypto_config(CryptoConfig::with_default_version(ciphersuite))
             .build(),
         GroupId::from_slice(b"Alice's Friends"),
-        alice_credential.signature_key(),
+        alice_credential_with_key_and_signer.credential_with_key,
     )
     .expect("An unexpected error occurred.");
 
     alice_group
-        .add_members(backend, member_key_packages)
+        .add_members(
+            backend,
+            &alice_credential_with_key_and_signer.signer,
+            member_key_packages,
+        )
         .map(|(msg, welcome, _group_info)| {
             (
                 msg.into(),
@@ -79,7 +85,9 @@ fn create_group_with_members<KeyStore: OpenMlsKeyStore>(
 
 struct ProposalValidationTestSetup {
     alice_group: MlsGroup,
+    alice_credential_with_key_and_signer: CredentialWithKeyAndSigner,
     bob_group: MlsGroup,
+    bob_credential_with_key_and_signer: CredentialWithKeyAndSigner,
 }
 
 // Creates a standalone group
@@ -88,17 +96,12 @@ fn new_test_group(
     wire_format_policy: WireFormatPolicy,
     ciphersuite: Ciphersuite,
     backend: &impl OpenMlsCryptoProvider,
-) -> MlsGroup {
+) -> (MlsGroup, CredentialWithKeyAndSigner) {
     let group_id = GroupId::from_slice(b"Test Group");
 
     // Generate credential bundles
-    let credential = generate_credential_bundle(
-        identity.into(),
-        CredentialType::Basic,
-        ciphersuite.signature_algorithm(),
-        backend,
-    )
-    .unwrap();
+    let credential_with_key_and_signer =
+        generate_credential_bundle(identity.into(), ciphersuite.signature_algorithm(), backend);
 
     // Define the MlsGroup configuration
     let mls_group_config = MlsGroupConfig::builder()
@@ -106,13 +109,17 @@ fn new_test_group(
         .crypto_config(CryptoConfig::with_default_version(ciphersuite))
         .build();
 
-    MlsGroup::new_with_group_id(
-        backend,
-        &mls_group_config,
-        group_id,
-        credential.signature_key(),
+    (
+        MlsGroup::new_with_group_id(
+            backend,
+            &credential_with_key_and_signer.signer,
+            &mls_group_config,
+            group_id,
+            credential_with_key_and_signer.credential_with_key,
+        )
+        .unwrap(),
+        credential_with_key_and_signer,
     )
-    .unwrap()
 }
 
 // Validation test setup
@@ -122,26 +129,25 @@ fn validation_test_setup(
     backend: &impl OpenMlsCryptoProvider,
 ) -> ProposalValidationTestSetup {
     // === Alice creates a group ===
-    let mut alice_group = new_test_group("Alice", wire_format_policy, ciphersuite, backend);
+    let (mut alice_group, alice_credential_with_key_and_signer) =
+        new_test_group("Alice", wire_format_policy, ciphersuite, backend);
 
-    let bob_credential = generate_credential_bundle(
-        "Bob".into(),
-        CredentialType::Basic,
-        ciphersuite.signature_algorithm(),
-        backend,
-    )
-    .expect("An unexpected error occurred.");
+    let bob_credential_with_key_and_signer =
+        generate_credential_bundle("Bob".into(), ciphersuite.signature_algorithm(), backend);
 
     let bob_key_package = generate_key_package(
-        &[ciphersuite],
-        &bob_credential,
+        ciphersuite,
         Extensions::empty(),
         backend,
-    )
-    .expect("An unexpected error occurred.");
+        bob_credential_with_key_and_signer,
+    );
 
     let (_message, welcome, _group_info) = alice_group
-        .add_members(backend, &[bob_key_package])
+        .add_members(
+            backend,
+            &alice_credential_with_key_and_signer.signer,
+            &[bob_key_package],
+        )
         .expect("error adding Bob to group");
 
     alice_group
@@ -164,7 +170,9 @@ fn validation_test_setup(
 
     ProposalValidationTestSetup {
         alice_group,
+        alice_credential_with_key_and_signer,
         bob_group,
+        bob_credential_with_key_and_signer,
     }
 }
 
@@ -174,6 +182,7 @@ fn insert_proposal_and_resign(
     mut plaintext: PublicMessage,
     original_plaintext: &PublicMessage,
     committer_group: &MlsGroup,
+    signer: &impl ByteSigner,
 ) -> PublicMessage {
     let mut commit_content = if let FramedContentBody::Commit(commit) = plaintext.content() {
         commit.clone()
@@ -185,8 +194,13 @@ fn insert_proposal_and_resign(
 
     plaintext.set_content(FramedContentBody::Commit(commit_content));
 
-    let mut signed_plaintext =
-        resign_message(committer_group, plaintext, original_plaintext, backend);
+    let mut signed_plaintext = resign_message(
+        committer_group,
+        plaintext,
+        original_plaintext,
+        backend,
+        signer,
+    );
 
     let membership_key = committer_group.group().message_secrets().membership_key();
 
@@ -215,22 +229,22 @@ fn test_valsem100(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
         ("42", "42"), // Negative Case: Bob and Charlie have same identity
         ("42", "24"), // Positive Case: Bob and Charlie have different identity
     ] {
-        let (alice_credential_bundle, _) =
+        let (alice_credential_with_key_and_signer, _) =
             generate_credential_bundle_and_key_package("Alice".into(), ciphersuite, backend);
 
         // 0. Initialize Bob and Charlie
-        let (_bob_credential_bundle, bob_key_package_bundle) =
+        let (_, bob_key_package_bundle) =
             generate_credential_bundle_and_key_package(bob_id.into(), ciphersuite, backend);
         let bob_key_package = bob_key_package_bundle.clone();
 
-        let (_charlie_credential_bundle, charlie_key_package_bundle) =
+        let (_, charlie_key_package_bundle) =
             generate_credential_bundle_and_key_package(charlie_id.into(), ciphersuite, backend);
         let charlie_key_package = charlie_key_package_bundle.clone();
 
         // 1. Alice creates a group and tries to add Bob and Charlie to it
         let res = create_group_with_members(
             ciphersuite,
-            alice_credential_bundle.credential(),
+            &alice_credential_with_key_and_signer,
             &[bob_key_package, charlie_key_package],
             backend,
         );

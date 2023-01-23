@@ -28,7 +28,6 @@ fn test_free_leaf_computation(ciphersuite: Ciphersuite, backend: &impl OpenMlsCr
         &sk_0,
         ciphersuite,
         c_0,
-        sk_0.to_public_vec().into(),
     );
 
     let (c_3, sk_3) = new_credential(
@@ -37,13 +36,7 @@ fn test_free_leaf_computation(ciphersuite: Ciphersuite, backend: &impl OpenMlsCr
         CredentialType::Basic,
         ciphersuite.signature_algorithm(),
     );
-    let kpb_3 = KeyPackageBundle::new(
-        backend,
-        &sk_3,
-        ciphersuite,
-        c_3,
-        sk_3.to_public_vec().into(),
-    );
+    let kpb_3 = KeyPackageBundle::new(backend, &sk_3, ciphersuite, c_3);
 
     // Build a rudimentary tree with two populated and two empty leaf nodes.
     let nodes: Vec<Option<Node>> = vec![
@@ -77,19 +70,13 @@ fn test_free_leaf_computation(ciphersuite: Ciphersuite, backend: &impl OpenMlsCr
 
     // Create and add a new leaf. It should go to leaf index 1
 
-    let (c_2, sk_2) = new_credential(
+    let (c_2, signer_2) = new_credential(
         backend,
         b"leaf2",
         CredentialType::Basic,
         ciphersuite.signature_algorithm(),
     );
-    let kpb_2 = KeyPackageBundle::new(
-        backend,
-        &sk_2,
-        ciphersuite,
-        c_2,
-        sk_2.to_public_vec().into(),
-    );
+    let kpb_2 = KeyPackageBundle::new(backend, &signer_2, ciphersuite, c_2);
 
     let mut diff = tree.empty_diff();
     let free_leaf_index = diff.free_leaf_index();

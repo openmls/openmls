@@ -46,7 +46,7 @@ fn test_welcome_ciphersuite_mismatch(
         .crypto_config(CryptoConfig::with_default_version(ciphersuite))
         .build();
 
-    let (alice_credential, alice_kpb, alice_signer, alice_signature_key) =
+    let (alice_credential_with_key, alice_kpb, alice_signer, alice_signature_key) =
         crate::group::test_core_group::setup_client("Alice", ciphersuite, backend);
     let (bob_credential, bob_kpb, bob_signer, bob_signature_key) =
         crate::group::test_core_group::setup_client("Bob", ciphersuite, backend);
@@ -60,8 +60,7 @@ fn test_welcome_ciphersuite_mismatch(
         &alice_signer,
         &mls_group_config,
         group_id,
-        alice_signature_key.into(),
-        alice_credential,
+        alice_credential_with_key
     )
     .expect("An unexpected error occurred.");
 

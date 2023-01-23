@@ -296,7 +296,7 @@ fn create_content(
     ciphersuite: Ciphersuite,
     wire_format: WireFormat,
     backend: &impl OpenMlsCryptoProvider,
-) -> (AuthenticatedContent, Credential, BasicCredential) {
+) -> (AuthenticatedContent, CredentialWithKey, BasicCredential) {
     let (credential, signature_keys) = test_utils::new_credential(
         backend,
         b"Creator",
@@ -411,13 +411,8 @@ fn unknown_sender(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
     );
 
     // Generate KeyPackages
-    let bob_key_package_bundle = KeyPackageBundle::new(
-        backend,
-        &bob_signature_keys,
-        ciphersuite,
-        bob_credential,
-        bob_signature_keys.to_public_vec().into(),
-    );
+    let bob_key_package_bundle =
+        KeyPackageBundle::new(backend, &bob_signature_keys, ciphersuite, bob_credential);
     let bob_key_package = bob_key_package_bundle.key_package();
 
     let charlie_key_package_bundle = KeyPackageBundle::new(
@@ -425,7 +420,6 @@ fn unknown_sender(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
         &charlie_signature_keys,
         ciphersuite,
         charlie_credential,
-        charlie_signature_keys.to_public_vec().into(),
     );
     let charlie_key_package = charlie_key_package_bundle.key_package();
 
@@ -434,7 +428,6 @@ fn unknown_sender(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
         GroupId::random(backend),
         config::CryptoConfig::with_default_version(ciphersuite),
         alice_credential,
-        alice_signature_keys.to_public_vec().into(),
     )
     .build(backend, &alice_signature_keys)
     .expect("Error creating group.");
@@ -639,13 +632,8 @@ pub(crate) fn setup_alice_bob_group(
     );
 
     // Generate KeyPackages
-    let bob_key_package_bundle = KeyPackageBundle::new(
-        backend,
-        &bob_signature_keys,
-        ciphersuite,
-        bob_credential,
-        bob_signature_keys.to_public_vec().into(),
-    );
+    let bob_key_package_bundle =
+        KeyPackageBundle::new(backend, &bob_signature_keys, ciphersuite, bob_credential);
     let bob_key_package = bob_key_package_bundle.key_package();
 
     // Alice creates a group
@@ -653,7 +641,6 @@ pub(crate) fn setup_alice_bob_group(
         GroupId::random(backend),
         config::CryptoConfig::with_default_version(ciphersuite),
         alice_credential,
-        alice_signature_keys.to_public_vec().into(),
     )
     .build(backend, &alice_signature_keys)
     .expect("Error creating group.");

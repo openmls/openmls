@@ -18,7 +18,7 @@ use crate::{
 fn test_mls_group_persistence(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
     let group_id = GroupId::from_slice(b"Test Group");
 
-    let (alice_credential, alice_kpb, alice_signer, alice_pk) =
+    let (alice_credential_with_key, alice_kpb, alice_signer, alice_pk) =
         setup_client("Alice", ciphersuite, backend);
 
     // Define the MlsGroup configuration
@@ -30,8 +30,7 @@ fn test_mls_group_persistence(ciphersuite: Ciphersuite, backend: &impl OpenMlsCr
         &alice_signer,
         &mls_group_config,
         group_id,
-        alice_pk.into(),
-        alice_credential,
+        alice_credential_with_key,
     )
     .expect("An unexpected error occurred.");
 
@@ -66,7 +65,7 @@ fn test_mls_group_persistence(ciphersuite: Ciphersuite, backend: &impl OpenMlsCr
 fn remover(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
     let group_id = GroupId::from_slice(b"Test Group");
 
-    let (alice_credential, alice_kpb, alice_signer, alice_pk) =
+    let (alice_credential_with_key, alice_kpb, alice_signer, alice_pk) =
         setup_client("Alice", ciphersuite, backend);
     let (bob_credential, bob_kpb, bob_signer, bob_pk) = setup_client("Bob", ciphersuite, backend);
     let (charlie_credential, charlie_kpb, charlie_signer, charlie_pk) =
@@ -83,13 +82,12 @@ fn remover(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
         &alice_signer,
         &mls_group_config,
         group_id,
-        alice_pk.into(),
-        alice_credential,
+        alice_credential_with_key,
     )
     .expect("An unexpected error occurred.");
 
     // === Alice adds Bob ===
-    let (_queued_message, welcome) = alice_group
+    let (_queued_message, welcome, _group_info) = alice_group
         .add_members(backend, &alice_signer, &[bob_kpb.key_package().clone()])
         .expect("Could not add member to group.");
 
@@ -106,8 +104,9 @@ fn remover(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
     .expect("Error creating group from Welcome");
 
     // === Bob adds Charlie ===
-    let (queued_messages, welcome) =
-        bob_group.add_members(backend, &bob_signer, &[charlie_kpb.key_package().clone()]).unwrap();
+    let (queued_messages, welcome, _group_info) = bob_group
+        .add_members(backend, &bob_signer, &[charlie_kpb.key_package().clone()])
+        .unwrap();
 
     let alice_processed_message = alice_group
         .process_message(
@@ -206,7 +205,7 @@ fn remover(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
 fn export_secret(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
     let group_id = GroupId::from_slice(b"Test Group");
 
-    let (alice_credential, alice_kpb, alice_signer, alice_pk) =
+    let (alice_credential_with_key, alice_kpb, alice_signer, alice_pk) =
         setup_client("Alice", ciphersuite, backend);
 
     // Define the MlsGroup configuration
@@ -218,8 +217,7 @@ fn export_secret(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider)
         &alice_signer,
         &mls_group_config,
         group_id,
-        alice_pk.into(),
-        alice_credential,
+        alice_credential_with_key,
     )
     .expect("An unexpected error occurred.");
 
@@ -339,7 +337,7 @@ fn test_invalid_plaintext(ciphersuite: Ciphersuite, backend: &impl OpenMlsCrypto
 fn test_pending_commit_logic(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
     let group_id = GroupId::from_slice(b"Test Group");
 
-    let (alice_credential, alice_kpb, alice_signer, alice_pk) =
+    let (alice_credential_with_key, alice_kpb, alice_signer, alice_pk) =
         setup_client("Alice", ciphersuite, backend);
     let (bob_credential, bob_kpb, bob_signer, bob_pk) = setup_client("Bob", ciphersuite, backend);
 
@@ -352,8 +350,7 @@ fn test_pending_commit_logic(ciphersuite: Ciphersuite, backend: &impl OpenMlsCry
         &alice_signer,
         &mls_group_config,
         group_id,
-        alice_pk.into(),
-        alice_credential,
+        alice_credential_with_key,
     )
     .expect("An unexpected error occurred.");
 
@@ -512,9 +509,10 @@ fn test_pending_commit_logic(ciphersuite: Ciphersuite, backend: &impl OpenMlsCry
 fn key_package_deletion(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
     let group_id = GroupId::from_slice(b"Test Group");
 
-    let (alice_credential, alice_kpb, alice_signer, alice_pk) =
+    let (alice_credential_with_key, alice_kpb, alice_signer, alice_pk) =
         setup_client("Alice", ciphersuite, backend);
-    let (bob_credential, bob_kpb, bob_signer, bob_pk) = setup_client("Bob", ciphersuite, backend);
+    let (bob_credential_with_key, bob_kpb, bob_signer, bob_pk) =
+        setup_client("Bob", ciphersuite, backend);
     let bob_key_package = bob_kpb.key_package();
 
     // Define the MlsGroup configuration
@@ -528,8 +526,7 @@ fn key_package_deletion(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoPr
         &alice_signer,
         &mls_group_config,
         group_id,
-        alice_pk.into(),
-        alice_credential,
+        alice_credential_with_key,
     )
     .expect("An unexpected error occurred.");
 
