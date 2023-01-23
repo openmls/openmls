@@ -74,6 +74,8 @@ impl MlsGroup {
     /// currently stored in the group's [ProposalStore].
     ///
     /// Returns an error if there is a pending commit.
+    // FIXME: #1217
+    #[allow(clippy::type_complexity)]
     pub fn commit_to_pending_proposals<KeyStore: OpenMlsKeyStore>(
         &mut self,
         backend: &impl OpenMlsCryptoProvider<KeyStoreProvider = KeyStore>,

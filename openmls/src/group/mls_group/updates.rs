@@ -19,6 +19,8 @@ impl MlsGroup {
     /// TODO #1208 : The caller should be able to optionally provide a
     /// [`LeafNode`] here, so that things like extensions can be changed via
     /// commit.
+    // FIXME: #1217
+    #[allow(clippy::type_complexity)]
     pub fn self_update<KeyStore: OpenMlsKeyStore>(
         &mut self,
         backend: &impl OpenMlsCryptoProvider<KeyStoreProvider = KeyStore>,

@@ -27,6 +27,8 @@ impl MlsGroup {
     /// will be [Some] if the group has the `use_ratchet_tree_extension` flag set.
     ///
     /// Returns an error if there is a pending commit.
+    // FIXME: #1217
+    #[allow(clippy::type_complexity)]
     pub fn add_members<KeyStore: OpenMlsKeyStore>(
         &mut self,
         backend: &impl OpenMlsCryptoProvider<KeyStoreProvider = KeyStore>,
@@ -115,6 +117,8 @@ impl MlsGroup {
 
     ///
     /// Returns an error if there is a pending commit.
+    // FIXME: #1217
+    #[allow(clippy::type_complexity)]
     pub fn remove_members<KeyStore: OpenMlsKeyStore>(
         &mut self,
         backend: &impl OpenMlsCryptoProvider<KeyStoreProvider = KeyStore>,
