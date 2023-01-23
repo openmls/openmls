@@ -1,0 +1,23 @@
+[package]
+name = "openmls_basic_credential"
+version = "0.1.0"
+authors = ["OpenMLS Authors"]
+edition = "2021"
+description = "A Basic Credential implementation for OpenMLS"
+license = "MIT"
+documentation = "https://docs.rs/openmls_basic_credential"
+repository = "https://github.com/openmls/openmls/tree/main/basic_credential"
+readme = "README.md"
+
+[dependencies]
+openmls_traits = { version = "0.1.0", path = "../traits" }
+# openmls_memory_keystore = { version = "0.1.0", path = "../memory_keystore" }
+tls_codec = { version = "0.2.0", features = ["derive", "serde", "mls"] }
+
+# Rust Crypto
+ed25519-dalek = { version = "1.0" }
+p256 = { version = "0.11" }
+rand-07 = {version = "0.7", package = "rand" } # only needed because of ed25519-dalek
+rand = "0.8"
+# openmls_rust_crypto = { version = "0.1.0", path = "../openmls_rust_crypto", optional = true }
+# openmls_evercrypt = { version = "0.1.0", path = "../evercrypt_backend", optional = true }
