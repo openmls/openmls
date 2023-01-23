@@ -22,7 +22,7 @@ use super::utils::{generate_credential_bundle, generate_key_package, CredentialW
 // Test setup values
 struct ECValidationTestSetup {
     alice_group: MlsGroup,
-    // We only allow [`CredentialWithKeys`] here for new.
+    // We only allow [`CredentialWithKeyAndSigner`] here for new.
     alice_credential: Box<CredentialWithKeyAndSigner>,
     bob_credential: Box<CredentialWithKeyAndSigner>,
     plaintext: PublicMessage,
@@ -241,8 +241,12 @@ fn test_valsem242(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
     // an Update proposal that comes from a leaf that's actually inside of the
     // tree. If that is not the case, we'll get a general proposal validation
     // error before we get the external commit specific one.
-    let bob_key_package =
-        generate_key_package(ciphersuite, Extensions::empty(), backend, bob_credential);
+    let bob_key_package = generate_key_package(
+        ciphersuite,
+        Extensions::empty(),
+        backend,
+        *bob_credential.clone(),
+    );
 
     let (_message, _welcome, _group_info) = alice_group
         .add_members(
@@ -261,11 +265,9 @@ fn test_valsem242(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
         );
         let charlie_key_package = generate_key_package(
             ciphersuite,
-            charlie_credential.credential,
             Extensions::empty(),
             backend,
-            &charlie_credential.signer,
-            charlie_credential.signature_key.into(),
+            charlie_credential,
         );
 
         ProposalOrRef::Proposal(Proposal::Add(AddProposal {
@@ -276,11 +278,9 @@ fn test_valsem242(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
     let update_proposal = || {
         let bob_key_package = generate_key_package(
             ciphersuite,
-            bob_credential.credential.clone(),
             Extensions::empty(),
             backend,
-            &bob_credential.signer,
-            bob_credential.signature_key.clone().into(),
+            *bob_credential.clone(),
         );
         ProposalOrRef::Proposal(Proposal::Update(UpdateProposal {
             leaf_node: bob_key_package.leaf_node().clone(),
@@ -324,8 +324,7 @@ fn test_valsem242(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
             verifiable_group_info,
             alice_group.configuration(),
             &[],
-            bob_credential.credential.clone(),
-            bob_credential.signature_key.into(),
+            bob_credential.credential_with_key,
         )
         .unwrap();
 
@@ -390,8 +389,12 @@ fn test_valsem243(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
     // Alice has to add Bob first, so that Bob actually creates a remove
     // proposal to remove his former self.
 
-    let bob_key_package =
-        generate_key_package(ciphersuite, Extensions::empty(), backend, *bob_credential);
+    let bob_key_package = generate_key_package(
+        ciphersuite,
+        Extensions::empty(),
+        backend,
+        *bob_credential.clone(),
+    );
 
     let (_message, _welcome, _group_info) = alice_group
         .add_members(backend, &alice_credential.signer, &[bob_key_package])
@@ -413,11 +416,12 @@ fn test_valsem243(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
 
     let (_bob_group, message) = MlsGroup::join_by_external_commit(
         backend,
+        &bob_credential.signer,
         Some(&tree_option),
         verifiable_group_info.clone(),
         alice_group.configuration(),
         &[],
-        &bob_credential_bundle,
+        bob_credential.credential_with_key,
     )
     .expect("Error initializing group externally.");
 
@@ -460,7 +464,7 @@ fn test_valsem243(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
 
     // We have to re-sign, since we changed the content.
     let signed_plaintext = resign_external_commit(
-        &bob_credential_bundle,
+        &bob_credential.signer,
         plaintext,
         &original_plaintext,
         alice_group
@@ -485,25 +489,14 @@ fn test_valsem243(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
     );
 
     // Alice, as the creator of the group, should also be able to rejoin the group
-    let alice_credential = alice_group
-        .credential()
-        .expect("An unexpected error occurred.");
-    let alice_credential_bundle = backend
-        .key_store()
-        .read(
-            &alice_credential
-                .signature_key()
-                .tls_serialize_detached()
-                .expect("Error serializing signature key."),
-        )
-        .expect("An unexpected error occurred.");
     let alice_external_commit = MlsGroup::join_by_external_commit(
         backend,
+        &alice_credential.signer,
         Some(&tree_option),
         verifiable_group_info,
         alice_group.configuration(),
         &[],
-        &alice_credential_bundle,
+        alice_credential.credential_with_key,
     );
     assert!(alice_external_commit.is_ok());
 
@@ -519,7 +512,8 @@ fn test_valsem244(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
     // Test with PublicMessage
     let ECValidationTestSetup {
         mut alice_group,
-        bob_credential_bundle,
+        alice_credential,
+        bob_credential,
         mut plaintext,
         original_plaintext,
     } = validation_test_setup(PURE_PLAINTEXT_WIRE_FORMAT_POLICY, ciphersuite, backend);
@@ -531,13 +525,8 @@ fn test_valsem244(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
     };
 
     // Add an Add proposal by reference
-    let bob_key_package = generate_key_package(
-        &[ciphersuite],
-        bob_credential_bundle.credential(),
-        Extensions::empty(),
-        backend,
-    )
-    .unwrap();
+    let bob_key_package =
+        generate_key_package(ciphersuite, Extensions::empty(), backend, *bob_credential);
 
     let add_proposal = Proposal::Add(AddProposal {
         key_package: bob_key_package,
@@ -554,7 +543,7 @@ fn test_valsem244(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
 
     // We have to re-sign, since we changed the content.
     let signed_plaintext = resign_external_commit(
-        &bob_credential_bundle,
+        &bob_credential.signer,
         plaintext,
         &original_plaintext,
         alice_group
@@ -592,7 +581,8 @@ fn test_valsem245(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
     // Test with PublicMessage
     let ECValidationTestSetup {
         mut alice_group,
-        bob_credential_bundle,
+        alice_credential,
+        bob_credential,
         mut plaintext,
         original_plaintext,
     } = validation_test_setup(PURE_PLAINTEXT_WIRE_FORMAT_POLICY, ciphersuite, backend);
@@ -610,7 +600,7 @@ fn test_valsem245(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
 
     // We have to re-sign, since we changed the content.
     let signed_plaintext = resign_external_commit(
-        &bob_credential_bundle,
+        &bob_credential.signer,
         plaintext,
         &original_plaintext,
         alice_group
@@ -644,7 +634,8 @@ fn test_valsem246(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
     // Test with PublicMessage
     let ECValidationTestSetup {
         mut alice_group,
-        bob_credential_bundle,
+        alice_credential,
+        bob_credential,
         mut plaintext,
         original_plaintext,
     } = validation_test_setup(PURE_PLAINTEXT_WIRE_FORMAT_POLICY, ciphersuite, backend);
@@ -658,22 +649,16 @@ fn test_valsem246(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
     // We test that the message is verified using the credential contained in
     // the path by generating a new credential for bob, putting it in the path
     // and then re-signing the message with his original credential.
-    let bob_new_credential = generate_credential_bundle(
-        "Bob".into(),
-        CredentialType::Basic,
-        ciphersuite.signature_algorithm(),
-        backend,
-    )
-    .expect("An unexpected error occurred.");
+    let bob_new_credential =
+        generate_credential_bundle("Bob".into(), ciphersuite.signature_algorithm(), backend);
 
     // Generate KeyPackage
     let bob_new_key_package = generate_key_package(
-        &[ciphersuite],
-        &bob_new_credential,
+        ciphersuite,
         Extensions::empty(),
         backend,
-    )
-    .expect("An unexpected error occurred.");
+        bob_new_credential.clone(),
+    );
 
     if let Some(ref mut path) = content.path {
         path.set_leaf_node(bob_new_key_package.leaf_node().clone())
@@ -683,7 +668,7 @@ fn test_valsem246(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
 
     // We have to re-sign, since we changed the content.
     let signed_plaintext = resign_external_commit(
-        &bob_credential_bundle,
+        &bob_new_credential.signer,
         plaintext,
         &original_plaintext,
         alice_group
@@ -717,7 +702,10 @@ fn test_valsem246(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
         .expect("no path in external commit")
         .leaf_node()
         .credential();
-    assert_eq!(path_credential, bob_credential_bundle.credential());
+    assert_eq!(
+        path_credential,
+        &bob_credential.credential_with_key.credential
+    );
 
     // This shows that the message is actually signed using this credential.
     let decrypted_message = DecryptedMessage::from_inbound_public_message(
@@ -728,9 +716,11 @@ fn test_valsem246(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
     .unwrap();
     let verification_result: Result<AuthenticatedContent, _> =
         decrypted_message.verifiable_content().clone().verify(
-            backend,
-            bob_credential_bundle.credential().signature_key(),
-            ciphersuite.signature_algorithm(),
+            backend.crypto(),
+            &OpenMlsSignaturePublicKey::from_signature_key(
+                bob_credential.credential_with_key.signature_key.clone(),
+                ciphersuite.signature_algorithm(),
+            ),
         );
     assert!(verification_result.is_ok());
 
@@ -749,7 +739,8 @@ fn test_pure_ciphertest(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoPr
     // Test with PrivateMessage
     let ECValidationTestSetup {
         mut alice_group,
-        bob_credential_bundle,
+        alice_credential,
+        bob_credential,
         plaintext: _,
         original_plaintext: _,
     } = validation_test_setup(PURE_CIPHERTEXT_WIRE_FORMAT_POLICY, ciphersuite, backend);
@@ -758,18 +749,19 @@ fn test_pure_ciphertest(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoPr
 
     // Have Alice export everything that bob needs.
     let verifiable_group_info = alice_group
-        .export_group_info(backend, true)
+        .export_group_info(backend, &alice_credential.signer, true)
         .unwrap()
         .into_group_info()
         .unwrap();
 
     let (_bob_group, message) = MlsGroup::join_by_external_commit(
         backend,
+        &bob_credential.signer,
         None,
         verifiable_group_info,
         alice_group.configuration(),
         &[],
-        &bob_credential_bundle,
+        bob_credential.credential_with_key.clone(),
     )
     .expect("Error initializing group externally.");
 

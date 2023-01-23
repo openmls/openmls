@@ -320,6 +320,7 @@ fn test_setup(backend: &impl OpenMlsCryptoProvider) {
     let _test_setup = setup(test_setup_config, backend);
 }
 
+#[derive(Clone)]
 pub(super) struct CredentialWithKeyAndSigner {
     pub(super) credential_with_key: CredentialWithKey,
     pub(super) signer: BasicCredentialWithKeys,
