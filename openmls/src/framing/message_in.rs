@@ -7,7 +7,7 @@
 //!
 //! The [`MlsMessageIn`] struct is meant to be deserialized upon receiving it
 //! from the DS. After deserialization, its content (either a [`PublicMessage`],
-//! [`PrivateMessage`], [`KeyPackage`], [`Welcome`] or [`crate::messages::group_info::GroupInfo`]) can be
+//! [`PrivateMessage`], [`KeyPackage`], [`Welcome`] or [`GroupInfo`](crate::messages::group_info::GroupInfo) can be
 //! extracted via [`MlsMessageIn::extract()`] for use with the [`MlsGroup`] API.
 //!
 //! If an [`MlsMessageIn`] contains a [`PublicMessage`] or [`PrivateMessage`],
