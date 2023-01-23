@@ -1,6 +1,5 @@
 //! This module contains all types related to group info handling.
 
-use std::marker::PhantomData;
 use openmls_traits::types::Ciphersuite;
 use tls_codec::{Serialize, TlsDeserialize, TlsSerialize, TlsSize};
 
@@ -16,29 +15,6 @@ use crate::{
 };
 
 const SIGNATURE_GROUP_INFO_LABEL: &str = "GroupInfoTBS";
-
-#[derive(TlsDeserialize)]
-pub struct Unverified;
-
-#[derive(TlsSerialize)]
-pub struct Verified;
-
-#[derive(Debug, PartialEq, Clone, TlsDeserialize, TlsSerialize, TlsSize)]
-struct NewGroupInfo<T> {
-    test: u8,
-    #[tls_codec(skip)]
-    _phantom: PhantomData<T>,
-}
-
-mod test {
-    use std::marker::PhantomData;
-    use crate::prelude::group_info::NewGroupInfo;
-
-    #[test]
-    fn test() {
-        let a = NewGroupInfo { test: 1, _phantom: PhantomData::default() };
-    }
-}
 
 /// A type that represents a group info of which the signature has not been verified.
 /// It implements the [`Verifiable`] trait and can be turned into a group info by calling
