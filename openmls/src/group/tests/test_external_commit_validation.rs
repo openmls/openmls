@@ -261,7 +261,7 @@ fn test_valsem242(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
     )
     .unwrap();
 
-    let (_message, _welcome) = alice_group
+    let (_message, _welcome, _group_info) = alice_group
         .add_members(backend, &[bob_key_package])
         .unwrap();
     alice_group.merge_pending_commit(backend).unwrap();
@@ -409,7 +409,7 @@ fn test_valsem243(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
     )
     .expect("An unexpected error occurred.");
 
-    let (_message, _welcome) = alice_group
+    let (_message, _welcome, _group_info) = alice_group
         .add_members(backend, &[bob_key_package])
         .expect("Could not add member.");
 

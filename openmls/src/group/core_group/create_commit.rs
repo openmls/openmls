@@ -310,16 +310,24 @@ impl CoreGroup {
         // Set the confirmation tag
         commit.set_confirmation_tag(confirmation_tag.clone());
 
-        // Check if new members were added and, if so, create welcome messages
-        let welcome_option = if !plaintext_secrets.is_empty() {
+        // only computes the group info if necessary
+        let group_info = if !plaintext_secrets.is_empty() || self.use_ratchet_tree_extension {
             // Create the ratchet tree extension if necessary
+            let external_pub = provisional_epoch_secrets
+                .external_secret()
+                .derive_external_keypair(backend.crypto(), ciphersuite)
+                .public;
+            let external_pub_extension =
+                Extension::ExternalPub(ExternalPubExtension::new(external_pub.into()));
             let other_extensions: Extensions = if self.use_ratchet_tree_extension {
-                Extensions::single(Extension::RatchetTree(RatchetTreeExtension::new(
-                    diff.export_nodes(),
-                )))
+                Extensions::from_vec(vec![
+                    Extension::RatchetTree(RatchetTreeExtension::new(diff.export_nodes())),
+                    external_pub_extension,
+                ])?
             } else {
-                Extensions::empty()
+                Extensions::single(external_pub_extension)
             };
+
             // Create to-be-signed group info.
             let group_info_tbs = {
                 let group_context = GroupContext::new(
@@ -339,9 +347,13 @@ impl CoreGroup {
                 )
             };
             // Sign to-be-signed group info.
-            let group_info =
-                group_info_tbs.sign(backend, params.credential_bundle().signature_private_key())?;
+            Some(group_info_tbs.sign(backend, params.credential_bundle().signature_private_key())?)
+        } else {
+            None
+        };
 
+        // Check if new members were added and, if so, create welcome messages
+        let welcome_option = if !plaintext_secrets.is_empty() {
             // Encrypt GroupInfo object
             let (welcome_key, welcome_nonce) = welcome_secret
                 .derive_welcome_key_nonce(backend)
@@ -349,9 +361,12 @@ impl CoreGroup {
             let encrypted_group_info = welcome_key
                 .aead_seal(
                     backend,
-                    &group_info
+                    group_info
+                        .as_ref()
+                        .ok_or_else(|| LibraryError::custom("GroupInfo was not computed"))?
                         .tls_serialize_detached()
-                        .map_err(LibraryError::missing_bound_check)?,
+                        .map_err(LibraryError::missing_bound_check)?
+                        .as_slice(),
                     &[],
                     &welcome_nonce,
                 )
@@ -408,6 +423,7 @@ impl CoreGroup {
             commit,
             welcome_option,
             staged_commit,
+            group_info: group_info.filter(|_| self.use_ratchet_tree_extension),
         })
     }
 
