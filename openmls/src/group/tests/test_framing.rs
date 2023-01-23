@@ -12,7 +12,6 @@ use super::utils::*;
 use crate::{
     binary_tree::*,
     ciphersuite::signable::Signable,
-    credentials::CredentialType,
     framing::{MessageDecryptionError, WireFormat, *},
     group::*,
     schedule::{message_secrets::MessageSecrets, EncryptionSecret},
@@ -64,7 +63,7 @@ fn padding(backend: &impl OpenMlsCryptoProvider) {
     for padding_size in 0..50 {
         // Create a message in each group and test the padding.
         for group_state in alice.group_states.borrow_mut().values_mut() {
-            let (credential, signer) = alice
+            let credential = alice
                 .credentials
                 .get(&group_state.ciphersuite())
                 .expect("An unexpected error occurred.");
@@ -72,7 +71,13 @@ fn padding(backend: &impl OpenMlsCryptoProvider) {
                 let message = randombytes(random_usize() % 1000);
                 let aad = randombytes(random_usize() % 1000);
                 let private_message = group_state
-                    .create_application_message(&aad, &message, padding_size, backend, signer)
+                    .create_application_message(
+                        &aad,
+                        &message,
+                        padding_size,
+                        backend,
+                        &credential.signer,
+                    )
                     .expect("An unexpected error occurred.");
                 let ciphertext = private_message.ciphertext();
                 let length = ciphertext.len();

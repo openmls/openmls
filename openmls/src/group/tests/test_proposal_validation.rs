@@ -269,7 +269,9 @@ fn test_valsem100(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
     // new group with Alice and Bob.
     let ProposalValidationTestSetup {
         mut alice_group,
+        alice_credential_with_key_and_signer,
         mut bob_group,
+        bob_credential_with_key_and_signer,
     } = validation_test_setup(PURE_PLAINTEXT_WIRE_FORMAT_POLICY, ciphersuite, backend);
 
     // We now have alice create a commit with an add proposal. Then we
@@ -280,7 +282,11 @@ fn test_valsem100(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
 
     // Create the Commit with Add proposal.
     let serialized_update = alice_group
-        .add_members(backend, &[charlie_key_package])
+        .add_members(
+            backend,
+            &alice_credential_with_key_and_signer.signer,
+            &[charlie_key_package],
+        )
         .expect("Error creating self-update")
         .tls_serialize_detached()
         .expect("Could not serialize message.");
@@ -309,6 +315,7 @@ fn test_valsem100(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
         plaintext,
         &original_plaintext,
         &alice_group,
+        &alice_credential_with_key_and_signer.signer,
     );
 
     let update_message_in = ProtocolMessage::from(verifiable_plaintext);
@@ -371,11 +378,6 @@ fn test_valsem101(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
             }
             KeyUniqueness::PositiveSameKeyWithRemove => unreachable!(),
         }
-
-        let bob_credential_bundle =
-            CredentialBundle::from_parts("Bob".into(), bob_signature_keypair);
-        let charlie_credential_bundle =
-            CredentialBundle::from_parts("Charlie".into(), charlie_signature_keypair);
 
         let bob_key_package = KeyPackage::builder()
             .build(

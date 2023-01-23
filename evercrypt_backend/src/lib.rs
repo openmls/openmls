@@ -2,9 +2,7 @@ use openmls_memory_keystore::MemoryKeyStore;
 use openmls_traits::OpenMlsCryptoProvider;
 
 mod provider;
-mod signature;
 pub use provider::*;
-pub use signature::*;
 
 #[derive(Default, Debug)]
 pub struct OpenMlsEvercrypt {
