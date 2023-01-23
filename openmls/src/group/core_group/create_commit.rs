@@ -376,11 +376,12 @@ impl CoreGroup {
             let encrypted_group_info = welcome_key
                 .aead_seal(
                     backend,
-                    &group_info
+                    group_info
                         .as_ref()
                         .ok_or_else(|| LibraryError::custom("GroupInfo was not computed"))?
                         .tls_serialize_detached()
-                        .map_err(LibraryError::missing_bound_check)?,
+                        .map_err(LibraryError::missing_bound_check)?
+                        .as_slice(),
                     &[],
                     &welcome_nonce,
                 )
