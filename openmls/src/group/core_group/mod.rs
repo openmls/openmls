@@ -39,7 +39,7 @@ use crate::group::config::CryptoConfig;
 use crate::treesync::node::encryption_keys::EncryptionKeyPair;
 use crate::{
     binary_tree::array_representation::LeafNodeIndex,
-    ciphersuite::{signable::Signable, HpkePublicKey, SignaturePublicKey},
+    ciphersuite::{signable::Signable, HpkePublicKey},
     credentials::*,
     error::LibraryError,
     extensions::errors::*,
@@ -148,8 +148,7 @@ pub(crate) struct CoreGroupBuilder {
     required_capabilities: Option<RequiredCapabilitiesExtension>,
     max_past_epochs: usize,
     lifetime: Option<Lifetime>,
-    credential: Credential,
-    signature_key: SignaturePublicKey,
+    credential_with_key: CredentialWithKey,
 }
 
 impl CoreGroupBuilder {
@@ -157,8 +156,7 @@ impl CoreGroupBuilder {
     pub(crate) fn new(
         group_id: GroupId,
         crypto_config: CryptoConfig,
-        credential: Credential,
-        signature_key: SignaturePublicKey,
+        credential_with_key: CredentialWithKey,
     ) -> Self {
         Self {
             group_id,
@@ -170,8 +168,7 @@ impl CoreGroupBuilder {
             own_leaf_extensions: Extensions::empty(),
             lifetime: None,
             crypto_config,
-            credential,
-            signature_key,
+            credential_with_key,
         }
     }
     /// Set the [`CoreGroupConfig`] of the [`CoreGroup`].
@@ -232,8 +229,7 @@ impl CoreGroupBuilder {
                 ciphersuite,
                 version,
             },
-            self.credential,
-            self.signature_key,
+            self.credential_with_key,
             self.lifetime.unwrap_or_default(),
             Capabilities::new(
                 Some(&[version]),     // TODO: Allow more versions
@@ -322,10 +318,9 @@ impl CoreGroup {
     pub(crate) fn builder(
         group_id: GroupId,
         crypto_config: CryptoConfig,
-        credential: Credential,
-        signature_key: SignaturePublicKey,
+        credential_with_key: CredentialWithKey,
     ) -> CoreGroupBuilder {
-        CoreGroupBuilder::new(group_id, crypto_config, credential, signature_key)
+        CoreGroupBuilder::new(group_id, crypto_config, credential_with_key)
     }
 
     // === Create handshake messages ===

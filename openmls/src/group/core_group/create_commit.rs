@@ -152,10 +152,7 @@ impl CoreGroup {
                 backend,
                 signer,
                 params
-                    .signature_key()
-                    .ok_or(CreateCommitError::MissingSignatureKey)?,
-                params
-                    .credential()
+                    .credential_with_key()
                     .ok_or(CreateCommitError::MissingCredential)?,
             )?;
 

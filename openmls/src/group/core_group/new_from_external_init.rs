@@ -145,17 +145,14 @@ impl CoreGroup {
 
         // If there is a group member in the group with the same identity as us,
         // commit a remove proposal.
-        let params_credential = params
-            .credential()
+        let params_credential_with_key = params
+            .credential_with_key()
             .ok_or(ExternalCommitError::MissingCredential)?;
-        let signature_key = params
-            .signature_key()
-            .ok_or(ExternalCommitError::MissingSignatureKey)?;
         for Member {
             index, identity, ..
         } in group.treesync().full_leave_members()
         {
-            if identity == params_credential.identity() {
+            if identity == params_credential_with_key.credential.identity() {
                 let remove_proposal = Proposal::Remove(RemoveProposal { removed: index });
                 inline_proposals.push(remove_proposal);
                 break;
@@ -167,8 +164,7 @@ impl CoreGroup {
             .proposal_store(params.proposal_store())
             .inline_proposals(inline_proposals)
             .commit_type(CommitType::External)
-            .credential(params_credential)
-            .signature_key(signature_key)
+            .credential_with_key(params_credential_with_key)
             .build();
 
         // Immediately create the commit to add ourselves to the group.

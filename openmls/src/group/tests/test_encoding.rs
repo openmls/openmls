@@ -1,7 +1,7 @@
 use super::utils::*;
 use crate::{
-    binary_tree::LeafNodeIndex, framing::*, group::*, key_packages::*, messages::*, test_utils::*,
-    *,
+    binary_tree::LeafNodeIndex, credentials::CredentialWithKey, framing::*, group::*,
+    key_packages::*, messages::*, test_utils::*, *,
 };
 use openmls_rust_crypto::OpenMlsRustCrypto;
 use openmls_traits::crypto::OpenMlsCrypto;
@@ -107,8 +107,7 @@ fn test_update_proposal_encoding(backend: &impl OpenMlsCryptoProvider) {
             backend,
             signer,
             group_state.ciphersuite(),
-            credential.clone(),
-            signer.to_public_vec().into(),
+            CredentialWithKey::from_parts(credential.clone(), signer.public()),
         );
 
         let mut update: PublicMessage = group_state
@@ -158,8 +157,7 @@ fn test_add_proposal_encoding(backend: &impl OpenMlsCryptoProvider) {
             backend,
             signer,
             group_state.ciphersuite(),
-            credential.clone(),
-            signer.to_public_vec().into(),
+            CredentialWithKey::from_parts(credential.clone(), signer.public()),
         );
 
         // Adds
@@ -244,8 +242,7 @@ fn test_commit_encoding(backend: &impl OpenMlsCryptoProvider) {
             backend,
             alice_signer,
             group_state.ciphersuite(),
-            alice_credential.clone(),
-            alice_signer.to_public_vec().into(),
+            CredentialWithKey::from_parts(alice_credential.clone(), alice_signer.public()),
         );
 
         // Create a few proposals to put into the commit

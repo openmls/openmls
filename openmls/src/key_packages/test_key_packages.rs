@@ -22,8 +22,10 @@ pub(crate) fn key_package(
             },
             backend,
             &signer,
-            signer.to_public_vec().into(),
-            credential.clone(),
+            CredentialWithKey {
+                credential: credential.clone(),
+                signature_key: signer.to_public_vec().into(),
+            },
         )
         .expect("An unexpected error occurred.");
 

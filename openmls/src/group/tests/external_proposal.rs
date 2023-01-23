@@ -28,11 +28,11 @@ fn new_test_group(
     wire_format_policy: WireFormatPolicy,
     ciphersuite: Ciphersuite,
     backend: &impl OpenMlsCryptoProvider,
-) -> (MlsGroup, CredentialWithKeys) {
+) -> (MlsGroup, CredentialWithKeyAndSigner) {
     let group_id = GroupId::from_slice(b"Test Group");
 
     // Generate credential bundles
-    let credential_bundle =
+    let credential_with_keys =
         generate_credential_bundle(identity.into(), ciphersuite.signature_algorithm(), backend);
 
     // Define the MlsGroup configuration
@@ -44,14 +44,13 @@ fn new_test_group(
     (
         MlsGroup::new_with_group_id(
             backend,
-            &credential_bundle.signer,
+            &credential_with_keys.signer,
             &mls_group_config,
             group_id,
-            credential_bundle.signature_key.into(),
-            credential_bundle.credential,
+            credential_with_keys.credential_with_key,
         )
         .unwrap(),
-        credential_bundle,
+        credential_with_keys,
     )
 }
 
@@ -70,11 +69,9 @@ fn validation_test_setup(
 
     let bob_key_package = generate_key_package(
         ciphersuite,
-        bob_credential_bundle.credential,
         Extensions::empty(),
         backend,
-        &bob_credential_bundle.signer,
-        bob_credential_bundle.signature_key.into(),
+        bob_credential_bundle,
     );
 
     let (_message, welcome) = alice_group
@@ -130,11 +127,9 @@ fn external_add_proposal_should_succeed(
 
         let charlie_kp = generate_key_package(
             ciphersuite,
-            charlie_credential.credential,
             Extensions::empty(),
             backend,
-            &charlie_credential.signer,
-            charlie_credential.signature_key.into(),
+            charlie_credential,
         );
 
         let proposal = JoinProposal::new(
@@ -238,11 +233,9 @@ fn external_add_proposal_should_be_signed_by_key_package_it_references(
 
     let charlie_kp = generate_key_package(
         ciphersuite,
-        charlie_credential.credential,
         Extensions::empty(),
         backend,
-        &charlie_credential.signer,
-        charlie_credential.signature_key.into(),
+        charlie_credential,
     );
 
     let invalid_proposal = JoinProposal::new(
@@ -279,14 +272,7 @@ fn new_member_proposal_sender_should_be_reserved_for_join_proposals(
     let any_credential =
         generate_credential_bundle("Any".into(), ciphersuite.signature_algorithm(), backend);
 
-    let any_kp = generate_key_package(
-        ciphersuite,
-        any_credential.credential,
-        Extensions::empty(),
-        backend,
-        &any_credential.signer,
-        any_credential.signature_key.into(),
-    );
+    let any_kp = generate_key_package(ciphersuite, Extensions::empty(), backend, any_credential);
 
     let join_proposal = JoinProposal::new(
         any_kp,

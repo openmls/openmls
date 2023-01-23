@@ -31,13 +31,6 @@ use crate::{
 use super::{errors::ClientError, ActionType};
 
 #[derive(Debug)]
-pub struct CredentialPP {
-    pub credential: Credential,
-    pub public_key: Vec<u8>,
-    pub signature_scheme: SignatureScheme,
-}
-
-#[derive(Debug)]
 /// The client contains the necessary state for a client in the context of MLS.
 /// It contains the group states, as well as a reference to a `KeyStore`
 /// containing its `CredentialBundle`s. The `key_package_bundles` field contains
@@ -46,7 +39,7 @@ pub struct Client {
     /// Name of the client.
     pub identity: Vec<u8>,
     /// Ciphersuites supported by the client.
-    pub credentials: HashMap<Ciphersuite, CredentialPP>,
+    pub credentials: HashMap<Ciphersuite, CredentialWithKey>,
     pub crypto: OpenMlsRustCrypto,
     pub groups: RwLock<HashMap<GroupId, MlsGroup>>,
 }
@@ -59,14 +52,14 @@ impl Client {
         &self,
         ciphersuite: Ciphersuite,
     ) -> Result<KeyPackage, ClientError> {
-        let credential = self
+        let credential_with_key = self
             .credentials
             .get(&ciphersuite)
             .ok_or(ClientError::CiphersuiteNotSupported)?;
         let keys = BasicCredential::read(
             self.crypto.key_store(),
-            &credential.public_key,
-            credential.signature_scheme,
+            &credential_with_key.signature_key.as_slice(),
+            ciphersuite.signature_algorithm(),
         )
         .unwrap();
 
@@ -78,8 +71,7 @@ impl Client {
                 },
                 &self.crypto,
                 &keys,
-                credential.public_key.clone().into(),
-                credential.credential.clone(),
+                credential_with_key.clone(),
             )
             .unwrap();
 
@@ -95,14 +87,14 @@ impl Client {
         mls_group_config: MlsGroupConfig,
         ciphersuite: Ciphersuite,
     ) -> Result<GroupId, ClientError> {
-        let credential = self
+        let credential_with_key = self
             .credentials
             .get(&ciphersuite)
             .ok_or(ClientError::CiphersuiteNotSupported)?;
         let signer = BasicCredential::read(
             self.crypto.key_store(),
-            &credential.public_key,
-            credential.signature_scheme,
+            credential_with_key.signature_key.as_slice(),
+            ciphersuite.signature_algorithm(),
         )
         .unwrap();
 
@@ -110,8 +102,7 @@ impl Client {
             &self.crypto,
             &signer,
             &mls_group_config,
-            credential.public_key.clone().into(),
-            credential.credential.clone(),
+            credential_with_key.clone(),
         )?;
         let group_id = group_state.group_id().clone();
         self.groups

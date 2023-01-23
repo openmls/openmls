@@ -228,8 +228,7 @@ impl KeyPackage {
         config: CryptoConfig,
         backend: &impl OpenMlsCryptoProvider<KeyStoreProvider = KeyStore>,
         signer: &impl ByteSigner,
-        credential: Credential,
-        signature_key: SignaturePublicKey,
+        credential_with_key: CredentialWithKey,
         extensions: Extensions,
         leaf_node_extensions: Extensions,
     ) -> Result<KeyPackageCreationResult, KeyPackageNewError<KeyStore::Error>> {
@@ -243,8 +242,7 @@ impl KeyPackage {
             config,
             backend,
             signer,
-            credential,
-            signature_key,
+            credential_with_key,
             extensions,
             leaf_node_extensions,
             init_key.public,
@@ -270,8 +268,7 @@ impl KeyPackage {
         config: CryptoConfig,
         backend: &impl OpenMlsCryptoProvider<KeyStoreProvider = KeyStore>,
         signer: &impl ByteSigner,
-        credential: Credential,
-        signature_key: SignaturePublicKey,
+        credential_with_key: CredentialWithKey,
         extensions: Extensions,
         leaf_node_extensions: Extensions,
         init_key: Vec<u8>,
@@ -280,8 +277,7 @@ impl KeyPackage {
         // use later when creating a group with this key package.
         let (leaf_node, encryption_key_pair) = LeafNode::new(
             config,
-            credential,
-            signature_key,
+            credential_with_key,
             LeafNodeSource::KeyPackage(Lifetime::default()),
             Capabilities::default(),
             leaf_node_extensions,
@@ -419,8 +415,7 @@ impl KeyPackage {
         config: CryptoConfig,
         backend: &impl OpenMlsCryptoProvider<KeyStoreProvider = KeyStore>,
         signer: &impl ByteSigner,
-        credential: Credential,
-        signature_key: SignaturePublicKey,
+        credential_with_key: CredentialWithKey,
         extensions: Extensions,
         leaf_node_extensions: Extensions,
         init_key: Vec<u8>,
@@ -429,8 +424,7 @@ impl KeyPackage {
             config,
             backend,
             signer,
-            credential,
-            signature_key,
+            credential_with_key,
             extensions,
             leaf_node_extensions,
             init_key,
@@ -461,8 +455,7 @@ impl KeyPackage {
         config: CryptoConfig,
         backend: &impl OpenMlsCryptoProvider<KeyStoreProvider = KeyStore>,
         signer: &impl ByteSigner,
-        credential: Credential,
-        signature_key: SignaturePublicKey,
+        credential_with_key: CredentialWithKey,
         extensions: Extensions,
         encryption_key: EncryptionKey,
     ) -> Result<Self, KeyPackageNewError<KeyStore::Error>> {
@@ -483,8 +476,7 @@ impl KeyPackage {
         // use later when creating a group with this key package.
         let leaf_node = LeafNode::create_new_with_key(
             encryption_key,
-            credential,
-            signature_key,
+            credential_with_key,
             LeafNodeSource::KeyPackage(Lifetime::default()),
             Capabilities::default(),
             Extensions::empty(),
@@ -593,15 +585,13 @@ impl KeyPackageBuilder {
         config: CryptoConfig,
         backend: &impl OpenMlsCryptoProvider<KeyStoreProvider = KeyStore>,
         signer: &impl ByteSigner,
-        signature_key: SignaturePublicKey,
-        credential: Credential,
+        credential_with_key: CredentialWithKey,
     ) -> Result<KeyPackageCreationResult, KeyPackageNewError<KeyStore::Error>> {
         KeyPackage::create(
             config,
             backend,
             signer,
-            credential,
-            signature_key,
+            credential_with_key,
             self.key_package_extensions.unwrap_or_default(),
             self.leaf_node_extensions.unwrap_or_default(),
         )
@@ -613,8 +603,7 @@ impl KeyPackageBuilder {
         config: CryptoConfig,
         backend: &impl OpenMlsCryptoProvider<KeyStoreProvider = KeyStore>,
         signer: &impl ByteSigner,
-        signature_key: SignaturePublicKey,
-        credential: Credential,
+        credential_with_key: CredentialWithKey,
     ) -> Result<KeyPackage, KeyPackageNewError<KeyStore::Error>> {
         let KeyPackageCreationResult {
             key_package,
@@ -624,8 +613,7 @@ impl KeyPackageBuilder {
             config,
             backend,
             signer,
-            credential,
-            signature_key,
+            credential_with_key,
             self.key_package_extensions.unwrap_or_default(),
             self.leaf_node_extensions.unwrap_or_default(),
         )?;
@@ -679,8 +667,7 @@ impl KeyPackageBundle {
         backend: &impl OpenMlsCryptoProvider,
         signer: &impl ByteSigner,
         ciphersuite: Ciphersuite,
-        credential: Credential,
-        signature_key: SignaturePublicKey,
+        credential_with_key: CredentialWithKey,
     ) -> Self {
         let key_package = KeyPackage::builder()
             .build(
@@ -690,8 +677,7 @@ impl KeyPackageBundle {
                 },
                 backend,
                 signer,
-                signature_key,
-                credential,
+                credential_with_key,
             )
             .unwrap();
         let private_key: Vec<u8> = backend

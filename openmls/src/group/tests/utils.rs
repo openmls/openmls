@@ -92,10 +92,9 @@ pub(crate) fn setup(config: TestSetupConfig, backend: &impl OpenMlsCryptoProvide
         // signature scheme), as well as 10 KeyPackages per ciphersuite.
         for ciphersuite in client.ciphersuites {
             // Create a credential_bundle for the given ciphersuite.
-            let CredentialWithKeys {
-                credential,
+            let CredentialWithKeyAndSigner {
+                credential_with_key,
                 signer,
-                signature_key,
             } = generate_credential_bundle(
                 client.name.as_bytes().to_vec(),
                 ciphersuite.signature_algorithm(),
@@ -104,13 +103,8 @@ pub(crate) fn setup(config: TestSetupConfig, backend: &impl OpenMlsCryptoProvide
             // Create a number of key packages.
             let mut key_packages = Vec::new();
             for _ in 0..KEY_PACKAGE_COUNT {
-                let key_package_bundle: KeyPackageBundle = KeyPackageBundle::new(
-                    backend,
-                    &signer,
-                    ciphersuite,
-                    credential.clone(),
-                    signer.to_public_vec().into(),
-                );
+                let key_package_bundle: KeyPackageBundle =
+                    KeyPackageBundle::new(backend, &signer, ciphersuite, credential_with_key);
                 key_packages.push(key_package_bundle.key_package().clone());
                 key_package_bundles.push(key_package_bundle);
             }
@@ -147,8 +141,10 @@ pub(crate) fn setup(config: TestSetupConfig, backend: &impl OpenMlsCryptoProvide
         let core_group = CoreGroup::builder(
             GroupId::from_slice(&group_id.to_be_bytes()),
             CryptoConfig::with_default_version(group_config.ciphersuite),
-            credential.clone(),
-            signer.public().clone().into(),
+            CredentialWithKey {
+                credential: credential.clone(),
+                signature_key: signer.public().clone().into(),
+            },
         )
         .with_config(group_config.config)
         .build(backend, signer)
@@ -322,10 +318,9 @@ fn test_setup(backend: &impl OpenMlsCryptoProvider) {
     let _test_setup = setup(test_setup_config, backend);
 }
 
-pub(super) struct CredentialWithKeys {
-    pub(super) credential: Credential,
+pub(super) struct CredentialWithKeyAndSigner {
+    pub(super) credential_with_key: CredentialWithKey,
     pub(super) signer: BasicCredentialWithKeys,
-    pub(super) signature_key: OpenMlsSignaturePublicKey,
 }
 
 // Helper function to generate a CredentialBundle
@@ -333,7 +328,7 @@ pub(super) fn generate_credential_bundle(
     identity: Vec<u8>,
     signature_scheme: SignatureScheme,
     backend: &impl OpenMlsCryptoProvider,
-) -> CredentialWithKeys {
+) -> CredentialWithKeyAndSigner {
     let (credential, signer) = {
         let credential = Credential::new(identity.into(), CredentialType::Basic).unwrap();
         let signature_keys =
@@ -345,21 +340,21 @@ pub(super) fn generate_credential_bundle(
     let signature_key =
         OpenMlsSignaturePublicKey::new(signer.to_public_vec().into(), signature_scheme).unwrap();
 
-    CredentialWithKeys {
-        credential,
+    CredentialWithKeyAndSigner {
+        credential_with_key: CredentialWithKey {
+            credential,
+            signature_key: signature_key.into(),
+        },
         signer,
-        signature_key,
     }
 }
 
 // Helper function to generate a KeyPackageBundle
 pub(super) fn generate_key_package<KeyStore: OpenMlsKeyStore>(
     ciphersuite: Ciphersuite,
-    credential: Credential,
     extensions: Extensions,
     backend: &impl OpenMlsCryptoProvider<KeyStoreProvider = KeyStore>,
-    signer: &impl ByteSigner,
-    signature_key: SignaturePublicKey,
+    credential_with_keys: CredentialWithKeyAndSigner,
 ) -> KeyPackage {
     KeyPackage::builder()
         .key_package_extensions(extensions)
@@ -369,9 +364,8 @@ pub(super) fn generate_key_package<KeyStore: OpenMlsKeyStore>(
                 version: ProtocolVersion::default(),
             },
             backend,
-            signer,
-            signature_key,
-            credential,
+            &credential_with_keys.signer,
+            credential_with_keys.credential_with_key,
         )
         .unwrap()
 }

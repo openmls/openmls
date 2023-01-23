@@ -1089,9 +1089,9 @@ fn book_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvide
     let bob_key_package = generate_key_package(
         ciphersuite,
         bob_credential,
-        backend,
         &signature_keys,
         signature_keys.to_public_vec().into(),
+        backend,
     );
 
     // ANCHOR: external_join_proposal

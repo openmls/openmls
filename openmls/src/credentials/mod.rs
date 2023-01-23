@@ -40,6 +40,8 @@ mod codec;
 mod tests;
 use errors::*;
 
+use crate::ciphersuite::SignaturePublicKey;
+
 // Public
 pub mod errors;
 
@@ -206,12 +208,31 @@ pub struct BasicCredential {
     identity: VLBytes,
 }
 
+#[derive(Debug, Clone)]
+/// A wrapper around a credential with a corresponding public key.
+pub struct CredentialWithKey {
+    /// The [`Credential`].
+    pub credential: Credential,
+    /// The corresponding public key as [`SignaturePublicKey`].
+    pub signature_key: SignaturePublicKey,
+}
+
+#[cfg(test)]
+impl CredentialWithKey {
+    pub fn from_parts(credential: Credential, key: &[u8]) -> Self {
+        Self {
+            credential,
+            signature_key: key.into(),
+        }
+    }
+}
+
 #[cfg(any(test, feature = "test-utils"))]
 pub mod test_utils {
     use openmls_basic_credential::BasicCredential;
     use openmls_traits::{types::SignatureScheme, OpenMlsCryptoProvider};
 
-    use super::{Credential, CredentialType};
+    use super::{Credential, CredentialType, CredentialWithKey};
 
     /// Convenience function that generates a new credential and a key pair for
     /// it (using the basic credential crate).
@@ -223,11 +244,17 @@ pub mod test_utils {
         identity: &[u8],
         credential_type: CredentialType,
         signature_scheme: SignatureScheme,
-    ) -> (Credential, BasicCredential) {
+    ) -> (CredentialWithKey, BasicCredential) {
         let credential = Credential::new(identity.into(), credential_type).unwrap();
         let signature_keys = BasicCredential::new(signature_scheme, backend.crypto()).unwrap();
         signature_keys.store(backend.key_store()).unwrap();
 
-        (credential, signature_keys)
+        (
+            CredentialWithKey {
+                credential,
+                signature_key: signature_keys.public().into(),
+            },
+            signature_keys,
+        )
     }
 }

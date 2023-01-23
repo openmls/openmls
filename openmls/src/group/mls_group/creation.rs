@@ -1,7 +1,7 @@
-use openmls_traits::signatures::{ByteSignVerifier, ByteSigner};
+use openmls_traits::signatures::ByteSigner;
 
 use crate::{
-    ciphersuite::signature::SignaturePublicKey,
+    credentials::CredentialWithKey,
     group::{
         core_group::create_commit_params::CreateCommitParams,
         errors::{CoreGroupBuildError, ExternalCommitError, WelcomeError},
@@ -25,16 +25,14 @@ impl MlsGroup {
         backend: &impl OpenMlsCryptoProvider<KeyStoreProvider = KeyStore>,
         signer: &impl ByteSigner,
         mls_group_config: &MlsGroupConfig,
-        signature_key: SignaturePublicKey,
-        credential: Credential,
+        credential_with_key: CredentialWithKey,
     ) -> Result<Self, NewGroupError<KeyStore::Error>> {
         Self::new_with_group_id(
             backend,
             signer,
             mls_group_config,
             GroupId::random(backend),
-            signature_key,
-            credential,
+            credential_with_key,
         )
     }
 
@@ -47,8 +45,7 @@ impl MlsGroup {
         signer: &impl ByteSigner,
         mls_group_config: &MlsGroupConfig,
         group_id: GroupId,
-        signature_key: SignaturePublicKey,
-        credential: Credential,
+        credential_with_key: CredentialWithKey,
     ) -> Result<Self, NewGroupError<KeyStore::Error>> {
         // TODO #751
         let group_config = CoreGroupConfig {
@@ -58,8 +55,7 @@ impl MlsGroup {
         let group = CoreGroup::builder(
             group_id,
             mls_group_config.crypto_config,
-            credential,
-            signature_key,
+            credential_with_key,
         )
         .with_config(group_config)
         .with_required_capabilities(mls_group_config.required_capabilities.clone())
@@ -168,13 +164,12 @@ impl MlsGroup {
     /// please see Section 11.2.1 in the MLS specification.
     pub fn join_by_external_commit(
         backend: &impl OpenMlsCryptoProvider,
-        sign_verifier: &impl ByteSignVerifier,
+        signer: &impl ByteSigner,
         tree_option: Option<&[Option<Node>]>,
         verifiable_group_info: VerifiableGroupInfo,
         mls_group_config: &MlsGroupConfig,
         aad: &[u8],
-        credential: Credential,
-        signature_key: SignaturePublicKey,
+        credential_with_key: CredentialWithKey,
     ) -> Result<(Self, MlsMessageOut), ExternalCommitError> {
         let resumption_psk_store =
             ResumptionPskStore::new(mls_group_config.number_of_resumption_psks);
@@ -186,12 +181,11 @@ impl MlsGroup {
         let params = CreateCommitParams::builder()
             .framing_parameters(framing_parameters)
             .proposal_store(&proposal_store)
-            .credential(credential)
-            .signature_key(signature_key)
+            .credential_with_key(credential_with_key)
             .build();
         let (mut group, create_commit_result) = CoreGroup::join_by_external_commit(
             backend,
-            sign_verifier,
+            signer,
             params,
             tree_option,
             verifiable_group_info,

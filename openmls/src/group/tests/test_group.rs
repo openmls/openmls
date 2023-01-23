@@ -10,6 +10,7 @@ use crate::{
     *,
 };
 use openmls_rust_crypto::OpenMlsRustCrypto;
+use tests::utils::{generate_credential_bundle, generate_key_package};
 
 #[apply(ciphersuites_and_backends)]
 fn create_commit_optional_path(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
@@ -18,37 +19,38 @@ fn create_commit_optional_path(ciphersuite: Ciphersuite, backend: &impl OpenMlsC
     let framing_parameters = FramingParameters::new(group_aad, WireFormat::PublicMessage);
 
     // Define identities
-    let alice_credential_bundle = CredentialBundle::new(
-        "Alice".into(),
-        CredentialType::Basic,
+    let alice_credential_with_keys = generate_credential_bundle(
+        b"Alice".to_vec(),
         ciphersuite.signature_algorithm(),
         backend,
-    )
-    .expect("An unexpected error occurred.");
-    let bob_credential_bundle = CredentialBundle::new(
-        "Bob".into(),
-        CredentialType::Basic,
-        ciphersuite.signature_algorithm(),
-        backend,
-    )
-    .expect("An unexpected error occurred.");
+    );
+    let bob_credential_with_keys =
+        generate_credential_bundle(b"Bob".to_vec(), ciphersuite.signature_algorithm(), backend);
 
     // Generate KeyPackages
-    let bob_key_package_bundle =
-        KeyPackageBundle::new(backend, ciphersuite, &bob_credential_bundle);
-    let bob_key_package = bob_key_package_bundle.key_package();
+    let bob_key_package = generate_key_package(
+        ciphersuite,
+        Extensions::empty(),
+        backend,
+        bob_credential_with_keys,
+    );
+    // let bob_key_package = bob_key_package_bundle.key_package();
 
-    let alice_update_key_package_bundle =
-        KeyPackageBundle::new(backend, ciphersuite, &alice_credential_bundle);
+    let alice_update_key_package_bundle = KeyPackageBundle::new(
+        backend,
+        &alice_credential_with_keys.signer,
+        ciphersuite,
+        alice_credential_with_keys.credential_with_key,
+    );
+
     let alice_update_key_package = alice_update_key_package_bundle.key_package();
-    assert!(alice_update_key_package
-        .verify(backend, ciphersuite)
-        .is_ok());
+    assert!(alice_update_key_package.verify(backend.crypto()).is_ok());
 
     // Alice creates a group
     let mut group_alice = CoreGroup::builder(
         GroupId::random(backend),
         CryptoConfig::with_default_version(ciphersuite),
+        alice_credential_with_keys.credential_with_key,
     )
     .build(&alice_credential_bundle, backend)
     .expect("Error creating CoreGroup.");
@@ -807,7 +809,6 @@ fn group_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvid
 
     let params = CreateCommitParams::builder()
         .framing_parameters(framing_parameters)
-        .credential_bundle(&charlie_credential_bundle)
         .proposal_store(&proposal_store)
         .force_self_update(false)
         .build();

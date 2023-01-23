@@ -124,6 +124,7 @@ impl TryFrom<u16> for SignatureScheme {
 pub enum Error {
     CryptoError(CryptoError),
     InvalidSignature,
+    SigningError,
 }
 
 /// Crypto errors.

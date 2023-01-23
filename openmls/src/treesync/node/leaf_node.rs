@@ -16,7 +16,7 @@ use crate::{
         signable::{Signable, SignedStruct, Verifiable},
         HpkePublicKey, Signature, SignaturePublicKey,
     },
-    credentials::{Credential, CredentialType},
+    credentials::{Credential, CredentialType, CredentialWithKey},
     error::LibraryError,
     extensions::Extensions,
     extensions::{ExtensionType, RequiredCapabilitiesExtension},
@@ -436,8 +436,7 @@ impl LeafNode {
     /// The caller is responsible for storing the private key.
     pub(crate) fn new(
         config: CryptoConfig,
-        credential: Credential,
-        signature_key: SignaturePublicKey,
+        credential_with_key: CredentialWithKey,
         leaf_node_source: LeafNodeSource,
         capabilities: Capabilities,
         extensions: Extensions,
@@ -449,8 +448,7 @@ impl LeafNode {
 
         let leaf_node = Self::new_with_key(
             encryption_key_pair.public_key().clone(),
-            credential,
-            signature_key,
+            credential_with_key,
             leaf_node_source,
             capabilities,
             extensions,
@@ -464,8 +462,7 @@ impl LeafNode {
     /// The key pair must be stored in the key store by the caller.
     fn new_with_key(
         encryption_key: EncryptionKey,
-        credential: Credential,
-        signature_key: SignaturePublicKey,
+        credential_with_key: CredentialWithKey,
         leaf_node_source: LeafNodeSource,
         capabilities: Capabilities,
         extensions: Extensions,
@@ -473,8 +470,7 @@ impl LeafNode {
     ) -> Result<Self, LibraryError> {
         let leaf_node_tbs = LeafNodeTbs::new(
             encryption_key,
-            signature_key,
-            credential,
+            credential_with_key,
             capabilities,
             leaf_node_source,
             extensions,
@@ -500,8 +496,10 @@ impl LeafNode {
     ) -> Result<Self, LeafNodeGenerationError<KeyStore::Error>> {
         Self::generate(
             config,
-            self.payload.credential.clone(),
-            self.payload.signature_key.clone(),
+            CredentialWithKey {
+                credential: self.payload.credential.clone(),
+                signature_key: self.payload.signature_key.clone(),
+            },
             self.payload.capabilities.clone(),
             self.payload.extensions.clone(),
             backend,
@@ -518,8 +516,7 @@ impl LeafNode {
     /// a leaf node should be generated as part of a new [`KeyPackage`].
     pub fn generate<KeyStore: OpenMlsKeyStore>(
         config: CryptoConfig,
-        credential: Credential,
-        signature_key: SignaturePublicKey,
+        credential_with_key: CredentialWithKey,
         capabilities: Capabilities,
         extensions: Extensions,
         backend: &impl OpenMlsCryptoProvider<KeyStoreProvider = KeyStore>,
@@ -530,8 +527,7 @@ impl LeafNode {
 
         let (leaf_node, encryption_key_pair) = Self::new(
             config,
-            credential,
-            signature_key,
+            credential_with_key,
             LeafNodeSource::Update,
             capabilities,
             extensions,
@@ -644,8 +640,7 @@ impl LeafNode {
     #[cfg(test)]
     pub(crate) fn create_new_with_key(
         encryption_key: EncryptionKey,
-        credential: Credential,
-        signature_key: SignaturePublicKey,
+        credential_with_key: CredentialWithKey,
         leaf_node_source: LeafNodeSource,
         capabilities: Capabilities,
         extensions: Extensions,
@@ -653,8 +648,7 @@ impl LeafNode {
     ) -> Result<Self, LibraryError> {
         Self::new_with_key(
             encryption_key,
-            credential,
-            signature_key,
+            credential_with_key,
             leaf_node_source,
             capabilities,
             extensions,
@@ -749,16 +743,15 @@ impl LeafNodeTbs {
     /// To get the [`LeafNode`] call [`LeafNode::sign`].
     pub(crate) fn new(
         encryption_key: EncryptionKey,
-        signature_key: SignaturePublicKey,
-        credential: Credential,
+        credential_with_key: CredentialWithKey,
         capabilities: Capabilities,
         leaf_node_source: LeafNodeSource,
         extensions: Extensions,
     ) -> Result<Self, LibraryError> {
         let payload = LeafNodePayload {
             encryption_key,
-            signature_key,
-            credential,
+            signature_key: credential_with_key.signature_key.into(),
+            credential: credential_with_key.credential,
             capabilities,
             leaf_node_source,
             extensions,
@@ -806,15 +799,13 @@ impl OpenMlsLeafNode {
         leaf_node_source: LeafNodeSource,
         backend: &impl OpenMlsCryptoProvider,
         signer: &impl ByteSigner,
-        credential: Credential,
-        signature_key: SignaturePublicKey,
+        credential_with_key: CredentialWithKey,
         capabilities: Capabilities,
         extensions: Extensions,
     ) -> Result<(Self, EncryptionKeyPair), LibraryError> {
         let (leaf_node, encryption_key_pair) = LeafNode::new(
             config,
-            credential,
-            signature_key,
+            credential_with_key,
             leaf_node_source,
             capabilities,
             extensions,

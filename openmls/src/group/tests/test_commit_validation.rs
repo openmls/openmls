@@ -18,16 +18,16 @@ use crate::{
 };
 
 use super::utils::{
-    generate_credential_bundle, generate_key_package, resign_message, CredentialWithKeys,
+    generate_credential_bundle, generate_key_package, resign_message, CredentialWithKeyAndSigner,
 };
 
 struct CommitValidationTestSetup {
     alice_group: MlsGroup,
-    alice_credential: CredentialWithKeys,
+    alice_credential: CredentialWithKeyAndSigner,
     bob_group: MlsGroup,
-    bob_credential: CredentialWithKeys,
+    bob_credential: CredentialWithKeyAndSigner,
     charlie_group: MlsGroup,
-    charlie_credential: CredentialWithKeys,
+    charlie_credential: CredentialWithKeyAndSigner,
 }
 
 // Validation test setup
@@ -49,22 +49,14 @@ fn validation_test_setup(
         generate_credential_bundle("Charlie".into(), ciphersuite.signature_algorithm(), backend);
 
     // Generate KeyPackages
-    let bob_key_package = generate_key_package(
-        ciphersuite,
-        bob_credential.credential,
-        Extensions::empty(),
-        backend,
-        &bob_credential.signer,
-        bob_credential.signature_key.into(),
-    );
+    let bob_key_package =
+        generate_key_package(ciphersuite, Extensions::empty(), backend, bob_credential);
 
     let charlie_key_package = generate_key_package(
         ciphersuite,
-        charlie_credential.credential,
         Extensions::empty(),
         backend,
-        &charlie_credential.signer,
-        charlie_credential.signature_key.into(),
+        charlie_credential,
     );
 
     // Define the MlsGroup configuration
@@ -80,8 +72,7 @@ fn validation_test_setup(
         &alice_credential.signer,
         &mls_group_config,
         group_id,
-        alice_credential.signature_key.into(),
-        alice_credential.credential,
+        alice_credential.credential_with_key,
     )
     .expect("An unexpected error occurred.");
 
@@ -267,14 +258,8 @@ fn test_valsem201(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
     let add_proposal = || {
         let dave_credential =
             generate_credential_bundle("Dave".into(), ciphersuite.signature_algorithm(), backend);
-        let dave_key_package = generate_key_package(
-            ciphersuite,
-            dave_credential.credential,
-            Extensions::empty(),
-            backend,
-            &dave_credential.signer,
-            dave_credential.signature_key.into(),
-        );
+        let dave_key_package =
+            generate_key_package(ciphersuite, Extensions::empty(), backend, dave_credential);
 
         queued(Proposal::Add(AddProposal {
             key_package: dave_key_package,
@@ -350,6 +335,7 @@ fn test_valsem201(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
 
         let alice_cred = alice_group.credential().unwrap();
         let alice_sign_key = alice_credential
+            .credential_with_key
             .signature_key
             .as_slice()
             .tls_serialize_detached()

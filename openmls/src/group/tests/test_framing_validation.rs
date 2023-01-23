@@ -37,38 +37,18 @@ fn validation_test_setup(
     let group_id = GroupId::from_slice(b"Test Group");
 
     // Generate credential bundles
-    let alice_credential = generate_credential_bundle(
-        "Alice".into(),
-        CredentialType::Basic,
-        ciphersuite.signature_algorithm(),
-        backend,
-    )
-    .expect("An unexpected error occurred.");
+    let alice_credential =
+        generate_credential_bundle("Alice".into(), ciphersuite.signature_algorithm(), backend);
 
-    let bob_credential = generate_credential_bundle(
-        "Bob".into(),
-        CredentialType::Basic,
-        ciphersuite.signature_algorithm(),
-        backend,
-    )
-    .expect("An unexpected error occurred.");
+    let bob_credential =
+        generate_credential_bundle("Bob".into(), ciphersuite.signature_algorithm(), backend);
 
     // Generate KeyPackages
-    let alice_key_package = generate_key_package(
-        &[ciphersuite],
-        &alice_credential,
-        Extensions::empty(),
-        backend,
-    )
-    .expect("An unexpected error occurred.");
+    let alice_key_package =
+        generate_key_package(ciphersuite, Extensions::empty(), backend, alice_credential);
 
-    let bob_key_package = generate_key_package(
-        &[ciphersuite],
-        &bob_credential,
-        Extensions::empty(),
-        backend,
-    )
-    .expect("An unexpected error occurred.");
+    let bob_key_package =
+        generate_key_package(ciphersuite, Extensions::empty(), backend, bob_credential);
 
     // Define the MlsGroup configuration
     let mls_group_config = MlsGroupConfig::builder()
@@ -79,15 +59,20 @@ fn validation_test_setup(
     // === Alice creates a group ===
     let mut alice_group = MlsGroup::new_with_group_id(
         backend,
+        &alice_credential.signer,
         &mls_group_config,
         group_id,
-        alice_credential.signature_key(),
+        alice_credential.credential_with_key,
     )
     .expect("An unexpected error occurred.");
 
     // === Alice adds Bob & Bob joins ===
     let (_message, welcome) = alice_group
-        .add_members(backend, &[bob_key_package.clone()])
+        .add_members(
+            backend,
+            &alice_credential.signer,
+            &[bob_key_package.clone()],
+        )
         .expect("Could not add member.");
 
     alice_group

@@ -29,7 +29,7 @@ pub(crate) fn setup_alice_group(
     OpenMlsSignaturePublicKey,
 ) {
     // Create credentials and keys
-    let (alice_credential, alice_signature_keys) = test_utils::new_credential(
+    let (alice_credential_with_key, alice_signature_keys) = test_utils::new_credential(
         backend,
         b"Alice",
         CredentialType::Basic,
@@ -45,12 +45,12 @@ pub(crate) fn setup_alice_group(
     let group = CoreGroup::builder(
         GroupId::random(backend),
         config::CryptoConfig::with_default_version(ciphersuite),
-        alice_credential,
+        alice_credential_with_key,
         alice_signature_keys.to_public_vec().into(),
     )
     .build(backend, &alice_signature_keys)
     .expect("Error creating group.");
-    (group, alice_credential, alice_signature_keys, pk)
+    (group, alice_credential_with_key, alice_signature_keys, pk)
 }
 
 #[apply(ciphersuites_and_backends)]

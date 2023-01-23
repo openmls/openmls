@@ -38,13 +38,13 @@ fn ratchet_tree_extension(ciphersuite: Ciphersuite, backend: &impl OpenMlsCrypto
     let framing_parameters = FramingParameters::new(group_aad, WireFormat::PublicMessage);
 
     // Create credentials and keys
-    let (alice_credential, alice_signature_keys) = test_utils::new_credential(
+    let (alice_credential_with_key, alice_signature_keys) = test_utils::new_credential(
         backend,
         b"Alice",
         CredentialType::Basic,
         ciphersuite.signature_algorithm(),
     );
-    let (bob_credential, bob_signature_keys) = test_utils::new_credential(
+    let (bob_credential_with_key, bob_signature_keys) = test_utils::new_credential(
         backend,
         b"Bob",
         CredentialType::Basic,
@@ -56,8 +56,7 @@ fn ratchet_tree_extension(ciphersuite: Ciphersuite, backend: &impl OpenMlsCrypto
         backend,
         &bob_signature_keys,
         ciphersuite,
-        bob_credential,
-        bob_signature_keys.to_public_vec().into(),
+        bob_credential_with_key,
     );
     let bob_key_package = bob_key_package_bundle.key_package();
 
@@ -69,8 +68,7 @@ fn ratchet_tree_extension(ciphersuite: Ciphersuite, backend: &impl OpenMlsCrypto
     let mut alice_group = CoreGroup::builder(
         GroupId::random(backend),
         config::CryptoConfig::with_default_version(ciphersuite),
-        alice_credential,
-        alice_signature_keys.to_public_vec().into(),
+        alice_credential_with_key,
     )
     .with_config(config)
     .build(backend, &alice_signature_keys)
@@ -132,8 +130,7 @@ fn ratchet_tree_extension(ciphersuite: Ciphersuite, backend: &impl OpenMlsCrypto
         backend,
         &bob_signature_keys,
         ciphersuite,
-        bob_credential,
-        bob_signature_keys.to_public_vec().into(),
+        alice_credential_with_key,
     );
     let bob_key_package = bob_key_package_bundle.key_package();
 
@@ -144,8 +141,7 @@ fn ratchet_tree_extension(ciphersuite: Ciphersuite, backend: &impl OpenMlsCrypto
     let mut alice_group = CoreGroup::builder(
         GroupId::random(backend),
         config::CryptoConfig::with_default_version(ciphersuite),
-        alice_credential,
-        alice_signature_keys.to_public_vec().into(),
+        alice_credential_with_key,
     )
     .with_config(config)
     .build(backend, &alice_signature_keys)
