@@ -805,7 +805,7 @@ impl CoreGroup {
     pub(crate) fn own_leaf_node(&self) -> Result<&OpenMlsLeafNode, LibraryError> {
         self.tree
             .leaf(self.own_leaf_index())
-            .ok_or(LibraryError::custom("Tree has no own leaf."))
+            .ok_or_else(|| LibraryError::custom("Tree has no own leaf."))
     }
 
     #[cfg(any(feature = "test-utils", test))]
