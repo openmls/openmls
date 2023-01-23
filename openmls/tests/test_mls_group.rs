@@ -131,9 +131,8 @@ fn mls_group_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoPr
         .expect("An unexpected error occurred.");
 
         // === Alice adds Bob ===
-        let (_queued_message, welcome) = match alice_group.add_members(backend, &[bob_key_package])
-        {
-            Ok((qm, welcome)) => (qm, welcome),
+        let welcome = match alice_group.add_members(backend, &[bob_key_package]) {
+            Ok((_, welcome, _)) => welcome,
             Err(e) => panic!("Could not add member to group: {:?}", e),
         };
 
@@ -223,7 +222,7 @@ fn mls_group_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoPr
         }
 
         // === Bob updates and commits ===
-        let (queued_message, welcome_option) = bob_group.self_update(backend).unwrap();
+        let (queued_message, welcome_option, _group_info) = bob_group.self_update(backend).unwrap();
 
         let alice_processed_message = alice_group
             .process_message(
@@ -320,11 +319,8 @@ fn mls_group_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoPr
             unreachable!("Expected a QueuedProposal.");
         }
 
-        let (queued_message, _welcome_option) =
-            match alice_group.commit_to_pending_proposals(backend) {
-                Ok(qm) => qm,
-                Err(e) => panic!("Error performing self-update: {:?}", e),
-            };
+        let (queued_message, _welcome_option, _group_info) =
+            alice_group.commit_to_pending_proposals(backend).unwrap();
 
         let bob_processed_message = bob_group
             .process_message(
@@ -385,11 +381,9 @@ fn mls_group_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoPr
             backend,
         );
 
-        let (queued_message, welcome) = match bob_group.add_members(backend, &[charlie_key_package])
-        {
-            Ok((qm, welcome)) => (qm, welcome),
-            Err(e) => panic!("Could not add member to group: {:?}", e),
-        };
+        let (queued_message, welcome, _group_info) = bob_group
+            .add_members(backend, &[charlie_key_package])
+            .unwrap();
 
         let alice_processed_message = alice_group
             .process_message(
@@ -465,10 +459,8 @@ fn mls_group_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoPr
             .expect("Could not process message.");
 
         // === Charlie updates and commits ===
-        let (queued_message, welcome_option) = match charlie_group.self_update(backend) {
-            Ok(qm) => qm,
-            Err(e) => panic!("Error performing self-update: {:?}", e),
-        };
+        let (queued_message, welcome_option, _group_info) =
+            charlie_group.self_update(backend).unwrap();
 
         let alice_processed_message = alice_group
             .process_message(
@@ -539,7 +531,7 @@ fn mls_group_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoPr
 
         // === Charlie removes Bob ===
         println!(" >>> Charlie is removing bob");
-        let (queued_message, welcome_option) = charlie_group
+        let (queued_message, welcome_option, _group_info) = charlie_group
             .remove_members(backend, &[bob_group.own_leaf_index()])
             .expect("Could not remove member from group.");
 
@@ -727,7 +719,7 @@ fn mls_group_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoPr
         }
 
         // Commit to the proposals and process it
-        let (queued_message, welcome_option) = alice_group
+        let (queued_message, welcome_option, _group_info) = alice_group
             .commit_to_pending_proposals(backend)
             .expect("Could not flush proposals");
 
@@ -862,7 +854,7 @@ fn mls_group_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoPr
             ))
         );
 
-        let (queued_message, _welcome_option) = alice_group
+        let (queued_message, _welcome_option, _group_info) = alice_group
             .commit_to_pending_proposals(backend)
             .expect("Could not commit to proposals.");
 
@@ -943,7 +935,7 @@ fn mls_group_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoPr
         );
 
         // Add Bob to the group
-        let (_queued_message, welcome) = alice_group
+        let (_queued_message, welcome, _group_info) = alice_group
             .add_members(backend, &[bob_key_package])
             .expect("Could not add Bob");
 
@@ -1090,11 +1082,9 @@ fn mls_group_ratchet_tree_extension(
         .expect("An unexpected error occurred.");
 
         // === Alice adds Bob ===
-        let (_queued_message, welcome) =
-            match alice_group.add_members(backend, &[bob_key_package.clone()]) {
-                Ok((qm, welcome)) => (qm, welcome),
-                Err(e) => panic!("Could not add member to group: {:?}", e),
-            };
+        let (_queued_message, welcome, _group_info) = alice_group
+            .add_members(backend, &[bob_key_package.clone()])
+            .unwrap();
 
         // === Bob joins using the ratchet tree extension ===
         let _bob_group = MlsGroup::new_from_welcome(
@@ -1144,11 +1134,9 @@ fn mls_group_ratchet_tree_extension(
         .expect("An unexpected error occurred.");
 
         // === Alice adds Bob ===
-        let (_queued_message, welcome) = match alice_group.add_members(backend, &[bob_key_package])
-        {
-            Ok((qm, welcome)) => (qm, welcome),
-            Err(e) => panic!("Could not add member to group: {:?}", e),
-        };
+        let (_queued_message, welcome, _group_info) = alice_group
+            .add_members(backend, &[bob_key_package])
+            .unwrap();
 
         // === Bob tries to join without the ratchet tree extension ===
         let error = MlsGroup::new_from_welcome(

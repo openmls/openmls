@@ -107,7 +107,7 @@
 //! // ... and invites Maxim.
 //! // The key package has to be retrieved from Maxim in some way. Most likely
 //! // via a server storing key packages for users.
-//! let (mls_message_out, welcome_out) = sasha_group
+//! let (mls_message_out, welcome_out, group_info) = sasha_group
 //!     .add_members(backend, &[maxim_key_package])
 //!     .expect("Could not add members.");
 //!
