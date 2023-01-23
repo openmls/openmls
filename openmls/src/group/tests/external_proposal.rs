@@ -74,7 +74,7 @@ fn validation_test_setup(
         bob_credential_bundle,
     );
 
-    let (_message, welcome) = alice_group
+    let (_message, welcome, _group_info) = alice_group
         .add_members(backend, &alice_signer_with_keys.signer, &[bob_key_package])
         .expect("error adding Bob to group");
 
@@ -178,7 +178,7 @@ fn external_add_proposal_should_succeed(
         }
 
         // and Alice will commit it
-        let (commit, welcome) = alice_group
+        let (commit, welcome, _group_info) = alice_group
             .commit_to_pending_proposals(backend, &alice_signer)
             .unwrap();
         alice_group.merge_pending_commit(backend).unwrap();

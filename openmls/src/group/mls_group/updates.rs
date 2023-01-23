@@ -1,7 +1,7 @@
 use core_group::create_commit_params::CreateCommitParams;
 use openmls_traits::signatures::ByteSigner;
 
-use crate::{treesync::LeafNode, versions::ProtocolVersion};
+use crate::{messages::GroupInfo, treesync::LeafNode, versions::ProtocolVersion};
 
 use super::*;
 
@@ -9,20 +9,26 @@ impl MlsGroup {
     /// Updates the own leaf node.
     ///
     /// If successful, it returns a tuple of [`MlsMessageOut`] (containing the
-    /// commit) and an optional [`MlsMessageOut`] (containing the [`Welcome`]).
+    /// commit), an optional [`MlsMessageOut`] (containing the [`Welcome`]) and the [GroupInfo].
     /// The [Welcome] is [Some] when the queue of pending proposals contained
     /// add proposals
+    /// The [GroupInfo] is [Some] if the group has the `use_ratchet_tree_extension` flag set.
     ///
     /// Returns an error if there is a pending commit.
     ///
     /// TODO #1208 : The caller should be able to optionally provide a
     /// [`LeafNode`] here, so that things like extensions can be changed via
     /// commit.
+    // FIXME: #1217
+    #[allow(clippy::type_complexity)]
     pub fn self_update<KeyStore: OpenMlsKeyStore>(
         &mut self,
         backend: &impl OpenMlsCryptoProvider<KeyStoreProvider = KeyStore>,
         signer: &impl ByteSigner,
-    ) -> Result<(MlsMessageOut, Option<MlsMessageOut>), SelfUpdateError<KeyStore::Error>> {
+    ) -> Result<
+        (MlsMessageOut, Option<MlsMessageOut>, Option<GroupInfo>),
+        SelfUpdateError<KeyStore::Error>,
+    > {
         self.is_operational()?;
 
         let params = CreateCommitParams::builder()
@@ -51,6 +57,7 @@ impl MlsGroup {
             create_commit_result
                 .welcome_option
                 .map(|w| MlsMessageOut::from_welcome(w, self.group.version())),
+            create_commit_result.group_info,
         ))
     }
 

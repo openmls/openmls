@@ -76,12 +76,9 @@ fn validation_test_setup(
     )
     .expect("An unexpected error occurred.");
 
-    let (_message, welcome) = alice_group
-        .add_members(
-            backend,
-            &alice_credential.signer,
-            &[bob_key_package, charlie_key_package],
-        )
+    let (_message, welcome, _group_info) = alice_group
+        .add_members(backend, 
+            &alice_credential.signer,&[bob_key_package, charlie_key_package])
         .expect("error adding Bob to group");
 
     alice_group
@@ -755,9 +752,7 @@ fn test_partial_proposal_commit(ciphersuite: Ciphersuite, backend: &impl OpenMls
         .unwrap();
     alice_group.proposal_store.empty();
     alice_group.proposal_store.add(remaining_proposal);
-    let (commit, _) = alice_group
-        .commit_to_pending_proposals(backend, &alice_credential.signer)
-        .unwrap();
+    let (commit, _, _) = alice_group.commit_to_pending_proposals(backend, &alice_credential.signer).unwrap();
     // Alice herself should be able to merge the commit
     alice_group
         .merge_pending_commit(backend)

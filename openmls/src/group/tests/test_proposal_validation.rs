@@ -14,8 +14,8 @@ use crate::{
     ciphersuite::hash_ref::ProposalRef,
     credentials::*,
     framing::{
-        mls_content::FramedContentBody, MlsMessageIn, MlsMessageOut, ProcessedMessageContent,
-        ProtocolMessage, PublicMessage, Sender,
+        mls_content::FramedContentBody, MlsMessageIn, ProcessedMessageContent, ProtocolMessage,
+        PublicMessage, Sender,
     },
     group::{config::CryptoConfig, errors::*, *},
     key_packages::*,
@@ -67,14 +67,14 @@ fn create_group_with_members<KeyStore: OpenMlsKeyStore>(
     )
     .expect("An unexpected error occurred.");
 
-    alice_group.add_members(backend, member_key_packages).map(
-        |(msg, welcome): (MlsMessageOut, MlsMessageOut)| {
+    alice_group
+        .add_members(backend, member_key_packages)
+        .map(|(msg, welcome, _group_info)| {
             (
                 msg.into(),
                 welcome.into_welcome().expect("Unexpected message type."),
             )
-        },
-    )
+        })
 }
 
 struct ProposalValidationTestSetup {
@@ -140,7 +140,7 @@ fn validation_test_setup(
     )
     .expect("An unexpected error occurred.");
 
-    let (_message, welcome) = alice_group
+    let (_message, welcome, _group_info) = alice_group
         .add_members(backend, &[bob_key_package])
         .expect("error adding Bob to group");
 
@@ -1359,9 +1359,7 @@ fn test_valsem106(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
                     }
                 }
                 ProposalInclusion::ByValue => {
-                    let result = alice_group
-                        .add_members(backend, &[test_kp.clone()])
-                        .map(|(msg, welcome)| (msg, Some(welcome)));
+                    let result = alice_group.add_members(backend, &[test_kp.clone()]);
 
                     match key_package_version {
                         KeyPackageTestVersion::ValidTestCase => {
@@ -1506,14 +1504,14 @@ fn test_valsem107(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
         .expect("error while creating remove proposal");
     // While this shouldn't fail, it should produce a valid commit, i.e. one
     // that contains only one remove proposal.
-    let (manual_commit, _welcome) = alice_group
+    let (manual_commit, _welcome, _group_info) = alice_group
         .commit_to_pending_proposals(backend)
         .expect("error while trying to commit to colliding remove proposals");
 
     // Clear commit to try another way of committing two identical removes.
     alice_group.clear_pending_commit();
 
-    let (combined_commit, _welcome) = alice_group
+    let (combined_commit, _welcome, _group_info) = alice_group
         .remove_members(backend, &[bob_leaf_index, bob_leaf_index])
         .expect("error while trying to remove the same member twice");
 

@@ -65,7 +65,7 @@ fn test_welcome_ciphersuite_mismatch(
     )
     .expect("An unexpected error occurred.");
 
-    let (_queued_message, welcome) = alice_group
+    let (_queued_message, welcome, _group_info) = alice_group
         .add_members(backend, &alice_signer, &[bob_kp.clone()])
         .expect("Could not add member to group.");
 

@@ -5,6 +5,8 @@ use std::mem;
 use core_group::{create_commit_params::CreateCommitParams, staged_commit::StagedCommit};
 use openmls_traits::signatures::ByteSigner;
 
+use crate::messages::GroupInfo;
+
 use crate::group::errors::MergeCommitError;
 
 use super::{errors::ProcessMessageError, *};
@@ -72,12 +74,14 @@ impl MlsGroup {
     /// currently stored in the group's [ProposalStore].
     ///
     /// Returns an error if there is a pending commit.
+    // FIXME: #1217
+    #[allow(clippy::type_complexity)]
     pub fn commit_to_pending_proposals<KeyStore: OpenMlsKeyStore>(
         &mut self,
         backend: &impl OpenMlsCryptoProvider<KeyStoreProvider = KeyStore>,
         signer: &impl ByteSigner,
     ) -> Result<
-        (MlsMessageOut, Option<MlsMessageOut>),
+        (MlsMessageOut, Option<MlsMessageOut>, Option<GroupInfo>),
         CommitToPendingProposalsError<KeyStore::Error>,
     > {
         self.is_operational()?;
@@ -108,6 +112,7 @@ impl MlsGroup {
             create_commit_result
                 .welcome_option
                 .map(|w| MlsMessageOut::from_welcome(w, self.group.version())),
+            create_commit_result.group_info,
         ))
     }
 

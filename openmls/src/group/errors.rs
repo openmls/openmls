@@ -5,7 +5,7 @@
 use crate::{
     ciphersuite::signable::SignatureError,
     error::LibraryError,
-    extensions::errors::ExtensionError,
+    extensions::errors::{ExtensionError, InvalidExtensionError},
     framing::errors::{MessageDecryptionError, SenderError},
     key_packages::errors::{KeyPackageExtensionSupportError, KeyPackageNewError},
     schedule::errors::PskError,
@@ -230,6 +230,9 @@ pub enum CreateCommitError<KeyStoreError> {
     /// This error indicates the public tree is invalid. See [`PublicTreeError`] for more details.
     #[error(transparent)]
     PublicTreeError(#[from] PublicTreeError),
+    /// See [`InvalidExtensionError`] for more details.
+    #[error(transparent)]
+    InvalidExtensionError(#[from] InvalidExtensionError),
 }
 
 /// Validation error

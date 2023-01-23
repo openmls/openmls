@@ -67,7 +67,7 @@ fn validation_test_setup(
     .expect("An unexpected error occurred.");
 
     // === Alice adds Bob & Bob joins ===
-    let (_message, welcome) = alice_group
+    let (_message, welcome, _group_info) = alice_group
         .add_members(
             backend,
             &alice_credential.signer,
@@ -109,7 +109,7 @@ fn test_valsem002(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
         _bob_key_package: _,
     } = validation_test_setup(PURE_PLAINTEXT_WIRE_FORMAT_POLICY, ciphersuite, backend);
 
-    let (message, _welcome) = alice_group
+    let (message, _welcome, _group_info) = alice_group
         .self_update(backend)
         .expect("Could not self-update.");
 
@@ -156,7 +156,7 @@ fn test_valsem003(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
     } = validation_test_setup(PURE_PLAINTEXT_WIRE_FORMAT_POLICY, ciphersuite, backend);
 
     // Alice needs to create a new message that Bob can process.
-    let (message, _welcome) = alice_group
+    let (message, _welcome, _group_info) = alice_group
         .self_update(backend)
         .expect("Could not self update.");
     alice_group.merge_pending_commit(backend).unwrap();
@@ -180,7 +180,7 @@ fn test_valsem003(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
     }
 
     // Do a second Commit to increase the epoch number
-    let (message, _welcome) = alice_group
+    let (message, _welcome, _group_info) = alice_group
         .self_update(backend)
         .expect("Could not add member.");
 
@@ -249,7 +249,7 @@ fn test_valsem004(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
         _bob_key_package: _,
     } = validation_test_setup(PURE_PLAINTEXT_WIRE_FORMAT_POLICY, ciphersuite, backend);
 
-    let (message, _welcome) = alice_group
+    let (message, _welcome, _group_info) = alice_group
         .self_update(backend)
         .expect("Could not self-update.");
 
@@ -309,7 +309,7 @@ fn test_valsem005(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
         _bob_key_package: _,
     } = validation_test_setup(PURE_PLAINTEXT_WIRE_FORMAT_POLICY, ciphersuite, backend);
 
-    let (message, _welcome) = alice_group
+    let (message, _welcome, _group_info) = alice_group
         .self_update(backend)
         .expect("Could not self-update.");
 
@@ -416,7 +416,7 @@ fn test_valsem007(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
         _bob_key_package: _,
     } = validation_test_setup(PURE_PLAINTEXT_WIRE_FORMAT_POLICY, ciphersuite, backend);
 
-    let (message, _welcome) = alice_group
+    let (message, _welcome, _group_info) = alice_group
         .self_update(backend)
         .expect("Could not self-update.");
 
@@ -463,7 +463,7 @@ fn test_valsem008(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
     } = validation_test_setup(PURE_PLAINTEXT_WIRE_FORMAT_POLICY, ciphersuite, backend);
 
     // Alice needs to create a new message that Bob can process.
-    let (message, _welcome) = alice_group
+    let (message, _welcome, _group_info) = alice_group
         .self_update(backend)
         .expect("Could not self-update.");
 
@@ -512,7 +512,7 @@ fn test_valsem009(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
         _bob_key_package: _,
     } = validation_test_setup(PURE_PLAINTEXT_WIRE_FORMAT_POLICY, ciphersuite, backend);
 
-    let (message, _welcome) = alice_group
+    let (message, _welcome, _group_info) = alice_group
         .self_update(backend)
         .expect("Could not self-update.");
 
@@ -572,7 +572,7 @@ fn test_valsem010(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
     } = validation_test_setup(PURE_PLAINTEXT_WIRE_FORMAT_POLICY, ciphersuite, backend);
 
     // Alice needs to create a new message that Bob can process.
-    let (message, _welcome) = alice_group
+    let (message, _welcome, _group_info) = alice_group
         .self_update(backend)
         .expect("Could not self update.");
 

@@ -244,7 +244,7 @@ fn test_valsem242(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
     let bob_key_package =
         generate_key_package(ciphersuite, Extensions::empty(), backend, bob_credential);
 
-    let (_message, _welcome) = alice_group
+    let (_message, _welcome, _group_info) = alice_group
         .add_members(
             backend,
             &alice_credential.as_ref().signer,
@@ -393,7 +393,7 @@ fn test_valsem243(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
     let bob_key_package =
         generate_key_package(ciphersuite, Extensions::empty(), backend, *bob_credential);
 
-    let (_message, _welcome) = alice_group
+    let (_message, _welcome, _group_info) = alice_group
         .add_members(backend, &alice_credential.signer, &[bob_key_package])
         .expect("Could not add member.");
 
