@@ -84,7 +84,7 @@ fn test_remove_operation_variants(ciphersuite: Ciphersuite, backend: &impl OpenM
             .add_members(backend, &[bob_key_package, charlie_key_package])
             .expect("An unexpected error occurred.");
         alice_group
-            .merge_pending_commit()
+            .merge_pending_commit(backend)
             .expect("error merging pending commit");
 
         let welcome = welcome.into_welcome().expect("Unexpected message type.");

@@ -1,6 +1,9 @@
+use openmls_traits::key_store::OpenMlsKeyStore;
+
 use crate::ciphersuite::signable::Verifiable;
 use crate::framing::mls_content::FramedContentBody;
 use crate::treesync::errors::TreeSyncAddLeaf;
+use crate::treesync::node::encryption_keys::EncryptionKeyPair;
 use crate::treesync::node::leaf_node::{
     LeafNodeTbs, OpenMlsLeafNode, TreeInfoTbs, VerifiableLeafNodeTbs,
 };
@@ -196,100 +199,149 @@ impl CoreGroup {
         }
 
         // Determine if Commit has a path
-        let commit_secret = if let Some(path) = commit.path.clone() {
-            // Verify the leaf node and PublicMessage membership tag
-            // Note that the signature must have been verified already.
-            // TODO #106: Support external members
-            let leaf_node = path.leaf_node();
-            // TODO: The clone here is unnecessary. But the leaf node structs are
-            //       already too complex. This should be cleaned up in a follow
-            //       up.
-            let tbs = LeafNodeTbs::from(
-                leaf_node.clone(),
-                TreeInfoTbs::commit(self.group_id().clone(), sender_index),
-            );
-            let verifiable_leaf_node = VerifiableLeafNodeTbs {
-                tbs: &tbs,
-                signature: leaf_node.signature(),
-            };
-            if verifiable_leaf_node
-                .verify_no_out(
-                    backend,
-                    leaf_node.signature_key(),
-                    leaf_node.credential().signature_scheme(),
-                )
-                .is_err()
-            {
-                debug_assert!(
-                    false,
-                    "Verification failed of leaf node in commit path.\n\
-                     Leaf node identity: {:?} ({})",
-                    leaf_node.credential().identity(),
-                    String::from_utf8(leaf_node.credential().identity().to_vec())
-                        .unwrap_or_default()
+        let (commit_secret, new_keypairs, new_leaf_keypair_option) =
+            if let Some(path) = commit.path.clone() {
+                // Verify the leaf node and PublicMessage membership tag
+                // Note that the signature must have been verified already.
+                // TODO #106: Support external members
+                let leaf_node = path.leaf_node();
+                // TODO: The clone here is unnecessary. But the leaf node structs are
+                //       already too complex. This should be cleaned up in a follow
+                //       up.
+                let tbs = LeafNodeTbs::from(
+                    leaf_node.clone(),
+                    TreeInfoTbs::commit(self.group_id().clone(), sender_index),
                 );
-                return Err(StageCommitError::PathLeafNodeVerificationFailure);
-            }
-            let serialized_context = self
-                .group_context
-                .tls_serialize_detached()
-                .map_err(LibraryError::missing_bound_check)?;
-
-            let (leaf_node, update_path_nodes) = path.into_parts();
-
-            // Make sure that the new path key package is valid
-            self.validate_path_key_package(sender_index, &leaf_node, public_key_set, sender)?;
-
-            // If the committer is a `NewMemberCommit`, we have to add the leaf to
-            // the tree before we can apply or even decrypt an update path.
-            // While `apply_received_update_path` will happily update a
-            // blank leaf, we still have to call `add_leaf` here in case
-            // there are no blanks and the new member extended the tree to
-            // fit in.
-            if apply_proposals_values.external_init_secret_option.is_some() {
-                // TODO: Can we do without the clone here?
-                //       The leaf node is always replaced in apply_received_update_path
-                //       below, which isn't necessary. This should be refactored.
-                let sender_leaf_index =
-                    diff.add_leaf(leaf_node.clone().into())
-                        .map_err(|e| match e {
-                            TreeSyncAddLeaf::LibraryError(e) => e.into(),
-                            TreeSyncAddLeaf::TreeFull => StageCommitError::TooManyNewMembers,
-                        })?;
-                // The new member should have the same index as the claimed sender index.
-                if sender_leaf_index != sender_index {
-                    return Err(StageCommitError::InconsistentSenderIndex);
+                let verifiable_leaf_node = VerifiableLeafNodeTbs {
+                    tbs: &tbs,
+                    signature: leaf_node.signature(),
+                };
+                if verifiable_leaf_node
+                    .verify_no_out(
+                        backend,
+                        leaf_node.signature_key(),
+                        leaf_node.credential().signature_scheme(),
+                    )
+                    .is_err()
+                {
+                    debug_assert!(
+                        false,
+                        "Verification failed of leaf node in commit path.\n\
+                     Leaf node identity: {:?} ({})",
+                        leaf_node.credential().identity(),
+                        String::from_utf8(leaf_node.credential().identity().to_vec())
+                            .unwrap_or_default()
+                    );
+                    return Err(StageCommitError::PathLeafNodeVerificationFailure);
                 }
-            }
+                let serialized_context = self
+                    .group_context
+                    .tls_serialize_detached()
+                    .map_err(LibraryError::missing_bound_check)?;
 
-            // Decrypt the UpdatePath
-            let decrypt_path_params = DecryptPathParams {
-                version: self.mls_version,
-                update_path: update_path_nodes,
-                sender_leaf_index: sender_index,
-                exclusion_list: &apply_proposals_values.exclusion_list(),
-                group_context: &serialized_context,
+                let (leaf_node, update_path_nodes) = path.into_parts();
+
+                // Make sure that the new path key package is valid
+                self.validate_path_key_package(sender_index, &leaf_node, public_key_set, sender)?;
+
+                // If the committer is a `NewMemberCommit`, we have to add the leaf to
+                // the tree before we can apply or even decrypt an update path.
+                // While `apply_received_update_path` will happily update a
+                // blank leaf, we still have to call `add_leaf` here in case
+                // there are no blanks and the new member extended the tree to
+                // fit in.
+                if apply_proposals_values.external_init_secret_option.is_some() {
+                    // TODO: Can we do without the clone here?
+                    //       The leaf node is always replaced in apply_received_update_path
+                    //       below, which isn't necessary. This should be refactored.
+                    let sender_leaf_index =
+                        diff.add_leaf(leaf_node.clone().into())
+                            .map_err(|e| match e {
+                                TreeSyncAddLeaf::LibraryError(e) => e.into(),
+                                TreeSyncAddLeaf::TreeFull => StageCommitError::TooManyNewMembers,
+                            })?;
+                    // The new member should have the same index as the claimed sender index.
+                    if sender_leaf_index != sender_index {
+                        return Err(StageCommitError::InconsistentSenderIndex);
+                    }
+                }
+
+                // Decrypt the UpdatePath
+                let decrypt_path_params = DecryptPathParams {
+                    version: self.mls_version,
+                    update_path: update_path_nodes,
+                    sender_leaf_index: sender_index,
+                    exclusion_list: &apply_proposals_values.exclusion_list(),
+                    group_context: &serialized_context,
+                };
+
+                // All keys from the previous epoch are potential decryption keypairs.
+                let old_epoch_keypairs = self.read_epoch_keypairs(backend);
+
+                // If we are processing an update proposal that originally came from
+                // us, the keypair corresponding to the leaf in the update is also a
+                // potential decryption keypair.
+                let own_keypairs = own_leaf_nodes
+                    .iter()
+                    .map(|leaf_node| {
+                        EncryptionKeyPair::read_from_key_store(backend, leaf_node.encryption_key())
+                            .ok_or(StageCommitError::MissingDecryptionKey)
+                    })
+                    .collect::<Result<Vec<EncryptionKeyPair>, StageCommitError>>()?;
+
+                let decryption_keypairs: Vec<&EncryptionKeyPair> = old_epoch_keypairs
+                    .iter()
+                    .chain(own_keypairs.iter())
+                    .collect();
+
+                // ValSem202: Path must be the right length
+                // ValSem203: Path secrets must decrypt correctly
+                // ValSem204: Public keys from Path must be verified and match the private keys from the direct path
+                let (plain_path, new_epoch_keypairs, commit_secret) = diff.decrypt_path(
+                    backend,
+                    ciphersuite,
+                    decrypt_path_params,
+                    &decryption_keypairs,
+                )?;
+
+                // Check if one of our update proposals was applied. If so, we
+                // need to store that keypair separately, because after merging
+                // it needs to be removed from the key store separately and in
+                // addition to the removal of the keypairs of the previous
+                // epoch.
+                let new_leaf_keypair_option = if let Ok(leaf) = diff.own_leaf() {
+                    own_keypairs.into_iter().find_map(|keypair| {
+                        if leaf.encryption_key() == keypair.public_key() {
+                            Some(keypair)
+                        } else {
+                            None
+                        }
+                    })
+                } else {
+                    // We should have an own leaf at this point.
+                    debug_assert!(false);
+                    None
+                };
+
+                diff.apply_received_update_path(
+                    backend,
+                    ciphersuite,
+                    sender_index,
+                    leaf_node,
+                    plain_path,
+                )?;
+                (commit_secret, new_epoch_keypairs, new_leaf_keypair_option)
+            } else {
+                if apply_proposals_values.path_required {
+                    // ValSem201
+                    return Err(StageCommitError::RequiredPathNotFound);
+                }
+                (
+                    CommitSecret::zero_secret(ciphersuite, self.mls_version),
+                    vec![],
+                    None,
+                )
             };
-            // ValSem202: Path must be the right length
-            // ValSem203: Path secrets must decrypt correctly
-            // ValSem204: Public keys from Path must be verified and match the private keys from the direct path
-            let (plain_path, commit_secret) =
-                diff.decrypt_path(backend, ciphersuite, decrypt_path_params)?;
-            diff.apply_received_update_path(
-                backend,
-                ciphersuite,
-                sender_index,
-                leaf_node,
-                plain_path,
-            )?;
-            commit_secret
-        } else {
-            if apply_proposals_values.path_required {
-                // ValSem201
-                return Err(StageCommitError::RequiredPathNotFound);
-            }
-            CommitSecret::zero_secret(ciphersuite, self.mls_version)
-        };
 
         // Check if we need to include the init secret from an external commit
         // we applied earlier or if we use the one from the previous epoch.
@@ -393,6 +445,8 @@ impl CoreGroup {
                 message_secrets: provisional_message_secrets,
                 interim_transcript_hash,
                 staged_diff,
+                new_keypairs,
+                new_leaf_keypair_option,
             }));
 
         Ok(StagedCommit::new(
@@ -407,11 +461,18 @@ impl CoreGroup {
     ///
     /// This function should not fail and only returns a [`Result`], because it
     /// might throw a `LibraryError`.
-    pub(crate) fn merge_commit(&mut self, staged_commit: StagedCommit) -> Option<MessageSecrets> {
+    pub(crate) fn merge_commit<KeyStore: OpenMlsKeyStore>(
+        &mut self,
+        backend: &impl OpenMlsCryptoProvider<KeyStoreProvider = KeyStore>,
+        staged_commit: StagedCommit,
+    ) -> Result<Option<MessageSecrets>, MergeCommitError<KeyStore::Error>> {
+        // Get all keypairs from the old epoch, so we can later store the ones
+        // that are still relevant in the new epoch.
+        let old_epoch_keypairs = self.read_epoch_keypairs(backend);
         match staged_commit.state {
             StagedCommitState::SelfRemoved(staged_diff) => {
                 self.tree.merge_diff(*staged_diff);
-                None
+                Ok(None)
             }
             StagedCommitState::GroupMember(state) => {
                 self.group_context = state.group_context;
@@ -427,7 +488,48 @@ impl CoreGroup {
                 self.interim_transcript_hash = state.interim_transcript_hash;
 
                 self.tree.merge_diff(state.staged_diff);
-                Some(message_secrets)
+
+                // TODO #1194: Group storage and key storage should be
+                // correlated s.t. there is no divergence between key material
+                // and group state.
+
+                let leaf_keypair = if let Some(keypair) = &state.new_leaf_keypair_option {
+                    vec![keypair.clone()]
+                } else {
+                    vec![]
+                };
+
+                // Figure out which keys we need in the new epoch.
+                let new_owned_encryption_keys = self.tree.owned_encryption_keys();
+                // From the old and new keys, keep the ones that are still relevant in the new epoch.
+                let epoch_keypairs: Vec<EncryptionKeyPair> = old_epoch_keypairs
+                    .into_iter()
+                    .chain(state.new_keypairs.into_iter())
+                    .chain(leaf_keypair.into_iter())
+                    .filter(|keypair| new_owned_encryption_keys.contains(keypair.public_key()))
+                    .collect();
+                // We should have private keys for all owned encryption keys.
+
+                debug_assert_eq!(new_owned_encryption_keys.len(), epoch_keypairs.len());
+                if new_owned_encryption_keys.len() != epoch_keypairs.len() {
+                    return Err(LibraryError::custom(
+                        "We should have all the private key material we need.",
+                    )
+                    .into());
+                }
+                // Store the relevant keys under the new epoch
+                self.store_epoch_keypairs(backend, epoch_keypairs.as_slice())
+                    .map_err(MergeCommitError::KeyStoreError)?;
+                // Delete the old keys.
+                self.delete_previous_epoch_keypairs(backend)
+                    .map_err(MergeCommitError::KeyStoreError)?;
+                if let Some(keypair) = state.new_leaf_keypair_option {
+                    keypair
+                        .delete_from_key_store(backend)
+                        .map_err(MergeCommitError::KeyStoreError)?;
+                }
+
+                Ok(Some(message_secrets))
             }
         }
     }
@@ -503,6 +605,8 @@ pub(crate) struct MemberStagedCommitState {
     message_secrets: MessageSecrets,
     interim_transcript_hash: Vec<u8>,
     staged_diff: StagedTreeSyncDiff,
+    new_keypairs: Vec<EncryptionKeyPair>,
+    new_leaf_keypair_option: Option<EncryptionKeyPair>,
 }
 
 impl MemberStagedCommitState {
@@ -512,6 +616,8 @@ impl MemberStagedCommitState {
         message_secrets: MessageSecrets,
         interim_transcript_hash: Vec<u8>,
         staged_diff: StagedTreeSyncDiff,
+        new_keypairs: Vec<EncryptionKeyPair>,
+        new_leaf_keypair_option: Option<EncryptionKeyPair>,
     ) -> Self {
         Self {
             group_context,
@@ -519,6 +625,8 @@ impl MemberStagedCommitState {
             message_secrets,
             interim_transcript_hash,
             staged_diff,
+            new_keypairs,
+            new_leaf_keypair_option,
         }
     }
 }

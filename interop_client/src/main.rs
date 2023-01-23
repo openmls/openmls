@@ -795,7 +795,7 @@ impl MlsClient for MlsClientImpl {
 
         let (commit, welcome_option) = interop_group
             .group
-            .self_update(&self.crypto_provider, None)
+            .self_update(&self.crypto_provider)
             .map_err(into_status)?;
 
         let commit = commit.to_bytes().unwrap();
@@ -852,7 +852,7 @@ impl MlsClient for MlsClientImpl {
             ProcessedMessageContent::StagedCommitMessage(_) => {
                 interop_group
                     .group
-                    .merge_pending_commit()
+                    .merge_pending_commit(&self.crypto_provider)
                     .map_err(into_status)?;
             }
         }

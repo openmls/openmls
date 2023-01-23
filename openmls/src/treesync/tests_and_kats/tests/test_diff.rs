@@ -1,15 +1,14 @@
-use openmls_traits::{
-    key_store::OpenMlsKeyStore,
-    types::{Ciphersuite, HpkeKeyPair},
-    OpenMlsCryptoProvider,
-};
+use openmls_traits::{types::Ciphersuite, OpenMlsCryptoProvider};
 use rstest::*;
 use rstest_reuse::apply;
 
 use crate::{
     credentials::{CredentialBundle, CredentialType},
     key_packages::KeyPackageBundle,
-    treesync::{node::Node, LeafNode, TreeSync},
+    treesync::{
+        node::{encryption_keys::EncryptionKeyPair, Node},
+        TreeSync,
+    },
 };
 
 use openmls_rust_crypto::OpenMlsRustCrypto;
@@ -52,15 +51,19 @@ fn test_free_leaf_computation(ciphersuite: Ciphersuite, backend: &impl OpenMlsCr
     ];
 
     // Get the encryption key pair from the leaf.
-    let encryption_key_pair: HpkeKeyPair = backend
-        .key_store()
-        .read(&LeafNode::encryption_key_label(
-            cb_0.credential().signature_key().as_slice(),
-        ))
-        .unwrap();
+    let encryption_key_pair = EncryptionKeyPair::read_from_key_store(
+        backend,
+        kpb_0.key_package().leaf_node().encryption_key(),
+    )
+    .unwrap();
 
-    let tree = TreeSync::from_nodes(backend, ciphersuite, &nodes, encryption_key_pair)
-        .expect("error generating tree");
+    let tree = TreeSync::from_nodes(
+        backend,
+        ciphersuite,
+        &nodes,
+        encryption_key_pair.public_key(),
+    )
+    .expect("error generating tree");
 
     // Create and add a new leaf. It should go to leaf index 1
 

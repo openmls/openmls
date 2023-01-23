@@ -197,7 +197,7 @@ fn remover(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
         .expect("Could not add member to group.");
 
     alice_group
-        .merge_pending_commit()
+        .merge_pending_commit(backend)
         .expect("error merging pending commit");
 
     let mut bob_group = MlsGroup::new_from_welcome(
@@ -225,13 +225,15 @@ fn remover(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
     if let ProcessedMessageContent::StagedCommitMessage(staged_commit) =
         alice_processed_message.into_content()
     {
-        alice_group.merge_staged_commit(*staged_commit);
+        alice_group
+            .merge_staged_commit(backend, *staged_commit)
+            .expect("Error merging commit.");
     } else {
         unreachable!("Expected a StagedCommit.");
     }
 
     bob_group
-        .merge_pending_commit()
+        .merge_pending_commit(backend)
         .expect("error merging pending commit");
 
     let mut charlie_group = MlsGroup::new_from_welcome(
@@ -299,7 +301,7 @@ fn remover(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
     };
 
     charlie_group
-        .merge_pending_commit()
+        .merge_pending_commit(backend)
         .expect("error merging pending commit");
 
     // TODO #524: Check that Alice removed Bob
@@ -524,7 +526,7 @@ fn test_pending_commit_logic(ciphersuite: Ciphersuite, backend: &impl OpenMlsCry
 
     println!("\nCreating commit with add proposal.");
     let (_msg, _welcome_option) = alice_group
-        .self_update(backend, None)
+        .self_update(backend)
         .expect("error creating self-update commit");
     println!("Done creating commit.");
 
@@ -569,7 +571,7 @@ fn test_pending_commit_logic(ciphersuite: Ciphersuite, backend: &impl OpenMlsCry
         CommitToPendingProposalsError::GroupStateError(MlsGroupStateError::PendingCommit)
     );
     let error = alice_group
-        .self_update(backend, None)
+        .self_update(backend)
         .expect_err("no error committing while a commit is pending");
     assert_eq!(
         error,
@@ -589,13 +591,13 @@ fn test_pending_commit_logic(ciphersuite: Ciphersuite, backend: &impl OpenMlsCry
 
     // Creating a new commit should commit the same proposals.
     let (_msg, welcome_option) = alice_group
-        .self_update(backend, None)
+        .self_update(backend)
         .expect("error creating self-update commit");
 
     // Merging the pending commit should clear the pending commit and we should
     // end up in the same state as bob.
     alice_group
-        .merge_pending_commit()
+        .merge_pending_commit(backend)
         .expect("error merging pending commit");
     assert!(alice_group.pending_commit().is_none());
 
@@ -621,11 +623,11 @@ fn test_pending_commit_logic(ciphersuite: Ciphersuite, backend: &impl OpenMlsCry
 
     // While a commit is pending, merging Bob's commit should clear the pending commit.
     let (_msg, _welcome_option) = alice_group
-        .self_update(backend, None)
+        .self_update(backend)
         .expect("error creating self-update commit");
 
     let (msg, _welcome_option) = bob_group
-        .self_update(backend, None)
+        .self_update(backend)
         .expect("error creating self-update commit");
 
     let alice_processed_message = alice_group
@@ -636,7 +638,9 @@ fn test_pending_commit_logic(ciphersuite: Ciphersuite, backend: &impl OpenMlsCry
     if let ProcessedMessageContent::StagedCommitMessage(staged_commit) =
         alice_processed_message.into_content()
     {
-        alice_group.merge_staged_commit(*staged_commit);
+        alice_group
+            .merge_staged_commit(backend, *staged_commit)
+            .expect("Error merging commit.");
     } else {
         unreachable!("Expected a StagedCommit.");
     }
@@ -700,7 +704,7 @@ fn key_package_deletion(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoPr
         .add_members(backend, &[bob_key_package.clone()])
         .unwrap();
 
-    alice_group.merge_pending_commit().unwrap();
+    alice_group.merge_pending_commit(backend).unwrap();
 
     // === Bob joins the group ===
     let _bob_group = MlsGroup::new_from_welcome(
