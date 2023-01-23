@@ -456,7 +456,7 @@ fn unknown_sender(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
         .expect("Error creating Commit");
 
     group_alice
-        .merge_commit(create_commit_result.staged_commit)
+        .merge_commit(backend, create_commit_result.staged_commit)
         .expect("error merging pending commit");
 
     let _group_bob = CoreGroup::new_from_welcome(
@@ -497,7 +497,7 @@ fn unknown_sender(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
         .expect("Error creating Commit");
 
     group_alice
-        .merge_commit(create_commit_result.staged_commit)
+        .merge_commit(backend, create_commit_result.staged_commit)
         .expect("error merging pending commit");
 
     let mut group_charlie = CoreGroup::new_from_welcome(
@@ -540,11 +540,11 @@ fn unknown_sender(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
         .stage_commit(&create_commit_result.commit, &proposal_store, &[], backend)
         .expect("Charlie: Could not stage Commit");
     group_charlie
-        .merge_commit(staged_commit)
+        .merge_commit(backend, staged_commit)
         .expect("error merging commit");
 
     group_alice
-        .merge_commit(create_commit_result.staged_commit)
+        .merge_commit(backend, create_commit_result.staged_commit)
         .expect("error merging pending commit");
 
     print_tree(&group_alice, "Alice tree");
@@ -644,7 +644,7 @@ fn confirmation_tag_presence(ciphersuite: Ciphersuite, backend: &impl OpenMlsCry
         .expect("Error creating Commit");
 
     group_alice
-        .merge_commit(create_commit_result.staged_commit)
+        .merge_commit(backend, create_commit_result.staged_commit)
         .expect("error merging pending commit");
 
     // We have to create Bob's group so he can process the commit with the
@@ -742,7 +742,7 @@ fn invalid_plaintext_signature(ciphersuite: Ciphersuite, backend: &impl OpenMlsC
         .expect("Error creating Commit");
 
     group_alice
-        .merge_commit(create_commit_result.staged_commit)
+        .merge_commit(backend, create_commit_result.staged_commit)
         .expect("error merging pending commit");
 
     let mut _group_bob = CoreGroup::new_from_welcome(

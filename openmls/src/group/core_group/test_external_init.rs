@@ -74,7 +74,7 @@ fn test_external_init(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProv
         .expect("Error creating commit");
 
     group_alice
-        .merge_commit(create_commit_result.staged_commit)
+        .merge_commit(backend, create_commit_result.staged_commit)
         .expect("error merging commit");
     let ratchet_tree = group_alice.treesync().export_nodes();
 
@@ -120,19 +120,19 @@ fn test_external_init(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProv
         .stage_commit(&create_commit_result.commit, &proposal_store, &[], backend)
         .expect("error staging commit");
     group_alice
-        .merge_commit(staged_commit)
+        .merge_commit(backend, staged_commit)
         .expect("error merging commit");
 
     let staged_commit = group_bob
         .stage_commit(&create_commit_result.commit, &proposal_store, &[], backend)
         .expect("error staging commit");
     group_bob
-        .merge_commit(staged_commit)
+        .merge_commit(backend, staged_commit)
         .expect("error merging commit");
 
     // Have charly process their own staged commit
     group_charly
-        .merge_commit(create_commit_result.staged_commit)
+        .merge_commit(backend, create_commit_result.staged_commit)
         .expect("error merging own external commit");
 
     assert_eq!(
@@ -160,11 +160,11 @@ fn test_external_init(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProv
         .stage_commit(&create_commit_result.commit, &proposal_store, &[], backend)
         .expect("error staging commit");
     group_alice
-        .merge_commit(staged_commit)
+        .merge_commit(backend, staged_commit)
         .expect("error merging commit");
 
     group_charly
-        .merge_commit(create_commit_result.staged_commit)
+        .merge_commit(backend, create_commit_result.staged_commit)
         .expect("error merging commit");
 
     // Now we assume that Bob somehow lost his group state and wants to add
@@ -212,19 +212,19 @@ fn test_external_init(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProv
         .stage_commit(&create_commit_result.commit, &proposal_store, &[], backend)
         .expect("error staging commit");
     group_alice
-        .merge_commit(staged_commit)
+        .merge_commit(backend, staged_commit)
         .expect("error merging commit");
 
     let staged_commit = group_charly
         .stage_commit(&create_commit_result.commit, &proposal_store, &[], backend)
         .expect("error staging commit");
     group_charly
-        .merge_commit(staged_commit)
+        .merge_commit(backend, staged_commit)
         .expect("error merging commit");
 
     // Have Bob process his own staged commit
     new_group_bob
-        .merge_commit(create_commit_result.staged_commit)
+        .merge_commit(backend, create_commit_result.staged_commit)
         .expect("error merging own external commit");
 
     assert_eq!(
@@ -301,11 +301,11 @@ fn test_external_init_single_member_group(
         .stage_commit(&create_commit_result.commit, &proposal_store, &[], backend)
         .expect("error staging commit");
     group_alice
-        .merge_commit(staged_commit)
+        .merge_commit(backend, staged_commit)
         .expect("error merging commit");
 
     group_charly
-        .merge_commit(create_commit_result.staged_commit)
+        .merge_commit(backend, create_commit_result.staged_commit)
         .expect("error merging own external commit");
 
     assert_eq!(
@@ -380,7 +380,7 @@ fn test_external_init_broken_signature(
         .expect("Error creating commit");
 
     group_alice
-        .merge_commit(create_commit_result.staged_commit)
+        .merge_commit(backend, create_commit_result.staged_commit)
         .expect("error merging commit");
 
     // Now set up charly and try to init externally.

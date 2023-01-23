@@ -210,7 +210,13 @@ pub(crate) fn setup(config: TestSetupConfig, backend: &impl OpenMlsCryptoProvide
                 .welcome_option
                 .expect("An unexpected error occurred.");
 
-            core_group.merge_staged_commit(create_commit_result.staged_commit, &mut proposal_store);
+            core_group
+                .merge_staged_commit(
+                    backend,
+                    create_commit_result.staged_commit,
+                    &mut proposal_store,
+                )
+                .expect("Error merging commit.");
 
             // Distribute the Welcome message to the other members.
             for client_id in 1..group_config.members.len() {
@@ -339,12 +345,12 @@ pub(super) fn generate_credential_bundle(
 }
 
 // Helper function to generate a KeyPackageBundle
-pub(super) fn generate_key_package(
+pub(super) fn generate_key_package<KeyStore: OpenMlsKeyStore>(
     ciphersuites: &[Ciphersuite],
     credential: &Credential,
     extensions: Extensions,
-    backend: &impl OpenMlsCryptoProvider,
-) -> Result<KeyPackage, KeyPackageNewError> {
+    backend: &impl OpenMlsCryptoProvider<KeyStoreProvider = KeyStore>,
+) -> Result<KeyPackage, KeyPackageNewError<KeyStore::Error>> {
     let credential_bundle = backend
         .key_store()
         .read(

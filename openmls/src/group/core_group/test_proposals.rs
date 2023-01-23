@@ -396,7 +396,7 @@ fn test_group_context_extensions(ciphersuite: Ciphersuite, backend: &impl OpenMl
     log::info!(" >>> Staging & merging commit ...");
 
     alice_group
-        .merge_commit(create_commit_result.staged_commit)
+        .merge_commit(backend, create_commit_result.staged_commit)
         .expect("error merging own staged commit");
     let ratchet_tree = alice_group.treesync().export_nodes();
 
@@ -497,7 +497,7 @@ fn test_group_context_extension_proposal_fails(
     log::info!(" >>> Staging & merging commit ...");
 
     alice_group
-        .merge_commit(create_commit_result.staged_commit)
+        .merge_commit(backend, create_commit_result.staged_commit)
         .expect("error merging pending commit");
     let ratchet_tree = alice_group.treesync().export_nodes();
 
@@ -581,7 +581,7 @@ fn test_group_context_extension_proposal(
     log::info!(" >>> Staging & merging commit ...");
 
     alice_group
-        .merge_commit(create_commit_results.staged_commit)
+        .merge_commit(backend, create_commit_results.staged_commit)
         .expect("error merging pending commit");
 
     let ratchet_tree = alice_group.treesync().export_nodes();
@@ -633,11 +633,11 @@ fn test_group_context_extension_proposal(
         .stage_commit(&create_commit_result.commit, &proposal_store, &[], backend)
         .expect("error staging commit");
     bob_group
-        .merge_commit(staged_commit)
+        .merge_commit(backend, staged_commit)
         .expect("error merging commit");
 
     alice_group
-        .merge_commit(create_commit_result.staged_commit)
+        .merge_commit(backend, create_commit_result.staged_commit)
         .expect("error merging pending commit");
 
     assert_eq!(

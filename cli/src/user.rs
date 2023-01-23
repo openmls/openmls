@@ -181,7 +181,9 @@ impl User {
                     // intentionally left blank.
                 }
                 ProcessedMessageContent::StagedCommitMessage(commit_ptr) => {
-                    mls_group.merge_staged_commit(*commit_ptr);
+                    mls_group
+                        .merge_staged_commit(&self.crypto, *commit_ptr)
+                        .map_err(|_| "error")?;
                 }
             }
             Ok(())
@@ -304,7 +306,7 @@ impl User {
         group
             .mls_group
             .borrow_mut()
-            .merge_pending_commit()
+            .merge_pending_commit(&self.crypto)
             .expect("error merging pending commit");
 
         // Second, send Welcome to the joiner.

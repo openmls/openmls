@@ -113,7 +113,7 @@
 //!
 //! // Sasha merges the pending commit that adds Maxim.
 //! sasha_group
-//!    .merge_pending_commit()
+//!    .merge_pending_commit(backend)
 //!    .expect("error merging pending commit");
 //!
 //! // Sascha serializes the [`MlsMessageOut`] containing the [`Welcome`].

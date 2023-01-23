@@ -15,7 +15,38 @@ pub trait ToKeyStoreValue {
 /// The Key Store trait
 pub trait OpenMlsKeyStore: Send + Sync {
     /// The error type returned by the [`OpenMlsKeyStore`].
-    type Error: std::error::Error + Debug;
+    type Error: std::error::Error + Debug + PartialEq;
+
+    /// Load all encryption keys associated with the given client identity (i.e.
+    /// a byte vector uniquely identifying the client), epoch and group ID from
+    /// the key store.
+    fn read_epoch_keys<V: FromKeyStoreValue>(
+        &self,
+        identity: &[u8],
+        group_id: &[u8],
+        epoch: u64,
+    ) -> Vec<V>;
+
+    /// Store all encryption keys associated with the given client identity
+    /// (i.e.  a byte vector uniquely identifying the client), epoch and group
+    /// ID in the key store.
+    fn store_epoch_keys<V: ToKeyStoreValue>(
+        &self,
+        identity: &[u8],
+        group_id: &[u8],
+        epoch: u64,
+        encryption_keys: &[V],
+    ) -> Result<(), Self::Error>;
+
+    /// Delete all encryption keys associated with the given client identity
+    /// (i.e.  a byte vector uniquely identifying the client), epoch and group
+    /// ID from the key store.
+    fn delete_epoch_keys(
+        &self,
+        identity: &[u8],
+        group_id: &[u8],
+        epoch: u64,
+    ) -> Result<(), Self::Error>;
 
     /// Store a value `v` that implements the [`ToKeyStoreValue`] trait for
     /// serialization for ID `k`.
