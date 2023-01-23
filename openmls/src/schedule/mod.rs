@@ -1076,7 +1076,6 @@ impl EpochSecrets {
     }
 
     /// External secret
-    #[cfg(any(feature = "test-utils", test))]
     pub(crate) fn external_secret(&self) -> &ExternalSecret {
         &self.external_secret
     }
