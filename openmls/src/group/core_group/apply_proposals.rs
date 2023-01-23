@@ -52,6 +52,7 @@ impl CoreGroup {
         backend: &impl OpenMlsCryptoProvider,
         proposal_queue: &ProposalQueue,
         leaf_nodes: &[OpenMlsLeafNode],
+        own_leaf_index: Option<LeafNodeIndex>,
     ) -> Result<ApplyProposalsValues, ApplyProposalsError> {
         log::debug!("Applying proposal");
         let mut self_removed = false;
@@ -95,18 +96,19 @@ impl CoreGroup {
                     // This should not happen with validated proposals
                     _ => return Err(LibraryError::custom("Update proposal from non-member").into()),
                 };
-                let leaf_node: OpenMlsLeafNode = if sender_index == self.tree.own_leaf_index() {
-                    let own_leaf_node = match leaf_nodes
-                        .iter()
-                        .find(|&leaf_node| leaf_node.leaf_node() == update_proposal.leaf_node())
-                    {
-                        Some(leaf_node) => leaf_node,
-                        // We lost the LeafNode apparently
-                        None => return Err(ApplyProposalsError::MissingLeafNode),
-                    };
-                    own_leaf_node.clone()
-                } else {
-                    update_proposal.leaf_node().clone().into()
+                let leaf_node: OpenMlsLeafNode = match own_leaf_index {
+                    Some(leaf_index) if leaf_index == sender_index => {
+                        let own_leaf_node = match leaf_nodes
+                            .iter()
+                            .find(|&leaf_node| leaf_node.leaf_node() == update_proposal.leaf_node())
+                        {
+                            Some(leaf_node) => leaf_node,
+                            // We lost the LeafNode apparently
+                            None => return Err(ApplyProposalsError::MissingLeafNode),
+                        };
+                        own_leaf_node.clone()
+                    }
+                    _ => update_proposal.leaf_node().clone().into(),
                 };
                 diff.update_leaf(leaf_node, sender_index);
             }

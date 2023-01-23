@@ -49,10 +49,11 @@ impl<'a> TreeSyncDiff<'a> {
         path: &[PlainUpdatePathNode],
         group_context: &[u8],
         exclusion_list: &HashSet<&LeafNodeIndex>,
+        own_leaf_index: LeafNodeIndex,
     ) -> Vec<UpdatePathNode> {
         // Copath resolutions with the corresponding public keys.
         let copath_resolutions = self
-            .filtered_copath_resolutions(self.own_leaf_index(), exclusion_list)
+            .filtered_copath_resolutions(own_leaf_index, exclusion_list)
             .into_iter()
             .map(|resolution| {
                 resolution
@@ -97,6 +98,7 @@ impl<'a> TreeSyncDiff<'a> {
         ciphersuite: Ciphersuite,
         params: DecryptPathParams,
         owned_keys: &[&EncryptionKeyPair],
+        own_leaf_index: LeafNodeIndex,
     ) -> Result<(Vec<ParentNode>, Vec<EncryptionKeyPair>, CommitSecret), ApplyUpdatePathError> {
         // ValSem202: Path must be the right length
         let direct_path_length = self.filtered_direct_path(params.sender_leaf_index).len();
@@ -112,7 +114,7 @@ impl<'a> TreeSyncDiff<'a> {
         }
 
         let path_position = self
-            .subtree_root_position(params.sender_leaf_index, self.own_leaf_index())
+            .subtree_root_position(params.sender_leaf_index, own_leaf_index)
             .map_err(|_| LibraryError::custom("Expected own leaf to be in the tree"))?;
 
         let update_path_node = params
@@ -123,7 +125,12 @@ impl<'a> TreeSyncDiff<'a> {
             .ok_or_else(|| LibraryError::custom("Expected to find ciphertext in update path 1"))?;
 
         let (decryption_key, resolution_position) = self
-            .decryption_key(params.sender_leaf_index, params.exclusion_list, owned_keys)
+            .decryption_key(
+                params.sender_leaf_index,
+                params.exclusion_list,
+                owned_keys,
+                own_leaf_index,
+            )
             // TODO #804
             .map_err(|_| LibraryError::custom("Expected sender to be in the tree"))?;
         let ciphertext = update_path_node
@@ -144,7 +151,7 @@ impl<'a> TreeSyncDiff<'a> {
         .map_err(|_| ApplyUpdatePathError::UnableToDecrypt)?;
 
         let common_path =
-            self.filtered_common_direct_path(self.own_leaf_index(), params.sender_leaf_index);
+            self.filtered_common_direct_path(own_leaf_index, params.sender_leaf_index);
         let (derived_path, _plain_update_path, keypairs, commit_secret) =
             ParentNode::derive_path(backend, ciphersuite, path_secret, common_path)?;
         // We now check that the public keys in the update path and in the
@@ -277,13 +284,14 @@ impl PlaintextSecret {
         plain_path_option: Option<&[PlainUpdatePathNode]>,
         presharedkeys: &[PreSharedKeyId],
         backend: &impl OpenMlsCryptoProvider,
+        own_leaf_index: LeafNodeIndex,
     ) -> Result<Vec<Self>, LibraryError> {
         let mut plaintext_secrets = vec![];
         for (leaf_index, add_proposal) in invited_members {
             let key_package = add_proposal.key_package;
 
             let direct_path_position = diff
-                .subtree_root_position(diff.own_leaf_index(), leaf_index)
+                .subtree_root_position(own_leaf_index, leaf_index)
                 // This can only fail if the nodes are outside the tree or identical
                 .map_err(|_| LibraryError::custom("Unexpected error in subtree_root_position"))?;
 

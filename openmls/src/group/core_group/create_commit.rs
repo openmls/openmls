@@ -38,28 +38,9 @@ impl CoreGroup {
     ) -> Result<CreateCommitResult, CreateCommitError<KeyStore::Error>> {
         let ciphersuite = self.ciphersuite();
 
-        // If this is an external commit, we don't have an `own_leaf_index` set
-        // yet. Instead, we use the index in which we will be put in course of
-        // this commit. Our index is determined as if we'd be added through an
-        // Add proposal. However, since this might be the "resync" flavour of an
-        // external commit, it could be that we're first removing our past self
-        // from the group, in which case, we can't just take the next free leaf
-        // in the existing tree. Note, that we have to determine the index here
-        // (before we actually add our own leaf), because it's needed in the
-        // process of proposal filtering and application.
-        let (sender, own_leaf_index) = match params.commit_type() {
-            CommitType::External => {
-                // If this is a "resync" external commit, it should contain a
-                // `remove` proposal with the index of our previous self in the
-                // group.
-                let leaf_index =
-                    self.free_leaf_index(params.inline_proposals().iter().map(Some))?;
-                (Sender::NewMemberCommit, leaf_index)
-            }
-            CommitType::Member => (
-                Sender::build_member(self.own_leaf_index()),
-                self.own_leaf_index(),
-            ),
+        let sender = match params.commit_type() {
+            CommitType::External => Sender::NewMemberCommit,
+            CommitType::Member => Sender::build_member(self.own_leaf_index()),
         };
 
         // Filter proposals
@@ -69,7 +50,7 @@ impl CoreGroup {
             sender.clone(),
             params.proposal_store(),
             params.inline_proposals(),
-            own_leaf_index,
+            self.own_leaf_index(),
         )
         .map_err(|e| match e {
             crate::group::errors::ProposalQueueError::LibraryError(e) => e.into(),
@@ -92,11 +73,6 @@ impl CoreGroup {
 
         // Make a copy of the current tree to apply proposals safely
         let mut diff: TreeSyncDiff = self.treesync().empty_diff();
-
-        // If this is an external commit we have to set our own leaf index manually
-        if params.commit_type() == CommitType::External {
-            diff.set_own_index(own_leaf_index);
-        }
 
         // Validate the proposals by doing the following checks:
 
@@ -121,7 +97,13 @@ impl CoreGroup {
 
         // Apply proposals to tree
         let apply_proposals_values = self
-            .apply_proposals(&mut diff, backend, &proposal_queue, &[])
+            .apply_proposals(
+                &mut diff,
+                backend,
+                &proposal_queue,
+                &[],
+                Some(self.own_leaf_index()),
+            )
             .map_err(|e| match e {
                 crate::group::errors::ApplyProposalsError::LibraryError(e) => e.into(),
                 crate::group::errors::ApplyProposalsError::MissingLeafNode => {
@@ -153,7 +135,7 @@ impl CoreGroup {
             )?;
 
             let mut leaf_node: OpenMlsLeafNode = key_package.into();
-            leaf_node.set_leaf_index(own_leaf_index);
+            leaf_node.set_leaf_index(self.own_leaf_index());
             diff.add_leaf(leaf_node)
                 .map_err(|_| LibraryError::custom("Tree full: cannot add more members"))?;
             Some(encryption_keypair)
@@ -178,7 +160,7 @@ impl CoreGroup {
                 } else {
                     // If we're already in the tree, we rekey our existing leaf.
                     let own_diff_leaf = diff
-                        .own_leaf_mut()
+                        .leaf_mut(self.own_leaf_index())
                         .map_err(|_| LibraryError::custom("Unable to get own leaf from diff"))?;
                     let encryption_keypair = own_diff_leaf.rekey(
                         self.group_id(),
@@ -197,6 +179,7 @@ impl CoreGroup {
                     ciphersuite,
                     self.group_id().clone(),
                     params.credential_bundle(),
+                    self.own_leaf_index()
                 )?;
 
                 new_keypairs.append(&mut new_parent_keypairs);
@@ -208,8 +191,9 @@ impl CoreGroup {
                     &plain_path,
                     &serialized_group_context,
                     &apply_proposals_values.exclusion_list(),
+                    self.own_leaf_index()
                 );
-                let leaf_node = diff.own_leaf().map_err(|_| LibraryError::custom("Couldn't find own leaf"))?.clone();
+                let leaf_node = diff.leaf(self.own_leaf_index()).map_err(|_| LibraryError::custom("Couldn't find own leaf"))?.clone();
                 let encrypted_path = UpdatePath::new(leaf_node.into(),  encrypted_path);
                 PathProcessingResult {
                     commit_secret: Some(commit_secret),
@@ -293,6 +277,7 @@ impl CoreGroup {
             path_processing_result.plain_path.as_deref(),
             &apply_proposals_values.presharedkeys,
             backend,
+            self.own_leaf_index(),
         )?;
 
         // Prepare the PskSecret
@@ -350,7 +335,7 @@ impl CoreGroup {
                     group_context,
                     other_extensions,
                     confirmation_tag.clone(),
-                    diff.own_leaf_index(),
+                    self.own_leaf_index(),
                 )
             };
             // Sign to-be-signed group info.
@@ -399,7 +384,7 @@ impl CoreGroup {
             provisional_epoch_secrets.split_secrets(
                 serialized_provisional_group_context,
                 diff.leaf_count(),
-                own_leaf_index,
+                self.own_leaf_index(),
             );
 
         let staged_commit_state = MemberStagedCommitState::new(
@@ -433,11 +418,11 @@ impl CoreGroup {
     ///
     /// The proposals must be validated before calling this function.
     pub(crate) fn free_leaf_index<'a>(
-        &self,
+        treesync: &TreeSync,
         mut inline_proposals: impl Iterator<Item = Option<&'a Proposal>>,
     ) -> Result<LeafNodeIndex, LibraryError> {
         // Leftmost free leaf in the tree
-        let free_leaf_index = self.treesync().free_leaf_index();
+        let free_leaf_index = treesync.free_leaf_index();
         // Returns the first remove proposal (if there is one)
         let remove_proposal_option = inline_proposals
             .find(|proposal| match proposal {
