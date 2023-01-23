@@ -462,6 +462,22 @@
 <span id="462">462</span>
 <span id="463">463</span>
 <span id="464">464</span>
+<span id="465">465</span>
+<span id="466">466</span>
+<span id="467">467</span>
+<span id="468">468</span>
+<span id="469">469</span>
+<span id="470">470</span>
+<span id="471">471</span>
+<span id="472">472</span>
+<span id="473">473</span>
+<span id="474">474</span>
+<span id="475">475</span>
+<span id="476">476</span>
+<span id="477">477</span>
+<span id="478">478</span>
+<span id="479">479</span>
+<span id="480">480</span>
 </pre><pre class="rust"><code><span class="kw">use </span>openmls_traits::OpenMlsCryptoProvider;
 
 <span class="kw">use crate</span>::{
@@ -789,16 +805,24 @@
         <span class="comment">// Set the confirmation tag
         </span>commit.set_confirmation_tag(confirmation_tag.clone());
 
-        <span class="comment">// Check if new members were added and, if so, create welcome messages
-        </span><span class="kw">let </span>welcome_option = <span class="kw">if </span>!plaintext_secrets.is_empty() {
+        <span class="comment">// only computes the group info if necessary
+        </span><span class="kw">let </span>group_info = <span class="kw">if </span>!plaintext_secrets.is_empty() || <span class="self">self</span>.use_ratchet_tree_extension {
             <span class="comment">// Create the ratchet tree extension if necessary
-            </span><span class="kw">let </span>other_extensions: Extensions = <span class="kw">if </span><span class="self">self</span>.use_ratchet_tree_extension {
-                Extensions::single(Extension::RatchetTree(RatchetTreeExtension::new(
-                    diff.export_nodes(),
-                )))
-            } <span class="kw">else </span>{
-                Extensions::empty()
+            </span><span class="kw">let </span>external_pub = provisional_epoch_secrets
+                .external_secret()
+                .derive_external_keypair(backend.crypto(), ciphersuite)
+                .public;
+            <span class="kw">let </span>external_pub_extension =
+                Extension::ExternalPub(ExternalPubExtension::new(external_pub.into()));
+            <span class="kw">let </span>other_extensions: Extensions = <span class="kw">if </span><span class="self">self</span>.use_ratchet_tree_extension {
+                Extensions::from_vec(<span class="macro">vec!</span>[
+                    Extension::RatchetTree(RatchetTreeExtension::new(diff.export_nodes())),
+                    external_pub_extension,
+                ])<span class="question-mark">?
+            </span>} <span class="kw">else </span>{
+                Extensions::single(external_pub_extension)
             };
+
             <span class="comment">// Create to-be-signed group info.
             </span><span class="kw">let </span>group_info_tbs = {
                 <span class="kw">let </span>group_context = GroupContext::new(
@@ -818,9 +842,13 @@
                 )
             };
             <span class="comment">// Sign to-be-signed group info.
-            </span><span class="kw">let </span>group_info =
-                group_info_tbs.sign(backend, params.credential_bundle().signature_private_key())<span class="question-mark">?</span>;
+            </span><span class="prelude-val">Some</span>(group_info_tbs.sign(backend, params.credential_bundle().signature_private_key())<span class="question-mark">?</span>)
+        } <span class="kw">else </span>{
+            <span class="prelude-val">None
+        </span>};
 
+        <span class="comment">// Check if new members were added and, if so, create welcome messages
+        </span><span class="kw">let </span>welcome_option = <span class="kw">if </span>!plaintext_secrets.is_empty() {
             <span class="comment">// Encrypt GroupInfo object
             </span><span class="kw">let </span>(welcome_key, welcome_nonce) = welcome_secret
                 .derive_welcome_key_nonce(backend)
@@ -828,9 +856,12 @@
             <span class="kw">let </span>encrypted_group_info = welcome_key
                 .aead_seal(
                     backend,
-                    <span class="kw-2">&amp;</span>group_info
-                        .tls_serialize_detached()
-                        .map_err(LibraryError::missing_bound_check)<span class="question-mark">?</span>,
+                    group_info
+                        .as_ref()
+                        .ok_or_else(|| LibraryError::custom(<span class="string">&quot;GroupInfo was not computed&quot;</span>))<span class="question-mark">?
+                        </span>.tls_serialize_detached()
+                        .map_err(LibraryError::missing_bound_check)<span class="question-mark">?
+                        </span>.as_slice(),
                     <span class="kw-2">&amp;</span>[],
                     <span class="kw-2">&amp;</span>welcome_nonce,
                 )
@@ -887,6 +918,7 @@
             commit,
             welcome_option,
             staged_commit,
+            group_info: group_info.filter(|<span class="kw">_</span>| <span class="self">self</span>.use_ratchet_tree_extension),
         })
     }
 

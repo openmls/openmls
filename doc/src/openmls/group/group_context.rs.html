@@ -191,42 +191,42 @@
     }
 
     <span class="doccomment">/// Return the protocol version.
-    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>protocol_version(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; ProtocolVersion {
+    </span><span class="kw">pub fn </span>protocol_version(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; ProtocolVersion {
         <span class="self">self</span>.protocol_version
     }
 
     <span class="doccomment">/// Return the ciphersuite.
-    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>ciphersuite(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; Ciphersuite {
+    </span><span class="kw">pub fn </span>ciphersuite(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; Ciphersuite {
         <span class="self">self</span>.ciphersuite
     }
 
     <span class="doccomment">/// Return the group ID.
-    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>group_id(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>GroupId {
+    </span><span class="kw">pub fn </span>group_id(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>GroupId {
         <span class="kw-2">&amp;</span><span class="self">self</span>.group_id
     }
 
     <span class="doccomment">/// Return the epoch.
-    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>epoch(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; GroupEpoch {
+    </span><span class="kw">pub fn </span>epoch(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; GroupEpoch {
         <span class="self">self</span>.epoch
     }
 
     <span class="doccomment">/// Return the tree hash.
-    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>tree_hash(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>[u8] {
+    </span><span class="kw">pub fn </span>tree_hash(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>[u8] {
         <span class="self">self</span>.tree_hash.as_slice()
     }
 
     <span class="doccomment">/// Return the confirmed transcript hash.
-    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>confirmed_transcript_hash(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>[u8] {
+    </span><span class="kw">pub fn </span>confirmed_transcript_hash(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>[u8] {
         <span class="self">self</span>.confirmed_transcript_hash.as_slice()
     }
 
     <span class="doccomment">/// Return the extensions.
-    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>extensions(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>Extensions {
+    </span><span class="kw">pub fn </span>extensions(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>Extensions {
         <span class="kw-2">&amp;</span><span class="self">self</span>.extensions
     }
 
     <span class="doccomment">/// Get the required capabilities extension.
-    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>required_capabilities(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>RequiredCapabilitiesExtension&gt; {
+    </span><span class="kw">pub fn </span>required_capabilities(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>RequiredCapabilitiesExtension&gt; {
         <span class="self">self</span>.extensions.required_capabilities()
     }
 }

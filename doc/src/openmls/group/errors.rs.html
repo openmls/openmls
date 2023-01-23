@@ -494,6 +494,9 @@
 <span id="494">494</span>
 <span id="495">495</span>
 <span id="496">496</span>
+<span id="497">497</span>
+<span id="498">498</span>
+<span id="499">499</span>
 </pre><pre class="rust"><code><span class="doccomment">//! # MLS group errors
 //!
 //! This module contains errors that originate at lower levels and are partially re-exported in errors thrown by functions of the `MlsGroup` API.
@@ -501,7 +504,7 @@
 </span><span class="kw">use crate</span>::{
     ciphersuite::signable::SignatureError,
     error::LibraryError,
-    extensions::errors::ExtensionError,
+    extensions::errors::{ExtensionError, InvalidExtensionError},
     framing::errors::{MessageDecryptionError, SenderError},
     key_packages::errors::{KeyPackageExtensionSupportError, KeyPackageNewError},
     schedule::errors::PskError,
@@ -711,6 +714,9 @@
     <span class="doccomment">/// See [`SignatureError`] for more details.
     </span><span class="attribute">#[error(transparent)]
     </span>SignatureError(<span class="attribute">#[from] </span>SignatureError),
+    <span class="doccomment">/// See [`InvalidExtensionError`] for more details.
+    </span><span class="attribute">#[error(transparent)]
+    </span>InvalidExtensionError(<span class="attribute">#[from] </span>InvalidExtensionError),
 }
 
 <span class="doccomment">/// Validation error

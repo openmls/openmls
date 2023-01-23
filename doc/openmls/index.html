@@ -158,7 +158,7 @@ up to parties and have them create a group.</p>
 <span class="comment">// ... and invites Maxim.
 // The key package has to be retrieved from Maxim in some way. Most likely
 // via a server storing key packages for users.
-</span><span class="kw">let </span>(mls_message_out, welcome_out) = sasha_group
+</span><span class="kw">let </span>(mls_message_out, welcome_out, group_info) = sasha_group
     .add_members(backend, <span class="kw-2">&amp;</span>[maxim_key_package])
     .expect(<span class="string">&quot;Could not add members.&quot;</span>);
 

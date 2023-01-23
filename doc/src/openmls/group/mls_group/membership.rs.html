@@ -391,6 +391,22 @@
 <span id="391">391</span>
 <span id="392">392</span>
 <span id="393">393</span>
+<span id="394">394</span>
+<span id="395">395</span>
+<span id="396">396</span>
+<span id="397">397</span>
+<span id="398">398</span>
+<span id="399">399</span>
+<span id="400">400</span>
+<span id="401">401</span>
+<span id="402">402</span>
+<span id="403">403</span>
+<span id="404">404</span>
+<span id="405">405</span>
+<span id="406">406</span>
+<span id="407">407</span>
+<span id="408">408</span>
+<span id="409">409</span>
 </pre><pre class="rust"><code><span class="doccomment">//! MLS group membership
 //!
 //! This module contains membership-related operations and exposes [`RemoveOperation`].
@@ -398,7 +414,9 @@
 </span><span class="kw">use </span>core_group::create_commit_params::CreateCommitParams;
 <span class="kw">use </span>tls_codec::Serialize;
 
-<span class="kw">use crate</span>::{binary_tree::array_representation::LeafNodeIndex, treesync::LeafNode};
+<span class="kw">use crate</span>::{
+    binary_tree::array_representation::LeafNodeIndex, messages::GroupInfo, treesync::LeafNode,
+};
 
 <span class="kw">use super</span>::{
     errors::{AddMembersError, LeaveGroupError, RemoveMembersError},
@@ -413,15 +431,19 @@
     /// This operation results in a Commit with a `path`, i.e. it includes an
     /// update of the committer&#39;s leaf [KeyPackage].
     ///
-    /// If successful, it returns a tuple of [`MlsMessageOut`]s, where the first
-    /// contains the commit and the second one the [Welcome].
+    /// If successful, it returns a triple of [`MlsMessageOut`]s, where the first
+    /// contains the commit, the second one the [Welcome] and the third an optional [GroupInfo] that
+    /// will be [Some] if the group has the `use_ratchet_tree_extension` flag set.
     ///
     /// Returns an error if there is a pending commit.
+    </span><span class="comment">// FIXME: #1217
+    </span><span class="attribute">#[allow(clippy::type_complexity)]
     </span><span class="kw">pub fn </span>add_members&lt;KeyStore: OpenMlsKeyStore&gt;(
         <span class="kw-2">&amp;mut </span><span class="self">self</span>,
         backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider&lt;KeyStoreProvider = KeyStore&gt;,
         key_packages: <span class="kw-2">&amp;</span>[KeyPackage],
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;(MlsMessageOut, MlsMessageOut), AddMembersError&lt;KeyStore::Error&gt;&gt; {
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;(MlsMessageOut, MlsMessageOut, <span class="prelude-ty">Option</span>&lt;GroupInfo&gt;), AddMembersError&lt;KeyStore::Error&gt;&gt;
+    {
         <span class="self">self</span>.is_operational()<span class="question-mark">?</span>;
 
         <span class="kw">if </span>key_packages.is_empty() {
@@ -482,6 +504,7 @@
         <span class="prelude-val">Ok</span>((
             mls_messages,
             MlsMessageOut::from_welcome(welcome, <span class="self">self</span>.group.version()),
+            create_commit_result.group_info,
         ))
     }
 
@@ -495,16 +518,24 @@
     /// Members are removed by providing the member&#39;s leaf index.
     ///
     /// If successful, it returns a tuple of [`MlsMessageOut`] (containing the
-    /// commit) and an optional [`MlsMessageOut`] (containing the [`Welcome`]).
+    /// commit), an optional [`MlsMessageOut`] (containing the [`Welcome`]) and the current
+    /// [GroupInfo].
     /// The [Welcome] is [Some] when the queue of pending proposals contained
     /// add proposals
+    /// The [GroupInfo] is [Some] if the group has the `use_ratchet_tree_extension` flag set.
+
     ///
     /// Returns an error if there is a pending commit.
+    </span><span class="comment">// FIXME: #1217
+    </span><span class="attribute">#[allow(clippy::type_complexity)]
     </span><span class="kw">pub fn </span>remove_members&lt;KeyStore: OpenMlsKeyStore&gt;(
         <span class="kw-2">&amp;mut </span><span class="self">self</span>,
         backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider&lt;KeyStoreProvider = KeyStore&gt;,
         members: <span class="kw-2">&amp;</span>[LeafNodeIndex],
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;(MlsMessageOut, <span class="prelude-ty">Option</span>&lt;MlsMessageOut&gt;), RemoveMembersError&lt;KeyStore::Error&gt;&gt; {
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;
+        (MlsMessageOut, <span class="prelude-ty">Option</span>&lt;MlsMessageOut&gt;, <span class="prelude-ty">Option</span>&lt;GroupInfo&gt;),
+        RemoveMembersError&lt;KeyStore::Error&gt;,
+    &gt; {
         <span class="self">self</span>.is_operational()<span class="question-mark">?</span>;
 
         <span class="kw">if </span>members.is_empty() {
@@ -558,6 +589,7 @@
             create_commit_result
                 .welcome_option
                 .map(|w| MlsMessageOut::from_welcome(w, <span class="self">self</span>.group.version())),
+            create_commit_result.group_info,
         ))
     }
 

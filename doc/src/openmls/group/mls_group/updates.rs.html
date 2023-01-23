@@ -155,10 +155,17 @@
 <span id="155">155</span>
 <span id="156">156</span>
 <span id="157">157</span>
+<span id="158">158</span>
+<span id="159">159</span>
+<span id="160">160</span>
+<span id="161">161</span>
+<span id="162">162</span>
+<span id="163">163</span>
+<span id="164">164</span>
 </pre><pre class="rust"><code><span class="kw">use </span>core_group::create_commit_params::CreateCommitParams;
 <span class="kw">use </span>tls_codec::Serialize;
 
-<span class="kw">use crate</span>::{treesync::LeafNode, versions::ProtocolVersion};
+<span class="kw">use crate</span>::{messages::GroupInfo, treesync::LeafNode, versions::ProtocolVersion};
 
 <span class="kw">use super</span>::<span class="kw-2">*</span>;
 
@@ -166,19 +173,25 @@
     <span class="doccomment">/// Updates the own leaf node.
     ///
     /// If successful, it returns a tuple of [`MlsMessageOut`] (containing the
-    /// commit) and an optional [`MlsMessageOut`] (containing the [`Welcome`]).
+    /// commit), an optional [`MlsMessageOut`] (containing the [`Welcome`]) and the [GroupInfo].
     /// The [Welcome] is [Some] when the queue of pending proposals contained
     /// add proposals
+    /// The [GroupInfo] is [Some] if the group has the `use_ratchet_tree_extension` flag set.
     ///
     /// Returns an error if there is a pending commit.
     ///
     /// TODO #1208 : The caller should be able to optionally provide a
     /// [`LeafNode`] here, so that things like extensions can be changed via
     /// commit.
+    </span><span class="comment">// FIXME: #1217
+    </span><span class="attribute">#[allow(clippy::type_complexity)]
     </span><span class="kw">pub fn </span>self_update&lt;KeyStore: OpenMlsKeyStore&gt;(
         <span class="kw-2">&amp;mut </span><span class="self">self</span>,
         backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider&lt;KeyStoreProvider = KeyStore&gt;,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;(MlsMessageOut, <span class="prelude-ty">Option</span>&lt;MlsMessageOut&gt;), SelfUpdateError&lt;KeyStore::Error&gt;&gt; {
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;
+        (MlsMessageOut, <span class="prelude-ty">Option</span>&lt;MlsMessageOut&gt;, <span class="prelude-ty">Option</span>&lt;GroupInfo&gt;),
+        SelfUpdateError&lt;KeyStore::Error&gt;,
+    &gt; {
         <span class="self">self</span>.is_operational()<span class="question-mark">?</span>;
 
         <span class="kw">let </span>credential = <span class="self">self</span>.credential()<span class="question-mark">?</span>;
@@ -219,6 +232,7 @@
             create_commit_result
                 .welcome_option
                 .map(|w| MlsMessageOut::from_welcome(w, <span class="self">self</span>.group.version())),
+            create_commit_result.group_info,
         ))
     }
 

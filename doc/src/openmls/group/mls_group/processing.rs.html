@@ -174,12 +174,19 @@
 <span id="174">174</span>
 <span id="175">175</span>
 <span id="176">176</span>
+<span id="177">177</span>
+<span id="178">178</span>
+<span id="179">179</span>
+<span id="180">180</span>
+<span id="181">181</span>
 </pre><pre class="rust"><code><span class="doccomment">//! Processing functions of an [`MlsGroup`] for incoming messages.
 
 </span><span class="kw">use </span>std::mem;
 
 <span class="kw">use </span>core_group::{create_commit_params::CreateCommitParams, staged_commit::StagedCommit};
 <span class="kw">use </span>tls_codec::Serialize;
+
+<span class="kw">use </span><span class="kw">crate</span>::messages::GroupInfo;
 
 <span class="kw">use </span><span class="kw">crate</span>::group::errors::MergeCommitError;
 
@@ -248,11 +255,13 @@
     /// currently stored in the group&#39;s [ProposalStore].
     ///
     /// Returns an error if there is a pending commit.
+    </span><span class="comment">// FIXME: #1217
+    </span><span class="attribute">#[allow(clippy::type_complexity)]
     </span><span class="kw">pub fn </span>commit_to_pending_proposals&lt;KeyStore: OpenMlsKeyStore&gt;(
         <span class="kw-2">&amp;mut </span><span class="self">self</span>,
         backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider&lt;KeyStoreProvider = KeyStore&gt;,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;
-        (MlsMessageOut, <span class="prelude-ty">Option</span>&lt;MlsMessageOut&gt;),
+        (MlsMessageOut, <span class="prelude-ty">Option</span>&lt;MlsMessageOut&gt;, <span class="prelude-ty">Option</span>&lt;GroupInfo&gt;),
         CommitToPendingProposalsError&lt;KeyStore::Error&gt;,
     &gt; {
         <span class="self">self</span>.is_operational()<span class="question-mark">?</span>;
@@ -295,6 +304,7 @@
             create_commit_result
                 .welcome_option
                 .map(|w| MlsMessageOut::from_welcome(w, <span class="self">self</span>.group.version())),
+            create_commit_result.group_info,
         ))
     }
 

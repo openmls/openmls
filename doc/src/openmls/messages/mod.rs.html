@@ -813,12 +813,12 @@
 
 <span class="kw">impl </span>GroupInfo {
     <span class="doccomment">/// Returns the group context.
-    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>group_context(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>GroupContext {
+    </span><span class="kw">pub fn </span>group_context(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>GroupContext {
         <span class="kw-2">&amp;</span><span class="self">self</span>.payload.group_context
     }
 
     <span class="doccomment">/// Returns the extensions.
-    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>extensions(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>Extensions {
+    </span><span class="kw">pub fn </span>extensions(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>Extensions {
         <span class="kw-2">&amp;</span><span class="self">self</span>.payload.extensions
     }
 
