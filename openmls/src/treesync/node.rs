@@ -6,6 +6,7 @@ use serde::{Deserialize, Serialize};
 use self::{leaf_node::OpenMlsLeafNode, parent_node::ParentNode};
 
 mod codec;
+pub(crate) mod encryption_keys;
 pub(crate) mod leaf_node;
 pub(crate) mod parent_node;
 

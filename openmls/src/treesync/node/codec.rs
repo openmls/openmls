@@ -1,6 +1,4 @@
-use tls_codec::{TlsDeserialize, TlsSerialize, TlsSize, VLBytes};
-
-use crate::ciphersuite::HpkePublicKey;
+use tls_codec::{TlsDeserialize, TlsSerialize, TlsSize};
 
 use super::{
     leaf_node::OpenMlsLeafNode,
@@ -55,43 +53,6 @@ impl tls_codec::Deserialize for Node {
 }
 
 // Implementations for `ParentNode`
-
-impl tls_codec::Size for ParentNode {
-    fn tls_serialized_len(&self) -> usize {
-        self.public_key().tls_serialized_len()
-            + self.parent_hash.tls_serialized_len()
-            + self.unmerged_leaves.tls_serialized_len()
-    }
-}
-
-impl tls_codec::Size for &ParentNode {
-    fn tls_serialized_len(&self) -> usize {
-        (*self).tls_serialized_len()
-    }
-}
-
-impl tls_codec::Serialize for &ParentNode {
-    fn tls_serialize<W: std::io::Write>(&self, writer: &mut W) -> Result<usize, tls_codec::Error> {
-        let mut written = self.public_key().tls_serialize(writer)?;
-        written += self.parent_hash.tls_serialize(writer)?;
-        self.unmerged_leaves
-            .tls_serialize(writer)
-            .map(|l| l + written)
-    }
-}
-
-impl tls_codec::Deserialize for ParentNode {
-    fn tls_deserialize<R: std::io::Read>(bytes: &mut R) -> Result<Self, tls_codec::Error>
-    where
-        Self: Sized,
-    {
-        let public_key = HpkePublicKey::tls_deserialize(bytes)?;
-        let parent_hash = VLBytes::tls_deserialize(bytes)?;
-        let unmerged_leaves = UnmergedLeaves::tls_deserialize(bytes)?;
-
-        Ok(Self::new(public_key, parent_hash, unmerged_leaves))
-    }
-}
 
 impl tls_codec::Deserialize for UnmergedLeaves {
     fn tls_deserialize<R: std::io::Read>(bytes: &mut R) -> Result<Self, tls_codec::Error>

@@ -2,7 +2,10 @@ use core_group::{proposals::QueuedProposal, staged_commit::StagedCommit};
 
 use crate::{
     framing::mls_content::FramedContentBody,
-    group::{errors::ValidationError, mls_group::errors::ProcessMessageError},
+    group::{
+        errors::{MergeCommitError, ValidationError},
+        mls_group::errors::ProcessMessageError,
+    },
     treesync::node::leaf_node::OpenMlsLeafNode,
 };
 
@@ -321,22 +324,24 @@ impl CoreGroup {
     }
 
     /// Merge a [StagedCommit] into the group after inspection
-    pub(crate) fn merge_staged_commit(
+    pub(crate) fn merge_staged_commit<KeyStore: OpenMlsKeyStore>(
         &mut self,
+        backend: &impl OpenMlsCryptoProvider<KeyStoreProvider = KeyStore>,
         staged_commit: StagedCommit,
         proposal_store: &mut ProposalStore,
-    ) {
+    ) -> Result<(), MergeCommitError<KeyStore::Error>> {
         // Save the past epoch
         let past_epoch = self.context().epoch();
         // Get all the full leaves
         let leaves = self.treesync().full_leave_members().collect();
         // Merge the staged commit into the group state and store the secret tree from the
         // previous epoch in the message secrets store.
-        if let Some(message_secrets) = self.merge_commit(staged_commit) {
+        if let Some(message_secrets) = self.merge_commit(backend, staged_commit)? {
             self.message_secrets_store
                 .add(past_epoch, message_secrets, leaves);
         }
         // Empty the proposal store
         proposal_store.empty();
+        Ok(())
     }
 }

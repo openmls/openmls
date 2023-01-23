@@ -134,8 +134,8 @@ fn test_group_info(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvide
     let mut alice_group = create_alice_group(ciphersuite, backend, true);
 
     // Self update Alice's to get a group info from a commit
-    let (.., group_info) = alice_group.self_update(backend, None).unwrap();
-    alice_group.merge_pending_commit().unwrap();
+    let (.., group_info) = alice_group.self_update(backend).unwrap();
+    alice_group.merge_pending_commit(backend).unwrap();
 
     // Bob wants to join
     let bob_cb = CredentialBundle::new(
@@ -172,7 +172,7 @@ fn test_group_info(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvide
     )
     .map(|(group, msg)| (group, MlsMessageIn::from(msg)))
     .unwrap();
-    bob_group.merge_pending_commit().unwrap();
+    bob_group.merge_pending_commit(backend).unwrap();
 
     // let alice process bob's new client
     let msg = alice_group
@@ -181,7 +181,7 @@ fn test_group_info(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvide
         .into_content();
     match msg {
         ProcessedMessageContent::StagedCommitMessage(commit) => {
-            alice_group.merge_staged_commit(*commit);
+            alice_group.merge_staged_commit(backend, *commit).unwrap();
         }
         _ => panic!("Unexpected message type"),
     }
@@ -206,8 +206,8 @@ fn test_not_present_group_info(ciphersuite: Ciphersuite, backend: &impl OpenMlsC
     let mut alice_group = create_alice_group(ciphersuite, backend, false);
 
     // Self update Alice's to get a group info from a commit
-    let (.., group_info) = alice_group.self_update(backend, None).unwrap();
-    alice_group.merge_pending_commit().unwrap();
+    let (.., group_info) = alice_group.self_update(backend).unwrap();
+    alice_group.merge_pending_commit(backend).unwrap();
 
     assert!(group_info.is_none());
 }

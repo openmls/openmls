@@ -27,11 +27,12 @@ impl MlsGroup {
     /// will be [Some] if the group has the `use_ratchet_tree_extension` flag set.
     ///
     /// Returns an error if there is a pending commit.
-    pub fn add_members(
+    pub fn add_members<KeyStore: OpenMlsKeyStore>(
         &mut self,
-        backend: &impl OpenMlsCryptoProvider,
+        backend: &impl OpenMlsCryptoProvider<KeyStoreProvider = KeyStore>,
         key_packages: &[KeyPackage],
-    ) -> Result<(MlsMessageOut, MlsMessageOut, Option<GroupInfo>), AddMembersError> {
+    ) -> Result<(MlsMessageOut, MlsMessageOut, Option<GroupInfo>), AddMembersError<KeyStore::Error>>
+    {
         self.is_operational()?;
 
         if key_packages.is_empty() {
@@ -114,11 +115,14 @@ impl MlsGroup {
 
     ///
     /// Returns an error if there is a pending commit.
-    pub fn remove_members(
+    pub fn remove_members<KeyStore: OpenMlsKeyStore>(
         &mut self,
-        backend: &impl OpenMlsCryptoProvider,
+        backend: &impl OpenMlsCryptoProvider<KeyStoreProvider = KeyStore>,
         members: &[LeafNodeIndex],
-    ) -> Result<(MlsMessageOut, Option<MlsMessageOut>, Option<GroupInfo>), RemoveMembersError> {
+    ) -> Result<
+        (MlsMessageOut, Option<MlsMessageOut>, Option<GroupInfo>),
+        RemoveMembersError<KeyStore::Error>,
+    > {
         self.is_operational()?;
 
         if members.is_empty() {

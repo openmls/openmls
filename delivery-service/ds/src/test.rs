@@ -276,7 +276,7 @@ async fn test_group() {
         .add_members(crypto, &[client2_key_package])
         .expect("Could not add member to group.");
     group
-        .merge_pending_commit()
+        .merge_pending_commit(crypto)
         .expect("error merging pending commit");
 
     // Send welcome message for Client2

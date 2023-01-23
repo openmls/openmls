@@ -7,13 +7,13 @@
 
 use crate::{
     error::LibraryError,
-    group::errors::{CreateCommitError, StageCommitError, ValidationError},
+    group::errors::{CreateCommitError, MergeCommitError, StageCommitError, ValidationError},
 };
 use thiserror::Error;
 
 /// New group error
 #[derive(Error, Debug, PartialEq, Clone)]
-pub enum NewGroupError {
+pub enum NewGroupError<KeyStoreError> {
     /// See [`LibraryError`] for more details.
     #[error(transparent)]
     LibraryError(#[from] LibraryError),
@@ -23,9 +23,9 @@ pub enum NewGroupError {
     /// No matching CredentialBundle was found in the key store.
     #[error("No matching CredentialBundle was found in the key store.")]
     NoMatchingCredentialBundle,
-    /// Failed to delete the KeyPackageBundle from the key store.
-    #[error("Failed to delete the KeyPackageBundle from the key store.")]
-    KeyStoreDeletionError,
+    /// Error accessing the key store.
+    #[error("Error accessing the key store.")]
+    KeyStoreError(KeyStoreError),
     /// Unsupported proposal type in required capabilities.
     #[error("Unsupported proposal type in required capabilities.")]
     UnsupportedProposalType,
@@ -63,6 +63,17 @@ pub enum MlsGroupStateError {
     /// Can't execute operation because there is no pending commit.
     #[error("Can't execute operation because there is no pending commit")]
     NoPendingCommit,
+}
+
+/// Error merging pending commit
+#[derive(Error, Debug, PartialEq, Clone)]
+pub enum MergePendingCommitError<KeyStoreError> {
+    /// See [`MlsGroupStateError`] for more details.
+    #[error(transparent)]
+    MlsGroupStateError(#[from] MlsGroupStateError),
+    /// See [`MergeCommitError`] for more details.
+    #[error(transparent)]
+    MergeCommitError(#[from] MergeCommitError<KeyStoreError>),
 }
 
 /// Process message error
@@ -107,7 +118,7 @@ pub enum CreateMessageError {
 
 /// Add members error
 #[derive(Error, Debug, PartialEq, Clone)]
-pub enum AddMembersError {
+pub enum AddMembersError<KeyStoreError> {
     /// See [`LibraryError`] for more details.
     #[error(transparent)]
     LibraryError(#[from] LibraryError),
@@ -119,7 +130,7 @@ pub enum AddMembersError {
     EmptyInput(#[from] EmptyInputError),
     /// See [`CreateCommitError`] for more details.
     #[error(transparent)]
-    CreateCommitError(#[from] CreateCommitError),
+    CreateCommitError(#[from] CreateCommitError<KeyStoreError>),
     /// See [`MlsGroupStateError`] for more details.
     #[error(transparent)]
     GroupStateError(#[from] MlsGroupStateError),
@@ -161,7 +172,7 @@ pub enum ProposeRemoveMemberError {
 
 /// Remove members error
 #[derive(Error, Debug, PartialEq, Clone)]
-pub enum RemoveMembersError {
+pub enum RemoveMembersError<KeyStoreError> {
     /// See [`LibraryError`] for more details.
     #[error(transparent)]
     LibraryError(#[from] LibraryError),
@@ -173,7 +184,7 @@ pub enum RemoveMembersError {
     EmptyInput(#[from] EmptyInputError),
     /// See [`CreateCommitError`] for more details.
     #[error(transparent)]
-    CreateCommitError(#[from] CreateCommitError),
+    CreateCommitError(#[from] CreateCommitError<KeyStoreError>),
     /// See [`MlsGroupStateError`] for more details.
     #[error(transparent)]
     GroupStateError(#[from] MlsGroupStateError),
@@ -198,7 +209,7 @@ pub enum LeaveGroupError {
 
 /// Self update error
 #[derive(Error, Debug, PartialEq, Clone)]
-pub enum SelfUpdateError {
+pub enum SelfUpdateError<KeyStoreError> {
     /// See [`LibraryError`] for more details.
     #[error(transparent)]
     LibraryError(#[from] LibraryError),
@@ -207,7 +218,7 @@ pub enum SelfUpdateError {
     NoMatchingCredentialBundle,
     /// See [`CreateCommitError`] for more details.
     #[error(transparent)]
-    CreateCommitError(#[from] CreateCommitError),
+    CreateCommitError(#[from] CreateCommitError<KeyStoreError>),
     /// See [`MlsGroupStateError`] for more details.
     #[error(transparent)]
     GroupStateError(#[from] MlsGroupStateError),
@@ -218,7 +229,7 @@ pub enum SelfUpdateError {
 
 /// Propose self update error
 #[derive(Error, Debug, PartialEq, Clone)]
-pub enum ProposeSelfUpdateError {
+pub enum ProposeSelfUpdateError<KeyStoreError> {
     /// See [`LibraryError`] for more details.
     #[error(transparent)]
     LibraryError(#[from] LibraryError),
@@ -230,12 +241,12 @@ pub enum ProposeSelfUpdateError {
     GroupStateError(#[from] MlsGroupStateError),
     /// Error accessing the key store.
     #[error("Error accessing the key store.")]
-    KeyStoreError,
+    KeyStoreError(KeyStoreError),
 }
 
 /// Commit to pending proposals error
 #[derive(Error, Debug, PartialEq, Clone)]
-pub enum CommitToPendingProposalsError {
+pub enum CommitToPendingProposalsError<KeyStoreError> {
     /// See [`LibraryError`] for more details.
     #[error(transparent)]
     LibraryError(#[from] LibraryError),
@@ -244,7 +255,7 @@ pub enum CommitToPendingProposalsError {
     NoMatchingCredentialBundle,
     /// See [`CreateCommitError`] for more details.
     #[error(transparent)]
-    CreateCommitError(#[from] CreateCommitError),
+    CreateCommitError(#[from] CreateCommitError<KeyStoreError>),
     /// See [`MlsGroupStateError`] for more details.
     #[error(transparent)]
     GroupStateError(#[from] MlsGroupStateError),

@@ -264,7 +264,7 @@ fn test_valsem242(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
     let (_message, _welcome, _group_info) = alice_group
         .add_members(backend, &[bob_key_package])
         .unwrap();
-    alice_group.merge_pending_commit().unwrap();
+    alice_group.merge_pending_commit(backend).unwrap();
 
     let add_proposal = || {
         let charlie_credential = generate_credential_bundle(
@@ -414,7 +414,7 @@ fn test_valsem243(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
         .expect("Could not add member.");
 
     alice_group
-        .merge_pending_commit()
+        .merge_pending_commit(backend)
         .expect("error merging pending commit");
 
     // Bob wants to commit externally.

@@ -11,7 +11,10 @@ use crate::{
     extensions::*,
     group::*,
     schedule::{psk::PreSharedKeyId, JoinerSecret},
-    treesync::treekem::UpdatePath,
+    treesync::{
+        node::encryption_keys::{EncryptionKeyPair, EncryptionPrivateKey},
+        treekem::UpdatePath,
+    },
     versions::ProtocolVersion,
 };
 use openmls_traits::{
@@ -391,7 +394,7 @@ impl PathSecret {
         &self,
         backend: &impl OpenMlsCryptoProvider,
         ciphersuite: Ciphersuite,
-    ) -> Result<(HpkePublicKey, HpkePrivateKey), LibraryError> {
+    ) -> Result<EncryptionKeyPair, LibraryError> {
         let node_secret = self
             .path_secret
             .kdf_expand_label(backend, "node", &[], ciphersuite.hash_length())
@@ -403,7 +406,8 @@ impl PathSecret {
         Ok((
             HpkePublicKey::from(key_pair.public),
             HpkePrivateKey::from(key_pair.private),
-        ))
+        )
+            .into())
     }
 
     /// Derives a path secret.
@@ -453,18 +457,12 @@ impl PathSecret {
         ciphersuite: Ciphersuite,
         version: ProtocolVersion,
         ciphertext: &HpkeCiphertext,
-        private_key: &HpkePrivateKey,
+        private_key: &EncryptionPrivateKey,
         group_context: &[u8],
     ) -> Result<PathSecret, PathSecretError> {
         // ValSem203: Path secrets must decrypt correctly
-        let secret_bytes = backend.crypto().hpke_open(
-            ciphersuite.hpke_config(),
-            ciphertext,
-            private_key.as_slice(),
-            group_context,
-            &[],
-        )?;
-        let path_secret = Secret::from_slice(&secret_bytes, version, ciphersuite);
+        let path_secret =
+            private_key.decrypt(backend, ciphersuite, version, ciphertext, group_context)?;
         Ok(Self { path_secret })
     }
 }

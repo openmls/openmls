@@ -3,7 +3,7 @@
 //! This is an implementation of the [`OpenMlsCryptoProvider`] trait to use with
 //! OpenMLS.
 
-use openmls_memory_keystore::MemoryKeyStore;
+pub use openmls_memory_keystore::{MemoryKeyStore, MemoryKeyStoreError};
 use openmls_traits::OpenMlsCryptoProvider;
 
 mod provider;

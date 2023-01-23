@@ -231,7 +231,7 @@ fn test_update_path(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvid
     assert!(create_commit_result.welcome_option.is_some());
 
     alice_group
-        .merge_commit(create_commit_result.staged_commit)
+        .merge_commit(backend, create_commit_result.staged_commit)
         .expect("error merging pending commit");
     let ratchet_tree = alice_group.treesync().export_nodes();
 
@@ -425,7 +425,7 @@ fn test_psks(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
     log::info!(" >>> Staging & merging commit ...");
 
     alice_group
-        .merge_commit(create_commit_result.staged_commit)
+        .merge_commit(backend, create_commit_result.staged_commit)
         .expect("error merging pending commit");
     let ratchet_tree = alice_group.treesync().export_nodes();
 
@@ -530,7 +530,7 @@ fn test_staged_commit_creation(ciphersuite: Ciphersuite, backend: &impl OpenMlsC
 
     // === Alice merges her own commit ===
     alice_group
-        .merge_commit(create_commit_result.staged_commit)
+        .merge_commit(backend, create_commit_result.staged_commit)
         .expect("error processing own staged commit");
 
     // === Bob joins the group using Alice's tree ===
@@ -666,7 +666,7 @@ fn test_proposal_application_after_self_was_removed(
         .expect("Error creating commit");
 
     alice_group
-        .merge_commit(add_commit_result.staged_commit)
+        .merge_commit(backend, add_commit_result.staged_commit)
         .expect("error merging pending commit");
 
     let ratchet_tree = alice_group.treesync().export_nodes();
@@ -737,9 +737,13 @@ fn test_proposal_application_after_self_was_removed(
             backend,
         )
         .expect("error staging commit");
-    bob_group.merge_commit(staged_commit);
+    bob_group
+        .merge_commit(backend, staged_commit)
+        .expect("Error merging commit.");
 
-    alice_group.merge_commit(remove_add_commit_result.staged_commit);
+    alice_group
+        .merge_commit(backend, remove_add_commit_result.staged_commit)
+        .expect("Error merging commit.");
 
     let ratchet_tree = alice_group.treesync().export_nodes();
 
