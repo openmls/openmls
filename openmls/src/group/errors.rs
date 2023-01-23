@@ -5,7 +5,7 @@
 use crate::{
     ciphersuite::signable::SignatureError,
     error::LibraryError,
-    extensions::errors::ExtensionError,
+    extensions::errors::{ExtensionError, InvalidExtensionError},
     framing::errors::{MessageDecryptionError, SenderError},
     key_packages::errors::{KeyPackageExtensionSupportError, KeyPackageNewError},
     schedule::errors::PskError,
@@ -215,6 +215,9 @@ pub enum CreateCommitError<KeyStoreError> {
     /// See [`SignatureError`] for more details.
     #[error(transparent)]
     SignatureError(#[from] SignatureError),
+    /// See [`InvalidExtensionError`] for more details.
+    #[error(transparent)]
+    InvalidExtensionError(#[from] InvalidExtensionError),
 }
 
 /// Validation error

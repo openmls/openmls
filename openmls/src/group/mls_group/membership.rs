@@ -5,7 +5,9 @@
 use core_group::create_commit_params::CreateCommitParams;
 use tls_codec::Serialize;
 
-use crate::{binary_tree::array_representation::LeafNodeIndex, treesync::LeafNode};
+use crate::{
+    binary_tree::array_representation::LeafNodeIndex, messages::GroupInfo, treesync::LeafNode,
+};
 
 use super::{
     errors::{AddMembersError, LeaveGroupError, RemoveMembersError},
@@ -20,15 +22,19 @@ impl MlsGroup {
     /// This operation results in a Commit with a `path`, i.e. it includes an
     /// update of the committer's leaf [KeyPackage].
     ///
-    /// If successful, it returns a tuple of [`MlsMessageOut`]s, where the first
-    /// contains the commit and the second one the [Welcome].
+    /// If successful, it returns a triple of [`MlsMessageOut`]s, where the first
+    /// contains the commit, the second one the [Welcome] and the third an optional [GroupInfo] that
+    /// will be [Some] if the group has the `use_ratchet_tree_extension` flag set.
     ///
     /// Returns an error if there is a pending commit.
+    // FIXME: #1217
+    #[allow(clippy::type_complexity)]
     pub fn add_members<KeyStore: OpenMlsKeyStore>(
         &mut self,
         backend: &impl OpenMlsCryptoProvider<KeyStoreProvider = KeyStore>,
         key_packages: &[KeyPackage],
-    ) -> Result<(MlsMessageOut, MlsMessageOut), AddMembersError<KeyStore::Error>> {
+    ) -> Result<(MlsMessageOut, MlsMessageOut, Option<GroupInfo>), AddMembersError<KeyStore::Error>>
+    {
         self.is_operational()?;
 
         if key_packages.is_empty() {
@@ -89,6 +95,7 @@ impl MlsGroup {
         Ok((
             mls_messages,
             MlsMessageOut::from_welcome(welcome, self.group.version()),
+            create_commit_result.group_info,
         ))
     }
 
@@ -102,16 +109,24 @@ impl MlsGroup {
     /// Members are removed by providing the member's leaf index.
     ///
     /// If successful, it returns a tuple of [`MlsMessageOut`] (containing the
-    /// commit) and an optional [`MlsMessageOut`] (containing the [`Welcome`]).
+    /// commit), an optional [`MlsMessageOut`] (containing the [`Welcome`]) and the current
+    /// [GroupInfo].
     /// The [Welcome] is [Some] when the queue of pending proposals contained
     /// add proposals
+    /// The [GroupInfo] is [Some] if the group has the `use_ratchet_tree_extension` flag set.
+
     ///
     /// Returns an error if there is a pending commit.
+    // FIXME: #1217
+    #[allow(clippy::type_complexity)]
     pub fn remove_members<KeyStore: OpenMlsKeyStore>(
         &mut self,
         backend: &impl OpenMlsCryptoProvider<KeyStoreProvider = KeyStore>,
         members: &[LeafNodeIndex],
-    ) -> Result<(MlsMessageOut, Option<MlsMessageOut>), RemoveMembersError<KeyStore::Error>> {
+    ) -> Result<
+        (MlsMessageOut, Option<MlsMessageOut>, Option<GroupInfo>),
+        RemoveMembersError<KeyStore::Error>,
+    > {
         self.is_operational()?;
 
         if members.is_empty() {
@@ -165,6 +180,7 @@ impl MlsGroup {
             create_commit_result
                 .welcome_option
                 .map(|w| MlsMessageOut::from_welcome(w, self.group.version())),
+            create_commit_result.group_info,
         ))
     }
 
