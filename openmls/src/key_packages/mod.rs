@@ -30,26 +30,30 @@
 //! ```
 //! use openmls::prelude::*;
 //! use openmls_rust_crypto::OpenMlsRustCrypto;
+//! use openmls_basic_credential::BasicCredential as BasicCredentialWithKeys;
 //!
 //! let ciphersuite = Ciphersuite::MLS_128_DHKEMX25519_AES128GCM_SHA256_Ed25519;
 //! let backend = OpenMlsRustCrypto::default();
 //!
-//! let credential_bundle = CredentialBundle::new(
-//!     b"Sasha".to_vec(),
-//!     CredentialType::Basic,
-//!     SignatureScheme::from(ciphersuite),
-//!     &backend,
-//! )
-//! .expect("Error creating credential.");
-//! let key_package = KeyPackage::builder().build(
-//!     CryptoConfig {
-//!         ciphersuite,
-//!         version: ProtocolVersion::default(),
-//!     },
-//!     &backend,
-//!     &credential_bundle,
-//! )
-//! .unwrap();
+//! let credential = Credential::new("identity".into(), CredentialType::Basic).unwrap();
+//! let signer =
+//!     BasicCredentialWithKeys::new(ciphersuite.signature_algorithm(), backend.crypto())
+//!         .expect("Error generating a signature key pair.");
+//! let credential_with_key = CredentialWithKey {
+//!     credential,
+//!     signature_key: signer.public().into(),
+//! };
+//! let key_package = KeyPackage::builder()
+//!     .build(
+//!         CryptoConfig {
+//!             ciphersuite,
+//!             version: ProtocolVersion::default(),
+//!         },
+//!         &backend,
+//!         &signer,
+//!         credential_with_key,
+//!     )
+//!     .unwrap();
 //! ```
 //!
 //! See [`KeyPackage`] for more details and other ways to create key packages.
