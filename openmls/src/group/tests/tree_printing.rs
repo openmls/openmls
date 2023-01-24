@@ -71,7 +71,7 @@ pub(crate) fn print_tree(group: &CoreGroup, message: &str) {
             print!(
                 "PK: {}  PH: {} | ",
                 bytes_to_hex(key_bytes),
-                if parent_hash_bytes != "" {
+                if !parent_hash_bytes.is_empty() {
                     parent_hash_bytes
                 } else {
                     str::repeat("  ", 32)

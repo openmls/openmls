@@ -46,20 +46,13 @@ fn that_commit_secret_is_derived_from_end_of_update_path_not_root() {
     let mut A_group = MlsGroup::new(
         &A.backend,
         &mls_group_config,
-        &A.credential_bundle.credential().signature_key(),
+        A.credential_bundle.credential().signature_key(),
     )
     .unwrap();
     A_group.print_tree("A (after new)");
 
-    let (_, welcome) = A_group
-        .add_members(
-            &A.backend,
-            &[
-                B.key_package.clone(),
-                C.key_package.clone(),
-                D.key_package.clone(),
-            ],
-        )
+    let (_, welcome, _group_info) = A_group
+        .add_members(&A.backend, &[B.key_package, C.key_package, D.key_package])
         .expect("Adding members failed.");
 
     A_group.merge_pending_commit(&A.backend).unwrap();
