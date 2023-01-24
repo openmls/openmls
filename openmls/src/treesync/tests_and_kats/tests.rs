@@ -5,6 +5,7 @@ use crate::{
     group::{MlsGroup, MlsGroupConfig},
     key_packages::KeyPackage,
     prelude::*,
+    test_utils::*,
 };
 
 mod test_diff;
@@ -12,74 +13,113 @@ mod test_unmerged_leaves;
 
 /// Pathological example taken from ...
 ///   https://github.com/mlswg/mls-protocol/issues/690#issue-1244086547.
-#[allow(non_snake_case)]
-#[test]
-fn that_commit_secret_is_derived_from_end_of_update_path_not_root() {
+#[apply(ciphersuites_and_backends)]
+fn that_commit_secret_is_derived_from_end_of_update_path_not_root(
+    ciphersuite: Ciphersuite,
+    backend: &impl OpenMlsCryptoProvider,
+) {
+    let crypto_config = CryptoConfig::with_default_version(ciphersuite);
     let mls_group_config = MlsGroupConfig::builder()
+        .crypto_config(crypto_config)
         .use_ratchet_tree_extension(true)
         .build();
 
     struct Member {
-        backend: OpenMlsRustCrypto,
+        id: Vec<u8>,
         credential_bundle: CredentialBundle,
         key_package: KeyPackage,
     }
 
-    fn create_member(name: &[u8]) -> Member {
-        let backend = OpenMlsRustCrypto::default();
-        let credential_bundle = generate_credential_bundle(&backend, name);
-        let key_package = generate_key_package(&backend, credential_bundle.credential());
+    fn create_member(
+        ciphersuite: Ciphersuite,
+        backend: &impl OpenMlsCryptoProvider,
+        name: &[u8],
+    ) -> Member {
+        let credential_bundle = generate_credential_bundle(ciphersuite, backend, name);
+        let key_package = KeyPackage::builder()
+            .build(
+                CryptoConfig::with_default_version(ciphersuite),
+                backend,
+                &credential_bundle,
+            )
+            .unwrap();
 
         Member {
-            backend,
+            id: name.to_vec(),
+
             credential_bundle,
             key_package,
         }
     }
 
-    let A = create_member(b"A");
-    let B = create_member(b"B");
-    let C = create_member(b"C");
-    let D = create_member(b"D");
+    fn get_member_leaf_index(group: &MlsGroup, target_id: &[u8]) -> LeafNodeIndex {
+        group.members().for_each(|member| {
+            println!(
+                "member: {}, index: {:?}, target: {}, own_leaf_index: {:?}",
+                String::from_utf8_lossy(&member.identity),
+                member.index,
+                String::from_utf8_lossy(target_id),
+                group.own_leaf_index()
+            );
+        });
+        group
+            .members()
+            .find_map(|member| {
+                if member.identity == target_id {
+                    Some(member.index)
+                } else {
+                    None
+                }
+            })
+            .unwrap()
+    }
+
+    let alice = create_member(ciphersuite, backend, b"alice");
+    let bob = create_member(ciphersuite, backend, b"bob");
+    let charlie = create_member(ciphersuite, backend, b"charlie");
+    let dave = create_member(ciphersuite, backend, b"dave");
 
     // `A` creates a group with `B`, `C`, and `D` ...
-    let mut A_group = MlsGroup::new(
-        &A.backend,
+    let mut alice_group = MlsGroup::new(
+        backend,
         &mls_group_config,
-        A.credential_bundle.credential().signature_key(),
+        alice.credential_bundle.credential().signature_key(),
     )
     .unwrap();
-    A_group.print_tree("A (after new)");
+    alice_group.print_tree("Alice (after new)");
 
-    let (_, welcome, _group_info) = A_group
-        .add_members(&A.backend, &[B.key_package, C.key_package, D.key_package])
+    let (_, welcome, _group_info) = alice_group
+        .add_members(
+            backend,
+            &[bob.key_package, charlie.key_package, dave.key_package],
+        )
         .expect("Adding members failed.");
 
-    A_group.merge_pending_commit(&A.backend).unwrap();
-    A_group.print_tree("A (after add_members)");
+    alice_group.merge_pending_commit(backend).unwrap();
+    alice_group.print_tree("Alice (after add_members)");
 
     // ---------------------------------------------------------------------------------------------
 
     // ... and then `C` removes `A` and `B`.
-    let mut C_group = {
+    let mut charlie_group = {
         MlsGroup::new_from_welcome(
-            &C.backend,
+            backend,
             &mls_group_config,
             welcome.into_welcome().unwrap(),
             None,
         )
         .expect("Joining the group failed.")
     };
-    C_group.print_tree("C (after new)");
+    charlie_group.print_tree("Charlie (after new)");
 
-    let A: LeafNodeIndex = LeafNodeIndex::new(0);
-    let B: LeafNodeIndex = LeafNodeIndex::new(1);
-    C_group
-        .remove_members(&C.backend, &[A, B])
+    let alice = get_member_leaf_index(&charlie_group, &alice.id);
+    let bob = get_member_leaf_index(&charlie_group, &bob.id);
+    charlie_group
+        .remove_members(backend, &[alice, bob])
         .expect("Removal of members failed.");
 
-    C_group.merge_pending_commit(&C.backend).unwrap();
-    C_group.print_tree("C (after remove)");
+    charlie_group.merge_pending_commit(backend).unwrap();
+    charlie_group.print_tree("Charlie (after remove)");
 
     // This leaves C and D as the only leaves in the tree.
     //
@@ -92,23 +132,24 @@ fn that_commit_secret_is_derived_from_end_of_update_path_not_root() {
     // _   _   C   D
     // ```
 
-    // C's direct path is [Z, Y], but its filtered direct path is just [Z] because the copath subtree of Y is all blank.
-    // So C will not generate a path_secret for Y, which means that the commit secret is not really defined.
+    // C(harlie)'s direct path is [Z, Y], but its filtered direct path is just [Z] because the copath subtree of Y is all blank.
+    // So C(harlie) will not generate a path_secret for Y, which means that the commit secret is not really defined.
 
-    C_group
-        .create_message(&C.backend, b"Hello, World!".as_slice())
+    charlie_group
+        .create_message(backend, b"Hello, World!".as_slice())
         .unwrap();
 }
 
 // FIXME: Move this to utils:: and remove everywhere.
 fn generate_credential_bundle(
+    ciphersuite: Ciphersuite,
     backend: &impl OpenMlsCryptoProvider,
     name: &[u8],
 ) -> CredentialBundle {
     let credential_bundle = CredentialBundle::new(
         name.to_vec(),
         CredentialType::Basic,
-        SignatureScheme::ED25519,
+        ciphersuite.signature_algorithm(),
         backend,
     )
     .unwrap();
@@ -125,26 +166,4 @@ fn generate_credential_bundle(
         .expect("Storage of signature public key failed.");
 
     credential_bundle
-}
-
-// FIXME: Move this to utils:: and remove everywhere.
-fn generate_key_package(
-    backend: &impl OpenMlsCryptoProvider,
-    credential: &Credential,
-) -> KeyPackage {
-    let credential_bundle = backend
-        .key_store()
-        .read(&credential.signature_key().tls_serialize_detached().unwrap())
-        .unwrap();
-
-    KeyPackage::builder()
-        .build(
-            CryptoConfig {
-                ciphersuite: Ciphersuite::MLS_128_DHKEMX25519_AES128GCM_SHA256_Ed25519,
-                version: ProtocolVersion::default(),
-            },
-            backend,
-            &credential_bundle,
-        )
-        .unwrap()
 }
