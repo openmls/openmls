@@ -7,7 +7,7 @@ use crate::{
     binary_tree::LeafNodeIndex,
     credentials::*,
     framing::*,
-    group::{errors::*, *},
+    group::{config::CryptoConfig, errors::*, *},
     messages::{
         external_proposals::*,
         proposals::{AddProposal, Proposal, ProposalType},
@@ -41,15 +41,19 @@ fn new_test_group(
     )
     .unwrap();
 
-    // Generate KeyPackages
-    let key_package = generate_key_package(&[ciphersuite], &credential, vec![], backend).unwrap();
-
     // Define the MlsGroup configuration
     let mls_group_config = MlsGroupConfig::builder()
         .wire_format_policy(wire_format_policy)
+        .crypto_config(CryptoConfig::with_default_version(ciphersuite))
         .build();
 
-    MlsGroup::new_with_group_id(backend, &mls_group_config, group_id, key_package).unwrap()
+    MlsGroup::new_with_group_id(
+        backend,
+        &mls_group_config,
+        group_id,
+        credential.signature_key(),
+    )
+    .unwrap()
 }
 
 // Validation test setup
@@ -69,26 +73,32 @@ fn validation_test_setup(
     )
     .expect("An unexpected error occurred.");
 
-    let bob_key_package = generate_key_package(&[ciphersuite], &bob_credential, vec![], backend)
-        .expect("An unexpected error occurred.");
+    let bob_key_package = generate_key_package(
+        &[ciphersuite],
+        &bob_credential,
+        Extensions::empty(),
+        backend,
+    )
+    .expect("An unexpected error occurred.");
 
-    let (_message, welcome) = alice_group
+    let (_message, welcome, _group_info) = alice_group
         .add_members(backend, &[bob_key_package])
         .expect("error adding Bob to group");
 
     alice_group
-        .merge_pending_commit()
+        .merge_pending_commit(backend)
         .expect("error merging pending commit");
 
     // Define the MlsGroup configuration
     let mls_group_config = MlsGroupConfig::builder()
         .wire_format_policy(wire_format_policy)
+        .crypto_config(CryptoConfig::with_default_version(ciphersuite))
         .build();
 
     let bob_group = MlsGroup::new_from_welcome(
         backend,
         &mls_group_config,
-        welcome,
+        welcome.into_welcome().expect("Unexpected message type."),
         Some(alice_group.export_ratchet_tree()),
     )
     .expect("error creating group from welcome");
@@ -122,8 +132,13 @@ fn external_add_proposal_should_succeed(
         )
         .unwrap();
 
-        let charlie_kp =
-            generate_key_package(&[ciphersuite], charlie_cb.credential(), vec![], backend).unwrap();
+        let charlie_kp = generate_key_package(
+            &[ciphersuite],
+            charlie_cb.credential(),
+            Extensions::empty(),
+            backend,
+        )
+        .unwrap();
 
         let proposal = JoinProposal::new(
             charlie_kp.clone(),
@@ -141,11 +156,11 @@ fn external_add_proposal_should_succeed(
                 && matches!(msg.content(), FramedContentBody::Proposal(p) if p.proposal_type() == ProposalType::Add)
         };
         assert!(
-            matches!(proposal.mls_message.body, MlsMessageBody::PublicMessage(ref msg) if verify_proposal(msg))
+            matches!(proposal.body, MlsMessageOutBody::PublicMessage(ref msg) if verify_proposal(msg))
         );
 
         let msg = alice_group
-            .process_message(backend, proposal.clone().into())
+            .process_message(backend, proposal.clone().into_protocol_message().unwrap())
             .unwrap();
 
         match msg.into_content() {
@@ -160,7 +175,9 @@ fn external_add_proposal_should_succeed(
             _ => unreachable!(),
         }
 
-        let msg = bob_group.process_message(backend, proposal.into()).unwrap();
+        let msg = bob_group
+            .process_message(backend, proposal.into_protocol_message().unwrap())
+            .unwrap();
 
         match msg.into_content() {
             ProcessedMessageContent::ExternalJoinProposalMessage(proposal) => {
@@ -170,26 +187,32 @@ fn external_add_proposal_should_succeed(
         }
 
         // and Alice will commit it
-        let (commit, welcome) = alice_group.commit_to_pending_proposals(backend).unwrap();
-        alice_group.merge_pending_commit().unwrap();
+        let (commit, welcome, _group_info) =
+            alice_group.commit_to_pending_proposals(backend).unwrap();
+        alice_group.merge_pending_commit(backend).unwrap();
         assert_eq!(alice_group.members().count(), 3);
 
         // Bob will also process the commit
-        let msg = bob_group.process_message(backend, commit.into()).unwrap();
+        let msg = bob_group
+            .process_message(backend, commit.into_protocol_message().unwrap())
+            .unwrap();
         match msg.into_content() {
             ProcessedMessageContent::StagedCommitMessage(commit) => {
-                bob_group.merge_staged_commit(*commit)
+                bob_group.merge_staged_commit(backend, *commit).unwrap()
             }
             _ => unreachable!(),
         }
         assert_eq!(bob_group.members().count(), 3);
 
         // Finally, Charlie can join with the Welcome
-        let cfg = MlsGroupConfig::builder().wire_format_policy(policy).build();
+        let cfg = MlsGroupConfig::builder()
+            .wire_format_policy(policy)
+            .crypto_config(CryptoConfig::with_default_version(ciphersuite))
+            .build();
         let charlie_group = MlsGroup::new_from_welcome(
             backend,
             &cfg,
-            welcome.unwrap(),
+            welcome.unwrap().into_welcome().unwrap(),
             Some(alice_group.export_ratchet_tree()),
         )
         .unwrap();
@@ -223,8 +246,13 @@ fn external_add_proposal_should_be_signed_by_key_package_it_references(
     )
     .unwrap();
 
-    let charlie_kp =
-        generate_key_package(&[ciphersuite], charlie_cb.credential(), vec![], backend).unwrap();
+    let charlie_kp = generate_key_package(
+        &[ciphersuite],
+        charlie_cb.credential(),
+        Extensions::empty(),
+        backend,
+    )
+    .unwrap();
 
     let invalid_proposal = JoinProposal::new(
         charlie_kp,
@@ -238,7 +266,7 @@ fn external_add_proposal_should_be_signed_by_key_package_it_references(
     // fails because the message was not signed by the same credential as the one in the Add proposal
     assert!(matches!(
         alice_group
-            .process_message(backend, invalid_proposal.into())
+            .process_message(backend, invalid_proposal.into_protocol_message().unwrap())
             .unwrap_err(),
         ProcessMessageError::InvalidSignature
     ));
@@ -274,7 +302,13 @@ fn new_member_proposal_sender_should_be_reserved_for_join_proposals(
         )
         .expect("Could not read signature key from key store.");
 
-    let any_kp = generate_key_package(&[ciphersuite], &any_credential, vec![], backend).unwrap();
+    let any_kp = generate_key_package(
+        &[ciphersuite],
+        &any_credential,
+        Extensions::empty(),
+        backend,
+    )
+    .unwrap();
 
     let join_proposal = JoinProposal::new(
         any_kp,
@@ -285,7 +319,7 @@ fn new_member_proposal_sender_should_be_reserved_for_join_proposals(
     )
     .unwrap();
 
-    if let MlsMessageBody::PublicMessage(plaintext) = &join_proposal.mls_message.body {
+    if let MlsMessageOutBody::PublicMessage(plaintext) = &join_proposal.body {
         // Make sure it's an add proposal...
         assert!(matches!(
             plaintext.content(),
@@ -297,7 +331,7 @@ fn new_member_proposal_sender_should_be_reserved_for_join_proposals(
 
         // Finally check that the message can be processed without errors
         assert!(bob_group
-            .process_message(backend, join_proposal.into())
+            .process_message(backend, join_proposal.into_protocol_message().unwrap())
             .is_ok());
     } else {
         panic!()
@@ -308,12 +342,10 @@ fn new_member_proposal_sender_should_be_reserved_for_join_proposals(
     let remove_proposal = alice_group
         .propose_remove_member(backend, LeafNodeIndex::new(1))
         .unwrap();
-    if let MlsMessageBody::PublicMessage(mut plaintext) = remove_proposal.mls_message.body {
+    if let MlsMessageOutBody::PublicMessage(mut plaintext) = remove_proposal.body {
         plaintext.set_sender(Sender::NewMemberProposal);
         assert!(matches!(
-            bob_group
-                .process_message(backend, plaintext.into())
-                .unwrap_err(),
+            bob_group.process_message(backend, plaintext).unwrap_err(),
             ProcessMessageError::ValidationError(ValidationError::NotAnExternalAddProposal)
         ));
     } else {
@@ -323,12 +355,10 @@ fn new_member_proposal_sender_should_be_reserved_for_join_proposals(
 
     // Update proposal cannot have a 'new_member_proposal' sender
     let update_proposal = alice_group.propose_self_update(backend, None).unwrap();
-    if let MlsMessageBody::PublicMessage(mut plaintext) = update_proposal.mls_message.body {
+    if let MlsMessageOutBody::PublicMessage(mut plaintext) = update_proposal.body {
         plaintext.set_sender(Sender::NewMemberProposal);
         assert!(matches!(
-            bob_group
-                .process_message(backend, plaintext.into())
-                .unwrap_err(),
+            bob_group.process_message(backend, plaintext).unwrap_err(),
             ProcessMessageError::ValidationError(ValidationError::NotAnExternalAddProposal)
         ));
     } else {

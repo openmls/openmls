@@ -2,7 +2,10 @@ use core_group::{proposals::QueuedProposal, staged_commit::StagedCommit};
 
 use crate::{
     framing::mls_content::FramedContentBody,
-    group::{errors::ValidationError, mls_group::errors::ProcessMessageError},
+    group::{
+        errors::{MergeCommitError, ValidationError},
+        mls_group::errors::ProcessMessageError,
+    },
     treesync::node::leaf_node::OpenMlsLeafNode,
 };
 
@@ -27,9 +30,10 @@ impl CoreGroup {
     pub(crate) fn parse_message(
         &mut self,
         backend: &impl OpenMlsCryptoProvider,
-        message: MlsMessageIn,
+        message: impl Into<ProtocolMessage>,
         sender_ratchet_configuration: &SenderRatchetConfiguration,
     ) -> Result<UnverifiedMessage, ValidationError> {
+        let message: ProtocolMessage = message.into();
         // Checks the following semantic validation:
         //  - ValSem002
         //  - ValSem003
@@ -40,8 +44,8 @@ impl CoreGroup {
         // Checks the following semantic validation:
         //  - ValSem006
         //  - ValSem007 MembershipTag presence
-        let decrypted_message = match message.mls_message.body {
-            MlsMessageBody::PublicMessage(public_message) => {
+        let decrypted_message = match message {
+            ProtocolMessage::PublicMessage(public_message) => {
                 // If the message is older than the current epoch, we need to fetch the correct secret tree first.
                 let message_secrets =
                     self.message_secrets_for_epoch(epoch).map_err(|e| match e {
@@ -57,7 +61,7 @@ impl CoreGroup {
                     backend,
                 )?
             }
-            MlsMessageBody::PrivateMessage(ciphertext) => {
+            ProtocolMessage::PrivateMessage(ciphertext) => {
                 // If the message is older than the current epoch, we need to fetch the correct secret tree first
                 DecryptedMessage::from_inbound_ciphertext(
                     ciphertext,
@@ -103,7 +107,6 @@ impl CoreGroup {
     ///  - ValSem102
     ///  - ValSem103
     ///  - ValSem104
-    ///  - ValSem105
     ///  - ValSem106
     ///  - ValSem107
     ///  - ValSem108
@@ -170,7 +173,6 @@ impl CoreGroup {
                         //  - ValSem102
                         //  - ValSem103
                         //  - ValSem104
-                        //  - ValSem105
                         //  - ValSem106
                         //  - ValSem107
                         //  - ValSem108
@@ -286,7 +288,6 @@ impl CoreGroup {
     ///  - ValSem102
     ///  - ValSem103
     ///  - ValSem104
-    ///  - ValSem105
     ///  - ValSem106
     ///  - ValSem107
     ///  - ValSem108
@@ -311,34 +312,36 @@ impl CoreGroup {
     pub(crate) fn process_message(
         &mut self,
         backend: &impl OpenMlsCryptoProvider,
-        message: MlsMessageIn,
+        message: impl Into<ProtocolMessage>,
         sender_ratchet_configuration: &SenderRatchetConfiguration,
         proposal_store: &ProposalStore,
         own_kpbs: &[OpenMlsLeafNode],
     ) -> Result<ProcessedMessage, ProcessMessageError> {
         let unverified_message = self
-            .parse_message(backend, message, sender_ratchet_configuration)
+            .parse_message(backend, message.into(), sender_ratchet_configuration)
             .map_err(ProcessMessageError::from)?;
         self.process_unverified_message(unverified_message, proposal_store, own_kpbs, backend)
     }
 
     /// Merge a [StagedCommit] into the group after inspection
-    pub(crate) fn merge_staged_commit(
+    pub(crate) fn merge_staged_commit<KeyStore: OpenMlsKeyStore>(
         &mut self,
+        backend: &impl OpenMlsCryptoProvider<KeyStoreProvider = KeyStore>,
         staged_commit: StagedCommit,
         proposal_store: &mut ProposalStore,
-    ) {
+    ) -> Result<(), MergeCommitError<KeyStore::Error>> {
         // Save the past epoch
         let past_epoch = self.context().epoch();
         // Get all the full leaves
         let leaves = self.treesync().full_leave_members().collect();
         // Merge the staged commit into the group state and store the secret tree from the
         // previous epoch in the message secrets store.
-        if let Some(message_secrets) = self.merge_commit(staged_commit) {
+        if let Some(message_secrets) = self.merge_commit(backend, staged_commit)? {
             self.message_secrets_store
                 .add(past_epoch, message_secrets, leaves);
         }
         // Empty the proposal store
         proposal_store.empty();
+        Ok(())
     }
 }

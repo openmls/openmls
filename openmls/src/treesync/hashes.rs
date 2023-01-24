@@ -1,7 +1,7 @@
 //! This module contains helper structs and functions related to parent hashing
 //! and tree hashing.
 use openmls_traits::{crypto::OpenMlsCrypto, types::Ciphersuite, OpenMlsCryptoProvider};
-use tls_codec::{Serialize, TlsSerialize, TlsSize, TlsSliceU32, TlsSliceU8, VLByteSlice};
+use tls_codec::{Serialize, TlsSerialize, TlsSize, VLByteSlice};
 
 use crate::{
     binary_tree::array_representation::LeafNodeIndex, ciphersuite::HpkePublicKey,
@@ -12,11 +12,20 @@ use super::{node::parent_node::ParentNode, LeafNode};
 
 /// Helper struct that can be serialized in the course of parent hash
 /// computation.
+///
+/// ```c
+/// // draft-ietf-mls-protocol-17
+/// struct {
+/// HPKEPublicKey encryption_key;
+///     opaque parent_hash<V>;
+///     opaque original_sibling_tree_hash<V>;
+/// } ParentHashInput;
+/// ```
 #[derive(TlsSerialize, TlsSize)]
 pub(super) struct ParentHashInput<'a> {
     public_key: &'a HpkePublicKey,
-    parent_hash: TlsSliceU8<'a, u8>,
-    original_child_resolution: TlsSliceU32<'a, HpkePublicKey>,
+    parent_hash: VLByteSlice<'a>,
+    original_sibling_tree_hash: VLByteSlice<'a>,
 }
 
 impl<'a> ParentHashInput<'a> {
@@ -24,12 +33,12 @@ impl<'a> ParentHashInput<'a> {
     pub(super) fn new(
         public_key: &'a HpkePublicKey,
         parent_hash: &'a [u8],
-        original_child_resolution: &'a [HpkePublicKey],
+        original_sibling_tree_hash: &'a [u8],
     ) -> Self {
         Self {
             public_key,
-            parent_hash: TlsSliceU8(parent_hash),
-            original_child_resolution: TlsSliceU32(original_child_resolution),
+            parent_hash: VLByteSlice(parent_hash),
+            original_sibling_tree_hash: VLByteSlice(original_sibling_tree_hash),
         }
     }
 

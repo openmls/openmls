@@ -5,8 +5,6 @@ use std::collections::HashSet;
 
 use crate::{
     binary_tree::array_representation::LeafNodeIndex,
-    error::LibraryError,
-    extensions::ExtensionType,
     framing::Sender,
     group::errors::ExternalCommitValidationError,
     group::errors::ValidationError,
@@ -15,8 +13,8 @@ use crate::{
 };
 
 use super::{
-    mls_content::ContentType, proposals::ProposalQueue, CoreGroup, Member, MlsMessageIn,
-    ProposalValidationError, VerifiableAuthenticatedContent, WireFormat,
+    mls_content::ContentType, proposals::ProposalQueue, CoreGroup, Member, ProposalValidationError,
+    ProtocolMessage, VerifiableAuthenticatedContent, WireFormat,
 };
 
 impl CoreGroup {
@@ -25,7 +23,10 @@ impl CoreGroup {
     /// Checks the following semantic validation:
     ///  - ValSem002
     ///  - ValSem003
-    pub(crate) fn validate_framing(&self, message: &MlsMessageIn) -> Result<(), ValidationError> {
+    pub(crate) fn validate_framing(
+        &self,
+        message: &ProtocolMessage,
+    ) -> Result<(), ValidationError> {
         // ValSem002
         if message.group_id() != self.group_id() {
             return Err(ValidationError::WrongGroupId);
@@ -102,7 +103,6 @@ impl CoreGroup {
     ///  - ValSem102
     ///  - ValSem103
     ///  - ValSem104
-    ///  - ValSem105
     ///  - ValSem106
     pub(crate) fn validate_add_proposals(
         &self,
@@ -112,7 +112,8 @@ impl CoreGroup {
 
         let mut identity_set = HashSet::new();
         let mut signature_key_set = HashSet::new();
-        let mut public_key_set = HashSet::new();
+        let mut init_key_set = HashSet::new();
+        let mut encryption_key_set = HashSet::new();
         for add_proposal in add_proposals {
             let identity = add_proposal
                 .add_proposal()
@@ -137,14 +138,34 @@ impl CoreGroup {
             if !signature_key_set.insert(signature_key) {
                 return Err(ProposalValidationError::DuplicateSignatureKeyAddProposal);
             }
-            let public_key = add_proposal
+
+            let proposal_init_key = add_proposal
                 .add_proposal()
                 .key_package()
                 .hpke_init_key()
                 .as_slice()
                 .to_vec();
+            let proposal_encryption_key = add_proposal
+                .add_proposal()
+                .key_package()
+                .leaf_node()
+                .encryption_key();
+
+            // ValSem113
+            if proposal_init_key == proposal_encryption_key.as_slice() {
+                return Err(ProposalValidationError::InitEncryptionKeyCollision);
+            }
+
             // ValSem102
-            if !public_key_set.insert(public_key) {
+            if !init_key_set.insert(proposal_init_key) {
+                return Err(ProposalValidationError::DuplicatePublicKeyAddProposal);
+            }
+
+            // ValSem114
+            // Here we check that the encryption keys in the proposal are unique.
+            // Further down we check that the encryption keys in the proposals
+            // are not in the tree yet.
+            if !encryption_key_set.insert(proposal_encryption_key.as_slice().to_vec()) {
                 return Err(ProposalValidationError::DuplicatePublicKeyAddProposal);
             }
 
@@ -180,20 +201,9 @@ impl CoreGroup {
             }
             // If there is a required capabilities extension, check if that one
             // is supported.
-            if let Some(required_capabilities_extension) = self
-                .group_context_extensions()
-                .iter()
-                .find(|&e| e.extension_type() == ExtensionType::RequiredCapabilities)
+            if let Some(required_capabilities) =
+                self.group_context_extensions().required_capabilities()
             {
-                let required_capabilities = required_capabilities_extension
-                    .as_required_capabilities_extension()
-                    .map_err(|_| {
-                        // Mismatches between Extensions and ExtensionTypes should be
-                        // caught when constructing KeyPackages.
-                        ProposalValidationError::LibraryError(LibraryError::custom(
-                            "ExtensionType didn't match extension content.",
-                        ))
-                    })?;
                 // Check if all required capabilities are supported.
                 if !capabilities.supports_required_capabilities(required_capabilities) {
                     log::error!("Tried to commit an Add proposal, where the `Capabilities` of the given `KeyPackage` do not fulfill the `RequiredCapabilities` of the group.");
@@ -205,7 +215,7 @@ impl CoreGroup {
         for Member {
             index,
             identity,
-            encryption_key: _,
+            encryption_key,
             signature_key,
         } in self.treesync().full_leave_members()
         {
@@ -220,14 +230,8 @@ impl CoreGroup {
             if signature_key_set.contains(&signature_key) && !has_remove_proposal {
                 return Err(ProposalValidationError::ExistingSignatureKeyAddProposal);
             }
-            // ValSem105
-            let public_key = self
-                .treesync()
-                .leaf(index)
-                .ok_or(ProposalValidationError::UnknownMember)?
-                .public_key()
-                .as_slice();
-            if public_key_set.contains(public_key) {
+            // ValSem114
+            if encryption_key_set.contains(&encryption_key) {
                 return Err(ProposalValidationError::ExistingPublicKeyAddProposal);
             }
         }

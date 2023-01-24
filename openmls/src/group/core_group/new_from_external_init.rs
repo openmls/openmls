@@ -37,13 +37,7 @@ impl CoreGroup {
         // If we got a ratchet tree extension in the welcome, we enable it for
         // this group. Note that this is not strictly necessary. But there's
         // currently no other mechanism to enable the extension.
-        let extension_tree_option = try_nodes_from_extensions(verifiable_group_info.extensions())
-            .map_err(|e| match e {
-            ExtensionError::DuplicateRatchetTreeExtension => {
-                ExternalCommitError::DuplicateRatchetTreeExtension
-            }
-            _ => LibraryError::custom("Unexpected extension error").into(),
-        })?;
+        let extension_tree_option = try_nodes_from_extensions(verifiable_group_info.extensions());
         let (nodes, enable_ratchet_tree_extension) = match extension_tree_option {
             Some(nodes) => (nodes, true),
             None => match tree_option {
@@ -71,7 +65,11 @@ impl CoreGroup {
                 .credential();
 
             verifiable_group_info
-                .verify(backend, group_info_signer_leaf)
+                .verify(
+                    backend,
+                    group_info_signer_leaf.signature_key(),
+                    ciphersuite.signature_algorithm(),
+                )
                 .map_err(|_| ExternalCommitError::InvalidGroupInfoSignature)?
         };
 
@@ -84,22 +82,11 @@ impl CoreGroup {
         }
 
         // Obtain external_pub from GroupInfo extensions.
-        // TODO(#720): Check for duplicates.
-        let external_pub = {
-            let ext = group_info
-                .extensions()
-                .iter()
-                .find(|ext| matches!(ext, Extension::ExternalPub(_)))
-                .ok_or(ExternalCommitError::MissingExternalPub)?
-                .as_external_pub_extension()
-                .map_err(|_| {
-                    LibraryError::custom(
-                        "We found an `ExternalPub` so `as_external_pub_extension` must not fail.",
-                    )
-                })?;
-
-            ext.external_pub()
-        };
+        let external_pub = group_info
+            .extensions()
+            .external_pub()
+            .ok_or(ExternalCommitError::MissingExternalPub)?
+            .external_pub();
 
         let (init_secret, kem_output) =
             InitSecret::from_group_info(backend, &group_info, external_pub.as_slice())

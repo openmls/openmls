@@ -27,7 +27,10 @@ use crate::{
 
 use super::{
     diff::TreeSyncDiff,
-    node::parent_node::{ParentNode, PlainUpdatePathNode},
+    node::{
+        encryption_keys::{EncryptionKey, EncryptionKeyPair},
+        parent_node::{ParentNode, PlainUpdatePathNode},
+    },
     ApplyUpdatePathError, LeafNode,
 };
 
@@ -93,10 +96,18 @@ impl<'a> TreeSyncDiff<'a> {
         backend: &impl OpenMlsCryptoProvider,
         ciphersuite: Ciphersuite,
         params: DecryptPathParams,
-    ) -> Result<(Vec<ParentNode>, CommitSecret), ApplyUpdatePathError> {
+        owned_keys: &[&EncryptionKeyPair],
+    ) -> Result<(Vec<ParentNode>, Vec<EncryptionKeyPair>, CommitSecret), ApplyUpdatePathError> {
         // ValSem202: Path must be the right length
         let direct_path_length = self.filtered_direct_path(params.sender_leaf_index).len();
         if direct_path_length != params.update_path.len() {
+            // XXX: Rewrite tests to allow for debug asserts.
+            // debug_assert!(
+            //     false,
+            //     "Path length mismatch {} != {}",
+            //     direct_path_length,
+            //     params.update_path.len()
+            // );
             return Err(ApplyUpdatePathError::PathLengthMismatch);
         }
 
@@ -112,7 +123,7 @@ impl<'a> TreeSyncDiff<'a> {
             .ok_or_else(|| LibraryError::custom("Expected to find ciphertext in update path 1"))?;
 
         let (decryption_key, resolution_position) = self
-            .decryption_key(params.sender_leaf_index, params.exclusion_list)
+            .decryption_key(params.sender_leaf_index, params.exclusion_list, owned_keys)
             // TODO #804
             .map_err(|_| LibraryError::custom("Expected sender to be in the tree"))?;
         let ciphertext = update_path_node
@@ -134,7 +145,7 @@ impl<'a> TreeSyncDiff<'a> {
 
         let common_path =
             self.filtered_common_direct_path(self.own_leaf_index(), params.sender_leaf_index);
-        let (derived_path, _plain_update_path, commit_secret) =
+        let (derived_path, _plain_update_path, keypairs, commit_secret) =
             ParentNode::derive_path(backend, ciphersuite, path_secret, common_path)?;
         // We now check that the public keys in the update path and in the
         // derived path match up.
@@ -165,7 +176,7 @@ impl<'a> TreeSyncDiff<'a> {
         // The output should have the same length as the input.
         debug_assert_eq!(_update_path_len, path.len());
 
-        Ok((path, commit_secret))
+        Ok((path, keypairs, commit_secret))
     }
 }
 
@@ -189,7 +200,7 @@ pub(crate) struct DecryptPathParams<'a> {
     Debug, Eq, PartialEq, Clone, Serialize, Deserialize, TlsDeserialize, TlsSerialize, TlsSize,
 )]
 pub struct UpdatePathNode {
-    pub(super) public_key: HpkePublicKey,
+    pub(super) public_key: EncryptionKey,
     pub(super) encrypted_path_secrets: Vec<HpkeCiphertext>,
 }
 
@@ -201,7 +212,7 @@ impl UpdatePathNode {
 
     /// Return the `public_key`.
     fn public_key(&self) -> &HpkePublicKey {
-        &self.public_key
+        self.public_key.key()
     }
 
     /// Flip the last byte of every `encrypted_path_secret` in this node.
@@ -235,7 +246,7 @@ impl UpdatePathNode {
             .expect("An unexpected error occurred.");
         last_bits ^= 0xff;
         new_pk_serialized.push(last_bits);
-        self.public_key = HpkePublicKey::tls_deserialize(&mut new_pk_serialized.as_slice())
+        self.public_key = EncryptionKey::tls_deserialize(&mut new_pk_serialized.as_slice())
             .expect("error deserializing pk");
     }
 }

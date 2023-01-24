@@ -1,14 +1,17 @@
 use openmls_traits::key_store::{FromKeyStoreValue, OpenMlsKeyStore, ToKeyStoreValue};
 use std::{collections::HashMap, sync::RwLock};
 
+type EpochStoreIndex = (Vec<u8>, Vec<u8>, u64); // Identity, GroupId and GroupEpoch
+
 #[derive(Debug, Default)]
 pub struct MemoryKeyStore {
     values: RwLock<HashMap<Vec<u8>, Vec<u8>>>,
+    epoch_values: RwLock<HashMap<EpochStoreIndex, Vec<Vec<u8>>>>,
 }
 
 impl OpenMlsKeyStore for MemoryKeyStore {
     /// The error type returned by the [`OpenMlsKeyStore`].
-    type Error = Error;
+    type Error = MemoryKeyStoreError;
 
     /// Store a value `v` that implements the [`KeyStoreValue`] trait for
     /// serialization for ID `k`.
@@ -17,7 +20,7 @@ impl OpenMlsKeyStore for MemoryKeyStore {
     fn store<V: ToKeyStoreValue>(&self, k: &[u8], v: &V) -> Result<(), Self::Error> {
         let value = v
             .to_key_store_value()
-            .map_err(|_| Error::SerializationError)?;
+            .map_err(|_| MemoryKeyStoreError::SerializationError)?;
         // We unwrap here, because this is the only function claiming a write
         // lock on `credential_bundles`. It only holds the lock very briefly and
         // should not panic during that period.
@@ -51,11 +54,61 @@ impl OpenMlsKeyStore for MemoryKeyStore {
         values.remove(k);
         Ok(())
     }
+
+    fn read_epoch_keys<V: FromKeyStoreValue>(
+        &self,
+        identity: &[u8],
+        group_id: &[u8],
+        epoch: u64,
+    ) -> Vec<V> {
+        let epoch_store = self.epoch_values.read().unwrap();
+        if let Some(values) = epoch_store.get(&(identity.to_vec(), group_id.to_vec(), epoch)) {
+            values
+                .iter()
+                .map(|value| V::from_key_store_value(value))
+                .collect::<Result<Vec<V>, V::Error>>()
+                .unwrap_or_default()
+        } else {
+            vec![]
+        }
+    }
+
+    fn delete_epoch_keys(
+        &self,
+        identity: &[u8],
+        group_id: &[u8],
+        epoch: u64,
+    ) -> Result<(), Self::Error> {
+        let mut epoch_store = self.epoch_values.write().unwrap();
+        epoch_store.remove(&(identity.to_vec(), group_id.to_vec(), epoch));
+        Ok(())
+    }
+
+    fn store_epoch_keys<V: ToKeyStoreValue>(
+        &self,
+        identity: &[u8],
+        group_id: &[u8],
+        epoch: u64,
+        encryption_keys: &[V],
+    ) -> Result<(), Self::Error> {
+        let mut epoch_store = self.epoch_values.write().unwrap();
+        epoch_store.insert(
+            (identity.to_vec(), group_id.to_vec(), epoch),
+            encryption_keys
+                .iter()
+                .map(|bytes| {
+                    V::to_key_store_value(bytes)
+                        .map_err(|_| MemoryKeyStoreError::SerializationError)
+                })
+                .collect::<Result<Vec<Vec<u8>>, Self::Error>>()?,
+        );
+        Ok(())
+    }
 }
 
 /// Errors thrown by the key store.
 #[derive(thiserror::Error, Debug, Copy, Clone, PartialEq, Eq)]
-pub enum Error {
+pub enum MemoryKeyStoreError {
     #[error("The key store does not allow storing serialized values.")]
     UnsupportedValueTypeBytes,
     #[error("Updating is not supported by this key store.")]

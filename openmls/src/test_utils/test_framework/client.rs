@@ -16,11 +16,11 @@ use crate::{
     ciphersuite::hash_ref::KeyPackageRef,
     credentials::*,
     extensions::*,
-    framing::{mls_content::ContentType, MlsMessageIn, *},
+    framing::{mls_content::ContentType, ProtocolMessage, *},
     group::{config::CryptoConfig, *},
     key_packages::*,
     messages::*,
-    treesync::node::Node,
+    treesync::{node::Node, LeafNode},
     versions::ProtocolVersion,
 };
 
@@ -114,7 +114,11 @@ impl Client {
                 &credential_bundle,
             )
             .unwrap();
-        let group_state = MlsGroup::new(&self.crypto, &mls_group_config, key_package)?;
+        let group_state = MlsGroup::new(
+            &self.crypto,
+            &mls_group_config,
+            key_package.leaf_node().signature_key(),
+        )?;
         let group_id = group_state.group_id().clone();
         self.groups
             .write()
@@ -147,7 +151,7 @@ impl Client {
     /// messages.
     pub fn receive_messages_for_group(
         &self,
-        message: &MlsMessageIn,
+        message: &ProtocolMessage,
         sender_id: &[u8],
     ) -> Result<(), ClientError> {
         let mut group_states = self.groups.write().expect("An unexpected error occurred.");
@@ -156,7 +160,7 @@ impl Client {
             .get_mut(group_id)
             .ok_or(ClientError::NoMatchingGroup)?;
         if sender_id == self.identity && message.content_type() == ContentType::Commit {
-            group_state.merge_pending_commit()?
+            group_state.merge_pending_commit(&self.crypto)?
         } else {
             if message.content_type() == ContentType::Commit {
                 // Clear any potential pending commits.
@@ -174,7 +178,7 @@ impl Client {
                     group_state.store_pending_proposal(*staged_proposal);
                 }
                 ProcessedMessageContent::StagedCommitMessage(staged_commit) => {
-                    group_state.merge_staged_commit(*staged_commit);
+                    group_state.merge_staged_commit(&self.crypto, *staged_commit)?;
                 }
             }
         }
@@ -197,24 +201,30 @@ impl Client {
     /// Optionally, a `HpkeKeyPair` can be provided, which the client will
     /// update their leaf with. Returns an error if no group with the given
     /// group id can be found or if an error occurs while creating the update.
+    #[allow(clippy::type_complexity)]
     pub fn self_update(
         &self,
         action_type: ActionType,
         group_id: &GroupId,
-        key_package: Option<KeyPackage>,
-    ) -> Result<(MlsMessageOut, Option<Welcome>), ClientError> {
+        leaf_node: Option<LeafNode>,
+    ) -> Result<(MlsMessageOut, Option<Welcome>, Option<GroupInfo>), ClientError> {
         let mut groups = self.groups.write().expect("An unexpected error occurred.");
         let group = groups
             .get_mut(group_id)
             .ok_or(ClientError::NoMatchingGroup)?;
-        let action_results = match action_type {
-            ActionType::Commit => group.self_update(
-                &self.crypto,
-                key_package.map(|kp| kp.hpke_init_key().clone()),
-            )?,
-            ActionType::Proposal => (group.propose_self_update(&self.crypto, key_package)?, None),
+        let (msg, welcome_option, group_info) = match action_type {
+            ActionType::Commit => group.self_update(&self.crypto)?,
+            ActionType::Proposal => (
+                group.propose_self_update(&self.crypto, leaf_node)?,
+                None,
+                None,
+            ),
         };
-        Ok(action_results)
+        Ok((
+            msg,
+            welcome_option.map(|w| w.into_welcome().expect("Unexpected message type.")),
+            group_info,
+        ))
     }
 
     /// Have the client either propose or commit (depending on the
@@ -222,20 +232,30 @@ impl Client {
     /// group with the given group id. Returns an error if no group with the
     /// given group id can be found or if an error occurs while performing the
     /// add operation.
+    #[allow(clippy::type_complexity)]
     pub fn add_members(
         &self,
         action_type: ActionType,
         group_id: &GroupId,
         key_packages: &[KeyPackage],
-    ) -> Result<(Vec<MlsMessageOut>, Option<Welcome>), ClientError> {
+    ) -> Result<(Vec<MlsMessageOut>, Option<Welcome>, Option<GroupInfo>), ClientError> {
         let mut groups = self.groups.write().expect("An unexpected error occurred.");
         let group = groups
             .get_mut(group_id)
             .ok_or(ClientError::NoMatchingGroup)?;
         let action_results = match action_type {
             ActionType::Commit => {
-                let (messages, welcome) = group.add_members(&self.crypto, key_packages)?;
-                (vec![messages], Some(welcome))
+                let (messages, welcome_message, group_info) =
+                    group.add_members(&self.crypto, key_packages)?;
+                (
+                    vec![messages],
+                    Some(
+                        welcome_message
+                            .into_welcome()
+                            .expect("Unexpected message type."),
+                    ),
+                    group_info,
+                )
             }
             ActionType::Proposal => {
                 let mut messages = Vec::new();
@@ -243,7 +263,7 @@ impl Client {
                     let message = group.propose_add_member(&self.crypto, key_package)?;
                     messages.push(message);
                 }
-                (messages, None)
+                (messages, None, None)
             }
         };
         Ok(action_results)
@@ -254,20 +274,26 @@ impl Client {
     /// group with the given group id. Returns an error if no group with the
     /// given group id can be found or if an error occurs while performing the
     /// remove operation.
+    #[allow(clippy::type_complexity)]
     pub fn remove_members(
         &self,
         action_type: ActionType,
         group_id: &GroupId,
         targets: &[LeafNodeIndex],
-    ) -> Result<(Vec<MlsMessageOut>, Option<Welcome>), ClientError> {
+    ) -> Result<(Vec<MlsMessageOut>, Option<Welcome>, Option<GroupInfo>), ClientError> {
         let mut groups = self.groups.write().expect("An unexpected error occurred.");
         let group = groups
             .get_mut(group_id)
             .ok_or(ClientError::NoMatchingGroup)?;
         let action_results = match action_type {
             ActionType::Commit => {
-                let (message, welcome_option) = group.remove_members(&self.crypto, targets)?;
-                (vec![message], welcome_option)
+                let (message, welcome_option, group_info) =
+                    group.remove_members(&self.crypto, targets)?;
+                (
+                    vec![message],
+                    welcome_option.map(|w| w.into_welcome().expect("Unexpected message type.")),
+                    group_info,
+                )
             }
             ActionType::Proposal => {
                 let mut messages = Vec::new();
@@ -275,7 +301,7 @@ impl Client {
                     let message = group.propose_remove_member(&self.crypto, *target)?;
                     messages.push(message);
                 }
-                (messages, None)
+                (messages, None, None)
             }
         };
         Ok(action_results)

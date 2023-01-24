@@ -12,7 +12,7 @@ use crate::{
     ciphersuite::signable::Signable,
     credentials::*,
     framing::*,
-    group::{errors::*, *},
+    group::{config::CryptoConfig, errors::*, *},
     messages::proposals::*,
     schedule::psk::*,
     treesync::errors::ApplyUpdatePathError,
@@ -60,35 +60,47 @@ fn validation_test_setup(
     .expect("An unexpected error occurred.");
 
     // Generate KeyPackages
-    let alice_key_package =
-        generate_key_package(&[ciphersuite], &alice_credential, vec![], backend)
-            .expect("An unexpected error occurred.");
+    let bob_key_package = generate_key_package(
+        &[ciphersuite],
+        &bob_credential,
+        Extensions::empty(),
+        backend,
+    )
+    .expect("An unexpected error occurred.");
 
-    let bob_key_package = generate_key_package(&[ciphersuite], &bob_credential, vec![], backend)
-        .expect("An unexpected error occurred.");
-
-    let charlie_key_package =
-        generate_key_package(&[ciphersuite], &charlie_credential, vec![], backend)
-            .expect("An unexpected error occurred.");
+    let charlie_key_package = generate_key_package(
+        &[ciphersuite],
+        &charlie_credential,
+        Extensions::empty(),
+        backend,
+    )
+    .expect("An unexpected error occurred.");
 
     // Define the MlsGroup configuration
 
     let mls_group_config = MlsGroupConfig::builder()
         .wire_format_policy(wire_format_policy)
+        .crypto_config(CryptoConfig::with_default_version(ciphersuite))
         .build();
 
     // === Alice creates a group ===
-    let mut alice_group =
-        MlsGroup::new_with_group_id(backend, &mls_group_config, group_id, alice_key_package)
-            .expect("An unexpected error occurred.");
+    let mut alice_group = MlsGroup::new_with_group_id(
+        backend,
+        &mls_group_config,
+        group_id,
+        alice_credential.signature_key(),
+    )
+    .expect("An unexpected error occurred.");
 
-    let (_message, welcome) = alice_group
+    let (_message, welcome, _group_info) = alice_group
         .add_members(backend, &[bob_key_package, charlie_key_package])
         .expect("error adding Bob to group");
 
     alice_group
-        .merge_pending_commit()
+        .merge_pending_commit(backend)
         .expect("error merging pending commit");
+
+    let welcome = welcome.into_welcome().expect("Unexpected message type.");
 
     let bob_group = MlsGroup::new_from_welcome(
         backend,
@@ -151,7 +163,7 @@ fn test_valsem200(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
 
     // Now let's stick it in the commit.
     let serialized_message = alice_group
-        .self_update(backend, None)
+        .self_update(backend)
         .expect("Error creating self-update")
         .tls_serialize_detached()
         .expect("Could not serialize message.");
@@ -176,7 +188,7 @@ fn test_valsem200(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
 
     plaintext.set_content(FramedContentBody::Commit(commit_content));
 
-    let alice_credential_bundle = backend
+    let alice_credential_bundle: CredentialBundle = backend
         .key_store()
         .read(
             &alice_group
@@ -197,7 +209,7 @@ fn test_valsem200(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
     let tbs: FramedContentTbs = plaintext.into();
     let mut signed_plaintext: AuthenticatedContent = tbs
         .with_context(serialized_context)
-        .sign(backend, &alice_credential_bundle)
+        .sign(backend, alice_credential_bundle.signature_private_key())
         .expect("Error signing modified payload.");
 
     // Set old confirmation tag
@@ -217,7 +229,7 @@ fn test_valsem200(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
         .expect("error refreshing membership tag");
 
     // Have Bob try to process the commit.
-    let message_in = MlsMessageIn::from(signed_plaintext);
+    let message_in = ProtocolMessage::from(signed_plaintext);
 
     let err = bob_group
         .process_message(backend, message_in)
@@ -230,7 +242,7 @@ fn test_valsem200(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
 
     // Positive case
     bob_group
-        .process_message(backend, MlsMessageIn::from(original_plaintext))
+        .process_message(backend, ProtocolMessage::from(original_plaintext))
         .expect("Unexpected error.");
 }
 
@@ -263,8 +275,13 @@ fn test_valsem201(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
             backend,
         )
         .unwrap();
-        let dave_key_package =
-            generate_key_package(&[ciphersuite], &dave_credential, vec![], backend).unwrap();
+        let dave_key_package = generate_key_package(
+            &[ciphersuite],
+            &dave_credential,
+            Extensions::empty(),
+            backend,
+        )
+        .unwrap();
 
         queued(Proposal::Add(AddProposal {
             key_package: dave_key_package,
@@ -304,7 +321,9 @@ fn test_valsem201(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
 
     let gce_proposal = || {
         queued(Proposal::GroupContextExtensions(
-            GroupContextExtensionProposal::new(alice_group.group().group_context_extensions()),
+            GroupContextExtensionProposal::new(
+                alice_group.group().group_context_extensions().clone(),
+            ),
         ))
     };
 
@@ -374,7 +393,7 @@ fn test_valsem201(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
         }
 
         // Positive case
-        let process_message_result = bob_group.process_message(backend, commit.into());
+        let process_message_result = bob_group.process_message(backend, commit);
         assert!(
             process_message_result.is_ok(),
             "{:?}",
@@ -392,7 +411,7 @@ fn erase_path(
     backend: &impl OpenMlsCryptoProvider,
     mut plaintext: PublicMessage,
     alice_group: &MlsGroup,
-) -> MlsMessageIn {
+) -> ProtocolMessage {
     // Keep the original plaintext for positive test later.
     let original_plaintext = plaintext.clone();
 
@@ -425,7 +444,7 @@ fn test_valsem202(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
 
     // Create the self-update
     let serialized_update = alice_group
-        .self_update(backend, None)
+        .self_update(backend)
         .expect("Error creating self-update")
         .tls_serialize_detached()
         .expect("Could not serialize message.");
@@ -451,7 +470,7 @@ fn test_valsem202(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
 
     let plaintext = resign_message(&alice_group, plaintext, &original_plaintext, backend);
 
-    let update_message_in = MlsMessageIn::from(plaintext);
+    let update_message_in = ProtocolMessage::from(plaintext);
 
     let err = bob_group
         .process_message(backend, update_message_in)
@@ -489,7 +508,7 @@ fn test_valsem203(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
 
     // Create the self-update
     let serialized_update = alice_group
-        .self_update(backend, None)
+        .self_update(backend)
         .expect("Error creating self-update")
         .tls_serialize_detached()
         .expect("Could not serialize message.");
@@ -517,7 +536,7 @@ fn test_valsem203(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
 
     let plaintext = resign_message(&alice_group, plaintext, &original_plaintext, backend);
 
-    let update_message_in = MlsMessageIn::from(plaintext);
+    let update_message_in = ProtocolMessage::from(plaintext);
 
     let err = bob_group
         .process_message(backend, update_message_in)
@@ -555,7 +574,7 @@ fn test_valsem204(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
 
     // Create the self-update
     let serialized_update = alice_group
-        .self_update(backend, None)
+        .self_update(backend)
         .expect("Error creating self-update")
         .tls_serialize_detached()
         .expect("Could not serialize message.");
@@ -583,7 +602,7 @@ fn test_valsem204(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
 
     let plaintext = resign_message(&alice_group, plaintext, &original_plaintext, backend);
 
-    let update_message_in = MlsMessageIn::from(plaintext);
+    let update_message_in = ProtocolMessage::from(plaintext);
 
     let err = bob_group
         .process_message(backend, update_message_in)
@@ -621,7 +640,7 @@ fn test_valsem205(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
 
     // Create the self-update
     let serialized_update = alice_group
-        .self_update(backend, None)
+        .self_update(backend)
         .expect("Error creating self-update")
         .tls_serialize_detached()
         .expect("Could not serialize message.");
@@ -656,7 +675,7 @@ fn test_valsem205(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
         .set_membership_tag(backend, membership_key)
         .expect("error refreshing membership tag");
 
-    let update_message_in = MlsMessageIn::from(plaintext);
+    let update_message_in = ProtocolMessage::from(plaintext);
 
     let err = bob_group
         .process_message(backend, update_message_in)
@@ -669,6 +688,68 @@ fn test_valsem205(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
 
     // Positive case
     bob_group
-        .process_message(backend, MlsMessageIn::from(original_plaintext))
+        .process_message(backend, ProtocolMessage::from(original_plaintext))
         .expect("Unexpected error.");
+}
+
+// this ensures that a member can process commits not containing all the stored proposals
+#[apply(ciphersuites_and_backends)]
+fn test_partial_proposal_commit(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
+    // Test with PublicMessage
+    let CommitValidationTestSetup {
+        mut alice_group,
+        mut bob_group,
+        ..
+    } = validation_test_setup(PURE_PLAINTEXT_WIRE_FORMAT_POLICY, ciphersuite, backend);
+
+    let charlie_index = alice_group
+        .members()
+        .find(|m| m.identity == b"Charlie")
+        .unwrap()
+        .index;
+
+    // Create first proposal in Alice's group
+    let proposal_1: MlsMessageIn = alice_group
+        .propose_remove_member(backend, charlie_index)
+        .unwrap()
+        .into();
+    let proposal_1 = bob_group.process_message(backend, proposal_1).unwrap();
+    match proposal_1.into_content() {
+        ProcessedMessageContent::ProposalMessage(p) => bob_group.store_pending_proposal(*p),
+        _ => unreachable!(),
+    }
+
+    // Create second proposal in Alice's group
+    let proposal_2: MlsMessageIn = alice_group
+        .propose_self_update(backend, None)
+        .unwrap()
+        .into();
+    let proposal_2 = bob_group.process_message(backend, proposal_2).unwrap();
+    match proposal_2.into_content() {
+        ProcessedMessageContent::ProposalMessage(p) => bob_group.store_pending_proposal(*p),
+        _ => unreachable!(),
+    }
+
+    // Alice creates a commit with only a subset of the epoch's proposals. Bob should still be able to process it.
+    let remaining_proposal = alice_group
+        .proposal_store
+        .proposals()
+        .next()
+        .cloned()
+        .unwrap();
+    alice_group.proposal_store.empty();
+    alice_group.proposal_store.add(remaining_proposal);
+    let (commit, _, _) = alice_group.commit_to_pending_proposals(backend).unwrap();
+    // Alice herself should be able to merge the commit
+    alice_group
+        .merge_pending_commit(backend)
+        .expect("Commits with partial proposals are not supported");
+
+    // Bob should be able to process the commit
+    bob_group
+        .process_message(backend, commit.into_protocol_message().unwrap())
+        .expect("Commits with partial proposals are not supported");
+    bob_group
+        .merge_pending_commit(backend)
+        .expect("Commits with partial proposals are not supported");
 }

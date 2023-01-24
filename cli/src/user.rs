@@ -1,6 +1,6 @@
 use std::{cell::RefCell, collections::HashMap};
 
-use ds_lib::{ClientKeyPackages, GroupMessage, Message};
+use ds_lib::{ClientKeyPackages, GroupMessage};
 use openmls::prelude::*;
 use openmls_rust_crypto::OpenMlsRustCrypto;
 use openmls_traits::OpenMlsCryptoProvider;
@@ -139,64 +139,75 @@ impl User {
 
         let mut messages_out = Vec::new();
 
+        let mut process_protocol_message = |message: ProtocolMessage| {
+            let mut groups = self.groups.borrow_mut();
+
+            let group = match groups.get_mut(message.group_id().as_slice()) {
+                Some(g) => g,
+                None => {
+                    log::error!(
+                        "Error getting group {:?} for a message. Dropping message.",
+                        message.group_id()
+                    );
+                    return Err("error");
+                }
+            };
+            let mut mls_group = group.mls_group.borrow_mut();
+
+            let processed_message = match mls_group.process_message(&self.crypto, message) {
+                Ok(msg) => msg,
+                Err(e) => {
+                    log::error!(
+                        "Error processing unverified message: {:?} -  Dropping message.",
+                        e
+                    );
+                    return Err("error");
+                }
+            };
+
+            match processed_message.into_content() {
+                ProcessedMessageContent::ApplicationMessage(application_message) => {
+                    let application_message =
+                        String::from_utf8(application_message.into_bytes()).unwrap();
+                    if group_name.is_none() || group_name.clone().unwrap() == group.group_name {
+                        messages_out.push(application_message.clone());
+                    }
+                    group.conversation.add(application_message);
+                }
+                ProcessedMessageContent::ProposalMessage(_proposal_ptr) => {
+                    // intentionally left blank.
+                }
+                ProcessedMessageContent::ExternalJoinProposalMessage(_external_proposal_ptr) => {
+                    // intentionally left blank.
+                }
+                ProcessedMessageContent::StagedCommitMessage(commit_ptr) => {
+                    mls_group
+                        .merge_staged_commit(&self.crypto, *commit_ptr)
+                        .map_err(|_| "error")?;
+                }
+            }
+            Ok(())
+        };
+
         // Go through the list of messages and process or store them.
         for message in self.backend.recv_msgs(self)?.drain(..) {
-            match message {
-                Message::Welcome(welcome) => {
+            match message.extract() {
+                MlsMessageInBody::Welcome(welcome) => {
                     // Join the group. (Later we should ask the user to
                     // approve first ...)
                     self.join_group(welcome)?;
                 }
-                Message::MlsMessage(message) => {
-                    let mut groups = self.groups.borrow_mut();
-
-                    let group = match groups.get_mut(message.group_id().as_slice()) {
-                        Some(g) => g,
-                        None => {
-                            log::error!(
-                                "Error getting group {:?} for a message. Dropping message.",
-                                message.group_id()
-                            );
-                            continue;
-                        }
-                    };
-                    let mut mls_group = group.mls_group.borrow_mut();
-
-                    let processed_message = match mls_group.process_message(&self.crypto, message) {
-                        Ok(msg) => msg,
-                        Err(e) => {
-                            log::error!(
-                                "Error processing unverified message: {:?} -  Dropping message.",
-                                e
-                            );
-                            continue;
-                        }
-                    };
-
-                    match processed_message.into_content() {
-                        ProcessedMessageContent::ApplicationMessage(application_message) => {
-                            let application_message =
-                                String::from_utf8(application_message.into_bytes()).unwrap();
-                            if group_name.is_none()
-                                || group_name.clone().unwrap() == group.group_name
-                            {
-                                messages_out.push(application_message.clone());
-                            }
-                            group.conversation.add(application_message);
-                        }
-                        ProcessedMessageContent::ProposalMessage(_proposal_ptr) => {
-                            // intentionally left blank.
-                        }
-                        ProcessedMessageContent::ExternalJoinProposalMessage(
-                            _external_proposal_ptr,
-                        ) => {
-                            // intentionally left blank.
-                        }
-                        ProcessedMessageContent::StagedCommitMessage(commit_ptr) => {
-                            mls_group.merge_staged_commit(*commit_ptr);
-                        }
+                MlsMessageInBody::PrivateMessage(message) => {
+                    if process_protocol_message(message.into()).is_err() {
+                        continue;
                     }
                 }
+                MlsMessageInBody::PublicMessage(message) => {
+                    if process_protocol_message(message.into()).is_err() {
+                        continue;
+                    }
+                }
+                _ => panic!("Unsupported message type"),
             }
         }
         log::trace!("done with messages ...");
@@ -241,7 +252,7 @@ impl User {
             &self.crypto,
             &group_config,
             GroupId::from_slice(group_id),
-            kp,
+            kp.leaf_node().signature_key(),
         )
         .expect("Failed to create MlsGroup");
         mls_group.set_aad(group_aad.as_slice());
@@ -285,7 +296,7 @@ impl User {
             None => return Err(format!("No group with name {} known.", group)),
         };
 
-        let (out_messages, welcome) = group
+        let (out_messages, welcome, _group_info) = group
             .mls_group
             .borrow_mut()
             .add_members(&self.crypto, &[joiner_key_package])
@@ -295,7 +306,7 @@ impl User {
         group
             .mls_group
             .borrow_mut()
-            .merge_pending_commit()
+            .merge_pending_commit(&self.crypto)
             .expect("error merging pending commit");
 
         // Second, send Welcome to the joiner.

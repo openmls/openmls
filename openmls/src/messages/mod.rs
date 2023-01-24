@@ -11,7 +11,10 @@ use crate::{
     extensions::*,
     group::*,
     schedule::{psk::PreSharedKeyId, JoinerSecret},
-    treesync::treekem::UpdatePath,
+    treesync::{
+        node::encryption_keys::{EncryptionKeyPair, EncryptionPrivateKey},
+        treekem::UpdatePath,
+    },
     versions::ProtocolVersion,
 };
 use openmls_traits::{
@@ -34,8 +37,6 @@ pub mod proposals;
 // Tests
 #[cfg(test)]
 mod tests;
-#[cfg(test)]
-use crate::credentials::CredentialBundle;
 #[cfg(any(feature = "test-utils", test))]
 use crate::schedule::psk::{ExternalPsk, Psk};
 
@@ -187,10 +188,10 @@ pub struct ConfirmationTag(pub(crate) Mac);
 ///     uint32 signer;
 /// } GroupInfoTBS;
 /// ```
-#[derive(Clone, TlsDeserialize, TlsSerialize, TlsSize)]
+#[derive(Debug, PartialEq, Clone, TlsDeserialize, TlsSerialize, TlsSize)]
 pub(crate) struct GroupInfoTBS {
     group_context: GroupContext,
-    extensions: Vec<Extension>,
+    extensions: Extensions,
     confirmation_tag: ConfirmationTag,
     signer: LeafNodeIndex,
 }
@@ -199,13 +200,13 @@ impl GroupInfoTBS {
     /// Create a new to-be-signed group info.
     pub(crate) fn new(
         group_context: GroupContext,
-        extensions: &[Extension],
+        extensions: Extensions,
         confirmation_tag: ConfirmationTag,
         signer: LeafNodeIndex,
     ) -> Self {
         Self {
             group_context,
-            extensions: extensions.into(),
+            extensions,
             confirmation_tag,
             signer,
         }
@@ -242,6 +243,8 @@ impl Signable for GroupInfoTBS {
 ///     opaque signature<V>;
 /// } GroupInfo;
 /// ```
+#[derive(Debug, PartialEq, Clone)]
+#[cfg_attr(feature = "test-utils", derive(TlsDeserialize))]
 pub struct GroupInfo {
     payload: GroupInfoTBS,
     signature: Signature,
@@ -249,19 +252,13 @@ pub struct GroupInfo {
 
 impl GroupInfo {
     /// Returns the group context.
-    pub(crate) fn group_context(&self) -> &GroupContext {
+    pub fn group_context(&self) -> &GroupContext {
         &self.payload.group_context
     }
 
     /// Returns the extensions.
-    pub(crate) fn extensions(&self) -> &[Extension] {
-        self.payload.extensions.as_slice()
-    }
-
-    /// Set the extensions.
-    #[cfg(test)]
-    pub(crate) fn set_extensions(&mut self, extensions: Vec<Extension>) {
-        self.payload.extensions = extensions;
+    pub fn extensions(&self) -> &Extensions {
+        &self.payload.extensions
     }
 
     /// Returns the confirmation tag.
@@ -269,22 +266,7 @@ impl GroupInfo {
         &self.payload.confirmation_tag
     }
 
-    /// Returns the signer.
-    pub(crate) fn signer(&self) -> LeafNodeIndex {
-        self.payload.signer
-    }
-
-    /// Re-sign the group info.
-    #[cfg(test)]
-    pub(crate) fn re_sign(
-        self,
-        credential_bundle: &CredentialBundle,
-        backend: &impl OpenMlsCryptoProvider,
-    ) -> Result<Self, LibraryError> {
-        self.payload.sign(backend, credential_bundle)
-    }
-
-    #[cfg(test)]
+    #[cfg(any(feature = "test-utils", test))]
     pub(crate) fn into_verifiable_group_info(self) -> VerifiableGroupInfo {
         VerifiableGroupInfo {
             payload: GroupInfoTBS {
@@ -295,20 +277,6 @@ impl GroupInfo {
             },
             signature: self.signature,
         }
-    }
-}
-
-impl Verifiable for GroupInfo {
-    fn unsigned_payload(&self) -> Result<Vec<u8>, tls_codec::Error> {
-        self.payload.unsigned_payload()
-    }
-
-    fn signature(&self) -> &Signature {
-        &self.signature
-    }
-
-    fn label(&self) -> &str {
-        SIGNATURE_GROUP_INFO_LABEL
     }
 }
 
@@ -324,7 +292,7 @@ impl SignedStruct<GroupInfoTBS> for GroupInfo {
 /// [`CredentialBundle`](crate::credentials::CredentialBundle) of the signer. When receiving a
 /// serialized group info, it can only be deserialized into a [`VerifiableGroupInfo`], which can
 /// then be turned into a group info as described above.
-#[derive(Clone, TlsDeserialize, TlsSerialize, TlsSize)]
+#[derive(Debug, PartialEq, Clone, TlsDeserialize, TlsSerialize, TlsSize)]
 pub struct VerifiableGroupInfo {
     payload: GroupInfoTBS,
     signature: Signature,
@@ -348,14 +316,24 @@ impl VerifiableGroupInfo {
     /// Get (unverified) extensions of the verifiable group info.
     ///
     /// Note: This method should only be used when necessary to verify the group info signature.
-    pub(crate) fn extensions(&self) -> &[Extension] {
-        self.payload.extensions.as_slice()
+    pub(crate) fn extensions(&self) -> &Extensions {
+        &self.payload.extensions
     }
 
     /// Break the signature for testing purposes.
     #[cfg(test)]
     pub(crate) fn break_signature(&mut self) {
         self.signature.modify(b"");
+    }
+}
+
+#[cfg(any(feature = "test-utils", test))]
+impl From<VerifiableGroupInfo> for GroupInfo {
+    fn from(vgi: VerifiableGroupInfo) -> Self {
+        GroupInfo {
+            payload: vgi.payload,
+            signature: vgi.signature,
+        }
     }
 }
 
@@ -416,7 +394,7 @@ impl PathSecret {
         &self,
         backend: &impl OpenMlsCryptoProvider,
         ciphersuite: Ciphersuite,
-    ) -> Result<(HpkePublicKey, HpkePrivateKey), LibraryError> {
+    ) -> Result<EncryptionKeyPair, LibraryError> {
         let node_secret = self
             .path_secret
             .kdf_expand_label(backend, "node", &[], ciphersuite.hash_length())
@@ -428,7 +406,8 @@ impl PathSecret {
         Ok((
             HpkePublicKey::from(key_pair.public),
             HpkePrivateKey::from(key_pair.private),
-        ))
+        )
+            .into())
     }
 
     /// Derives a path secret.
@@ -478,18 +457,12 @@ impl PathSecret {
         ciphersuite: Ciphersuite,
         version: ProtocolVersion,
         ciphertext: &HpkeCiphertext,
-        private_key: &HpkePrivateKey,
+        private_key: &EncryptionPrivateKey,
         group_context: &[u8],
     ) -> Result<PathSecret, PathSecretError> {
         // ValSem203: Path secrets must decrypt correctly
-        let secret_bytes = backend.crypto().hpke_open(
-            ciphersuite.hpke_config(),
-            ciphertext,
-            private_key.as_slice(),
-            group_context,
-            &[],
-        )?;
-        let path_secret = Secret::from_slice(&secret_bytes, version, ciphersuite);
+        let path_secret =
+            private_key.decrypt(backend, ciphersuite, version, ciphertext, group_context)?;
         Ok(Self { path_secret })
     }
 }

@@ -44,13 +44,13 @@ pub(crate) struct MembershipTag(pub(crate) Mac);
 /// } PublicMessage;
 /// ```
 ///
-/// [`PublicMessage`] differs slightly from the struct shown above in that it
-/// contains an [`FramedContentTbs`] struct rather than [`FramedContent`]. The
-/// extra metadata that [`FramedContentTbs`] holds helps in processing this
-/// message later. The extra data is accounted for (i.e. ignored) in the
-/// serialized/deserialization functions.
+// [`PublicMessage`] differs slightly from the struct shown above in that it
+// contains a [`FramedContentTbs`] struct rather than [`FramedContent`]. The
+// extra metadata that [`FramedContentTbs`] holds helps in processing this
+// message later. The extra data is accounted for (i.e. ignored) in the
+// serialized/deserialization functions.
 #[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
-pub(crate) struct PublicMessage {
+pub struct PublicMessage {
     content: FramedContentTbs,
     auth: FramedContentAuthData,
     membership_tag: Option<MembershipTag>,
@@ -66,7 +66,7 @@ impl PublicMessage {
         self.membership_tag = None;
     }
 
-    pub fn set_content(&mut self, content: FramedContentBody) {
+    pub(crate) fn set_content(&mut self, content: FramedContentBody) {
         self.content.content.body = content;
     }
 
@@ -74,7 +74,7 @@ impl PublicMessage {
         self.content.content.epoch = epoch.into();
     }
 
-    pub fn content(&self) -> &FramedContentBody {
+    pub(crate) fn content(&self) -> &FramedContentBody {
         &self.content.content.body
     }
 
@@ -150,11 +150,6 @@ impl PublicMessage {
         }
     }
 
-    /// Returns a reference to the [`ProtocolVersion`].
-    pub(crate) fn protocol_version(&self) -> ProtocolVersion {
-        self.content.version
-    }
-
     /// Returns the [`ContentType`] of the message.
     pub(crate) fn content_type(&self) -> ContentType {
         self.content.content.body.content_type()
@@ -163,6 +158,11 @@ impl PublicMessage {
     /// Get the sender of this message.
     pub(crate) fn sender(&self) -> &Sender {
         &self.content.content.sender
+    }
+
+    /// Get the MLS version of this message.
+    pub(crate) fn version(&self) -> ProtocolVersion {
+        self.content.version
     }
 
     #[cfg(test)]
@@ -251,7 +251,7 @@ impl PublicMessage {
     }
 
     #[cfg(any(feature = "test-utils", test))]
-    pub fn set_membership_tag_test(&mut self, membership_tag: MembershipTag) {
+    pub(crate) fn set_membership_tag_test(&mut self, membership_tag: MembershipTag) {
         self.membership_tag = Some(membership_tag);
     }
 

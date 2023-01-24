@@ -1,4 +1,5 @@
 use crate::{
+    ciphersuite::signature::SignaturePublicKey,
     group::{
         core_group::create_commit_params::CreateCommitParams,
         errors::{CoreGroupBuildError, ExternalCommitError, WelcomeError},
@@ -17,83 +18,63 @@ impl MlsGroup {
     /// This function removes the private key corresponding to the
     /// `key_package` from the key store.
     ///
-    /// Returns an error ([`NewGroupError::NoMatchingKeyPackage`]) if the
-    /// private key for the [`KeyPackage`] can not be found.
-    pub fn new(
-        backend: &impl OpenMlsCryptoProvider,
+    /// Returns an error ([`NewGroupError::NoMatchingCredentialBundle`]) if the
+    /// private key for the [`SignaturePublicKey`] can not be found.
+    pub fn new<KeyStore: OpenMlsKeyStore>(
+        backend: &impl OpenMlsCryptoProvider<KeyStoreProvider = KeyStore>,
         mls_group_config: &MlsGroupConfig,
-        key_package: KeyPackage,
-    ) -> Result<Self, NewGroupError> {
+        signature_key: &SignaturePublicKey,
+    ) -> Result<Self, NewGroupError<KeyStore::Error>> {
         Self::new_with_group_id(
             backend,
             mls_group_config,
             GroupId::random(backend),
-            key_package,
+            signature_key,
         )
     }
 
     /// Creates a new group with a given group ID with the creator as the only member.
     ///
-    /// Returns an error ([`NewGroupError::NoMatchingKeyPackage`]) if the
-    /// private key for the [`KeyPackage`] can not be found.
-    pub fn new_with_group_id(
-        backend: &impl OpenMlsCryptoProvider,
+    /// Returns an error ([`NewGroupError::NoMatchingCredentialBundle`]) if the
+    /// private key for the [`SignaturePublicKey`] can not be found.
+    pub fn new_with_group_id<KeyStore: OpenMlsKeyStore>(
+        backend: &impl OpenMlsCryptoProvider<KeyStoreProvider = KeyStore>,
         mls_group_config: &MlsGroupConfig,
         group_id: GroupId,
-        key_package: KeyPackage,
-    ) -> Result<Self, NewGroupError> {
+        signature_key: &SignaturePublicKey,
+    ) -> Result<Self, NewGroupError<KeyStore::Error>> {
         // TODO #751
-
-        // Read and delete the private key for the key package.
-        let private_hpke_init_key: Vec<u8> = backend
-            .key_store()
-            .read(key_package.hpke_init_key().as_ref())
-            .ok_or(NewGroupError::NoMatchingKeyPackage)?;
-        backend
-            .key_store()
-            .delete(key_package.hpke_init_key().as_ref())
-            .map_err(|_| NewGroupError::KeyStoreDeletionError)?;
-
-        let credential_bundle: CredentialBundle = backend
-            .key_store()
-            .read(
-                &key_package
-                    .leaf_node()
-                    .credential()
-                    .signature_key()
-                    .tls_serialize_detached()
-                    .map_err(|_| {
-                        LibraryError::custom("Unable to serialize signature public key")
-                    })?,
-            )
-            .ok_or(NewGroupError::NoMatchingCredentialBundle)?;
+        let credential_bundle: CredentialBundle =
+            backend
+                .key_store()
+                .read(&signature_key.tls_serialize_detached().map_err(|_| {
+                    LibraryError::custom("Unable to serialize signature public key")
+                })?)
+                .ok_or(NewGroupError::NoMatchingCredentialBundle)?;
         let group_config = CoreGroupConfig {
             add_ratchet_tree_extension: mls_group_config.use_ratchet_tree_extension,
         };
-        let group = CoreGroup::builder(
-            group_id,
-            KeyPackageBundle {
-                key_package,
-                private_key: private_hpke_init_key.into(),
-            },
-        )
-        .with_config(group_config)
-        .with_required_capabilities(mls_group_config.required_capabilities.clone())
-        .with_max_past_epoch_secrets(mls_group_config.max_past_epochs)
-        .with_lifetime(*mls_group_config.lifetime())
-        .build(&credential_bundle, backend)
-        .map_err(|e| match e {
-            CoreGroupBuildError::LibraryError(e) => e.into(),
-            CoreGroupBuildError::UnsupportedProposalType => NewGroupError::UnsupportedProposalType,
-            CoreGroupBuildError::UnsupportedExtensionType => {
-                NewGroupError::UnsupportedExtensionType
-            }
-            // We don't support PSKs yet
-            CoreGroupBuildError::PskError(e) => {
-                log::debug!("Unexpected PSK error: {:?}", e);
-                LibraryError::custom("Unexpected PSK error").into()
-            }
-        })?;
+        let group = CoreGroup::builder(group_id, mls_group_config.crypto_config)
+            .with_config(group_config)
+            .with_required_capabilities(mls_group_config.required_capabilities.clone())
+            .with_max_past_epoch_secrets(mls_group_config.max_past_epochs)
+            .with_lifetime(*mls_group_config.lifetime())
+            .build(&credential_bundle, backend)
+            .map_err(|e| match e {
+                CoreGroupBuildError::LibraryError(e) => e.into(),
+                CoreGroupBuildError::UnsupportedProposalType => {
+                    NewGroupError::UnsupportedProposalType
+                }
+                CoreGroupBuildError::UnsupportedExtensionType => {
+                    NewGroupError::UnsupportedExtensionType
+                }
+                // We don't support PSKs yet
+                CoreGroupBuildError::PskError(e) => {
+                    log::debug!("Unexpected PSK error: {:?}", e);
+                    LibraryError::custom("Unexpected PSK error").into()
+                }
+                CoreGroupBuildError::KeyStoreError(e) => NewGroupError::KeyStoreError(e),
+            })?;
 
         let resumption_psk_store =
             ResumptionPskStore::new(mls_group_config.number_of_resumption_psks);
@@ -115,12 +96,12 @@ impl MlsGroup {
     /// Creates a new group from a [`Welcome`] message. Returns an error
     /// ([`WelcomeError::NoMatchingKeyPackage`]) if no [`KeyPackage`]
     /// can be found.
-    pub fn new_from_welcome(
-        backend: &impl OpenMlsCryptoProvider,
+    pub fn new_from_welcome<KeyStore: OpenMlsKeyStore>(
+        backend: &impl OpenMlsCryptoProvider<KeyStoreProvider = KeyStore>,
         mls_group_config: &MlsGroupConfig,
         welcome: Welcome,
         ratchet_tree: Option<Vec<Option<Node>>>,
-    ) -> Result<Self, WelcomeError> {
+    ) -> Result<Self, WelcomeError<KeyStore::Error>> {
         let resumption_psk_store =
             ResumptionPskStore::new(mls_group_config.number_of_resumption_psks);
         let (key_package, _) = welcome
@@ -150,7 +131,7 @@ impl MlsGroup {
         key_package_bundle
             .key_package
             .delete(backend)
-            .map_err(|_| WelcomeError::KeyStoreDeletionError)?;
+            .map_err(WelcomeError::KeyStoreError)?;
 
         let mut group =
             CoreGroup::new_from_welcome(welcome, ratchet_tree, key_package_bundle, backend)?;
@@ -222,9 +203,7 @@ impl MlsGroup {
             state_changed: InnerState::Changed,
         };
 
-        Ok((
-            mls_group,
-            PublicMessage::from(create_commit_result.commit).into(),
-        ))
+        let public_message: PublicMessage = create_commit_result.commit.into();
+        Ok((mls_group, public_message.into()))
     }
 }

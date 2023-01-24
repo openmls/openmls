@@ -5,7 +5,10 @@ use rstest_reuse::apply;
 use crate::{
     credentials::{CredentialBundle, CredentialType},
     key_packages::KeyPackageBundle,
-    treesync::{node::Node, TreeSync},
+    treesync::{
+        node::{encryption_keys::EncryptionKeyPair, Node},
+        TreeSync,
+    },
 };
 
 use openmls_rust_crypto::OpenMlsRustCrypto;
@@ -46,8 +49,21 @@ fn test_free_leaf_computation(ciphersuite: Ciphersuite, backend: &impl OpenMlsCr
             kpb_3.key_package().leaf_node().clone().into(),
         )), // Leaf 3
     ];
-    let tree =
-        TreeSync::from_nodes(backend, ciphersuite, &nodes, kpb_0).expect("error generating tree");
+
+    // Get the encryption key pair from the leaf.
+    let encryption_key_pair = EncryptionKeyPair::read_from_key_store(
+        backend,
+        kpb_0.key_package().leaf_node().encryption_key(),
+    )
+    .unwrap();
+
+    let tree = TreeSync::from_nodes(
+        backend,
+        ciphersuite,
+        &nodes,
+        encryption_key_pair.public_key(),
+    )
+    .expect("error generating tree");
 
     // Create and add a new leaf. It should go to leaf index 1
 

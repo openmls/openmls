@@ -11,9 +11,9 @@ use rstest_reuse::{self, *};
 
 use crate::{
     ciphersuite::{hash_ref::ProposalRef, signable::Verifiable},
-    credentials::{errors::*, *},
+    credentials::*,
     framing::*,
-    group::{errors::*, tests::utils::resign_external_commit, *},
+    group::{config::CryptoConfig, errors::*, tests::utils::resign_external_commit, *},
     messages::proposals::*,
 };
 
@@ -52,21 +52,21 @@ fn validation_test_setup(
     )
     .expect("An unexpected error occurred.");
 
-    // Generate KeyPackages
-    let alice_key_package =
-        generate_key_package(&[ciphersuite], &alice_credential, vec![], backend)
-            .expect("An unexpected error occurred.");
-
     // Define the MlsGroup configuration
 
     let mls_group_config = MlsGroupConfig::builder()
         .wire_format_policy(wire_format_policy)
+        .crypto_config(CryptoConfig::with_default_version(ciphersuite))
         .build();
 
     // === Alice creates a group ===
-    let alice_group =
-        MlsGroup::new_with_group_id(backend, &mls_group_config, group_id, alice_key_package)
-            .expect("An unexpected error occurred.");
+    let alice_group = MlsGroup::new_with_group_id(
+        backend,
+        &mls_group_config,
+        group_id,
+        alice_credential.signature_key(),
+    )
+    .expect("An unexpected error occurred.");
 
     let bob_credential_bundle = backend
         .key_store()
@@ -84,7 +84,8 @@ fn validation_test_setup(
     let verifiable_group_info = alice_group
         .export_group_info(backend, false)
         .unwrap()
-        .into_verifiable_group_info();
+        .into_group_info()
+        .unwrap();
     let tree_option = alice_group.export_ratchet_tree();
 
     let (_bob_group, message) = MlsGroup::join_by_external_commit(
@@ -161,7 +162,7 @@ fn test_valsem240(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
     );
 
     // Have alice process the commit resulting from external init.
-    let message_in = MlsMessageIn::from(signed_plaintext);
+    let message_in = ProtocolMessage::from(signed_plaintext);
 
     let err = alice_group
         .process_message(backend, message_in)
@@ -176,7 +177,7 @@ fn test_valsem240(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
 
     // Positive case
     alice_group
-        .process_message(backend, MlsMessageIn::from(original_plaintext))
+        .process_message(backend, ProtocolMessage::from(original_plaintext))
         .expect("Unexpected error.");
 }
 
@@ -219,7 +220,7 @@ fn test_valsem241(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
         backend,
     );
     // Have alice process the commit resulting from external init.
-    let message_in = MlsMessageIn::from(signed_plaintext);
+    let message_in = ProtocolMessage::from(signed_plaintext);
 
     let err = alice_group
         .process_message(backend, message_in)
@@ -234,7 +235,7 @@ fn test_valsem241(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
 
     // Positive case
     alice_group
-        .process_message(backend, MlsMessageIn::from(original_plaintext))
+        .process_message(backend, ProtocolMessage::from(original_plaintext))
         .expect("Unexpected error.");
 }
 
@@ -255,15 +256,15 @@ fn test_valsem242(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
     let bob_key_package = generate_key_package(
         &[ciphersuite],
         bob_credential_bundle.credential(),
-        vec![],
+        Extensions::empty(),
         backend,
     )
     .unwrap();
 
-    let (_message, _welcome) = alice_group
+    let (_message, _welcome, _group_info) = alice_group
         .add_members(backend, &[bob_key_package])
         .unwrap();
-    alice_group.merge_pending_commit().unwrap();
+    alice_group.merge_pending_commit(backend).unwrap();
 
     let add_proposal = || {
         let charlie_credential = generate_credential_bundle(
@@ -273,8 +274,13 @@ fn test_valsem242(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
             backend,
         )
         .unwrap();
-        let charlie_key_package =
-            generate_key_package(&[ciphersuite], &charlie_credential, vec![], backend).unwrap();
+        let charlie_key_package = generate_key_package(
+            &[ciphersuite],
+            &charlie_credential,
+            Extensions::empty(),
+            backend,
+        )
+        .unwrap();
 
         ProposalOrRef::Proposal(Proposal::Add(AddProposal {
             key_package: charlie_key_package,
@@ -285,7 +291,7 @@ fn test_valsem242(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
         let bob_key_package = generate_key_package(
             &[ciphersuite],
             bob_credential_bundle.credential(),
-            vec![],
+            Extensions::empty(),
             backend,
         )
         .unwrap();
@@ -299,13 +305,15 @@ fn test_valsem242(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
             group_id: alice_group.group_id().clone(),
             version: Default::default(),
             ciphersuite,
-            extensions: alice_group.group().group_context_extensions().to_vec(),
+            extensions: alice_group.group().group_context_extensions().clone(),
         }))
     };
 
     let gce_proposal = || {
         ProposalOrRef::Proposal(Proposal::GroupContextExtensions(
-            GroupContextExtensionProposal::new(alice_group.group().group_context_extensions()),
+            GroupContextExtensionProposal::new(
+                alice_group.group().group_context_extensions().clone(),
+            ),
         ))
     };
 
@@ -319,7 +327,8 @@ fn test_valsem242(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
         let verifiable_group_info = alice_group
             .export_group_info(backend, true)
             .unwrap()
-            .into_verifiable_group_info();
+            .into_group_info()
+            .unwrap();
 
         let (_bob_group, message) = MlsGroup::join_by_external_commit(
             backend,
@@ -362,7 +371,7 @@ fn test_valsem242(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
             backend,
         );
 
-        let processed_msg = alice_group.process_message(backend, signed_plaintext.into());
+        let processed_msg = alice_group.process_message(backend, signed_plaintext);
 
         assert_eq!(
             processed_msg.unwrap_err(),
@@ -373,7 +382,7 @@ fn test_valsem242(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
 
         // Positive case
         alice_group
-            .process_message(backend, original_plaintext.into())
+            .process_message(backend, original_plaintext)
             .unwrap();
     }
 }
@@ -395,17 +404,17 @@ fn test_valsem243(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
     let bob_key_package = generate_key_package(
         &[ciphersuite],
         bob_credential_bundle.credential(),
-        vec![],
+        Extensions::empty(),
         backend,
     )
     .expect("An unexpected error occurred.");
 
-    let (_message, _welcome) = alice_group
+    let (_message, _welcome, _group_info) = alice_group
         .add_members(backend, &[bob_key_package])
         .expect("Could not add member.");
 
     alice_group
-        .merge_pending_commit()
+        .merge_pending_commit(backend)
         .expect("error merging pending commit");
 
     // Bob wants to commit externally.
@@ -414,7 +423,8 @@ fn test_valsem243(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
     let verifiable_group_info = alice_group
         .export_group_info(backend, false)
         .unwrap()
-        .into_verifiable_group_info();
+        .into_group_info()
+        .unwrap();
     let tree_option = alice_group.export_ratchet_tree();
 
     let (_bob_group, message) = MlsGroup::join_by_external_commit(
@@ -477,7 +487,7 @@ fn test_valsem243(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
     );
 
     // Have alice process the commit resulting from external init.
-    let message_in = MlsMessageIn::from(signed_plaintext);
+    let message_in = ProtocolMessage::from(signed_plaintext);
 
     let err = alice_group.process_message(backend, message_in).expect_err(
         "Could process message despite the remove proposal targeting the wrong group member.",
@@ -515,7 +525,7 @@ fn test_valsem243(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
 
     // Positive case
     alice_group
-        .process_message(backend, MlsMessageIn::from(original_plaintext))
+        .process_message(backend, ProtocolMessage::from(original_plaintext))
         .expect("Unexpected error.");
 }
 
@@ -540,7 +550,7 @@ fn test_valsem244(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
     let bob_key_package = generate_key_package(
         &[ciphersuite],
         bob_credential_bundle.credential(),
-        vec![],
+        Extensions::empty(),
         backend,
     )
     .unwrap();
@@ -571,7 +581,7 @@ fn test_valsem244(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
     );
 
     // Have alice process the commit resulting from external init.
-    let message_in = MlsMessageIn::from(signed_plaintext);
+    let message_in = ProtocolMessage::from(signed_plaintext);
 
     // Expect error because the message can't be processed due to the external
     // commit including an external init proposal by reference.
@@ -588,7 +598,7 @@ fn test_valsem244(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
 
     // Positive case
     alice_group
-        .process_message(backend, MlsMessageIn::from(original_plaintext))
+        .process_message(backend, ProtocolMessage::from(original_plaintext))
         .unwrap();
 }
 
@@ -627,7 +637,7 @@ fn test_valsem245(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
     );
 
     // Have alice process the commit resulting from external init.
-    let message_in = MlsMessageIn::from(signed_plaintext);
+    let message_in = ProtocolMessage::from(signed_plaintext);
 
     let err = alice_group
         .process_message(backend, message_in)
@@ -640,7 +650,7 @@ fn test_valsem245(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
 
     // Positive case
     alice_group
-        .process_message(backend, MlsMessageIn::from(original_plaintext))
+        .process_message(backend, ProtocolMessage::from(original_plaintext))
         .expect("Unexpected error.");
 }
 
@@ -673,9 +683,13 @@ fn test_valsem246(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
     .expect("An unexpected error occurred.");
 
     // Generate KeyPackage
-    let bob_new_key_package =
-        generate_key_package(&[ciphersuite], &bob_new_credential, vec![], backend)
-            .expect("An unexpected error occurred.");
+    let bob_new_key_package = generate_key_package(
+        &[ciphersuite],
+        &bob_new_credential,
+        Extensions::empty(),
+        backend,
+    )
+    .expect("An unexpected error occurred.");
 
     if let Some(ref mut path) = content.path {
         path.set_leaf_node(bob_new_key_package.leaf_node().clone())
@@ -696,7 +710,7 @@ fn test_valsem246(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
     );
 
     // Have alice process the commit resulting from external init.
-    let message_in = MlsMessageIn::from(signed_plaintext);
+    let message_in = ProtocolMessage::from(signed_plaintext);
 
     let err = alice_group
         .process_message(backend, message_in)
@@ -728,10 +742,12 @@ fn test_valsem246(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
         backend,
     )
     .unwrap();
-    let verification_result: Result<AuthenticatedContent, CredentialError> = decrypted_message
-        .verifiable_content()
-        .clone()
-        .verify(backend, bob_credential_bundle.credential());
+    let verification_result: Result<AuthenticatedContent, _> =
+        decrypted_message.verifiable_content().clone().verify(
+            backend,
+            bob_credential_bundle.credential().signature_key(),
+            bob_credential_bundle.credential().signature_scheme(),
+        );
     assert!(verification_result.is_ok());
 
     // Positive case
@@ -739,7 +755,7 @@ fn test_valsem246(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
     // correct (which it only is, if alice is using the credential in the path
     // key package).
     alice_group
-        .process_message(backend, MlsMessageIn::from(original_plaintext))
+        .process_message(backend, ProtocolMessage::from(original_plaintext))
         .expect("Unexpected error.");
 }
 
@@ -760,7 +776,8 @@ fn test_pure_ciphertest(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoPr
     let verifiable_group_info = alice_group
         .export_group_info(backend, true)
         .unwrap()
-        .into_verifiable_group_info();
+        .into_group_info()
+        .unwrap();
 
     let (_bob_group, message) = MlsGroup::join_by_external_commit(
         backend,
@@ -772,8 +789,9 @@ fn test_pure_ciphertest(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoPr
     )
     .expect("Error initializing group externally.");
 
-    assert_eq!(message.wire_format(), WireFormat::PublicMessage);
+    let mls_message_in: MlsMessageIn = message.into();
+    assert_eq!(mls_message_in.wire_format(), WireFormat::PublicMessage);
 
     // Would fail if handshake message processing did not distinguish external messages
-    assert!(alice_group.process_message(backend, message.into()).is_ok());
+    assert!(alice_group.process_message(backend, mls_message_in).is_ok());
 }

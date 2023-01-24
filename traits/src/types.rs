@@ -4,7 +4,12 @@
 
 use serde::{Deserialize, Serialize};
 use std::convert::TryFrom;
-use tls_codec::{TlsDeserialize, TlsSerialize, TlsSize, VLBytes};
+use tls_codec::{
+    Deserialize as TlsDeserializeTrait, Serialize as TlsSerializeTrait, TlsDeserialize,
+    TlsSerialize, TlsSize, VLBytes,
+};
+
+use crate::key_store::{FromKeyStoreValue, ToKeyStoreValue};
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy, Serialize, Deserialize)]
 #[repr(u16)]
@@ -227,7 +232,7 @@ pub struct HpkeCiphertext {
 }
 
 /// Helper holding a (private, public) key pair as byte vectors.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct HpkeKeyPair {
     pub private: Vec<u8>,
     pub public: Vec<u8>,
@@ -235,6 +240,24 @@ pub struct HpkeKeyPair {
 
 pub type ExporterSecret = Vec<u8>;
 pub type KemOutput = Vec<u8>;
+
+impl ToKeyStoreValue for HpkeKeyPair {
+    type Error = tls_codec::Error;
+    fn to_key_store_value(&self) -> Result<Vec<u8>, Self::Error> {
+        let mut serialized = self.private.tls_serialize_detached()?;
+        serialized.append(&mut self.public.tls_serialize_detached()?);
+        Ok(serialized)
+    }
+}
+
+impl FromKeyStoreValue for HpkeKeyPair {
+    type Error = tls_codec::Error;
+    fn from_key_store_value(ksv: &[u8]) -> Result<Self, Self::Error> {
+        let mut reader = ksv;
+        let (private, public) = <(Vec<u8>, Vec<u8>)>::tls_deserialize(&mut reader)?;
+        Ok(Self { private, public })
+    }
+}
 
 /// MLS ciphersuites.
 #[allow(non_camel_case_types)]

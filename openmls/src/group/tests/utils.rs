@@ -134,16 +134,6 @@ pub(crate) fn setup(config: TestSetupConfig, backend: &impl OpenMlsCryptoProvide
             .get(group_config.members[0].name)
             .expect("An unexpected error occurred.")
             .borrow_mut();
-        // Pull the inital member's KeyPackage from the key_store.
-        let initial_key_package = key_store
-            .remove(&(group_config.members[0].name, group_config.ciphersuite))
-            .expect("An unexpected error occurred.")
-            .pop()
-            .expect("An unexpected error occurred.");
-        // Figure out which KeyPackageBundle that key package corresponds to.
-        let initial_key_package_bundle = initial_group_member
-            .find_key_package_bundle(&initial_key_package, backend)
-            .expect("An unexpected error occurred.");
         // Get the credential bundle corresponding to the ciphersuite.
         let initial_credential_bundle = initial_group_member
             .credential_bundles
@@ -152,7 +142,7 @@ pub(crate) fn setup(config: TestSetupConfig, backend: &impl OpenMlsCryptoProvide
         // Initialize the group state for the initial member.
         let core_group = CoreGroup::builder(
             GroupId::from_slice(&group_id.to_be_bytes()),
-            initial_key_package_bundle,
+            CryptoConfig::with_default_version(group_config.ciphersuite),
         )
         .with_config(group_config.config)
         .build(initial_credential_bundle, backend)
@@ -220,7 +210,13 @@ pub(crate) fn setup(config: TestSetupConfig, backend: &impl OpenMlsCryptoProvide
                 .welcome_option
                 .expect("An unexpected error occurred.");
 
-            core_group.merge_staged_commit(create_commit_result.staged_commit, &mut proposal_store);
+            core_group
+                .merge_staged_commit(
+                    backend,
+                    create_commit_result.staged_commit,
+                    &mut proposal_store,
+                )
+                .expect("Error merging commit.");
 
             // Distribute the Welcome message to the other members.
             for client_id in 1..group_config.members.len() {
@@ -349,12 +345,12 @@ pub(super) fn generate_credential_bundle(
 }
 
 // Helper function to generate a KeyPackageBundle
-pub(super) fn generate_key_package(
+pub(super) fn generate_key_package<KeyStore: OpenMlsKeyStore>(
     ciphersuites: &[Ciphersuite],
     credential: &Credential,
-    extensions: Vec<Extension>,
-    backend: &impl OpenMlsCryptoProvider,
-) -> Result<KeyPackage, KeyPackageNewError> {
+    extensions: Extensions,
+    backend: &impl OpenMlsCryptoProvider<KeyStoreProvider = KeyStore>,
+) -> Result<KeyPackage, KeyPackageNewError<KeyStore::Error>> {
     let credential_bundle = backend
         .key_store()
         .read(
@@ -407,7 +403,7 @@ pub(crate) fn resign_message(
 ) -> PublicMessage {
     use prelude::signable::Signable;
 
-    let alice_credential_bundle = backend
+    let alice_credential_bundle: CredentialBundle = backend
         .key_store()
         .read(
             &alice_group
@@ -427,7 +423,7 @@ pub(crate) fn resign_message(
     let tbs: FramedContentTbs = plaintext.into();
     let mut signed_plaintext: AuthenticatedContent = tbs
         .with_context(serialized_context)
-        .sign(backend, &alice_credential_bundle)
+        .sign(backend, alice_credential_bundle.signature_private_key())
         .expect("Error signing modified payload.");
 
     // Set old confirmation tag
@@ -463,10 +459,10 @@ pub(crate) fn resign_external_commit(
     let tbs: FramedContentTbs = plaintext.into();
     let mut signed_plaintext: AuthenticatedContent = if let Some(context) = serialized_context {
         tbs.with_context(context)
-            .sign(backend, bob_credential_bundle)
+            .sign(backend, bob_credential_bundle.signature_private_key())
             .expect("Error signing modified payload.")
     } else {
-        tbs.sign(backend, bob_credential_bundle)
+        tbs.sign(backend, bob_credential_bundle.signature_private_key())
             .expect("Error signing modified payload.")
     };
 

@@ -9,7 +9,7 @@ use rstest_reuse::{self, *};
 use crate::{
     credentials::*,
     framing::*,
-    group::{errors::*, *},
+    group::{config::CryptoConfig, errors::*, *},
 };
 
 use super::utils::{generate_credential_bundle, generate_key_package};
@@ -31,18 +31,20 @@ fn create_group(
     )
     .expect("An unexpected error occurred.");
 
-    // Generate KeyPackages
-    let key_package = generate_key_package(&[ciphersuite], &credential, vec![], backend)
-        .expect("An unexpected error occurred.");
-
     // Define the MlsGroup configuration
     let mls_group_config = MlsGroupConfig::builder()
         .wire_format_policy(wire_format_policy)
         .use_ratchet_tree_extension(true)
+        .crypto_config(CryptoConfig::with_default_version(ciphersuite))
         .build();
 
-    MlsGroup::new_with_group_id(backend, &mls_group_config, group_id, key_package)
-        .expect("An unexpected error occurred.")
+    MlsGroup::new_with_group_id(
+        backend,
+        &mls_group_config,
+        group_id,
+        credential.signature_key(),
+    )
+    .expect("An unexpected error occurred.")
 }
 
 // Takes an existing group, adds a new member and sends a message from the second member to the first one, returns that message
@@ -50,7 +52,7 @@ fn receive_message(
     ciphersuite: Ciphersuite,
     backend: &impl OpenMlsCryptoProvider,
     alice_group: &mut MlsGroup,
-) -> MlsMessageOut {
+) -> MlsMessageIn {
     // Generate credential bundles
     let bob_credential = generate_credential_bundle(
         "Bob".into(),
@@ -61,28 +63,39 @@ fn receive_message(
     .expect("An unexpected error occurred.");
 
     // Generate KeyPackages
-    let bob_key_package = generate_key_package(&[ciphersuite], &bob_credential, vec![], backend)
-        .expect("An unexpected error occurred.");
+    let bob_key_package = generate_key_package(
+        &[ciphersuite],
+        &bob_credential,
+        Extensions::empty(),
+        backend,
+    )
+    .expect("An unexpected error occurred.");
 
-    let (_message, welcome) = alice_group
+    let (_message, welcome, _group_info) = alice_group
         .add_members(backend, &[bob_key_package])
         .expect("Could not add member.");
 
     alice_group
-        .merge_pending_commit()
+        .merge_pending_commit(backend)
         .expect("error merging pending commit");
 
     let mls_group_config = MlsGroupConfig::builder()
         .wire_format_policy(alice_group.configuration().wire_format_policy())
+        .crypto_config(CryptoConfig::with_default_version(ciphersuite))
         .build();
 
-    let mut bob_group = MlsGroup::new_from_welcome(backend, &mls_group_config, welcome, None)
-        .expect("error creating bob's group from welcome");
+    let mut bob_group = MlsGroup::new_from_welcome(
+        backend,
+        &mls_group_config,
+        welcome.into_welcome().expect("Unexpected message type."),
+        None,
+    )
+    .expect("error creating bob's group from welcome");
 
-    let (message, _welcome) = bob_group
-        .self_update(backend, None)
+    let (message, _welcome, _group_info) = bob_group
+        .self_update(backend)
         .expect("An unexpected error occurred.");
-    message
+    message.into()
 }
 
 // Test positive cases with all valid (pure & mixed) policies
@@ -92,7 +105,7 @@ fn test_wire_policy_positive(ciphersuite: Ciphersuite, backend: &impl OpenMlsCry
         let mut alice_group = create_group(ciphersuite, backend, *wire_format_policy);
         let message = receive_message(ciphersuite, backend, &mut alice_group);
         alice_group
-            .process_message(backend, message.into())
+            .process_message(backend, message)
             .expect("An unexpected error occurred.");
     }
 }
@@ -115,7 +128,7 @@ fn test_wire_policy_negative(ciphersuite: Ciphersuite, backend: &impl OpenMlsCry
         let mut alice_group = create_group(ciphersuite, backend, wire_format_policy);
         let message = receive_message(ciphersuite, backend, &mut alice_group);
         let err = alice_group
-            .process_message(backend, message.into())
+            .process_message(backend, message)
             .expect_err("An unexpected error occurred.");
         assert_eq!(err, ProcessMessageError::IncompatibleWireFormat);
     }

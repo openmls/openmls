@@ -37,7 +37,7 @@ fn generate_credential_bundle(
 fn generate_key_package(
     ciphersuites: &[Ciphersuite],
     credential: &Credential,
-    extensions: Vec<Extension>, // TODO: allow using leaf node extensions.
+    extensions: Extensions, // TODO: allow using leaf node extensions.
     backend: &impl OpenMlsCryptoProvider,
 ) -> KeyPackage {
     let credential_bundle = backend
@@ -107,27 +107,32 @@ fn mls_group_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoPr
         .expect("An unexpected error occurred.");
 
         // Generate KeyPackages
-        let alice_key_package =
-            generate_key_package(&[ciphersuite], &alice_credential, vec![], backend);
-
-        let bob_key_package =
-            generate_key_package(&[ciphersuite], &bob_credential, vec![], backend);
+        let bob_key_package = generate_key_package(
+            &[ciphersuite],
+            &bob_credential,
+            Extensions::empty(),
+            backend,
+        );
 
         // Define the MlsGroup configuration
 
         let mls_group_config = MlsGroupConfig::builder()
             .wire_format_policy(*wire_format_policy)
+            .crypto_config(CryptoConfig::with_default_version(ciphersuite))
             .build();
 
         // === Alice creates a group ===
-        let mut alice_group =
-            MlsGroup::new_with_group_id(backend, &mls_group_config, group_id, alice_key_package)
-                .expect("An unexpected error occurred.");
+        let mut alice_group = MlsGroup::new_with_group_id(
+            backend,
+            &mls_group_config,
+            group_id,
+            alice_credential.signature_key(),
+        )
+        .expect("An unexpected error occurred.");
 
         // === Alice adds Bob ===
-        let (_queued_message, welcome) = match alice_group.add_members(backend, &[bob_key_package])
-        {
-            Ok((qm, welcome)) => (qm, welcome),
+        let welcome = match alice_group.add_members(backend, &[bob_key_package]) {
+            Ok((_, welcome, _)) => welcome,
             Err(e) => panic!("Could not add member to group: {:?}", e),
         };
 
@@ -151,7 +156,7 @@ fn mls_group_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoPr
         }
 
         alice_group
-            .merge_pending_commit()
+            .merge_pending_commit(backend)
             .expect("error merging pending commit");
 
         // Check that the group now has two members
@@ -165,7 +170,7 @@ fn mls_group_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoPr
         let mut bob_group = MlsGroup::new_from_welcome(
             backend,
             &mls_group_config,
-            welcome,
+            welcome.into_welcome().expect("Unexpected message type."),
             Some(alice_group.export_ratchet_tree()),
         )
         .expect("Error creating group from Welcome");
@@ -186,7 +191,13 @@ fn mls_group_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoPr
             .expect("Error creating application message");
 
         let processed_message = bob_group
-            .process_message(backend, queued_message.clone().into())
+            .process_message(
+                backend,
+                queued_message
+                    .clone()
+                    .into_protocol_message()
+                    .expect("Unexpected message type"),
+            )
             .expect("Could not process message.");
         let sender = processed_message
             .credential()
@@ -211,10 +222,16 @@ fn mls_group_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoPr
         }
 
         // === Bob updates and commits ===
-        let (queued_message, welcome_option) = bob_group.self_update(backend, None).unwrap();
+        let (queued_message, welcome_option, _group_info) = bob_group.self_update(backend).unwrap();
 
         let alice_processed_message = alice_group
-            .process_message(backend, queued_message.clone().into())
+            .process_message(
+                backend,
+                queued_message
+                    .clone()
+                    .into_protocol_message()
+                    .expect("Unexpected message type"),
+            )
             .expect("Could not process message.");
 
         // Check that we received the correct message
@@ -229,7 +246,9 @@ fn mls_group_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoPr
             assert_eq!(update_kp.credential(), &bob_credential);
 
             // Merge staged Commit
-            alice_group.merge_staged_commit(*staged_commit);
+            alice_group
+                .merge_staged_commit(backend, *staged_commit)
+                .unwrap();
 
             // Check Bob's new key package
             let members = alice_group.members().collect::<Vec<Member>>();
@@ -242,7 +261,7 @@ fn mls_group_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoPr
         }
 
         bob_group
-            .merge_pending_commit()
+            .merge_pending_commit(backend)
             .expect("error merging pending commit");
 
         // Check we didn't receive a Welcome message
@@ -267,7 +286,13 @@ fn mls_group_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoPr
         };
 
         let bob_processed_message = bob_group
-            .process_message(backend, queued_message.clone().into())
+            .process_message(
+                backend,
+                queued_message
+                    .clone()
+                    .into_protocol_message()
+                    .expect("Unexpected message type"),
+            )
             .expect("Could not process message.");
 
         // Check that we received the correct proposals
@@ -294,14 +319,17 @@ fn mls_group_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoPr
             unreachable!("Expected a QueuedProposal.");
         }
 
-        let (queued_message, _welcome_option) =
-            match alice_group.commit_to_pending_proposals(backend) {
-                Ok(qm) => qm,
-                Err(e) => panic!("Error performing self-update: {:?}", e),
-            };
+        let (queued_message, _welcome_option, _group_info) =
+            alice_group.commit_to_pending_proposals(backend).unwrap();
 
         let bob_processed_message = bob_group
-            .process_message(backend, queued_message.clone().into())
+            .process_message(
+                backend,
+                queued_message
+                    .clone()
+                    .into_protocol_message()
+                    .expect("Unexpected message type"),
+            )
             .expect("Could not process message.");
 
         // Check that we received the correct message
@@ -315,7 +343,9 @@ fn mls_group_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoPr
             // Check that Alice updated
             assert_eq!(update_kp.credential(), &alice_credential);
 
-            bob_group.merge_staged_commit(*staged_commit);
+            bob_group
+                .merge_staged_commit(backend, *staged_commit)
+                .unwrap();
 
             // Check Alice's new key package
             let members = bob_group.members().collect::<Vec<Member>>();
@@ -328,7 +358,7 @@ fn mls_group_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoPr
         }
 
         alice_group
-            .merge_pending_commit()
+            .merge_pending_commit(backend)
             .expect("error merging pending commit");
 
         // Check that both groups have the same state
@@ -344,27 +374,37 @@ fn mls_group_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoPr
         );
 
         // === Bob adds Charlie ===
-        let charlie_key_package =
-            generate_key_package(&[ciphersuite], &charlie_credential, vec![], backend);
+        let charlie_key_package = generate_key_package(
+            &[ciphersuite],
+            &charlie_credential,
+            Extensions::empty(),
+            backend,
+        );
 
-        let (queued_message, welcome) = match bob_group.add_members(backend, &[charlie_key_package])
-        {
-            Ok((qm, welcome)) => (qm, welcome),
-            Err(e) => panic!("Could not add member to group: {:?}", e),
-        };
+        let (queued_message, welcome, _group_info) = bob_group
+            .add_members(backend, &[charlie_key_package])
+            .unwrap();
 
         let alice_processed_message = alice_group
-            .process_message(backend, queued_message.clone().into())
+            .process_message(
+                backend,
+                queued_message
+                    .clone()
+                    .into_protocol_message()
+                    .expect("Unexpected message type"),
+            )
             .expect("Could not process message.");
         bob_group
-            .merge_pending_commit()
+            .merge_pending_commit(backend)
             .expect("error merging pending commit");
 
         // Merge Commit
         if let ProcessedMessageContent::StagedCommitMessage(staged_commit) =
             alice_processed_message.into_content()
         {
-            alice_group.merge_staged_commit(*staged_commit);
+            alice_group
+                .merge_staged_commit(backend, *staged_commit)
+                .unwrap();
         } else {
             unreachable!("Expected a StagedCommit.");
         }
@@ -372,7 +412,7 @@ fn mls_group_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoPr
         let mut charlie_group = MlsGroup::new_from_welcome(
             backend,
             &mls_group_config,
-            welcome,
+            welcome.into_welcome().expect("Unexpected message type."),
             Some(bob_group.export_ratchet_tree()),
         )
         .expect("Error creating group from Welcome");
@@ -400,56 +440,57 @@ fn mls_group_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoPr
             .expect("Error creating application message");
 
         let _alice_processed_message = alice_group
-            .process_message(backend, queued_message.clone().into())
+            .process_message(
+                backend,
+                queued_message
+                    .clone()
+                    .into_protocol_message()
+                    .expect("Unexpected message type"),
+            )
             .expect("Could not process message.");
         let _bob_processed_message = bob_group
-            .process_message(backend, queued_message.clone().into())
-            .expect("Could not process message.");
-
-        let charlie_credential_bundle: CredentialBundle = backend
-            .key_store()
-            .read(
-                &charlie_credential
-                    .signature_key()
-                    .tls_serialize_detached()
-                    .unwrap(),
-            )
-            .unwrap();
-        let charlies_new_key_package = KeyPackage::builder()
-            .build(
-                CryptoConfig {
-                    ciphersuite,
-                    version: ProtocolVersion::default(),
-                },
+            .process_message(
                 backend,
-                &charlie_credential_bundle,
+                queued_message
+                    .clone()
+                    .into_protocol_message()
+                    .expect("Unexpected message type"),
             )
-            .unwrap();
+            .expect("Could not process message.");
 
         // === Charlie updates and commits ===
-        let (queued_message, welcome_option) = match charlie_group.self_update(
-            backend,
-            Some(charlies_new_key_package.hpke_init_key().clone()),
-        ) {
-            Ok(qm) => qm,
-            Err(e) => panic!("Error performing self-update: {:?}", e),
-        };
+        let (queued_message, welcome_option, _group_info) =
+            charlie_group.self_update(backend).unwrap();
 
         let alice_processed_message = alice_group
-            .process_message(backend, queued_message.clone().into())
+            .process_message(
+                backend,
+                queued_message
+                    .clone()
+                    .into_protocol_message()
+                    .expect("Unexpected message type"),
+            )
             .expect("Could not process message.");
         let bob_processed_message = bob_group
-            .process_message(backend, queued_message.clone().into())
+            .process_message(
+                backend,
+                queued_message
+                    .clone()
+                    .into_protocol_message()
+                    .expect("Unexpected message type"),
+            )
             .expect("Could not process message.");
         charlie_group
-            .merge_pending_commit()
+            .merge_pending_commit(backend)
             .expect("error merging pending commit");
 
         // Merge Commit
         if let ProcessedMessageContent::StagedCommitMessage(staged_commit) =
             alice_processed_message.into_content()
         {
-            alice_group.merge_staged_commit(*staged_commit);
+            alice_group
+                .merge_staged_commit(backend, *staged_commit)
+                .unwrap();
         } else {
             unreachable!("Expected a StagedCommit.");
         }
@@ -458,7 +499,9 @@ fn mls_group_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoPr
         if let ProcessedMessageContent::StagedCommitMessage(staged_commit) =
             bob_processed_message.into_content()
         {
-            bob_group.merge_staged_commit(*staged_commit);
+            bob_group
+                .merge_staged_commit(backend, *staged_commit)
+                .unwrap();
         } else {
             unreachable!("Expected a StagedCommit.");
         }
@@ -488,7 +531,7 @@ fn mls_group_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoPr
 
         // === Charlie removes Bob ===
         println!(" >>> Charlie is removing bob");
-        let (queued_message, welcome_option) = charlie_group
+        let (queued_message, welcome_option, _group_info) = charlie_group
             .remove_members(backend, &[bob_group.own_leaf_index()])
             .expect("Could not remove member from group.");
 
@@ -496,13 +539,25 @@ fn mls_group_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoPr
         assert!(bob_group.is_active());
 
         let alice_processed_message = alice_group
-            .process_message(backend, queued_message.clone().into())
+            .process_message(
+                backend,
+                queued_message
+                    .clone()
+                    .into_protocol_message()
+                    .expect("Unexpected message type"),
+            )
             .expect("Could not process message.");
         let bob_processed_message = bob_group
-            .process_message(backend, queued_message.clone().into())
+            .process_message(
+                backend,
+                queued_message
+                    .clone()
+                    .into_protocol_message()
+                    .expect("Unexpected message type"),
+            )
             .expect("Could not process message.");
         charlie_group
-            .merge_pending_commit()
+            .merge_pending_commit(backend)
             .expect("error merging pending commit");
 
         // Check that we receive the correct proposal for Alice
@@ -521,7 +576,9 @@ fn mls_group_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoPr
             );
 
             // Merge staged Commit
-            alice_group.merge_staged_commit(*staged_commit);
+            alice_group
+                .merge_staged_commit(backend, *staged_commit)
+                .unwrap();
         } else {
             unreachable!("Expected a StagedCommit.");
         }
@@ -542,7 +599,9 @@ fn mls_group_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoPr
             );
 
             // Merge staged Commit
-            bob_group.merge_staged_commit(*staged_commit);
+            bob_group
+                .merge_staged_commit(backend, *staged_commit)
+                .unwrap();
         } else {
             unreachable!("Expected a StagedCommit.");
         }
@@ -575,8 +634,12 @@ fn mls_group_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoPr
         // === Alice removes Charlie and re-adds Bob ===
 
         // Create a new KeyPackageBundle for Bob
-        let bob_key_package =
-            generate_key_package(&[ciphersuite], &bob_credential, vec![], backend);
+        let bob_key_package = generate_key_package(
+            &[ciphersuite],
+            &bob_credential,
+            Extensions::empty(),
+            backend,
+        );
 
         // Create RemoveProposal and process it
         let queued_message = alice_group
@@ -584,7 +647,13 @@ fn mls_group_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoPr
             .expect("Could not create proposal to remove Charlie");
 
         let charlie_processed_message = charlie_group
-            .process_message(backend, queued_message.clone().into())
+            .process_message(
+                backend,
+                queued_message
+                    .clone()
+                    .into_protocol_message()
+                    .expect("Unexpected message type"),
+            )
             .expect("Could not process message.");
 
         // Check that we received the correct proposals
@@ -615,7 +684,13 @@ fn mls_group_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoPr
             .expect("Could not create proposal to add Bob");
 
         let charlie_processed_message = charlie_group
-            .process_message(backend, queued_message.clone().into())
+            .process_message(
+                backend,
+                queued_message
+                    .clone()
+                    .into_protocol_message()
+                    .expect("Unexpected message type"),
+            )
             .expect("Could not process message.");
 
         // Check that we received the correct proposals
@@ -644,24 +719,32 @@ fn mls_group_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoPr
         }
 
         // Commit to the proposals and process it
-        let (queued_message, welcome_option) = alice_group
+        let (queued_message, welcome_option, _group_info) = alice_group
             .commit_to_pending_proposals(backend)
             .expect("Could not flush proposals");
 
         let charlie_processed_message = charlie_group
-            .process_message(backend, queued_message.clone().into())
+            .process_message(
+                backend,
+                queued_message
+                    .clone()
+                    .into_protocol_message()
+                    .expect("Unexpected message type"),
+            )
             .expect("Could not process message.");
 
         // Merge Commit
         alice_group
-            .merge_pending_commit()
+            .merge_pending_commit(backend)
             .expect("error merging pending commit");
 
         // Merge Commit
         if let ProcessedMessageContent::StagedCommitMessage(staged_commit) =
             charlie_processed_message.into_content()
         {
-            charlie_group.merge_staged_commit(*staged_commit);
+            charlie_group
+                .merge_staged_commit(backend, *staged_commit)
+                .unwrap();
         } else {
             unreachable!("Expected a StagedCommit.");
         }
@@ -678,7 +761,10 @@ fn mls_group_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoPr
         let mut bob_group = MlsGroup::new_from_welcome(
             backend,
             &mls_group_config,
-            welcome_option.expect("Welcome was not returned"),
+            welcome_option
+                .expect("Welcome was not returned")
+                .into_welcome()
+                .expect("Unexpected message type."),
             Some(alice_group.export_ratchet_tree()),
         )
         .expect("Error creating group from Welcome");
@@ -706,7 +792,13 @@ fn mls_group_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoPr
             .expect("Error creating application message");
 
         let bob_processed_message = bob_group
-            .process_message(backend, queued_message.clone().into())
+            .process_message(
+                backend,
+                queued_message
+                    .clone()
+                    .into_protocol_message()
+                    .expect("Unexpected message type"),
+            )
             .expect("Could not process message.");
         let sender = bob_processed_message
             .credential()
@@ -735,7 +827,13 @@ fn mls_group_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoPr
             .expect("Could not leave group");
 
         let alice_processed_message = alice_group
-            .process_message(backend, queued_message.clone().into())
+            .process_message(
+                backend,
+                queued_message
+                    .clone()
+                    .into_protocol_message()
+                    .expect("Unexpected message type"),
+            )
             .expect("Could not process message.");
 
         // Store proposal
@@ -756,7 +854,7 @@ fn mls_group_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoPr
             ))
         );
 
-        let (queued_message, _welcome_option) = alice_group
+        let (queued_message, _welcome_option, _group_info) = alice_group
             .commit_to_pending_proposals(backend)
             .expect("Could not commit to proposals.");
 
@@ -781,11 +879,17 @@ fn mls_group_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoPr
         }
 
         alice_group
-            .merge_pending_commit()
+            .merge_pending_commit(backend)
             .expect("Could not merge Commit.");
 
         let bob_processed_message = bob_group
-            .process_message(backend, queued_message.clone().into())
+            .process_message(
+                backend,
+                queued_message
+                    .clone()
+                    .into_protocol_message()
+                    .expect("Unexpected message type"),
+            )
             .expect("Could not process message.");
 
         // Check that we received the correct proposals
@@ -803,7 +907,9 @@ fn mls_group_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoPr
 
             assert!(staged_commit.self_removed());
             // Merge staged Commit
-            bob_group.merge_staged_commit(*staged_commit);
+            bob_group
+                .merge_staged_commit(backend, *staged_commit)
+                .unwrap();
         } else {
             unreachable!("Expected a StagedCommit.");
         }
@@ -821,23 +927,27 @@ fn mls_group_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoPr
         // === Save the group state ===
 
         // Create a new KeyPackageBundle for Bob
-        let bob_key_package =
-            generate_key_package(&[ciphersuite], &bob_credential, vec![], backend);
+        let bob_key_package = generate_key_package(
+            &[ciphersuite],
+            &bob_credential,
+            Extensions::empty(),
+            backend,
+        );
 
         // Add Bob to the group
-        let (_queued_message, welcome) = alice_group
+        let (_queued_message, welcome, _group_info) = alice_group
             .add_members(backend, &[bob_key_package])
             .expect("Could not add Bob");
 
         // Merge Commit
         alice_group
-            .merge_pending_commit()
+            .merge_pending_commit(backend)
             .expect("error merging pending commit");
 
         let mut bob_group = MlsGroup::new_from_welcome(
             backend,
             &mls_group_config,
-            welcome,
+            welcome.into_welcome().expect("Unexpected message type."),
             Some(alice_group.export_ratchet_tree()),
         )
         .expect("Could not create group from Welcome");
@@ -894,17 +1004,17 @@ fn test_empty_input_errors(ciphersuite: Ciphersuite, backend: &impl OpenMlsCrypt
     )
     .expect("An unexpected error occurred.");
 
-    // Generate KeyPackages
-    let alice_key_package =
-        generate_key_package(&[ciphersuite], &alice_credential, vec![], backend);
-
     // Define the MlsGroup configuration
-    let mls_group_config = MlsGroupConfig::test_default();
+    let mls_group_config = MlsGroupConfig::test_default(ciphersuite);
 
     // === Alice creates a group ===
-    let mut alice_group =
-        MlsGroup::new_with_group_id(backend, &mls_group_config, group_id, alice_key_package)
-            .expect("An unexpected error occurred.");
+    let mut alice_group = MlsGroup::new_with_group_id(
+        backend,
+        &mls_group_config,
+        group_id,
+        alice_credential.signature_key(),
+    )
+    .expect("An unexpected error occurred.");
 
     assert_eq!(
         alice_group
@@ -949,15 +1059,17 @@ fn mls_group_ratchet_tree_extension(
         .expect("An unexpected error occurred.");
 
         // Generate KeyPackages
-        let alice_key_package =
-            generate_key_package(&[ciphersuite], &alice_credential, vec![], backend);
-
-        let bob_key_package =
-            generate_key_package(&[ciphersuite], &bob_credential, vec![], backend);
+        let bob_key_package = generate_key_package(
+            &[ciphersuite],
+            &bob_credential,
+            Extensions::empty(),
+            backend,
+        );
 
         let mls_group_config = MlsGroupConfig::builder()
             .wire_format_policy(*wire_format_policy)
             .use_ratchet_tree_extension(true)
+            .crypto_config(CryptoConfig::with_default_version(ciphersuite))
             .build();
 
         // === Alice creates a group ===
@@ -965,20 +1077,23 @@ fn mls_group_ratchet_tree_extension(
             backend,
             &mls_group_config,
             group_id.clone(),
-            alice_key_package,
+            alice_credential.signature_key(),
         )
         .expect("An unexpected error occurred.");
 
         // === Alice adds Bob ===
-        let (_queued_message, welcome) =
-            match alice_group.add_members(backend, &[bob_key_package.clone()]) {
-                Ok((qm, welcome)) => (qm, welcome),
-                Err(e) => panic!("Could not add member to group: {:?}", e),
-            };
+        let (_queued_message, welcome, _group_info) = alice_group
+            .add_members(backend, &[bob_key_package.clone()])
+            .unwrap();
 
         // === Bob joins using the ratchet tree extension ===
-        let _bob_group = MlsGroup::new_from_welcome(backend, &mls_group_config, welcome, None)
-            .expect("Error creating group from Welcome");
+        let _bob_group = MlsGroup::new_from_welcome(
+            backend,
+            &mls_group_config,
+            welcome.into_welcome().expect("Unexpected message type."),
+            None,
+        )
+        .expect("Error creating group from Welcome");
 
         // === Negative case: not using the ratchet tree extension ===
 
@@ -1000,29 +1115,37 @@ fn mls_group_ratchet_tree_extension(
         .expect("An unexpected error occurred.");
 
         // Generate KeyPackages
-        let alice_key_package =
-            generate_key_package(&[ciphersuite], &alice_credential, vec![], backend);
+        let bob_key_package = generate_key_package(
+            &[ciphersuite],
+            &bob_credential,
+            Extensions::empty(),
+            backend,
+        );
 
-        let bob_key_package =
-            generate_key_package(&[ciphersuite], &bob_credential, vec![], backend);
-
-        let mls_group_config = MlsGroupConfig::test_default();
+        let mls_group_config = MlsGroupConfig::test_default(ciphersuite);
 
         // === Alice creates a group ===
-        let mut alice_group =
-            MlsGroup::new_with_group_id(backend, &mls_group_config, group_id, alice_key_package)
-                .expect("An unexpected error occurred.");
+        let mut alice_group = MlsGroup::new_with_group_id(
+            backend,
+            &mls_group_config,
+            group_id,
+            alice_credential.signature_key(),
+        )
+        .expect("An unexpected error occurred.");
 
         // === Alice adds Bob ===
-        let (_queued_message, welcome) = match alice_group.add_members(backend, &[bob_key_package])
-        {
-            Ok((qm, welcome)) => (qm, welcome),
-            Err(e) => panic!("Could not add member to group: {:?}", e),
-        };
+        let (_queued_message, welcome, _group_info) = alice_group
+            .add_members(backend, &[bob_key_package])
+            .unwrap();
 
         // === Bob tries to join without the ratchet tree extension ===
-        let error = MlsGroup::new_from_welcome(backend, &mls_group_config, welcome, None)
-            .expect_err("Could join a group without a ratchet tree");
+        let error = MlsGroup::new_from_welcome(
+            backend,
+            &mls_group_config,
+            welcome.into_welcome().expect("Unexpected message type."),
+            None,
+        )
+        .expect_err("Could join a group without a ratchet tree");
 
         assert_eq!(error, WelcomeError::MissingRatchetTree);
     }

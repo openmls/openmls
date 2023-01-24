@@ -1,6 +1,6 @@
 use tls_codec::Serialize;
 
-use crate::{group::errors::ExporterError, messages::GroupInfo, schedule::EpochAuthenticator};
+use crate::{group::errors::ExporterError, schedule::EpochAuthenticator};
 
 use super::*;
 
@@ -55,7 +55,7 @@ impl MlsGroup {
         &self,
         backend: &impl OpenMlsCryptoProvider,
         with_ratchet_tree: bool,
-    ) -> Result<GroupInfo, ExportGroupInfoError> {
+    ) -> Result<MlsMessageOut, ExportGroupInfoError> {
         match self.credential() {
             Ok(credential) => {
                 let credential_bundle: CredentialBundle = backend
@@ -69,7 +69,8 @@ impl MlsGroup {
                     .ok_or(ExportGroupInfoError::NoMatchingCredentialBundle)?;
                 Ok(self
                     .group
-                    .export_group_info(backend, &credential_bundle, with_ratchet_tree)?)
+                    .export_group_info(backend, &credential_bundle, with_ratchet_tree)?
+                    .into())
             }
             Err(e) => Err(e.into()),
         }

@@ -83,7 +83,7 @@ pub fn generate_test_vector(ciphersuite: Ciphersuite) -> TranscriptTestVector {
         epoch,
         tree_hash_before.clone(),
         confirmed_transcript_hash_before.clone(),
-        &[], // extensions
+        Extensions::empty(),
     );
     let aad = crypto
         .rand()
@@ -220,7 +220,7 @@ pub fn run_test_vector(
         epoch,
         tree_hash_before,
         confirmed_transcript_hash_before,
-        &[], // extensions
+        Extensions::empty(),
     );
     let expected_group_context = hex_to_bytes(&test_vector.group_context);
     let serialized_context = context
@@ -251,7 +251,11 @@ pub fn run_test_vector(
         .cloned()
         .expect("Confirmation tag is missing");
     let content: AuthenticatedContent = commit
-        .verify(backend, &credential)
+        .verify(
+            backend,
+            credential.signature_key(),
+            credential.signature_scheme(),
+        )
         .expect("Invalid signature on PublicMessage commit");
 
     //let my_confirmation_tag = confirmation_key.tag(&confirmed_transcript_hash_before);

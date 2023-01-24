@@ -172,11 +172,12 @@ async fn send_welcome(mut body: Payload, data: web::Data<Mutex<DsData>>) -> impl
     while let Some(item) = body.next().await {
         bytes.extend_from_slice(&unwrap_item!(item));
     }
-    let welcome_msg = unwrap_data!(Welcome::tls_deserialize(&mut &bytes[..]));
+    let welcome_msg = unwrap_data!(MlsMessageIn::tls_deserialize(&mut &bytes[..]));
+    let welcome = welcome_msg.clone().into_welcome().unwrap();
     log::debug!("Storing welcome message: {:?}", welcome_msg);
 
     let mut data = unwrap_data!(data.lock());
-    for secret in welcome_msg.secrets().iter() {
+    for secret in welcome.secrets().iter() {
         let key_package_hash = &secret.new_member();
         for (_client_name, client) in data.clients.iter_mut() {
             for (client_hash, _) in client.key_packages.0.iter() {
@@ -206,14 +207,16 @@ async fn msg_send(mut body: Payload, data: web::Data<Mutex<DsData>>) -> impl Res
 
     let mut data = unwrap_data!(data.lock());
 
+    let protocol_msg: ProtocolMessage = group_msg.msg.clone().into();
+
     // Reject any handshake message that has an earlier epoch than the one we know
     // about.
     // XXX: There's no test for this block in here right now because it's pretty
     //      painful to test in the current setting. This should get tested through
     //      the client and maybe later with the MlsGroup API.
-    if group_msg.msg.is_handshake_message() {
-        let epoch = group_msg.epoch().as_u64();
-        let group_id = group_msg.group_id().as_slice();
+    if protocol_msg.is_handshake_message() {
+        let epoch = protocol_msg.epoch().as_u64();
+        let group_id = protocol_msg.group_id().as_slice();
         if let Some(&group_epoch) = data.groups.get(group_id) {
             if group_epoch > epoch {
                 return actix_web::HttpResponse::Conflict().finish();
@@ -264,14 +267,10 @@ async fn msg_recv(
         None => return actix_web::HttpResponse::NotFound().finish(),
     };
 
-    let mut out: Vec<Message> = Vec::new();
-    let mut welcomes: Vec<Message> = client
-        .welcome_queue
-        .drain(..)
-        .map(Message::Welcome)
-        .collect();
+    let mut out: Vec<MlsMessageIn> = Vec::new();
+    let mut welcomes: Vec<MlsMessageIn> = client.welcome_queue.drain(..).collect();
     out.append(&mut welcomes);
-    let mut msgs: Vec<Message> = client.msgs.drain(..).map(Message::MlsMessage).collect();
+    let mut msgs: Vec<MlsMessageIn> = client.msgs.drain(..).collect();
     out.append(&mut msgs);
 
     match TlsSliceU16(&out).tls_serialize_detached() {

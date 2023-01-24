@@ -2,12 +2,15 @@ use crate::{
     binary_tree::LeafNodeIndex,
     ciphersuite::{hash_ref::KeyPackageRef, signable::Signable, AeadKey, AeadNonce, Mac, Secret},
     credentials::{errors::CredentialError, CredentialBundle, CredentialType},
-    group::{config::CryptoConfig, errors::WelcomeError, GroupId, MlsGroup, MlsGroupConfig},
+    extensions::Extensions,
+    group::{config::CryptoConfig, errors::WelcomeError, GroupId, MlsGroup, MlsGroupConfigBuilder},
     key_packages::KeyPackage,
     messages::{
-        ConfirmationTag, EncryptedGroupSecrets, GroupInfo, GroupInfoTBS, GroupSecrets, Welcome,
+        ConfirmationTag, EncryptedGroupSecrets, GroupInfoTBS, GroupSecrets, VerifiableGroupInfo,
+        Welcome,
     },
     schedule::{psk::PskSecret, KeySchedule},
+    treesync::node::encryption_keys::EncryptionKeyPair,
     versions::ProtocolVersion,
 };
 
@@ -65,7 +68,9 @@ fn test_welcome_ciphersuite_mismatch(
     };
 
     let group_id = GroupId::random(backend);
-    let mls_group_config = MlsGroupConfig::default();
+    let mls_group_config = MlsGroupConfigBuilder::new()
+        .crypto_config(CryptoConfig::with_default_version(ciphersuite))
+        .build();
 
     // Create credential bundles
     let alice_credential_bundle = generate_credential_bundle(
@@ -85,16 +90,6 @@ fn test_welcome_ciphersuite_mismatch(
     .expect("Could not create credential bundle.");
 
     // Create key packages
-    let alice_kp = KeyPackage::builder()
-        .build(
-            CryptoConfig {
-                ciphersuite,
-                version: ProtocolVersion::default(),
-            },
-            backend,
-            &alice_credential_bundle,
-        )
-        .unwrap();
     let bob_kp = KeyPackage::builder()
         .build(
             CryptoConfig {
@@ -112,17 +107,23 @@ fn test_welcome_ciphersuite_mismatch(
         .unwrap();
 
     // === Alice creates a group  and adds Bob ===
-    let mut alice_group =
-        MlsGroup::new_with_group_id(backend, &mls_group_config, group_id, alice_kp)
-            .expect("An unexpected error occurred.");
+    let mut alice_group = MlsGroup::new_with_group_id(
+        backend,
+        &mls_group_config,
+        group_id,
+        alice_credential_bundle.credential().signature_key(),
+    )
+    .expect("An unexpected error occurred.");
 
-    let (_queued_message, mut welcome) = alice_group
+    let (_queued_message, welcome, _group_info) = alice_group
         .add_members(backend, &[bob_kp.clone()])
         .expect("Could not add member to group.");
 
     alice_group
-        .merge_pending_commit()
+        .merge_pending_commit(backend)
         .expect("error merging pending commit");
+
+    let mut welcome = welcome.into_welcome().expect("Unexpected message type.");
 
     let original_welcome = welcome.clone();
 
@@ -163,26 +164,29 @@ fn test_welcome_ciphersuite_mismatch(
     let group_info_bytes = welcome_key
         .aead_open(backend, welcome.encrypted_group_info(), &[], &welcome_nonce)
         .expect("Could not decrypt GroupInfo.");
-    let mut group_info = GroupInfo::tls_deserialize(&mut group_info_bytes.as_slice())
-        .expect("Could not deserialize GroupInfo.");
+    let mut verifiable_group_info =
+        VerifiableGroupInfo::tls_deserialize(&mut group_info_bytes.as_slice()).unwrap();
 
     // Manipulate the ciphersuite in the GroupInfo
-    group_info
+    verifiable_group_info
         .payload
         .group_context
         .set_ciphersuite(mismatched_ciphersuite);
 
     // === Reconstruct the Welcome message and try to process it ===
 
-    let group_info_bytes = group_info
-        .tls_serialize_detached()
-        .expect("Could not serialize GroupInfo.");
+    let verifiable_group_info_bytes = verifiable_group_info.tls_serialize_detached().unwrap();
 
-    let encrypted_group_info = welcome_key
-        .aead_seal(backend, &group_info_bytes, &[], &welcome_nonce)
-        .expect("Could not encrypt GroupInfo.");
+    let encrypted_verifiable_group_info = welcome_key
+        .aead_seal(backend, &verifiable_group_info_bytes, &[], &welcome_nonce)
+        .unwrap();
 
-    welcome.encrypted_group_info = encrypted_group_info.into();
+    welcome.encrypted_group_info = encrypted_verifiable_group_info.into();
+
+    // Create backup of encryption keypair, s.t. we can process the welcome a second time after failing.
+    let encryption_keypair =
+        EncryptionKeyPair::read_from_key_store(backend, bob_kp.leaf_node().encryption_key())
+            .unwrap();
 
     // Bob tries to join the group
     let err = MlsGroup::new_from_welcome(
@@ -197,8 +201,8 @@ fn test_welcome_ciphersuite_mismatch(
 
     // === Process the original Welcome ===
 
-    // We need to store the key package key again because it has been consumed
-    // already
+    // We need to store the key package and its encryption key again because it
+    // has been consumed already.
     backend
         .key_store()
         .store(
@@ -210,6 +214,8 @@ fn test_welcome_ciphersuite_mismatch(
         .key_store()
         .store(bob_kp.hpke_init_key().as_slice(), &bob_private_key)
         .unwrap();
+
+    encryption_keypair.write_to_key_store(backend).unwrap();
 
     let _group = MlsGroup::new_from_welcome(
         backend,
@@ -238,12 +244,12 @@ fn test_welcome_message_with_version(
             123,
             vec![1, 2, 3, 4, 5, 6, 7, 8, 9],
             vec![1, 1, 1],
-            &Vec::new(),
+            Extensions::empty(),
         );
 
         GroupInfoTBS::new(
             group_context,
-            &Vec::new(),
+            Extensions::empty(),
             ConfirmationTag(Mac {
                 mac_value: vec![1, 2, 3, 4, 5].into(),
             }),
@@ -260,7 +266,7 @@ fn test_welcome_message_with_version(
     )
     .expect("An unexpected error occurred.");
     let group_info = group_info_tbs
-        .sign(backend, &credential_bundle)
+        .sign(backend, credential_bundle.signature_private_key())
         .expect("Error signing GroupInfo");
 
     // Generate key and nonce for the symmetric cipher.

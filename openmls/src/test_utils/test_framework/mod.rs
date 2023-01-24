@@ -29,7 +29,7 @@ use crate::{
     group::*,
     key_packages::*,
     messages::*,
-    treesync::node::Node,
+    treesync::{node::Node, LeafNode},
 };
 use ::rand::{rngs::OsRng, RngCore};
 use openmls_rust_crypto::OpenMlsRustCrypto;
@@ -278,17 +278,20 @@ impl MlsGroupTestSetup {
         // been removed from the group.
         sender_id: &[u8],
         group: &mut Group,
-        message: &MlsMessageOut,
+        message: &MlsMessageIn,
     ) -> Result<(), ClientError> {
         // Test serialization if mandated by config
-        let message = match self.use_codec {
+        let message: ProtocolMessage = match self.use_codec {
             CodecUse::SerializedMessages => {
-                let serialized_message =
-                    MlsMessageIn::from(message.clone()).tls_serialize_detached()?;
+                let mls_message_out: MlsMessageOut = message.clone().into();
+                let serialized_message = mls_message_out.tls_serialize_detached()?;
+
                 MlsMessageIn::tls_deserialize(&mut serialized_message.as_slice())?
             }
-            CodecUse::StructMessages => MlsMessageIn::from(message.clone()),
-        };
+            CodecUse::StructMessages => message.clone(),
+        }
+        .into_protocol_message()
+        .expect("Unexptected message type.");
         let clients = self.clients.read().expect("An unexpected error occurred.");
         // Distribute message to all members, except to the sender in the case of application messages
         let results: Result<Vec<_>, _> = group
@@ -374,7 +377,7 @@ impl MlsGroupTestSetup {
             .collect::<Vec<(Vec<u8>, MlsMessageOut)>>();
         drop(clients);
         for (sender_id, message) in messages {
-            self.distribute_to_members(&sender_id, group, &message)
+            self.distribute_to_members(&sender_id, group, &message.into())
                 .expect("Error sending messages to clients while checking group states.");
         }
     }
@@ -494,7 +497,7 @@ impl MlsGroupTestSetup {
         action_type: ActionType,
         group: &mut Group,
         client_id: &[u8],
-        key_pair: Option<KeyPackage>,
+        leaf_node: Option<LeafNode>,
     ) -> Result<(), SetupError> {
         let clients = self.clients.read().expect("An unexpected error occurred.");
         let client = clients
@@ -502,9 +505,9 @@ impl MlsGroupTestSetup {
             .ok_or(SetupError::UnknownClientId)?
             .read()
             .expect("An unexpected error occurred.");
-        let (messages, welcome_option) =
-            client.self_update(action_type, &group.group_id, key_pair)?;
-        self.distribute_to_members(&client.identity, group, &messages)?;
+        let (messages, welcome_option, _) =
+            client.self_update(action_type, &group.group_id, leaf_node)?;
+        self.distribute_to_members(&client.identity, group, &messages.into())?;
         if let Some(welcome) = welcome_option {
             self.deliver_welcome(welcome, group)?;
         }
@@ -547,10 +550,10 @@ impl MlsGroupTestSetup {
             let key_package = self.get_fresh_key_package(&addee, group.ciphersuite)?;
             key_packages.push(key_package);
         }
-        let (messages, welcome_option) =
+        let (messages, welcome_option, _) =
             adder.add_members(action_type, &group.group_id, &key_packages)?;
-        for message in &messages {
-            self.distribute_to_members(adder_id, group, message)?;
+        for message in messages {
+            self.distribute_to_members(adder_id, group, &message.into())?;
         }
         if let Some(welcome) = welcome_option {
             self.deliver_welcome(welcome, group)?;
@@ -575,10 +578,10 @@ impl MlsGroupTestSetup {
             .ok_or(SetupError::UnknownClientId)?
             .read()
             .expect("An unexpected error occurred.");
-        let (messages, welcome_option) =
+        let (messages, welcome_option, _) =
             remover.remove_members(action_type, &group.group_id, target_members)?;
-        for message in &messages {
-            self.distribute_to_members(remover_id, group, message)?;
+        for message in messages {
+            self.distribute_to_members(remover_id, group, &message.into())?;
         }
         if let Some(welcome) = welcome_option {
             self.deliver_welcome(welcome, group)?;

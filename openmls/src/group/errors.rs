@@ -3,10 +3,11 @@
 //! This module contains errors that originate at lower levels and are partially re-exported in errors thrown by functions of the `MlsGroup` API.
 
 use crate::{
+    ciphersuite::signable::SignatureError,
     error::LibraryError,
-    extensions::errors::ExtensionError,
+    extensions::errors::{ExtensionError, InvalidExtensionError},
     framing::errors::{MessageDecryptionError, SenderError},
-    key_packages::errors::KeyPackageExtensionSupportError,
+    key_packages::errors::{KeyPackageExtensionSupportError, KeyPackageNewError},
     schedule::errors::PskError,
     treesync::errors::*,
 };
@@ -18,7 +19,7 @@ pub use super::mls_group::errors::*;
 
 /// Welcome error
 #[derive(Error, Debug, PartialEq, Clone)]
-pub enum WelcomeError {
+pub enum WelcomeError<KeyStoreError> {
     /// See [`LibraryError`] for more details.
     #[error(transparent)]
     LibraryError(#[from] LibraryError),
@@ -61,21 +62,21 @@ pub enum WelcomeError {
     /// Unsupported extensions found in the KeyPackage of another member.
     #[error("Unsupported extensions found in the KeyPackage of another member.")]
     UnsupportedExtensions,
-    /// A duplicate ratchet tree was found.
-    #[error("A duplicate ratchet tree was found.")]
-    DuplicateRatchetTreeExtension,
     /// More than 2^16 PSKs were provided.
     #[error("More than 2^16 PSKs were provided.")]
     PskTooManyKeys,
     /// The PSK could not be found in the key store.
     #[error("The PSK could not be found in the key store.")]
     PskNotFound,
-    /// No matching KeyPackage was found in the key store.
-    #[error("No matching KeyPackage was found in the key store.")]
+    /// No matching encryption key was found in the key store.
+    #[error("No matching encryption key was found in the key store.")]
+    NoMatchingEncryptionKey,
+    /// No matching key package was found in the key store.
+    #[error("No matching key package was found in the key store.")]
     NoMatchingKeyPackage,
-    /// Failed to delete the KeyPackageBundle from the key store.
-    #[error("Failed to delete the KeyPackageBundle from the key store.")]
-    KeyStoreDeletionError,
+    /// Error accessing the key store.
+    #[error("Error accessing the key store.")]
+    KeyStoreError(KeyStoreError),
     /// This error indicates the public tree is invalid. See [`PublicTreeError`] for more details.
     #[error(transparent)]
     PublicTreeError(#[from] PublicTreeError),
@@ -108,9 +109,6 @@ pub enum ExternalCommitError {
     /// The signature over the given group info is invalid.
     #[error("The signature over the given group info is invalid.")]
     InvalidGroupInfoSignature,
-    /// A duplicate ratchet tree was found.
-    #[error("A duplicate ratchet tree was found.")]
-    DuplicateRatchetTreeExtension,
     /// Error creating external commit.
     #[error("Error creating external commit.")]
     CommitError,
@@ -179,11 +177,14 @@ pub enum StageCommitError {
     /// See [`ApplyUpdatePathError`] for more details.
     #[error(transparent)]
     UpdatePathError(#[from] ApplyUpdatePathError),
+    /// Missing decryption key.
+    #[error("Missing decryption key.")]
+    MissingDecryptionKey,
 }
 
 /// Create commit error
 #[derive(Error, Debug, PartialEq, Clone)]
-pub enum CreateCommitError {
+pub enum CreateCommitError<KeyStoreError> {
     /// See [`LibraryError`] for more details.
     #[error(transparent)]
     LibraryError(#[from] LibraryError),
@@ -205,6 +206,18 @@ pub enum CreateCommitError {
     /// See [`ProposalValidationError`] for more details.
     #[error(transparent)]
     ProposalValidationError(#[from] ProposalValidationError),
+    /// Error interacting with the key store.
+    #[error("Error interacting with the key store.")]
+    KeyStoreError(KeyStoreError),
+    /// See [`KeyPackageNewError`] for more details.
+    #[error(transparent)]
+    KeyPackageGenerationError(#[from] KeyPackageNewError<KeyStoreError>),
+    /// See [`SignatureError`] for more details.
+    #[error(transparent)]
+    SignatureError(#[from] SignatureError),
+    /// See [`InvalidExtensionError`] for more details.
+    #[error(transparent)]
+    InvalidExtensionError(#[from] InvalidExtensionError),
 }
 
 /// Validation error
@@ -284,9 +297,12 @@ pub enum ProposalValidationError {
     /// Signature key of the add proposal already existed in tree.
     #[error("Signature key of the add proposal already existed in tree.")]
     ExistingSignatureKeyAddProposal,
-    /// HPKE public key of the add proposal already existed in tree.
-    #[error("HPKE public key of the add proposal already existed in tree.")]
+    /// HPKE public key (init or encryption) of the add proposal already existed in tree.
+    #[error("HPKE public key (init or encryption) of the add proposal already existed in tree.")]
     ExistingPublicKeyAddProposal,
+    /// The HPKE init and encryption keys are the same.
+    #[error("The HPKE init and encryption keys are the same.")]
+    InitEncryptionKeyCollision,
     /// The identity of the update proposal did not match the existing identity.
     #[error("The identity of the update proposal did not match the existing identity.")]
     UpdateProposalIdentityMismatch,
@@ -423,7 +439,7 @@ pub(crate) enum ApplyProposalsError {
 
 // Core group build error
 #[derive(Error, Debug, PartialEq, Clone)]
-pub(crate) enum CoreGroupBuildError {
+pub(crate) enum CoreGroupBuildError<KeyStoreError> {
     /// See [`LibraryError`] for more details.
     #[error(transparent)]
     LibraryError(#[from] LibraryError),
@@ -436,6 +452,9 @@ pub(crate) enum CoreGroupBuildError {
     /// See [`PskError`] for more details.
     #[error(transparent)]
     PskError(#[from] PskError),
+    /// Error storing leaf private key in key store.
+    #[error("Error storing leaf private key in key store.")]
+    KeyStoreError(KeyStoreError),
 }
 
 // CoreGroup parse message error
@@ -466,4 +485,15 @@ pub(crate) enum CreateGroupContextExtProposalError {
     /// See [`ExtensionError`] for more details.
     #[error(transparent)]
     Extension(#[from] ExtensionError),
+}
+
+/// Error merging a commit.
+#[derive(Error, Debug, PartialEq, Clone)]
+pub enum MergeCommitError<KeyStoreError> {
+    /// See [`LibraryError`] for more details.
+    #[error(transparent)]
+    LibraryError(#[from] LibraryError),
+    /// Error accessing the key store.
+    #[error("Error accessing the key store.")]
+    KeyStoreError(KeyStoreError),
 }

@@ -1,24 +1,39 @@
 use log::debug;
-use openmls_traits::crypto::OpenMlsCrypto;
+use openmls_traits::{crypto::OpenMlsCrypto, key_store::OpenMlsKeyStore};
 use tls_codec::Deserialize;
 
 use crate::{
     ciphersuite::{hash_ref::HashReference, signable::Verifiable},
-    extensions::ExtensionType,
     group::{core_group::*, errors::WelcomeError},
     schedule::errors::PskError,
-    treesync::{errors::TreeSyncFromNodesError, node::Node},
+    treesync::{
+        errors::{PublicTreeError, TreeSyncFromNodesError, TreeSyncSetPathError},
+        node::{encryption_keys::EncryptionKeyPair, Node},
+    },
 };
 
 impl CoreGroup {
     // Join a group from a welcome message
-    pub fn new_from_welcome(
+    pub fn new_from_welcome<KeyStore: OpenMlsKeyStore>(
         welcome: Welcome,
         nodes_option: Option<Vec<Option<Node>>>,
         key_package_bundle: KeyPackageBundle,
-        backend: &impl OpenMlsCryptoProvider,
-    ) -> Result<Self, WelcomeError> {
+        backend: &impl OpenMlsCryptoProvider<KeyStoreProvider = KeyStore>,
+    ) -> Result<Self, WelcomeError<KeyStore::Error>> {
         log::debug!("CoreGroup::new_from_welcome_internal");
+
+        // Read the encryption key pair from the key store and delete it there.
+        // TODO #1207: Key store access happens as early as possible so it can
+        // be pulled up later more easily.
+        let leaf_keypair = EncryptionKeyPair::read_from_key_store(
+            backend,
+            key_package_bundle.key_package.leaf_node().encryption_key(),
+        )
+        .ok_or(WelcomeError::NoMatchingEncryptionKey)?;
+        leaf_keypair
+            .delete_from_key_store(backend)
+            .map_err(|_| WelcomeError::NoMatchingEncryptionKey)?;
+
         let mls_version = *welcome.version();
         if mls_version != ProtocolVersion::Mls10 {
             return Err(WelcomeError::UnsupportedMlsVersion);
@@ -79,22 +94,18 @@ impl CoreGroup {
         let group_info_bytes = welcome_key
             .aead_open(backend, welcome.encrypted_group_info(), &[], &welcome_nonce)
             .map_err(|_| WelcomeError::GroupInfoDecryptionFailure)?;
-        let group_info = GroupInfo::tls_deserialize(&mut group_info_bytes.as_slice())
-            .map_err(|_| WelcomeError::MalformedWelcomeMessage)?;
+        let verifiable_group_info =
+            VerifiableGroupInfo::tls_deserialize(&mut group_info_bytes.as_slice())
+                .map_err(|_| WelcomeError::MalformedWelcomeMessage)?;
 
-        if ciphersuite != group_info.group_context().ciphersuite() {
+        if ciphersuite != verifiable_group_info.ciphersuite() {
             return Err(WelcomeError::GroupInfoCiphersuiteMismatch);
         }
 
         // Make sure that we can support the required capabilities in the group info.
-        let group_context_extensions = group_info.group_context().extensions();
-        let required_capabilities = group_context_extensions
-            .iter()
-            .find(|&extension| extension.extension_type() == ExtensionType::RequiredCapabilities);
-        if let Some(required_capabilities) = required_capabilities {
-            let required_capabilities = required_capabilities
-                .as_required_capabilities_extension()
-                .map_err(|_| LibraryError::custom("Expected required capabilities extension"))?;
+        if let Some(required_capabilities) =
+            verifiable_group_info.extensions().required_capabilities()
+        {
             required_capabilities
                 .check_support()
                 .map_err(|_| WelcomeError::UnsupportedCapability)?;
@@ -116,12 +127,7 @@ impl CoreGroup {
         // this group. Note that this is not strictly necessary. But there's
         // currently no other mechanism to enable the extension.
         let (nodes, enable_ratchet_tree_extension) =
-            match try_nodes_from_extensions(group_info.extensions()).map_err(|e| match e {
-                ExtensionError::DuplicateRatchetTreeExtension => {
-                    WelcomeError::DuplicateRatchetTreeExtension
-                }
-                _ => LibraryError::custom("Unexpected extension error").into(),
-            })? {
+            match try_nodes_from_extensions(verifiable_group_info.extensions()) {
                 Some(nodes) => (nodes, true),
                 None => match nodes_option {
                     Some(n) => (n, false),
@@ -129,30 +135,60 @@ impl CoreGroup {
                 },
             };
 
-        // Commit secret is ignored when joining a group, since we already have
-        // the joiner_secret.
-        let (tree, _commit_secret_option) = TreeSync::from_nodes_with_secrets(
+        let tree = TreeSync::from_nodes(
             backend,
             ciphersuite,
             &nodes,
-            group_info.signer(),
-            path_secret_option,
-            key_package_bundle,
+            key_package_bundle
+                .key_package()
+                .leaf_node()
+                .encryption_key(),
         )
         .map_err(|e| match e {
             TreeSyncFromNodesError::LibraryError(e) => e.into(),
             TreeSyncFromNodesError::PublicTreeError(e) => WelcomeError::PublicTreeError(e),
         })?;
 
-        let signer_credential = tree
-            .leaf(group_info.signer())
-            .ok_or(WelcomeError::UnknownSender)?
-            .credential();
+        let diff = tree.empty_diff();
 
-        // Verify GroupInfo signature
-        group_info
-            .verify_no_out(backend, signer_credential)
-            .map_err(|_| WelcomeError::InvalidGroupInfoSignature)?;
+        // If we got a path secret, derive the path (which also checks if the
+        // public keys match) and store the derived keys in the key store.
+        let group_keypairs = if let Some(path_secret) = path_secret_option {
+            let (path_keypairs, _commit_secret) = diff
+                .derive_path_secrets(
+                    backend,
+                    ciphersuite,
+                    path_secret,
+                    verifiable_group_info.signer(),
+                )
+                .map_err(|e| match e {
+                    TreeSyncSetPathError::LibraryError(e) => e.into(),
+                    TreeSyncSetPathError::PublicKeyMismatch => {
+                        WelcomeError::PublicTreeError(PublicTreeError::PublicKeyMismatch)
+                    }
+                })?;
+            vec![leaf_keypair]
+                .into_iter()
+                .chain(path_keypairs.into_iter())
+                .collect()
+        } else {
+            vec![leaf_keypair]
+        };
+
+        let group_info: GroupInfo = {
+            let signer_credential = tree
+                .leaf(verifiable_group_info.signer())
+                .ok_or(WelcomeError::UnknownSender)?
+                .credential();
+
+            verifiable_group_info
+                .verify(
+                    backend,
+                    signer_credential.signature_key(),
+                    ciphersuite.signature_algorithm(),
+                )
+                .map_err(|_| WelcomeError::InvalidGroupInfoSignature)?
+        };
 
         // Compute state
         let group_context = GroupContext::new(
@@ -164,7 +200,7 @@ impl CoreGroup {
                 .group_context()
                 .confirmed_transcript_hash()
                 .to_vec(),
-            group_context_extensions,
+            group_info.group_context().extensions().clone(),
         );
 
         let serialized_group_context = group_context
@@ -205,7 +241,7 @@ impl CoreGroup {
         } else {
             let message_secrets_store = MessageSecretsStore::new_with_secret(0, message_secrets);
 
-            Ok(CoreGroup {
+            let group = CoreGroup {
                 ciphersuite,
                 group_context,
                 group_epoch_secrets,
@@ -214,7 +250,12 @@ impl CoreGroup {
                 use_ratchet_tree_extension: enable_ratchet_tree_extension,
                 mls_version,
                 message_secrets_store,
-            })
+            };
+            group
+                .store_epoch_keypairs(backend, group_keypairs.as_slice())
+                .map_err(WelcomeError::KeyStoreError)?;
+
+            Ok(group)
         }
     }
 

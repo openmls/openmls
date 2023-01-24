@@ -5,6 +5,10 @@ use std::mem;
 use core_group::{create_commit_params::CreateCommitParams, staged_commit::StagedCommit};
 use tls_codec::Serialize;
 
+use crate::messages::GroupInfo;
+
+use crate::group::errors::MergeCommitError;
+
 use super::{errors::ProcessMessageError, *};
 
 impl MlsGroup {
@@ -20,7 +24,7 @@ impl MlsGroup {
     pub fn process_message(
         &mut self,
         backend: &impl OpenMlsCryptoProvider,
-        message: MlsMessageIn,
+        message: impl Into<ProtocolMessage>,
     ) -> Result<ProcessedMessage, ProcessMessageError> {
         // Make sure we are still a member of the group
         if !self.is_active() {
@@ -28,6 +32,7 @@ impl MlsGroup {
                 MlsGroupStateError::UseAfterEviction,
             ));
         }
+        let message = message.into();
 
         // Check that handshake messages are compatible with the incoming wire format policy
         if !message.is_external()
@@ -69,10 +74,15 @@ impl MlsGroup {
     /// currently stored in the group's [ProposalStore].
     ///
     /// Returns an error if there is a pending commit.
-    pub fn commit_to_pending_proposals(
+    // FIXME: #1217
+    #[allow(clippy::type_complexity)]
+    pub fn commit_to_pending_proposals<KeyStore: OpenMlsKeyStore>(
         &mut self,
-        backend: &impl OpenMlsCryptoProvider,
-    ) -> Result<(MlsMessageOut, Option<Welcome>), CommitToPendingProposalsError> {
+        backend: &impl OpenMlsCryptoProvider<KeyStoreProvider = KeyStore>,
+    ) -> Result<
+        (MlsMessageOut, Option<MlsMessageOut>, Option<GroupInfo>),
+        CommitToPendingProposalsError<KeyStore::Error>,
+    > {
         self.is_operational()?;
 
         let credential = self.credential()?;
@@ -108,12 +118,22 @@ impl MlsGroup {
         // Since the state of the group might be changed, arm the state flag
         self.flag_state_change();
 
-        Ok((mls_message, create_commit_result.welcome_option))
+        Ok((
+            mls_message,
+            create_commit_result
+                .welcome_option
+                .map(|w| MlsMessageOut::from_welcome(w, self.group.version())),
+            create_commit_result.group_info,
+        ))
     }
 
     /// Merge a [StagedCommit] into the group after inspection. As this advances
     /// the epoch of the group, it also clears any pending commits.
-    pub fn merge_staged_commit(&mut self, staged_commit: StagedCommit) {
+    pub fn merge_staged_commit<KeyStore: OpenMlsKeyStore>(
+        &mut self,
+        backend: &impl OpenMlsCryptoProvider<KeyStoreProvider = KeyStore>,
+        staged_commit: StagedCommit,
+    ) -> Result<(), MergeCommitError<KeyStore::Error>> {
         // Check if we were removed from the group
         if staged_commit.self_removed() {
             self.group_state = MlsGroupState::Inactive;
@@ -124,7 +144,7 @@ impl MlsGroup {
 
         // Merge staged commit
         self.group
-            .merge_staged_commit(staged_commit, &mut self.proposal_store);
+            .merge_staged_commit(backend, staged_commit, &mut self.proposal_store)?;
 
         // Extract and store the resumption psk for the current epoch
         let resumption_psk = self.group.group_epoch_secrets().resumption_psk();
@@ -136,20 +156,25 @@ impl MlsGroup {
 
         // Delete a potential pending commit
         self.clear_pending_commit();
+
+        Ok(())
     }
 
     /// Merges the pending [`StagedCommit`] if there is one, and
     /// clears the field by setting it to `None`.
-    pub fn merge_pending_commit(&mut self) -> Result<(), MlsGroupStateError> {
+    pub fn merge_pending_commit<KeyStore: OpenMlsKeyStore>(
+        &mut self,
+        backend: &impl OpenMlsCryptoProvider<KeyStoreProvider = KeyStore>,
+    ) -> Result<(), MergePendingCommitError<KeyStore::Error>> {
         match &self.group_state {
             MlsGroupState::PendingCommit(_) => {
                 let old_state = mem::replace(&mut self.group_state, MlsGroupState::Operational);
                 if let MlsGroupState::PendingCommit(pending_commit_state) = old_state {
-                    self.merge_staged_commit((*pending_commit_state).into());
+                    self.merge_staged_commit(backend, (*pending_commit_state).into())?;
                 }
                 Ok(())
             }
-            MlsGroupState::Inactive => Err(MlsGroupStateError::UseAfterEviction),
+            MlsGroupState::Inactive => Err(MlsGroupStateError::UseAfterEviction)?,
             MlsGroupState::Operational => Ok(()),
         }
     }
