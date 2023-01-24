@@ -407,6 +407,7 @@
 <span id="407">407</span>
 <span id="408">408</span>
 <span id="409">409</span>
+<span id="410">410</span>
 </pre><pre class="rust"><code><span class="doccomment">//! MLS group membership
 //!
 //! This module contains membership-related operations and exposes [`RemoveOperation`].
@@ -415,7 +416,8 @@
 <span class="kw">use </span>tls_codec::Serialize;
 
 <span class="kw">use crate</span>::{
-    binary_tree::array_representation::LeafNodeIndex, messages::GroupInfo, treesync::LeafNode,
+    binary_tree::array_representation::LeafNodeIndex, messages::group_info::GroupInfo,
+    treesync::LeafNode,
 };
 
 <span class="kw">use super</span>::{

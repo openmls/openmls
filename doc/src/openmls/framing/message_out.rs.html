@@ -190,6 +190,9 @@
 <span id="190">190</span>
 <span id="191">191</span>
 <span id="192">192</span>
+<span id="193">193</span>
+<span id="194">194</span>
+<span id="195">195</span>
 </pre><pre class="rust"><code><span class="doccomment">//! MLS Message (Output)
 //!
 //! This module defines the [`MlsMessageOut`] structs which implements the
@@ -203,7 +206,10 @@
 
 <span class="kw">use super</span>::<span class="kw-2">*</span>;
 
-<span class="kw">use crate</span>::{key_packages::KeyPackage, versions::ProtocolVersion};
+<span class="kw">use crate</span>::{key_packages::KeyPackage, messages::group_info::GroupInfo, versions::ProtocolVersion};
+
+<span class="attribute">#[cfg(any(feature = <span class="string">&quot;test-utils&quot;</span>, test))]
+</span><span class="kw">use </span><span class="kw">crate</span>::messages::group_info::VerifiableGroupInfo;
 
 <span class="doccomment">/// An [`MlsMessageOut`] is typically returned from an [`MlsGroup`] function and
 /// meant to be serialized and sent to the DS.

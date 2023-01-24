@@ -869,6 +869,9 @@
 <span id="869">869</span>
 <span id="870">870</span>
 <span id="871">871</span>
+<span id="872">872</span>
+<span id="873">873</span>
+<span id="874">874</span>
 </pre><pre class="rust"><code><span class="doccomment">//! ### Don&#39;t Panic!
 //!
 //! Functions in this module should never panic. However, if there is a bug in
@@ -917,8 +920,11 @@
     framing::{mls_auth_content::AuthenticatedContent, <span class="kw-2">*</span>},
     group::<span class="kw-2">*</span>,
     key_packages::<span class="kw-2">*</span>,
-    messages::VerifiableGroupInfo,
-    messages::{proposals::<span class="kw-2">*</span>, <span class="kw-2">*</span>},
+    messages::{
+        group_info::{GroupInfo, GroupInfoTBS, VerifiableGroupInfo},
+        proposals::<span class="kw-2">*</span>,
+        <span class="kw-2">*</span>,
+    },
     schedule::{message_secrets::<span class="kw-2">*</span>, psk::<span class="kw-2">*</span>, <span class="kw-2">*</span>},
     tree::{secret_tree::SecretTreeError, sender_ratchet::SenderRatchetConfiguration},
     treesync::{

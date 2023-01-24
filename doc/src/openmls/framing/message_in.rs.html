@@ -234,6 +234,9 @@
 <span id="234">234</span>
 <span id="235">235</span>
 <span id="236">236</span>
+<span id="237">237</span>
+<span id="238">238</span>
+<span id="239">239</span>
 </pre><pre class="rust"><code><span class="doccomment">//! MLS Message (Input)
 //!
 //! This module defines the [`MlsMessageIn`] structs which implements the
@@ -243,7 +246,7 @@
 //!
 //! The [`MlsMessageIn`] struct is meant to be deserialized upon receiving it
 //! from the DS. After deserialization, its content (either a [`PublicMessage`],
-//! [`PrivateMessage`], [`KeyPackage`], [`Welcome`] or [`GroupInfo`]) can be
+//! [`PrivateMessage`], [`KeyPackage`], [`Welcome`] or [`GroupInfo`](crate::messages::group_info::GroupInfo)) can be
 //! extracted via [`MlsMessageIn::extract()`] for use with the [`MlsGroup`] API.
 //!
 //! If an [`MlsMessageIn`] contains a [`PublicMessage`] or [`PrivateMessage`],
@@ -253,7 +256,9 @@
 
 <span class="kw">use super</span>::{mls_content::ContentType, <span class="kw-2">*</span>};
 
-<span class="kw">use crate</span>::{key_packages::KeyPackage, versions::ProtocolVersion};
+<span class="kw">use crate</span>::{
+    key_packages::KeyPackage, messages::group_info::VerifiableGroupInfo, versions::ProtocolVersion,
+};
 
 <span class="doccomment">/// Before use with the [`MlsGroup`] API, the message has to be unpacked via
 /// `extract` to yield its [`MlsMessageInBody`].
@@ -303,7 +308,8 @@
 ///     }
 /// } MLSMessage;
 /// ```
-</span><span class="attribute">#[derive(Debug, PartialEq, Clone, TlsSerialize, TlsDeserialize, TlsSize)]
+</span><span class="attribute">#[derive(Debug, PartialEq, Clone, TlsDeserialize, TlsSize)]
+#[cfg_attr(feature = <span class="string">&quot;test-utils&quot;</span>, derive(TlsSerialize))]
 #[repr(u8)]
 </span><span class="kw">pub enum </span>MlsMessageInBody {
     <span class="doccomment">/// Plaintext message
