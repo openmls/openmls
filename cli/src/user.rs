@@ -82,9 +82,8 @@ impl User {
             if self
                 .identity
                 .borrow()
-                .credential
-                .credential()
-                .signature_key()
+                .credential_with_key
+                .signature_key
                 .as_slice()
                 != signature_key.as_slice()
             {
@@ -118,7 +117,11 @@ impl User {
         let message_out = group
             .mls_group
             .borrow_mut()
-            .create_message(&self.crypto, msg.as_bytes())
+            .create_message(
+                &self.crypto,
+                self.identity.borrow().signer.as_ref(),
+                msg.as_bytes(),
+            )
             .map_err(|e| format!("{}", e))?;
 
         let msg = GroupMessage::new(message_out.into(), &self.recipients(group));
@@ -213,7 +216,7 @@ impl User {
         log::trace!("done with messages ...");
 
         for c in self.backend.list_clients()?.drain(..) {
-            if c.id != self.identity.borrow().credential.credential().identity()
+            if c.id != self.identity.borrow().identity()
                 && self
                     .contacts
                     .insert(
@@ -240,7 +243,6 @@ impl User {
         let group_id = name.as_bytes();
         let mut group_aad = group_id.to_vec();
         group_aad.extend(b" AAD");
-        let kp = self.identity.borrow_mut().update(&self.crypto);
 
         // NOTE: Since the DS currently doesn't distribute copies of the group's ratchet
         // tree, we need to include the ratchet_tree_extension.
@@ -250,9 +252,10 @@ impl User {
 
         let mut mls_group = MlsGroup::new_with_group_id(
             &self.crypto,
+            self.identity.borrow().signer.as_ref(),
             &group_config,
             GroupId::from_slice(group_id),
-            kp.leaf_node().signature_key(),
+            self.identity.borrow().credential_with_key.clone(),
         )
         .expect("Failed to create MlsGroup");
         mls_group.set_aad(group_aad.as_slice());
@@ -299,7 +302,11 @@ impl User {
         let (out_messages, welcome, _group_info) = group
             .mls_group
             .borrow_mut()
-            .add_members(&self.crypto, &[joiner_key_package])
+            .add_members(
+                &self.crypto,
+                self.identity.borrow().signer.as_ref(),
+                &[joiner_key_package],
+            )
             .map_err(|e| format!("Failed to add member to group - {}", e))?;
 
         // First, process the invitation on our end.
