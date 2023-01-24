@@ -3,7 +3,7 @@
 //! https://github.com/openmls/openmls/wiki/Message-validation
 
 use openmls_rust_crypto::OpenMlsRustCrypto;
-use openmls_traits::{key_store::OpenMlsKeyStore, types::Ciphersuite, OpenMlsCryptoProvider};
+use openmls_traits::{types::Ciphersuite, OpenMlsCryptoProvider};
 use tls_codec::{Deserialize, Serialize};
 
 use rstest::*;
@@ -11,7 +11,6 @@ use rstest_reuse::{self, *};
 
 use crate::{
     ciphersuite::{hash_ref::ProposalRef, signable::Verifiable},
-    credentials::*,
     framing::*,
     group::{config::CryptoConfig, errors::*, tests::utils::resign_external_commit, *},
     messages::proposals::*,
@@ -110,7 +109,7 @@ fn test_valsem240(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
     // Test with PublicMessage
     let ECValidationTestSetup {
         mut alice_group,
-        alice_credential,
+        alice_credential: _,
         bob_credential,
         mut plaintext,
         original_plaintext,
@@ -144,7 +143,6 @@ fn test_valsem240(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
             .export_group_context()
             .tls_serialize_detached()
             .expect("error serializing context"),
-        backend,
     );
 
     // Have alice process the commit resulting from external init.
@@ -173,7 +171,7 @@ fn test_valsem241(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
     // Test with PublicMessage
     let ECValidationTestSetup {
         mut alice_group,
-        alice_credential,
+        alice_credential: _,
         bob_credential,
         mut plaintext,
         original_plaintext,
@@ -204,7 +202,6 @@ fn test_valsem241(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
             .export_group_context()
             .tls_serialize_detached()
             .expect("error serializing context"),
-        backend,
     );
     // Have alice process the commit resulting from external init.
     let message_in = ProtocolMessage::from(signed_plaintext);
@@ -356,7 +353,6 @@ fn test_valsem242(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
                 .export_group_context()
                 .tls_serialize_detached()
                 .expect("error serializing context"),
-            backend,
         );
 
         let processed_msg = alice_group.process_message(backend, signed_plaintext);
@@ -471,7 +467,6 @@ fn test_valsem243(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
             .export_group_context()
             .tls_serialize_detached()
             .expect("error serializing context"),
-        backend,
     );
 
     // Have alice process the commit resulting from external init.
@@ -554,7 +549,6 @@ fn test_valsem244(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
             .export_group_context()
             .tls_serialize_detached()
             .expect("error serializing context"),
-        backend,
     );
 
     // Have alice process the commit resulting from external init.
@@ -611,7 +605,6 @@ fn test_valsem245(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
             .export_group_context()
             .tls_serialize_detached()
             .expect("error serializing context"),
-        backend,
     );
 
     // Have alice process the commit resulting from external init.
@@ -679,7 +672,6 @@ fn test_valsem246(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
             .export_group_context()
             .tls_serialize_detached()
             .expect("error serializing context"),
-        backend,
     );
 
     // Have alice process the commit resulting from external init.

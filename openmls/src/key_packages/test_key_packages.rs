@@ -34,7 +34,7 @@ pub(crate) fn key_package(
 
 #[apply(ciphersuites_and_backends)]
 fn generate_key_package(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
-    let (key_package, credential, signature_keys) = key_package(ciphersuite, backend);
+    let (key_package, _credential, signature_keys) = key_package(ciphersuite, backend);
 
     let pk = OpenMlsSignaturePublicKey::new(
         signature_keys.public().into(),

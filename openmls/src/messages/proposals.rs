@@ -227,7 +227,7 @@ pub struct PreSharedKeyProposal {
 
 impl PreSharedKeyProposal {
     /// Create a new PSK proposal
-    #[cfg(any(feature = "test-utils", test))]
+    #[cfg(test)]
     pub(crate) fn new(psk: PreSharedKeyId) -> Self {
         Self { psk }
     }

@@ -15,7 +15,7 @@ use crate::{
     ciphersuite::hash_ref::ProposalRef,
     credentials::*,
     framing::{
-        mls_content::FramedContentBody, MlsMessageIn, ProcessedMessageContent, ProtocolMessage,
+        mls_content::FramedContentBody, MlsMessageIn,  ProtocolMessage,
         PublicMessage, Sender,
     },
     group::{config::CryptoConfig, errors::*, *},
@@ -277,7 +277,7 @@ fn test_valsem100(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
         mut alice_group,
         alice_credential_with_key_and_signer,
         mut bob_group,
-        bob_credential_with_key_and_signer,
+        bob_credential_with_key_and_signer: _,
     } = validation_test_setup(PURE_PLAINTEXT_WIRE_FORMAT_POLICY, ciphersuite, backend);
 
     // We now have alice create a commit with an add proposal. Then we
@@ -433,7 +433,7 @@ fn test_valsem101(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
         mut alice_group,
         alice_credential_with_key_and_signer,
         mut bob_group,
-        bob_credential_with_key_and_signer,
+        bob_credential_with_key_and_signer: _,
     } = validation_test_setup(PURE_PLAINTEXT_WIRE_FORMAT_POLICY, ciphersuite, backend);
 
     // We now have alice create a commit with an add proposal. Then we
@@ -529,7 +529,7 @@ fn test_valsem102(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
             generate_credential_bundle_and_key_package("Alice".into(), ciphersuite, backend);
         let (bob_credential_bundle, mut bob_key_package) =
             generate_credential_bundle_and_key_package("Bob".into(), ciphersuite, backend);
-        let (charlie_credential_bundle, charlie_key_package) =
+        let (_charlie_credential_bundle, charlie_key_package) =
             generate_credential_bundle_and_key_package("Charlie".into(), ciphersuite, backend);
 
         match bob_and_charlie_share_keys {
@@ -589,7 +589,7 @@ fn test_valsem102(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
         mut alice_group,
         alice_credential_with_key_and_signer,
         mut bob_group,
-        bob_credential_with_key_and_signer,
+        bob_credential_with_key_and_signer: _,
     } = validation_test_setup(PURE_PLAINTEXT_WIRE_FORMAT_POLICY, ciphersuite, backend);
 
     // We now have alice create a commit with an add proposal. Then we

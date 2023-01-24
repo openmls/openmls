@@ -4,7 +4,7 @@
 
 mod group_context;
 
-#[cfg(any(feature = "test-utils", test))]
+#[cfg(test)]
 use crate::ciphersuite::*;
 use crate::extensions::*;
 use crate::utils::*;
@@ -32,7 +32,7 @@ pub use mls_group::processing::*;
 pub use mls_group::*;
 
 // Tests
-#[cfg(any(feature = "test-utils", test))]
+#[cfg(test)]
 pub(crate) use create_commit_params::*;
 #[cfg(any(feature = "test-utils", test))]
 pub(crate) mod tests;

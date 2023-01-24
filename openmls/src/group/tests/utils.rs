@@ -419,7 +419,6 @@ pub(crate) fn resign_external_commit(
     plaintext: PublicMessage,
     original_plaintext: &PublicMessage,
     serialized_context: Vec<u8>,
-    backend: &impl OpenMlsCryptoProvider,
 ) -> PublicMessage {
     let serialized_context = Some(serialized_context);
     // We have to re-sign, since we changed the content.

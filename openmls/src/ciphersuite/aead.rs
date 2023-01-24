@@ -35,7 +35,7 @@ impl AeadKey {
         }
     }
 
-    #[cfg(any(feature = "test-utils", test))]
+    #[cfg(test)]
     /// Get a slice to the key value.
     pub(crate) fn as_slice(&self) -> &[u8] {
         &self.value
