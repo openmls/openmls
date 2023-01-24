@@ -14,7 +14,7 @@ use crate::{
 #[apply(ciphersuites_and_backends)]
 fn export_group_info(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
     // Alice creates a group
-    let (group_alice, credential, signer, pk) = setup_alice_group(ciphersuite, backend);
+    let (group_alice, _, signer, pk) = setup_alice_group(ciphersuite, backend);
 
     let group_info: GroupInfo = group_alice
         .export_group_info(backend, &signer, true)
