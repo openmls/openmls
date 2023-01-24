@@ -126,7 +126,7 @@ use crate::{
     ciphersuite::{AeadKey, AeadNonce, HpkePrivateKey, Mac, Secret},
     error::LibraryError,
     framing::{mls_content::AuthenticatedContentTbm, MembershipTag},
-    messages::{ConfirmationTag, GroupInfo, PathSecret},
+    messages::{group_info::GroupInfo, ConfirmationTag, PathSecret},
     tree::secret_tree::SecretTree,
     versions::ProtocolVersion,
 };

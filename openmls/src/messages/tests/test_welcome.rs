@@ -6,8 +6,8 @@ use crate::{
     group::{config::CryptoConfig, errors::WelcomeError, GroupId, MlsGroup, MlsGroupConfigBuilder},
     key_packages::KeyPackage,
     messages::{
-        ConfirmationTag, EncryptedGroupSecrets, GroupInfoTBS, GroupSecrets, VerifiableGroupInfo,
-        Welcome,
+        group_info::{GroupInfoTBS, VerifiableGroupInfo},
+        ConfirmationTag, EncryptedGroupSecrets, GroupSecrets, Welcome,
     },
     schedule::{psk::PskSecret, KeySchedule},
     treesync::node::encryption_keys::EncryptionKeyPair,
@@ -169,8 +169,8 @@ fn test_welcome_ciphersuite_mismatch(
 
     // Manipulate the ciphersuite in the GroupInfo
     verifiable_group_info
-        .payload
-        .group_context
+        .payload_mut()
+        .group_context_mut()
         .set_ciphersuite(mismatched_ciphersuite);
 
     // === Reconstruct the Welcome message and try to process it ===

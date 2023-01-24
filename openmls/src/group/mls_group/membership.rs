@@ -6,7 +6,8 @@ use core_group::create_commit_params::CreateCommitParams;
 use tls_codec::Serialize;
 
 use crate::{
-    binary_tree::array_representation::LeafNodeIndex, messages::GroupInfo, treesync::LeafNode,
+    binary_tree::array_representation::LeafNodeIndex, messages::group_info::GroupInfo,
+    treesync::LeafNode,
 };
 
 use super::{

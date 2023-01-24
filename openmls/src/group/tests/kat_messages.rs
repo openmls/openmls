@@ -12,8 +12,11 @@ use crate::{
     framing::{mls_auth_content::AuthenticatedContent, *},
     group::{config::CryptoConfig, *},
     key_packages::*,
-    messages::proposals::*,
-    messages::*,
+    messages::{
+        group_info::{GroupInfoTBS, VerifiableGroupInfo},
+        proposals::*,
+        *,
+    },
     prelude::LeafNode,
     schedule::psk::*,
     test_utils::*,
