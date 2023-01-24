@@ -1,7 +1,8 @@
 use ds_lib::{self, *};
 use openmls::prelude::{config::CryptoConfig, *};
+use openmls_basic_credential::BasicCredential as BasicCredentialKeys;
 use openmls_rust_crypto::OpenMlsRustCrypto;
-use openmls_traits::{types::SignatureScheme, OpenMlsCryptoProvider};
+use openmls_traits::OpenMlsCryptoProvider;
 use tls_codec::{Deserialize, Serialize};
 
 #[test]
@@ -9,13 +10,17 @@ fn test_client_info() {
     let crypto = &OpenMlsRustCrypto::default();
     let client_name = "Client1";
     let ciphersuite = Ciphersuite::MLS_128_DHKEMX25519_AES128GCM_SHA256_Ed25519;
-    let credential_bundle = CredentialBundle::new(
-        client_name.as_bytes().to_vec(),
-        CredentialType::Basic,
-        SignatureScheme::from(ciphersuite),
-        crypto,
-    )
-    .unwrap();
+
+    let credential =
+        Credential::new(client_name.as_bytes().to_vec(), CredentialType::Basic).unwrap();
+    let signature_keys =
+        BasicCredentialKeys::new(ciphersuite.signature_algorithm(), crypto.crypto()).unwrap();
+    let credential_with_key = CredentialWithKey {
+        credential,
+        signature_key: signature_keys.to_public_vec().into(),
+    };
+    signature_keys.store(crypto.key_store()).unwrap();
+
     let client_key_package = KeyPackage::builder()
         .build(
             CryptoConfig {
@@ -23,9 +28,11 @@ fn test_client_info() {
                 version: ProtocolVersion::default(),
             },
             crypto,
-            &credential_bundle,
+            &signature_keys,
+            credential_with_key.clone(),
         )
         .unwrap();
+
     let client_key_package = vec![(
         client_key_package
             .hash_ref(crypto.crypto())
