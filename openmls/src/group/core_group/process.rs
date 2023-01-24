@@ -138,7 +138,7 @@ impl CoreGroup {
             UnverifiedContextMessage::from_unverified_message(unverified_message)?;
 
         let group_id = self.group_id().clone();
-        let epoch = self.group_context.epoch();
+        let epoch = self.context().epoch();
 
         match context_plaintext {
             UnverifiedContextMessage::Group(unverified_message) => {

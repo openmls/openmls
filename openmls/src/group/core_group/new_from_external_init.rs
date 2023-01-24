@@ -1,9 +1,8 @@
 use crate::{
     binary_tree::array_representation::LeafNodeIndex,
-    ciphersuite::signable::Verifiable,
     group::errors::ExternalCommitError,
     messages::proposals::{ExternalInitProposal, Proposal},
-    treesync::{errors::TreeSyncFromNodesError, node::Node},
+    treesync::node::Node,
 };
 
 use super::{
@@ -29,8 +28,6 @@ impl CoreGroup {
         tree_option: Option<&[Option<Node>]>,
         verifiable_group_info: VerifiableGroupInfo,
     ) -> Result<ExternalCommitResult, ExternalCommitError> {
-        let ciphersuite = verifiable_group_info.ciphersuite();
-
         // Build the ratchet tree
 
         // Set nodes either from the extension or from the `nodes_option`.
@@ -46,46 +43,18 @@ impl CoreGroup {
             },
         };
 
-        // Create a RatchetTree from the given nodes. We have to do this before
-        // verifying the PGS, since we need to find the Credential to verify the
-        // signature against.
-        let treesync = TreeSync::from_nodes(backend, ciphersuite, &nodes).map_err(|e| match e {
-            TreeSyncFromNodesError::LibraryError(e) => e.into(),
-            TreeSyncFromNodesError::PublicTreeError(e) => ExternalCommitError::PublicTreeError(e),
-        })?;
-
-        let group_info: GroupInfo = {
-            let group_info_signer_leaf = treesync
-                .leaf(verifiable_group_info.signer())
-                .ok_or(ExternalCommitError::UnknownSender)?
-                .credential();
-
-            verifiable_group_info
-                .verify(
-                    backend,
-                    group_info_signer_leaf.signature_key(),
-                    ciphersuite.signature_algorithm(),
-                )
-                .map_err(|_| ExternalCommitError::InvalidGroupInfoSignature)?
-        };
-
-        if treesync.tree_hash() != group_info.group_context().tree_hash() {
-            return Err(ExternalCommitError::TreeHashMismatch);
-        }
-
-        if group_info.group_context().protocol_version() != ProtocolVersion::Mls10 {
-            return Err(ExternalCommitError::UnsupportedMlsVersion);
-        }
+        let (public_group, group_info_extensions) =
+            PublicGroup::from_external(backend, &nodes, verifiable_group_info)?;
+        let group_context = public_group.group_context();
 
         // Obtain external_pub from GroupInfo extensions.
-        let external_pub = group_info
-            .extensions()
+        let external_pub = group_info_extensions
             .external_pub()
             .ok_or(ExternalCommitError::MissingExternalPub)?
             .external_pub();
 
         let (init_secret, kem_output) =
-            InitSecret::from_group_info(backend, &group_info, external_pub.as_slice())
+            InitSecret::from_group_context(backend, &group_context, external_pub.as_slice())
                 .map_err(|_| ExternalCommitError::UnsupportedCiphersuite)?;
 
         // The `EpochSecrets` we create here are essentially zero, with the
@@ -94,33 +63,16 @@ impl CoreGroup {
         let epoch_secrets = EpochSecrets::with_init_secret(backend, init_secret)
             .map_err(LibraryError::unexpected_crypto_error)?;
         let (group_epoch_secrets, message_secrets) = epoch_secrets.split_secrets(
-            group_info
-                .group_context()
+            group_context
                 .tls_serialize_detached()
                 .map_err(LibraryError::missing_bound_check)?,
-            treesync.leaf_count(),
+            public_group.treesync().leaf_count(),
             // We use a fake own index of 0 here, as we're not going to use the
             // tree for encryption until after the first commit. This issue is
             // tracked in #767.
             LeafNodeIndex::new(0u32),
         );
         let message_secrets_store = MessageSecretsStore::new_with_secret(0, message_secrets);
-
-        let interim_transcript_hash = {
-            if group_info.group_context().epoch() == GroupEpoch::from(0) {
-                vec![]
-            } else {
-                // New members compute the interim transcript hash using
-                // the confirmation_tag field of the GroupInfo struct.
-                update_interim_transcript_hash(
-                    ciphersuite,
-                    backend,
-                    &InterimTranscriptHashInput::from(group_info.confirmation_tag()),
-                    group_info.group_context().confirmed_transcript_hash(),
-                )
-                .unwrap()
-            }
-        };
 
         let external_init_proposal = Proposal::ExternalInit(ExternalInitProposal::from(kem_output));
 
@@ -130,7 +82,7 @@ impl CoreGroup {
         // commit a remove proposal.
         for Member {
             index, identity, ..
-        } in treesync.full_leave_members()
+        } in public_group.treesync().full_leave_members()
         {
             if identity == params.credential_bundle().credential().identity() {
                 let remove_proposal = Proposal::Remove(RemoveProposal { removed: index });
@@ -139,21 +91,16 @@ impl CoreGroup {
             };
         }
 
-        let own_leaf_index =
-            CoreGroup::free_leaf_index(&treesync, inline_proposals.iter().map(Some))?;
+        let own_leaf_index = public_group.free_leaf_index(inline_proposals.iter().map(Some))?;
 
-        // Prepare interim transcript hash
         let group = CoreGroup {
-            ciphersuite,
-            group_context: group_info.group_context().clone(),
-            tree: treesync,
-            interim_transcript_hash,
+            public_group,
             use_ratchet_tree_extension: enable_ratchet_tree_extension,
-            mls_version: group_info.group_context().protocol_version(),
             group_epoch_secrets,
             message_secrets_store,
             own_leaf_index,
         };
+
         let params = CreateCommitParams::builder()
             .framing_parameters(*params.framing_parameters())
             .credential_bundle(params.credential_bundle())

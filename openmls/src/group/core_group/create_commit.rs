@@ -43,6 +43,10 @@ impl CoreGroup {
             CommitType::Member => Sender::build_member(self.own_leaf_index()),
         };
 
+        // If this is a "resync" external commit, it should contain a
+        // `remove` proposal with the index of our previous self in the
+        // group.
+
         // Filter proposals
         let (proposal_queue, contains_own_updates) = ProposalQueue::filter_proposals(
             ciphersuite,
@@ -144,7 +148,7 @@ impl CoreGroup {
         };
 
         let serialized_group_context = self
-            .group_context
+            .context()
             .tls_serialize_detached()
             .map_err(LibraryError::missing_bound_check)?;
         let path_processing_result =
@@ -164,7 +168,7 @@ impl CoreGroup {
                         .map_err(|_| LibraryError::custom("Unable to get own leaf from diff"))?;
                     let encryption_keypair = own_diff_leaf.rekey(
                         self.group_id(),
-                        self.ciphersuite,
+                        self.ciphersuite(),
                         ProtocolVersion::default(), // XXX: openmls/openmls#1065
                         params.credential_bundle(),
                         backend,
@@ -224,7 +228,7 @@ impl CoreGroup {
         };
 
         // Create provisional group state
-        let mut provisional_epoch = self.group_context.epoch();
+        let mut provisional_epoch = self.context().epoch();
         provisional_epoch.increment();
 
         // Build AuthenticatedContent
@@ -245,7 +249,7 @@ impl CoreGroup {
             // Commit
             &ConfirmedTranscriptHashInput::try_from(&commit)
                 .map_err(|_| LibraryError::custom("PublicMessage did not contain a commit"))?,
-            &self.interim_transcript_hash,
+            self.public_group.interim_transcript_hash(),
         )?;
 
         // Calculate tree hash
@@ -254,11 +258,11 @@ impl CoreGroup {
         // Calculate group context
         let provisional_group_context = GroupContext::new(
             ciphersuite,
-            self.group_context.group_id().clone(),
+            self.context().group_id().clone(),
             provisional_epoch,
             tree_hash.clone(),
             confirmed_transcript_hash.clone(),
-            self.group_context.extensions().clone(),
+            self.context().extensions().clone(),
         );
 
         let joiner_secret = JoinerSecret::new(
@@ -379,7 +383,7 @@ impl CoreGroup {
             // Create welcome message
             let welcome = Welcome::new(
                 ProtocolVersion::Mls10,
-                self.ciphersuite,
+                self.ciphersuite(),
                 secrets,
                 encrypted_group_info,
             );
@@ -425,41 +429,5 @@ impl CoreGroup {
             staged_commit,
             group_info: group_info.filter(|_| self.use_ratchet_tree_extension),
         })
-    }
-
-    /// Returns the leftmost free leaf index.
-    ///
-    /// For External Commits of the "resync" type, this returns the index
-    /// of the sender.
-    ///
-    /// The proposals must be validated before calling this function.
-    pub(crate) fn free_leaf_index<'a>(
-        treesync: &TreeSync,
-        mut inline_proposals: impl Iterator<Item = Option<&'a Proposal>>,
-    ) -> Result<LeafNodeIndex, LibraryError> {
-        // Leftmost free leaf in the tree
-        let free_leaf_index = treesync.free_leaf_index();
-        // Returns the first remove proposal (if there is one)
-        let remove_proposal_option = inline_proposals
-            .find(|proposal| match proposal {
-                Some(p) => p.is_type(ProposalType::Remove),
-                None => false,
-            })
-            .flatten();
-        let leaf_index = if let Some(remove_proposal) = remove_proposal_option {
-            if let Proposal::Remove(remove_proposal) = remove_proposal {
-                let removed_index = remove_proposal.removed();
-                if removed_index < free_leaf_index {
-                    removed_index
-                } else {
-                    free_leaf_index
-                }
-            } else {
-                return Err(LibraryError::custom("missing key package"));
-            }
-        } else {
-            free_leaf_index
-        };
-        Ok(leaf_index)
     }
 }

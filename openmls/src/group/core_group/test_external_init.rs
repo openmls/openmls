@@ -1,7 +1,10 @@
 use crate::{
     credentials::{CredentialBundle, CredentialType},
     framing::{FramingParameters, WireFormat},
-    group::{config::CryptoConfig, errors::ExternalCommitError, GroupId},
+    group::{
+        config::CryptoConfig, errors::ExternalCommitError,
+        public_group::errors::CreationFromExternalError, GroupId,
+    },
     key_packages::KeyPackageBundle,
     messages::proposals::{ProposalOrRef, ProposalType},
     test_utils::*,
@@ -409,7 +412,7 @@ fn test_external_init_broken_signature(
         .proposal_store(&proposal_store)
         .build();
     assert_eq!(
-        ExternalCommitError::InvalidGroupInfoSignature,
+        ExternalCommitError::PublicGroupError(CreationFromExternalError::InvalidGroupInfoSignature),
         CoreGroup::join_by_external_commit(backend, params, None, verifiable_group_info)
             .expect_err("Signature was corrupted. This should have failed.")
     );

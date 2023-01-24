@@ -77,7 +77,7 @@ impl CoreGroup {
                 external_init_secret_option = Some(InitSecret::from_kem_output(
                     backend,
                     self.ciphersuite(),
-                    self.mls_version,
+                    self.version(),
                     &external_priv,
                     external_init_proposal.kem_output(),
                 )?)

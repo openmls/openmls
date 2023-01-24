@@ -427,6 +427,7 @@ fn test_valsem243(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
         .unwrap();
     let tree_option = alice_group.export_ratchet_tree();
 
+    println!("Bob joining");
     let (_bob_group, message) = MlsGroup::join_by_external_commit(
         backend,
         Some(&tree_option),
@@ -513,6 +514,7 @@ fn test_valsem243(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
                 .expect("Error serializing signature key."),
         )
         .expect("An unexpected error occurred.");
+    println!("Alice joining");
     let alice_external_commit = MlsGroup::join_by_external_commit(
         backend,
         Some(&tree_option),

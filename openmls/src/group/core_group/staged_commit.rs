@@ -69,11 +69,11 @@ impl CoreGroup {
         let ciphersuite = self.ciphersuite();
 
         // Verify epoch
-        if mls_content.epoch() != self.group_context.epoch() {
+        if mls_content.epoch() != self.context().epoch() {
             log::error!(
                 "Epoch mismatch. Got {:?}, expected {:?}",
                 mls_content.epoch(),
-                self.group_context.epoch()
+                self.context().epoch()
             );
             return Err(StageCommitError::EpochMismatch);
         }
@@ -239,9 +239,9 @@ impl CoreGroup {
                             .unwrap_or_default()
                     );
                     return Err(StageCommitError::PathLeafNodeVerificationFailure);
-                }
-                let serialized_context = self
-                    .group_context
+                };
+                let serialized_context: Vec<u8> = self
+                    .context()
                     .tls_serialize_detached()
                     .map_err(LibraryError::missing_bound_check)?;
 
@@ -274,7 +274,7 @@ impl CoreGroup {
 
                 // Decrypt the UpdatePath
                 let decrypt_path_params = DecryptPathParams {
-                    version: self.mls_version,
+                    version: self.version(),
                     update_path: update_path_nodes,
                     sender_leaf_index: sender_index,
                     exclusion_list: &apply_proposals_values.exclusion_list(),
@@ -344,7 +344,7 @@ impl CoreGroup {
                     return Err(StageCommitError::RequiredPathNotFound);
                 }
                 (
-                    CommitSecret::zero_secret(ciphersuite, self.mls_version),
+                    CommitSecret::zero_secret(ciphersuite, self.version()),
                     vec![],
                     None,
                 )
@@ -363,7 +363,7 @@ impl CoreGroup {
             .map_err(LibraryError::unexpected_crypto_error)?;
 
         // Create provisional group state
-        let mut provisional_epoch = self.group_context.epoch();
+        let mut provisional_epoch = self.context().epoch();
         provisional_epoch.increment();
 
         let confirmed_transcript_hash = update_confirmed_transcript_hash(
@@ -372,16 +372,16 @@ impl CoreGroup {
             // It is ok to use return a library error here, because we know the PublicMessage contains a Commit
             &ConfirmedTranscriptHashInput::try_from(mls_content)
                 .map_err(|_| LibraryError::custom("Could not convert commit content"))?,
-            &self.interim_transcript_hash,
+            self.public_group.interim_transcript_hash(),
         )?;
 
         let provisional_group_context = GroupContext::new(
             ciphersuite,
-            self.group_context.group_id().clone(),
+            self.context().group_id().clone(),
             provisional_epoch,
             diff.compute_tree_hashes(backend, ciphersuite)?,
             confirmed_transcript_hash.clone(),
-            self.group_context.extensions().clone(),
+            self.context().extensions().clone(),
         );
 
         // Prepare the PskSecret
@@ -478,11 +478,11 @@ impl CoreGroup {
         let old_epoch_keypairs = self.read_epoch_keypairs(backend);
         match staged_commit.state {
             StagedCommitState::SelfRemoved(staged_diff) => {
-                self.tree.merge_diff(*staged_diff);
+                self.public_group.treesync_mut().merge_diff(*staged_diff);
                 Ok(None)
             }
             StagedCommitState::GroupMember(state) => {
-                self.group_context = state.group_context;
+                self.public_group.set_group_context(state.group_context);
                 self.group_epoch_secrets = state.group_epoch_secrets;
 
                 // Replace the previous message secrets with the new ones and return the previous message secrets
@@ -492,9 +492,12 @@ impl CoreGroup {
                     self.message_secrets_store.message_secrets_mut(),
                 );
 
-                self.interim_transcript_hash = state.interim_transcript_hash;
+                self.public_group
+                    .set_interim_transcript_hash(state.interim_transcript_hash);
 
-                self.tree.merge_diff(state.staged_diff);
+                self.public_group
+                    .treesync_mut()
+                    .merge_diff(state.staged_diff);
 
                 // TODO #1194: Group storage and key storage should be
                 // correlated s.t. there is no divergence between key material
@@ -507,8 +510,10 @@ impl CoreGroup {
                 };
 
                 // Figure out which keys we need in the new epoch.
-                let new_owned_encryption_keys =
-                    self.tree.owned_encryption_keys(self.own_leaf_index());
+                let new_owned_encryption_keys = self
+                    .public_group
+                    .treesync()
+                    .owned_encryption_keys(self.own_leaf_index());
                 // From the old and new keys, keep the ones that are still relevant in the new epoch.
                 let epoch_keypairs: Vec<EncryptionKeyPair> = old_epoch_keypairs
                     .into_iter()
