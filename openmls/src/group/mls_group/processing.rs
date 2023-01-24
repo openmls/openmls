@@ -5,7 +5,7 @@ use std::mem;
 use core_group::{create_commit_params::CreateCommitParams, staged_commit::StagedCommit};
 use openmls_traits::signatures::ByteSigner;
 
-use crate::messages::GroupInfo;
+use crate::messages::group_info::GroupInfo;
 
 use crate::group::errors::MergeCommitError;
 

@@ -20,7 +20,7 @@ use crate::{
     framing::{mls_content::ContentType, ProtocolMessage, *},
     group::{config::CryptoConfig, *},
     key_packages::*,
-    messages::*,
+    messages::{group_info::GroupInfo, *},
     treesync::{
         node::{leaf_node::Capabilities, Node},
         LeafNode,

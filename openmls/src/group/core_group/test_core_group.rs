@@ -12,7 +12,7 @@ use crate::{
     framing::*,
     group::{config::CryptoConfig, errors::*, *},
     key_packages::*,
-    messages::*,
+    messages::{group_info::GroupInfoTBS, *},
     schedule::psk::*,
     test_utils::*,
     treesync::errors::ApplyUpdatePathError,

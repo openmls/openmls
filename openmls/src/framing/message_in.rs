@@ -7,7 +7,7 @@
 //!
 //! The [`MlsMessageIn`] struct is meant to be deserialized upon receiving it
 //! from the DS. After deserialization, its content (either a [`PublicMessage`],
-//! [`PrivateMessage`], [`KeyPackage`], [`Welcome`] or [`GroupInfo`]) can be
+//! [`PrivateMessage`], [`KeyPackage`], [`Welcome`] or [`GroupInfo`](crate::messages::group_info::GroupInfo)) can be
 //! extracted via [`MlsMessageIn::extract()`] for use with the [`MlsGroup`] API.
 //!
 //! If an [`MlsMessageIn`] contains a [`PublicMessage`] or [`PrivateMessage`],
@@ -17,7 +17,9 @@ use tls_codec::Deserialize;
 
 use super::{mls_content::ContentType, *};
 
-use crate::{key_packages::KeyPackage, versions::ProtocolVersion};
+use crate::{
+    key_packages::KeyPackage, messages::group_info::VerifiableGroupInfo, versions::ProtocolVersion,
+};
 
 /// Before use with the [`MlsGroup`] API, the message has to be unpacked via
 /// `extract` to yield its [`MlsMessageInBody`].
@@ -67,7 +69,8 @@ pub struct MlsMessageIn {
 ///     }
 /// } MLSMessage;
 /// ```
-#[derive(Debug, PartialEq, Clone, TlsSerialize, TlsDeserialize, TlsSize)]
+#[derive(Debug, PartialEq, Clone, TlsDeserialize, TlsSize)]
+#[cfg_attr(feature = "test-utils", derive(TlsSerialize))]
 #[repr(u8)]
 pub enum MlsMessageInBody {
     /// Plaintext message

@@ -1,7 +1,7 @@
 use core_group::create_commit_params::CreateCommitParams;
 use openmls_traits::signatures::ByteSigner;
 
-use crate::{messages::GroupInfo, treesync::LeafNode, versions::ProtocolVersion};
+use crate::{messages::group_info::GroupInfo, treesync::LeafNode, versions::ProtocolVersion};
 
 use super::*;
 
