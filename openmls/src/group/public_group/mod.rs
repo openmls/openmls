@@ -42,7 +42,7 @@ impl PublicGroup {
         // Create a RatchetTree from the given nodes. We have to do this before
         // verifying the PGS, since we need to find the Credential to verify the
         // signature against.
-        let treesync = TreeSync::from_nodes(backend, ciphersuite, &nodes)?;
+        let treesync = TreeSync::from_nodes(backend, ciphersuite, nodes)?;
 
         let group_info: GroupInfo = {
             let signer_credential = treesync

@@ -626,7 +626,7 @@ impl CoreGroup {
 
     /// Returns a reference to the ratchet tree
     pub(crate) fn treesync(&self) -> &TreeSync {
-        &self.public_group.treesync()
+        self.public_group.treesync()
     }
 
     /// Get the ciphersuite implementation used in this group.
@@ -641,7 +641,7 @@ impl CoreGroup {
 
     /// Get the group context
     pub(crate) fn context(&self) -> &GroupContext {
-        &self.public_group.group_context()
+        self.public_group.group_context()
     }
 
     /// Get the group ID
