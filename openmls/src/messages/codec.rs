@@ -1,32 +1,11 @@
 //! Codec implementations for message structs.
 
+use std::{
+    convert::TryFrom,
+    io::{Read, Write},
+};
+
 use super::*;
-
-use std::convert::TryFrom;
-use std::io::{Read, Write};
-
-impl tls_codec::Size for GroupInfo {
-    #[inline]
-    fn tls_serialized_len(&self) -> usize {
-        let payload_len = match self.payload.unsigned_payload() {
-            Ok(p) => p.len(),
-            Err(e) => {
-                log::error!("Unable to get unsigned payload from GroupInfo {:?}", e);
-                0
-            }
-        };
-        payload_len + self.signature.tls_serialized_len()
-    }
-}
-
-impl tls_codec::Serialize for GroupInfo {
-    fn tls_serialize<W: Write>(&self, writer: &mut W) -> Result<usize, tls_codec::Error> {
-        let unsigned_payload = &self.payload.unsigned_payload()?;
-        let written = writer.write(unsigned_payload)?;
-        debug_assert_eq!(written, unsigned_payload.len());
-        self.signature.tls_serialize(writer).map(|l| l + written)
-    }
-}
 
 impl tls_codec::Size for Proposal {
     #[inline]

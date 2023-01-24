@@ -4,7 +4,7 @@ use crate::{
         core_group::create_commit_params::CreateCommitParams,
         errors::{CoreGroupBuildError, ExternalCommitError, WelcomeError},
     },
-    messages::VerifiableGroupInfo,
+    messages::group_info::VerifiableGroupInfo,
 };
 use tls_codec::Serialize;
 
