@@ -333,7 +333,7 @@ pub(super) fn generate_credential_bundle(
     backend: &impl OpenMlsCryptoProvider,
 ) -> CredentialWithKeyAndSigner {
     let (credential, signer) = {
-        let credential = Credential::new(identity.into(), CredentialType::Basic).unwrap();
+        let credential = Credential::new(identity, CredentialType::Basic).unwrap();
         let signature_keys =
             BasicCredentialWithKeys::new(signature_scheme, backend.crypto()).unwrap();
         signature_keys.store(backend.key_store()).unwrap();
@@ -363,7 +363,7 @@ pub(super) fn generate_key_package<KeyStore: OpenMlsKeyStore>(
         .key_package_extensions(extensions)
         .build(
             CryptoConfig {
-                ciphersuite: ciphersuite,
+                ciphersuite,
                 version: ProtocolVersion::default(),
             },
             backend,

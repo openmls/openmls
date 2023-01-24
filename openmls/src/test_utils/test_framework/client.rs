@@ -58,7 +58,7 @@ impl Client {
             .ok_or(ClientError::CiphersuiteNotSupported)?;
         let keys = BasicCredential::read(
             self.crypto.key_store(),
-            &credential_with_key.signature_key.as_slice(),
+            credential_with_key.signature_key.as_slice(),
             ciphersuite.signature_algorithm(),
         )
         .unwrap();

@@ -130,7 +130,7 @@ fn ratchet_tree_extension(ciphersuite: Ciphersuite, backend: &impl OpenMlsCrypto
         backend,
         &bob_signature_keys,
         ciphersuite,
-        bob_credential_with_key.clone(),
+        bob_credential_with_key,
     );
     let bob_key_package = bob_key_package_bundle.key_package();
 

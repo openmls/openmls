@@ -654,7 +654,7 @@ fn test_valsem246(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
         ciphersuite,
         Extensions::empty(),
         backend,
-        bob_new_credential.clone(),
+        bob_new_credential,
     );
 
     if let Some(ref mut path) = content.path {

@@ -214,7 +214,7 @@ fn basic_group_setup(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvi
         ciphersuite,
         Extensions::empty(),
         backend,
-        bob_credential_with_keys.clone(),
+        bob_credential_with_keys,
     );
 
     // Alice creates a group
@@ -230,7 +230,7 @@ fn basic_group_setup(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvi
     let bob_add_proposal = group_alice
         .create_add_proposal(
             framing_parameters,
-            bob_key_package.clone(),
+            bob_key_package,
             &alice_credential_with_keys.signer,
         )
         .expect("Could not create proposal.");

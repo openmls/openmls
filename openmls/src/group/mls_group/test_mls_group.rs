@@ -399,7 +399,7 @@ fn test_pending_commit_logic(ciphersuite: Ciphersuite, backend: &impl OpenMlsCry
         AddMembersError::GroupStateError(MlsGroupStateError::PendingCommit)
     );
     let error = alice_group
-        .propose_add_member(backend, &alice_signer, &bob_key_package)
+        .propose_add_member(backend, &alice_signer, bob_key_package)
         .expect_err("no error creating a proposal while a commit is pending");
     assert_eq!(
         error,

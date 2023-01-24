@@ -86,7 +86,7 @@ fn application_id_extension(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryp
             &signature_keys,
             CredentialWithKey {
                 signature_key: signature_keys.to_public_vec().into(),
-                credential: credential.clone(),
+                credential,
             },
         )
         .expect("An unexpected error occurred.");

@@ -465,7 +465,7 @@ fn test_valsem101(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
     let dave_key_package = KeyPackage::builder()
         .build(
             CryptoConfig {
-                ciphersuite: ciphersuite,
+                ciphersuite,
                 version: ProtocolVersion::default(),
             },
             backend,

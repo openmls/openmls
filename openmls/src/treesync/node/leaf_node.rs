@@ -690,14 +690,7 @@ impl Signable for LeafNodeTbs {
     type SignedOutput = LeafNode;
 
     fn unsigned_payload(&self) -> Result<Vec<u8>, tls_codec::Error> {
-        // println!("pk in signed leaf {:x?}", self.payload.signature_key);
-        let payload = self.tls_serialize_detached();
-        // println!(
-        //     "Signing ID: {}",
-        //     String::from_utf8(self.payload.credential.identity().to_vec()).unwrap()
-        // );
-        // println!("sign: {:x?}", payload.clone().unwrap());
-        payload
+        self.tls_serialize_detached()
     }
 
     fn label(&self) -> &str {
@@ -724,13 +717,7 @@ pub(crate) struct VerifiableLeafNodeTbs<'a> {
 
 impl<'a> Verifiable for VerifiableLeafNodeTbs<'a> {
     fn unsigned_payload(&self) -> Result<Vec<u8>, tls_codec::Error> {
-        let payload = self.tbs.tls_serialize_detached();
-        // println!(
-        //     "Verifying ID: {}",
-        //     String::from_utf8(self.tbs.payload.credential.identity().to_vec()).unwrap()
-        // );
-        // println!("verify: {:x?}", payload.clone().unwrap());
-        payload
+        self.tbs.tls_serialize_detached()
     }
 
     fn signature(&self) -> &Signature {
@@ -763,7 +750,7 @@ impl LeafNodeTbs {
     ) -> Result<Self, LibraryError> {
         let payload = LeafNodePayload {
             encryption_key,
-            signature_key: credential_with_key.signature_key.into(),
+            signature_key: credential_with_key.signature_key,
             credential: credential_with_key.credential,
             capabilities,
             leaf_node_source,
@@ -863,15 +850,15 @@ impl OpenMlsLeafNode {
             }
             leaf_node_tbs.payload.credential = leaf_node.credential().clone();
             leaf_node_tbs.payload.encryption_key = leaf_node.encryption_key().clone();
+        }
+        
+        if let Some(new_encryption_key) = new_encryption_key.into() {
+            // If there's no new leaf, the encryption key must be provided
+            // explicitly.
+            leaf_node_tbs.payload.encryption_key = new_encryption_key;
         } else {
-            if let Some(new_encryption_key) = new_encryption_key.into() {
-                // If there's no new leaf, the encryption key must be provided
-                // explicitly.
-                leaf_node_tbs.payload.encryption_key = new_encryption_key;
-            } else {
-                return Err(LibraryError::custom(
+            return Err(LibraryError::custom(
                     "update_and_re_sign needs to be called with a new leaf node or a new encryption key. Neither was the case.").into());
-            }
         }
 
         // Set the new signed leaf node with the new encryption key

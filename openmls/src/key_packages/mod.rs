@@ -266,6 +266,7 @@ impl KeyPackage {
     /// encryption key ([`HpkeKeyPair`]) of the leaf node.
     ///
     /// The caller is responsible for storing the new values.
+    #[allow(clippy::too_many_arguments)]
     fn new_from_keys<KeyStore: OpenMlsKeyStore>(
         config: CryptoConfig,
         backend: &impl OpenMlsCryptoProvider<KeyStoreProvider = KeyStore>,
@@ -412,6 +413,7 @@ impl KeyPackage {
 
 /// Helpers for testing.
 #[cfg(any(feature = "test-utils", test))]
+#[allow(clippy::too_many_arguments)]
 impl KeyPackage {
     /// Generate a new key package with a given init key
     pub fn new_from_init_key<KeyStore: OpenMlsKeyStore>(
@@ -456,6 +458,7 @@ impl KeyPackage {
     /// Create new key package with a leaf node encryption key set to the
     /// provided `encryption_key`.
     #[cfg(test)]
+    #[allow(clippy::too_many_arguments)]
     pub(crate) fn new_from_encryption_key<KeyStore: OpenMlsKeyStore>(
         config: CryptoConfig,
         backend: &impl OpenMlsCryptoProvider<KeyStoreProvider = KeyStore>,

@@ -47,18 +47,14 @@ fn validation_test_setup(
         generate_credential_bundle("Charlie".into(), ciphersuite.signature_algorithm(), backend);
 
     // Generate KeyPackages
-    let bob_key_package = generate_key_package(
-        ciphersuite,
-        Extensions::empty(),
-        backend,
-        bob_credential.clone(),
-    );
+    let bob_key_package =
+        generate_key_package(ciphersuite, Extensions::empty(), backend, bob_credential);
 
     let charlie_key_package = generate_key_package(
         ciphersuite,
         Extensions::empty(),
         backend,
-        charlie_credential.clone(),
+        charlie_credential,
     );
 
     // Define the MlsGroup configuration
