@@ -78,10 +78,7 @@ pub(crate) fn print_tree(group: &CoreGroup, message: &str) {
                 }
             );
 
-            for _ in 0..level * factor {
-                print!(" ");
-            }
-            print!("◼︎");
+            print!("{}◼︎", str::repeat(" ", level * factor));
         } else {
             if root(tree_size) == i as u32 {
                 print!(
@@ -97,10 +94,7 @@ pub(crate) fn print_tree(group: &CoreGroup, message: &str) {
                 );
             }
 
-            for _ in 0..level * factor {
-                print!(" ");
-            }
-            print!("❑");
+            print!("{}❑", str::repeat(" ", level * factor));
         }
         println!();
     }
