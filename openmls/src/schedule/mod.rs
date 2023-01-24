@@ -126,7 +126,7 @@ use crate::{
     ciphersuite::{AeadKey, AeadNonce, HpkePrivateKey, Mac, Secret},
     error::LibraryError,
     framing::{mls_content::AuthenticatedContentTbm, MembershipTag},
-    messages::{ConfirmationTag, GroupInfo, PathSecret},
+    messages::{group_info::GroupInfo, ConfirmationTag, PathSecret},
     tree::secret_tree::SecretTree,
     versions::ProtocolVersion,
 };
@@ -1076,7 +1076,6 @@ impl EpochSecrets {
     }
 
     /// External secret
-    #[cfg(any(feature = "test-utils", test))]
     pub(crate) fn external_secret(&self) -> &ExternalSecret {
         &self.external_secret
     }

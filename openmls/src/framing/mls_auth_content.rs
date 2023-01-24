@@ -133,7 +133,9 @@ impl AuthenticatedContent {
             content_tbs = content_tbs.with_context(serialized_context);
         }
 
-        content_tbs.sign(backend, credential_bundle)
+        content_tbs
+            .sign(backend, credential_bundle.signature_private_key())
+            .map_err(|_| LibraryError::custom("Signing failed"))
     }
 
     /// This constructor builds an `AuthenticatedContent` containing an application
@@ -199,7 +201,9 @@ impl AuthenticatedContent {
             body,
         );
 
-        content_tbs.sign(backend, credential_bundle)
+        content_tbs
+            .sign(backend, credential_bundle.signature_private_key())
+            .map_err(|_| LibraryError::custom("Signing failed"))
     }
 
     /// This constructor builds an `PublicMessage` containing a Commit. If the

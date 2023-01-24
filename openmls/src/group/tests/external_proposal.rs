@@ -81,12 +81,12 @@ fn validation_test_setup(
     )
     .expect("An unexpected error occurred.");
 
-    let (_message, welcome) = alice_group
+    let (_message, welcome, _group_info) = alice_group
         .add_members(backend, &[bob_key_package])
         .expect("error adding Bob to group");
 
     alice_group
-        .merge_pending_commit()
+        .merge_pending_commit(backend)
         .expect("error merging pending commit");
 
     // Define the MlsGroup configuration
@@ -187,8 +187,9 @@ fn external_add_proposal_should_succeed(
         }
 
         // and Alice will commit it
-        let (commit, welcome) = alice_group.commit_to_pending_proposals(backend).unwrap();
-        alice_group.merge_pending_commit().unwrap();
+        let (commit, welcome, _group_info) =
+            alice_group.commit_to_pending_proposals(backend).unwrap();
+        alice_group.merge_pending_commit(backend).unwrap();
         assert_eq!(alice_group.members().count(), 3);
 
         // Bob will also process the commit
@@ -197,7 +198,7 @@ fn external_add_proposal_should_succeed(
             .unwrap();
         match msg.into_content() {
             ProcessedMessageContent::StagedCommitMessage(commit) => {
-                bob_group.merge_staged_commit(*commit)
+                bob_group.merge_staged_commit(backend, *commit).unwrap()
             }
             _ => unreachable!(),
         }

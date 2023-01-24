@@ -107,13 +107,13 @@
 //! // ... and invites Maxim.
 //! // The key package has to be retrieved from Maxim in some way. Most likely
 //! // via a server storing key packages for users.
-//! let (mls_message_out, welcome_out) = sasha_group
+//! let (mls_message_out, welcome_out, group_info) = sasha_group
 //!     .add_members(backend, &[maxim_key_package])
 //!     .expect("Could not add members.");
 //!
 //! // Sasha merges the pending commit that adds Maxim.
 //! sasha_group
-//!    .merge_pending_commit()
+//!    .merge_pending_commit(backend)
 //!    .expect("error merging pending commit");
 //!
 //! // Sascha serializes the [`MlsMessageOut`] containing the [`Welcome`].

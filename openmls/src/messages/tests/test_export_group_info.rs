@@ -1,6 +1,15 @@
 use tls_codec::{Deserialize, Serialize};
 
-use crate::{credentials::*, group::config::CryptoConfig, messages::*, test_utils::*};
+use crate::{
+    ciphersuite::signable::Verifiable,
+    credentials::*,
+    group::{config::CryptoConfig, CoreGroup, GroupId},
+    messages::{
+        group_info::{GroupInfo, VerifiableGroupInfo},
+        *,
+    },
+    test_utils::*,
+};
 
 /// Tests the creation of an [UnverifiedGroupInfo] and verifies it was correctly signed.
 #[apply(ciphersuites_and_backends)]
@@ -31,6 +40,10 @@ fn export_group_info(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvi
     };
 
     let _: GroupInfo = verifiable_group_info
-        .verify(backend, alice_credential_bundle.credential())
+        .verify(
+            backend,
+            alice_credential_bundle.credential().signature_key(),
+            alice_credential_bundle.credential().signature_scheme(),
+        )
         .expect("signature verification should succeed");
 }

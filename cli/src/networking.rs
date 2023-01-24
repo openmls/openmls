@@ -10,7 +10,7 @@ pub fn post(url: &Url, msg: &impl Serialize) -> Result<Vec<u8>, String> {
     log::debug!("Post {:?}", url);
     log::trace!("Payload: {:?}", serialized_msg);
     let client = Client::new();
-    let response = client.post(&url.to_string()).body(serialized_msg).send();
+    let response = client.post(url.to_string()).body(serialized_msg).send();
     if let Ok(r) = response {
         if r.status() != StatusCode::OK {
             return Err(format!("Error status code {:?}", r.status()));
@@ -27,7 +27,7 @@ pub fn post(url: &Url, msg: &impl Serialize) -> Result<Vec<u8>, String> {
 pub fn get(url: &Url) -> Result<Vec<u8>, String> {
     log::debug!("Get {:?}", url);
     let client = Client::new();
-    let response = client.get(&url.to_string()).send();
+    let response = client.get(url.to_string()).send();
     if let Ok(r) = response {
         if r.status() != StatusCode::OK {
             return Err(format!("Error status code {:?}", r.status()));

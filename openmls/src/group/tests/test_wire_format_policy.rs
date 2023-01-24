@@ -71,12 +71,12 @@ fn receive_message(
     )
     .expect("An unexpected error occurred.");
 
-    let (_message, welcome) = alice_group
+    let (_message, welcome, _group_info) = alice_group
         .add_members(backend, &[bob_key_package])
         .expect("Could not add member.");
 
     alice_group
-        .merge_pending_commit()
+        .merge_pending_commit(backend)
         .expect("error merging pending commit");
 
     let mls_group_config = MlsGroupConfig::builder()
@@ -92,8 +92,8 @@ fn receive_message(
     )
     .expect("error creating bob's group from welcome");
 
-    let (message, _welcome) = bob_group
-        .self_update(backend, None)
+    let (message, _welcome, _group_info) = bob_group
+        .self_update(backend)
         .expect("An unexpected error occurred.");
     message.into()
 }

@@ -147,7 +147,9 @@ fn bad_padding(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
                 FramedContentBody::Application(vec![4, 5, 6].into()),
             );
 
-            plaintext_tbs.sign(backend, &credential_bundle).unwrap()
+            plaintext_tbs
+                .sign(backend, credential_bundle.signature_private_key())
+                .unwrap()
         };
 
         let mut message_secrets =

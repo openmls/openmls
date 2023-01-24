@@ -92,12 +92,12 @@ fn validation_test_setup(
     )
     .expect("An unexpected error occurred.");
 
-    let (_message, welcome) = alice_group
+    let (_message, welcome, _group_info) = alice_group
         .add_members(backend, &[bob_key_package, charlie_key_package])
         .expect("error adding Bob to group");
 
     alice_group
-        .merge_pending_commit()
+        .merge_pending_commit(backend)
         .expect("error merging pending commit");
 
     let welcome = welcome.into_welcome().expect("Unexpected message type.");
@@ -163,7 +163,7 @@ fn test_valsem200(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
 
     // Now let's stick it in the commit.
     let serialized_message = alice_group
-        .self_update(backend, None)
+        .self_update(backend)
         .expect("Error creating self-update")
         .tls_serialize_detached()
         .expect("Could not serialize message.");
@@ -188,7 +188,7 @@ fn test_valsem200(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
 
     plaintext.set_content(FramedContentBody::Commit(commit_content));
 
-    let alice_credential_bundle = backend
+    let alice_credential_bundle: CredentialBundle = backend
         .key_store()
         .read(
             &alice_group
@@ -209,7 +209,7 @@ fn test_valsem200(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
     let tbs: FramedContentTbs = plaintext.into();
     let mut signed_plaintext: AuthenticatedContent = tbs
         .with_context(serialized_context)
-        .sign(backend, &alice_credential_bundle)
+        .sign(backend, alice_credential_bundle.signature_private_key())
         .expect("Error signing modified payload.");
 
     // Set old confirmation tag
@@ -444,7 +444,7 @@ fn test_valsem202(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
 
     // Create the self-update
     let serialized_update = alice_group
-        .self_update(backend, None)
+        .self_update(backend)
         .expect("Error creating self-update")
         .tls_serialize_detached()
         .expect("Could not serialize message.");
@@ -508,7 +508,7 @@ fn test_valsem203(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
 
     // Create the self-update
     let serialized_update = alice_group
-        .self_update(backend, None)
+        .self_update(backend)
         .expect("Error creating self-update")
         .tls_serialize_detached()
         .expect("Could not serialize message.");
@@ -574,7 +574,7 @@ fn test_valsem204(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
 
     // Create the self-update
     let serialized_update = alice_group
-        .self_update(backend, None)
+        .self_update(backend)
         .expect("Error creating self-update")
         .tls_serialize_detached()
         .expect("Could not serialize message.");
@@ -640,7 +640,7 @@ fn test_valsem205(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
 
     // Create the self-update
     let serialized_update = alice_group
-        .self_update(backend, None)
+        .self_update(backend)
         .expect("Error creating self-update")
         .tls_serialize_detached()
         .expect("Could not serialize message.");
@@ -739,10 +739,10 @@ fn test_partial_proposal_commit(ciphersuite: Ciphersuite, backend: &impl OpenMls
         .unwrap();
     alice_group.proposal_store.empty();
     alice_group.proposal_store.add(remaining_proposal);
-    let (commit, _) = alice_group.commit_to_pending_proposals(backend).unwrap();
+    let (commit, _, _) = alice_group.commit_to_pending_proposals(backend).unwrap();
     // Alice herself should be able to merge the commit
     alice_group
-        .merge_pending_commit()
+        .merge_pending_commit(backend)
         .expect("Commits with partial proposals are not supported");
 
     // Bob should be able to process the commit
@@ -750,6 +750,6 @@ fn test_partial_proposal_commit(ciphersuite: Ciphersuite, backend: &impl OpenMls
         .process_message(backend, commit.into_protocol_message().unwrap())
         .expect("Commits with partial proposals are not supported");
     bob_group
-        .merge_pending_commit()
+        .merge_pending_commit(backend)
         .expect("Commits with partial proposals are not supported");
 }

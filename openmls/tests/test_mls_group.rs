@@ -131,9 +131,8 @@ fn mls_group_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoPr
         .expect("An unexpected error occurred.");
 
         // === Alice adds Bob ===
-        let (_queued_message, welcome) = match alice_group.add_members(backend, &[bob_key_package])
-        {
-            Ok((qm, welcome)) => (qm, welcome),
+        let welcome = match alice_group.add_members(backend, &[bob_key_package]) {
+            Ok((_, welcome, _)) => welcome,
             Err(e) => panic!("Could not add member to group: {:?}", e),
         };
 
@@ -157,7 +156,7 @@ fn mls_group_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoPr
         }
 
         alice_group
-            .merge_pending_commit()
+            .merge_pending_commit(backend)
             .expect("error merging pending commit");
 
         // Check that the group now has two members
@@ -223,7 +222,7 @@ fn mls_group_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoPr
         }
 
         // === Bob updates and commits ===
-        let (queued_message, welcome_option) = bob_group.self_update(backend, None).unwrap();
+        let (queued_message, welcome_option, _group_info) = bob_group.self_update(backend).unwrap();
 
         let alice_processed_message = alice_group
             .process_message(
@@ -247,7 +246,9 @@ fn mls_group_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoPr
             assert_eq!(update_kp.credential(), &bob_credential);
 
             // Merge staged Commit
-            alice_group.merge_staged_commit(*staged_commit);
+            alice_group
+                .merge_staged_commit(backend, *staged_commit)
+                .unwrap();
 
             // Check Bob's new key package
             let members = alice_group.members().collect::<Vec<Member>>();
@@ -260,7 +261,7 @@ fn mls_group_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoPr
         }
 
         bob_group
-            .merge_pending_commit()
+            .merge_pending_commit(backend)
             .expect("error merging pending commit");
 
         // Check we didn't receive a Welcome message
@@ -318,11 +319,8 @@ fn mls_group_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoPr
             unreachable!("Expected a QueuedProposal.");
         }
 
-        let (queued_message, _welcome_option) =
-            match alice_group.commit_to_pending_proposals(backend) {
-                Ok(qm) => qm,
-                Err(e) => panic!("Error performing self-update: {:?}", e),
-            };
+        let (queued_message, _welcome_option, _group_info) =
+            alice_group.commit_to_pending_proposals(backend).unwrap();
 
         let bob_processed_message = bob_group
             .process_message(
@@ -345,7 +343,9 @@ fn mls_group_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoPr
             // Check that Alice updated
             assert_eq!(update_kp.credential(), &alice_credential);
 
-            bob_group.merge_staged_commit(*staged_commit);
+            bob_group
+                .merge_staged_commit(backend, *staged_commit)
+                .unwrap();
 
             // Check Alice's new key package
             let members = bob_group.members().collect::<Vec<Member>>();
@@ -358,7 +358,7 @@ fn mls_group_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoPr
         }
 
         alice_group
-            .merge_pending_commit()
+            .merge_pending_commit(backend)
             .expect("error merging pending commit");
 
         // Check that both groups have the same state
@@ -381,11 +381,9 @@ fn mls_group_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoPr
             backend,
         );
 
-        let (queued_message, welcome) = match bob_group.add_members(backend, &[charlie_key_package])
-        {
-            Ok((qm, welcome)) => (qm, welcome),
-            Err(e) => panic!("Could not add member to group: {:?}", e),
-        };
+        let (queued_message, welcome, _group_info) = bob_group
+            .add_members(backend, &[charlie_key_package])
+            .unwrap();
 
         let alice_processed_message = alice_group
             .process_message(
@@ -397,14 +395,16 @@ fn mls_group_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoPr
             )
             .expect("Could not process message.");
         bob_group
-            .merge_pending_commit()
+            .merge_pending_commit(backend)
             .expect("error merging pending commit");
 
         // Merge Commit
         if let ProcessedMessageContent::StagedCommitMessage(staged_commit) =
             alice_processed_message.into_content()
         {
-            alice_group.merge_staged_commit(*staged_commit);
+            alice_group
+                .merge_staged_commit(backend, *staged_commit)
+                .unwrap();
         } else {
             unreachable!("Expected a StagedCommit.");
         }
@@ -458,34 +458,9 @@ fn mls_group_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoPr
             )
             .expect("Could not process message.");
 
-        let charlie_credential_bundle: CredentialBundle = backend
-            .key_store()
-            .read(
-                &charlie_credential
-                    .signature_key()
-                    .tls_serialize_detached()
-                    .unwrap(),
-            )
-            .unwrap();
-        let charlies_new_key_package = KeyPackage::builder()
-            .build(
-                CryptoConfig {
-                    ciphersuite,
-                    version: ProtocolVersion::default(),
-                },
-                backend,
-                &charlie_credential_bundle,
-            )
-            .unwrap();
-
         // === Charlie updates and commits ===
-        let (queued_message, welcome_option) = match charlie_group.self_update(
-            backend,
-            Some(charlies_new_key_package.hpke_init_key().clone()),
-        ) {
-            Ok(qm) => qm,
-            Err(e) => panic!("Error performing self-update: {:?}", e),
-        };
+        let (queued_message, welcome_option, _group_info) =
+            charlie_group.self_update(backend).unwrap();
 
         let alice_processed_message = alice_group
             .process_message(
@@ -506,14 +481,16 @@ fn mls_group_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoPr
             )
             .expect("Could not process message.");
         charlie_group
-            .merge_pending_commit()
+            .merge_pending_commit(backend)
             .expect("error merging pending commit");
 
         // Merge Commit
         if let ProcessedMessageContent::StagedCommitMessage(staged_commit) =
             alice_processed_message.into_content()
         {
-            alice_group.merge_staged_commit(*staged_commit);
+            alice_group
+                .merge_staged_commit(backend, *staged_commit)
+                .unwrap();
         } else {
             unreachable!("Expected a StagedCommit.");
         }
@@ -522,7 +499,9 @@ fn mls_group_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoPr
         if let ProcessedMessageContent::StagedCommitMessage(staged_commit) =
             bob_processed_message.into_content()
         {
-            bob_group.merge_staged_commit(*staged_commit);
+            bob_group
+                .merge_staged_commit(backend, *staged_commit)
+                .unwrap();
         } else {
             unreachable!("Expected a StagedCommit.");
         }
@@ -552,7 +531,7 @@ fn mls_group_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoPr
 
         // === Charlie removes Bob ===
         println!(" >>> Charlie is removing bob");
-        let (queued_message, welcome_option) = charlie_group
+        let (queued_message, welcome_option, _group_info) = charlie_group
             .remove_members(backend, &[bob_group.own_leaf_index()])
             .expect("Could not remove member from group.");
 
@@ -578,7 +557,7 @@ fn mls_group_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoPr
             )
             .expect("Could not process message.");
         charlie_group
-            .merge_pending_commit()
+            .merge_pending_commit(backend)
             .expect("error merging pending commit");
 
         // Check that we receive the correct proposal for Alice
@@ -597,7 +576,9 @@ fn mls_group_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoPr
             );
 
             // Merge staged Commit
-            alice_group.merge_staged_commit(*staged_commit);
+            alice_group
+                .merge_staged_commit(backend, *staged_commit)
+                .unwrap();
         } else {
             unreachable!("Expected a StagedCommit.");
         }
@@ -618,7 +599,9 @@ fn mls_group_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoPr
             );
 
             // Merge staged Commit
-            bob_group.merge_staged_commit(*staged_commit);
+            bob_group
+                .merge_staged_commit(backend, *staged_commit)
+                .unwrap();
         } else {
             unreachable!("Expected a StagedCommit.");
         }
@@ -736,7 +719,7 @@ fn mls_group_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoPr
         }
 
         // Commit to the proposals and process it
-        let (queued_message, welcome_option) = alice_group
+        let (queued_message, welcome_option, _group_info) = alice_group
             .commit_to_pending_proposals(backend)
             .expect("Could not flush proposals");
 
@@ -752,14 +735,16 @@ fn mls_group_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoPr
 
         // Merge Commit
         alice_group
-            .merge_pending_commit()
+            .merge_pending_commit(backend)
             .expect("error merging pending commit");
 
         // Merge Commit
         if let ProcessedMessageContent::StagedCommitMessage(staged_commit) =
             charlie_processed_message.into_content()
         {
-            charlie_group.merge_staged_commit(*staged_commit);
+            charlie_group
+                .merge_staged_commit(backend, *staged_commit)
+                .unwrap();
         } else {
             unreachable!("Expected a StagedCommit.");
         }
@@ -869,7 +854,7 @@ fn mls_group_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoPr
             ))
         );
 
-        let (queued_message, _welcome_option) = alice_group
+        let (queued_message, _welcome_option, _group_info) = alice_group
             .commit_to_pending_proposals(backend)
             .expect("Could not commit to proposals.");
 
@@ -894,7 +879,7 @@ fn mls_group_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoPr
         }
 
         alice_group
-            .merge_pending_commit()
+            .merge_pending_commit(backend)
             .expect("Could not merge Commit.");
 
         let bob_processed_message = bob_group
@@ -922,7 +907,9 @@ fn mls_group_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoPr
 
             assert!(staged_commit.self_removed());
             // Merge staged Commit
-            bob_group.merge_staged_commit(*staged_commit);
+            bob_group
+                .merge_staged_commit(backend, *staged_commit)
+                .unwrap();
         } else {
             unreachable!("Expected a StagedCommit.");
         }
@@ -948,13 +935,13 @@ fn mls_group_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoPr
         );
 
         // Add Bob to the group
-        let (_queued_message, welcome) = alice_group
+        let (_queued_message, welcome, _group_info) = alice_group
             .add_members(backend, &[bob_key_package])
             .expect("Could not add Bob");
 
         // Merge Commit
         alice_group
-            .merge_pending_commit()
+            .merge_pending_commit(backend)
             .expect("error merging pending commit");
 
         let mut bob_group = MlsGroup::new_from_welcome(
@@ -1095,11 +1082,9 @@ fn mls_group_ratchet_tree_extension(
         .expect("An unexpected error occurred.");
 
         // === Alice adds Bob ===
-        let (_queued_message, welcome) =
-            match alice_group.add_members(backend, &[bob_key_package.clone()]) {
-                Ok((qm, welcome)) => (qm, welcome),
-                Err(e) => panic!("Could not add member to group: {:?}", e),
-            };
+        let (_queued_message, welcome, _group_info) = alice_group
+            .add_members(backend, &[bob_key_package.clone()])
+            .unwrap();
 
         // === Bob joins using the ratchet tree extension ===
         let _bob_group = MlsGroup::new_from_welcome(
@@ -1149,11 +1134,9 @@ fn mls_group_ratchet_tree_extension(
         .expect("An unexpected error occurred.");
 
         // === Alice adds Bob ===
-        let (_queued_message, welcome) = match alice_group.add_members(backend, &[bob_key_package])
-        {
-            Ok((qm, welcome)) => (qm, welcome),
-            Err(e) => panic!("Could not add member to group: {:?}", e),
-        };
+        let (_queued_message, welcome, _group_info) = alice_group
+            .add_members(backend, &[bob_key_package])
+            .unwrap();
 
         // === Bob tries to join without the ratchet tree extension ===
         let error = MlsGroup::new_from_welcome(

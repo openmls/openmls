@@ -272,11 +272,11 @@ async fn test_group() {
 
     // With the key package we can invite Client2 (create proposal and merge it
     // locally.)
-    let (_out_messages, welcome_msg) = group
+    let (_out_messages, welcome_msg, _group_info) = group
         .add_members(crypto, &[client2_key_package])
         .expect("Could not add member to group.");
     group
-        .merge_pending_commit()
+        .merge_pending_commit(crypto)
         .expect("error merging pending commit");
 
     // Send welcome message for Client2

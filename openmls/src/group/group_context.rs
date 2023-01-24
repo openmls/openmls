@@ -75,42 +75,42 @@ impl GroupContext {
     }
 
     /// Return the protocol version.
-    pub(crate) fn protocol_version(&self) -> ProtocolVersion {
+    pub fn protocol_version(&self) -> ProtocolVersion {
         self.protocol_version
     }
 
     /// Return the ciphersuite.
-    pub(crate) fn ciphersuite(&self) -> Ciphersuite {
+    pub fn ciphersuite(&self) -> Ciphersuite {
         self.ciphersuite
     }
 
     /// Return the group ID.
-    pub(crate) fn group_id(&self) -> &GroupId {
+    pub fn group_id(&self) -> &GroupId {
         &self.group_id
     }
 
     /// Return the epoch.
-    pub(crate) fn epoch(&self) -> GroupEpoch {
+    pub fn epoch(&self) -> GroupEpoch {
         self.epoch
     }
 
     /// Return the tree hash.
-    pub(crate) fn tree_hash(&self) -> &[u8] {
+    pub fn tree_hash(&self) -> &[u8] {
         self.tree_hash.as_slice()
     }
 
     /// Return the confirmed transcript hash.
-    pub(crate) fn confirmed_transcript_hash(&self) -> &[u8] {
+    pub fn confirmed_transcript_hash(&self) -> &[u8] {
         self.confirmed_transcript_hash.as_slice()
     }
 
     /// Return the extensions.
-    pub(crate) fn extensions(&self) -> &Extensions {
+    pub fn extensions(&self) -> &Extensions {
         &self.extensions
     }
 
     /// Get the required capabilities extension.
-    pub(crate) fn required_capabilities(&self) -> Option<&RequiredCapabilitiesExtension> {
+    pub fn required_capabilities(&self) -> Option<&RequiredCapabilitiesExtension> {
         self.extensions.required_capabilities()
     }
 }

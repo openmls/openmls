@@ -86,12 +86,12 @@ fn validation_test_setup(
     .expect("An unexpected error occurred.");
 
     // === Alice adds Bob & Bob joins ===
-    let (_message, welcome) = alice_group
+    let (_message, welcome, _group_info) = alice_group
         .add_members(backend, &[bob_key_package.clone()])
         .expect("Could not add member.");
 
     alice_group
-        .merge_pending_commit()
+        .merge_pending_commit(backend)
         .expect("error merging pending commit");
 
     let bob_group = MlsGroup::new_from_welcome(
@@ -124,8 +124,8 @@ fn test_valsem002(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
         _bob_key_package: _,
     } = validation_test_setup(PURE_PLAINTEXT_WIRE_FORMAT_POLICY, ciphersuite, backend);
 
-    let (message, _welcome) = alice_group
-        .self_update(backend, None)
+    let (message, _welcome, _group_info) = alice_group
+        .self_update(backend)
         .expect("Could not self-update.");
 
     let serialized_message = message
@@ -171,13 +171,13 @@ fn test_valsem003(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
     } = validation_test_setup(PURE_PLAINTEXT_WIRE_FORMAT_POLICY, ciphersuite, backend);
 
     // Alice needs to create a new message that Bob can process.
-    let (message, _welcome) = alice_group
-        .self_update(backend, None)
+    let (message, _welcome, _group_info) = alice_group
+        .self_update(backend)
         .expect("Could not self update.");
-    alice_group.merge_pending_commit().unwrap();
+    alice_group.merge_pending_commit(backend).unwrap();
 
     alice_group
-        .merge_pending_commit()
+        .merge_pending_commit(backend)
         .expect("Could not merge commit.");
 
     let processed_message = bob_group
@@ -187,14 +187,16 @@ fn test_valsem003(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
     if let ProcessedMessageContent::StagedCommitMessage(staged_commit) =
         processed_message.into_content()
     {
-        bob_group.merge_staged_commit(*staged_commit);
+        bob_group
+            .merge_staged_commit(backend, *staged_commit)
+            .expect("Error merging commit.");
     } else {
         unreachable!("Expected StagedCommit.");
     }
 
     // Do a second Commit to increase the epoch number
-    let (message, _welcome) = alice_group
-        .self_update(backend, None)
+    let (message, _welcome, _group_info) = alice_group
+        .self_update(backend)
         .expect("Could not add member.");
 
     let current_epoch = alice_group.epoch();
@@ -235,7 +237,9 @@ fn test_valsem003(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
     if let ProcessedMessageContent::StagedCommitMessage(staged_commit) =
         processed_msg.into_content()
     {
-        bob_group.merge_staged_commit(*staged_commit);
+        bob_group
+            .merge_staged_commit(backend, *staged_commit)
+            .unwrap();
     } else {
         unreachable!();
     }
@@ -260,8 +264,8 @@ fn test_valsem004(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
         _bob_key_package: _,
     } = validation_test_setup(PURE_PLAINTEXT_WIRE_FORMAT_POLICY, ciphersuite, backend);
 
-    let (message, _welcome) = alice_group
-        .self_update(backend, None)
+    let (message, _welcome, _group_info) = alice_group
+        .self_update(backend)
         .expect("Could not self-update.");
 
     let serialized_message = message
@@ -320,8 +324,8 @@ fn test_valsem005(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
         _bob_key_package: _,
     } = validation_test_setup(PURE_PLAINTEXT_WIRE_FORMAT_POLICY, ciphersuite, backend);
 
-    let (message, _welcome) = alice_group
-        .self_update(backend, None)
+    let (message, _welcome, _group_info) = alice_group
+        .self_update(backend)
         .expect("Could not self-update.");
 
     let serialized_message = message
@@ -427,8 +431,8 @@ fn test_valsem007(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
         _bob_key_package: _,
     } = validation_test_setup(PURE_PLAINTEXT_WIRE_FORMAT_POLICY, ciphersuite, backend);
 
-    let (message, _welcome) = alice_group
-        .self_update(backend, None)
+    let (message, _welcome, _group_info) = alice_group
+        .self_update(backend)
         .expect("Could not self-update.");
 
     let serialized_message = message
@@ -474,8 +478,8 @@ fn test_valsem008(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
     } = validation_test_setup(PURE_PLAINTEXT_WIRE_FORMAT_POLICY, ciphersuite, backend);
 
     // Alice needs to create a new message that Bob can process.
-    let (message, _welcome) = alice_group
-        .self_update(backend, None)
+    let (message, _welcome, _group_info) = alice_group
+        .self_update(backend)
         .expect("Could not self-update.");
 
     let serialized_message = message
@@ -523,8 +527,8 @@ fn test_valsem009(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
         _bob_key_package: _,
     } = validation_test_setup(PURE_PLAINTEXT_WIRE_FORMAT_POLICY, ciphersuite, backend);
 
-    let (message, _welcome) = alice_group
-        .self_update(backend, None)
+    let (message, _welcome, _group_info) = alice_group
+        .self_update(backend)
         .expect("Could not self-update.");
 
     let serialized_message = message
@@ -583,8 +587,8 @@ fn test_valsem010(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
     } = validation_test_setup(PURE_PLAINTEXT_WIRE_FORMAT_POLICY, ciphersuite, backend);
 
     // Alice needs to create a new message that Bob can process.
-    let (message, _welcome) = alice_group
-        .self_update(backend, None)
+    let (message, _welcome, _group_info) = alice_group
+        .self_update(backend)
         .expect("Could not self update.");
 
     let serialized_message = message

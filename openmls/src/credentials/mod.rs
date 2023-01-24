@@ -30,10 +30,7 @@
 //! There are multiple [`CredentialType`]s, although OpenMLS currently only
 //! supports the [`BasicCredential`].
 
-use openmls_traits::{
-    types::{CryptoError, SignatureScheme},
-    OpenMlsCryptoProvider,
-};
+use openmls_traits::{types::SignatureScheme, OpenMlsCryptoProvider};
 use serde::{Deserialize, Serialize};
 use std::convert::TryFrom;
 #[cfg(test)]
@@ -119,33 +116,6 @@ pub struct Credential {
 }
 
 impl Credential {
-    /// Verifies a signature of a given payload against the public key contained
-    /// in a credential.
-    ///
-    /// Returns an error if the signature is invalid.
-    pub fn verify(
-        &self,
-        backend: &impl OpenMlsCryptoProvider,
-        payload: &[u8],
-        signature: &Signature,
-        label: &str,
-    ) -> Result<(), CredentialError> {
-        match &self.credential {
-            MlsCredentialType::Basic(basic_credential) => {
-                let signature_public_key_enriched = basic_credential
-                    .public_key
-                    .clone()
-                    .into_signature_public_key_enriched(basic_credential.signature_scheme);
-
-                signature_public_key_enriched
-                    .verify_with_label(backend, signature, &SignContent::new(label, payload.into()))
-                    .map_err(|_| CredentialError::InvalidSignature)
-            }
-            // TODO: implement verification for X509 certificates. See issue #134.
-            MlsCredentialType::X509(_) => panic!("X509 certificates are not yet implemented."),
-        }
-    }
-
     /// Returns the identity of a given credential.
     pub fn identity(&self) -> &[u8] {
         match &self.credential {
@@ -298,17 +268,6 @@ impl CredentialBundle {
         (self.credential, self.signature_private_key)
     }
 
-    /// Signs the given message `msg` using the private key of the credential bundle.
-    pub(crate) fn sign(
-        &self,
-        backend: &impl OpenMlsCryptoProvider,
-        msg: &[u8],
-        label: &str,
-    ) -> Result<Signature, CryptoError> {
-        self.signature_private_key
-            .sign_with_label(backend, &SignContent::new(label, msg.into()))
-    }
-
     /// Returns the key pair of the given credential bundle.
     #[cfg(any(feature = "test-utils", test))]
     pub fn key_pair(&self) -> SignatureKeypair {
@@ -319,5 +278,10 @@ impl CredentialBundle {
             .into_signature_public_key_enriched(self.credential().signature_scheme());
         let private_key = self.signature_private_key.clone();
         SignatureKeypair::from_parts(public_key, private_key)
+    }
+
+    /// Get a reference to the signature private key of this credential bundle.
+    pub(crate) fn signature_private_key(&self) -> &SignaturePrivateKey {
+        &self.signature_private_key
     }
 }

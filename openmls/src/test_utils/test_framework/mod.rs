@@ -29,7 +29,7 @@ use crate::{
     group::*,
     key_packages::*,
     messages::*,
-    treesync::node::Node,
+    treesync::{node::Node, LeafNode},
 };
 use ::rand::{rngs::OsRng, RngCore};
 use openmls_rust_crypto::OpenMlsRustCrypto;
@@ -497,7 +497,7 @@ impl MlsGroupTestSetup {
         action_type: ActionType,
         group: &mut Group,
         client_id: &[u8],
-        key_pair: Option<KeyPackage>,
+        leaf_node: Option<LeafNode>,
     ) -> Result<(), SetupError> {
         let clients = self.clients.read().expect("An unexpected error occurred.");
         let client = clients
@@ -505,8 +505,8 @@ impl MlsGroupTestSetup {
             .ok_or(SetupError::UnknownClientId)?
             .read()
             .expect("An unexpected error occurred.");
-        let (messages, welcome_option) =
-            client.self_update(action_type, &group.group_id, key_pair)?;
+        let (messages, welcome_option, _) =
+            client.self_update(action_type, &group.group_id, leaf_node)?;
         self.distribute_to_members(&client.identity, group, &messages.into())?;
         if let Some(welcome) = welcome_option {
             self.deliver_welcome(welcome, group)?;
@@ -550,7 +550,7 @@ impl MlsGroupTestSetup {
             let key_package = self.get_fresh_key_package(&addee, group.ciphersuite)?;
             key_packages.push(key_package);
         }
-        let (messages, welcome_option) =
+        let (messages, welcome_option, _) =
             adder.add_members(action_type, &group.group_id, &key_packages)?;
         for message in messages {
             self.distribute_to_members(adder_id, group, &message.into())?;
@@ -578,7 +578,7 @@ impl MlsGroupTestSetup {
             .ok_or(SetupError::UnknownClientId)?
             .read()
             .expect("An unexpected error occurred.");
-        let (messages, welcome_option) =
+        let (messages, welcome_option, _) =
             remover.remove_members(action_type, &group.group_id, target_members)?;
         for message in messages {
             self.distribute_to_members(remover_id, group, &message.into())?;

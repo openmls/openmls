@@ -152,7 +152,7 @@ impl CoreGroup {
                 .encryption_key();
 
             // ValSem113
-            if proposal_init_key == proposal_encryption_key.as_ref() {
+            if proposal_init_key == proposal_encryption_key.as_slice() {
                 return Err(ProposalValidationError::InitEncryptionKeyCollision);
             }
 

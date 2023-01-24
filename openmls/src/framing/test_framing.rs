@@ -9,8 +9,7 @@ use tls_codec::{Deserialize, Serialize};
 
 use crate::{
     binary_tree::LeafNodeIndex,
-    ciphersuite::signable::Signable,
-    credentials::errors::CredentialError,
+    ciphersuite::signable::{Signable, SignatureError},
     extensions::Extensions,
     framing::*,
     group::{
@@ -59,7 +58,7 @@ fn codec_plaintext(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvide
     )
     .with_context(serialized_context);
     let mut orig: PublicMessage = signature_input
-        .sign(backend, &credential_bundle)
+        .sign(backend, credential_bundle.signature_private_key())
         .expect("Signing failed.")
         .into();
 
@@ -114,7 +113,7 @@ fn codec_ciphertext(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvid
     )
     .with_context(serialized_context);
     let plaintext = signature_input
-        .sign(backend, &credential_bundle)
+        .sign(backend, credential_bundle.signature_private_key())
         .expect("Signing failed.");
 
     let mut key_schedule = KeySchedule::init(
@@ -263,12 +262,15 @@ fn wire_format_checks(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProv
         .expect("Could not decrypt PrivateMessage.");
 
     // We expect the signature to fail since the original content was signed with a different wire format.
-    let result: Result<AuthenticatedContent, CredentialError> =
-        verifiable_plaintext.verify(backend, &credential);
+    let result: Result<AuthenticatedContent, SignatureError> = verifiable_plaintext.verify(
+        backend,
+        credential.signature_key(),
+        credential.signature_scheme(),
+    );
 
     assert_eq!(
         result.expect_err("Verification successful despite wrong wire format."),
-        CredentialError::InvalidSignature
+        SignatureError::VerificationError
     );
 
     message_secrets.replace_secret_tree(sender_secret_tree);
@@ -322,7 +324,7 @@ fn create_content(
     .with_context(serialized_context);
 
     let content = signature_input
-        .sign(backend, &credential_bundle)
+        .sign(backend, credential_bundle.signature_private_key())
         .expect("Signing failed.");
     (content, credential_bundle.credential().clone())
 }
@@ -454,7 +456,7 @@ fn unknown_sender(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
         .expect("Error creating Commit");
 
     group_alice
-        .merge_commit(create_commit_result.staged_commit)
+        .merge_commit(backend, create_commit_result.staged_commit)
         .expect("error merging pending commit");
 
     let _group_bob = CoreGroup::new_from_welcome(
@@ -495,7 +497,7 @@ fn unknown_sender(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
         .expect("Error creating Commit");
 
     group_alice
-        .merge_commit(create_commit_result.staged_commit)
+        .merge_commit(backend, create_commit_result.staged_commit)
         .expect("error merging pending commit");
 
     let mut group_charlie = CoreGroup::new_from_welcome(
@@ -538,11 +540,11 @@ fn unknown_sender(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
         .stage_commit(&create_commit_result.commit, &proposal_store, &[], backend)
         .expect("Charlie: Could not stage Commit");
     group_charlie
-        .merge_commit(staged_commit)
+        .merge_commit(backend, staged_commit)
         .expect("error merging commit");
 
     group_alice
-        .merge_commit(create_commit_result.staged_commit)
+        .merge_commit(backend, create_commit_result.staged_commit)
         .expect("error merging pending commit");
 
     print_tree(&group_alice, "Alice tree");
@@ -642,7 +644,7 @@ fn confirmation_tag_presence(ciphersuite: Ciphersuite, backend: &impl OpenMlsCry
         .expect("Error creating Commit");
 
     group_alice
-        .merge_commit(create_commit_result.staged_commit)
+        .merge_commit(backend, create_commit_result.staged_commit)
         .expect("error merging pending commit");
 
     // We have to create Bob's group so he can process the commit with the
@@ -740,7 +742,7 @@ fn invalid_plaintext_signature(ciphersuite: Ciphersuite, backend: &impl OpenMlsC
         .expect("Error creating Commit");
 
     group_alice
-        .merge_commit(create_commit_result.staged_commit)
+        .merge_commit(backend, create_commit_result.staged_commit)
         .expect("error merging pending commit");
 
     let mut _group_bob = CoreGroup::new_from_welcome(

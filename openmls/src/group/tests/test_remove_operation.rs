@@ -73,18 +73,18 @@ fn test_remove_operation_variants(ciphersuite: Ciphersuite, backend: &impl OpenM
         let mut alice_group = MlsGroup::new_with_group_id(
             backend,
             &mls_group_config,
-            group_id,
+            group_id.clone(),
             alice_credential.signature_key(),
         )
         .expect("An unexpected error occurred.");
 
         // === Alice adds Bob & Charlie ===
 
-        let (_message, welcome) = alice_group
+        let (_message, welcome, _group_info) = alice_group
             .add_members(backend, &[bob_key_package, charlie_key_package])
             .expect("An unexpected error occurred.");
         alice_group
-            .merge_pending_commit()
+            .merge_pending_commit(backend)
             .expect("error merging pending commit");
 
         let welcome = welcome.into_welcome().expect("Unexpected message type.");
@@ -111,7 +111,7 @@ fn test_remove_operation_variants(ciphersuite: Ciphersuite, backend: &impl OpenM
         let bob_index = bob_group.own_leaf_index();
 
         // We differentiate between the two test cases here
-        let (message, _welcome) = match test_case {
+        let (message, _welcome, _group_info) = match test_case {
             // Alice removes Bob
             TestCase::Remove => alice_group
                 .remove_members(backend, &[bob_index])

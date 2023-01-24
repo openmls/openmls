@@ -36,6 +36,7 @@ use super::errors::CreateGroupContextExtProposalError;
 use crate::framing::mls_auth_content::VerifiableAuthenticatedContent;
 
 use crate::group::config::CryptoConfig;
+use crate::treesync::node::encryption_keys::EncryptionKeyPair;
 use crate::{
     binary_tree::array_representation::LeafNodeIndex,
     ciphersuite::{signable::Signable, HpkePublicKey},
@@ -45,8 +46,11 @@ use crate::{
     framing::{mls_auth_content::AuthenticatedContent, *},
     group::*,
     key_packages::*,
-    messages::VerifiableGroupInfo,
-    messages::{proposals::*, *},
+    messages::{
+        group_info::{GroupInfo, GroupInfoTBS, VerifiableGroupInfo},
+        proposals::*,
+        *,
+    },
     schedule::{message_secrets::*, psk::*, *},
     tree::{secret_tree::SecretTreeError, sender_ratchet::SenderRatchetConfiguration},
     treesync::{
@@ -58,6 +62,7 @@ use crate::{
 
 use self::{past_secrets::MessageSecretsStore, staged_commit::StagedCommit};
 use log::{debug, trace};
+use openmls_traits::key_store::OpenMlsKeyStore;
 use openmls_traits::{crypto::OpenMlsCrypto, types::Ciphersuite};
 use serde::{Deserialize, Serialize};
 #[cfg(test)]
@@ -79,6 +84,7 @@ pub(crate) struct CreateCommitResult {
     pub(crate) commit: AuthenticatedContent,
     pub(crate) welcome_option: Option<Welcome>,
     pub(crate) staged_commit: StagedCommit,
+    pub(crate) group_info: Option<GroupInfo>,
 }
 
 /// A member in the group is identified by this [`Member`] struct.
@@ -198,22 +204,22 @@ impl CoreGroupBuilder {
     ///
     /// This function performs cryptographic operations and there requires an
     /// [`OpenMlsCryptoProvider`].
-    pub(crate) fn build(
+    pub(crate) fn build<KeyStore: OpenMlsKeyStore>(
         self,
         credential_bundle: &CredentialBundle,
-        backend: &impl OpenMlsCryptoProvider,
-    ) -> Result<CoreGroup, CoreGroupBuildError> {
+        backend: &impl OpenMlsCryptoProvider<KeyStoreProvider = KeyStore>,
+    ) -> Result<CoreGroup, CoreGroupBuildError<KeyStore::Error>> {
         let ciphersuite = self.crypto_config.ciphersuite;
         let config = self.config.unwrap_or_default();
         let capabilities = self
             .required_capabilities
             .as_ref()
-            .map(|re| re.extensions());
+            .map(|re| re.extension_types());
         let version = self.version.unwrap_or_default();
 
         debug!("Created group {:x?}", self.group_id);
         trace!(" >>> with {:?}, {:?}", ciphersuite, config);
-        let (tree, commit_secret) = TreeSync::new(
+        let (tree, commit_secret, leaf_keypair) = TreeSync::new(
             backend,
             CryptoConfig {
                 ciphersuite,
@@ -282,7 +288,7 @@ impl CoreGroupBuilder {
 
         let interim_transcript_hash = vec![];
 
-        Ok(CoreGroup {
+        let group = CoreGroup {
             ciphersuite,
             group_context,
             group_epoch_secrets,
@@ -291,7 +297,14 @@ impl CoreGroupBuilder {
             use_ratchet_tree_extension: config.add_ratchet_tree_extension,
             mls_version: version,
             message_secrets_store,
-        })
+        };
+
+        // Store the private key of the own leaf in the key store as an epoch keypair.
+        group
+            .store_epoch_keypairs(backend, &[leaf_keypair])
+            .map_err(CoreGroupBuildError::KeyStoreError)?;
+
+        Ok(group)
     }
 }
 
@@ -437,7 +450,7 @@ impl CoreGroup {
             // Ensure that all other leaf nodes support all the required
             // extensions as well.
             self.treesync()
-                .check_extension_support(required_capabilities.extensions())?;
+                .check_extension_support(required_capabilities.extension_types())?;
         }
         let proposal = GroupContextExtensionProposal::new(extensions);
         let proposal = Proposal::GroupContextExtensions(proposal);
@@ -586,7 +599,9 @@ impl CoreGroup {
         );
 
         // Sign to-be-signed group info.
-        group_info_tbs.sign(backend, credential_bundle)
+        group_info_tbs
+            .sign(backend, credential_bundle.signature_private_key())
+            .map_err(|_| LibraryError::custom("Signing failed"))
     }
 
     /// Returns the epoch authenticator
@@ -734,6 +749,64 @@ impl CoreGroup {
             // available to the caller.
             Ok((self.message_secrets_store.message_secrets_mut(), &[]))
         }
+    }
+
+    /// Store the given [`EncryptionKeyPair`]s in the `backend`'s key store
+    /// indexed by this group's [`GroupId`] and [`GroupEpoch`].
+    ///
+    /// Returns an error if access to the key store fails.
+    pub(super) fn store_epoch_keypairs<KeyStore: OpenMlsKeyStore>(
+        &self,
+        backend: &impl OpenMlsCryptoProvider<KeyStoreProvider = KeyStore>,
+        keypair_references: &[EncryptionKeyPair],
+    ) -> Result<(), KeyStore::Error> {
+        // Retrieving our identity should not fail.
+        let own_identity = self.own_identity().unwrap_or_default();
+        debug_assert_ne!(own_identity, &[0u8; 0]);
+        backend.key_store().store_epoch_keys(
+            own_identity,
+            self.group_id().as_slice(),
+            self.context().epoch().as_u64(),
+            keypair_references,
+        )
+    }
+
+    /// Read the [`EncryptionKeyPair`]s of this group and its current
+    /// [`GroupEpoch`] from the `backend`'s key store.
+    ///
+    /// Returns `None` if access to the key store fails.
+    pub(super) fn read_epoch_keypairs<KeyStore: OpenMlsKeyStore>(
+        &self,
+        backend: &impl OpenMlsCryptoProvider<KeyStoreProvider = KeyStore>,
+    ) -> Vec<EncryptionKeyPair> {
+        // Retrieving our identity should not fail.
+        let own_identity = self.own_identity().unwrap_or_default();
+        debug_assert_ne!(own_identity, &[0u8; 0]);
+        backend.key_store().read_epoch_keys(
+            // Retrieving our identity should not fail.
+            own_identity,
+            self.group_id().as_slice(),
+            self.group_context.epoch().as_u64(),
+        )
+    }
+
+    /// Delete the [`EncryptionKeyPair`]s from the previous [`GroupEpoch`] from
+    /// the `backend`'s key store.
+    ///
+    /// Returns an error if access to the key store fails.
+    pub(super) fn delete_previous_epoch_keypairs<KeyStore: OpenMlsKeyStore>(
+        &self,
+        backend: &impl OpenMlsCryptoProvider<KeyStoreProvider = KeyStore>,
+    ) -> Result<(), KeyStore::Error> {
+        // Retrieving our identity should not fail.
+        let own_identity = self.own_identity().unwrap_or_default();
+        debug_assert_ne!(own_identity, &[0u8; 0]);
+        backend.key_store().delete_epoch_keys(
+            // Retrieving our identity should not fail.
+            own_identity,
+            self.group_id().as_slice(),
+            self.context().epoch().as_u64() - 1,
+        )
     }
 
     #[cfg(any(feature = "test-utils", test))]

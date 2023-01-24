@@ -12,14 +12,17 @@ use crate::{
     framing::{mls_auth_content::AuthenticatedContent, *},
     group::{config::CryptoConfig, *},
     key_packages::*,
-    messages::proposals::*,
-    messages::*,
+    messages::{
+        group_info::{GroupInfoTBS, VerifiableGroupInfo},
+        proposals::*,
+        *,
+    },
     prelude::LeafNode,
     schedule::psk::*,
     test_utils::*,
     tree::sender_ratchet::*,
     treesync::node::{
-        leaf_node::{LeafNodeSource, Lifetime},
+        leaf_node::{Capabilities, LeafNodeSource, Lifetime},
         Node,
     },
     versions::ProtocolVersion,
@@ -120,7 +123,7 @@ pub fn generate_test_vector(ciphersuite: Ciphersuite) -> MessagesTestVector {
         )
     };
     let group_info = group_info_tbs
-        .sign(&crypto, &credential_bundle)
+        .sign(&crypto, credential_bundle.signature_private_key())
         .expect("An unexpected error occurred.");
     let group_secrets =
         GroupSecrets::random_encoded(ciphersuite, &crypto, ProtocolVersion::default());
@@ -135,6 +138,7 @@ pub fn generate_test_vector(ciphersuite: Ciphersuite) -> MessagesTestVector {
         },
         &credential_bundle,
         LeafNodeSource::Update,
+        Capabilities::default(),
         Extensions::empty(),
         &crypto,
     )
@@ -214,7 +218,13 @@ pub fn generate_test_vector(ciphersuite: Ciphersuite) -> MessagesTestVector {
     let create_commit_result = group
         .create_commit(params, &crypto)
         .expect("An unexpected error occurred.");
-    group.merge_staged_commit(create_commit_result.staged_commit, &mut proposal_store);
+    group
+        .merge_staged_commit(
+            &crypto,
+            create_commit_result.staged_commit,
+            &mut proposal_store,
+        )
+        .unwrap();
     let commit = if let FramedContentBody::Commit(commit) = create_commit_result.commit.content() {
         commit.clone()
     } else {

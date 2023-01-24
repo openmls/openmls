@@ -11,7 +11,7 @@ use rstest_reuse::{self, *};
 
 use crate::{
     ciphersuite::{hash_ref::ProposalRef, signable::Verifiable},
-    credentials::{errors::*, *},
+    credentials::*,
     framing::*,
     group::{config::CryptoConfig, errors::*, tests::utils::resign_external_commit, *},
     messages::proposals::*,
@@ -261,10 +261,10 @@ fn test_valsem242(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
     )
     .unwrap();
 
-    let (_message, _welcome) = alice_group
+    let (_message, _welcome, _group_info) = alice_group
         .add_members(backend, &[bob_key_package])
         .unwrap();
-    alice_group.merge_pending_commit().unwrap();
+    alice_group.merge_pending_commit(backend).unwrap();
 
     let add_proposal = || {
         let charlie_credential = generate_credential_bundle(
@@ -409,12 +409,12 @@ fn test_valsem243(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
     )
     .expect("An unexpected error occurred.");
 
-    let (_message, _welcome) = alice_group
+    let (_message, _welcome, _group_info) = alice_group
         .add_members(backend, &[bob_key_package])
         .expect("Could not add member.");
 
     alice_group
-        .merge_pending_commit()
+        .merge_pending_commit(backend)
         .expect("error merging pending commit");
 
     // Bob wants to commit externally.
@@ -742,10 +742,12 @@ fn test_valsem246(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
         backend,
     )
     .unwrap();
-    let verification_result: Result<AuthenticatedContent, CredentialError> = decrypted_message
-        .verifiable_content()
-        .clone()
-        .verify(backend, bob_credential_bundle.credential());
+    let verification_result: Result<AuthenticatedContent, _> =
+        decrypted_message.verifiable_content().clone().verify(
+            backend,
+            bob_credential_bundle.credential().signature_key(),
+            bob_credential_bundle.credential().signature_scheme(),
+        );
     assert!(verification_result.is_ok());
 
     // Positive case

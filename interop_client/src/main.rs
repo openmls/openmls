@@ -696,7 +696,7 @@ impl MlsClient for MlsClientImpl {
         interop_group.group.set_configuration(&mls_group_config);
         let proposal = interop_group
             .group
-            .propose_self_update(&self.crypto_provider, Some(key_package.clone()))
+            .propose_self_update(&self.crypto_provider, Some(key_package.leaf_node().clone()))
             .map_err(into_status)?
             .to_bytes()
             .unwrap();
@@ -793,9 +793,9 @@ impl MlsClient for MlsClientImpl {
 
         // TODO #692: The interop client cannot process these proposals yet.
 
-        let (commit, welcome_option) = interop_group
+        let (commit, welcome_option, _group_info) = interop_group
             .group
-            .self_update(&self.crypto_provider, None)
+            .self_update(&self.crypto_provider)
             .map_err(into_status)?;
 
         let commit = commit.to_bytes().unwrap();
@@ -852,7 +852,7 @@ impl MlsClient for MlsClientImpl {
             ProcessedMessageContent::StagedCommitMessage(_) => {
                 interop_group
                     .group
-                    .merge_pending_commit()
+                    .merge_pending_commit(&self.crypto_provider)
                     .map_err(into_status)?;
             }
         }

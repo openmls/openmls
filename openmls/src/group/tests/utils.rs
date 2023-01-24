@@ -210,7 +210,13 @@ pub(crate) fn setup(config: TestSetupConfig, backend: &impl OpenMlsCryptoProvide
                 .welcome_option
                 .expect("An unexpected error occurred.");
 
-            core_group.merge_staged_commit(create_commit_result.staged_commit, &mut proposal_store);
+            core_group
+                .merge_staged_commit(
+                    backend,
+                    create_commit_result.staged_commit,
+                    &mut proposal_store,
+                )
+                .expect("Error merging commit.");
 
             // Distribute the Welcome message to the other members.
             for client_id in 1..group_config.members.len() {
@@ -339,12 +345,12 @@ pub(super) fn generate_credential_bundle(
 }
 
 // Helper function to generate a KeyPackageBundle
-pub(super) fn generate_key_package(
+pub(super) fn generate_key_package<KeyStore: OpenMlsKeyStore>(
     ciphersuites: &[Ciphersuite],
     credential: &Credential,
     extensions: Extensions,
-    backend: &impl OpenMlsCryptoProvider,
-) -> Result<KeyPackage, KeyPackageNewError> {
+    backend: &impl OpenMlsCryptoProvider<KeyStoreProvider = KeyStore>,
+) -> Result<KeyPackage, KeyPackageNewError<KeyStore::Error>> {
     let credential_bundle = backend
         .key_store()
         .read(
@@ -397,7 +403,7 @@ pub(crate) fn resign_message(
 ) -> PublicMessage {
     use prelude::signable::Signable;
 
-    let alice_credential_bundle = backend
+    let alice_credential_bundle: CredentialBundle = backend
         .key_store()
         .read(
             &alice_group
@@ -417,7 +423,7 @@ pub(crate) fn resign_message(
     let tbs: FramedContentTbs = plaintext.into();
     let mut signed_plaintext: AuthenticatedContent = tbs
         .with_context(serialized_context)
-        .sign(backend, &alice_credential_bundle)
+        .sign(backend, alice_credential_bundle.signature_private_key())
         .expect("Error signing modified payload.");
 
     // Set old confirmation tag
@@ -453,10 +459,10 @@ pub(crate) fn resign_external_commit(
     let tbs: FramedContentTbs = plaintext.into();
     let mut signed_plaintext: AuthenticatedContent = if let Some(context) = serialized_context {
         tbs.with_context(context)
-            .sign(backend, bob_credential_bundle)
+            .sign(backend, bob_credential_bundle.signature_private_key())
             .expect("Error signing modified payload.")
     } else {
-        tbs.sign(backend, bob_credential_bundle)
+        tbs.sign(backend, bob_credential_bundle.signature_private_key())
             .expect("Error signing modified payload.")
     };
 

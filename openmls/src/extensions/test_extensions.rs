@@ -97,7 +97,7 @@ fn ratchet_tree_extension(ciphersuite: Ciphersuite, backend: &impl OpenMlsCrypto
         .expect("Error creating commit");
 
     alice_group
-        .merge_commit(create_commit_result.staged_commit)
+        .merge_commit(backend, create_commit_result.staged_commit)
         .expect("error merging commit");
 
     let bob_group = match CoreGroup::new_from_welcome(
@@ -167,7 +167,7 @@ fn ratchet_tree_extension(ciphersuite: Ciphersuite, backend: &impl OpenMlsCrypto
         .expect("Error creating commit");
 
     alice_group
-        .merge_commit(create_commit_result.staged_commit)
+        .merge_commit(backend, create_commit_result.staged_commit)
         .expect("error merging commit");
 
     let error = CoreGroup::new_from_welcome(
@@ -190,7 +190,7 @@ fn ratchet_tree_extension(ciphersuite: Ciphersuite, backend: &impl OpenMlsCrypto
 #[test]
 fn required_capabilities() {
     // A required capabilities extension with the default values for openmls (none).
-    let extension_bytes = vec![0u8, 3, 0, 0, 0, 2, 0, 0];
+    let extension_bytes = vec![0u8, 3, 0, 0, 0, 3, 0, 0, 0];
     let mut extension_bytes_mut = &extension_bytes[..];
 
     let ext = Extension::RequiredCapabilities(RequiredCapabilitiesExtension::default());
@@ -212,9 +212,10 @@ fn required_capabilities() {
     let required_capabilities = RequiredCapabilitiesExtension::new(
         &[ExtensionType::ApplicationId, ExtensionType::RatchetTree],
         &[ProposalType::Reinit],
+        &[CredentialType::Basic],
     );
     let ext = Extension::RequiredCapabilities(required_capabilities);
-    let extension_bytes = vec![0u8, 3, 0, 0, 0, 8, 4, 0, 1, 0, 2, 2, 0, 5];
+    let extension_bytes = vec![0u8, 3, 0, 0, 0, 11, 4, 0, 1, 0, 2, 2, 0, 5, 2, 0, 1];
 
     // Test encoding and decoding
     let encoded = ext

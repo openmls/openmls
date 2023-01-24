@@ -271,7 +271,9 @@ fn test_required_unsupported_proposals(
     // Set required capabilities
     let extensions = &[];
     let proposals = &[ProposalType::GroupContextExtensions, ProposalType::AppAck];
-    let required_capabilities = RequiredCapabilitiesExtension::new(extensions, proposals);
+    let credentials = &[CredentialType::Basic];
+    let required_capabilities =
+        RequiredCapabilitiesExtension::new(extensions, proposals, credentials);
 
     // This must fail because we don't actually support AppAck proposals
     let e = CoreGroup::builder(
@@ -311,7 +313,9 @@ fn test_required_extension_key_package_mismatch(
         ProposalType::Remove,
         ProposalType::Update,
     ];
-    let required_capabilities = RequiredCapabilitiesExtension::new(extensions, proposals);
+    let credentials = &[CredentialType::Basic];
+    let required_capabilities =
+        RequiredCapabilitiesExtension::new(extensions, proposals, credentials);
 
     let alice_group = CoreGroup::builder(
         GroupId::random(backend),
@@ -353,7 +357,9 @@ fn test_group_context_extensions(ciphersuite: Ciphersuite, backend: &impl OpenMl
         ProposalType::Remove,
         ProposalType::Update,
     ];
-    let required_capabilities = RequiredCapabilitiesExtension::new(extensions, proposals);
+    let credentials = &[CredentialType::Basic];
+    let required_capabilities =
+        RequiredCapabilitiesExtension::new(extensions, proposals, credentials);
 
     let mut alice_group = CoreGroup::builder(
         GroupId::random(backend),
@@ -390,7 +396,7 @@ fn test_group_context_extensions(ciphersuite: Ciphersuite, backend: &impl OpenMl
     log::info!(" >>> Staging & merging commit ...");
 
     alice_group
-        .merge_commit(create_commit_result.staged_commit)
+        .merge_commit(backend, create_commit_result.staged_commit)
         .expect("error merging own staged commit");
     let ratchet_tree = alice_group.treesync().export_nodes();
 
@@ -430,7 +436,8 @@ fn test_group_context_extension_proposal_fails(
         ProposalType::Remove,
         ProposalType::Update,
     ];
-    let required_capabilities = RequiredCapabilitiesExtension::new(&[], proposals);
+    let credentials = &[CredentialType::Basic];
+    let required_capabilities = RequiredCapabilitiesExtension::new(&[], proposals, credentials);
 
     let mut alice_group = CoreGroup::builder(
         GroupId::random(backend),
@@ -490,7 +497,7 @@ fn test_group_context_extension_proposal_fails(
     log::info!(" >>> Staging & merging commit ...");
 
     alice_group
-        .merge_commit(create_commit_result.staged_commit)
+        .merge_commit(backend, create_commit_result.staged_commit)
         .expect("error merging pending commit");
     let ratchet_tree = alice_group.treesync().export_nodes();
 
@@ -574,7 +581,7 @@ fn test_group_context_extension_proposal(
     log::info!(" >>> Staging & merging commit ...");
 
     alice_group
-        .merge_commit(create_commit_results.staged_commit)
+        .merge_commit(backend, create_commit_results.staged_commit)
         .expect("error merging pending commit");
 
     let ratchet_tree = alice_group.treesync().export_nodes();
@@ -590,9 +597,12 @@ fn test_group_context_extension_proposal(
     .expect("Error joining group.");
 
     // Alice adds a required capability.
-    let required_application_id = Extension::RequiredCapabilities(
-        RequiredCapabilitiesExtension::new(&[ExtensionType::ApplicationId], &[]),
-    );
+    let required_application_id =
+        Extension::RequiredCapabilities(RequiredCapabilitiesExtension::new(
+            &[ExtensionType::ApplicationId],
+            &[],
+            &[CredentialType::Basic],
+        ));
     let gce_proposal = alice_group
         .create_group_context_ext_proposal(
             framing_parameters,
@@ -623,11 +633,11 @@ fn test_group_context_extension_proposal(
         .stage_commit(&create_commit_result.commit, &proposal_store, &[], backend)
         .expect("error staging commit");
     bob_group
-        .merge_commit(staged_commit)
+        .merge_commit(backend, staged_commit)
         .expect("error merging commit");
 
     alice_group
-        .merge_commit(create_commit_result.staged_commit)
+        .merge_commit(backend, create_commit_result.staged_commit)
         .expect("error merging pending commit");
 
     assert_eq!(

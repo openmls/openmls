@@ -4,8 +4,7 @@ use crate::{
         core_group::create_commit_params::CreateCommitParams,
         errors::{CoreGroupBuildError, ExternalCommitError, WelcomeError},
     },
-    messages::VerifiableGroupInfo,
-    treesync::LeafNode,
+    messages::group_info::VerifiableGroupInfo,
 };
 use tls_codec::Serialize;
 
@@ -21,11 +20,11 @@ impl MlsGroup {
     ///
     /// Returns an error ([`NewGroupError::NoMatchingCredentialBundle`]) if the
     /// private key for the [`SignaturePublicKey`] can not be found.
-    pub fn new(
-        backend: &impl OpenMlsCryptoProvider,
+    pub fn new<KeyStore: OpenMlsKeyStore>(
+        backend: &impl OpenMlsCryptoProvider<KeyStoreProvider = KeyStore>,
         mls_group_config: &MlsGroupConfig,
         signature_key: &SignaturePublicKey,
-    ) -> Result<Self, NewGroupError> {
+    ) -> Result<Self, NewGroupError<KeyStore::Error>> {
         Self::new_with_group_id(
             backend,
             mls_group_config,
@@ -38,12 +37,12 @@ impl MlsGroup {
     ///
     /// Returns an error ([`NewGroupError::NoMatchingCredentialBundle`]) if the
     /// private key for the [`SignaturePublicKey`] can not be found.
-    pub fn new_with_group_id(
-        backend: &impl OpenMlsCryptoProvider,
+    pub fn new_with_group_id<KeyStore: OpenMlsKeyStore>(
+        backend: &impl OpenMlsCryptoProvider<KeyStoreProvider = KeyStore>,
         mls_group_config: &MlsGroupConfig,
         group_id: GroupId,
         signature_key: &SignaturePublicKey,
-    ) -> Result<Self, NewGroupError> {
+    ) -> Result<Self, NewGroupError<KeyStore::Error>> {
         // TODO #751
         let credential_bundle: CredentialBundle =
             backend
@@ -74,25 +73,7 @@ impl MlsGroup {
                     log::debug!("Unexpected PSK error: {:?}", e);
                     LibraryError::custom("Unexpected PSK error").into()
                 }
-            })?;
-
-        // Store the encryption key pair of the own leaf node in the key store.
-        backend
-            .key_store()
-            .store(
-                &LeafNode::encryption_key_label(signature_key.as_slice()),
-                &group
-                    .treesync()
-                    .own_leaf_node()
-                    .and_then(|leaf| leaf.encryption_key_pair())
-                    .ok_or_else(|| {
-                        LibraryError::custom(
-                            "Invalid tree - unable to get own leaf encryption key pair",
-                        )
-                    })?,
-            )
-            .map_err(|_| {
-                LibraryError::custom("Unable to store private encryption key into the key store.")
+                CoreGroupBuildError::KeyStoreError(e) => NewGroupError::KeyStoreError(e),
             })?;
 
         let resumption_psk_store =
@@ -115,12 +96,12 @@ impl MlsGroup {
     /// Creates a new group from a [`Welcome`] message. Returns an error
     /// ([`WelcomeError::NoMatchingKeyPackage`]) if no [`KeyPackage`]
     /// can be found.
-    pub fn new_from_welcome(
-        backend: &impl OpenMlsCryptoProvider,
+    pub fn new_from_welcome<KeyStore: OpenMlsKeyStore>(
+        backend: &impl OpenMlsCryptoProvider<KeyStoreProvider = KeyStore>,
         mls_group_config: &MlsGroupConfig,
         welcome: Welcome,
         ratchet_tree: Option<Vec<Option<Node>>>,
-    ) -> Result<Self, WelcomeError> {
+    ) -> Result<Self, WelcomeError<KeyStore::Error>> {
         let resumption_psk_store =
             ResumptionPskStore::new(mls_group_config.number_of_resumption_psks);
         let (key_package, _) = welcome
@@ -150,7 +131,7 @@ impl MlsGroup {
         key_package_bundle
             .key_package
             .delete(backend)
-            .map_err(|_| WelcomeError::KeyStoreDeletionError)?;
+            .map_err(WelcomeError::KeyStoreError)?;
 
         let mut group =
             CoreGroup::new_from_welcome(welcome, ratchet_tree, key_package_bundle, backend)?;
