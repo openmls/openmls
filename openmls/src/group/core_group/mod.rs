@@ -504,7 +504,7 @@ impl CoreGroup {
     }
 
     /// Decrypt an PrivateMessage into an PublicMessage
-    #[cfg(any(feature = "test-utils", test))]
+    #[cfg(test)]
     pub(crate) fn decrypt(
         &mut self,
         private_message: &PrivateMessage,
@@ -810,14 +810,9 @@ impl CoreGroup {
         )
     }
 
-    #[cfg(any(feature = "test-utils", test))]
+    #[cfg(test)]
     pub(crate) fn message_secrets_test_mut(&mut self) -> &mut MessageSecrets {
         self.message_secrets_store.message_secrets_mut()
-    }
-
-    #[cfg(any(feature = "test-utils", test))]
-    pub(crate) fn context_mut(&mut self) -> &mut GroupContext {
-        &mut self.group_context
     }
 
     #[cfg(any(feature = "test-utils", test))]

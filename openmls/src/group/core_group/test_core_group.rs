@@ -54,7 +54,7 @@ pub(crate) fn setup_alice_group(
 
 #[apply(ciphersuites_and_backends)]
 fn test_core_group_persistence(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
-    let (mut alice_group, _, _, _) = setup_alice_group(ciphersuite, backend);
+    let (alice_group, _, _, _) = setup_alice_group(ciphersuite, backend);
 
     let mut file_out = tempfile::NamedTempFile::new().expect("Could not create file");
     alice_group
@@ -191,8 +191,14 @@ fn test_failed_groupinfo_decryption(
 #[apply(ciphersuites_and_backends)]
 fn test_update_path(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
     // === Alice creates a group with her and Bob ===
-    let (framing_parameters, group_alice, alice_signature_keys, group_bob, bob_signature_keys, bob_credential_with_key) =
-        test_framing::setup_alice_bob_group(ciphersuite, backend);
+    let (
+        framing_parameters,
+        group_alice,
+        _alice_signature_keys,
+        group_bob,
+        bob_signature_keys,
+        _bob_credential_with_key,
+    ) = test_framing::setup_alice_bob_group(ciphersuite, backend);
 
     // === Bob updates and commits ===
     let bob_old_leaf = group_bob.treesync().own_leaf_node().unwrap();
@@ -303,7 +309,6 @@ fn setup_alice_bob(
     // Generate Bob's KeyPackage
     let bob_key_package_bundle =
         KeyPackageBundle::new(backend, &bob_signer, ciphersuite, bob_credential_with_key);
-    let bob_key_package = bob_key_package_bundle.key_package();
 
     (
         alice_credential_with_key,
@@ -593,7 +598,7 @@ fn test_proposal_application_after_self_was_removed(
     let group_aad = b"Alice's test group";
     let framing_parameters = FramingParameters::new(group_aad, WireFormat::PublicMessage);
 
-    let (alice_credential_with_key, _, alice_signature_keys, pk) =
+    let (alice_credential_with_key, _, alice_signature_keys, _pk) =
         setup_client("Alice", ciphersuite, backend);
     let (_, bob_kpb, _, _) = setup_client("Bob", ciphersuite, backend);
     let (_, charlie_kpb, _, _) = setup_client("Charlie", ciphersuite, backend);

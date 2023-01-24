@@ -32,9 +32,9 @@ fn proposal_queue_functions(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryp
     // Framing parameters
     let framing_parameters = FramingParameters::new(&[], WireFormat::PublicMessage);
     // Define identities
-    let (alice_credential, alice_key_package_bundle, alice_signer, alice_pk) =
+    let (alice_credential, alice_key_package_bundle, alice_signer, _alice_pk) =
         setup_client("Alice", ciphersuite, backend);
-    let (_bob_credential_bundle, bob_key_package_bundle, bob_signer, bob_pk) =
+    let (_bob_credential_bundle, bob_key_package_bundle, _bob_signer, _bob_pk) =
         setup_client("Bob", ciphersuite, backend);
 
     let bob_key_package = bob_key_package_bundle.key_package();
@@ -155,9 +155,9 @@ fn proposal_queue_order(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoPr
     // Framing parameters
     let framing_parameters = FramingParameters::new(&[], WireFormat::PublicMessage);
     // Define identities
-    let (alice_credential, alice_key_package_bundle, alice_signer, alice_pk) =
+    let (alice_credential, alice_key_package_bundle, alice_signer, _alice_pk) =
         setup_client("Alice", ciphersuite, backend);
-    let (_bob_credential_bundle, bob_key_package_bundle, bob_signer, bob_pk) =
+    let (_bob_credential_bundle, bob_key_package_bundle, _bob_signer, _bob_pk) =
         setup_client("Bob", ciphersuite, backend);
 
     let bob_key_package = bob_key_package_bundle.key_package();
@@ -248,7 +248,8 @@ fn test_required_unsupported_proposals(
     ciphersuite: Ciphersuite,
     backend: &impl OpenMlsCryptoProvider,
 ) {
-    let (alice_credential, _, alice_signer, alice_pk) = setup_client("Alice", ciphersuite, backend);
+    let (alice_credential, _, alice_signer, _alice_pk) =
+        setup_client("Alice", ciphersuite, backend);
 
     // Set required capabilities
     let extensions = &[];
@@ -280,7 +281,8 @@ fn test_required_extension_key_package_mismatch(
     let group_aad = b"Alice's test group";
     let framing_parameters = FramingParameters::new(group_aad, WireFormat::PublicMessage);
 
-    let (alice_credential, _, alice_signer, alice_pk) = setup_client("Alice", ciphersuite, backend);
+    let (alice_credential, _, alice_signer, _alice_pk) =
+        setup_client("Alice", ciphersuite, backend);
     let (_bob_credential_bundle, bob_key_package_bundle, _, _) =
         setup_client("Bob", ciphersuite, backend);
     let bob_key_package = bob_key_package_bundle.key_package();
@@ -325,8 +327,9 @@ fn test_group_context_extensions(ciphersuite: Ciphersuite, backend: &impl OpenMl
     let group_aad = b"Alice's test group";
     let framing_parameters = FramingParameters::new(group_aad, WireFormat::PublicMessage);
 
-    let (alice_credential, _, alice_signer, alice_pk) = setup_client("Alice", ciphersuite, backend);
-    let (bob_credential_bundle, bob_key_package_bundle, _, _) =
+    let (alice_credential, _, alice_signer, _alice_pk) =
+        setup_client("Alice", ciphersuite, backend);
+    let (_bob_credential_bundle, bob_key_package_bundle, _, _) =
         setup_client("Bob", ciphersuite, backend);
 
     let bob_key_package = bob_key_package_bundle.key_package();
@@ -399,8 +402,9 @@ fn test_group_context_extension_proposal_fails(
     let group_aad = b"Alice's test group";
     let framing_parameters = FramingParameters::new(group_aad, WireFormat::PublicMessage);
 
-    let (alice_credential, _, alice_signer, alice_pk) = setup_client("Alice", ciphersuite, backend);
-    let (bob_credential_bundle, bob_key_package_bundle, _, _) =
+    let (alice_credential, _, alice_signer, _alice_pk) =
+        setup_client("Alice", ciphersuite, backend);
+    let (_bob_credential_bundle, bob_key_package_bundle, _, _) =
         setup_client("Bob", ciphersuite, backend);
 
     let bob_key_package = bob_key_package_bundle.key_package();
@@ -510,8 +514,9 @@ fn test_group_context_extension_proposal(
     let group_aad = b"Alice's test group";
     let framing_parameters = FramingParameters::new(group_aad, WireFormat::PublicMessage);
 
-    let (alice_credential, _, alice_signer, alice_pk) = setup_client("Alice", ciphersuite, backend);
-    let (bob_credential_bundle, bob_key_package_bundle, _, _) =
+    let (alice_credential, _, alice_signer, _alice_pk) =
+        setup_client("Alice", ciphersuite, backend);
+    let (_bob_credential_bundle, bob_key_package_bundle, _, _) =
         setup_client("Bob", ciphersuite, backend);
 
     let bob_key_package = bob_key_package_bundle.key_package();

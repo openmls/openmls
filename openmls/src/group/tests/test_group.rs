@@ -12,6 +12,7 @@ use openmls_rust_crypto::OpenMlsRustCrypto;
 use openmls_traits::key_store::OpenMlsKeyStore;
 use tests::utils::{generate_credential_bundle, generate_key_package};
 
+#[apply(ciphersuites_and_backends)]
 fn create_commit_optional_path(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
     let group_aad = b"Alice's test group";
     // Framing parameters

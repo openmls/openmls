@@ -507,10 +507,10 @@ fn test_valsem244(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
     // Test with PublicMessage
     let ECValidationTestSetup {
         mut alice_group,
-        alice_credential,
         bob_credential,
         mut plaintext,
         original_plaintext,
+        ..
     } = validation_test_setup(PURE_PLAINTEXT_WIRE_FORMAT_POLICY, ciphersuite, backend);
 
     let mut content = if let FramedContentBody::Commit(commit) = plaintext.content() {
@@ -579,10 +579,10 @@ fn test_valsem245(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
     // Test with PublicMessage
     let ECValidationTestSetup {
         mut alice_group,
-        alice_credential,
         bob_credential,
         mut plaintext,
         original_plaintext,
+        ..
     } = validation_test_setup(PURE_PLAINTEXT_WIRE_FORMAT_POLICY, ciphersuite, backend);
 
     let mut content = if let FramedContentBody::Commit(commit) = plaintext.content() {
@@ -631,10 +631,10 @@ fn test_valsem246(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
     // Test with PublicMessage
     let ECValidationTestSetup {
         mut alice_group,
-        alice_credential,
         bob_credential,
         mut plaintext,
         original_plaintext,
+        ..
     } = validation_test_setup(PURE_PLAINTEXT_WIRE_FORMAT_POLICY, ciphersuite, backend);
 
     let mut content = if let FramedContentBody::Commit(commit) = plaintext.content() {

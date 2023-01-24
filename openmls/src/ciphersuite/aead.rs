@@ -95,7 +95,7 @@ impl AeadNonce {
     }
 
     /// Get a slice to the nonce value.
-    #[cfg(any(feature = "test-utils", test))]
+    #[cfg(test)]
     pub(crate) fn as_slice(&self) -> &[u8] {
         &self.0
     }

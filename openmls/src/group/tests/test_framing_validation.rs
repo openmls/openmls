@@ -43,8 +43,12 @@ fn validation_test_setup(
         generate_credential_bundle("Bob".into(), ciphersuite.signature_algorithm(), backend);
 
     // Generate KeyPackages
-    let alice_key_package =
-        generate_key_package(ciphersuite, Extensions::empty(), backend, alice_credential.clone());
+    let alice_key_package = generate_key_package(
+        ciphersuite,
+        Extensions::empty(),
+        backend,
+        alice_credential.clone(),
+    );
 
     let bob_key_package = generate_key_package(
         ciphersuite,

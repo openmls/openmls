@@ -15,8 +15,7 @@ use crate::{
     ciphersuite::hash_ref::ProposalRef,
     credentials::*,
     framing::{
-        mls_content::FramedContentBody, MlsMessageIn,  ProtocolMessage,
-        PublicMessage, Sender,
+        mls_content::FramedContentBody, MlsMessageIn, ProtocolMessage, PublicMessage, Sender,
     },
     group::{config::CryptoConfig, errors::*, *},
     key_packages::*,
@@ -2090,7 +2089,7 @@ fn test_valsem111(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
         mut alice_group,
         alice_credential_with_key_and_signer,
         mut bob_group,
-        bob_credential_with_key_and_signer,
+        bob_credential_with_key_and_signer: _,
     } = validation_test_setup(PURE_PLAINTEXT_WIRE_FORMAT_POLICY, ciphersuite, backend);
 
     // We can't test this by having Alice propose an update herself. This is due
@@ -2257,7 +2256,7 @@ fn test_valsem112(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
         mut alice_group,
         alice_credential_with_key_and_signer,
         mut bob_group,
-        bob_credential_with_key_and_signer,
+        bob_credential_with_key_and_signer: _,
     } = validation_test_setup(PURE_PLAINTEXT_WIRE_FORMAT_POLICY, ciphersuite, backend);
 
     // This can really only be tested by the receiver, as there is no way to

@@ -25,9 +25,7 @@ struct CommitValidationTestSetup {
     alice_group: MlsGroup,
     alice_credential: CredentialWithKeyAndSigner,
     bob_group: MlsGroup,
-    bob_credential: CredentialWithKeyAndSigner,
     charlie_group: MlsGroup,
-    charlie_credential: CredentialWithKeyAndSigner,
 }
 
 // Validation test setup
@@ -114,9 +112,7 @@ fn validation_test_setup(
         alice_group,
         alice_credential,
         bob_group,
-        bob_credential,
         charlie_group,
-        charlie_credential,
     }
 }
 
@@ -128,7 +124,6 @@ fn test_valsem200(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
         mut alice_group,
         alice_credential,
         mut bob_group,
-        bob_credential,
         ..
     } = validation_test_setup(PURE_PLAINTEXT_WIRE_FORMAT_POLICY, ciphersuite, backend);
 
@@ -244,7 +239,6 @@ fn test_valsem201(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
         mut alice_group,
         alice_credential,
         mut bob_group,
-        bob_credential,
         charlie_group,
         ..
     } = validation_test_setup(wire_format_policy, ciphersuite, backend);
@@ -336,14 +330,6 @@ fn test_valsem201(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
         proposal
             .into_iter()
             .for_each(|p| alice_group.store_pending_proposal(p));
-
-        let alice_cred = alice_group.credential().unwrap();
-        let alice_sign_key = alice_credential
-            .credential_with_key
-            .signature_key
-            .as_slice()
-            .tls_serialize_detached()
-            .unwrap();
 
         let params = CreateCommitParams::builder()
             .framing_parameters(alice_group.framing_parameters())

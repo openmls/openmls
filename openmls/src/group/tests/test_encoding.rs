@@ -252,7 +252,9 @@ fn test_commit_encoding(backend: &impl OpenMlsCryptoProvider) {
             backend,
             &alice_credential_with_key_and_signer.signer,
             group_state.ciphersuite(),
-            alice_credential_with_key_and_signer.credential_with_key.clone(),
+            alice_credential_with_key_and_signer
+                .credential_with_key
+                .clone(),
         );
 
         // Create a few proposals to put into the commit

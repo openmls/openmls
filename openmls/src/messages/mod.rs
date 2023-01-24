@@ -34,7 +34,7 @@ pub mod proposals;
 // Tests
 #[cfg(test)]
 mod tests;
-#[cfg(any(feature = "test-utils", test))]
+#[cfg(test)]
 use crate::schedule::psk::{ExternalPsk, Psk};
 
 // Public types
@@ -336,7 +336,7 @@ impl GroupSecrets {
 
     // XXX[KAT]: Used in kat_messages.
     //           Get in when kat's are in again.
-    #[cfg(any(feature = "test-utils", test))]
+    #[cfg(test)]
     pub fn _random_encoded(
         ciphersuite: Ciphersuite,
         backend: &impl OpenMlsCryptoProvider,

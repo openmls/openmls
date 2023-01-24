@@ -113,7 +113,7 @@ fn external_add_proposal_should_succeed(
             bob_group,
         } = validation_test_setup(policy, ciphersuite, backend);
         let (mut alice_group, alice_signer) = alice_group;
-        let (mut bob_group, bob_signer) = bob_group;
+        let (mut bob_group, _bob_signer) = bob_group;
 
         assert_eq!(alice_group.members().count(), 2);
         assert_eq!(bob_group.members().count(), 2);
@@ -219,7 +219,7 @@ fn external_add_proposal_should_be_signed_by_key_package_it_references(
 ) {
     let ProposalValidationTestSetup { alice_group, .. } =
         validation_test_setup(PURE_PLAINTEXT_WIRE_FORMAT_POLICY, ciphersuite, backend);
-    let (mut alice_group, alice_signer) = alice_group;
+    let (mut alice_group, _alice_signer) = alice_group;
 
     let attacker_credential = generate_credential_bundle(
         "Attacker".into(),
@@ -262,11 +262,11 @@ fn new_member_proposal_sender_should_be_reserved_for_join_proposals(
     backend: &impl OpenMlsCryptoProvider,
 ) {
     let ProposalValidationTestSetup {
-        mut alice_group,
-        mut bob_group,
+        alice_group,
+        bob_group,
     } = validation_test_setup(PURE_PLAINTEXT_WIRE_FORMAT_POLICY, ciphersuite, backend);
     let (mut alice_group, alice_signer) = alice_group;
-    let (mut bob_group, bob_signer) = bob_group;
+    let (mut bob_group, _bob_signer) = bob_group;
 
     // Add proposal can have a 'new_member_proposal' sender
     let any_credential =

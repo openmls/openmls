@@ -29,7 +29,7 @@ use crate::{
 /// This tests serializing/deserializing PublicMessage
 #[apply(ciphersuites_and_backends)]
 fn codec_plaintext(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
-    let (credential, signature_keys) = test_utils::new_credential(
+    let (_credential, signature_keys) = test_utils::new_credential(
         backend,
         b"Creator",
         CredentialType::Basic,
@@ -83,7 +83,7 @@ fn codec_plaintext(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvide
 /// This tests serializing/deserializing PrivateMessage
 #[apply(ciphersuites_and_backends)]
 fn codec_ciphertext(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
-    let (credential, signature_keys) = test_utils::new_credential(
+    let (_credential, signature_keys) = test_utils::new_credential(
         backend,
         b"Creator",
         CredentialType::Basic,
@@ -231,7 +231,7 @@ fn wire_format_checks(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProv
     );
 
     // Create and encrypt content with the wrong wire format
-    let (plaintext, credential, signature_keys) =
+    let (plaintext, _credential, signature_keys) =
         create_content(ciphersuite, WireFormat::PublicMessage, backend);
     let pk = OpenMlsSignaturePublicKey::new(
         signature_keys.public().into(),
@@ -333,7 +333,7 @@ fn create_content(
 
 #[apply(ciphersuites_and_backends)]
 fn membership_tag(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
-    let (credential, signature_keys) = test_utils::new_credential(
+    let (_credential, signature_keys) = test_utils::new_credential(
         backend,
         b"Creator",
         CredentialType::Basic,
