@@ -9,6 +9,8 @@ pub mod kat_transcripts;
 #[cfg(test)]
 mod external_proposal;
 #[cfg(test)]
+mod group_correctness;
+#[cfg(test)]
 mod test_commit_validation;
 #[cfg(test)]
 mod test_encoding;
