@@ -47,7 +47,7 @@ fn new_test_group(
             &credential_with_keys.signer,
             &mls_group_config,
             group_id,
-            credential_with_keys.credential_with_key,
+            credential_with_keys.credential_with_key.clone(),
         )
         .unwrap(),
         credential_with_keys,
@@ -71,7 +71,7 @@ fn validation_test_setup(
         ciphersuite,
         Extensions::empty(),
         backend,
-        bob_credential_bundle,
+        bob_credential_bundle.clone(),
     );
 
     let (_message, welcome, _group_info) = alice_group
@@ -129,11 +129,11 @@ fn external_add_proposal_should_succeed(
             ciphersuite,
             Extensions::empty(),
             backend,
-            charlie_credential,
+            charlie_credential.clone(),
         );
 
         let proposal = JoinProposal::new(
-            charlie_kp,
+            charlie_kp.clone(),
             alice_group.group_id().clone(),
             alice_group.epoch(),
             &charlie_credential.signer,
@@ -235,7 +235,7 @@ fn external_add_proposal_should_be_signed_by_key_package_it_references(
         ciphersuite,
         Extensions::empty(),
         backend,
-        charlie_credential,
+        attacker_credential,
     );
 
     let invalid_proposal = JoinProposal::new(
@@ -272,7 +272,12 @@ fn new_member_proposal_sender_should_be_reserved_for_join_proposals(
     let any_credential =
         generate_credential_bundle("Any".into(), ciphersuite.signature_algorithm(), backend);
 
-    let any_kp = generate_key_package(ciphersuite, Extensions::empty(), backend, any_credential);
+    let any_kp = generate_key_package(
+        ciphersuite,
+        Extensions::empty(),
+        backend,
+        any_credential.clone(),
+    );
 
     let join_proposal = JoinProposal::new(
         any_kp,

@@ -580,7 +580,7 @@ fn unknown_sender(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
 
 #[apply(ciphersuites_and_backends)]
 fn confirmation_tag_presence(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
-    let (framing_parameters, group_alice, alice_signature_keys, group_bob, _) =
+    let (framing_parameters, group_alice, alice_signature_keys, group_bob, _, _) =
         setup_alice_bob_group(ciphersuite, backend);
 
     // Alice does an update
@@ -613,6 +613,7 @@ pub(crate) fn setup_alice_bob_group(
     BasicCredential,
     CoreGroup,
     BasicCredential,
+    CredentialWithKey,
 ) {
     let group_aad = b"Alice's test group";
     let framing_parameters = FramingParameters::new(group_aad, WireFormat::PublicMessage);
@@ -632,8 +633,12 @@ pub(crate) fn setup_alice_bob_group(
     );
 
     // Generate KeyPackages
-    let bob_key_package_bundle =
-        KeyPackageBundle::new(backend, &bob_signature_keys, ciphersuite, bob_credential);
+    let bob_key_package_bundle = KeyPackageBundle::new(
+        backend,
+        &bob_signature_keys,
+        ciphersuite,
+        bob_credential.clone(),
+    );
     let bob_key_package = bob_key_package_bundle.key_package();
 
     // Alice creates a group
@@ -699,12 +704,13 @@ pub(crate) fn setup_alice_bob_group(
         alice_signature_keys,
         group_bob,
         bob_signature_keys,
+        bob_credential,
     )
 }
 
 #[apply(ciphersuites_and_backends)]
 fn invalid_plaintext_signature(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
-    let (_framing_parameters, _group_alice, _alice_signature_keys, _group_bob, _) =
+    let (_framing_parameters, _group_alice, _alice_signature_keys, _group_bob, _, _) =
         setup_alice_bob_group(ciphersuite, backend);
 
     // TODO: #727 - This test doesn't make sense.

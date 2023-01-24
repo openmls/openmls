@@ -44,10 +44,14 @@ fn validation_test_setup(
 
     // Generate KeyPackages
     let alice_key_package =
-        generate_key_package(ciphersuite, Extensions::empty(), backend, alice_credential);
+        generate_key_package(ciphersuite, Extensions::empty(), backend, alice_credential.clone());
 
-    let bob_key_package =
-        generate_key_package(ciphersuite, Extensions::empty(), backend, bob_credential);
+    let bob_key_package = generate_key_package(
+        ciphersuite,
+        Extensions::empty(),
+        backend,
+        bob_credential.clone(),
+    );
 
     // Define the MlsGroup configuration
     let mls_group_config = MlsGroupConfig::builder()
@@ -61,7 +65,7 @@ fn validation_test_setup(
         &alice_credential.signer,
         &mls_group_config,
         group_id,
-        alice_credential.credential_with_key,
+        alice_credential.credential_with_key.clone(),
     )
     .expect("An unexpected error occurred.");
 

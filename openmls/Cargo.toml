@@ -35,7 +35,7 @@ backtrace = "0.3"
 [features]
 default = []
 crypto-subtle = [] # Enable subtle crypto APIs that have to be used with care.
-test-utils = ["itertools", "openmls_rust_crypto", "rand", "rstest", "rstest_reuse", "openmls_basic_credential"]
+test-utils = ["itertools", "openmls_rust_crypto", "rand", "rstest", "rstest_reuse", "openmls_basic_credential", "openmls_basic_credential/clonable"]
 evercrypt = ["openmls_evercrypt"] # Evercrypt needs to be enabled individually
 crypto-debug = [] # ☣️ Enable logging of sensitive cryptographic information
 content-debug = [] # ☣️ Enable logging of sensitive message content

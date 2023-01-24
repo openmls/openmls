@@ -8,7 +8,10 @@
 //! [`PublicMessage`] can be accessed by processing functions of OpenMLS.
 use crate::{
     binary_tree::LeafNodeIndex,
-    ciphersuite::{signable::{Signable, SignedStruct, Verifiable, VerifiedStruct}, SignaturePublicKey},
+    ciphersuite::{
+        signable::{Signable, SignedStruct, Verifiable, VerifiedStruct},
+        SignaturePublicKey,
+    },
     error::LibraryError,
     group::errors::ValidationError,
 };

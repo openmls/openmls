@@ -57,7 +57,7 @@ fn validation_test_setup(
         &alice_credential.signer,
         &mls_group_config,
         group_id,
-        alice_credential.credential_with_key,
+        alice_credential.credential_with_key.clone(),
     )
     .expect("An unexpected error occurred.");
 
@@ -78,7 +78,7 @@ fn validation_test_setup(
         verifiable_group_info,
         alice_group.configuration(),
         &[],
-        bob_credential.credential_with_key,
+        bob_credential.credential_with_key.clone(),
     )
     .expect("Error initializing group externally.");
 
@@ -324,7 +324,7 @@ fn test_valsem242(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
             verifiable_group_info,
             alice_group.configuration(),
             &[],
-            bob_credential.credential_with_key,
+            bob_credential.credential_with_key.clone(),
         )
         .unwrap();
 
@@ -525,8 +525,12 @@ fn test_valsem244(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
     };
 
     // Add an Add proposal by reference
-    let bob_key_package =
-        generate_key_package(ciphersuite, Extensions::empty(), backend, *bob_credential);
+    let bob_key_package = generate_key_package(
+        ciphersuite,
+        Extensions::empty(),
+        backend,
+        *bob_credential.clone(),
+    );
 
     let add_proposal = Proposal::Add(AddProposal {
         key_package: bob_key_package,

@@ -113,7 +113,7 @@ fn test_update_proposal_encoding(backend: &impl OpenMlsCryptoProvider) {
             backend,
             &credential_with_key_and_signer.signer,
             group_state.ciphersuite(),
-            credential_with_key_and_signer.credential_with_key,
+            credential_with_key_and_signer.credential_with_key.clone(),
         );
 
         let mut update: PublicMessage = group_state
@@ -163,7 +163,7 @@ fn test_add_proposal_encoding(backend: &impl OpenMlsCryptoProvider) {
             backend,
             &credential_with_key_and_signer.signer,
             group_state.ciphersuite(),
-            credential_with_key_and_signer.credential_with_key,
+            credential_with_key_and_signer.credential_with_key.clone(),
         );
 
         // Adds
@@ -252,7 +252,7 @@ fn test_commit_encoding(backend: &impl OpenMlsCryptoProvider) {
             backend,
             &alice_credential_with_key_and_signer.signer,
             group_state.ciphersuite(),
-            alice_credential_with_key_and_signer.credential_with_key,
+            alice_credential_with_key_and_signer.credential_with_key.clone(),
         );
 
         // Create a few proposals to put into the commit
@@ -347,7 +347,11 @@ fn test_welcome_message_encoding(backend: &impl OpenMlsCryptoProvider) {
             .pop()
             .expect("An unexpected error occurred.");
         let add = group_state
-            .create_add_proposal(framing_parameters, charlie_key_package.clone(), &credential_with_key_and_signer.signer)
+            .create_add_proposal(
+                framing_parameters,
+                charlie_key_package.clone(),
+                &credential_with_key_and_signer.signer,
+            )
             .expect("Could not create proposal.");
 
         let proposal_store = ProposalStore::from_queued_proposal(

@@ -38,7 +38,7 @@ fn create_group(
             &credential_with_key_and_signer.signer,
             &mls_group_config,
             group_id,
-            credential_with_key_and_signer.credential_with_key,
+            credential_with_key_and_signer.credential_with_key.clone(),
         )
         .expect("An unexpected error occurred."),
         credential_with_key_and_signer,
@@ -61,7 +61,7 @@ fn receive_message(
         ciphersuite,
         Extensions::empty(),
         backend,
-        bob_credential_with_key_and_signer,
+        bob_credential_with_key_and_signer.clone(),
     );
 
     let (_message, welcome, _group_info) = alice_group

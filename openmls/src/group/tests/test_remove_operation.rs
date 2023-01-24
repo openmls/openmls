@@ -41,7 +41,7 @@ fn test_remove_operation_variants(ciphersuite: Ciphersuite, backend: &impl OpenM
             ciphersuite,
             Extensions::empty(),
             backend,
-            bob_credential_with_key_and_signer,
+            bob_credential_with_key_and_signer.clone(),
         );
         let charlie_key_package = generate_key_package(
             ciphersuite,

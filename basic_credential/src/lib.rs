@@ -22,7 +22,8 @@ use tls_codec::{Deserialize, Serialize, TlsDeserialize, TlsSerialize, TlsSize};
 ///
 /// The credential contain the public and private signature keys as well as the
 /// signature scheme.
-#[derive(TlsSerialize, TlsSize, TlsDeserialize, Clone)]
+#[derive(TlsSerialize, TlsSize, TlsDeserialize)]
+#[cfg_attr(feature = "clonable", derive(Clone))]
 pub struct BasicCredential {
     private: Vec<u8>,
     public: Vec<u8>,
@@ -48,42 +49,6 @@ impl Signer<Vec<u8>> for BasicCredential {
     }
 }
 impl ByteSigner for BasicCredential {}
-
-// impl Verifier<[u8]> for BasicCredential {
-//     fn verify(&self, payload: &[u8], signature: &[u8]) -> Result<(), types::Error> {
-//         match self.signature_scheme {
-//             SignatureScheme::ECDSA_SECP256R1_SHA256 => {
-//                 let k = VerifyingKey::from_encoded_point(
-//                     &EncodedPoint::from_bytes(&self.public)
-//                         .map_err(|_| types::Error::InvalidSignature)?,
-//                 )
-//                 .map_err(|_| types::Error::InvalidSignature)?;
-//                 k.verify(
-//                     payload,
-//                     &Signature::from_der(signature).map_err(|_| types::Error::InvalidSignature)?,
-//                 )
-//                 .map_err(|_| types::Error::InvalidSignature)
-//             }
-//             SignatureScheme::ED25519 => {
-//                 let k = ed25519_dalek::PublicKey::from_bytes(&self.public)
-//                     .map_err(|_| types::Error::InvalidSignature)?;
-//                 if signature.len() != ed25519_dalek::SIGNATURE_LENGTH {
-//                     return Err(types::Error::InvalidSignature);
-//                 }
-//                 let mut sig = [0u8; ed25519_dalek::SIGNATURE_LENGTH];
-//                 sig.clone_from_slice(signature);
-//                 k.verify_strict(payload, &ed25519_dalek::Signature::from(sig))
-//                     .map_err(|_| types::Error::InvalidSignature)
-//             }
-//             _ => Err(types::Error::CryptoError(
-//                 CryptoError::UnsupportedSignatureScheme,
-//             )),
-//         }
-//     }
-// }
-// impl ByteVerifier for BasicCredential {}
-
-// impl ByteSignVerifier for BasicCredential {}
 
 /// Compute the ID for a [`Signature`] in the key store.
 fn id(public_key: &[u8], signature_scheme: SignatureScheme) -> Vec<u8> {

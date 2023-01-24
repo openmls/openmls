@@ -45,7 +45,7 @@ pub(crate) fn setup_alice_group(
     let group = CoreGroup::builder(
         GroupId::random(backend),
         config::CryptoConfig::with_default_version(ciphersuite),
-        alice_credential_with_key,
+        alice_credential_with_key.clone(),
     )
     .build(backend, &alice_signature_keys)
     .expect("Error creating group.");
@@ -191,7 +191,7 @@ fn test_failed_groupinfo_decryption(
 #[apply(ciphersuites_and_backends)]
 fn test_update_path(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
     // === Alice creates a group with her and Bob ===
-    let (framing_parameters, group_alice, alice_signature_keys, group_bob, bob_signature_keys) =
+    let (framing_parameters, group_alice, alice_signature_keys, group_bob, bob_signature_keys, bob_credential_with_key) =
         test_framing::setup_alice_bob_group(ciphersuite, backend);
 
     // === Bob updates and commits ===
@@ -569,8 +569,12 @@ pub(crate) fn setup_client(
     .unwrap();
 
     // Generate the KeyPackage
-    let key_package_bundle =
-        KeyPackageBundle::new(backend, &signature_keys, ciphersuite, credential_with_key);
+    let key_package_bundle = KeyPackageBundle::new(
+        backend,
+        &signature_keys,
+        ciphersuite,
+        credential_with_key.clone(),
+    );
     (credential_with_key, key_package_bundle, signature_keys, pk)
 }
 

@@ -483,7 +483,7 @@ fn test_pending_commit_logic(ciphersuite: Ciphersuite, backend: &impl OpenMlsCry
         .expect("error creating self-update commit");
 
     let (msg, _welcome_option, _group_info) = bob_group
-        .self_update(backend, &alice_signer)
+        .self_update(backend, &bob_signer)
         .expect("error creating self-update commit");
 
     let alice_processed_message = alice_group

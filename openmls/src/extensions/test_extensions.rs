@@ -56,7 +56,7 @@ fn ratchet_tree_extension(ciphersuite: Ciphersuite, backend: &impl OpenMlsCrypto
         backend,
         &bob_signature_keys,
         ciphersuite,
-        bob_credential_with_key,
+        bob_credential_with_key.clone(),
     );
     let bob_key_package = bob_key_package_bundle.key_package();
 
@@ -68,7 +68,7 @@ fn ratchet_tree_extension(ciphersuite: Ciphersuite, backend: &impl OpenMlsCrypto
     let mut alice_group = CoreGroup::builder(
         GroupId::random(backend),
         config::CryptoConfig::with_default_version(ciphersuite),
-        alice_credential_with_key,
+        alice_credential_with_key.clone(),
     )
     .with_config(config)
     .build(backend, &alice_signature_keys)
@@ -130,7 +130,7 @@ fn ratchet_tree_extension(ciphersuite: Ciphersuite, backend: &impl OpenMlsCrypto
         backend,
         &bob_signature_keys,
         ciphersuite,
-        alice_credential_with_key,
+        bob_credential_with_key.clone(),
     );
     let bob_key_package = bob_key_package_bundle.key_package();
 

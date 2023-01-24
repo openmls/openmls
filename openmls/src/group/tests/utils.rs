@@ -104,7 +104,7 @@ pub(crate) fn setup(config: TestSetupConfig, backend: &impl OpenMlsCryptoProvide
                     backend,
                     &credentia_with_key_and_signer.signer,
                     ciphersuite,
-                    credentia_with_key_and_signer.credential_with_key,
+                    credentia_with_key_and_signer.credential_with_key.clone(),
                 );
                 key_packages.push(key_package_bundle.key_package().clone());
                 key_package_bundles.push(key_package_bundle);
@@ -142,7 +142,7 @@ pub(crate) fn setup(config: TestSetupConfig, backend: &impl OpenMlsCryptoProvide
         let core_group = CoreGroup::builder(
             GroupId::from_slice(&group_id.to_be_bytes()),
             CryptoConfig::with_default_version(group_config.ciphersuite),
-            credential_with_key_and_signer.credential_with_key,
+            credential_with_key_and_signer.credential_with_key.clone(),
         )
         .with_config(group_config.config)
         .build(backend, &credential_with_key_and_signer.signer)
@@ -321,7 +321,7 @@ fn test_setup(backend: &impl OpenMlsCryptoProvider) {
 }
 
 #[derive(Clone)]
-pub(super) struct CredentialWithKeyAndSigner {
+pub(crate) struct CredentialWithKeyAndSigner {
     pub(super) credential_with_key: CredentialWithKey,
     pub(super) signer: BasicCredentialWithKeys,
 }

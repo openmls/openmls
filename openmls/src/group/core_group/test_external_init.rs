@@ -16,8 +16,14 @@ use super::{create_commit_params::CreateCommitParams, proposals::ProposalStore, 
 
 #[apply(ciphersuites_and_backends)]
 fn test_external_init(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
-    let (framing_parameters, group_alice, alice_signer, group_bob, bob_signer) =
-        setup_alice_bob_group(ciphersuite, backend);
+    let (
+        framing_parameters,
+        mut group_alice,
+        alice_signer,
+        mut group_bob,
+        bob_signer,
+        bob_credential_with_key,
+    ) = setup_alice_bob_group(ciphersuite, backend);
 
     // Now set up Charlie and try to init externally.
     let (charlie_credential, charlie_kpb, charlie_signer, charlie_pk) =
@@ -33,6 +39,7 @@ fn test_external_init(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProv
     let params = CreateCommitParams::builder()
         .framing_parameters(framing_parameters)
         .proposal_store(&proposal_store)
+        .credential_with_key(charlie_credential)
         .build();
     let (mut group_charly, create_commit_result) = CoreGroup::join_by_external_commit(
         backend,
@@ -109,6 +116,7 @@ fn test_external_init(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProv
     let params = CreateCommitParams::builder()
         .framing_parameters(framing_parameters)
         .proposal_store(&proposal_store)
+        .credential_with_key(bob_credential_with_key)
         .build();
     let (mut new_group_bob, create_commit_result) = CoreGroup::join_by_external_commit(
         backend,
@@ -171,7 +179,7 @@ fn test_external_init_single_member_group(
     ciphersuite: Ciphersuite,
     backend: &impl OpenMlsCryptoProvider,
 ) {
-    let (group_alice, alice_credential_with_key, alice_signer, alice_pk) =
+    let (mut group_alice, alice_credential_with_key, alice_signer, alice_pk) =
         setup_alice_group(ciphersuite, backend);
 
     // Framing parameters
@@ -184,7 +192,7 @@ fn test_external_init_single_member_group(
 
     // Have Alice export everything that Charly needs.
     let verifiable_group_info = group_alice
-        .export_group_info(backend, &charly_signer, false)
+        .export_group_info(backend, &alice_signer, false)
         .unwrap()
         .into_verifiable_group_info();
     let nodes_option = group_alice.treesync().export_nodes();
@@ -193,6 +201,7 @@ fn test_external_init_single_member_group(
     let params = CreateCommitParams::builder()
         .framing_parameters(framing_parameters)
         .proposal_store(&proposal_store)
+        .credential_with_key(charly_credential)
         .build();
     let (mut group_charly, create_commit_result) = CoreGroup::join_by_external_commit(
         backend,
@@ -232,8 +241,14 @@ fn test_external_init_broken_signature(
     ciphersuite: Ciphersuite,
     backend: &impl OpenMlsCryptoProvider,
 ) {
-    let (framing_parameters, group_alice, alice_signer, group_bob, bob_signer) =
-        setup_alice_bob_group(ciphersuite, backend);
+    let (
+        framing_parameters,
+        group_alice,
+        alice_signer,
+        group_bob,
+        bob_signer,
+        bob_credential_with_key,
+    ) = setup_alice_bob_group(ciphersuite, backend);
 
     // Now set up charly and try to init externally.
     let (charlie_credential, charlie_kpb, charlie_signer, charlie_pk) =

@@ -60,7 +60,7 @@ fn test_welcome_ciphersuite_mismatch(
         &alice_signer,
         &mls_group_config,
         group_id,
-        alice_credential_with_key
+        alice_credential_with_key,
     )
     .expect("An unexpected error occurred.");
 

@@ -379,10 +379,11 @@ fn group_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvid
     let mls_plaintext_bob: AuthenticatedContent = verifiable_plaintext
         .verify(
             backend.crypto(),
-            &OpenMlsSignaturePublicKey {
-                value: alice_credential_with_keys.signer.to_public_vec().into(),
-                signature_scheme: ciphersuite.signature_algorithm(),
-            },
+            &OpenMlsSignaturePublicKey::new(
+                alice_credential_with_keys.signer.to_public_vec().into(),
+                ciphersuite.signature_algorithm(),
+            )
+            .unwrap(),
         )
         .expect("An unexpected error occurred.");
 
@@ -697,10 +698,11 @@ fn group_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvid
     let mls_plaintext_alice: AuthenticatedContent = verifiable_plaintext
         .verify(
             backend.crypto(),
-            &OpenMlsSignaturePublicKey {
-                value: charlie_credential_with_keys.signer.to_public_vec().into(),
-                signature_scheme: ciphersuite.signature_algorithm(),
-            },
+            &OpenMlsSignaturePublicKey::new(
+                charlie_credential_with_keys.signer.to_public_vec().into(),
+                ciphersuite.signature_algorithm(),
+            )
+            .unwrap(),
         )
         .expect("An unexpected error occurred.");
 
@@ -720,10 +722,11 @@ fn group_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvid
     let mls_plaintext_bob: AuthenticatedContent = verifiable_plaintext
         .verify(
             backend.crypto(),
-            &OpenMlsSignaturePublicKey {
-                value: charlie_credential_with_keys.signer.to_public_vec().into(),
-                signature_scheme: ciphersuite.signature_algorithm(),
-            },
+            &OpenMlsSignaturePublicKey::new(
+                charlie_credential_with_keys.signer.to_public_vec().into(),
+                ciphersuite.signature_algorithm(),
+            )
+            .unwrap(),
         )
         .expect("An unexpected error occurred.");
 

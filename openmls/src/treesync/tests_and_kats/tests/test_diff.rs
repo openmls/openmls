@@ -23,12 +23,7 @@ fn test_free_leaf_computation(ciphersuite: Ciphersuite, backend: &impl OpenMlsCr
         ciphersuite.signature_algorithm(),
     );
 
-    let kpb_0 = KeyPackageBundle::new(
-        backend,
-        &sk_0,
-        ciphersuite,
-        c_0,
-    );
+    let kpb_0 = KeyPackageBundle::new(backend, &sk_0, ciphersuite, c_0);
 
     let (c_3, sk_3) = new_credential(
         backend,
