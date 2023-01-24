@@ -112,6 +112,7 @@ pub trait Signable: Sized {
         let signature = signer
             .sign(&payload)
             .map_err(|_| SignatureError::SigningError)?;
+
         Ok(Self::SignedOutput::from_payload(self, signature.into()))
     }
 }

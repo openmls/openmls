@@ -670,9 +670,9 @@ fn test_valsem246(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
 
     plaintext.set_content(FramedContentBody::Commit(content));
 
-    // We have to re-sign, since we changed the content.
+    // We have to re-sign (with the original credential), since we changed the content.
     let signed_plaintext = resign_external_commit(
-        &bob_new_credential.signer,
+        &bob_credential.signer,
         plaintext,
         &original_plaintext,
         alice_group

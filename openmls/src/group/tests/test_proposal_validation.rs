@@ -24,7 +24,11 @@ use crate::{
         proposals::{AddProposal, Proposal, ProposalOrRef, RemoveProposal, UpdateProposal},
         Welcome,
     },
-    treesync::{errors::ApplyUpdatePathError, node::leaf_node::Capabilities, LeafNode},
+    treesync::{
+        errors::{ApplyUpdatePathError, PublicTreeError},
+        node::leaf_node::Capabilities,
+        LeafNode,
+    },
     versions::ProtocolVersion,
 };
 
@@ -368,7 +372,15 @@ fn test_valsem101(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
 
         match bob_and_charlie_share_keys {
             KeyUniqueness::NegativeSameKey => {
-                charlie_credential_with_keys = bob_credential_with_keys.clone()
+                // The same key but a different identity.
+                // The identity check kicks in first and would throw a different
+                // error.
+                let charlie_credential = charlie_credential_with_keys
+                    .credential_with_key
+                    .credential
+                    .clone();
+                charlie_credential_with_keys = bob_credential_with_keys.clone();
+                charlie_credential_with_keys.credential_with_key.credential = charlie_credential;
             }
             KeyUniqueness::PositiveDifferentKey => {
                 // Nothing to do in this case because the keys are different.
@@ -529,8 +541,8 @@ fn test_valsem102(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
                         version: ProtocolVersion::default(),
                     },
                     backend,
-                    &charlie_credential_bundle.signer,
-                    charlie_credential_bundle.credential_with_key.clone(),
+                    &bob_credential_bundle.signer,
+                    bob_credential_bundle.credential_with_key.clone(),
                     Extensions::empty(),
                     Extensions::empty(),
                     charlie_key_package.hpke_init_key().as_slice().to_vec(),
@@ -605,14 +617,15 @@ fn test_valsem102(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
     let original_plaintext = plaintext.clone();
 
     // Now let's create a second proposal and insert it into the commit. We want
-    // a different signature key, different identity, but the same hpke public
-    // key. The easiest way to get there is to re-sign the same KPB with a new
-    // credential.
-    let (dave_credential_bundle, _) =
+    // a different signature key, different identity, but the same hpke init
+    // key.
+    let (dave_credential_with_key_and_signer, mut dave_key_package) =
         generate_credential_bundle_and_key_package("Dave".into(), ciphersuite, backend);
-    let dave_key_package = charlie_key_package.resign(
-        &alice_credential_with_key_and_signer.signer,
-        alice_credential_with_key_and_signer
+    // Change the init key and re-sign.
+    dave_key_package.set_public_key(charlie_key_package.hpke_init_key().clone());
+    let dave_key_package = dave_key_package.resign(
+        &dave_credential_with_key_and_signer.signer,
+        dave_credential_with_key_and_signer
             .credential_with_key
             .credential
             .clone(),
@@ -1790,24 +1803,6 @@ fn test_valsem109(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
     // We begin by creating a credential with a fresh identity.
     let bobby_credential_with_key_and_signer =
         generate_credential_bundle("Bobby".into(), ciphersuite.signature_algorithm(), backend);
-    // let new_cb = CredentialBundle::new(
-    //     "Bobby".into(),
-    //     CredentialType::Basic,
-    //     ciphersuite.signature_algorithm(),
-    //     backend,
-    // )
-    // .expect("error creating credential bundle");
-    // let credential_id = new_cb
-    //     .credential()
-    //     .signature_key()
-    //     .tls_serialize_detached()
-    //     .expect("Error serializing signature key.");
-    // // Store the credential bundle into the key store so OpenMLS has access
-    // // to it.
-    // backend
-    //     .key_store()
-    //     .store(&credential_id, &new_cb)
-    //     .expect("An unexpected error occurred.");
 
     let update_leaf_node = LeafNode::generate(
         CryptoConfig::with_default_version(ciphersuite),
@@ -1821,39 +1816,45 @@ fn test_valsem109(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
     )
     .unwrap();
 
-    // We first go the manual route
-    let update_proposal = bob_group
+    // We first try to generate a proposal with mismatching identities.
+    let update_proposal_err = bob_group
         .propose_self_update(
             backend,
             &bob_credential_with_key_and_signer.signer,
             Some(update_leaf_node),
         )
-        .expect("error while creating update proposal");
+        .expect_err("error while creating update proposal");
+    assert!(matches!(
+        update_proposal_err,
+        ProposeSelfUpdateError::PublicTreeError(PublicTreeError::IdentityMismatch)
+    ));
 
-    // Have Alice process this proposal.
-    if let ProcessedMessageContent::ProposalMessage(proposal) = alice_group
-        .process_message(backend, update_proposal.into_protocol_message().unwrap())
-        .expect("error processing proposal")
-        .into_content()
-    {
-        alice_group.store_pending_proposal(*proposal)
-    } else {
-        panic!("Unexpected message type");
-    };
+    // TODO[FK]: Create an invalid proposal to continue the test.
 
-    // This should fail, since the identity doesn't match.
-    let err = alice_group
-        .commit_to_pending_proposals(backend, &alice_credential_with_key_and_signer.signer)
-        .expect_err("no error while trying to commit to update proposal with differing identity");
+    // // Have Alice process this proposal.
+    // if let ProcessedMessageContent::ProposalMessage(proposal) = alice_group
+    //     .process_message(backend, update_proposal.into_protocol_message().unwrap())
+    //     .expect("error processing proposal")
+    //     .into_content()
+    // {
+    //     alice_group.store_pending_proposal(*proposal)
+    // } else {
+    //     panic!("Unexpected message type");
+    // };
 
-    assert_eq!(
-        err,
-        CommitToPendingProposalsError::CreateCommitError(
-            CreateCommitError::ProposalValidationError(
-                ProposalValidationError::UpdateProposalIdentityMismatch
-            )
-        )
-    );
+    // // This should fail, since the identity doesn't match.
+    // let err = alice_group
+    //     .commit_to_pending_proposals(backend, &alice_credential_with_key_and_signer.signer)
+    //     .expect_err("no error while trying to commit to update proposal with differing identity");
+
+    // assert_eq!(
+    //     err,
+    //     CommitToPendingProposalsError::CreateCommitError(
+    //         CreateCommitError::ProposalValidationError(
+    //             ProposalValidationError::UpdateProposalIdentityMismatch
+    //         )
+    //     )
+    // );
 
     // Clear commit to try another way of committing with a mismatching identity.
     alice_group.clear_pending_commit();
@@ -1937,10 +1938,10 @@ fn test_valsem110(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
     // Before we can test creation or reception of (invalid) proposals, we set
     // up a new group with Alice and Bob.
     let ProposalValidationTestSetup {
-        mut alice_group,
-        alice_credential_with_key_and_signer,
-        mut bob_group,
-        bob_credential_with_key_and_signer,
+        alice_group: _,
+        alice_credential_with_key_and_signer: _,
+        bob_group: _,
+        bob_credential_with_key_and_signer: _,
     } = validation_test_setup(PURE_PLAINTEXT_WIRE_FORMAT_POLICY, ciphersuite, backend);
 
     // TODO[FK]: This must go in again when #819 is finished and the leaf node

@@ -220,7 +220,7 @@ fn basic_group_setup(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvi
     let group_alice = CoreGroup::builder(
         GroupId::random(backend),
         CryptoConfig::with_default_version(ciphersuite),
-        bob_credential_with_keys.credential_with_key,
+        alice_credential_with_keys.credential_with_key,
     )
     .build(backend, &alice_credential_with_keys.signer)
     .expect("Error creating CoreGroup.");
@@ -284,9 +284,9 @@ fn group_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvid
     // Generate KeyPackages
     let bob_key_package_bundle = KeyPackageBundle::new(
         backend,
-        &alice_credential_with_keys.signer,
+        &bob_credential_with_keys.signer,
         ciphersuite,
-        alice_credential_with_keys.credential_with_key.clone(),
+        bob_credential_with_keys.credential_with_key.clone(),
     );
     let bob_key_package = bob_key_package_bundle.key_package();
 
@@ -424,7 +424,7 @@ fn group_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvid
         .force_self_update(false)
         .build();
     let create_commit_result =
-        match group_bob.create_commit(params, backend, &alice_credential_with_keys.signer) {
+        match group_bob.create_commit(params, backend, &bob_credential_with_keys.signer) {
             Ok(c) => c,
             Err(e) => panic!("Error creating commit: {:?}", e),
         };
@@ -600,9 +600,9 @@ fn group_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvid
 
     let charlie_key_package_bundle = KeyPackageBundle::new(
         backend,
-        &bob_credential_with_keys.signer,
+        &charlie_credential_with_keys.signer,
         ciphersuite,
-        bob_credential_with_keys.credential_with_key.clone(),
+        charlie_credential_with_keys.credential_with_key.clone(),
     );
     let charlie_key_package = charlie_key_package_bundle.key_package().clone();
 

@@ -690,7 +690,14 @@ impl Signable for LeafNodeTbs {
     type SignedOutput = LeafNode;
 
     fn unsigned_payload(&self) -> Result<Vec<u8>, tls_codec::Error> {
-        self.tls_serialize_detached()
+        // println!("pk in signed leaf {:x?}", self.payload.signature_key);
+        let payload = self.tls_serialize_detached();
+        // println!(
+        //     "Signing ID: {}",
+        //     String::from_utf8(self.payload.credential.identity().to_vec()).unwrap()
+        // );
+        // println!("sign: {:x?}", payload.clone().unwrap());
+        payload
     }
 
     fn label(&self) -> &str {
@@ -717,7 +724,13 @@ pub(crate) struct VerifiableLeafNodeTbs<'a> {
 
 impl<'a> Verifiable for VerifiableLeafNodeTbs<'a> {
     fn unsigned_payload(&self) -> Result<Vec<u8>, tls_codec::Error> {
-        self.tbs.tls_serialize_detached()
+        let payload = self.tbs.tls_serialize_detached();
+        // println!(
+        //     "Verifying ID: {}",
+        //     String::from_utf8(self.tbs.payload.credential.identity().to_vec()).unwrap()
+        // );
+        // println!("verify: {:x?}", payload.clone().unwrap());
+        payload
     }
 
     fn signature(&self) -> &Signature {
