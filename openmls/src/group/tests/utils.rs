@@ -379,7 +379,7 @@ pub(crate) fn resign_message(
     plaintext: PublicMessage,
     original_plaintext: &PublicMessage,
     backend: &impl OpenMlsCryptoProvider,
-    signer: &impl ByteSigner,
+    signer: &(impl ByteSigner + ?Sized),
 ) -> PublicMessage {
     use prelude::signable::Signable;
 
@@ -415,7 +415,7 @@ pub(crate) fn resign_message(
 
 #[cfg(test)]
 pub(crate) fn resign_external_commit(
-    signer: &impl ByteSigner,
+    signer: &(impl ByteSigner + ?Sized),
     plaintext: PublicMessage,
     original_plaintext: &PublicMessage,
     serialized_context: Vec<u8>,

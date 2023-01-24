@@ -96,7 +96,7 @@ impl TreeSync {
     /// corresponding [`CommitSecret`].
     pub(crate) fn new(
         backend: &impl OpenMlsCryptoProvider,
-        signer: &impl ByteSigner,
+        signer: &(impl ByteSigner + ?Sized),
         config: CryptoConfig,
         credential_with_key: CredentialWithKey,
         life_time: Lifetime,

@@ -117,7 +117,7 @@ impl AuthenticatedContent {
         sender: Sender,
         body: FramedContentBody,
         context: &GroupContext,
-        signer: &impl ByteSigner,
+        signer: &(impl ByteSigner + ?Sized),
     ) -> Result<Self, LibraryError> {
         let mut content_tbs = FramedContentTbs::new(
             framing_parameters.wire_format(),
@@ -147,7 +147,7 @@ impl AuthenticatedContent {
         authenticated_data: &[u8],
         application_message: &[u8],
         context: &GroupContext,
-        signer: &impl ByteSigner,
+        signer: &(impl ByteSigner + ?Sized),
     ) -> Result<Self, LibraryError> {
         let framing_parameters =
             FramingParameters::new(authenticated_data, WireFormat::PrivateMessage);
@@ -167,7 +167,7 @@ impl AuthenticatedContent {
         sender_leaf_index: LeafNodeIndex,
         proposal: Proposal,
         context: &GroupContext,
-        signer: &impl ByteSigner,
+        signer: &(impl ByteSigner + ?Sized),
     ) -> Result<Self, LibraryError> {
         Self::new_and_sign(
             framing_parameters,
@@ -185,7 +185,7 @@ impl AuthenticatedContent {
         proposal: Proposal,
         group_id: GroupId,
         epoch: GroupEpoch,
-        signer: &impl ByteSigner,
+        signer: &(impl ByteSigner + ?Sized),
     ) -> Result<Self, LibraryError> {
         let body = FramedContentBody::Proposal(proposal);
 
@@ -213,7 +213,7 @@ impl AuthenticatedContent {
         sender: Sender,
         commit: Commit,
         context: &GroupContext,
-        signer: &impl ByteSigner,
+        signer: &(impl ByteSigner + ?Sized),
     ) -> Result<Self, LibraryError> {
         Self::new_and_sign(
             framing_parameters,

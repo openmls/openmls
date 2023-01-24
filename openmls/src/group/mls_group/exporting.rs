@@ -54,7 +54,7 @@ impl MlsGroup {
     pub fn export_group_info(
         &self,
         backend: &impl OpenMlsCryptoProvider,
-        signer: &impl ByteSigner,
+        signer: &(impl ByteSigner + ?Sized),
         with_ratchet_tree: bool,
     ) -> Result<MlsMessageOut, ExportGroupInfoError> {
         Ok(self

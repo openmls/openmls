@@ -14,7 +14,7 @@ impl MlsGroup {
     pub fn create_message(
         &mut self,
         backend: &impl OpenMlsCryptoProvider,
-        signer: &impl ByteSigner,
+        signer: &(impl ByteSigner + ?Sized),
         message: &[u8],
     ) -> Result<MlsMessageOut, CreateMessageError> {
         if !self.is_active() {

@@ -79,7 +79,7 @@ impl MlsGroup {
     pub fn commit_to_pending_proposals<KeyStore: OpenMlsKeyStore>(
         &mut self,
         backend: &impl OpenMlsCryptoProvider<KeyStoreProvider = KeyStore>,
-        signer: &impl ByteSigner,
+        signer: &(impl ByteSigner + ?Sized),
     ) -> Result<
         (MlsMessageOut, Option<MlsMessageOut>, Option<GroupInfo>),
         CommitToPendingProposalsError<KeyStore::Error>,

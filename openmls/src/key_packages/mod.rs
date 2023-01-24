@@ -227,7 +227,7 @@ impl KeyPackage {
     pub(crate) fn create<KeyStore: OpenMlsKeyStore>(
         config: CryptoConfig,
         backend: &impl OpenMlsCryptoProvider<KeyStoreProvider = KeyStore>,
-        signer: &impl ByteSigner,
+        signer: &(impl ByteSigner + ?Sized),
         credential_with_key: CredentialWithKey,
         extensions: Extensions,
         leaf_node_capabilities: Capabilities,
@@ -270,7 +270,7 @@ impl KeyPackage {
     fn new_from_keys<KeyStore: OpenMlsKeyStore>(
         config: CryptoConfig,
         backend: &impl OpenMlsCryptoProvider<KeyStoreProvider = KeyStore>,
-        signer: &impl ByteSigner,
+        signer: &(impl ByteSigner + ?Sized),
         credential_with_key: CredentialWithKey,
         extensions: Extensions,
         leaf_node_capabilities: Capabilities,
@@ -419,7 +419,7 @@ impl KeyPackage {
     pub fn new_from_init_key<KeyStore: OpenMlsKeyStore>(
         config: CryptoConfig,
         backend: &impl OpenMlsCryptoProvider<KeyStoreProvider = KeyStore>,
-        signer: &impl ByteSigner,
+        signer: &(impl ByteSigner + ?Sized),
         credential_with_key: CredentialWithKey,
         extensions: Extensions,
         leaf_node_capabilities: Capabilities,
@@ -462,7 +462,7 @@ impl KeyPackage {
     pub(crate) fn new_from_encryption_key<KeyStore: OpenMlsKeyStore>(
         config: CryptoConfig,
         backend: &impl OpenMlsCryptoProvider<KeyStoreProvider = KeyStore>,
-        signer: &impl ByteSigner,
+        signer: &(impl ByteSigner + ?Sized),
         credential_with_key: CredentialWithKey,
         extensions: Extensions,
         leaf_node_capabilities: Capabilities,
@@ -520,7 +520,7 @@ impl KeyPackage {
     pub fn into_with_init_key<KeyStore: OpenMlsKeyStore>(
         self,
         config: CryptoConfig,
-        signer: &impl ByteSigner,
+        signer: &(impl ByteSigner + ?Sized),
         init_key: Vec<u8>,
     ) -> Result<Self, KeyPackageNewError<KeyStore::Error>> {
         let key_package = KeyPackageTBS {
@@ -536,7 +536,7 @@ impl KeyPackage {
     }
 
     /// Resign this key package with another credential.
-    pub fn resign(mut self, signer: &impl ByteSigner, credential: Credential) -> Self {
+    pub fn resign(mut self, signer: &(impl ByteSigner + ?Sized), credential: Credential) -> Self {
         self.payload.leaf_node.set_credential(credential);
         self.payload.sign(signer).unwrap()
     }
@@ -602,7 +602,7 @@ impl KeyPackageBuilder {
         self,
         config: CryptoConfig,
         backend: &impl OpenMlsCryptoProvider<KeyStoreProvider = KeyStore>,
-        signer: &impl ByteSigner,
+        signer: &(impl ByteSigner + ?Sized),
         credential_with_key: CredentialWithKey,
     ) -> Result<KeyPackageCreationResult, KeyPackageNewError<KeyStore::Error>> {
         KeyPackage::create(
@@ -621,7 +621,7 @@ impl KeyPackageBuilder {
         self,
         config: CryptoConfig,
         backend: &impl OpenMlsCryptoProvider<KeyStoreProvider = KeyStore>,
-        signer: &impl ByteSigner,
+        signer: &(impl ByteSigner + ?Sized),
         credential_with_key: CredentialWithKey,
     ) -> Result<KeyPackage, KeyPackageNewError<KeyStore::Error>> {
         let KeyPackageCreationResult {
@@ -685,7 +685,7 @@ impl KeyPackageBundle {
 impl KeyPackageBundle {
     pub(crate) fn new(
         backend: &impl OpenMlsCryptoProvider,
-        signer: &impl ByteSigner,
+        signer: &(impl ByteSigner + ?Sized),
         ciphersuite: Ciphersuite,
         credential_with_key: CredentialWithKey,
     ) -> Self {

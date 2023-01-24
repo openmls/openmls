@@ -35,7 +35,7 @@ impl CoreGroup {
         &self,
         mut params: CreateCommitParams,
         backend: &impl OpenMlsCryptoProvider<KeyStoreProvider = KeyStore>,
-        signer: &impl ByteSigner,
+        signer: &(impl ByteSigner + ?Sized),
     ) -> Result<CreateCommitResult, CreateCommitError<KeyStore::Error>> {
         let ciphersuite = self.ciphersuite();
 

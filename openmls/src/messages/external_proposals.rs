@@ -32,7 +32,7 @@ impl JoinProposal {
         key_package: KeyPackage,
         group_id: GroupId,
         epoch: GroupEpoch,
-        signer: &impl ByteSigner,
+        signer: &(impl ByteSigner + ?Sized),
     ) -> Result<MlsMessageOut, ProposeAddMemberError> {
         AuthenticatedContent::new_external_proposal(
             Proposal::Add(AddProposal { key_package }),
