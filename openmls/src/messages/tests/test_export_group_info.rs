@@ -1,13 +1,20 @@
 use tls_codec::{Deserialize, Serialize};
 
-use crate::{messages::*, test_utils::*};
+use crate::{
+    ciphersuite::signable::Verifiable,
+    group::test_core_group::setup_alice_group,
+    messages::{
+        group_info::{GroupInfo, VerifiableGroupInfo},
+        *,
+    },
+    test_utils::*,
+};
 
 /// Tests the creation of an [UnverifiedGroupInfo] and verifies it was correctly signed.
 #[apply(ciphersuites_and_backends)]
 fn export_group_info(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
     // Alice creates a group
-    let (group_alice, credential, signer, pk) =
-        test_core_group::setup_alice_group(ciphersuite, backend);
+    let (group_alice, credential, signer, pk) = setup_alice_group(ciphersuite, backend);
 
     let group_info: GroupInfo = group_alice
         .export_group_info(backend, &signer, true)
