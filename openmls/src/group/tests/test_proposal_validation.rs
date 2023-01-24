@@ -1213,7 +1213,7 @@ fn test_valsem113_valsem114(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryp
         mut alice_group,
         alice_credential_with_key_and_signer,
         mut bob_group,
-        bob_credential_with_key_and_signer,
+        bob_credential_with_key_and_signer: _,
     } = validation_test_setup(PURE_PLAINTEXT_WIRE_FORMAT_POLICY, ciphersuite, backend);
 
     // We now have alice create a commit. Then we artificially add an Add
@@ -1326,7 +1326,7 @@ fn test_valsem106(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
         mut alice_group,
         alice_credential_with_key_and_signer,
         mut bob_group,
-        bob_credential_with_key_and_signer,
+        bob_credential_with_key_and_signer: _,
     } = validation_test_setup(PURE_PLAINTEXT_WIRE_FORMAT_POLICY, ciphersuite, backend);
 
     // Required capabilities validation includes two types of checks on the
@@ -1562,7 +1562,7 @@ fn test_valsem107(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
         mut alice_group,
         alice_credential_with_key_and_signer,
         bob_group,
-        bob_credential_with_key_and_signer,
+        bob_credential_with_key_and_signer: _,
     } = validation_test_setup(PURE_PLAINTEXT_WIRE_FORMAT_POLICY, ciphersuite, backend);
 
     // We first try to make Alice create a commit with two remove proposals for
@@ -1669,7 +1669,7 @@ fn test_valsem108(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
         mut alice_group,
         alice_credential_with_key_and_signer,
         mut bob_group,
-        bob_credential_with_key_and_signer,
+        bob_credential_with_key_and_signer: _,
     } = validation_test_setup(PURE_PLAINTEXT_WIRE_FORMAT_POLICY, ciphersuite, backend);
 
     // We first try to make Alice create a commit with a proposal targeting a

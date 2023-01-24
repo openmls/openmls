@@ -2,7 +2,6 @@
 
 use super::utils::{generate_credential_bundle, generate_key_package};
 use crate::{
-    credentials::*,
     framing::*,
     group::{config::CryptoConfig, *},
     test_utils::*,
@@ -99,25 +98,7 @@ fn test_remove_operation_variants(ciphersuite: Ciphersuite, backend: &impl OpenM
         // === Remove operation ===
 
         let alice_index = alice_group.own_leaf_index();
-        assert_eq!(
-            alice_index,
-            alice_group
-                .members()
-                .find(|m| &m.identity == b"Alice")
-                .unwrap()
-                .index
-                .into()
-        );
         let bob_index = bob_group.own_leaf_index();
-        assert_eq!(
-            bob_index,
-            alice_group
-                .members()
-                .find(|m| &m.identity == b"Bob")
-                .unwrap()
-                .index
-                .into()
-        );
 
         // We differentiate between the two test cases here
         let (message, _welcome, _group_info) = match test_case {
