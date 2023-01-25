@@ -563,8 +563,10 @@ impl LeafNode {
     // ----- Validation ----------------------------------------------------------------------------
 
     /// Validate the leaf node in the context of a key package.
+    // TODO(#1186)
     #[allow(unused)]
     pub(crate) fn validate_in_key_package(&self) -> Result<&Self, LeafNodeValidationError> {
+        // TODO(#1186)
         // self.validate()?;
 
         match self.payload.leaf_node_source {
@@ -588,8 +590,10 @@ impl LeafNode {
     }
 
     /// Validate the leaf node in the context of an update.
+    // TODO(#1186)
     #[allow(unused)]
     pub(crate) fn validate_in_update(&self) -> Result<&Self, LeafNodeValidationError> {
+        // TODO(#1186)
         // self.validate()?;
 
         match self.payload.leaf_node_source {
@@ -599,8 +603,10 @@ impl LeafNode {
     }
 
     /// Validate the leaf node in the context of a commit.
+    // TODO(#1186)
     #[allow(unused)]
     pub(crate) fn validate_in_commit(&self) -> Result<&Self, LeafNodeValidationError> {
+        // TODO(#1186)
         // self.validate()?;
 
         match self.payload.leaf_node_source {
@@ -610,6 +616,7 @@ impl LeafNode {
     }
 
     /// Basic validation of leaf node called in all `validate_in_*` methods.
+    // TODO(#1186)
     #[allow(unused)]
     fn validate<'a>(
         &self,
