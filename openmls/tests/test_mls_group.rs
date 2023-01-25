@@ -991,7 +991,7 @@ fn test_empty_input_errors(ciphersuite: Ciphersuite, backend: &impl OpenMlsCrypt
         &alice_signer,
         &mls_group_config,
         group_id,
-        alice_credential.clone(),
+        alice_credential,
     )
     .expect("An unexpected error occurred.");
 

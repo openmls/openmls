@@ -57,7 +57,7 @@ fn generate_credential(
     (
         CredentialWithKey {
             credential,
-            signature_key: signature_keys.public().clone().into(),
+            signature_key: signature_keys.to_public_vec().into(),
         },
         signature_keys,
     )
