@@ -284,14 +284,10 @@ fn test_valsem004(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
 
     // The membership tag is checked before the sender, so we need to re-calculate it and set it
     plaintext
-        .set_membership_tag_with_context(
+        .set_membership_tag(
             backend,
-            &alice_group
-                .group()
-                .context()
-                .tls_serialize_detached()
-                .expect("Could not serialize the group context."),
             alice_group.group().message_secrets().membership_key(),
+            alice_group.group().message_secrets().serialized_context(),
         )
         .expect("Error setting membership tag.");
 
@@ -343,14 +339,10 @@ fn test_valsem005(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
 
     // The membership tag is checked before verifying content encryption, so we need to re-calculate it and set it
     plaintext
-        .set_membership_tag_with_context(
+        .set_membership_tag(
             backend,
-            &alice_group
-                .group()
-                .context()
-                .tls_serialize_detached()
-                .expect("Could not serialize the group context."),
             alice_group.group().message_secrets().membership_key(),
+            alice_group.group().message_secrets().serialized_context(),
         )
         .expect("Error setting membership tag.");
 
@@ -546,14 +538,10 @@ fn test_valsem009(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
 
     // The membership tag covers the confirmation tag, so we need to re-calculate it and set it
     plaintext
-        .set_membership_tag_with_context(
+        .set_membership_tag(
             backend,
-            &alice_group
-                .group()
-                .context()
-                .tls_serialize_detached()
-                .expect("Could not serialize the group context."),
             alice_group.group().message_secrets().membership_key(),
+            alice_group.group().message_secrets().serialized_context(),
         )
         .expect("Error setting membership tag.");
 
@@ -607,14 +595,10 @@ fn test_valsem010(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
 
     // The membership tag covers the signature, so we need to re-calculate it and set it
     plaintext
-        .set_membership_tag_with_context(
+        .set_membership_tag(
             backend,
-            &alice_group
-                .group()
-                .context()
-                .tls_serialize_detached()
-                .expect("Could not serialize the group context."),
             alice_group.group().message_secrets().membership_key(),
+            alice_group.group().message_secrets().serialized_context(),
         )
         .expect("Error setting membership tag.");
 

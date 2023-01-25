@@ -225,7 +225,11 @@ fn test_valsem200(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
     let membership_key = alice_group.group().message_secrets().membership_key();
 
     signed_plaintext
-        .set_membership_tag(backend, membership_key)
+        .set_membership_tag(
+            backend,
+            membership_key,
+            alice_group.group().message_secrets().serialized_context(),
+        )
         .expect("error refreshing membership tag");
 
     // Have Bob try to process the commit.
@@ -381,7 +385,13 @@ fn test_valsem201(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
 
         let mut commit: PublicMessage = commit.into();
         let membership_key = alice_group.group().message_secrets().membership_key();
-        commit.set_membership_tag(backend, membership_key).unwrap();
+        commit
+            .set_membership_tag(
+                backend,
+                membership_key,
+                alice_group.group().message_secrets().serialized_context(),
+            )
+            .unwrap();
         // verify that a path is indeed required when the commit is received
         if is_path_required {
             let commit_wo_path = erase_path(backend, commit.clone(), &alice_group);
@@ -665,14 +675,12 @@ fn test_valsem205(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
     // Since the membership tag covers the confirmation tag, we have to refresh it.
     let membership_key = alice_group.group().message_secrets().membership_key();
 
-    plaintext.test_set_context(
-        alice_group
-            .export_group_context()
-            .tls_serialize_detached()
-            .unwrap(),
-    );
     plaintext
-        .set_membership_tag(backend, membership_key)
+        .set_membership_tag(
+            backend,
+            membership_key,
+            alice_group.group().message_secrets().serialized_context(),
+        )
         .expect("error refreshing membership tag");
 
     let update_message_in = ProtocolMessage::from(plaintext);

@@ -13,7 +13,7 @@ use super::{
 use crate::{
     binary_tree::array_representation::LeafNodeIndex,
     error::LibraryError,
-    framing::mls_content::FramedContentTbs,
+    framing::mls_content::FramedContent,
     tree::{
         index::SecretTreeLeafIndex, secret_tree::SecretType,
         sender_ratchet::SenderRatchetConfiguration,
@@ -366,15 +366,15 @@ impl PrivateMessage {
         );
 
         let verifiable = VerifiableAuthenticatedContent::new(
-            FramedContentTbs::new(
-                WireFormat::PrivateMessage,
-                self.group_id.clone(),
-                self.epoch,
+            WireFormat::PrivateMessage,
+            FramedContent {
+                group_id: self.group_id.clone(),
+                epoch: self.epoch,
                 sender,
-                self.authenticated_data.clone(),
-                private_message_content.content,
-            )
-            .with_context(message_secrets.serialized_context().to_vec()),
+                authenticated_data: self.authenticated_data.clone(),
+                body: private_message_content.content,
+            },
+            Some(message_secrets.serialized_context().to_vec()),
             private_message_content.auth,
         );
         Ok(verifiable)

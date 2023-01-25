@@ -439,7 +439,11 @@ pub(crate) fn resign_message(
     let membership_key = alice_group.group().message_secrets().membership_key();
 
     signed_plaintext
-        .set_membership_tag(backend, membership_key)
+        .set_membership_tag(
+            backend,
+            membership_key,
+            alice_group.group().message_secrets().serialized_context(),
+        )
         .expect("error refreshing membership tag");
     signed_plaintext
 }

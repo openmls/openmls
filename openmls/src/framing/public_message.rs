@@ -43,15 +43,9 @@ pub(crate) struct MembershipTag(pub(crate) Mac);
 ///     optional<MAC> membership_tag;
 /// } PublicMessage;
 /// ```
-///
-// [`PublicMessage`] differs slightly from the struct shown above in that it
-// contains a [`FramedContentTbs`] struct rather than [`FramedContent`]. The
-// extra metadata that [`FramedContentTbs`] holds helps in processing this
-// message later. The extra data is accounted for (i.e. ignored) in the
-// serialized/deserialization functions.
 #[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
 pub struct PublicMessage {
-    content: FramedContentTbs,
+    content: FramedContent,
     auth: FramedContentAuthData,
     membership_tag: Option<MembershipTag>,
 }
@@ -67,15 +61,15 @@ impl PublicMessage {
     }
 
     pub(crate) fn set_content(&mut self, content: FramedContentBody) {
-        self.content.content.body = content;
+        self.content.body = content;
     }
 
     pub fn set_epoch(&mut self, epoch: u64) {
-        self.content.content.epoch = epoch.into();
+        self.content.epoch = epoch.into();
     }
 
     pub(crate) fn content(&self) -> &FramedContentBody {
-        &self.content.content.body
+        &self.content.body
     }
 
     pub fn confirmation_tag(&self) -> Option<&ConfirmationTag> {
@@ -90,24 +84,18 @@ impl PublicMessage {
 
     /// Set the sender.
     pub(crate) fn set_sender(&mut self, sender: Sender) {
-        self.content.content.sender = sender;
+        self.content.sender = sender;
     }
 
     /// Set the group id.
     pub(crate) fn set_group_id(&mut self, group_id: GroupId) {
-        self.content.content.group_id = group_id;
+        self.content.group_id = group_id;
     }
 
     /// Returns `true` if this is a handshake message and `false` otherwise.
     pub(crate) fn is_handshake_message(&self) -> bool {
         self.content_type().is_handshake_message()
     }
-
-    /// Strips the internal context.
-    pub(crate) fn test_set_context(&mut self, serialized_context: impl Into<Option<Vec<u8>>>) {
-        self.content.serialized_context = serialized_context.into()
-    }
-
     // TODO: #727 - Remove if not needed.
     // #[cfg(test)]
     // pub(super) fn set_signature(&mut self, signature: Signature) {
@@ -123,23 +111,17 @@ impl PublicMessage {
 impl From<AuthenticatedContent> for PublicMessage {
     fn from(v: AuthenticatedContent) -> Self {
         Self {
-            content: v.tbs,
+            content: v.content,
             auth: v.auth,
             membership_tag: None,
         }
     }
 }
 
-impl From<PublicMessage> for VerifiableAuthenticatedContent {
-    fn from(pm: PublicMessage) -> Self {
-        Self::new(pm.content, pm.auth)
-    }
-}
-
 impl PublicMessage {
     /// Build an [`PublicMessage`].
     pub(crate) fn new(
-        content: FramedContentTbs,
+        content: FramedContent,
         auth: FramedContentAuthData,
         membership_tag: Option<MembershipTag>,
     ) -> Self {
@@ -152,28 +134,12 @@ impl PublicMessage {
 
     /// Returns the [`ContentType`] of the message.
     pub(crate) fn content_type(&self) -> ContentType {
-        self.content.content.body.content_type()
+        self.content.body.content_type()
     }
 
     /// Get the sender of this message.
     pub(crate) fn sender(&self) -> &Sender {
-        &self.content.content.sender
-    }
-
-    /// Get the MLS version of this message.
-    pub(crate) fn version(&self) -> ProtocolVersion {
-        self.content.version
-    }
-
-    #[cfg(test)]
-    pub(crate) fn set_membership_tag_with_context(
-        &mut self,
-        backend: &impl OpenMlsCryptoProvider,
-        serialized_context: &[u8],
-        membership_key: &MembershipKey,
-    ) -> Result<(), LibraryError> {
-        self.set_context(serialized_context);
-        self.set_membership_tag(backend, membership_key)
+        &self.content.sender
     }
 
     /// Adds a membership tag to this `PublicMessage`. The membership_tag is
@@ -184,11 +150,15 @@ impl PublicMessage {
         &mut self,
         backend: &impl OpenMlsCryptoProvider,
         membership_key: &MembershipKey,
+        serialized_context: &[u8],
     ) -> Result<(), LibraryError> {
-        let tbs_payload = self
-            .content
-            .tls_serialize_detached()
-            .map_err(LibraryError::missing_bound_check)?;
+        let tbs_payload = FramedContentTbs::new_and_serialize_detached(
+            ProtocolVersion::default(),
+            WireFormat::PublicMessage,
+            &self.content,
+            Some(serialized_context),
+        )
+        .map_err(LibraryError::missing_bound_check)?;
         let tbm_payload = AuthenticatedContentTbm::new(&tbs_payload, &self.auth)?;
         let membership_tag = membership_key.tag(backend, tbm_payload)?;
 
@@ -204,14 +174,18 @@ impl PublicMessage {
         &self,
         backend: &impl OpenMlsCryptoProvider,
         membership_key: &MembershipKey,
+        serialized_context: &[u8],
     ) -> Result<(), ValidationError> {
         log::debug!("Verifying membership tag.");
         log_crypto!(trace, "  Membership key: {:x?}", membership_key);
         log_crypto!(trace, "  Serialized context: {:x?}", serialized_context);
-        let tbs_payload = self
-            .content
-            .tls_serialize_detached()
-            .map_err(LibraryError::missing_bound_check)?;
+        let tbs_payload = FramedContentTbs::new_and_serialize_detached(
+            ProtocolVersion::default(),
+            WireFormat::PublicMessage,
+            &self.content,
+            Some(serialized_context),
+        )
+        .map_err(LibraryError::missing_bound_check)?;
         let tbm_payload = AuthenticatedContentTbm::new(&tbs_payload, &self.auth)?;
         let expected_membership_tag = &membership_key.tag(backend, tbm_payload)?;
 
@@ -229,25 +203,25 @@ impl PublicMessage {
 
     /// Get the group epoch.
     pub(crate) fn epoch(&self) -> GroupEpoch {
-        self.content.content.epoch
+        self.content.epoch
     }
 
     /// Get the [`GroupId`].
     pub(crate) fn group_id(&self) -> &GroupId {
-        &self.content.content.group_id
+        &self.content.group_id
     }
 
-    /// Set the context for later verification if applicable. If the sender type
-    /// is not [`Sender::Member`] or [`Sender::NewMemberCommit`], this function
-    /// will set the context to `None`.
-    pub(super) fn set_context(&mut self, context: &[u8]) {
-        let serialized_context =
-            if matches!(self.sender(), Sender::NewMemberCommit | Sender::Member(_)) {
-                Some(context.to_vec())
-            } else {
-                None
-            };
-        self.content.serialized_context = serialized_context
+    /// Turn this [`PublicMessage`] into a [`VerifiableAuthenticatedContent`].
+    pub(crate) fn into_verifiable_content(
+        self,
+        serialized_context: impl Into<Option<Vec<u8>>>,
+    ) -> VerifiableAuthenticatedContent {
+        VerifiableAuthenticatedContent::new(
+            WireFormat::PublicMessage,
+            self.content,
+            serialized_context,
+            self.auth,
+        )
     }
 
     #[cfg(any(feature = "test-utils", test))]
@@ -267,7 +241,12 @@ impl PublicMessage {
 #[cfg(test)]
 impl From<PublicMessage> for FramedContentTbs {
     fn from(v: PublicMessage) -> Self {
-        v.content
+        FramedContentTbs {
+            version: ProtocolVersion::default(),
+            wire_format: WireFormat::PublicMessage,
+            content: v.content,
+            serialized_context: None,
+        }
     }
 }
 
@@ -298,7 +277,7 @@ impl<'a> ConfirmedTranscriptHashInput<'a> {
         }
         Ok(ConfirmedTranscriptHashInput {
             wire_format: mls_content.wire_format(),
-            mls_content: &mls_content.tbs.content,
+            mls_content: &mls_content.content,
             signature: mls_content.signature(),
         })
     }
@@ -335,23 +314,15 @@ impl TlsDeserializeTrait for PublicMessage {
         } else {
             None
         };
-        let tbs = FramedContentTbs::new(
-            WireFormat::PublicMessage,
-            content.group_id,
-            content.epoch,
-            content.sender,
-            content.authenticated_data,
-            content.body,
-        );
 
-        Ok(PublicMessage::new(tbs, auth, membership_tag))
+        Ok(PublicMessage::new(content, auth, membership_tag))
     }
 }
 
 impl Size for PublicMessage {
     #[inline]
     fn tls_serialized_len(&self) -> usize {
-        self.content.content.tls_serialized_len()
+        self.content.tls_serialized_len()
             + self.auth.tls_serialized_len()
             + if let Some(membership_tag) = &self.membership_tag {
                 membership_tag.tls_serialized_len()
@@ -364,7 +335,7 @@ impl Size for PublicMessage {
 impl TlsSerializeTrait for PublicMessage {
     fn tls_serialize<W: Write>(&self, writer: &mut W) -> Result<usize, tls_codec::Error> {
         // Serialize the content, not the TBS.
-        let mut written = self.content.content.tls_serialize(writer)?;
+        let mut written = self.content.tls_serialize(writer)?;
         written += self.auth.tls_serialize(writer)?;
         written += if let Some(membership_tag) = &self.membership_tag {
             membership_tag.tls_serialize(writer)?
