@@ -253,52 +253,53 @@ impl<'a> TreeSyncDiff<'a> {
         self.trim_tree();
     }
 
-    /// Derive a new direct path for our own leaf.
+    /// Derive a new direct path for the leaf with the given index.
     ///
-    /// Returns an error if the own leaf is not in the tree
+    /// Returns an error if the leaf is not in the tree
     fn derive_path(
         &self,
         backend: &impl OpenMlsCryptoProvider,
         ciphersuite: Ciphersuite,
-        own_leaf_index: LeafNodeIndex,
+        leaf_index: LeafNodeIndex,
     ) -> Result<PathDerivationResult, LibraryError> {
         let path_secret = PathSecret::from(
             Secret::random(ciphersuite, backend, None)
                 .map_err(LibraryError::unexpected_crypto_error)?,
         );
 
-        let path_indices = self.filtered_direct_path(own_leaf_index);
+        let path_indices = self.filtered_direct_path(leaf_index);
 
         ParentNode::derive_path(backend, ciphersuite, path_secret, path_indices)
     }
 
-    /// Given a new [`OpenMlsLeafNode`], use it to create a new path and
-    /// apply it to this diff. The given [`CredentialBundle`] reference is used
-    /// to sign the [`OpenMlsLeafNode`] after updating its parent hash.
+    /// Given a new [`OpenMlsLeafNode`], use it to create a new path starting
+    /// from `leaf_index` and apply it to this diff. The given
+    /// [`CredentialBundle`] reference is used to sign the target
+    /// [`OpenMlsLeafNode`] after updating its parent hash.
     ///
     /// Returns the [`CommitSecret`] and the path resulting from the path
-    /// derivation, as well as the [`KeyPackage`].
+    /// derivation, as well as the newly derived [`EncryptionKeyPair`]s.
     ///
-    /// Returns an error if the own leaf is not in the tree.
+    /// Returns an error if the target leaf is not in the tree.
     pub(crate) fn apply_own_update_path(
         &mut self,
         backend: &impl OpenMlsCryptoProvider,
         ciphersuite: Ciphersuite,
         group_id: GroupId,
         credential_bundle: &CredentialBundle,
-        own_leaf_index: LeafNodeIndex,
+        leaf_index: LeafNodeIndex,
     ) -> Result<UpdatePathResult, LibraryError> {
         debug_assert!(
-            self.leaf(own_leaf_index).is_ok(),
+            self.leaf(leaf_index).is_ok(),
             "Tree diff is missing own leaf"
         );
 
         let (path, update_path_nodes, keypairs, commit_secret) =
-            self.derive_path(backend, ciphersuite, own_leaf_index)?;
+            self.derive_path(backend, ciphersuite, leaf_index)?;
 
-        let parent_hash = self.process_update_path(backend, ciphersuite, own_leaf_index, path)?;
+        let parent_hash = self.process_update_path(backend, ciphersuite, leaf_index, path)?;
 
-        self.leaf_mut(own_leaf_index)
+        self.leaf_mut(leaf_index)
             .map_err(|_| LibraryError::custom("Didn't find own leaf in diff."))?
             .update_parent_hash(&parent_hash, group_id, credential_bundle, backend)?;
 
@@ -377,12 +378,13 @@ impl<'a> TreeSyncDiff<'a> {
         Ok(parent_hash)
     }
 
-    /// Set the path secrets, but doesn't otherwise touch the nodes. This
-    /// function also checks that the derived public keys match the existing
-    /// public keys.
+    /// Derives [`EncryptionKeyPair`]s for the nodes in the shared direct path
+    /// of the leaves with index `leaf_index` and `sender_index`.  This function
+    /// also checks that the derived public keys match the existing public keys.
     ///
     /// Returns the `CommitSecret` derived from the path secret of the root
-    /// node. Returns an error if the target leaf is outside of the tree.
+    /// node, as well as the derived [`EncryptionKeyPair`]s. Returns an error if
+    /// the target leaf is outside of the tree.
     ///
     /// Returns TreeSyncSetPathError::PublicKeyMismatch if the derived keys don't
     /// match with the existing ones.
@@ -395,11 +397,11 @@ impl<'a> TreeSyncDiff<'a> {
         ciphersuite: Ciphersuite,
         mut path_secret: PathSecret,
         sender_index: LeafNodeIndex,
-        own_leaf_index: LeafNodeIndex,
+        leaf_index: LeafNodeIndex,
     ) -> Result<(Vec<EncryptionKeyPair>, CommitSecret), TreeSyncSetPathError> {
         // We assume both nodes are in the tree, since the sender_index must be in the tree
         // Skip the nodes in the subtree path for which we are an unmerged leaf.
-        let subtree_path = self.diff.subtree_path(own_leaf_index, sender_index);
+        let subtree_path = self.diff.subtree_path(leaf_index, sender_index);
         let mut keypairs = Vec::new();
         for parent_index in subtree_path {
             // We know the node is in the diff, since it is in the subtree path
@@ -408,7 +410,7 @@ impl<'a> TreeSyncDiff<'a> {
             if let Some(ref parent_node) = tsn.node() {
                 // If our own leaf index is not in the list of unmerged leaves
                 // then we should have the secret for this node.
-                if !parent_node.unmerged_leaves().contains(&own_leaf_index) {
+                if !parent_node.unmerged_leaves().contains(&leaf_index) {
                     let keypair = path_secret.derive_key_pair(backend, ciphersuite)?;
                     // The derived public key should match the one in the node.
                     // If not, the tree is corrupt.
@@ -790,24 +792,24 @@ impl<'a> TreeSyncDiff<'a> {
     }
 
     /// Compute the position of the highest node in the tree in the filtered
-    /// copath resolution of the given `sender_leaf_index` that we have a
-    /// private key for.
+    /// copath resolution of the given `sender_leaf_index` where a corresponding
+    /// [`EncryptionKeyPair`] can be found.
     ///
-    /// Returns the resulting position, as well as the private key of the node
-    /// corresponding to that node private key. Returns an error if the given
-    /// `sender_leaf_index` is outside of the tree.
+    /// Returns the resulting position, as well as the private key of that node.
+    /// Returns an error if the given `sender_leaf_index` is outside of the
+    /// tree.
     pub(crate) fn decryption_key<'private_key>(
         &self,
         sender_leaf_index: LeafNodeIndex,
         excluded_indices: &HashSet<&LeafNodeIndex>,
         owned_keys: &'private_key [&EncryptionKeyPair],
-        own_leaf_index: LeafNodeIndex,
+        leaf_index: LeafNodeIndex,
     ) -> Result<(&'private_key EncryptionPrivateKey, usize), TreeSyncDiffError> {
         // Get the copath node of the sender that is in our direct path, as well
         // as its position in our direct path.
         let subtree_root_copath_node_id = self
             .diff
-            .subtree_root_copath_node(sender_leaf_index, own_leaf_index);
+            .subtree_root_copath_node(sender_leaf_index, leaf_index);
 
         let sender_copath_resolution: Vec<EncryptionKey> = self
             .resolution(subtree_root_copath_node_id, excluded_indices)
@@ -910,26 +912,26 @@ impl<'a> TreeSyncDiff<'a> {
         common_path
     }
 
-    /// Return an iterator over references to all [`HpkePublicKey`]s for which
-    /// we should have the corresponding private keys.
-    pub(crate) fn owned_encryption_keys(
+    /// Return an iterator over references to all [`EncryptionKey`]s for which
+    /// the owner of the given `leaf_index` should have private key material.
+    pub(crate) fn encryption_keys(
         &self,
-        own_leaf_index: LeafNodeIndex,
+        leaf_index: LeafNodeIndex,
     ) -> impl Iterator<Item = &EncryptionKey> {
-        let encryption_keys = if let Some(leaf) = self.diff.leaf(own_leaf_index).node() {
+        let encryption_keys = if let Some(leaf) = self.diff.leaf(leaf_index).node() {
             vec![leaf.encryption_key()]
         } else {
             // If our own leaf is empty, we don't expect to own any other keys.
             vec![]
         };
         encryption_keys.into_iter().chain(
-            self.filtered_direct_path(own_leaf_index)
+            self.filtered_direct_path(leaf_index)
                 .into_iter()
                 .filter_map(move |parent_index| {
                     // Filter out all blanks.
                     if let Some(node) = self.diff.parent(parent_index).node().as_ref() {
                         // Filter all nodes where our leaf is an unmerged leaf.
-                        if !node.unmerged_leaves().contains(&own_leaf_index) {
+                        if !node.unmerged_leaves().contains(&leaf_index) {
                             Some(node.encryption_key())
                         } else {
                             None

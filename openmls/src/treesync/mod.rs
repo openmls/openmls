@@ -158,12 +158,10 @@ impl TreeSync {
         node_options: &[Option<Node>],
     ) -> Result<Self, TreeSyncFromNodesError> {
         // TODO #800: Unmerged leaves should be checked
-        // Before we can instantiate the TreeSync instance, we have to figure
-        // out what our leaf index is.
         let mut ts_nodes: Vec<TreeNode<TreeSyncLeafNode, TreeSyncParentNode>> =
             Vec::with_capacity(node_options.len());
 
-        // Check that our own encryption key is in the tree.
+        // Set the leaf indices in all the leaves and convert the node types.
         for (node_index, node_option) in node_options.iter().enumerate() {
             let ts_node_option: TreeNode<TreeSyncLeafNode, TreeSyncParentNode> = match node_option {
                 Some(node) => {
@@ -408,14 +406,11 @@ impl TreeSync {
         is_node_in_tree(leaf_index.into(), self.tree.size())
     }
 
-    /// Return a vector containing all [`HpkePublicKey`]s for which we should
-    /// have the corresponding private keys.
-    pub(crate) fn owned_encryption_keys(
-        &self,
-        own_leaf_index: LeafNodeIndex,
-    ) -> Vec<EncryptionKey> {
+    /// Return a vector containing all [`EncryptionKey`]s for which the owner of
+    /// the given `leaf_index` should have private key material.
+    pub(crate) fn owned_encryption_keys(&self, leaf_index: LeafNodeIndex) -> Vec<EncryptionKey> {
         self.empty_diff()
-            .owned_encryption_keys(own_leaf_index)
+            .encryption_keys(leaf_index)
             .cloned()
             .collect::<Vec<EncryptionKey>>()
     }
