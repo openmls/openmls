@@ -48,7 +48,7 @@ pub(crate) fn print_tree(group: &CoreGroup, message: &str) {
         if let Some(node) = node {
             let (key_bytes, parent_hash_bytes) = match node {
                 Node::LeafNode(leaf_node) => {
-                    print!("\tL");
+                    print!("\tL      ");
                     let key_bytes = leaf_node.public_key().as_slice();
                     let parent_hash_bytes = leaf_node
                         .leaf_node()
@@ -59,33 +59,42 @@ pub(crate) fn print_tree(group: &CoreGroup, message: &str) {
                 }
                 Node::ParentNode(parent_node) => {
                     if root(tree_size) == i as u32 {
-                        print!("\tP(R)");
+                        print!("\tP (*)  ");
                     } else {
-                        print!("\tP");
+                        print!("\tP      ");
                     }
                     let key_bytes = parent_node.public_key().as_slice();
                     let parent_hash_string = bytes_to_hex(parent_node.parent_hash());
                     (key_bytes, parent_hash_string)
                 }
             };
-            print!("\tPK: {}", bytes_to_hex(key_bytes));
+            print!(
+                "PK: {}  PH: {} | ",
+                bytes_to_hex(key_bytes),
+                if !parent_hash_bytes.is_empty() {
+                    parent_hash_bytes
+                } else {
+                    str::repeat("  ", 32)
+                }
+            );
 
-            print!("\tPH: {}", parent_hash_bytes);
-            print!("\t| ");
-            for _ in 0..level * factor {
-                print!(" ");
-            }
-            print!("◼︎");
+            print!("{}◼︎", str::repeat(" ", level * factor));
         } else {
             if root(tree_size) == i as u32 {
-                print!("\tB(R)\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t| ");
+                print!(
+                    "\t_ (*)  PK: {}  PH: {} | ",
+                    str::repeat("__", 32),
+                    str::repeat("__", 32)
+                );
             } else {
-                print!("\tB\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t| ");
+                print!(
+                    "\t_      PK: {}  PH: {} | ",
+                    str::repeat("__", 32),
+                    str::repeat("__", 32)
+                );
             }
-            for _ in 0..level * factor {
-                print!(" ");
-            }
-            print!("❑");
+
+            print!("{}❑", str::repeat(" ", level * factor));
         }
         println!();
     }
