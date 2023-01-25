@@ -61,11 +61,16 @@ impl Lifetime {
 
     /// Returns true if this lifetime is valid.
     pub(crate) fn is_valid(&self) -> bool {
-        let now = SystemTime::now()
+        match SystemTime::now()
             .duration_since(UNIX_EPOCH)
-            .expect("SystemTime before UNIX EPOCH!")
-            .as_secs();
-        self.not_before < now && now < self.not_after
+            .map(|duration| duration.as_secs())
+        {
+            Ok(elapsed) => self.not_before < elapsed && elapsed < self.not_after,
+            Err(_) => {
+                log::error!("SystemTime before UNIX EPOCH.");
+                false
+            }
+        }
     }
 
     /// ValSem(openmls/annotations#32):
