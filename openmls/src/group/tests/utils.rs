@@ -322,12 +322,12 @@ fn test_setup(backend: &impl OpenMlsCryptoProvider) {
 
 #[derive(Clone)]
 pub(crate) struct CredentialWithKeyAndSigner {
-    pub(super) credential_with_key: CredentialWithKey,
-    pub(super) signer: BasicCredentialWithKeys,
+    pub(crate) credential_with_key: CredentialWithKey,
+    pub(crate) signer: BasicCredentialWithKeys,
 }
 
 // Helper function to generate a CredentialBundle
-pub(super) fn generate_credential_bundle(
+pub(crate) fn generate_credential_bundle(
     identity: Vec<u8>,
     signature_scheme: SignatureScheme,
     backend: &impl OpenMlsCryptoProvider,
@@ -353,7 +353,7 @@ pub(super) fn generate_credential_bundle(
 }
 
 // Helper function to generate a KeyPackageBundle
-pub(super) fn generate_key_package<KeyStore: OpenMlsKeyStore>(
+pub(crate) fn generate_key_package<KeyStore: OpenMlsKeyStore>(
     ciphersuite: Ciphersuite,
     extensions: Extensions,
     backend: &impl OpenMlsCryptoProvider<KeyStoreProvider = KeyStore>,
