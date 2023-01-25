@@ -11,14 +11,13 @@ fn test_store_key_package(ciphersuite: Ciphersuite, backend: &impl OpenMlsCrypto
 
     let key_package = KeyPackage::builder()
         .build(
-            config::CryptoConfig {
-                ciphersuite,
-                version: ProtocolVersion::default(),
-            },
+            CryptoConfig::with_default_version(ciphersuite),
             backend,
             &signature_keys,
-            signature_keys.to_public_vec().into(),
-            credential,
+            CredentialWithKey {
+                credential,
+                signature_key: signature_keys.to_public_vec().into(),
+            },
         )
         .unwrap();
     // ANCHOR_END: key_store_store

@@ -45,58 +45,40 @@ fn generate_credential(
     credential_type: CredentialType,
     signature_algorithm: SignatureScheme,
     backend: &impl OpenMlsCryptoProvider,
-) -> Result<(Credential, BasicCredential), CredentialError> {
+) -> (CredentialWithKey, BasicCredential) {
     // ANCHOR: create_basic_credential
-    let credential = Credential::new(identity, credential_type)?;
+    let credential = Credential::new(identity, credential_type).unwrap();
     // ANCHOR_END: create_basic_credential
     // ANCHOR: create_credential_keys
     let signature_keys = BasicCredential::new(signature_algorithm, backend.crypto()).unwrap();
-    signature_keys.store(backend.key_store());
+    signature_keys.store(backend.key_store()).unwrap();
     // ANCHOR_END: create_credential_keys
-    Ok((credential, signature_keys))
-}
 
-// fn get_credential_bundle(
-//     identity: Vec<u8>,
-//     credential_type: CredentialType,
-//     signature_algorithm: SignatureScheme,
-//     backend: &impl OpenMlsCryptoProvider,
-// ) -> Result<CredentialBundle, CredentialError> {
-//     let credential_bundle =
-//         CredentialBundle::new(identity, credential_type, signature_algorithm, backend)?;
-//     let credential = credential_bundle.credential().clone();
-//     backend
-//         .key_store()
-//         .store(
-//             &credential
-//                 .signature_key()
-//                 .tls_serialize_detached()
-//                 .expect("Error serializing signature key."),
-//             &credential_bundle,
-//         )
-//         .expect("An unexpected error occurred.");
-//     Ok(credential_bundle)
-// }
+    (
+        CredentialWithKey {
+            credential,
+            signature_key: signature_keys.public().clone().into(),
+        },
+        signature_keys,
+    )
+}
 
 fn generate_key_package(
     ciphersuite: Ciphersuite,
-    credential: Credential,
-    signer: &impl ByteSigner,
-    signature_key: SignaturePublicKey,
+    credential_with_key: CredentialWithKey,
+    extensions: Extensions,
     backend: &impl OpenMlsCryptoProvider,
+    signer: &impl ByteSigner,
 ) -> KeyPackage {
     // ANCHOR: create_key_package
     // Create the key package
     KeyPackage::builder()
+        .key_package_extensions(extensions)
         .build(
-            CryptoConfig {
-                ciphersuite,
-                version: ProtocolVersion::default(),
-            },
+            CryptoConfig::with_default_version(ciphersuite),
             backend,
             signer,
-            signature_key,
-            credential,
+            credential_with_key,
         )
         .unwrap()
     // ANCHOR_END: create_key_package
@@ -124,40 +106,36 @@ fn book_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvide
         CredentialType::Basic,
         ciphersuite.signature_algorithm(),
         backend,
-    )
-    .expect("An unexpected error occurred.");
+    );
 
     let (bob_credential, bob_signature_keys) = generate_credential(
         "Bob".into(),
         CredentialType::Basic,
         ciphersuite.signature_algorithm(),
         backend,
-    )
-    .expect("An unexpected error occurred.");
+    );
 
     let (charlie_credential, charlie_signature_keys) = generate_credential(
         "Charlie".into(),
         CredentialType::Basic,
         ciphersuite.signature_algorithm(),
         backend,
-    )
-    .expect("An unexpected error occurred.");
+    );
 
-    let dave_credential_bundle = get_credential_bundle(
+    let (dave_credential, dave_signature_keys) = generate_credential(
         "Dave".into(),
         CredentialType::Basic,
         ciphersuite.signature_algorithm(),
         backend,
-    )
-    .expect("An unexpected error occurred.");
+    );
 
     // Generate KeyPackages
     let bob_key_package = generate_key_package(
         ciphersuite,
-        bob_credential,
-        &bob_signature_keys,
-        bob_signature_keys.to_public_vec().into(),
+        bob_credential.clone(),
+        Extensions::default(),
         backend,
+        &bob_signature_keys,
     );
 
     // Define the MlsGroup configuration
@@ -178,8 +156,7 @@ fn book_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvide
         backend,
         &alice_signature_keys,
         &mls_group_config,
-        alice_signature_keys.to_public_vec().into(),
-        alice_credential,
+        alice_credential.clone(),
     )
     .expect("An unexpected error occurred.");
     // ANCHOR_END: alice_create_group
@@ -194,8 +171,7 @@ fn book_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvide
             &alice_signature_keys,
             &mls_group_config,
             group_id,
-            alice_signature_keys.to_public_vec().into(),
-            alice_credential,
+            alice_credential.clone(),
         )
         .expect("An unexpected error occurred.");
         // ANCHOR_END: alice_create_group_with_group_id
@@ -224,7 +200,7 @@ fn book_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvide
         // Check that Bob was added
         assert_eq!(
             add.add_proposal().key_package().leaf_node().credential(),
-            &bob_credential
+            &bob_credential.credential
         );
         // Check that Alice added Bob
         assert!(matches!(
@@ -250,7 +226,6 @@ fn book_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvide
     // ANCHOR: bob_joins_with_welcome
     let mut bob_group = MlsGroup::new_from_welcome(
         backend,
-        &bob_signature_keys,
         &mls_group_config,
         welcome.into_welcome().expect("Unexpected message type."),
         None, // We use the ratchet tree extension, so we don't provide a ratchet tree here
@@ -260,7 +235,7 @@ fn book_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvide
 
     // ANCHOR: alice_exports_group_info
     let verifiable_group_info = alice_group
-        .export_group_info(backend, true)
+        .export_group_info(backend, &alice_signature_keys, true)
         .expect("Cannot export group info")
         .into_group_info()
         .expect("Could not get group info");
@@ -269,11 +244,12 @@ fn book_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvide
     // ANCHOR: charlie_joins_external_commit
     let (mut dave_group, _out) = MlsGroup::join_by_external_commit(
         backend,
+        &dave_signature_keys,
         None,
         verifiable_group_info,
         &mls_group_config,
         &[],
-        &dave_credential_bundle,
+        dave_credential,
     )
     .expect("Error joining from external commit");
     dave_group
@@ -294,7 +270,7 @@ fn book_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvide
     // ANCHOR: create_application_message
     let message_alice = b"Hi, I'm Alice!";
     let mls_message_out = alice_group
-        .create_message(backend, message_alice)
+        .create_message(backend, &alice_signature_keys, message_alice)
         .expect("Error creating application message.");
     // ANCHOR_END: create_application_message
 
@@ -311,7 +287,7 @@ fn book_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvide
     // ANCHOR: process_message
     let protocol_message: ProtocolMessage = mls_message.into();
     let processed_message = bob_group
-        .process_message(backend, &bob_signature_keys, protocol_message)
+        .process_message(backend, protocol_message)
         .expect("Could not process message.");
     // ANCHOR_END: process_message
 
@@ -331,7 +307,7 @@ fn book_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvide
     // === Bob updates and commits ===
     // ANCHOR: self_update
     let (mls_message_out, welcome_option, _group_info) = bob_group
-        .self_update(backend)
+        .self_update(backend, &bob_signature_keys)
         .expect("Could not update own key package.");
     // ANCHOR_END: self_update
 
@@ -352,7 +328,7 @@ fn book_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvide
             .commit_update_key_package()
             .expect("Expected a KeyPackage.");
         // Check that Bob updated
-        assert_eq!(update.credential(), &bob_credential);
+        assert_eq!(update.credential(), &bob_credential.credential);
 
         // Merge staged Commit
         alice_group
@@ -407,7 +383,10 @@ fn book_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvide
     {
         if let Proposal::Update(ref update_proposal) = staged_proposal.proposal() {
             // Check that Alice updated
-            assert_eq!(update_proposal.leaf_node().credential(), &alice_credential);
+            assert_eq!(
+                update_proposal.leaf_node().credential(),
+                &alice_credential.credential
+            );
             // Store proposal
             alice_group.store_pending_proposal(*staged_proposal.clone());
         } else {
@@ -426,7 +405,7 @@ fn book_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvide
 
     // ANCHOR: commit_to_proposals
     let (mls_message_out, welcome_option, _group_info) = alice_group
-        .commit_to_pending_proposals(backend)
+        .commit_to_pending_proposals(backend, &alice_signature_keys)
         .expect("Could not commit to pending proposals.");
     // ANCHOR_END: commit_to_proposals
 
@@ -450,7 +429,7 @@ fn book_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvide
             .commit_update_key_package()
             .expect("Expected a KeyPackage.");
         // Check that Alice updated
-        assert_eq!(update.credential(), &alice_credential);
+        assert_eq!(update.credential(), &alice_credential.credential);
 
         bob_group
             .merge_staged_commit(backend, *staged_commit)
@@ -476,10 +455,16 @@ fn book_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvide
     );
 
     // === Bob adds Charlie ===
-    let charlie_key_package = generate_key_package(&[ciphersuite], &charlie_credential, backend);
+    let charlie_key_package = generate_key_package(
+        ciphersuite,
+        charlie_credential.clone(),
+        Extensions::default(),
+        backend,
+        &charlie_signature_keys,
+    );
 
     let (queued_message, welcome, _group_info) = bob_group
-        .add_members(backend, &[charlie_key_package])
+        .add_members(backend, &bob_signature_keys, &[charlie_key_package])
         .unwrap();
 
     let alice_processed_message = alice_group
@@ -533,7 +518,7 @@ fn book_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvide
     // === Charlie sends a message to the group ===
     let message_charlie = b"Hi, I'm Charlie!";
     let queued_message = charlie_group
-        .create_message(backend, message_charlie)
+        .create_message(backend, &charlie_signature_keys, message_charlie)
         .expect("Error creating application message");
 
     let _alice_processed_message = alice_group
@@ -555,7 +540,9 @@ fn book_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvide
         .expect("Could not process message.");
 
     // === Charlie updates and commits ===
-    let (queued_message, welcome_option, _group_info) = charlie_group.self_update(backend).unwrap();
+    let (queued_message, welcome_option, _group_info) = charlie_group
+        .self_update(backend, &charlie_signature_keys)
+        .unwrap();
 
     let alice_processed_message = alice_group
         .process_message(
@@ -647,7 +634,7 @@ fn book_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvide
     // === Charlie removes Bob ===
     // ANCHOR: charlie_removes_bob
     let (mls_message_out, welcome_option, _group_info) = charlie_group
-        .remove_members(backend, &[bob_member.index])
+        .remove_members(backend, &charlie_signature_keys, &[bob_member.index])
         .expect("Could not remove Bob from group.");
     // ANCHOR_END: charlie_removes_bob
 
@@ -667,21 +654,23 @@ fn book_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvide
     // Check that alice can use the member list to check if the message is
     // actually from Charlie.
     let mut alice_members = alice_group.members();
-    let sender_credential = alice_processed_message
-        .credential()
-        .expect("Couldn't retrieve credential from message.");
+    let sender_leaf_index = match alice_processed_message.sender() {
+        Sender::Member(index) => index,
+        _ => panic!("Sender should have been a member"),
+    };
+    let sender_credential = alice_processed_message.credential().unwrap();
 
     assert!(alice_members.any(
         |Member {
-             index: _,
+             index,
              identity: _,
              encryption_key: _,
-             signature_key,
-         }| signature_key.as_slice() == sender_credential.signature_key().as_slice()
+             signature_key: _,
+         }| &index == sender_leaf_index
     ));
     drop(alice_members);
 
-    assert_eq!(sender_credential, &charlie_credential);
+    assert_eq!(sender_credential, &charlie_credential.credential);
 
     let bob_processed_message = bob_group
         .process_message(
@@ -794,12 +783,22 @@ fn book_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvide
     // === Alice removes Charlie and re-adds Bob ===
 
     // Create a new KeyPackageBundle for Bob
-    let bob_key_package = generate_key_package(&[ciphersuite], &bob_credential, backend);
+    let bob_key_package = generate_key_package(
+        ciphersuite,
+        bob_credential.clone(),
+        Extensions::default(),
+        backend,
+        &bob_signature_keys,
+    );
 
     // Create RemoveProposal and process it
     // ANCHOR: propose_remove
     let mls_message_out = alice_group
-        .propose_remove_member(backend, charlie_group.own_leaf_index())
+        .propose_remove_member(
+            backend,
+            &alice_signature_keys,
+            charlie_group.own_leaf_index(),
+        )
         .expect("Could not create proposal to remove Charlie.");
     // ANCHOR_END: propose_remove
 
@@ -837,7 +836,7 @@ fn book_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvide
     // Create AddProposal and process it
     // ANCHOR: propose_add
     let mls_message_out = alice_group
-        .propose_add_member(backend, &bob_key_package)
+        .propose_add_member(backend, &alice_signature_keys, &bob_key_package)
         .expect("Could not create proposal to add Bob");
     // ANCHOR_END: propose_add
 
@@ -860,7 +859,7 @@ fn book_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvide
             // Check that Bob was added
             assert_eq!(
                 add_proposal.key_package().leaf_node().credential(),
-                &bob_credential
+                &bob_credential.credential
             );
         } else {
             panic!("Expected an AddProposal.");
@@ -881,7 +880,7 @@ fn book_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvide
 
     // Commit to the proposals and process it
     let (queued_message, welcome_option, _group_info) = alice_group
-        .commit_to_pending_proposals(backend)
+        .commit_to_pending_proposals(backend, &alice_signature_keys)
         .expect("Could not flush proposals");
 
     let charlie_processed_message = charlie_group
@@ -948,7 +947,7 @@ fn book_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvide
     // === Alice sends a message to the group ===
     let message_alice = b"Hi, I'm Alice!";
     let queued_message = alice_group
-        .create_message(backend, message_alice)
+        .create_message(backend, &alice_signature_keys, message_alice)
         .expect("Error creating application message");
 
     let bob_processed_message = bob_group
@@ -1000,7 +999,7 @@ fn book_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvide
 
     // ANCHOR: leaving
     let queued_message = bob_group
-        .leave_group(backend)
+        .leave_group(backend, &bob_signature_keys)
         .expect("Could not leave group");
     // ANCHOR_END: leaving
 
@@ -1032,7 +1031,7 @@ fn book_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvide
     );
 
     let (queued_message, _welcome_option, _group_info) = alice_group
-        .commit_to_pending_proposals(backend)
+        .commit_to_pending_proposals(backend, &alice_signature_keys)
         .expect("Could not commit to proposals.");
 
     // Check that Bob's group is still active
@@ -1112,14 +1111,14 @@ fn book_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvide
     // === Re-Add Bob with external Add proposal ===
 
     // Create a new KeyPackageBundle for Bob
-    let bob_credential = Credential::new("Bob".into(), CredentialType::Basic).unwrap();
-    let signature_keys = BasicCredential::new(ciphersuite.into(), backend.crypto()).unwrap();
+    // let bob_credential = Credential::new("Bob".into(), CredentialType::Basic).unwrap();
+    // let signature_keys = BasicCredential::new(ciphersuite.into(), backend.crypto()).unwrap();
     let bob_key_package = generate_key_package(
         ciphersuite,
-        bob_credential,
-        &signature_keys,
-        signature_keys.to_public_vec().into(),
+        bob_credential.clone(),
+        Extensions::default(),
         backend,
+        &bob_signature_keys,
     );
 
     // ANCHOR: external_join_proposal
@@ -1127,8 +1126,7 @@ fn book_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvide
         bob_key_package,
         alice_group.group_id().clone(),
         alice_group.epoch(),
-        &bob_credential_bundle,
-        backend,
+        &bob_signature_keys,
     )
     .expect("Could not create external Add proposal");
     // ANCHOR_END: external_join_proposal
@@ -1146,7 +1144,7 @@ fn book_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvide
         ProcessedMessageContent::ExternalJoinProposalMessage(proposal) => {
             alice_group.store_pending_proposal(*proposal);
             let (_commit, welcome, _group_info) = alice_group
-                .commit_to_pending_proposals(backend)
+                .commit_to_pending_proposals(backend, &alice_signature_keys)
                 .expect("Could not commit");
             assert_eq!(alice_group.members().count(), 1);
             alice_group
@@ -1171,7 +1169,7 @@ fn book_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvide
     // ANCHOR_END: decrypt_external_join_proposal
     // now cleanup
     alice_group
-        .remove_members(backend, &[LeafNodeIndex::new(1)])
+        .remove_members(backend, &alice_signature_keys, &[LeafNodeIndex::new(1)])
         .expect("Could not remove Bob");
     alice_group
         .merge_pending_commit(backend)
@@ -1181,11 +1179,17 @@ fn book_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvide
     // === Save the group state ===
 
     // Create a new KeyPackageBundle for Bob
-    let bob_key_package = generate_key_package(&[ciphersuite], &bob_credential, backend);
+    let bob_key_package = generate_key_package(
+        ciphersuite,
+        bob_credential,
+        Extensions::default(),
+        backend,
+        &bob_signature_keys,
+    );
 
     // Add Bob to the group
     let (_queued_message, welcome, _group_info) = alice_group
-        .add_members(backend, &[bob_key_package])
+        .add_members(backend, &alice_signature_keys, &[bob_key_package])
         .expect("Could not add Bob");
 
     // Merge Commit
@@ -1212,8 +1216,8 @@ fn book_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvide
 
     let name = bytes_to_hex(
         bob_group
-            .credential()
-            .expect("An unexpected error occurred.")
+            .own_leaf_node()
+            .unwrap()
             .signature_key()
             .as_slice(),
     )
@@ -1222,6 +1226,7 @@ fn book_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvide
         .path()
         .join(format!("test_mls_group_{}.json", &name));
     let out_file = &mut File::create(path.clone()).expect("Could not create file");
+    println!("Writing {out_file:?}");
     bob_group
         .save(out_file)
         .expect("Could not write group state to file");
@@ -1249,8 +1254,7 @@ fn test_empty_input_errors(ciphersuite: Ciphersuite, backend: &impl OpenMlsCrypt
         CredentialType::Basic,
         ciphersuite.signature_algorithm(),
         backend,
-    )
-    .expect("An unexpected error occurred.");
+    );
 
     // Define the MlsGroup configuration
     let mls_group_config = MlsGroupConfig::test_default(ciphersuite);
@@ -1258,9 +1262,10 @@ fn test_empty_input_errors(ciphersuite: Ciphersuite, backend: &impl OpenMlsCrypt
     // === Alice creates a group ===
     let mut alice_group = MlsGroup::new_with_group_id(
         backend,
+        &alice_signature_keys,
         &mls_group_config,
         group_id,
-        alice_credential.signature_key(),
+        alice_credential,
     )
     .expect("An unexpected error occurred.");
 
