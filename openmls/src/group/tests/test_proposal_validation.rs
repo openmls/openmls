@@ -3,7 +3,7 @@
 
 use openmls_rust_crypto::{MemoryKeyStore, OpenMlsRustCrypto};
 use openmls_traits::{
-    key_store::OpenMlsKeyStore, signatures::ByteSigner, types::Ciphersuite, OpenMlsCryptoProvider,
+    key_store::OpenMlsKeyStore, signatures::Signer, types::Ciphersuite, OpenMlsCryptoProvider,
 };
 
 use rstest::*;
@@ -187,7 +187,7 @@ fn insert_proposal_and_resign(
     mut plaintext: PublicMessage,
     original_plaintext: &PublicMessage,
     committer_group: &MlsGroup,
-    signer: &(impl ByteSigner + ?Sized),
+    signer: &(impl Signer + ?Sized),
 ) -> PublicMessage {
     let mut commit_content = if let FramedContentBody::Commit(commit) = plaintext.content() {
         commit.clone()

@@ -1,4 +1,4 @@
-use openmls_traits::signatures::ByteSigner;
+use openmls_traits::signatures::Signer;
 
 use super::{errors::CreateMessageError, *};
 
@@ -14,7 +14,7 @@ impl MlsGroup {
     pub fn create_message(
         &mut self,
         backend: &impl OpenMlsCryptoProvider,
-        signer: &(impl ByteSigner + ?Sized),
+        signer: &(impl Signer + ?Sized),
         message: &[u8],
     ) -> Result<MlsMessageOut, CreateMessageError> {
         if !self.is_active() {

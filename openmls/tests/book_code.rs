@@ -7,7 +7,7 @@ use openmls::{
 use lazy_static::lazy_static;
 use openmls_basic_credential::BasicCredential;
 use openmls_rust_crypto::OpenMlsRustCrypto;
-use openmls_traits::{signatures::ByteSigner, types::SignatureScheme, OpenMlsCryptoProvider};
+use openmls_traits::{signatures::Signer, types::SignatureScheme, OpenMlsCryptoProvider};
 use std::fs::File;
 
 lazy_static! {
@@ -68,7 +68,7 @@ fn generate_key_package(
     credential_with_key: CredentialWithKey,
     extensions: Extensions,
     backend: &impl OpenMlsCryptoProvider,
-    signer: &impl ByteSigner,
+    signer: &impl Signer,
 ) -> KeyPackage {
     // ANCHOR: create_key_package
     // Create the key package

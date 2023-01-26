@@ -1,5 +1,5 @@
 use core_group::create_commit_params::CreateCommitParams;
-use openmls_traits::signatures::ByteSigner;
+use openmls_traits::signatures::Signer;
 
 use crate::{messages::group_info::GroupInfo, treesync::LeafNode, versions::ProtocolVersion};
 
@@ -24,7 +24,7 @@ impl MlsGroup {
     pub fn self_update<KeyStore: OpenMlsKeyStore>(
         &mut self,
         backend: &impl OpenMlsCryptoProvider<KeyStoreProvider = KeyStore>,
-        signer: &(impl ByteSigner + ?Sized),
+        signer: &(impl Signer + ?Sized),
     ) -> Result<
         (MlsMessageOut, Option<MlsMessageOut>, Option<GroupInfo>),
         SelfUpdateError<KeyStore::Error>,
@@ -65,7 +65,7 @@ impl MlsGroup {
     pub fn propose_self_update<KeyStore: OpenMlsKeyStore>(
         &mut self,
         backend: &impl OpenMlsCryptoProvider<KeyStoreProvider = KeyStore>,
-        signer: &(impl ByteSigner + ?Sized),
+        signer: &(impl Signer + ?Sized),
         leaf_node: Option<LeafNode>,
     ) -> Result<MlsMessageOut, ProposeSelfUpdateError<KeyStore::Error>> {
         self.is_operational()?;

@@ -3,7 +3,7 @@
 use std::mem;
 
 use core_group::{create_commit_params::CreateCommitParams, staged_commit::StagedCommit};
-use openmls_traits::signatures::ByteSigner;
+use openmls_traits::signatures::Signer;
 
 use crate::messages::group_info::GroupInfo;
 
@@ -79,7 +79,7 @@ impl MlsGroup {
     pub fn commit_to_pending_proposals<KeyStore: OpenMlsKeyStore>(
         &mut self,
         backend: &impl OpenMlsCryptoProvider<KeyStoreProvider = KeyStore>,
-        signer: &(impl ByteSigner + ?Sized),
+        signer: &(impl Signer + ?Sized),
     ) -> Result<
         (MlsMessageOut, Option<MlsMessageOut>, Option<GroupInfo>),
         CommitToPendingProposalsError<KeyStore::Error>,

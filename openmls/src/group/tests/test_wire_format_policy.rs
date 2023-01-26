@@ -1,7 +1,7 @@
 //! This module tests the different values for `WireFormatPolicy`
 
 use openmls_rust_crypto::OpenMlsRustCrypto;
-use openmls_traits::{signatures::ByteSigner, types::Ciphersuite, OpenMlsCryptoProvider};
+use openmls_traits::{signatures::Signer, types::Ciphersuite, OpenMlsCryptoProvider};
 
 use rstest::*;
 use rstest_reuse::{self, *};
@@ -50,7 +50,7 @@ fn receive_message(
     ciphersuite: Ciphersuite,
     backend: &impl OpenMlsCryptoProvider,
     alice_group: &mut MlsGroup,
-    alice_signer: &(impl ByteSigner + ?Sized),
+    alice_signer: &(impl Signer + ?Sized),
 ) -> MlsMessageIn {
     // Generate credential bundles
     let bob_credential_with_key_and_signer =

@@ -17,7 +17,7 @@
 //! functions that are not expected to fail and throw an error, will still
 //! return a [`Result`] since they may throw a
 //! [`LibraryError`](TreeSyncDiffError::LibraryError).
-use openmls_traits::{signatures::ByteSigner, types::Ciphersuite, OpenMlsCryptoProvider};
+use openmls_traits::{signatures::Signer, types::Ciphersuite, OpenMlsCryptoProvider};
 use serde::{Deserialize, Serialize};
 
 use std::collections::HashSet;
@@ -291,7 +291,7 @@ impl<'a> TreeSyncDiff<'a> {
     pub(crate) fn apply_own_update_path(
         &mut self,
         backend: &impl OpenMlsCryptoProvider,
-        signer: &(impl ByteSigner + ?Sized),
+        signer: &(impl Signer + ?Sized),
         ciphersuite: Ciphersuite,
         group_id: GroupId,
     ) -> Result<UpdatePathResult, LibraryError> {

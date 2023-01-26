@@ -5,7 +5,7 @@ use openmls::{
 };
 
 use lazy_static::lazy_static;
-use openmls_traits::{key_store::OpenMlsKeyStore, signatures::ByteSigner, OpenMlsCryptoProvider};
+use openmls_traits::{key_store::OpenMlsKeyStore, signatures::Signer, OpenMlsCryptoProvider};
 use std::fs::File;
 
 lazy_static! {
@@ -18,7 +18,7 @@ fn generate_key_package<KeyStore: OpenMlsKeyStore>(
     extensions: Extensions,
     backend: &impl OpenMlsCryptoProvider<KeyStoreProvider = KeyStore>,
     credential_with_key: CredentialWithKey,
-    signer: &impl ByteSigner,
+    signer: &impl Signer,
 ) -> KeyPackage {
     KeyPackage::builder()
         .key_package_extensions(extensions)

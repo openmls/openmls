@@ -28,7 +28,7 @@
 //! Similarly, only the [`Verifiable`] struct should implement the
 //! [`tls_codec::Deserialize`] trait.
 
-use openmls_traits::{crypto::OpenMlsCrypto, signatures::ByteSigner};
+use openmls_traits::{crypto::OpenMlsCrypto, signatures::Signer};
 use thiserror::Error;
 use tls_codec::Serialize;
 
@@ -94,7 +94,7 @@ pub trait Signable: Sized {
     /// Sign the payload with the given `private_key`.
     ///
     /// Returns a `Signature`.
-    fn sign(self, signer: &(impl ByteSigner + ?Sized)) -> Result<Self::SignedOutput, SignatureError>
+    fn sign(self, signer: &(impl Signer + ?Sized)) -> Result<Self::SignedOutput, SignatureError>
     where
         Self::SignedOutput: SignedStruct<Self>,
     {

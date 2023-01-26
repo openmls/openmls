@@ -7,7 +7,7 @@
 use openmls_traits::{
     crypto::OpenMlsCrypto,
     key_store::{FromKeyStoreValue, OpenMlsKeyStore, ToKeyStoreValue},
-    signatures::{ByteSigner, Signer},
+    signatures::Signer,
     types::{CryptoError, Error, SignatureScheme},
 };
 
@@ -30,7 +30,7 @@ pub struct BasicCredential {
     signature_scheme: SignatureScheme,
 }
 
-impl Signer<Vec<u8>> for BasicCredential {
+impl Signer for BasicCredential {
     fn sign(&self, payload: &[u8]) -> Result<Vec<u8>, Error> {
         match self.signature_scheme {
             SignatureScheme::ECDSA_SECP256R1_SHA256 => {
@@ -48,7 +48,6 @@ impl Signer<Vec<u8>> for BasicCredential {
         }
     }
 }
-impl ByteSigner for BasicCredential {}
 
 /// Compute the ID for a [`Signature`] in the key store.
 fn id(public_key: &[u8], signature_scheme: SignatureScheme) -> Vec<u8> {

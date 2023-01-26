@@ -19,7 +19,7 @@
 // encryption and decryption of updates to the tree.
 
 use openmls_traits::{
-    signatures::ByteSigner,
+    signatures::Signer,
     types::{Ciphersuite, CryptoError},
     OpenMlsCryptoProvider,
 };
@@ -96,7 +96,7 @@ impl TreeSync {
     /// corresponding [`CommitSecret`].
     pub(crate) fn new(
         backend: &impl OpenMlsCryptoProvider,
-        signer: &(impl ByteSigner + ?Sized),
+        signer: &(impl Signer + ?Sized),
         config: CryptoConfig,
         credential_with_key: CredentialWithKey,
         life_time: Lifetime,

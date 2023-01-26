@@ -10,7 +10,7 @@ use crate::{
     key_packages::KeyPackage,
     messages::{AddProposal, Proposal},
 };
-use openmls_traits::signatures::ByteSigner;
+use openmls_traits::signatures::Signer;
 
 /// External Add Proposal where sender is [NewMemberProposal](crate::prelude::Sender::NewMemberProposal). A client
 /// outside the group can request joining the group. This proposal should then be committed by a
@@ -32,7 +32,7 @@ impl JoinProposal {
         key_package: KeyPackage,
         group_id: GroupId,
         epoch: GroupEpoch,
-        signer: &(impl ByteSigner + ?Sized),
+        signer: &(impl Signer + ?Sized),
     ) -> Result<MlsMessageOut, ProposeAddMemberError> {
         AuthenticatedContent::new_external_proposal(
             Proposal::Add(AddProposal { key_package }),

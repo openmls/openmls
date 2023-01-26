@@ -17,7 +17,7 @@ use config::CryptoConfig;
 use openmls_basic_credential::BasicCredential as BasicCredentialWithKeys;
 use openmls_traits::types::SignatureScheme;
 use openmls_traits::OpenMlsCryptoProvider;
-use openmls_traits::{key_store::OpenMlsKeyStore, signatures::ByteSigner};
+use openmls_traits::{key_store::OpenMlsKeyStore, signatures::Signer};
 use tls_codec::Serialize;
 
 /// Configuration of a client meant to be used in a test setup.
@@ -379,7 +379,7 @@ pub(crate) fn resign_message(
     plaintext: PublicMessage,
     original_plaintext: &PublicMessage,
     backend: &impl OpenMlsCryptoProvider,
-    signer: &(impl ByteSigner + ?Sized),
+    signer: &(impl Signer + ?Sized),
 ) -> PublicMessage {
     use prelude::signable::Signable;
 
@@ -415,7 +415,7 @@ pub(crate) fn resign_message(
 
 #[cfg(test)]
 pub(crate) fn resign_external_commit(
-    signer: &(impl ByteSigner + ?Sized),
+    signer: &(impl Signer + ?Sized),
     plaintext: PublicMessage,
     original_plaintext: &PublicMessage,
     serialized_context: Vec<u8>,

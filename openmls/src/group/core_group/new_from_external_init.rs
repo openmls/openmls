@@ -25,7 +25,7 @@ impl CoreGroup {
     /// containing the commit.
     pub(crate) fn join_by_external_commit(
         backend: &impl OpenMlsCryptoProvider,
-        signer: &(impl ByteSigner + ?Sized),
+        signer: &(impl Signer + ?Sized),
         mut params: CreateCommitParams,
         tree_option: Option<&[Option<Node>]>,
         verifiable_group_info: VerifiableGroupInfo,

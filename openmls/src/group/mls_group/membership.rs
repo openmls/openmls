@@ -3,7 +3,7 @@
 //! This module contains membership-related operations and exposes [`RemoveOperation`].
 
 use core_group::create_commit_params::CreateCommitParams;
-use openmls_traits::signatures::ByteSigner;
+use openmls_traits::signatures::Signer;
 
 use crate::{
     binary_tree::array_representation::LeafNodeIndex, messages::group_info::GroupInfo,
@@ -33,7 +33,7 @@ impl MlsGroup {
     pub fn add_members<KeyStore: OpenMlsKeyStore>(
         &mut self,
         backend: &impl OpenMlsCryptoProvider<KeyStoreProvider = KeyStore>,
-        signer: &(impl ByteSigner + ?Sized),
+        signer: &(impl Signer + ?Sized),
         key_packages: &[KeyPackage],
     ) -> Result<(MlsMessageOut, MlsMessageOut, Option<GroupInfo>), AddMembersError<KeyStore::Error>>
     {
@@ -112,7 +112,7 @@ impl MlsGroup {
     pub fn remove_members<KeyStore: OpenMlsKeyStore>(
         &mut self,
         backend: &impl OpenMlsCryptoProvider<KeyStoreProvider = KeyStore>,
-        signer: &(impl ByteSigner + ?Sized),
+        signer: &(impl Signer + ?Sized),
         members: &[LeafNodeIndex],
     ) -> Result<
         (MlsMessageOut, Option<MlsMessageOut>, Option<GroupInfo>),
@@ -169,7 +169,7 @@ impl MlsGroup {
     pub fn propose_add_member(
         &mut self,
         backend: &impl OpenMlsCryptoProvider,
-        signer: &(impl ByteSigner + ?Sized),
+        signer: &(impl Signer + ?Sized),
         key_package: &KeyPackage,
     ) -> Result<MlsMessageOut, ProposeAddMemberError> {
         self.is_operational()?;
@@ -206,7 +206,7 @@ impl MlsGroup {
     pub fn propose_remove_member(
         &mut self,
         backend: &impl OpenMlsCryptoProvider,
-        signer: &(impl ByteSigner + ?Sized),
+        signer: &(impl Signer + ?Sized),
         member: LeafNodeIndex,
     ) -> Result<MlsMessageOut, ProposeRemoveMemberError> {
         self.is_operational()?;
@@ -240,7 +240,7 @@ impl MlsGroup {
     pub fn leave_group(
         &mut self,
         backend: &impl OpenMlsCryptoProvider,
-        signer: &(impl ByteSigner + ?Sized),
+        signer: &(impl Signer + ?Sized),
     ) -> Result<MlsMessageOut, LeaveGroupError> {
         self.is_operational()?;
 

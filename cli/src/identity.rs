@@ -1,12 +1,12 @@
 use openmls::prelude::{config::CryptoConfig, *};
 use openmls_basic_credential::BasicCredential as BasicCredentialKeys;
 use openmls_rust_crypto::OpenMlsRustCrypto;
-use openmls_traits::{signatures::ByteSigner, OpenMlsCryptoProvider};
+use openmls_traits::{signatures::Signer, OpenMlsCryptoProvider};
 
 pub struct Identity {
     pub(crate) kp: KeyPackage,
     pub(crate) credential_with_key: CredentialWithKey,
-    pub(crate) signer: Box<dyn ByteSigner>,
+    pub(crate) signer: Box<dyn Signer>,
 }
 
 impl Identity {
