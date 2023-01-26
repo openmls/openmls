@@ -10,7 +10,6 @@ use tls_codec::{TlsByteVecU8, TlsVecU16};
 fn generate_credential(
     identity: Vec<u8>,
     signature_scheme: SignatureScheme,
-    crypto_backend: &impl OpenMlsCryptoProvider,
 ) -> (CredentialWithKey, SignatureKeyPair) {
     let credential = Credential::new(identity, CredentialType::Basic).unwrap();
     let signature_keys = SignatureKeyPair::new(signature_scheme).unwrap();
@@ -80,11 +79,8 @@ async fn test_list_clients() {
     let client_name = "Client1";
     let ciphersuite = Ciphersuite::MLS_128_DHKEMX25519_AES128GCM_SHA256_Ed25519;
     let crypto = &OpenMlsRustCrypto::default();
-    let (credential_with_key, signer) = generate_credential(
-        client_name.into(),
-        SignatureScheme::from(ciphersuite),
-        crypto,
-    );
+    let (credential_with_key, signer) =
+        generate_credential(client_name.into(), SignatureScheme::from(ciphersuite));
     let client_id = credential_with_key.credential.identity().to_vec();
     let client_key_package = generate_key_package(
         ciphersuite,
@@ -188,7 +184,6 @@ async fn test_group() {
         let (credential_with_key, signer) = generate_credential(
             client_name.as_bytes().to_vec(),
             SignatureScheme::from(ciphersuite),
-            crypto,
         );
         let client_key_package = generate_key_package(
             ciphersuite,
