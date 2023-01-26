@@ -5,7 +5,7 @@ extern crate rand;
 
 use criterion::Criterion;
 use openmls::prelude::{config::CryptoConfig, *};
-use openmls_basic_credential::BasicCredential;
+use openmls_basic_credential::SignatureKeyPair;
 use openmls_rust_crypto::OpenMlsRustCrypto;
 use openmls_traits::{crypto::OpenMlsCrypto, OpenMlsCryptoProvider};
 
@@ -21,7 +21,7 @@ fn criterion_kp_bundle(c: &mut Criterion, backend: &impl OpenMlsCryptoProvider) 
                     || {
                         let credential =
                             Credential::new(vec![1, 2, 3], CredentialType::Basic).unwrap();
-                        let signer = BasicCredential::new(
+                        let signer = SignatureKeyPair::new(
                             ciphersuite.signature_algorithm(),
                             backend.crypto(),
                         )

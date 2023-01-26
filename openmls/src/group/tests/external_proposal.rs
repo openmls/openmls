@@ -1,4 +1,4 @@
-use openmls_basic_credential::BasicCredential;
+use openmls_basic_credential::SignatureKeyPair;
 use openmls_rust_crypto::OpenMlsRustCrypto;
 use rstest::*;
 use rstest_reuse::{self, *};
@@ -18,8 +18,8 @@ use openmls_traits::types::Ciphersuite;
 use super::utils::*;
 
 struct ProposalValidationTestSetup {
-    alice_group: (MlsGroup, BasicCredential),
-    bob_group: (MlsGroup, BasicCredential),
+    alice_group: (MlsGroup, SignatureKeyPair),
+    bob_group: (MlsGroup, SignatureKeyPair),
 }
 
 // Creates a standalone group

@@ -1,5 +1,5 @@
 use openmls::prelude::{config::CryptoConfig, *};
-use openmls_basic_credential::BasicCredential as BasicCredentialKeys;
+use openmls_basic_credential::SignatureKeyPair;
 use openmls_rust_crypto::OpenMlsRustCrypto;
 use openmls_traits::{signatures::Signer, OpenMlsCryptoProvider};
 
@@ -13,7 +13,7 @@ impl Identity {
     pub(crate) fn new(ciphersuite: Ciphersuite, crypto: &OpenMlsRustCrypto, id: &[u8]) -> Self {
         let credential = Credential::new(id.to_vec(), CredentialType::Basic).unwrap();
         let signature_keys =
-            BasicCredentialKeys::new(ciphersuite.signature_algorithm(), crypto.crypto()).unwrap();
+            SignatureKeyPair::new(ciphersuite.signature_algorithm(), crypto.crypto()).unwrap();
         let credential_with_key = CredentialWithKey {
             credential,
             signature_key: signature_keys.to_public_vec().into(),

@@ -18,19 +18,19 @@ use p256::ecdsa::SigningKey;
 use ed25519_dalek::Signer as DalekSigner;
 use tls_codec::{Deserialize, Serialize, TlsDeserialize, TlsSerialize, TlsSize};
 
-/// The basic credential.
+/// A signature key pair for the basic credential.
 ///
-/// The credential contain the public and private signature keys as well as the
-/// signature scheme.
+/// This can be used as keys to implement the MLS basic credential. It is a simple
+/// private and public key pair with corresponding signature scheme.
 #[derive(TlsSerialize, TlsSize, TlsDeserialize)]
 #[cfg_attr(feature = "clonable", derive(Clone))]
-pub struct BasicCredential {
+pub struct SignatureKeyPair {
     private: Vec<u8>,
     public: Vec<u8>,
     signature_scheme: SignatureScheme,
 }
 
-impl Signer for BasicCredential {
+impl Signer for SignatureKeyPair {
     fn sign(&self, payload: &[u8]) -> Result<Vec<u8>, Error> {
         match self.signature_scheme {
             SignatureScheme::ECDSA_SECP256R1_SHA256 => {
@@ -59,7 +59,7 @@ fn id(public_key: &[u8], signature_scheme: SignatureScheme) -> Vec<u8> {
     id
 }
 
-impl ToKeyStoreValue for BasicCredential {
+impl ToKeyStoreValue for SignatureKeyPair {
     type Error = tls_codec::Error;
 
     fn to_key_store_value(&self) -> Result<Vec<u8>, Self::Error> {
@@ -67,7 +67,7 @@ impl ToKeyStoreValue for BasicCredential {
     }
 }
 
-impl FromKeyStoreValue for BasicCredential {
+impl FromKeyStoreValue for SignatureKeyPair {
     type Error = tls_codec::Error;
 
     fn from_key_store_value(mut ksv: &[u8]) -> Result<Self, Self::Error> {
@@ -75,7 +75,7 @@ impl FromKeyStoreValue for BasicCredential {
     }
 }
 
-impl BasicCredential {
+impl SignatureKeyPair {
     /// Generates a fresh signature keypair using the [`SignatureScheme`].
     pub fn new(
         signature_scheme: SignatureScheme,

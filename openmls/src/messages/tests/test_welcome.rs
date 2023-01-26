@@ -12,7 +12,7 @@ use crate::{
     versions::ProtocolVersion,
 };
 
-use openmls_basic_credential::BasicCredential;
+use openmls_basic_credential::SignatureKeyPair;
 use rstest::*;
 use rstest_reuse::{self, *};
 
@@ -212,7 +212,7 @@ fn test_welcome_message_with_version(
     };
 
     // We need a signer
-    let signer = BasicCredential::new(ciphersuite.signature_algorithm(), backend.crypto()).unwrap();
+    let signer = SignatureKeyPair::new(ciphersuite.signature_algorithm(), backend.crypto()).unwrap();
 
     let group_info = group_info_tbs
         .sign(&signer)

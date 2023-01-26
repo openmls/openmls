@@ -3,7 +3,7 @@
 //! that client perform certain MLS operations.
 use std::{collections::HashMap, sync::RwLock};
 
-use openmls_basic_credential::BasicCredential;
+use openmls_basic_credential::SignatureKeyPair;
 use openmls_rust_crypto::OpenMlsRustCrypto;
 use openmls_traits::{
     key_store::OpenMlsKeyStore,
@@ -56,7 +56,7 @@ impl Client {
             .credentials
             .get(&ciphersuite)
             .ok_or(ClientError::CiphersuiteNotSupported)?;
-        let keys = BasicCredential::read(
+        let keys = SignatureKeyPair::read(
             self.crypto.key_store(),
             credential_with_key.signature_key.as_slice(),
             ciphersuite.signature_algorithm(),
@@ -91,7 +91,7 @@ impl Client {
             .credentials
             .get(&ciphersuite)
             .ok_or(ClientError::CiphersuiteNotSupported)?;
-        let signer = BasicCredential::read(
+        let signer = SignatureKeyPair::read(
             self.crypto.key_store(),
             credential_with_key.signature_key.as_slice(),
             ciphersuite.signature_algorithm(),
@@ -200,7 +200,7 @@ impl Client {
         // Get the signature public key to read the signer from the
         // key store.
         let signature_pk = group.own_leaf().unwrap().signature_key();
-        let signer = BasicCredential::read(
+        let signer = SignatureKeyPair::read(
             self.crypto.key_store(),
             signature_pk.as_slice(),
             group.ciphersuite().signature_algorithm(),
@@ -240,7 +240,7 @@ impl Client {
         // Get the signature public key to read the signer from the
         // key store.
         let signature_pk = group.own_leaf().unwrap().signature_key();
-        let signer = BasicCredential::read(
+        let signer = SignatureKeyPair::read(
             self.crypto.key_store(),
             signature_pk.as_slice(),
             group.ciphersuite().signature_algorithm(),
@@ -291,7 +291,7 @@ impl Client {
         // Get the signature public key to read the signer from the
         // key store.
         let signature_pk = group.own_leaf().unwrap().signature_key();
-        let signer = BasicCredential::read(
+        let signer = SignatureKeyPair::read(
             self.crypto.key_store(),
             signature_pk.as_slice(),
             group.ciphersuite().signature_algorithm(),

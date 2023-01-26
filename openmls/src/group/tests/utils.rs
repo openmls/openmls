@@ -14,7 +14,7 @@ use crate::{
 use ::rand::rngs::OsRng;
 use ::rand::RngCore;
 use config::CryptoConfig;
-use openmls_basic_credential::BasicCredential as BasicCredentialWithKeys;
+use openmls_basic_credential::SignatureKeyPair;
 use openmls_traits::types::SignatureScheme;
 use openmls_traits::OpenMlsCryptoProvider;
 use openmls_traits::{key_store::OpenMlsKeyStore, signatures::Signer};
@@ -323,7 +323,7 @@ fn test_setup(backend: &impl OpenMlsCryptoProvider) {
 #[derive(Clone)]
 pub(crate) struct CredentialWithKeyAndSigner {
     pub(crate) credential_with_key: CredentialWithKey,
-    pub(crate) signer: BasicCredentialWithKeys,
+    pub(crate) signer: SignatureKeyPair,
 }
 
 // Helper function to generate a CredentialBundle
@@ -335,7 +335,7 @@ pub(crate) fn generate_credential_bundle(
     let (credential, signer) = {
         let credential = Credential::new(identity, CredentialType::Basic).unwrap();
         let signature_keys =
-            BasicCredentialWithKeys::new(signature_scheme, backend.crypto()).unwrap();
+            SignatureKeyPair::new(signature_scheme, backend.crypto()).unwrap();
         signature_keys.store(backend.key_store()).unwrap();
 
         (credential, signature_keys)

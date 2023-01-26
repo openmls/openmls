@@ -32,7 +32,7 @@ use crate::{
     treesync::{node::Node, LeafNode},
 };
 use ::rand::{rngs::OsRng, RngCore};
-use openmls_basic_credential::BasicCredential;
+use openmls_basic_credential::SignatureKeyPair;
 use openmls_rust_crypto::OpenMlsRustCrypto;
 use openmls_traits::{
     crypto::OpenMlsCrypto,
@@ -137,7 +137,7 @@ impl MlsGroupTestSetup {
             for ciphersuite in crypto.crypto().supported_ciphersuites().iter() {
                 let credential = Credential::new(identity.clone(), CredentialType::Basic).unwrap();
                 let signature_keys =
-                    BasicCredential::new(ciphersuite.signature_algorithm(), crypto.crypto())
+                    SignatureKeyPair::new(ciphersuite.signature_algorithm(), crypto.crypto())
                         .unwrap();
                 signature_keys.store(crypto.key_store()).unwrap();
                 let signature_key = OpenMlsSignaturePublicKey::new(
@@ -369,7 +369,7 @@ impl MlsGroupTestSetup {
                     // Get the signature public key to read the signer from the
                     // key store.
                     let signature_pk = group_state.own_leaf().unwrap().signature_key();
-                    let signer = BasicCredential::read(
+                    let signer = SignatureKeyPair::read(
                         m.crypto.key_store(),
                         signature_pk.as_slice(),
                         group_state.ciphersuite().signature_algorithm(),

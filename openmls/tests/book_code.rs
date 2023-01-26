@@ -5,7 +5,7 @@ use openmls::{
 };
 
 use lazy_static::lazy_static;
-use openmls_basic_credential::BasicCredential;
+use openmls_basic_credential::SignatureKeyPair;
 use openmls_rust_crypto::OpenMlsRustCrypto;
 use openmls_traits::{signatures::Signer, types::SignatureScheme, OpenMlsCryptoProvider};
 use std::fs::File;
@@ -45,12 +45,12 @@ fn generate_credential(
     credential_type: CredentialType,
     signature_algorithm: SignatureScheme,
     backend: &impl OpenMlsCryptoProvider,
-) -> (CredentialWithKey, BasicCredential) {
+) -> (CredentialWithKey, SignatureKeyPair) {
     // ANCHOR: create_basic_credential
     let credential = Credential::new(identity, credential_type).unwrap();
     // ANCHOR_END: create_basic_credential
     // ANCHOR: create_credential_keys
-    let signature_keys = BasicCredential::new(signature_algorithm, backend.crypto()).unwrap();
+    let signature_keys = SignatureKeyPair::new(signature_algorithm, backend.crypto()).unwrap();
     signature_keys.store(backend.key_store()).unwrap();
     // ANCHOR_END: create_credential_keys
 
@@ -1112,7 +1112,7 @@ fn book_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvide
 
     // Create a new KeyPackageBundle for Bob
     // let bob_credential = Credential::new("Bob".into(), CredentialType::Basic).unwrap();
-    // let signature_keys = BasicCredential::new(ciphersuite.into(), backend.crypto()).unwrap();
+    // let signature_keys = SignatureKeyPair::new(ciphersuite.into(), backend.crypto()).unwrap();
     let bob_key_package = generate_key_package(
         ciphersuite,
         bob_credential.clone(),

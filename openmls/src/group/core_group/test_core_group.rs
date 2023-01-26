@@ -1,4 +1,4 @@
-use openmls_basic_credential::BasicCredential;
+use openmls_basic_credential::SignatureKeyPair;
 use openmls_rust_crypto::OpenMlsRustCrypto;
 use openmls_traits::{
     crypto::OpenMlsCrypto, key_store::OpenMlsKeyStore, types::HpkeCiphertext, OpenMlsCryptoProvider,
@@ -25,7 +25,7 @@ pub(crate) fn setup_alice_group(
 ) -> (
     CoreGroup,
     CredentialWithKey,
-    BasicCredential,
+    SignatureKeyPair,
     OpenMlsSignaturePublicKey,
 ) {
     // Create credentials and keys
@@ -288,9 +288,9 @@ fn setup_alice_bob(
     backend: &impl OpenMlsCryptoProvider,
 ) -> (
     CredentialWithKey,
-    BasicCredential,
+    SignatureKeyPair,
     KeyPackageBundle,
-    BasicCredential,
+    SignatureKeyPair,
 ) {
     // Create credentials and keys
     let (alice_credential_with_key, alice_signer) = test_utils::new_credential(
@@ -558,7 +558,7 @@ pub(crate) fn setup_client(
 ) -> (
     CredentialWithKey,
     KeyPackageBundle,
-    BasicCredential,
+    SignatureKeyPair,
     OpenMlsSignaturePublicKey,
 ) {
     let (credential_with_key, signature_keys) = test_utils::new_credential(

@@ -1,5 +1,5 @@
 use crate::test_utils::*;
-use openmls_basic_credential::BasicCredential;
+use openmls_basic_credential::SignatureKeyPair;
 use openmls_rust_crypto::OpenMlsRustCrypto;
 use tls_codec::Deserialize;
 
@@ -9,9 +9,10 @@ use crate::{extensions::*, key_packages::*};
 pub(crate) fn key_package(
     ciphersuite: Ciphersuite,
     backend: &impl OpenMlsCryptoProvider,
-) -> (KeyPackage, Credential, BasicCredential) {
+) -> (KeyPackage, Credential, SignatureKeyPair) {
     let credential = Credential::new(b"Sasha".to_vec(), CredentialType::Basic).unwrap();
-    let signer = BasicCredential::new(ciphersuite.signature_algorithm(), backend.crypto()).unwrap();
+    let signer =
+        SignatureKeyPair::new(ciphersuite.signature_algorithm(), backend.crypto()).unwrap();
 
     // Generate a valid KeyPackage.
     let key_package = KeyPackage::builder()
@@ -64,7 +65,7 @@ fn application_id_extension(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryp
     let credential = Credential::new(b"Sasha".to_vec(), CredentialType::Basic)
         .expect("An unexpected error occurred.");
     let signature_keys =
-        BasicCredential::new(ciphersuite.signature_algorithm(), backend.crypto()).unwrap();
+        SignatureKeyPair::new(ciphersuite.signature_algorithm(), backend.crypto()).unwrap();
     let pk = OpenMlsSignaturePublicKey::new(
         signature_keys.public().into(),
         ciphersuite.signature_algorithm(),

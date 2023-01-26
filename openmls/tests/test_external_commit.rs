@@ -2,13 +2,13 @@ use openmls::{
     credentials::test_utils::new_credential, messages::group_info::VerifiableGroupInfo, prelude::*,
     test_utils::*, *,
 };
-use openmls_basic_credential::BasicCredential;
+use openmls_basic_credential::SignatureKeyPair;
 
 fn create_alice_group(
     ciphersuite: Ciphersuite,
     backend: &impl OpenMlsCryptoProvider,
     use_ratchet_tree_extension: bool,
-) -> (MlsGroup, CredentialWithKey, BasicCredential) {
+) -> (MlsGroup, CredentialWithKey, SignatureKeyPair) {
     let group_config = MlsGroupConfigBuilder::new()
         .use_ratchet_tree_extension(use_ratchet_tree_extension)
         .crypto_config(CryptoConfig::with_default_version(ciphersuite))
