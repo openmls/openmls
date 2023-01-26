@@ -52,7 +52,7 @@ impl CoreGroup {
         backend: &impl OpenMlsCryptoProvider,
         proposal_queue: &ProposalQueue,
         leaf_nodes: &[OpenMlsLeafNode],
-        own_leaf_index: Option<LeafNodeIndex>,
+        own_leaf_index: impl Into<Option<LeafNodeIndex>>,
     ) -> Result<ApplyProposalsValues, ApplyProposalsError> {
         log::debug!("Applying proposal");
         let mut self_removed = false;
@@ -83,6 +83,8 @@ impl CoreGroup {
                 )?)
             }
         }
+
+        let own_leaf_index = own_leaf_index.into();
 
         // Process updates first
         for queued_proposal in proposal_queue.filtered_by_type(ProposalType::Update) {

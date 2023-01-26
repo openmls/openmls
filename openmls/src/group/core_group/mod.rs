@@ -47,8 +47,11 @@ use crate::{
     framing::{mls_auth_content::AuthenticatedContent, *},
     group::*,
     key_packages::*,
-    messages::VerifiableGroupInfo,
-    messages::{proposals::*, *},
+    messages::{
+        group_info::{GroupInfo, GroupInfoTBS, VerifiableGroupInfo},
+        proposals::*,
+        *,
+    },
     schedule::{message_secrets::*, psk::*, *},
     tree::{secret_tree::SecretTreeError, sender_ratchet::SenderRatchetConfiguration},
     treesync::{
@@ -330,8 +333,7 @@ impl CoreGroup {
     ) -> Result<AuthenticatedContent, CreateAddProposalError> {
         joiner_key_package
             .leaf_node()
-            .validate_required_capabilities(self.required_capabilities())
-            .map_err(|_| CreateAddProposalError::UnsupportedExtensions)?;
+            .validate_required_capabilities(self.required_capabilities())?;
         let add_proposal = AddProposal {
             key_package: joiner_key_package,
         };

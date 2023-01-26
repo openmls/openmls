@@ -1,7 +1,7 @@
 use openmls_traits::key_store::{FromKeyStoreValue, OpenMlsKeyStore, ToKeyStoreValue};
 use std::{collections::HashMap, sync::RwLock};
 
-type EpochStoreIndex = (Vec<u8>, u64, u32); // Identity, GroupId and GroupEpoch
+type EpochStoreIndex = (Vec<u8>, u64, u32); // GroupId, GroupEpoch and leaf index
 
 #[derive(Debug, Default)]
 pub struct MemoryKeyStore {

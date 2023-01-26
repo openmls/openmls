@@ -85,6 +85,9 @@ pub enum WelcomeError<KeyStoreError> {
     /// [`CreationFromExternalError`] for more details.
     #[error(transparent)]
     PublicGroupError(#[from] CreationFromExternalError),
+    /// This error indicates the leaf node is invalid. See [`LeafNodeValidationError`] for more details.
+    #[error(transparent)]
+    LeafNodeValidation(#[from] LeafNodeValidationError),
 }
 
 /// External Commit error
@@ -371,9 +374,9 @@ pub(crate) enum CreateAddProposalError {
     /// See [`LibraryError`] for more details.
     #[error(transparent)]
     LibraryError(#[from] LibraryError),
-    /// The KeyPackage does not support all required extensions.
-    #[error("The KeyPackage does not support all required extensions.")]
-    UnsupportedExtensions,
+    /// See [`LeafNodeValidationError`] for more details.
+    #[error(transparent)]
+    LeafNodeValidation(#[from] LeafNodeValidationError),
 }
 
 /// Exporter error
@@ -485,6 +488,9 @@ pub(crate) enum CreateGroupContextExtProposalError {
     /// See [`ExtensionError`] for more details.
     #[error(transparent)]
     Extension(#[from] ExtensionError),
+    /// See [`LeafNodeValidationError`] for more details.
+    #[error(transparent)]
+    LeafNodeValidation(#[from] LeafNodeValidationError),
 }
 
 /// Error merging a commit.

@@ -8,8 +8,9 @@ use crate::{
     extensions::{Extensions, RequiredCapabilitiesExtension},
     framing::InterimTranscriptHashInput,
     messages::{
+        group_info::{GroupInfo, VerifiableGroupInfo},
         proposals::{Proposal, ProposalType},
-        ConfirmationTag, GroupInfo, VerifiableGroupInfo,
+        ConfirmationTag,
     },
     treesync::{Node, TreeSync},
     versions::ProtocolVersion,

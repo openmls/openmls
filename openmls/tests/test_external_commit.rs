@@ -1,4 +1,4 @@
-use openmls::{prelude::*, test_utils::*, *};
+use openmls::{messages::group_info::VerifiableGroupInfo, prelude::*, test_utils::*, *};
 
 fn create_alice_group(
     ciphersuite: Ciphersuite,

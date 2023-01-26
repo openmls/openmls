@@ -17,11 +17,11 @@ use crate::{
     credentials::{Credential, CredentialBundle, CredentialType},
     error::LibraryError,
     extensions::Extensions,
-    extensions::{ExtensionType, RequiredCapabilitiesExtension},
+    extensions::{Extension, ExtensionType, RequiredCapabilitiesExtension},
     group::{config::CryptoConfig, GroupId},
     key_packages::KeyPackage,
     messages::proposals::ProposalType,
-    treesync::errors::TreeSyncError,
+    treesync::errors::{LeafNodeValidationError, LifetimeError},
     versions::ProtocolVersion,
 };
 
@@ -562,45 +562,224 @@ impl LeafNode {
 
     // ----- Validation ----------------------------------------------------------------------------
 
-    /// Check that all extensions that are required, are supported by this leaf
-    /// node.
+    /// Validate the leaf node in the context of a key package.
+    // TODO(#1186)
+    #[allow(unused)]
+    pub(crate) fn validate_in_key_package(&self) -> Result<&Self, LeafNodeValidationError> {
+        // TODO(#1186)
+        // self.validate()?;
+
+        match self.payload.leaf_node_source {
+            LeafNodeSource::KeyPackage(lifetime) => {
+                /// Check that lifetime range is acceptable.
+                if !lifetime.has_acceptable_range() {
+                    return Err(LeafNodeValidationError::Lifetime(
+                        LifetimeError::RangeTooBig,
+                    ));
+                }
+
+                /// Check that current time is between `Lifetime.not_before` and `Lifetime.not_after`.
+                if !lifetime.is_valid() {
+                    return Err(LeafNodeValidationError::Lifetime(LifetimeError::NotCurrent));
+                }
+
+                Ok(self)
+            }
+            _ => Err(LeafNodeValidationError::InvalidLeafNodeSource),
+        }
+    }
+
+    /// Validate the leaf node in the context of an update.
+    // TODO(#1186)
+    #[allow(unused)]
+    pub(crate) fn validate_in_update(&self) -> Result<&Self, LeafNodeValidationError> {
+        // TODO(#1186)
+        // self.validate()?;
+
+        match self.payload.leaf_node_source {
+            LeafNodeSource::Update => Ok(self),
+            _ => Err(LeafNodeValidationError::InvalidLeafNodeSource),
+        }
+    }
+
+    /// Validate the leaf node in the context of a commit.
+    // TODO(#1186)
+    #[allow(unused)]
+    pub(crate) fn validate_in_commit(&self) -> Result<&Self, LeafNodeValidationError> {
+        // TODO(#1186)
+        // self.validate()?;
+
+        match self.payload.leaf_node_source {
+            LeafNodeSource::Commit(_) => Ok(self),
+            _ => Err(LeafNodeValidationError::InvalidLeafNodeSource),
+        }
+    }
+
+    /// Basic validation of leaf node called in all `validate_in_*` methods.
+    // TODO(#1186)
+    #[allow(unused)]
+    fn validate<'a>(
+        &self,
+        required_capabilities: impl Into<Option<&'a RequiredCapabilitiesExtension>>,
+        signature_keys: &[SignaturePublicKey],
+        encryption_keys: &[EncryptionKey],
+        members_supported_credentials: &[&[CredentialType]],
+        currently_in_use: &[CredentialType],
+    ) -> Result<&Self, LeafNodeValidationError> {
+        self.validate_required_capabilities(required_capabilities)?
+            .validate_that_capabilities_contain_extension_types()?
+            .validate_that_capabilities_contain_credential_type()?
+            .validate_that_signature_key_is_unique(signature_keys)?
+            .validate_that_encryption_key_is_unique(encryption_keys)?
+            .validate_against_group_credentials(members_supported_credentials)?
+            .validate_credential_in_use(currently_in_use)?;
+
+        Ok(self)
+    }
+
+    /// Check that all required capabilities are supported by this leaf node.
     pub(crate) fn validate_required_capabilities<'a>(
         &self,
         required_capabilities: impl Into<Option<&'a RequiredCapabilitiesExtension>>,
-    ) -> Result<(), TreeSyncError> {
+    ) -> Result<&Self, LeafNodeValidationError> {
+        // If the GroupContext has a required_capabilities extension, ...
         if let Some(required_capabilities) = required_capabilities.into() {
+            // ... then the required extensions, ...
             for required_extension in required_capabilities.extension_types() {
                 if !self.supports_extension(required_extension) {
-                    return Err(TreeSyncError::UnsupportedExtension);
+                    return Err(LeafNodeValidationError::UnsupportedExtensions);
                 }
             }
+
+            // ... proposals, ...
             for required_proposal in required_capabilities.proposal_types() {
                 if !self.supports_proposal(required_proposal) {
-                    return Err(TreeSyncError::UnsupportedProposal);
+                    return Err(LeafNodeValidationError::UnsupportedProposals);
+                }
+            }
+
+            // ... and credential types MUST be listed in the LeafNode's capabilities field.
+            for required_credential in required_capabilities.credential_types() {
+                if !self.supports_credential(required_credential) {
+                    return Err(LeafNodeValidationError::UnsupportedCredentials);
                 }
             }
         }
-        Ok(())
+
+        Ok(self)
     }
+
+    /// Check that all extensions are listed in capabilities.
+    fn validate_that_capabilities_contain_extension_types(
+        &self,
+    ) -> Result<&Self, LeafNodeValidationError> {
+        for id in self
+            .payload
+            .extensions
+            .iter()
+            .map(Extension::extension_type)
+        {
+            if !self.supports_extension(&id) {
+                return Err(LeafNodeValidationError::ExtensionsNotInCapabilities);
+            }
+        }
+
+        Ok(self)
+    }
+
+    /// Check that credential type is included in the credentials.
+    fn validate_that_capabilities_contain_credential_type(
+        &self,
+    ) -> Result<&Self, LeafNodeValidationError> {
+        if !self
+            .payload
+            .capabilities
+            .credentials
+            .contains(&self.payload.credential.credential_type())
+        {
+            return Err(LeafNodeValidationError::CredentialNotInCapabilities);
+        }
+
+        Ok(self)
+    }
+
+    /// Validate that the signature key is unique among the members of the group.
+    fn validate_that_signature_key_is_unique(
+        &self,
+        signature_keys: &[SignaturePublicKey],
+    ) -> Result<&Self, LeafNodeValidationError> {
+        if signature_keys.contains(self.signature_key()) {
+            return Err(LeafNodeValidationError::SignatureKeyAlreadyInUse);
+        }
+
+        Ok(self)
+    }
+
+    /// Validate that the encryption key is unique among the members of the group.
+    fn validate_that_encryption_key_is_unique(
+        &self,
+        encryption_keys: &[EncryptionKey],
+    ) -> Result<&Self, LeafNodeValidationError> {
+        if encryption_keys.contains(self.encryption_key()) {
+            return Err(LeafNodeValidationError::EncryptionKeyAlreadyInUse);
+        }
+
+        Ok(self)
+    }
+
+    /// Verify that the credential type is supported by all members of the group, as
+    /// specified by the capabilities field of each member's LeafNode.
+    fn validate_against_group_credentials(
+        &self,
+        members_supported_credentials: &[&[CredentialType]],
+    ) -> Result<&Self, LeafNodeValidationError> {
+        for member_supported_credentials in members_supported_credentials {
+            if !member_supported_credentials.contains(&self.credential().credential_type()) {
+                return Err(LeafNodeValidationError::LeafNodeCredentialNotSupportedByMember);
+            }
+        }
+
+        Ok(self)
+    }
+
+    /// Verify that the capabilities field of this LeafNode indicates support for all the
+    /// credential types currently in use by other members.
+    fn validate_credential_in_use(
+        &self,
+        currently_in_use: &[CredentialType],
+    ) -> Result<&Self, LeafNodeValidationError> {
+        for credential in currently_in_use {
+            if !self.payload.capabilities.credentials.contains(credential) {
+                return Err(LeafNodeValidationError::MemberCredentialNotSupportedByLeafNode);
+            }
+        }
+
+        Ok(self)
+    }
+
+    // ---------------------------------------------------------------------------------------------
 
     /// Returns `true` if the [`ExtensionType`] is supported by this leaf node.
     pub(crate) fn supports_extension(&self, extension_type: &ExtensionType) -> bool {
         self.payload
             .capabilities
             .extensions
-            .iter()
-            .any(|et| et == extension_type)
+            .contains(extension_type)
             || default_extensions().iter().any(|et| et == extension_type)
     }
 
     /// Returns `true` if the [`ProposalType`] is supported by this leaf node.
     pub(crate) fn supports_proposal(&self, proposal_type: &ProposalType) -> bool {
+        self.payload.capabilities.proposals.contains(proposal_type)
+            || default_proposals().iter().any(|pt| pt == proposal_type)
+    }
+
+    /// Returns `true` if the [`CredentialType`] is supported by this leaf node.
+    pub(crate) fn supports_credential(&self, credential_type: &CredentialType) -> bool {
         self.payload
             .capabilities
-            .proposals
-            .iter()
-            .any(|pt| pt == proposal_type)
-            || default_proposals().iter().any(|pt| pt == proposal_type)
+            .credentials
+            .contains(credential_type)
     }
 }
 
@@ -643,10 +822,10 @@ impl LeafNode {
     pub(crate) fn check_extension_support(
         &self,
         extensions: &[ExtensionType],
-    ) -> Result<(), TreeSyncError> {
+    ) -> Result<(), LeafNodeValidationError> {
         for required in extensions.iter() {
             if !self.supports_extension(required) {
-                return Err(TreeSyncError::UnsupportedExtension);
+                return Err(LeafNodeValidationError::UnsupportedExtensions);
             }
         }
         Ok(())
@@ -946,9 +1125,10 @@ impl OpenMlsLeafNode {
     pub(crate) fn validate_required_capabilities<'a>(
         &self,
         required_capabilities: impl Into<Option<&'a RequiredCapabilitiesExtension>>,
-    ) -> Result<(), TreeSyncError> {
+    ) -> Result<(), LeafNodeValidationError> {
         self.leaf_node
             .validate_required_capabilities(required_capabilities)
+            .map(|_| ())
     }
 
     /// Returns a reference to the encryption key of the leaf node.
