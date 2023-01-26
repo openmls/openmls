@@ -170,7 +170,13 @@ impl CoreGroup {
         let mut diff = self.treesync().empty_diff();
 
         let apply_proposals_values = self
-            .apply_proposals(&mut diff, backend, &proposal_queue, own_leaf_nodes)
+            .apply_proposals(
+                &mut diff,
+                backend,
+                &proposal_queue,
+                own_leaf_nodes,
+                Some(self.own_leaf_index),
+            )
             .map_err(|_| StageCommitError::OwnKeyNotFound)?;
 
         // Now we can actually look at the public keys as they might have changed.
@@ -302,6 +308,7 @@ impl CoreGroup {
                     ciphersuite,
                     decrypt_path_params,
                     &decryption_keypairs,
+                    self.own_leaf_index(),
                 )?;
 
                 // Check if one of our update proposals was applied. If so, we
@@ -309,7 +316,7 @@ impl CoreGroup {
                 // it needs to be removed from the key store separately and in
                 // addition to the removal of the keypairs of the previous
                 // epoch.
-                let new_leaf_keypair_option = if let Ok(leaf) = diff.own_leaf() {
+                let new_leaf_keypair_option = if let Ok(leaf) = diff.leaf(self.own_leaf_index()) {
                     own_keypairs.into_iter().find_map(|keypair| {
                         if leaf.encryption_key() == keypair.public_key() {
                             Some(keypair)
@@ -432,7 +439,7 @@ impl CoreGroup {
                 serialized_provisional_group_context,
                 diff.leaf_count(),
                 // The index should be the same on TreeSync and Diff.
-                diff.own_leaf_index(),
+                self.own_leaf_index(),
             );
 
         // Make the diff a staged diff. This finalizes the diff and no more changes can be applied to it.
@@ -500,7 +507,8 @@ impl CoreGroup {
                 };
 
                 // Figure out which keys we need in the new epoch.
-                let new_owned_encryption_keys = self.tree.owned_encryption_keys();
+                let new_owned_encryption_keys =
+                    self.tree.owned_encryption_keys(self.own_leaf_index());
                 // From the old and new keys, keep the ones that are still relevant in the new epoch.
                 let epoch_keypairs: Vec<EncryptionKeyPair> = old_epoch_keypairs
                     .into_iter()

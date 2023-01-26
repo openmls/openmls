@@ -78,7 +78,7 @@ impl MlsGroup {
         // The new leaf node will be applied later when the proposal is
         // committed.
         let mut own_leaf = tree
-            .own_leaf_node()
+            .leaf(self.own_leaf_index())
             .ok_or_else(|| LibraryError::custom("The tree is broken. Couldn't find own leaf."))?
             .clone();
         if let Some(leaf) = leaf_node {

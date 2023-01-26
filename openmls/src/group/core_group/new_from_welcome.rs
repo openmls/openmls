@@ -134,19 +134,17 @@ impl CoreGroup {
                 },
             };
 
-        let tree = TreeSync::from_nodes(
-            backend,
-            ciphersuite,
-            &nodes,
-            key_package_bundle
-                .key_package()
-                .leaf_node()
-                .encryption_key(),
-        )
-        .map_err(|e| match e {
+        let tree = TreeSync::from_nodes(backend, ciphersuite, &nodes).map_err(|e| match e {
             TreeSyncFromNodesError::LibraryError(e) => e.into(),
             TreeSyncFromNodesError::PublicTreeError(e) => WelcomeError::PublicTreeError(e),
         })?;
+
+        // Find our own leaf in the tree.
+        let own_leaf_index = tree
+            .find_leaf(key_package_bundle.key_package().leaf_node().signature_key())
+            .ok_or(WelcomeError::PublicTreeError(
+                PublicTreeError::MalformedTree,
+            ))?;
 
         let diff = tree.empty_diff();
 
@@ -159,6 +157,7 @@ impl CoreGroup {
                     ciphersuite,
                     path_secret,
                     verifiable_group_info.signer(),
+                    own_leaf_index,
                 )
                 .map_err(|e| match e {
                     TreeSyncSetPathError::LibraryError(e) => e.into(),
@@ -216,7 +215,7 @@ impl CoreGroup {
         let (group_epoch_secrets, message_secrets) = epoch_secrets.split_secrets(
             serialized_group_context,
             tree.leaf_count(),
-            tree.own_leaf_index(),
+            own_leaf_index,
         );
 
         let confirmation_tag = message_secrets
@@ -249,6 +248,7 @@ impl CoreGroup {
                 use_ratchet_tree_extension: enable_ratchet_tree_extension,
                 mls_version,
                 message_secrets_store,
+                own_leaf_index,
             };
             group
                 .store_epoch_keypairs(backend, group_keypairs.as_slice())

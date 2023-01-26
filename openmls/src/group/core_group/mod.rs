@@ -54,7 +54,7 @@ use crate::{
     schedule::{message_secrets::*, psk::*, *},
     tree::{secret_tree::SecretTreeError, sender_ratchet::SenderRatchetConfiguration},
     treesync::{
-        node::leaf_node::{Capabilities, Lifetime},
+        node::leaf_node::{Capabilities, Lifetime, OpenMlsLeafNode},
         *,
     },
     versions::ProtocolVersion,
@@ -125,6 +125,7 @@ pub(crate) struct CoreGroup {
     group_context: GroupContext,
     group_epoch_secrets: GroupEpochSecrets,
     tree: TreeSync,
+    own_leaf_index: LeafNodeIndex,
     interim_transcript_hash: Vec<u8>,
     // Group config.
     // Set to true if the ratchet tree extension is added to the `GroupInfo`.
@@ -305,6 +306,7 @@ impl CoreGroupBuilder {
             use_ratchet_tree_extension: config.add_ratchet_tree_extension,
             mls_version: version,
             message_secrets_store,
+            own_leaf_index: LeafNodeIndex::new(0),
         };
 
         // Store the private key of the own leaf in the key store as an epoch keypair.
@@ -445,9 +447,7 @@ impl CoreGroup {
             let required_capabilities = required_extension.as_required_capabilities_extension()?;
             // Ensure we support all the capabilities.
             required_capabilities.check_support()?;
-            self.treesync()
-                .own_leaf_node()
-                .ok_or_else(|| LibraryError::custom("Expected own leaf"))?
+            self.own_leaf_node()?
                 .validate_required_capabilities(required_capabilities)?;
             // Ensure that all other leaf nodes support all the required
             // extensions as well.
@@ -674,13 +674,13 @@ impl CoreGroup {
 impl CoreGroup {
     /// Get the leaf index of this client.
     pub(crate) fn own_leaf_index(&self) -> LeafNodeIndex {
-        self.treesync().own_leaf_index()
+        self.own_leaf_index
     }
 
     /// Get the identity of the client's [`Credential`] owning this group.
     pub(crate) fn own_identity(&self) -> Option<&[u8]> {
         self.treesync()
-            .own_leaf_node()
+            .leaf(self.own_leaf_index)
             .map(|node| node.credential().identity())
     }
 
@@ -760,13 +760,10 @@ impl CoreGroup {
         backend: &impl OpenMlsCryptoProvider<KeyStoreProvider = KeyStore>,
         keypair_references: &[EncryptionKeyPair],
     ) -> Result<(), KeyStore::Error> {
-        // Retrieving our identity should not fail.
-        let own_identity = self.own_identity().unwrap_or_default();
-        debug_assert_ne!(own_identity, &[0u8; 0]);
         backend.key_store().store_epoch_keys(
-            own_identity,
             self.group_id().as_slice(),
             self.context().epoch().as_u64(),
+            self.own_leaf_index().u32(),
             keypair_references,
         )
     }
@@ -779,14 +776,10 @@ impl CoreGroup {
         &self,
         backend: &impl OpenMlsCryptoProvider<KeyStoreProvider = KeyStore>,
     ) -> Vec<EncryptionKeyPair> {
-        // Retrieving our identity should not fail.
-        let own_identity = self.own_identity().unwrap_or_default();
-        debug_assert_ne!(own_identity, &[0u8; 0]);
         backend.key_store().read_epoch_keys(
-            // Retrieving our identity should not fail.
-            own_identity,
             self.group_id().as_slice(),
             self.group_context.epoch().as_u64(),
+            self.own_leaf_index().u32(),
         )
     }
 
@@ -798,20 +791,22 @@ impl CoreGroup {
         &self,
         backend: &impl OpenMlsCryptoProvider<KeyStoreProvider = KeyStore>,
     ) -> Result<(), KeyStore::Error> {
-        // Retrieving our identity should not fail.
-        let own_identity = self.own_identity().unwrap_or_default();
-        debug_assert_ne!(own_identity, &[0u8; 0]);
         backend.key_store().delete_epoch_keys(
-            // Retrieving our identity should not fail.
-            own_identity,
             self.group_id().as_slice(),
             self.context().epoch().as_u64() - 1,
+            self.own_leaf_index().u32(),
         )
     }
 
     #[cfg(test)]
     pub(crate) fn message_secrets_test_mut(&mut self) -> &mut MessageSecrets {
         self.message_secrets_store.message_secrets_mut()
+    }
+
+    pub(crate) fn own_leaf_node(&self) -> Result<&OpenMlsLeafNode, LibraryError> {
+        self.tree
+            .leaf(self.own_leaf_index())
+            .ok_or_else(|| LibraryError::custom("Tree has no own leaf."))
     }
 
     #[cfg(any(feature = "test-utils", test))]

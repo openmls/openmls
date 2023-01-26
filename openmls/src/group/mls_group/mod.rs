@@ -231,7 +231,7 @@ impl MlsGroup {
             return Err(MlsGroupStateError::UseAfterEviction);
         }
         let tree = self.group.treesync();
-        tree.own_leaf_node()
+        tree.leaf(self.own_leaf_index())
             .map(|node| node.credential())
             .ok_or_else(|| LibraryError::custom("Own leaf node missing").into())
     }
@@ -243,12 +243,12 @@ impl MlsGroup {
 
     /// Returns the leaf index of the client in the tree owning this group.
     pub fn own_leaf_index(&self) -> LeafNodeIndex {
-        self.group.treesync().own_leaf_index()
+        self.group.own_leaf_index()
     }
 
     /// Returns the leaf node of the client in the tree owning this group.
     pub fn own_leaf_node(&self) -> Option<&LeafNode> {
-        self.group.treesync().own_leaf_node().map(|l| l.leaf_node())
+        self.group.own_leaf_node().map(|l| l.leaf_node()).ok()
     }
 
     /// Returns the group ID.

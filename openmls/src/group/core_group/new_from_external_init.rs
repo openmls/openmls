@@ -50,14 +50,10 @@ impl CoreGroup {
         // Create a RatchetTree from the given nodes. We have to do this before
         // verifying the PGS, since we need to find the Credential to verify the
         // signature against.
-        let treesync = TreeSync::from_nodes_without_leaf(backend, ciphersuite, nodes).map_err(
-            |e| match e {
-                TreeSyncFromNodesError::LibraryError(e) => e.into(),
-                TreeSyncFromNodesError::PublicTreeError(e) => {
-                    ExternalCommitError::PublicTreeError(e)
-                }
-            },
-        )?;
+        let treesync = TreeSync::from_nodes(backend, ciphersuite, &nodes).map_err(|e| match e {
+            TreeSyncFromNodesError::LibraryError(e) => e.into(),
+            TreeSyncFromNodesError::PublicTreeError(e) => ExternalCommitError::PublicTreeError(e),
+        })?;
 
         let group_info: GroupInfo = {
             let group_info_signer_pk = treesync
@@ -127,18 +123,6 @@ impl CoreGroup {
             }
         };
 
-        // Prepare interim transcript hash
-        let group = CoreGroup {
-            ciphersuite,
-            group_context: group_info.group_context().clone(),
-            tree: treesync,
-            interim_transcript_hash,
-            use_ratchet_tree_extension: enable_ratchet_tree_extension,
-            mls_version: group_info.group_context().protocol_version(),
-            group_epoch_secrets,
-            message_secrets_store,
-        };
-
         let external_init_proposal = Proposal::ExternalInit(ExternalInitProposal::from(kem_output));
 
         let mut inline_proposals = vec![external_init_proposal];
@@ -150,7 +134,7 @@ impl CoreGroup {
             .ok_or(ExternalCommitError::MissingCredential)?;
         for Member {
             index, identity, ..
-        } in group.treesync().full_leave_members()
+        } in treesync.full_leave_members()
         {
             if identity == params_credential_with_key.credential.identity() {
                 let remove_proposal = Proposal::Remove(RemoveProposal { removed: index });
@@ -159,6 +143,21 @@ impl CoreGroup {
             };
         }
 
+        let own_leaf_index =
+            CoreGroup::free_leaf_index(&treesync, inline_proposals.iter().map(Some))?;
+
+        // Prepare interim transcript hash
+        let group = CoreGroup {
+            ciphersuite,
+            group_context: group_info.group_context().clone(),
+            tree: treesync,
+            interim_transcript_hash,
+            use_ratchet_tree_extension: enable_ratchet_tree_extension,
+            mls_version: group_info.group_context().protocol_version(),
+            group_epoch_secrets,
+            message_secrets_store,
+            own_leaf_index,
+        };
         let params = CreateCommitParams::builder()
             .framing_parameters(*params.framing_parameters())
             .proposal_store(params.proposal_store())

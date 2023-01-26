@@ -147,7 +147,6 @@ fn create_commit_optional_path(ciphersuite: Ciphersuite, backend: &impl OpenMlsC
 
     // Alice updates
     let alice_new_leaf_node = group_alice
-        .treesync()
         .own_leaf_node()
         .unwrap()
         .leaf_node()
@@ -394,7 +393,6 @@ fn group_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvid
 
     // === Bob updates and commits ===
     let bob_new_leaf_node = group_bob
-        .treesync()
         .own_leaf_node()
         .unwrap()
         .leaf_node()
@@ -458,7 +456,6 @@ fn group_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvid
 
     // === Alice updates and commits ===
     let alice_new_leaf_node = group_alice
-        .treesync()
         .own_leaf_node()
         .unwrap()
         .leaf_node()
@@ -518,7 +515,6 @@ fn group_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvid
 
     // === Bob updates and Alice commits ===
     let bob_new_leaf_node = group_bob
-        .treesync()
         .own_leaf_node()
         .unwrap()
         .leaf_node()
@@ -737,7 +733,6 @@ fn group_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvid
 
     // === Charlie updates and commits ===
     let charlie_new_leaf_node = group_charlie
-        .treesync()
         .own_leaf_node()
         .unwrap()
         .leaf_node()

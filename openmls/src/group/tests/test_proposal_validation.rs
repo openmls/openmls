@@ -1230,7 +1230,6 @@ fn test_valsem113_valsem114(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryp
     // We now pull bob's public key from his leaf.
     let bob_encryption_key = bob_group
         .group()
-        .treesync()
         .own_leaf_node()
         .expect("No own leaf")
         .encryption_key()
@@ -1877,7 +1876,6 @@ fn test_valsem109(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
     // Create updated leaf for Alice
     let alice_new_leaf_node = alice_group
         .group()
-        .treesync()
         .own_leaf_node()
         .unwrap()
         .leaf_node()
@@ -1956,7 +1954,6 @@ fn test_valsem110(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
     // // We begin by creating a KPB with a colliding HPKE key.
     // let bob_leaf_node = bob_group
     //     .group()
-    //     .treesync()
     //     .own_leaf_node()
     //     .expect("error getting own leaf node")
     //     .clone();

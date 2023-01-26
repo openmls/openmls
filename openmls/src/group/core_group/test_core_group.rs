@@ -201,7 +201,7 @@ fn test_update_path(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvid
     ) = test_framing::setup_alice_bob_group(ciphersuite, backend);
 
     // === Bob updates and commits ===
-    let bob_old_leaf = group_bob.treesync().own_leaf_node().unwrap();
+    let bob_old_leaf = group_bob.own_leaf_node().unwrap();
     let bob_update_leaf_node = bob_old_leaf
         .leaf_node()
         .updated(
@@ -411,7 +411,7 @@ fn test_psks(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
     .expect("Could not create new group from Welcome");
 
     // === Bob updates and commits ===
-    let bob_old_leaf = group_bob.treesync().own_leaf_node().unwrap();
+    let bob_old_leaf = group_bob.own_leaf_node().unwrap();
     let bob_update_leaf_node = bob_old_leaf
         .leaf_node()
         .updated(
