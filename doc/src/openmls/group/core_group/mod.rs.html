@@ -869,8 +869,6 @@
 <span id="869">869</span>
 <span id="870">870</span>
 <span id="871">871</span>
-<span id="872">872</span>
-<span id="873">873</span>
 </pre><pre class="rust"><code><span class="doccomment">//! ### Don&#39;t Panic!
 //!
 //! Functions in this module should never panic. However, if there is a bug in
@@ -934,6 +932,8 @@
 };
 
 <span class="kw">use </span><span class="self">self</span>::{past_secrets::MessageSecretsStore, staged_commit::StagedCommit};
+<span class="attribute">#[cfg(test)]
+</span><span class="kw">use </span><span class="kw">crate</span>::treesync::node::leaf_node::OpenMlsLeafNode;
 <span class="kw">use </span>log::{debug, trace};
 <span class="kw">use </span>openmls_traits::key_store::OpenMlsKeyStore;
 <span class="kw">use </span>openmls_traits::{crypto::OpenMlsCrypto, types::Ciphersuite};
@@ -997,6 +997,7 @@
     group_context: GroupContext,
     group_epoch_secrets: GroupEpochSecrets,
     tree: TreeSync,
+    own_leaf_index: LeafNodeIndex,
     interim_transcript_hash: Vec&lt;u8&gt;,
     <span class="comment">// Group config.
     // Set to true if the ratchet tree extension is added to the `GroupInfo`.
@@ -1170,6 +1171,7 @@
             use_ratchet_tree_extension: config.add_ratchet_tree_extension,
             mls_version: version,
             message_secrets_store,
+            own_leaf_index: LeafNodeIndex::new(<span class="number">0</span>),
         };
 
         <span class="comment">// Store the private key of the own leaf in the key store as an epoch keypair.
@@ -1315,9 +1317,7 @@
             <span class="kw">let </span>required_capabilities = required_extension.as_required_capabilities_extension()<span class="question-mark">?</span>;
             <span class="comment">// Ensure we support all the capabilities.
             </span>required_capabilities.check_support()<span class="question-mark">?</span>;
-            <span class="self">self</span>.treesync()
-                .own_leaf_node()
-                .ok_or_else(|| LibraryError::custom(<span class="string">&quot;Expected own leaf&quot;</span>))<span class="question-mark">?
+            <span class="self">self</span>.own_leaf_node()<span class="question-mark">?
                 </span>.validate_required_capabilities(required_capabilities)<span class="question-mark">?</span>;
             <span class="comment">// Ensure that all other leaf nodes support all the required
             // extensions as well.
@@ -1546,13 +1546,13 @@
 </span><span class="kw">impl </span>CoreGroup {
     <span class="doccomment">/// Get the leaf index of this client.
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>own_leaf_index(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; LeafNodeIndex {
-        <span class="self">self</span>.treesync().own_leaf_index()
+        <span class="self">self</span>.own_leaf_index
     }
 
     <span class="doccomment">/// Get the identity of the client&#39;s [`Credential`] owning this group.
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>own_identity(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>[u8]&gt; {
         <span class="self">self</span>.treesync()
-            .own_leaf_node()
+            .leaf(<span class="self">self</span>.own_leaf_index)
             .map(|node| node.credential().identity())
     }
 
@@ -1632,13 +1632,10 @@
         backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider&lt;KeyStoreProvider = KeyStore&gt;,
         keypair_references: <span class="kw-2">&amp;</span>[EncryptionKeyPair],
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(), KeyStore::Error&gt; {
-        <span class="comment">// Retrieving our identity should not fail.
-        </span><span class="kw">let </span>own_identity = <span class="self">self</span>.own_identity().unwrap_or_default();
-        <span class="macro">debug_assert_ne!</span>(own_identity, <span class="kw-2">&amp;</span>[<span class="number">0u8</span>; <span class="number">0</span>]);
         backend.key_store().store_epoch_keys(
-            own_identity,
             <span class="self">self</span>.group_id().as_slice(),
             <span class="self">self</span>.context().epoch().as_u64(),
+            <span class="self">self</span>.own_leaf_index().u32(),
             keypair_references,
         )
     }
@@ -1651,14 +1648,10 @@
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider&lt;KeyStoreProvider = KeyStore&gt;,
     ) -&gt; Vec&lt;EncryptionKeyPair&gt; {
-        <span class="comment">// Retrieving our identity should not fail.
-        </span><span class="kw">let </span>own_identity = <span class="self">self</span>.own_identity().unwrap_or_default();
-        <span class="macro">debug_assert_ne!</span>(own_identity, <span class="kw-2">&amp;</span>[<span class="number">0u8</span>; <span class="number">0</span>]);
         backend.key_store().read_epoch_keys(
-            <span class="comment">// Retrieving our identity should not fail.
-            </span>own_identity,
             <span class="self">self</span>.group_id().as_slice(),
             <span class="self">self</span>.group_context.epoch().as_u64(),
+            <span class="self">self</span>.own_leaf_index().u32(),
         )
     }
 
@@ -1670,20 +1663,23 @@
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider&lt;KeyStoreProvider = KeyStore&gt;,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(), KeyStore::Error&gt; {
-        <span class="comment">// Retrieving our identity should not fail.
-        </span><span class="kw">let </span>own_identity = <span class="self">self</span>.own_identity().unwrap_or_default();
-        <span class="macro">debug_assert_ne!</span>(own_identity, <span class="kw-2">&amp;</span>[<span class="number">0u8</span>; <span class="number">0</span>]);
         backend.key_store().delete_epoch_keys(
-            <span class="comment">// Retrieving our identity should not fail.
-            </span>own_identity,
             <span class="self">self</span>.group_id().as_slice(),
             <span class="self">self</span>.context().epoch().as_u64() - <span class="number">1</span>,
+            <span class="self">self</span>.own_leaf_index().u32(),
         )
     }
 
     <span class="attribute">#[cfg(any(feature = <span class="string">&quot;test-utils&quot;</span>, test))]
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>message_secrets_test_mut(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;mut </span>MessageSecrets {
         <span class="self">self</span>.message_secrets_store.message_secrets_mut()
+    }
+
+    <span class="attribute">#[cfg(test)]
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>own_leaf_node(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="kw-2">&amp;</span>OpenMlsLeafNode, LibraryError&gt; {
+        <span class="self">self</span>.tree
+            .leaf(<span class="self">self</span>.own_leaf_index())
+            .ok_or_else(|| LibraryError::custom(<span class="string">&quot;Tree has no own leaf.&quot;</span>))
     }
 
     <span class="attribute">#[cfg(any(feature = <span class="string">&quot;test-utils&quot;</span>, test))]

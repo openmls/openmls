@@ -399,6 +399,14 @@
 <span id="399">399</span>
 <span id="400">400</span>
 <span id="401">401</span>
+<span id="402">402</span>
+<span id="403">403</span>
+<span id="404">404</span>
+<span id="405">405</span>
+<span id="406">406</span>
+<span id="407">407</span>
+<span id="408">408</span>
+<span id="409">409</span>
 </pre><pre class="rust"><code><span class="doccomment">//! Module to encrypt and decrypt update paths for a [`TreeSyncDiff`] instance.
 //!
 //! # About
@@ -450,10 +458,11 @@
         path: <span class="kw-2">&amp;</span>[PlainUpdatePathNode],
         group_context: <span class="kw-2">&amp;</span>[u8],
         exclusion_list: <span class="kw-2">&amp;</span>HashSet&lt;<span class="kw-2">&amp;</span>LeafNodeIndex&gt;,
+        own_leaf_index: LeafNodeIndex,
     ) -&gt; Vec&lt;UpdatePathNode&gt; {
         <span class="comment">// Copath resolutions with the corresponding public keys.
         </span><span class="kw">let </span>copath_resolutions = <span class="self">self
-            </span>.filtered_copath_resolutions(<span class="self">self</span>.own_leaf_index(), exclusion_list)
+            </span>.filtered_copath_resolutions(own_leaf_index, exclusion_list)
             .into_iter()
             .map(|resolution| {
                 resolution
@@ -498,6 +507,7 @@
         ciphersuite: Ciphersuite,
         params: DecryptPathParams,
         owned_keys: <span class="kw-2">&amp;</span>[<span class="kw-2">&amp;</span>EncryptionKeyPair],
+        own_leaf_index: LeafNodeIndex,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(Vec&lt;ParentNode&gt;, Vec&lt;EncryptionKeyPair&gt;, CommitSecret), ApplyUpdatePathError&gt; {
         <span class="comment">// ValSem202: Path must be the right length
         </span><span class="kw">let </span>direct_path_length = <span class="self">self</span>.filtered_direct_path(params.sender_leaf_index).len();
@@ -513,7 +523,7 @@
         }
 
         <span class="kw">let </span>path_position = <span class="self">self
-            </span>.subtree_root_position(params.sender_leaf_index, <span class="self">self</span>.own_leaf_index())
+            </span>.subtree_root_position(params.sender_leaf_index, own_leaf_index)
             .map_err(|<span class="kw">_</span>| LibraryError::custom(<span class="string">&quot;Expected own leaf to be in the tree&quot;</span>))<span class="question-mark">?</span>;
 
         <span class="kw">let </span>update_path_node = params
@@ -524,7 +534,12 @@
             </span>.ok_or_else(|| LibraryError::custom(<span class="string">&quot;Expected to find ciphertext in update path 1&quot;</span>))<span class="question-mark">?</span>;
 
         <span class="kw">let </span>(decryption_key, resolution_position) = <span class="self">self
-            </span>.decryption_key(params.sender_leaf_index, params.exclusion_list, owned_keys)
+            </span>.decryption_key(
+                params.sender_leaf_index,
+                params.exclusion_list,
+                owned_keys,
+                own_leaf_index,
+            )
             <span class="comment">// TODO #804
             </span>.map_err(|<span class="kw">_</span>| LibraryError::custom(<span class="string">&quot;Expected sender to be in the tree&quot;</span>))<span class="question-mark">?</span>;
         <span class="kw">let </span>ciphertext = update_path_node
@@ -545,7 +560,7 @@
         .map_err(|<span class="kw">_</span>| ApplyUpdatePathError::UnableToDecrypt)<span class="question-mark">?</span>;
 
         <span class="kw">let </span>common_path =
-            <span class="self">self</span>.filtered_common_direct_path(<span class="self">self</span>.own_leaf_index(), params.sender_leaf_index);
+            <span class="self">self</span>.filtered_common_direct_path(own_leaf_index, params.sender_leaf_index);
         <span class="kw">let </span>(derived_path, _plain_update_path, keypairs, commit_secret) =
             ParentNode::derive_path(backend, ciphersuite, path_secret, common_path)<span class="question-mark">?</span>;
         <span class="comment">// We now check that the public keys in the update path and in the
@@ -678,13 +693,14 @@
         plain_path_option: <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>[PlainUpdatePathNode]&gt;,
         presharedkeys: <span class="kw-2">&amp;</span>[PreSharedKeyId],
         backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider,
+        own_leaf_index: LeafNodeIndex,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;Vec&lt;<span class="self">Self</span>&gt;, LibraryError&gt; {
         <span class="kw">let </span><span class="kw-2">mut </span>plaintext_secrets = <span class="macro">vec!</span>[];
         <span class="kw">for </span>(leaf_index, add_proposal) <span class="kw">in </span>invited_members {
             <span class="kw">let </span>key_package = add_proposal.key_package;
 
             <span class="kw">let </span>direct_path_position = diff
-                .subtree_root_position(diff.own_leaf_index(), leaf_index)
+                .subtree_root_position(own_leaf_index, leaf_index)
                 <span class="comment">// This can only fail if the nodes are outside the tree or identical
                 </span>.map_err(|<span class="kw">_</span>| LibraryError::custom(<span class="string">&quot;Unexpected error in subtree_root_position&quot;</span>))<span class="question-mark">?</span>;
 

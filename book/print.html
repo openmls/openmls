@@ -781,27 +781,27 @@ pub trait OpenMlsKeyStore: Send + Sync {
     /// The error type returned by the [`OpenMlsKeyStore`].
     type Error: std::error::Error + Debug + PartialEq;
 
-    /// Load all encryption keys associated with the given client identity (i.e.
-    /// a byte vector uniquely identifying the client), epoch and group ID from
-    /// the key store.
+    /// Load all encryption keys associated with the given group ID, group epoch
+    /// and client leaf index from the key store.
     fn read_epoch_keys&lt;V: FromKeyStoreValue&gt;(
         &amp;self,
-        identity: &amp;[u8],
         group_id: &amp;[u8],
         epoch: u64,
+        leaf_index: u32,
     ) -&gt; Vec&lt;V&gt;;
 
-    /// Store all encryption keys associated with the given client identity
-    /// (i.e.  a byte vector uniquely identifying the client), epoch and group
-    /// ID in the key store.
+    /// Store all encryption keys associated with the given group ID, group
+    /// epoch and client leaf index in the key store.
     fn store_epoch_keys&lt;V: ToKeyStoreValue&gt;(
         &amp;self,
-        identity: &amp;[u8],
         group_id: &amp;[u8],
         epoch: u64,
+        leaf_index: u32,
         encryption_keys: &amp;[V],
     ) -&gt; Result&lt;(), Self::Error&gt;;
-</code></pre>
+
+    /// Delete all encryption keys associated with the given group ID, group
+    /// epoch and client leaf index from the key store.</code></pre>
 <p><strong>NOTE:</strong> Right now, key material must be extracted from the key store.
 This will most likely change in the future.</p>
 <h3 id="openmlscryptoprovider"><a class="header" href="#openmlscryptoprovider">OpenMlsCryptoProvider</a></h3>

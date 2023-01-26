@@ -408,6 +408,9 @@
 <span id="408">408</span>
 <span id="409">409</span>
 <span id="410">410</span>
+<span id="411">411</span>
+<span id="412">412</span>
+<span id="413">413</span>
 </pre><pre class="rust"><code><span class="doccomment">//! MLS group membership
 //!
 //! This module contains membership-related operations and exposes [`RemoveOperation`].
@@ -512,7 +515,10 @@
 
     <span class="doccomment">/// Returns a reference to the own [`LeafNode`].
     </span><span class="kw">pub fn </span>own_leaf(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>LeafNode&gt; {
-        <span class="self">self</span>.group.treesync().own_leaf_node().map(|l| l.leaf_node())
+        <span class="self">self</span>.group
+            .treesync()
+            .leaf(<span class="self">self</span>.group.own_leaf_index())
+            .map(|l| l.leaf_node())
     }
 
     <span class="doccomment">/// Removes members from the group.

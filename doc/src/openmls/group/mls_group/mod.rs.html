@@ -657,7 +657,7 @@
             <span class="kw">return </span><span class="prelude-val">Err</span>(MlsGroupStateError::UseAfterEviction);
         }
         <span class="kw">let </span>tree = <span class="self">self</span>.group.treesync();
-        tree.own_leaf_node()
+        tree.leaf(<span class="self">self</span>.own_leaf_index())
             .map(|node| node.credential())
             .ok_or_else(|| LibraryError::custom(<span class="string">&quot;Own leaf node missing&quot;</span>).into())
     }
@@ -669,7 +669,7 @@
 
     <span class="doccomment">/// Returns the leaf index of the client in the tree owning this group.
     </span><span class="kw">pub fn </span>own_leaf_index(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; LeafNodeIndex {
-        <span class="self">self</span>.group.treesync().own_leaf_index()
+        <span class="self">self</span>.group.own_leaf_index()
     }
 
     <span class="doccomment">/// Returns the group ID.

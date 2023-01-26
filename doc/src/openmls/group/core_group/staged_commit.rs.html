@@ -630,6 +630,14 @@
 <span id="630">630</span>
 <span id="631">631</span>
 <span id="632">632</span>
+<span id="633">633</span>
+<span id="634">634</span>
+<span id="635">635</span>
+<span id="636">636</span>
+<span id="637">637</span>
+<span id="638">638</span>
+<span id="639">639</span>
+<span id="640">640</span>
 </pre><pre class="rust"><code><span class="kw">use </span>openmls_traits::key_store::OpenMlsKeyStore;
 
 <span class="kw">use </span><span class="kw">crate</span>::ciphersuite::signable::Verifiable;
@@ -802,7 +810,13 @@
         </span><span class="kw">let </span><span class="kw-2">mut </span>diff = <span class="self">self</span>.treesync().empty_diff();
 
         <span class="kw">let </span>apply_proposals_values = <span class="self">self
-            </span>.apply_proposals(<span class="kw-2">&amp;mut </span>diff, backend, <span class="kw-2">&amp;</span>proposal_queue, own_leaf_nodes)
+            </span>.apply_proposals(
+                <span class="kw-2">&amp;mut </span>diff,
+                backend,
+                <span class="kw-2">&amp;</span>proposal_queue,
+                own_leaf_nodes,
+                <span class="prelude-val">Some</span>(<span class="self">self</span>.own_leaf_index),
+            )
             .map_err(|<span class="kw">_</span>| StageCommitError::OwnKeyNotFound)<span class="question-mark">?</span>;
 
         <span class="comment">// Now we can actually look at the public keys as they might have changed.
@@ -934,6 +948,7 @@
                     ciphersuite,
                     decrypt_path_params,
                     <span class="kw-2">&amp;</span>decryption_keypairs,
+                    <span class="self">self</span>.own_leaf_index(),
                 )<span class="question-mark">?</span>;
 
                 <span class="comment">// Check if one of our update proposals was applied. If so, we
@@ -941,7 +956,7 @@
                 // it needs to be removed from the key store separately and in
                 // addition to the removal of the keypairs of the previous
                 // epoch.
-                </span><span class="kw">let </span>new_leaf_keypair_option = <span class="kw">if let </span><span class="prelude-val">Ok</span>(leaf) = diff.own_leaf() {
+                </span><span class="kw">let </span>new_leaf_keypair_option = <span class="kw">if let </span><span class="prelude-val">Ok</span>(leaf) = diff.leaf(<span class="self">self</span>.own_leaf_index()) {
                     own_keypairs.into_iter().find_map(|keypair| {
                         <span class="kw">if </span>leaf.encryption_key() == keypair.public_key() {
                             <span class="prelude-val">Some</span>(keypair)
@@ -1064,7 +1079,7 @@
                 serialized_provisional_group_context,
                 diff.leaf_count(),
                 <span class="comment">// The index should be the same on TreeSync and Diff.
-                </span>diff.own_leaf_index(),
+                </span><span class="self">self</span>.own_leaf_index(),
             );
 
         <span class="comment">// Make the diff a staged diff. This finalizes the diff and no more changes can be applied to it.
@@ -1132,7 +1147,8 @@
                 };
 
                 <span class="comment">// Figure out which keys we need in the new epoch.
-                </span><span class="kw">let </span>new_owned_encryption_keys = <span class="self">self</span>.tree.owned_encryption_keys();
+                </span><span class="kw">let </span>new_owned_encryption_keys =
+                    <span class="self">self</span>.tree.owned_encryption_keys(<span class="self">self</span>.own_leaf_index());
                 <span class="comment">// From the old and new keys, keep the ones that are still relevant in the new epoch.
                 </span><span class="kw">let </span>epoch_keypairs: Vec&lt;EncryptionKeyPair&gt; = old_epoch_keypairs
                     .into_iter()

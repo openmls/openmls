@@ -463,21 +463,6 @@
 <span id="463">463</span>
 <span id="464">464</span>
 <span id="465">465</span>
-<span id="466">466</span>
-<span id="467">467</span>
-<span id="468">468</span>
-<span id="469">469</span>
-<span id="470">470</span>
-<span id="471">471</span>
-<span id="472">472</span>
-<span id="473">473</span>
-<span id="474">474</span>
-<span id="475">475</span>
-<span id="476">476</span>
-<span id="477">477</span>
-<span id="478">478</span>
-<span id="479">479</span>
-<span id="480">480</span>
 </pre><pre class="rust"><code><span class="kw">use </span>openmls_traits::OpenMlsCryptoProvider;
 
 <span class="kw">use crate</span>::{
@@ -518,28 +503,9 @@
     ) -&gt; <span class="prelude-ty">Result</span>&lt;CreateCommitResult, CreateCommitError&lt;KeyStore::Error&gt;&gt; {
         <span class="kw">let </span>ciphersuite = <span class="self">self</span>.ciphersuite();
 
-        <span class="comment">// If this is an external commit, we don&#39;t have an `own_leaf_index` set
-        // yet. Instead, we use the index in which we will be put in course of
-        // this commit. Our index is determined as if we&#39;d be added through an
-        // Add proposal. However, since this might be the &quot;resync&quot; flavour of an
-        // external commit, it could be that we&#39;re first removing our past self
-        // from the group, in which case, we can&#39;t just take the next free leaf
-        // in the existing tree. Note, that we have to determine the index here
-        // (before we actually add our own leaf), because it&#39;s needed in the
-        // process of proposal filtering and application.
-        </span><span class="kw">let </span>(sender, own_leaf_index) = <span class="kw">match </span>params.commit_type() {
-            CommitType::External =&gt; {
-                <span class="comment">// If this is a &quot;resync&quot; external commit, it should contain a
-                // `remove` proposal with the index of our previous self in the
-                // group.
-                </span><span class="kw">let </span>leaf_index =
-                    <span class="self">self</span>.free_leaf_index(params.inline_proposals().iter().map(<span class="prelude-val">Some</span>))<span class="question-mark">?</span>;
-                (Sender::NewMemberCommit, leaf_index)
-            }
-            CommitType::Member =&gt; (
-                Sender::build_member(<span class="self">self</span>.own_leaf_index()),
-                <span class="self">self</span>.own_leaf_index(),
-            ),
+        <span class="kw">let </span>sender = <span class="kw">match </span>params.commit_type() {
+            CommitType::External =&gt; Sender::NewMemberCommit,
+            CommitType::Member =&gt; Sender::build_member(<span class="self">self</span>.own_leaf_index()),
         };
 
         <span class="comment">// Filter proposals
@@ -549,7 +515,7 @@
             sender.clone(),
             params.proposal_store(),
             params.inline_proposals(),
-            own_leaf_index,
+            <span class="self">self</span>.own_leaf_index(),
         )
         .map_err(|e| <span class="kw">match </span>e {
             <span class="kw">crate</span>::group::errors::ProposalQueueError::LibraryError(e) =&gt; e.into(),
@@ -572,11 +538,6 @@
 
         <span class="comment">// Make a copy of the current tree to apply proposals safely
         </span><span class="kw">let </span><span class="kw-2">mut </span>diff: TreeSyncDiff = <span class="self">self</span>.treesync().empty_diff();
-
-        <span class="comment">// If this is an external commit we have to set our own leaf index manually
-        </span><span class="kw">if </span>params.commit_type() == CommitType::External {
-            diff.set_own_index(own_leaf_index);
-        }
 
         <span class="comment">// Validate the proposals by doing the following checks:
 
@@ -601,7 +562,13 @@
 
         <span class="comment">// Apply proposals to tree
         </span><span class="kw">let </span>apply_proposals_values = <span class="self">self
-            </span>.apply_proposals(<span class="kw-2">&amp;mut </span>diff, backend, <span class="kw-2">&amp;</span>proposal_queue, <span class="kw-2">&amp;</span>[])
+            </span>.apply_proposals(
+                <span class="kw-2">&amp;mut </span>diff,
+                backend,
+                <span class="kw-2">&amp;</span>proposal_queue,
+                <span class="kw-2">&amp;</span>[],
+                <span class="prelude-val">Some</span>(<span class="self">self</span>.own_leaf_index()),
+            )
             .map_err(|e| <span class="kw">match </span>e {
                 <span class="kw">crate</span>::group::errors::ApplyProposalsError::LibraryError(e) =&gt; e.into(),
                 <span class="kw">crate</span>::group::errors::ApplyProposalsError::MissingLeafNode =&gt; {
@@ -633,7 +600,7 @@
             )<span class="question-mark">?</span>;
 
             <span class="kw">let </span><span class="kw-2">mut </span>leaf_node: OpenMlsLeafNode = key_package.into();
-            leaf_node.set_leaf_index(own_leaf_index);
+            leaf_node.set_leaf_index(<span class="self">self</span>.own_leaf_index());
             diff.add_leaf(leaf_node)
                 .map_err(|<span class="kw">_</span>| LibraryError::custom(<span class="string">&quot;Tree full: cannot add more members&quot;</span>))<span class="question-mark">?</span>;
             <span class="prelude-val">Some</span>(encryption_keypair)
@@ -658,7 +625,7 @@
                 } <span class="kw">else </span>{
                     <span class="comment">// If we&#39;re already in the tree, we rekey our existing leaf.
                     </span><span class="kw">let </span>own_diff_leaf = diff
-                        .own_leaf_mut()
+                        .leaf_mut(<span class="self">self</span>.own_leaf_index())
                         .map_err(|<span class="kw">_</span>| LibraryError::custom(<span class="string">&quot;Unable to get own leaf from diff&quot;</span>))<span class="question-mark">?</span>;
                     <span class="kw">let </span>encryption_keypair = own_diff_leaf.rekey(
                         <span class="self">self</span>.group_id(),
@@ -677,6 +644,7 @@
                     ciphersuite,
                     <span class="self">self</span>.group_id().clone(),
                     params.credential_bundle(),
+                    <span class="self">self</span>.own_leaf_index()
                 )<span class="question-mark">?</span>;
 
                 new_keypairs.append(<span class="kw-2">&amp;mut </span>new_parent_keypairs);
@@ -688,8 +656,9 @@
                     <span class="kw-2">&amp;</span>plain_path,
                     <span class="kw-2">&amp;</span>serialized_group_context,
                     <span class="kw-2">&amp;</span>apply_proposals_values.exclusion_list(),
+                    <span class="self">self</span>.own_leaf_index()
                 );
-                <span class="kw">let </span>leaf_node = diff.own_leaf().map_err(|<span class="kw">_</span>| LibraryError::custom(<span class="string">&quot;Couldn&#39;t find own leaf&quot;</span>))<span class="question-mark">?</span>.clone();
+                <span class="kw">let </span>leaf_node = diff.leaf(<span class="self">self</span>.own_leaf_index()).map_err(|<span class="kw">_</span>| LibraryError::custom(<span class="string">&quot;Couldn&#39;t find own leaf&quot;</span>))<span class="question-mark">?</span>.clone();
                 <span class="kw">let </span>encrypted_path = UpdatePath::new(leaf_node.into(),  encrypted_path);
                 PathProcessingResult {
                     commit_secret: <span class="prelude-val">Some</span>(commit_secret),
@@ -773,6 +742,7 @@
             path_processing_result.plain_path.as_deref(),
             <span class="kw-2">&amp;</span>apply_proposals_values.presharedkeys,
             backend,
+            <span class="self">self</span>.own_leaf_index(),
         )<span class="question-mark">?</span>;
 
         <span class="comment">// Prepare the PskSecret
@@ -838,7 +808,7 @@
                     group_context,
                     other_extensions,
                     confirmation_tag.clone(),
-                    diff.own_leaf_index(),
+                    <span class="self">self</span>.own_leaf_index(),
                 )
             };
             <span class="comment">// Sign to-be-signed group info.
@@ -894,7 +864,7 @@
             provisional_epoch_secrets.split_secrets(
                 serialized_provisional_group_context,
                 diff.leaf_count(),
-                own_leaf_index,
+                <span class="self">self</span>.own_leaf_index(),
             );
 
         <span class="kw">let </span>staged_commit_state = MemberStagedCommitState::new(
@@ -929,11 +899,11 @@
     ///
     /// The proposals must be validated before calling this function.
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>free_leaf_index&lt;<span class="lifetime">&#39;a</span>&gt;(
-        <span class="kw-2">&amp;</span><span class="self">self</span>,
+        treesync: <span class="kw-2">&amp;</span>TreeSync,
         <span class="kw-2">mut </span>inline_proposals: <span class="kw">impl </span>Iterator&lt;Item = <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>Proposal&gt;&gt;,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;LeafNodeIndex, LibraryError&gt; {
         <span class="comment">// Leftmost free leaf in the tree
-        </span><span class="kw">let </span>free_leaf_index = <span class="self">self</span>.treesync().free_leaf_index();
+        </span><span class="kw">let </span>free_leaf_index = treesync.free_leaf_index();
         <span class="comment">// Returns the first remove proposal (if there is one)
         </span><span class="kw">let </span>remove_proposal_option = inline_proposals
             .find(|proposal| <span class="kw">match </span>proposal {

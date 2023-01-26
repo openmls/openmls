@@ -176,7 +176,6 @@
 <span id="176">176</span>
 <span id="177">177</span>
 <span id="178">178</span>
-<span id="179">179</span>
 </pre><pre class="rust"><code><span class="kw">use crate</span>::{
     binary_tree::array_representation::LeafNodeIndex,
     ciphersuite::signable::Verifiable,
@@ -228,14 +227,10 @@
         <span class="comment">// Create a RatchetTree from the given nodes. We have to do this before
         // verifying the PGS, since we need to find the Credential to verify the
         // signature against.
-        </span><span class="kw">let </span>treesync = TreeSync::from_nodes_without_leaf(backend, ciphersuite, nodes).map_err(
-            |e| <span class="kw">match </span>e {
-                TreeSyncFromNodesError::LibraryError(e) =&gt; e.into(),
-                TreeSyncFromNodesError::PublicTreeError(e) =&gt; {
-                    ExternalCommitError::PublicTreeError(e)
-                }
-            },
-        )<span class="question-mark">?</span>;
+        </span><span class="kw">let </span>treesync = TreeSync::from_nodes(backend, ciphersuite, <span class="kw-2">&amp;</span>nodes).map_err(|e| <span class="kw">match </span>e {
+            TreeSyncFromNodesError::LibraryError(e) =&gt; e.into(),
+            TreeSyncFromNodesError::PublicTreeError(e) =&gt; ExternalCommitError::PublicTreeError(e),
+        })<span class="question-mark">?</span>;
 
         <span class="kw">let </span>group_info: GroupInfo = {
             <span class="kw">let </span>group_info_signer_leaf = treesync
@@ -305,6 +300,26 @@
             }
         };
 
+        <span class="kw">let </span>external_init_proposal = Proposal::ExternalInit(ExternalInitProposal::from(kem_output));
+
+        <span class="kw">let </span><span class="kw-2">mut </span>inline_proposals = <span class="macro">vec!</span>[external_init_proposal];
+
+        <span class="comment">// If there is a group member in the group with the same identity as us,
+        // commit a remove proposal.
+        </span><span class="kw">for </span>Member {
+            index, identity, ..
+        } <span class="kw">in </span>treesync.full_leave_members()
+        {
+            <span class="kw">if </span>identity == params.credential_bundle().credential().identity() {
+                <span class="kw">let </span>remove_proposal = Proposal::Remove(RemoveProposal { removed: index });
+                inline_proposals.push(remove_proposal);
+                <span class="kw">break</span>;
+            };
+        }
+
+        <span class="kw">let </span>own_leaf_index =
+            CoreGroup::free_leaf_index(<span class="kw-2">&amp;</span>treesync, inline_proposals.iter().map(<span class="prelude-val">Some</span>))<span class="question-mark">?</span>;
+
         <span class="comment">// Prepare interim transcript hash
         </span><span class="kw">let </span>group = CoreGroup {
             ciphersuite,
@@ -315,25 +330,8 @@
             mls_version: group_info.group_context().protocol_version(),
             group_epoch_secrets,
             message_secrets_store,
+            own_leaf_index,
         };
-
-        <span class="kw">let </span>external_init_proposal = Proposal::ExternalInit(ExternalInitProposal::from(kem_output));
-
-        <span class="kw">let </span><span class="kw-2">mut </span>inline_proposals = <span class="macro">vec!</span>[external_init_proposal];
-
-        <span class="comment">// If there is a group member in the group with the same identity as us,
-        // commit a remove proposal.
-        </span><span class="kw">for </span>Member {
-            index, identity, ..
-        } <span class="kw">in </span>group.treesync().full_leave_members()
-        {
-            <span class="kw">if </span>identity == params.credential_bundle().credential().identity() {
-                <span class="kw">let </span>remove_proposal = Proposal::Remove(RemoveProposal { removed: index });
-                inline_proposals.push(remove_proposal);
-                <span class="kw">break</span>;
-            };
-        }
-
         <span class="kw">let </span>params = CreateCommitParams::builder()
             .framing_parameters(<span class="kw-2">*</span>params.framing_parameters())
             .credential_bundle(params.credential_bundle())

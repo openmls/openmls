@@ -272,6 +272,12 @@
 <span id="272">272</span>
 <span id="273">273</span>
 <span id="274">274</span>
+<span id="275">275</span>
+<span id="276">276</span>
+<span id="277">277</span>
+<span id="278">278</span>
+<span id="279">279</span>
+<span id="280">280</span>
 </pre><pre class="rust"><code><span class="kw">use </span>log::debug;
 <span class="kw">use </span>openmls_traits::{crypto::OpenMlsCrypto, key_store::OpenMlsKeyStore};
 <span class="kw">use </span>tls_codec::Deserialize;
@@ -408,19 +414,23 @@
                 },
             };
 
-        <span class="kw">let </span>tree = TreeSync::from_nodes(
-            backend,
-            ciphersuite,
-            <span class="kw-2">&amp;</span>nodes,
-            key_package_bundle
-                .key_package()
-                .leaf_node()
-                .encryption_key(),
-        )
-        .map_err(|e| <span class="kw">match </span>e {
+        <span class="kw">let </span>tree = TreeSync::from_nodes(backend, ciphersuite, <span class="kw-2">&amp;</span>nodes).map_err(|e| <span class="kw">match </span>e {
             TreeSyncFromNodesError::LibraryError(e) =&gt; e.into(),
             TreeSyncFromNodesError::PublicTreeError(e) =&gt; WelcomeError::PublicTreeError(e),
         })<span class="question-mark">?</span>;
+
+        <span class="comment">// Find our own leaf in the tree.
+        </span><span class="kw">let </span>own_leaf_index = tree
+            .find_leaf(
+                key_package_bundle
+                    .key_package()
+                    .leaf_node()
+                    .credential()
+                    .signature_key(),
+            )
+            .ok_or(WelcomeError::PublicTreeError(
+                PublicTreeError::MalformedTree,
+            ))<span class="question-mark">?</span>;
 
         <span class="kw">let </span>diff = tree.empty_diff();
 
@@ -433,6 +443,7 @@
                     ciphersuite,
                     path_secret,
                     verifiable_group_info.signer(),
+                    own_leaf_index,
                 )
                 .map_err(|e| <span class="kw">match </span>e {
                     TreeSyncSetPathError::LibraryError(e) =&gt; e.into(),
@@ -490,7 +501,7 @@
         <span class="kw">let </span>(group_epoch_secrets, message_secrets) = epoch_secrets.split_secrets(
             serialized_group_context,
             tree.leaf_count(),
-            tree.own_leaf_index(),
+            own_leaf_index,
         );
 
         <span class="kw">let </span>confirmation_tag = message_secrets
@@ -523,6 +534,7 @@
                 use_ratchet_tree_extension: enable_ratchet_tree_extension,
                 mls_version,
                 message_secrets_store,
+                own_leaf_index,
             };
             group
                 .store_epoch_keypairs(backend, group_keypairs.as_slice())
