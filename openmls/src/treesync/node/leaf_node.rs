@@ -1010,11 +1010,7 @@ impl OpenMlsLeafNode {
 
     /// Replace the public key in the leaf node and re-sign.
     #[cfg(any(feature = "test-utils", test))]
-    pub fn set_public_key(
-        &mut self,
-        public_key: HpkePublicKey,
-        signer: &(impl Signer + ?Sized),
-    ) {
+    pub fn set_public_key(&mut self, public_key: HpkePublicKey, signer: &(impl Signer + ?Sized)) {
         let mut tbs = LeafNodeTbs::from(self.leaf_node.clone(), TreeInfoTbs::KeyPackage);
         tbs.payload.encryption_key = public_key.into();
         self.leaf_node = tbs.sign(signer).unwrap();
