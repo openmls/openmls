@@ -7,6 +7,10 @@ use tls_codec::{TlsDeserialize, TlsSerialize, TlsSize};
 /// The value is in seconds and amounts to 3 * 28 Days, i.e. about 3 months.
 const DEFAULT_KEY_PACKAGE_LIFETIME_SECONDS: u64 = 60 * 60 * 24 * 28 * 3;
 
+/// The maximum total lifetime range that is acceptable for a leaf node.
+/// The value is in seconds and amounts to 3 * 28 Days, i.e., about 3 months.
+const DEFAULT_MAX_LEAF_NODE_LIFETIME_RANGE_SECONDS: u64 = 60 * 60 * 24 * 28 * 3;
+
 /// This value is used as the default amount of time (in seconds) the lifetime
 /// of a `KeyPackage` is extended into the past to allow for skewed clocks. The
 /// value is in seconds and amounts to 1h.
@@ -57,11 +61,24 @@ impl Lifetime {
 
     /// Returns true if this lifetime is valid.
     pub(crate) fn is_valid(&self) -> bool {
-        let now = SystemTime::now()
+        match SystemTime::now()
             .duration_since(UNIX_EPOCH)
-            .expect("SystemTime before UNIX EPOCH!")
-            .as_secs();
-        self.not_before < now && now < self.not_after
+            .map(|duration| duration.as_secs())
+        {
+            Ok(elapsed) => self.not_before < elapsed && elapsed < self.not_after,
+            Err(_) => {
+                log::error!("SystemTime before UNIX EPOCH.");
+                false
+            }
+        }
+    }
+
+    /// ValSem(openmls/annotations#32):
+    /// Applications MUST define a maximum total lifetime that is acceptable for a LeafNode,
+    /// and reject any LeafNode where the total lifetime is longer than this duration.
+    pub fn has_acceptable_range(&self) -> bool {
+        self.not_after.saturating_sub(self.not_before)
+            <= DEFAULT_MAX_LEAF_NODE_LIFETIME_RANGE_SECONDS
     }
 }
 
