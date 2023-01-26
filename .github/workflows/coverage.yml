@@ -2,7 +2,6 @@ name: test coverage
 
 on:
   - push
-  - pull_request_target
 
 jobs:
   check:
@@ -14,19 +13,27 @@ jobs:
         with:
           submodules: true
 
-      - name: Install stable toolchain
+      - name: Install nightly toolchain
         uses: actions-rs/toolchain@v1
         with:
-          toolchain: stable
+          toolchain: nightly
+          override: true
 
-      - name: Clean
-        run: cargo clean
-
-      - name: Run cargo-tarpaulin
-        uses: actions-rs/tarpaulin@v0.1
+      - name: Run profiling tests
+        uses: actions-rs/cargo@v1
         with:
-          timeout: "500"
-          args: "--force-clean"
+          command: test
+          args: --no-fail-fast
+        env:
+          CARGO_INCREMENTAL: '0'
+          RUSTFLAGS: '-Zprofile -Ccodegen-units=1 -Cinline-threshold=0 -Clink-dead-code -Coverflow-checks=off -Cpanic=abort -Zpanic_abort_tests'
+          RUSTDOCFLAGS: '-Zprofile -Ccodegen-units=1 -Cinline-threshold=0 -Clink-dead-code -Coverflow-checks=off -Cpanic=abort -Zpanic_abort_tests'
+
+      - name: Run grcov
+        id: coverage
+        uses: actions-rs/grcov@v0.1
 
       - name: Upload to codecov.io
         uses: codecov/codecov-action@v2
+        with:
+          files: ${{ steps.coverage.outputs.report }}
