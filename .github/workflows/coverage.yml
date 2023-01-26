@@ -18,15 +18,13 @@ jobs:
         uses: actions-rs/toolchain@v1
         with:
           toolchain: stable
-
-      - name: Clean
-        run: cargo clean
+          override: true
 
       - name: Run cargo-tarpaulin
         uses: actions-rs/tarpaulin@v0.1
         with:
-          timeout: "500"
-          args: "--force-clean"
+          version: "0.15.0"
+          args: "-- --test-threads 1"
 
       - name: Upload to codecov.io
         uses: codecov/codecov-action@v2
