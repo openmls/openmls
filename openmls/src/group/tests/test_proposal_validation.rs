@@ -1,7 +1,7 @@
 //! This module tests the validation of proposals as defined in
 //! https://openmls.tech/book/message_validation.html#semantic-validation-of-proposals-covered-by-a-commit
 
-use openmls_rust_crypto::{MemoryKeyStore, OpenMlsRustCrypto};
+use openmls_rust_crypto::OpenMlsRustCrypto;
 use openmls_traits::{
     key_store::OpenMlsKeyStore, signatures::Signer, types::Ciphersuite, OpenMlsCryptoProvider,
 };
@@ -1150,11 +1150,8 @@ fn test_valsem113_valsem114(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryp
                 // Create a new key package for bob using the encryption key as init key.
                 bob_key_package = bob_key_package
                     .clone()
-                    .into_with_init_key::<MemoryKeyStore>(
-                        CryptoConfig {
-                            ciphersuite,
-                            version: ProtocolVersion::default(),
-                        },
+                    .into_with_init_key(
+                        CryptoConfig::with_default_version(ciphersuite),
                         &bob_credential_bundle.signer,
                         bob_key_package
                             .leaf_node()

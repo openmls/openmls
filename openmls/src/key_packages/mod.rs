@@ -521,12 +521,12 @@ impl KeyPackage {
         Ok(key_package)
     }
 
-    pub fn into_with_init_key<KeyStore: OpenMlsKeyStore>(
+    pub fn into_with_init_key(
         self,
         config: CryptoConfig,
         signer: &(impl Signer + ?Sized),
         init_key: Vec<u8>,
-    ) -> Result<Self, KeyPackageNewError<KeyStore::Error>> {
+    ) -> Result<Self, SignatureError> {
         let key_package = KeyPackageTBS {
             protocol_version: config.version,
             ciphersuite: config.ciphersuite,
