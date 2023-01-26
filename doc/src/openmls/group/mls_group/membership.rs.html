@@ -416,8 +416,8 @@
 <span class="kw">use </span>tls_codec::Serialize;
 
 <span class="kw">use crate</span>::{
-    binary_tree::array_representation::LeafNodeIndex, messages::group_info::GroupInfo,
-    treesync::LeafNode,
+    binary_tree::array_representation::LeafNodeIndex, group::errors::CreateAddProposalError,
+    messages::group_info::GroupInfo, treesync::LeafNode,
 };
 
 <span class="kw">use super</span>::{
@@ -625,9 +625,9 @@
                 backend,
             )
             .map_err(|e| <span class="kw">match </span>e {
-                <span class="kw">crate</span>::group::errors::CreateAddProposalError::LibraryError(e) =&gt; e.into(),
-                <span class="kw">crate</span>::group::errors::CreateAddProposalError::UnsupportedExtensions =&gt; {
-                    ProposeAddMemberError::UnsupportedExtensions
+                CreateAddProposalError::LibraryError(e) =&gt; e.into(),
+                CreateAddProposalError::LeafNodeValidation(error) =&gt; {
+                    ProposeAddMemberError::LeafNodeValidation(error)
                 }
             })<span class="question-mark">?</span>;
 

@@ -497,6 +497,12 @@
 <span id="497">497</span>
 <span id="498">498</span>
 <span id="499">499</span>
+<span id="500">500</span>
+<span id="501">501</span>
+<span id="502">502</span>
+<span id="503">503</span>
+<span id="504">504</span>
+<span id="505">505</span>
 </pre><pre class="rust"><code><span class="doccomment">//! # MLS group errors
 //!
 //! This module contains errors that originate at lower levels and are partially re-exported in errors thrown by functions of the `MlsGroup` API.
@@ -579,6 +585,9 @@
     <span class="doccomment">/// This error indicates the public tree is invalid. See [`PublicTreeError`] for more details.
     </span><span class="attribute">#[error(transparent)]
     </span>PublicTreeError(<span class="attribute">#[from] </span>PublicTreeError),
+    <span class="doccomment">/// This error indicates the leaf node is invalid. See [`LeafNodeValidationError`] for more details.
+    </span><span class="attribute">#[error(transparent)]
+    </span>LeafNodeValidation(<span class="attribute">#[from] </span>LeafNodeValidationError),
 }
 
 <span class="doccomment">/// External Commit error
@@ -870,9 +879,9 @@
     <span class="doccomment">/// See [`LibraryError`] for more details.
     </span><span class="attribute">#[error(transparent)]
     </span>LibraryError(<span class="attribute">#[from] </span>LibraryError),
-    <span class="doccomment">/// The KeyPackage does not support all required extensions.
-    </span><span class="attribute">#[error(<span class="string">&quot;The KeyPackage does not support all required extensions.&quot;</span>)]
-    </span>UnsupportedExtensions,
+    <span class="doccomment">/// See [`LeafNodeValidationError`] for more details.
+    </span><span class="attribute">#[error(transparent)]
+    </span>LeafNodeValidation(<span class="attribute">#[from] </span>LeafNodeValidationError),
 }
 
 <span class="doccomment">/// Exporter error
@@ -984,6 +993,9 @@
     <span class="doccomment">/// See [`ExtensionError`] for more details.
     </span><span class="attribute">#[error(transparent)]
     </span>Extension(<span class="attribute">#[from] </span>ExtensionError),
+    <span class="doccomment">/// See [`LeafNodeValidationError`] for more details.
+    </span><span class="attribute">#[error(transparent)]
+    </span>LeafNodeValidation(<span class="attribute">#[from] </span>LeafNodeValidationError),
 }
 
 <span class="doccomment">/// Error merging a commit.

@@ -97,6 +97,23 @@
 <span id="97">97</span>
 <span id="98">98</span>
 <span id="99">99</span>
+<span id="100">100</span>
+<span id="101">101</span>
+<span id="102">102</span>
+<span id="103">103</span>
+<span id="104">104</span>
+<span id="105">105</span>
+<span id="106">106</span>
+<span id="107">107</span>
+<span id="108">108</span>
+<span id="109">109</span>
+<span id="110">110</span>
+<span id="111">111</span>
+<span id="112">112</span>
+<span id="113">113</span>
+<span id="114">114</span>
+<span id="115">115</span>
+<span id="116">116</span>
 </pre><pre class="rust"><code><span class="kw">use </span>std::time::{SystemTime, UNIX_EPOCH};
 
 <span class="kw">use </span>serde::{Deserialize, Serialize};
@@ -105,6 +122,10 @@
 <span class="doccomment">/// This value is used as the default lifetime if no default  lifetime is configured.
 /// The value is in seconds and amounts to 3 * 28 Days, i.e. about 3 months.
 </span><span class="kw">const </span>DEFAULT_KEY_PACKAGE_LIFETIME_SECONDS: u64 = <span class="number">60 </span>* <span class="number">60 </span>* <span class="number">24 </span>* <span class="number">28 </span>* <span class="number">3</span>;
+
+<span class="doccomment">/// The maximum total lifetime range that is acceptable for a leaf node.
+/// The value is in seconds and amounts to 3 * 28 Days, i.e., about 3 months.
+</span><span class="kw">const </span>DEFAULT_MAX_LEAF_NODE_LIFETIME_RANGE_SECONDS: u64 = <span class="number">60 </span>* <span class="number">60 </span>* <span class="number">24 </span>* <span class="number">28 </span>* <span class="number">3</span>;
 
 <span class="doccomment">/// This value is used as the default amount of time (in seconds) the lifetime
 /// of a `KeyPackage` is extended into the past to allow for skewed clocks. The
@@ -156,11 +177,24 @@
 
     <span class="doccomment">/// Returns true if this lifetime is valid.
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>is_valid(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; bool {
-        <span class="kw">let </span>now = SystemTime::now()
+        <span class="kw">match </span>SystemTime::now()
             .duration_since(UNIX_EPOCH)
-            .expect(<span class="string">&quot;SystemTime before UNIX EPOCH!&quot;</span>)
-            .as_secs();
-        <span class="self">self</span>.not_before &lt; now &amp;&amp; now &lt; <span class="self">self</span>.not_after
+            .map(|duration| duration.as_secs())
+        {
+            <span class="prelude-val">Ok</span>(elapsed) =&gt; <span class="self">self</span>.not_before &lt; elapsed &amp;&amp; elapsed &lt; <span class="self">self</span>.not_after,
+            <span class="prelude-val">Err</span>(<span class="kw">_</span>) =&gt; {
+                <span class="macro">log::error!</span>(<span class="string">&quot;SystemTime before UNIX EPOCH.&quot;</span>);
+                <span class="bool-val">false
+            </span>}
+        }
+    }
+
+    <span class="doccomment">/// ValSem(openmls/annotations#32):
+    /// Applications MUST define a maximum total lifetime that is acceptable for a LeafNode,
+    /// and reject any LeafNode where the total lifetime is longer than this duration.
+    </span><span class="kw">pub fn </span>has_acceptable_range(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; bool {
+        <span class="self">self</span>.not_after.saturating_sub(<span class="self">self</span>.not_before)
+            &lt;= DEFAULT_MAX_LEAF_NODE_LIFETIME_RANGE_SECONDS
     }
 }
 

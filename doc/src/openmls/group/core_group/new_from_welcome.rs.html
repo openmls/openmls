@@ -272,7 +272,6 @@
 <span id="272">272</span>
 <span id="273">273</span>
 <span id="274">274</span>
-<span id="275">275</span>
 </pre><pre class="rust"><code><span class="kw">use </span>log::debug;
 <span class="kw">use </span>openmls_traits::{crypto::OpenMlsCrypto, key_store::OpenMlsKeyStore};
 <span class="kw">use </span>tls_codec::Deserialize;
@@ -389,9 +388,8 @@
             </span>key_package_bundle
                 .key_package()
                 .leaf_node()
-                .validate_required_capabilities(required_capabilities)
-                .map_err(|<span class="kw">_</span>| WelcomeError::UnsupportedCapability)<span class="question-mark">?
-        </span>}
+                .validate_required_capabilities(required_capabilities)<span class="question-mark">?</span>;
+        }
 
         <span class="kw">let </span>path_secret_option = group_secrets.path_secret;
 

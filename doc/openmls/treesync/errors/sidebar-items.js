@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"enum":[["ApplyUpdatePathError","Apply update path error"],["PublicTreeError","Public tree error"]]};
+window.SIDEBAR_ITEMS = {"enum":[["ApplyUpdatePathError","Apply update path error"],["LeafNodeValidationError","Errors that can happen during leaf node validation."],["LifetimeError","Errors that can happen during lifetime validation."],["PublicTreeError","Public tree error"]]};

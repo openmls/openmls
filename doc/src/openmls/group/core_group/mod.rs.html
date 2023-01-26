@@ -871,7 +871,6 @@
 <span id="871">871</span>
 <span id="872">872</span>
 <span id="873">873</span>
-<span id="874">874</span>
 </pre><pre class="rust"><code><span class="doccomment">//! ### Don&#39;t Panic!
 //!
 //! Functions in this module should never panic. However, if there is a bug in
@@ -1205,8 +1204,7 @@
     ) -&gt; <span class="prelude-ty">Result</span>&lt;AuthenticatedContent, CreateAddProposalError&gt; {
         joiner_key_package
             .leaf_node()
-            .validate_required_capabilities(<span class="self">self</span>.required_capabilities())
-            .map_err(|<span class="kw">_</span>| CreateAddProposalError::UnsupportedExtensions)<span class="question-mark">?</span>;
+            .validate_required_capabilities(<span class="self">self</span>.required_capabilities())<span class="question-mark">?</span>;
         <span class="kw">let </span>add_proposal = AddProposal {
             key_package: joiner_key_package,
         };

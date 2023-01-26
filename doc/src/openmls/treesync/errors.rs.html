@@ -182,6 +182,57 @@
 <span id="182">182</span>
 <span id="183">183</span>
 <span id="184">184</span>
+<span id="185">185</span>
+<span id="186">186</span>
+<span id="187">187</span>
+<span id="188">188</span>
+<span id="189">189</span>
+<span id="190">190</span>
+<span id="191">191</span>
+<span id="192">192</span>
+<span id="193">193</span>
+<span id="194">194</span>
+<span id="195">195</span>
+<span id="196">196</span>
+<span id="197">197</span>
+<span id="198">198</span>
+<span id="199">199</span>
+<span id="200">200</span>
+<span id="201">201</span>
+<span id="202">202</span>
+<span id="203">203</span>
+<span id="204">204</span>
+<span id="205">205</span>
+<span id="206">206</span>
+<span id="207">207</span>
+<span id="208">208</span>
+<span id="209">209</span>
+<span id="210">210</span>
+<span id="211">211</span>
+<span id="212">212</span>
+<span id="213">213</span>
+<span id="214">214</span>
+<span id="215">215</span>
+<span id="216">216</span>
+<span id="217">217</span>
+<span id="218">218</span>
+<span id="219">219</span>
+<span id="220">220</span>
+<span id="221">221</span>
+<span id="222">222</span>
+<span id="223">223</span>
+<span id="224">224</span>
+<span id="225">225</span>
+<span id="226">226</span>
+<span id="227">227</span>
+<span id="228">228</span>
+<span id="229">229</span>
+<span id="230">230</span>
+<span id="231">231</span>
+<span id="232">232</span>
+<span id="233">233</span>
+<span id="234">234</span>
+<span id="235">235</span>
 </pre><pre class="rust"><code><span class="doccomment">//! TreeSync errors
 //!
 //! This module exposes [`ApplyUpdatePathError`] and [`PublicTreeError`].
@@ -365,6 +416,57 @@
     <span class="doccomment">/// See [`PathSecretError`] for more details.
     </span><span class="attribute">#[error(transparent)]
     </span>PathSecretError(<span class="attribute">#[from] </span>PathSecretError),
+}
+
+<span class="doccomment">/// Errors that can happen during leaf node validation.
+</span><span class="attribute">#[derive(Clone, Debug, Error, Eq, PartialEq)]
+</span><span class="kw">pub enum </span>LeafNodeValidationError {
+    <span class="doccomment">/// Lifetime is not acceptable.
+    </span><span class="attribute">#[error(<span class="string">&quot;Lifetime is not acceptable.&quot;</span>)]
+    </span>Lifetime(LifetimeError),
+    <span class="doccomment">/// Extensions are not acceptable.
+    </span><span class="attribute">#[error(<span class="string">&quot;Extensions are not acceptable.&quot;</span>)]
+    </span>UnsupportedExtensions,
+    <span class="doccomment">/// Proposals are not acceptable.
+    </span><span class="attribute">#[error(<span class="string">&quot;Proposals are not acceptable.&quot;</span>)]
+    </span>UnsupportedProposals,
+    <span class="doccomment">/// Credentials are not acceptable.
+    </span><span class="attribute">#[error(<span class="string">&quot;Credentials are not acceptable.&quot;</span>)]
+    </span>UnsupportedCredentials,
+    <span class="doccomment">/// The leaf node&#39;s credential type is not listed in the leaf node&#39;s capabilities.&quot;
+    </span><span class="attribute">#[error(<span class="string">&quot;The leaf node&#39;s credential type is not listed in the leaf node&#39;s capabilities.&quot;</span>)]
+    </span>CredentialNotInCapabilities,
+    <span class="doccomment">/// The leaf node&#39;s extension types are not (all) listed in the leaf node&#39;s capabilities.
+    </span><span class="attribute">#[error(
+        <span class="string">&quot;The leaf node&#39;s extension types are not (all) listed in the leaf node&#39;s capabilities.&quot;
+    </span>)]
+    </span>ExtensionsNotInCapabilities,
+    <span class="doccomment">/// The leaf node&#39;s signature key is already used in the group.
+    </span><span class="attribute">#[error(<span class="string">&quot;The leaf node&#39;s signature key is already used in the group.&quot;</span>)]
+    </span>SignatureKeyAlreadyInUse,
+    <span class="doccomment">/// The leaf node&#39;s encryption key is already used in the group.
+    </span><span class="attribute">#[error(<span class="string">&quot;The leaf node&#39;s encryption key is already used in the group.&quot;</span>)]
+    </span>EncryptionKeyAlreadyInUse,
+    <span class="doccomment">/// The leaf node source is invalid in the given context.
+    </span><span class="attribute">#[error(<span class="string">&quot;The leaf node source is invalid in the given context.&quot;</span>)]
+    </span>InvalidLeafNodeSource,
+    <span class="doccomment">/// The leaf node credential is not supported by all members in the group.
+    </span><span class="attribute">#[error(<span class="string">&quot;The leaf node credential is not supported by all members in the group.&quot;</span>)]
+    </span>LeafNodeCredentialNotSupportedByMember,
+    <span class="doccomment">/// The credential used by a member is not supported by this leaf node.
+    </span><span class="attribute">#[error(<span class="string">&quot;The credential used by a member is not supported by this leaf node.&quot;</span>)]
+    </span>MemberCredentialNotSupportedByLeafNode,
+}
+
+<span class="doccomment">/// Errors that can happen during lifetime validation.
+</span><span class="attribute">#[derive(Clone, Debug, Error, Eq, PartialEq)]
+</span><span class="kw">pub enum </span>LifetimeError {
+    <span class="doccomment">/// Lifetime range is too wide.
+    </span><span class="attribute">#[error(<span class="string">&quot;Lifetime range is too wide.&quot;</span>)]
+    </span>RangeTooBig,
+    <span class="doccomment">/// Lifetime doesn&#39;t cover current time.
+    </span><span class="attribute">#[error(<span class="string">&quot;Lifetime doesn&#39;t cover current time.&quot;</span>)]
+    </span>NotCurrent,
 }
 </code></pre></div>
 </section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-current-crate="openmls" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.66.1 (90743e729 2023-01-10)" ></div></body></html>
