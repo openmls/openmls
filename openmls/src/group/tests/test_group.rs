@@ -365,7 +365,6 @@ fn group_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvid
         .expect("An unexpected error occurred.");
 
     let credential = group_alice
-        .treesync()
         .own_leaf_node()
         .expect("An unexpected error occurred.")
         .credential();
@@ -674,7 +673,6 @@ fn group_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvid
         .expect("An unexpected error occurred.");
 
     let credential = group_charlie
-        .treesync()
         .own_leaf_node()
         .expect("An unexpected error occurred.")
         .credential();
@@ -701,7 +699,6 @@ fn group_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvid
         .expect("An unexpected error occurred.");
 
     let credential = group_charlie
-        .treesync()
         .own_leaf_node()
         .expect("An unexpected error occurred.")
         .credential();

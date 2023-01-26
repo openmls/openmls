@@ -49,14 +49,10 @@ impl CoreGroup {
         // Create a RatchetTree from the given nodes. We have to do this before
         // verifying the PGS, since we need to find the Credential to verify the
         // signature against.
-        let treesync = TreeSync::from_nodes_without_leaf(backend, ciphersuite, nodes).map_err(
-            |e| match e {
-                TreeSyncFromNodesError::LibraryError(e) => e.into(),
-                TreeSyncFromNodesError::PublicTreeError(e) => {
-                    ExternalCommitError::PublicTreeError(e)
-                }
-            },
-        )?;
+        let treesync = TreeSync::from_nodes(backend, ciphersuite, &nodes).map_err(|e| match e {
+            TreeSyncFromNodesError::LibraryError(e) => e.into(),
+            TreeSyncFromNodesError::PublicTreeError(e) => ExternalCommitError::PublicTreeError(e),
+        })?;
 
         let group_info: GroupInfo = {
             let group_info_signer_leaf = treesync
@@ -126,6 +122,26 @@ impl CoreGroup {
             }
         };
 
+        let external_init_proposal = Proposal::ExternalInit(ExternalInitProposal::from(kem_output));
+
+        let mut inline_proposals = vec![external_init_proposal];
+
+        // If there is a group member in the group with the same identity as us,
+        // commit a remove proposal.
+        for Member {
+            index, identity, ..
+        } in treesync.full_leave_members()
+        {
+            if identity == params.credential_bundle().credential().identity() {
+                let remove_proposal = Proposal::Remove(RemoveProposal { removed: index });
+                inline_proposals.push(remove_proposal);
+                break;
+            };
+        }
+
+        let own_leaf_index =
+            CoreGroup::free_leaf_index(&treesync, inline_proposals.iter().map(Some))?;
+
         // Prepare interim transcript hash
         let group = CoreGroup {
             ciphersuite,
@@ -136,25 +152,8 @@ impl CoreGroup {
             mls_version: group_info.group_context().protocol_version(),
             group_epoch_secrets,
             message_secrets_store,
+            own_leaf_index,
         };
-
-        let external_init_proposal = Proposal::ExternalInit(ExternalInitProposal::from(kem_output));
-
-        let mut inline_proposals = vec![external_init_proposal];
-
-        // If there is a group member in the group with the same identity as us,
-        // commit a remove proposal.
-        for Member {
-            index, identity, ..
-        } in group.treesync().full_leave_members()
-        {
-            if identity == params.credential_bundle().credential().identity() {
-                let remove_proposal = Proposal::Remove(RemoveProposal { removed: index });
-                inline_proposals.push(remove_proposal);
-                break;
-            };
-        }
-
         let params = CreateCommitParams::builder()
             .framing_parameters(*params.framing_parameters())
             .credential_bundle(params.credential_bundle())
