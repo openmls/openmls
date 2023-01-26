@@ -7,7 +7,6 @@
 use std::fmt::Debug;
 
 use openmls_traits::{
-    crypto::OpenMlsCrypto,
     key_store::{FromKeyStoreValue, OpenMlsKeyStore, ToKeyStoreValue},
     signatures::Signer,
     types::{CryptoError, Error, SignatureScheme},
@@ -18,6 +17,7 @@ use p256::ecdsa::SigningKey;
 // See https://github.com/rust-analyzer/rust-analyzer/issues/7243
 // for the rust-analyzer issue with the following line.
 use ed25519_dalek::Signer as DalekSigner;
+use rand::rngs::OsRng;
 use tls_codec::{Deserialize, Serialize, TlsDeserialize, TlsSerialize, TlsSize};
 
 /// A signature key pair for the basic credential.
@@ -87,18 +87,24 @@ impl FromKeyStoreValue for SignatureKeyPair {
     }
 }
 
-/// Note that functions in here use a key store or a crypto provider.
-/// They are not used within OpenMLS.
-/// The only relevant functions for MLS are in the [`Signer`] trait implementaiton.
 impl SignatureKeyPair {
     /// Generates a fresh signature keypair using the [`SignatureScheme`].
-    pub fn new(
-        signature_scheme: SignatureScheme,
-        backend: &impl OpenMlsCrypto,
-    ) -> Result<Self, CryptoError> {
-        let (private, public) = backend
-            .signature_key_gen(signature_scheme)
-            .map_err(|_| CryptoError::CryptoLibraryError)?;
+    pub fn new(signature_scheme: SignatureScheme) -> Result<Self, CryptoError> {
+        let (private, public) = match signature_scheme {
+            SignatureScheme::ECDSA_SECP256R1_SHA256 => {
+                let k = SigningKey::random(&mut OsRng);
+                let pk = k.verifying_key().to_encoded_point(false).as_bytes().into();
+                (k.to_bytes().as_slice().into(), pk)
+            }
+            SignatureScheme::ED25519 => {
+                let k = ed25519_dalek::Keypair::generate(&mut rand_07::rngs::OsRng).to_bytes();
+                let pk = k[ed25519_dalek::SECRET_KEY_LENGTH..].to_vec();
+                // full key here because we need it to sign...
+                let sk_pk = k.into();
+                (sk_pk, pk)
+            }
+            _ => return Err(CryptoError::UnsupportedSignatureScheme),
+        };
 
         Ok(Self {
             private,

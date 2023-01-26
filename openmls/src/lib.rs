@@ -24,7 +24,7 @@
 //! ) -> (CredentialWithKey, SignatureKeyPair) {
 //!     let credential = Credential::new(identity, credential_type).unwrap();
 //!     let signature_keys =
-//!         SignatureKeyPair::new(signature_algorithm, backend.crypto())
+//!         SignatureKeyPair::new(signature_algorithm)
 //!             .expect("Error generating a signature key pair.");
 //!
 //!     // Store the credential bundle into the key store so OpenMLS has access

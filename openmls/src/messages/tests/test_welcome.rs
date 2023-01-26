@@ -212,7 +212,7 @@ fn test_welcome_message_with_version(
     };
 
     // We need a signer
-    let signer = SignatureKeyPair::new(ciphersuite.signature_algorithm(), backend.crypto()).unwrap();
+    let signer = SignatureKeyPair::new(ciphersuite.signature_algorithm()).unwrap();
 
     let group_info = group_info_tbs
         .sign(&signer)

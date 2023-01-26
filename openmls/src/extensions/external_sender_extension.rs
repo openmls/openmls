@@ -34,8 +34,7 @@ pub type ExternalSendersExtension = Vec<ExternalSender>;
 #[cfg(test)]
 mod test {
     use openmls_basic_credential::SignatureKeyPair;
-    use openmls_rust_crypto::OpenMlsRustCrypto;
-    use openmls_traits::{types::SignatureScheme, OpenMlsCryptoProvider};
+    use openmls_traits::types::SignatureScheme;
     use tls_codec::{Deserialize, Serialize};
 
     use crate::credentials::CredentialType;
@@ -45,14 +44,11 @@ mod test {
     #[test]
     fn test_serialize_deserialize() {
         let tests = {
-            let backend = OpenMlsRustCrypto::default();
-
             let mut external_sender_extensions = Vec::new();
 
             for _ in 0..8 {
                 let credential = Credential::new(b"Alice".to_vec(), CredentialType::Basic).unwrap();
-                let signature_keys =
-                    SignatureKeyPair::new(SignatureScheme::ED25519, backend.crypto()).unwrap();
+                let signature_keys = SignatureKeyPair::new(SignatureScheme::ED25519).unwrap();
 
                 external_sender_extensions.push(ExternalSender {
                     signature_key: signature_keys.to_public_vec().into(),

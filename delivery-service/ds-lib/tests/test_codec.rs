@@ -13,8 +13,7 @@ fn test_client_info() {
 
     let credential =
         Credential::new(client_name.as_bytes().to_vec(), CredentialType::Basic).unwrap();
-    let signature_keys =
-        SignatureKeyPair::new(ciphersuite.signature_algorithm(), crypto.crypto()).unwrap();
+    let signature_keys = SignatureKeyPair::new(ciphersuite.signature_algorithm()).unwrap();
     let credential_with_key = CredentialWithKey {
         credential,
         signature_key: signature_keys.to_public_vec().into(),

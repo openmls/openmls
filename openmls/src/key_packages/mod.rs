@@ -37,7 +37,7 @@
 //!
 //! let credential = Credential::new("identity".into(), CredentialType::Basic).unwrap();
 //! let signer =
-//!     SignatureKeyPair::new(ciphersuite.signature_algorithm(), backend.crypto())
+//!     SignatureKeyPair::new(ciphersuite.signature_algorithm())
 //!         .expect("Error generating a signature key pair.");
 //! let credential_with_key = CredentialWithKey {
 //!     credential,

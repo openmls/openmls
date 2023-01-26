@@ -14,7 +14,7 @@ fn generate_credential(
 ) -> (CredentialWithKey, SignatureKeyPair) {
     let credential = Credential::new(identity, CredentialType::Basic).unwrap();
     let signature_keys =
-        SignatureKeyPair::new(signature_scheme, crypto_backend.crypto()).unwrap();
+        SignatureKeyPair::new(signature_scheme).unwrap();
     let credential_with_key = CredentialWithKey {
         credential,
         signature_key: signature_keys.to_public_vec().into(),

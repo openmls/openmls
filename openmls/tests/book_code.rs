@@ -50,7 +50,7 @@ fn generate_credential(
     let credential = Credential::new(identity, credential_type).unwrap();
     // ANCHOR_END: create_basic_credential
     // ANCHOR: create_credential_keys
-    let signature_keys = SignatureKeyPair::new(signature_algorithm, backend.crypto()).unwrap();
+    let signature_keys = SignatureKeyPair::new(signature_algorithm).unwrap();
     signature_keys.store(backend.key_store()).unwrap();
     // ANCHOR_END: create_credential_keys
 
@@ -1111,8 +1111,6 @@ fn book_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvide
     // === Re-Add Bob with external Add proposal ===
 
     // Create a new KeyPackageBundle for Bob
-    // let bob_credential = Credential::new("Bob".into(), CredentialType::Basic).unwrap();
-    // let signature_keys = SignatureKeyPair::new(ciphersuite.into(), backend.crypto()).unwrap();
     let bob_key_package = generate_key_package(
         ciphersuite,
         bob_credential.clone(),

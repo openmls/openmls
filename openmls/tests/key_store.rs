@@ -7,7 +7,7 @@ fn test_store_key_package(ciphersuite: Ciphersuite, backend: &impl OpenMlsCrypto
     // ANCHOR: key_store_store
     // First we generate a credential and key package for our user.
     let credential = Credential::new(b"User ID".to_vec(), CredentialType::Basic).unwrap();
-    let signature_keys = SignatureKeyPair::new(ciphersuite.into(), backend.crypto()).unwrap();
+    let signature_keys = SignatureKeyPair::new(ciphersuite.into()).unwrap();
 
     let key_package = KeyPackage::builder()
         .build(

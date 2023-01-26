@@ -73,8 +73,8 @@ fn test_hpke_seal_open(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoPro
     );
 }
 
-#[apply(backends)]
-fn supported_ciphersuites(backend: &impl OpenMlsCryptoProvider) {
+#[test]
+fn supported_ciphersuites() {
     const SUPPORTED_CIPHERSUITE_NAMES: &[Ciphersuite] = &[
         Ciphersuite::MLS_128_DHKEMX25519_AES128GCM_SHA256_Ed25519,
         Ciphersuite::MLS_128_DHKEMX25519_CHACHA20POLY1305_SHA256_Ed25519,
@@ -90,15 +90,13 @@ fn supported_ciphersuites(backend: &impl OpenMlsCryptoProvider) {
 
     for ciphersuite in SUPPORTED_CIPHERSUITE_NAMES {
         // Create signature keypair
-        let _signature_keypair =
-            SignatureKeyPair::new(ciphersuite.signature_algorithm(), backend.crypto())
-                .expect("Could not create signature keypair.");
+        let _signature_keypair = SignatureKeyPair::new(ciphersuite.signature_algorithm())
+            .expect("Could not create signature keypair.");
     }
 
     for ciphersuite in UNSUPPORTED_CIPHERSUITE_NAMES {
         // Create signature keypair
-        let _signature_keypair =
-            SignatureKeyPair::new(SignatureScheme::from(*ciphersuite), backend.crypto())
-                .expect_err("Could create signature keypair with unsupported ciphersuite.");
+        let _signature_keypair = SignatureKeyPair::new(SignatureScheme::from(*ciphersuite))
+            .expect_err("Could create signature keypair with unsupported ciphersuite.");
     }
 }
