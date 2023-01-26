@@ -116,6 +116,11 @@ pub struct Credential {
 }
 
 impl Credential {
+    /// Returns the credential type.
+    pub fn credential_type(&self) -> CredentialType {
+        self.credential_type
+    }
+
     /// Returns the identity of a given credential.
     pub fn identity(&self) -> &[u8] {
         match &self.credential {

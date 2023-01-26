@@ -182,3 +182,54 @@ pub(crate) enum TreeKemError {
     #[error(transparent)]
     PathSecretError(#[from] PathSecretError),
 }
+
+/// Errors that can happen during leaf node validation.
+#[derive(Clone, Debug, Error, Eq, PartialEq)]
+pub enum LeafNodeValidationError {
+    /// Lifetime is not acceptable.
+    #[error("Lifetime is not acceptable.")]
+    Lifetime(LifetimeError),
+    /// Extensions are not acceptable.
+    #[error("Extensions are not acceptable.")]
+    UnsupportedExtensions,
+    /// Proposals are not acceptable.
+    #[error("Proposals are not acceptable.")]
+    UnsupportedProposals,
+    /// Credentials are not acceptable.
+    #[error("Credentials are not acceptable.")]
+    UnsupportedCredentials,
+    /// The leaf node's credential type is not listed in the leaf node's capabilities."
+    #[error("The leaf node's credential type is not listed in the leaf node's capabilities.")]
+    CredentialNotInCapabilities,
+    /// The leaf node's extension types are not (all) listed in the leaf node's capabilities.
+    #[error(
+        "The leaf node's extension types are not (all) listed in the leaf node's capabilities."
+    )]
+    ExtensionsNotInCapabilities,
+    /// The leaf node's signature key is already used in the group.
+    #[error("The leaf node's signature key is already used in the group.")]
+    SignatureKeyAlreadyInUse,
+    /// The leaf node's encryption key is already used in the group.
+    #[error("The leaf node's encryption key is already used in the group.")]
+    EncryptionKeyAlreadyInUse,
+    /// The leaf node source is invalid in the given context.
+    #[error("The leaf node source is invalid in the given context.")]
+    InvalidLeafNodeSource,
+    /// The leaf node credential is not supported by all members in the group.
+    #[error("The leaf node credential is not supported by all members in the group.")]
+    LeafNodeCredentialNotSupportedByMember,
+    /// The credential used by a member is not supported by this leaf node.
+    #[error("The credential used by a member is not supported by this leaf node.")]
+    MemberCredentialNotSupportedByLeafNode,
+}
+
+/// Errors that can happen during lifetime validation.
+#[derive(Clone, Debug, Error, Eq, PartialEq)]
+pub enum LifetimeError {
+    /// Lifetime range is too wide.
+    #[error("Lifetime range is too wide.")]
+    RangeTooBig,
+    /// Lifetime doesn't cover current time.
+    #[error("Lifetime doesn't cover current time.")]
+    NotCurrent,
+}
