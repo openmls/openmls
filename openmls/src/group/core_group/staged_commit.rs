@@ -220,7 +220,6 @@ impl CoreGroup {
                     leaf_node.signature_key().clone(),
                     self.ciphersuite.signature_algorithm(),
                 );
-                println!("pk {:x?}", pk);
                 if verifiable_leaf_node
                     .verify_no_out(backend.crypto(), &pk)
                     .is_err()

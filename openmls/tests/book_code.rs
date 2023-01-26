@@ -1226,7 +1226,6 @@ fn book_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvide
         .path()
         .join(format!("test_mls_group_{}.json", &name));
     let out_file = &mut File::create(path.clone()).expect("Could not create file");
-    println!("Writing {out_file:?}");
     bob_group
         .save(out_file)
         .expect("Could not write group state to file");
