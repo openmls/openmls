@@ -4,6 +4,8 @@
 //!
 //! For now this credential uses only RustCrypto.
 
+use std::fmt::Debug;
+
 use openmls_traits::{
     crypto::OpenMlsCrypto,
     key_store::{FromKeyStoreValue, OpenMlsKeyStore, ToKeyStoreValue},
@@ -28,6 +30,16 @@ pub struct SignatureKeyPair {
     private: Vec<u8>,
     public: Vec<u8>,
     signature_scheme: SignatureScheme,
+}
+
+impl Debug for SignatureKeyPair {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("SignatureKeyPair")
+            .field("private", &format!("***"))
+            .field("public", &self.public)
+            .field("signature_scheme", &self.signature_scheme)
+            .finish()
+    }
 }
 
 impl Signer for SignatureKeyPair {
@@ -75,6 +87,9 @@ impl FromKeyStoreValue for SignatureKeyPair {
     }
 }
 
+/// Note that functions in here use a key store or a crypto provider.
+/// They are not used within OpenMLS.
+/// The only relevant functions for MLS are in the [`Signer`] trait implementaiton.
 impl SignatureKeyPair {
     /// Generates a fresh signature keypair using the [`SignatureScheme`].
     pub fn new(
