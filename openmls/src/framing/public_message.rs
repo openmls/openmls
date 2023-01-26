@@ -156,7 +156,7 @@ impl PublicMessage {
             ProtocolVersion::default(),
             WireFormat::PublicMessage,
             &self.content,
-            Some(serialized_context),
+            serialized_context,
         )
         .map_err(LibraryError::missing_bound_check)?;
         let tbm_payload = AuthenticatedContentTbm::new(&tbs_payload, &self.auth)?;
@@ -183,7 +183,7 @@ impl PublicMessage {
             ProtocolVersion::default(),
             WireFormat::PublicMessage,
             &self.content,
-            Some(serialized_context),
+            serialized_context,
         )
         .map_err(LibraryError::missing_bound_check)?;
         let tbm_payload = AuthenticatedContentTbm::new(&tbs_payload, &self.auth)?;

@@ -246,19 +246,19 @@ impl FramedContentTbs {
     /// Helper function to make serialization of [`FramedContentTbs`] accessible
     /// to both the [`TlsSerialize`] implementation and the
     /// [`FramedContentTbs::new_and_serialize_detached()`] function.
-    fn new_and_serialize<W: Write>(
+    fn new_and_serialize<'context, W: Write>(
         writer: &mut W,
         version: ProtocolVersion,
         wire_format: WireFormat,
         content: &FramedContent,
-        serialized_context: Option<&[u8]>,
+        serialized_context: impl Into<Option<&'context [u8]>>,
     ) -> Result<usize, tls_codec::Error> {
         let mut written = version.tls_serialize(writer)?;
         written += wire_format.tls_serialize(writer)?;
         written += content.tls_serialize(writer)?;
         // Context is included if and only if the sender type is Member or
         // NewMemberCommit.
-        written += match serialized_context {
+        written += match serialized_context.into() {
             Some(context)
                 if matches!(content.sender, Sender::Member(_) | Sender::NewMemberCommit) =>
             {
@@ -277,11 +277,11 @@ impl FramedContentTbs {
     /// in `content` is [`Sender::Member`] or [`Sender::NewMemberCommit`].
     ///
     /// Returns an [`tls_codec::Error`] if the serialization fails.
-    pub(super) fn new_and_serialize_detached(
+    pub(super) fn new_and_serialize_detached<'context>(
         version: ProtocolVersion,
         wire_format: WireFormat,
         content: &FramedContent,
-        serialized_context: Option<&[u8]>,
+        serialized_context: impl Into<Option<&'context [u8]>>,
     ) -> Result<Vec<u8>, tls_codec::Error> {
         let mut writer = Vec::new();
         Self::new_and_serialize(
