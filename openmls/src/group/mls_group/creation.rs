@@ -18,9 +18,6 @@ impl MlsGroup {
     ///
     /// This function removes the private key corresponding to the
     /// `key_package` from the key store.
-    ///
-    /// Returns an error ([`NewGroupError::NoMatchingCredentialBundle`]) if the
-    /// private key for the [`SignaturePublicKey`] can not be found.
     pub fn new<KeyStore: OpenMlsKeyStore>(
         backend: &impl OpenMlsCryptoProvider<KeyStoreProvider = KeyStore>,
         signer: &(impl Signer + ?Sized),
@@ -37,9 +34,6 @@ impl MlsGroup {
     }
 
     /// Creates a new group with a given group ID with the creator as the only member.
-    ///
-    /// Returns an error ([`NewGroupError::NoMatchingCredentialBundle`]) if the
-    /// private key for the [`SignaturePublicKey`] can not be found.
     pub fn new_with_group_id<KeyStore: OpenMlsKeyStore>(
         backend: &impl OpenMlsCryptoProvider<KeyStoreProvider = KeyStore>,
         signer: &(impl Signer + ?Sized),

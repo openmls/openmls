@@ -29,7 +29,7 @@ fn test_client_info() {
             },
             crypto,
             &signature_keys,
-            credential_with_key.clone(),
+            credential_with_key,
         )
         .unwrap();
 

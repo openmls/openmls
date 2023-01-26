@@ -35,7 +35,7 @@ pub struct SignatureKeyPair {
 impl Debug for SignatureKeyPair {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("SignatureKeyPair")
-            .field("private", &format!("***"))
+            .field("private", &"***".to_string())
             .field("public", &self.public)
             .field("signature_scheme", &self.signature_scheme)
             .finish()
