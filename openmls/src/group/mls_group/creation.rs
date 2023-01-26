@@ -20,7 +20,7 @@ impl MlsGroup {
     /// `key_package` from the key store.
     pub fn new<KeyStore: OpenMlsKeyStore>(
         backend: &impl OpenMlsCryptoProvider<KeyStoreProvider = KeyStore>,
-        signer: &(impl Signer + ?Sized),
+        signer: &impl Signer,
         mls_group_config: &MlsGroupConfig,
         credential_with_key: CredentialWithKey,
     ) -> Result<Self, NewGroupError<KeyStore::Error>> {
@@ -36,7 +36,7 @@ impl MlsGroup {
     /// Creates a new group with a given group ID with the creator as the only member.
     pub fn new_with_group_id<KeyStore: OpenMlsKeyStore>(
         backend: &impl OpenMlsCryptoProvider<KeyStoreProvider = KeyStore>,
-        signer: &(impl Signer + ?Sized),
+        signer: &impl Signer,
         mls_group_config: &MlsGroupConfig,
         group_id: GroupId,
         credential_with_key: CredentialWithKey,
@@ -158,7 +158,7 @@ impl MlsGroup {
     /// please see Section 11.2.1 in the MLS specification.
     pub fn join_by_external_commit(
         backend: &impl OpenMlsCryptoProvider,
-        signer: &(impl Signer + ?Sized),
+        signer: &impl Signer,
         tree_option: Option<&[Option<Node>]>,
         verifiable_group_info: VerifiableGroupInfo,
         mls_group_config: &MlsGroupConfig,

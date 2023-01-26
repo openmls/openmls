@@ -59,6 +59,10 @@ impl Signer for SignatureKeyPair {
             _ => Err(Error::SigningError),
         }
     }
+
+    fn signature_scheme(&self) -> SignatureScheme {
+        self.signature_scheme
+    }
 }
 
 /// Compute the ID for a [`Signature`] in the key store.

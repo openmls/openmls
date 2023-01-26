@@ -334,7 +334,7 @@ impl GroupSecrets {
         self
     }
 
-    // XXX[KAT]: Used in kat_messages.
+    // XXX[KAT]: #1051 Used in kat_messages.
     //           Get in when kat's are in again.
     #[cfg(test)]
     pub fn _random_encoded(

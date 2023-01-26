@@ -24,7 +24,7 @@ impl MlsGroup {
     pub fn self_update<KeyStore: OpenMlsKeyStore>(
         &mut self,
         backend: &impl OpenMlsCryptoProvider<KeyStoreProvider = KeyStore>,
-        signer: &(impl Signer + ?Sized),
+        signer: &impl Signer,
     ) -> Result<
         (MlsMessageOut, Option<MlsMessageOut>, Option<GroupInfo>),
         SelfUpdateError<KeyStore::Error>,
@@ -65,12 +65,11 @@ impl MlsGroup {
     pub fn propose_self_update<KeyStore: OpenMlsKeyStore>(
         &mut self,
         backend: &impl OpenMlsCryptoProvider<KeyStoreProvider = KeyStore>,
-        signer: &(impl Signer + ?Sized),
+        signer: &impl Signer,
         leaf_node: Option<LeafNode>,
     ) -> Result<MlsMessageOut, ProposeSelfUpdateError<KeyStore::Error>> {
         self.is_operational()?;
 
-        // let old_credential = self.credential()?;
         let tree = self.group.treesync();
 
         // Here we clone our own leaf to rekey it such that we don't change the

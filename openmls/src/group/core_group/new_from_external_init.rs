@@ -25,7 +25,7 @@ impl CoreGroup {
     /// containing the commit.
     pub(crate) fn join_by_external_commit(
         backend: &impl OpenMlsCryptoProvider,
-        signer: &(impl Signer + ?Sized),
+        signer: &impl Signer,
         mut params: CreateCommitParams,
         tree_option: Option<&[Option<Node>]>,
         verifiable_group_info: VerifiableGroupInfo,
@@ -130,7 +130,7 @@ impl CoreGroup {
         // If there is a group member in the group with the same identity as us,
         // commit a remove proposal.
         let params_credential_with_key = params
-            .credential_with_key()
+            .take_credential_with_key()
             .ok_or(ExternalCommitError::MissingCredential)?;
         for Member {
             index, identity, ..

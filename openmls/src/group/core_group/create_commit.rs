@@ -35,7 +35,7 @@ impl CoreGroup {
         &self,
         mut params: CreateCommitParams,
         backend: &impl OpenMlsCryptoProvider<KeyStoreProvider = KeyStore>,
-        signer: &(impl Signer + ?Sized),
+        signer: &impl Signer,
     ) -> Result<CreateCommitResult, CreateCommitError<KeyStore::Error>> {
         let ciphersuite = self.ciphersuite();
 
@@ -134,7 +134,7 @@ impl CoreGroup {
                 backend,
                 signer,
                 params
-                    .credential_with_key()
+                    .take_credential_with_key()
                     .ok_or(CreateCommitError::MissingCredential)?,
             )?;
 

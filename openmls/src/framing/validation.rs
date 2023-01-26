@@ -154,7 +154,7 @@ impl DecryptedMessage {
         &self,
         treesync: &TreeSync,
         old_leaves: &[Member],
-    ) -> Result<(Credential, SignaturePublicKey), ValidationError> {
+    ) -> Result<CredentialWithKey, ValidationError> {
         let sender = self.sender();
         match sender {
             Sender::Member(leaf_index) => {
@@ -162,7 +162,10 @@ impl DecryptedMessage {
                     Some(sender_leaf) => {
                         let credential = sender_leaf.credential().clone();
                         let pk = sender_leaf.signature_key().clone();
-                        Ok((credential, pk))
+                        Ok(CredentialWithKey {
+                            credential,
+                            signature_key: pk,
+                        })
                     }
                     None => {
                         // This might not actually be an error but the sender's
@@ -179,8 +182,11 @@ impl DecryptedMessage {
                             match treesync.leaf(*index) {
                                 Some(node) => {
                                     let credential = node.credential().clone();
-                                    let pk = node.signature_key().clone();
-                                    Ok((credential, pk))
+                                    let signature_key = node.signature_key().clone();
+                                    Ok(CredentialWithKey {
+                                        credential,
+                                        signature_key,
+                                    })
                                 }
                                 None => Err(ValidationError::UnknownMember),
                             }

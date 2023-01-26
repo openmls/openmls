@@ -23,7 +23,7 @@ pub struct GroupContext {
 
 #[cfg(test)]
 impl GroupContext {
-    // XXX[KAT]: only used in KATs
+    // XXX[KAT]: #1051 only used in KATs
     pub(crate) fn _set_epoch(&mut self, epoch: GroupEpoch) {
         self.epoch = epoch;
     }

@@ -215,7 +215,7 @@ impl CoreGroupBuilder {
     pub(crate) fn build<KeyStore: OpenMlsKeyStore>(
         self,
         backend: &impl OpenMlsCryptoProvider<KeyStoreProvider = KeyStore>,
-        signer: &(impl Signer + ?Sized),
+        signer: &impl Signer,
     ) -> Result<CoreGroup, CoreGroupBuildError<KeyStore::Error>> {
         let ciphersuite = self.crypto_config.ciphersuite;
         let config = self.config.unwrap_or_default();
@@ -340,7 +340,7 @@ impl CoreGroup {
         &self,
         framing_parameters: FramingParameters,
         joiner_key_package: KeyPackage,
-        signer: &(impl Signer + ?Sized),
+        signer: &impl Signer,
     ) -> Result<AuthenticatedContent, CreateAddProposalError> {
         joiner_key_package
             .leaf_node()
@@ -369,7 +369,7 @@ impl CoreGroup {
         // XXX: There's no need to own this. The [`UpdateProposal`] should
         //      operate on a reference to make this more efficient.
         leaf_node: LeafNode,
-        signer: &(impl Signer + ?Sized),
+        signer: &impl Signer,
     ) -> Result<AuthenticatedContent, LibraryError> {
         let update_proposal = UpdateProposal { leaf_node };
         let proposal = Proposal::Update(update_proposal);
@@ -390,7 +390,7 @@ impl CoreGroup {
         &self,
         framing_parameters: FramingParameters,
         removed: LeafNodeIndex,
-        signer: &(impl Signer + ?Sized),
+        signer: &impl Signer,
     ) -> Result<AuthenticatedContent, ValidationError> {
         if !self.treesync().is_leaf_in_tree(removed) {
             return Err(ValidationError::UnknownMember);
@@ -417,7 +417,7 @@ impl CoreGroup {
         &self,
         framing_parameters: FramingParameters,
         psk: PreSharedKeyId,
-        signer: &(impl Signer + ?Sized),
+        signer: &impl Signer,
     ) -> Result<AuthenticatedContent, LibraryError> {
         let presharedkey_proposal = PreSharedKeyProposal::new(psk);
         let proposal = Proposal::PreSharedKey(presharedkey_proposal);
@@ -436,7 +436,7 @@ impl CoreGroup {
         &self,
         framing_parameters: FramingParameters,
         extensions: Extensions,
-        signer: &(impl Signer + ?Sized),
+        signer: &impl Signer,
     ) -> Result<AuthenticatedContent, CreateGroupContextExtProposalError> {
         // Ensure that the group supports all the extensions that are wanted.
 
@@ -473,7 +473,7 @@ impl CoreGroup {
         msg: &[u8],
         padding_size: usize,
         backend: &impl OpenMlsCryptoProvider,
-        signer: &(impl Signer + ?Sized),
+        signer: &impl Signer,
     ) -> Result<PrivateMessage, MessageEncryptionError> {
         let public_message = AuthenticatedContent::new_application(
             self.own_leaf_index(),
@@ -558,7 +558,7 @@ impl CoreGroup {
     pub(crate) fn export_group_info(
         &self,
         backend: &impl OpenMlsCryptoProvider,
-        signer: &(impl Signer + ?Sized),
+        signer: &impl Signer,
         with_ratchet_tree: bool,
     ) -> Result<GroupInfo, LibraryError> {
         let extensions = {

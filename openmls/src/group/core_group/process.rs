@@ -86,13 +86,16 @@ impl CoreGroup {
         //  - Prepares ValSem246 by setting the right credential. The remainder
         //    of ValSem246 is validated as part of ValSem010.
         // External senders are not supported yet #106/#151.
-        let (credential, pk) = decrypted_message.credential(
+        let CredentialWithKey {
+            credential,
+            signature_key,
+        } = decrypted_message.credential(
             self.treesync(),
             self.message_secrets_store
                 .leaves_for_epoch(decrypted_message.verifiable_content().epoch()),
         )?;
         let pk = OpenMlsSignaturePublicKey::from_signature_key(
-            pk,
+            signature_key,
             self.ciphersuite.signature_algorithm(),
         );
 

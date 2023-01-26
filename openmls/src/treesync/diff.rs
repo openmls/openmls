@@ -283,7 +283,7 @@ impl<'a> TreeSyncDiff<'a> {
     pub(crate) fn apply_own_update_path(
         &mut self,
         backend: &impl OpenMlsCryptoProvider,
-        signer: &(impl Signer + ?Sized),
+        signer: &impl Signer,
         ciphersuite: Ciphersuite,
         group_id: GroupId,
         leaf_index: LeafNodeIndex,

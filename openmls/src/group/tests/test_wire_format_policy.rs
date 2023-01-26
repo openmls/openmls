@@ -50,7 +50,7 @@ fn receive_message(
     ciphersuite: Ciphersuite,
     backend: &impl OpenMlsCryptoProvider,
     alice_group: &mut MlsGroup,
-    alice_signer: &(impl Signer + ?Sized),
+    alice_signer: &impl Signer,
 ) -> MlsMessageIn {
     // Generate credential bundles
     let bob_credential_with_key_and_signer =

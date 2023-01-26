@@ -97,7 +97,7 @@ impl<'a> CreateCommitParams<'a> {
     pub(crate) fn commit_type(&self) -> CommitType {
         self.commit_type
     }
-    pub(crate) fn credential_with_key(&mut self) -> Option<CredentialWithKey> {
+    pub(crate) fn take_credential_with_key(&mut self) -> Option<CredentialWithKey> {
         self.credential_with_key.take()
     }
 }

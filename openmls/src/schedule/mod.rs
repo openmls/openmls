@@ -816,7 +816,7 @@ impl ConfirmationKey {
         )?))
     }
 
-    // XXX[KAT]: Only used in KATs. Remove if unused.
+    // XXX[KAT]: #1051 Only used in KATs. Remove if unused.
     #[cfg(test)]
     pub(crate) fn _from_secret(secret: Secret) -> Self {
         Self { secret }
@@ -978,7 +978,7 @@ impl SenderDataSecret {
         self.secret.as_slice()
     }
 
-    // XXX[KAT]: Only used in KATs. Remove if unused.
+    // XXX[KAT]: #1051 Only used in KATs. Remove if unused.
     #[cfg(test)]
     #[doc(hidden)]
     /// Create a new secret from a byte vector.

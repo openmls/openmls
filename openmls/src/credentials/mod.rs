@@ -1,32 +1,26 @@
 //! # Credentials
 //!
 //! A [`Credential`] contains identifying information about the client that
-//! created it, as well as a signature public key and the corresponding
-//! signature scheme. [`Credential`]s represent clients in MLS groups and are
+//! created it. [`Credential`]s represent clients in MLS groups and are
 //! used to authenticate their messages. Each
-//! [`KeyPackage`](crate::key_packages::KeyPackage) that is either
-//! pre-published, or that represents a client in a group contains a
-//! [`Credential`] and is authenticated by it.
+//! [`KeyPackage`](crate::key_packages::KeyPackage) as well as each client (leaf node)
+//! in the group (tree) contains a [`Credential`] and is authenticated.
+//! The [`Credential`] must the be checked by an authentication server and the
+//! application, which is out of scope of MLS.
 //!
 //! Clients can create a [`Credential`].
 //!
-//! The MLS protocol spec allows the that represents a client in a group to
+//! The MLS protocol spec allows the [`Credential`] that represents a client in a group to
 //! change over time. Concretely, members can issue an Update proposal or a Full
-//! Commit to update their [`KeyPackage`](crate::key_packages::KeyPackage), as
+//! Commit to update their [`LeafNode`](crate::treesync::LeafNode), as
 //! well as the [`Credential`] in it. The Update has to be authenticated by the
-//! signature public key contained in the old [`Credential`].
+//! signature public key corresponding to the old [`Credential`].
 //!
 //! When receiving a credential update from another member, applications must
 //! query the Authentication Service to ensure that the new credential is valid.
 //!
-//! Credentials are specific to a signature scheme, which has to match the
-//! ciphersuite of the [`KeyPackage`](crate::key_packages::KeyPackage) that it
-//! is embedded in. Clients can use different credentials, potentially with
-//! different signature schemes in different groups.
-//!
 //! There are multiple [`CredentialType`]s, although OpenMLS currently only
 //! supports the [`BasicCredential`].
-// TODO[FK]: update all the comments here.
 
 use serde::{Deserialize, Serialize};
 use std::convert::TryFrom;

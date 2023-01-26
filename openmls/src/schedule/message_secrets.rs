@@ -59,7 +59,7 @@ impl MessageSecrets {
 
 // Test functions
 impl MessageSecrets {
-    // XXX[KAT]: only used in KATs. Remove if not needed.
+    // XXX[KAT]: #1051 only used in KATs. Remove if not needed.
     #[cfg(test)]
     pub(crate) fn _sender_data_secret_mut(&mut self) -> &mut SenderDataSecret {
         &mut self.sender_data_secret

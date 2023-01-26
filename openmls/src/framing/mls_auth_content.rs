@@ -8,10 +8,8 @@
 //! [`PublicMessage`] can be accessed by processing functions of OpenMLS.
 use crate::{
     binary_tree::LeafNodeIndex,
-    ciphersuite::{
-        signable::{Signable, SignedStruct, Verifiable, VerifiedStruct},
-        SignaturePublicKey,
-    },
+    ciphersuite::signable::{Signable, SignedStruct, Verifiable, VerifiedStruct},
+    credentials::CredentialWithKey,
     error::LibraryError,
     group::errors::ValidationError,
 };
@@ -21,8 +19,8 @@ use super::{PrivateMessage, PublicMessage};
 
 use super::{
     mls_content::{ContentType, FramedContentBody, FramedContentTbs},
-    AddProposal, Commit, ConfirmationTag, Credential, FramingParameters, GroupContext, GroupEpoch,
-    GroupId, Proposal, Sender, Signature, WireFormat,
+    AddProposal, Commit, ConfirmationTag, FramingParameters, GroupContext, GroupEpoch, GroupId,
+    Proposal, Sender, Signature, WireFormat,
 };
 use openmls_traits::signatures::Signer;
 use std::io::{Read, Write};
@@ -117,7 +115,7 @@ impl AuthenticatedContent {
         sender: Sender,
         body: FramedContentBody,
         context: &GroupContext,
-        signer: &(impl Signer + ?Sized),
+        signer: &impl Signer,
     ) -> Result<Self, LibraryError> {
         let mut content_tbs = FramedContentTbs::new(
             framing_parameters.wire_format(),
@@ -147,7 +145,7 @@ impl AuthenticatedContent {
         authenticated_data: &[u8],
         application_message: &[u8],
         context: &GroupContext,
-        signer: &(impl Signer + ?Sized),
+        signer: &impl Signer,
     ) -> Result<Self, LibraryError> {
         let framing_parameters =
             FramingParameters::new(authenticated_data, WireFormat::PrivateMessage);
@@ -167,7 +165,7 @@ impl AuthenticatedContent {
         sender_leaf_index: LeafNodeIndex,
         proposal: Proposal,
         context: &GroupContext,
-        signer: &(impl Signer + ?Sized),
+        signer: &impl Signer,
     ) -> Result<Self, LibraryError> {
         Self::new_and_sign(
             framing_parameters,
@@ -185,7 +183,7 @@ impl AuthenticatedContent {
         proposal: Proposal,
         group_id: GroupId,
         epoch: GroupEpoch,
-        signer: &(impl Signer + ?Sized),
+        signer: &impl Signer,
     ) -> Result<Self, LibraryError> {
         let body = FramedContentBody::Proposal(proposal);
 
@@ -213,7 +211,7 @@ impl AuthenticatedContent {
         sender: Sender,
         commit: Commit,
         context: &GroupContext,
-        signer: &(impl Signer + ?Sized),
+        signer: &impl Signer,
     ) -> Result<Self, LibraryError> {
         Self::new_and_sign(
             framing_parameters,
@@ -320,9 +318,7 @@ impl VerifiableAuthenticatedContent {
     /// * the sender type is not one of the above,
     /// * the content type doesn't match the sender type, or
     /// * if it's a NewMemberCommit and the Commit doesn't contain a `path`.
-    pub(crate) fn new_member_credential(
-        &self,
-    ) -> Result<(Credential, SignaturePublicKey), ValidationError> {
+    pub(crate) fn new_member_credential(&self) -> Result<CredentialWithKey, ValidationError> {
         match self.auth_content.tbs.content.sender {
             Sender::NewMemberCommit => {
                 // only external commits can have a sender type `NewMemberCommit`
@@ -332,7 +328,10 @@ impl VerifiableAuthenticatedContent {
                         .map(|p| {
                             let credential = p.leaf_node().credential().clone();
                             let pk = p.leaf_node().signature_key().clone();
-                            (credential, pk)
+                            CredentialWithKey {
+                                credential,
+                                signature_key: pk,
+                            }
                         })
                         .ok_or(ValidationError::NoPath),
                     _ => Err(ValidationError::NotACommit),
@@ -343,8 +342,11 @@ impl VerifiableAuthenticatedContent {
                 match &self.auth_content.tbs.content.body {
                     FramedContentBody::Proposal(Proposal::Add(AddProposal { key_package })) => {
                         let credential = key_package.leaf_node().credential().clone();
-                        let pk = key_package.leaf_node().signature_key().clone();
-                        Ok((credential, pk))
+                        let signature_key = key_package.leaf_node().signature_key().clone();
+                        Ok(CredentialWithKey {
+                            credential,
+                            signature_key,
+                        })
                     }
                     _ => Err(ValidationError::NotAnExternalAddProposal),
                 }

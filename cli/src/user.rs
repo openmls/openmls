@@ -117,11 +117,7 @@ impl User {
         let message_out = group
             .mls_group
             .borrow_mut()
-            .create_message(
-                &self.crypto,
-                self.identity.borrow().signer.as_ref(),
-                msg.as_bytes(),
-            )
+            .create_message(&self.crypto, &self.identity.borrow().signer, msg.as_bytes())
             .map_err(|e| format!("{}", e))?;
 
         let msg = GroupMessage::new(message_out.into(), &self.recipients(group));
@@ -252,7 +248,7 @@ impl User {
 
         let mut mls_group = MlsGroup::new_with_group_id(
             &self.crypto,
-            self.identity.borrow().signer.as_ref(),
+            &self.identity.borrow().signer,
             &group_config,
             GroupId::from_slice(group_id),
             self.identity.borrow().credential_with_key.clone(),
@@ -304,7 +300,7 @@ impl User {
             .borrow_mut()
             .add_members(
                 &self.crypto,
-                self.identity.borrow().signer.as_ref(),
+                &self.identity.borrow().signer,
                 &[joiner_key_package],
             )
             .map_err(|e| format!("Failed to add member to group - {}", e))?;

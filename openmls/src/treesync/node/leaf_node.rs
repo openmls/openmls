@@ -441,7 +441,7 @@ impl LeafNode {
         capabilities: Capabilities,
         extensions: Extensions,
         backend: &impl OpenMlsCryptoProvider,
-        signer: &(impl Signer + ?Sized),
+        signer: &impl Signer,
     ) -> Result<(Self, EncryptionKeyPair), LibraryError> {
         // Create a new encryption key pair.
         let encryption_key_pair = EncryptionKeyPair::random(backend, config)?;
@@ -466,7 +466,7 @@ impl LeafNode {
         leaf_node_source: LeafNodeSource,
         capabilities: Capabilities,
         extensions: Extensions,
-        signer: &(impl Signer + ?Sized),
+        signer: &impl Signer,
     ) -> Result<Self, LibraryError> {
         let leaf_node_tbs = LeafNodeTbs::new(
             encryption_key,
@@ -488,11 +488,12 @@ impl LeafNode {
     ///
     /// This function can be used when generating an update. In most other cases
     /// a leaf node should be generated as part of a new [`KeyPackage`].
-    pub fn updated<KeyStore: OpenMlsKeyStore>(
+    #[cfg(test)]
+    pub(crate) fn updated<KeyStore: OpenMlsKeyStore>(
         &self,
         config: CryptoConfig,
         backend: &impl OpenMlsCryptoProvider<KeyStoreProvider = KeyStore>,
-        signer: &(impl Signer + ?Sized),
+        signer: &impl Signer,
     ) -> Result<Self, LeafNodeGenerationError<KeyStore::Error>> {
         Self::generate(
             config,
@@ -520,7 +521,7 @@ impl LeafNode {
         capabilities: Capabilities,
         extensions: Extensions,
         backend: &impl OpenMlsCryptoProvider<KeyStoreProvider = KeyStore>,
-        signer: &(impl Signer + ?Sized),
+        signer: &impl Signer,
     ) -> Result<Self, LeafNodeGenerationError<KeyStore::Error>> {
         // Note that this function is supposed to be used in the public API only
         // because it is interacting with the key store.
@@ -823,7 +824,7 @@ impl LeafNode {
         leaf_node_source: LeafNodeSource,
         capabilities: Capabilities,
         extensions: Extensions,
-        signer: &(impl Signer + ?Sized),
+        signer: &impl Signer,
     ) -> Result<Self, LibraryError> {
         Self::new_with_key(
             encryption_key,
@@ -977,7 +978,7 @@ impl OpenMlsLeafNode {
         config: CryptoConfig,
         leaf_node_source: LeafNodeSource,
         backend: &impl OpenMlsCryptoProvider,
-        signer: &(impl Signer + ?Sized),
+        signer: &impl Signer,
         credential_with_key: CredentialWithKey,
         capabilities: Capabilities,
         extensions: Extensions,
@@ -1015,7 +1016,7 @@ impl OpenMlsLeafNode {
         new_encryption_key: impl Into<Option<EncryptionKey>>,
         leaf_node: impl Into<Option<LeafNode>>,
         group_id: GroupId,
-        signer: &(impl Signer + ?Sized),
+        signer: &impl Signer,
     ) -> Result<(), PublicTreeError> {
         let tree_info = self.update_tree_info(group_id)?;
         // TODO: If we could take out the leaf_node without cloning, this would all be nicer.
@@ -1054,7 +1055,7 @@ impl OpenMlsLeafNode {
         ciphersuite: Ciphersuite,
         protocol_version: ProtocolVersion,
         backend: &impl OpenMlsCryptoProvider,
-        signer: &(impl Signer + ?Sized),
+        signer: &impl Signer,
     ) -> Result<EncryptionKeyPair, PublicTreeError> {
         if !self
             .leaf_node
@@ -1152,7 +1153,7 @@ impl OpenMlsLeafNode {
         &mut self,
         parent_hash: &[u8],
         group_id: GroupId,
-        signer: &(impl Signer + ?Sized),
+        signer: &impl Signer,
     ) -> Result<(), LibraryError> {
         self.leaf_node.payload.leaf_node_source = LeafNodeSource::Commit(parent_hash.into());
         let tbs = LeafNodeTbs::from(
@@ -1190,7 +1191,7 @@ impl OpenMlsLeafNode {
 
     /// Replace the public key in the leaf node and re-sign.
     #[cfg(any(feature = "test-utils", test))]
-    pub fn set_public_key(&mut self, public_key: HpkePublicKey, signer: &(impl Signer + ?Sized)) {
+    pub fn set_public_key(&mut self, public_key: HpkePublicKey, signer: &impl Signer) {
         let mut tbs = LeafNodeTbs::from(self.leaf_node.clone(), TreeInfoTbs::KeyPackage);
         tbs.payload.encryption_key = public_key.into();
         self.leaf_node = tbs.sign(signer).unwrap();

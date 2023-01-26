@@ -231,12 +231,16 @@ impl KeyPackage {
     pub(crate) fn create<KeyStore: OpenMlsKeyStore>(
         config: CryptoConfig,
         backend: &impl OpenMlsCryptoProvider<KeyStoreProvider = KeyStore>,
-        signer: &(impl Signer + ?Sized),
+        signer: &impl Signer,
         credential_with_key: CredentialWithKey,
         extensions: Extensions,
         leaf_node_capabilities: Capabilities,
         leaf_node_extensions: Extensions,
     ) -> Result<KeyPackageCreationResult, KeyPackageNewError<KeyStore::Error>> {
+        if config.ciphersuite.signature_algorithm() != signer.signature_scheme() {
+            return Err(KeyPackageNewError::CiphersuiteSignatureSchemeMismatch);
+        }
+
         // Create a new HPKE key pair
         let ikm = Secret::random(config.ciphersuite, backend, config.version)
             .map_err(LibraryError::unexpected_crypto_error)?;
@@ -274,7 +278,7 @@ impl KeyPackage {
     fn new_from_keys<KeyStore: OpenMlsKeyStore>(
         config: CryptoConfig,
         backend: &impl OpenMlsCryptoProvider<KeyStoreProvider = KeyStore>,
-        signer: &(impl Signer + ?Sized),
+        signer: &impl Signer,
         credential_with_key: CredentialWithKey,
         extensions: Extensions,
         leaf_node_capabilities: Capabilities,
@@ -423,7 +427,7 @@ impl KeyPackage {
     pub fn new_from_init_key<KeyStore: OpenMlsKeyStore>(
         config: CryptoConfig,
         backend: &impl OpenMlsCryptoProvider<KeyStoreProvider = KeyStore>,
-        signer: &(impl Signer + ?Sized),
+        signer: &impl Signer,
         credential_with_key: CredentialWithKey,
         extensions: Extensions,
         leaf_node_capabilities: Capabilities,
@@ -466,7 +470,7 @@ impl KeyPackage {
     pub(crate) fn new_from_encryption_key<KeyStore: OpenMlsKeyStore>(
         config: CryptoConfig,
         backend: &impl OpenMlsCryptoProvider<KeyStoreProvider = KeyStore>,
-        signer: &(impl Signer + ?Sized),
+        signer: &impl Signer,
         credential_with_key: CredentialWithKey,
         extensions: Extensions,
         leaf_node_capabilities: Capabilities,
@@ -524,7 +528,7 @@ impl KeyPackage {
     pub fn into_with_init_key(
         self,
         config: CryptoConfig,
-        signer: &(impl Signer + ?Sized),
+        signer: &impl Signer,
         init_key: Vec<u8>,
     ) -> Result<Self, SignatureError> {
         let key_package = KeyPackageTBS {
@@ -540,7 +544,7 @@ impl KeyPackage {
     }
 
     /// Resign this key package with another credential.
-    pub fn resign(mut self, signer: &(impl Signer + ?Sized), credential: Credential) -> Self {
+    pub fn resign(mut self, signer: &impl Signer, credential: Credential) -> Self {
         self.payload.leaf_node.set_credential(credential);
         self.payload.sign(signer).unwrap()
     }
@@ -606,7 +610,7 @@ impl KeyPackageBuilder {
         self,
         config: CryptoConfig,
         backend: &impl OpenMlsCryptoProvider<KeyStoreProvider = KeyStore>,
-        signer: &(impl Signer + ?Sized),
+        signer: &impl Signer,
         credential_with_key: CredentialWithKey,
     ) -> Result<KeyPackageCreationResult, KeyPackageNewError<KeyStore::Error>> {
         KeyPackage::create(
@@ -625,7 +629,7 @@ impl KeyPackageBuilder {
         self,
         config: CryptoConfig,
         backend: &impl OpenMlsCryptoProvider<KeyStoreProvider = KeyStore>,
-        signer: &(impl Signer + ?Sized),
+        signer: &impl Signer,
         credential_with_key: CredentialWithKey,
     ) -> Result<KeyPackage, KeyPackageNewError<KeyStore::Error>> {
         let KeyPackageCreationResult {
@@ -689,7 +693,7 @@ impl KeyPackageBundle {
 impl KeyPackageBundle {
     pub(crate) fn new(
         backend: &impl OpenMlsCryptoProvider,
-        signer: &(impl Signer + ?Sized),
+        signer: &impl Signer,
         ciphersuite: Ciphersuite,
         credential_with_key: CredentialWithKey,
     ) -> Self {

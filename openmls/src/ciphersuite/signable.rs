@@ -94,7 +94,7 @@ pub trait Signable: Sized {
     /// Sign the payload with the given `private_key`.
     ///
     /// Returns a `Signature`.
-    fn sign(self, signer: &(impl Signer + ?Sized)) -> Result<Self::SignedOutput, SignatureError>
+    fn sign(self, signer: &impl Signer) -> Result<Self::SignedOutput, SignatureError>
     where
         Self::SignedOutput: SignedStruct<Self>,
     {

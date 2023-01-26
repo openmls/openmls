@@ -16,7 +16,6 @@
   - [Committing to pending proposals](user_manual/commit_to_proposals.md)
   - [Processing incoming messages](user_manual/processing.md)
   - [Persistence of group state](user_manual/persistence.md)
-  - [crypto-subtle feature](user_manual/crypto-subtle.md)
 - [Traits & External Types](./traits/README.md)
   - [Traits](./traits/traits.md)
   - [Types](./traits/types.md)

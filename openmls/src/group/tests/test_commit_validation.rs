@@ -383,7 +383,7 @@ fn erase_path(
     backend: &impl OpenMlsCryptoProvider,
     mut plaintext: PublicMessage,
     alice_group: &MlsGroup,
-    alice_signer: &(impl Signer + ?Sized),
+    alice_signer: &impl Signer,
 ) -> ProtocolMessage {
     // Keep the original plaintext for positive test later.
     let original_plaintext = plaintext.clone();
