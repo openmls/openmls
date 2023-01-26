@@ -1,7 +1,3 @@
-use crate::{
-    group::{config::CryptoConfig, test_core_group::setup_client},
-    test_utils::*,
-};
 use openmls_rust_crypto::OpenMlsRustCrypto;
 use openmls_traits::{types::Ciphersuite, OpenMlsCryptoProvider};
 
@@ -14,6 +10,7 @@ use crate::{
     extensions::{Extension, ExtensionType, RequiredCapabilitiesExtension},
     framing::sender::Sender,
     framing::{mls_auth_content::AuthenticatedContent, FramingParameters, WireFormat},
+    group::{config::CryptoConfig, test_core_group::setup_client},
     group::{
         create_commit_params::CreateCommitParams,
         errors::*,
@@ -22,6 +19,8 @@ use crate::{
     },
     key_packages::KeyPackageBundle,
     messages::proposals::{AddProposal, Proposal, ProposalOrRef, ProposalType},
+    test_utils::*,
+    treesync::errors::LeafNodeValidationError,
 };
 
 /// This test makes sure ProposalQueue works as intended. This functionality is
@@ -318,7 +317,10 @@ fn test_required_extension_key_package_mismatch(
             &alice_signer,
         )
         .expect_err("Proposal was created even though the key package didn't support the required extensions.");
-    assert_eq!(e, CreateAddProposalError::UnsupportedExtensions);
+    assert_eq!(
+        e,
+        CreateAddProposalError::LeafNodeValidation(LeafNodeValidationError::UnsupportedExtensions)
+    );
 }
 
 #[apply(ciphersuites_and_backends)]

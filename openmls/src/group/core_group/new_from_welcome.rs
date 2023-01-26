@@ -114,8 +114,7 @@ impl CoreGroup {
             key_package_bundle
                 .key_package()
                 .leaf_node()
-                .validate_required_capabilities(required_capabilities)
-                .map_err(|_| WelcomeError::UnsupportedCapability)?
+                .validate_required_capabilities(required_capabilities)?;
         }
 
         let path_secret_option = group_secrets.path_secret;

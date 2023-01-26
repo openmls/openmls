@@ -5,12 +5,13 @@
 
 // These errors are exposed through `crate::group::errors`.
 
+use thiserror::Error;
+
 use crate::{
     error::LibraryError,
     group::errors::{CreateCommitError, MergeCommitError, StageCommitError, ValidationError},
-    treesync::errors::PublicTreeError,
+    treesync::errors::{LeafNodeValidationError, PublicTreeError},
 };
-use thiserror::Error;
 
 /// New group error
 #[derive(Error, Debug, PartialEq, Clone)]
@@ -152,6 +153,9 @@ pub enum ProposeAddMemberError {
     /// See [`MlsGroupStateError`] for more details.
     #[error(transparent)]
     GroupStateError(#[from] MlsGroupStateError),
+    /// See [`LeafNodeValidationError`] for more details.
+    #[error(transparent)]
+    LeafNodeValidation(#[from] LeafNodeValidationError),
 }
 
 /// Propose remove members error

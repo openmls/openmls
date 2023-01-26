@@ -6,8 +6,8 @@ use core_group::create_commit_params::CreateCommitParams;
 use openmls_traits::signatures::Signer;
 
 use crate::{
-    binary_tree::array_representation::LeafNodeIndex, messages::group_info::GroupInfo,
-    treesync::LeafNode,
+    binary_tree::array_representation::LeafNodeIndex, group::errors::CreateAddProposalError,
+    messages::group_info::GroupInfo, treesync::LeafNode,
 };
 
 use super::{
@@ -178,9 +178,9 @@ impl MlsGroup {
             .group
             .create_add_proposal(self.framing_parameters(), key_package.clone(), signer)
             .map_err(|e| match e {
-                crate::group::errors::CreateAddProposalError::LibraryError(e) => e.into(),
-                crate::group::errors::CreateAddProposalError::UnsupportedExtensions => {
-                    ProposeAddMemberError::UnsupportedExtensions
+                CreateAddProposalError::LibraryError(e) => e.into(),
+                CreateAddProposalError::LeafNodeValidation(error) => {
+                    ProposeAddMemberError::LeafNodeValidation(error)
                 }
             })?;
 

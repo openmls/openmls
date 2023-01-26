@@ -146,6 +146,11 @@ pub struct Credential {
 }
 
 impl Credential {
+    /// Returns the credential type.
+    pub fn credential_type(&self) -> CredentialType {
+        self.credential_type
+    }
+
     /// Creates and returns a new [`Credential`] of the given
     /// [`CredentialType`] for the given identity.
     /// If the credential holds key material, this is generated and stored in
