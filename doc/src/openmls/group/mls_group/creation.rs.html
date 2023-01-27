@@ -203,19 +203,16 @@
 <a href="#203" id="203">203</a>
 <a href="#204" id="204">204</a>
 <a href="#205" id="205">205</a>
-<a href="#206" id="206">206</a>
-<a href="#207" id="207">207</a>
-<a href="#208" id="208">208</a>
-<a href="#209" id="209">209</a>
-</pre><pre class="rust"><code><span class="kw">use crate</span>::{
-    ciphersuite::signature::SignaturePublicKey,
+</pre><pre class="rust"><code><span class="kw">use </span>openmls_traits::signatures::Signer;
+
+<span class="kw">use crate</span>::{
+    credentials::CredentialWithKey,
     group::{
         core_group::create_commit_params::CreateCommitParams,
         errors::{CoreGroupBuildError, ExternalCommitError, WelcomeError},
     },
     messages::group_info::VerifiableGroupInfo,
 };
-<span class="kw">use </span>tls_codec::Serialize;
 
 <span class="kw">use super</span>::<span class="kw-2">*</span>;
 
@@ -226,64 +223,57 @@
     ///
     /// This function removes the private key corresponding to the
     /// `key_package` from the key store.
-    ///
-    /// Returns an error ([`NewGroupError::NoMatchingCredentialBundle`]) if the
-    /// private key for the [`SignaturePublicKey`] can not be found.
     </span><span class="kw">pub fn </span>new&lt;KeyStore: OpenMlsKeyStore&gt;(
         backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider&lt;KeyStoreProvider = KeyStore&gt;,
+        signer: <span class="kw-2">&amp;</span><span class="kw">impl </span>Signer,
         mls_group_config: <span class="kw-2">&amp;</span>MlsGroupConfig,
-        signature_key: <span class="kw-2">&amp;</span>SignaturePublicKey,
+        credential_with_key: CredentialWithKey,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, NewGroupError&lt;KeyStore::Error&gt;&gt; {
         <span class="self">Self</span>::new_with_group_id(
             backend,
+            signer,
             mls_group_config,
             GroupId::random(backend),
-            signature_key,
+            credential_with_key,
         )
     }
 
     <span class="doccomment">/// Creates a new group with a given group ID with the creator as the only member.
-    ///
-    /// Returns an error ([`NewGroupError::NoMatchingCredentialBundle`]) if the
-    /// private key for the [`SignaturePublicKey`] can not be found.
     </span><span class="kw">pub fn </span>new_with_group_id&lt;KeyStore: OpenMlsKeyStore&gt;(
         backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider&lt;KeyStoreProvider = KeyStore&gt;,
+        signer: <span class="kw-2">&amp;</span><span class="kw">impl </span>Signer,
         mls_group_config: <span class="kw-2">&amp;</span>MlsGroupConfig,
         group_id: GroupId,
-        signature_key: <span class="kw-2">&amp;</span>SignaturePublicKey,
+        credential_with_key: CredentialWithKey,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, NewGroupError&lt;KeyStore::Error&gt;&gt; {
         <span class="comment">// TODO #751
-        </span><span class="kw">let </span>credential_bundle: CredentialBundle =
-            backend
-                .key_store()
-                .read(<span class="kw-2">&amp;</span>signature_key.tls_serialize_detached().map_err(|<span class="kw">_</span>| {
-                    LibraryError::custom(<span class="string">&quot;Unable to serialize signature public key&quot;</span>)
-                })<span class="question-mark">?</span>)
-                .ok_or(NewGroupError::NoMatchingCredentialBundle)<span class="question-mark">?</span>;
-        <span class="kw">let </span>group_config = CoreGroupConfig {
+        </span><span class="kw">let </span>group_config = CoreGroupConfig {
             add_ratchet_tree_extension: mls_group_config.use_ratchet_tree_extension,
         };
-        <span class="kw">let </span>group = CoreGroup::builder(group_id, mls_group_config.crypto_config)
-            .with_config(group_config)
-            .with_required_capabilities(mls_group_config.required_capabilities.clone())
-            .with_max_past_epoch_secrets(mls_group_config.max_past_epochs)
-            .with_lifetime(<span class="kw-2">*</span>mls_group_config.lifetime())
-            .build(<span class="kw-2">&amp;</span>credential_bundle, backend)
-            .map_err(|e| <span class="kw">match </span>e {
-                CoreGroupBuildError::LibraryError(e) =&gt; e.into(),
-                CoreGroupBuildError::UnsupportedProposalType =&gt; {
-                    NewGroupError::UnsupportedProposalType
-                }
-                CoreGroupBuildError::UnsupportedExtensionType =&gt; {
-                    NewGroupError::UnsupportedExtensionType
-                }
-                <span class="comment">// We don&#39;t support PSKs yet
-                </span>CoreGroupBuildError::PskError(e) =&gt; {
-                    <span class="macro">log::debug!</span>(<span class="string">&quot;Unexpected PSK error: {:?}&quot;</span>, e);
-                    LibraryError::custom(<span class="string">&quot;Unexpected PSK error&quot;</span>).into()
-                }
-                CoreGroupBuildError::KeyStoreError(e) =&gt; NewGroupError::KeyStoreError(e),
-            })<span class="question-mark">?</span>;
+
+        <span class="kw">let </span>group = CoreGroup::builder(
+            group_id,
+            mls_group_config.crypto_config,
+            credential_with_key,
+        )
+        .with_config(group_config)
+        .with_required_capabilities(mls_group_config.required_capabilities.clone())
+        .with_max_past_epoch_secrets(mls_group_config.max_past_epochs)
+        .with_lifetime(<span class="kw-2">*</span>mls_group_config.lifetime())
+        .build(backend, signer)
+        .map_err(|e| <span class="kw">match </span>e {
+            CoreGroupBuildError::LibraryError(e) =&gt; e.into(),
+            CoreGroupBuildError::UnsupportedProposalType =&gt; NewGroupError::UnsupportedProposalType,
+            CoreGroupBuildError::UnsupportedExtensionType =&gt; {
+                NewGroupError::UnsupportedExtensionType
+            }
+            <span class="comment">// We don&#39;t support PSKs yet
+            </span>CoreGroupBuildError::PskError(e) =&gt; {
+                <span class="macro">log::debug!</span>(<span class="string">&quot;Unexpected PSK error: {:?}&quot;</span>, e);
+                LibraryError::custom(<span class="string">&quot;Unexpected PSK error&quot;</span>).into()
+            }
+            CoreGroupBuildError::KeyStoreError(e) =&gt; NewGroupError::KeyStoreError(e),
+        })<span class="question-mark">?</span>;
 
         <span class="kw">let </span>resumption_psk_store =
             ResumptionPskStore::new(mls_group_config.number_of_resumption_psks);
@@ -373,11 +363,12 @@
     /// please see Section 11.2.1 in the MLS specification.
     </span><span class="kw">pub fn </span>join_by_external_commit(
         backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider,
+        signer: <span class="kw-2">&amp;</span><span class="kw">impl </span>Signer,
         tree_option: <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>[<span class="prelude-ty">Option</span>&lt;Node&gt;]&gt;,
         verifiable_group_info: VerifiableGroupInfo,
         mls_group_config: <span class="kw-2">&amp;</span>MlsGroupConfig,
         aad: <span class="kw-2">&amp;</span>[u8],
-        credential_bundle: <span class="kw-2">&amp;</span>CredentialBundle,
+        credential_with_key: CredentialWithKey,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(<span class="self">Self</span>, MlsMessageOut), ExternalCommitError&gt; {
         <span class="kw">let </span>resumption_psk_store =
             ResumptionPskStore::new(mls_group_config.number_of_resumption_psks);
@@ -388,11 +379,12 @@
         <span class="kw">let </span>proposal_store = ProposalStore::new();
         <span class="kw">let </span>params = CreateCommitParams::builder()
             .framing_parameters(framing_parameters)
-            .credential_bundle(credential_bundle)
             .proposal_store(<span class="kw-2">&amp;</span>proposal_store)
+            .credential_with_key(credential_with_key)
             .build();
         <span class="kw">let </span>(<span class="kw-2">mut </span>group, create_commit_result) = CoreGroup::join_by_external_commit(
             backend,
+            signer,
             params,
             tree_option,
             verifiable_group_info,

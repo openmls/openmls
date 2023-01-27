@@ -506,6 +506,22 @@
 <a href="#506" id="506">506</a>
 <a href="#507" id="507">507</a>
 <a href="#508" id="508">508</a>
+<a href="#509" id="509">509</a>
+<a href="#510" id="510">510</a>
+<a href="#511" id="511">511</a>
+<a href="#512" id="512">512</a>
+<a href="#513" id="513">513</a>
+<a href="#514" id="514">514</a>
+<a href="#515" id="515">515</a>
+<a href="#516" id="516">516</a>
+<a href="#517" id="517">517</a>
+<a href="#518" id="518">518</a>
+<a href="#519" id="519">519</a>
+<a href="#520" id="520">520</a>
+<a href="#521" id="521">521</a>
+<a href="#522" id="522">522</a>
+<a href="#523" id="523">523</a>
+<a href="#524" id="524">524</a>
 </pre><pre class="rust"><code><span class="doccomment">//! # Validation steps for incoming messages
 //!
 //! ```text
@@ -549,7 +565,7 @@
 
 </span><span class="kw">use crate</span>::{group::errors::ValidationError, tree::index::SecretTreeLeafIndex, treesync::TreeSync};
 <span class="kw">use </span>core_group::{proposals::QueuedProposal, staged_commit::StagedCommit};
-<span class="kw">use </span>openmls_traits::OpenMlsCryptoProvider;
+<span class="kw">use </span>openmls_traits::{crypto::OpenMlsCrypto, OpenMlsCryptoProvider};
 
 <span class="kw">use crate</span>::{
     ciphersuite::signable::Verifiable, error::LibraryError,
@@ -656,16 +672,25 @@
     ///  - ValSem245
     ///  - Prepares ValSem246 by setting the right credential. The remainder
     ///    of ValSem246 is validated as part of ValSem010.
+    ///
+    /// Returns the [`Credential`] and the leaf&#39;s [`SignaturePublicKey`].
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>credential(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         treesync: <span class="kw-2">&amp;</span>TreeSync,
         old_leaves: <span class="kw-2">&amp;</span>[Member],
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;Credential, ValidationError&gt; {
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;CredentialWithKey, ValidationError&gt; {
         <span class="kw">let </span>sender = <span class="self">self</span>.sender();
         <span class="kw">match </span>sender {
             Sender::Member(leaf_index) =&gt; {
                 <span class="kw">match </span>treesync.leaf(<span class="kw-2">*</span>leaf_index) {
-                    <span class="prelude-val">Some</span>(sender_leaf) =&gt; <span class="prelude-val">Ok</span>(sender_leaf.credential().clone()),
+                    <span class="prelude-val">Some</span>(sender_leaf) =&gt; {
+                        <span class="kw">let </span>credential = sender_leaf.credential().clone();
+                        <span class="kw">let </span>pk = sender_leaf.signature_key().clone();
+                        <span class="prelude-val">Ok</span>(CredentialWithKey {
+                            credential,
+                            signature_key: pk,
+                        })
+                    }
                     <span class="prelude-val">None </span>=&gt; {
                         <span class="comment">// This might not actually be an error but the sender&#39;s
                         // key package changed. Let&#39;s check old leaves we still
@@ -679,7 +704,14 @@
                             .find(|<span class="kw-2">&amp;</span>old_member| <span class="kw-2">*</span>leaf_index == old_member.index)
                         {
                             <span class="kw">match </span>treesync.leaf(<span class="kw-2">*</span>index) {
-                                <span class="prelude-val">Some</span>(node) =&gt; <span class="prelude-val">Ok</span>(node.credential().clone()),
+                                <span class="prelude-val">Some</span>(node) =&gt; {
+                                    <span class="kw">let </span>credential = node.credential().clone();
+                                    <span class="kw">let </span>signature_key = node.signature_key().clone();
+                                    <span class="prelude-val">Ok</span>(CredentialWithKey {
+                                        credential,
+                                        signature_key,
+                                    })
+                                }
                                 <span class="prelude-val">None </span>=&gt; <span class="prelude-val">Err</span>(ValidationError::UnknownMember),
                             }
                         } <span class="kw">else </span>{
@@ -711,10 +743,13 @@
 <span class="doccomment">/// Partially checked and potentially decrypted message (if it was originally encrypted).
 /// Use this to inspect the [`Credential`] of the message sender
 /// and the optional `aad` if the original message was encrypted.
+/// The [`OpenMlsSignaturePublicKey`] is used to verify the signature of the
+/// message.
 </span><span class="attr">#[derive(Debug, Clone)]
 </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct </span>UnverifiedMessage {
     verifiable_content: VerifiableAuthenticatedContent,
     credential: <span class="prelude-ty">Option</span>&lt;Credential&gt;,
+    sender_pk: OpenMlsSignaturePublicKey,
 }
 
 <span class="kw">impl </span>UnverifiedMessage {
@@ -722,16 +757,24 @@
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>from_decrypted_message(
         decrypted_message: DecryptedMessage,
         credential: <span class="prelude-ty">Option</span>&lt;Credential&gt;,
+        sender_pk: OpenMlsSignaturePublicKey,
     ) -&gt; <span class="self">Self </span>{
         UnverifiedMessage {
             verifiable_content: decrypted_message.verifiable_content,
             credential,
+            sender_pk,
         }
     }
 
     <span class="doccomment">/// Decomposes an [UnverifiedMessage] into its parts.
-    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>into_parts(<span class="self">self</span>) -&gt; (VerifiableAuthenticatedContent, <span class="prelude-ty">Option</span>&lt;Credential&gt;) {
-        (<span class="self">self</span>.verifiable_content, <span class="self">self</span>.credential)
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>into_parts(
+        <span class="self">self</span>,
+    ) -&gt; (
+        VerifiableAuthenticatedContent,
+        <span class="prelude-ty">Option</span>&lt;Credential&gt;,
+        OpenMlsSignaturePublicKey,
+    ) {
+        (<span class="self">self</span>.verifiable_content, <span class="self">self</span>.credential, <span class="self">self</span>.sender_pk)
     }
 }
 
@@ -757,7 +800,7 @@
         unverified_message: UnverifiedMessage,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, LibraryError&gt; {
         <span class="comment">// Decompose UnverifiedMessage
-        </span><span class="kw">let </span>(verifiable_content, credential_option) = unverified_message.into_parts();
+        </span><span class="kw">let </span>(verifiable_content, credential_option, sender_pk) = unverified_message.into_parts();
         <span class="kw">match </span>verifiable_content.sender() {
             Sender::Member(<span class="kw">_</span>) =&gt; {
                 <span class="prelude-val">Ok</span>(UnverifiedContextMessage::Group(UnverifiedGroupMessage {
@@ -765,6 +808,7 @@
                     <span class="comment">// If the message type is `Member` it always contains credentials
                     </span>credential: credential_option
                         .ok_or_else(|| LibraryError::custom(<span class="string">&quot;Expected credential&quot;</span>))<span class="question-mark">?</span>,
+                    sender_pk,
                 }))
             }
             <span class="comment">// TODO #151/#106: We don&#39;t support external senders yet
@@ -776,6 +820,7 @@
                         <span class="comment">// If the message type is `NewMemberCommit` or `NewMemberProposal` it always contains credentials
                         </span>credential: credential_option
                             .ok_or_else(|| LibraryError::custom(<span class="string">&quot;Expected credential&quot;</span>))<span class="question-mark">?</span>,
+                        sender_pk,
                     },
                 ))
             }
@@ -787,6 +832,7 @@
 </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct </span>UnverifiedGroupMessage {
     verifiable_content: VerifiableAuthenticatedContent,
     credential: Credential,
+    sender_pk: OpenMlsSignaturePublicKey,
 }
 
 <span class="kw">impl </span>UnverifiedGroupMessage {
@@ -796,27 +842,16 @@
     ///  - ValSem010
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>into_verified(
         <span class="self">self</span>,
-        backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider,
+        crypto: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCrypto,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;VerifiedMemberMessage, ValidationError&gt; {
         <span class="comment">// ValSem010
         </span><span class="self">self</span>.verifiable_content
-            .verify(
-                backend,
-                <span class="self">self</span>.credential.signature_key(),
-                <span class="self">self</span>.credential.signature_scheme(),
-            )
+            .verify(crypto, <span class="kw-2">&amp;</span><span class="self">self</span>.sender_pk)
             .map(|authenticated_content| VerifiedMemberMessage {
                 authenticated_content,
             })
             .map_err(|<span class="kw">_</span>| ValidationError::InvalidSignature)
-        <span class="comment">// XXX: We have tests checking for errors here. But really we should
-        //      rewrite them.
-        // debug_assert!(
-        //     verified_member_message.is_ok(),
-        //     &quot;Verifying signature on UnverifiedGroupMessage failed with {:?}&quot;,
-        //     verified_member_message
-        // );
-    </span>}
+    }
 
     <span class="doccomment">/// Returns the credential.
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>credential(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>Credential {
@@ -828,6 +863,7 @@
 </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct </span>UnverifiedNewMemberMessage {
     verifiable_content: VerifiableAuthenticatedContent,
     credential: Credential,
+    sender_pk: OpenMlsSignaturePublicKey,
 }
 
 <span class="kw">impl </span>UnverifiedNewMemberMessage {
@@ -837,16 +873,12 @@
     /// - ValSem010
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>into_verified(
         <span class="self">self</span>,
-        backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider,
+        crypto: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCrypto,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;VerifiedExternalMessage, ValidationError&gt; {
         <span class="comment">// ValSem010
         </span><span class="kw">let </span>verified_external_message = <span class="self">self
             </span>.verifiable_content
-            .verify(
-                backend,
-                <span class="self">self</span>.credential.signature_key(),
-                <span class="self">self</span>.credential.signature_scheme(),
-            )
+            .verify(crypto, <span class="kw-2">&amp;</span><span class="self">self</span>.sender_pk)
             .map(|authenticated_content| VerifiedExternalMessage {
                 authenticated_content,
             })

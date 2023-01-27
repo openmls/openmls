@@ -224,11 +224,11 @@
 //! Similarly, only the [`Verifiable`] struct should implement the
 //! [`tls_codec::Deserialize`] trait.
 
-</span><span class="kw">use </span>openmls_traits::{crypto::OpenMlsCrypto, types::SignatureScheme, OpenMlsCryptoProvider};
+</span><span class="kw">use </span>openmls_traits::{crypto::OpenMlsCrypto, signatures::Signer};
 <span class="kw">use </span>thiserror::Error;
 <span class="kw">use </span>tls_codec::Serialize;
 
-<span class="kw">use </span><span class="kw">crate</span>::ciphersuite::{SignContent, Signature, SignaturePrivateKey, SignaturePublicKey};
+<span class="kw">use </span><span class="kw">crate</span>::ciphersuite::{OpenMlsSignaturePublicKey, SignContent, Signature};
 
 <span class="doccomment">/// Signature generation and verification errors.
 /// The only information relayed with this error is whether the signature
@@ -290,21 +290,26 @@
     <span class="doccomment">/// Sign the payload with the given `private_key`.
     ///
     /// Returns a `Signature`.
-    </span><span class="kw">fn </span>sign(
-        <span class="self">self</span>,
-        backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider,
-        private_key: <span class="kw-2">&amp;</span>SignaturePrivateKey,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>::SignedOutput, SignatureError&gt;
+    </span><span class="kw">fn </span>sign(<span class="self">self</span>, signer: <span class="kw-2">&amp;</span><span class="kw">impl </span>Signer) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>::SignedOutput, SignatureError&gt;
     <span class="kw">where
         </span><span class="self">Self</span>::SignedOutput: SignedStruct&lt;<span class="self">Self</span>&gt;,
     {
         <span class="kw">let </span>payload = <span class="self">self
             </span>.unsigned_payload()
             .map_err(|<span class="kw">_</span>| SignatureError::SigningError)<span class="question-mark">?</span>;
-        <span class="kw">let </span>signature = private_key
-            .sign_with_label(backend, <span class="kw-2">&amp;</span>SignContent::new(<span class="self">self</span>.label(), payload.into()))
+        <span class="kw">let </span>payload = <span class="kw">match </span>SignContent::new(<span class="self">self</span>.label(), payload.into()).tls_serialize_detached()
+        {
+            <span class="prelude-val">Ok</span>(p) =&gt; p,
+            <span class="prelude-val">Err</span>(e) =&gt; {
+                <span class="macro">log::error!</span>(<span class="string">&quot;Serializing SignContent failed, {:?}&quot;</span>, e);
+                <span class="kw">return </span><span class="prelude-val">Err</span>(SignatureError::SigningError);
+            }
+        };
+        <span class="kw">let </span>signature = signer
+            .sign(<span class="kw-2">&amp;</span>payload)
             .map_err(|<span class="kw">_</span>| SignatureError::SigningError)<span class="question-mark">?</span>;
-        <span class="prelude-val">Ok</span>(<span class="self">Self</span>::SignedOutput::from_payload(<span class="self">self</span>, signature))
+
+        <span class="prelude-val">Ok</span>(<span class="self">Self</span>::SignedOutput::from_payload(<span class="self">self</span>, signature.into()))
     }
 }
 
@@ -335,14 +340,13 @@
     /// `CredentialError::InvalidSignature` otherwise.
     </span><span class="kw">fn </span>verify&lt;T&gt;(
         <span class="self">self</span>,
-        backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider,
-        public_key: <span class="kw-2">&amp;</span>SignaturePublicKey,
-        signature_scheme: SignatureScheme,
+        crypto: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCrypto,
+        pk: <span class="kw-2">&amp;</span>OpenMlsSignaturePublicKey,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;T, SignatureError&gt;
     <span class="kw">where
         </span>T: VerifiedStruct&lt;<span class="self">Self</span>&gt;,
     {
-        verify(<span class="kw-2">&amp;</span><span class="self">self</span>, backend, signature_scheme, public_key)<span class="question-mark">?</span>;
+        verify(crypto, <span class="kw-2">&amp;</span><span class="self">self</span>, pk)<span class="question-mark">?</span>;
         <span class="prelude-val">Ok</span>(T::from_verifiable(<span class="self">self</span>, T::SealingType::default()))
     }
 
@@ -354,19 +358,17 @@
     /// `CredentialError::InvalidSignature` otherwise.
     </span><span class="kw">fn </span>verify_no_out(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider,
-        public_key: <span class="kw-2">&amp;</span>SignaturePublicKey,
-        signature_scheme: SignatureScheme,
+        crypto: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCrypto,
+        pk: <span class="kw-2">&amp;</span>OpenMlsSignaturePublicKey,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(), SignatureError&gt; {
-        verify(<span class="self">self</span>, backend, signature_scheme, public_key)
+        verify(crypto, <span class="self">self</span>, pk)
     }
 }
 
 <span class="kw">fn </span>verify(
+    crypto: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCrypto,
     verifiable: <span class="kw-2">&amp;</span><span class="kw">impl </span>Verifiable,
-    backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider,
-    signature_scheme: SignatureScheme,
-    public_key: <span class="kw-2">&amp;</span>SignaturePublicKey,
+    pk: <span class="kw-2">&amp;</span>OpenMlsSignaturePublicKey,
 ) -&gt; <span class="prelude-ty">Result</span>&lt;(), SignatureError&gt; {
     <span class="kw">let </span>payload = verifiable
         .unsigned_payload()
@@ -379,16 +381,14 @@
             <span class="kw">return </span><span class="prelude-val">Err</span>(SignatureError::VerificationError);
         }
     };
-    backend
-        .crypto()
+    crypto
         .verify_signature(
-            signature_scheme,
+            pk.signature_scheme(),
             <span class="kw-2">&amp;</span>payload,
-            public_key.as_slice(),
+            pk.as_slice(),
             verifiable.signature().value(),
         )
-        .map_err(|<span class="kw">_</span>| SignatureError::VerificationError)<span class="question-mark">?</span>;
-    <span class="prelude-val">Ok</span>(())
+        .map_err(|<span class="kw">_</span>| SignatureError::VerificationError)
 }
 </code></pre></div>
 </section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="openmls" data-themes="" data-resource-suffix="" data-rustdoc-version="1.67.0 (fc594f156 2023-01-24)" data-search-js="search-444266647c4dba98.js" data-settings-js="settings-bebeae96e00e4617.js" data-settings-css="settings-af96d9e2fc13e081.css" ></div></body></html>

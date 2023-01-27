@@ -78,11 +78,6 @@
 <a href="#78" id="78">78</a>
 <a href="#79" id="79">79</a>
 <a href="#80" id="80">80</a>
-<a href="#81" id="81">81</a>
-<a href="#82" id="82">82</a>
-<a href="#83" id="83">83</a>
-<a href="#84" id="84">84</a>
-<a href="#85" id="85">85</a>
 </pre><pre class="rust"><code><span class="kw">use </span>tls_codec::{TlsDeserialize, TlsSerialize, TlsSize};
 
 <span class="kw">use super</span>::{Deserialize, Serialize};
@@ -116,14 +111,11 @@
 <span class="attr">#[cfg(test)]
 </span><span class="kw">mod </span>test {
     <span class="kw">use </span>openmls_rust_crypto::OpenMlsRustCrypto;
-    <span class="kw">use </span>openmls_traits::types::{Ciphersuite, SignatureScheme};
+    <span class="kw">use </span>openmls_traits::{crypto::OpenMlsCrypto, types::Ciphersuite, OpenMlsCryptoProvider};
     <span class="kw">use </span>tls_codec::{Deserialize, Serialize};
 
     <span class="kw">use super</span>::<span class="kw-2">*</span>;
-    <span class="kw">use crate</span>::{
-        credentials::{CredentialBundle, CredentialType},
-        key_packages::KeyPackageBundle,
-    };
+    <span class="kw">use crate</span>::{prelude_test::Secret, versions::ProtocolVersion};
 
     <span class="attr">#[test]
     </span><span class="kw">fn </span>test_serialize_deserialize() {
@@ -134,24 +126,22 @@
 
             <span class="kw">for _ in </span><span class="number">0</span>..<span class="number">8 </span>{
                 <span class="kw">let </span>hpke_public_key = {
-                    <span class="kw">let </span>credential_bundle = CredentialBundle::new(
-                        <span class="string">b&quot;Alice&quot;</span>.to_vec(),
-                        CredentialType::Basic,
-                        SignatureScheme::ED25519,
-                        <span class="kw-2">&amp;</span>backend,
-                    )
-                    .expect(<span class="string">&quot;Creation of credential bundle failed.&quot;</span>);
-
-                    <span class="kw">let </span>kpb = KeyPackageBundle::new(
-                        <span class="kw-2">&amp;</span>backend,
+                    <span class="kw">let </span>ikm = Secret::random(
                         Ciphersuite::MLS_128_DHKEMX25519_CHACHA20POLY1305_SHA256_Ed25519,
-                        <span class="kw-2">&amp;</span>credential_bundle,
+                        <span class="kw-2">&amp;</span>backend,
+                        ProtocolVersion::default(),
+                    )
+                    .unwrap();
+                    <span class="kw">let </span>init_key = backend.crypto().derive_hpke_keypair(
+                        Ciphersuite::hpke_config(
+                            <span class="kw-2">&amp;</span>Ciphersuite::MLS_128_DHKEMX25519_CHACHA20POLY1305_SHA256_Ed25519,
+                        ),
+                        ikm.as_slice(),
                     );
-
-                    kpb.key_package().hpke_init_key().clone()
+                    init_key.public
                 };
 
-                external_pub_extensions.push(ExternalPubExtension::new(hpke_public_key));
+                external_pub_extensions.push(ExternalPubExtension::new(hpke_public_key.into()));
             }
 
             external_pub_extensions

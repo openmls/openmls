@@ -620,7 +620,7 @@
 
 <span class="kw">impl </span>PreSharedKeyProposal {
     <span class="doccomment">/// Create a new PSK proposal
-    </span><span class="attr">#[cfg(any(feature = <span class="string">&quot;test-utils&quot;</span>, test))]
+    </span><span class="attr">#[cfg(test)]
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>new(psk: PreSharedKeyId) -&gt; <span class="self">Self </span>{
         <span class="self">Self </span>{ psk }
     }

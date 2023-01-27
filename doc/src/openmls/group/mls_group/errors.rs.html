@@ -305,7 +305,7 @@
 <span class="kw">use crate</span>::{
     error::LibraryError,
     group::errors::{CreateCommitError, MergeCommitError, StageCommitError, ValidationError},
-    treesync::errors::LeafNodeValidationError,
+    treesync::errors::{LeafNodeValidationError, PublicTreeError},
 };
 
 <span class="doccomment">/// New group error
@@ -391,9 +391,6 @@
     <span class="doccomment">/// The message&#39;s signature is invalid.
     </span><span class="attr">#[error(<span class="string">&quot;The message&#39;s signature is invalid.&quot;</span>)]
     </span>InvalidSignature,
-    <span class="doccomment">/// A signature key was not provided for an external message.
-    </span><span class="attr">#[error(<span class="string">&quot;A signature key was not provided for an external message.&quot;</span>)]
-    </span>MissingSignatureKey,
     <span class="doccomment">/// See [`StageCommitError`] for more details.
     </span><span class="attr">#[error(transparent)]
     </span>InvalidCommit(<span class="attr">#[from] </span>StageCommitError),
@@ -542,6 +539,9 @@
     <span class="doccomment">/// Error accessing the key store.
     </span><span class="attr">#[error(<span class="string">&quot;Error accessing the key store.&quot;</span>)]
     </span>KeyStoreError(KeyStoreError),
+    <span class="doccomment">/// See [`PublicTreeError`] for more details.
+    </span><span class="attr">#[error(transparent)]
+    </span>PublicTreeError(<span class="attr">#[from] </span>PublicTreeError),
 }
 
 <span class="doccomment">/// Commit to pending proposals error

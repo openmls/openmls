@@ -413,8 +413,6 @@
 <a href="#413" id="413">413</a>
 <a href="#414" id="414">414</a>
 <a href="#415" id="415">415</a>
-<a href="#416" id="416">416</a>
-<a href="#417" id="417">417</a>
 </pre><pre class="rust"><code><span class="doccomment">//! This module implements the ratchet tree component of MLS.
 //!
 //! It exposes the [`Node`] enum that can contain either a [`LeafNode`] or a [`ParentNode`].
@@ -436,6 +434,7 @@
 // encryption and decryption of updates to the tree.
 
 </span><span class="kw">use </span>openmls_traits::{
+    signatures::Signer,
     types::{Ciphersuite, CryptoError},
     OpenMlsCryptoProvider,
 };
@@ -447,7 +446,7 @@
         MlsBinaryTree, MlsBinaryTreeError,
     },
     ciphersuite::{Secret, SignaturePublicKey},
-    credentials::CredentialBundle,
+    credentials::CredentialWithKey,
     error::LibraryError,
     extensions::Extensions,
     framing::SenderError,
@@ -511,8 +510,9 @@
     /// corresponding [`CommitSecret`].
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>new(
         backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider,
+        signer: <span class="kw-2">&amp;</span><span class="kw">impl </span>Signer,
         config: CryptoConfig,
-        credential_bundle: <span class="kw-2">&amp;</span>CredentialBundle,
+        credential_with_key: CredentialWithKey,
         life_time: Lifetime,
         capabilities: Capabilities,
         extensions: Extensions,
@@ -522,7 +522,8 @@
             <span class="comment">// Creation of a group is considered to be from a key package.
             </span>LeafNodeSource::KeyPackage(life_time),
             backend,
-            credential_bundle,
+            signer,
+            credential_with_key,
             capabilities,
             extensions,
         )<span class="question-mark">?</span>;
@@ -726,13 +727,8 @@
                 Member::new(
                     index,
                     leaf_node.public_key().as_slice().to_vec(),
-                    leaf_node
-                        .leaf_node
-                        .credential()
-                        .signature_key()
-                        .as_slice()
-                        .to_vec(),
-                    leaf_node.leaf_node.credential().identity().to_vec(),
+                    leaf_node.leaf_node.signature_key().as_slice().to_vec(),
+                    leaf_node.leaf_node.credential().clone(),
                 )
             })
     }

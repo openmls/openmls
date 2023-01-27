@@ -589,7 +589,7 @@
             queued_proposals: Vec::new(),
         }
     }
-    <span class="attr">#[cfg(any(feature = <span class="string">&quot;test-utils&quot;</span>, test))]
+    <span class="attr">#[cfg(test)]
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>from_queued_proposal(queued_proposal: QueuedProposal) -&gt; <span class="self">Self </span>{
         <span class="self">Self </span>{
             queued_proposals: <span class="macro">vec!</span>[queued_proposal],

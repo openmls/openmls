@@ -272,18 +272,12 @@
 <a href="#272" id="272">272</a>
 <a href="#273" id="273">273</a>
 <a href="#274" id="274">274</a>
-<a href="#275" id="275">275</a>
-<a href="#276" id="276">276</a>
-<a href="#277" id="277">277</a>
-<a href="#278" id="278">278</a>
-<a href="#279" id="279">279</a>
-<a href="#280" id="280">280</a>
 </pre><pre class="rust"><code><span class="kw">use </span>log::debug;
 <span class="kw">use </span>openmls_traits::{crypto::OpenMlsCrypto, key_store::OpenMlsKeyStore};
 <span class="kw">use </span>tls_codec::Deserialize;
 
 <span class="kw">use crate</span>::{
-    ciphersuite::{hash_ref::HashReference, signable::Verifiable},
+    ciphersuite::{hash_ref::HashReference, signable::Verifiable, OpenMlsSignaturePublicKey},
     group::{core_group::<span class="kw-2">*</span>, errors::WelcomeError},
     schedule::errors::PskError,
     treesync::{
@@ -421,13 +415,7 @@
 
         <span class="comment">// Find our own leaf in the tree.
         </span><span class="kw">let </span>own_leaf_index = tree
-            .find_leaf(
-                key_package_bundle
-                    .key_package()
-                    .leaf_node()
-                    .credential()
-                    .signature_key(),
-            )
+            .find_leaf(key_package_bundle.key_package().leaf_node().signature_key())
             .ok_or(WelcomeError::PublicTreeError(
                 PublicTreeError::MalformedTree,
             ))<span class="question-mark">?</span>;
@@ -460,17 +448,17 @@
         };
 
         <span class="kw">let </span>group_info: GroupInfo = {
-            <span class="kw">let </span>signer_credential = tree
+            <span class="kw">let </span>signature_key = tree
                 .leaf(verifiable_group_info.signer())
                 .ok_or(WelcomeError::UnknownSender)<span class="question-mark">?
-                </span>.credential();
+                </span>.signature_key();
+            <span class="kw">let </span>group_info_signer_pk = OpenMlsSignaturePublicKey::from_signature_key(
+                signature_key.clone(),
+                ciphersuite.signature_algorithm(),
+            );
 
             verifiable_group_info
-                .verify(
-                    backend,
-                    signer_credential.signature_key(),
-                    ciphersuite.signature_algorithm(),
-                )
+                .verify(backend.crypto(), <span class="kw-2">&amp;</span>group_info_signer_pk)
                 .map_err(|<span class="kw">_</span>| WelcomeError::InvalidGroupInfoSignature)<span class="question-mark">?
         </span>};
 

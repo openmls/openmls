@@ -242,7 +242,7 @@
 ///
 /// In all cases, when a `LibraryError` is returned, applications should try to recover gracefully from it.
 /// It is recommended to log the error for potential debugging.
-</span><span class="attr">#[derive(Error, Debug, PartialEq, Clone)]
+</span><span class="attr">#[derive(Error, Debug, PartialEq, Eq, Clone)]
 </span><span class="kw">pub struct </span>LibraryError {
     internal: InternalLibraryError,
 }
@@ -279,7 +279,7 @@
 }
 
 <span class="doccomment">/// Internal enum to differentiate between the different types of library errors
-</span><span class="attr">#[derive(Error, Debug, PartialEq, Clone)]
+</span><span class="attr">#[derive(Error, Debug, PartialEq, Eq, Clone)]
 </span><span class="kw">enum </span>InternalLibraryError {
     <span class="doccomment">/// See [`TlsCodecError`] for more details.
     </span><span class="attr">#[error(transparent)]

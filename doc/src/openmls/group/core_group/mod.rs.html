@@ -862,13 +862,6 @@
 <a href="#862" id="862">862</a>
 <a href="#863" id="863">863</a>
 <a href="#864" id="864">864</a>
-<a href="#865" id="865">865</a>
-<a href="#866" id="866">866</a>
-<a href="#867" id="867">867</a>
-<a href="#868" id="868">868</a>
-<a href="#869" id="869">869</a>
-<a href="#870" id="870">870</a>
-<a href="#871" id="871">871</a>
 </pre><pre class="rust"><code><span class="doccomment">//! ### Don&#39;t Panic!
 //!
 //! Functions in this module should never panic. However, if there is a bug in
@@ -892,7 +885,7 @@
 
 <span class="comment">// Tests
 </span><span class="attr">#[cfg(test)]
-</span><span class="kw">mod </span>test_core_group;
+</span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">mod </span>test_core_group;
 <span class="attr">#[cfg(test)]
 </span><span class="kw">mod </span>test_create_commit_params;
 <span class="attr">#[cfg(test)]
@@ -925,17 +918,16 @@
     schedule::{message_secrets::<span class="kw-2">*</span>, psk::<span class="kw-2">*</span>, <span class="kw-2">*</span>},
     tree::{secret_tree::SecretTreeError, sender_ratchet::SenderRatchetConfiguration},
     treesync::{
-        node::leaf_node::{Capabilities, Lifetime},
+        node::leaf_node::{Capabilities, Lifetime, OpenMlsLeafNode},
         <span class="kw-2">*</span>,
     },
     versions::ProtocolVersion,
 };
 
 <span class="kw">use </span><span class="self">self</span>::{past_secrets::MessageSecretsStore, staged_commit::StagedCommit};
-<span class="attr">#[cfg(test)]
-</span><span class="kw">use </span><span class="kw">crate</span>::treesync::node::leaf_node::OpenMlsLeafNode;
 <span class="kw">use </span>log::{debug, trace};
 <span class="kw">use </span>openmls_traits::key_store::OpenMlsKeyStore;
+<span class="kw">use </span>openmls_traits::signatures::Signer;
 <span class="kw">use </span>openmls_traits::{crypto::OpenMlsCrypto, types::Ciphersuite};
 <span class="kw">use </span>serde::{Deserialize, Serialize};
 <span class="attr">#[cfg(test)]
@@ -965,8 +957,8 @@
 </span><span class="kw">pub struct </span>Member {
     <span class="doccomment">/// The member&#39;s leaf index in the ratchet tree.
     </span><span class="kw">pub </span>index: LeafNodeIndex,
-    <span class="doccomment">/// The member&#39;s identity from the credential.
-    </span><span class="kw">pub </span>identity: Vec&lt;u8&gt;,
+    <span class="doccomment">/// The member&#39;s credential.
+    </span><span class="kw">pub </span>credential: Credential,
     <span class="doccomment">/// The member&#39;s public HPHKE encryption key.
     </span><span class="kw">pub </span>encryption_key: Vec&lt;u8&gt;,
     <span class="doccomment">/// The member&#39;s public signature key.
@@ -979,13 +971,13 @@
         index: LeafNodeIndex,
         encryption_key: Vec&lt;u8&gt;,
         signature_key: Vec&lt;u8&gt;,
-        identity: Vec&lt;u8&gt;,
+        credential: Credential,
     ) -&gt; <span class="self">Self </span>{
         <span class="self">Self </span>{
             index,
             encryption_key,
             signature_key,
-            identity,
+            credential,
         }
     }
 }
@@ -1025,11 +1017,16 @@
     required_capabilities: <span class="prelude-ty">Option</span>&lt;RequiredCapabilitiesExtension&gt;,
     max_past_epochs: usize,
     lifetime: <span class="prelude-ty">Option</span>&lt;Lifetime&gt;,
+    credential_with_key: CredentialWithKey,
 }
 
 <span class="kw">impl </span>CoreGroupBuilder {
     <span class="doccomment">/// Create a new [`CoreGroupBuilder`].
-    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>new(group_id: GroupId, crypto_config: CryptoConfig) -&gt; <span class="self">Self </span>{
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>new(
+        group_id: GroupId,
+        crypto_config: CryptoConfig,
+        credential_with_key: CredentialWithKey,
+    ) -&gt; <span class="self">Self </span>{
         <span class="self">Self </span>{
             group_id,
             config: <span class="prelude-val">None</span>,
@@ -1040,6 +1037,7 @@
             own_leaf_extensions: Extensions::empty(),
             lifetime: <span class="prelude-val">None</span>,
             crypto_config,
+            credential_with_key,
         }
     }
     <span class="doccomment">/// Set the [`CoreGroupConfig`] of the [`CoreGroup`].
@@ -1080,8 +1078,8 @@
     /// [`OpenMlsCryptoProvider`].
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>build&lt;KeyStore: OpenMlsKeyStore&gt;(
         <span class="self">self</span>,
-        credential_bundle: <span class="kw-2">&amp;</span>CredentialBundle,
         backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider&lt;KeyStoreProvider = KeyStore&gt;,
+        signer: <span class="kw-2">&amp;</span><span class="kw">impl </span>Signer,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;CoreGroup, CoreGroupBuildError&lt;KeyStore::Error&gt;&gt; {
         <span class="kw">let </span>ciphersuite = <span class="self">self</span>.crypto_config.ciphersuite;
         <span class="kw">let </span>config = <span class="self">self</span>.config.unwrap_or_default();
@@ -1095,11 +1093,12 @@
         <span class="macro">trace!</span>(<span class="string">&quot; &gt;&gt;&gt; with {:?}, {:?}&quot;</span>, ciphersuite, config);
         <span class="kw">let </span>(tree, commit_secret, leaf_keypair) = TreeSync::new(
             backend,
+            signer,
             CryptoConfig {
                 ciphersuite,
                 version,
             },
-            credential_bundle,
+            <span class="self">self</span>.credential_with_key,
             <span class="self">self</span>.lifetime.unwrap_or_default(),
             Capabilities::new(
                 <span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span>[version]),     <span class="comment">// TODO: Allow more versions
@@ -1186,8 +1185,12 @@
 <span class="doccomment">/// Public [`CoreGroup`] functions.
 </span><span class="kw">impl </span>CoreGroup {
     <span class="doccomment">/// Get a builder for [`CoreGroup`].
-    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>builder(group_id: GroupId, crypto_config: CryptoConfig) -&gt; CoreGroupBuilder {
-        CoreGroupBuilder::new(group_id, crypto_config)
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>builder(
+        group_id: GroupId,
+        crypto_config: CryptoConfig,
+        credential_with_key: CredentialWithKey,
+    ) -&gt; CoreGroupBuilder {
+        CoreGroupBuilder::new(group_id, crypto_config, credential_with_key)
     }
 
     <span class="comment">// === Create handshake messages ===
@@ -1200,9 +1203,8 @@
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>create_add_proposal(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         framing_parameters: FramingParameters,
-        credential_bundle: <span class="kw-2">&amp;</span>CredentialBundle,
         joiner_key_package: KeyPackage,
-        backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider,
+        signer: <span class="kw-2">&amp;</span><span class="kw">impl </span>Signer,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;AuthenticatedContent, CreateAddProposalError&gt; {
         joiner_key_package
             .leaf_node()
@@ -1215,9 +1217,8 @@
             framing_parameters,
             <span class="self">self</span>.own_leaf_index(),
             proposal,
-            credential_bundle,
             <span class="self">self</span>.context(),
-            backend,
+            signer,
         )
         .map_err(|e| e.into())
     }
@@ -1229,11 +1230,10 @@
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>create_update_proposal(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         framing_parameters: FramingParameters,
-        credential_bundle: <span class="kw-2">&amp;</span>CredentialBundle,
         <span class="comment">// XXX: There&#39;s no need to own this. The [`UpdateProposal`] should
         //      operate on a reference to make this more efficient.
         </span>leaf_node: LeafNode,
-        backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider,
+        signer: <span class="kw-2">&amp;</span><span class="kw">impl </span>Signer,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;AuthenticatedContent, LibraryError&gt; {
         <span class="kw">let </span>update_proposal = UpdateProposal { leaf_node };
         <span class="kw">let </span>proposal = Proposal::Update(update_proposal);
@@ -1241,9 +1241,8 @@
             framing_parameters,
             <span class="self">self</span>.own_leaf_index(),
             proposal,
-            credential_bundle,
             <span class="self">self</span>.context(),
-            backend,
+            signer,
         )
     }
 
@@ -1254,9 +1253,8 @@
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>create_remove_proposal(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         framing_parameters: FramingParameters,
-        credential_bundle: <span class="kw-2">&amp;</span>CredentialBundle,
         removed: LeafNodeIndex,
-        backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider,
+        signer: <span class="kw-2">&amp;</span><span class="kw">impl </span>Signer,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;AuthenticatedContent, ValidationError&gt; {
         <span class="kw">if </span>!<span class="self">self</span>.treesync().is_leaf_in_tree(removed) {
             <span class="kw">return </span><span class="prelude-val">Err</span>(ValidationError::UnknownMember);
@@ -1267,9 +1265,8 @@
             framing_parameters,
             <span class="self">self</span>.own_leaf_index(),
             proposal,
-            credential_bundle,
             <span class="self">self</span>.context(),
-            backend,
+            signer,
         )
         .map_err(ValidationError::LibraryError)
     }
@@ -1283,9 +1280,8 @@
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>create_presharedkey_proposal(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         framing_parameters: FramingParameters,
-        credential_bundle: <span class="kw-2">&amp;</span>CredentialBundle,
         psk: PreSharedKeyId,
-        backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider,
+        signer: <span class="kw-2">&amp;</span><span class="kw">impl </span>Signer,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;AuthenticatedContent, LibraryError&gt; {
         <span class="kw">let </span>presharedkey_proposal = PreSharedKeyProposal::new(psk);
         <span class="kw">let </span>proposal = Proposal::PreSharedKey(presharedkey_proposal);
@@ -1293,9 +1289,8 @@
             framing_parameters,
             <span class="self">self</span>.own_leaf_index(),
             proposal,
-            credential_bundle,
             <span class="self">self</span>.context(),
-            backend,
+            signer,
         )
     }
 
@@ -1304,9 +1299,8 @@
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>create_group_context_ext_proposal(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         framing_parameters: FramingParameters,
-        credential_bundle: <span class="kw-2">&amp;</span>CredentialBundle,
         extensions: Extensions,
-        backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider,
+        signer: <span class="kw-2">&amp;</span><span class="kw">impl </span>Signer,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;AuthenticatedContent, CreateGroupContextExtProposalError&gt; {
         <span class="comment">// Ensure that the group supports all the extensions that are wanted.
 
@@ -1330,9 +1324,8 @@
             framing_parameters,
             <span class="self">self</span>.own_leaf_index(),
             proposal,
-            credential_bundle,
             <span class="self">self</span>.context(),
-            backend,
+            signer,
         )
         .map_err(|e| e.into())
     }
@@ -1342,17 +1335,16 @@
         <span class="kw-2">&amp;mut </span><span class="self">self</span>,
         aad: <span class="kw-2">&amp;</span>[u8],
         msg: <span class="kw-2">&amp;</span>[u8],
-        credential_bundle: <span class="kw-2">&amp;</span>CredentialBundle,
         padding_size: usize,
         backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider,
+        signer: <span class="kw-2">&amp;</span><span class="kw">impl </span>Signer,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;PrivateMessage, MessageEncryptionError&gt; {
         <span class="kw">let </span>public_message = AuthenticatedContent::new_application(
             <span class="self">self</span>.own_leaf_index(),
             aad,
             msg,
-            credential_bundle,
             <span class="self">self</span>.context(),
-            backend,
+            signer,
         )<span class="question-mark">?</span>;
         <span class="self">self</span>.encrypt(public_message, padding_size, backend)
     }
@@ -1375,7 +1367,7 @@
     }
 
     <span class="doccomment">/// Decrypt an PrivateMessage into an PublicMessage
-    </span><span class="attr">#[cfg(any(feature = <span class="string">&quot;test-utils&quot;</span>, test))]
+    </span><span class="attr">#[cfg(test)]
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>decrypt(
         <span class="kw-2">&amp;mut </span><span class="self">self</span>,
         private_message: <span class="kw-2">&amp;</span>PrivateMessage,
@@ -1430,7 +1422,7 @@
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>export_group_info(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider,
-        credential_bundle: <span class="kw-2">&amp;</span>CredentialBundle,
+        signer: <span class="kw-2">&amp;</span><span class="kw">impl </span>Signer,
         with_ratchet_tree: bool,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;GroupInfo, LibraryError&gt; {
         <span class="kw">let </span>extensions = {
@@ -1472,7 +1464,7 @@
 
         <span class="comment">// Sign to-be-signed group info.
         </span>group_info_tbs
-            .sign(backend, credential_bundle.signature_private_key())
+            .sign(signer)
             .map_err(|<span class="kw">_</span>| LibraryError::custom(<span class="string">&quot;Signing failed&quot;</span>))
     }
 
@@ -1670,21 +1662,15 @@
         )
     }
 
-    <span class="attr">#[cfg(any(feature = <span class="string">&quot;test-utils&quot;</span>, test))]
+    <span class="attr">#[cfg(test)]
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>message_secrets_test_mut(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;mut </span>MessageSecrets {
         <span class="self">self</span>.message_secrets_store.message_secrets_mut()
     }
 
-    <span class="attr">#[cfg(test)]
-    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>own_leaf_node(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="kw-2">&amp;</span>OpenMlsLeafNode, LibraryError&gt; {
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>own_leaf_node(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="kw-2">&amp;</span>OpenMlsLeafNode, LibraryError&gt; {
         <span class="self">self</span>.tree
             .leaf(<span class="self">self</span>.own_leaf_index())
             .ok_or_else(|| LibraryError::custom(<span class="string">&quot;Tree has no own leaf.&quot;</span>))
-    }
-
-    <span class="attr">#[cfg(any(feature = <span class="string">&quot;test-utils&quot;</span>, test))]
-    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>context_mut(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;mut </span>GroupContext {
-        <span class="kw-2">&amp;mut </span><span class="self">self</span>.group_context
     }
 
     <span class="attr">#[cfg(any(feature = <span class="string">&quot;test-utils&quot;</span>, test))]

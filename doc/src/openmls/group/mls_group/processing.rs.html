@@ -168,23 +168,12 @@
 <a href="#168" id="168">168</a>
 <a href="#169" id="169">169</a>
 <a href="#170" id="170">170</a>
-<a href="#171" id="171">171</a>
-<a href="#172" id="172">172</a>
-<a href="#173" id="173">173</a>
-<a href="#174" id="174">174</a>
-<a href="#175" id="175">175</a>
-<a href="#176" id="176">176</a>
-<a href="#177" id="177">177</a>
-<a href="#178" id="178">178</a>
-<a href="#179" id="179">179</a>
-<a href="#180" id="180">180</a>
-<a href="#181" id="181">181</a>
 </pre><pre class="rust"><code><span class="doccomment">//! Processing functions of an [`MlsGroup`] for incoming messages.
 
 </span><span class="kw">use </span>std::mem;
 
 <span class="kw">use </span>core_group::{create_commit_params::CreateCommitParams, staged_commit::StagedCommit};
-<span class="kw">use </span>tls_codec::Serialize;
+<span class="kw">use </span>openmls_traits::signatures::Signer;
 
 <span class="kw">use </span><span class="kw">crate</span>::messages::group_info::GroupInfo;
 
@@ -260,31 +249,20 @@
     </span><span class="kw">pub fn </span>commit_to_pending_proposals&lt;KeyStore: OpenMlsKeyStore&gt;(
         <span class="kw-2">&amp;mut </span><span class="self">self</span>,
         backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider&lt;KeyStoreProvider = KeyStore&gt;,
+        signer: <span class="kw-2">&amp;</span><span class="kw">impl </span>Signer,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;
         (MlsMessageOut, <span class="prelude-ty">Option</span>&lt;MlsMessageOut&gt;, <span class="prelude-ty">Option</span>&lt;GroupInfo&gt;),
         CommitToPendingProposalsError&lt;KeyStore::Error&gt;,
     &gt; {
         <span class="self">self</span>.is_operational()<span class="question-mark">?</span>;
 
-        <span class="kw">let </span>credential = <span class="self">self</span>.credential()<span class="question-mark">?</span>;
-        <span class="kw">let </span>credential_bundle: CredentialBundle = backend
-            .key_store()
-            .read(
-                <span class="kw-2">&amp;</span>credential
-                    .signature_key()
-                    .tls_serialize_detached()
-                    .map_err(LibraryError::missing_bound_check)<span class="question-mark">?</span>,
-            )
-            .ok_or(CommitToPendingProposalsError::NoMatchingCredentialBundle)<span class="question-mark">?</span>;
-
         <span class="comment">// Create Commit over all pending proposals
         // TODO #751
         </span><span class="kw">let </span>params = CreateCommitParams::builder()
             .framing_parameters(<span class="self">self</span>.framing_parameters())
-            .credential_bundle(<span class="kw-2">&amp;</span>credential_bundle)
             .proposal_store(<span class="kw-2">&amp;</span><span class="self">self</span>.proposal_store)
             .build();
-        <span class="kw">let </span>create_commit_result = <span class="self">self</span>.group.create_commit(params, backend)<span class="question-mark">?</span>;
+        <span class="kw">let </span>create_commit_result = <span class="self">self</span>.group.create_commit(params, backend, signer)<span class="question-mark">?</span>;
 
         <span class="comment">// Convert PublicMessage messages to MLSMessage and encrypt them if required by
         // the configuration

@@ -632,15 +632,9 @@
 <a href="#632" id="632">632</a>
 <a href="#633" id="633">633</a>
 <a href="#634" id="634">634</a>
-<a href="#635" id="635">635</a>
-<a href="#636" id="636">636</a>
-<a href="#637" id="637">637</a>
-<a href="#638" id="638">638</a>
-<a href="#639" id="639">639</a>
-<a href="#640" id="640">640</a>
 </pre><pre class="rust"><code><span class="kw">use </span>openmls_traits::key_store::OpenMlsKeyStore;
 
-<span class="kw">use </span><span class="kw">crate</span>::ciphersuite::signable::Verifiable;
+<span class="kw">use </span><span class="kw">crate</span>::ciphersuite::{signable::Verifiable, OpenMlsSignaturePublicKey};
 <span class="kw">use </span><span class="kw">crate</span>::framing::mls_content::FramedContentBody;
 <span class="kw">use </span><span class="kw">crate</span>::treesync::errors::TreeSyncAddLeaf;
 <span class="kw">use </span><span class="kw">crate</span>::treesync::node::encryption_keys::EncryptionKeyPair;
@@ -671,16 +665,13 @@
     /// Returns a [StagedCommit] that can be inspected and later merged
     /// into the group state with [CoreGroup::merge_commit()]
     /// This function does the following checks:
-    ///  - ValSem100
     ///  - ValSem101
     ///  - ValSem102
-    ///  - ValSem103
     ///  - ValSem104
     ///  - ValSem105
     ///  - ValSem106
     ///  - ValSem107
     ///  - ValSem108
-    ///  - ValSem109
     ///  - ValSem110
     ///  - ValSem111
     ///  - ValSem112
@@ -766,10 +757,8 @@
             .map(|update_path| update_path.leaf_node().clone());
 
         <span class="comment">// Validate the staged proposals by doing the following checks:
-        // ValSem100
         // ValSem101
         // ValSem102
-        // ValSem103
         // ValSem104
         // ValSem105
         // ValSem106
@@ -780,8 +769,7 @@
 
         <span class="kw">let </span>public_key_set = <span class="kw">match </span>sender {
             Sender::Member(leaf_index) =&gt; {
-                <span class="comment">// ValSem109
-                // ValSem110
+                <span class="comment">// ValSem110
                 // ValSem111
                 // ValSem112
                 </span><span class="self">self</span>.validate_update_proposals(<span class="kw-2">&amp;</span>proposal_queue, <span class="kw-2">*</span>leaf_index)<span class="question-mark">?
@@ -862,12 +850,12 @@
                     tbs: <span class="kw-2">&amp;</span>tbs,
                     signature: leaf_node.signature(),
                 };
+                <span class="kw">let </span>pk = OpenMlsSignaturePublicKey::from_signature_key(
+                    leaf_node.signature_key().clone(),
+                    <span class="self">self</span>.ciphersuite.signature_algorithm(),
+                );
                 <span class="kw">if </span>verifiable_leaf_node
-                    .verify_no_out(
-                        backend,
-                        leaf_node.signature_key(),
-                        leaf_node.credential().signature_scheme(),
-                    )
+                    .verify_no_out(backend.crypto(), <span class="kw-2">&amp;</span>pk)
                     .is_err()
                 {
                     <span class="macro">debug_assert!</span>(
@@ -888,7 +876,7 @@
                 <span class="kw">let </span>(leaf_node, update_path_nodes) = path.into_parts();
 
                 <span class="comment">// Make sure that the new path key package is valid
-                </span><span class="self">self</span>.validate_path_key_package(sender_index, <span class="kw-2">&amp;</span>leaf_node, public_key_set, sender)<span class="question-mark">?</span>;
+                </span><span class="self">self</span>.validate_path_key_package(<span class="kw-2">&amp;</span>leaf_node, public_key_set)<span class="question-mark">?</span>;
 
                 <span class="comment">// If the committer is a `NewMemberCommit`, we have to add the leaf to
                 // the tree before we can apply or even decrypt an update path.

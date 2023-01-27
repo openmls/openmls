@@ -498,8 +498,9 @@
 <span class="kw">impl </span>CoreGroup {
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>create_commit&lt;KeyStore: OpenMlsKeyStore&gt;(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        params: CreateCommitParams,
+        <span class="kw-2">mut </span>params: CreateCommitParams,
         backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider&lt;KeyStoreProvider = KeyStore&gt;,
+        signer: <span class="kw-2">&amp;</span><span class="kw">impl </span>Signer,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;CreateCommitResult, CreateCommitError&lt;KeyStore::Error&gt;&gt; {
         <span class="kw">let </span>ciphersuite = <span class="self">self</span>.ciphersuite();
 
@@ -541,10 +542,8 @@
 
         <span class="comment">// Validate the proposals by doing the following checks:
 
-        // ValSem100
         // ValSem101
         // ValSem102
-        // ValSem103
         // ValSem104
         // ValSem106
         </span><span class="self">self</span>.validate_add_proposals(<span class="kw-2">&amp;</span>proposal_queue)<span class="question-mark">?</span>;
@@ -553,8 +552,7 @@
         </span><span class="self">self</span>.validate_remove_proposals(<span class="kw-2">&amp;</span>proposal_queue)<span class="question-mark">?</span>;
         <span class="comment">// Validate update proposals for member commits
         </span><span class="kw">if let </span>Sender::Member(sender_index) = <span class="kw-2">&amp;</span>sender {
-            <span class="comment">// ValSem109
-            // ValSem110
+            <span class="comment">// ValSem110
             // ValSem111
             // ValSem112
             </span><span class="self">self</span>.validate_update_proposals(<span class="kw-2">&amp;</span>proposal_queue, <span class="kw-2">*</span>sender_index)<span class="question-mark">?</span>;
@@ -596,7 +594,10 @@
                     version: <span class="self">self</span>.version(),
                 },
                 backend,
-                params.credential_bundle(),
+                signer,
+                params
+                    .take_credential_with_key()
+                    .ok_or(CreateCommitError::MissingCredential)<span class="question-mark">?</span>,
             )<span class="question-mark">?</span>;
 
             <span class="kw">let </span><span class="kw-2">mut </span>leaf_node: OpenMlsLeafNode = key_package.into();
@@ -631,8 +632,8 @@
                         <span class="self">self</span>.group_id(),
                         <span class="self">self</span>.ciphersuite,
                         ProtocolVersion::default(), <span class="comment">// XXX: openmls/openmls#1065
-                        </span>params.credential_bundle(),
-                        backend,
+                        </span>backend,
+                        signer
                     )<span class="question-mark">?</span>;
                     <span class="macro">vec!</span>[encryption_keypair]
                 };
@@ -641,9 +642,9 @@
                 // generated new leaf.
                 </span><span class="kw">let </span>(plain_path, <span class="kw-2">mut </span>new_parent_keypairs, commit_secret) = diff.apply_own_update_path(
                     backend,
+                    signer,
                     ciphersuite,
                     <span class="self">self</span>.group_id().clone(),
-                    params.credential_bundle(),
                     <span class="self">self</span>.own_leaf_index()
                 )<span class="question-mark">?</span>;
 
@@ -697,9 +698,8 @@
             <span class="kw-2">*</span>params.framing_parameters(),
             sender,
             commit,
-            params.credential_bundle(),
             <span class="self">self</span>.context(),
-            backend,
+            signer,
         )<span class="question-mark">?</span>;
 
         <span class="comment">// Calculate the confirmed transcript hash
@@ -812,7 +812,7 @@
                 )
             };
             <span class="comment">// Sign to-be-signed group info.
-            </span><span class="prelude-val">Some</span>(group_info_tbs.sign(backend, params.credential_bundle().signature_private_key())<span class="question-mark">?</span>)
+            </span><span class="prelude-val">Some</span>(group_info_tbs.sign(signer)<span class="question-mark">?</span>)
         } <span class="kw">else </span>{
             <span class="prelude-val">None
         </span>};

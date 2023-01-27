@@ -943,7 +943,6 @@
 <a href="#943" id="943">943</a>
 <a href="#944" id="944">944</a>
 <a href="#945" id="945">945</a>
-<a href="#946" id="946">946</a>
 </pre><pre class="rust"><code><span class="doccomment">//! This module provides the diff functionality for [`TreeSync`].
 //!
 //! # About
@@ -963,7 +962,7 @@
 //! functions that are not expected to fail and throw an error, will still
 //! return a [`Result`] since they may throw a
 //! [`LibraryError`](TreeSyncDiffError::LibraryError).
-</span><span class="kw">use </span>openmls_traits::{types::Ciphersuite, OpenMlsCryptoProvider};
+</span><span class="kw">use </span>openmls_traits::{signatures::Signer, types::Ciphersuite, OpenMlsCryptoProvider};
 <span class="kw">use </span>serde::{Deserialize, Serialize};
 
 <span class="kw">use </span>std::collections::HashSet;
@@ -986,7 +985,6 @@
         MlsBinaryTreeDiff, StagedMlsBinaryTreeDiff,
     },
     ciphersuite::Secret,
-    credentials::CredentialBundle,
     error::LibraryError,
     group::GroupId,
     messages::PathSecret,
@@ -1230,9 +1228,9 @@
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>apply_own_update_path(
         <span class="kw-2">&amp;mut </span><span class="self">self</span>,
         backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider,
+        signer: <span class="kw-2">&amp;</span><span class="kw">impl </span>Signer,
         ciphersuite: Ciphersuite,
         group_id: GroupId,
-        credential_bundle: <span class="kw-2">&amp;</span>CredentialBundle,
         leaf_index: LeafNodeIndex,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;UpdatePathResult, LibraryError&gt; {
         <span class="macro">debug_assert!</span>(
@@ -1247,7 +1245,7 @@
 
         <span class="self">self</span>.leaf_mut(leaf_index)
             .map_err(|<span class="kw">_</span>| LibraryError::custom(<span class="string">&quot;Didn&#39;t find own leaf in diff.&quot;</span>))<span class="question-mark">?
-            </span>.update_parent_hash(<span class="kw-2">&amp;</span>parent_hash, group_id, credential_bundle, backend)<span class="question-mark">?</span>;
+            </span>.update_parent_hash(<span class="kw-2">&amp;</span>parent_hash, group_id, signer)<span class="question-mark">?</span>;
 
         <span class="prelude-val">Ok</span>((update_path_nodes, keypairs, commit_secret))
     }

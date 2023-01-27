@@ -70,15 +70,6 @@
 <a href="#70" id="70">70</a>
 <a href="#71" id="71">71</a>
 <a href="#72" id="72">72</a>
-<a href="#73" id="73">73</a>
-<a href="#74" id="74">74</a>
-<a href="#75" id="75">75</a>
-<a href="#76" id="76">76</a>
-<a href="#77" id="77">77</a>
-<a href="#78" id="78">78</a>
-<a href="#79" id="79">79</a>
-<a href="#80" id="80">80</a>
-<a href="#81" id="81">81</a>
 </pre><pre class="rust"><code><span class="kw">use </span>serde::{Deserialize, Serialize};
 <span class="kw">use </span>tls_codec::{TlsDeserialize, TlsSerialize, TlsSize};
 
@@ -114,34 +105,25 @@
 
 <span class="attr">#[cfg(test)]
 </span><span class="kw">mod </span>test {
-    <span class="kw">use </span>openmls_rust_crypto::OpenMlsRustCrypto;
+    <span class="kw">use </span>openmls_basic_credential::SignatureKeyPair;
     <span class="kw">use </span>openmls_traits::types::SignatureScheme;
     <span class="kw">use </span>tls_codec::{Deserialize, Serialize};
 
-    <span class="kw">use </span><span class="kw">crate</span>::credentials::{CredentialBundle, CredentialType};
+    <span class="kw">use </span><span class="kw">crate</span>::credentials::CredentialType;
 
     <span class="kw">use super</span>::<span class="kw-2">*</span>;
 
     <span class="attr">#[test]
     </span><span class="kw">fn </span>test_serialize_deserialize() {
         <span class="kw">let </span>tests = {
-            <span class="kw">let </span>backend = OpenMlsRustCrypto::default();
-
             <span class="kw">let </span><span class="kw-2">mut </span>external_sender_extensions = Vec::new();
 
             <span class="kw">for _ in </span><span class="number">0</span>..<span class="number">8 </span>{
-                <span class="kw">let </span>credential_bundle = CredentialBundle::new(
-                    <span class="string">b&quot;Alice&quot;</span>.to_vec(),
-                    CredentialType::Basic,
-                    SignatureScheme::ED25519,
-                    <span class="kw-2">&amp;</span>backend,
-                )
-                .expect(<span class="string">&quot;Creation of credential bundle failed.&quot;</span>);
-
-                <span class="kw">let </span>credential = credential_bundle.credential().clone();
+                <span class="kw">let </span>credential = Credential::new(<span class="string">b&quot;Alice&quot;</span>.to_vec(), CredentialType::Basic).unwrap();
+                <span class="kw">let </span>signature_keys = SignatureKeyPair::new(SignatureScheme::ED25519).unwrap();
 
                 external_sender_extensions.push(ExternalSender {
-                    signature_key: credential.signature_key().clone(),
+                    signature_key: signature_keys.to_public_vec().into(),
                     credential,
                 });
             }

@@ -422,6 +422,11 @@
 <a href="#422" id="422">422</a>
 <a href="#423" id="423">423</a>
 <a href="#424" id="424">424</a>
+<a href="#425" id="425">425</a>
+<a href="#426" id="426">426</a>
+<a href="#427" id="427">427</a>
+<a href="#428" id="428">428</a>
+<a href="#429" id="429">429</a>
 </pre><pre class="rust"><code><span class="doccomment">//! # MLS content authentication
 //!
 //! This module contains structs and implementation that pertain to content
@@ -433,6 +438,7 @@
 </span><span class="kw">use crate</span>::{
     binary_tree::LeafNodeIndex,
     ciphersuite::signable::{Signable, SignedStruct, Verifiable, VerifiedStruct},
+    credentials::CredentialWithKey,
     error::LibraryError,
     group::errors::ValidationError,
 };
@@ -442,10 +448,10 @@
 
 <span class="kw">use super</span>::{
     mls_content::{ContentType, FramedContentBody, FramedContentTbs},
-    AddProposal, Commit, ConfirmationTag, Credential, CredentialBundle, FramingParameters,
-    GroupContext, GroupEpoch, GroupId, Proposal, Sender, Signature, WireFormat,
+    AddProposal, Commit, ConfirmationTag, FramingParameters, GroupContext, GroupEpoch, GroupId,
+    Proposal, Sender, Signature, WireFormat,
 };
-<span class="kw">use </span>openmls_traits::OpenMlsCryptoProvider;
+<span class="kw">use </span>openmls_traits::signatures::Signer;
 <span class="kw">use </span>std::io::{Read, Write};
 
 <span class="kw">use </span>serde::{Deserialize, Serialize};
@@ -537,9 +543,8 @@
         framing_parameters: FramingParameters,
         sender: Sender,
         body: FramedContentBody,
-        credential_bundle: <span class="kw-2">&amp;</span>CredentialBundle,
         context: <span class="kw-2">&amp;</span>GroupContext,
-        backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider,
+        signer: <span class="kw-2">&amp;</span><span class="kw">impl </span>Signer,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, LibraryError&gt; {
         <span class="kw">let </span><span class="kw-2">mut </span>content_tbs = FramedContentTbs::new(
             framing_parameters.wire_format(),
@@ -558,7 +563,7 @@
         }
 
         content_tbs
-            .sign(backend, credential_bundle.signature_private_key())
+            .sign(signer)
             .map_err(|<span class="kw">_</span>| LibraryError::custom(<span class="string">&quot;Signing failed&quot;</span>))
     }
 
@@ -568,9 +573,8 @@
         sender_leaf_index: LeafNodeIndex,
         authenticated_data: <span class="kw-2">&amp;</span>[u8],
         application_message: <span class="kw-2">&amp;</span>[u8],
-        credential_bundle: <span class="kw-2">&amp;</span>CredentialBundle,
         context: <span class="kw-2">&amp;</span>GroupContext,
-        backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider,
+        signer: <span class="kw-2">&amp;</span><span class="kw">impl </span>Signer,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, LibraryError&gt; {
         <span class="kw">let </span>framing_parameters =
             FramingParameters::new(authenticated_data, WireFormat::PrivateMessage);
@@ -578,9 +582,8 @@
             framing_parameters,
             Sender::Member(sender_leaf_index),
             FramedContentBody::Application(application_message.into()),
-            credential_bundle,
             context,
-            backend,
+            signer,
         )
     }
 
@@ -590,17 +593,15 @@
         framing_parameters: FramingParameters,
         sender_leaf_index: LeafNodeIndex,
         proposal: Proposal,
-        credential_bundle: <span class="kw-2">&amp;</span>CredentialBundle,
         context: <span class="kw-2">&amp;</span>GroupContext,
-        backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider,
+        signer: <span class="kw-2">&amp;</span><span class="kw">impl </span>Signer,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, LibraryError&gt; {
         <span class="self">Self</span>::new_and_sign(
             framing_parameters,
             Sender::Member(sender_leaf_index),
             FramedContentBody::Proposal(proposal),
-            credential_bundle,
             context,
-            backend,
+            signer,
         )
     }
 
@@ -609,10 +610,9 @@
     </span><span class="comment">// TODO #151/#106: We don&#39;t support preconfigured senders yet
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>new_external_proposal(
         proposal: Proposal,
-        credential_bundle: <span class="kw-2">&amp;</span>CredentialBundle,
         group_id: GroupId,
         epoch: GroupEpoch,
-        backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider,
+        signer: <span class="kw-2">&amp;</span><span class="kw">impl </span>Signer,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, LibraryError&gt; {
         <span class="kw">let </span>body = FramedContentBody::Proposal(proposal);
 
@@ -626,7 +626,7 @@
         );
 
         content_tbs
-            .sign(backend, credential_bundle.signature_private_key())
+            .sign(signer)
             .map_err(|<span class="kw">_</span>| LibraryError::custom(<span class="string">&quot;Signing failed&quot;</span>))
     }
 
@@ -639,17 +639,15 @@
         framing_parameters: FramingParameters,
         sender: Sender,
         commit: Commit,
-        credential_bundle: <span class="kw-2">&amp;</span>CredentialBundle,
         context: <span class="kw-2">&amp;</span>GroupContext,
-        backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider,
+        signer: <span class="kw-2">&amp;</span><span class="kw">impl </span>Signer,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, LibraryError&gt; {
         <span class="self">Self</span>::new_and_sign(
             framing_parameters,
             sender,
             FramedContentBody::Commit(commit),
-            credential_bundle,
             context,
-            backend,
+            signer,
         )
     }
 
@@ -741,22 +739,29 @@
         <span class="self">self</span>.auth_content.tbs.epoch()
     }
 
-    <span class="doccomment">/// Returns the [`Credential`] contained in the [`VerifiableAuthenticatedContent`]
-    /// if the `sender_type` is either [`Sender::NewMemberCommit`] or
-    /// [`Sender::NewMemberProposal`].
+    <span class="doccomment">/// Returns the [`Credential`] and the [`SignaturePublicKey`] contained in
+    /// the [`VerifiableAuthenticatedContent`] if the `sender_type` is either
+    /// [`Sender::NewMemberCommit`] or [`Sender::NewMemberProposal`].
     ///
     /// Returns a [`ValidationError`] if
     /// * the sender type is not one of the above,
     /// * the content type doesn&#39;t match the sender type, or
     /// * if it&#39;s a NewMemberCommit and the Commit doesn&#39;t contain a `path`.
-    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>new_member_credential(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;Credential, ValidationError&gt; {
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>new_member_credential(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;CredentialWithKey, ValidationError&gt; {
         <span class="kw">match </span><span class="self">self</span>.auth_content.tbs.content.sender {
             Sender::NewMemberCommit =&gt; {
                 <span class="comment">// only external commits can have a sender type `NewMemberCommit`
                 </span><span class="kw">match </span><span class="kw-2">&amp;</span><span class="self">self</span>.auth_content.tbs.content.body {
                     FramedContentBody::Commit(Commit { path, .. }) =&gt; path
                         .as_ref()
-                        .map(|p| p.leaf_node().credential().clone())
+                        .map(|p| {
+                            <span class="kw">let </span>credential = p.leaf_node().credential().clone();
+                            <span class="kw">let </span>pk = p.leaf_node().signature_key().clone();
+                            CredentialWithKey {
+                                credential,
+                                signature_key: pk,
+                            }
+                        })
                         .ok_or(ValidationError::NoPath),
                     <span class="kw">_ </span>=&gt; <span class="prelude-val">Err</span>(ValidationError::NotACommit),
                 }
@@ -765,7 +770,12 @@
                 <span class="comment">// only External Add proposals can have a sender type `NewMemberProposal`
                 </span><span class="kw">match </span><span class="kw-2">&amp;</span><span class="self">self</span>.auth_content.tbs.content.body {
                     FramedContentBody::Proposal(Proposal::Add(AddProposal { key_package })) =&gt; {
-                        <span class="prelude-val">Ok</span>(key_package.leaf_node().credential().clone())
+                        <span class="kw">let </span>credential = key_package.leaf_node().credential().clone();
+                        <span class="kw">let </span>signature_key = key_package.leaf_node().signature_key().clone();
+                        <span class="prelude-val">Ok</span>(CredentialWithKey {
+                            credential,
+                            signature_key,
+                        })
                     }
                     <span class="kw">_ </span>=&gt; <span class="prelude-val">Err</span>(ValidationError::NotAnExternalAddProposal),
                 }

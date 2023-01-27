@@ -348,6 +348,7 @@
 </pre><pre class="rust"><code><span class="kw">use </span>core_group::{proposals::QueuedProposal, staged_commit::StagedCommit};
 
 <span class="kw">use crate</span>::{
+    ciphersuite::OpenMlsSignaturePublicKey,
     framing::mls_content::FramedContentBody,
     group::{
         errors::{MergeCommitError, ValidationError},
@@ -432,15 +433,23 @@
         //  - Prepares ValSem246 by setting the right credential. The remainder
         //    of ValSem246 is validated as part of ValSem010.
         // External senders are not supported yet #106/#151.
-        </span><span class="kw">let </span>credential = decrypted_message.credential(
+        </span><span class="kw">let </span>CredentialWithKey {
+            credential,
+            signature_key,
+        } = decrypted_message.credential(
             <span class="self">self</span>.treesync(),
             <span class="self">self</span>.message_secrets_store
                 .leaves_for_epoch(decrypted_message.verifiable_content().epoch()),
         )<span class="question-mark">?</span>;
+        <span class="kw">let </span>pk = OpenMlsSignaturePublicKey::from_signature_key(
+            signature_key,
+            <span class="self">self</span>.ciphersuite.signature_algorithm(),
+        );
 
         <span class="prelude-val">Ok</span>(UnverifiedMessage::from_decrypted_message(
             decrypted_message,
             <span class="prelude-val">Some</span>(credential),
+            pk,
         ))
     }
 
@@ -449,15 +458,12 @@
     /// Checks the following semantic validation:
     ///  - ValSem008
     ///  - ValSem010
-    ///  - ValSem100
     ///  - ValSem101
     ///  - ValSem102
-    ///  - ValSem103
     ///  - ValSem104
     ///  - ValSem106
     ///  - ValSem107
     ///  - ValSem108
-    ///  - ValSem109
     ///  - ValSem110
     ///  - ValSem111
     ///  - ValSem112
@@ -494,7 +500,7 @@
                 //  - ValSem010
                 //  - ValSem246 (as part of ValSem010)
                 </span><span class="kw">let </span>plaintext = unverified_message
-                    .into_verified(backend)
+                    .into_verified(backend.crypto())
                     .map_err(|<span class="kw">_</span>| ProcessMessageError::InvalidSignature)<span class="question-mark">?
                     </span>.take_authenticated_content();
 
@@ -515,15 +521,12 @@
                         )<span class="question-mark">?</span>),
                     ),
                     FramedContentBody::Commit(<span class="kw">_</span>) =&gt; {
-                        <span class="comment">//  - ValSem100
-                        //  - ValSem101
+                        <span class="comment">//  - ValSem101
                         //  - ValSem102
-                        //  - ValSem103
                         //  - ValSem104
                         //  - ValSem106
                         //  - ValSem107
                         //  - ValSem108
-                        //  - ValSem109
                         //  - ValSem110
                         //  - ValSem111
                         //  - ValSem112
@@ -564,7 +567,7 @@
                 <span class="kw">let </span>credential = unverified_new_member_message.credential().clone();
                 <span class="comment">// Signature verification
                 </span><span class="kw">let </span>verified_new_member_message = unverified_new_member_message
-                    .into_verified(backend)
+                    .into_verified(backend.crypto())
                     .map_err(|<span class="kw">_</span>| ProcessMessageError::InvalidSignature)<span class="question-mark">?</span>;
                 <span class="kw">let </span>sender = verified_new_member_message
                     .authenticated_content()
@@ -630,15 +633,12 @@
     ///  - ValSem008
     ///  - ValSem009
     ///  - ValSem010
-    ///  - ValSem100
     ///  - ValSem101
     ///  - ValSem102
-    ///  - ValSem103
     ///  - ValSem104
     ///  - ValSem106
     ///  - ValSem107
     ///  - ValSem108
-    ///  - ValSem109
     ///  - ValSem110
     ///  - ValSem111
     ///  - ValSem112

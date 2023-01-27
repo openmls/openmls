@@ -186,7 +186,7 @@
 <span class="kw">pub use </span>private_message::<span class="kw-2">*</span>;
 <span class="kw">pub use </span>public_message::<span class="kw-2">*</span>;
 
-<span class="attr">#[cfg(any(feature = <span class="string">&quot;test-utils&quot;</span>, test))]
+<span class="attr">#[cfg(test)]
 </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">use </span>mls_auth_content::<span class="kw-2">*</span>;
 
 <span class="attr">#[cfg(test)]
@@ -205,7 +205,7 @@
 
 <span class="comment">// Tests
 </span><span class="attr">#[cfg(test)]
-</span><span class="kw">mod </span>test_framing;
+</span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">mod </span>test_framing;
 
 <span class="doccomment">/// Wire format of MLS messages.
 </span><span class="attr">#[derive(

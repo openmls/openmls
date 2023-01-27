@@ -176,9 +176,15 @@
 <a href="#176" id="176">176</a>
 <a href="#177" id="177">177</a>
 <a href="#178" id="178">178</a>
+<a href="#179" id="179">179</a>
+<a href="#180" id="180">180</a>
+<a href="#181" id="181">181</a>
+<a href="#182" id="182">182</a>
+<a href="#183" id="183">183</a>
+<a href="#184" id="184">184</a>
 </pre><pre class="rust"><code><span class="kw">use crate</span>::{
     binary_tree::array_representation::LeafNodeIndex,
-    ciphersuite::signable::Verifiable,
+    ciphersuite::{signable::Verifiable, OpenMlsSignaturePublicKey},
     group::errors::ExternalCommitError,
     messages::proposals::{ExternalInitProposal, Proposal},
     treesync::{errors::TreeSyncFromNodesError, node::Node},
@@ -203,7 +209,8 @@
     /// containing the commit.
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>join_by_external_commit(
         backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider,
-        params: CreateCommitParams,
+        signer: <span class="kw-2">&amp;</span><span class="kw">impl </span>Signer,
+        <span class="kw-2">mut </span>params: CreateCommitParams,
         tree_option: <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>[<span class="prelude-ty">Option</span>&lt;Node&gt;]&gt;,
         verifiable_group_info: VerifiableGroupInfo,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;ExternalCommitResult, ExternalCommitError&gt; {
@@ -233,17 +240,17 @@
         })<span class="question-mark">?</span>;
 
         <span class="kw">let </span>group_info: GroupInfo = {
-            <span class="kw">let </span>group_info_signer_leaf = treesync
+            <span class="kw">let </span>group_info_signer_pk = treesync
                 .leaf(verifiable_group_info.signer())
                 .ok_or(ExternalCommitError::UnknownSender)<span class="question-mark">?
-                </span>.credential();
+                </span>.signature_key();
+            <span class="kw">let </span>group_info_signer_pk = OpenMlsSignaturePublicKey::from_signature_key(
+                group_info_signer_pk.clone(),
+                ciphersuite.signature_algorithm(),
+            );
 
             verifiable_group_info
-                .verify(
-                    backend,
-                    group_info_signer_leaf.signature_key(),
-                    ciphersuite.signature_algorithm(),
-                )
+                .verify(backend.crypto(), <span class="kw-2">&amp;</span>group_info_signer_pk)
                 .map_err(|<span class="kw">_</span>| ExternalCommitError::InvalidGroupInfoSignature)<span class="question-mark">?
         </span>};
 
@@ -306,11 +313,16 @@
 
         <span class="comment">// If there is a group member in the group with the same identity as us,
         // commit a remove proposal.
-        </span><span class="kw">for </span>Member {
-            index, identity, ..
+        </span><span class="kw">let </span>params_credential_with_key = params
+            .take_credential_with_key()
+            .ok_or(ExternalCommitError::MissingCredential)<span class="question-mark">?</span>;
+        <span class="kw">for </span>Member {
+            index,
+            signature_key,
+            ..
         } <span class="kw">in </span>treesync.full_leave_members()
         {
-            <span class="kw">if </span>identity == params.credential_bundle().credential().identity() {
+            <span class="kw">if </span>signature_key == params_credential_with_key.signature_key.as_slice() {
                 <span class="kw">let </span>remove_proposal = Proposal::Remove(RemoveProposal { removed: index });
                 inline_proposals.push(remove_proposal);
                 <span class="kw">break</span>;
@@ -334,14 +346,14 @@
         };
         <span class="kw">let </span>params = CreateCommitParams::builder()
             .framing_parameters(<span class="kw-2">*</span>params.framing_parameters())
-            .credential_bundle(params.credential_bundle())
             .proposal_store(params.proposal_store())
             .inline_proposals(inline_proposals)
             .commit_type(CommitType::External)
+            .credential_with_key(params_credential_with_key)
             .build();
 
         <span class="comment">// Immediately create the commit to add ourselves to the group.
-        </span><span class="kw">let </span>create_commit_result = group.create_commit(params, backend);
+        </span><span class="kw">let </span>create_commit_result = group.create_commit(params, backend, signer);
         <span class="macro">debug_assert!</span>(
             create_commit_result.is_ok(),
             <span class="string">&quot;Error creating commit {:?}&quot;</span>,

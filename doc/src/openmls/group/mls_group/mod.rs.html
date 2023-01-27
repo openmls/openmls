@@ -427,6 +427,14 @@
 <a href="#427" id="427">427</a>
 <a href="#428" id="428">428</a>
 <a href="#429" id="429">429</a>
+<a href="#430" id="430">430</a>
+<a href="#431" id="431">431</a>
+<a href="#432" id="432">432</a>
+<a href="#433" id="433">433</a>
+<a href="#434" id="434">434</a>
+<a href="#435" id="435">435</a>
+<a href="#436" id="436">436</a>
+<a href="#437" id="437">437</a>
 </pre><pre class="rust"><code><span class="doccomment">//! MLS Group
 //!
 //! This module contains [`MlsGroup`] and its submodules.
@@ -437,14 +445,17 @@
 };
 <span class="kw">use crate</span>::{
     binary_tree::array_representation::LeafNodeIndex,
-    credentials::{Credential, CredentialBundle},
+    credentials::Credential,
     error::LibraryError,
     framing::{mls_auth_content::AuthenticatedContent, <span class="kw-2">*</span>},
     group::<span class="kw-2">*</span>,
     key_packages::{KeyPackage, KeyPackageBundle},
     messages::{proposals::<span class="kw-2">*</span>, Welcome},
     schedule::ResumptionPskSecret,
-    treesync::{node::leaf_node::OpenMlsLeafNode, Node},
+    treesync::{
+        node::leaf_node::{LeafNode, OpenMlsLeafNode},
+        Node,
+    },
 };
 <span class="kw">use </span>openmls_traits::{key_store::OpenMlsKeyStore, types::Ciphersuite, OpenMlsCryptoProvider};
 <span class="kw">use </span>std::io::{Error, Read, Write};
@@ -670,6 +681,11 @@
     <span class="doccomment">/// Returns the leaf index of the client in the tree owning this group.
     </span><span class="kw">pub fn </span>own_leaf_index(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; LeafNodeIndex {
         <span class="self">self</span>.group.own_leaf_index()
+    }
+
+    <span class="doccomment">/// Returns the leaf node of the client in the tree owning this group.
+    </span><span class="kw">pub fn </span>own_leaf_node(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>LeafNode&gt; {
+        <span class="self">self</span>.group.own_leaf_node().map(|l| l.leaf_node()).ok()
     }
 
     <span class="doccomment">/// Returns the group ID.

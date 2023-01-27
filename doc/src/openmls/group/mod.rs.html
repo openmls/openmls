@@ -130,7 +130,7 @@
 
 </span><span class="kw">mod </span>group_context;
 
-<span class="attr">#[cfg(any(feature = <span class="string">&quot;test-utils&quot;</span>, test))]
+<span class="attr">#[cfg(test)]
 </span><span class="kw">use </span><span class="kw">crate</span>::ciphersuite::<span class="kw-2">*</span>;
 <span class="kw">use </span><span class="kw">crate</span>::extensions::<span class="kw-2">*</span>;
 <span class="kw">use </span><span class="kw">crate</span>::utils::<span class="kw-2">*</span>;
@@ -158,7 +158,7 @@
 <span class="kw">pub use </span>mls_group::<span class="kw-2">*</span>;
 
 <span class="comment">// Tests
-</span><span class="attr">#[cfg(any(feature = <span class="string">&quot;test-utils&quot;</span>, test))]
+</span><span class="attr">#[cfg(test)]
 </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">use </span>create_commit_params::<span class="kw-2">*</span>;
 <span class="attr">#[cfg(any(feature = <span class="string">&quot;test-utils&quot;</span>, test))]
 </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">mod </span>tests;

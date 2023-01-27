@@ -185,17 +185,6 @@
 <a href="#185" id="185">185</a>
 <a href="#186" id="186">186</a>
 <a href="#187" id="187">187</a>
-<a href="#188" id="188">188</a>
-<a href="#189" id="189">189</a>
-<a href="#190" id="190">190</a>
-<a href="#191" id="191">191</a>
-<a href="#192" id="192">192</a>
-<a href="#193" id="193">193</a>
-<a href="#194" id="194">194</a>
-<a href="#195" id="195">195</a>
-<a href="#196" id="196">196</a>
-<a href="#197" id="197">197</a>
-<a href="#198" id="198">198</a>
 </pre><pre class="rust"><code><span class="attr">#![doc = <span class="macro">include_str!</span>(<span class="string">&quot;../README.md&quot;</span>)]
 </span><span class="doccomment">//! ## Quick Start
 //! For a quick start to learn how OpenMLS works here&#39;s the basic code to set
@@ -204,6 +193,7 @@
 //! ```
 //! use openmls::prelude::{*, config::CryptoConfig};
 //! use openmls_rust_crypto::{OpenMlsRustCrypto};
+//! use openmls_basic_credential::SignatureKeyPair;
 //!
 //! // Define ciphersuite ...
 //! let ciphersuite = Ciphersuite::MLS_128_DHKEMX25519_AES128GCM_SHA256_Ed25519;
@@ -218,87 +208,75 @@
 //!     credential_type: CredentialType,
 //!     signature_algorithm: SignatureScheme,
 //!     backend: &amp;impl OpenMlsCryptoProvider,
-//! ) -&gt; Result&lt;Credential, CredentialError&gt; {
-//!     let credential_bundle =
-//!         CredentialBundle::new(identity, credential_type, signature_algorithm, backend)?;
-//!     let credential_id =  credential_bundle.credential()
-//!         .signature_key()
-//!         .tls_serialize_detached()
-//!         .expect(&quot;Error serializing signature key.&quot;);
+//! ) -&gt; (CredentialWithKey, SignatureKeyPair) {
+//!     let credential = Credential::new(identity, credential_type).unwrap();
+//!     let signature_keys =
+//!         SignatureKeyPair::new(signature_algorithm)
+//!             .expect(&quot;Error generating a signature key pair.&quot;);
+//!
 //!     // Store the credential bundle into the key store so OpenMLS has access
 //!     // to it.
-//!     backend
-//!         .key_store()
-//!         .store(&amp;credential_id, &amp;credential_bundle)
-//!         .expect(&quot;An unexpected error occurred.&quot;);
-//!     Ok(credential_bundle.into_parts().0)
+//!     signature_keys
+//!         .store(backend.key_store())
+//!         .expect(&quot;Error storing signature keys in key store.&quot;);
+//!     
+//!     (
+//!         CredentialWithKey {
+//!             credential,
+//!             signature_key: signature_keys.public().into(),
+//!         },
+//!         signature_keys,
+//!     )
 //! }
 //!
 //! // A helper to create key package bundles.
 //! fn generate_key_package(
-//!     ciphersuites: &amp;[Ciphersuite],
-//!     credential: &amp;Credential,
+//!     ciphersuite: Ciphersuite,
 //!     backend: &amp;impl OpenMlsCryptoProvider,
+//!     signer: &amp;SignatureKeyPair,
+//!     credential_with_key: CredentialWithKey,
 //! ) -&gt; KeyPackage {
-//!     // Fetch the credential bundle from the key store
-//!     let credential_id = credential
-//!         .signature_key()
-//!         .tls_serialize_detached()
-//!         .expect(&quot;Error serializing signature key.&quot;);
-//!     let credential_bundle = backend
-//!         .key_store()
-//!         .read(&amp;credential_id)
-//!         .expect(&quot;An unexpected error occurred.&quot;);
-//!
 //!     // Create the key package
-//!     KeyPackage::builder().build(
-//!         CryptoConfig {
-//!             ciphersuite: ciphersuites[0],
-//!             version: ProtocolVersion::default(),
-//!         },
-//!         backend,
-//!         &amp;credential_bundle,
-//!     )
-//!     .unwrap()
+//!     KeyPackage::builder()
+//!         .build(
+//!             CryptoConfig {
+//!                 ciphersuite,
+//!                 version: ProtocolVersion::default(),
+//!             },
+//!             backend,
+//!             signer,
+//!             credential_with_key,
+//!         )
+//!         .unwrap()
 //! }
 //!
 //! // First they need credentials to identify them
-//! let sasha_credential = generate_credential_bundle(
+//! let (sasha_credential_with_key, sasha_signer) = generate_credential_bundle(
 //!     &quot;Sasha&quot;.into(),
 //!     CredentialType::Basic,
 //!     ciphersuite.signature_algorithm(),
 //!     backend,
-//! )
-//! .expect(&quot;An unexpected error occurred.&quot;);
+//! );
 //!
-//! let maxim_credential = generate_credential_bundle(
+//! let (maxim_credential_with_key, maxim_signer) = generate_credential_bundle(
 //!     &quot;Maxim&quot;.into(),
 //!     CredentialType::Basic,
 //!     ciphersuite.signature_algorithm(),
 //!     backend,
-//! )
-//! .expect(&quot;An unexpected error occurred.&quot;);
+//! );
 //!
 //! // Then they generate key packages to facilitate the asynchronous handshakes
 //! // in MLS
 //!
 //! // Generate KeyPackages
-//! let maxim_key_package = generate_key_package(&amp;[ciphersuite], &amp;maxim_credential, backend);
+//! let maxim_key_package = generate_key_package(ciphersuite, backend, &amp;maxim_signer, maxim_credential_with_key);
 //!
 //! // Now Sasha starts a new group ...
-//! // First, fetch the credential bundle from the key store
-//! let sasha_credential_id = sasha_credential
-//!     .signature_key()
-//!     .tls_serialize_detached()
-//!     .expect(&quot;Error serializing signature key.&quot;);
-//! let sasha_credential_bundle: CredentialBundle = backend
-//!     .key_store()
-//!     .read(&amp;sasha_credential_id)
-//!     .expect(&quot;An unexpected error occurred.&quot;);
 //! let mut sasha_group = MlsGroup::new(
 //!     backend,
+//!     &amp;sasha_signer,
 //!     &amp;MlsGroupConfig::default(),
-//!     sasha_credential.signature_key(),
+//!     sasha_credential_with_key,
 //! )
 //! .expect(&quot;An unexpected error occurred.&quot;);
 //!
@@ -306,7 +284,7 @@
 //! // The key package has to be retrieved from Maxim in some way. Most likely
 //! // via a server storing key packages for users.
 //! let (mls_message_out, welcome_out, group_info) = sasha_group
-//!     .add_members(backend, &amp;[maxim_key_package])
+//!     .add_members(backend, &amp;sasha_signer, &amp;[maxim_key_package])
 //!     .expect(&quot;Could not add members.&quot;);
 //!
 //! // Sasha merges the pending commit that adds Maxim.

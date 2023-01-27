@@ -626,7 +626,7 @@
         <span class="self">self</span>.content.serialized_context = serialized_context
     }
 
-    <span class="attr">#[cfg(any(feature = <span class="string">&quot;test-utils&quot;</span>, test))]
+    <span class="attr">#[cfg(test)]
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>set_membership_tag_test(<span class="kw-2">&amp;mut </span><span class="self">self</span>, membership_tag: MembershipTag) {
         <span class="self">self</span>.membership_tag = <span class="prelude-val">Some</span>(membership_tag);
     }

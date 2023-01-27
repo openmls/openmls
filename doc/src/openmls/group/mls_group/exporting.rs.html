@@ -63,20 +63,7 @@
 <a href="#63" id="63">63</a>
 <a href="#64" id="64">64</a>
 <a href="#65" id="65">65</a>
-<a href="#66" id="66">66</a>
-<a href="#67" id="67">67</a>
-<a href="#68" id="68">68</a>
-<a href="#69" id="69">69</a>
-<a href="#70" id="70">70</a>
-<a href="#71" id="71">71</a>
-<a href="#72" id="72">72</a>
-<a href="#73" id="73">73</a>
-<a href="#74" id="74">74</a>
-<a href="#75" id="75">75</a>
-<a href="#76" id="76">76</a>
-<a href="#77" id="77">77</a>
-<a href="#78" id="78">78</a>
-</pre><pre class="rust"><code><span class="kw">use </span>tls_codec::Serialize;
+</pre><pre class="rust"><code><span class="kw">use </span>openmls_traits::signatures::Signer;
 
 <span class="kw">use crate</span>::{group::errors::ExporterError, schedule::EpochAuthenticator};
 
@@ -132,26 +119,13 @@
     </span><span class="kw">pub fn </span>export_group_info(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider,
+        signer: <span class="kw-2">&amp;</span><span class="kw">impl </span>Signer,
         with_ratchet_tree: bool,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;MlsMessageOut, ExportGroupInfoError&gt; {
-        <span class="kw">match </span><span class="self">self</span>.credential() {
-            <span class="prelude-val">Ok</span>(credential) =&gt; {
-                <span class="kw">let </span>credential_bundle: CredentialBundle = backend
-                    .key_store()
-                    .read(
-                        <span class="kw-2">&amp;</span>credential
-                            .signature_key()
-                            .tls_serialize_detached()
-                            .map_err(LibraryError::missing_bound_check)<span class="question-mark">?</span>,
-                    )
-                    .ok_or(ExportGroupInfoError::NoMatchingCredentialBundle)<span class="question-mark">?</span>;
-                <span class="prelude-val">Ok</span>(<span class="self">self
-                    </span>.group
-                    .export_group_info(backend, <span class="kw-2">&amp;</span>credential_bundle, with_ratchet_tree)<span class="question-mark">?
-                    </span>.into())
-            }
-            <span class="prelude-val">Err</span>(e) =&gt; <span class="prelude-val">Err</span>(e.into()),
-        }
+        <span class="prelude-val">Ok</span>(<span class="self">self
+            </span>.group
+            .export_group_info(backend, signer, with_ratchet_tree)<span class="question-mark">?
+            </span>.into())
     }
 }
 </code></pre></div>
