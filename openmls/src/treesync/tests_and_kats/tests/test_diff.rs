@@ -3,7 +3,7 @@ use rstest::*;
 use rstest_reuse::apply;
 
 use crate::{
-    credentials::{CredentialBundle, CredentialType},
+    credentials::{test_utils::new_credential, CredentialType},
     key_packages::KeyPackageBundle,
     treesync::{node::Node, TreeSync},
 };
@@ -13,24 +13,22 @@ use openmls_rust_crypto::OpenMlsRustCrypto;
 // Verifies that when we add a leaf to a tree with blank leaf nodes, the leaf will be added at the leftmost free leaf index
 #[apply(ciphersuites_and_backends)]
 fn test_free_leaf_computation(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
-    let cb_0 = CredentialBundle::new(
-        "leaf0".as_bytes().to_vec(),
+    let (c_0, sk_0) = new_credential(
+        backend,
+        b"leaf0",
         CredentialType::Basic,
         ciphersuite.signature_algorithm(),
+    );
+
+    let kpb_0 = KeyPackageBundle::new(backend, &sk_0, ciphersuite, c_0);
+
+    let (c_3, sk_3) = new_credential(
         backend,
-    )
-    .expect("error creating credential_bundle");
-
-    let kpb_0 = KeyPackageBundle::new(backend, ciphersuite, &cb_0);
-
-    let cb_3 = CredentialBundle::new(
-        "leaf3".as_bytes().to_vec(),
+        b"leaf3",
         CredentialType::Basic,
         ciphersuite.signature_algorithm(),
-        backend,
-    )
-    .expect("error creating credential_bundle");
-    let kpb_3 = KeyPackageBundle::new(backend, ciphersuite, &cb_3);
+    );
+    let kpb_3 = KeyPackageBundle::new(backend, &sk_3, ciphersuite, c_3);
 
     // Build a rudimentary tree with two populated and two empty leaf nodes.
     let nodes: Vec<Option<Node>> = vec![
@@ -52,14 +50,13 @@ fn test_free_leaf_computation(ciphersuite: Ciphersuite, backend: &impl OpenMlsCr
 
     // Create and add a new leaf. It should go to leaf index 1
 
-    let cb_2 = CredentialBundle::new(
-        "leaf2".as_bytes().to_vec(),
+    let (c_2, signer_2) = new_credential(
+        backend,
+        b"leaf2",
         CredentialType::Basic,
         ciphersuite.signature_algorithm(),
-        backend,
-    )
-    .expect("error creating credential_bundle");
-    let kpb_2 = KeyPackageBundle::new(backend, ciphersuite, &cb_2);
+    );
+    let kpb_2 = KeyPackageBundle::new(backend, &signer_2, ciphersuite, c_2);
 
     let mut diff = tree.empty_diff();
     let free_leaf_index = diff.free_leaf_index();

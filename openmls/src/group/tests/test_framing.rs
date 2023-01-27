@@ -12,7 +12,6 @@ use super::utils::*;
 use crate::{
     binary_tree::*,
     ciphersuite::signable::Signable,
-    credentials::{CredentialBundle, CredentialType},
     framing::{MessageDecryptionError, WireFormat, *},
     group::*,
     schedule::{message_secrets::MessageSecrets, EncryptionSecret},
@@ -64,8 +63,8 @@ fn padding(backend: &impl OpenMlsCryptoProvider) {
     for padding_size in 0..50 {
         // Create a message in each group and test the padding.
         for group_state in alice.group_states.borrow_mut().values_mut() {
-            let credential_bundle = alice
-                .credential_bundles
+            let credential = alice
+                .credentials
                 .get(&group_state.ciphersuite())
                 .expect("An unexpected error occurred.");
             for _ in 0..10 {
@@ -75,9 +74,9 @@ fn padding(backend: &impl OpenMlsCryptoProvider) {
                     .create_application_message(
                         &aad,
                         &message,
-                        credential_bundle,
                         padding_size,
                         backend,
+                        &credential.signer,
                     )
                     .expect("An unexpected error occurred.");
                 let ciphertext = private_message.ciphertext();
@@ -118,13 +117,11 @@ fn bad_padding(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
         // This will be set later.
         let calculated_padding_length;
 
-        let credential_bundle = CredentialBundle::new(
+        let alice_credential_with_keys = generate_credential_bundle(
             b"Alice".to_vec(),
-            CredentialType::Basic,
             ciphersuite.signature_algorithm(),
             backend,
-        )
-        .unwrap();
+        );
 
         let sender = Sender::build_member(LeafNodeIndex::new(654));
 
@@ -148,7 +145,7 @@ fn bad_padding(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
             );
 
             plaintext_tbs
-                .sign(backend, credential_bundle.signature_private_key())
+                .sign(&alice_credential_with_keys.signer)
                 .unwrap()
         };
 

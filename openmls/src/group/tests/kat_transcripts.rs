@@ -254,7 +254,7 @@ pub fn run_test_vector(
         .verify(
             backend,
             credential.signature_key(),
-            credential.signature_scheme(),
+            ciphersuite.signature_algorithm(),
         )
         .expect("Invalid signature on PublicMessage commit");
 

@@ -9,6 +9,7 @@
 use crate::{
     binary_tree::LeafNodeIndex,
     ciphersuite::signable::{Signable, SignedStruct, Verifiable, VerifiedStruct},
+    credentials::CredentialWithKey,
     error::LibraryError,
     group::errors::ValidationError,
 };
@@ -18,10 +19,10 @@ use super::{PrivateMessage, PublicMessage};
 
 use super::{
     mls_content::{ContentType, FramedContentBody, FramedContentTbs},
-    AddProposal, Commit, ConfirmationTag, Credential, CredentialBundle, FramingParameters,
-    GroupContext, GroupEpoch, GroupId, Proposal, Sender, Signature, WireFormat,
+    AddProposal, Commit, ConfirmationTag, FramingParameters, GroupContext, GroupEpoch, GroupId,
+    Proposal, Sender, Signature, WireFormat,
 };
-use openmls_traits::OpenMlsCryptoProvider;
+use openmls_traits::signatures::Signer;
 use std::io::{Read, Write};
 
 use serde::{Deserialize, Serialize};
@@ -113,9 +114,8 @@ impl AuthenticatedContent {
         framing_parameters: FramingParameters,
         sender: Sender,
         body: FramedContentBody,
-        credential_bundle: &CredentialBundle,
         context: &GroupContext,
-        backend: &impl OpenMlsCryptoProvider,
+        signer: &impl Signer,
     ) -> Result<Self, LibraryError> {
         let mut content_tbs = FramedContentTbs::new(
             framing_parameters.wire_format(),
@@ -134,7 +134,7 @@ impl AuthenticatedContent {
         }
 
         content_tbs
-            .sign(backend, credential_bundle.signature_private_key())
+            .sign(signer)
             .map_err(|_| LibraryError::custom("Signing failed"))
     }
 
@@ -144,9 +144,8 @@ impl AuthenticatedContent {
         sender_leaf_index: LeafNodeIndex,
         authenticated_data: &[u8],
         application_message: &[u8],
-        credential_bundle: &CredentialBundle,
         context: &GroupContext,
-        backend: &impl OpenMlsCryptoProvider,
+        signer: &impl Signer,
     ) -> Result<Self, LibraryError> {
         let framing_parameters =
             FramingParameters::new(authenticated_data, WireFormat::PrivateMessage);
@@ -154,9 +153,8 @@ impl AuthenticatedContent {
             framing_parameters,
             Sender::Member(sender_leaf_index),
             FramedContentBody::Application(application_message.into()),
-            credential_bundle,
             context,
-            backend,
+            signer,
         )
     }
 
@@ -166,17 +164,15 @@ impl AuthenticatedContent {
         framing_parameters: FramingParameters,
         sender_leaf_index: LeafNodeIndex,
         proposal: Proposal,
-        credential_bundle: &CredentialBundle,
         context: &GroupContext,
-        backend: &impl OpenMlsCryptoProvider,
+        signer: &impl Signer,
     ) -> Result<Self, LibraryError> {
         Self::new_and_sign(
             framing_parameters,
             Sender::Member(sender_leaf_index),
             FramedContentBody::Proposal(proposal),
-            credential_bundle,
             context,
-            backend,
+            signer,
         )
     }
 
@@ -185,10 +181,9 @@ impl AuthenticatedContent {
     // TODO #151/#106: We don't support preconfigured senders yet
     pub(crate) fn new_external_proposal(
         proposal: Proposal,
-        credential_bundle: &CredentialBundle,
         group_id: GroupId,
         epoch: GroupEpoch,
-        backend: &impl OpenMlsCryptoProvider,
+        signer: &impl Signer,
     ) -> Result<Self, LibraryError> {
         let body = FramedContentBody::Proposal(proposal);
 
@@ -202,7 +197,7 @@ impl AuthenticatedContent {
         );
 
         content_tbs
-            .sign(backend, credential_bundle.signature_private_key())
+            .sign(signer)
             .map_err(|_| LibraryError::custom("Signing failed"))
     }
 
@@ -215,17 +210,15 @@ impl AuthenticatedContent {
         framing_parameters: FramingParameters,
         sender: Sender,
         commit: Commit,
-        credential_bundle: &CredentialBundle,
         context: &GroupContext,
-        backend: &impl OpenMlsCryptoProvider,
+        signer: &impl Signer,
     ) -> Result<Self, LibraryError> {
         Self::new_and_sign(
             framing_parameters,
             sender,
             FramedContentBody::Commit(commit),
-            credential_bundle,
             context,
-            backend,
+            signer,
         )
     }
 
@@ -317,22 +310,29 @@ impl VerifiableAuthenticatedContent {
         self.auth_content.tbs.epoch()
     }
 
-    /// Returns the [`Credential`] contained in the [`VerifiableAuthenticatedContent`]
-    /// if the `sender_type` is either [`Sender::NewMemberCommit`] or
-    /// [`Sender::NewMemberProposal`].
+    /// Returns the [`Credential`] and the [`SignaturePublicKey`] contained in
+    /// the [`VerifiableAuthenticatedContent`] if the `sender_type` is either
+    /// [`Sender::NewMemberCommit`] or [`Sender::NewMemberProposal`].
     ///
     /// Returns a [`ValidationError`] if
     /// * the sender type is not one of the above,
     /// * the content type doesn't match the sender type, or
     /// * if it's a NewMemberCommit and the Commit doesn't contain a `path`.
-    pub(crate) fn new_member_credential(&self) -> Result<Credential, ValidationError> {
+    pub(crate) fn new_member_credential(&self) -> Result<CredentialWithKey, ValidationError> {
         match self.auth_content.tbs.content.sender {
             Sender::NewMemberCommit => {
                 // only external commits can have a sender type `NewMemberCommit`
                 match &self.auth_content.tbs.content.body {
                     FramedContentBody::Commit(Commit { path, .. }) => path
                         .as_ref()
-                        .map(|p| p.leaf_node().credential().clone())
+                        .map(|p| {
+                            let credential = p.leaf_node().credential().clone();
+                            let pk = p.leaf_node().signature_key().clone();
+                            CredentialWithKey {
+                                credential,
+                                signature_key: pk,
+                            }
+                        })
                         .ok_or(ValidationError::NoPath),
                     _ => Err(ValidationError::NotACommit),
                 }
@@ -341,7 +341,12 @@ impl VerifiableAuthenticatedContent {
                 // only External Add proposals can have a sender type `NewMemberProposal`
                 match &self.auth_content.tbs.content.body {
                     FramedContentBody::Proposal(Proposal::Add(AddProposal { key_package })) => {
-                        Ok(key_package.leaf_node().credential().clone())
+                        let credential = key_package.leaf_node().credential().clone();
+                        let signature_key = key_package.leaf_node().signature_key().clone();
+                        Ok(CredentialWithKey {
+                            credential,
+                            signature_key,
+                        })
                     }
                     _ => Err(ValidationError::NotAnExternalAddProposal),
                 }

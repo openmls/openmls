@@ -8,14 +8,17 @@ use super::{
 };
 use crate::{
     binary_tree::array_representation::LeafNodeIndex,
-    credentials::{Credential, CredentialBundle},
+    credentials::Credential,
     error::LibraryError,
     framing::{mls_auth_content::AuthenticatedContent, *},
     group::*,
     key_packages::{KeyPackage, KeyPackageBundle},
     messages::{proposals::*, Welcome},
     schedule::ResumptionPskSecret,
-    treesync::{node::leaf_node::OpenMlsLeafNode, Node},
+    treesync::{
+        node::leaf_node::{LeafNode, OpenMlsLeafNode},
+        Node,
+    },
 };
 use openmls_traits::{key_store::OpenMlsKeyStore, types::Ciphersuite, OpenMlsCryptoProvider};
 use std::io::{Error, Read, Write};
@@ -241,6 +244,11 @@ impl MlsGroup {
     /// Returns the leaf index of the client in the tree owning this group.
     pub fn own_leaf_index(&self) -> LeafNodeIndex {
         self.group.own_leaf_index()
+    }
+
+    /// Returns the leaf node of the client in the tree owning this group.
+    pub fn own_leaf_node(&self) -> Option<&LeafNode> {
+        self.group.own_leaf_node().map(|l| l.leaf_node()).ok()
     }
 
     /// Returns the group ID.

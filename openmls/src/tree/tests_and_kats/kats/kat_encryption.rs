@@ -80,7 +80,7 @@
 use crate::messages::proposals::RemoveProposal;
 use crate::{
     binary_tree::array_representation::LeafNodeIndex,
-    credentials::{CredentialBundle, CredentialType},
+    credentials::CredentialType,
     framing::*,
     group::*,
     messages::proposals::Proposal,
@@ -260,9 +260,8 @@ fn build_application_messages(
         sender_index,
         &[1, 2, 3],
         &[4, 5, 6],
-        credential_bundle,
         group.context(),
-        backend,
+        backend.signer(),
     )
     .expect("An unexpected error occurred.");
     let mut plaintext: PublicMessage = content.clone().into();

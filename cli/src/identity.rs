@@ -1,42 +1,23 @@
-use std::mem::replace;
-
 use openmls::prelude::{config::CryptoConfig, *};
+use openmls_basic_credential::SignatureKeyPair;
 use openmls_rust_crypto::OpenMlsRustCrypto;
-use openmls_traits::{key_store::OpenMlsKeyStore, types::SignatureScheme, OpenMlsCryptoProvider};
+use openmls_traits::OpenMlsCryptoProvider;
 
 pub struct Identity {
     pub(crate) kp: KeyPackage,
-    pub(crate) credential: CredentialBundle,
-}
-
-/// Stores CredentialBundle in the crypto_backend's keystore with the
-/// signature_key of the Credential as the key.
-fn store_credential_bundle_in_keystore(
-    crypto_backend: &OpenMlsRustCrypto,
-    credential_bundle: &CredentialBundle,
-) {
-    crypto_backend
-        .key_store()
-        .store(
-            &credential_bundle
-                .credential()
-                .signature_key()
-                .tls_serialize_detached()
-                .expect("Error serializing signature key"),
-            credential_bundle,
-        )
-        .expect("Failed to store CredentialBundle in keystore.");
+    pub(crate) credential_with_key: CredentialWithKey,
+    pub(crate) signer: SignatureKeyPair,
 }
 
 impl Identity {
     pub(crate) fn new(ciphersuite: Ciphersuite, crypto: &OpenMlsRustCrypto, id: &[u8]) -> Self {
-        let credential_bundle = CredentialBundle::new(
-            id.to_vec(),
-            CredentialType::Basic,
-            SignatureScheme::from(ciphersuite),
-            crypto,
-        )
-        .unwrap();
+        let credential = Credential::new(id.to_vec(), CredentialType::Basic).unwrap();
+        let signature_keys = SignatureKeyPair::new(ciphersuite.signature_algorithm()).unwrap();
+        let credential_with_key = CredentialWithKey {
+            credential,
+            signature_key: signature_keys.to_public_vec().into(),
+        };
+        signature_keys.store(crypto.key_store()).unwrap();
 
         let key_package = KeyPackage::builder()
             .build(
@@ -45,38 +26,20 @@ impl Identity {
                     version: ProtocolVersion::default(),
                 },
                 crypto,
-                &credential_bundle,
+                &signature_keys,
+                credential_with_key.clone(),
             )
             .unwrap();
 
-        store_credential_bundle_in_keystore(crypto, &credential_bundle);
         Self {
             kp: key_package,
-            credential: credential_bundle,
+            credential_with_key,
+            signer: signature_keys,
         }
     }
 
-    /// Update the key package in this identity.
-    /// The function returns the old `KeyPackage`.
-    pub fn update(&mut self, crypto: &OpenMlsRustCrypto) -> KeyPackage {
-        let ciphersuite = self.kp.ciphersuite();
-
-        let key_package = KeyPackage::builder()
-            .build(
-                CryptoConfig {
-                    ciphersuite,
-                    version: ProtocolVersion::default(),
-                },
-                crypto,
-                &self.credential,
-            )
-            .unwrap();
-
-        replace(&mut self.kp, key_package)
-    }
-
-    /// Get the plain credential as byte vector.
-    pub fn credential(&self) -> &[u8] {
-        self.credential.credential().identity()
+    /// Get the plain identity as byte vector.
+    pub fn identity(&self) -> &[u8] {
+        self.credential_with_key.credential.identity()
     }
 }

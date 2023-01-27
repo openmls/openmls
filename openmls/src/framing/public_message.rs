@@ -250,7 +250,7 @@ impl PublicMessage {
         self.content.serialized_context = serialized_context
     }
 
-    #[cfg(any(feature = "test-utils", test))]
+    #[cfg(test)]
     pub(crate) fn set_membership_tag_test(&mut self, membership_tag: MembershipTag) {
         self.membership_tag = Some(membership_tag);
     }

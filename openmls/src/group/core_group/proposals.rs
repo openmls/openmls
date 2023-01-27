@@ -29,7 +29,7 @@ impl ProposalStore {
             queued_proposals: Vec::new(),
         }
     }
-    #[cfg(any(feature = "test-utils", test))]
+    #[cfg(test)]
     pub(crate) fn from_queued_proposal(queued_proposal: QueuedProposal) -> Self {
         Self {
             queued_proposals: vec![queued_proposal],
