@@ -1,5 +1,6 @@
-use openmls_traits::{types::Ciphersuite, OpenMlsCryptoProvider};
+use openmls_traits::{crypto::OpenMlsCrypto, types::Ciphersuite, OpenMlsCryptoProvider};
 use serde::{Deserialize, Serialize};
+use tls_codec::Serialize as TlsSerialize;
 
 use crate::{
     binary_tree::LeafNodeIndex,
@@ -16,11 +17,16 @@ use crate::{
     versions::ProtocolVersion,
 };
 
-use self::errors::CreationFromExternalError;
+use self::{
+    diff::{PublicGroupDiff, StagedPublicGroupDiff},
+    errors::CreationFromExternalError,
+};
 
-use super::{update_interim_transcript_hash, GroupContext, GroupEpoch, GroupId};
+use super::{GroupContext, GroupEpoch, GroupId};
 
+pub(crate) mod diff;
 pub mod errors;
+pub(crate) mod validation;
 
 #[derive(Debug, Serialize, Deserialize)]
 #[cfg_attr(test, derive(PartialEq))]
@@ -85,12 +91,22 @@ impl PublicGroup {
         } else {
             // New members compute the interim transcript hash using
             // the confirmation_tag field of the GroupInfo struct.
-            update_interim_transcript_hash(
-                ciphersuite,
-                backend,
-                &InterimTranscriptHashInput::from(group_info.confirmation_tag()),
-                group_info.group_context().confirmed_transcript_hash(),
-            )?
+            {
+                let mls_plaintext_commit_auth_data =
+                    &InterimTranscriptHashInput::from(group_info.confirmation_tag());
+                let confirmed_transcript_hash =
+                    group_info.group_context().confirmed_transcript_hash();
+                let commit_auth_data_bytes = mls_plaintext_commit_auth_data
+                    .tls_serialize_detached()
+                    .map_err(LibraryError::missing_bound_check)?;
+                backend
+                    .crypto()
+                    .hash(
+                        ciphersuite.hash_algorithm(),
+                        &[confirmed_transcript_hash, &commit_auth_data_bytes].concat(),
+                    )
+                    .map_err(LibraryError::unexpected_crypto_error)
+            }?
         };
         Ok((
             Self {
@@ -153,6 +169,17 @@ impl PublicGroup {
             free_leaf_index
         };
         Ok(leaf_index)
+    }
+
+    pub(crate) fn empty_diff(&self) -> PublicGroupDiff {
+        PublicGroupDiff::new(self)
+    }
+
+    pub(crate) fn merge_diff(&mut self, diff: StagedPublicGroupDiff) {
+        self.treesync_mut().merge_diff(diff.staged_diff);
+        self.group_context = diff.group_context;
+        self.interim_transcript_hash = diff.interim_transcript_hash;
+        self.confirmation_tag = diff.confirmation_tag;
     }
 }
 

@@ -66,7 +66,7 @@ use self::{past_secrets::MessageSecretsStore, staged_commit::StagedCommit};
 use crate::treesync::node::leaf_node::OpenMlsLeafNode;
 use log::{debug, trace};
 use openmls_traits::key_store::OpenMlsKeyStore;
-use openmls_traits::{crypto::OpenMlsCrypto, types::Ciphersuite};
+use openmls_traits::types::Ciphersuite;
 use serde::{Deserialize, Serialize};
 #[cfg(test)]
 use std::convert::TryFrom;
@@ -820,44 +820,6 @@ impl CoreGroup {
 
         print_tree(self, message);
     }
-}
-
-// Helper functions
-
-pub(crate) fn update_confirmed_transcript_hash(
-    ciphersuite: Ciphersuite,
-    backend: &impl OpenMlsCryptoProvider,
-    mls_plaintext_commit_content: &ConfirmedTranscriptHashInput,
-    interim_transcript_hash: &[u8],
-) -> Result<Vec<u8>, LibraryError> {
-    let commit_content_bytes = mls_plaintext_commit_content
-        .tls_serialize_detached()
-        .map_err(LibraryError::missing_bound_check)?;
-    backend
-        .crypto()
-        .hash(
-            ciphersuite.hash_algorithm(),
-            &[interim_transcript_hash, &commit_content_bytes].concat(),
-        )
-        .map_err(LibraryError::unexpected_crypto_error)
-}
-
-pub(crate) fn update_interim_transcript_hash(
-    ciphersuite: Ciphersuite,
-    backend: &impl OpenMlsCryptoProvider,
-    mls_plaintext_commit_auth_data: &InterimTranscriptHashInput,
-    confirmed_transcript_hash: &[u8],
-) -> Result<Vec<u8>, LibraryError> {
-    let commit_auth_data_bytes = mls_plaintext_commit_auth_data
-        .tls_serialize_detached()
-        .map_err(LibraryError::missing_bound_check)?;
-    backend
-        .crypto()
-        .hash(
-            ciphersuite.hash_algorithm(),
-            &[confirmed_transcript_hash, &commit_auth_data_bytes].concat(),
-        )
-        .map_err(LibraryError::unexpected_crypto_error)
 }
 
 /// Configuration for core group.

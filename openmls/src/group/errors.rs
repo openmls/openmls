@@ -435,9 +435,6 @@ pub(crate) enum ApplyProposalsError {
     /// See [`LibraryError`] for more details.
     #[error(transparent)]
     LibraryError(#[from] LibraryError),
-    /// Own LeafNode was not found in the key store.
-    #[error("Own LeafNode was not found in the key store.")]
-    MissingLeafNode,
 }
 
 // Core group build error

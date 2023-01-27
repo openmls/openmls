@@ -24,3 +24,14 @@ pub enum CreationFromExternalError {
     #[error("We don't support the version of the group we are trying to join.")]
     UnsupportedMlsVersion,
 }
+
+/// Error adding leaf to public group.
+#[derive(Error, Debug, PartialEq, Clone)]
+pub enum AddLeafError {
+    /// See [`LibraryError`] for more details.
+    #[error(transparent)]
+    LibraryError(#[from] LibraryError),
+    /// The group is already at maximum size.
+    #[error("The group is already at maximum size.")]
+    MaxGroupSize,
+}

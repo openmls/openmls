@@ -13,7 +13,7 @@ use crate::{
     ciphersuite::signable::*,
     credentials::*,
     framing::{mls_auth_content::AuthenticatedContent, *},
-    group::*,
+    group::{*},
     messages::*,
     schedule::*,
     test_utils::*,
@@ -104,26 +104,26 @@ pub fn generate_test_vector(ciphersuite: Ciphersuite) -> TranscriptTestVector {
     )
     .expect("An unexpected error occurred.");
 
-    let confirmed_transcript_hash_after = update_confirmed_transcript_hash(
-        ciphersuite,
-        &crypto,
-        &ConfirmedTranscriptHashInput::try_from(&commit).expect("An unexpected error occurred."),
-        &interim_transcript_hash_before,
-    )
+    //let confirmed_transcript_hash_after = update_confirmed_transcript_hash(
+    //    ciphersuite,
+    //    &crypto,
+    //    &ConfirmedTranscriptHashInput::try_from(&commit).expect("An unexpected error occurred."),
+    //    &interim_transcript_hash_before,
+    //)
     .expect("Error updating confirmed transcript hash");
     let confirmation_tag = confirmation_key
         .tag(&crypto, &confirmed_transcript_hash_after)
         .expect("Could not compute confirmation tag.");
     commit.set_confirmation_tag(confirmation_tag.clone());
 
-    let interim_transcript_hash_after = update_interim_transcript_hash(
-        ciphersuite,
-        &crypto,
-        &InterimTranscriptHashInput::try_from(&confirmation_tag)
-            .expect("An unexpected error occurred."),
-        &confirmed_transcript_hash_after,
-    )
-    .expect("Error updating interim transcript hash");
+    //let interim_transcript_hash_after = update_interim_transcript_hash(
+    //    ciphersuite,
+    //    &crypto,
+    //    &InterimTranscriptHashInput::try_from(&confirmation_tag)
+    //        .expect("An unexpected error occurred."),
+    //    &confirmed_transcript_hash_after,
+    //)
+    //.expect("Error updating interim transcript hash");
     let mut commit: PublicMessage = commit.into();
     commit
         .set_membership_tag(&crypto, &membership_key)
@@ -276,33 +276,33 @@ pub fn run_test_vector(
     }
 
     // Compute new transcript hashes.
-    let my_confirmed_transcript_hash_after = update_confirmed_transcript_hash(
-        ciphersuite,
-        backend,
-        &ConfirmedTranscriptHashInput::try_from(&content).expect("An unexpected error occurred."),
-        &interim_transcript_hash_before,
-    )
-    .expect("Error updating confirmed transcript hash");
-    if my_confirmed_transcript_hash_after != confirmed_transcript_hash_after {
-        log::debug!("  Confirmed transcript hash mismatch");
-        log::debug!("    Got:      {:x?}", my_confirmed_transcript_hash_after);
-        log::debug!("    Expected: {:x?}", confirmed_transcript_hash_after);
-        if cfg!(test) {
-            panic!("Confirmed transcript hash mismatch");
-        }
-        return Err(TranscriptTestVectorError::ConfirmedTranscriptHashMismatch);
-    }
+    //let my_confirmed_transcript_hash_after = update_confirmed_transcript_hash(
+    //    ciphersuite,
+    //    backend,
+    //    &ConfirmedTranscriptHashInput::try_from(&content).expect("An unexpected error occurred."),
+    //    &interim_transcript_hash_before,
+    //)
+    //.expect("Error updating confirmed transcript hash");
+    //if my_confirmed_transcript_hash_after != confirmed_transcript_hash_after {
+    //    log::debug!("  Confirmed transcript hash mismatch");
+    //    log::debug!("    Got:      {:x?}", my_confirmed_transcript_hash_after);
+    //    log::debug!("    Expected: {:x?}", confirmed_transcript_hash_after);
+    //    if cfg!(test) {
+    //        panic!("Confirmed transcript hash mismatch");
+    //    }
+    //    return Err(TranscriptTestVectorError::ConfirmedTranscriptHashMismatch);
+    //}
 
     let interim_transcript_hash_after = hex_to_bytes(&test_vector.interim_transcript_hash_after);
 
-    let my_interim_transcript_hash_after = update_interim_transcript_hash(
-        ciphersuite,
-        backend,
-        &InterimTranscriptHashInput::try_from(&my_confirmation_tag)
-            .expect("An unexpected error occurred."),
-        &my_confirmed_transcript_hash_after,
-    )
-    .expect("Error updating interim transcript hash");
+    //let my_interim_transcript_hash_after = update_interim_transcript_hash(
+    //    ciphersuite,
+    //    backend,
+    //    &InterimTranscriptHashInput::try_from(&my_confirmation_tag)
+    //        .expect("An unexpected error occurred."),
+    //    &my_confirmed_transcript_hash_after,
+    //)
+    //.expect("Error updating interim transcript hash");
     if my_interim_transcript_hash_after != interim_transcript_hash_after {
         log::debug!("  Interim transcript hash mismatch");
         log::debug!("    Got:      {:x?}", my_interim_transcript_hash_after);

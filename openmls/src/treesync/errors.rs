@@ -55,6 +55,12 @@ pub enum ApplyUpdatePathError {
     /// Unable to find sender in tree.
     #[error("Unable to find sender in tree.")]
     MissingSender,
+    /// Tree is already at maximum size.
+    #[error("Tree is already at maximum size.")]
+    TreeFull,
+    /// External Committer used the wrong index.
+    #[error("External Committer used the wrong index.")]
+    InconsistentSenderIndex,
 }
 
 // === Crate errors ===

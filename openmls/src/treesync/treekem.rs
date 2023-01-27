@@ -17,7 +17,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::{
     binary_tree::array_representation::LeafNodeIndex,
-    ciphersuite::{hash_ref::KeyPackageRef, HpkePublicKey},
+    ciphersuite::HpkePublicKey,
     error::LibraryError,
     messages::{proposals::AddProposal, EncryptedGroupSecrets, GroupSecrets, PathSecret},
     schedule::{psk::PreSharedKeyId, CommitSecret, JoinerSecret},
@@ -185,6 +185,64 @@ impl<'a> TreeSyncDiff<'a> {
 
         Ok((path, keypairs, commit_secret))
     }
+
+    /// Prepare the [`EncryptedGroupSecrets`] for a number of `invited_members`
+    /// based on a [`TreeSyncDiff`]. If a slice of [`PlainUpdatePathNode`] is
+    /// given, they are included in the [`GroupSecrets`] of the path.
+    ///
+    /// Returns an error if
+    ///  - the own node is outside the tree
+    ///  - the invited members are not part of the tree yet
+    ///  - the leaf index of a new member is identical to the own leaf index
+    ///  - the plain path does not contain the correct secrets
+    pub(crate) fn encrypt_group_secrets(
+        &self,
+        joiner_secret: &JoinerSecret,
+        invited_members: Vec<(LeafNodeIndex, AddProposal)>,
+        plain_path_option: Option<&[PlainUpdatePathNode]>,
+        presharedkeys: &[PreSharedKeyId],
+        backend: &impl OpenMlsCryptoProvider,
+        leaf_index: LeafNodeIndex,
+    ) -> Result<Vec<EncryptedGroupSecrets>, LibraryError> {
+        let mut encrypted_group_secrets_vec = vec![];
+        for (leaf_index, add_proposal) in invited_members {
+            let key_package = add_proposal.key_package;
+
+            let direct_path_position = self
+                .subtree_root_position(leaf_index, leaf_index)
+                // This can only fail if the nodes are outside the tree or identical
+                .map_err(|_| LibraryError::custom("Unexpected error in subtree_root_position"))?;
+
+            // If a plain path was given, there have to be secrets for every new member.
+            let path_secret_option = if let Some(plain_path) = plain_path_option {
+                Some(
+                    plain_path
+                        .get(direct_path_position)
+                        .map(|pupn| pupn.path_secret())
+                        // This only fails if the supplied plain path is invalid
+                        .ok_or_else(|| LibraryError::custom("Invalid plain path"))?,
+                )
+            } else {
+                None
+            };
+
+            // Create the GroupSecrets object for the respective member.
+            let group_secrets_bytes =
+                GroupSecrets::new_encoded(joiner_secret, path_secret_option, presharedkeys)
+                    .map_err(LibraryError::missing_bound_check)?;
+            let ciphertext = backend.crypto().hpke_seal(
+                key_package.ciphersuite().hpke_config(),
+                key_package.hpke_init_key().as_slice(),
+                &[],
+                &[],
+                &group_secrets_bytes,
+            );
+            let encrypted_group_secrets =
+                EncryptedGroupSecrets::new(key_package.hash_ref(backend.crypto())?, ciphertext);
+            encrypted_group_secrets_vec.push(encrypted_group_secrets);
+        }
+        Ok(encrypted_group_secrets_vec)
+    }
 }
 
 pub(crate) struct DecryptPathParams<'a> {
@@ -258,89 +316,6 @@ impl UpdatePathNode {
     }
 }
 
-/// Helper struct holding values that are encrypted in the
-/// `EncryptedGroupSecrets`. In particular, the `group_secrets_bytes` are
-/// encrypted for the `public_key` into `encrypted_group_secrets` later.
-pub(crate) struct PlaintextSecret {
-    public_key: HpkePublicKey,
-    group_secrets_bytes: Vec<u8>,
-    new_member: KeyPackageRef,
-}
-
-impl PlaintextSecret {
-    /// Prepare the `GroupSecrets` for a number of `invited_members` based on a
-    /// [`TreeSyncDiff`]. If a slice of [`PlainUpdatePathNode`] is given, they
-    /// are included in the [`GroupSecrets`] of the path.
-    ///
-    /// Returns an error if
-    ///  - the own node is outside the tree
-    ///  - the invited members are not part of the tree yet
-    ///  - the leaf index of a new member is identical to the own leaf index
-    ///  - the plain path does not contain the correct secrets
-    pub(crate) fn from_plain_update_path(
-        diff: &TreeSyncDiff,
-        joiner_secret: &JoinerSecret,
-        invited_members: Vec<(LeafNodeIndex, AddProposal)>,
-        plain_path_option: Option<&[PlainUpdatePathNode]>,
-        presharedkeys: &[PreSharedKeyId],
-        backend: &impl OpenMlsCryptoProvider,
-        own_leaf_index: LeafNodeIndex,
-    ) -> Result<Vec<Self>, LibraryError> {
-        let mut plaintext_secrets = vec![];
-        for (leaf_index, add_proposal) in invited_members {
-            let key_package = add_proposal.key_package;
-
-            let direct_path_position = diff
-                .subtree_root_position(own_leaf_index, leaf_index)
-                // This can only fail if the nodes are outside the tree or identical
-                .map_err(|_| LibraryError::custom("Unexpected error in subtree_root_position"))?;
-
-            // If a plain path was given, there have to be secrets for every new member.
-            let path_secret_option = if let Some(plain_path) = plain_path_option {
-                Some(
-                    plain_path
-                        .get(direct_path_position)
-                        .map(|pupn| pupn.path_secret())
-                        // This only fails if the supplied plain path is invalid
-                        .ok_or_else(|| LibraryError::custom("Invalid plain path"))?,
-                )
-            } else {
-                None
-            };
-
-            // Create the GroupSecrets object for the respective member.
-            let group_secrets_bytes =
-                GroupSecrets::new_encoded(joiner_secret, path_secret_option, presharedkeys)
-                    .map_err(LibraryError::missing_bound_check)?;
-            plaintext_secrets.push(PlaintextSecret {
-                public_key: key_package.hpke_init_key().clone(),
-                group_secrets_bytes,
-                new_member: key_package.hash_ref(backend.crypto())?,
-            });
-        }
-        Ok(plaintext_secrets)
-    }
-
-    /// Encrypt the `group_secret_bytes` using the `public_key`, both contained
-    /// in this [`PlaintextSecret`].
-    ///
-    /// Returns the resulting [`EncryptedGroupSecrets`].
-    pub(crate) fn encrypt(
-        self,
-        backend: &impl OpenMlsCryptoProvider,
-        ciphersuite: Ciphersuite,
-    ) -> EncryptedGroupSecrets {
-        let encrypted_group_secrets = backend.crypto().hpke_seal(
-            ciphersuite.hpke_config(),
-            self.public_key.as_slice(),
-            &[],
-            &[],
-            &self.group_secrets_bytes,
-        );
-        EncryptedGroupSecrets::new(self.new_member, encrypted_group_secrets)
-    }
-}
-
 /// 8.6. Update Paths
 ///
 /// ```text
@@ -366,6 +341,11 @@ impl UpdatePath {
     /// Return the `leaf_node` of this [`UpdatePath`].
     pub(crate) fn leaf_node(&self) -> &LeafNode {
         &self.leaf_node
+    }
+
+    /// Return the `nodes` of this [`UpdatePath`].
+    pub(crate) fn nodes(&self) -> &[UpdatePathNode] {
+        &self.nodes
     }
 
     /// Consume the [`UpdatePath`] and return its individual parts: A
