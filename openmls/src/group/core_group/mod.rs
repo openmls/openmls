@@ -93,8 +93,8 @@ pub(crate) struct CreateCommitResult {
 pub struct Member {
     /// The member's leaf index in the ratchet tree.
     pub index: LeafNodeIndex,
-    /// The member's identity from the credential.
-    pub identity: Vec<u8>,
+    /// The member's credential.
+    pub credential: Credential,
     /// The member's public HPHKE encryption key.
     pub encryption_key: Vec<u8>,
     /// The member's public signature key.
@@ -107,13 +107,13 @@ impl Member {
         index: LeafNodeIndex,
         encryption_key: Vec<u8>,
         signature_key: Vec<u8>,
-        identity: Vec<u8>,
+        credential: Credential,
     ) -> Self {
         Self {
             index,
             encryption_key,
             signature_key,
-            identity,
+            credential,
         }
     }
 }

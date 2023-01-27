@@ -133,10 +133,12 @@ impl CoreGroup {
             .take_credential_with_key()
             .ok_or(ExternalCommitError::MissingCredential)?;
         for Member {
-            index, identity, ..
+            index,
+            signature_key,
+            ..
         } in treesync.full_leave_members()
         {
-            if identity == params_credential_with_key.credential.identity() {
+            if signature_key == params_credential_with_key.signature_key.as_slice() {
                 let remove_proposal = Proposal::Remove(RemoveProposal { removed: index });
                 inline_proposals.push(remove_proposal);
                 break;

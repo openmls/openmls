@@ -118,9 +118,6 @@ pub enum ExternalCommitError {
     /// This error indicates the public tree is invalid. See [`PublicTreeError`] for more details.
     #[error(transparent)]
     PublicTreeError(#[from] PublicTreeError),
-    /// Signature public key is missing from external commit.
-    #[error("Signature public key is missing from external commit.")]
-    MissingSignatureKey,
     /// Credential is missing from external commit.
     #[error("Credential is missing from external commit.")]
     MissingCredential,
@@ -224,9 +221,6 @@ pub enum CreateCommitError<KeyStoreError> {
     /// See [`SignatureError`] for more details.
     #[error(transparent)]
     SignatureError(#[from] SignatureError),
-    /// Signature public key is missing from external commit.
-    #[error("Signature public key is missing from external commit.")]
-    MissingSignatureKey,
     /// Credential is missing from external commit.
     #[error("Credential is missing from external commit.")]
     MissingCredential,

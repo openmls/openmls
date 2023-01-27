@@ -98,10 +98,8 @@ impl CoreGroup {
     // === Proposals ===
 
     /// Validate Add proposals. This function implements the following checks:
-    ///  - ValSem100
     ///  - ValSem101
     ///  - ValSem102
-    ///  - ValSem103
     ///  - ValSem104
     ///  - ValSem106
     pub(crate) fn validate_add_proposals(
@@ -110,22 +108,10 @@ impl CoreGroup {
     ) -> Result<(), ProposalValidationError> {
         let add_proposals = proposal_queue.add_proposals();
 
-        let mut identity_set = HashSet::new();
         let mut signature_key_set = HashSet::new();
         let mut init_key_set = HashSet::new();
         let mut encryption_key_set = HashSet::new();
         for add_proposal in add_proposals {
-            let identity = add_proposal
-                .add_proposal()
-                .key_package()
-                .leaf_node()
-                .credential()
-                .identity()
-                .to_vec();
-            // ValSem100
-            if !identity_set.insert(identity) {
-                return Err(ProposalValidationError::DuplicateIdentityAddProposal);
-            }
             let signature_key = add_proposal
                 .add_proposal()
                 .key_package()
@@ -213,18 +199,14 @@ impl CoreGroup {
 
         for Member {
             index,
-            identity,
             encryption_key,
             signature_key,
+            ..
         } in self.treesync().full_leave_members()
         {
             let has_remove_proposal = proposal_queue
                 .remove_proposals()
                 .any(|p| p.remove_proposal().removed == index);
-            // ValSem103
-            if identity_set.contains(&identity) && !has_remove_proposal {
-                return Err(ProposalValidationError::ExistingIdentityAddProposal);
-            }
             // ValSem104
             if signature_key_set.contains(&signature_key) && !has_remove_proposal {
                 return Err(ProposalValidationError::ExistingSignatureKeyAddProposal);
@@ -265,7 +247,7 @@ impl CoreGroup {
     }
 
     /// Validate Update proposals. This function implements the following checks:
-    ///  - ValSem109
+    ///  -
     ///  - ValSem110
     ///  - ValSem111
     ///  - ValSem112
@@ -284,13 +266,8 @@ impl CoreGroup {
 
         // Check the update proposals from the proposal queue first
         let update_proposals = proposal_queue.update_proposals();
-        let tree = self.treesync();
 
         for update_proposal in update_proposals {
-            let sender_leaf_index = match update_proposal.sender() {
-                Sender::Member(hash_ref) => *hash_ref,
-                _ => return Err(ProposalValidationError::UpdateFromNonMember),
-            };
             // ValSem112
             // The sender of a standalone update proposal must be of type member
             if let Sender::Member(sender_index) = update_proposal.sender() {
@@ -303,30 +280,15 @@ impl CoreGroup {
                 return Err(ProposalValidationError::UpdateFromNonMember);
             }
 
-            if let Some(leaf_node) = tree.leaf(sender_leaf_index) {
-                // ValSem109
-                // Identity must be unchanged between existing member and new proposal
-                if update_proposal
-                    .update_proposal()
-                    .leaf_node()
-                    .credential()
-                    .identity()
-                    != leaf_node.credential().identity()
-                {
-                    return Err(ProposalValidationError::UpdateProposalIdentityMismatch);
-                }
-                let encryption_key = update_proposal
-                    .update_proposal()
-                    .leaf_node()
-                    .encryption_key()
-                    .as_slice();
-                // ValSem110
-                // HPKE init key must be unique among existing members
-                if encryption_keys.contains(encryption_key) {
-                    return Err(ProposalValidationError::ExistingPublicKeyUpdateProposal);
-                }
-            } else {
-                return Err(ProposalValidationError::UnknownMember);
+            let encryption_key = update_proposal
+                .update_proposal()
+                .leaf_node()
+                .encryption_key()
+                .as_slice();
+            // ValSem110
+            // HPKE init key must be unique among existing members
+            if encryption_keys.contains(encryption_key) {
+                return Err(ProposalValidationError::ExistingPublicKeyUpdateProposal);
             }
         }
         Ok(encryption_keys)
@@ -334,30 +296,15 @@ impl CoreGroup {
 
     /// Validate the new key package in a path
     /// TODO: #730 - There's nothing testing this function.
-    /// - ValSem109
     /// - ValSem110
     pub(super) fn validate_path_key_package(
         &self,
-        sender: LeafNodeIndex,
         leaf_node: &LeafNode,
         public_key_set: HashSet<Vec<u8>>,
-        proposal_sender: &Sender,
     ) -> Result<(), ProposalValidationError> {
-        let mut members = self.treesync().full_leave_members();
-        if let Some(Member {
-            index: _, identity, ..
-        }) = members.find(|Member { index, .. }| index == &sender)
-        {
-            // ValSem109
-            if leaf_node.credential().identity() != identity {
-                return Err(ProposalValidationError::UpdateProposalIdentityMismatch);
-            }
-            // ValSem110
-            if public_key_set.contains(leaf_node.encryption_key().as_slice()) {
-                return Err(ProposalValidationError::ExistingPublicKeyUpdateProposal);
-            }
-        } else if proposal_sender.is_member() {
-            return Err(ProposalValidationError::UnknownMember);
+        // ValSem110
+        if public_key_set.contains(leaf_node.encryption_key().as_slice()) {
+            return Err(ProposalValidationError::ExistingPublicKeyUpdateProposal);
         }
         Ok(())
     }

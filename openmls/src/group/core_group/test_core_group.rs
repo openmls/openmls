@@ -656,8 +656,8 @@ fn test_proposal_application_after_self_was_removed(
         .full_leave_members()
         .find(
             |Member {
-                 index: _, identity, ..
-             }| identity == b"Bob",
+                 index: _, credential, ..
+             }| credential.identity() == b"Bob",
         )
         .expect("Couldn't find Bob in tree.")
         .index;
@@ -735,16 +735,16 @@ fn test_proposal_application_after_self_was_removed(
         // Note that we can't compare encryption keys for Bob because they
         // didn't get updated.
         assert_eq!(alice_member.index, bob_member.index);
-        assert_eq!(alice_member.identity, bob_member.identity);
+        assert_eq!(alice_member.credential.identity(), bob_member.credential.identity());
         assert_eq!(alice_member.signature_key, bob_member.signature_key);
         assert_eq!(charlie_member.index, bob_member.index);
-        assert_eq!(charlie_member.identity, bob_member.identity);
+        assert_eq!(charlie_member.credential.identity(), bob_member.credential.identity());
         assert_eq!(charlie_member.signature_key, bob_member.signature_key);
         assert_eq!(charlie_member.encryption_key, alice_member.encryption_key);
     }
 
     let mut bob_members = bob_group.treesync().full_leave_members();
 
-    assert_eq!(bob_members.next().unwrap().identity, b"Alice");
-    assert_eq!(bob_members.next().unwrap().identity, b"Charlie");
+    assert_eq!(bob_members.next().unwrap().credential.identity(), b"Alice");
+    assert_eq!(bob_members.next().unwrap().credential.identity(), b"Charlie");
 }

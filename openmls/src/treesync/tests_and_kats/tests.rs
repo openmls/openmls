@@ -64,7 +64,7 @@ fn that_commit_secret_is_derived_from_end_of_update_path_not_root(
         group.members().for_each(|member| {
             println!(
                 "member: {}, index: {:?}, target: {}, own_leaf_index: {:?}",
-                String::from_utf8_lossy(&member.identity),
+                String::from_utf8_lossy(member.credential.identity()),
                 member.index,
                 String::from_utf8_lossy(target_id),
                 group.own_leaf_index()
@@ -73,7 +73,7 @@ fn that_commit_secret_is_derived_from_end_of_update_path_not_root(
         group
             .members()
             .find_map(|member| {
-                if member.identity == target_id {
+                if member.credential.identity() == target_id {
                     Some(member.index)
                 } else {
                     None

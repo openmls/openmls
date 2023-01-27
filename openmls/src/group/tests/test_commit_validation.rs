@@ -706,7 +706,7 @@ fn test_partial_proposal_commit(ciphersuite: Ciphersuite, backend: &impl OpenMls
 
     let charlie_index = alice_group
         .members()
-        .find(|m| m.identity == b"Charlie")
+        .find(|m| m.credential.identity() == b"Charlie")
         .unwrap()
         .index;
 

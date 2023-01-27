@@ -17,7 +17,7 @@ Every function in the processing chain performs several semantic validation step
 
 #### Wire format policy and basic message consistency validation
 
-`MlsMessageIn` struct instances can be passed into the `.parse_message()` function of the `MlsGroup` API, which validates that the message conforms to the group's [wire format policy](user_manual/group_config.md). The function also performs several basic semantic validation steps, such as consistency of Group id, Epoch, and Sender data between message and group (`ValSem002`-`ValSem007` and `ValSem109`). It also checks if the sender type (e.g., `Member`, `NewMember`, etc.) matches the type of the message (`ValSem112`), as well as the presence of a path in case of an External Commit (`ValSem246`).
+`MlsMessageIn` struct instances can be passed into the `.parse_message()` function of the `MlsGroup` API, which validates that the message conforms to the group's [wire format policy](user_manual/group_config.md). The function also performs several basic semantic validation steps, such as consistency of Group id, Epoch, and Sender data between message and group (`ValSem002`-`ValSem007`). It also checks if the sender type (e.g., `Member`, `NewMember`, etc.) matches the type of the message (`ValSem112`), as well as the presence of a path in case of an External Commit (`ValSem246`).
 
 `.parse_message()` then returns an `UnverifiedMessage` struct instance, which can in turn be used as input for `.process_unverified_message()`.
 
@@ -26,7 +26,7 @@ Every function in the processing chain performs several semantic validation step
 `.process_unverified_message()` performs all other semantic validation steps. In particular, it ensures that ...
 
 - the message is correctly authenticated by a signature (`ValSem010`), membership tag (`ValSem008`), and confirmation tag (`ValSem205`),
-- proposals are valid relative to one another and the current group state, e.g., no redundant adds or removes targeting non-members (`ValSem100`-`ValSem112`),
+- proposals are valid relative to one another and the current group state, e.g., no redundant adds or removes targeting non-members (`ValSem101`-`ValSem112`),
 - commits are valid relative to the group state and the proposals it covers (`ValSem200`-`ValSem205`) and
 - external commits are valid according to the spec (`ValSem240`-`ValSem245`, `ValSem247` is checked as part of `ValSem010`).
 
@@ -55,15 +55,12 @@ The following is a list of the individual semantic validation steps performed by
 
 | ValidationStep | Description                                                                                 | Implemented | Tested | Test File                                             |
 | -------------- | ------------------------------------------------------------------------------------------- | ----------- | ------ | ----------------------------------------------------- |
-| `ValSem100`    | Add Proposal: Identity in proposals must be unique among proposals                          | ✅          | ✅     | `openmls/src/group/tests/test_proposal_validation.rs` |
 | `ValSem101`    | Add Proposal: Signature public key in proposals must be unique among proposals              | ✅          | ✅     | `openmls/src/group/tests/test_proposal_validation.rs` |
 | `ValSem102`    | Add Proposal: HPKE init key in proposals must be unique among proposals                     | ✅          | ✅     | `openmls/src/group/tests/test_proposal_validation.rs` |
-| `ValSem103`    | Add Proposal: Identity in proposals must be unique among existing group members             | ✅          | ✅     | `openmls/src/group/tests/test_proposal_validation.rs` |
 | `ValSem104`    | Add Proposal: Signature public key in proposals must be unique among existing group members | ✅          | ✅     | `openmls/src/group/tests/test_proposal_validation.rs` |
 | `ValSem106`    | Add Proposal: required capabilities                                                         | ✅          | ✅     | `openmls/src/group/tests/test_proposal_validation.rs` |
 | `ValSem107`    | Remove Proposal: Removed member must be unique among proposals                              | ✅          | ✅     | `openmls/src/group/tests/test_proposal_validation.rs` |
 | `ValSem108`    | Remove Proposal: Removed member must be an existing group member                            | ✅          | ✅     | `openmls/src/group/tests/test_proposal_validation.rs` |
-| `ValSem109`    | Update Proposal: Identity must be unchanged between existing member and new proposal        | ✅          | ✅     | `openmls/src/group/tests/test_proposal_validation.rs` |
 | `ValSem110`    | Update Proposal: HPKE init key must be unique among existing members                        | ✅          | ✅     | `openmls/src/group/tests/test_proposal_validation.rs` |
 | `ValSem111`    | Update Proposal: The sender of a full Commit must not include own update proposals          | ✅          | ✅     | `openmls/src/group/tests/test_proposal_validation.rs` |
 | `ValSem112`    | Update Proposal: The sender of a standalone update proposal must be of type member          | ✅          | ✅     | `openmls/src/group/tests/test_proposal_validation.rs` |

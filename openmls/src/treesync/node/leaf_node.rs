@@ -1023,11 +1023,7 @@ impl OpenMlsLeafNode {
         let mut leaf_node_tbs = LeafNodeTbs::from(self.leaf_node.clone(), tree_info);
 
         // Update credential
-        // ValSem109 check that the identity is the same.
         if let Some(leaf_node) = leaf_node.into() {
-            if leaf_node.credential().identity() != leaf_node_tbs.payload.credential.identity() {
-                return Err(PublicTreeError::IdentityMismatch);
-            }
             leaf_node_tbs.payload.credential = leaf_node.credential().clone();
             leaf_node_tbs.payload.encryption_key = leaf_node.encryption_key().clone();
         }

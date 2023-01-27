@@ -21,6 +21,7 @@ use crate::{
     group::{config::CryptoConfig, *},
     key_packages::*,
     messages::{group_info::GroupInfo, *},
+    prelude_test::SignaturePublicKey,
     treesync::{
         node::{leaf_node::Capabilities, Node},
         LeafNode,

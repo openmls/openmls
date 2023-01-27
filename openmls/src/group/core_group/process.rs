@@ -111,15 +111,12 @@ impl CoreGroup {
     /// Checks the following semantic validation:
     ///  - ValSem008
     ///  - ValSem010
-    ///  - ValSem100
     ///  - ValSem101
     ///  - ValSem102
-    ///  - ValSem103
     ///  - ValSem104
     ///  - ValSem106
     ///  - ValSem107
     ///  - ValSem108
-    ///  - ValSem109
     ///  - ValSem110
     ///  - ValSem111
     ///  - ValSem112
@@ -177,15 +174,12 @@ impl CoreGroup {
                         )?),
                     ),
                     FramedContentBody::Commit(_) => {
-                        //  - ValSem100
                         //  - ValSem101
                         //  - ValSem102
-                        //  - ValSem103
                         //  - ValSem104
                         //  - ValSem106
                         //  - ValSem107
                         //  - ValSem108
-                        //  - ValSem109
                         //  - ValSem110
                         //  - ValSem111
                         //  - ValSem112
@@ -292,15 +286,12 @@ impl CoreGroup {
     ///  - ValSem008
     ///  - ValSem009
     ///  - ValSem010
-    ///  - ValSem100
     ///  - ValSem101
     ///  - ValSem102
-    ///  - ValSem103
     ///  - ValSem104
     ///  - ValSem106
     ///  - ValSem107
     ///  - ValSem108
-    ///  - ValSem109
     ///  - ValSem110
     ///  - ValSem111
     ///  - ValSem112

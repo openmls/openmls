@@ -220,8 +220,8 @@ fn book_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvide
 
     // Check that Alice & Bob are the members of the group
     let members = alice_group.members().collect::<Vec<Member>>();
-    assert_eq!(members[0].identity, b"Alice");
-    assert_eq!(members[1].identity, b"Bob");
+    assert_eq!(members[0].credential.identity(), b"Alice");
+    assert_eq!(members[1].credential.identity(), b"Bob");
 
     // ANCHOR: bob_joins_with_welcome
     let mut bob_group = MlsGroup::new_from_welcome(
@@ -510,9 +510,9 @@ fn book_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvide
 
     // Check that Alice, Bob & Charlie are the members of the group
     let members = alice_group.members().collect::<Vec<Member>>();
-    assert_eq!(members[0].identity, b"Alice");
-    assert_eq!(members[1].identity, b"Bob");
-    assert_eq!(members[2].identity, b"Charlie");
+    assert_eq!(members[0].credential.identity(), b"Alice");
+    assert_eq!(members[1].credential.identity(), b"Bob");
+    assert_eq!(members[2].credential.identity(), b"Charlie");
     assert_eq!(members.len(), 3);
 
     // === Charlie sends a message to the group ===
@@ -618,14 +618,16 @@ fn book_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvide
         .iter()
         .find(
             |Member {
-                 index: _, identity, ..
-             }| identity == b"Bob",
+                 index: _,
+                 credential,
+                 ..
+             }| credential.identity() == b"Bob",
         )
         .expect("Couldn't find Bob in the list of group members.");
 
     // Make sure that this is Bob's actual KP reference.
     assert_eq!(
-        bob_member.identity,
+        bob_member.credential.identity(),
         bob_group
             .own_identity()
             .expect("An unexpected error occurred.")
@@ -660,14 +662,7 @@ fn book_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvide
     };
     let sender_credential = alice_processed_message.credential().unwrap();
 
-    assert!(alice_members.any(
-        |Member {
-             index,
-             identity: _,
-             encryption_key: _,
-             signature_key: _,
-         }| &index == sender_leaf_index
-    ));
+    assert!(alice_members.any(|Member { index, .. }| &index == sender_leaf_index));
     drop(alice_members);
 
     assert_eq!(sender_credential, &charlie_credential.credential);
@@ -757,8 +752,8 @@ fn book_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvide
     assert!(!bob_group.is_active());
     let members = bob_group.members().collect::<Vec<Member>>();
     assert_eq!(members.len(), 2);
-    assert_eq!(members[0].identity, b"Alice");
-    assert_eq!(members[1].identity, b"Charlie");
+    assert_eq!(members[0].credential.identity(), b"Alice");
+    assert_eq!(members[1].credential.identity(), b"Charlie");
     // ANCHOR_END: getting_removed
 
     // Make sure that all groups have the same public tree
@@ -772,8 +767,8 @@ fn book_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvide
 
     // Check that Alice & Charlie are the members of the group
     let members = alice_group.members().collect::<Vec<Member>>();
-    assert_eq!(members[0].identity, b"Alice");
-    assert_eq!(members[1].identity, b"Charlie");
+    assert_eq!(members[0].credential.identity(), b"Alice");
+    assert_eq!(members[1].credential.identity(), b"Charlie");
 
     // Check that Bob can no longer send messages
     assert!(bob_group
@@ -913,8 +908,8 @@ fn book_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvide
 
     // Check that Alice & Bob are the members of the group
     let members = alice_group.members().collect::<Vec<Member>>();
-    assert_eq!(members[0].identity, b"Alice");
-    assert_eq!(members[1].identity, b"Bob");
+    assert_eq!(members[0].credential.identity(), b"Alice");
+    assert_eq!(members[1].credential.identity(), b"Bob");
 
     // Bob creates a new group
     let mut bob_group = MlsGroup::new_from_welcome(
@@ -933,16 +928,16 @@ fn book_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvide
 
     // Check that Alice & Bob are the members of the group
     let members = alice_group.members().collect::<Vec<Member>>();
-    assert_eq!(members[0].identity, b"Alice");
-    assert_eq!(members[1].identity, b"Bob");
+    assert_eq!(members[0].credential.identity(), b"Alice");
+    assert_eq!(members[1].credential.identity(), b"Bob");
 
     // Make sure the group contains two members
     assert_eq!(bob_group.members().count(), 2);
 
     // Check that Alice & Bob are the members of the group
     let members = bob_group.members().collect::<Vec<Member>>();
-    assert_eq!(members[0].identity, b"Alice");
-    assert_eq!(members[1].identity, b"Bob");
+    assert_eq!(members[0].credential.identity(), b"Alice");
+    assert_eq!(members[1].credential.identity(), b"Bob");
 
     // === Alice sends a message to the group ===
     let message_alice = b"Hi, I'm Alice!";
@@ -1106,7 +1101,7 @@ fn book_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvide
 
     // Check that Alice is the only member of the group
     let members = alice_group.members().collect::<Vec<Member>>();
-    assert_eq!(members[0].identity, b"Alice");
+    assert_eq!(members[0].credential.identity(), b"Alice");
 
     // === Re-Add Bob with external Add proposal ===
 

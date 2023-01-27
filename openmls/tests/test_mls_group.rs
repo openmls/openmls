@@ -135,8 +135,8 @@ fn mls_group_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoPr
 
         // Check that Alice & Bob are the members of the group
         let members = alice_group.members().collect::<Vec<Member>>();
-        assert_eq!(members[0].identity, b"Alice");
-        assert_eq!(members[1].identity, b"Bob");
+        assert_eq!(members[0].credential.identity(), b"Alice");
+        assert_eq!(members[1].credential.identity(), b"Bob");
 
         let mut bob_group = MlsGroup::new_from_welcome(
             backend,
@@ -406,9 +406,9 @@ fn mls_group_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoPr
 
         // Check that Alice, Bob & Charlie are the members of the group
         let members = alice_group.members().collect::<Vec<Member>>();
-        assert_eq!(members[0].identity, b"Alice");
-        assert_eq!(members[1].identity, b"Bob");
-        assert_eq!(members[2].identity, b"Charlie");
+        assert_eq!(members[0].credential.identity(), b"Alice");
+        assert_eq!(members[1].credential.identity(), b"Bob");
+        assert_eq!(members[2].credential.identity(), b"Charlie");
 
         // === Charlie sends a message to the group ===
         let message_charlie = b"Hi, I'm Charlie!";
@@ -600,8 +600,8 @@ fn mls_group_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoPr
 
         // Check that Alice & Charlie are the members of the group
         let members = alice_group.members().collect::<Vec<Member>>();
-        assert_eq!(members[0].identity, b"Alice");
-        assert_eq!(members[1].identity, b"Charlie");
+        assert_eq!(members[0].credential.identity(), b"Alice");
+        assert_eq!(members[1].credential.identity(), b"Charlie");
 
         // Check that Bob can no longer send messages
         assert!(bob_group
@@ -732,8 +732,8 @@ fn mls_group_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoPr
 
         // Check that Alice & Bob are the members of the group
         let members = alice_group.members().collect::<Vec<Member>>();
-        assert_eq!(members[0].identity, b"Alice");
-        assert_eq!(members[1].identity, b"Bob");
+        assert_eq!(members[0].credential.identity(), b"Alice");
+        assert_eq!(members[1].credential.identity(), b"Bob");
 
         // Bob creates a new group
         let mut bob_group = MlsGroup::new_from_welcome(
@@ -752,16 +752,16 @@ fn mls_group_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoPr
 
         // Check that Alice & Bob are the members of the group
         let members = alice_group.members().collect::<Vec<Member>>();
-        assert_eq!(members[0].identity, b"Alice");
-        assert_eq!(members[1].identity, b"Bob");
+        assert_eq!(members[0].credential.identity(), b"Alice");
+        assert_eq!(members[1].credential.identity(), b"Bob");
 
         // Make sure the group contains two members
         assert_eq!(bob_group.members().count(), 2);
 
         // Check that Alice & Bob are the members of the group
         let members = bob_group.members().collect::<Vec<Member>>();
-        assert_eq!(members[0].identity, b"Alice");
-        assert_eq!(members[1].identity, b"Bob");
+        assert_eq!(members[0].credential.identity(), b"Alice");
+        assert_eq!(members[1].credential.identity(), b"Bob");
 
         // === Alice sends a message to the group ===
         let message_alice = b"Hi, I'm Alice!";
@@ -900,7 +900,7 @@ fn mls_group_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoPr
 
         // Check that Alice is the only member of the group
         let members = alice_group.members().collect::<Vec<Member>>();
-        assert_eq!(members[0].identity, b"Alice");
+        assert_eq!(members[0].credential.identity(), b"Alice");
 
         // === Save the group state ===
 

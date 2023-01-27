@@ -77,10 +77,8 @@ impl CoreGroup {
 
         // Validate the proposals by doing the following checks:
 
-        // ValSem100
         // ValSem101
         // ValSem102
-        // ValSem103
         // ValSem104
         // ValSem106
         self.validate_add_proposals(&proposal_queue)?;
@@ -89,7 +87,6 @@ impl CoreGroup {
         self.validate_remove_proposals(&proposal_queue)?;
         // Validate update proposals for member commits
         if let Sender::Member(sender_index) = &sender {
-            // ValSem109
             // ValSem110
             // ValSem111
             // ValSem112

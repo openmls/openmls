@@ -330,8 +330,8 @@ impl MlsGroupTestSetup {
             .iter()
             .map(
                 |Member {
-                     index, identity, ..
-                 }| { (index.usize(), identity.clone()) },
+                     index, credential, ..
+                 }| { (index.usize(), credential.identity().to_vec()) },
             )
             .collect();
         group.public_tree = sender_group.export_ratchet_tree();

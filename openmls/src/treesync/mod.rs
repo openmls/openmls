@@ -313,7 +313,7 @@ impl TreeSync {
                     index,
                     leaf_node.public_key().as_slice().to_vec(),
                     leaf_node.leaf_node.signature_key().as_slice().to_vec(),
-                    leaf_node.leaf_node.credential().identity().to_vec(),
+                    leaf_node.leaf_node.credential().clone(),
                 )
             })
     }
