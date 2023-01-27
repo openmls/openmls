@@ -7,7 +7,7 @@ members = [
     "cli",
     # "interop_client",
     "memory_keystore",
-    # "evercrypt_backend",
+    "evercrypt_backend",
     "delivery-service/ds",
     "delivery-service/ds-lib",
     "basic_credential"
