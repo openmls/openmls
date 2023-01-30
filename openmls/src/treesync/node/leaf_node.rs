@@ -29,8 +29,8 @@ mod capabilities;
 mod codec;
 mod lifetime;
 
-pub use self::lifetime::Lifetime;
 pub use capabilities::*;
+pub use lifetime::Lifetime;
 
 /// This struct implements the MLS leaf node.
 ///
