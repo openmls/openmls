@@ -593,7 +593,7 @@ pub type ParentHash = VLBytes;
 ///
 ///     Extension extensions<V>;
 ///
-///     // ... continued in [`TreeInfoTbs`] ...
+///     // ... continued in [`TreeInfo`] ...
 /// } LeafNodeTBS;
 /// ```
 #[derive(Debug)]
@@ -603,7 +603,7 @@ pub struct LeafNodeTbs {
 }
 
 impl LeafNodeTbs {
-    /// Build a [`LeafNodeTbs`] from a [`LeafNode`] and a [`TreeInfoTbs`]
+    /// Build a [`LeafNodeTbs`] from a [`LeafNode`] and a [`TreeInfo`]
     /// to update a leaf node.
     pub(crate) fn from(leaf_node: LeafNode, tree_info: TreeInfo) -> Self {
         Self {
@@ -684,7 +684,7 @@ const LEAF_NODE_SIGNATURE_LABEL: &str = "LeafNodeTBS";
 
 /// Helper struct to verify incoming leaf nodes.
 /// The [`LeafNode`] doesn't have all the information needed to verify.
-/// In particular is the [`TreeInfoTbs`] missing.
+/// In particular is the [`TreeInfo`] missing.
 pub(crate) struct VerifiableLeafNode<'a> {
     pub(crate) tbs: &'a LeafNodeTbs,
     pub(crate) signature: &'a Signature,
@@ -862,11 +862,11 @@ impl OpenMlsLeafNode {
         Ok(key_pair)
     }
 
-    /// Create the [`TreeInfoTbs`] for an update for this leaf.
+    /// Create the [`TreeInfo`] for an update for this leaf.
     fn update_tree_info(&self, group_id: GroupId) -> Result<TreeInfo, LibraryError> {
         debug_assert!(
             self.leaf_index.is_some(),
-            "TreeInfoTbs for Update can't be created without a leaf index. \
+            "TreeInfo for Update can't be created without a leaf index. \
              Leaf identity: {:?} ({})",
             self.leaf_node().credential().identity(),
             String::from_utf8(self.leaf_node().credential().identity().to_vec())
@@ -880,9 +880,7 @@ impl OpenMlsLeafNode {
                 })
             })
             .ok_or_else(|| {
-                LibraryError::custom(
-                    "TreeInfoTbs for Update can't be created without a leaf index.",
-                )
+                LibraryError::custom("TreeInfo for Update can't be created without a leaf index.")
             })
     }
 
