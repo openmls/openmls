@@ -5,7 +5,7 @@ use crate::framing::mls_content::FramedContentBody;
 use crate::treesync::errors::TreeSyncAddLeaf;
 use crate::treesync::node::encryption_keys::EncryptionKeyPair;
 use crate::treesync::node::leaf_node::{
-    LeafNodeTbs, OpenMlsLeafNode, TreeInfoTbs, VerifiableLeafNodeTbs,
+    LeafNodeTbs, OpenMlsLeafNode, TreeInfo, VerifiableLeafNodeTbs,
 };
 use crate::treesync::{diff::StagedTreeSyncDiff, treekem::DecryptPathParams};
 
@@ -210,7 +210,7 @@ impl CoreGroup {
                 //       up.
                 let tbs = LeafNodeTbs::from(
                     leaf_node.clone(),
-                    TreeInfoTbs::commit(self.group_id().clone(), sender_index),
+                    TreeInfo::commit(self.group_id().clone(), sender_index),
                 );
                 let verifiable_leaf_node = VerifiableLeafNodeTbs {
                     tbs: &tbs,
