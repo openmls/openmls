@@ -979,11 +979,11 @@
                         contains_external_init = <span class="bool-val">true</span>;
                     }
                 }
-                Proposal::AppAck(<span class="kw">_</span>) =&gt; <span class="macro">unimplemented!</span>(<span class="string">&quot;See #291&quot;</span>),
                 Proposal::GroupContextExtensions(<span class="kw">_</span>) =&gt; {
                     <span class="comment">// TODO: Validate proposal?
                     </span>proposal_pool.insert(queued_proposal.proposal_reference(), queued_proposal);
                 }
+                Proposal::AppAck(<span class="kw">_</span>) =&gt; <span class="macro">unimplemented!</span>(<span class="string">&quot;See #291&quot;</span>),
             }
         }
         <span class="comment">// Check for presence of Removes and delete Updates

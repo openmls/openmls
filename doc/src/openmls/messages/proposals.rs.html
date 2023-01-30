@@ -391,6 +391,74 @@
 <a href="#391" id="391">391</a>
 <a href="#392" id="392">392</a>
 <a href="#393" id="393">393</a>
+<a href="#394" id="394">394</a>
+<a href="#395" id="395">395</a>
+<a href="#396" id="396">396</a>
+<a href="#397" id="397">397</a>
+<a href="#398" id="398">398</a>
+<a href="#399" id="399">399</a>
+<a href="#400" id="400">400</a>
+<a href="#401" id="401">401</a>
+<a href="#402" id="402">402</a>
+<a href="#403" id="403">403</a>
+<a href="#404" id="404">404</a>
+<a href="#405" id="405">405</a>
+<a href="#406" id="406">406</a>
+<a href="#407" id="407">407</a>
+<a href="#408" id="408">408</a>
+<a href="#409" id="409">409</a>
+<a href="#410" id="410">410</a>
+<a href="#411" id="411">411</a>
+<a href="#412" id="412">412</a>
+<a href="#413" id="413">413</a>
+<a href="#414" id="414">414</a>
+<a href="#415" id="415">415</a>
+<a href="#416" id="416">416</a>
+<a href="#417" id="417">417</a>
+<a href="#418" id="418">418</a>
+<a href="#419" id="419">419</a>
+<a href="#420" id="420">420</a>
+<a href="#421" id="421">421</a>
+<a href="#422" id="422">422</a>
+<a href="#423" id="423">423</a>
+<a href="#424" id="424">424</a>
+<a href="#425" id="425">425</a>
+<a href="#426" id="426">426</a>
+<a href="#427" id="427">427</a>
+<a href="#428" id="428">428</a>
+<a href="#429" id="429">429</a>
+<a href="#430" id="430">430</a>
+<a href="#431" id="431">431</a>
+<a href="#432" id="432">432</a>
+<a href="#433" id="433">433</a>
+<a href="#434" id="434">434</a>
+<a href="#435" id="435">435</a>
+<a href="#436" id="436">436</a>
+<a href="#437" id="437">437</a>
+<a href="#438" id="438">438</a>
+<a href="#439" id="439">439</a>
+<a href="#440" id="440">440</a>
+<a href="#441" id="441">441</a>
+<a href="#442" id="442">442</a>
+<a href="#443" id="443">443</a>
+<a href="#444" id="444">444</a>
+<a href="#445" id="445">445</a>
+<a href="#446" id="446">446</a>
+<a href="#447" id="447">447</a>
+<a href="#448" id="448">448</a>
+<a href="#449" id="449">449</a>
+<a href="#450" id="450">450</a>
+<a href="#451" id="451">451</a>
+<a href="#452" id="452">452</a>
+<a href="#453" id="453">453</a>
+<a href="#454" id="454">454</a>
+<a href="#455" id="455">455</a>
+<a href="#456" id="456">456</a>
+<a href="#457" id="457">457</a>
+<a href="#458" id="458">458</a>
+<a href="#459" id="459">459</a>
+<a href="#460" id="460">460</a>
+<a href="#461" id="461">461</a>
 </pre><pre class="rust"><code><span class="doccomment">//! # Proposals
 //!
 //! This module defines all the different types of Proposals.
@@ -421,17 +489,30 @@
 
 </span><span class="doccomment">/// ## MLS Proposal Types
 ///
-/// | Value            | Name                     | Recommended | Reference |
-/// |:=================|:=========================|:============|:==========|
-/// | 0x0000           | RESERVED                 | N/A         | RFC XXXX  |
-/// | 0x0001           | add                      | Y           | RFC XXXX  |
-/// | 0x0002           | update                   | Y           | RFC XXXX  |
-/// | 0x0003           | remove                   | Y           | RFC XXXX  |
-/// | 0x0004           | psk                      | Y           | RFC XXXX  |
-/// | 0x0005           | reinit                   | Y           | RFC XXXX  |
-/// | 0x0006           | external_init            | Y           | RFC XXXX  |
-/// | 0x0007           | app_ack                  | Y           | RFC XXXX  |
-/// | 0xff00  - 0xffff | Reserved for Private Use | N/A         | RFC XXXX  |
+///
+/// ```c
+/// // draft-ietf-mls-protocol-17
+/// // See IANA registry for registered values
+/// uint16 ProposalType;
+/// ```
+///
+/// | Value           | Name                     | Recommended | Path Required | Reference |
+/// |:================|:=========================|:============|:==============|:==========|
+/// | 0x0000          | RESERVED                 | N/A         | N/A           | RFC XXXX  |
+/// | 0x0001          | add                      | Y           | N             | RFC XXXX  |
+/// | 0x0002          | update                   | Y           | Y             | RFC XXXX  |
+/// | 0x0003          | remove                   | Y           | Y             | RFC XXXX  |
+/// | 0x0004          | psk                      | Y           | N             | RFC XXXX  |
+/// | 0x0005          | reinit                   | Y           | N             | RFC XXXX  |
+/// | 0x0006          | external_init            | Y           | Y             | RFC XXXX  |
+/// | 0x0007          | group_context_extensions | Y           | Y             | RFC XXXX  |
+/// | 0xf000 - 0xffff | Reserved for Private Use | N/A         | N/A           | RFC XXXX  |
+///
+/// # Extensions
+///
+/// | Value  | Name    | Recommended | Path Required | Reference | Notes                        |
+/// |:=======|:========|:============|:==============|:==========|:=============================|
+/// | 0x0008 | app_ack | Y           | Y             | RFC XXXX  | draft-ietf-mls-extensions-00 |
 </span><span class="attr">#[derive(
     PartialEq,
     Eq,
@@ -455,8 +536,8 @@
     Presharedkey = <span class="number">4</span>,
     Reinit = <span class="number">5</span>,
     ExternalInit = <span class="number">6</span>,
-    AppAck = <span class="number">7</span>,
-    GroupContextExtensions = <span class="number">8</span>,
+    GroupContextExtensions = <span class="number">7</span>,
+    AppAck = <span class="number">8</span>,
 }
 
 <span class="kw">impl </span>ProposalType {
@@ -469,9 +550,9 @@
             | ProposalType::Remove
             | ProposalType::Presharedkey
             | ProposalType::Reinit
-            | ProposalType::ExternalInit =&gt; <span class="bool-val">true</span>,
+            | ProposalType::ExternalInit
+            | ProposalType::GroupContextExtensions =&gt; <span class="bool-val">true</span>,
             ProposalType::AppAck =&gt; <span class="bool-val">false</span>,
-            ProposalType::GroupContextExtensions =&gt; <span class="bool-val">true</span>,
         }
     }
 }
@@ -486,8 +567,8 @@
             <span class="number">4 </span>=&gt; <span class="prelude-val">Ok</span>(ProposalType::Presharedkey),
             <span class="number">5 </span>=&gt; <span class="prelude-val">Ok</span>(ProposalType::Reinit),
             <span class="number">6 </span>=&gt; <span class="prelude-val">Ok</span>(ProposalType::ExternalInit),
-            <span class="number">7 </span>=&gt; <span class="prelude-val">Ok</span>(ProposalType::AppAck),
-            <span class="number">8 </span>=&gt; <span class="prelude-val">Ok</span>(ProposalType::GroupContextExtensions),
+            <span class="number">7 </span>=&gt; <span class="prelude-val">Ok</span>(ProposalType::GroupContextExtensions),
+            <span class="number">8 </span>=&gt; <span class="prelude-val">Ok</span>(ProposalType::AppAck),
             <span class="kw">_ </span>=&gt; <span class="prelude-val">Err</span>(<span class="string">&quot;Unknown proposal type.&quot;</span>),
         }
     }
@@ -498,8 +579,7 @@
 /// This `enum` contains the different proposals in its variants.
 ///
 /// ```c
-/// // draft-ietf-mls-protocol-16
-///
+/// // draft-ietf-mls-protocol-17
 /// struct {
 ///     ProposalType msg_type;
 ///     select (Proposal.msg_type) {
@@ -523,9 +603,11 @@
     PreSharedKey(PreSharedKeyProposal),
     ReInit(ReInitProposal),
     ExternalInit(ExternalInitProposal),
-    <span class="comment">// TODO(#916): `AppAck` is not in draft-ietf-mls-protocol-16.
-    </span>AppAck(AppAckProposal),
     GroupContextExtensions(GroupContextExtensionProposal),
+    <span class="comment">// # Extensions
+    // TODO(#916): `AppAck` is not in draft-ietf-mls-protocol-17 but
+    //             was moved to `draft-ietf-mls-extensions-00`.
+    </span>AppAck(AppAckProposal),
 }
 
 <span class="kw">impl </span>Proposal {
@@ -560,7 +642,14 @@
 
 <span class="doccomment">/// Add Proposal.
 ///
-/// An Add proposal requests that a client with a specified KeyPackage be added to the group.
+/// An Add proposal requests that a client with a specified [`KeyPackage`] be added to the group.
+///
+/// ```c
+/// // draft-ietf-mls-protocol-17
+/// struct {
+///     KeyPackage key_package;
+/// } Add;
+/// ```
 </span><span class="attr">#[derive(
     Debug, PartialEq, Clone, Serialize, Deserialize, TlsSerialize, TlsDeserialize, TlsSize,
 )]
@@ -577,8 +666,15 @@
 
 <span class="doccomment">/// Update Proposal.
 ///
-/// An Update proposal is a similar mechanism to Add with the distinction that it is the
-/// sender&#39;s leaf node in the tree which would be updated with a new [`LeafNode`].
+/// An Update proposal is a similar mechanism to [`AddProposal`] with the distinction that it
+/// replaces the sender&#39;s [`LeafNode`] in the tree instead of adding a new leaf to the tree.
+///
+/// ```c
+/// // draft-ietf-mls-protocol-17
+/// struct {
+///     LeafNode leaf_node;
+/// } Update;
+/// ```
 </span><span class="attr">#[derive(
     Debug, PartialEq, Eq, Clone, Serialize, Deserialize, TlsDeserialize, TlsSerialize, TlsSize,
 )]
@@ -595,7 +691,14 @@
 
 <span class="doccomment">/// Remove Proposal.
 ///
-/// A Remove proposal requests that the member with KeyPackageRef removed be removed from the group.
+/// A Remove proposal requests that the member with the leaf index removed be removed from the group.
+///
+/// ```c
+/// // draft-ietf-mls-protocol-17
+/// struct {
+///     uint32 removed;
+/// } Remove;
+/// ```
 </span><span class="attr">#[derive(
     Debug, PartialEq, Eq, Clone, Serialize, Deserialize, TlsDeserialize, TlsSerialize, TlsSize,
 )]
@@ -610,7 +713,17 @@
     }
 }
 
-<span class="doccomment">/// Preshared Key Proposal.
+<span class="doccomment">/// PreSharedKey Proposal.
+///
+/// A PreSharedKey proposal can be used to request that a pre-shared key be injected into the key
+/// schedule in the process of advancing the epoch.
+///
+/// ```c
+/// // draft-ietf-mls-protocol-17
+/// struct {
+///     PreSharedKeyID psk;
+/// } PreSharedKey;
+/// ```
 </span><span class="attr">#[derive(
     Debug, PartialEq, Eq, Clone, Serialize, Deserialize, TlsDeserialize, TlsSerialize, TlsSize,
 )]
@@ -636,9 +749,21 @@
     }
 }
 
-<span class="doccomment">/// ReInit proposal.
+<span class="doccomment">/// ReInit Proposal.
 ///
-/// This is used to re-initialize a group.
+/// A ReInit proposal represents a request to reinitialize the group with different parameters, for
+/// example, to increase the version number or to change the ciphersuite. The reinitialization is
+/// done by creating a completely new group and shutting down the old one.
+///
+/// ```c
+/// // draft-ietf-mls-protocol-17
+/// struct {
+///     opaque group_id&lt;V&gt;;
+///     ProtocolVersion version;
+///     CipherSuite cipher_suite;
+///     Extension extensions&lt;V&gt;;
+/// } ReInit;
+/// ```
 </span><span class="attr">#[derive(
     Debug, PartialEq, Eq, Clone, Serialize, Deserialize, TlsDeserialize, TlsSerialize, TlsSize,
 )]
@@ -651,7 +776,15 @@
 
 <span class="doccomment">/// ExternalInit Proposal.
 ///
-/// This proposal is used for External Commits only.
+/// An ExternalInit proposal is used by new members that want to join a group by using an external
+/// commit. This proposal can only be used in that context.
+///
+/// ```c
+/// // draft-ietf-mls-protocol-17
+/// struct {
+///   opaque kem_output&lt;V&gt;;
+/// } ExternalInit;
+/// ```
 </span><span class="attr">#[derive(
     Debug, PartialEq, Eq, Clone, Serialize, Deserialize, TlsDeserialize, TlsSerialize, TlsSize,
 )]
@@ -686,13 +819,16 @@
     received_ranges: TlsVecU32&lt;MessageRange&gt;,
 }
 
-<span class="doccomment">/// ## Group Context Extensions Proposal
+<span class="doccomment">/// GroupContextExtensions Proposal.
 ///
-/// A GroupContextExtensions proposal is used to update the list of extensions
-/// in the GroupContext for the group.
+/// A GroupContextExtensions proposal is used to update the list of extensions in the GroupContext
+/// for the group.
 ///
-/// ```text
-/// struct { Extension extensions&lt;V&gt;; } GroupContextExtensions;
+/// ```c
+/// // draft-ietf-mls-protocol-17
+/// struct {
+///   Extension extensions&lt;V&gt;;
+/// } GroupContextExtensions;
 /// ```
 </span><span class="attr">#[derive(
     Debug, PartialEq, Eq, Clone, Serialize, Deserialize, TlsDeserialize, TlsSerialize, TlsSize,

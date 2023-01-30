@@ -118,10 +118,10 @@
                 Proposal::PreSharedKey(pre_shared_key) =&gt; pre_shared_key.tls_serialized_len(),
                 Proposal::ReInit(re_init) =&gt; re_init.tls_serialized_len(),
                 Proposal::ExternalInit(external_init) =&gt; external_init.tls_serialized_len(),
-                Proposal::AppAck(app_ack) =&gt; app_ack.tls_serialized_len(),
                 Proposal::GroupContextExtensions(group_context_extensions) =&gt; {
                     group_context_extensions.tls_serialized_len()
                 }
+                Proposal::AppAck(app_ack) =&gt; app_ack.tls_serialized_len(),
             }
     }
 }
@@ -153,15 +153,15 @@
                 <span class="kw">let </span>written = ProposalType::ExternalInit.tls_serialize(writer)<span class="question-mark">?</span>;
                 external_init.tls_serialize(writer).map(|l| l + written)
             }
-            Proposal::AppAck(app_ack) =&gt; {
-                <span class="kw">let </span>written = ProposalType::AppAck.tls_serialize(writer)<span class="question-mark">?</span>;
-                app_ack.tls_serialize(writer).map(|l| l + written)
-            }
             Proposal::GroupContextExtensions(group_context_extensions) =&gt; {
                 <span class="kw">let </span>written = ProposalType::GroupContextExtensions.tls_serialize(writer)<span class="question-mark">?</span>;
                 group_context_extensions
                     .tls_serialize(writer)
                     .map(|l| l + written)
+            }
+            Proposal::AppAck(app_ack) =&gt; {
+                <span class="kw">let </span>written = ProposalType::AppAck.tls_serialize(writer)<span class="question-mark">?</span>;
+                app_ack.tls_serialize(writer).map(|l| l + written)
             }
         }
     }
@@ -189,11 +189,11 @@
             ProposalType::ExternalInit =&gt; <span class="prelude-val">Ok</span>(Proposal::ExternalInit(
                 ExternalInitProposal::tls_deserialize(bytes)<span class="question-mark">?</span>,
             )),
-            ProposalType::AppAck =&gt; <span class="prelude-val">Err</span>(tls_codec::Error::DecodingError(
-                <span class="string">&quot;App ack is not supported yet in OpenMLS.&quot;</span>.to_string(),
-            )),
             ProposalType::GroupContextExtensions =&gt; <span class="prelude-val">Ok</span>(Proposal::GroupContextExtensions(
                 GroupContextExtensionProposal::tls_deserialize(bytes)<span class="question-mark">?</span>,
+            )),
+            ProposalType::AppAck =&gt; <span class="prelude-val">Err</span>(tls_codec::Error::DecodingError(
+                <span class="string">&quot;App ack is not supported yet in OpenMLS.&quot;</span>.to_string(),
             )),
         }
     }
