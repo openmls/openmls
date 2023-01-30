@@ -28,17 +28,30 @@ use tls_codec::{
 
 /// ## MLS Proposal Types
 ///
-/// | Value            | Name                     | Recommended | Reference |
-/// |:=================|:=========================|:============|:==========|
-/// | 0x0000           | RESERVED                 | N/A         | RFC XXXX  |
-/// | 0x0001           | add                      | Y           | RFC XXXX  |
-/// | 0x0002           | update                   | Y           | RFC XXXX  |
-/// | 0x0003           | remove                   | Y           | RFC XXXX  |
-/// | 0x0004           | psk                      | Y           | RFC XXXX  |
-/// | 0x0005           | reinit                   | Y           | RFC XXXX  |
-/// | 0x0006           | external_init            | Y           | RFC XXXX  |
-/// | 0x0007           | app_ack                  | Y           | RFC XXXX  |
-/// | 0xff00  - 0xffff | Reserved for Private Use | N/A         | RFC XXXX  |
+///
+/// ```c
+/// // draft-ietf-mls-protocol-17
+/// // See IANA registry for registered values
+/// uint16 ProposalType;
+/// ```
+///
+/// | Value           | Name                     | Recommended | Path Required | Reference |
+/// |:================|:=========================|:============|:==============|:==========|
+/// | 0x0000          | RESERVED                 | N/A         | N/A           | RFC XXXX  |
+/// | 0x0001          | add                      | Y           | N             | RFC XXXX  |
+/// | 0x0002          | update                   | Y           | Y             | RFC XXXX  |
+/// | 0x0003          | remove                   | Y           | Y             | RFC XXXX  |
+/// | 0x0004          | psk                      | Y           | N             | RFC XXXX  |
+/// | 0x0005          | reinit                   | Y           | N             | RFC XXXX  |
+/// | 0x0006          | external_init            | Y           | Y             | RFC XXXX  |
+/// | 0x0007          | group_context_extensions | Y           | Y             | RFC XXXX  |
+/// | 0xf000 - 0xffff | Reserved for Private Use | N/A         | N/A           | RFC XXXX  |
+///
+/// # Extensions
+///
+/// | Value  | Name    | Recommended | Path Required | Reference | Notes                        |
+/// |:=======|:========|:============|:==============|:==========|:=============================|
+/// | 0x0008 | app_ack | Y           | Y             | RFC XXXX  | draft-ietf-mls-extensions-00 |
 #[derive(
     PartialEq,
     Eq,
@@ -62,8 +75,8 @@ pub enum ProposalType {
     Presharedkey = 4,
     Reinit = 5,
     ExternalInit = 6,
-    AppAck = 7,
-    GroupContextExtensions = 8,
+    GroupContextExtensions = 7,
+    AppAck = 8,
 }
 
 impl ProposalType {
@@ -129,9 +142,11 @@ pub enum Proposal {
     PreSharedKey(PreSharedKeyProposal),
     ReInit(ReInitProposal),
     ExternalInit(ExternalInitProposal),
-    // TODO(#916): `AppAck` is not in draft-ietf-mls-protocol-16.
-    AppAck(AppAckProposal),
     GroupContextExtensions(GroupContextExtensionProposal),
+    // # Extensions
+    // TODO(#916): `AppAck` is not in draft-ietf-mls-protocol-17 but
+    //             was moved to `draft-ietf-mls-extensions-00`.
+    AppAck(AppAckProposal),
 }
 
 impl Proposal {

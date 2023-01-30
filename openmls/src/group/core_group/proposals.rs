@@ -419,11 +419,11 @@ impl ProposalQueue {
                         contains_external_init = true;
                     }
                 }
-                Proposal::AppAck(_) => unimplemented!("See #291"),
                 Proposal::GroupContextExtensions(_) => {
                     // TODO: Validate proposal?
                     proposal_pool.insert(queued_proposal.proposal_reference(), queued_proposal);
                 }
+                Proposal::AppAck(_) => unimplemented!("See #291"),
             }
         }
         // Check for presence of Removes and delete Updates
