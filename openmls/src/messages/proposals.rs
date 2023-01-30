@@ -105,8 +105,7 @@ impl TryFrom<u16> for ProposalType {
 /// This `enum` contains the different proposals in its variants.
 ///
 /// ```c
-/// // draft-ietf-mls-protocol-16
-///
+/// // draft-ietf-mls-protocol-17
 /// struct {
 ///     ProposalType msg_type;
 ///     select (Proposal.msg_type) {
@@ -167,7 +166,14 @@ impl Proposal {
 
 /// Add Proposal.
 ///
-/// An Add proposal requests that a client with a specified KeyPackage be added to the group.
+/// An Add proposal requests that a client with a specified [`KeyPackage`] be added to the group.
+///
+/// ```c
+/// // draft-ietf-mls-protocol-17
+/// struct {
+///     KeyPackage key_package;
+/// } Add;
+/// ```
 #[derive(
     Debug, PartialEq, Clone, Serialize, Deserialize, TlsSerialize, TlsDeserialize, TlsSize,
 )]
@@ -184,8 +190,15 @@ impl AddProposal {
 
 /// Update Proposal.
 ///
-/// An Update proposal is a similar mechanism to Add with the distinction that it is the
-/// sender's leaf node in the tree which would be updated with a new [`LeafNode`].
+/// An Update proposal is a similar mechanism to [`AddProposal`] with the distinction that it
+/// replaces the sender's [`LeafNode`] in the tree instead of adding a new leaf to the tree.
+///
+/// ```c
+/// // draft-ietf-mls-protocol-17
+/// struct {
+///     LeafNode leaf_node;
+/// } Update;
+/// ```
 #[derive(
     Debug, PartialEq, Eq, Clone, Serialize, Deserialize, TlsDeserialize, TlsSerialize, TlsSize,
 )]
@@ -202,7 +215,14 @@ impl UpdateProposal {
 
 /// Remove Proposal.
 ///
-/// A Remove proposal requests that the member with KeyPackageRef removed be removed from the group.
+/// A Remove proposal requests that the member with the leaf index removed be removed from the group.
+///
+/// ```c
+/// // draft-ietf-mls-protocol-17
+/// struct {
+///     uint32 removed;
+/// } Remove;
+/// ```
 #[derive(
     Debug, PartialEq, Eq, Clone, Serialize, Deserialize, TlsDeserialize, TlsSerialize, TlsSize,
 )]
@@ -217,7 +237,17 @@ impl RemoveProposal {
     }
 }
 
-/// Preshared Key Proposal.
+/// PreSharedKey Proposal.
+///
+/// A PreSharedKey proposal can be used to request that a pre-shared key be injected into the key
+/// schedule in the process of advancing the epoch.
+///
+/// ```c
+/// // draft-ietf-mls-protocol-17
+/// struct {
+///     PreSharedKeyID psk;
+/// } PreSharedKey;
+/// ```
 #[derive(
     Debug, PartialEq, Eq, Clone, Serialize, Deserialize, TlsDeserialize, TlsSerialize, TlsSize,
 )]
@@ -243,9 +273,21 @@ impl PreSharedKeyProposal {
     }
 }
 
-/// ReInit proposal.
+/// ReInit Proposal.
 ///
-/// This is used to re-initialize a group.
+/// A ReInit proposal represents a request to reinitialize the group with different parameters, for
+/// example, to increase the version number or to change the ciphersuite. The reinitialization is
+/// done by creating a completely new group and shutting down the old one.
+///
+/// ```c
+/// // draft-ietf-mls-protocol-17
+/// struct {
+///     opaque group_id<V>;
+///     ProtocolVersion version;
+///     CipherSuite cipher_suite;
+///     Extension extensions<V>;
+/// } ReInit;
+/// ```
 #[derive(
     Debug, PartialEq, Eq, Clone, Serialize, Deserialize, TlsDeserialize, TlsSerialize, TlsSize,
 )]
@@ -258,7 +300,15 @@ pub struct ReInitProposal {
 
 /// ExternalInit Proposal.
 ///
-/// This proposal is used for External Commits only.
+/// An ExternalInit proposal is used by new members that want to join a group by using an external
+/// commit. This proposal can only be used in that context.
+///
+/// ```c
+/// // draft-ietf-mls-protocol-17
+/// struct {
+///   opaque kem_output<V>;
+/// } ExternalInit;
+/// ```
 #[derive(
     Debug, PartialEq, Eq, Clone, Serialize, Deserialize, TlsDeserialize, TlsSerialize, TlsSize,
 )]
@@ -293,13 +343,16 @@ pub struct AppAckProposal {
     received_ranges: TlsVecU32<MessageRange>,
 }
 
-/// ## Group Context Extensions Proposal
+/// GroupContextExtensions Proposal.
 ///
-/// A GroupContextExtensions proposal is used to update the list of extensions
-/// in the GroupContext for the group.
+/// A GroupContextExtensions proposal is used to update the list of extensions in the GroupContext
+/// for the group.
 ///
-/// ```text
-/// struct { Extension extensions<V>; } GroupContextExtensions;
+/// ```c
+/// // draft-ietf-mls-protocol-17
+/// struct {
+///   Extension extensions<V>;
+/// } GroupContextExtensions;
 /// ```
 #[derive(
     Debug, PartialEq, Eq, Clone, Serialize, Deserialize, TlsDeserialize, TlsSerialize, TlsSize,
