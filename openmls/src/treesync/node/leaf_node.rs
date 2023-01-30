@@ -4,10 +4,7 @@ use openmls_traits::{
 };
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
-use tls_codec::{
-    Deserialize as TlsDeserializeTrait, Serialize as TlsSerializeTrait, TlsDeserialize,
-    TlsSerialize, TlsSize, VLBytes,
-};
+use tls_codec::{Serialize as TlsSerializeTrait, TlsDeserialize, TlsSerialize, TlsSize, VLBytes};
 
 use crate::{
     binary_tree::array_representation::LeafNodeIndex,
@@ -29,6 +26,7 @@ use crate::{
 use super::encryption_keys::{EncryptionKey, EncryptionKeyPair};
 
 mod capabilities;
+mod codec;
 mod lifetime;
 
 pub use self::lifetime::Lifetime;
@@ -1016,43 +1014,4 @@ pub enum LeafNodeGenerationError<KeyStoreError> {
     /// Error storing leaf private key in key store.
     #[error("Error storing leaf private key in key store.")]
     KeyStoreError(KeyStoreError),
-}
-
-// -------------------------------------------------------------------------------------------------
-
-impl TlsSerializeTrait for LeafNodeTbs {
-    fn tls_serialize<W: std::io::Write>(&self, writer: &mut W) -> Result<usize, tls_codec::Error> {
-        let written = self.payload.tls_serialize(writer)?;
-        match &self.tree_info {
-            TreeInfo::KeyPackage => Ok(written),
-            TreeInfo::Update(p) | TreeInfo::Commit(p) => {
-                p.tls_serialize(writer).map(|b| written + b)
-            }
-        }
-    }
-}
-
-impl tls_codec::Size for LeafNodeTbs {
-    fn tls_serialized_len(&self) -> usize {
-        let len = self.payload.tls_serialized_len();
-        match &self.tree_info {
-            TreeInfo::KeyPackage => len,
-            TreeInfo::Update(p) | TreeInfo::Commit(p) => p.tls_serialized_len() + len,
-        }
-    }
-}
-
-impl TlsDeserializeTrait for LeafNodeTbs {
-    fn tls_deserialize<R: std::io::Read>(bytes: &mut R) -> Result<Self, tls_codec::Error>
-    where
-        Self: Sized,
-    {
-        let payload = LeafNodePayload::tls_deserialize(bytes)?;
-        let tree_info = match payload.leaf_node_source {
-            LeafNodeSource::KeyPackage(_) => TreeInfo::KeyPackage,
-            LeafNodeSource::Update => TreeInfo::Update(TreePosition::tls_deserialize(bytes)?),
-            LeafNodeSource::Commit(_) => TreeInfo::Commit(TreePosition::tls_deserialize(bytes)?),
-        };
-        Ok(Self { payload, tree_info })
-    }
 }
