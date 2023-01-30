@@ -685,7 +685,7 @@ const LEAF_NODE_SIGNATURE_LABEL: &str = "LeafNodeTBS";
 /// Helper struct to verify incoming leaf nodes.
 /// The [`LeafNode`] doesn't have all the information needed to verify.
 /// In particular is the [`TreeInfoTbs`] missing.
-pub(crate) struct VerifiableLeafNodeTbs<'a> {
+pub(crate) struct VerifiableLeafNode<'a> {
     pub(crate) tbs: &'a LeafNodeTbs,
     pub(crate) signature: &'a Signature,
 }
@@ -711,7 +711,7 @@ impl SignedStruct<LeafNodeTbs> for LeafNode {
     }
 }
 
-impl<'a> Verifiable for VerifiableLeafNodeTbs<'a> {
+impl<'a> Verifiable for VerifiableLeafNode<'a> {
     fn unsigned_payload(&self) -> Result<Vec<u8>, tls_codec::Error> {
         self.tbs.tls_serialize_detached()
     }
