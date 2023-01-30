@@ -89,9 +89,9 @@ impl ProposalType {
             | ProposalType::Remove
             | ProposalType::Presharedkey
             | ProposalType::Reinit
-            | ProposalType::ExternalInit => true,
+            | ProposalType::ExternalInit
+            | ProposalType::GroupContextExtensions => true,
             ProposalType::AppAck => false,
-            ProposalType::GroupContextExtensions => true,
         }
     }
 }
@@ -106,8 +106,8 @@ impl TryFrom<u16> for ProposalType {
             4 => Ok(ProposalType::Presharedkey),
             5 => Ok(ProposalType::Reinit),
             6 => Ok(ProposalType::ExternalInit),
-            7 => Ok(ProposalType::AppAck),
-            8 => Ok(ProposalType::GroupContextExtensions),
+            7 => Ok(ProposalType::GroupContextExtensions),
+            8 => Ok(ProposalType::AppAck),
             _ => Err("Unknown proposal type."),
         }
     }
