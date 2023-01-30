@@ -112,9 +112,10 @@ fn generate(
         crypto
             .key_store()
             .store(
-                &psk_id
+                psk_id
                     .tls_serialize_detached()
-                    .expect("Error serializing signature key."),
+                    .expect("Error serializing signature key.")
+                    .as_slice(),
                 &psk_bundle,
             )
             .expect("Could not store PskBundle in key store.");
@@ -352,9 +353,10 @@ pub fn run_test_vector(
             backend
                 .key_store()
                 .store(
-                    &psk_id
+                    psk_id
                         .tls_serialize_detached()
-                        .expect("Error serializing signature key."),
+                        .expect("Error serializing signature key.")
+                        .as_slice(),
                     &psk_bundle,
                 )
                 .expect("Could not store PskBundle in key store.");

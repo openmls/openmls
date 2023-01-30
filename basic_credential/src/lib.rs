@@ -7,7 +7,7 @@
 use std::fmt::Debug;
 
 use openmls_traits::{
-    key_store::{FromKeyStoreValue, OpenMlsKeyStore, ToKeyStoreValue},
+    key_store::{MlsEntity, OpenMlsKeyStore},
     signatures::Signer,
     types::{CryptoError, Error, SignatureScheme},
 };
@@ -17,14 +17,15 @@ use p256::ecdsa::SigningKey;
 // See https://github.com/rust-analyzer/rust-analyzer/issues/7243
 // for the rust-analyzer issue with the following line.
 use ed25519_dalek::Signer as DalekSigner;
+use openmls_traits::key_store::MlsEntityId;
 use rand::rngs::OsRng;
-use tls_codec::{Deserialize, Serialize, TlsDeserialize, TlsSerialize, TlsSize};
+use tls_codec::{TlsDeserialize, TlsSerialize, TlsSize};
 
 /// A signature key pair for the basic credential.
 ///
 /// This can be used as keys to implement the MLS basic credential. It is a simple
 /// private and public key pair with corresponding signature scheme.
-#[derive(TlsSerialize, TlsSize, TlsDeserialize)]
+#[derive(TlsSerialize, TlsSize, TlsDeserialize, serde::Serialize, serde::Deserialize)]
 #[cfg_attr(feature = "clonable", derive(Clone))]
 pub struct SignatureKeyPair {
     private: Vec<u8>,
@@ -75,20 +76,8 @@ fn id(public_key: &[u8], signature_scheme: SignatureScheme) -> Vec<u8> {
     id
 }
 
-impl ToKeyStoreValue for SignatureKeyPair {
-    type Error = tls_codec::Error;
-
-    fn to_key_store_value(&self) -> Result<Vec<u8>, Self::Error> {
-        self.tls_serialize_detached()
-    }
-}
-
-impl FromKeyStoreValue for SignatureKeyPair {
-    type Error = tls_codec::Error;
-
-    fn from_key_store_value(mut ksv: &[u8]) -> Result<Self, Self::Error> {
-        Self::tls_deserialize(&mut ksv)
-    }
+impl MlsEntity for SignatureKeyPair {
+    const ID: MlsEntityId = MlsEntityId::SignatureKeyPair;
 }
 
 impl SignatureKeyPair {

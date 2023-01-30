@@ -105,19 +105,19 @@ impl MlsGroup {
                 let hash_ref = egs.new_member().as_slice().to_vec();
                 backend
                     .key_store()
-                    .read(&hash_ref)
+                    .read(hash_ref.as_slice())
                     .map(|kp: KeyPackage| (kp, hash_ref))
             })
             .ok_or(WelcomeError::NoMatchingKeyPackage)?;
 
         // TODO #751
-        let private_key: Vec<u8> = backend
+        let private_key = backend
             .key_store()
-            .read(key_package.hpke_init_key().as_slice())
+            .read::<crate::prelude::HpkePrivateKey>(key_package.hpke_init_key().as_slice())
             .ok_or(WelcomeError::NoMatchingKeyPackage)?;
         let key_package_bundle = KeyPackageBundle {
             key_package,
-            private_key: private_key.into(),
+            private_key,
         };
 
         // Delete the [`KeyPackage`] and the corresponding private key from the

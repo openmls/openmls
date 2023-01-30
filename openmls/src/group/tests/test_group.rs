@@ -118,13 +118,13 @@ fn create_commit_optional_path(ciphersuite: Ciphersuite, backend: &impl OpenMlsC
         .expect("error merging pending commit");
     let ratchet_tree = group_alice.treesync().export_nodes();
 
-    let bob_private_key: Vec<u8> = backend
+    let bob_private_key = backend
         .key_store()
-        .read(bob_key_package.hpke_init_key().as_slice())
+        .read::<HpkePrivateKey>(bob_key_package.hpke_init_key().as_slice())
         .unwrap();
     let bob_key_package_bundle = KeyPackageBundle {
         key_package: bob_key_package,
-        private_key: bob_private_key.into(),
+        private_key: bob_private_key,
     };
 
     // Bob creates group from Welcome

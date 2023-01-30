@@ -180,7 +180,6 @@ pub mod versions;
 
 // Private
 mod binary_tree;
-mod key_store;
 mod tree;
 
 /// Single place, re-exporting the most used public functions.

@@ -102,8 +102,8 @@ use crate::{
     versions::ProtocolVersion,
 };
 use openmls_traits::{
-    crypto::OpenMlsCrypto, key_store::OpenMlsKeyStore, signatures::Signer, types::Ciphersuite,
-    OpenMlsCryptoProvider,
+    crypto::OpenMlsCrypto, key_store::MlsEntity, key_store::OpenMlsKeyStore, signatures::Signer,
+    types::Ciphersuite, OpenMlsCryptoProvider,
 };
 use serde::{Deserialize, Serialize};
 use tls_codec::{
@@ -116,6 +116,7 @@ use crate::treesync::node::encryption_keys::EncryptionKey;
 // Private
 mod codec;
 use errors::*;
+use openmls_traits::key_store::MlsEntityId;
 
 // Public
 pub mod errors;
@@ -209,6 +210,10 @@ impl Verifiable for KeyPackage {
     fn label(&self) -> &str {
         SIGNATURE_KEY_PACKAGE_LABEL
     }
+}
+
+impl MlsEntity for KeyPackage {
+    const ID: MlsEntityId = MlsEntityId::KeyPackage;
 }
 
 /// Helper struct containing the results of building a new [`KeyPackage`].
@@ -317,8 +322,10 @@ impl KeyPackage {
     ) -> Result<(), KeyStore::Error> {
         backend
             .key_store()
-            .delete(self.hash_ref(backend.crypto()).unwrap().as_slice())?;
-        backend.key_store().delete(self.hpke_init_key().as_slice())
+            .delete::<Self>(self.hash_ref(backend.crypto()).unwrap().as_slice())?;
+        backend
+            .key_store()
+            .delete::<HpkePrivateKey>(self.hpke_init_key().as_slice())
     }
 
     /// Verify that this key package is valid:
@@ -487,7 +494,7 @@ impl KeyPackage {
         // The key is the public key.
         backend
             .key_store()
-            .store(&init_key.public, &init_key.private)
+            .store::<HpkePrivateKey>(&init_key.public, &init_key.private.into())
             .map_err(KeyPackageNewError::KeyStoreError)?;
 
         // We don't need the private key here. It's stored in the key store for
@@ -665,7 +672,10 @@ impl KeyPackageBuilder {
         // The key is the public key.
         backend
             .key_store()
-            .store(key_package.hpke_init_key().as_slice(), &init_private_key)
+            .store::<HpkePrivateKey>(
+                key_package.hpke_init_key().as_slice(),
+                &init_private_key.into(),
+            )
             .map_err(KeyPackageNewError::KeyStoreError)?;
 
         Ok(key_package)
@@ -708,13 +718,13 @@ impl KeyPackageBundle {
                 credential_with_key,
             )
             .unwrap();
-        let private_key: Vec<u8> = backend
+        let private_key = backend
             .key_store()
-            .read(key_package.hpke_init_key().as_slice())
+            .read::<HpkePrivateKey>(key_package.hpke_init_key().as_slice())
             .unwrap();
         Self {
             key_package,
-            private_key: private_key.into(),
+            private_key,
         }
     }
 

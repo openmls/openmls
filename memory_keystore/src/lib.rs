@@ -1,12 +1,9 @@
-use openmls_traits::key_store::{FromKeyStoreValue, OpenMlsKeyStore, ToKeyStoreValue};
+use openmls_traits::key_store::{MlsEntity, OpenMlsKeyStore};
 use std::{collections::HashMap, sync::RwLock};
-
-type EpochStoreIndex = (Vec<u8>, u64, u32); // GroupId, GroupEpoch and leaf index
 
 #[derive(Debug, Default)]
 pub struct MemoryKeyStore {
     values: RwLock<HashMap<Vec<u8>, Vec<u8>>>,
-    epoch_values: RwLock<HashMap<EpochStoreIndex, Vec<Vec<u8>>>>,
 }
 
 impl OpenMlsKeyStore for MemoryKeyStore {
@@ -17,10 +14,8 @@ impl OpenMlsKeyStore for MemoryKeyStore {
     /// serialization for ID `k`.
     ///
     /// Returns an error if storing fails.
-    fn store<V: ToKeyStoreValue>(&self, k: &[u8], v: &V) -> Result<(), Self::Error> {
-        let value = v
-            .to_key_store_value()
-            .map_err(|_| MemoryKeyStoreError::SerializationError)?;
+    fn store<V: MlsEntity>(&self, k: &[u8], v: &V) -> Result<(), Self::Error> {
+        let value = serde_json::to_vec(v).map_err(|_| MemoryKeyStoreError::SerializationError)?;
         // We unwrap here, because this is the only function claiming a write
         // lock on `credential_bundles`. It only holds the lock very briefly and
         // should not panic during that period.
@@ -33,13 +28,13 @@ impl OpenMlsKeyStore for MemoryKeyStore {
     /// [`FromKeyStoreValue`] trait for deserialization.
     ///
     /// Returns [`None`] if no value is stored for `k` or reading fails.
-    fn read<V: FromKeyStoreValue>(&self, k: &[u8]) -> Option<V> {
+    fn read<V: MlsEntity>(&self, k: &[u8]) -> Option<V> {
         // We unwrap here, because the two functions claiming a write lock on
         // `init_key_package_bundles` (this one and `generate_key_package_bundle`) only
         // hold the lock very briefly and should not panic during that period.
         let values = self.values.read().unwrap();
         if let Some(value) = values.get(k) {
-            V::from_key_store_value(value).ok()
+            serde_json::from_slice(value).ok()
         } else {
             None
         }
@@ -48,60 +43,10 @@ impl OpenMlsKeyStore for MemoryKeyStore {
     /// Delete a value stored for ID `k`.
     ///
     /// Returns an error if storing fails.
-    fn delete(&self, k: &[u8]) -> Result<(), Self::Error> {
+    fn delete<V: MlsEntity>(&self, k: &[u8]) -> Result<(), Self::Error> {
         // We just delete both ...
         let mut values = self.values.write().unwrap();
         values.remove(k);
-        Ok(())
-    }
-
-    fn read_epoch_keys<V: FromKeyStoreValue>(
-        &self,
-        group_id: &[u8],
-        epoch: u64,
-        leaf_index: u32,
-    ) -> Vec<V> {
-        let epoch_store = self.epoch_values.read().unwrap();
-        if let Some(values) = epoch_store.get(&(group_id.to_vec(), epoch, leaf_index)) {
-            values
-                .iter()
-                .map(|value| V::from_key_store_value(value))
-                .collect::<Result<Vec<V>, V::Error>>()
-                .unwrap_or_default()
-        } else {
-            vec![]
-        }
-    }
-
-    fn delete_epoch_keys(
-        &self,
-        group_id: &[u8],
-        epoch: u64,
-        leaf_index: u32,
-    ) -> Result<(), Self::Error> {
-        let mut epoch_store = self.epoch_values.write().unwrap();
-        epoch_store.remove(&(group_id.to_vec(), epoch, leaf_index));
-        Ok(())
-    }
-
-    fn store_epoch_keys<V: ToKeyStoreValue>(
-        &self,
-        group_id: &[u8],
-        epoch: u64,
-        leaf_index: u32,
-        encryption_keys: &[V],
-    ) -> Result<(), Self::Error> {
-        let mut epoch_store = self.epoch_values.write().unwrap();
-        epoch_store.insert(
-            (group_id.to_vec(), epoch, leaf_index),
-            encryption_keys
-                .iter()
-                .map(|bytes| {
-                    V::to_key_store_value(bytes)
-                        .map_err(|_| MemoryKeyStoreError::SerializationError)
-                })
-                .collect::<Result<Vec<Vec<u8>>, Self::Error>>()?,
-        );
         Ok(())
     }
 }

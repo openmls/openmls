@@ -12,6 +12,7 @@ readme = "README.md"
 [dependencies]
 openmls_traits = { version = "0.1.0", path = "../traits" }
 tls_codec = { version = "0.2.0", features = ["derive", "serde", "mls"] }
+serde = "1.0"
 
 # Rust Crypto
 ed25519-dalek = { version = "1.0" }
