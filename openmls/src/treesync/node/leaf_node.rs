@@ -599,13 +599,13 @@ pub type ParentHash = VLBytes;
 #[derive(Debug)]
 pub struct LeafNodeTbs {
     payload: LeafNodePayload,
-    tree_info: TreeInfoTbs,
+    tree_info: TreeInfo,
 }
 
 impl LeafNodeTbs {
     /// Build a [`LeafNodeTbs`] from a [`LeafNode`] and a [`TreeInfoTbs`]
     /// to update a leaf node.
-    pub(crate) fn from(leaf_node: LeafNode, tree_info: TreeInfoTbs) -> Self {
+    pub(crate) fn from(leaf_node: LeafNode, tree_info: TreeInfo) -> Self {
         Self {
             payload: leaf_node.payload,
             tree_info,
@@ -629,7 +629,7 @@ impl LeafNodeTbs {
             leaf_node_source,
             extensions,
         };
-        let tree_info = TreeInfoTbs::KeyPackage;
+        let tree_info = TreeInfo::KeyPackage;
         let tbs = LeafNodeTbs { payload, tree_info };
         Ok(tbs)
     }
@@ -657,13 +657,13 @@ impl LeafNodeTbs {
 /// } LeafNodeTBS;
 /// ```
 #[derive(Debug)]
-pub(crate) enum TreeInfoTbs {
+pub(crate) enum TreeInfo {
     KeyPackage,
     Update(TreePosition),
     Commit(TreePosition),
 }
 
-impl TreeInfoTbs {
+impl TreeInfo {
     pub(crate) fn commit(group_id: GroupId, leaf_index: LeafNodeIndex) -> Self {
         Self::Commit(TreePosition {
             group_id,
@@ -862,7 +862,7 @@ impl OpenMlsLeafNode {
     }
 
     /// Create the [`TreeInfoTbs`] for an update for this leaf.
-    fn update_tree_info(&self, group_id: GroupId) -> Result<TreeInfoTbs, LibraryError> {
+    fn update_tree_info(&self, group_id: GroupId) -> Result<TreeInfo, LibraryError> {
         debug_assert!(
             self.leaf_index.is_some(),
             "TreeInfoTbs for Update can't be created without a leaf index. \
@@ -873,7 +873,7 @@ impl OpenMlsLeafNode {
         );
         self.leaf_index
             .map(|leaf_index| {
-                TreeInfoTbs::Update(TreePosition {
+                TreeInfo::Update(TreePosition {
                     group_id,
                     leaf_index,
                 })
@@ -920,7 +920,7 @@ impl OpenMlsLeafNode {
         self.leaf_node.payload.leaf_node_source = LeafNodeSource::Commit(parent_hash.into());
         let tbs = LeafNodeTbs::from(
             self.leaf_node.clone(), // TODO: With a better setup we wouldn't have to clone here.
-            TreeInfoTbs::Commit(TreePosition {
+            TreeInfo::Commit(TreePosition {
                 group_id,
                 leaf_index: self
                     .leaf_index
@@ -954,7 +954,7 @@ impl OpenMlsLeafNode {
     /// Replace the public key in the leaf node and re-sign.
     #[cfg(any(feature = "test-utils", test))]
     pub fn set_public_key(&mut self, public_key: HpkePublicKey, signer: &impl Signer) {
-        let mut tbs = LeafNodeTbs::from(self.leaf_node.clone(), TreeInfoTbs::KeyPackage);
+        let mut tbs = LeafNodeTbs::from(self.leaf_node.clone(), TreeInfo::KeyPackage);
         tbs.payload.encryption_key = public_key.into();
         self.leaf_node = tbs.sign(signer).unwrap();
     }
@@ -1026,8 +1026,8 @@ impl TlsSerializeTrait for LeafNodeTbs {
     fn tls_serialize<W: std::io::Write>(&self, writer: &mut W) -> Result<usize, tls_codec::Error> {
         let written = self.payload.tls_serialize(writer)?;
         match &self.tree_info {
-            TreeInfoTbs::KeyPackage => Ok(written),
-            TreeInfoTbs::Update(p) | TreeInfoTbs::Commit(p) => {
+            TreeInfo::KeyPackage => Ok(written),
+            TreeInfo::Update(p) | TreeInfo::Commit(p) => {
                 p.tls_serialize(writer).map(|b| written + b)
             }
         }
@@ -1038,8 +1038,8 @@ impl tls_codec::Size for LeafNodeTbs {
     fn tls_serialized_len(&self) -> usize {
         let len = self.payload.tls_serialized_len();
         match &self.tree_info {
-            TreeInfoTbs::KeyPackage => len,
-            TreeInfoTbs::Update(p) | TreeInfoTbs::Commit(p) => p.tls_serialized_len() + len,
+            TreeInfo::KeyPackage => len,
+            TreeInfo::Update(p) | TreeInfo::Commit(p) => p.tls_serialized_len() + len,
         }
     }
 }
@@ -1051,9 +1051,9 @@ impl TlsDeserializeTrait for LeafNodeTbs {
     {
         let payload = LeafNodePayload::tls_deserialize(bytes)?;
         let tree_info = match payload.leaf_node_source {
-            LeafNodeSource::KeyPackage(_) => TreeInfoTbs::KeyPackage,
-            LeafNodeSource::Update => TreeInfoTbs::Update(TreePosition::tls_deserialize(bytes)?),
-            LeafNodeSource::Commit(_) => TreeInfoTbs::Commit(TreePosition::tls_deserialize(bytes)?),
+            LeafNodeSource::KeyPackage(_) => TreeInfo::KeyPackage,
+            LeafNodeSource::Update => TreeInfo::Update(TreePosition::tls_deserialize(bytes)?),
+            LeafNodeSource::Commit(_) => TreeInfo::Commit(TreePosition::tls_deserialize(bytes)?),
         };
         Ok(Self { payload, tree_info })
     }
