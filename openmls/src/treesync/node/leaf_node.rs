@@ -438,17 +438,13 @@ impl LeafNode {
             .capabilities
             .extensions
             .contains(extension_type)
-            || capabilities::default_extensions()
-                .iter()
-                .any(|et| et == extension_type)
+            || default_extensions().iter().any(|et| et == extension_type)
     }
 
     /// Returns `true` if the [`ProposalType`] is supported by this leaf node.
     pub(crate) fn supports_proposal(&self, proposal_type: &ProposalType) -> bool {
         self.payload.capabilities.proposals.contains(proposal_type)
-            || capabilities::default_proposals()
-                .iter()
-                .any(|pt| pt == proposal_type)
+            || default_proposals().iter().any(|pt| pt == proposal_type)
     }
 
     /// Returns `true` if the [`CredentialType`] is supported by this leaf node.
@@ -565,8 +561,6 @@ pub enum LeafNodeSource {
 
 pub type ParentHash = VLBytes;
 
-// -------------------------------------------------------------------------------------------------
-
 /// To-be-signed leaf node.
 ///
 /// ```c
@@ -676,8 +670,6 @@ pub(crate) struct TreePosition {
     leaf_index: LeafNodeIndex,
 }
 
-// -------------------------------------------------------------------------------------------------
-
 const LEAF_NODE_SIGNATURE_LABEL: &str = "LeafNodeTBS";
 
 /// Helper struct to verify incoming leaf nodes.
@@ -722,8 +714,6 @@ impl<'a> Verifiable for VerifiableLeafNode<'a> {
         LEAF_NODE_SIGNATURE_LABEL
     }
 }
-
-// -------------------------------------------------------------------------------------------------
 
 /// The OpenMLS wrapper for the [`LeafNode`] that holds additional information
 /// that we need:
@@ -1003,8 +993,6 @@ impl From<KeyPackage> for OpenMlsLeafNode {
         }
     }
 }
-
-// -------------------------------------------------------------------------------------------------
 
 #[derive(Error, Debug, PartialEq, Clone)]
 pub enum LeafNodeGenerationError<KeyStoreError> {
