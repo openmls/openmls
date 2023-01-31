@@ -26,8 +26,8 @@ use super::{
     sorted_iter::sorted_iter,
     tree::{ABinaryTree, ABinaryTreeError},
     treemath::{
-        common_direct_path, copath, direct_path, left, lowest_common_ancestor, right, root,
-        LeafNodeIndex, ParentNodeIndex, TreeNodeIndex, TreeSize, MAX_TREE_SIZE, MIN_TREE_SIZE,
+        copath, direct_path, left, lowest_common_ancestor, right, root, LeafNodeIndex,
+        ParentNodeIndex, TreeNodeIndex, TreeSize, MAX_TREE_SIZE, MIN_TREE_SIZE,
     },
 };
 
@@ -262,17 +262,6 @@ impl<'a, L: Clone + Debug + Default, P: Clone + Debug + Default> AbDiff<'a, L, P
         } else {
             right(subtree_root_node_index)
         }
-    }
-
-    /// Returns a vector of [`ParentNodeIndex`]es, where the first reference is to
-    /// the root of the shared subtree of the two given leaf indices followed by
-    /// references to the nodes in the direct path of said subtree root.
-    pub(crate) fn subtree_path(
-        &self,
-        leaf_index_1: LeafNodeIndex,
-        leaf_index_2: LeafNodeIndex,
-    ) -> Vec<ParentNodeIndex> {
-        common_direct_path(leaf_index_1, leaf_index_2, self.size())
     }
 
     // Functions pertaining to the whole diff

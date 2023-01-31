@@ -7,7 +7,7 @@ use crate::{
     group::{core_group::*, errors::WelcomeError},
     schedule::errors::PskError,
     treesync::{
-        errors::{PublicTreeError, TreeSyncSetPathError},
+        errors::{DerivePathError, PublicTreeError},
         node::{encryption_keys::EncryptionKeyPair, Node},
     },
 };
@@ -149,12 +149,10 @@ impl CoreGroup {
                 PublicTreeError::MalformedTree,
             ))?;
 
-        let diff = public_group.treesync().empty_diff();
-
         // If we got a path secret, derive the path (which also checks if the
         // public keys match) and store the derived keys in the key store.
         let group_keypairs = if let Some(path_secret) = path_secret_option {
-            let (path_keypairs, _commit_secret) = diff
+            let (path_keypairs, _commit_secret) = public_group
                 .derive_path_secrets(
                     backend,
                     ciphersuite,
@@ -163,8 +161,8 @@ impl CoreGroup {
                     own_leaf_index,
                 )
                 .map_err(|e| match e {
-                    TreeSyncSetPathError::LibraryError(e) => e.into(),
-                    TreeSyncSetPathError::PublicKeyMismatch => {
+                    DerivePathError::LibraryError(e) => e.into(),
+                    DerivePathError::PublicKeyMismatch => {
                         WelcomeError::PublicTreeError(PublicTreeError::PublicKeyMismatch)
                     }
                 })?;

@@ -90,7 +90,7 @@ pub(crate) enum TreeSyncError {
     LeafNotInTree,
     /// See [`TreeSyncSetPathError`] for more details.
     #[error(transparent)]
-    SetPathError(#[from] TreeSyncSetPathError),
+    SetPathError(#[from] DerivePathError),
     /// See [`MlsBinaryTreeError`] for more details.
     #[error(transparent)]
     BinaryTreeError(#[from] MlsBinaryTreeError),
@@ -117,9 +117,9 @@ pub(crate) enum TreeSyncError {
     UnsupportedProposal,
 }
 
-/// TreeSync set path error
+/// Derive path error
 #[derive(Error, Debug, PartialEq, Clone)]
-pub(crate) enum TreeSyncSetPathError {
+pub(crate) enum DerivePathError {
     /// See [`LibraryError`] for more details.
     #[error(transparent)]
     LibraryError(#[from] LibraryError),

@@ -11,9 +11,10 @@ use crate::{
     messages::{
         group_info::{GroupInfo, VerifiableGroupInfo},
         proposals::{Proposal, ProposalType},
-        ConfirmationTag,
+        ConfirmationTag, PathSecret,
     },
-    treesync::{Node, TreeSync},
+    schedule::CommitSecret,
+    treesync::{errors::DerivePathError, node::encryption_keys::EncryptionKeyPair, Node, TreeSync},
     versions::ProtocolVersion,
 };
 
@@ -187,6 +188,36 @@ impl PublicGroup {
         self.group_context = diff.group_context;
         self.interim_transcript_hash = diff.interim_transcript_hash;
         self.confirmation_tag = diff.confirmation_tag;
+    }
+
+    /// Derives [`EncryptionKeyPair`]s for the nodes in the shared direct path
+    /// of the leaves with index `leaf_index` and `sender_index`.  This function
+    /// also checks that the derived public keys match the existing public keys.
+    ///
+    /// Returns the [`CommitSecret`] derived from the path secret of the root
+    /// node, as well as the derived [`EncryptionKeyPair`]s. Returns an error if
+    /// the target leaf is outside of the tree.
+    ///
+    /// Returns [`DerivePathError::PublicKeyMismatch`] if the derived keys don't
+    /// match with the existing ones.
+    ///
+    /// Returns [`DerivePathError::LibraryError`] if the sender_index is not
+    /// in the tree.
+    pub(crate) fn derive_path_secrets(
+        &self,
+        backend: &impl OpenMlsCryptoProvider,
+        ciphersuite: Ciphersuite,
+        path_secret: PathSecret,
+        sender_index: LeafNodeIndex,
+        leaf_index: LeafNodeIndex,
+    ) -> Result<(Vec<EncryptionKeyPair>, CommitSecret), DerivePathError> {
+        self.treesync.derive_path_secrets(
+            backend,
+            ciphersuite,
+            path_secret,
+            sender_index,
+            leaf_index,
+        )
     }
 }
 
