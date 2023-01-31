@@ -639,7 +639,7 @@
 <span class="kw">use </span><span class="kw">crate</span>::treesync::errors::TreeSyncAddLeaf;
 <span class="kw">use </span><span class="kw">crate</span>::treesync::node::encryption_keys::EncryptionKeyPair;
 <span class="kw">use </span><span class="kw">crate</span>::treesync::node::leaf_node::{
-    LeafNodeTbs, OpenMlsLeafNode, TreeInfoTbs, VerifiableLeafNodeTbs,
+    LeafNodeTbs, OpenMlsLeafNode, TreeInfoTbs, VerifiableLeafNode,
 };
 <span class="kw">use </span><span class="kw">crate</span>::treesync::{diff::StagedTreeSyncDiff, treekem::DecryptPathParams};
 
@@ -846,7 +846,7 @@
                     leaf_node.clone(),
                     TreeInfoTbs::commit(<span class="self">self</span>.group_id().clone(), sender_index),
                 );
-                <span class="kw">let </span>verifiable_leaf_node = VerifiableLeafNodeTbs {
+                <span class="kw">let </span>verifiable_leaf_node = VerifiableLeafNode {
                     tbs: <span class="kw-2">&amp;</span>tbs,
                     signature: leaf_node.signature(),
                 };
