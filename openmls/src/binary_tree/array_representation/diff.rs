@@ -313,12 +313,12 @@ impl<'a, L: Clone + Debug + Default, P: Clone + Debug + Default> AbDiff<'a, L, P
         // Check if it's in the diff.
         if let Some(node) = self.leaf_diff.get(&leaf_index) {
             node
-            // If it's not in the diff, it could be that it's outside of the
-            // diff, in which case we want to return a blank here, because the
-            // diff might have been trimmed in the mean time.
-            //} else if leaf_index.u32() >= self.leaf_count() {
-            //    &self.default_leaf
-            //// If it isn't in the diff, it must be in the tree.
+        // If it's not in the diff, it could be that it's outside of the
+        // diff, in which case we want to return a blank here, because the
+        // diff might have been trimmed in the mean time.
+        } else if leaf_index.u32() >= self.leaf_count() {
+            &self.default_leaf
+            // If it isn't in the diff, it must be in the tree.
         } else {
             self.original_tree.leaf_by_index(leaf_index)
         }

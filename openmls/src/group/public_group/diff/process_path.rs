@@ -99,8 +99,12 @@ impl<'a> PublicGroupDiff<'a> {
 
         new_keypairs.append(&mut new_parent_keypairs);
 
+        // After we've processed the path, we can update the group context s.t.
+        // the updated group context is used for path secret encryption. Note
+        // that we have not yet updated the confirmed transcript hash.
+        self.update_group_context(backend)?;
+
         let serialized_group_context = self
-            .original_group
             .group_context()
             .tls_serialize_detached()
             .map_err(LibraryError::missing_bound_check)?;

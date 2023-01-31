@@ -1,3 +1,5 @@
+use std::collections::HashSet;
+
 use openmls_traits::{crypto::OpenMlsCrypto, types::Ciphersuite, OpenMlsCryptoProvider};
 use serde::{Deserialize, Serialize};
 use tls_codec::Serialize as TlsSerialize;
@@ -5,10 +7,7 @@ use tls_codec::Serialize as TlsSerialize;
 use crate::{
     binary_tree::LeafNodeIndex,
     error::LibraryError,
-    framing::{
-        mls_auth_content::AuthenticatedContent,
-        public_message::{ConfirmedTranscriptHashInput, InterimTranscriptHashInput},
-    },
+    framing::{mls_auth_content::AuthenticatedContent, public_message::InterimTranscriptHashInput},
     group::GroupContext,
     messages::{proposals::AddProposal, ConfirmationTag, EncryptedGroupSecrets},
     schedule::{psk::PreSharedKeyId, CommitSecret, JoinerSecret},
@@ -19,7 +18,7 @@ use crate::{
             encryption_keys::EncryptionKeyPair, leaf_node::OpenMlsLeafNode,
             parent_node::PlainUpdatePathNode, Node,
         },
-        treekem::{DecryptPathParams, UpdatePath},
+        treekem::{DecryptPathParams, UpdatePath, UpdatePathNode},
     },
 };
 
@@ -119,13 +118,29 @@ impl<'a> PublicGroupDiff<'a> {
     pub(crate) fn decrypt_path(
         &self,
         backend: &impl OpenMlsCryptoProvider,
-        ciphersuite: Ciphersuite,
-        params: DecryptPathParams,
         owned_keys: &[&EncryptionKeyPair],
         own_leaf_index: LeafNodeIndex,
+        sender_leaf_index: LeafNodeIndex,
+        update_path: &[UpdatePathNode],
+        exclusion_list: &HashSet<&LeafNodeIndex>,
     ) -> Result<(Vec<EncryptionKeyPair>, CommitSecret), ApplyUpdatePathError> {
-        self.diff
-            .decrypt_path(backend, ciphersuite, params, owned_keys, own_leaf_index)
+        let params = DecryptPathParams {
+            version: self.group_context().protocol_version(),
+            update_path,
+            sender_leaf_index,
+            exclusion_list,
+            group_context: &self
+                .group_context()
+                .tls_serialize_detached()
+                .map_err(LibraryError::missing_bound_check)?,
+        };
+        self.diff.decrypt_path(
+            backend,
+            self.group_context().ciphersuite(),
+            params,
+            owned_keys,
+            own_leaf_index,
+        )
     }
 
     /// Return a reference to the leaf with the given index.
@@ -178,50 +193,37 @@ impl<'a> PublicGroupDiff<'a> {
         Ok(())
     }
 
-    /// Update the [`GroupContext`] of the diff using the given
-    /// `commit_content`. This includes computing the confirmed transcript hash,
-    /// tree hash computation and epoch incrementation.
+    /// Update the [`GroupContext`] of the diff. This includes tree hash
+    /// computation and epoch incrementation, but this does _not_ update the
+    /// confirmed transcript hash.
     pub(crate) fn update_group_context(
         &mut self,
-        ciphersuite: Ciphersuite,
         backend: &impl OpenMlsCryptoProvider,
-        commit_content: &AuthenticatedContent,
     ) -> Result<(), LibraryError> {
-        // Calculate the confirmed transcript hash
-        let confirmed_transcript_hash = {
-            let mls_plaintext_commit_content: &ConfirmedTranscriptHashInput =
-                &ConfirmedTranscriptHashInput::try_from(commit_content)
-                    .map_err(|_| LibraryError::custom("PublicMessage did not contain a commit"))?;
-            let interim_transcript_hash = self.original_group.interim_transcript_hash();
-            let commit_content_bytes = mls_plaintext_commit_content
-                .tls_serialize_detached()
-                .map_err(LibraryError::missing_bound_check)?;
-            backend
-                .crypto()
-                .hash(
-                    ciphersuite.hash_algorithm(),
-                    &[interim_transcript_hash, &commit_content_bytes].concat(),
-                )
-                .map_err(LibraryError::unexpected_crypto_error)
-        }?;
-
         // Calculate tree hash
-        let tree_hash = self.diff.compute_tree_hashes(backend, ciphersuite)?;
-        let mut new_epoch = self.original_group.group_context().epoch();
-        new_epoch.increment();
-        // Calculate group context
-        self.group_context = GroupContext::new(
-            ciphersuite,
-            self.original_group.group_context().group_id().clone(),
-            new_epoch,
-            tree_hash,
-            confirmed_transcript_hash,
-            self.original_group.group_context.extensions().clone(),
-        );
+        let new_tree_hash = self
+            .diff
+            .compute_tree_hashes(backend, self.original_group.ciphersuite())?;
+        self.group_context.update_tree_hash(new_tree_hash);
+        self.group_context.increment_epoch();
         Ok(())
     }
 
-    /// Returns the current [`GroupContext`] of this diff.
+    /// Update the confirmed transcript hash of the diff's [`GroupContext`]
+    /// using the given `interim_transcript_hash`, as well as the
+    /// `commit_content`.
+    pub(crate) fn update_confirmed_transcript_hash(
+        &mut self,
+        backend: &impl OpenMlsCryptoProvider,
+        commit_content: &AuthenticatedContent,
+    ) -> Result<(), LibraryError> {
+        self.group_context.update_confirmed_transcript_hash(
+            backend,
+            &self.interim_transcript_hash,
+            commit_content,
+        )
+    }
+
     pub(crate) fn group_context(&self) -> &GroupContext {
         &self.group_context
     }

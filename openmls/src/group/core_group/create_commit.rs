@@ -29,10 +29,6 @@ impl CoreGroup {
             CommitType::Member => Sender::build_member(self.own_leaf_index()),
         };
 
-        // If this is a "resync" external commit, it should contain a
-        // `remove` proposal with the index of our previous self in the
-        // group.
-
         // Filter proposals
         let (proposal_queue, contains_own_updates) = ProposalQueue::filter_proposals(
             ciphersuite,
@@ -95,9 +91,21 @@ impl CoreGroup {
                 || contains_own_updates
                 || params.force_self_update()
             {
-                diff.process_path(backend, self.own_leaf_index(), apply_proposals_values.exclusion_list(), params.commit_type(), signer, params.take_credential_with_key())?
+                // Process the path. This includes updating the provisional
+                // group context by updating the epoch and computing the new
+                // tree hash.
+                diff.process_path(
+                    backend,
+                    self.own_leaf_index(),
+                    apply_proposals_values.exclusion_list(),
+                    params.commit_type(),
+                    signer,
+                    params.take_credential_with_key()
+                )?
             } else {
-                // If path is not needed, return empty path processing results
+                // If path is not needed, update the group context and return
+                // empty path processing results
+                diff.update_group_context(backend)?;
                 PathProcessingResult::default()
             };
 
@@ -106,21 +114,11 @@ impl CoreGroup {
             CommitType::Member => Sender::build_member(self.own_leaf_index()),
         };
 
-        // Keep a copy of the update path key package
-        let commit_update_leaf_node = path_processing_result
-            .encrypted_path
-            .as_ref()
-            .map(|update| update.leaf_node().clone());
-
         // Create commit message
         let commit = Commit {
             proposals: proposal_reference_list,
             path: path_processing_result.encrypted_path,
         };
-
-        // Create provisional group state
-        let mut provisional_epoch = self.context().epoch();
-        provisional_epoch.increment();
 
         // Build AuthenticatedContent
         let mut commit = AuthenticatedContent::commit(
@@ -131,7 +129,8 @@ impl CoreGroup {
             signer,
         )?;
 
-        diff.update_group_context(ciphersuite, backend, &commit)?;
+        // Update the confirmed transcript hash using the commit we just created.
+        diff.update_confirmed_transcript_hash(backend, &commit)?;
 
         let joiner_secret = JoinerSecret::new(
             backend,
@@ -267,7 +266,6 @@ impl CoreGroup {
         let staged_commit = StagedCommit::new(
             proposal_queue,
             StagedCommitState::GroupMember(Box::new(staged_commit_state)),
-            commit_update_leaf_node,
         );
 
         Ok(CreateCommitResult {

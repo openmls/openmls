@@ -251,10 +251,6 @@ impl PublicGroup {
         &self.treesync
     }
 
-    fn interim_transcript_hash(&self) -> &[u8] {
-        &self.interim_transcript_hash
-    }
-
     pub fn confirmation_tag(&self) -> &ConfirmationTag {
         &self.confirmation_tag
     }

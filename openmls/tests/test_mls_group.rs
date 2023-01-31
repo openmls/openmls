@@ -210,24 +210,10 @@ fn mls_group_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoPr
         if let ProcessedMessageContent::StagedCommitMessage(staged_commit) =
             alice_processed_message.into_content()
         {
-            let update_leaf_node = staged_commit
-                .commit_update_key_package()
-                .expect("Expected a KeyPackage.")
-                .clone();
-            // Check that Bob updated
-            assert_eq!(update_leaf_node.credential(), &bob_credential.credential);
-
             // Merge staged Commit
             alice_group
                 .merge_staged_commit(backend, *staged_commit)
                 .unwrap();
-
-            // Check Bob's new key package
-            let members = alice_group.members().collect::<Vec<Member>>();
-            assert_eq!(
-                &members[1].signature_key,
-                update_leaf_node.signature_key().as_slice()
-            );
         } else {
             unreachable!("Expected a StagedCommit.");
         }
@@ -312,23 +298,9 @@ fn mls_group_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoPr
         if let ProcessedMessageContent::StagedCommitMessage(staged_commit) =
             bob_processed_message.into_content()
         {
-            let update_leaf_node = staged_commit
-                .commit_update_key_package()
-                .expect("Expected a KeyPackage.")
-                .clone();
-            // Check that Alice updated
-            assert_eq!(update_leaf_node.credential(), &alice_credential.credential);
-
             bob_group
                 .merge_staged_commit(backend, *staged_commit)
                 .unwrap();
-
-            // Check Alice's new key package
-            let members = bob_group.members().collect::<Vec<Member>>();
-            assert_eq!(
-                &members[0].signature_key,
-                update_leaf_node.signature_key().as_slice()
-            );
         } else {
             unreachable!("Expected a StagedCommit.");
         }

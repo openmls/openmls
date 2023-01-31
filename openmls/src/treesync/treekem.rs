@@ -218,7 +218,7 @@ impl<'a> TreeSyncDiff<'a> {
 
 pub(crate) struct DecryptPathParams<'a> {
     pub(crate) version: ProtocolVersion,
-    pub(crate) update_path: Vec<UpdatePathNode>,
+    pub(crate) update_path: &'a [UpdatePathNode],
     pub(crate) sender_leaf_index: LeafNodeIndex,
     pub(crate) exclusion_list: &'a HashSet<&'a LeafNodeIndex>,
     pub(crate) group_context: &'a [u8],
@@ -322,12 +322,6 @@ impl UpdatePath {
     /// Return the `nodes` of this [`UpdatePath`].
     pub(crate) fn nodes(&self) -> &[UpdatePathNode] {
         &self.nodes
-    }
-
-    /// Consume the [`UpdatePath`] and return its individual parts: A
-    /// [`LeafNode`] and a vector of [`UpdatePathNode`] instances.
-    pub(crate) fn into_parts(self) -> (LeafNode, Vec<UpdatePathNode>) {
-        (self.leaf_node, self.nodes)
     }
 
     #[cfg(test)]

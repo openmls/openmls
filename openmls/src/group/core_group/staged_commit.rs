@@ -1,14 +1,5 @@
 use openmls_traits::key_store::OpenMlsKeyStore;
 
-use crate::ciphersuite::signable::Verifiable;
-use crate::framing::mls_content::FramedContentBody;
-use crate::group::public_group::diff::StagedPublicGroupDiff;
-use crate::treesync::node::encryption_keys::EncryptionKeyPair;
-use crate::treesync::node::leaf_node::{
-    LeafNodeTbs, OpenMlsLeafNode, TreeInfoTbs, VerifiableLeafNodeTbs,
-};
-use crate::treesync::treekem::DecryptPathParams;
-
 use super::{
     super::errors::*,
     proposals::{
@@ -16,6 +7,15 @@ use super::{
         QueuedUpdateProposal,
     },
     *,
+};
+use crate::{
+    ciphersuite::signable::Verifiable,
+    framing::mls_content::FramedContentBody,
+    group::public_group::diff::StagedPublicGroupDiff,
+    treesync::node::{
+        encryption_keys::EncryptionKeyPair,
+        leaf_node::{LeafNodeTbs, OpenMlsLeafNode, TreeInfoTbs, VerifiableLeafNodeTbs},
+    },
 };
 use core::fmt::Debug;
 use std::{collections::HashSet, mem};
@@ -196,7 +196,6 @@ impl CoreGroup {
             return Ok(StagedCommit::new(
                 proposal_queue,
                 StagedCommitState::SelfRemoved(Box::new(staged_diff)),
-                commit_update_leaf_node,
             ));
         }
 
@@ -236,10 +235,6 @@ impl CoreGroup {
                     );
                     return Err(StageCommitError::PathLeafNodeVerificationFailure);
                 };
-                let serialized_context: Vec<u8> = self
-                    .context()
-                    .tls_serialize_detached()
-                    .map_err(LibraryError::missing_bound_check)?;
 
                 // Make sure that the new path key package is valid
                 self.validate_path_key_package(path.leaf_node(), public_key_set)?;
@@ -247,16 +242,8 @@ impl CoreGroup {
                 // Update the public group
                 diff.apply_received_update_path(backend, ciphersuite, sender_index, &path)?;
 
-                let (_leaf_node, update_path_nodes) = path.into_parts();
-
-                // Decrypt the UpdatePath
-                let decrypt_path_params = DecryptPathParams {
-                    version: self.version(),
-                    update_path: update_path_nodes,
-                    sender_leaf_index: sender_index,
-                    exclusion_list: &apply_proposals_values.exclusion_list(),
-                    group_context: &serialized_context,
-                };
+                // Update group context
+                diff.update_group_context(backend)?;
 
                 // All keys from the previous epoch are potential decryption keypairs.
                 let old_epoch_keypairs = self.read_epoch_keypairs(backend);
@@ -282,10 +269,11 @@ impl CoreGroup {
                 // ValSem204: Public keys from Path must be verified and match the private keys from the direct path
                 let (new_epoch_keypairs, commit_secret) = diff.decrypt_path(
                     backend,
-                    ciphersuite,
-                    decrypt_path_params,
                     &decryption_keypairs,
                     self.own_leaf_index(),
+                    sender_index,
+                    path.nodes(),
+                    &apply_proposals_values.exclusion_list(),
                 )?;
 
                 // Check if one of our update proposals was applied. If so, we
@@ -313,12 +301,19 @@ impl CoreGroup {
                     // ValSem201
                     return Err(StageCommitError::RequiredPathNotFound);
                 }
+
+                // Update group context
+                diff.update_group_context(backend)?;
+
                 (
                     CommitSecret::zero_secret(ciphersuite, self.version()),
                     vec![],
                     None,
                 )
             };
+
+        // Update the confirmed transcript hash before we compute the confirmation tag.
+        diff.update_confirmed_transcript_hash(backend, mls_content)?;
 
         // Check if we need to include the init secret from an external commit
         // we applied earlier or if we use the one from the previous epoch.
@@ -349,12 +344,6 @@ impl CoreGroup {
             )
             .map_err(LibraryError::unexpected_crypto_error)?
         };
-
-        // Create provisional group state
-        let mut provisional_epoch = self.context().epoch();
-        provisional_epoch.increment();
-
-        diff.update_group_context(ciphersuite, backend, mls_content)?;
 
         // Prepare the PskSecret
         let psk_secret =
@@ -417,11 +406,7 @@ impl CoreGroup {
                 new_leaf_keypair_option,
             }));
 
-        Ok(StagedCommit::new(
-            proposal_queue,
-            staged_commit_state,
-            commit_update_leaf_node,
-        ))
+        Ok(StagedCommit::new(proposal_queue, staged_commit_state))
     }
 
     /// Merges a [StagedCommit] into the group state and optionally return a [`SecretTree`]
@@ -514,21 +499,15 @@ pub(crate) enum StagedCommitState {
 pub struct StagedCommit {
     staged_proposal_queue: ProposalQueue,
     state: StagedCommitState,
-    commit_update_leaf_node: Option<LeafNode>,
 }
 
 impl StagedCommit {
     /// Create a new [`StagedCommit`] from the provisional group state created
     /// during the commit process.
-    pub(crate) fn new(
-        staged_proposal_queue: ProposalQueue,
-        state: StagedCommitState,
-        commit_update_leaf_node: Option<LeafNode>,
-    ) -> Self {
+    pub(crate) fn new(staged_proposal_queue: ProposalQueue, state: StagedCommitState) -> Self {
         StagedCommit {
             staged_proposal_queue,
             state,
-            commit_update_leaf_node,
         }
     }
 
@@ -550,12 +529,6 @@ impl StagedCommit {
     /// Returns the PresharedKey proposals that are covered by the Commit message as in iterator over [QueuedPskProposal].
     pub fn psk_proposals(&self) -> impl Iterator<Item = QueuedPskProposal> {
         self.staged_proposal_queue.psk_proposals()
-    }
-
-    /// Returns an optional leaf node from the Commit's update path.
-    /// A leaf node is returned for full and empty Commits, but not for partial Commits.
-    pub fn commit_update_key_package(&self) -> Option<&LeafNode> {
-        self.commit_update_leaf_node.as_ref()
     }
 
     /// Returns `true` if the member was removed through a proposal covered by this Commit message
