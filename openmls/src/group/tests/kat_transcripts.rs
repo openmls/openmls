@@ -126,7 +126,11 @@ pub fn generate_test_vector(ciphersuite: Ciphersuite) -> TranscriptTestVector {
     //.expect("Error updating interim transcript hash");
     let mut commit: PublicMessage = commit.into();
     commit
-        .set_membership_tag(&crypto, &membership_key)
+        .set_membership_tag(
+            &crypto,
+            &membership_key,
+            &context.tls_serialize_detached().unwrap(),
+        )
         .expect("Error adding membership tag");
     let credential = credential_bundle
         .credential()
@@ -239,13 +243,16 @@ pub fn run_test_vector(
         }
         return Err(TranscriptTestVectorError::GroupContextMismatch);
     }
-    if commit.verify_membership(backend, &membership_key).is_err() {
+    if commit
+        .verify_membership(backend, &membership_key, &serialized_context)
+        .is_err()
+    {
         if cfg!(test) {
             panic!("Invalid membership tag");
         }
         return Err(TranscriptTestVectorError::MembershipTagVerificationError);
     }
-    let commit: VerifiableAuthenticatedContent = commit.into();
+    let commit = commit.into_verifiable_content(serialized_context);
     let confirmation_tag = commit
         .confirmation_tag()
         .cloned()
