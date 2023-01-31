@@ -3,12 +3,8 @@ use openmls_traits::{
     key_store::OpenMlsKeyStore, signatures::Signer, types::Ciphersuite, OpenMlsCryptoProvider,
 };
 use serde::{Deserialize, Serialize};
-use tls_codec::{
-    Deserialize as TlsDeserializeTrait, Serialize as TlsSerializeTrait, TlsDeserialize,
-    TlsSerialize, TlsSize, VLBytes,
-};
-
 use thiserror::Error;
+use tls_codec::{Serialize as TlsSerializeTrait, TlsDeserialize, TlsSerialize, TlsSize, VLBytes};
 
 use crate::{
     binary_tree::array_representation::LeafNodeIndex,
@@ -18,8 +14,7 @@ use crate::{
     },
     credentials::{Credential, CredentialType, CredentialWithKey},
     error::LibraryError,
-    extensions::Extensions,
-    extensions::{Extension, ExtensionType, RequiredCapabilitiesExtension},
+    extensions::{Extension, ExtensionType, Extensions, RequiredCapabilitiesExtension},
     group::{config::CryptoConfig, GroupId},
     key_packages::KeyPackage,
     messages::proposals::ProposalType,
@@ -28,362 +23,14 @@ use crate::{
     versions::ProtocolVersion,
 };
 
-mod lifetime;
-pub use self::lifetime::Lifetime;
-
 use super::encryption_keys::{EncryptionKey, EncryptionKeyPair};
 
-#[derive(Error, Debug, PartialEq, Clone)]
-pub enum LeafNodeGenerationError<KeyStoreError> {
-    /// See [`LibraryError`] for more details.
-    #[error(transparent)]
-    LibraryError(#[from] LibraryError),
-    /// Error storing leaf private key in key store.
-    #[error("Error storing leaf private key in key store.")]
-    KeyStoreError(KeyStoreError),
-}
+mod capabilities;
+mod codec;
+mod lifetime;
 
-/// Capabilities of [`LeafNode`]s.
-///
-/// ```text
-/// struct {
-///     ProtocolVersion versions<V>;
-///     CipherSuite ciphersuites<V>;
-///     ExtensionType extensions<V>;
-///     ProposalType proposals<V>;
-///     CredentialType credentials<V>;
-/// } Capabilities;
-/// ```
-#[derive(
-    Debug, Clone, PartialEq, Eq, Serialize, Deserialize, TlsSerialize, TlsDeserialize, TlsSize,
-)]
-pub struct Capabilities {
-    versions: Vec<ProtocolVersion>,
-    ciphersuites: Vec<Ciphersuite>,
-    extensions: Vec<ExtensionType>,
-    proposals: Vec<ProposalType>,
-    credentials: Vec<CredentialType>,
-}
-
-// FIXME: deduplicate with CapabilitiesExtension.
-
-/// All extensions defined in the MLS spec are considered "default" by the spec.
-fn default_extensions() -> Vec<ExtensionType> {
-    vec![ExtensionType::ApplicationId]
-}
-
-/// All proposals defined in the MLS spec are considered "default" by the spec.
-fn default_proposals() -> Vec<ProposalType> {
-    vec![
-        ProposalType::Add,
-        ProposalType::Update,
-        ProposalType::Remove,
-        ProposalType::Presharedkey,
-        ProposalType::Reinit,
-        ProposalType::GroupContextExtensions,
-    ]
-}
-
-fn default_versions() -> Vec<ProtocolVersion> {
-    vec![ProtocolVersion::Mls10]
-}
-
-fn default_ciphersuites() -> Vec<Ciphersuite> {
-    vec![
-        Ciphersuite::MLS_128_DHKEMX25519_AES128GCM_SHA256_Ed25519,
-        Ciphersuite::MLS_128_DHKEMP256_AES128GCM_SHA256_P256,
-        Ciphersuite::MLS_128_DHKEMX25519_CHACHA20POLY1305_SHA256_Ed25519,
-    ]
-}
-
-fn default_credentials() -> Vec<CredentialType> {
-    vec![CredentialType::Basic]
-}
-
-impl Capabilities {
-    /// Create new empty [`Capabilities`].
-    pub fn empty() -> Self {
-        Self {
-            versions: Vec::new(),
-            ciphersuites: Vec::new(),
-            extensions: Vec::new(),
-            proposals: Vec::new(),
-            credentials: Vec::new(),
-        }
-    }
-
-    /// Create a new [`Capabilities`] struct with the given configuration.
-    /// Any argument that is `None` is filled with the default values from the
-    /// global configuration.
-    pub fn new(
-        versions: Option<&[ProtocolVersion]>,
-        ciphersuites: Option<&[Ciphersuite]>,
-        extensions: Option<&[ExtensionType]>,
-        proposals: Option<&[ProposalType]>,
-        credentials: Option<&[CredentialType]>,
-    ) -> Self {
-        Self {
-            versions: match versions {
-                Some(v) => v.into(),
-                None => default_versions(),
-            },
-            ciphersuites: match ciphersuites {
-                Some(c) => c.into(),
-                None => default_ciphersuites(),
-            },
-            extensions: match extensions {
-                Some(e) => e.into(),
-                None => vec![],
-            },
-            proposals: match proposals {
-                Some(p) => p.into(),
-                None => vec![],
-            },
-            credentials: match credentials {
-                Some(c) => c.into(),
-                None => default_credentials(),
-            },
-        }
-    }
-
-    /// Get a reference to the list of versions in this extension.
-    pub fn versions(&self) -> &[ProtocolVersion] {
-        &self.versions
-    }
-
-    /// Set the versions list.
-    #[cfg(test)]
-    pub fn set_versions(&mut self, versions: Vec<ProtocolVersion>) {
-        self.versions = versions;
-    }
-
-    /// Get a reference to the list of ciphersuites in this extension.
-    pub fn ciphersuites(&self) -> &[Ciphersuite] {
-        &self.ciphersuites
-    }
-
-    /// Set the ciphersuites list.
-    #[cfg(test)]
-    pub fn set_ciphersuites(&mut self, ciphersuites: Vec<Ciphersuite>) {
-        self.ciphersuites = ciphersuites;
-    }
-
-    /// Get a reference to the list of supported extensions.
-    pub fn extensions(&self) -> &[ExtensionType] {
-        &self.extensions
-    }
-
-    /// Get a reference to the list of supported proposals.
-    pub fn proposals(&self) -> &[ProposalType] {
-        &self.proposals
-    }
-
-    /// Get a reference to the list of supported credential types.
-    pub fn credentials(&self) -> &[CredentialType] {
-        &self.credentials
-    }
-
-    /// Check if these [`Capabilities`] support all the capabilities
-    /// required by the given [`RequiredCapabilities`] extension. Returns
-    /// `true` if that is the case and `false` otherwise.
-    pub(crate) fn supports_required_capabilities(
-        &self,
-        required_capabilities: &RequiredCapabilitiesExtension,
-    ) -> bool {
-        // Check if all required extensions are supported.
-        if required_capabilities
-            .extension_types()
-            .iter()
-            .any(|e| !self.extensions().contains(e))
-        {
-            return false;
-        }
-        // Check if all required proposals are supported.
-        if required_capabilities
-            .proposal_types()
-            .iter()
-            .any(|p| !self.proposals().contains(p))
-        {
-            return false;
-        }
-        true
-    }
-}
-
-impl Default for Capabilities {
-    fn default() -> Self {
-        Capabilities {
-            versions: default_versions(),
-            ciphersuites: default_ciphersuites(),
-            extensions: default_extensions(),
-            proposals: default_proposals(),
-            credentials: default_credentials(),
-        }
-    }
-}
-
-pub type ParentHash = VLBytes;
-
-#[derive(
-    Debug, Clone, PartialEq, Eq, Serialize, Deserialize, TlsSerialize, TlsDeserialize, TlsSize,
-)]
-#[repr(u8)]
-pub enum LeafNodeSource {
-    #[tls_codec(discriminant = 1)]
-    KeyPackage(Lifetime),
-    Update,
-    Commit(ParentHash),
-}
-
-#[derive(Debug, TlsSerialize, TlsDeserialize, TlsSize)]
-pub(crate) struct TreePosition {
-    group_id: GroupId,
-    leaf_index: LeafNodeIndex,
-}
-
-/// Helper struct that holds additional information required to sign a leaf node.
-///
-/// ```c
-/// // draft-ietf-mls-protocol-17
-/// struct {
-///     // ... continued from [`LeafNodeTbs`] ...
-///
-///     select (LeafNodeTBS.leaf_node_source) {
-///         case key_package:
-///             struct{};
-///
-///         case update:
-///             opaque group_id<V>;
-///             uint32 leaf_index;
-///
-///         case commit:
-///             opaque group_id<V>;
-///             uint32 leaf_index;
-///     };
-/// } LeafNodeTBS;
-/// ```
-#[derive(Debug)]
-pub(crate) enum TreeInfoTbs {
-    KeyPackage,
-    Update(TreePosition),
-    Commit(TreePosition),
-}
-
-impl TreeInfoTbs {
-    pub(crate) fn commit(group_id: GroupId, leaf_index: LeafNodeIndex) -> Self {
-        Self::Commit(TreePosition {
-            group_id,
-            leaf_index,
-        })
-    }
-}
-
-/// The payload of a [`LeafNode`]
-///
-/// ```text
-/// struct {
-///     HPKEPublicKey encryption_key;
-///     SignaturePublicKey signature_key;
-///     Credential credential;
-///     Capabilities capabilities;
-///
-///     LeafNodeSource leaf_node_source;
-///     select (LeafNode.leaf_node_source) {
-///         case key_package:
-///             Lifetime lifetime;
-///
-///         case update:
-///             struct{};
-///
-///         case commit:
-///             opaque parent_hash<V>;
-///     };
-///
-///     Extension extensions<V>;
-///     ...
-/// } LeafNode;
-/// ```
-#[derive(
-    Debug, Clone, PartialEq, Eq, Serialize, Deserialize, TlsSerialize, TlsDeserialize, TlsSize,
-)]
-struct LeafNodePayload {
-    encryption_key: EncryptionKey,
-    signature_key: SignaturePublicKey,
-    credential: Credential,
-    capabilities: Capabilities,
-    leaf_node_source: LeafNodeSource,
-    extensions: Extensions,
-}
-
-/// To-be-signed leaf node.
-///
-/// ```c
-/// // draft-ietf-mls-protocol-17
-/// struct {
-///     HPKEPublicKey encryption_key;
-///     SignaturePublicKey signature_key;
-///     Credential credential;
-///     Capabilities capabilities;
-///
-///     LeafNodeSource leaf_node_source;
-///     select (LeafNodeTBS.leaf_node_source) {
-///         case key_package:
-///             Lifetime lifetime;
-///
-///         case update:
-///             struct{};
-///
-///         case commit:
-///             opaque parent_hash<V>;
-///     };
-///
-///     Extension extensions<V>;
-///
-///     // ... continued in [`TreeInfoTbs`] ...
-/// } LeafNodeTBS;
-/// ```
-#[derive(Debug)]
-pub struct LeafNodeTbs {
-    payload: LeafNodePayload,
-    tree_info: TreeInfoTbs,
-}
-
-impl TlsSerializeTrait for LeafNodeTbs {
-    fn tls_serialize<W: std::io::Write>(&self, writer: &mut W) -> Result<usize, tls_codec::Error> {
-        let written = self.payload.tls_serialize(writer)?;
-        match &self.tree_info {
-            TreeInfoTbs::KeyPackage => Ok(written),
-            TreeInfoTbs::Update(p) | TreeInfoTbs::Commit(p) => {
-                p.tls_serialize(writer).map(|b| written + b)
-            }
-        }
-    }
-}
-
-impl tls_codec::Size for LeafNodeTbs {
-    fn tls_serialized_len(&self) -> usize {
-        let len = self.payload.tls_serialized_len();
-        match &self.tree_info {
-            TreeInfoTbs::KeyPackage => len,
-            TreeInfoTbs::Update(p) | TreeInfoTbs::Commit(p) => p.tls_serialized_len() + len,
-        }
-    }
-}
-
-impl TlsDeserializeTrait for LeafNodeTbs {
-    fn tls_deserialize<R: std::io::Read>(bytes: &mut R) -> Result<Self, tls_codec::Error>
-    where
-        Self: Sized,
-    {
-        let payload = LeafNodePayload::tls_deserialize(bytes)?;
-        let tree_info = match payload.leaf_node_source {
-            LeafNodeSource::KeyPackage(_) => TreeInfoTbs::KeyPackage,
-            LeafNodeSource::Update => TreeInfoTbs::Update(TreePosition::tls_deserialize(bytes)?),
-            LeafNodeSource::Commit(_) => TreeInfoTbs::Commit(TreePosition::tls_deserialize(bytes)?),
-        };
-        Ok(Self { payload, tree_info })
-    }
-}
+pub use capabilities::*;
+pub use lifetime::Lifetime;
 
 /// This struct implements the MLS leaf node.
 ///
@@ -418,12 +65,6 @@ impl TlsDeserializeTrait for LeafNodeTbs {
 pub struct LeafNode {
     payload: LeafNodePayload,
     signature: Signature,
-}
-
-impl From<OpenMlsLeafNode> for LeafNode {
-    fn from(leaf: OpenMlsLeafNode) -> Self {
-        leaf.leaf_node
-    }
 }
 
 impl LeafNode {
@@ -815,9 +456,9 @@ impl LeafNode {
     }
 }
 
+#[cfg(test)]
 impl LeafNode {
     /// Expose [`new_with_key`] for tests.
-    #[cfg(test)]
     pub(crate) fn create_new_with_key(
         encryption_key: EncryptionKey,
         credential_with_key: CredentialWithKey,
@@ -836,21 +477,13 @@ impl LeafNode {
         )
     }
 
-    /// Replace the credential in the KeyPackage.
-    #[cfg(any(feature = "test-utils", test))]
-    pub(crate) fn set_credential(&mut self, credential: Credential) {
-        self.payload.credential = credential;
-    }
-
     /// Return a mutable reference to [`Capabilities`].
-    #[cfg(test)]
     pub fn capabilities_mut(&mut self) -> &mut Capabilities {
         &mut self.payload.capabilities
     }
 
     /// Check whether the this leaf node supports all the required extensions
     /// in the provided list.
-    #[cfg(test)]
     pub(crate) fn check_extension_support(
         &self,
         extensions: &[ExtensionType],
@@ -864,53 +497,105 @@ impl LeafNode {
     }
 }
 
-const LEAF_NODE_SIGNATURE_LABEL: &str = "LeafNodeTBS";
-
-impl Signable for LeafNodeTbs {
-    type SignedOutput = LeafNode;
-
-    fn unsigned_payload(&self) -> Result<Vec<u8>, tls_codec::Error> {
-        self.tls_serialize_detached()
-    }
-
-    fn label(&self) -> &str {
-        LEAF_NODE_SIGNATURE_LABEL
+#[cfg(any(feature = "test-utils", test))]
+impl LeafNode {
+    /// Replace the credential in the KeyPackage.
+    pub(crate) fn set_credential(&mut self, credential: Credential) {
+        self.payload.credential = credential;
     }
 }
 
-impl SignedStruct<LeafNodeTbs> for LeafNode {
-    fn from_payload(tbs: LeafNodeTbs, signature: Signature) -> Self {
-        Self {
-            payload: tbs.payload,
-            signature,
-        }
+impl From<OpenMlsLeafNode> for LeafNode {
+    fn from(leaf: OpenMlsLeafNode) -> Self {
+        leaf.leaf_node
     }
 }
 
-/// Helper struct to verify incoming leaf nodes.
-/// The [`LeafNode`] doesn't have all the information needed to verify.
-/// In particular is the [`TreeInfoTbs`] missing.
-pub(crate) struct VerifiableLeafNodeTbs<'a> {
-    pub(crate) tbs: &'a LeafNodeTbs,
-    pub(crate) signature: &'a Signature,
+/// The payload of a [`LeafNode`]
+///
+/// ```text
+/// struct {
+///     HPKEPublicKey encryption_key;
+///     SignaturePublicKey signature_key;
+///     Credential credential;
+///     Capabilities capabilities;
+///
+///     LeafNodeSource leaf_node_source;
+///     select (LeafNode.leaf_node_source) {
+///         case key_package:
+///             Lifetime lifetime;
+///
+///         case update:
+///             struct{};
+///
+///         case commit:
+///             opaque parent_hash<V>;
+///     };
+///
+///     Extension extensions<V>;
+///     ...
+/// } LeafNode;
+/// ```
+#[derive(
+    Debug, Clone, PartialEq, Eq, Serialize, Deserialize, TlsSerialize, TlsDeserialize, TlsSize,
+)]
+struct LeafNodePayload {
+    encryption_key: EncryptionKey,
+    signature_key: SignaturePublicKey,
+    credential: Credential,
+    capabilities: Capabilities,
+    leaf_node_source: LeafNodeSource,
+    extensions: Extensions,
 }
 
-impl<'a> Verifiable for VerifiableLeafNodeTbs<'a> {
-    fn unsigned_payload(&self) -> Result<Vec<u8>, tls_codec::Error> {
-        self.tbs.tls_serialize_detached()
-    }
+#[derive(
+    Debug, Clone, PartialEq, Eq, Serialize, Deserialize, TlsSerialize, TlsDeserialize, TlsSize,
+)]
+#[repr(u8)]
+pub enum LeafNodeSource {
+    #[tls_codec(discriminant = 1)]
+    KeyPackage(Lifetime),
+    Update,
+    Commit(ParentHash),
+}
 
-    fn signature(&self) -> &Signature {
-        self.signature
-    }
+pub type ParentHash = VLBytes;
 
-    fn label(&self) -> &str {
-        LEAF_NODE_SIGNATURE_LABEL
-    }
+/// To-be-signed leaf node.
+///
+/// ```c
+/// // draft-ietf-mls-protocol-17
+/// struct {
+///     HPKEPublicKey encryption_key;
+///     SignaturePublicKey signature_key;
+///     Credential credential;
+///     Capabilities capabilities;
+///
+///     LeafNodeSource leaf_node_source;
+///     select (LeafNodeTBS.leaf_node_source) {
+///         case key_package:
+///             Lifetime lifetime;
+///
+///         case update:
+///             struct{};
+///
+///         case commit:
+///             opaque parent_hash<V>;
+///     };
+///
+///     Extension extensions<V>;
+///
+///     // ... continued in [`TreeInfo`] ...
+/// } LeafNodeTBS;
+/// ```
+#[derive(Debug)]
+pub struct LeafNodeTbs {
+    payload: LeafNodePayload,
+    tree_info: TreeInfoTbs,
 }
 
 impl LeafNodeTbs {
-    /// Build a [`LeafNodeTbs`] from a [`LeafNode`] and a [`TreeInfoTbs`]
+    /// Build a [`LeafNodeTbs`] from a [`LeafNode`] and a [`TreeInfo`]
     /// to update a leaf node.
     pub(crate) fn from(leaf_node: LeafNode, tree_info: TreeInfoTbs) -> Self {
         Self {
@@ -942,6 +627,94 @@ impl LeafNodeTbs {
     }
 }
 
+/// Helper struct that holds additional information required to sign a leaf node.
+///
+/// ```c
+/// // draft-ietf-mls-protocol-17
+/// struct {
+///     // ... continued from [`LeafNodeTbs`] ...
+///
+///     select (LeafNodeTBS.leaf_node_source) {
+///         case key_package:
+///             struct{};
+///
+///         case update:
+///             opaque group_id<V>;
+///             uint32 leaf_index;
+///
+///         case commit:
+///             opaque group_id<V>;
+///             uint32 leaf_index;
+///     };
+/// } LeafNodeTBS;
+/// ```
+#[derive(Debug)]
+pub(crate) enum TreeInfoTbs {
+    KeyPackage,
+    Update(TreePosition),
+    Commit(TreePosition),
+}
+
+impl TreeInfoTbs {
+    pub(crate) fn commit(group_id: GroupId, leaf_index: LeafNodeIndex) -> Self {
+        Self::Commit(TreePosition {
+            group_id,
+            leaf_index,
+        })
+    }
+}
+
+#[derive(Debug, TlsSerialize, TlsDeserialize, TlsSize)]
+pub(crate) struct TreePosition {
+    group_id: GroupId,
+    leaf_index: LeafNodeIndex,
+}
+
+const LEAF_NODE_SIGNATURE_LABEL: &str = "LeafNodeTBS";
+
+/// Helper struct to verify incoming leaf nodes.
+/// The [`LeafNode`] doesn't have all the information needed to verify.
+/// In particular is the [`TreeInfo`] missing.
+pub(crate) struct VerifiableLeafNode<'a> {
+    pub(crate) tbs: &'a LeafNodeTbs,
+    pub(crate) signature: &'a Signature,
+}
+
+impl Signable for LeafNodeTbs {
+    type SignedOutput = LeafNode;
+
+    fn unsigned_payload(&self) -> Result<Vec<u8>, tls_codec::Error> {
+        self.tls_serialize_detached()
+    }
+
+    fn label(&self) -> &str {
+        LEAF_NODE_SIGNATURE_LABEL
+    }
+}
+
+impl SignedStruct<LeafNodeTbs> for LeafNode {
+    fn from_payload(tbs: LeafNodeTbs, signature: Signature) -> Self {
+        Self {
+            payload: tbs.payload,
+            signature,
+        }
+    }
+}
+
+impl<'a> Verifiable for VerifiableLeafNode<'a> {
+    fn unsigned_payload(&self) -> Result<Vec<u8>, tls_codec::Error> {
+        self.tbs.tls_serialize_detached()
+    }
+
+    fn signature(&self) -> &Signature {
+        self.signature
+    }
+
+    fn label(&self) -> &str {
+        LEAF_NODE_SIGNATURE_LABEL
+    }
+}
+
 /// The OpenMLS wrapper for the [`LeafNode`] that holds additional information
 /// that we need:
 /// * the HPKE private key for to the public key that's in the [`LeafNode`].
@@ -952,24 +725,6 @@ impl LeafNodeTbs {
 pub struct OpenMlsLeafNode {
     pub(in crate::treesync) leaf_node: LeafNode,
     leaf_index: Option<LeafNodeIndex>,
-}
-
-impl From<LeafNode> for OpenMlsLeafNode {
-    fn from(leaf_node: LeafNode) -> Self {
-        Self {
-            leaf_node,
-            leaf_index: None,
-        }
-    }
-}
-
-impl From<KeyPackage> for OpenMlsLeafNode {
-    fn from(key_package: KeyPackage) -> Self {
-        Self {
-            leaf_node: key_package.leaf_node().clone(),
-            leaf_index: None,
-        }
-    }
 }
 
 impl OpenMlsLeafNode {
@@ -1026,15 +781,14 @@ impl OpenMlsLeafNode {
         if let Some(leaf_node) = leaf_node.into() {
             leaf_node_tbs.payload.credential = leaf_node.credential().clone();
             leaf_node_tbs.payload.encryption_key = leaf_node.encryption_key().clone();
-        }
-
-        if let Some(new_encryption_key) = new_encryption_key.into() {
+        } else if let Some(new_encryption_key) = new_encryption_key.into() {
             // If there's no new leaf, the encryption key must be provided
             // explicitly.
             leaf_node_tbs.payload.encryption_key = new_encryption_key;
         } else {
+            debug_assert!(false, "update_and_re_sign needs to be called with a new leaf node or a new encryption key. Neither was the case.");
             return Err(LibraryError::custom(
-                    "update_and_re_sign needs to be called with a new leaf node or a new encryption key. Neither was the case.").into());
+                "update_and_re_sign needs to be called with a new leaf node or a new encryption key. Neither was the case.").into());
         }
 
         // Set the new signed leaf node with the new encryption key
@@ -1095,11 +849,11 @@ impl OpenMlsLeafNode {
         Ok(key_pair)
     }
 
-    /// Create the [`TreeInfoTbs`] for an update for this leaf.
+    /// Create the [`TreeInfo`] for an update for this leaf.
     fn update_tree_info(&self, group_id: GroupId) -> Result<TreeInfoTbs, LibraryError> {
         debug_assert!(
             self.leaf_index.is_some(),
-            "TreeInfoTbs for Update can't be created without a leaf index. \
+            "TreeInfo for Update can't be created without a leaf index. \
              Leaf identity: {:?} ({})",
             self.leaf_node().credential().identity(),
             String::from_utf8(self.leaf_node().credential().identity().to_vec())
@@ -1113,9 +867,7 @@ impl OpenMlsLeafNode {
                 })
             })
             .ok_or_else(|| {
-                LibraryError::custom(
-                    "TreeInfoTbs for Update can't be created without a leaf index.",
-                )
+                LibraryError::custom("TreeInfo for Update can't be created without a leaf index.")
             })
     }
 
@@ -1222,4 +974,32 @@ impl OpenMlsLeafNode {
     pub fn ciphersuites(&self) -> &[Ciphersuite] {
         &self.leaf_node.payload.capabilities.ciphersuites
     }
+}
+
+impl From<LeafNode> for OpenMlsLeafNode {
+    fn from(leaf_node: LeafNode) -> Self {
+        Self {
+            leaf_node,
+            leaf_index: None,
+        }
+    }
+}
+
+impl From<KeyPackage> for OpenMlsLeafNode {
+    fn from(key_package: KeyPackage) -> Self {
+        Self {
+            leaf_node: key_package.leaf_node().clone(),
+            leaf_index: None,
+        }
+    }
+}
+
+#[derive(Error, Debug, PartialEq, Clone)]
+pub enum LeafNodeGenerationError<KeyStoreError> {
+    /// See [`LibraryError`] for more details.
+    #[error(transparent)]
+    LibraryError(#[from] LibraryError),
+    /// Error storing leaf private key in key store.
+    #[error("Error storing leaf private key in key store.")]
+    KeyStoreError(KeyStoreError),
 }
