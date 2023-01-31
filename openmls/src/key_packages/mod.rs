@@ -102,8 +102,11 @@ use crate::{
     versions::ProtocolVersion,
 };
 use openmls_traits::{
-    crypto::OpenMlsCrypto, key_store::MlsEntity, key_store::OpenMlsKeyStore, signatures::Signer,
-    types::Ciphersuite, OpenMlsCryptoProvider,
+    crypto::OpenMlsCrypto,
+    key_store::{MlsEntity, MlsEntityId, OpenMlsKeyStore},
+    signatures::Signer,
+    types::Ciphersuite,
+    OpenMlsCryptoProvider,
 };
 use serde::{Deserialize, Serialize};
 use tls_codec::{
@@ -116,7 +119,6 @@ use crate::treesync::node::encryption_keys::EncryptionKey;
 // Private
 mod codec;
 use errors::*;
-use openmls_traits::key_store::MlsEntityId;
 
 // Public
 pub mod errors;

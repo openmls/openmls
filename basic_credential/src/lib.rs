@@ -7,7 +7,7 @@
 use std::fmt::Debug;
 
 use openmls_traits::{
-    key_store::{MlsEntity, OpenMlsKeyStore},
+    key_store::{MlsEntity, MlsEntityId, OpenMlsKeyStore},
     signatures::Signer,
     types::{CryptoError, Error, SignatureScheme},
 };
@@ -17,7 +17,6 @@ use p256::ecdsa::SigningKey;
 // See https://github.com/rust-analyzer/rust-analyzer/issues/7243
 // for the rust-analyzer issue with the following line.
 use ed25519_dalek::Signer as DalekSigner;
-use openmls_traits::key_store::MlsEntityId;
 use rand::rngs::OsRng;
 use tls_codec::{TlsDeserialize, TlsSerialize, TlsSize};
 

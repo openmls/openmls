@@ -2,9 +2,8 @@
 
 use super::*;
 use crate::group::{GroupEpoch, GroupId};
-use openmls_traits::key_store::MlsEntityId;
 use openmls_traits::{
-    key_store::{MlsEntity, OpenMlsKeyStore},
+    key_store::{MlsEntity, MlsEntityId, OpenMlsKeyStore},
     random::OpenMlsRand,
     OpenMlsCryptoProvider,
 };
