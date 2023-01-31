@@ -1,3 +1,5 @@
+#![allow(dead_code)] // Allow dead code for now because none of this is used through test-utils right now.
+
 //! # Known Answer Tests for encrypting to tree nodes
 //!
 //! See <https://github.com/mlswg/mls-implementations/blob/master/test-vectors.md>
@@ -354,7 +356,7 @@ pub fn generate_test_vector(
         nonce: bytes_to_hex(sender_data_nonce.as_slice()),
     };
 
-    let (mut group, credential_with_key, signer) = group(ciphersuite, &crypto);
+    let (mut group, _, signer) = group(ciphersuite, &crypto);
     *group.message_secrets_test_mut().sender_data_secret_mut() = SenderDataSecret::from_slice(
         sender_data_secret_bytes,
         ProtocolVersion::default(),
@@ -456,8 +458,8 @@ fn write_test_vectors() {
     let _ = pretty_env_logger::try_init();
     use openmls_traits::crypto::OpenMlsCrypto;
     let mut tests = Vec::new();
-    const NUM_LEAVES: u32 = 2;
-    const NUM_GENERATIONS: u32 = 1;
+    const NUM_LEAVES: u32 = 10;
+    const NUM_GENERATIONS: u32 = 15;
 
     log::debug!("Generating new test vectors ...");
 
@@ -483,10 +485,7 @@ pub fn run_test_vector(
 ) -> Result<(), EncTestVectorError> {
     use tls_codec::{Deserialize, Serialize};
 
-    use crate::{
-        messages::Commit,
-        schedule::{message_secrets::MessageSecrets, ConfirmationKey, MembershipKey},
-    };
+    use crate::schedule::{message_secrets::MessageSecrets, ConfirmationKey, MembershipKey};
 
     let n_leaves = test_vector.n_leaves;
     if n_leaves != test_vector.leaves.len() as u32 {
@@ -607,7 +606,7 @@ pub fn run_test_vector(
             let mls_ciphertext_application =
                 PrivateMessage::tls_deserialize(&mut ctxt_bytes.as_slice())
                     .expect("Error parsing PrivateMessage");
-            let (mut group, credential_with_key, signer) = receiver_group(
+            let (mut group, _, _) = receiver_group(
                 ciphersuite,
                 backend,
                 mls_ciphertext_application.group_id().clone(),
@@ -650,11 +649,13 @@ pub fn run_test_vector(
                 )
                 .expect("Error decrypting PrivateMessage")
                 .into();
-            if hex_to_bytes(&application.plaintext)
-                != mls_plaintext_application
-                    .tls_serialize_detached()
-                    .expect("Error encoding PublicMessage")
-            {
+            assert!(matches!(
+                mls_plaintext_application.content(),
+                FramedContentBody::Application(_)
+            ));
+            let expected_plaintext = hex_to_bytes(&application.plaintext);
+            let exp = PublicMessage::tls_deserialize(&mut expected_plaintext.as_slice()).unwrap();
+            if exp.content() != mls_plaintext_application.content() {
                 if cfg!(test) {
                     panic!("Decrypted application message mismatch");
                 }
@@ -723,11 +724,15 @@ pub fn run_test_vector(
                 )
                 .expect("Error decrypting PrivateMessage")
                 .into();
-            if hex_to_bytes(&handshake.plaintext)
-                != mls_plaintext_handshake
-                    .tls_serialize_detached()
-                    .expect("Error encoding PublicMessage")
-            {
+
+            assert!(matches!(
+                mls_plaintext_handshake.content(),
+                FramedContentBody::Commit(_) | FramedContentBody::Proposal(_)
+            ));
+            let expected_plaintext = hex_to_bytes(&handshake.plaintext);
+            let exp = PublicMessage::tls_deserialize(&mut expected_plaintext.as_slice()).unwrap();
+
+            if exp.content() != mls_plaintext_handshake.content() {
                 if cfg!(test) {
                     panic!("Decrypted handshake message mismatch");
                 }
@@ -763,7 +768,7 @@ pub fn run_test_vector(
             let mls_ciphertext_handshake =
                 PrivateMessage::tls_deserialize(&mut handshake_bytes.as_slice())
                     .expect("Error parsing PrivateMessage");
-            let (mut group, credential_with_key, signer) = receiver_group(
+            let (mut group, _, _) = receiver_group(
                 ciphersuite,
                 backend,
                 mls_ciphertext_handshake.group_id().clone(),
@@ -795,11 +800,16 @@ pub fn run_test_vector(
                 )
                 .expect("Error decrypting PrivateMessage")
                 .into();
-            if hex_to_bytes(&handshake.plaintext)
-                != mls_plaintext_handshake
-                    .tls_serialize_detached()
-                    .expect("Error encoding PublicMessage")
-            {
+
+            assert!(matches!(
+                mls_plaintext_handshake.content(),
+                FramedContentBody::Commit(_) | FramedContentBody::Proposal(_)
+            ));
+            let expected_plaintext = hex_to_bytes(&handshake.plaintext);
+            let expected_plaintext =
+                PublicMessage::tls_deserialize(&mut expected_plaintext.as_slice()).unwrap();
+
+            if expected_plaintext.content() != mls_plaintext_handshake.content() {
                 return Err(EncTestVectorError::DecryptedHandshakeMessageMismatch);
             }
 
@@ -821,7 +831,6 @@ fn read_test_vectors_encryption(backend: &impl OpenMlsCryptoProvider) {
 
     let tests: Vec<EncryptionTestVector> = read("test_vectors/kat_encryption_openmls.json");
 
-    // FIXME: Disabled for now. Tracking re-enabling them in #1051
     for test_vector in tests {
         match run_test_vector(test_vector, backend) {
             Ok(_) => {}
