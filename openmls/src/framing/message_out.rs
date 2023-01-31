@@ -81,7 +81,9 @@ pub(crate) enum MlsMessageOutBody {
 impl From<PublicMessage> for MlsMessageOut {
     fn from(public_message: PublicMessage) -> Self {
         Self {
-            version: public_message.version(),
+            // TODO #34: The version should be set explicitly here instead of
+            // the default.
+            version: ProtocolVersion::default(),
             body: MlsMessageOutBody::PublicMessage(public_message),
         }
     }

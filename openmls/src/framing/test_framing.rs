@@ -56,7 +56,7 @@ fn codec_plaintext(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvide
         vec![1, 2, 3].into(),
         FramedContentBody::Application(vec![4, 5, 6].into()),
     )
-    .with_context(serialized_context);
+    .with_context(serialized_context.clone());
     let mut orig: PublicMessage = signature_input
         .sign(&signature_keys)
         .expect("Signing failed.")
@@ -66,10 +66,8 @@ fn codec_plaintext(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvide
         Secret::random(ciphersuite, backend, None /* MLS version */)
             .expect("Not enough randomness."),
     );
-    orig.set_membership_tag(backend, &membership_key)
+    orig.set_membership_tag(backend, &membership_key, &serialized_context)
         .expect("Error setting membership tag.");
-    // Strip the context so that we can compare with the freshly deserialized message.
-    orig.test_set_context(None);
 
     let enc = orig
         .tls_serialize_detached()
@@ -361,18 +359,19 @@ fn membership_tag(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
     .expect("An unexpected error occurred.")
     .into();
 
+    let serialized_context = group_context.tls_serialize_detached().unwrap();
     public_message
-        .set_membership_tag(backend, &membership_key)
+        .set_membership_tag(backend, &membership_key, &serialized_context)
         .expect("Error setting membership tag.");
 
     println!(
         "Membership tag error: {:?}",
-        public_message.verify_membership(backend, &membership_key)
+        public_message.verify_membership(backend, &membership_key, &serialized_context)
     );
 
     // Verify signature & membership tag
     assert!(public_message
-        .verify_membership(backend, &membership_key)
+        .verify_membership(backend, &membership_key, &serialized_context)
         .is_ok());
 
     // Change the content of the plaintext message
@@ -380,7 +379,7 @@ fn membership_tag(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
 
     // Expect the signature & membership tag verification to fail
     assert!(public_message
-        .verify_membership(backend, &membership_key)
+        .verify_membership(backend, &membership_key, &serialized_context)
         .is_err());
 }
 
@@ -706,172 +705,4 @@ pub(crate) fn setup_alice_bob_group(
         bob_signature_keys,
         bob_credential,
     )
-}
-
-#[apply(ciphersuites_and_backends)]
-fn invalid_plaintext_signature(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
-    let (_framing_parameters, _group_alice, _alice_signature_keys, _group_bob, _, _) =
-        setup_alice_bob_group(ciphersuite, backend);
-
-    // TODO: #727 - This test doesn't make sense.
-    // // Let's use a fresh proposal store.
-    // let mut proposal_store = ProposalStore::default();
-
-    // // Now alice creates an update
-    // let params = CreateCommitParams::builder()
-    //     .framing_parameters(framing_parameters)
-    //     .credential_bundle(&alice_credential_bundle)
-    //     .proposal_store(&proposal_store)
-    //     .force_self_update(true)
-    //     .build();
-    // let mut create_commit_result = group_alice
-    //     .create_commit(params, backend)
-    //     .expect("Error creating Commit");
-
-    // let original_encoded_commit = create_commit_result
-    //     .commit
-    //     .tls_serialize_detached()
-    //     .expect("An unexpected error occurred.");
-    // let mut input_commit =
-    //     VerifiableAuthenticatedContent::tls_deserialize(&mut original_encoded_commit.as_slice())
-    //         .expect("An unexpected error occurred.");
-    // let original_input_commit = input_commit.clone();
-
-    // // Remove membership tag.
-    // let good_membership_tag = input_commit.membership_tag().clone();
-    // input_commit.unset_membership_tag();
-    // let membership_error = group_bob
-    //     .verify_membership_tag(backend, &mut input_commit)
-    //     .err()
-    //     .expect("Membership verification should have returned an error");
-
-    // assert_eq!(
-    //     membership_error,
-    //     CoreGroupError::MlsPlaintextError(MlsPlaintextError::VerificationError(
-    //         VerificationError::MissingMembershipTag
-    //     ))
-    // );
-
-    // // Tamper with membership tag.
-    // let mut modified_membership_tag = good_membership_tag
-    //     .clone()
-    //     .expect("There should have been a membership tag.");
-    // modified_membership_tag.0.mac_value[0] ^= 0xFF;
-    // input_commit.set_membership_tag(modified_membership_tag);
-    // let membership_error = group_bob
-    //     .verify_membership_tag(backend, &mut input_commit)
-    //     .err()
-    //     .expect("Membership verification should have returned an error");
-
-    // assert_eq!(
-    //     membership_error,
-    //     CoreGroupError::MlsPlaintextError(MlsPlaintextError::VerificationError(
-    //         VerificationError::InvalidMembershipTag
-    //     ))
-    // );
-
-    // let decoded_commit = group_bob
-    //     .verify(original_input_commit, backend)
-    //     .expect("Error verifying valid commit message");
-    // assert_eq!(
-    //     decoded_commit
-    //         .tls_serialize_detached()
-    //         .expect("An unexpected error occurred."),
-    //     original_encoded_commit
-    // );
-
-    // // Tamper with signature.
-    // let good_signature = create_commit_result.commit.signature().clone();
-    // create_commit_result.commit.invalidate_signature();
-    // let encoded_commit = create_commit_result
-    //     .commit
-    //     .tls_serialize_detached()
-    //     .expect("An unexpected error occurred.");
-    // let input_commit = VerifiableAuthenticatedContent::tls_deserialize(&mut encoded_commit.as_slice())
-    //     .expect("An unexpected error occurred.");
-    // let decoded_commit = group_bob.verify(input_commit, backend);
-    // assert_eq!(
-    //     decoded_commit
-    //         .err()
-    //         .expect("group.verify() should have returned an error"),
-    //     CoreGroupError::MlsPlaintextError(MlsPlaintextError::CredentialError(
-    //         CredentialError::InvalidSignature
-    //     ))
-    // );
-
-    // // Fix commit
-    // create_commit_result.commit.set_signature(good_signature);
-    // create_commit_result
-    //     .commit
-    //     .set_membership_tag_test(good_membership_tag.expect("An unexpected error occurred."));
-
-    // // Remove confirmation tag.
-    // let good_confirmation_tag = create_commit_result.commit.confirmation_tag().cloned();
-    // create_commit_result.commit.unset_confirmation_tag();
-
-    // let error = group_bob
-    //     .stage_commit(&create_commit_result.commit, &proposal_store, &[], backend)
-    //     .expect_err("Staging commit should have yielded an error.");
-    // assert_eq!(
-    //     error,
-    //     CoreGroupError::StageCommitError(StageCommitError::ConfirmationTagMissing)
-    // );
-
-    // // Tamper with confirmation tag.
-    // let mut modified_confirmation_tag = good_confirmation_tag
-    //     .clone()
-    //     .expect("There should have been a membership tag.");
-    // modified_confirmation_tag.0.mac_value[0] ^= 0xFF;
-    // create_commit_result
-    //     .commit
-    //     .set_confirmation_tag(modified_confirmation_tag);
-    // let serialized_group_before =
-    //     serde_json::to_string(&group_bob).expect("An unexpected error occurred.");
-
-    // proposal_store.empty();
-    // proposal_store.add(
-    //     QueuedProposal::from_authenticated_content(ciphersuite, backend, bob_add_proposal.clone())
-    //         .expect("Could not create staged proposal."),
-    // );
-
-    // let error = group_bob
-    //     .stage_commit(&create_commit_result.commit, &proposal_store, &[], backend)
-    //     .expect_err("Staging commit should have yielded an error.");
-    // assert_eq!(
-    //     error,
-    //     CoreGroupError::StageCommitError(StageCommitError::ConfirmationTagMismatch)
-    // );
-    // let serialized_group_after =
-    //     serde_json::to_string(&group_bob).expect("An unexpected error occurred.");
-    // assert_eq!(serialized_group_before, serialized_group_after);
-
-    // // Fix commit again and stage it.
-    // create_commit_result
-    //     .commit
-    //     .set_confirmation_tag(good_confirmation_tag.expect("An unexpected error occurred."));
-    // let encoded_commit = create_commit_result
-    //     .commit
-    //     .tls_serialize_detached()
-    //     .expect("An unexpected error occurred.");
-    // let input_commit = VerifiableAuthenticatedContent::tls_deserialize(&mut encoded_commit.as_slice())
-    //     .expect("An unexpected error occurred.");
-    // let decoded_commit = group_bob
-    //     .verify(input_commit, backend)
-    //     .expect("Error verifying commit");
-    // assert_eq!(
-    //     original_encoded_commit,
-    //     decoded_commit
-    //         .tls_serialize_detached()
-    //         .expect("An unexpected error occurred.")
-    // );
-
-    // proposal_store.empty();
-    // proposal_store.add(
-    //     QueuedProposal::from_authenticated_content(ciphersuite, backend, bob_add_proposal)
-    //         .expect("Could not create staged proposal."),
-    // );
-
-    // group_bob
-    //     .stage_commit(&decoded_commit, &proposal_store, &[], backend)
-    //     .expect("Alice: Error staging commit.");
 }

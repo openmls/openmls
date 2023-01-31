@@ -86,7 +86,7 @@ pub(crate) mod test_framing;
 #[derive(
     PartialEq, Eq, Clone, Copy, Debug, Serialize, Deserialize, TlsDeserialize, TlsSerialize, TlsSize,
 )]
-#[repr(u8)]
+#[repr(u16)]
 pub enum WireFormat {
     /// Plaintext message
     PublicMessage = 1,

@@ -142,7 +142,8 @@ fn bad_padding(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
                 sender,
                 vec![1, 2, 3].into(),
                 FramedContentBody::Application(vec![4, 5, 6].into()),
-            );
+            )
+            .with_context(vec![7, 8, 9]);
 
             plaintext_tbs
                 .sign(&alice_credential_with_keys.signer)
