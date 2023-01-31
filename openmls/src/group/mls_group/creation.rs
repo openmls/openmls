@@ -200,6 +200,7 @@ impl MlsGroup {
         };
 
         let public_message: PublicMessage = create_commit_result.commit.into();
+
         Ok((mls_group, public_message.into()))
     }
 }
