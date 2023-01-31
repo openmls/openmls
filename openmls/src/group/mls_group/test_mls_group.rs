@@ -297,7 +297,12 @@ fn test_invalid_plaintext(ciphersuite: Ciphersuite, backend: &impl OpenMlsCrypto
     match &mut msg_invalid_sender.body {
         MlsMessageOutBody::PublicMessage(pt) => {
             pt.set_sender(random_sender);
-            pt.set_membership_tag(backend, membership_key).unwrap()
+            pt.set_membership_tag(
+                backend,
+                membership_key,
+                client_group.group().message_secrets().serialized_context(),
+            )
+            .unwrap()
         }
         _ => panic!("This should be a plaintext!"),
     };
