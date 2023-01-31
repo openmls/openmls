@@ -781,13 +781,12 @@ impl OpenMlsLeafNode {
         if let Some(leaf_node) = leaf_node.into() {
             leaf_node_tbs.payload.credential = leaf_node.credential().clone();
             leaf_node_tbs.payload.encryption_key = leaf_node.encryption_key().clone();
-        }
-
-        if let Some(new_encryption_key) = new_encryption_key.into() {
+        } else if let Some(new_encryption_key) = new_encryption_key.into() {
             // If there's no new leaf, the encryption key must be provided
             // explicitly.
             leaf_node_tbs.payload.encryption_key = new_encryption_key;
         } else {
+            debug_assert!(false, "update_and_re_sign needs to be called with a new leaf node or a new encryption key. Neither was the case.");
             return Err(LibraryError::custom(
                 "update_and_re_sign needs to be called with a new leaf node or a new encryption key. Neither was the case.").into());
         }
