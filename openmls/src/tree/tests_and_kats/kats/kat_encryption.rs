@@ -214,7 +214,11 @@ fn build_handshake_messages(
     .expect("An unexpected error occurred.");
     let mut plaintext: PublicMessage = content.clone().into();
     plaintext
-        .set_membership_tag(backend, &membership_key)
+        .set_membership_tag(
+            backend,
+            &membership_key,
+            &group.context().tls_serialize_detached().unwrap(),
+        )
         .expect("Error setting membership tag.");
     let ciphertext = PrivateMessage::encrypt_with_different_header(
         &content,
@@ -266,7 +270,11 @@ fn build_application_messages(
     .expect("An unexpected error occurred.");
     let mut plaintext: PublicMessage = content.clone().into();
     plaintext
-        .set_membership_tag(backend, &membership_key)
+        .set_membership_tag(
+            backend,
+            &membership_key,
+            &group.context().tls_serialize_detached().unwrap(),
+        )
         .expect("Error setting membership tag.");
     let ciphertext = match PrivateMessage::encrypt_with_different_header(
         &content,
@@ -592,7 +600,7 @@ pub fn run_test_vector(
             let sender_data = mls_ciphertext_application
                 .sender_data(group.message_secrets_test_mut(), backend, ciphersuite)
                 .expect("Unable to get sender data");
-            let mls_plaintext_application = mls_ciphertext_application
+            let mls_plaintext_application: AuthenticatedContent = mls_ciphertext_application
                 .to_verifiable_content(
                     ciphersuite,
                     backend,
@@ -601,7 +609,8 @@ pub fn run_test_vector(
                     &SenderRatchetConfiguration::default(),
                     sender_data,
                 )
-                .expect("Error decrypting PrivateMessage");
+                .expect("Error decrypting PrivateMessage")
+                .into();
             if hex_to_bytes(&application.plaintext)
                 != mls_plaintext_application
                     .tls_serialize_detached()
@@ -664,7 +673,7 @@ pub fn run_test_vector(
             let sender_data = mls_ciphertext_handshake
                 .sender_data(group.message_secrets_test_mut(), backend, ciphersuite)
                 .expect("Unable to get sender data");
-            let mls_plaintext_handshake = mls_ciphertext_handshake
+            let mls_plaintext_handshake: AuthenticatedContent = mls_ciphertext_handshake
                 .to_verifiable_content(
                     ciphersuite,
                     backend,
@@ -673,7 +682,8 @@ pub fn run_test_vector(
                     &SenderRatchetConfiguration::default(),
                     sender_data,
                 )
-                .expect("Error decrypting PrivateMessage");
+                .expect("Error decrypting PrivateMessage")
+                .into();
             if hex_to_bytes(&handshake.plaintext)
                 != mls_plaintext_handshake
                     .tls_serialize_detached()
@@ -732,7 +742,7 @@ pub fn run_test_vector(
             let sender_data = mls_ciphertext_handshake
                 .sender_data(group.message_secrets_test_mut(), backend, ciphersuite)
                 .expect("Unable to get sender data");
-            let mls_plaintext_handshake = mls_ciphertext_handshake
+            let mls_plaintext_handshake: AuthenticatedContent = mls_ciphertext_handshake
                 .to_verifiable_content(
                     ciphersuite,
                     backend,
@@ -741,7 +751,8 @@ pub fn run_test_vector(
                     &SenderRatchetConfiguration::default(),
                     sender_data,
                 )
-                .expect("Error decrypting PrivateMessage");
+                .expect("Error decrypting PrivateMessage")
+                .into();
             if hex_to_bytes(&handshake.plaintext)
                 != mls_plaintext_handshake
                     .tls_serialize_detached()
