@@ -5,11 +5,12 @@ members = [
     "openmls_rust_crypto",
     "fuzz",
     "cli",
-    "interop_client",
+    # "interop_client",
     "memory_keystore",
     "evercrypt_backend",
     "delivery-service/ds",
-    "delivery-service/ds-lib"
+    "delivery-service/ds-lib",
+    "basic_credential"
 ]
 resolver = "2"
 

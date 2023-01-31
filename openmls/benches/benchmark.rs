@@ -5,6 +5,7 @@ extern crate rand;
 
 use criterion::Criterion;
 use openmls::prelude::{config::CryptoConfig, *};
+use openmls_basic_credential::SignatureKeyPair;
 use openmls_rust_crypto::OpenMlsRustCrypto;
 use openmls_traits::{crypto::OpenMlsCrypto, OpenMlsCryptoProvider};
 
@@ -18,15 +19,18 @@ fn criterion_kp_bundle(c: &mut Criterion, backend: &impl OpenMlsCryptoProvider) 
             move |b| {
                 b.iter_with_setup(
                     || {
-                        CredentialBundle::new(
-                            vec![1, 2, 3],
-                            CredentialType::Basic,
-                            ciphersuite.signature_algorithm(),
-                            backend,
-                        )
-                        .expect("An unexpected error occurred.")
+                        let credential =
+                            Credential::new(vec![1, 2, 3], CredentialType::Basic).unwrap();
+                        let signer =
+                            SignatureKeyPair::new(ciphersuite.signature_algorithm()).unwrap();
+                        let credential_with_key = CredentialWithKey {
+                            credential,
+                            signature_key: signer.to_public_vec().into(),
+                        };
+
+                        (credential_with_key, signer)
                     },
-                    |credential_bundle: CredentialBundle| {
+                    |(credential_with_key, signer)| {
                         let _key_package = KeyPackage::builder()
                             .build(
                                 CryptoConfig {
@@ -34,7 +38,8 @@ fn criterion_kp_bundle(c: &mut Criterion, backend: &impl OpenMlsCryptoProvider) 
                                     version: ProtocolVersion::default(),
                                 },
                                 backend,
-                                &credential_bundle,
+                                &signer,
+                                credential_with_key,
                             )
                             .expect("An unexpected error occurred.");
                     },

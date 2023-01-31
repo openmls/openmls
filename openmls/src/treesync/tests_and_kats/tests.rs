@@ -1,8 +1,10 @@
 use openmls_rust_crypto::OpenMlsRustCrypto;
 
 use crate::{
-    credentials::CredentialType,
-    group::{MlsGroup, MlsGroupConfig},
+    group::{
+        tests::utils::{generate_credential_bundle, CredentialWithKeyAndSigner},
+        MlsGroup, MlsGroupConfig,
+    },
     key_packages::KeyPackage,
     prelude::*,
     test_utils::*,
@@ -27,26 +29,32 @@ fn that_commit_secret_is_derived_from_end_of_update_path_not_root(
 
     struct Member {
         id: Vec<u8>,
-        credential_bundle: CredentialBundle,
+        credential_with_key_and_signer: CredentialWithKeyAndSigner,
         key_package: KeyPackage,
         // FIXME: the own_leaf_index from the group is beeing computed incorrectly, so we can't use
         // the backend from the function parameter. #1221
         backend: OpenMlsRustCrypto,
     }
 
-    fn create_member(ciphersuite: Ciphersuite, backend: OpenMlsRustCrypto, name: &[u8]) -> Member {
-        let credential_bundle = generate_credential_bundle(ciphersuite, &backend, name);
+    fn create_member(
+        ciphersuite: Ciphersuite,
+        backend: OpenMlsRustCrypto,
+        name: Vec<u8>,
+    ) -> Member {
+        let credential_with_key_and_signer =
+            generate_credential_bundle(name.clone(), ciphersuite.signature_algorithm(), &backend);
         let key_package = KeyPackage::builder()
             .build(
                 CryptoConfig::with_default_version(ciphersuite),
                 &backend,
-                &credential_bundle,
+                &credential_with_key_and_signer.signer,
+                credential_with_key_and_signer.credential_with_key.clone(),
             )
             .unwrap();
 
         Member {
-            id: name.to_vec(),
-            credential_bundle,
+            id: name,
+            credential_with_key_and_signer,
             key_package,
             backend,
         }
@@ -56,7 +64,7 @@ fn that_commit_secret_is_derived_from_end_of_update_path_not_root(
         group.members().for_each(|member| {
             println!(
                 "member: {}, index: {:?}, target: {}, own_leaf_index: {:?}",
-                String::from_utf8_lossy(&member.identity),
+                String::from_utf8_lossy(member.credential.identity()),
                 member.index,
                 String::from_utf8_lossy(target_id),
                 group.own_leaf_index()
@@ -65,7 +73,7 @@ fn that_commit_secret_is_derived_from_end_of_update_path_not_root(
         group
             .members()
             .find_map(|member| {
-                if member.identity == target_id {
+                if member.credential.identity() == target_id {
                     Some(member.index)
                 } else {
                     None
@@ -74,16 +82,20 @@ fn that_commit_secret_is_derived_from_end_of_update_path_not_root(
             .unwrap()
     }
 
-    let alice = create_member(ciphersuite, OpenMlsRustCrypto::default(), b"alice");
-    let bob = create_member(ciphersuite, OpenMlsRustCrypto::default(), b"bob");
-    let charlie = create_member(ciphersuite, OpenMlsRustCrypto::default(), b"charlie");
-    let dave = create_member(ciphersuite, OpenMlsRustCrypto::default(), b"dave");
+    let alice = create_member(ciphersuite, OpenMlsRustCrypto::default(), "alice".into());
+    let bob = create_member(ciphersuite, OpenMlsRustCrypto::default(), "bob".into());
+    let charlie = create_member(ciphersuite, OpenMlsRustCrypto::default(), "charlie".into());
+    let dave = create_member(ciphersuite, OpenMlsRustCrypto::default(), "dave".into());
 
     // `A` creates a group with `B`, `C`, and `D` ...
     let mut alice_group = MlsGroup::new(
         &alice.backend,
+        &alice.credential_with_key_and_signer.signer,
         &mls_group_config,
-        alice.credential_bundle.credential().signature_key(),
+        alice
+            .credential_with_key_and_signer
+            .credential_with_key
+            .clone(),
     )
     .unwrap();
     alice_group.print_tree("Alice (after new)");
@@ -91,6 +103,7 @@ fn that_commit_secret_is_derived_from_end_of_update_path_not_root(
     let (_, welcome, _group_info) = alice_group
         .add_members(
             &alice.backend,
+            &alice.credential_with_key_and_signer.signer,
             &[bob.key_package, charlie.key_package, dave.key_package],
         )
         .expect("Adding members failed.");
@@ -115,7 +128,11 @@ fn that_commit_secret_is_derived_from_end_of_update_path_not_root(
     let alice = get_member_leaf_index(&charlie_group, &alice.id);
     let bob = get_member_leaf_index(&charlie_group, &bob.id);
     charlie_group
-        .remove_members(&charlie.backend, &[alice, bob])
+        .remove_members(
+            &charlie.backend,
+            &charlie.credential_with_key_and_signer.signer,
+            &[alice, bob],
+        )
         .expect("Removal of members failed.");
 
     charlie_group
@@ -138,34 +155,10 @@ fn that_commit_secret_is_derived_from_end_of_update_path_not_root(
     // So C(harlie) will not generate a path_secret for Y, which means that the commit secret is not really defined.
 
     charlie_group
-        .create_message(&charlie.backend, b"Hello, World!".as_slice())
+        .create_message(
+            &charlie.backend,
+            &charlie.credential_with_key_and_signer.signer,
+            b"Hello, World!".as_slice(),
+        )
         .unwrap();
-}
-
-// FIXME: Move this to utils:: and remove everywhere.
-fn generate_credential_bundle(
-    ciphersuite: Ciphersuite,
-    backend: &impl OpenMlsCryptoProvider,
-    name: &[u8],
-) -> CredentialBundle {
-    let credential_bundle = CredentialBundle::new(
-        name.to_vec(),
-        CredentialType::Basic,
-        ciphersuite.signature_algorithm(),
-        backend,
-    )
-    .unwrap();
-
-    let index = credential_bundle
-        .credential()
-        .signature_key()
-        .tls_serialize_detached()
-        .unwrap();
-
-    backend
-        .key_store()
-        .store(&index, &credential_bundle)
-        .expect("Storage of signature public key failed.");
-
-    credential_bundle
 }

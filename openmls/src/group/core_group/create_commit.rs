@@ -18,8 +18,9 @@ use super::{
 impl CoreGroup {
     pub(crate) fn create_commit<KeyStore: OpenMlsKeyStore>(
         &self,
-        params: CreateCommitParams,
+        mut params: CreateCommitParams,
         backend: &impl OpenMlsCryptoProvider<KeyStoreProvider = KeyStore>,
+        signer: &impl Signer,
     ) -> Result<CreateCommitResult, CreateCommitError<KeyStore::Error>> {
         let ciphersuite = self.ciphersuite();
 
@@ -62,10 +63,8 @@ impl CoreGroup {
 
         // Validate the proposals by doing the following checks:
 
-        // ValSem100
         // ValSem101
         // ValSem102
-        // ValSem103
         // ValSem104
         // ValSem106
         self.validate_add_proposals(&proposal_queue)?;
@@ -74,7 +73,6 @@ impl CoreGroup {
         self.validate_remove_proposals(&proposal_queue)?;
         // Validate update proposals for member commits
         if let Sender::Member(sender_index) = &sender {
-            // ValSem109
             // ValSem110
             // ValSem111
             // ValSem112
@@ -97,7 +95,7 @@ impl CoreGroup {
                 || contains_own_updates
                 || params.force_self_update()
             {
-                diff.process_path(backend, self.own_leaf_index(), apply_proposals_values.exclusion_list(), params.commit_type(), params.credential_bundle())?
+                diff.process_path(backend, self.own_leaf_index(), apply_proposals_values.exclusion_list(), params.commit_type(), signer, params.take_credential_with_key())?
             } else {
                 // If path is not needed, return empty path processing results
                 PathProcessingResult::default()
@@ -129,9 +127,8 @@ impl CoreGroup {
             *params.framing_parameters(),
             sender,
             commit,
-            params.credential_bundle(),
             self.context(),
-            backend,
+            signer,
         )?;
 
         diff.update_group_context(ciphersuite, backend, &commit)?;
@@ -215,7 +212,7 @@ impl CoreGroup {
                 )
             };
             // Sign to-be-signed group info.
-            Some(group_info_tbs.sign(backend, params.credential_bundle().signature_private_key())?)
+            Some(group_info_tbs.sign(signer)?)
         } else {
             None
         };

@@ -1,54 +1,47 @@
-use openmls::{messages::group_info::VerifiableGroupInfo, prelude::*, test_utils::*, *};
+use openmls::{
+    credentials::test_utils::new_credential, messages::group_info::VerifiableGroupInfo, prelude::*,
+    test_utils::*, *,
+};
+use openmls_basic_credential::SignatureKeyPair;
 
 fn create_alice_group(
     ciphersuite: Ciphersuite,
     backend: &impl OpenMlsCryptoProvider,
     use_ratchet_tree_extension: bool,
-) -> MlsGroup {
+) -> (MlsGroup, CredentialWithKey, SignatureKeyPair) {
     let group_config = MlsGroupConfigBuilder::new()
         .use_ratchet_tree_extension(use_ratchet_tree_extension)
         .crypto_config(CryptoConfig::with_default_version(ciphersuite))
         .build();
 
-    let alice_cb = {
-        let alice_cb = CredentialBundle::new(
-            b"Alice".to_vec(),
-            CredentialType::Basic,
-            ciphersuite.signature_algorithm(),
-            backend,
-        )
-        .expect("Creation of credential bundle failed.");
-
-        let index = alice_cb
-            .credential()
-            .signature_key()
-            .tls_serialize_detached()
-            .expect("Serialization of signature public key failed.");
-
-        backend
-            .key_store()
-            .store(&index, &alice_cb)
-            .expect("Storing of signature public key failed.");
-
-        alice_cb
-    };
-
-    MlsGroup::new(
+    let (credential_with_key, signature_keys) = new_credential(
         backend,
+        b"Alice",
+        CredentialType::Basic,
+        ciphersuite.signature_algorithm(),
+    );
+
+    let group = MlsGroup::new(
+        backend,
+        &signature_keys,
         &group_config,
-        alice_cb.credential().signature_key(),
+        credential_with_key.clone(),
     )
-    .expect("An unexpected error occurred.")
+    .expect("An unexpected error occurred.");
+
+    (group, credential_with_key, signature_keys)
 }
 
 #[apply(ciphersuites_and_backends)]
 fn test_external_commit(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
     // Alice creates a new group ...
-    let alice_group = create_alice_group(ciphersuite, backend, false);
+    let (alice_group, _, alice_signer) = create_alice_group(ciphersuite, backend, false);
 
     // ... and exports a group info (with ratchet_tree).
     let verifiable_group_info = {
-        let group_info = alice_group.export_group_info(backend, true).unwrap();
+        let group_info = alice_group
+            .export_group_info(backend, &alice_signer, true)
+            .unwrap();
 
         let serialized_group_info = group_info.tls_serialize_detached().unwrap();
 
@@ -59,7 +52,9 @@ fn test_external_commit(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoPr
     };
 
     let verifiable_group_info_broken = {
-        let group_info = alice_group.export_group_info(backend, true).unwrap();
+        let group_info = alice_group
+            .export_group_info(backend, &alice_signer, true)
+            .unwrap();
 
         let serialized_group_info = {
             let mut tmp = group_info.tls_serialize_detached().unwrap();
@@ -81,46 +76,46 @@ fn test_external_commit(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoPr
 
     // Now, Bob wants to join Alice' group by an external commit. (Positive case.)
     {
-        let bob_cb = CredentialBundle::new(
-            b"Bob".to_vec(),
+        let (bob_credential, bob_signature_keys) = new_credential(
+            backend,
+            b"Bob",
             CredentialType::Basic,
             ciphersuite.signature_algorithm(),
-            backend,
-        )
-        .expect("Creation of credential bundle failed.");
+        );
 
         let (_bob_group, _) = MlsGroup::join_by_external_commit(
             backend,
+            &bob_signature_keys,
             None,
             verifiable_group_info,
             &MlsGroupConfigBuilder::new()
                 .crypto_config(CryptoConfig::with_default_version(ciphersuite))
                 .build(),
             b"",
-            &bob_cb,
+            bob_credential,
         )
         .unwrap();
     }
 
     // Now, Bob wants to join Alice' group by an external commit. (Negative case, broken signature.)
     {
-        let bob_cb = CredentialBundle::new(
-            b"Bob".to_vec(),
+        let (bob_credential, bob_signature_keys) = new_credential(
+            backend,
+            b"Bob",
             CredentialType::Basic,
             ciphersuite.signature_algorithm(),
-            backend,
-        )
-        .expect("Creation of credential bundle failed.");
+        );
 
         let got_error = MlsGroup::join_by_external_commit(
             backend,
+            &bob_signature_keys,
             None,
             verifiable_group_info_broken,
             &MlsGroupConfigBuilder::new()
                 .crypto_config(CryptoConfig::with_default_version(ciphersuite))
                 .build(),
             b"",
-            &bob_cb,
+            bob_credential,
         )
         .unwrap_err();
 
@@ -136,29 +131,19 @@ fn test_external_commit(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoPr
 #[apply(ciphersuites_and_backends)]
 fn test_group_info(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
     // Alice creates a new group ...
-    let mut alice_group = create_alice_group(ciphersuite, backend, true);
+    let (mut alice_group, _, alice_signer) = create_alice_group(ciphersuite, backend, true);
 
     // Self update Alice's to get a group info from a commit
-    let (.., group_info) = alice_group.self_update(backend).unwrap();
+    let (.., group_info) = alice_group.self_update(backend, &alice_signer).unwrap();
     alice_group.merge_pending_commit(backend).unwrap();
 
     // Bob wants to join
-    let bob_cb = CredentialBundle::new(
-        b"Bob".to_vec(),
+    let (bob_credential, bob_signature_keys) = new_credential(
+        backend,
+        b"Bob",
         CredentialType::Basic,
         ciphersuite.signature_algorithm(),
-        backend,
-    )
-    .expect("Creation of credential bundle failed.");
-    let index = bob_cb
-        .credential()
-        .signature_key()
-        .tls_serialize_detached()
-        .expect("Serialization of signature public key failed.");
-    backend
-        .key_store()
-        .store(&index, &bob_cb)
-        .expect("Storing of signature public key failed.");
+    );
 
     let verifiable_group_info = {
         let serialized_group_info = group_info.unwrap().tls_serialize_detached().unwrap();
@@ -167,13 +152,14 @@ fn test_group_info(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvide
     };
     let (mut bob_group, msg) = MlsGroup::join_by_external_commit(
         backend,
+        &bob_signature_keys,
         None,
         verifiable_group_info,
         &MlsGroupConfigBuilder::new()
             .crypto_config(CryptoConfig::with_default_version(ciphersuite))
             .build(),
         b"",
-        &bob_cb,
+        bob_credential,
     )
     .map(|(group, msg)| (group, MlsMessageIn::from(msg)))
     .unwrap();
@@ -193,7 +179,7 @@ fn test_group_info(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvide
 
     // bob sends a message to alice
     let message: MlsMessageIn = bob_group
-        .create_message(backend, b"Hello Alice")
+        .create_message(backend, &bob_signature_keys, b"Hello Alice")
         .unwrap()
         .into();
 
@@ -208,10 +194,10 @@ fn test_group_info(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvide
 #[apply(ciphersuites_and_backends)]
 fn test_not_present_group_info(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
     // Alice creates a new group ...
-    let mut alice_group = create_alice_group(ciphersuite, backend, false);
+    let (mut alice_group, _, alice_signer) = create_alice_group(ciphersuite, backend, false);
 
     // Self update Alice's to get a group info from a commit
-    let (.., group_info) = alice_group.self_update(backend).unwrap();
+    let (.., group_info) = alice_group.self_update(backend, &alice_signer).unwrap();
     alice_group.merge_pending_commit(backend).unwrap();
 
     assert!(group_info.is_none());

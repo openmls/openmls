@@ -1,5 +1,5 @@
 use core_group::create_commit_params::CreateCommitParams;
-use tls_codec::Serialize;
+use openmls_traits::signatures::Signer;
 
 use crate::{messages::group_info::GroupInfo, treesync::LeafNode, versions::ProtocolVersion};
 
@@ -24,31 +24,20 @@ impl MlsGroup {
     pub fn self_update<KeyStore: OpenMlsKeyStore>(
         &mut self,
         backend: &impl OpenMlsCryptoProvider<KeyStoreProvider = KeyStore>,
+        signer: &impl Signer,
     ) -> Result<
         (MlsMessageOut, Option<MlsMessageOut>, Option<GroupInfo>),
         SelfUpdateError<KeyStore::Error>,
     > {
         self.is_operational()?;
 
-        let credential = self.credential()?;
-        let credential_bundle: CredentialBundle = backend
-            .key_store()
-            .read(
-                &credential
-                    .signature_key()
-                    .tls_serialize_detached()
-                    .map_err(LibraryError::missing_bound_check)?,
-            )
-            .ok_or(SelfUpdateError::NoMatchingCredentialBundle)?;
-
         let params = CreateCommitParams::builder()
             .framing_parameters(self.framing_parameters())
-            .credential_bundle(&credential_bundle)
             .proposal_store(&self.proposal_store)
             .build();
-        // Create Commit over all proposals. If a `KeyPackageBundle` was passed
-        // in, use it to create an update proposal by value. TODO #751
-        let create_commit_result = self.group.create_commit(params, backend)?;
+        // Create Commit over all proposals.
+        // TODO #751
+        let create_commit_result = self.group.create_commit(params, backend, signer)?;
 
         // Convert PublicMessage messages to MLSMessage and encrypt them if required by
         // the configuration
@@ -76,37 +65,10 @@ impl MlsGroup {
     pub fn propose_self_update<KeyStore: OpenMlsKeyStore>(
         &mut self,
         backend: &impl OpenMlsCryptoProvider<KeyStoreProvider = KeyStore>,
+        signer: &impl Signer,
         leaf_node: Option<LeafNode>,
     ) -> Result<MlsMessageOut, ProposeSelfUpdateError<KeyStore::Error>> {
         self.is_operational()?;
-
-        let credential = if let Some(leaf) = &leaf_node {
-            // If there's a key pair use the credential in there.
-            leaf.credential()
-        } else {
-            // Use the old credential.
-            self.credential()?
-        };
-        let credential_bundle: CredentialBundle = backend
-            .key_store()
-            .read(
-                &credential
-                    .signature_key()
-                    .tls_serialize_detached()
-                    .map_err(LibraryError::missing_bound_check)?,
-            )
-            .ok_or(ProposeSelfUpdateError::NoMatchingCredentialBundle)?;
-
-        let old_credential = self.credential()?;
-        let old_credential_bundle: CredentialBundle = backend
-            .key_store()
-            .read(
-                &old_credential
-                    .signature_key()
-                    .tls_serialize_detached()
-                    .map_err(LibraryError::missing_bound_check)?,
-            )
-            .ok_or(ProposeSelfUpdateError::NoMatchingCredentialBundle)?;
 
         let tree = self.group.treesync();
 
@@ -119,19 +81,14 @@ impl MlsGroup {
             .ok_or_else(|| LibraryError::custom("The tree is broken. Couldn't find own leaf."))?
             .clone();
         if let Some(leaf) = leaf_node {
-            own_leaf.update_and_re_sign(
-                leaf.encryption_key(),
-                &credential_bundle,
-                self.group_id().clone(),
-                backend,
-            )?
+            own_leaf.update_and_re_sign(None, leaf, self.group_id().clone(), signer)?
         } else {
             let keypair = own_leaf.rekey(
                 self.group_id(),
                 self.ciphersuite(),
                 ProtocolVersion::default(), // XXX: openmls/openmls#1065
-                &credential_bundle,
                 backend,
+                signer,
             )?;
             // TODO #1207: Move to the top of the function.
             keypair
@@ -141,9 +98,8 @@ impl MlsGroup {
 
         let update_proposal = self.group.create_update_proposal(
             self.framing_parameters(),
-            &old_credential_bundle,
             own_leaf.leaf_node().clone(),
-            backend,
+            signer,
         )?;
 
         self.own_leaf_nodes.push(own_leaf);

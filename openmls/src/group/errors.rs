@@ -118,6 +118,9 @@ pub enum ExternalCommitError {
     /// [`CreationFromExternalError`] for more details.
     #[error(transparent)]
     PublicGroupError(#[from] CreationFromExternalError),
+    /// Credential is missing from external commit.
+    #[error("Credential is missing from external commit.")]
+    MissingCredential,
 }
 
 /// Stage Commit error
@@ -218,6 +221,12 @@ pub enum CreateCommitError<KeyStoreError> {
     /// See [`SignatureError`] for more details.
     #[error(transparent)]
     SignatureError(#[from] SignatureError),
+    /// Credential is missing from external commit.
+    #[error("Credential is missing from external commit.")]
+    MissingCredential,
+    /// This error indicates the public tree is invalid. See [`PublicTreeError`] for more details.
+    #[error(transparent)]
+    PublicTreeError(#[from] PublicTreeError),
     /// See [`InvalidExtensionError`] for more details.
     #[error(transparent)]
     InvalidExtensionError(#[from] InvalidExtensionError),

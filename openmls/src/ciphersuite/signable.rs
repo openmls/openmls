@@ -28,11 +28,11 @@
 //! Similarly, only the [`Verifiable`] struct should implement the
 //! [`tls_codec::Deserialize`] trait.
 
-use openmls_traits::{crypto::OpenMlsCrypto, types::SignatureScheme, OpenMlsCryptoProvider};
+use openmls_traits::{crypto::OpenMlsCrypto, signatures::Signer};
 use thiserror::Error;
 use tls_codec::Serialize;
 
-use crate::ciphersuite::{SignContent, Signature, SignaturePrivateKey, SignaturePublicKey};
+use crate::ciphersuite::{OpenMlsSignaturePublicKey, SignContent, Signature};
 
 /// Signature generation and verification errors.
 /// The only information relayed with this error is whether the signature
@@ -94,21 +94,26 @@ pub trait Signable: Sized {
     /// Sign the payload with the given `private_key`.
     ///
     /// Returns a `Signature`.
-    fn sign(
-        self,
-        backend: &impl OpenMlsCryptoProvider,
-        private_key: &SignaturePrivateKey,
-    ) -> Result<Self::SignedOutput, SignatureError>
+    fn sign(self, signer: &impl Signer) -> Result<Self::SignedOutput, SignatureError>
     where
         Self::SignedOutput: SignedStruct<Self>,
     {
         let payload = self
             .unsigned_payload()
             .map_err(|_| SignatureError::SigningError)?;
-        let signature = private_key
-            .sign_with_label(backend, &SignContent::new(self.label(), payload.into()))
+        let payload = match SignContent::new(self.label(), payload.into()).tls_serialize_detached()
+        {
+            Ok(p) => p,
+            Err(e) => {
+                log::error!("Serializing SignContent failed, {:?}", e);
+                return Err(SignatureError::SigningError);
+            }
+        };
+        let signature = signer
+            .sign(&payload)
             .map_err(|_| SignatureError::SigningError)?;
-        Ok(Self::SignedOutput::from_payload(self, signature))
+
+        Ok(Self::SignedOutput::from_payload(self, signature.into()))
     }
 }
 
@@ -139,14 +144,13 @@ pub trait Verifiable: Sized {
     /// `CredentialError::InvalidSignature` otherwise.
     fn verify<T>(
         self,
-        backend: &impl OpenMlsCryptoProvider,
-        public_key: &SignaturePublicKey,
-        signature_scheme: SignatureScheme,
+        crypto: &impl OpenMlsCrypto,
+        pk: &OpenMlsSignaturePublicKey,
     ) -> Result<T, SignatureError>
     where
         T: VerifiedStruct<Self>,
     {
-        verify(&self, backend, signature_scheme, public_key)?;
+        verify(crypto, &self, pk)?;
         Ok(T::from_verifiable(self, T::SealingType::default()))
     }
 
@@ -158,19 +162,17 @@ pub trait Verifiable: Sized {
     /// `CredentialError::InvalidSignature` otherwise.
     fn verify_no_out(
         &self,
-        backend: &impl OpenMlsCryptoProvider,
-        public_key: &SignaturePublicKey,
-        signature_scheme: SignatureScheme,
+        crypto: &impl OpenMlsCrypto,
+        pk: &OpenMlsSignaturePublicKey,
     ) -> Result<(), SignatureError> {
-        verify(self, backend, signature_scheme, public_key)
+        verify(crypto, self, pk)
     }
 }
 
 fn verify(
+    crypto: &impl OpenMlsCrypto,
     verifiable: &impl Verifiable,
-    backend: &impl OpenMlsCryptoProvider,
-    signature_scheme: SignatureScheme,
-    public_key: &SignaturePublicKey,
+    pk: &OpenMlsSignaturePublicKey,
 ) -> Result<(), SignatureError> {
     let payload = verifiable
         .unsigned_payload()
@@ -183,14 +185,12 @@ fn verify(
             return Err(SignatureError::VerificationError);
         }
     };
-    backend
-        .crypto()
+    crypto
         .verify_signature(
-            signature_scheme,
+            pk.signature_scheme(),
             &payload,
-            public_key.as_slice(),
+            pk.as_slice(),
             verifiable.signature().value(),
         )
-        .map_err(|_| SignatureError::VerificationError)?;
-    Ok(())
+        .map_err(|_| SignatureError::VerificationError)
 }

@@ -1,13 +1,16 @@
 use std::collections::HashSet;
 
-use openmls_traits::{key_store::OpenMlsKeyStore, OpenMlsCryptoProvider};
+use openmls_traits::{key_store::OpenMlsKeyStore, signatures::Signer, OpenMlsCryptoProvider};
 use tls_codec::Serialize;
 
 use crate::{
     binary_tree::LeafNodeIndex,
-    credentials::CredentialBundle,
+    credentials::CredentialWithKey,
     error::LibraryError,
-    group::{config::CryptoConfig, errors::CreateCommitError, CommitType},
+    group::{
+        config::CryptoConfig, core_group::create_commit_params::CommitType,
+        errors::CreateCommitError,
+    },
     key_packages::{KeyPackage, KeyPackageCreationResult},
     schedule::CommitSecret,
     treesync::{
@@ -38,7 +41,8 @@ impl<'a> PublicGroupDiff<'a> {
         leaf_index: LeafNodeIndex,
         exclusion_list: HashSet<&LeafNodeIndex>,
         commit_type: CommitType,
-        credential_bundle: &CredentialBundle,
+        signer: &impl Signer,
+        credential_with_key: Option<CredentialWithKey>,
     ) -> Result<PathProcessingResult, CreateCommitError<KeyStore::Error>> {
         let mut new_keypairs = if commit_type == CommitType::External {
             // If this is an external commit we add a fresh leaf to the diff.
@@ -56,7 +60,8 @@ impl<'a> PublicGroupDiff<'a> {
                     version: self.original_group.version(),
                 },
                 backend,
-                credential_bundle,
+                signer,
+                credential_with_key.ok_or(CreateCommitError::MissingCredential)?,
             )?;
 
             let mut leaf_node: OpenMlsLeafNode = key_package.into();
@@ -75,8 +80,8 @@ impl<'a> PublicGroupDiff<'a> {
                 self.original_group.group_id(),
                 self.original_group.ciphersuite(),
                 self.original_group.version(), // XXX: openmls/openmls#1065
-                credential_bundle,
                 backend,
+                signer,
             )?;
             vec![encryption_keypair]
         };
@@ -86,9 +91,9 @@ impl<'a> PublicGroupDiff<'a> {
         let (plain_path, mut new_parent_keypairs, commit_secret) =
             self.diff.apply_own_update_path(
                 backend,
+                signer,
                 self.original_group.ciphersuite(),
                 self.original_group.group_id().clone(),
-                credential_bundle,
                 leaf_index,
             )?;
 

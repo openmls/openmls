@@ -32,6 +32,7 @@ use crate::{
     treesync::{node::Node, LeafNode},
 };
 use ::rand::{rngs::OsRng, RngCore};
+use openmls_basic_credential::SignatureKeyPair;
 use openmls_rust_crypto::OpenMlsRustCrypto;
 use openmls_traits::{
     crypto::OpenMlsCrypto,
@@ -134,25 +135,23 @@ impl MlsGroupTestSetup {
             let crypto = OpenMlsRustCrypto::default();
             let mut credentials = HashMap::new();
             for ciphersuite in crypto.crypto().supported_ciphersuites().iter() {
-                let cb = CredentialBundle::new(
-                    identity.clone(),
-                    CredentialType::Basic,
-                    SignatureScheme::from(*ciphersuite),
-                    &crypto,
+                let credential = Credential::new(identity.clone(), CredentialType::Basic).unwrap();
+                let signature_keys =
+                    SignatureKeyPair::new(ciphersuite.signature_algorithm()).unwrap();
+                signature_keys.store(crypto.key_store()).unwrap();
+                let signature_key = OpenMlsSignaturePublicKey::new(
+                    signature_keys.public().into(),
+                    signature_keys.signature_scheme(),
                 )
-                .expect("An unexpected error occurred.");
-                let credential = cb.credential().clone();
-                crypto
-                    .key_store()
-                    .store(
-                        &cb.credential()
-                            .signature_key()
-                            .tls_serialize_detached()
-                            .expect("Error serializing signature key."),
-                        &cb,
-                    )
-                    .expect("An unexpected error occurred.");
-                credentials.insert(*ciphersuite, credential);
+                .unwrap();
+
+                credentials.insert(
+                    *ciphersuite,
+                    CredentialWithKey {
+                        credential,
+                        signature_key: signature_key.into(),
+                    },
+                );
             }
             let client = Client {
                 identity: identity.clone(),
@@ -182,7 +181,7 @@ impl MlsGroupTestSetup {
         client: &Client,
         ciphersuite: Ciphersuite,
     ) -> Result<KeyPackage, SetupError> {
-        let key_package = client.get_fresh_key_package(&[ciphersuite])?;
+        let key_package = client.get_fresh_key_package(ciphersuite)?;
         self.waiting_for_welcome
             .write()
             .expect("An unexpected error occurred.")
@@ -331,8 +330,8 @@ impl MlsGroupTestSetup {
             .iter()
             .map(
                 |Member {
-                     index, identity, ..
-                 }| { (index.usize(), identity.clone()) },
+                     index, credential, ..
+                 }| { (index.usize(), credential.identity().to_vec()) },
             )
             .collect();
         group.public_tree = sender_group.export_ratchet_tree();
@@ -366,8 +365,17 @@ impl MlsGroupTestSetup {
                             .expect("An unexpected error occurred."),
                         group.exporter_secret
                     );
+                    // Get the signature public key to read the signer from the
+                    // key store.
+                    let signature_pk = group_state.own_leaf().unwrap().signature_key();
+                    let signer = SignatureKeyPair::read(
+                        m.crypto.key_store(),
+                        signature_pk.as_slice(),
+                        group_state.ciphersuite().signature_algorithm(),
+                    )
+                    .unwrap();
                     let message = group_state
-                        .create_message(&m.crypto, "Hello World!".as_bytes())
+                        .create_message(&m.crypto, &signer, "Hello World!".as_bytes())
                         .expect("Error composing message while checking group states.");
                     Some((m_id.to_vec(), message))
                 } else {

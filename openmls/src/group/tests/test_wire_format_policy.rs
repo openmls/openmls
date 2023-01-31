@@ -1,35 +1,29 @@
 //! This module tests the different values for `WireFormatPolicy`
 
 use openmls_rust_crypto::OpenMlsRustCrypto;
-use openmls_traits::{types::Ciphersuite, OpenMlsCryptoProvider};
+use openmls_traits::{signatures::Signer, types::Ciphersuite, OpenMlsCryptoProvider};
 
 use rstest::*;
 use rstest_reuse::{self, *};
 
 use crate::{
-    credentials::*,
     framing::*,
     group::{config::CryptoConfig, errors::*, *},
 };
 
-use super::utils::{generate_credential_bundle, generate_key_package};
+use super::utils::{generate_credential_bundle, generate_key_package, CredentialWithKeyAndSigner};
 
 // Creates a group with one member
 fn create_group(
     ciphersuite: Ciphersuite,
     backend: &impl OpenMlsCryptoProvider,
     wire_format_policy: WireFormatPolicy,
-) -> MlsGroup {
+) -> (MlsGroup, CredentialWithKeyAndSigner) {
     let group_id = GroupId::from_slice(b"Test Group");
 
     // Generate credential bundles
-    let credential = generate_credential_bundle(
-        "Alice".into(),
-        CredentialType::Basic,
-        ciphersuite.signature_algorithm(),
-        backend,
-    )
-    .expect("An unexpected error occurred.");
+    let credential_with_key_and_signer =
+        generate_credential_bundle("Alice".into(), ciphersuite.signature_algorithm(), backend);
 
     // Define the MlsGroup configuration
     let mls_group_config = MlsGroupConfig::builder()
@@ -38,13 +32,17 @@ fn create_group(
         .crypto_config(CryptoConfig::with_default_version(ciphersuite))
         .build();
 
-    MlsGroup::new_with_group_id(
-        backend,
-        &mls_group_config,
-        group_id,
-        credential.signature_key(),
+    (
+        MlsGroup::new_with_group_id(
+            backend,
+            &credential_with_key_and_signer.signer,
+            &mls_group_config,
+            group_id,
+            credential_with_key_and_signer.credential_with_key.clone(),
+        )
+        .expect("An unexpected error occurred."),
+        credential_with_key_and_signer,
     )
-    .expect("An unexpected error occurred.")
 }
 
 // Takes an existing group, adds a new member and sends a message from the second member to the first one, returns that message
@@ -52,27 +50,22 @@ fn receive_message(
     ciphersuite: Ciphersuite,
     backend: &impl OpenMlsCryptoProvider,
     alice_group: &mut MlsGroup,
+    alice_signer: &impl Signer,
 ) -> MlsMessageIn {
     // Generate credential bundles
-    let bob_credential = generate_credential_bundle(
-        "Bob".into(),
-        CredentialType::Basic,
-        ciphersuite.signature_algorithm(),
-        backend,
-    )
-    .expect("An unexpected error occurred.");
+    let bob_credential_with_key_and_signer =
+        generate_credential_bundle("Bob".into(), ciphersuite.signature_algorithm(), backend);
 
     // Generate KeyPackages
     let bob_key_package = generate_key_package(
-        &[ciphersuite],
-        &bob_credential,
+        ciphersuite,
         Extensions::empty(),
         backend,
-    )
-    .expect("An unexpected error occurred.");
+        bob_credential_with_key_and_signer.clone(),
+    );
 
     let (_message, welcome, _group_info) = alice_group
-        .add_members(backend, &[bob_key_package])
+        .add_members(backend, alice_signer, &[bob_key_package])
         .expect("Could not add member.");
 
     alice_group
@@ -93,7 +86,7 @@ fn receive_message(
     .expect("error creating bob's group from welcome");
 
     let (message, _welcome, _group_info) = bob_group
-        .self_update(backend)
+        .self_update(backend, &bob_credential_with_key_and_signer.signer)
         .expect("An unexpected error occurred.");
     message.into()
 }
@@ -102,8 +95,14 @@ fn receive_message(
 #[apply(ciphersuites_and_backends)]
 fn test_wire_policy_positive(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
     for wire_format_policy in WIRE_FORMAT_POLICIES.iter() {
-        let mut alice_group = create_group(ciphersuite, backend, *wire_format_policy);
-        let message = receive_message(ciphersuite, backend, &mut alice_group);
+        let (mut alice_group, alice_credential_with_key_and_signer) =
+            create_group(ciphersuite, backend, *wire_format_policy);
+        let message = receive_message(
+            ciphersuite,
+            backend,
+            &mut alice_group,
+            &alice_credential_with_key_and_signer.signer,
+        );
         alice_group
             .process_message(backend, message)
             .expect("An unexpected error occurred.");
@@ -125,8 +124,14 @@ fn test_wire_policy_negative(ciphersuite: Ciphersuite, backend: &impl OpenMlsCry
         ),
     ];
     for wire_format_policy in incompatible_policies.into_iter() {
-        let mut alice_group = create_group(ciphersuite, backend, wire_format_policy);
-        let message = receive_message(ciphersuite, backend, &mut alice_group);
+        let (mut alice_group, alice_credential_with_key_and_signer) =
+            create_group(ciphersuite, backend, wire_format_policy);
+        let message = receive_message(
+            ciphersuite,
+            backend,
+            &mut alice_group,
+            &alice_credential_with_key_and_signer.signer,
+        );
         let err = alice_group
             .process_message(backend, message)
             .expect_err("An unexpected error occurred.");

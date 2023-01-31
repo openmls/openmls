@@ -19,6 +19,7 @@
 // encryption and decryption of updates to the tree.
 
 use openmls_traits::{
+    signatures::Signer,
     types::{Ciphersuite, CryptoError},
     OpenMlsCryptoProvider,
 };
@@ -30,7 +31,7 @@ use crate::{
         MlsBinaryTree, MlsBinaryTreeError,
     },
     ciphersuite::{Secret, SignaturePublicKey},
-    credentials::CredentialBundle,
+    credentials::CredentialWithKey,
     error::LibraryError,
     extensions::Extensions,
     framing::SenderError,
@@ -94,8 +95,9 @@ impl TreeSync {
     /// corresponding [`CommitSecret`].
     pub(crate) fn new(
         backend: &impl OpenMlsCryptoProvider,
+        signer: &impl Signer,
         config: CryptoConfig,
-        credential_bundle: &CredentialBundle,
+        credential_with_key: CredentialWithKey,
         life_time: Lifetime,
         capabilities: Capabilities,
         extensions: Extensions,
@@ -105,7 +107,8 @@ impl TreeSync {
             // Creation of a group is considered to be from a key package.
             LeafNodeSource::KeyPackage(life_time),
             backend,
-            credential_bundle,
+            signer,
+            credential_with_key,
             capabilities,
             extensions,
         )?;
@@ -309,13 +312,8 @@ impl TreeSync {
                 Member::new(
                     index,
                     leaf_node.public_key().as_slice().to_vec(),
-                    leaf_node
-                        .leaf_node
-                        .credential()
-                        .signature_key()
-                        .as_slice()
-                        .to_vec(),
-                    leaf_node.leaf_node.credential().identity().to_vec(),
+                    leaf_node.leaf_node.signature_key().as_slice().to_vec(),
+                    leaf_node.leaf_node.credential().clone(),
                 )
             })
     }

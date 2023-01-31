@@ -21,9 +21,10 @@ pub struct GroupContext {
     extensions: Extensions,
 }
 
-#[cfg(any(feature = "test-utils", test))]
+#[cfg(test)]
 impl GroupContext {
-    pub(crate) fn set_epoch(&mut self, epoch: GroupEpoch) {
+    // XXX[KAT]: #1051 only used in KATs
+    pub(crate) fn _set_epoch(&mut self, epoch: GroupEpoch) {
         self.epoch = epoch;
     }
 }

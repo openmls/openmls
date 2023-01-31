@@ -21,7 +21,7 @@ pub(crate) mod staged_commit;
 
 // Tests
 #[cfg(test)]
-mod test_core_group;
+pub(crate) mod test_core_group;
 #[cfg(test)]
 mod test_create_commit_params;
 #[cfg(test)]
@@ -55,17 +55,16 @@ use crate::{
     schedule::{message_secrets::*, psk::*, *},
     tree::{secret_tree::SecretTreeError, sender_ratchet::SenderRatchetConfiguration},
     treesync::{
-        node::leaf_node::{Capabilities, Lifetime},
+        node::leaf_node::{Capabilities, Lifetime, OpenMlsLeafNode},
         *,
     },
     versions::ProtocolVersion,
 };
 
 use self::{past_secrets::MessageSecretsStore, staged_commit::StagedCommit};
-#[cfg(test)]
-use crate::treesync::node::leaf_node::OpenMlsLeafNode;
 use log::{debug, trace};
 use openmls_traits::key_store::OpenMlsKeyStore;
+use openmls_traits::signatures::Signer;
 use openmls_traits::types::Ciphersuite;
 use serde::{Deserialize, Serialize};
 #[cfg(test)]
@@ -93,8 +92,8 @@ pub(crate) struct CreateCommitResult {
 pub struct Member {
     /// The member's leaf index in the ratchet tree.
     pub index: LeafNodeIndex,
-    /// The member's identity from the credential.
-    pub identity: Vec<u8>,
+    /// The member's credential.
+    pub credential: Credential,
     /// The member's public HPHKE encryption key.
     pub encryption_key: Vec<u8>,
     /// The member's public signature key.
@@ -107,13 +106,13 @@ impl Member {
         index: LeafNodeIndex,
         encryption_key: Vec<u8>,
         signature_key: Vec<u8>,
-        identity: Vec<u8>,
+        credential: Credential,
     ) -> Self {
         Self {
             index,
             encryption_key,
             signature_key,
-            identity,
+            credential,
         }
     }
 }
@@ -148,11 +147,16 @@ pub(crate) struct CoreGroupBuilder {
     required_capabilities: Option<RequiredCapabilitiesExtension>,
     max_past_epochs: usize,
     lifetime: Option<Lifetime>,
+    credential_with_key: CredentialWithKey,
 }
 
 impl CoreGroupBuilder {
     /// Create a new [`CoreGroupBuilder`].
-    pub(crate) fn new(group_id: GroupId, crypto_config: CryptoConfig) -> Self {
+    pub(crate) fn new(
+        group_id: GroupId,
+        crypto_config: CryptoConfig,
+        credential_with_key: CredentialWithKey,
+    ) -> Self {
         Self {
             group_id,
             config: None,
@@ -163,6 +167,7 @@ impl CoreGroupBuilder {
             own_leaf_extensions: Extensions::empty(),
             lifetime: None,
             crypto_config,
+            credential_with_key,
         }
     }
     /// Set the [`CoreGroupConfig`] of the [`CoreGroup`].
@@ -203,8 +208,8 @@ impl CoreGroupBuilder {
     /// [`OpenMlsCryptoProvider`].
     pub(crate) fn build<KeyStore: OpenMlsKeyStore>(
         self,
-        credential_bundle: &CredentialBundle,
         backend: &impl OpenMlsCryptoProvider<KeyStoreProvider = KeyStore>,
+        signer: &impl Signer,
     ) -> Result<CoreGroup, CoreGroupBuildError<KeyStore::Error>> {
         let ciphersuite = self.crypto_config.ciphersuite;
         let config = self.config.unwrap_or_default();
@@ -218,11 +223,12 @@ impl CoreGroupBuilder {
         trace!(" >>> with {:?}, {:?}", ciphersuite, config);
         let (tree, commit_secret, leaf_keypair) = TreeSync::new(
             backend,
+            signer,
             CryptoConfig {
                 ciphersuite,
                 version,
             },
-            credential_bundle,
+            self.credential_with_key,
             self.lifetime.unwrap_or_default(),
             Capabilities::new(
                 Some(&[version]),     // TODO: Allow more versions
@@ -311,8 +317,12 @@ impl CoreGroupBuilder {
 /// Public [`CoreGroup`] functions.
 impl CoreGroup {
     /// Get a builder for [`CoreGroup`].
-    pub(crate) fn builder(group_id: GroupId, crypto_config: CryptoConfig) -> CoreGroupBuilder {
-        CoreGroupBuilder::new(group_id, crypto_config)
+    pub(crate) fn builder(
+        group_id: GroupId,
+        crypto_config: CryptoConfig,
+        credential_with_key: CredentialWithKey,
+    ) -> CoreGroupBuilder {
+        CoreGroupBuilder::new(group_id, crypto_config, credential_with_key)
     }
 
     // === Create handshake messages ===
@@ -325,9 +335,8 @@ impl CoreGroup {
     pub(crate) fn create_add_proposal(
         &self,
         framing_parameters: FramingParameters,
-        credential_bundle: &CredentialBundle,
         joiner_key_package: KeyPackage,
-        backend: &impl OpenMlsCryptoProvider,
+        signer: &impl Signer,
     ) -> Result<AuthenticatedContent, CreateAddProposalError> {
         joiner_key_package
             .leaf_node()
@@ -340,9 +349,8 @@ impl CoreGroup {
             framing_parameters,
             self.own_leaf_index(),
             proposal,
-            credential_bundle,
             self.context(),
-            backend,
+            signer,
         )
         .map_err(|e| e.into())
     }
@@ -354,11 +362,10 @@ impl CoreGroup {
     pub(crate) fn create_update_proposal(
         &self,
         framing_parameters: FramingParameters,
-        credential_bundle: &CredentialBundle,
         // XXX: There's no need to own this. The [`UpdateProposal`] should
         //      operate on a reference to make this more efficient.
         leaf_node: LeafNode,
-        backend: &impl OpenMlsCryptoProvider,
+        signer: &impl Signer,
     ) -> Result<AuthenticatedContent, LibraryError> {
         let update_proposal = UpdateProposal { leaf_node };
         let proposal = Proposal::Update(update_proposal);
@@ -366,9 +373,8 @@ impl CoreGroup {
             framing_parameters,
             self.own_leaf_index(),
             proposal,
-            credential_bundle,
             self.context(),
-            backend,
+            signer,
         )
     }
 
@@ -379,9 +385,8 @@ impl CoreGroup {
     pub(crate) fn create_remove_proposal(
         &self,
         framing_parameters: FramingParameters,
-        credential_bundle: &CredentialBundle,
         removed: LeafNodeIndex,
-        backend: &impl OpenMlsCryptoProvider,
+        signer: &impl Signer,
     ) -> Result<AuthenticatedContent, ValidationError> {
         if !self.treesync().is_leaf_in_tree(removed) {
             return Err(ValidationError::UnknownMember);
@@ -392,9 +397,8 @@ impl CoreGroup {
             framing_parameters,
             self.own_leaf_index(),
             proposal,
-            credential_bundle,
             self.context(),
-            backend,
+            signer,
         )
         .map_err(ValidationError::LibraryError)
     }
@@ -408,9 +412,8 @@ impl CoreGroup {
     pub(crate) fn create_presharedkey_proposal(
         &self,
         framing_parameters: FramingParameters,
-        credential_bundle: &CredentialBundle,
         psk: PreSharedKeyId,
-        backend: &impl OpenMlsCryptoProvider,
+        signer: &impl Signer,
     ) -> Result<AuthenticatedContent, LibraryError> {
         let presharedkey_proposal = PreSharedKeyProposal::new(psk);
         let proposal = Proposal::PreSharedKey(presharedkey_proposal);
@@ -418,9 +421,8 @@ impl CoreGroup {
             framing_parameters,
             self.own_leaf_index(),
             proposal,
-            credential_bundle,
             self.context(),
-            backend,
+            signer,
         )
     }
 
@@ -429,9 +431,8 @@ impl CoreGroup {
     pub(crate) fn create_group_context_ext_proposal(
         &self,
         framing_parameters: FramingParameters,
-        credential_bundle: &CredentialBundle,
         extensions: Extensions,
-        backend: &impl OpenMlsCryptoProvider,
+        signer: &impl Signer,
     ) -> Result<AuthenticatedContent, CreateGroupContextExtProposalError> {
         // Ensure that the group supports all the extensions that are wanted.
 
@@ -455,9 +456,8 @@ impl CoreGroup {
             framing_parameters,
             self.own_leaf_index(),
             proposal,
-            credential_bundle,
             self.context(),
-            backend,
+            signer,
         )
         .map_err(|e| e.into())
     }
@@ -467,17 +467,16 @@ impl CoreGroup {
         &mut self,
         aad: &[u8],
         msg: &[u8],
-        credential_bundle: &CredentialBundle,
         padding_size: usize,
         backend: &impl OpenMlsCryptoProvider,
+        signer: &impl Signer,
     ) -> Result<PrivateMessage, MessageEncryptionError> {
         let public_message = AuthenticatedContent::new_application(
             self.own_leaf_index(),
             aad,
             msg,
-            credential_bundle,
             self.context(),
-            backend,
+            signer,
         )?;
         self.encrypt(public_message, padding_size, backend)
     }
@@ -500,7 +499,7 @@ impl CoreGroup {
     }
 
     /// Decrypt an PrivateMessage into an PublicMessage
-    #[cfg(any(feature = "test-utils", test))]
+    #[cfg(test)]
     pub(crate) fn decrypt(
         &mut self,
         private_message: &PrivateMessage,
@@ -555,7 +554,7 @@ impl CoreGroup {
     pub(crate) fn export_group_info(
         &self,
         backend: &impl OpenMlsCryptoProvider,
-        credential_bundle: &CredentialBundle,
+        signer: &impl Signer,
         with_ratchet_tree: bool,
     ) -> Result<GroupInfo, LibraryError> {
         let extensions = {
@@ -597,7 +596,7 @@ impl CoreGroup {
 
         // Sign to-be-signed group info.
         group_info_tbs
-            .sign(backend, credential_bundle.signature_private_key())
+            .sign(signer)
             .map_err(|_| LibraryError::custom("Signing failed"))
     }
 
@@ -795,21 +794,15 @@ impl CoreGroup {
         )
     }
 
-    #[cfg(any(feature = "test-utils", test))]
+    #[cfg(test)]
     pub(crate) fn message_secrets_test_mut(&mut self) -> &mut MessageSecrets {
         self.message_secrets_store.message_secrets_mut()
     }
 
-    #[cfg(test)]
     pub(crate) fn own_leaf_node(&self) -> Result<&OpenMlsLeafNode, LibraryError> {
         self.treesync()
             .leaf(self.own_leaf_index())
             .ok_or_else(|| LibraryError::custom("Tree has no own leaf."))
-    }
-
-    #[cfg(any(feature = "test-utils", test))]
-    pub(crate) fn context_mut(&mut self) -> &mut GroupContext {
-        self.public_group.context_mut()
     }
 
     #[cfg(any(feature = "test-utils", test))]

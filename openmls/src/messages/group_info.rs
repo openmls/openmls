@@ -18,10 +18,9 @@ const SIGNATURE_GROUP_INFO_LABEL: &str = "GroupInfoTBS";
 
 /// A type that represents a group info of which the signature has not been verified.
 /// It implements the [`Verifiable`] trait and can be turned into a group info by calling
-/// `verify(...)` with the [`Credential`](crate::credentials::Credential) corresponding to the
-/// [`CredentialBundle`](crate::credentials::CredentialBundle) of the signer. When receiving a
-/// serialized group info, it can only be deserialized into a [`VerifiableGroupInfo`], which can
-/// then be turned into a group info as described above.
+/// `verify(...)` with the signature key of the [`Credential`](crate::credentials::Credential).
+/// When receiving a serialized group info, it can only be deserialized into a
+/// [`VerifiableGroupInfo`], which can then be turned into a group info as described above.
 #[derive(Debug, PartialEq, Clone, TlsDeserialize, TlsSize)]
 #[cfg_attr(any(test, feature = "test-utils"), derive(TlsSerialize))]
 pub struct VerifiableGroupInfo {

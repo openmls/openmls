@@ -1,3 +1,4 @@
+use openmls_basic_credential::SignatureKeyPair;
 use openmls_rust_crypto::OpenMlsRustCrypto;
 use openmls_traits::{
     crypto::OpenMlsCrypto, key_store::OpenMlsKeyStore, types::HpkeCiphertext, OpenMlsCryptoProvider,
@@ -9,7 +10,7 @@ use crate::{
     ciphersuite::{signable::Signable, AeadNonce},
     credentials::*,
     framing::*,
-    group::{errors::*, *},
+    group::{config::CryptoConfig, errors::*, *},
     key_packages::*,
     messages::{group_info::GroupInfoTBS, *},
     schedule::psk::*,
@@ -18,24 +19,42 @@ use crate::{
     versions::ProtocolVersion,
 };
 
-#[apply(ciphersuites_and_backends)]
-fn test_core_group_persistence(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
-    // Define credential bundles
-    let alice_credential_bundle = CredentialBundle::new(
-        "Alice".into(),
+pub(crate) fn setup_alice_group(
+    ciphersuite: Ciphersuite,
+    backend: &impl OpenMlsCryptoProvider,
+) -> (
+    CoreGroup,
+    CredentialWithKey,
+    SignatureKeyPair,
+    OpenMlsSignaturePublicKey,
+) {
+    // Create credentials and keys
+    let (alice_credential_with_key, alice_signature_keys) = test_utils::new_credential(
+        backend,
+        b"Alice",
         CredentialType::Basic,
         ciphersuite.signature_algorithm(),
-        backend,
+    );
+    let pk = OpenMlsSignaturePublicKey::new(
+        alice_signature_keys.to_public_vec().into(),
+        ciphersuite.signature_algorithm(),
     )
-    .expect("An unexpected error occurred.");
+    .unwrap();
 
     // Alice creates a group
-    let alice_group = CoreGroup::builder(
+    let group = CoreGroup::builder(
         GroupId::random(backend),
         config::CryptoConfig::with_default_version(ciphersuite),
+        alice_credential_with_key.clone(),
     )
-    .build(&alice_credential_bundle, backend)
+    .build(backend, &alice_signature_keys)
     .expect("Error creating group.");
+    (group, alice_credential_with_key, alice_signature_keys, pk)
+}
+
+#[apply(ciphersuites_and_backends)]
+fn test_core_group_persistence(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
+    let (alice_group, _, _, _) = setup_alice_group(ciphersuite, backend);
 
     let mut file_out = tempfile::NamedTempFile::new().expect("Could not create file");
     alice_group
@@ -76,15 +95,20 @@ fn test_failed_groupinfo_decryption(
         mac_value: vec![1, 2, 3, 4, 5, 6, 7, 8, 9].into(),
     });
 
-    let alice_credential_bundle = CredentialBundle::new(
-        "Alice".into(),
+    // Create credentials and keys
+    let (alice_credential_with_key, alice_signature_keys) = test_utils::new_credential(
+        backend,
+        b"Alice",
         CredentialType::Basic,
         ciphersuite.signature_algorithm(),
-        backend,
-    )
-    .expect("An unexpected error occurred.");
+    );
 
-    let key_package_bundle = KeyPackageBundle::new(backend, ciphersuite, &alice_credential_bundle);
+    let key_package_bundle = KeyPackageBundle::new(
+        backend,
+        &alice_signature_keys,
+        ciphersuite,
+        alice_credential_with_key,
+    );
 
     let group_info_tbs = {
         let group_context = GroupContext::new(
@@ -127,7 +151,7 @@ fn test_failed_groupinfo_decryption(
     );
 
     let group_info = group_info_tbs
-        .sign(backend, alice_credential_bundle.signature_private_key())
+        .sign(&alice_signature_keys)
         .expect("Error signing group info");
 
     // Mess with the ciphertext by flipping the last byte.
@@ -166,98 +190,32 @@ fn test_failed_groupinfo_decryption(
 /// is broken.
 #[apply(ciphersuites_and_backends)]
 fn test_update_path(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
-    // Basic group setup.
-    let group_aad = b"Alice's test group";
-    let framing_parameters = FramingParameters::new(group_aad, WireFormat::PublicMessage);
-
-    // Define credential bundles
-    let alice_credential_bundle = CredentialBundle::new(
-        "Alice".into(),
-        CredentialType::Basic,
-        ciphersuite.signature_algorithm(),
-        backend,
-    )
-    .expect("An unexpected error occurred.");
-    let bob_credential_bundle = CredentialBundle::new(
-        "Bob".into(),
-        CredentialType::Basic,
-        ciphersuite.signature_algorithm(),
-        backend,
-    )
-    .expect("An unexpected error occurred.");
-
-    // Generate KeyPackages
-    let bob_key_package_bundle =
-        KeyPackageBundle::new(backend, ciphersuite, &bob_credential_bundle);
-    let bob_key_package = bob_key_package_bundle.key_package();
-
-    // === Alice creates a group ===
-    let mut alice_group = CoreGroup::builder(
-        GroupId::random(backend),
-        config::CryptoConfig::with_default_version(ciphersuite),
-    )
-    .build(&alice_credential_bundle, backend)
-    .expect("Error creating group.");
-
-    // === Alice adds Bob ===
-    let bob_add_proposal = alice_group
-        .create_add_proposal(
-            framing_parameters,
-            &alice_credential_bundle,
-            bob_key_package.clone(),
-            backend,
-        )
-        .expect("Could not create proposal.");
-    let proposal_store = ProposalStore::from_queued_proposal(
-        QueuedProposal::from_authenticated_content(ciphersuite, backend, bob_add_proposal)
-            .expect("Could not create QueuedProposal."),
-    );
-    let params = CreateCommitParams::builder()
-        .framing_parameters(framing_parameters)
-        .credential_bundle(&alice_credential_bundle)
-        .proposal_store(&proposal_store)
-        .force_self_update(false)
-        .build();
-    let create_commit_result = alice_group
-        .create_commit(params, backend)
-        .expect("Error creating commit");
-
-    let commit = match create_commit_result.commit.content() {
-        FramedContentBody::Commit(commit) => commit,
-        _ => panic!("Wrong content type"),
-    };
-    assert!(!commit.has_path());
-    // Check that the function returned a Welcome message
-    assert!(create_commit_result.welcome_option.is_some());
-
-    alice_group
-        .merge_commit(backend, create_commit_result.staged_commit)
-        .expect("error merging pending commit");
-    let ratchet_tree = alice_group.treesync().export_nodes();
-
-    let group_bob = CoreGroup::new_from_welcome(
-        create_commit_result
-            .welcome_option
-            .expect("An unexpected error occurred."),
-        Some(ratchet_tree),
-        bob_key_package_bundle,
-        backend,
-    )
-    .expect("An unexpected error occurred.");
+    // === Alice creates a group with her and Bob ===
+    let (
+        framing_parameters,
+        group_alice,
+        _alice_signature_keys,
+        group_bob,
+        bob_signature_keys,
+        _bob_credential_with_key,
+    ) = test_framing::setup_alice_bob_group(ciphersuite, backend);
 
     // === Bob updates and commits ===
-    let bob_update_key_package_bundle =
-        KeyPackageBundle::new(backend, ciphersuite, &bob_credential_bundle);
+    let bob_old_leaf = group_bob.own_leaf_node().unwrap();
+    let bob_update_leaf_node = bob_old_leaf
+        .leaf_node()
+        .updated(
+            CryptoConfig::with_default_version(ciphersuite),
+            backend,
+            &bob_signature_keys,
+        )
+        .unwrap();
 
     let update_proposal_bob = group_bob
         .create_update_proposal(
             framing_parameters,
-            &bob_credential_bundle,
-            bob_update_key_package_bundle
-                .key_package()
-                .leaf_node()
-                .clone(),
-            backend,
+            bob_update_leaf_node,
+            &bob_signature_keys,
         )
         .expect("Could not create proposal.");
     let proposal_store = ProposalStore::from_queued_proposal(
@@ -266,12 +224,11 @@ fn test_update_path(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvid
     );
     let params = CreateCommitParams::builder()
         .framing_parameters(framing_parameters)
-        .credential_bundle(&bob_credential_bundle)
         .proposal_store(&proposal_store)
         .force_self_update(false)
         .build();
     let create_commit_result = group_bob
-        .create_commit(params, backend)
+        .create_commit(params, backend, &bob_signature_keys)
         .expect("An unexpected error occurred.");
 
     // Now we break Alice's HPKE ciphertext in Bob's commit by breaking
@@ -300,9 +257,8 @@ fn test_update_path(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvid
         framing_parameters,
         create_commit_result.commit.sender().clone(),
         broken_commit,
-        &bob_credential_bundle,
         group_bob.context(),
-        backend,
+        &bob_signature_keys,
     )
     .expect("Could not create plaintext.");
 
@@ -320,11 +276,46 @@ fn test_update_path(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvid
     );
 
     let staged_commit_res =
-        alice_group.stage_commit(&broken_plaintext, &proposal_store, &[], backend);
+        group_alice.stage_commit(&broken_plaintext, &proposal_store, &[], backend);
     assert_eq!(
         staged_commit_res.expect_err("Successful processing of a broken commit."),
         StageCommitError::UpdatePathError(ApplyUpdatePathError::UnableToDecrypt)
     );
+}
+
+fn setup_alice_bob(
+    ciphersuite: Ciphersuite,
+    backend: &impl OpenMlsCryptoProvider,
+) -> (
+    CredentialWithKey,
+    SignatureKeyPair,
+    KeyPackageBundle,
+    SignatureKeyPair,
+) {
+    // Create credentials and keys
+    let (alice_credential_with_key, alice_signer) = test_utils::new_credential(
+        backend,
+        b"Alice",
+        CredentialType::Basic,
+        ciphersuite.signature_algorithm(),
+    );
+    let (bob_credential_with_key, bob_signer) = test_utils::new_credential(
+        backend,
+        b"Bob",
+        CredentialType::Basic,
+        ciphersuite.signature_algorithm(),
+    );
+
+    // Generate Bob's KeyPackage
+    let bob_key_package_bundle =
+        KeyPackageBundle::new(backend, &bob_signer, ciphersuite, bob_credential_with_key);
+
+    (
+        alice_credential_with_key,
+        alice_signer,
+        bob_key_package_bundle,
+        bob_signer,
+    )
 }
 
 // Test several scenarios when PSKs are used in a group
@@ -334,26 +325,12 @@ fn test_psks(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
     let group_aad = b"Alice's test group";
     let framing_parameters = FramingParameters::new(group_aad, WireFormat::PublicMessage);
 
-    // Define credential bundles
-    let alice_credential_bundle = CredentialBundle::new(
-        "Alice".into(),
-        CredentialType::Basic,
-        ciphersuite.signature_algorithm(),
-        backend,
-    )
-    .expect("An unexpected error occurred.");
-    let bob_credential_bundle = CredentialBundle::new(
-        "Bob".into(),
-        CredentialType::Basic,
-        ciphersuite.signature_algorithm(),
-        backend,
-    )
-    .expect("An unexpected error occurred.");
-
-    // Generate KeyPackages
-    let bob_key_package_bundle =
-        KeyPackageBundle::new(backend, ciphersuite, &bob_credential_bundle);
-    let bob_key_package = bob_key_package_bundle.key_package();
+    let (
+        alice_credential_with_key,
+        alice_signature_keys,
+        bob_key_package_bundle,
+        bob_signature_keys,
+    ) = setup_alice_bob(ciphersuite, backend);
 
     // === Alice creates a group with a PSK ===
     let psk_id = vec![1u8, 2, 3];
@@ -373,33 +350,28 @@ fn test_psks(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
                 .expect("Error serializing signature key."),
             &psk_bundle,
         )
-        .expect("An unexpected error occured.");
+        .expect("An unexpected error occurred.");
     let mut alice_group = CoreGroup::builder(
         GroupId::random(backend),
         config::CryptoConfig::with_default_version(ciphersuite),
+        alice_credential_with_key,
     )
     .with_psk(vec![preshared_key_id.clone()])
-    .build(&alice_credential_bundle, backend)
+    .build(backend, &alice_signature_keys)
     .expect("Error creating group.");
 
     // === Alice creates a PSK proposal ===
     log::info!(" >>> Creating psk proposal ...");
     let psk_proposal = alice_group
-        .create_presharedkey_proposal(
-            framing_parameters,
-            &alice_credential_bundle,
-            preshared_key_id,
-            backend,
-        )
+        .create_presharedkey_proposal(framing_parameters, preshared_key_id, &alice_signature_keys)
         .expect("Could not create PSK proposal");
 
     // === Alice adds Bob ===
     let bob_add_proposal = alice_group
         .create_add_proposal(
             framing_parameters,
-            &alice_credential_bundle,
-            bob_key_package.clone(),
-            backend,
+            bob_key_package_bundle.key_package().clone(),
+            &alice_signature_keys,
         )
         .expect("Could not create proposal");
 
@@ -414,12 +386,11 @@ fn test_psks(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
     log::info!(" >>> Creating commit ...");
     let params = CreateCommitParams::builder()
         .framing_parameters(framing_parameters)
-        .credential_bundle(&alice_credential_bundle)
         .proposal_store(&proposal_store)
         .force_self_update(false)
         .build();
     let create_commit_result = alice_group
-        .create_commit(params, backend)
+        .create_commit(params, backend, &alice_signature_keys)
         .expect("Error creating commit");
 
     log::info!(" >>> Staging & merging commit ...");
@@ -440,18 +411,21 @@ fn test_psks(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
     .expect("Could not create new group from Welcome");
 
     // === Bob updates and commits ===
-    let bob_update_key_package_bundle =
-        KeyPackageBundle::new(backend, ciphersuite, &bob_credential_bundle);
+    let bob_old_leaf = group_bob.own_leaf_node().unwrap();
+    let bob_update_leaf_node = bob_old_leaf
+        .leaf_node()
+        .updated(
+            CryptoConfig::with_default_version(ciphersuite),
+            backend,
+            &bob_signature_keys,
+        )
+        .unwrap();
 
     let update_proposal_bob = group_bob
         .create_update_proposal(
             framing_parameters,
-            &bob_credential_bundle,
-            bob_update_key_package_bundle
-                .key_package()
-                .leaf_node()
-                .clone(),
-            backend,
+            bob_update_leaf_node,
+            &bob_signature_keys,
         )
         .expect("Could not create proposal.");
     let proposal_store = ProposalStore::from_queued_proposal(
@@ -460,12 +434,11 @@ fn test_psks(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
     );
     let params = CreateCommitParams::builder()
         .framing_parameters(framing_parameters)
-        .credential_bundle(&bob_credential_bundle)
         .proposal_store(&proposal_store)
         .force_self_update(false)
         .build();
     let _create_commit_result = group_bob
-        .create_commit(params, backend)
+        .create_commit(params, backend, &bob_signature_keys)
         .expect("An unexpected error occurred.");
 }
 
@@ -476,42 +449,24 @@ fn test_staged_commit_creation(ciphersuite: Ciphersuite, backend: &impl OpenMlsC
     let group_aad = b"Alice's test group";
     let framing_parameters = FramingParameters::new(group_aad, WireFormat::PublicMessage);
 
-    // Define credential bundles
-    let alice_credential_bundle = CredentialBundle::new(
-        "Alice".into(),
-        CredentialType::Basic,
-        ciphersuite.signature_algorithm(),
-        backend,
-    )
-    .expect("An unexpected error occurred.");
-    let bob_credential_bundle = CredentialBundle::new(
-        "Bob".into(),
-        CredentialType::Basic,
-        ciphersuite.signature_algorithm(),
-        backend,
-    )
-    .expect("An unexpected error occurred.");
-
-    // Generate KeyPackages
-    let bob_key_package_bundle =
-        KeyPackageBundle::new(backend, ciphersuite, &bob_credential_bundle);
-    let bob_key_package = bob_key_package_bundle.key_package();
+    let (alice_credential_with_key, alice_signature_keys, bob_key_package_bundle, _) =
+        setup_alice_bob(ciphersuite, backend);
 
     // === Alice creates a group ===
     let mut alice_group = CoreGroup::builder(
         GroupId::random(backend),
         config::CryptoConfig::with_default_version(ciphersuite),
+        alice_credential_with_key,
     )
-    .build(&alice_credential_bundle, backend)
+    .build(backend, &alice_signature_keys)
     .expect("Error creating group.");
 
     // === Alice adds Bob ===
     let bob_add_proposal = alice_group
         .create_add_proposal(
             framing_parameters,
-            &alice_credential_bundle,
-            bob_key_package.clone(),
-            backend,
+            bob_key_package_bundle.key_package().clone(),
+            &alice_signature_keys,
         )
         .expect("Could not create proposal.");
     let proposal_store = ProposalStore::from_queued_proposal(
@@ -520,12 +475,11 @@ fn test_staged_commit_creation(ciphersuite: Ciphersuite, backend: &impl OpenMlsC
     );
     let params = CreateCommitParams::builder()
         .framing_parameters(framing_parameters)
-        .credential_bundle(&alice_credential_bundle)
         .proposal_store(&proposal_store)
         .force_self_update(false)
         .build();
     let create_commit_result = alice_group
-        .create_commit(params, backend)
+        .create_commit(params, backend, &alice_signature_keys)
         .expect("Error creating commit");
 
     // === Alice merges her own commit ===
@@ -562,33 +516,32 @@ fn test_own_commit_processing(ciphersuite: Ciphersuite, backend: &impl OpenMlsCr
     let group_aad = b"Alice's test group";
     let framing_parameters = FramingParameters::new(group_aad, WireFormat::PublicMessage);
 
-    // Define credential bundles
-    let alice_credential_bundle = CredentialBundle::new(
-        "Alice".into(),
+    // Create credentials and keys
+    let (alice_credential_with_key, alice_signature_keys) = test_utils::new_credential(
+        backend,
+        b"Alice",
         CredentialType::Basic,
         ciphersuite.signature_algorithm(),
-        backend,
-    )
-    .expect("An unexpected error occurred.");
+    );
 
     // === Alice creates a group ===
     let alice_group = CoreGroup::builder(
         GroupId::random(backend),
         config::CryptoConfig::with_default_version(ciphersuite),
+        alice_credential_with_key,
     )
-    .build(&alice_credential_bundle, backend)
+    .build(backend, &alice_signature_keys)
     .expect("Error creating group.");
 
     let proposal_store = ProposalStore::default();
     // Alice creates a commit
     let params = CreateCommitParams::builder()
         .framing_parameters(framing_parameters)
-        .credential_bundle(&alice_credential_bundle)
         .proposal_store(&proposal_store)
         .force_self_update(true)
         .build();
     let create_commit_result = alice_group
-        .create_commit(params, backend)
+        .create_commit(params, backend, &alice_signature_keys)
         .expect("error creating commit");
 
     // Alice attempts to process her own commit
@@ -598,20 +551,36 @@ fn test_own_commit_processing(ciphersuite: Ciphersuite, backend: &impl OpenMlsCr
     assert_eq!(error, StageCommitError::OwnCommit);
 }
 
-fn setup_client(
+pub(crate) fn setup_client(
     id: &str,
     ciphersuite: Ciphersuite,
     backend: &impl OpenMlsCryptoProvider,
-) -> (CredentialBundle, KeyPackageBundle) {
-    let credential_bundle = CredentialBundle::new(
-        id.into(),
+) -> (
+    CredentialWithKey,
+    KeyPackageBundle,
+    SignatureKeyPair,
+    OpenMlsSignaturePublicKey,
+) {
+    let (credential_with_key, signature_keys) = test_utils::new_credential(
+        backend,
+        id.as_bytes(),
         CredentialType::Basic,
         ciphersuite.signature_algorithm(),
-        backend,
+    );
+    let pk = OpenMlsSignaturePublicKey::new(
+        signature_keys.to_public_vec().into(),
+        ciphersuite.signature_algorithm(),
     )
-    .expect("An unexpected error occurred.");
-    let key_package_bundle = KeyPackageBundle::new(backend, ciphersuite, &credential_bundle);
-    (credential_bundle, key_package_bundle)
+    .unwrap();
+
+    // Generate the KeyPackage
+    let key_package_bundle = KeyPackageBundle::new(
+        backend,
+        &signature_keys,
+        ciphersuite,
+        credential_with_key.clone(),
+    );
+    (credential_with_key, key_package_bundle, signature_keys, pk)
 }
 
 #[apply(ciphersuites_and_backends)]
@@ -629,24 +598,25 @@ fn test_proposal_application_after_self_was_removed(
     let group_aad = b"Alice's test group";
     let framing_parameters = FramingParameters::new(group_aad, WireFormat::PublicMessage);
 
-    let (alice_credential_bundle, _) = setup_client("Alice", ciphersuite, backend);
-    let (_, bob_kpb) = setup_client("Bob", ciphersuite, backend);
-    let (_, charlie_kpb) = setup_client("Charlie", ciphersuite, backend);
+    let (alice_credential_with_key, _, alice_signature_keys, _pk) =
+        setup_client("Alice", ciphersuite, backend);
+    let (_, bob_kpb, _, _) = setup_client("Bob", ciphersuite, backend);
+    let (_, charlie_kpb, _, _) = setup_client("Charlie", ciphersuite, backend);
 
     let mut alice_group = CoreGroup::builder(
         GroupId::random(backend),
         config::CryptoConfig::with_default_version(ciphersuite),
+        alice_credential_with_key,
     )
-    .build(&alice_credential_bundle, backend)
+    .build(backend, &alice_signature_keys)
     .expect("Error creating CoreGroup.");
 
     // Adding Bob
     let bob_add_proposal = alice_group
         .create_add_proposal(
             framing_parameters,
-            &alice_credential_bundle,
             bob_kpb.key_package().clone(),
-            backend,
+            &alice_signature_keys,
         )
         .expect("Could not create proposal");
 
@@ -657,12 +627,11 @@ fn test_proposal_application_after_self_was_removed(
 
     let params = CreateCommitParams::builder()
         .framing_parameters(framing_parameters)
-        .credential_bundle(&alice_credential_bundle)
         .proposal_store(&bob_add_proposal_store)
         .force_self_update(false)
         .build();
     let add_commit_result = alice_group
-        .create_commit(params, backend)
+        .create_commit(params, backend, &alice_signature_keys)
         .expect("Error creating commit");
 
     alice_group
@@ -687,26 +656,22 @@ fn test_proposal_application_after_self_was_removed(
         .full_leave_members()
         .find(
             |Member {
-                 index: _, identity, ..
-             }| identity == b"Bob",
+                 index: _,
+                 credential,
+                 ..
+             }| credential.identity() == b"Bob",
         )
         .expect("Couldn't find Bob in tree.")
         .index;
     let bob_remove_proposal = alice_group
-        .create_remove_proposal(
-            framing_parameters,
-            &alice_credential_bundle,
-            bob_index,
-            backend,
-        )
+        .create_remove_proposal(framing_parameters, bob_index, &alice_signature_keys)
         .expect("Could not create proposal");
 
     let charlie_add_proposal = alice_group
         .create_add_proposal(
             framing_parameters,
-            &alice_credential_bundle,
             charlie_kpb.key_package().clone(),
-            backend,
+            &alice_signature_keys,
         )
         .expect("Could not create proposal");
 
@@ -722,11 +687,10 @@ fn test_proposal_application_after_self_was_removed(
 
     let params = CreateCommitParams::builder()
         .framing_parameters(framing_parameters)
-        .credential_bundle(&alice_credential_bundle)
         .proposal_store(&remove_add_proposal_store)
         .build();
     let remove_add_commit_result = alice_group
-        .create_commit(params, backend)
+        .create_commit(params, backend, &alice_signature_keys)
         .expect("Error creating commit");
 
     let staged_commit = bob_group
@@ -773,16 +737,25 @@ fn test_proposal_application_after_self_was_removed(
         // Note that we can't compare encryption keys for Bob because they
         // didn't get updated.
         assert_eq!(alice_member.index, bob_member.index);
-        assert_eq!(alice_member.identity, bob_member.identity);
+        assert_eq!(
+            alice_member.credential.identity(),
+            bob_member.credential.identity()
+        );
         assert_eq!(alice_member.signature_key, bob_member.signature_key);
         assert_eq!(charlie_member.index, bob_member.index);
-        assert_eq!(charlie_member.identity, bob_member.identity);
+        assert_eq!(
+            charlie_member.credential.identity(),
+            bob_member.credential.identity()
+        );
         assert_eq!(charlie_member.signature_key, bob_member.signature_key);
         assert_eq!(charlie_member.encryption_key, alice_member.encryption_key);
     }
 
     let mut bob_members = bob_group.treesync().full_leave_members();
 
-    assert_eq!(bob_members.next().unwrap().identity, b"Alice");
-    assert_eq!(bob_members.next().unwrap().identity, b"Charlie");
+    assert_eq!(bob_members.next().unwrap().credential.identity(), b"Alice");
+    assert_eq!(
+        bob_members.next().unwrap().credential.identity(),
+        b"Charlie"
+    );
 }

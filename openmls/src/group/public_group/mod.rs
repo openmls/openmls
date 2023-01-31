@@ -74,17 +74,15 @@ impl PublicGroup {
         let treesync = TreeSync::from_nodes(backend, ciphersuite, nodes)?;
 
         let group_info: GroupInfo = {
-            let signer_credential = treesync
+            let signer_signature_key = treesync
                 .leaf(verifiable_group_info.signer())
                 .ok_or(CreationFromExternalError::UnknownSender)?
-                .credential();
+                .signature_key()
+                .clone()
+                .into_signature_public_key_enriched(ciphersuite.signature_algorithm());
 
             verifiable_group_info
-                .verify(
-                    backend,
-                    signer_credential.signature_key(),
-                    ciphersuite.signature_algorithm(),
-                )
+                .verify(backend.crypto(), &signer_signature_key)
                 .map_err(|_| CreationFromExternalError::InvalidGroupInfoSignature)?
         };
 
@@ -228,13 +226,5 @@ impl PublicGroup {
 
     pub fn confirmation_tag(&self) -> &ConfirmationTag {
         &self.confirmation_tag
-    }
-}
-
-// Test and test-utils functions
-impl PublicGroup {
-    #[cfg(any(feature = "test-utils", test))]
-    pub(crate) fn context_mut(&mut self) -> &mut GroupContext {
-        &mut self.group_context
     }
 }

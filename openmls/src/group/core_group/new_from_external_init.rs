@@ -24,7 +24,8 @@ impl CoreGroup {
     /// containing the commit.
     pub(crate) fn join_by_external_commit(
         backend: &impl OpenMlsCryptoProvider,
-        params: CreateCommitParams,
+        signer: &impl Signer,
+        mut params: CreateCommitParams,
         tree_option: Option<&[Option<Node>]>,
         verifiable_group_info: VerifiableGroupInfo,
     ) -> Result<ExternalCommitResult, ExternalCommitError> {
@@ -80,11 +81,16 @@ impl CoreGroup {
 
         // If there is a group member in the group with the same identity as us,
         // commit a remove proposal.
+        let params_credential_with_key = params
+            .take_credential_with_key()
+            .ok_or(ExternalCommitError::MissingCredential)?;
         for Member {
-            index, identity, ..
+            index,
+            signature_key,
+            ..
         } in public_group.treesync().full_leave_members()
         {
-            if identity == params.credential_bundle().credential().identity() {
+            if signature_key == params_credential_with_key.signature_key.as_slice() {
                 let remove_proposal = Proposal::Remove(RemoveProposal { removed: index });
                 inline_proposals.push(remove_proposal);
                 break;
@@ -103,14 +109,14 @@ impl CoreGroup {
 
         let params = CreateCommitParams::builder()
             .framing_parameters(*params.framing_parameters())
-            .credential_bundle(params.credential_bundle())
             .proposal_store(params.proposal_store())
             .inline_proposals(inline_proposals)
             .commit_type(CommitType::External)
+            .credential_with_key(params_credential_with_key)
             .build();
 
         // Immediately create the commit to add ourselves to the group.
-        let create_commit_result = group.create_commit(params, backend);
+        let create_commit_result = group.create_commit(params, backend, signer);
         debug_assert!(
             create_commit_result.is_ok(),
             "Error creating commit {:?}",

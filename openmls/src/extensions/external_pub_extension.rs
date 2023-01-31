@@ -31,14 +31,11 @@ impl ExternalPubExtension {
 #[cfg(test)]
 mod test {
     use openmls_rust_crypto::OpenMlsRustCrypto;
-    use openmls_traits::types::{Ciphersuite, SignatureScheme};
+    use openmls_traits::{crypto::OpenMlsCrypto, types::Ciphersuite, OpenMlsCryptoProvider};
     use tls_codec::{Deserialize, Serialize};
 
     use super::*;
-    use crate::{
-        credentials::{CredentialBundle, CredentialType},
-        key_packages::KeyPackageBundle,
-    };
+    use crate::{prelude_test::Secret, versions::ProtocolVersion};
 
     #[test]
     fn test_serialize_deserialize() {
@@ -49,24 +46,22 @@ mod test {
 
             for _ in 0..8 {
                 let hpke_public_key = {
-                    let credential_bundle = CredentialBundle::new(
-                        b"Alice".to_vec(),
-                        CredentialType::Basic,
-                        SignatureScheme::ED25519,
-                        &backend,
-                    )
-                    .expect("Creation of credential bundle failed.");
-
-                    let kpb = KeyPackageBundle::new(
-                        &backend,
+                    let ikm = Secret::random(
                         Ciphersuite::MLS_128_DHKEMX25519_CHACHA20POLY1305_SHA256_Ed25519,
-                        &credential_bundle,
+                        &backend,
+                        ProtocolVersion::default(),
+                    )
+                    .unwrap();
+                    let init_key = backend.crypto().derive_hpke_keypair(
+                        Ciphersuite::hpke_config(
+                            &Ciphersuite::MLS_128_DHKEMX25519_CHACHA20POLY1305_SHA256_Ed25519,
+                        ),
+                        ikm.as_slice(),
                     );
-
-                    kpb.key_package().hpke_init_key().clone()
+                    init_key.public
                 };
 
-                external_pub_extensions.push(ExternalPubExtension::new(hpke_public_key));
+                external_pub_extensions.push(ExternalPubExtension::new(hpke_public_key.into()));
             }
 
             external_pub_extensions

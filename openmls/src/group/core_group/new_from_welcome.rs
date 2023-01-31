@@ -144,13 +144,7 @@ impl CoreGroup {
         // Find our own leaf in the tree.
         let own_leaf_index = public_group
             .treesync()
-            .find_leaf(
-                key_package_bundle
-                    .key_package()
-                    .leaf_node()
-                    .credential()
-                    .signature_key(),
-            )
+            .find_leaf(key_package_bundle.key_package().leaf_node().signature_key())
             .ok_or(WelcomeError::PublicTreeError(
                 PublicTreeError::MalformedTree,
             ))?;

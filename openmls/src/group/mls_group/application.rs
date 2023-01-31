@@ -1,4 +1,4 @@
-use tls_codec::Serialize;
+use openmls_traits::signatures::Signer;
 
 use super::{errors::CreateMessageError, *};
 
@@ -14,6 +14,7 @@ impl MlsGroup {
     pub fn create_message(
         &mut self,
         backend: &impl OpenMlsCryptoProvider,
+        signer: &impl Signer,
         message: &[u8],
     ) -> Result<MlsMessageOut, CreateMessageError> {
         if !self.is_active() {
@@ -27,28 +28,14 @@ impl MlsGroup {
             ));
         }
 
-        let credential = self
-            .credential()
-            // We checked we are in the right group state before
-            .map_err(|_| LibraryError::custom("Wrong group state"))?;
-        let credential_bundle: CredentialBundle = backend
-            .key_store()
-            .read(
-                &credential
-                    .signature_key()
-                    .tls_serialize_detached()
-                    .map_err(LibraryError::missing_bound_check)?,
-            )
-            .ok_or(CreateMessageError::NoMatchingCredentialBundle)?;
-
         let ciphertext = self
             .group
             .create_application_message(
                 &self.aad,
                 message,
-                &credential_bundle,
                 self.configuration().padding_size(),
                 backend,
+                signer,
             )
             // We know the application message is wellformed and we have the key material of the current epoch
             .map_err(|_| LibraryError::custom("Malformed plaintext"))?;

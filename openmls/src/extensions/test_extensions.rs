@@ -37,25 +37,27 @@ fn ratchet_tree_extension(ciphersuite: Ciphersuite, backend: &impl OpenMlsCrypto
     let group_aad = b"Alice's test group";
     let framing_parameters = FramingParameters::new(group_aad, WireFormat::PublicMessage);
 
-    // Define credential bundles
-    let alice_credential_bundle = CredentialBundle::new(
-        "Alice".into(),
+    // Create credentials and keys
+    let (alice_credential_with_key, alice_signature_keys) = test_utils::new_credential(
+        backend,
+        b"Alice",
         CredentialType::Basic,
         ciphersuite.signature_algorithm(),
+    );
+    let (bob_credential_with_key, bob_signature_keys) = test_utils::new_credential(
         backend,
-    )
-    .expect("An unexpected error occurred.");
-    let bob_credential_bundle = CredentialBundle::new(
-        "Bob".into(),
+        b"Bob",
         CredentialType::Basic,
         ciphersuite.signature_algorithm(),
-        backend,
-    )
-    .expect("An unexpected error occurred.");
+    );
 
     // Generate KeyPackages
-    let bob_key_package_bundle =
-        KeyPackageBundle::new(backend, ciphersuite, &bob_credential_bundle);
+    let bob_key_package_bundle = KeyPackageBundle::new(
+        backend,
+        &bob_signature_keys,
+        ciphersuite,
+        bob_credential_with_key.clone(),
+    );
     let bob_key_package = bob_key_package_bundle.key_package();
 
     let config = CoreGroupConfig {
@@ -66,18 +68,18 @@ fn ratchet_tree_extension(ciphersuite: Ciphersuite, backend: &impl OpenMlsCrypto
     let mut alice_group = CoreGroup::builder(
         GroupId::random(backend),
         config::CryptoConfig::with_default_version(ciphersuite),
+        alice_credential_with_key.clone(),
     )
     .with_config(config)
-    .build(&alice_credential_bundle, backend)
+    .build(backend, &alice_signature_keys)
     .expect("Error creating group.");
 
     // === Alice adds Bob ===
     let bob_add_proposal = alice_group
         .create_add_proposal(
             framing_parameters,
-            &alice_credential_bundle,
             bob_key_package.clone(),
-            backend,
+            &alice_signature_keys,
         )
         .expect("Could not create proposal.");
 
@@ -88,12 +90,11 @@ fn ratchet_tree_extension(ciphersuite: Ciphersuite, backend: &impl OpenMlsCrypto
 
     let params = CreateCommitParams::builder()
         .framing_parameters(framing_parameters)
-        .credential_bundle(&alice_credential_bundle)
         .proposal_store(&proposal_store)
         .force_self_update(false)
         .build();
     let create_commit_result = alice_group
-        .create_commit(params, backend)
+        .create_commit(params, backend, &alice_signature_keys)
         .expect("Error creating commit");
 
     alice_group
@@ -125,8 +126,12 @@ fn ratchet_tree_extension(ciphersuite: Ciphersuite, backend: &impl OpenMlsCrypto
     // === Alice creates a group without the ratchet tree extension ===
 
     // Generate KeyPackages
-    let bob_key_package_bundle =
-        KeyPackageBundle::new(backend, ciphersuite, &bob_credential_bundle);
+    let bob_key_package_bundle = KeyPackageBundle::new(
+        backend,
+        &bob_signature_keys,
+        ciphersuite,
+        bob_credential_with_key,
+    );
     let bob_key_package = bob_key_package_bundle.key_package();
 
     let config = CoreGroupConfig {
@@ -136,18 +141,18 @@ fn ratchet_tree_extension(ciphersuite: Ciphersuite, backend: &impl OpenMlsCrypto
     let mut alice_group = CoreGroup::builder(
         GroupId::random(backend),
         config::CryptoConfig::with_default_version(ciphersuite),
+        alice_credential_with_key,
     )
     .with_config(config)
-    .build(&alice_credential_bundle, backend)
+    .build(backend, &alice_signature_keys)
     .expect("Error creating group.");
 
     // === Alice adds Bob ===
     let bob_add_proposal = alice_group
         .create_add_proposal(
             framing_parameters,
-            &alice_credential_bundle,
             bob_key_package.clone(),
-            backend,
+            &alice_signature_keys,
         )
         .expect("Could not create proposal.");
 
@@ -158,12 +163,11 @@ fn ratchet_tree_extension(ciphersuite: Ciphersuite, backend: &impl OpenMlsCrypto
 
     let params = CreateCommitParams::builder()
         .framing_parameters(framing_parameters)
-        .credential_bundle(&alice_credential_bundle)
         .proposal_store(&proposal_store)
         .force_self_update(false)
         .build();
     let create_commit_result = alice_group
-        .create_commit(params, backend)
+        .create_commit(params, backend, &alice_signature_keys)
         .expect("Error creating commit");
 
     alice_group

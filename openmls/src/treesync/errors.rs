@@ -5,13 +5,18 @@
 use thiserror::Error;
 
 use super::*;
-use crate::{binary_tree::MlsBinaryTreeDiffError, error::LibraryError};
+use crate::{
+    binary_tree::MlsBinaryTreeDiffError, ciphersuite::signable::SignatureError, error::LibraryError,
+};
 
 // === Public errors ===
 
 /// Public tree error
 #[derive(Error, Debug, PartialEq, Eq, Clone)]
 pub enum PublicTreeError {
+    /// See [`LibraryError`] for more details.
+    #[error(transparent)]
+    LibraryError(#[from] LibraryError),
     /// The derived public key doesn't match the one in the tree.
     #[error("The derived public key doesn't match the one in the tree.")]
     PublicKeyMismatch,
@@ -27,6 +32,12 @@ pub enum PublicTreeError {
     /// A parent hash was invalid.
     #[error("A parent hash was invalid.")]
     InvalidParentHash,
+    /// An update failed because the provided credential has a different identity than the one in the leaf node.
+    #[error("An update failed because the provided credential has a different identity than the one in the leaf node.")]
+    IdentityMismatch,
+    /// See [`SignatureError`] for more details.
+    #[error(transparent)]
+    SignatureError(#[from] SignatureError),
 }
 
 /// Apply update path error

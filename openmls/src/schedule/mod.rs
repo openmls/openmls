@@ -391,7 +391,7 @@ impl JoinerSecret {
         self.secret.as_slice()
     }
 
-    #[cfg(any(feature = "test-utils", test))]
+    #[cfg(test)]
     pub(crate) fn random(
         ciphersuite: Ciphersuite,
         backend: &impl OpenMlsCryptoProvider,
@@ -680,7 +680,7 @@ impl EncryptionSecret {
         self.secret.as_slice()
     }
 
-    #[cfg(any(feature = "test-utils", test))]
+    #[cfg(test)]
     #[doc(hidden)]
     /// Create a new secret from a byte vector.
     pub(crate) fn from_slice(
@@ -817,6 +817,12 @@ impl ConfirmationKey {
         )?))
     }
 
+    // XXX[KAT]: #1051 Only used in KATs. Remove if unused.
+    #[cfg(test)]
+    pub(crate) fn _from_secret(secret: Secret) -> Self {
+        Self { secret }
+    }
+
     #[cfg(any(feature = "test-utils", test))]
     pub(crate) fn as_slice(&self) -> &[u8] {
         self.secret.as_slice()
@@ -872,7 +878,7 @@ impl MembershipKey {
         ))
     }
 
-    #[cfg(any(feature = "test-utils", test))]
+    #[cfg(test)]
     pub(crate) fn from_secret(secret: Secret) -> Self {
         Self { secret }
     }
@@ -960,7 +966,7 @@ impl SenderDataSecret {
         Ok(AeadNonce::from_secret(nonce_secret))
     }
 
-    #[cfg(any(feature = "test-utils", test))]
+    #[cfg(test)]
     pub(crate) fn random(ciphersuite: Ciphersuite, rng: &impl OpenMlsCryptoProvider) -> Self {
         Self {
             secret: Secret::random(ciphersuite, rng, None /* MLS version */)
@@ -973,10 +979,11 @@ impl SenderDataSecret {
         self.secret.as_slice()
     }
 
-    #[cfg(any(feature = "test-utils", test))]
+    // XXX[KAT]: #1051 Only used in KATs. Remove if unused.
+    #[cfg(test)]
     #[doc(hidden)]
     /// Create a new secret from a byte vector.
-    pub(crate) fn from_slice(
+    pub(crate) fn _from_slice(
         bytes: &[u8],
         mls_version: ProtocolVersion,
         ciphersuite: Ciphersuite,
