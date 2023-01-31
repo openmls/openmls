@@ -125,7 +125,7 @@ impl core::fmt::Display for HashReference {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "HashReference: ")?;
         for b in self.value.as_slice() {
-            write!(f, "{:02X}", b)?;
+            write!(f, "{b:02X}")?;
         }
         Ok(())
     }
@@ -133,6 +133,6 @@ impl core::fmt::Display for HashReference {
 
 impl core::fmt::Debug for HashReference {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", self)
+        write!(f, "{self}")
     }
 }

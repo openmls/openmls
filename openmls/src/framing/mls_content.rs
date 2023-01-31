@@ -145,8 +145,7 @@ impl TryFrom<u8> for ContentType {
             2 => Ok(ContentType::Proposal),
             3 => Ok(ContentType::Commit),
             _ => Err(tls_codec::Error::DecodingError(format!(
-                "{} is not a valid content type",
-                value
+                "{value} is not a valid content type"
             ))),
         }
     }

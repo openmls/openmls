@@ -309,7 +309,7 @@ fn build_application_messages(
         0,
     ) {
         Ok(c) => c,
-        Err(e) => panic!("Could not create PrivateMessage {}", e),
+        Err(e) => panic!("Could not create PrivateMessage {e}"),
     };
     (
         plaintext
@@ -404,7 +404,7 @@ pub fn generate_test_vector(
             let application_nonce_string = bytes_to_hex(application_secret_nonce.as_slice());
             let (application_plaintext, application_ciphertext) =
                 build_application_messages(sender_leaf, &mut group, &signer, &crypto);
-            println!("Sender Group: {:?}", group);
+            println!("Sender Group: {group:?}");
             application.push(RatchetStep {
                 key: application_key_string,
                 nonce: application_nonce_string,
@@ -472,7 +472,6 @@ fn write_test_vectors() {
             let test = generate_test_vector(NUM_GENERATIONS, n_leaves, ciphersuite);
             tests.push(test);
         }
-        break;
     }
 
     write("test_vectors/kat_encryption_openmls-new.json", &tests);
@@ -834,7 +833,7 @@ fn read_test_vectors_encryption(backend: &impl OpenMlsCryptoProvider) {
     for test_vector in tests {
         match run_test_vector(test_vector, backend) {
             Ok(_) => {}
-            Err(e) => panic!("Error while checking encryption test vector.\n{:?}", e),
+            Err(e) => panic!("Error while checking encryption test vector.\n{e:?}"),
         }
     }
 
