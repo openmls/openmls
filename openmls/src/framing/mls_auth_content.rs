@@ -286,7 +286,7 @@ impl From<VerifiableAuthenticatedContent> for AuthenticatedContent {
 
 /// Wrapper struct around [`AuthenticatedContent`] to enforce signature verification
 /// before content can be accessed.
-#[derive(PartialEq, Debug, Clone, TlsSerialize, TlsSize)]
+#[derive(PartialEq, Debug, Clone)]
 pub(crate) struct VerifiableAuthenticatedContent {
     auth_content: AuthenticatedContent,
 }

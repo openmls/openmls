@@ -201,7 +201,7 @@ fn bad_padding(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
                     group_id: group_id.clone(),
                     epoch,
                     content_type: plaintext.content().content_type(),
-                    authenticated_data: TlsByteSliceU32(plaintext.authenticated_data()),
+                    authenticated_data: VLByteSlice(plaintext.authenticated_data()),
                 };
 
                 private_message_content_aad

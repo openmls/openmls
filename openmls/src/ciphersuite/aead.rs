@@ -4,16 +4,35 @@ use super::*;
 pub(crate) const NONCE_BYTES: usize = 12;
 
 /// AEAD keys holding the plain key value and the AEAD algorithm type.
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Serialize, Deserialize)]
 #[cfg_attr(any(feature = "test-utils", test), derive(Clone, PartialEq, Eq))]
+#[cfg_attr(feature = "crypto-debug", derive(Debug))]
 pub struct AeadKey {
     aead_mode: AeadType,
     value: Vec<u8>,
 }
 
+#[cfg(not(feature = "crypto-debug"))]
+impl core::fmt::Debug for AeadKey {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("AeadKey")
+            .field("aead_mode", &self.aead_mode)
+            .field("value", &"***")
+            .finish()
+    }
+}
+
 /// AEAD Nonce
-#[derive(Clone, PartialEq, Debug, Serialize, Deserialize)]
+#[derive(Clone, PartialEq, Serialize, Deserialize)]
+#[cfg_attr(feature = "crypto-debug", derive(Debug))]
 pub(crate) struct AeadNonce([u8; NONCE_BYTES]);
+
+#[cfg(not(feature = "crypto-debug"))]
+impl core::fmt::Debug for AeadNonce {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_tuple("AeadNonce").field(&"***").finish()
+    }
+}
 
 impl AeadKey {
     /// Create an `AeadKey` from a `Secret`. TODO: This function should
@@ -35,7 +54,7 @@ impl AeadKey {
         }
     }
 
-    #[cfg(test)]
+    #[cfg(any(feature = "test-utils", test))]
     /// Get a slice to the key value.
     pub(crate) fn as_slice(&self) -> &[u8] {
         &self.value
@@ -95,7 +114,7 @@ impl AeadNonce {
     }
 
     /// Get a slice to the nonce value.
-    #[cfg(test)]
+    #[cfg(any(feature = "test-utils", test))]
     pub(crate) fn as_slice(&self) -> &[u8] {
         &self.0
     }

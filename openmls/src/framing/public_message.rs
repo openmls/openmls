@@ -207,7 +207,6 @@ impl PublicMessage {
     ) -> Result<(), ValidationError> {
         log::debug!("Verifying membership tag.");
         log_crypto!(trace, "  Membership key: {:x?}", membership_key);
-        log_crypto!(trace, "  Serialized context: {:x?}", serialized_context);
         let tbs_payload = self
             .content
             .tls_serialize_detached()
