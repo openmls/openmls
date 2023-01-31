@@ -591,13 +591,13 @@ pub type ParentHash = VLBytes;
 #[derive(Debug)]
 pub struct LeafNodeTbs {
     payload: LeafNodePayload,
-    tree_info: TreeInfo,
+    tree_info: TreeInfoTbs,
 }
 
 impl LeafNodeTbs {
     /// Build a [`LeafNodeTbs`] from a [`LeafNode`] and a [`TreeInfo`]
     /// to update a leaf node.
-    pub(crate) fn from(leaf_node: LeafNode, tree_info: TreeInfo) -> Self {
+    pub(crate) fn from(leaf_node: LeafNode, tree_info: TreeInfoTbs) -> Self {
         Self {
             payload: leaf_node.payload,
             tree_info,
@@ -621,7 +621,7 @@ impl LeafNodeTbs {
             leaf_node_source,
             extensions,
         };
-        let tree_info = TreeInfo::KeyPackage;
+        let tree_info = TreeInfoTbs::KeyPackage;
         let tbs = LeafNodeTbs { payload, tree_info };
         Ok(tbs)
     }
@@ -649,13 +649,13 @@ impl LeafNodeTbs {
 /// } LeafNodeTBS;
 /// ```
 #[derive(Debug)]
-pub(crate) enum TreeInfo {
+pub(crate) enum TreeInfoTbs {
     KeyPackage,
     Update(TreePosition),
     Commit(TreePosition),
 }
 
-impl TreeInfo {
+impl TreeInfoTbs {
     pub(crate) fn commit(group_id: GroupId, leaf_index: LeafNodeIndex) -> Self {
         Self::Commit(TreePosition {
             group_id,
@@ -850,7 +850,7 @@ impl OpenMlsLeafNode {
     }
 
     /// Create the [`TreeInfo`] for an update for this leaf.
-    fn update_tree_info(&self, group_id: GroupId) -> Result<TreeInfo, LibraryError> {
+    fn update_tree_info(&self, group_id: GroupId) -> Result<TreeInfoTbs, LibraryError> {
         debug_assert!(
             self.leaf_index.is_some(),
             "TreeInfo for Update can't be created without a leaf index. \
@@ -861,7 +861,7 @@ impl OpenMlsLeafNode {
         );
         self.leaf_index
             .map(|leaf_index| {
-                TreeInfo::Update(TreePosition {
+                TreeInfoTbs::Update(TreePosition {
                     group_id,
                     leaf_index,
                 })
@@ -906,7 +906,7 @@ impl OpenMlsLeafNode {
         self.leaf_node.payload.leaf_node_source = LeafNodeSource::Commit(parent_hash.into());
         let tbs = LeafNodeTbs::from(
             self.leaf_node.clone(), // TODO: With a better setup we wouldn't have to clone here.
-            TreeInfo::Commit(TreePosition {
+            TreeInfoTbs::Commit(TreePosition {
                 group_id,
                 leaf_index: self
                     .leaf_index
@@ -940,7 +940,7 @@ impl OpenMlsLeafNode {
     /// Replace the public key in the leaf node and re-sign.
     #[cfg(any(feature = "test-utils", test))]
     pub fn set_public_key(&mut self, public_key: HpkePublicKey, signer: &impl Signer) {
-        let mut tbs = LeafNodeTbs::from(self.leaf_node.clone(), TreeInfo::KeyPackage);
+        let mut tbs = LeafNodeTbs::from(self.leaf_node.clone(), TreeInfoTbs::KeyPackage);
         tbs.payload.encryption_key = public_key.into();
         self.leaf_node = tbs.sign(signer).unwrap();
     }
