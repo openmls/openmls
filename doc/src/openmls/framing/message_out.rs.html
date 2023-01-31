@@ -193,6 +193,8 @@
 <a href="#193" id="193">193</a>
 <a href="#194" id="194">194</a>
 <a href="#195" id="195">195</a>
+<a href="#196" id="196">196</a>
+<a href="#197" id="197">197</a>
 </pre><pre class="rust"><code><span class="doccomment">//! MLS Message (Output)
 //!
 //! This module defines the [`MlsMessageOut`] structs which implements the
@@ -276,7 +278,9 @@
 <span class="kw">impl </span>From&lt;PublicMessage&gt; <span class="kw">for </span>MlsMessageOut {
     <span class="kw">fn </span>from(public_message: PublicMessage) -&gt; <span class="self">Self </span>{
         <span class="self">Self </span>{
-            version: public_message.version(),
+            <span class="comment">// TODO #34: The version should be set explicitly here instead of
+            // the default.
+            </span>version: ProtocolVersion::default(),
             body: MlsMessageOutBody::PublicMessage(public_message),
         }
     }

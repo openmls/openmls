@@ -522,6 +522,10 @@
 <a href="#522" id="522">522</a>
 <a href="#523" id="523">523</a>
 <a href="#524" id="524">524</a>
+<a href="#525" id="525">525</a>
+<a href="#526" id="526">526</a>
+<a href="#527" id="527">527</a>
+<a href="#528" id="528">528</a>
 </pre><pre class="rust"><code><span class="doccomment">//! # Validation steps for incoming messages
 //!
 //! ```text
@@ -575,6 +579,7 @@
 <span class="kw">use super</span>::{
     mls_auth_content::{AuthenticatedContent, VerifiableAuthenticatedContent},
     mls_content::ContentType,
+    public_message::PublicMessage,
     <span class="kw-2">*</span>,
 };
 
@@ -591,21 +596,24 @@
 <span class="kw">impl </span>DecryptedMessage {
     <span class="doccomment">/// Constructs a [DecryptedMessage] from a [VerifiableAuthenticatedContent].
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>from_inbound_public_message(
-        <span class="kw-2">mut </span>public_message: PublicMessage,
+        public_message: PublicMessage,
         message_secrets: <span class="kw-2">&amp;</span>MessageSecrets,
         backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, ValidationError&gt; {
-        <span class="comment">// Set the context for verification (happens only for the correct sender types).
-        </span>public_message.set_context(message_secrets.serialized_context());
         <span class="kw">if </span>public_message.sender().is_member() {
             <span class="comment">// Verify the membership tag. This needs to be done explicitly for PublicMessage messages,
             // it is implicit for PrivateMessage messages (because the encryption can only be known by members).
             // ValSem007 Membership tag presence
             // ValSem008
-            </span>public_message.verify_membership(backend, message_secrets.membership_key())<span class="question-mark">?</span>;
+            </span>public_message.verify_membership(
+                backend,
+                message_secrets.membership_key(),
+                message_secrets.serialized_context(),
+            )<span class="question-mark">?</span>;
         }
 
-        <span class="kw">let </span>verifiable_content = public_message.into();
+        <span class="kw">let </span>verifiable_content =
+            public_message.into_verifiable_content(message_secrets.serialized_context().to_vec());
 
         <span class="self">Self</span>::from_verifiable_content(verifiable_content)
     }

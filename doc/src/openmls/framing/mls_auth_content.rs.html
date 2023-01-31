@@ -427,6 +427,21 @@
 <a href="#427" id="427">427</a>
 <a href="#428" id="428">428</a>
 <a href="#429" id="429">429</a>
+<a href="#430" id="430">430</a>
+<a href="#431" id="431">431</a>
+<a href="#432" id="432">432</a>
+<a href="#433" id="433">433</a>
+<a href="#434" id="434">434</a>
+<a href="#435" id="435">435</a>
+<a href="#436" id="436">436</a>
+<a href="#437" id="437">437</a>
+<a href="#438" id="438">438</a>
+<a href="#439" id="439">439</a>
+<a href="#440" id="440">440</a>
+<a href="#441" id="441">441</a>
+<a href="#442" id="442">442</a>
+<a href="#443" id="443">443</a>
+<a href="#444" id="444">444</a>
 </pre><pre class="rust"><code><span class="doccomment">//! # MLS content authentication
 //!
 //! This module contains structs and implementation that pertain to content
@@ -441,13 +456,14 @@
     credentials::CredentialWithKey,
     error::LibraryError,
     group::errors::ValidationError,
+    versions::ProtocolVersion,
 };
 
 <span class="attr">#[cfg(doc)]
 </span><span class="kw">use super</span>::{PrivateMessage, PublicMessage};
 
 <span class="kw">use super</span>::{
-    mls_content::{ContentType, FramedContentBody, FramedContentTbs},
+    mls_content::{ContentType, FramedContent, FramedContentBody, FramedContentTbs},
     AddProposal, Commit, ConfirmationTag, FramingParameters, GroupContext, GroupEpoch, GroupId,
     Proposal, Sender, Signature, WireFormat,
 };
@@ -521,18 +537,10 @@
 ///     FramedContentAuthData auth;
 /// } AuthenticatedContent;
 /// ```
-///
-/// Note that [`AuthenticatedContent`] doesn&#39;t correspond exactly to the
-/// AuthenticatedContent from the MLS specification, as the [`FramedContentTbs`]
-/// contains additional information to ease processing.
-///
-/// TODO #1051: Serialization is only needed for KAT generation at this point.
-/// If we want to serialize a spec-compliant AuthenticatedContent, we have to
-/// manually ignore the extra fields in the TBS (i.e. context and later
-/// ProtocolVersion).
 </span><span class="attr">#[derive(PartialEq, Debug, Clone, TlsSerialize, TlsSize)]
 </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct </span>AuthenticatedContent {
-    <span class="kw">pub</span>(<span class="kw">super</span>) tbs: FramedContentTbs,
+    <span class="kw">pub</span>(<span class="kw">super</span>) wire_format: WireFormat,
+    <span class="kw">pub</span>(<span class="kw">super</span>) content: FramedContent,
     <span class="kw">pub</span>(<span class="kw">super</span>) auth: FramedContentAuthData,
 }
 
@@ -668,31 +676,31 @@
 
     <span class="doccomment">/// Get the content body of the message.
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>content(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>FramedContentBody {
-        <span class="kw-2">&amp;</span><span class="self">self</span>.tbs.content.body
+        <span class="kw-2">&amp;</span><span class="self">self</span>.content.body
     }
 
     <span class="doccomment">/// Get the wire format.
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>wire_format(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; WireFormat {
-        <span class="self">self</span>.tbs.wire_format
+        <span class="self">self</span>.wire_format
     }
 
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>authenticated_data(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>[u8] {
-        <span class="self">self</span>.tbs.content.authenticated_data.as_slice()
+        <span class="self">self</span>.content.authenticated_data.as_slice()
     }
 
     <span class="doccomment">/// Get the group id as [`GroupId`].
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>group_id(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>GroupId {
-        <span class="kw-2">&amp;</span><span class="self">self</span>.tbs.content.group_id
+        <span class="kw-2">&amp;</span><span class="self">self</span>.content.group_id
     }
 
     <span class="doccomment">/// Get the epoch.
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>epoch(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; GroupEpoch {
-        <span class="self">self</span>.tbs.epoch()
+        <span class="self">self</span>.content.epoch
     }
 
     <span class="doccomment">/// Get the [`Sender`].
     </span><span class="kw">pub fn </span>sender(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>Sender {
-        <span class="kw-2">&amp;</span><span class="self">self</span>.tbs.content.sender
+        <span class="kw-2">&amp;</span><span class="self">self</span>.content.sender
     }
 
     <span class="attr">#[cfg(test)]
@@ -709,34 +717,48 @@
 <span class="attr">#[cfg(any(feature = <span class="string">&quot;test-utils&quot;</span>, test))]
 </span><span class="kw">impl </span>From&lt;VerifiableAuthenticatedContent&gt; <span class="kw">for </span>AuthenticatedContent {
     <span class="kw">fn </span>from(v: VerifiableAuthenticatedContent) -&gt; <span class="self">Self </span>{
-        v.auth_content
+        AuthenticatedContent {
+            wire_format: v.tbs.wire_format,
+            content: v.tbs.content,
+            auth: v.auth,
+        }
     }
 }
 
 <span class="doccomment">/// Wrapper struct around [`AuthenticatedContent`] to enforce signature verification
 /// before content can be accessed.
-</span><span class="attr">#[derive(PartialEq, Debug, Clone, TlsSerialize, TlsSize)]
+</span><span class="attr">#[derive(PartialEq, Debug, Clone)]
 </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct </span>VerifiableAuthenticatedContent {
-    auth_content: AuthenticatedContent,
+    tbs: FramedContentTbs,
+    auth: FramedContentAuthData,
 }
 
 <span class="kw">impl </span>VerifiableAuthenticatedContent {
     <span class="doccomment">/// Create a new [`VerifiableAuthenticatedContent`] from a [`FramedContentTbs`] and
     /// a [`Signature`].
-    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>new(tbs: FramedContentTbs, auth: FramedContentAuthData) -&gt; <span class="self">Self </span>{
-        <span class="self">Self </span>{
-            auth_content: AuthenticatedContent { tbs, auth },
-        }
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>new(
+        wire_format: WireFormat,
+        content: FramedContent,
+        serialized_context: <span class="kw">impl </span>Into&lt;<span class="prelude-ty">Option</span>&lt;Vec&lt;u8&gt;&gt;&gt;,
+        auth: FramedContentAuthData,
+    ) -&gt; <span class="self">Self </span>{
+        <span class="kw">let </span>tbs = FramedContentTbs {
+            version: ProtocolVersion::default(),
+            wire_format,
+            content,
+            serialized_context: serialized_context.into(),
+        };
+        <span class="self">Self </span>{ tbs, auth }
     }
 
     <span class="doccomment">/// Get the [`Sender`].
     </span><span class="kw">pub fn </span>sender(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>Sender {
-        <span class="kw-2">&amp;</span><span class="self">self</span>.auth_content.tbs.content.sender
+        <span class="kw-2">&amp;</span><span class="self">self</span>.tbs.content.sender
     }
 
     <span class="doccomment">/// Get the epoch.
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>epoch(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; GroupEpoch {
-        <span class="self">self</span>.auth_content.tbs.epoch()
+        <span class="self">self</span>.tbs.content.epoch
     }
 
     <span class="doccomment">/// Returns the [`Credential`] and the [`SignaturePublicKey`] contained in
@@ -748,10 +770,10 @@
     /// * the content type doesn&#39;t match the sender type, or
     /// * if it&#39;s a NewMemberCommit and the Commit doesn&#39;t contain a `path`.
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>new_member_credential(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;CredentialWithKey, ValidationError&gt; {
-        <span class="kw">match </span><span class="self">self</span>.auth_content.tbs.content.sender {
+        <span class="kw">match </span><span class="self">self</span>.tbs.content.sender {
             Sender::NewMemberCommit =&gt; {
                 <span class="comment">// only external commits can have a sender type `NewMemberCommit`
-                </span><span class="kw">match </span><span class="kw-2">&amp;</span><span class="self">self</span>.auth_content.tbs.content.body {
+                </span><span class="kw">match </span><span class="kw-2">&amp;</span><span class="self">self</span>.tbs.content.body {
                     FramedContentBody::Commit(Commit { path, .. }) =&gt; path
                         .as_ref()
                         .map(|p| {
@@ -768,7 +790,7 @@
             }
             Sender::NewMemberProposal =&gt; {
                 <span class="comment">// only External Add proposals can have a sender type `NewMemberProposal`
-                </span><span class="kw">match </span><span class="kw-2">&amp;</span><span class="self">self</span>.auth_content.tbs.content.body {
+                </span><span class="kw">match </span><span class="kw-2">&amp;</span><span class="self">self</span>.tbs.content.body {
                     FramedContentBody::Proposal(Proposal::Add(AddProposal { key_package })) =&gt; {
                         <span class="kw">let </span>credential = key_package.leaf_node().credential().clone();
                         <span class="kw">let </span>signature_key = key_package.leaf_node().signature_key().clone();
@@ -786,27 +808,27 @@
 
     <span class="doccomment">/// Get the wire format.
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>wire_format(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; WireFormat {
-        <span class="self">self</span>.auth_content.tbs.wire_format
+        <span class="self">self</span>.tbs.wire_format
     }
 
     <span class="doccomment">/// Get the confirmation tag.
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>confirmation_tag(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>ConfirmationTag&gt; {
-        <span class="self">self</span>.auth_content.auth.confirmation_tag.as_ref()
+        <span class="self">self</span>.auth.confirmation_tag.as_ref()
     }
 
     <span class="doccomment">/// Get the content type
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>content_type(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; ContentType {
-        <span class="self">self</span>.auth_content.tbs.content.body.content_type()
+        <span class="self">self</span>.tbs.content.body.content_type()
     }
 }
 
 <span class="kw">impl </span>Verifiable <span class="kw">for </span>VerifiableAuthenticatedContent {
     <span class="kw">fn </span>unsigned_payload(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;Vec&lt;u8&gt;, tls_codec::Error&gt; {
-        <span class="self">self</span>.auth_content.tbs.tls_serialize_detached()
+        <span class="self">self</span>.tbs.tls_serialize_detached()
     }
 
     <span class="kw">fn </span>signature(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>Signature {
-        <span class="kw-2">&amp;</span><span class="self">self</span>.auth_content.auth.signature
+        <span class="kw-2">&amp;</span><span class="self">self</span>.auth.signature
     }
 
     <span class="kw">fn </span>label(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>str {
@@ -816,7 +838,11 @@
 
 <span class="kw">impl </span>VerifiedStruct&lt;VerifiableAuthenticatedContent&gt; <span class="kw">for </span>AuthenticatedContent {
     <span class="kw">fn </span>from_verifiable(v: VerifiableAuthenticatedContent, _seal: <span class="self">Self</span>::SealingType) -&gt; <span class="self">Self </span>{
-        v.auth_content
+        AuthenticatedContent {
+            wire_format: v.tbs.wire_format,
+            content: v.tbs.content,
+            auth: v.auth,
+        }
     }
 
     <span class="kw">type </span>SealingType = private_mod::Seal;
@@ -829,7 +855,11 @@
             <span class="comment">// Tags must always be added after the signature
             </span>confirmation_tag: <span class="prelude-val">None</span>,
         };
-        <span class="self">Self </span>{ tbs, auth }
+        <span class="self">Self </span>{
+            wire_format: tbs.wire_format,
+            content: tbs.content,
+            auth,
+        }
     }
 }
 

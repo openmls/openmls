@@ -566,7 +566,7 @@
 <span class="kw">use crate</span>::{
     binary_tree::array_representation::LeafNodeIndex,
     error::LibraryError,
-    framing::mls_content::FramedContentTbs,
+    framing::mls_content::FramedContent,
     tree::{
         index::SecretTreeLeafIndex, secret_tree::SecretType,
         sender_ratchet::SenderRatchetConfiguration,
@@ -919,15 +919,15 @@
         );
 
         <span class="kw">let </span>verifiable = VerifiableAuthenticatedContent::new(
-            FramedContentTbs::new(
-                WireFormat::PrivateMessage,
-                <span class="self">self</span>.group_id.clone(),
-                <span class="self">self</span>.epoch,
+            WireFormat::PrivateMessage,
+            FramedContent {
+                group_id: <span class="self">self</span>.group_id.clone(),
+                epoch: <span class="self">self</span>.epoch,
                 sender,
-                <span class="self">self</span>.authenticated_data.clone(),
-                private_message_content.content,
-            )
-            .with_context(message_secrets.serialized_context().to_vec()),
+                authenticated_data: <span class="self">self</span>.authenticated_data.clone(),
+                body: private_message_content.content,
+            },
+            <span class="prelude-val">Some</span>(message_secrets.serialized_context().to_vec()),
             private_message_content.auth,
         );
         <span class="prelude-val">Ok</span>(verifiable)

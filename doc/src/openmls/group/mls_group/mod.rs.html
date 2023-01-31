@@ -435,6 +435,7 @@
 <a href="#435" id="435">435</a>
 <a href="#436" id="436">436</a>
 <a href="#437" id="437">437</a>
+<a href="#438" id="438">438</a>
 </pre><pre class="rust"><code><span class="doccomment">//! MLS Group
 //!
 //! This module contains [`MlsGroup`] and its submodules.
@@ -788,6 +789,7 @@
                     plaintext.set_membership_tag(
                         backend,
                         <span class="self">self</span>.group.message_secrets().membership_key(),
+                        <span class="self">self</span>.group.message_secrets().serialized_context(),
                     )<span class="question-mark">?</span>;
                 }
                 plaintext.into()
