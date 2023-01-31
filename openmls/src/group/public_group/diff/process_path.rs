@@ -6,9 +6,9 @@ use tls_codec::Serialize;
 use crate::{
     binary_tree::LeafNodeIndex,
     credentials::CredentialBundle,
+    error::LibraryError,
     group::{config::CryptoConfig, errors::CreateCommitError, CommitType},
-    prelude::{KeyPackageCreationResult, LibraryError},
-    prelude_test::KeyPackage,
+    key_packages::{KeyPackage, KeyPackageCreationResult},
     schedule::CommitSecret,
     treesync::{
         node::{

@@ -319,28 +319,34 @@ impl<'a> TreeSyncDiff<'a> {
         sender_leaf_index: LeafNodeIndex,
         update_path: &UpdatePath,
     ) -> Result<(), ApplyUpdatePathError> {
-        let leaf_node = update_path.leaf_node().clone();
         let path = update_path.nodes();
+
         // If the committer is a `NewMemberCommit`, we have to add the
         // leaf to the tree before we can apply an update path. This is
         // s.t. the tree can be grown if necessary.
-        if self.diff.leaf(sender_leaf_index).node().is_none() {
-            let new_leaf = self.add_leaf(leaf_node.into()).map_err(|e| match e {
-                TreeSyncAddLeaf::LibraryError(e) => ApplyUpdatePathError::LibraryError(e),
-                TreeSyncAddLeaf::TreeFull => ApplyUpdatePathError::TreeFull,
-            });
+        if self.diff.leaf(sender_leaf_index).node().is_none()
+            || sender_leaf_index.u32() >= self.leaf_count()
+        {
+            let new_leaf_index = self
+                .add_leaf(update_path.leaf_node().clone().into())
+                .map_err(|e| match e {
+                    TreeSyncAddLeaf::LibraryError(e) => ApplyUpdatePathError::LibraryError(e),
+                    TreeSyncAddLeaf::TreeFull => ApplyUpdatePathError::TreeFull,
+                })?;
             // The new member should have the same index as the claimed sender index.
-            if sender_leaf_index != sender_leaf_index {
+            if sender_leaf_index != new_leaf_index {
                 return Err(ApplyUpdatePathError::InconsistentSenderIndex);
             }
         }
 
         let filtered_direct_path = self.filtered_direct_path(sender_leaf_index);
-        debug_assert_eq!(filtered_direct_path.len(), path.len());
+        if filtered_direct_path.len() != path.len() {
+            return Err(ApplyUpdatePathError::PathLengthMismatch);
+        };
         let path = filtered_direct_path
             .into_iter()
             .zip(
-                path.into_iter()
+                path.iter()
                     .map(|update_path_node| update_path_node.public_key.clone().into()),
             )
             .collect();
@@ -348,7 +354,8 @@ impl<'a> TreeSyncDiff<'a> {
             self.process_update_path(backend, ciphersuite, sender_leaf_index, path)?;
 
         // Verify the parent hash.
-        let leaf_node_parent_hash = leaf_node
+        let leaf_node_parent_hash = update_path
+            .leaf_node()
             .parent_hash()
             .ok_or(ApplyUpdatePathError::MissingParentHash)?;
         if leaf_node_parent_hash != parent_hash {
@@ -356,7 +363,7 @@ impl<'a> TreeSyncDiff<'a> {
         };
 
         // Update the `encryption_key` in the leaf.
-        let mut leaf: OpenMlsLeafNode = leaf_node.into();
+        let mut leaf: OpenMlsLeafNode = update_path.leaf_node().clone().into();
         leaf.set_leaf_index(sender_leaf_index);
         self.diff.replace_leaf(sender_leaf_index, leaf.into());
         Ok(())

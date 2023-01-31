@@ -515,7 +515,7 @@ fn test_valsem243(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
         )
         .expect("An unexpected error occurred.");
     println!("Alice joining");
-    let alice_external_commit = MlsGroup::join_by_external_commit(
+    let alice_new_group = MlsGroup::join_by_external_commit(
         backend,
         Some(&tree_option),
         verifiable_group_info,
@@ -523,7 +523,7 @@ fn test_valsem243(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
         &[],
         &alice_credential_bundle,
     );
-    assert!(alice_external_commit.is_ok());
+    assert!(alice_new_group.is_ok());
 
     // Positive case
     alice_group

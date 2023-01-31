@@ -26,8 +26,8 @@ use super::{GroupContext, GroupEpoch, GroupId};
 
 pub(crate) mod diff;
 pub mod errors;
-pub(crate) mod validation;
 
+/// This struct holds all public values of an MLS group.
 #[derive(Debug, Serialize, Deserialize)]
 #[cfg_attr(test, derive(PartialEq))]
 pub struct PublicGroup {
@@ -39,6 +39,28 @@ pub struct PublicGroup {
 }
 
 impl PublicGroup {
+    /// Create a new PublicGroup from a [`TreeSync`] instance and a
+    /// [`GroupInfo`].
+    pub(crate) fn new(
+        treesync: TreeSync,
+        group_context: GroupContext,
+        initial_confirmation_tag: ConfirmationTag,
+    ) -> Self {
+        let interim_transcript_hash = vec![];
+
+        PublicGroup {
+            treesync,
+            group_context,
+            interim_transcript_hash,
+            confirmation_tag: initial_confirmation_tag,
+        }
+    }
+
+    /// Create a [`PublicGroup`] instance to start tracking an existing MLS group.
+    ///
+    /// This function performs basic validation checks and returns an error if
+    /// one of the checks fails. See [`CreationFromExternalError`] for more
+    /// details.
     pub fn from_external(
         backend: &impl OpenMlsCryptoProvider,
         nodes: &[Option<Node>],
@@ -119,22 +141,6 @@ impl PublicGroup {
         ))
     }
 
-    /// Create a new PublicGroup from nodes and a [`GroupInfo`].
-    pub(crate) fn new(
-        treesync: TreeSync,
-        group_context: GroupContext,
-        initial_confirmation_tag: ConfirmationTag,
-    ) -> Self {
-        let interim_transcript_hash = vec![];
-
-        PublicGroup {
-            treesync,
-            group_context,
-            interim_transcript_hash,
-            confirmation_tag: initial_confirmation_tag,
-        }
-    }
-
     /// Returns the leftmost free leaf index.
     ///
     /// For External Commits of the "resync" type, this returns the index
@@ -171,12 +177,15 @@ impl PublicGroup {
         Ok(leaf_index)
     }
 
+    /// Create an empty  [`PublicGroupDiff`] based on this [`PublicGroup`].
     pub(crate) fn empty_diff(&self) -> PublicGroupDiff {
         PublicGroupDiff::new(self)
     }
 
+    /// Merge the changes performed on the [`PublicGroupDiff`] into this
+    /// [`PublicGroup`].
     pub(crate) fn merge_diff(&mut self, diff: StagedPublicGroupDiff) {
-        self.treesync_mut().merge_diff(diff.staged_diff);
+        self.treesync.merge_diff(diff.staged_diff);
         self.group_context = diff.group_context;
         self.interim_transcript_hash = diff.interim_transcript_hash;
         self.confirmation_tag = diff.confirmation_tag;
@@ -213,29 +222,12 @@ impl PublicGroup {
         &self.treesync
     }
 
-    pub fn interim_transcript_hash(&self) -> &[u8] {
+    fn interim_transcript_hash(&self) -> &[u8] {
         &self.interim_transcript_hash
     }
 
     pub fn confirmation_tag(&self) -> &ConfirmationTag {
         &self.confirmation_tag
-    }
-}
-
-// Setters
-// TODO: Most of these should go away as soon as we do processing directly
-// on the public group.
-impl PublicGroup {
-    pub(crate) fn treesync_mut(&mut self) -> &mut TreeSync {
-        &mut self.treesync
-    }
-
-    pub fn set_group_context(&mut self, group_context: GroupContext) {
-        self.group_context = group_context
-    }
-
-    pub fn set_interim_transcript_hash(&mut self, interim_transcript_hash: Vec<u8>) {
-        self.interim_transcript_hash = interim_transcript_hash
     }
 }
 

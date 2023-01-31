@@ -13,7 +13,7 @@ use crate::{
     ciphersuite::signable::*,
     credentials::*,
     framing::{mls_auth_content::AuthenticatedContent, *},
-    group::{*},
+    group::*,
     messages::*,
     schedule::*,
     test_utils::*,
@@ -110,7 +110,7 @@ pub fn generate_test_vector(ciphersuite: Ciphersuite) -> TranscriptTestVector {
     //    &ConfirmedTranscriptHashInput::try_from(&commit).expect("An unexpected error occurred."),
     //    &interim_transcript_hash_before,
     //)
-    .expect("Error updating confirmed transcript hash");
+    //.expect("Error updating confirmed transcript hash");
     let confirmation_tag = confirmation_key
         .tag(&crypto, &confirmed_transcript_hash_after)
         .expect("Could not compute confirmation tag.");

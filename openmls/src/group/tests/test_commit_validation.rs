@@ -9,13 +9,17 @@ use rstest::*;
 use rstest_reuse::{self, *};
 
 use crate::{
+    binary_tree::LeafNodeIndex,
     ciphersuite::signable::Signable,
     credentials::*,
     framing::*,
     group::{config::CryptoConfig, errors::*, *},
     messages::proposals::*,
     schedule::psk::*,
-    treesync::errors::ApplyUpdatePathError,
+    treesync::{
+        errors::ApplyUpdatePathError, node::parent_node::PlainUpdatePathNode, treekem::UpdatePath,
+    },
+    versions::ProtocolVersion,
 };
 
 use super::utils::{generate_credential_bundle, generate_key_package, resign_message};
@@ -593,9 +597,36 @@ fn test_valsem204(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
         panic!("Unexpected content type.");
     };
 
-    // This should cause decryption to fail.
+    // We want to fail the check for public key equality, but we don't want to
+    // invalidate the parent hash. So we'll have to encrypt new secrets. The
+    // public keys derived from those secrets will then differ from the public
+    // keys in the update path, thus causing the error.
     if let Some(ref mut path) = commit_content.path {
-        path.flip_node_bytes();
+        let new_plain_path: Vec<PlainUpdatePathNode> = path
+            .nodes()
+            .iter()
+            .map(|upn| {
+                PlainUpdatePathNode::new(
+                    upn.encryption_key().clone(),
+                    Secret::random(ciphersuite, backend, ProtocolVersion::default())
+                        .unwrap()
+                        .into(),
+                )
+            })
+            .collect();
+        let new_nodes = alice_group.group().treesync().empty_diff().encrypt_path(
+            backend,
+            ciphersuite,
+            &new_plain_path,
+            &alice_group
+                .export_group_context()
+                .tls_serialize_detached()
+                .unwrap(),
+            &[].into(),
+            LeafNodeIndex::new(0),
+        );
+        let new_path = UpdatePath::new(path.leaf_node().clone(), new_nodes);
+        commit_content.path = Some(new_path);
     };
 
     plaintext.set_content(FramedContentBody::Commit(commit_content));

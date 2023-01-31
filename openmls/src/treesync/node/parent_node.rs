@@ -77,6 +77,14 @@ impl PlainUpdatePathNode {
     pub(in crate::treesync) fn path_secret(&self) -> &PathSecret {
         &self.path_secret
     }
+
+    #[cfg(test)]
+    pub(crate) fn new(public_key: EncryptionKey, path_secret: PathSecret) -> Self {
+        Self {
+            public_key,
+            path_secret,
+        }
+    }
 }
 
 /// The result of a path derivation result containing the vector of

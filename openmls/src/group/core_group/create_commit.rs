@@ -91,10 +91,6 @@ impl CoreGroup {
             return Err(CreateCommitError::CannotRemoveSelf);
         }
 
-        let serialized_group_context = self
-            .context()
-            .tls_serialize_detached()
-            .map_err(LibraryError::missing_bound_check)?;
         let path_processing_result =
             // If path is needed, compute path values
             if apply_proposals_values.path_required
@@ -189,7 +185,7 @@ impl CoreGroup {
         // Set the confirmation tag
         commit.set_confirmation_tag(confirmation_tag.clone());
 
-        diff.update_interim_transcript_hash(ciphersuite, backend, confirmation_tag)?;
+        diff.update_interim_transcript_hash(ciphersuite, backend, confirmation_tag.clone())?;
 
         // only computes the group info if necessary
         let group_info = if !encrypted_secrets.is_empty() || self.use_ratchet_tree_extension {
@@ -214,7 +210,7 @@ impl CoreGroup {
                 GroupInfoTBS::new(
                     diff.group_context().clone(),
                     other_extensions,
-                    confirmation_tag.clone(),
+                    confirmation_tag,
                     self.own_leaf_index(),
                 )
             };

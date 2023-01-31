@@ -88,7 +88,6 @@ impl<'a> TreeSyncDiff<'a> {
     /// well as the [`CommitSecret`] resulting from their derivation. Returns an
     /// error if the `sender_leaf_index` is outside of the tree.
     ///
-    /// ValSem202: Path must be the right length
     /// ValSem203: Path secrets must decrypt correctly
     /// ValSem204: Public keys from Path must be verified and match the private keys from the direct path
     /// TODO #804
@@ -99,20 +98,7 @@ impl<'a> TreeSyncDiff<'a> {
         params: DecryptPathParams,
         owned_keys: &[&EncryptionKeyPair],
         own_leaf_index: LeafNodeIndex,
-    ) -> Result<(Vec<ParentNode>, Vec<EncryptionKeyPair>, CommitSecret), ApplyUpdatePathError> {
-        // ValSem202: Path must be the right length
-        let direct_path_length = self.filtered_direct_path(params.sender_leaf_index).len();
-        if direct_path_length != params.update_path.len() {
-            // XXX: Rewrite tests to allow for debug asserts.
-            // debug_assert!(
-            //     false,
-            //     "Path length mismatch {} != {}",
-            //     direct_path_length,
-            //     params.update_path.len()
-            // );
-            return Err(ApplyUpdatePathError::PathLengthMismatch);
-        }
-
+    ) -> Result<(Vec<EncryptionKeyPair>, CommitSecret), ApplyUpdatePathError> {
         let path_position = self
             .subtree_root_position(params.sender_leaf_index, own_leaf_index)
             .map_err(|_| LibraryError::custom("Expected own leaf to be in the tree"))?;
@@ -168,22 +154,7 @@ impl<'a> TreeSyncDiff<'a> {
             }
         }
 
-        let _update_path_len = params.update_path.len();
-
-        // Finally, we append the derived path to the part of the update path
-        // below the first node that we have a private key for.
-        let mut path: Vec<ParentNode> = params
-            .update_path
-            .into_iter()
-            .take(path_position)
-            .map(|update_path_node| update_path_node.public_key.into())
-            .collect();
-        path.append(&mut derived_path.into_iter().map(|(_, node)| node).collect());
-
-        // The output should have the same length as the input.
-        debug_assert_eq!(_update_path_len, path.len());
-
-        Ok((path, keypairs, commit_secret))
+        Ok((keypairs, commit_secret))
     }
 
     /// Prepare the [`EncryptedGroupSecrets`] for a number of `invited_members`
@@ -202,14 +173,14 @@ impl<'a> TreeSyncDiff<'a> {
         plain_path_option: Option<&[PlainUpdatePathNode]>,
         presharedkeys: &[PreSharedKeyId],
         backend: &impl OpenMlsCryptoProvider,
-        leaf_index: LeafNodeIndex,
+        encryptor_leaf_index: LeafNodeIndex,
     ) -> Result<Vec<EncryptedGroupSecrets>, LibraryError> {
         let mut encrypted_group_secrets_vec = vec![];
         for (leaf_index, add_proposal) in invited_members {
             let key_package = add_proposal.key_package;
 
             let direct_path_position = self
-                .subtree_root_position(leaf_index, leaf_index)
+                .subtree_root_position(encryptor_leaf_index, leaf_index)
                 // This can only fail if the nodes are outside the tree or identical
                 .map_err(|_| LibraryError::custom("Unexpected error in subtree_root_position"))?;
 
@@ -278,6 +249,11 @@ impl UpdatePathNode {
     /// Return the `public_key`.
     fn public_key(&self) -> &HpkePublicKey {
         self.public_key.key()
+    }
+
+    #[cfg(test)]
+    pub(crate) fn encryption_key(&self) -> &EncryptionKey {
+        &self.public_key
     }
 
     /// Flip the last byte of every `encrypted_path_secret` in this node.

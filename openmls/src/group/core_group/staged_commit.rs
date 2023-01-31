@@ -13,10 +13,14 @@ use crate::{
     },
 };
 
-use super::{proposals::{
-    ProposalQueue, ProposalStore, QueuedAddProposal, QueuedPskProposal, QueuedRemoveProposal,
-    QueuedUpdateProposal,
-}, super::errors::*, *};
+use super::{
+    super::errors::*,
+    proposals::{
+        ProposalQueue, ProposalStore, QueuedAddProposal, QueuedPskProposal, QueuedRemoveProposal,
+        QueuedUpdateProposal,
+    },
+    *,
+};
 use core::fmt::Debug;
 use std::{collections::HashSet, mem};
 
@@ -254,7 +258,7 @@ impl CoreGroup {
             // Update the public group
             diff.apply_received_update_path(backend, ciphersuite, sender_index, &path)?;
 
-            let (leaf_node, update_path_nodes) = path.into_parts();
+            let (_leaf_node, update_path_nodes) = path.into_parts();
 
             // Decrypt the UpdatePath
             let decrypt_path_params = DecryptPathParams {
@@ -287,7 +291,7 @@ impl CoreGroup {
             // ValSem202: Path must be the right length
             // ValSem203: Path secrets must decrypt correctly
             // ValSem204: Public keys from Path must be verified and match the private keys from the direct path
-            let (plain_path, new_epoch_keypairs, commit_secret) = diff.decrypt_path(
+            let (new_epoch_keypairs, commit_secret) = diff.decrypt_path(
                 backend,
                 ciphersuite,
                 decrypt_path_params,
@@ -385,11 +389,6 @@ impl CoreGroup {
         let received_confirmation_tag = mls_content
             .confirmation_tag()
             .ok_or(StageCommitError::ConfirmationTagMissing)?;
-        let mls_plaintext_commit_auth_data = InterimTranscriptHashInput::try_from(received_confirmation_tag)
-            .map_err(|_| {
-                log::error!("Confirmation tag is missing in commit. This should be unreachable because we verified the tag before.");
-                StageCommitError::ConfirmationTagMissing
-            })?;
 
         // Verify confirmation tag
         // ValSem205
@@ -407,8 +406,7 @@ impl CoreGroup {
             return Err(StageCommitError::ConfirmationTagMismatch);
         }
 
-        let interim_transcript_hash =
-            diff.update_interim_transcript_hash(ciphersuite, backend, own_confirmation_tag)?;
+        diff.update_interim_transcript_hash(ciphersuite, backend, own_confirmation_tag)?;
 
         let (provisional_group_epoch_secrets, provisional_message_secrets) =
             provisional_epoch_secrets.split_secrets(

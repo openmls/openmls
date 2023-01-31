@@ -69,8 +69,6 @@ use openmls_traits::key_store::OpenMlsKeyStore;
 use openmls_traits::types::Ciphersuite;
 use serde::{Deserialize, Serialize};
 #[cfg(test)]
-use std::convert::TryFrom;
-#[cfg(test)]
 use std::io::{Error, Read, Write};
 use tls_codec::Serialize as TlsSerializeTrait;
 

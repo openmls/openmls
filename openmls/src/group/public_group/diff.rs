@@ -5,24 +5,25 @@ use tls_codec::Serialize as TlsSerialize;
 use crate::{
     binary_tree::LeafNodeIndex,
     error::LibraryError,
+    framing::{
+        mls_auth_content::AuthenticatedContent,
+        public_message::{ConfirmedTranscriptHashInput, InterimTranscriptHashInput},
+    },
     group::GroupContext,
     messages::{proposals::AddProposal, ConfirmationTag, EncryptedGroupSecrets},
-    prelude::{ApplyUpdatePathError, Node, ParentNode},
-    prelude_test::{
-        AuthenticatedContent, ConfirmedTranscriptHashInput, InterimTranscriptHashInput,
-    },
     schedule::{psk::PreSharedKeyId, CommitSecret, JoinerSecret},
     treesync::{
         diff::{StagedTreeSyncDiff, TreeSyncDiff},
+        errors::ApplyUpdatePathError,
         node::{
             encryption_keys::EncryptionKeyPair, leaf_node::OpenMlsLeafNode,
-            parent_node::PlainUpdatePathNode,
+            parent_node::PlainUpdatePathNode, Node,
         },
         treekem::{DecryptPathParams, UpdatePath},
     },
 };
 
-use super::{errors::AddLeafError, PublicGroup};
+use super::PublicGroup;
 
 pub(crate) mod apply_proposals;
 pub(crate) mod process_path;
@@ -37,6 +38,7 @@ pub(crate) struct PublicGroupDiff<'a> {
 }
 
 impl<'a> PublicGroupDiff<'a> {
+    /// Create a new [`PublicGroupDiff`] based on the given [`PublicGroup`].
     pub(super) fn new(public_group: &'a PublicGroup) -> PublicGroupDiff<'a> {
         Self {
             original_group: public_group,
@@ -47,8 +49,10 @@ impl<'a> PublicGroupDiff<'a> {
         }
     }
 
+    /// Turn this [`PublicGroupDiff`] into a [`StagedPublicGroupDiff`], thus
+    /// freezing it until it is merged with the original [`PublicGroup`].
     pub(crate) fn into_staged_diff(
-        mut self,
+        self,
         backend: &impl OpenMlsCryptoProvider,
         ciphersuite: Ciphersuite,
     ) -> Result<StagedPublicGroupDiff, LibraryError> {
@@ -61,26 +65,15 @@ impl<'a> PublicGroupDiff<'a> {
         })
     }
 
-    pub(crate) fn compute_tree_hashes(
-        &mut self,
-        backend: &impl OpenMlsCryptoProvider,
-        ciphersuite: Ciphersuite,
-    ) -> Result<Vec<u8>, LibraryError> {
-        self.diff.compute_tree_hashes(backend, ciphersuite)
-    }
-
-    pub(crate) fn add_leaf(
-        &self,
-        leaf_node: OpenMlsLeafNode,
-    ) -> Result<LeafNodeIndex, AddLeafError> {
-        self.diff.add_leaf(leaf_node).map_err(|e| match e {
-            crate::treesync::errors::TreeSyncAddLeaf::LibraryError(e) => {
-                AddLeafError::LibraryError(e)
-            }
-            crate::treesync::errors::TreeSyncAddLeaf::TreeFull => AddLeafError::MaxGroupSize,
-        })
-    }
-
+    /// Prepare the [`EncryptedGroupSecrets`] for a number of `invited_members`
+    /// based on this [`PublicGroupDiff`]. If a slice of [`PlainUpdatePathNode`]
+    /// is given, they are included in the [`GroupSecrets`] of the path.
+    ///
+    /// Returns an error if
+    ///  - the own node is outside the tree
+    ///  - the invited members are not part of the tree yet
+    ///  - the leaf index of a new member is identical to the own leaf index
+    ///  - the plain path does not contain the correct secrets
     pub(crate) fn encrypt_group_secrets(
         &self,
         joiner_secret: &JoinerSecret,
@@ -117,11 +110,9 @@ impl<'a> PublicGroupDiff<'a> {
     /// process and the `exclusion_list` is used to determine the position of
     /// the ciphertext in the `UpdatePath` that we can decrypt.
     ///
-    /// Returns a vector containing the decrypted [`ParentNode`] instances, as
-    /// well as the [`CommitSecret`] resulting from their derivation. Returns an
+    /// Returns the [`CommitSecret`] resulting from their derivation. Returns an
     /// error if the `sender_leaf_index` is outside of the tree.
     ///
-    /// ValSem202: Path must be the right length
     /// ValSem203: Path secrets must decrypt correctly
     /// ValSem204: Public keys from Path must be verified and match the private keys from the direct path
     /// TODO #804
@@ -132,7 +123,7 @@ impl<'a> PublicGroupDiff<'a> {
         params: DecryptPathParams,
         owned_keys: &[&EncryptionKeyPair],
         own_leaf_index: LeafNodeIndex,
-    ) -> Result<(Vec<ParentNode>, Vec<EncryptionKeyPair>, CommitSecret), ApplyUpdatePathError> {
+    ) -> Result<(Vec<EncryptionKeyPair>, CommitSecret), ApplyUpdatePathError> {
         self.diff
             .decrypt_path(backend, ciphersuite, params, owned_keys, own_leaf_index)
     }
@@ -146,6 +137,7 @@ impl<'a> PublicGroupDiff<'a> {
     /// replace the [`LeafNode`] in the corresponding leaf with the given one.
     ///
     /// Returns an error if the `sender_leaf_index` is outside of the tree.
+    /// ValSem202: Path must be the right length
     /// TODO #804
     pub(crate) fn apply_received_update_path(
         &mut self,
@@ -158,6 +150,9 @@ impl<'a> PublicGroupDiff<'a> {
             .apply_received_update_path(backend, ciphersuite, sender_leaf_index, update_path)
     }
 
+    /// Update the interim transcript hash of the diff and store the
+    /// confirmation tag s.t. it can later be merged back into the original
+    /// group.
     pub(crate) fn update_interim_transcript_hash(
         &mut self,
         ciphersuite: Ciphersuite,
@@ -183,6 +178,9 @@ impl<'a> PublicGroupDiff<'a> {
         Ok(())
     }
 
+    /// Update the [`GroupContext`] of the diff using the given
+    /// `commit_content`. This includes computing the confirmed transcript hash,
+    /// tree hash computation and epoch incrementation.
     pub(crate) fn update_group_context(
         &mut self,
         ciphersuite: Ciphersuite,
@@ -208,7 +206,7 @@ impl<'a> PublicGroupDiff<'a> {
         }?;
 
         // Calculate tree hash
-        let tree_hash = self.compute_tree_hashes(backend, ciphersuite)?;
+        let tree_hash = self.diff.compute_tree_hashes(backend, ciphersuite)?;
         let mut new_epoch = self.original_group.group_context().epoch();
         new_epoch.increment();
         // Calculate group context
@@ -223,11 +221,14 @@ impl<'a> PublicGroupDiff<'a> {
         Ok(())
     }
 
+    /// Returns the current [`GroupContext`] of this diff.
     pub(crate) fn group_context(&self) -> &GroupContext {
         &self.group_context
     }
 }
 
+/// The staged version of a [`PublicGroupDiff`], which means it can no longer be
+/// modified. Its only use is to merge it into the original [`PublicGroup`].
 #[derive(Debug, Serialize, Deserialize)]
 pub(crate) struct StagedPublicGroupDiff {
     pub(super) staged_diff: StagedTreeSyncDiff,
