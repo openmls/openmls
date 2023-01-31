@@ -33,8 +33,9 @@ struct PathProcessingResult {
 impl CoreGroup {
     pub(crate) fn create_commit<KeyStore: OpenMlsKeyStore>(
         &self,
-        params: CreateCommitParams,
+        mut params: CreateCommitParams,
         backend: &impl OpenMlsCryptoProvider<KeyStoreProvider = KeyStore>,
+        signer: &impl Signer,
     ) -> Result<CreateCommitResult, CreateCommitError<KeyStore::Error>> {
         let ciphersuite = self.ciphersuite();
 
@@ -76,10 +77,8 @@ impl CoreGroup {
 
         // Validate the proposals by doing the following checks:
 
-        // ValSem100
         // ValSem101
         // ValSem102
-        // ValSem103
         // ValSem104
         // ValSem106
         self.validate_add_proposals(&proposal_queue)?;
@@ -88,7 +87,6 @@ impl CoreGroup {
         self.validate_remove_proposals(&proposal_queue)?;
         // Validate update proposals for member commits
         if let Sender::Member(sender_index) = &sender {
-            // ValSem109
             // ValSem110
             // ValSem111
             // ValSem112
@@ -131,7 +129,10 @@ impl CoreGroup {
                     version: self.version(),
                 },
                 backend,
-                params.credential_bundle(),
+                signer,
+                params
+                    .take_credential_with_key()
+                    .ok_or(CreateCommitError::MissingCredential)?,
             )?;
 
             let mut leaf_node: OpenMlsLeafNode = key_package.into();
@@ -166,8 +167,8 @@ impl CoreGroup {
                         self.group_id(),
                         self.ciphersuite,
                         ProtocolVersion::default(), // XXX: openmls/openmls#1065
-                        params.credential_bundle(),
                         backend,
+                        signer
                     )?;
                     vec![encryption_keypair]
                 };
@@ -176,9 +177,9 @@ impl CoreGroup {
                 // generated new leaf.
                 let (plain_path, mut new_parent_keypairs, commit_secret) = diff.apply_own_update_path(
                     backend,
+                    signer,
                     ciphersuite,
                     self.group_id().clone(),
-                    params.credential_bundle(),
                     self.own_leaf_index()
                 )?;
 
@@ -232,9 +233,8 @@ impl CoreGroup {
             *params.framing_parameters(),
             sender,
             commit,
-            params.credential_bundle(),
             self.context(),
-            backend,
+            signer,
         )?;
 
         // Calculate the confirmed transcript hash
@@ -347,7 +347,7 @@ impl CoreGroup {
                 )
             };
             // Sign to-be-signed group info.
-            Some(group_info_tbs.sign(backend, params.credential_bundle().signature_private_key())?)
+            Some(group_info_tbs.sign(signer)?)
         } else {
             None
         };

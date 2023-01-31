@@ -61,7 +61,7 @@ pub(crate) use errors::*;
 pub use private_message::*;
 pub use public_message::*;
 
-#[cfg(any(feature = "test-utils", test))]
+#[cfg(test)]
 pub(crate) use mls_auth_content::*;
 
 #[cfg(test)]
@@ -80,7 +80,7 @@ pub use validation::*;
 
 // Tests
 #[cfg(test)]
-mod test_framing;
+pub(crate) mod test_framing;
 
 /// Wire format of MLS messages.
 #[derive(

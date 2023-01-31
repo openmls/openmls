@@ -1,4 +1,5 @@
 //! Unit tests for the ciphersuites.
+use openmls_basic_credential::SignatureKeyPair;
 use openmls_rust_crypto::OpenMlsRustCrypto;
 use openmls_traits::types::HpkeCiphertext;
 
@@ -72,22 +73,8 @@ fn test_hpke_seal_open(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoPro
     );
 }
 
-#[apply(ciphersuites_and_backends)]
-fn test_sign_verify(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
-    let keypair = SignatureKeypair::new(ciphersuite.signature_algorithm(), backend)
-        .expect("An unexpected error occurred.");
-    let payload = &[1, 2, 3];
-    let sign_content = SignContent::new("sign label", payload.into());
-    let signature = keypair
-        .sign_with_label(backend, &sign_content)
-        .expect("An unexpected error occurred.");
-    assert!(keypair
-        .verify_with_label(backend, &signature, &sign_content)
-        .is_ok());
-}
-
-#[apply(backends)]
-fn supported_ciphersuites(backend: &impl OpenMlsCryptoProvider) {
+#[test]
+fn supported_ciphersuites() {
     const SUPPORTED_CIPHERSUITE_NAMES: &[Ciphersuite] = &[
         Ciphersuite::MLS_128_DHKEMX25519_AES128GCM_SHA256_Ed25519,
         Ciphersuite::MLS_128_DHKEMX25519_CHACHA20POLY1305_SHA256_Ed25519,
@@ -103,56 +90,13 @@ fn supported_ciphersuites(backend: &impl OpenMlsCryptoProvider) {
 
     for ciphersuite in SUPPORTED_CIPHERSUITE_NAMES {
         // Create signature keypair
-        let _signature_keypair = SignatureKeypair::new(ciphersuite.signature_algorithm(), backend)
+        let _signature_keypair = SignatureKeyPair::new(ciphersuite.signature_algorithm())
             .expect("Could not create signature keypair.");
     }
 
     for ciphersuite in UNSUPPORTED_CIPHERSUITE_NAMES {
         // Create signature keypair
-        let _signature_keypair =
-            SignatureKeypair::new(SignatureScheme::from(*ciphersuite), backend)
-                .expect_err("Could create signature keypair with unsupported ciphersuite.");
+        let _signature_keypair = SignatureKeyPair::new(SignatureScheme::from(*ciphersuite))
+            .expect_err("Could create signature keypair with unsupported ciphersuite.");
     }
-}
-
-#[apply(ciphersuites_and_backends)]
-fn test_signatures(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
-    // Test that valid signatures are properly verified.
-    let payload = vec![0u8];
-    let signature_scheme =
-        SignatureScheme::try_from(ciphersuite).expect("error deriving signature scheme");
-    let keypair = SignatureKeypair::new(signature_scheme, backend)
-        .expect("error generating signature keypair");
-    let sign_content = SignContent::new("sign label", payload.clone().into());
-    let mut signature = keypair
-        .sign_with_label(backend, &sign_content)
-        .expect("error creating signature");
-    println!("Done signing payload\n");
-    keypair
-        .verify_with_label(backend, &signature, &sign_content)
-        .expect("error verifying signature");
-    println!("Done verifying payload\n");
-
-    // Try to verify with wrong label.
-    let sign_content = SignContent::new("other label", payload.into());
-    assert_eq!(
-        keypair
-            .verify_with_label(backend, &signature, &sign_content)
-            .expect_err("error verifying signature"),
-        CryptoError::InvalidSignature
-    );
-
-    // Tamper with signature such that verification fails. We choose a byte
-    // somewhere in the middle to make the verification fail, not the DER
-    // decoding (in the case of ECDSA signatures).
-    let mut modified_signature = signature.as_slice().to_vec();
-    modified_signature[20] ^= 0xFF;
-    signature.modify(&modified_signature);
-
-    assert_eq!(
-        keypair
-            .verify_with_label(backend, &signature, &sign_content)
-            .expect_err("error verifying signature"),
-        CryptoError::InvalidSignature
-    );
 }

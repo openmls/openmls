@@ -59,8 +59,9 @@ impl MessageSecrets {
 
 // Test functions
 impl MessageSecrets {
-    #[cfg(any(feature = "test-utils", test))]
-    pub(crate) fn sender_data_secret_mut(&mut self) -> &mut SenderDataSecret {
+    // XXX[KAT]: #1051 only used in KATs. Remove if not needed.
+    #[cfg(test)]
+    pub(crate) fn _sender_data_secret_mut(&mut self) -> &mut SenderDataSecret {
         &mut self.sender_data_secret
     }
 
@@ -88,7 +89,7 @@ impl MessageSecrets {
         }
     }
 
-    #[cfg(any(feature = "test-utils", test))]
+    #[cfg(test)]
     pub(crate) fn replace_secret_tree(&mut self, secret_tree: SecretTree) -> SecretTree {
         std::mem::replace(&mut self.secret_tree, secret_tree)
     }

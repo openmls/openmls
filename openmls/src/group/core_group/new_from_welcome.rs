@@ -3,7 +3,7 @@ use openmls_traits::{crypto::OpenMlsCrypto, key_store::OpenMlsKeyStore};
 use tls_codec::Deserialize;
 
 use crate::{
-    ciphersuite::{hash_ref::HashReference, signable::Verifiable},
+    ciphersuite::{hash_ref::HashReference, signable::Verifiable, OpenMlsSignaturePublicKey},
     group::{core_group::*, errors::WelcomeError},
     schedule::errors::PskError,
     treesync::{
@@ -141,13 +141,7 @@ impl CoreGroup {
 
         // Find our own leaf in the tree.
         let own_leaf_index = tree
-            .find_leaf(
-                key_package_bundle
-                    .key_package()
-                    .leaf_node()
-                    .credential()
-                    .signature_key(),
-            )
+            .find_leaf(key_package_bundle.key_package().leaf_node().signature_key())
             .ok_or(WelcomeError::PublicTreeError(
                 PublicTreeError::MalformedTree,
             ))?;
@@ -180,17 +174,17 @@ impl CoreGroup {
         };
 
         let group_info: GroupInfo = {
-            let signer_credential = tree
+            let signature_key = tree
                 .leaf(verifiable_group_info.signer())
                 .ok_or(WelcomeError::UnknownSender)?
-                .credential();
+                .signature_key();
+            let group_info_signer_pk = OpenMlsSignaturePublicKey::from_signature_key(
+                signature_key.clone(),
+                ciphersuite.signature_algorithm(),
+            );
 
             verifiable_group_info
-                .verify(
-                    backend,
-                    signer_credential.signature_key(),
-                    ciphersuite.signature_algorithm(),
-                )
+                .verify(backend.crypto(), &group_info_signer_pk)
                 .map_err(|_| WelcomeError::InvalidGroupInfoSignature)?
         };
 

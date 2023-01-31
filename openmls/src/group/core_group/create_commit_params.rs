@@ -10,23 +10,18 @@ pub(crate) enum CommitType {
 }
 
 pub(crate) struct CreateCommitParams<'a> {
-    framing_parameters: FramingParameters<'a>, // Mandatory
-    credential_bundle: &'a CredentialBundle,   // Mandatory
-    proposal_store: &'a ProposalStore,         // Mandatory
-    inline_proposals: Vec<Proposal>,           // Optional
-    force_self_update: bool,                   // Optional
-    commit_type: CommitType,                   // Optional (default is `Member`)
+    framing_parameters: FramingParameters<'a>,      // Mandatory
+    proposal_store: &'a ProposalStore,              // Mandatory
+    inline_proposals: Vec<Proposal>,                // Optional
+    force_self_update: bool,                        // Optional
+    commit_type: CommitType,                        // Optional (default is `Member`)
+    credential_with_key: Option<CredentialWithKey>, // Mandatory for external commits
 }
 
 pub(crate) struct TempBuilderCCPM0 {}
 
 pub(crate) struct TempBuilderCCPM1<'a> {
     framing_parameters: FramingParameters<'a>,
-}
-
-pub(crate) struct TempBuilderCCPM2<'a> {
-    framing_parameters: FramingParameters<'a>,
-    credential_bundle: &'a CredentialBundle,
 }
 
 pub(crate) struct CreateCommitParamsBuilder<'a> {
@@ -43,18 +38,6 @@ impl TempBuilderCCPM0 {
 }
 
 impl<'a> TempBuilderCCPM1<'a> {
-    pub(crate) fn credential_bundle(
-        self,
-        credential_bundle: &'a CredentialBundle,
-    ) -> TempBuilderCCPM2<'a> {
-        TempBuilderCCPM2 {
-            framing_parameters: self.framing_parameters,
-            credential_bundle,
-        }
-    }
-}
-
-impl<'a> TempBuilderCCPM2<'a> {
     pub(crate) fn proposal_store(
         self,
         proposal_store: &'a ProposalStore,
@@ -62,11 +45,11 @@ impl<'a> TempBuilderCCPM2<'a> {
         CreateCommitParamsBuilder {
             ccp: CreateCommitParams {
                 framing_parameters: self.framing_parameters,
-                credential_bundle: self.credential_bundle,
                 proposal_store,
                 inline_proposals: vec![],
                 force_self_update: true,
                 commit_type: CommitType::Member,
+                credential_with_key: None,
             },
         }
     }
@@ -86,6 +69,10 @@ impl<'a> CreateCommitParamsBuilder<'a> {
         self.ccp.commit_type = commit_type;
         self
     }
+    pub(crate) fn credential_with_key(mut self, credential_with_key: CredentialWithKey) -> Self {
+        self.ccp.credential_with_key = Some(credential_with_key);
+        self
+    }
     pub(crate) fn build(self) -> CreateCommitParams<'a> {
         self.ccp
     }
@@ -98,9 +85,6 @@ impl<'a> CreateCommitParams<'a> {
     pub(crate) fn framing_parameters(&self) -> &FramingParameters {
         &self.framing_parameters
     }
-    pub(crate) fn credential_bundle(&self) -> &CredentialBundle {
-        self.credential_bundle
-    }
     pub(crate) fn proposal_store(&self) -> &ProposalStore {
         self.proposal_store
     }
@@ -112,5 +96,8 @@ impl<'a> CreateCommitParams<'a> {
     }
     pub(crate) fn commit_type(&self) -> CommitType {
         self.commit_type
+    }
+    pub(crate) fn take_credential_with_key(&mut self) -> Option<CredentialWithKey> {
+        self.credential_with_key.take()
     }
 }

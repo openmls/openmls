@@ -10,20 +10,19 @@ use rstest_reuse::{self, *};
 
 use crate::{
     binary_tree::LeafNodeIndex,
-    credentials::*,
     framing::*,
     group::{config::CryptoConfig, errors::*, *},
     key_packages::*,
 };
 
-use super::utils::{generate_credential_bundle, generate_key_package};
+use super::utils::{generate_credential_bundle, generate_key_package, CredentialWithKeyAndSigner};
 
 // Test setup values
 struct ValidationTestSetup {
     alice_group: MlsGroup,
     bob_group: MlsGroup,
-    _alice_credential: Credential,
-    _bob_credential: Credential,
+    _alice_credential: CredentialWithKeyAndSigner,
+    _bob_credential: CredentialWithKeyAndSigner,
     _alice_key_package: KeyPackage,
     _bob_key_package: KeyPackage,
 }
@@ -37,38 +36,26 @@ fn validation_test_setup(
     let group_id = GroupId::from_slice(b"Test Group");
 
     // Generate credential bundles
-    let alice_credential = generate_credential_bundle(
-        "Alice".into(),
-        CredentialType::Basic,
-        ciphersuite.signature_algorithm(),
-        backend,
-    )
-    .expect("An unexpected error occurred.");
+    let alice_credential =
+        generate_credential_bundle("Alice".into(), ciphersuite.signature_algorithm(), backend);
 
-    let bob_credential = generate_credential_bundle(
-        "Bob".into(),
-        CredentialType::Basic,
-        ciphersuite.signature_algorithm(),
-        backend,
-    )
-    .expect("An unexpected error occurred.");
+    let bob_credential =
+        generate_credential_bundle("Bob".into(), ciphersuite.signature_algorithm(), backend);
 
     // Generate KeyPackages
     let alice_key_package = generate_key_package(
-        &[ciphersuite],
-        &alice_credential,
+        ciphersuite,
         Extensions::empty(),
         backend,
-    )
-    .expect("An unexpected error occurred.");
+        alice_credential.clone(),
+    );
 
     let bob_key_package = generate_key_package(
-        &[ciphersuite],
-        &bob_credential,
+        ciphersuite,
         Extensions::empty(),
         backend,
-    )
-    .expect("An unexpected error occurred.");
+        bob_credential.clone(),
+    );
 
     // Define the MlsGroup configuration
     let mls_group_config = MlsGroupConfig::builder()
@@ -79,15 +66,20 @@ fn validation_test_setup(
     // === Alice creates a group ===
     let mut alice_group = MlsGroup::new_with_group_id(
         backend,
+        &alice_credential.signer,
         &mls_group_config,
         group_id,
-        alice_credential.signature_key(),
+        alice_credential.credential_with_key.clone(),
     )
     .expect("An unexpected error occurred.");
 
     // === Alice adds Bob & Bob joins ===
     let (_message, welcome, _group_info) = alice_group
-        .add_members(backend, &[bob_key_package.clone()])
+        .add_members(
+            backend,
+            &alice_credential.signer,
+            &[bob_key_package.clone()],
+        )
         .expect("Could not add member.");
 
     alice_group
@@ -118,14 +110,14 @@ fn test_valsem002(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
     let ValidationTestSetup {
         mut alice_group,
         mut bob_group,
-        _alice_credential: _,
+        _alice_credential,
         _bob_credential: _,
         _alice_key_package: _,
         _bob_key_package: _,
     } = validation_test_setup(PURE_PLAINTEXT_WIRE_FORMAT_POLICY, ciphersuite, backend);
 
     let (message, _welcome, _group_info) = alice_group
-        .self_update(backend)
+        .self_update(backend, &_alice_credential.signer)
         .expect("Could not self-update.");
 
     let serialized_message = message
@@ -164,7 +156,7 @@ fn test_valsem003(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
     let ValidationTestSetup {
         mut alice_group,
         mut bob_group,
-        _alice_credential: _,
+        _alice_credential,
         _bob_credential: _,
         _alice_key_package: _,
         _bob_key_package: _,
@@ -172,7 +164,7 @@ fn test_valsem003(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
 
     // Alice needs to create a new message that Bob can process.
     let (message, _welcome, _group_info) = alice_group
-        .self_update(backend)
+        .self_update(backend, &_alice_credential.signer)
         .expect("Could not self update.");
     alice_group.merge_pending_commit(backend).unwrap();
 
@@ -196,7 +188,7 @@ fn test_valsem003(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
 
     // Do a second Commit to increase the epoch number
     let (message, _welcome, _group_info) = alice_group
-        .self_update(backend)
+        .self_update(backend, &_alice_credential.signer)
         .expect("Could not add member.");
 
     let current_epoch = alice_group.epoch();
@@ -258,14 +250,14 @@ fn test_valsem004(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
     let ValidationTestSetup {
         mut alice_group,
         mut bob_group,
-        _alice_credential: _,
+        _alice_credential,
         _bob_credential: _,
         _alice_key_package: _,
         _bob_key_package: _,
     } = validation_test_setup(PURE_PLAINTEXT_WIRE_FORMAT_POLICY, ciphersuite, backend);
 
     let (message, _welcome, _group_info) = alice_group
-        .self_update(backend)
+        .self_update(backend, &_alice_credential.signer)
         .expect("Could not self-update.");
 
     let serialized_message = message
@@ -314,14 +306,14 @@ fn test_valsem005(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
     let ValidationTestSetup {
         mut alice_group,
         mut bob_group,
-        _alice_credential: _,
+        _alice_credential,
         _bob_credential: _,
         _alice_key_package: _,
         _bob_key_package: _,
     } = validation_test_setup(PURE_PLAINTEXT_WIRE_FORMAT_POLICY, ciphersuite, backend);
 
     let (message, _welcome, _group_info) = alice_group
-        .self_update(backend)
+        .self_update(backend, &_alice_credential.signer)
         .expect("Could not self-update.");
 
     let serialized_message = message
@@ -369,14 +361,14 @@ fn test_valsem006(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
     let ValidationTestSetup {
         mut alice_group,
         mut bob_group,
-        _alice_credential: _,
+        _alice_credential,
         _bob_credential: _,
         _alice_key_package: _,
         _bob_key_package: _,
     } = validation_test_setup(PURE_CIPHERTEXT_WIRE_FORMAT_POLICY, ciphersuite, backend);
 
     let message = alice_group
-        .create_message(backend, &[1, 2, 3])
+        .create_message(backend, &_alice_credential.signer, &[1, 2, 3])
         .expect("An unexpected error occurred.");
 
     let serialized_message = message
@@ -417,14 +409,14 @@ fn test_valsem007(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
     let ValidationTestSetup {
         mut alice_group,
         mut bob_group,
-        _alice_credential: _,
+        _alice_credential,
         _bob_credential: _,
         _alice_key_package: _,
         _bob_key_package: _,
     } = validation_test_setup(PURE_PLAINTEXT_WIRE_FORMAT_POLICY, ciphersuite, backend);
 
     let (message, _welcome, _group_info) = alice_group
-        .self_update(backend)
+        .self_update(backend, &_alice_credential.signer)
         .expect("Could not self-update.");
 
     let serialized_message = message
@@ -463,7 +455,7 @@ fn test_valsem008(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
     let ValidationTestSetup {
         mut alice_group,
         mut bob_group,
-        _alice_credential: _,
+        _alice_credential,
         _bob_credential: _,
         _alice_key_package: _,
         _bob_key_package: _,
@@ -471,7 +463,7 @@ fn test_valsem008(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
 
     // Alice needs to create a new message that Bob can process.
     let (message, _welcome, _group_info) = alice_group
-        .self_update(backend)
+        .self_update(backend, &_alice_credential.signer)
         .expect("Could not self-update.");
 
     let serialized_message = message
@@ -513,14 +505,14 @@ fn test_valsem009(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
     let ValidationTestSetup {
         mut alice_group,
         mut bob_group,
-        _alice_credential: _,
+        _alice_credential,
         _bob_credential: _,
         _alice_key_package: _,
         _bob_key_package: _,
     } = validation_test_setup(PURE_PLAINTEXT_WIRE_FORMAT_POLICY, ciphersuite, backend);
 
     let (message, _welcome, _group_info) = alice_group
-        .self_update(backend)
+        .self_update(backend, &_alice_credential.signer)
         .expect("Could not self-update.");
 
     let serialized_message = message
@@ -568,7 +560,7 @@ fn test_valsem010(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
     let ValidationTestSetup {
         mut alice_group,
         mut bob_group,
-        _alice_credential: _,
+        _alice_credential,
         _bob_credential: _,
         _alice_key_package: _,
         _bob_key_package: _,
@@ -576,7 +568,7 @@ fn test_valsem010(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
 
     // Alice needs to create a new message that Bob can process.
     let (message, _welcome, _group_info) = alice_group
-        .self_update(backend)
+        .self_update(backend, &_alice_credential.signer)
         .expect("Could not self update.");
 
     let serialized_message = message

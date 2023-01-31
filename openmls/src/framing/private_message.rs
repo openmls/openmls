@@ -118,7 +118,7 @@ impl PrivateMessage {
         )
     }
 
-    #[cfg(any(feature = "test-utils", test))]
+    #[cfg(test)]
     pub(crate) fn encrypt_with_different_header(
         public_message: &AuthenticatedContent,
         ciphersuite: Ciphersuite,

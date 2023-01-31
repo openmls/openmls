@@ -17,6 +17,7 @@ ds-lib = { path = "../delivery-service/ds-lib" }
 openmls_traits = { path = "../traits" }
 openmls_rust_crypto = { path = "../openmls_rust_crypto" }
 openmls_memory_keystore = { path = "../memory_keystore" }
+openmls_basic_credential = { path = "../basic_credential" }
 
 [dependencies.termion]
 version = "1.5"

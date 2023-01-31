@@ -29,7 +29,7 @@ impl ProposalStore {
             queued_proposals: Vec::new(),
         }
     }
-    #[cfg(any(feature = "test-utils", test))]
+    #[cfg(test)]
     pub(crate) fn from_queued_proposal(queued_proposal: QueuedProposal) -> Self {
         Self {
             queued_proposals: vec![queued_proposal],
@@ -419,11 +419,11 @@ impl ProposalQueue {
                         contains_external_init = true;
                     }
                 }
-                Proposal::AppAck(_) => unimplemented!("See #291"),
                 Proposal::GroupContextExtensions(_) => {
                     // TODO: Validate proposal?
                     proposal_pool.insert(queued_proposal.proposal_reference(), queued_proposal);
                 }
+                Proposal::AppAck(_) => unimplemented!("See #291"),
             }
         }
         // Check for presence of Removes and delete Updates

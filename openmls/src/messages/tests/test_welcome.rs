@@ -1,10 +1,8 @@
 use crate::{
     binary_tree::LeafNodeIndex,
     ciphersuite::{hash_ref::KeyPackageRef, signable::Signable, AeadKey, AeadNonce, Mac, Secret},
-    credentials::{errors::CredentialError, CredentialBundle, CredentialType},
     extensions::Extensions,
     group::{config::CryptoConfig, errors::WelcomeError, GroupId, MlsGroup, MlsGroupConfigBuilder},
-    key_packages::KeyPackage,
     messages::{
         group_info::{GroupInfoTBS, VerifiableGroupInfo},
         ConfirmationTag, EncryptedGroupSecrets, GroupSecrets, Welcome,
@@ -14,40 +12,16 @@ use crate::{
     versions::ProtocolVersion,
 };
 
+use openmls_basic_credential::SignatureKeyPair;
 use rstest::*;
 use rstest_reuse::{self, *};
 
 use crate::group::GroupContext;
 use openmls_rust_crypto::OpenMlsRustCrypto;
 use openmls_traits::{
-    crypto::OpenMlsCrypto,
-    key_store::OpenMlsKeyStore,
-    types::{Ciphersuite, SignatureScheme},
-    OpenMlsCryptoProvider,
+    crypto::OpenMlsCrypto, key_store::OpenMlsKeyStore, types::Ciphersuite, OpenMlsCryptoProvider,
 };
 use tls_codec::{Deserialize, Serialize};
-
-/// Helper function
-fn generate_credential_bundle(
-    identity: Vec<u8>,
-    credential_type: CredentialType,
-    signature_algorithm: SignatureScheme,
-    backend: &impl OpenMlsCryptoProvider,
-) -> Result<CredentialBundle, CredentialError> {
-    let cb = CredentialBundle::new(identity, credential_type, signature_algorithm, backend)?;
-    let credential = cb.credential().clone();
-    backend
-        .key_store()
-        .store(
-            &credential
-                .signature_key()
-                .tls_serialize_detached()
-                .expect("Error serializing signature key."),
-            &cb,
-        )
-        .expect("An unexpected error occurred.");
-    Ok(cb)
-}
 
 /// This test detects discrepancies between ciphersuites in the GroupInfo of a
 /// Welcome message and the KeyPackage of a new member. We expect that to fail
@@ -72,51 +46,26 @@ fn test_welcome_ciphersuite_mismatch(
         .crypto_config(CryptoConfig::with_default_version(ciphersuite))
         .build();
 
-    // Create credential bundles
-    let alice_credential_bundle = generate_credential_bundle(
-        b"Alice".to_vec(),
-        CredentialType::Basic,
-        ciphersuite.signature_algorithm(),
-        backend,
-    )
-    .expect("Could not create credential bundle.");
+    let (alice_credential_with_key, _alice_kpb, alice_signer, _alice_signature_key) =
+        crate::group::test_core_group::setup_client("Alice", ciphersuite, backend);
+    let (_bob_credential, bob_kpb, _bob_signer, _bob_signature_key) =
+        crate::group::test_core_group::setup_client("Bob", ciphersuite, backend);
 
-    let bob_credential_bundle = generate_credential_bundle(
-        b"Bob".to_vec(),
-        CredentialType::Basic,
-        ciphersuite.signature_algorithm(),
-        backend,
-    )
-    .expect("Could not create credential bundle.");
-
-    // Create key packages
-    let bob_kp = KeyPackage::builder()
-        .build(
-            CryptoConfig {
-                ciphersuite,
-                version: ProtocolVersion::default(),
-            },
-            backend,
-            &bob_credential_bundle,
-        )
-        .unwrap();
-
-    let bob_private_key: Vec<u8> = backend
-        .key_store()
-        .read(bob_kp.hpke_init_key().as_slice())
-        .unwrap();
+    let bob_kp = bob_kpb.key_package();
+    let bob_private_key = bob_kpb.private_key();
 
     // === Alice creates a group  and adds Bob ===
     let mut alice_group = MlsGroup::new_with_group_id(
         backend,
+        &alice_signer,
         &mls_group_config,
         group_id,
-        alice_credential_bundle.credential().signature_key(),
+        alice_credential_with_key,
     )
     .expect("An unexpected error occurred.");
 
     let (_queued_message, welcome, _group_info) = alice_group
-        .add_members(backend, &[bob_kp.clone()])
+        .add_members(backend, &alice_signer, &[bob_kp.clone()])
         .expect("Could not add member to group.");
 
     alice_group
@@ -136,7 +85,7 @@ fn test_welcome_ciphersuite_mismatch(
         .hpke_open(
             ciphersuite.hpke_config(),
             egs.encrypted_group_secrets(),
-            &bob_private_key,
+            bob_private_key.as_slice(),
             &[],
             &[],
         )
@@ -184,9 +133,11 @@ fn test_welcome_ciphersuite_mismatch(
     welcome.encrypted_group_info = encrypted_verifiable_group_info.into();
 
     // Create backup of encryption keypair, s.t. we can process the welcome a second time after failing.
-    let encryption_keypair =
-        EncryptionKeyPair::read_from_key_store(backend, bob_kp.leaf_node().encryption_key())
-            .unwrap();
+    let encryption_keypair = EncryptionKeyPair::read_from_key_store(
+        backend,
+        bob_kpb.key_package().leaf_node().encryption_key(),
+    )
+    .unwrap();
 
     // Bob tries to join the group
     let err = MlsGroup::new_from_welcome(
@@ -207,12 +158,15 @@ fn test_welcome_ciphersuite_mismatch(
         .key_store()
         .store(
             bob_kp.hash_ref(backend.crypto()).unwrap().as_slice(),
-            &bob_kp,
+            bob_kp,
         )
         .unwrap();
     backend
         .key_store()
-        .store(bob_kp.hpke_init_key().as_slice(), &bob_private_key)
+        .store(
+            bob_kp.hpke_init_key().as_slice(),
+            &bob_private_key.as_slice().to_vec(),
+        )
         .unwrap();
 
     encryption_keypair.write_to_key_store(backend).unwrap();
@@ -257,16 +211,11 @@ fn test_welcome_message_with_version(
         )
     };
 
-    // We need a credential bundle to sign the group info.
-    let credential_bundle = CredentialBundle::new(
-        "XXX".into(),
-        CredentialType::Basic,
-        ciphersuite.signature_algorithm(),
-        backend,
-    )
-    .expect("An unexpected error occurred.");
+    // We need a signer
+    let signer = SignatureKeyPair::new(ciphersuite.signature_algorithm()).unwrap();
+
     let group_info = group_info_tbs
-        .sign(backend, credential_bundle.signature_private_key())
+        .sign(&signer)
         .expect("Error signing GroupInfo");
 
     // Generate key and nonce for the symmetric cipher.

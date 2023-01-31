@@ -10,7 +10,7 @@ use thiserror::Error;
 use crate::{
     error::LibraryError,
     group::errors::{CreateCommitError, MergeCommitError, StageCommitError, ValidationError},
-    treesync::errors::LeafNodeValidationError,
+    treesync::errors::{LeafNodeValidationError, PublicTreeError},
 };
 
 /// New group error
@@ -96,9 +96,6 @@ pub enum ProcessMessageError {
     /// The message's signature is invalid.
     #[error("The message's signature is invalid.")]
     InvalidSignature,
-    /// A signature key was not provided for an external message.
-    #[error("A signature key was not provided for an external message.")]
-    MissingSignatureKey,
     /// See [`StageCommitError`] for more details.
     #[error(transparent)]
     InvalidCommit(#[from] StageCommitError),
@@ -247,6 +244,9 @@ pub enum ProposeSelfUpdateError<KeyStoreError> {
     /// Error accessing the key store.
     #[error("Error accessing the key store.")]
     KeyStoreError(KeyStoreError),
+    /// See [`PublicTreeError`] for more details.
+    #[error(transparent)]
+    PublicTreeError(#[from] PublicTreeError),
 }
 
 /// Commit to pending proposals error

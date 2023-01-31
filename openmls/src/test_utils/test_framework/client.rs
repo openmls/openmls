@@ -3,10 +3,11 @@
 //! that client perform certain MLS operations.
 use std::{collections::HashMap, sync::RwLock};
 
+use openmls_basic_credential::SignatureKeyPair;
 use openmls_rust_crypto::OpenMlsRustCrypto;
 use openmls_traits::{
     key_store::OpenMlsKeyStore,
-    types::{Ciphersuite, HpkeKeyPair},
+    types::{Ciphersuite, HpkeKeyPair, SignatureScheme},
     OpenMlsCryptoProvider,
 };
 use tls_codec::Serialize;
@@ -20,7 +21,11 @@ use crate::{
     group::{config::CryptoConfig, *},
     key_packages::*,
     messages::{group_info::GroupInfo, *},
-    treesync::{node::Node, LeafNode},
+    prelude_test::SignaturePublicKey,
+    treesync::{
+        node::{leaf_node::Capabilities, Node},
+        LeafNode,
+    },
     versions::ProtocolVersion,
 };
 
@@ -35,46 +40,39 @@ pub struct Client {
     /// Name of the client.
     pub identity: Vec<u8>,
     /// Ciphersuites supported by the client.
-    pub credentials: HashMap<Ciphersuite, Credential>,
+    pub credentials: HashMap<Ciphersuite, CredentialWithKey>,
     pub crypto: OpenMlsRustCrypto,
     pub groups: RwLock<HashMap<GroupId, MlsGroup>>,
 }
 
 impl Client {
-    /// Generate a fresh key package bundle and store it in
-    /// `self.key_package_bundles`. The first ciphersuite determines the
-    /// credential used to generate the `KeyPackageBundle`. Returns the
-    /// corresponding `KeyPackage`.
+    /// Generate a fresh key package and return it.
+    /// The first ciphersuite determines the
+    /// credential used to generate the `KeyPackage`.
     pub fn get_fresh_key_package(
         &self,
-        ciphersuites: &[Ciphersuite],
+        ciphersuite: Ciphersuite,
     ) -> Result<KeyPackage, ClientError> {
-        if ciphersuites.is_empty() {
-            return Err(ClientError::NoCiphersuite);
-        }
-        let credential = self
+        let credential_with_key = self
             .credentials
-            .get(&ciphersuites[0])
+            .get(&ciphersuite)
             .ok_or(ClientError::CiphersuiteNotSupported)?;
-        let credential_bundle: CredentialBundle = self
-            .crypto
-            .key_store()
-            .read(
-                &credential
-                    .signature_key()
-                    .tls_serialize_detached()
-                    .expect("Error serializing signature key."),
-            )
-            .ok_or(ClientError::NoMatchingCredential)?;
+        let keys = SignatureKeyPair::read(
+            self.crypto.key_store(),
+            credential_with_key.signature_key.as_slice(),
+            ciphersuite.signature_algorithm(),
+        )
+        .unwrap();
 
         let key_package = KeyPackage::builder()
             .build(
                 CryptoConfig {
-                    ciphersuite: ciphersuites[0],
+                    ciphersuite,
                     version: ProtocolVersion::default(),
                 },
                 &self.crypto,
-                &credential_bundle,
+                &keys,
+                credential_with_key.clone(),
             )
             .unwrap();
 
@@ -90,34 +88,22 @@ impl Client {
         mls_group_config: MlsGroupConfig,
         ciphersuite: Ciphersuite,
     ) -> Result<GroupId, ClientError> {
-        let credential = self
+        let credential_with_key = self
             .credentials
             .get(&ciphersuite)
             .ok_or(ClientError::CiphersuiteNotSupported)?;
-        let credential_bundle: CredentialBundle = self
-            .crypto
-            .key_store()
-            .read(
-                &credential
-                    .signature_key()
-                    .tls_serialize_detached()
-                    .expect("Error serializing signature key."),
-            )
-            .ok_or(ClientError::NoMatchingCredential)?;
-        let key_package = KeyPackage::builder()
-            .build(
-                CryptoConfig {
-                    ciphersuite,
-                    version: ProtocolVersion::default(),
-                },
-                &self.crypto,
-                &credential_bundle,
-            )
-            .unwrap();
+        let signer = SignatureKeyPair::read(
+            self.crypto.key_store(),
+            credential_with_key.signature_key.as_slice(),
+            ciphersuite.signature_algorithm(),
+        )
+        .unwrap();
+
         let group_state = MlsGroup::new(
             &self.crypto,
+            &signer,
             &mls_group_config,
-            key_package.leaf_node().signature_key(),
+            credential_with_key.clone(),
         )?;
         let group_id = group_state.group_id().clone();
         self.groups
@@ -212,10 +198,19 @@ impl Client {
         let group = groups
             .get_mut(group_id)
             .ok_or(ClientError::NoMatchingGroup)?;
+        // Get the signature public key to read the signer from the
+        // key store.
+        let signature_pk = group.own_leaf().unwrap().signature_key();
+        let signer = SignatureKeyPair::read(
+            self.crypto.key_store(),
+            signature_pk.as_slice(),
+            group.ciphersuite().signature_algorithm(),
+        )
+        .unwrap();
         let (msg, welcome_option, group_info) = match action_type {
-            ActionType::Commit => group.self_update(&self.crypto)?,
+            ActionType::Commit => group.self_update(&self.crypto, &signer)?,
             ActionType::Proposal => (
-                group.propose_self_update(&self.crypto, leaf_node)?,
+                group.propose_self_update(&self.crypto, &signer, leaf_node)?,
                 None,
                 None,
             ),
@@ -243,10 +238,19 @@ impl Client {
         let group = groups
             .get_mut(group_id)
             .ok_or(ClientError::NoMatchingGroup)?;
+        // Get the signature public key to read the signer from the
+        // key store.
+        let signature_pk = group.own_leaf().unwrap().signature_key();
+        let signer = SignatureKeyPair::read(
+            self.crypto.key_store(),
+            signature_pk.as_slice(),
+            group.ciphersuite().signature_algorithm(),
+        )
+        .unwrap();
         let action_results = match action_type {
             ActionType::Commit => {
                 let (messages, welcome_message, group_info) =
-                    group.add_members(&self.crypto, key_packages)?;
+                    group.add_members(&self.crypto, &signer, key_packages)?;
                 (
                     vec![messages],
                     Some(
@@ -260,7 +264,7 @@ impl Client {
             ActionType::Proposal => {
                 let mut messages = Vec::new();
                 for key_package in key_packages {
-                    let message = group.propose_add_member(&self.crypto, key_package)?;
+                    let message = group.propose_add_member(&self.crypto, &signer, key_package)?;
                     messages.push(message);
                 }
                 (messages, None, None)
@@ -285,10 +289,19 @@ impl Client {
         let group = groups
             .get_mut(group_id)
             .ok_or(ClientError::NoMatchingGroup)?;
+        // Get the signature public key to read the signer from the
+        // key store.
+        let signature_pk = group.own_leaf().unwrap().signature_key();
+        let signer = SignatureKeyPair::read(
+            self.crypto.key_store(),
+            signature_pk.as_slice(),
+            group.ciphersuite().signature_algorithm(),
+        )
+        .unwrap();
         let action_results = match action_type {
             ActionType::Commit => {
                 let (message, welcome_option, group_info) =
-                    group.remove_members(&self.crypto, targets)?;
+                    group.remove_members(&self.crypto, &signer, targets)?;
                 (
                     vec![message],
                     welcome_option.map(|w| w.into_welcome().expect("Unexpected message type.")),
@@ -298,7 +311,7 @@ impl Client {
             ActionType::Proposal => {
                 let mut messages = Vec::new();
                 for target in targets {
-                    let message = group.propose_remove_member(&self.crypto, *target)?;
+                    let message = group.propose_remove_member(&self.crypto, &signer, *target)?;
                     messages.push(message);
                 }
                 (messages, None, None)

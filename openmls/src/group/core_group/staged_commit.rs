@@ -1,6 +1,6 @@
 use openmls_traits::key_store::OpenMlsKeyStore;
 
-use crate::ciphersuite::signable::Verifiable;
+use crate::ciphersuite::{signable::Verifiable, OpenMlsSignaturePublicKey};
 use crate::framing::mls_content::FramedContentBody;
 use crate::treesync::errors::TreeSyncAddLeaf;
 use crate::treesync::node::encryption_keys::EncryptionKeyPair;
@@ -31,16 +31,13 @@ impl CoreGroup {
     /// Returns a [StagedCommit] that can be inspected and later merged
     /// into the group state with [CoreGroup::merge_commit()]
     /// This function does the following checks:
-    ///  - ValSem100
     ///  - ValSem101
     ///  - ValSem102
-    ///  - ValSem103
     ///  - ValSem104
     ///  - ValSem105
     ///  - ValSem106
     ///  - ValSem107
     ///  - ValSem108
-    ///  - ValSem109
     ///  - ValSem110
     ///  - ValSem111
     ///  - ValSem112
@@ -126,10 +123,8 @@ impl CoreGroup {
             .map(|update_path| update_path.leaf_node().clone());
 
         // Validate the staged proposals by doing the following checks:
-        // ValSem100
         // ValSem101
         // ValSem102
-        // ValSem103
         // ValSem104
         // ValSem105
         // ValSem106
@@ -140,7 +135,6 @@ impl CoreGroup {
 
         let public_key_set = match sender {
             Sender::Member(leaf_index) => {
-                // ValSem109
                 // ValSem110
                 // ValSem111
                 // ValSem112
@@ -222,12 +216,12 @@ impl CoreGroup {
                     tbs: &tbs,
                     signature: leaf_node.signature(),
                 };
+                let pk = OpenMlsSignaturePublicKey::from_signature_key(
+                    leaf_node.signature_key().clone(),
+                    self.ciphersuite.signature_algorithm(),
+                );
                 if verifiable_leaf_node
-                    .verify_no_out(
-                        backend,
-                        leaf_node.signature_key(),
-                        leaf_node.credential().signature_scheme(),
-                    )
+                    .verify_no_out(backend.crypto(), &pk)
                     .is_err()
                 {
                     debug_assert!(
@@ -248,7 +242,7 @@ impl CoreGroup {
                 let (leaf_node, update_path_nodes) = path.into_parts();
 
                 // Make sure that the new path key package is valid
-                self.validate_path_key_package(sender_index, &leaf_node, public_key_set, sender)?;
+                self.validate_path_key_package(&leaf_node, public_key_set)?;
 
                 // If the committer is a `NewMemberCommit`, we have to add the leaf to
                 // the tree before we can apply or even decrypt an update path.

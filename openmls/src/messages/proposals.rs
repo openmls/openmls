@@ -28,17 +28,30 @@ use tls_codec::{
 
 /// ## MLS Proposal Types
 ///
-/// | Value            | Name                     | Recommended | Reference |
-/// |:=================|:=========================|:============|:==========|
-/// | 0x0000           | RESERVED                 | N/A         | RFC XXXX  |
-/// | 0x0001           | add                      | Y           | RFC XXXX  |
-/// | 0x0002           | update                   | Y           | RFC XXXX  |
-/// | 0x0003           | remove                   | Y           | RFC XXXX  |
-/// | 0x0004           | psk                      | Y           | RFC XXXX  |
-/// | 0x0005           | reinit                   | Y           | RFC XXXX  |
-/// | 0x0006           | external_init            | Y           | RFC XXXX  |
-/// | 0x0007           | app_ack                  | Y           | RFC XXXX  |
-/// | 0xff00  - 0xffff | Reserved for Private Use | N/A         | RFC XXXX  |
+///
+/// ```c
+/// // draft-ietf-mls-protocol-17
+/// // See IANA registry for registered values
+/// uint16 ProposalType;
+/// ```
+///
+/// | Value           | Name                     | Recommended | Path Required | Reference |
+/// |:================|:=========================|:============|:==============|:==========|
+/// | 0x0000          | RESERVED                 | N/A         | N/A           | RFC XXXX  |
+/// | 0x0001          | add                      | Y           | N             | RFC XXXX  |
+/// | 0x0002          | update                   | Y           | Y             | RFC XXXX  |
+/// | 0x0003          | remove                   | Y           | Y             | RFC XXXX  |
+/// | 0x0004          | psk                      | Y           | N             | RFC XXXX  |
+/// | 0x0005          | reinit                   | Y           | N             | RFC XXXX  |
+/// | 0x0006          | external_init            | Y           | Y             | RFC XXXX  |
+/// | 0x0007          | group_context_extensions | Y           | Y             | RFC XXXX  |
+/// | 0xf000 - 0xffff | Reserved for Private Use | N/A         | N/A           | RFC XXXX  |
+///
+/// # Extensions
+///
+/// | Value  | Name    | Recommended | Path Required | Reference | Notes                        |
+/// |:=======|:========|:============|:==============|:==========|:=============================|
+/// | 0x0008 | app_ack | Y           | Y             | RFC XXXX  | draft-ietf-mls-extensions-00 |
 #[derive(
     PartialEq,
     Eq,
@@ -62,8 +75,8 @@ pub enum ProposalType {
     Presharedkey = 4,
     Reinit = 5,
     ExternalInit = 6,
-    AppAck = 7,
-    GroupContextExtensions = 8,
+    GroupContextExtensions = 7,
+    AppAck = 8,
 }
 
 impl ProposalType {
@@ -76,9 +89,9 @@ impl ProposalType {
             | ProposalType::Remove
             | ProposalType::Presharedkey
             | ProposalType::Reinit
-            | ProposalType::ExternalInit => true,
+            | ProposalType::ExternalInit
+            | ProposalType::GroupContextExtensions => true,
             ProposalType::AppAck => false,
-            ProposalType::GroupContextExtensions => true,
         }
     }
 }
@@ -93,8 +106,8 @@ impl TryFrom<u16> for ProposalType {
             4 => Ok(ProposalType::Presharedkey),
             5 => Ok(ProposalType::Reinit),
             6 => Ok(ProposalType::ExternalInit),
-            7 => Ok(ProposalType::AppAck),
-            8 => Ok(ProposalType::GroupContextExtensions),
+            7 => Ok(ProposalType::GroupContextExtensions),
+            8 => Ok(ProposalType::AppAck),
             _ => Err("Unknown proposal type."),
         }
     }
@@ -105,8 +118,7 @@ impl TryFrom<u16> for ProposalType {
 /// This `enum` contains the different proposals in its variants.
 ///
 /// ```c
-/// // draft-ietf-mls-protocol-16
-///
+/// // draft-ietf-mls-protocol-17
 /// struct {
 ///     ProposalType msg_type;
 ///     select (Proposal.msg_type) {
@@ -130,9 +142,11 @@ pub enum Proposal {
     PreSharedKey(PreSharedKeyProposal),
     ReInit(ReInitProposal),
     ExternalInit(ExternalInitProposal),
-    // TODO(#916): `AppAck` is not in draft-ietf-mls-protocol-16.
-    AppAck(AppAckProposal),
     GroupContextExtensions(GroupContextExtensionProposal),
+    // # Extensions
+    // TODO(#916): `AppAck` is not in draft-ietf-mls-protocol-17 but
+    //             was moved to `draft-ietf-mls-extensions-00`.
+    AppAck(AppAckProposal),
 }
 
 impl Proposal {
@@ -167,7 +181,14 @@ impl Proposal {
 
 /// Add Proposal.
 ///
-/// An Add proposal requests that a client with a specified KeyPackage be added to the group.
+/// An Add proposal requests that a client with a specified [`KeyPackage`] be added to the group.
+///
+/// ```c
+/// // draft-ietf-mls-protocol-17
+/// struct {
+///     KeyPackage key_package;
+/// } Add;
+/// ```
 #[derive(
     Debug, PartialEq, Clone, Serialize, Deserialize, TlsSerialize, TlsDeserialize, TlsSize,
 )]
@@ -184,8 +205,15 @@ impl AddProposal {
 
 /// Update Proposal.
 ///
-/// An Update proposal is a similar mechanism to Add with the distinction that it is the
-/// sender's leaf node in the tree which would be updated with a new [`LeafNode`].
+/// An Update proposal is a similar mechanism to [`AddProposal`] with the distinction that it
+/// replaces the sender's [`LeafNode`] in the tree instead of adding a new leaf to the tree.
+///
+/// ```c
+/// // draft-ietf-mls-protocol-17
+/// struct {
+///     LeafNode leaf_node;
+/// } Update;
+/// ```
 #[derive(
     Debug, PartialEq, Eq, Clone, Serialize, Deserialize, TlsDeserialize, TlsSerialize, TlsSize,
 )]
@@ -202,7 +230,14 @@ impl UpdateProposal {
 
 /// Remove Proposal.
 ///
-/// A Remove proposal requests that the member with KeyPackageRef removed be removed from the group.
+/// A Remove proposal requests that the member with the leaf index removed be removed from the group.
+///
+/// ```c
+/// // draft-ietf-mls-protocol-17
+/// struct {
+///     uint32 removed;
+/// } Remove;
+/// ```
 #[derive(
     Debug, PartialEq, Eq, Clone, Serialize, Deserialize, TlsDeserialize, TlsSerialize, TlsSize,
 )]
@@ -217,7 +252,17 @@ impl RemoveProposal {
     }
 }
 
-/// Preshared Key Proposal.
+/// PreSharedKey Proposal.
+///
+/// A PreSharedKey proposal can be used to request that a pre-shared key be injected into the key
+/// schedule in the process of advancing the epoch.
+///
+/// ```c
+/// // draft-ietf-mls-protocol-17
+/// struct {
+///     PreSharedKeyID psk;
+/// } PreSharedKey;
+/// ```
 #[derive(
     Debug, PartialEq, Eq, Clone, Serialize, Deserialize, TlsDeserialize, TlsSerialize, TlsSize,
 )]
@@ -227,7 +272,7 @@ pub struct PreSharedKeyProposal {
 
 impl PreSharedKeyProposal {
     /// Create a new PSK proposal
-    #[cfg(any(feature = "test-utils", test))]
+    #[cfg(test)]
     pub(crate) fn new(psk: PreSharedKeyId) -> Self {
         Self { psk }
     }
@@ -243,9 +288,21 @@ impl PreSharedKeyProposal {
     }
 }
 
-/// ReInit proposal.
+/// ReInit Proposal.
 ///
-/// This is used to re-initialize a group.
+/// A ReInit proposal represents a request to reinitialize the group with different parameters, for
+/// example, to increase the version number or to change the ciphersuite. The reinitialization is
+/// done by creating a completely new group and shutting down the old one.
+///
+/// ```c
+/// // draft-ietf-mls-protocol-17
+/// struct {
+///     opaque group_id<V>;
+///     ProtocolVersion version;
+///     CipherSuite cipher_suite;
+///     Extension extensions<V>;
+/// } ReInit;
+/// ```
 #[derive(
     Debug, PartialEq, Eq, Clone, Serialize, Deserialize, TlsDeserialize, TlsSerialize, TlsSize,
 )]
@@ -258,7 +315,15 @@ pub struct ReInitProposal {
 
 /// ExternalInit Proposal.
 ///
-/// This proposal is used for External Commits only.
+/// An ExternalInit proposal is used by new members that want to join a group by using an external
+/// commit. This proposal can only be used in that context.
+///
+/// ```c
+/// // draft-ietf-mls-protocol-17
+/// struct {
+///   opaque kem_output<V>;
+/// } ExternalInit;
+/// ```
 #[derive(
     Debug, PartialEq, Eq, Clone, Serialize, Deserialize, TlsDeserialize, TlsSerialize, TlsSize,
 )]
@@ -293,13 +358,16 @@ pub struct AppAckProposal {
     received_ranges: TlsVecU32<MessageRange>,
 }
 
-/// ## Group Context Extensions Proposal
+/// GroupContextExtensions Proposal.
 ///
-/// A GroupContextExtensions proposal is used to update the list of extensions
-/// in the GroupContext for the group.
+/// A GroupContextExtensions proposal is used to update the list of extensions in the GroupContext
+/// for the group.
 ///
-/// ```text
-/// struct { Extension extensions<V>; } GroupContextExtensions;
+/// ```c
+/// // draft-ietf-mls-protocol-17
+/// struct {
+///   Extension extensions<V>;
+/// } GroupContextExtensions;
 /// ```
 #[derive(
     Debug, PartialEq, Eq, Clone, Serialize, Deserialize, TlsDeserialize, TlsSerialize, TlsSize,

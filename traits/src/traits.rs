@@ -6,6 +6,7 @@
 pub mod crypto;
 pub mod key_store;
 pub mod random;
+pub mod signatures;
 pub mod types;
 
 /// The OpenMLS Crypto Provider Trait
