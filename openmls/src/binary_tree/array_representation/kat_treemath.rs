@@ -196,7 +196,7 @@ fn read_test_vectors_tm() {
     for test_vector in tests {
         match run_test_vector(test_vector) {
             Ok(_) => {}
-            Err(e) => panic!("Error while checking tree math test vector.\n{:?}", e),
+            Err(e) => panic!("Error while checking tree math test vector.\n{e:?}"),
         }
     }
 }

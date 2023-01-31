@@ -39,12 +39,12 @@ fn root(size: u32) -> u32 {
 pub(crate) fn print_tree(group: &CoreGroup, message: &str) {
     let tree = group.treesync();
     let factor = 3;
-    println!("{}", message);
+    println!("{message}");
     let nodes = tree.export_nodes();
     let tree_size = nodes.len() as u32;
     for (i, node) in nodes.iter().enumerate() {
         let level = level(i as u32);
-        print!("{:04}", i);
+        print!("{i:04}");
         if let Some(node) = node {
             let (key_bytes, parent_hash_bytes) = match node {
                 Node::LeafNode(leaf_node) => {

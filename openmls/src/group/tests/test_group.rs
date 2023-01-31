@@ -70,7 +70,7 @@ fn create_commit_optional_path(ciphersuite: Ciphersuite, backend: &impl OpenMlsC
         &alice_credential_with_keys.signer,
     ) {
         Ok(c) => c,
-        Err(e) => panic!("Error creating commit: {:?}", e),
+        Err(e) => panic!("Error creating commit: {e:?}"),
     };
     let commit = match create_commit_result.commit.content() {
         FramedContentBody::Commit(commit) => commit,
@@ -104,7 +104,7 @@ fn create_commit_optional_path(ciphersuite: Ciphersuite, backend: &impl OpenMlsC
     let create_commit_result =
         match group_alice.create_commit(params, backend, &alice_credential_with_keys.signer) {
             Ok(c) => c,
-            Err(e) => panic!("Error creating commit: {:?}", e),
+            Err(e) => panic!("Error creating commit: {e:?}"),
         };
     let commit = match create_commit_result.commit.content() {
         FramedContentBody::Commit(commit) => commit,
@@ -137,7 +137,7 @@ fn create_commit_optional_path(ciphersuite: Ciphersuite, backend: &impl OpenMlsC
         backend,
     ) {
         Ok(group) => group,
-        Err(e) => panic!("Error creating group from Welcome: {:?}", e),
+        Err(e) => panic!("Error creating group from Welcome: {e:?}"),
     };
 
     assert_eq!(
@@ -179,7 +179,7 @@ fn create_commit_optional_path(ciphersuite: Ciphersuite, backend: &impl OpenMlsC
     let create_commit_result =
         match group_alice.create_commit(params, backend, &alice_credential_with_keys.signer) {
             Ok(c) => c,
-            Err(e) => panic!("Error creating commit: {:?}", e),
+            Err(e) => panic!("Error creating commit: {e:?}"),
         };
     let commit = match create_commit_result.commit.content() {
         FramedContentBody::Commit(commit) => commit,
@@ -249,7 +249,7 @@ fn basic_group_setup(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvi
         &alice_credential_with_keys.signer,
     ) {
         Ok(c) => c,
-        Err(e) => panic!("Error creating commit: {:?}", e),
+        Err(e) => panic!("Error creating commit: {e:?}"),
     };
 }
 
@@ -343,7 +343,7 @@ fn group_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvid
         backend,
     ) {
         Ok(group) => group,
-        Err(e) => panic!("Error creating group from Welcome: {:?}", e),
+        Err(e) => panic!("Error creating group from Welcome: {e:?}"),
     };
 
     // Make sure that both groups have the same public tree
@@ -425,7 +425,7 @@ fn group_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvid
     let create_commit_result =
         match group_bob.create_commit(params, backend, &bob_credential_with_keys.signer) {
             Ok(c) => c,
-            Err(e) => panic!("Error creating commit: {:?}", e),
+            Err(e) => panic!("Error creating commit: {e:?}"),
         };
 
     // Check that there is a path
@@ -491,7 +491,7 @@ fn group_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvid
         &alice_credential_with_keys.signer,
     ) {
         Ok(c) => c,
-        Err(e) => panic!("Error creating commit: {:?}", e),
+        Err(e) => panic!("Error creating commit: {e:?}"),
     };
 
     // Check that there is a path
@@ -551,7 +551,7 @@ fn group_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvid
     let create_commit_result =
         match group_alice.create_commit(params, backend, &alice_credential_with_keys.signer) {
             Ok(c) => c,
-            Err(e) => panic!("Error creating commit: {:?}", e),
+            Err(e) => panic!("Error creating commit: {e:?}"),
         };
 
     // Check that there is a path
@@ -625,7 +625,7 @@ fn group_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvid
     let create_commit_result =
         match group_bob.create_commit(params, backend, &bob_credential_with_keys.signer) {
             Ok(c) => c,
-            Err(e) => panic!("Error creating commit: {:?}", e),
+            Err(e) => panic!("Error creating commit: {e:?}"),
         };
 
     // Check there is no path since there are only Add Proposals and no forced
@@ -658,7 +658,7 @@ fn group_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvid
         backend,
     ) {
         Ok(group) => group,
-        Err(e) => panic!("Error creating group from Welcome: {:?}", e),
+        Err(e) => panic!("Error creating group from Welcome: {e:?}"),
     };
 
     // Make sure that all groups have the same public tree
@@ -765,7 +765,7 @@ fn group_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvid
     let create_commit_result =
         match group_charlie.create_commit(params, backend, &charlie_credential_with_keys.signer) {
             Ok(c) => c,
-            Err(e) => panic!("Error creating commit: {:?}", e),
+            Err(e) => panic!("Error creating commit: {e:?}"),
         };
 
     // Check that there is a new KeyPackageBundle
@@ -831,7 +831,7 @@ fn group_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvid
         &charlie_credential_with_keys.signer,
     ) {
         Ok(c) => c,
-        Err(e) => panic!("Error creating commit: {:?}", e),
+        Err(e) => panic!("Error creating commit: {e:?}"),
     };
 
     // Check that there is a new KeyPackageBundle

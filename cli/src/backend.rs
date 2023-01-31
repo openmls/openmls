@@ -34,7 +34,7 @@ impl Backend {
         let response = get(&url)?;
         match TlsVecU32::<ClientInfo>::tls_deserialize(&mut response.as_slice()) {
             Ok(clients) => Ok(clients.into()),
-            Err(e) => Err(format!("Error decoding server response: {:?}", e)),
+            Err(e) => Err(format!("Error decoding server response: {e:?}")),
         }
     }
 
@@ -48,7 +48,7 @@ impl Backend {
         let response = get(&url)?;
         match ClientKeyPackages::tls_deserialize(&mut response.as_slice()) {
             Ok(ckp) => Ok(ckp),
-            Err(e) => Err(format!("Error decoding server response: {:?}", e)),
+            Err(e) => Err(format!("Error decoding server response: {e:?}")),
         }
     }
 
@@ -82,7 +82,7 @@ impl Backend {
         let response = get(&url)?;
         match TlsVecU16::<MlsMessageIn>::tls_deserialize(&mut response.as_slice()) {
             Ok(r) => Ok(r.into()),
-            Err(e) => Err(format!("Invalid message list: {:?}", e)),
+            Err(e) => Err(format!("Invalid message list: {e:?}")),
         }
     }
 
