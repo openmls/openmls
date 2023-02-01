@@ -244,6 +244,12 @@
 <a href="#244" id="244">244</a>
 <a href="#245" id="245">245</a>
 <a href="#246" id="246">246</a>
+<a href="#247" id="247">247</a>
+<a href="#248" id="248">248</a>
+<a href="#249" id="249">249</a>
+<a href="#250" id="250">250</a>
+<a href="#251" id="251">251</a>
+<a href="#252" id="252">252</a>
 </pre><pre class="rust"><code><span class="doccomment">//! TreeSync errors
 //!
 //! This module exposes [`ApplyUpdatePathError`] and [`PublicTreeError`].
@@ -312,6 +318,12 @@
     <span class="doccomment">/// Unable to find sender in tree.
     </span><span class="attr">#[error(<span class="string">&quot;Unable to find sender in tree.&quot;</span>)]
     </span>MissingSender,
+    <span class="doccomment">/// Tree is already at maximum size.
+    </span><span class="attr">#[error(<span class="string">&quot;Tree is already at maximum size.&quot;</span>)]
+    </span>TreeFull,
+    <span class="doccomment">/// External Committer used the wrong index.
+    </span><span class="attr">#[error(<span class="string">&quot;External Committer used the wrong index.&quot;</span>)]
+    </span>InconsistentSenderIndex,
 }
 
 <span class="comment">// === Crate errors ===
@@ -330,7 +342,7 @@
     </span>LeafNotInTree,
     <span class="doccomment">/// See [`TreeSyncSetPathError`] for more details.
     </span><span class="attr">#[error(transparent)]
-    </span>SetPathError(<span class="attr">#[from] </span>TreeSyncSetPathError),
+    </span>SetPathError(<span class="attr">#[from] </span>DerivePathError),
     <span class="doccomment">/// See [`MlsBinaryTreeError`] for more details.
     </span><span class="attr">#[error(transparent)]
     </span>BinaryTreeError(<span class="attr">#[from] </span>MlsBinaryTreeError),
@@ -357,9 +369,9 @@
     </span>UnsupportedProposal,
 }
 
-<span class="doccomment">/// TreeSync set path error
+<span class="doccomment">/// Derive path error
 </span><span class="attr">#[derive(Error, Debug, PartialEq, Clone)]
-</span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">enum </span>TreeSyncSetPathError {
+</span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">enum </span>DerivePathError {
     <span class="doccomment">/// See [`LibraryError`] for more details.
     </span><span class="attr">#[error(transparent)]
     </span>LibraryError(<span class="attr">#[from] </span>LibraryError),
@@ -381,7 +393,7 @@
 
 <span class="doccomment">/// TreeSync from nodes error
 </span><span class="attr">#[derive(Error, Debug, PartialEq, Clone)]
-</span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">enum </span>TreeSyncFromNodesError {
+</span><span class="kw">pub enum </span>TreeSyncFromNodesError {
     <span class="doccomment">/// See [`LibraryError`] for more details.
     </span><span class="attr">#[error(transparent)]
     </span>LibraryError(<span class="attr">#[from] </span>LibraryError),

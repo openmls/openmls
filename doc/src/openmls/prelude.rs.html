@@ -61,11 +61,17 @@
 <a href="#61" id="61">61</a>
 <a href="#62" id="62">62</a>
 <a href="#63" id="63">63</a>
+<a href="#64" id="64">64</a>
+<a href="#65" id="65">65</a>
+<a href="#66" id="66">66</a>
 </pre><pre class="rust"><code><span class="doccomment">//! Prelude for OpenMLS.
 //! Include this to get access to all the public functions of OpenMLS.
 
 </span><span class="comment">// MlsGroup
-</span><span class="kw">pub use </span><span class="kw">crate</span>::group::{config::CryptoConfig, core_group::Member, errors::<span class="kw-2">*</span>, ser::<span class="kw-2">*</span>, <span class="kw-2">*</span>};
+</span><span class="kw">pub use </span><span class="kw">crate</span>::group::{
+    config::CryptoConfig, core_group::Member, errors::<span class="kw-2">*</span>,
+    public_group::errors::CreationFromExternalError, ser::<span class="kw-2">*</span>, <span class="kw-2">*</span>,
+};
 
 <span class="comment">// Ciphersuite
 </span><span class="kw">pub use </span><span class="kw">crate</span>::ciphersuite::{hash_ref::KeyPackageRef, signable::<span class="kw-2">*</span>, signature::<span class="kw-2">*</span>, <span class="kw-2">*</span>};

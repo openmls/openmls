@@ -443,7 +443,7 @@
         )<span class="question-mark">?</span>;
         <span class="kw">let </span>pk = OpenMlsSignaturePublicKey::from_signature_key(
             signature_key,
-            <span class="self">self</span>.ciphersuite.signature_algorithm(),
+            <span class="self">self</span>.ciphersuite().signature_algorithm(),
         );
 
         <span class="prelude-val">Ok</span>(UnverifiedMessage::from_decrypted_message(
@@ -491,7 +491,7 @@
             UnverifiedContextMessage::from_unverified_message(unverified_message)<span class="question-mark">?</span>;
 
         <span class="kw">let </span>group_id = <span class="self">self</span>.group_id().clone();
-        <span class="kw">let </span>epoch = <span class="self">self</span>.group_context.epoch();
+        <span class="kw">let </span>epoch = <span class="self">self</span>.context().epoch();
 
         <span class="kw">match </span>context_plaintext {
             UnverifiedContextMessage::Group(unverified_message) =&gt; {

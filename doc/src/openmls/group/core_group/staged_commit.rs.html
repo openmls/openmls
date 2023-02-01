@@ -565,94 +565,27 @@
 <a href="#565" id="565">565</a>
 <a href="#566" id="566">566</a>
 <a href="#567" id="567">567</a>
-<a href="#568" id="568">568</a>
-<a href="#569" id="569">569</a>
-<a href="#570" id="570">570</a>
-<a href="#571" id="571">571</a>
-<a href="#572" id="572">572</a>
-<a href="#573" id="573">573</a>
-<a href="#574" id="574">574</a>
-<a href="#575" id="575">575</a>
-<a href="#576" id="576">576</a>
-<a href="#577" id="577">577</a>
-<a href="#578" id="578">578</a>
-<a href="#579" id="579">579</a>
-<a href="#580" id="580">580</a>
-<a href="#581" id="581">581</a>
-<a href="#582" id="582">582</a>
-<a href="#583" id="583">583</a>
-<a href="#584" id="584">584</a>
-<a href="#585" id="585">585</a>
-<a href="#586" id="586">586</a>
-<a href="#587" id="587">587</a>
-<a href="#588" id="588">588</a>
-<a href="#589" id="589">589</a>
-<a href="#590" id="590">590</a>
-<a href="#591" id="591">591</a>
-<a href="#592" id="592">592</a>
-<a href="#593" id="593">593</a>
-<a href="#594" id="594">594</a>
-<a href="#595" id="595">595</a>
-<a href="#596" id="596">596</a>
-<a href="#597" id="597">597</a>
-<a href="#598" id="598">598</a>
-<a href="#599" id="599">599</a>
-<a href="#600" id="600">600</a>
-<a href="#601" id="601">601</a>
-<a href="#602" id="602">602</a>
-<a href="#603" id="603">603</a>
-<a href="#604" id="604">604</a>
-<a href="#605" id="605">605</a>
-<a href="#606" id="606">606</a>
-<a href="#607" id="607">607</a>
-<a href="#608" id="608">608</a>
-<a href="#609" id="609">609</a>
-<a href="#610" id="610">610</a>
-<a href="#611" id="611">611</a>
-<a href="#612" id="612">612</a>
-<a href="#613" id="613">613</a>
-<a href="#614" id="614">614</a>
-<a href="#615" id="615">615</a>
-<a href="#616" id="616">616</a>
-<a href="#617" id="617">617</a>
-<a href="#618" id="618">618</a>
-<a href="#619" id="619">619</a>
-<a href="#620" id="620">620</a>
-<a href="#621" id="621">621</a>
-<a href="#622" id="622">622</a>
-<a href="#623" id="623">623</a>
-<a href="#624" id="624">624</a>
-<a href="#625" id="625">625</a>
-<a href="#626" id="626">626</a>
-<a href="#627" id="627">627</a>
-<a href="#628" id="628">628</a>
-<a href="#629" id="629">629</a>
-<a href="#630" id="630">630</a>
-<a href="#631" id="631">631</a>
-<a href="#632" id="632">632</a>
-<a href="#633" id="633">633</a>
-<a href="#634" id="634">634</a>
 </pre><pre class="rust"><code><span class="kw">use </span>openmls_traits::key_store::OpenMlsKeyStore;
 
-<span class="kw">use </span><span class="kw">crate</span>::ciphersuite::{signable::Verifiable, OpenMlsSignaturePublicKey};
-<span class="kw">use </span><span class="kw">crate</span>::framing::mls_content::FramedContentBody;
-<span class="kw">use </span><span class="kw">crate</span>::treesync::errors::TreeSyncAddLeaf;
-<span class="kw">use </span><span class="kw">crate</span>::treesync::node::encryption_keys::EncryptionKeyPair;
-<span class="kw">use </span><span class="kw">crate</span>::treesync::node::leaf_node::{
-    LeafNodeTbs, OpenMlsLeafNode, TreeInfoTbs, VerifiableLeafNode,
+<span class="kw">use super</span>::{
+    <span class="kw">super</span>::errors::<span class="kw-2">*</span>,
+    proposals::{
+        ProposalQueue, ProposalStore, QueuedAddProposal, QueuedPskProposal, QueuedRemoveProposal,
+        QueuedUpdateProposal,
+    },
+    <span class="kw-2">*</span>,
 };
-<span class="kw">use </span><span class="kw">crate</span>::treesync::{diff::StagedTreeSyncDiff, treekem::DecryptPathParams};
-
-<span class="kw">use </span><span class="kw">super</span>::proposals::{
-    ProposalQueue, ProposalStore, QueuedAddProposal, QueuedPskProposal, QueuedRemoveProposal,
-    QueuedUpdateProposal,
+<span class="kw">use crate</span>::{
+    ciphersuite::signable::Verifiable,
+    framing::mls_content::FramedContentBody,
+    group::public_group::diff::StagedPublicGroupDiff,
+    treesync::node::{
+        encryption_keys::EncryptionKeyPair,
+        leaf_node::{LeafNodeTbs, OpenMlsLeafNode, TreeInfoTbs, VerifiableLeafNode},
+    },
 };
-
-<span class="kw">use </span><span class="kw">super</span>::<span class="kw">super</span>::errors::<span class="kw-2">*</span>;
-<span class="kw">use super</span>::<span class="kw-2">*</span>;
 <span class="kw">use </span>core::fmt::Debug;
-<span class="kw">use </span>std::collections::HashSet;
-<span class="kw">use </span>std::mem;
+<span class="kw">use </span>std::{collections::HashSet, mem};
 
 <span class="kw">impl </span>CoreGroup {
     <span class="doccomment">/// Stages a commit message that was sent by another group member.
@@ -700,11 +633,11 @@
         </span><span class="kw">let </span>ciphersuite = <span class="self">self</span>.ciphersuite();
 
         <span class="comment">// Verify epoch
-        </span><span class="kw">if </span>mls_content.epoch() != <span class="self">self</span>.group_context.epoch() {
+        </span><span class="kw">if </span>mls_content.epoch() != <span class="self">self</span>.context().epoch() {
             <span class="macro">log::error!</span>(
                 <span class="string">&quot;Epoch mismatch. Got {:?}, expected {:?}&quot;</span>,
                 mls_content.epoch(),
-                <span class="self">self</span>.group_context.epoch()
+                <span class="self">self</span>.context().epoch()
             );
             <span class="kw">return </span><span class="prelude-val">Err</span>(StageCommitError::EpochMismatch);
         }
@@ -794,19 +727,6 @@
             }
         };
 
-        <span class="comment">// Create provisional tree and apply proposals
-        </span><span class="kw">let </span><span class="kw-2">mut </span>diff = <span class="self">self</span>.treesync().empty_diff();
-
-        <span class="kw">let </span>apply_proposals_values = <span class="self">self
-            </span>.apply_proposals(
-                <span class="kw-2">&amp;mut </span>diff,
-                backend,
-                <span class="kw-2">&amp;</span>proposal_queue,
-                own_leaf_nodes,
-                <span class="prelude-val">Some</span>(<span class="self">self</span>.own_leaf_index),
-            )
-            .map_err(|<span class="kw">_</span>| StageCommitError::OwnKeyNotFound)<span class="question-mark">?</span>;
-
         <span class="comment">// Now we can actually look at the public keys as they might have changed.
         </span><span class="kw">let </span>sender_index = <span class="kw">match </span>sender {
             Sender::Member(leaf_index) =&gt; {
@@ -816,11 +736,26 @@
                 }
                 <span class="kw-2">*</span>leaf_index
             }
-            Sender::NewMemberCommit =&gt; diff.free_leaf_index(),
+            Sender::NewMemberCommit =&gt; {
+                <span class="kw">let </span>inline_proposals = commit.proposals.iter().filter_map(|p| {
+                    <span class="kw">if let </span>ProposalOrRef::Proposal(inline_proposal) = p {
+                        <span class="prelude-val">Some</span>(<span class="prelude-val">Some</span>(inline_proposal))
+                    } <span class="kw">else </span>{
+                        <span class="prelude-val">None
+                    </span>}
+                });
+                <span class="self">self</span>.public_group.free_leaf_index(inline_proposals)<span class="question-mark">?
+            </span>}
             <span class="kw">_ </span>=&gt; {
                 <span class="kw">return </span><span class="prelude-val">Err</span>(StageCommitError::SenderTypeExternal);
             }
         };
+
+        <span class="comment">// Create provisional tree and apply proposals
+        </span><span class="kw">let </span><span class="kw-2">mut </span>diff = <span class="self">self</span>.public_group.empty_diff();
+
+        <span class="kw">let </span>apply_proposals_values =
+            diff.apply_proposals(<span class="kw-2">&amp;</span>proposal_queue, <span class="self">self</span>.own_leaf_index())<span class="question-mark">?</span>;
 
         <span class="comment">// Check if we were removed from the group
         </span><span class="kw">if </span>apply_proposals_values.self_removed {
@@ -828,7 +763,6 @@
             <span class="kw">return </span><span class="prelude-val">Ok</span>(StagedCommit::new(
                 proposal_queue,
                 StagedCommitState::SelfRemoved(Box::new(staged_diff)),
-                commit_update_leaf_node,
             ));
         }
 
@@ -850,12 +784,12 @@
                     tbs: <span class="kw-2">&amp;</span>tbs,
                     signature: leaf_node.signature(),
                 };
-                <span class="kw">let </span>pk = OpenMlsSignaturePublicKey::from_signature_key(
-                    leaf_node.signature_key().clone(),
-                    <span class="self">self</span>.ciphersuite.signature_algorithm(),
-                );
+                <span class="kw">let </span>signature_public_key = leaf_node
+                    .signature_key()
+                    .clone()
+                    .into_signature_public_key_enriched(<span class="self">self</span>.ciphersuite().signature_algorithm());
                 <span class="kw">if </span>verifiable_leaf_node
-                    .verify_no_out(backend.crypto(), <span class="kw-2">&amp;</span>pk)
+                    .verify_no_out(backend.crypto(), <span class="kw-2">&amp;</span>signature_public_key)
                     .is_err()
                 {
                     <span class="macro">debug_assert!</span>(
@@ -867,47 +801,16 @@
                             .unwrap_or_default()
                     );
                     <span class="kw">return </span><span class="prelude-val">Err</span>(StageCommitError::PathLeafNodeVerificationFailure);
-                }
-                <span class="kw">let </span>serialized_context = <span class="self">self
-                    </span>.group_context
-                    .tls_serialize_detached()
-                    .map_err(LibraryError::missing_bound_check)<span class="question-mark">?</span>;
-
-                <span class="kw">let </span>(leaf_node, update_path_nodes) = path.into_parts();
+                };
 
                 <span class="comment">// Make sure that the new path key package is valid
-                </span><span class="self">self</span>.validate_path_key_package(<span class="kw-2">&amp;</span>leaf_node, public_key_set)<span class="question-mark">?</span>;
+                </span><span class="self">self</span>.validate_path_key_package(path.leaf_node(), public_key_set)<span class="question-mark">?</span>;
 
-                <span class="comment">// If the committer is a `NewMemberCommit`, we have to add the leaf to
-                // the tree before we can apply or even decrypt an update path.
-                // While `apply_received_update_path` will happily update a
-                // blank leaf, we still have to call `add_leaf` here in case
-                // there are no blanks and the new member extended the tree to
-                // fit in.
-                </span><span class="kw">if </span>apply_proposals_values.external_init_secret_option.is_some() {
-                    <span class="comment">// TODO: Can we do without the clone here?
-                    //       The leaf node is always replaced in apply_received_update_path
-                    //       below, which isn&#39;t necessary. This should be refactored.
-                    </span><span class="kw">let </span>sender_leaf_index =
-                        diff.add_leaf(leaf_node.clone().into())
-                            .map_err(|e| <span class="kw">match </span>e {
-                                TreeSyncAddLeaf::LibraryError(e) =&gt; e.into(),
-                                TreeSyncAddLeaf::TreeFull =&gt; StageCommitError::TooManyNewMembers,
-                            })<span class="question-mark">?</span>;
-                    <span class="comment">// The new member should have the same index as the claimed sender index.
-                    </span><span class="kw">if </span>sender_leaf_index != sender_index {
-                        <span class="kw">return </span><span class="prelude-val">Err</span>(StageCommitError::InconsistentSenderIndex);
-                    }
-                }
+                <span class="comment">// Update the public group
+                </span>diff.apply_received_update_path(backend, ciphersuite, sender_index, <span class="kw-2">&amp;</span>path)<span class="question-mark">?</span>;
 
-                <span class="comment">// Decrypt the UpdatePath
-                </span><span class="kw">let </span>decrypt_path_params = DecryptPathParams {
-                    version: <span class="self">self</span>.mls_version,
-                    update_path: update_path_nodes,
-                    sender_leaf_index: sender_index,
-                    exclusion_list: <span class="kw-2">&amp;</span>apply_proposals_values.exclusion_list(),
-                    group_context: <span class="kw-2">&amp;</span>serialized_context,
-                };
+                <span class="comment">// Update group context
+                </span>diff.update_group_context(backend)<span class="question-mark">?</span>;
 
                 <span class="comment">// All keys from the previous epoch are potential decryption keypairs.
                 </span><span class="kw">let </span>old_epoch_keypairs = <span class="self">self</span>.read_epoch_keypairs(backend);
@@ -931,12 +834,13 @@
                 <span class="comment">// ValSem202: Path must be the right length
                 // ValSem203: Path secrets must decrypt correctly
                 // ValSem204: Public keys from Path must be verified and match the private keys from the direct path
-                </span><span class="kw">let </span>(plain_path, new_epoch_keypairs, commit_secret) = diff.decrypt_path(
+                </span><span class="kw">let </span>(new_epoch_keypairs, commit_secret) = diff.decrypt_path(
                     backend,
-                    ciphersuite,
-                    decrypt_path_params,
                     <span class="kw-2">&amp;</span>decryption_keypairs,
                     <span class="self">self</span>.own_leaf_index(),
+                    sender_index,
+                    path.nodes(),
+                    <span class="kw-2">&amp;</span>apply_proposals_values.exclusion_list(),
                 )<span class="question-mark">?</span>;
 
                 <span class="comment">// Check if one of our update proposals was applied. If so, we
@@ -944,7 +848,7 @@
                 // it needs to be removed from the key store separately and in
                 // addition to the removal of the keypairs of the previous
                 // epoch.
-                </span><span class="kw">let </span>new_leaf_keypair_option = <span class="kw">if let </span><span class="prelude-val">Ok</span>(leaf) = diff.leaf(<span class="self">self</span>.own_leaf_index()) {
+                </span><span class="kw">let </span>new_leaf_keypair_option = <span class="kw">if let </span><span class="prelude-val">Some</span>(leaf) = diff.leaf(<span class="self">self</span>.own_leaf_index()) {
                     own_keypairs.into_iter().find_map(|keypair| {
                         <span class="kw">if </span>leaf.encryption_key() == keypair.public_key() {
                             <span class="prelude-val">Some</span>(keypair)
@@ -958,59 +862,55 @@
                     <span class="prelude-val">None
                 </span>};
 
-                diff.apply_received_update_path(
-                    backend,
-                    ciphersuite,
-                    sender_index,
-                    leaf_node,
-                    plain_path,
-                )<span class="question-mark">?</span>;
                 (commit_secret, new_epoch_keypairs, new_leaf_keypair_option)
             } <span class="kw">else </span>{
                 <span class="kw">if </span>apply_proposals_values.path_required {
                     <span class="comment">// ValSem201
                     </span><span class="kw">return </span><span class="prelude-val">Err</span>(StageCommitError::RequiredPathNotFound);
                 }
+
+                <span class="comment">// Update group context
+                </span>diff.update_group_context(backend)<span class="question-mark">?</span>;
+
                 (
-                    CommitSecret::zero_secret(ciphersuite, <span class="self">self</span>.mls_version),
+                    CommitSecret::zero_secret(ciphersuite, <span class="self">self</span>.version()),
                     <span class="macro">vec!</span>[],
                     <span class="prelude-val">None</span>,
                 )
             };
 
+        <span class="comment">// Update the confirmed transcript hash before we compute the confirmation tag.
+        </span>diff.update_confirmed_transcript_hash(backend, mls_content)<span class="question-mark">?</span>;
+
         <span class="comment">// Check if we need to include the init secret from an external commit
         // we applied earlier or if we use the one from the previous epoch.
-        </span><span class="kw">let </span>init_secret =
-            <span class="kw">if let </span><span class="prelude-val">Some</span>(<span class="kw-2">ref </span>init_secret) = apply_proposals_values.external_init_secret_option {
-                init_secret
-            } <span class="kw">else </span>{
-                <span class="self">self</span>.group_epoch_secrets.init_secret()
-            };
-
-        <span class="kw">let </span>joiner_secret = JoinerSecret::new(backend, commit_secret, init_secret)
-            .map_err(LibraryError::unexpected_crypto_error)<span class="question-mark">?</span>;
-
-        <span class="comment">// Create provisional group state
-        </span><span class="kw">let </span><span class="kw-2">mut </span>provisional_epoch = <span class="self">self</span>.group_context.epoch();
-        provisional_epoch.increment();
-
-        <span class="kw">let </span>confirmed_transcript_hash = update_confirmed_transcript_hash(
-            ciphersuite,
-            backend,
-            <span class="comment">// It is ok to use return a library error here, because we know the PublicMessage contains a Commit
-            </span><span class="kw-2">&amp;</span>ConfirmedTranscriptHashInput::try_from(mls_content)
-                .map_err(|<span class="kw">_</span>| LibraryError::custom(<span class="string">&quot;Could not convert commit content&quot;</span>))<span class="question-mark">?</span>,
-            <span class="kw-2">&amp;</span><span class="self">self</span>.interim_transcript_hash,
-        )<span class="question-mark">?</span>;
-
-        <span class="kw">let </span>provisional_group_context = GroupContext::new(
-            ciphersuite,
-            <span class="self">self</span>.group_context.group_id().clone(),
-            provisional_epoch,
-            diff.compute_tree_hashes(backend, ciphersuite)<span class="question-mark">?</span>,
-            confirmed_transcript_hash.clone(),
-            <span class="self">self</span>.group_context.extensions().clone(),
-        );
+        </span><span class="kw">let </span>joiner_secret = <span class="kw">if let </span><span class="prelude-val">Some</span>(<span class="kw-2">ref </span>external_init_proposal) =
+            apply_proposals_values.external_init_proposal_option
+        {
+            <span class="comment">// Decrypt the content and derive the external init secret.
+            </span><span class="kw">let </span>external_priv = <span class="self">self
+                </span>.group_epoch_secrets()
+                .external_secret()
+                .derive_external_keypair(backend.crypto(), <span class="self">self</span>.ciphersuite())
+                .private
+                .into();
+            <span class="kw">let </span>init_secret = InitSecret::from_kem_output(
+                backend,
+                <span class="self">self</span>.ciphersuite(),
+                <span class="self">self</span>.version(),
+                <span class="kw-2">&amp;</span>external_priv,
+                external_init_proposal.kem_output(),
+            )<span class="question-mark">?</span>;
+            JoinerSecret::new(backend, commit_secret, <span class="kw-2">&amp;</span>init_secret)
+                .map_err(LibraryError::unexpected_crypto_error)<span class="question-mark">?
+        </span>} <span class="kw">else </span>{
+            JoinerSecret::new(
+                backend,
+                commit_secret,
+                <span class="self">self</span>.group_epoch_secrets.init_secret(),
+            )
+            .map_err(LibraryError::unexpected_crypto_error)<span class="question-mark">?
+        </span>};
 
         <span class="comment">// Prepare the PskSecret
         </span><span class="kw">let </span>psk_secret =
@@ -1019,7 +919,8 @@
         <span class="comment">// Create key schedule
         </span><span class="kw">let </span><span class="kw-2">mut </span>key_schedule = KeySchedule::init(ciphersuite, backend, joiner_secret, psk_secret)<span class="question-mark">?</span>;
 
-        <span class="kw">let </span>serialized_provisional_group_context = provisional_group_context
+        <span class="kw">let </span>serialized_provisional_group_context = diff
+            .group_context()
             .tls_serialize_detached()
             .map_err(LibraryError::missing_bound_check)<span class="question-mark">?</span>;
 
@@ -1033,24 +934,12 @@
         <span class="kw">let </span>received_confirmation_tag = mls_content
             .confirmation_tag()
             .ok_or(StageCommitError::ConfirmationTagMissing)<span class="question-mark">?</span>;
-        <span class="kw">let </span>mls_plaintext_commit_auth_data = InterimTranscriptHashInput::try_from(received_confirmation_tag)
-            .map_err(|<span class="kw">_</span>| {
-                <span class="macro">log::error!</span>(<span class="string">&quot;Confirmation tag is missing in commit. This should be unreachable because we verified the tag before.&quot;</span>);
-                StageCommitError::ConfirmationTagMissing
-            })<span class="question-mark">?</span>;
-
-        <span class="kw">let </span>interim_transcript_hash = update_interim_transcript_hash(
-            ciphersuite,
-            backend,
-            <span class="kw-2">&amp;</span>mls_plaintext_commit_auth_data,
-            <span class="kw-2">&amp;</span>confirmed_transcript_hash,
-        )<span class="question-mark">?</span>;
 
         <span class="comment">// Verify confirmation tag
         // ValSem205
         </span><span class="kw">let </span>own_confirmation_tag = provisional_epoch_secrets
             .confirmation_key()
-            .tag(backend, <span class="kw-2">&amp;</span>confirmed_transcript_hash)
+            .tag(backend, diff.group_context().confirmed_transcript_hash())
             .map_err(LibraryError::unexpected_crypto_error)<span class="question-mark">?</span>;
         <span class="kw">if </span><span class="kw-2">&amp;</span>own_confirmation_tag != received_confirmation_tag {
             <span class="macro">log::error!</span>(<span class="string">&quot;Confirmation tag mismatch&quot;</span>);
@@ -1061,6 +950,8 @@
             // debug_assert!(false, &quot;Confirmation tag mismatch&quot;);
             </span><span class="kw">return </span><span class="prelude-val">Err</span>(StageCommitError::ConfirmationTagMismatch);
         }
+
+        diff.update_interim_transcript_hash(ciphersuite, backend, own_confirmation_tag)<span class="question-mark">?</span>;
 
         <span class="kw">let </span>(provisional_group_epoch_secrets, provisional_message_secrets) =
             provisional_epoch_secrets.split_secrets(
@@ -1075,20 +966,14 @@
 
         <span class="kw">let </span>staged_commit_state =
             StagedCommitState::GroupMember(Box::new(MemberStagedCommitState {
-                group_context: provisional_group_context,
                 group_epoch_secrets: provisional_group_epoch_secrets,
                 message_secrets: provisional_message_secrets,
-                interim_transcript_hash,
                 staged_diff,
                 new_keypairs,
                 new_leaf_keypair_option,
             }));
 
-        <span class="prelude-val">Ok</span>(StagedCommit::new(
-            proposal_queue,
-            staged_commit_state,
-            commit_update_leaf_node,
-        ))
+        <span class="prelude-val">Ok</span>(StagedCommit::new(proposal_queue, staged_commit_state))
     }
 
     <span class="doccomment">/// Merges a [StagedCommit] into the group state and optionally return a [`SecretTree`]
@@ -1106,11 +991,10 @@
         </span><span class="kw">let </span>old_epoch_keypairs = <span class="self">self</span>.read_epoch_keypairs(backend);
         <span class="kw">match </span>staged_commit.state {
             StagedCommitState::SelfRemoved(staged_diff) =&gt; {
-                <span class="self">self</span>.tree.merge_diff(<span class="kw-2">*</span>staged_diff);
+                <span class="self">self</span>.public_group.merge_diff(<span class="kw-2">*</span>staged_diff);
                 <span class="prelude-val">Ok</span>(<span class="prelude-val">None</span>)
             }
             StagedCommitState::GroupMember(state) =&gt; {
-                <span class="self">self</span>.group_context = state.group_context;
                 <span class="self">self</span>.group_epoch_secrets = state.group_epoch_secrets;
 
                 <span class="comment">// Replace the previous message secrets with the new ones and return the previous message secrets
@@ -1120,9 +1004,7 @@
                     <span class="self">self</span>.message_secrets_store.message_secrets_mut(),
                 );
 
-                <span class="self">self</span>.interim_transcript_hash = state.interim_transcript_hash;
-
-                <span class="self">self</span>.tree.merge_diff(state.staged_diff);
+                <span class="self">self</span>.public_group.merge_diff(state.staged_diff);
 
                 <span class="comment">// TODO #1194: Group storage and key storage should be
                 // correlated s.t. there is no divergence between key material
@@ -1135,8 +1017,10 @@
                 };
 
                 <span class="comment">// Figure out which keys we need in the new epoch.
-                </span><span class="kw">let </span>new_owned_encryption_keys =
-                    <span class="self">self</span>.tree.owned_encryption_keys(<span class="self">self</span>.own_leaf_index());
+                </span><span class="kw">let </span>new_owned_encryption_keys = <span class="self">self
+                    </span>.public_group
+                    .treesync()
+                    .owned_encryption_keys(<span class="self">self</span>.own_leaf_index());
                 <span class="comment">// From the old and new keys, keep the ones that are still relevant in the new epoch.
                 </span><span class="kw">let </span>epoch_keypairs: Vec&lt;EncryptionKeyPair&gt; = old_epoch_keypairs
                     .into_iter()
@@ -1173,7 +1057,7 @@
 
 <span class="attr">#[derive(Debug, Serialize, Deserialize)]
 </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">enum </span>StagedCommitState {
-    SelfRemoved(Box&lt;StagedTreeSyncDiff&gt;),
+    SelfRemoved(Box&lt;StagedPublicGroupDiff&gt;),
     GroupMember(Box&lt;MemberStagedCommitState&gt;),
 }
 
@@ -1182,21 +1066,15 @@
 </span><span class="kw">pub struct </span>StagedCommit {
     staged_proposal_queue: ProposalQueue,
     state: StagedCommitState,
-    commit_update_leaf_node: <span class="prelude-ty">Option</span>&lt;LeafNode&gt;,
 }
 
 <span class="kw">impl </span>StagedCommit {
     <span class="doccomment">/// Create a new [`StagedCommit`] from the provisional group state created
     /// during the commit process.
-    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>new(
-        staged_proposal_queue: ProposalQueue,
-        state: StagedCommitState,
-        commit_update_leaf_node: <span class="prelude-ty">Option</span>&lt;LeafNode&gt;,
-    ) -&gt; <span class="self">Self </span>{
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>new(staged_proposal_queue: ProposalQueue, state: StagedCommitState) -&gt; <span class="self">Self </span>{
         StagedCommit {
             staged_proposal_queue,
             state,
-            commit_update_leaf_node,
         }
     }
 
@@ -1220,12 +1098,6 @@
         <span class="self">self</span>.staged_proposal_queue.psk_proposals()
     }
 
-    <span class="doccomment">/// Returns an optional leaf node from the Commit&#39;s update path.
-    /// A leaf node is returned for full and empty Commits, but not for partial Commits.
-    </span><span class="kw">pub fn </span>commit_update_key_package(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>LeafNode&gt; {
-        <span class="self">self</span>.commit_update_leaf_node.as_ref()
-    }
-
     <span class="doccomment">/// Returns `true` if the member was removed through a proposal covered by this Commit message
     /// and `false` otherwise.
     </span><span class="kw">pub fn </span>self_removed(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; bool {
@@ -1236,30 +1108,24 @@
 <span class="doccomment">/// This struct is used internally by [StagedCommit] to encapsulate all the modified group state.
 </span><span class="attr">#[derive(Debug, Serialize, Deserialize)]
 </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct </span>MemberStagedCommitState {
-    group_context: GroupContext,
     group_epoch_secrets: GroupEpochSecrets,
     message_secrets: MessageSecrets,
-    interim_transcript_hash: Vec&lt;u8&gt;,
-    staged_diff: StagedTreeSyncDiff,
+    staged_diff: StagedPublicGroupDiff,
     new_keypairs: Vec&lt;EncryptionKeyPair&gt;,
     new_leaf_keypair_option: <span class="prelude-ty">Option</span>&lt;EncryptionKeyPair&gt;,
 }
 
 <span class="kw">impl </span>MemberStagedCommitState {
     <span class="kw">pub</span>(<span class="kw">super</span>) <span class="kw">fn </span>new(
-        group_context: GroupContext,
         group_epoch_secrets: GroupEpochSecrets,
         message_secrets: MessageSecrets,
-        interim_transcript_hash: Vec&lt;u8&gt;,
-        staged_diff: StagedTreeSyncDiff,
+        staged_diff: StagedPublicGroupDiff,
         new_keypairs: Vec&lt;EncryptionKeyPair&gt;,
         new_leaf_keypair_option: <span class="prelude-ty">Option</span>&lt;EncryptionKeyPair&gt;,
     ) -&gt; <span class="self">Self </span>{
         <span class="self">Self </span>{
-            group_context,
             group_epoch_secrets,
             message_secrets,
-            interim_transcript_hash,
             staged_diff,
             new_keypairs,
             new_leaf_keypair_option,

@@ -239,49 +239,16 @@
 <a href="#239" id="239">239</a>
 <a href="#240" id="240">240</a>
 <a href="#241" id="241">241</a>
-<a href="#242" id="242">242</a>
-<a href="#243" id="243">243</a>
-<a href="#244" id="244">244</a>
-<a href="#245" id="245">245</a>
-<a href="#246" id="246">246</a>
-<a href="#247" id="247">247</a>
-<a href="#248" id="248">248</a>
-<a href="#249" id="249">249</a>
-<a href="#250" id="250">250</a>
-<a href="#251" id="251">251</a>
-<a href="#252" id="252">252</a>
-<a href="#253" id="253">253</a>
-<a href="#254" id="254">254</a>
-<a href="#255" id="255">255</a>
-<a href="#256" id="256">256</a>
-<a href="#257" id="257">257</a>
-<a href="#258" id="258">258</a>
-<a href="#259" id="259">259</a>
-<a href="#260" id="260">260</a>
-<a href="#261" id="261">261</a>
-<a href="#262" id="262">262</a>
-<a href="#263" id="263">263</a>
-<a href="#264" id="264">264</a>
-<a href="#265" id="265">265</a>
-<a href="#266" id="266">266</a>
-<a href="#267" id="267">267</a>
-<a href="#268" id="268">268</a>
-<a href="#269" id="269">269</a>
-<a href="#270" id="270">270</a>
-<a href="#271" id="271">271</a>
-<a href="#272" id="272">272</a>
-<a href="#273" id="273">273</a>
-<a href="#274" id="274">274</a>
 </pre><pre class="rust"><code><span class="kw">use </span>log::debug;
 <span class="kw">use </span>openmls_traits::{crypto::OpenMlsCrypto, key_store::OpenMlsKeyStore};
 <span class="kw">use </span>tls_codec::Deserialize;
 
 <span class="kw">use crate</span>::{
-    ciphersuite::{hash_ref::HashReference, signable::Verifiable, OpenMlsSignaturePublicKey},
+    ciphersuite::hash_ref::HashReference,
     group::{core_group::<span class="kw-2">*</span>, errors::WelcomeError},
     schedule::errors::PskError,
     treesync::{
-        errors::{PublicTreeError, TreeSyncFromNodesError, TreeSyncSetPathError},
+        errors::{DerivePathError, PublicTreeError},
         node::{encryption_keys::EncryptionKeyPair, Node},
     },
 };
@@ -408,34 +375,35 @@
                 },
             };
 
-        <span class="kw">let </span>tree = TreeSync::from_nodes(backend, ciphersuite, <span class="kw-2">&amp;</span>nodes).map_err(|e| <span class="kw">match </span>e {
-            TreeSyncFromNodesError::LibraryError(e) =&gt; e.into(),
-            TreeSyncFromNodesError::PublicTreeError(e) =&gt; WelcomeError::PublicTreeError(e),
-        })<span class="question-mark">?</span>;
+        <span class="kw">let </span>welcome_sender_index = verifiable_group_info.signer();
+
+        <span class="comment">// Since there is currently only the external pub extension, there is no
+        // group info extension of interest here.
+        </span><span class="kw">let </span>(public_group, _group_info_extensions) =
+            PublicGroup::from_external(backend, <span class="kw-2">&amp;</span>nodes, verifiable_group_info)<span class="question-mark">?</span>;
 
         <span class="comment">// Find our own leaf in the tree.
-        </span><span class="kw">let </span>own_leaf_index = tree
+        </span><span class="kw">let </span>own_leaf_index = public_group
+            .treesync()
             .find_leaf(key_package_bundle.key_package().leaf_node().signature_key())
             .ok_or(WelcomeError::PublicTreeError(
                 PublicTreeError::MalformedTree,
             ))<span class="question-mark">?</span>;
 
-        <span class="kw">let </span>diff = tree.empty_diff();
-
         <span class="comment">// If we got a path secret, derive the path (which also checks if the
         // public keys match) and store the derived keys in the key store.
         </span><span class="kw">let </span>group_keypairs = <span class="kw">if let </span><span class="prelude-val">Some</span>(path_secret) = path_secret_option {
-            <span class="kw">let </span>(path_keypairs, _commit_secret) = diff
+            <span class="kw">let </span>(path_keypairs, _commit_secret) = public_group
                 .derive_path_secrets(
                     backend,
                     ciphersuite,
                     path_secret,
-                    verifiable_group_info.signer(),
+                    welcome_sender_index,
                     own_leaf_index,
                 )
                 .map_err(|e| <span class="kw">match </span>e {
-                    TreeSyncSetPathError::LibraryError(e) =&gt; e.into(),
-                    TreeSyncSetPathError::PublicKeyMismatch =&gt; {
+                    DerivePathError::LibraryError(e) =&gt; e.into(),
+                    DerivePathError::PublicKeyMismatch =&gt; {
                         WelcomeError::PublicTreeError(PublicTreeError::PublicKeyMismatch)
                     }
                 })<span class="question-mark">?</span>;
@@ -447,35 +415,8 @@
             <span class="macro">vec!</span>[leaf_keypair]
         };
 
-        <span class="kw">let </span>group_info: GroupInfo = {
-            <span class="kw">let </span>signature_key = tree
-                .leaf(verifiable_group_info.signer())
-                .ok_or(WelcomeError::UnknownSender)<span class="question-mark">?
-                </span>.signature_key();
-            <span class="kw">let </span>group_info_signer_pk = OpenMlsSignaturePublicKey::from_signature_key(
-                signature_key.clone(),
-                ciphersuite.signature_algorithm(),
-            );
-
-            verifiable_group_info
-                .verify(backend.crypto(), <span class="kw-2">&amp;</span>group_info_signer_pk)
-                .map_err(|<span class="kw">_</span>| WelcomeError::InvalidGroupInfoSignature)<span class="question-mark">?
-        </span>};
-
-        <span class="comment">// Compute state
-        </span><span class="kw">let </span>group_context = GroupContext::new(
-            ciphersuite,
-            group_info.group_context().group_id().clone(),
-            group_info.group_context().epoch(),
-            tree.tree_hash().to_vec(),
-            group_info
-                .group_context()
-                .confirmed_transcript_hash()
-                .to_vec(),
-            group_info.group_context().extensions().clone(),
-        );
-
-        <span class="kw">let </span>serialized_group_context = group_context
+        <span class="kw">let </span>serialized_group_context = public_group
+            .group_context()
             .tls_serialize_detached()
             .map_err(LibraryError::missing_bound_check)<span class="question-mark">?</span>;
         <span class="comment">// TODO #751: Implement PSK
@@ -488,23 +429,20 @@
 
         <span class="kw">let </span>(group_epoch_secrets, message_secrets) = epoch_secrets.split_secrets(
             serialized_group_context,
-            tree.leaf_count(),
+            public_group.treesync().leaf_count(),
             own_leaf_index,
         );
 
         <span class="kw">let </span>confirmation_tag = message_secrets
             .confirmation_key()
-            .tag(backend, group_context.confirmed_transcript_hash())
+            .tag(
+                backend,
+                public_group.group_context().confirmed_transcript_hash(),
+            )
             .map_err(LibraryError::unexpected_crypto_error)<span class="question-mark">?</span>;
-        <span class="kw">let </span>interim_transcript_hash = update_interim_transcript_hash(
-            ciphersuite,
-            backend,
-            <span class="kw-2">&amp;</span>InterimTranscriptHashInput::from(<span class="kw-2">&amp;</span>confirmation_tag),
-            group_context.confirmed_transcript_hash(),
-        )<span class="question-mark">?</span>;
 
         <span class="comment">// Verify confirmation tag
-        </span><span class="kw">if </span><span class="kw-2">&amp;</span>confirmation_tag != group_info.confirmation_tag() {
+        </span><span class="kw">if </span><span class="kw-2">&amp;</span>confirmation_tag != public_group.confirmation_tag() {
             <span class="macro">log::error!</span>(<span class="string">&quot;Confirmation tag mismatch&quot;</span>);
             <span class="macro">log_crypto!</span>(trace, <span class="string">&quot;  Got:      {:x?}&quot;</span>, confirmation_tag);
             <span class="macro">log_crypto!</span>(trace, <span class="string">&quot;  Expected: {:x?}&quot;</span>, group_info.confirmation_tag());
@@ -514,15 +452,11 @@
             <span class="kw">let </span>message_secrets_store = MessageSecretsStore::new_with_secret(<span class="number">0</span>, message_secrets);
 
             <span class="kw">let </span>group = CoreGroup {
-                ciphersuite,
-                group_context,
+                public_group,
                 group_epoch_secrets,
-                tree,
-                interim_transcript_hash,
-                use_ratchet_tree_extension: enable_ratchet_tree_extension,
-                mls_version,
-                message_secrets_store,
                 own_leaf_index,
+                use_ratchet_tree_extension: enable_ratchet_tree_extension,
+                message_secrets_store,
             };
             group
                 .store_epoch_keypairs(backend, group_keypairs.as_slice())

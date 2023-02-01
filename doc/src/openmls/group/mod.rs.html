@@ -124,6 +124,7 @@
 <a href="#124" id="124">124</a>
 <a href="#125" id="125">125</a>
 <a href="#126" id="126">126</a>
+<a href="#127" id="127">127</a>
 </pre><pre class="rust"><code><span class="doccomment">//! Group API for MLS
 //!
 //! This module contains the API to interact with groups.
@@ -141,6 +142,7 @@
 
 <span class="comment">// Crate
 </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">mod </span>core_group;
+<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">mod </span>public_group;
 <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">use </span>core_group::<span class="kw-2">*</span>;
 <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">mod </span>mls_group;
 <span class="attr">#[cfg(not(any(feature = <span class="string">&quot;test-utils&quot;</span>, test)))]

@@ -1249,6 +1249,7 @@
 <a href="#1249" id="1249">1249</a>
 <a href="#1250" id="1250">1250</a>
 <a href="#1251" id="1251">1251</a>
+<a href="#1252" id="1252">1252</a>
 </pre><pre class="rust"><code><span class="doccomment">//! # Key schedule
 //!
 //! This module contains the types and implementations for key schedule operations.
@@ -1377,7 +1378,8 @@
     ciphersuite::{AeadKey, AeadNonce, HpkePrivateKey, Mac, Secret},
     error::LibraryError,
     framing::{mls_content::AuthenticatedContentTbm, MembershipTag},
-    messages::{group_info::GroupInfo, ConfirmationTag, PathSecret},
+    group::GroupContext,
+    messages::{ConfirmationTag, PathSecret},
     tree::secret_tree::SecretTree,
     versions::ProtocolVersion,
 };
@@ -1541,13 +1543,13 @@
     }
 
     <span class="doccomment">/// Create an `InitSecret` and the corresponding `kem_output` from a group info.
-    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>from_group_info(
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>from_group_context(
         backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider,
-        group_info: <span class="kw-2">&amp;</span>GroupInfo,
+        group_context: <span class="kw-2">&amp;</span>GroupContext,
         external_pub: <span class="kw-2">&amp;</span>[u8],
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(<span class="self">Self</span>, Vec&lt;u8&gt;), KeyScheduleError&gt; {
-        <span class="kw">let </span>ciphersuite = group_info.group_context().ciphersuite();
-        <span class="kw">let </span>version = group_info.group_context().protocol_version();
+        <span class="kw">let </span>ciphersuite = group_context.ciphersuite();
+        <span class="kw">let </span>version = group_context.protocol_version();
         <span class="kw">let </span>(kem_output, raw_init_secret) = backend.crypto().hpke_setup_sender_and_export(
             ciphersuite.hpke_config(),
             external_pub,

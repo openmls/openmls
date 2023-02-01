@@ -825,48 +825,6 @@
 <a href="#825" id="825">825</a>
 <a href="#826" id="826">826</a>
 <a href="#827" id="827">827</a>
-<a href="#828" id="828">828</a>
-<a href="#829" id="829">829</a>
-<a href="#830" id="830">830</a>
-<a href="#831" id="831">831</a>
-<a href="#832" id="832">832</a>
-<a href="#833" id="833">833</a>
-<a href="#834" id="834">834</a>
-<a href="#835" id="835">835</a>
-<a href="#836" id="836">836</a>
-<a href="#837" id="837">837</a>
-<a href="#838" id="838">838</a>
-<a href="#839" id="839">839</a>
-<a href="#840" id="840">840</a>
-<a href="#841" id="841">841</a>
-<a href="#842" id="842">842</a>
-<a href="#843" id="843">843</a>
-<a href="#844" id="844">844</a>
-<a href="#845" id="845">845</a>
-<a href="#846" id="846">846</a>
-<a href="#847" id="847">847</a>
-<a href="#848" id="848">848</a>
-<a href="#849" id="849">849</a>
-<a href="#850" id="850">850</a>
-<a href="#851" id="851">851</a>
-<a href="#852" id="852">852</a>
-<a href="#853" id="853">853</a>
-<a href="#854" id="854">854</a>
-<a href="#855" id="855">855</a>
-<a href="#856" id="856">856</a>
-<a href="#857" id="857">857</a>
-<a href="#858" id="858">858</a>
-<a href="#859" id="859">859</a>
-<a href="#860" id="860">860</a>
-<a href="#861" id="861">861</a>
-<a href="#862" id="862">862</a>
-<a href="#863" id="863">863</a>
-<a href="#864" id="864">864</a>
-<a href="#865" id="865">865</a>
-<a href="#866" id="866">866</a>
-<a href="#867" id="867">867</a>
-<a href="#868" id="868">868</a>
-<a href="#869" id="869">869</a>
 </pre><pre class="rust"><code><span class="doccomment">//! ### Don&#39;t Panic!
 //!
 //! Functions in this module should never panic. However, if there is a bug in
@@ -902,6 +860,7 @@
 
 <span class="attr">#[cfg(test)]
 </span><span class="kw">use </span><span class="kw">super</span>::errors::CreateGroupContextExtProposalError;
+<span class="kw">use </span><span class="kw">super</span>::public_group::PublicGroup;
 <span class="kw">use </span><span class="kw">crate</span>::framing::mls_auth_content::VerifiableAuthenticatedContent;
 
 <span class="kw">use </span><span class="kw">crate</span>::group::config::CryptoConfig;
@@ -933,10 +892,8 @@
 <span class="kw">use </span>log::{debug, trace};
 <span class="kw">use </span>openmls_traits::key_store::OpenMlsKeyStore;
 <span class="kw">use </span>openmls_traits::signatures::Signer;
-<span class="kw">use </span>openmls_traits::{crypto::OpenMlsCrypto, types::Ciphersuite};
+<span class="kw">use </span>openmls_traits::types::Ciphersuite;
 <span class="kw">use </span>serde::{Deserialize, Serialize};
-<span class="attr">#[cfg(test)]
-</span><span class="kw">use </span>std::convert::TryFrom;
 <span class="attr">#[cfg(test)]
 </span><span class="kw">use </span>std::io::{Error, Read, Write};
 <span class="kw">use </span>tls_codec::Serialize <span class="kw">as </span>TlsSerializeTrait;
@@ -990,18 +947,13 @@
 <span class="attr">#[derive(Debug, Serialize, Deserialize)]
 #[cfg_attr(test, derive(PartialEq))]
 </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct </span>CoreGroup {
-    ciphersuite: Ciphersuite,
-    group_context: GroupContext,
+    public_group: PublicGroup,
     group_epoch_secrets: GroupEpochSecrets,
-    tree: TreeSync,
     own_leaf_index: LeafNodeIndex,
-    interim_transcript_hash: Vec&lt;u8&gt;,
     <span class="comment">// Group config.
     // Set to true if the ratchet tree extension is added to the `GroupInfo`.
     // Defaults to `false`.
     </span>use_ratchet_tree_extension: bool,
-    <span class="comment">// The MLS protocol version used in this group.
-    </span>mls_version: ProtocolVersion,
     <span class="doccomment">/// A [`MessageSecretsStore`] that stores message secrets.
     /// By default this store has the length of 1, i.e. only the [`MessageSecrets`]
     /// of the current epoch is kept.
@@ -1161,19 +1113,21 @@
 
         <span class="kw">let </span>(group_epoch_secrets, message_secrets) =
             epoch_secrets.split_secrets(serialized_group_context, <span class="number">1u32</span>, LeafNodeIndex::new(<span class="number">0u32</span>));
+
+        <span class="kw">let </span>initial_confirmation_tag = message_secrets
+            .confirmation_key()
+            .tag(backend, <span class="kw-2">&amp;</span>[])
+            .map_err(LibraryError::unexpected_crypto_error)<span class="question-mark">?</span>;
+
         <span class="kw">let </span>message_secrets_store =
             MessageSecretsStore::new_with_secret(<span class="self">self</span>.max_past_epochs, message_secrets);
 
-        <span class="kw">let </span>interim_transcript_hash = <span class="macro">vec!</span>[];
+        <span class="kw">let </span>public_group = PublicGroup::new(tree, group_context, initial_confirmation_tag);
 
         <span class="kw">let </span>group = CoreGroup {
-            ciphersuite,
-            group_context,
+            public_group,
             group_epoch_secrets,
-            tree,
-            interim_transcript_hash,
             use_ratchet_tree_extension: config.add_ratchet_tree_extension,
-            mls_version: version,
             message_secrets_store,
             own_leaf_index: LeafNodeIndex::new(<span class="number">0</span>),
         };
@@ -1364,7 +1318,7 @@
         <span class="macro">log::trace!</span>(<span class="string">&quot;{:?}&quot;</span>, public_message.confirmation_tag());
         PrivateMessage::try_from_authenticated_content(
             <span class="kw-2">&amp;</span>public_message,
-            <span class="self">self</span>.ciphersuite,
+            <span class="self">self</span>.ciphersuite(),
             backend,
             <span class="self">self</span>.message_secrets_store.message_secrets_mut(),
             padding_size,
@@ -1439,7 +1393,7 @@
                 <span class="kw">let </span>external_pub = <span class="self">self
                     </span>.group_epoch_secrets()
                     .external_secret()
-                    .derive_external_keypair(backend.crypto(), <span class="self">self</span>.ciphersuite)
+                    .derive_external_keypair(backend.crypto(), <span class="self">self</span>.ciphersuite())
                     .public;
                 Extension::ExternalPub(ExternalPubExtension::new(HpkePublicKey::from(external_pub)))
             };
@@ -1458,7 +1412,7 @@
 
         <span class="comment">// Create to-be-signed group info.
         </span><span class="kw">let </span>group_info_tbs = GroupInfoTBS::new(
-            <span class="self">self</span>.group_context.clone(),
+            <span class="self">self</span>.context().clone(),
             extensions,
             <span class="self">self</span>.message_secrets()
                 .confirmation_key()
@@ -1498,37 +1452,37 @@
 
     <span class="doccomment">/// Returns a reference to the ratchet tree
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>treesync(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>TreeSync {
-        <span class="kw-2">&amp;</span><span class="self">self</span>.tree
+        <span class="self">self</span>.public_group.treesync()
     }
 
     <span class="doccomment">/// Get the ciphersuite implementation used in this group.
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>ciphersuite(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; Ciphersuite {
-        <span class="self">self</span>.ciphersuite
+        <span class="self">self</span>.public_group.ciphersuite()
     }
 
     <span class="doccomment">/// Get the MLS version used in this group.
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>version(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; ProtocolVersion {
-        <span class="self">self</span>.mls_version
+        <span class="self">self</span>.public_group.version()
     }
 
     <span class="doccomment">/// Get the group context
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>context(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>GroupContext {
-        <span class="kw-2">&amp;</span><span class="self">self</span>.group_context
+        <span class="self">self</span>.public_group.group_context()
     }
 
     <span class="doccomment">/// Get the group ID
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>group_id(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>GroupId {
-        <span class="self">self</span>.group_context.group_id()
+        <span class="self">self</span>.public_group.group_id()
     }
 
     <span class="doccomment">/// Get the group context extensions.
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>group_context_extensions(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>Extensions {
-        <span class="self">self</span>.group_context.extensions()
+        <span class="self">self</span>.public_group.extensions()
     }
 
     <span class="doccomment">/// Get the required capabilities extension of this group.
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>required_capabilities(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>RequiredCapabilitiesExtension&gt; {
-        <span class="self">self</span>.group_context.required_capabilities()
+        <span class="self">self</span>.public_group.required_capabilities()
     }
 
     <span class="doccomment">/// Returns `true` if the group uses the ratchet tree extension anf `false
@@ -1647,7 +1601,7 @@
     ) -&gt; Vec&lt;EncryptionKeyPair&gt; {
         backend.key_store().read_epoch_keys(
             <span class="self">self</span>.group_id().as_slice(),
-            <span class="self">self</span>.group_context.epoch().as_u64(),
+            <span class="self">self</span>.context().epoch().as_u64(),
             <span class="self">self</span>.own_leaf_index().u32(),
         )
     }
@@ -1668,7 +1622,7 @@
     }
 
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>own_leaf_node(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="kw-2">&amp;</span>OpenMlsLeafNode, LibraryError&gt; {
-        <span class="self">self</span>.tree
+        <span class="self">self</span>.treesync()
             .leaf(<span class="self">self</span>.own_leaf_index())
             .ok_or_else(|| LibraryError::custom(<span class="string">&quot;Tree has no own leaf.&quot;</span>))
     }
@@ -1677,7 +1631,7 @@
 <span class="attr">#[cfg(any(feature = <span class="string">&quot;test-utils&quot;</span>, test))]
 </span><span class="kw">impl </span>CoreGroup {
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>context_mut(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;mut </span>GroupContext {
-        <span class="kw-2">&amp;mut </span><span class="self">self</span>.group_context
+        <span class="self">self</span>.public_group.context_mut()
     }
 
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>message_secrets_test_mut(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;mut </span>MessageSecrets {
@@ -1689,44 +1643,6 @@
 
         print_tree(<span class="self">self</span>, message);
     }
-}
-
-<span class="comment">// Helper functions
-
-</span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>update_confirmed_transcript_hash(
-    ciphersuite: Ciphersuite,
-    backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider,
-    mls_plaintext_commit_content: <span class="kw-2">&amp;</span>ConfirmedTranscriptHashInput,
-    interim_transcript_hash: <span class="kw-2">&amp;</span>[u8],
-) -&gt; <span class="prelude-ty">Result</span>&lt;Vec&lt;u8&gt;, LibraryError&gt; {
-    <span class="kw">let </span>commit_content_bytes = mls_plaintext_commit_content
-        .tls_serialize_detached()
-        .map_err(LibraryError::missing_bound_check)<span class="question-mark">?</span>;
-    backend
-        .crypto()
-        .hash(
-            ciphersuite.hash_algorithm(),
-            <span class="kw-2">&amp;</span>[interim_transcript_hash, <span class="kw-2">&amp;</span>commit_content_bytes].concat(),
-        )
-        .map_err(LibraryError::unexpected_crypto_error)
-}
-
-<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>update_interim_transcript_hash(
-    ciphersuite: Ciphersuite,
-    backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider,
-    mls_plaintext_commit_auth_data: <span class="kw-2">&amp;</span>InterimTranscriptHashInput,
-    confirmed_transcript_hash: <span class="kw-2">&amp;</span>[u8],
-) -&gt; <span class="prelude-ty">Result</span>&lt;Vec&lt;u8&gt;, LibraryError&gt; {
-    <span class="kw">let </span>commit_auth_data_bytes = mls_plaintext_commit_auth_data
-        .tls_serialize_detached()
-        .map_err(LibraryError::missing_bound_check)<span class="question-mark">?</span>;
-    backend
-        .crypto()
-        .hash(
-            ciphersuite.hash_algorithm(),
-            <span class="kw-2">&amp;</span>[confirmed_transcript_hash, <span class="kw-2">&amp;</span>commit_auth_data_bytes].concat(),
-        )
-        .map_err(LibraryError::unexpected_crypto_error)
 }
 
 <span class="doccomment">/// Configuration for core group.

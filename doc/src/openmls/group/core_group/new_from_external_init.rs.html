@@ -128,65 +128,11 @@
 <a href="#128" id="128">128</a>
 <a href="#129" id="129">129</a>
 <a href="#130" id="130">130</a>
-<a href="#131" id="131">131</a>
-<a href="#132" id="132">132</a>
-<a href="#133" id="133">133</a>
-<a href="#134" id="134">134</a>
-<a href="#135" id="135">135</a>
-<a href="#136" id="136">136</a>
-<a href="#137" id="137">137</a>
-<a href="#138" id="138">138</a>
-<a href="#139" id="139">139</a>
-<a href="#140" id="140">140</a>
-<a href="#141" id="141">141</a>
-<a href="#142" id="142">142</a>
-<a href="#143" id="143">143</a>
-<a href="#144" id="144">144</a>
-<a href="#145" id="145">145</a>
-<a href="#146" id="146">146</a>
-<a href="#147" id="147">147</a>
-<a href="#148" id="148">148</a>
-<a href="#149" id="149">149</a>
-<a href="#150" id="150">150</a>
-<a href="#151" id="151">151</a>
-<a href="#152" id="152">152</a>
-<a href="#153" id="153">153</a>
-<a href="#154" id="154">154</a>
-<a href="#155" id="155">155</a>
-<a href="#156" id="156">156</a>
-<a href="#157" id="157">157</a>
-<a href="#158" id="158">158</a>
-<a href="#159" id="159">159</a>
-<a href="#160" id="160">160</a>
-<a href="#161" id="161">161</a>
-<a href="#162" id="162">162</a>
-<a href="#163" id="163">163</a>
-<a href="#164" id="164">164</a>
-<a href="#165" id="165">165</a>
-<a href="#166" id="166">166</a>
-<a href="#167" id="167">167</a>
-<a href="#168" id="168">168</a>
-<a href="#169" id="169">169</a>
-<a href="#170" id="170">170</a>
-<a href="#171" id="171">171</a>
-<a href="#172" id="172">172</a>
-<a href="#173" id="173">173</a>
-<a href="#174" id="174">174</a>
-<a href="#175" id="175">175</a>
-<a href="#176" id="176">176</a>
-<a href="#177" id="177">177</a>
-<a href="#178" id="178">178</a>
-<a href="#179" id="179">179</a>
-<a href="#180" id="180">180</a>
-<a href="#181" id="181">181</a>
-<a href="#182" id="182">182</a>
-<a href="#183" id="183">183</a>
 </pre><pre class="rust"><code><span class="kw">use crate</span>::{
     binary_tree::array_representation::LeafNodeIndex,
-    ciphersuite::{signable::Verifiable, OpenMlsSignaturePublicKey},
     group::errors::ExternalCommitError,
     messages::proposals::{ExternalInitProposal, Proposal},
-    treesync::{errors::TreeSyncFromNodesError, node::Node},
+    treesync::node::Node,
 };
 
 <span class="kw">use super</span>::{
@@ -213,8 +159,6 @@
         tree_option: <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>[<span class="prelude-ty">Option</span>&lt;Node&gt;]&gt;,
         verifiable_group_info: VerifiableGroupInfo,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;ExternalCommitResult, ExternalCommitError&gt; {
-        <span class="kw">let </span>ciphersuite = verifiable_group_info.ciphersuite();
-
         <span class="comment">// Build the ratchet tree
 
         // Set nodes either from the extension or from the `nodes_option`.
@@ -230,46 +174,18 @@
             },
         };
 
-        <span class="comment">// Create a RatchetTree from the given nodes. We have to do this before
-        // verifying the PGS, since we need to find the Credential to verify the
-        // signature against.
-        </span><span class="kw">let </span>treesync = TreeSync::from_nodes(backend, ciphersuite, <span class="kw-2">&amp;</span>nodes).map_err(|e| <span class="kw">match </span>e {
-            TreeSyncFromNodesError::LibraryError(e) =&gt; e.into(),
-            TreeSyncFromNodesError::PublicTreeError(e) =&gt; ExternalCommitError::PublicTreeError(e),
-        })<span class="question-mark">?</span>;
-
-        <span class="kw">let </span>group_info: GroupInfo = {
-            <span class="kw">let </span>group_info_signer_pk = treesync
-                .leaf(verifiable_group_info.signer())
-                .ok_or(ExternalCommitError::UnknownSender)<span class="question-mark">?
-                </span>.signature_key();
-            <span class="kw">let </span>group_info_signer_pk = OpenMlsSignaturePublicKey::from_signature_key(
-                group_info_signer_pk.clone(),
-                ciphersuite.signature_algorithm(),
-            );
-
-            verifiable_group_info
-                .verify(backend.crypto(), <span class="kw-2">&amp;</span>group_info_signer_pk)
-                .map_err(|<span class="kw">_</span>| ExternalCommitError::InvalidGroupInfoSignature)<span class="question-mark">?
-        </span>};
-
-        <span class="kw">if </span>treesync.tree_hash() != group_info.group_context().tree_hash() {
-            <span class="kw">return </span><span class="prelude-val">Err</span>(ExternalCommitError::TreeHashMismatch);
-        }
-
-        <span class="kw">if </span>group_info.group_context().protocol_version() != ProtocolVersion::Mls10 {
-            <span class="kw">return </span><span class="prelude-val">Err</span>(ExternalCommitError::UnsupportedMlsVersion);
-        }
+        <span class="kw">let </span>(public_group, group_info_extensions) =
+            PublicGroup::from_external(backend, <span class="kw-2">&amp;</span>nodes, verifiable_group_info)<span class="question-mark">?</span>;
+        <span class="kw">let </span>group_context = public_group.group_context();
 
         <span class="comment">// Obtain external_pub from GroupInfo extensions.
-        </span><span class="kw">let </span>external_pub = group_info
-            .extensions()
+        </span><span class="kw">let </span>external_pub = group_info_extensions
             .external_pub()
             .ok_or(ExternalCommitError::MissingExternalPub)<span class="question-mark">?
             </span>.external_pub();
 
         <span class="kw">let </span>(init_secret, kem_output) =
-            InitSecret::from_group_info(backend, <span class="kw-2">&amp;</span>group_info, external_pub.as_slice())
+            InitSecret::from_group_context(backend, group_context, external_pub.as_slice())
                 .map_err(|<span class="kw">_</span>| ExternalCommitError::UnsupportedCiphersuite)<span class="question-mark">?</span>;
 
         <span class="comment">// The `EpochSecrets` we create here are essentially zero, with the
@@ -278,33 +194,16 @@
         </span><span class="kw">let </span>epoch_secrets = EpochSecrets::with_init_secret(backend, init_secret)
             .map_err(LibraryError::unexpected_crypto_error)<span class="question-mark">?</span>;
         <span class="kw">let </span>(group_epoch_secrets, message_secrets) = epoch_secrets.split_secrets(
-            group_info
-                .group_context()
+            group_context
                 .tls_serialize_detached()
                 .map_err(LibraryError::missing_bound_check)<span class="question-mark">?</span>,
-            treesync.leaf_count(),
+            public_group.treesync().leaf_count(),
             <span class="comment">// We use a fake own index of 0 here, as we&#39;re not going to use the
             // tree for encryption until after the first commit. This issue is
             // tracked in #767.
             </span>LeafNodeIndex::new(<span class="number">0u32</span>),
         );
         <span class="kw">let </span>message_secrets_store = MessageSecretsStore::new_with_secret(<span class="number">0</span>, message_secrets);
-
-        <span class="kw">let </span>interim_transcript_hash = {
-            <span class="kw">if </span>group_info.group_context().epoch() == GroupEpoch::from(<span class="number">0</span>) {
-                <span class="macro">vec!</span>[]
-            } <span class="kw">else </span>{
-                <span class="comment">// New members compute the interim transcript hash using
-                // the confirmation_tag field of the GroupInfo struct.
-                </span>update_interim_transcript_hash(
-                    ciphersuite,
-                    backend,
-                    <span class="kw-2">&amp;</span>InterimTranscriptHashInput::from(group_info.confirmation_tag()),
-                    group_info.group_context().confirmed_transcript_hash(),
-                )
-                .unwrap()
-            }
-        };
 
         <span class="kw">let </span>external_init_proposal = Proposal::ExternalInit(ExternalInitProposal::from(kem_output));
 
@@ -319,7 +218,7 @@
             index,
             signature_key,
             ..
-        } <span class="kw">in </span>treesync.full_leave_members()
+        } <span class="kw">in </span>public_group.members()
         {
             <span class="kw">if </span>signature_key == params_credential_with_key.signature_key.as_slice() {
                 <span class="kw">let </span>remove_proposal = Proposal::Remove(RemoveProposal { removed: index });
@@ -328,21 +227,16 @@
             };
         }
 
-        <span class="kw">let </span>own_leaf_index =
-            CoreGroup::free_leaf_index(<span class="kw-2">&amp;</span>treesync, inline_proposals.iter().map(<span class="prelude-val">Some</span>))<span class="question-mark">?</span>;
+        <span class="kw">let </span>own_leaf_index = public_group.free_leaf_index(inline_proposals.iter().map(<span class="prelude-val">Some</span>))<span class="question-mark">?</span>;
 
-        <span class="comment">// Prepare interim transcript hash
-        </span><span class="kw">let </span>group = CoreGroup {
-            ciphersuite,
-            group_context: group_info.group_context().clone(),
-            tree: treesync,
-            interim_transcript_hash,
+        <span class="kw">let </span>group = CoreGroup {
+            public_group,
             use_ratchet_tree_extension: enable_ratchet_tree_extension,
-            mls_version: group_info.group_context().protocol_version(),
             group_epoch_secrets,
             message_secrets_store,
             own_leaf_index,
         };
+
         <span class="kw">let </span>params = CreateCommitParams::builder()
             .framing_parameters(<span class="kw-2">*</span>params.framing_parameters())
             .proposal_store(params.proposal_store())

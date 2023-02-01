@@ -357,56 +357,6 @@
 <a href="#357" id="357">357</a>
 <a href="#358" id="358">358</a>
 <a href="#359" id="359">359</a>
-<a href="#360" id="360">360</a>
-<a href="#361" id="361">361</a>
-<a href="#362" id="362">362</a>
-<a href="#363" id="363">363</a>
-<a href="#364" id="364">364</a>
-<a href="#365" id="365">365</a>
-<a href="#366" id="366">366</a>
-<a href="#367" id="367">367</a>
-<a href="#368" id="368">368</a>
-<a href="#369" id="369">369</a>
-<a href="#370" id="370">370</a>
-<a href="#371" id="371">371</a>
-<a href="#372" id="372">372</a>
-<a href="#373" id="373">373</a>
-<a href="#374" id="374">374</a>
-<a href="#375" id="375">375</a>
-<a href="#376" id="376">376</a>
-<a href="#377" id="377">377</a>
-<a href="#378" id="378">378</a>
-<a href="#379" id="379">379</a>
-<a href="#380" id="380">380</a>
-<a href="#381" id="381">381</a>
-<a href="#382" id="382">382</a>
-<a href="#383" id="383">383</a>
-<a href="#384" id="384">384</a>
-<a href="#385" id="385">385</a>
-<a href="#386" id="386">386</a>
-<a href="#387" id="387">387</a>
-<a href="#388" id="388">388</a>
-<a href="#389" id="389">389</a>
-<a href="#390" id="390">390</a>
-<a href="#391" id="391">391</a>
-<a href="#392" id="392">392</a>
-<a href="#393" id="393">393</a>
-<a href="#394" id="394">394</a>
-<a href="#395" id="395">395</a>
-<a href="#396" id="396">396</a>
-<a href="#397" id="397">397</a>
-<a href="#398" id="398">398</a>
-<a href="#399" id="399">399</a>
-<a href="#400" id="400">400</a>
-<a href="#401" id="401">401</a>
-<a href="#402" id="402">402</a>
-<a href="#403" id="403">403</a>
-<a href="#404" id="404">404</a>
-<a href="#405" id="405">405</a>
-<a href="#406" id="406">406</a>
-<a href="#407" id="407">407</a>
-<a href="#408" id="408">408</a>
-<a href="#409" id="409">409</a>
 </pre><pre class="rust"><code><span class="doccomment">//! Module to encrypt and decrypt update paths for a [`TreeSyncDiff`] instance.
 //!
 //! # About
@@ -426,7 +376,7 @@
 
 <span class="kw">use crate</span>::{
     binary_tree::array_representation::LeafNodeIndex,
-    ciphersuite::{hash_ref::KeyPackageRef, HpkePublicKey},
+    ciphersuite::HpkePublicKey,
     error::LibraryError,
     messages::{proposals::AddProposal, EncryptedGroupSecrets, GroupSecrets, PathSecret},
     schedule::{psk::PreSharedKeyId, CommitSecret, JoinerSecret},
@@ -497,7 +447,6 @@
     /// well as the [`CommitSecret`] resulting from their derivation. Returns an
     /// error if the `sender_leaf_index` is outside of the tree.
     ///
-    /// ValSem202: Path must be the right length
     /// ValSem203: Path secrets must decrypt correctly
     /// ValSem204: Public keys from Path must be verified and match the private keys from the direct path
     /// TODO #804
@@ -508,20 +457,7 @@
         params: DecryptPathParams,
         owned_keys: <span class="kw-2">&amp;</span>[<span class="kw-2">&amp;</span>EncryptionKeyPair],
         own_leaf_index: LeafNodeIndex,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;(Vec&lt;ParentNode&gt;, Vec&lt;EncryptionKeyPair&gt;, CommitSecret), ApplyUpdatePathError&gt; {
-        <span class="comment">// ValSem202: Path must be the right length
-        </span><span class="kw">let </span>direct_path_length = <span class="self">self</span>.filtered_direct_path(params.sender_leaf_index).len();
-        <span class="kw">if </span>direct_path_length != params.update_path.len() {
-            <span class="comment">// XXX: Rewrite tests to allow for debug asserts.
-            // debug_assert!(
-            //     false,
-            //     &quot;Path length mismatch {} != {}&quot;,
-            //     direct_path_length,
-            //     params.update_path.len()
-            // );
-            </span><span class="kw">return </span><span class="prelude-val">Err</span>(ApplyUpdatePathError::PathLengthMismatch);
-        }
-
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;(Vec&lt;EncryptionKeyPair&gt;, CommitSecret), ApplyUpdatePathError&gt; {
         <span class="kw">let </span>path_position = <span class="self">self
             </span>.subtree_root_position(params.sender_leaf_index, own_leaf_index)
             .map_err(|<span class="kw">_</span>| LibraryError::custom(<span class="string">&quot;Expected own leaf to be in the tree&quot;</span>))<span class="question-mark">?</span>;
@@ -577,28 +513,71 @@
             }
         }
 
-        <span class="kw">let </span>_update_path_len = params.update_path.len();
+        <span class="prelude-val">Ok</span>((keypairs, commit_secret))
+    }
 
-        <span class="comment">// Finally, we append the derived path to the part of the update path
-        // below the first node that we have a private key for.
-        </span><span class="kw">let </span><span class="kw-2">mut </span>path: Vec&lt;ParentNode&gt; = params
-            .update_path
-            .into_iter()
-            .take(path_position)
-            .map(|update_path_node| update_path_node.public_key.into())
-            .collect();
-        path.append(<span class="kw-2">&amp;mut </span>derived_path.into_iter().map(|(<span class="kw">_</span>, node)| node).collect());
+    <span class="doccomment">/// Prepare the [`EncryptedGroupSecrets`] for a number of `invited_members`
+    /// based on a [`TreeSyncDiff`]. If a slice of [`PlainUpdatePathNode`] is
+    /// given, they are included in the [`GroupSecrets`] of the path.
+    ///
+    /// Returns an error if
+    ///  - the own node is outside the tree
+    ///  - the invited members are not part of the tree yet
+    ///  - the leaf index of a new member is identical to the own leaf index
+    ///  - the plain path does not contain the correct secrets
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>encrypt_group_secrets(
+        <span class="kw-2">&amp;</span><span class="self">self</span>,
+        joiner_secret: <span class="kw-2">&amp;</span>JoinerSecret,
+        invited_members: Vec&lt;(LeafNodeIndex, AddProposal)&gt;,
+        plain_path_option: <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>[PlainUpdatePathNode]&gt;,
+        presharedkeys: <span class="kw-2">&amp;</span>[PreSharedKeyId],
+        backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider,
+        encryptor_leaf_index: LeafNodeIndex,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;Vec&lt;EncryptedGroupSecrets&gt;, LibraryError&gt; {
+        <span class="kw">let </span><span class="kw-2">mut </span>encrypted_group_secrets_vec = <span class="macro">vec!</span>[];
+        <span class="kw">for </span>(leaf_index, add_proposal) <span class="kw">in </span>invited_members {
+            <span class="kw">let </span>key_package = add_proposal.key_package;
 
-        <span class="comment">// The output should have the same length as the input.
-        </span><span class="macro">debug_assert_eq!</span>(_update_path_len, path.len());
+            <span class="kw">let </span>direct_path_position = <span class="self">self
+                </span>.subtree_root_position(encryptor_leaf_index, leaf_index)
+                <span class="comment">// This can only fail if the nodes are outside the tree or identical
+                </span>.map_err(|<span class="kw">_</span>| LibraryError::custom(<span class="string">&quot;Unexpected error in subtree_root_position&quot;</span>))<span class="question-mark">?</span>;
 
-        <span class="prelude-val">Ok</span>((path, keypairs, commit_secret))
+            <span class="comment">// If a plain path was given, there have to be secrets for every new member.
+            </span><span class="kw">let </span>path_secret_option = <span class="kw">if let </span><span class="prelude-val">Some</span>(plain_path) = plain_path_option {
+                <span class="prelude-val">Some</span>(
+                    plain_path
+                        .get(direct_path_position)
+                        .map(|pupn| pupn.path_secret())
+                        <span class="comment">// This only fails if the supplied plain path is invalid
+                        </span>.ok_or_else(|| LibraryError::custom(<span class="string">&quot;Invalid plain path&quot;</span>))<span class="question-mark">?</span>,
+                )
+            } <span class="kw">else </span>{
+                <span class="prelude-val">None
+            </span>};
+
+            <span class="comment">// Create the GroupSecrets object for the respective member.
+            </span><span class="kw">let </span>group_secrets_bytes =
+                GroupSecrets::new_encoded(joiner_secret, path_secret_option, presharedkeys)
+                    .map_err(LibraryError::missing_bound_check)<span class="question-mark">?</span>;
+            <span class="kw">let </span>ciphertext = backend.crypto().hpke_seal(
+                key_package.ciphersuite().hpke_config(),
+                key_package.hpke_init_key().as_slice(),
+                <span class="kw-2">&amp;</span>[],
+                <span class="kw-2">&amp;</span>[],
+                <span class="kw-2">&amp;</span>group_secrets_bytes,
+            );
+            <span class="kw">let </span>encrypted_group_secrets =
+                EncryptedGroupSecrets::new(key_package.hash_ref(backend.crypto())<span class="question-mark">?</span>, ciphertext);
+            encrypted_group_secrets_vec.push(encrypted_group_secrets);
+        }
+        <span class="prelude-val">Ok</span>(encrypted_group_secrets_vec)
     }
 }
 
 <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct </span>DecryptPathParams&lt;<span class="lifetime">&#39;a</span>&gt; {
     <span class="kw">pub</span>(<span class="kw">crate</span>) version: ProtocolVersion,
-    <span class="kw">pub</span>(<span class="kw">crate</span>) update_path: Vec&lt;UpdatePathNode&gt;,
+    <span class="kw">pub</span>(<span class="kw">crate</span>) update_path: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[UpdatePathNode],
     <span class="kw">pub</span>(<span class="kw">crate</span>) sender_leaf_index: LeafNodeIndex,
     <span class="kw">pub</span>(<span class="kw">crate</span>) exclusion_list: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>HashSet&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>LeafNodeIndex&gt;,
     <span class="kw">pub</span>(<span class="kw">crate</span>) group_context: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8],
@@ -629,6 +608,11 @@
     <span class="doccomment">/// Return the `public_key`.
     </span><span class="kw">fn </span>public_key(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>HpkePublicKey {
         <span class="self">self</span>.public_key.key()
+    }
+
+    <span class="attr">#[cfg(test)]
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>encryption_key(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>EncryptionKey {
+        <span class="kw-2">&amp;</span><span class="self">self</span>.public_key
     }
 
     <span class="doccomment">/// Flip the last byte of every `encrypted_path_secret` in this node.
@@ -667,89 +651,6 @@
     }
 }
 
-<span class="doccomment">/// Helper struct holding values that are encrypted in the
-/// `EncryptedGroupSecrets`. In particular, the `group_secrets_bytes` are
-/// encrypted for the `public_key` into `encrypted_group_secrets` later.
-</span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct </span>PlaintextSecret {
-    public_key: HpkePublicKey,
-    group_secrets_bytes: Vec&lt;u8&gt;,
-    new_member: KeyPackageRef,
-}
-
-<span class="kw">impl </span>PlaintextSecret {
-    <span class="doccomment">/// Prepare the `GroupSecrets` for a number of `invited_members` based on a
-    /// [`TreeSyncDiff`]. If a slice of [`PlainUpdatePathNode`] is given, they
-    /// are included in the [`GroupSecrets`] of the path.
-    ///
-    /// Returns an error if
-    ///  - the own node is outside the tree
-    ///  - the invited members are not part of the tree yet
-    ///  - the leaf index of a new member is identical to the own leaf index
-    ///  - the plain path does not contain the correct secrets
-    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>from_plain_update_path(
-        diff: <span class="kw-2">&amp;</span>TreeSyncDiff,
-        joiner_secret: <span class="kw-2">&amp;</span>JoinerSecret,
-        invited_members: Vec&lt;(LeafNodeIndex, AddProposal)&gt;,
-        plain_path_option: <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>[PlainUpdatePathNode]&gt;,
-        presharedkeys: <span class="kw-2">&amp;</span>[PreSharedKeyId],
-        backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider,
-        own_leaf_index: LeafNodeIndex,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;Vec&lt;<span class="self">Self</span>&gt;, LibraryError&gt; {
-        <span class="kw">let </span><span class="kw-2">mut </span>plaintext_secrets = <span class="macro">vec!</span>[];
-        <span class="kw">for </span>(leaf_index, add_proposal) <span class="kw">in </span>invited_members {
-            <span class="kw">let </span>key_package = add_proposal.key_package;
-
-            <span class="kw">let </span>direct_path_position = diff
-                .subtree_root_position(own_leaf_index, leaf_index)
-                <span class="comment">// This can only fail if the nodes are outside the tree or identical
-                </span>.map_err(|<span class="kw">_</span>| LibraryError::custom(<span class="string">&quot;Unexpected error in subtree_root_position&quot;</span>))<span class="question-mark">?</span>;
-
-            <span class="comment">// If a plain path was given, there have to be secrets for every new member.
-            </span><span class="kw">let </span>path_secret_option = <span class="kw">if let </span><span class="prelude-val">Some</span>(plain_path) = plain_path_option {
-                <span class="prelude-val">Some</span>(
-                    plain_path
-                        .get(direct_path_position)
-                        .map(|pupn| pupn.path_secret())
-                        <span class="comment">// This only fails if the supplied plain path is invalid
-                        </span>.ok_or_else(|| LibraryError::custom(<span class="string">&quot;Invalid plain path&quot;</span>))<span class="question-mark">?</span>,
-                )
-            } <span class="kw">else </span>{
-                <span class="prelude-val">None
-            </span>};
-
-            <span class="comment">// Create the GroupSecrets object for the respective member.
-            </span><span class="kw">let </span>group_secrets_bytes =
-                GroupSecrets::new_encoded(joiner_secret, path_secret_option, presharedkeys)
-                    .map_err(LibraryError::missing_bound_check)<span class="question-mark">?</span>;
-            plaintext_secrets.push(PlaintextSecret {
-                public_key: key_package.hpke_init_key().clone(),
-                group_secrets_bytes,
-                new_member: key_package.hash_ref(backend.crypto())<span class="question-mark">?</span>,
-            });
-        }
-        <span class="prelude-val">Ok</span>(plaintext_secrets)
-    }
-
-    <span class="doccomment">/// Encrypt the `group_secret_bytes` using the `public_key`, both contained
-    /// in this [`PlaintextSecret`].
-    ///
-    /// Returns the resulting [`EncryptedGroupSecrets`].
-    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>encrypt(
-        <span class="self">self</span>,
-        backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider,
-        ciphersuite: Ciphersuite,
-    ) -&gt; EncryptedGroupSecrets {
-        <span class="kw">let </span>encrypted_group_secrets = backend.crypto().hpke_seal(
-            ciphersuite.hpke_config(),
-            <span class="self">self</span>.public_key.as_slice(),
-            <span class="kw-2">&amp;</span>[],
-            <span class="kw-2">&amp;</span>[],
-            <span class="kw-2">&amp;</span><span class="self">self</span>.group_secrets_bytes,
-        );
-        EncryptedGroupSecrets::new(<span class="self">self</span>.new_member, encrypted_group_secrets)
-    }
-}
-
 <span class="doccomment">/// 8.6. Update Paths
 ///
 /// ```text
@@ -777,10 +678,9 @@
         <span class="kw-2">&amp;</span><span class="self">self</span>.leaf_node
     }
 
-    <span class="doccomment">/// Consume the [`UpdatePath`] and return its individual parts: A
-    /// [`LeafNode`] and a vector of [`UpdatePathNode`] instances.
-    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>into_parts(<span class="self">self</span>) -&gt; (LeafNode, Vec&lt;UpdatePathNode&gt;) {
-        (<span class="self">self</span>.leaf_node, <span class="self">self</span>.nodes)
+    <span class="doccomment">/// Return the `nodes` of this [`UpdatePath`].
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>nodes(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>[UpdatePathNode] {
+        <span class="kw-2">&amp;</span><span class="self">self</span>.nodes
     }
 
     <span class="attr">#[cfg(test)]

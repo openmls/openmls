@@ -414,11 +414,6 @@
 <a href="#414" id="414">414</a>
 <a href="#415" id="415">415</a>
 <a href="#416" id="416">416</a>
-<a href="#417" id="417">417</a>
-<a href="#418" id="418">418</a>
-<a href="#419" id="419">419</a>
-<a href="#420" id="420">420</a>
-<a href="#421" id="421">421</a>
 </pre><pre class="rust"><code><span class="doccomment">//! An implementation of a diff functionality for the [`ABinaryTree`] struct.
 //!
 //! # About
@@ -447,8 +442,8 @@
     sorted_iter::sorted_iter,
     tree::{ABinaryTree, ABinaryTreeError},
     treemath::{
-        common_direct_path, copath, direct_path, left, lowest_common_ancestor, right, root,
-        LeafNodeIndex, ParentNodeIndex, TreeNodeIndex, TreeSize, MAX_TREE_SIZE, MIN_TREE_SIZE,
+        copath, direct_path, left, lowest_common_ancestor, right, root, LeafNodeIndex,
+        ParentNodeIndex, TreeNodeIndex, TreeSize, MAX_TREE_SIZE, MIN_TREE_SIZE,
     },
 };
 
@@ -685,17 +680,6 @@
         }
     }
 
-    <span class="doccomment">/// Returns a vector of [`ParentNodeIndex`]es, where the first reference is to
-    /// the root of the shared subtree of the two given leaf indices followed by
-    /// references to the nodes in the direct path of said subtree root.
-    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>subtree_path(
-        <span class="kw-2">&amp;</span><span class="self">self</span>,
-        leaf_index_1: LeafNodeIndex,
-        leaf_index_2: LeafNodeIndex,
-    ) -&gt; Vec&lt;ParentNodeIndex&gt; {
-        common_direct_path(leaf_index_1, leaf_index_2, <span class="self">self</span>.size())
-    }
-
     <span class="comment">// Functions pertaining to the whole diff
     /////////////////////////////////////////
 
@@ -744,10 +728,16 @@
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>leaf(<span class="kw-2">&amp;</span><span class="self">self</span>, leaf_index: LeafNodeIndex) -&gt; <span class="kw-2">&amp;</span>L {
         <span class="comment">// Check if it&#39;s in the diff.
         </span><span class="kw">if let </span><span class="prelude-val">Some</span>(node) = <span class="self">self</span>.leaf_diff.get(<span class="kw-2">&amp;</span>leaf_index) {
-            <span class="kw">return </span>node;
+            node
+        <span class="comment">// If it&#39;s not in the diff, it could be that it&#39;s outside of the
+        // diff, in which case we want to return a blank here, because the
+        // diff might have been trimmed in the mean time.
+        </span>} <span class="kw">else if </span>leaf_index.u32() &gt;= <span class="self">self</span>.leaf_count() {
+            <span class="kw-2">&amp;</span><span class="self">self</span>.default_leaf
+            <span class="comment">// If it isn&#39;t in the diff, it must be in the tree.
+        </span>} <span class="kw">else </span>{
+            <span class="self">self</span>.original_tree.leaf_by_index(leaf_index)
         }
-        <span class="comment">// If it isn&#39;t in the diff, it must be in the tree.
-        </span><span class="self">self</span>.original_tree.leaf_by_index(leaf_index)
     }
 
     <span class="doccomment">/// Returns a reference to the parent node at index `parent_index`.
