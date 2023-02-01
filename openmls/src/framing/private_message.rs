@@ -100,7 +100,7 @@ impl PrivateMessage {
         )
     }
 
-    #[cfg(test)]
+    #[cfg(any(feature = "test-utils", test))]
     pub(crate) fn encrypt_without_check(
         public_message: &AuthenticatedContent,
         ciphersuite: Ciphersuite,
@@ -183,6 +183,11 @@ impl PrivateMessage {
         // Prepare the nonce by xoring with the reuse guard.
         let prepared_nonce = ratchet_nonce.xor_with_reuse_guard(&reuse_guard);
         // Encrypt the payload
+        log_crypto!(
+            trace,
+            "Encryption key for private message: {ratchet_key:x?}"
+        );
+        log_crypto!(trace, "Encryption of private message private_message_content_aad_bytes: {private_message_content_aad_bytes:x?} - ratchet_nonce: {prepared_nonce:x?}");
         let ciphertext = ratchet_key
             .aead_seal(
                 backend,
@@ -196,6 +201,7 @@ impl PrivateMessage {
                 &prepared_nonce,
             )
             .map_err(LibraryError::unexpected_crypto_error)?;
+        log::trace!("Encrypted ciphertext {:x?}", ciphertext);
         // Derive the sender data key from the key schedule using the ciphertext.
         let sender_data_key = message_secrets
             .sender_data_secret()
@@ -224,6 +230,11 @@ impl PrivateMessage {
             reuse_guard,
         );
         // Encrypt the sender data
+        log_crypto!(
+            trace,
+            "Encryption key for sender data: {sender_data_key:x?}"
+        );
+        log_crypto!(trace, "Encryption of sender data mls_sender_data_aad_bytes: {mls_sender_data_aad_bytes:x?} - sender_data_nonce: {sender_data_nonce:x?}");
         let encrypted_sender_data = sender_data_key
             .aead_seal(
                 backend,
@@ -269,6 +280,11 @@ impl PrivateMessage {
             .tls_serialize_detached()
             .map_err(LibraryError::missing_bound_check)?;
         // Decrypt sender data
+        log_crypto!(
+            trace,
+            "Decryption key for sender data: {sender_data_key:x?}"
+        );
+        log_crypto!(trace, "Decryption of sender data mls_sender_data_aad_bytes: {mls_sender_data_aad_bytes:x?} - sender_data_nonce: {sender_data_nonce:x?}");
         let sender_data_bytes = sender_data_key
             .aead_open(
                 backend,
@@ -303,6 +319,12 @@ impl PrivateMessage {
         .tls_serialize_detached()
         .map_err(LibraryError::missing_bound_check)?;
         // Decrypt payload
+        log_crypto!(
+            trace,
+            "Decryption key for private message: {ratchet_key:x?}"
+        );
+        log_crypto!(trace, "Decryption of private message private_message_content_aad_bytes: {private_message_content_aad_bytes:x?} - ratchet_nonce: {ratchet_nonce:x?}");
+        log::trace!("Decrypting ciphertext {:x?}", self.ciphertext);
         let private_message_content_bytes = ratchet_key
             .aead_open(
                 backend,

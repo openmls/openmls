@@ -50,6 +50,13 @@ pub struct PublicMessage {
     membership_tag: Option<MembershipTag>,
 }
 
+#[cfg(any(test, feature = "test-utils"))]
+impl PublicMessage {
+    pub(crate) fn content(&self) -> &crate::framing::mls_content::FramedContentBody {
+        &self.content.body
+    }
+}
+
 #[cfg(test)]
 impl PublicMessage {
     pub fn set_confirmation_tag(&mut self, confirmation_tag: Option<ConfirmationTag>) {
@@ -66,10 +73,6 @@ impl PublicMessage {
 
     pub fn set_epoch(&mut self, epoch: u64) {
         self.content.epoch = epoch.into();
-    }
-
-    pub(crate) fn content(&self) -> &FramedContentBody {
-        &self.content.body
     }
 
     pub fn confirmation_tag(&self) -> Option<&ConfirmationTag> {
