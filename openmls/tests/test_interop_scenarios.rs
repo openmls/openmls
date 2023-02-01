@@ -17,7 +17,7 @@ use openmls::{
 // ***:  Verify group state
 #[apply(ciphersuites)]
 fn one_to_one_join(ciphersuite: Ciphersuite) {
-    println!("Testing ciphersuite {:?}", ciphersuite);
+    println!("Testing ciphersuite {ciphersuite:?}");
     let number_of_clients = 2;
     let setup = MlsGroupTestSetup::new(
         MlsGroupConfig::test_default(ciphersuite),
@@ -63,7 +63,7 @@ fn one_to_one_join(ciphersuite: Ciphersuite) {
 // ***:  Verify group state
 #[apply(ciphersuites)]
 fn three_party_join(ciphersuite: Ciphersuite) {
-    println!("Testing ciphersuite {:?}", ciphersuite);
+    println!("Testing ciphersuite {ciphersuite:?}");
 
     let number_of_clients = 3;
     let setup = MlsGroupTestSetup::new(
@@ -119,7 +119,7 @@ fn three_party_join(ciphersuite: Ciphersuite) {
 // ***:  Verify group state
 #[apply(ciphersuites)]
 fn multiple_joins(ciphersuite: Ciphersuite) {
-    println!("Testing ciphersuite {:?}", ciphersuite);
+    println!("Testing ciphersuite {ciphersuite:?}");
 
     let number_of_clients = 3;
     let setup = MlsGroupTestSetup::new(
@@ -167,7 +167,7 @@ fn multiple_joins(ciphersuite: Ciphersuite) {
 // ***:  Verify group state
 #[apply(ciphersuites)]
 fn update(ciphersuite: Ciphersuite) {
-    println!("Testing ciphersuite {:?}", ciphersuite);
+    println!("Testing ciphersuite {ciphersuite:?}");
 
     let number_of_clients = 2;
     let setup = MlsGroupTestSetup::new(
@@ -210,7 +210,7 @@ fn update(ciphersuite: Ciphersuite) {
 // ***:  Verify group state
 #[apply(ciphersuites)]
 fn remove(ciphersuite: Ciphersuite) {
-    println!("Testing ciphersuite {:?}", ciphersuite);
+    println!("Testing ciphersuite {ciphersuite:?}");
 
     let number_of_clients = 2;
     let setup = MlsGroupTestSetup::new(
@@ -266,7 +266,7 @@ fn remove(ciphersuite: Ciphersuite) {
 //   randomly-chosen other group member
 #[apply(ciphersuites)]
 fn large_group_lifecycle(ciphersuite: Ciphersuite) {
-    println!("Testing ciphersuite {:?}", ciphersuite);
+    println!("Testing ciphersuite {ciphersuite:?}");
 
     // "Large" is 20 for now.
     let number_of_clients = 20;

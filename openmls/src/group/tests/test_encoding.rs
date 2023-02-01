@@ -84,7 +84,7 @@ fn test_application_message_encoding(backend: &impl OpenMlsCryptoProvider) {
             let encrypted_message_decoded =
                 match PrivateMessage::tls_deserialize(&mut encrypted_message_bytes.as_slice()) {
                     Ok(a) => a,
-                    Err(err) => panic!("Error decoding PrivateMessage: {:?}", err),
+                    Err(err) => panic!("Error decoding PrivateMessage: {err:?}"),
                 };
             assert_eq!(encrypted_message, encrypted_message_decoded);
         }
@@ -136,7 +136,7 @@ fn test_update_proposal_encoding(backend: &impl OpenMlsCryptoProvider) {
             .expect("Could not encode proposal.");
         let update_decoded = match PublicMessage::tls_deserialize(&mut update_encoded.as_slice()) {
             Ok(a) => a,
-            Err(err) => panic!("Error decoding MPLSPlaintext Update: {:?}", err),
+            Err(err) => panic!("Error decoding MPLSPlaintext Update: {err:?}"),
         };
 
         assert_eq!(update, update_decoded);
@@ -392,7 +392,7 @@ fn test_welcome_message_encoding(backend: &impl OpenMlsCryptoProvider) {
             .expect("An unexpected error occurred.");
         let welcome_decoded = match Welcome::tls_deserialize(&mut welcome_encoded.as_slice()) {
             Ok(a) => a,
-            Err(err) => panic!("Error decoding Welcome message: {:?}", err),
+            Err(err) => panic!("Error decoding Welcome message: {err:?}"),
         };
 
         assert_eq!(welcome, welcome_decoded);

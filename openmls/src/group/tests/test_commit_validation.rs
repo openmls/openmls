@@ -376,11 +376,7 @@ fn test_valsem201(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
 
         // Positive case
         let process_message_result = bob_group.process_message(backend, commit);
-        assert!(
-            process_message_result.is_ok(),
-            "{:?}",
-            process_message_result
-        );
+        assert!(process_message_result.is_ok(), "{process_message_result:?}");
 
         // cleanup & restore for next iteration
         alice_group.clear_pending_proposals();

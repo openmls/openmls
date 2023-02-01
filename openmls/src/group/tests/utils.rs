@@ -264,7 +264,7 @@ pub(crate) fn setup(config: TestSetupConfig, backend: &impl OpenMlsCryptoProvide
                     backend,
                 ) {
                     Ok(group) => group,
-                    Err(err) => panic!("Error creating new group from Welcome: {:?}", err),
+                    Err(err) => panic!("Error creating new group from Welcome: {err:?}"),
                 };
 
                 new_group_member

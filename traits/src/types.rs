@@ -114,7 +114,7 @@ impl TryFrom<u16> for SignatureScheme {
             0x0603 => Ok(SignatureScheme::ECDSA_SECP521R1_SHA512),
             0x0807 => Ok(SignatureScheme::ED25519),
             0x0808 => Ok(SignatureScheme::ED448),
-            _ => Err(format!("Unsupported SignatureScheme: {}", value)),
+            _ => Err(format!("Unsupported SignatureScheme: {value}")),
         }
     }
 }
@@ -154,7 +154,7 @@ pub enum CryptoError {
 
 impl std::fmt::Display for CryptoError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{:?}", self)
+        write!(f, "{self:?}")
     }
 }
 
@@ -306,7 +306,7 @@ pub enum Ciphersuite {
 
 impl core::fmt::Display for Ciphersuite {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{:?}", self)
+        write!(f, "{self:?}")
     }
 }
 
@@ -331,8 +331,7 @@ impl TryFrom<u16> for Ciphersuite {
             0x0006 => Ok(Ciphersuite::MLS_256_DHKEMX448_CHACHA20POLY1305_SHA512_Ed448),
             0x0007 => Ok(Ciphersuite::MLS_256_DHKEMP384_AES256GCM_SHA384_P384),
             _ => Err(Self::Error::DecodingError(format!(
-                "{} is not a valid ciphersuite value",
-                v
+                "{v} is not a valid ciphersuite value"
             ))),
         }
     }

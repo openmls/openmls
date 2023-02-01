@@ -235,7 +235,7 @@ async fn test_group() {
     // First we need to get the key package for Client2 from the DS.
     let path = "/clients/key_packages/".to_owned()
         + &base64::encode_config(&client_ids[1], base64::URL_SAFE);
-    println!("path: {}", path);
+    println!("path: {path}");
     let req = test::TestRequest::with_uri(&path).to_request();
 
     let mut response = test::call_service(&mut app, req).await;

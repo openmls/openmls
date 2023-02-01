@@ -197,7 +197,7 @@ pub fn generate_test_vector(n_epochs: u64, ciphersuite: Ciphersuite) -> KeySched
 
     // Generate info for all epochs
     for epoch in 0..n_epochs {
-        println!("Generating epoch: {:?}", epoch);
+        println!("Generating epoch: {epoch:?}");
         let (
             confirmed_transcript_hash,
             commit_secret,

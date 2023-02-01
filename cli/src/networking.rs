@@ -17,7 +17,7 @@ pub fn post(url: &Url, msg: &impl Serialize) -> Result<Vec<u8>, String> {
         }
         match r.bytes() {
             Ok(bytes) => Ok(bytes.as_ref().to_vec()),
-            Err(e) => Err(format!("Error retrieving bytes from response: {:?}", e)),
+            Err(e) => Err(format!("Error retrieving bytes from response: {e:?}")),
         }
     } else {
         Err(format!("ERROR: {:?}", response.err()))
@@ -34,7 +34,7 @@ pub fn get(url: &Url) -> Result<Vec<u8>, String> {
         }
         match r.bytes() {
             Ok(bytes) => Ok(bytes.as_ref().to_vec()),
-            Err(e) => Err(format!("Error retrieving bytes from response: {:?}", e)),
+            Err(e) => Err(format!("Error retrieving bytes from response: {e:?}")),
         }
     } else {
         Err(format!("ERROR: {:?}", response.err()))
