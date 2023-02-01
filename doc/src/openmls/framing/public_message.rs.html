@@ -345,6 +345,9 @@
 <a href="#345" id="345">345</a>
 <a href="#346" id="346">346</a>
 <a href="#347" id="347">347</a>
+<a href="#348" id="348">348</a>
+<a href="#349" id="349">349</a>
+<a href="#350" id="350">350</a>
 </pre><pre class="rust"><code><span class="doccomment">//! # PublicMessage
 //!
 //! A PublicMessage is a framing structure for MLS messages. It can contain
@@ -397,6 +400,13 @@
     membership_tag: <span class="prelude-ty">Option</span>&lt;MembershipTag&gt;,
 }
 
+<span class="attr">#[cfg(any(test, feature = <span class="string">&quot;test-utils&quot;</span>))]
+</span><span class="kw">impl </span>PublicMessage {
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>content(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span><span class="kw">crate</span>::framing::mls_content::FramedContentBody {
+        <span class="kw-2">&amp;</span><span class="self">self</span>.content.body
+    }
+}
+
 <span class="attr">#[cfg(test)]
 </span><span class="kw">impl </span>PublicMessage {
     <span class="kw">pub fn </span>set_confirmation_tag(<span class="kw-2">&amp;mut </span><span class="self">self</span>, confirmation_tag: <span class="prelude-ty">Option</span>&lt;ConfirmationTag&gt;) {
@@ -413,10 +423,6 @@
 
     <span class="kw">pub fn </span>set_epoch(<span class="kw-2">&amp;mut </span><span class="self">self</span>, epoch: u64) {
         <span class="self">self</span>.content.epoch = epoch.into();
-    }
-
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>content(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>FramedContentBody {
-        <span class="kw-2">&amp;</span><span class="self">self</span>.content.body
     }
 
     <span class="kw">pub fn </span>confirmation_tag(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>ConfirmationTag&gt; {

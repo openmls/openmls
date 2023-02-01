@@ -263,6 +263,8 @@
 <a href="#263" id="263">263</a>
 <a href="#264" id="264">264</a>
 <a href="#265" id="265">265</a>
+<a href="#266" id="266">266</a>
+<a href="#267" id="267">267</a>
 </pre><pre class="rust"><code><span class="doccomment">//! ### Don&#39;t Panic!
 //!
 //! Functions in this module should never panic. However, if there is a bug in
@@ -334,8 +336,9 @@
 /// `out_of_order_tolerance` and a `maximum_forward_distance` (see
 /// [`SenderRatchetConfiguration`]) while an Encryption Ratchet never keeps past
 /// secrets around.
-</span><span class="attr">#[derive(Debug, Serialize, Deserialize)]
+</span><span class="attr">#[derive(Serialize, Deserialize)]
 #[cfg_attr(any(feature = <span class="string">&quot;test-utils&quot;</span>, test), derive(PartialEq, Clone))]
+#[cfg_attr(feature = <span class="string">&quot;crypto-debug&quot;</span>, derive(Debug))]
 </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">enum </span>SenderRatchet {
     EncryptionRatchet(RatchetSecret),
     DecryptionRatchet(DecryptionRatchet),
@@ -427,8 +430,9 @@
 /// [`RatchetKeyMaterial`] of epochs around until they are retrieved. This
 /// behaviour can be configured via the `out_of_order_tolerance` and
 /// `maximum_forward_distance` of the given [`SenderRatchetConfiguration`].
-</span><span class="attr">#[derive(Debug, Serialize, Deserialize)]
+</span><span class="attr">#[derive(Serialize, Deserialize)]
 #[cfg_attr(any(feature = <span class="string">&quot;test-utils&quot;</span>, test), derive(PartialEq, Clone))]
+#[cfg_attr(feature = <span class="string">&quot;crypto-debug&quot;</span>, derive(Debug))]
 </span><span class="kw">pub struct </span>DecryptionRatchet {
     past_secrets: VecDeque&lt;<span class="prelude-ty">Option</span>&lt;RatchetKeyMaterial&gt;&gt;,
     ratchet_head: RatchetSecret,

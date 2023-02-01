@@ -551,6 +551,28 @@
 <a href="#551" id="551">551</a>
 <a href="#552" id="552">552</a>
 <a href="#553" id="553">553</a>
+<a href="#554" id="554">554</a>
+<a href="#555" id="555">555</a>
+<a href="#556" id="556">556</a>
+<a href="#557" id="557">557</a>
+<a href="#558" id="558">558</a>
+<a href="#559" id="559">559</a>
+<a href="#560" id="560">560</a>
+<a href="#561" id="561">561</a>
+<a href="#562" id="562">562</a>
+<a href="#563" id="563">563</a>
+<a href="#564" id="564">564</a>
+<a href="#565" id="565">565</a>
+<a href="#566" id="566">566</a>
+<a href="#567" id="567">567</a>
+<a href="#568" id="568">568</a>
+<a href="#569" id="569">569</a>
+<a href="#570" id="570">570</a>
+<a href="#571" id="571">571</a>
+<a href="#572" id="572">572</a>
+<a href="#573" id="573">573</a>
+<a href="#574" id="574">574</a>
+<a href="#575" id="575">575</a>
 </pre><pre class="rust"><code><span class="kw">use </span>openmls_traits::{types::Ciphersuite, OpenMlsCryptoProvider};
 <span class="kw">use </span>std::io::Write;
 <span class="kw">use </span>tls_codec::{Deserialize, Serialize, Size, TlsDeserialize, TlsSerialize, TlsSize};
@@ -653,7 +675,7 @@
         )
     }
 
-    <span class="attr">#[cfg(test)]
+    <span class="attr">#[cfg(any(feature = <span class="string">&quot;test-utils&quot;</span>, test))]
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>encrypt_without_check(
         public_message: <span class="kw-2">&amp;</span>AuthenticatedContent,
         ciphersuite: Ciphersuite,
@@ -719,7 +741,7 @@
             group_id: header.group_id.clone(),
             epoch: header.epoch,
             content_type: public_message.content().content_type(),
-            authenticated_data: TlsByteSliceU32(public_message.authenticated_data()),
+            authenticated_data: VLByteSlice(public_message.authenticated_data()),
         };
         <span class="kw">let </span>private_message_content_aad_bytes = private_message_content_aad
             .tls_serialize_detached()
@@ -736,7 +758,12 @@
         <span class="comment">// Prepare the nonce by xoring with the reuse guard.
         </span><span class="kw">let </span>prepared_nonce = ratchet_nonce.xor_with_reuse_guard(<span class="kw-2">&amp;</span>reuse_guard);
         <span class="comment">// Encrypt the payload
-        </span><span class="kw">let </span>ciphertext = ratchet_key
+        </span><span class="macro">log_crypto!</span>(
+            trace,
+            <span class="string">&quot;Encryption key for private message: {ratchet_key:x?}&quot;
+        </span>);
+        <span class="macro">log_crypto!</span>(trace, <span class="string">&quot;Encryption of private message private_message_content_aad_bytes: {private_message_content_aad_bytes:x?} - ratchet_nonce: {prepared_nonce:x?}&quot;</span>);
+        <span class="kw">let </span>ciphertext = ratchet_key
             .aead_seal(
                 backend,
                 <span class="kw-2">&amp;</span><span class="self">Self</span>::encode_padded_ciphertext_content_detached(
@@ -749,6 +776,7 @@
                 <span class="kw-2">&amp;</span>prepared_nonce,
             )
             .map_err(LibraryError::unexpected_crypto_error)<span class="question-mark">?</span>;
+        <span class="macro">log::trace!</span>(<span class="string">&quot;Encrypted ciphertext {:x?}&quot;</span>, ciphertext);
         <span class="comment">// Derive the sender data key from the key schedule using the ciphertext.
         </span><span class="kw">let </span>sender_data_key = message_secrets
             .sender_data_secret()
@@ -777,7 +805,12 @@
             reuse_guard,
         );
         <span class="comment">// Encrypt the sender data
-        </span><span class="kw">let </span>encrypted_sender_data = sender_data_key
+        </span><span class="macro">log_crypto!</span>(
+            trace,
+            <span class="string">&quot;Encryption key for sender data: {sender_data_key:x?}&quot;
+        </span>);
+        <span class="macro">log_crypto!</span>(trace, <span class="string">&quot;Encryption of sender data mls_sender_data_aad_bytes: {mls_sender_data_aad_bytes:x?} - sender_data_nonce: {sender_data_nonce:x?}&quot;</span>);
+        <span class="kw">let </span>encrypted_sender_data = sender_data_key
             .aead_seal(
                 backend,
                 <span class="kw-2">&amp;</span>sender_data
@@ -822,7 +855,12 @@
             .tls_serialize_detached()
             .map_err(LibraryError::missing_bound_check)<span class="question-mark">?</span>;
         <span class="comment">// Decrypt sender data
-        </span><span class="kw">let </span>sender_data_bytes = sender_data_key
+        </span><span class="macro">log_crypto!</span>(
+            trace,
+            <span class="string">&quot;Decryption key for sender data: {sender_data_key:x?}&quot;
+        </span>);
+        <span class="macro">log_crypto!</span>(trace, <span class="string">&quot;Decryption of sender data mls_sender_data_aad_bytes: {mls_sender_data_aad_bytes:x?} - sender_data_nonce: {sender_data_nonce:x?}&quot;</span>);
+        <span class="kw">let </span>sender_data_bytes = sender_data_key
             .aead_open(
                 backend,
                 <span class="self">self</span>.encrypted_sender_data.as_slice(),
@@ -851,12 +889,18 @@
             group_id: <span class="self">self</span>.group_id.clone(),
             epoch: <span class="self">self</span>.epoch,
             content_type: <span class="self">self</span>.content_type,
-            authenticated_data: TlsByteSliceU32(<span class="self">self</span>.authenticated_data.as_slice()),
+            authenticated_data: VLByteSlice(<span class="self">self</span>.authenticated_data.as_slice()),
         }
         .tls_serialize_detached()
         .map_err(LibraryError::missing_bound_check)<span class="question-mark">?</span>;
         <span class="comment">// Decrypt payload
-        </span><span class="kw">let </span>private_message_content_bytes = ratchet_key
+        </span><span class="macro">log_crypto!</span>(
+            trace,
+            <span class="string">&quot;Decryption key for private message: {ratchet_key:x?}&quot;
+        </span>);
+        <span class="macro">log_crypto!</span>(trace, <span class="string">&quot;Decryption of private message private_message_content_aad_bytes: {private_message_content_aad_bytes:x?} - ratchet_nonce: {ratchet_nonce:x?}&quot;</span>);
+        <span class="macro">log::trace!</span>(<span class="string">&quot;Decrypting ciphertext {:x?}&quot;</span>, <span class="self">self</span>.ciphertext);
+        <span class="kw">let </span>private_message_content_bytes = ratchet_key
             .aead_open(
                 backend,
                 <span class="self">self</span>.ciphertext.as_slice(),
@@ -1102,7 +1146,7 @@
     <span class="kw">pub</span>(<span class="kw">crate</span>) group_id: GroupId,
     <span class="kw">pub</span>(<span class="kw">crate</span>) epoch: GroupEpoch,
     <span class="kw">pub</span>(<span class="kw">crate</span>) content_type: ContentType,
-    <span class="kw">pub</span>(<span class="kw">crate</span>) authenticated_data: TlsByteSliceU32&lt;<span class="lifetime">&#39;a</span>&gt;,
+    <span class="kw">pub</span>(<span class="kw">crate</span>) authenticated_data: VLByteSlice&lt;<span class="lifetime">&#39;a</span>&gt;,
 }
 </code></pre></div>
 </section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="openmls" data-themes="" data-resource-suffix="" data-rustdoc-version="1.67.0 (fc594f156 2023-01-24)" data-search-js="search-444266647c4dba98.js" data-settings-js="settings-bebeae96e00e4617.js" data-settings-css="settings-af96d9e2fc13e081.css" ></div></body></html>

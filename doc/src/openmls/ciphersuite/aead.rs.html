@@ -158,22 +158,60 @@
 <a href="#158" id="158">158</a>
 <a href="#159" id="159">159</a>
 <a href="#160" id="160">160</a>
+<a href="#161" id="161">161</a>
+<a href="#162" id="162">162</a>
+<a href="#163" id="163">163</a>
+<a href="#164" id="164">164</a>
+<a href="#165" id="165">165</a>
+<a href="#166" id="166">166</a>
+<a href="#167" id="167">167</a>
+<a href="#168" id="168">168</a>
+<a href="#169" id="169">169</a>
+<a href="#170" id="170">170</a>
+<a href="#171" id="171">171</a>
+<a href="#172" id="172">172</a>
+<a href="#173" id="173">173</a>
+<a href="#174" id="174">174</a>
+<a href="#175" id="175">175</a>
+<a href="#176" id="176">176</a>
+<a href="#177" id="177">177</a>
+<a href="#178" id="178">178</a>
+<a href="#179" id="179">179</a>
 </pre><pre class="rust"><code><span class="kw">use super</span>::<span class="kw-2">*</span>;
 
 <span class="doccomment">/// The default NONCE size in bytes.
 </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">const </span>NONCE_BYTES: usize = <span class="number">12</span>;
 
 <span class="doccomment">/// AEAD keys holding the plain key value and the AEAD algorithm type.
-</span><span class="attr">#[derive(Debug, Serialize, Deserialize)]
+</span><span class="attr">#[derive(Serialize, Deserialize)]
 #[cfg_attr(any(feature = <span class="string">&quot;test-utils&quot;</span>, test), derive(Clone, PartialEq, Eq))]
+#[cfg_attr(feature = <span class="string">&quot;crypto-debug&quot;</span>, derive(Debug))]
 </span><span class="kw">pub struct </span>AeadKey {
     aead_mode: AeadType,
     value: Vec&lt;u8&gt;,
 }
 
+<span class="attr">#[cfg(not(feature = <span class="string">&quot;crypto-debug&quot;</span>))]
+</span><span class="kw">impl </span>core::fmt::Debug <span class="kw">for </span>AeadKey {
+    <span class="kw">fn </span>fmt(<span class="kw-2">&amp;</span><span class="self">self</span>, f: <span class="kw-2">&amp;mut </span>std::fmt::Formatter&lt;<span class="lifetime">&#39;_</span>&gt;) -&gt; std::fmt::Result {
+        f.debug_struct(<span class="string">&quot;AeadKey&quot;</span>)
+            .field(<span class="string">&quot;aead_mode&quot;</span>, <span class="kw-2">&amp;</span><span class="self">self</span>.aead_mode)
+            .field(<span class="string">&quot;value&quot;</span>, <span class="kw-2">&amp;</span><span class="string">&quot;***&quot;</span>)
+            .finish()
+    }
+}
+
 <span class="doccomment">/// AEAD Nonce
-</span><span class="attr">#[derive(Clone, PartialEq, Debug, Serialize, Deserialize)]
+</span><span class="attr">#[derive(Clone, PartialEq, Serialize, Deserialize)]
+#[cfg_attr(feature = <span class="string">&quot;crypto-debug&quot;</span>, derive(Debug))]
 </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct </span>AeadNonce([u8; NONCE_BYTES]);
+
+<span class="attr">#[cfg(not(feature = <span class="string">&quot;crypto-debug&quot;</span>))]
+</span><span class="kw">impl </span>core::fmt::Debug <span class="kw">for </span>AeadNonce {
+    <span class="kw">fn </span>fmt(<span class="kw-2">&amp;</span><span class="self">self</span>, f: <span class="kw-2">&amp;mut </span>std::fmt::Formatter&lt;<span class="lifetime">&#39;_</span>&gt;) -&gt; std::fmt::Result {
+        f.debug_tuple(<span class="string">&quot;AeadNonce&quot;</span>).field(<span class="kw-2">&amp;</span><span class="string">&quot;***&quot;</span>).finish()
+    }
+}
 
 <span class="kw">impl </span>AeadKey {
     <span class="doccomment">/// Create an `AeadKey` from a `Secret`. TODO: This function should
@@ -195,7 +233,7 @@
         }
     }
 
-    <span class="attr">#[cfg(test)]
+    <span class="attr">#[cfg(any(feature = <span class="string">&quot;test-utils&quot;</span>, test))]
     </span><span class="doccomment">/// Get a slice to the key value.
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>as_slice(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>[u8] {
         <span class="kw-2">&amp;</span><span class="self">self</span>.value
@@ -255,7 +293,7 @@
     }
 
     <span class="doccomment">/// Get a slice to the nonce value.
-    </span><span class="attr">#[cfg(test)]
+    </span><span class="attr">#[cfg(any(feature = <span class="string">&quot;test-utils&quot;</span>, test))]
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>as_slice(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>[u8] {
         <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="number">0
     </span>}

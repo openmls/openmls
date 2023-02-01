@@ -356,8 +356,8 @@
 
 <span class="kw">use </span>serde::{Deserialize, Serialize};
 <span class="kw">use </span>tls_codec::{
-    Deserialize <span class="kw">as </span>TlsDeserializeTrait, Serialize <span class="kw">as </span>TlsSerializeTrait, Size, TlsByteVecU32,
-    TlsDeserialize, TlsSerialize, TlsSize, VLBytes,
+    Deserialize <span class="kw">as </span>TlsDeserializeTrait, Serialize <span class="kw">as </span>TlsSerializeTrait, Size, TlsDeserialize,
+    TlsSerialize, TlsSize, VLBytes,
 };
 
 <span class="doccomment">/// ```c
@@ -411,7 +411,7 @@
 #[repr(u8)]
 </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">enum </span>FramedContentBody {
     <span class="attr">#[tls_codec(discriminant = <span class="number">1</span>)]
-    </span>Application(TlsByteVecU32),
+    </span>Application(VLBytes),
     <span class="attr">#[tls_codec(discriminant = <span class="number">2</span>)]
     </span>Proposal(Proposal),
     <span class="attr">#[tls_codec(discriminant = <span class="number">3</span>)]
@@ -454,7 +454,7 @@
     ) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, tls_codec::Error&gt; {
         <span class="prelude-val">Ok</span>(<span class="kw">match </span>content_type {
             ContentType::Application =&gt; {
-                FramedContentBody::Application(TlsByteVecU32::tls_deserialize(bytes)<span class="question-mark">?</span>)
+                FramedContentBody::Application(VLBytes::tls_deserialize(bytes)<span class="question-mark">?</span>)
             }
             ContentType::Proposal =&gt; FramedContentBody::Proposal(Proposal::tls_deserialize(bytes)<span class="question-mark">?</span>),
             ContentType::Commit =&gt; FramedContentBody::Commit(Commit::tls_deserialize(bytes)<span class="question-mark">?</span>),

@@ -1249,8 +1249,6 @@
 <a href="#1249" id="1249">1249</a>
 <a href="#1250" id="1250">1250</a>
 <a href="#1251" id="1251">1251</a>
-<a href="#1252" id="1252">1252</a>
-<a href="#1253" id="1253">1253</a>
 </pre><pre class="rust"><code><span class="doccomment">//! # Key schedule
 //!
 //! This module contains the types and implementations for key schedule operations.
@@ -1932,8 +1930,7 @@
         <span class="self">self</span>.secret.as_slice()
     }
 
-    <span class="attr">#[cfg(test)]
-    #[doc(hidden)]
+    <span class="attr">#[cfg(any(feature = <span class="string">&quot;test-utils&quot;</span>, test))]
     </span><span class="doccomment">/// Create a new secret from a byte vector.
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>from_slice(
         bytes: <span class="kw-2">&amp;</span>[u8],
@@ -2080,7 +2077,7 @@
         <span class="self">self</span>.secret.as_slice()
     }
 
-    <span class="attr">#[cfg(test)]
+    <span class="attr">#[cfg(any(feature = <span class="string">&quot;test-utils&quot;</span>, test))]
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>random(ciphersuite: Ciphersuite, rng: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider) -&gt; <span class="self">Self </span>{
         <span class="self">Self </span>{
             secret: Secret::random(ciphersuite, rng, <span class="prelude-val">None </span><span class="comment">/* MLS version */</span>)
@@ -2130,7 +2127,7 @@
         ))
     }
 
-    <span class="attr">#[cfg(test)]
+    <span class="attr">#[cfg(any(feature = <span class="string">&quot;test-utils&quot;</span>, test))]
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>from_secret(secret: Secret) -&gt; <span class="self">Self </span>{
         <span class="self">Self </span>{ secret }
     }
@@ -2140,7 +2137,7 @@
         <span class="self">self</span>.secret.as_slice()
     }
 
-    <span class="attr">#[cfg(test)]
+    <span class="attr">#[cfg(any(feature = <span class="string">&quot;test-utils&quot;</span>, test))]
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>random(ciphersuite: Ciphersuite, rng: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider) -&gt; <span class="self">Self </span>{
         <span class="self">Self </span>{
             secret: Secret::random(ciphersuite, rng, <span class="prelude-val">None </span><span class="comment">/* MLS version */</span>)
@@ -2161,8 +2158,9 @@
 }
 
 <span class="doccomment">/// A key that can be used to derive an `AeadKey` and an `AeadNonce`.
-</span><span class="attr">#[derive(Debug, Serialize, Deserialize)]
+</span><span class="attr">#[derive(Serialize, Deserialize)]
 #[cfg_attr(test, derive(PartialEq))]
+#[cfg_attr(any(feature = <span class="string">&quot;test-utils&quot;</span>, test), derive(Debug, Clone))]
 </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct </span>SenderDataSecret {
     secret: Secret,
 }
@@ -2218,7 +2216,7 @@
         <span class="prelude-val">Ok</span>(AeadNonce::from_secret(nonce_secret))
     }
 
-    <span class="attr">#[cfg(test)]
+    <span class="attr">#[cfg(any(feature = <span class="string">&quot;test-utils&quot;</span>, test))]
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>random(ciphersuite: Ciphersuite, rng: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider) -&gt; <span class="self">Self </span>{
         <span class="self">Self </span>{
             secret: Secret::random(ciphersuite, rng, <span class="prelude-val">None </span><span class="comment">/* MLS version */</span>)
@@ -2231,11 +2229,9 @@
         <span class="self">self</span>.secret.as_slice()
     }
 
-    <span class="comment">// XXX[KAT]: #1051 Only used in KATs. Remove if unused.
-    </span><span class="attr">#[cfg(test)]
-    #[doc(hidden)]
+    <span class="attr">#[cfg(any(feature = <span class="string">&quot;test-utils&quot;</span>, test))]
     </span><span class="doccomment">/// Create a new secret from a byte vector.
-    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>_from_slice(
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>from_slice(
         bytes: <span class="kw-2">&amp;</span>[u8],
         mls_version: ProtocolVersion,
         ciphersuite: Ciphersuite,
