@@ -118,7 +118,7 @@
     </span><span class="attr">#[tls_codec(discriminant = <span class="number">1</span>)]
     </span>Member(LeafNodeIndex),
     <span class="doccomment">/// The sender is not a member of the group and has an external value instead
-    </span>External(TlsByteVecU8),
+    </span>External(LeafNodeIndex),
     <span class="doccomment">/// The sender is a new member of the group that joins itself through
     /// an [External Add proposal](crate::messages::external_proposals::JoinProposal)
     </span>NewMemberProposal,

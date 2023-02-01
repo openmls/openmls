@@ -25,18 +25,7 @@
 <a href="#25" id="25">25</a>
 <a href="#26" id="26">26</a>
 <a href="#27" id="27">27</a>
-<a href="#28" id="28">28</a>
-<a href="#29" id="29">29</a>
-<a href="#30" id="30">30</a>
-<a href="#31" id="31">31</a>
-<a href="#32" id="32">32</a>
-<a href="#33" id="33">33</a>
-<a href="#34" id="34">34</a>
-<a href="#35" id="35">35</a>
-<a href="#36" id="36">36</a>
-<a href="#37" id="37">37</a>
-<a href="#38" id="38">38</a>
-</pre><pre class="rust"><code><span class="kw">use </span>tls_codec::{TlsByteVecU16, TlsDeserialize, TlsSerialize, TlsSize};
+</pre><pre class="rust"><code><span class="kw">use </span>tls_codec::{TlsDeserialize, TlsSerialize, TlsSize, VLBytes};
 
 <span class="kw">use super</span>::{Deserialize, Serialize};
 
@@ -45,22 +34,11 @@
 /// Within MLS, a KeyPackage is identified by its hash ([`KeyPackageRef`](`crate::ciphersuite::hash_ref::KeyPackageRef`)).
 /// The application id extension allows applications to add an explicit,
 /// application-defined identifier to a KeyPackage.
-///
-/// A byte vector of length at most 2^16-1.
 </span><span class="attr">#[derive(
-    PartialEq,
-    Eq,
-    Clone,
-    Debug,
-    Default,
-    Serialize,
-    Deserialize,
-    TlsSerialize,
-    TlsDeserialize,
-    TlsSize,
+    PartialEq, Eq, Clone, Debug, Serialize, Deserialize, TlsSerialize, TlsDeserialize, TlsSize,
 )]
 </span><span class="kw">pub struct </span>ApplicationIdExtension {
-    key_id: TlsByteVecU16,
+    key_id: VLBytes,
 }
 
 <span class="kw">impl </span>ApplicationIdExtension {
