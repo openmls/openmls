@@ -33,6 +33,7 @@ impl GroupContext {
     }
 
     /// Set the ciphersuite
+    #[cfg(test)]
     pub(crate) fn set_ciphersuite(&mut self, ciphersuite: Ciphersuite) {
         self.ciphersuite = ciphersuite;
     }

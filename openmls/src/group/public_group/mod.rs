@@ -255,3 +255,11 @@ impl PublicGroup {
         &self.confirmation_tag
     }
 }
+
+// Test functions
+#[cfg(any(feature = "test-utils", test))]
+impl PublicGroup {
+    pub(crate) fn context_mut(&mut self) -> &mut GroupContext {
+        &mut self.group_context
+    }
+}

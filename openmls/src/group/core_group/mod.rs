@@ -804,7 +804,7 @@ impl CoreGroup {
 #[cfg(any(feature = "test-utils", test))]
 impl CoreGroup {
     pub(crate) fn context_mut(&mut self) -> &mut GroupContext {
-        &mut self.group_context
+        self.public_group.context_mut()
     }
 
     pub(crate) fn message_secrets_test_mut(&mut self) -> &mut MessageSecrets {

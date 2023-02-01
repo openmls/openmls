@@ -12,10 +12,7 @@ use openmls_traits::{crypto::OpenMlsCrypto, OpenMlsCryptoProvider};
 fn criterion_kp_bundle(c: &mut Criterion, backend: &impl OpenMlsCryptoProvider) {
     for &ciphersuite in backend.crypto().supported_ciphersuites().iter() {
         c.bench_function(
-            &format!(
-                "KeyPackage create bundle with ciphersuite: {:?}",
-                ciphersuite
-            ),
+            &format!("KeyPackage create bundle with ciphersuite: {ciphersuite:?}"),
             move |b| {
                 b.iter_with_setup(
                     || {
