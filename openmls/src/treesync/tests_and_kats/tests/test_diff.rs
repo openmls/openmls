@@ -1,3 +1,4 @@
+use openmls_rust_crypto::OpenMlsRustCrypto;
 use openmls_traits::{types::Ciphersuite, OpenMlsCryptoProvider};
 use rstest::*;
 use rstest_reuse::apply;
@@ -5,10 +6,14 @@ use rstest_reuse::apply;
 use crate::{
     credentials::{test_utils::new_credential, CredentialType},
     key_packages::KeyPackageBundle,
-    treesync::{node::Node, TreeSync},
+    treesync::{
+        node::{
+            leaf_node::{LeafNode, Valid},
+            Node,
+        },
+        TreeSync,
+    },
 };
-
-use openmls_rust_crypto::OpenMlsRustCrypto;
 
 // Verifies that when we add a leaf to a tree with blank leaf nodes, the leaf will be added at the leftmost free leaf index
 #[apply(ciphersuites_and_backends)]
@@ -33,7 +38,7 @@ fn test_free_leaf_computation(ciphersuite: Ciphersuite, backend: &impl OpenMlsCr
     // Build a rudimentary tree with two populated and two empty leaf nodes.
     let nodes: Vec<Option<Node>> = vec![
         Some(Node::LeafNode(
-            kpb_0.key_package().leaf_node().clone().into(),
+            LeafNode::<Valid>::from(kpb_0.key_package().leaf_node().clone()).into(),
         )), // Leaf 0
         None,
         None, // Leaf 1
@@ -41,7 +46,7 @@ fn test_free_leaf_computation(ciphersuite: Ciphersuite, backend: &impl OpenMlsCr
         None, // Leaf 2
         None,
         Some(Node::LeafNode(
-            kpb_3.key_package().leaf_node().clone().into(),
+            LeafNode::<Valid>::from(kpb_3.key_package().leaf_node().clone()).into(),
         )), // Leaf 3
     ];
 
@@ -61,7 +66,7 @@ fn test_free_leaf_computation(ciphersuite: Ciphersuite, backend: &impl OpenMlsCr
     let mut diff = tree.empty_diff();
     let free_leaf_index = diff.free_leaf_index();
     let added_leaf_index = diff
-        .add_leaf(kpb_2.key_package().leaf_node().clone().into())
+        .add_leaf(LeafNode::<Valid>::from(kpb_2.key_package().leaf_node().clone()).into())
         .expect("error adding leaf");
     assert_eq!(free_leaf_index.u32(), 1u32);
     assert_eq!(free_leaf_index, added_leaf_index);

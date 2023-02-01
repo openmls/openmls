@@ -103,9 +103,11 @@ impl CoreGroup {
                 Some(self.own_leaf_index()),
             )
             .map_err(|e| match e {
-                crate::group::errors::ApplyProposalsError::LibraryError(e) => e.into(),
-                crate::group::errors::ApplyProposalsError::MissingLeafNode => {
-                    CreateCommitError::OwnKeyNotFound
+                crate::group::errors::ApplyProposalsError::LibraryError(e) => {
+                    CreateCommitError::LibraryError(e)
+                }
+                crate::group::errors::ApplyProposalsError::LeafNodeValidation(e) => {
+                    CreateCommitError::LeafNodeValidation(e)
                 }
             })?;
         if apply_proposals_values.self_removed && params.commit_type() != CommitType::External {

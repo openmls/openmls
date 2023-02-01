@@ -54,7 +54,7 @@ use crate::{
     schedule::{message_secrets::*, psk::*, *},
     tree::{secret_tree::SecretTreeError, sender_ratchet::SenderRatchetConfiguration},
     treesync::{
-        node::leaf_node::{Capabilities, Lifetime, OpenMlsLeafNode},
+        node::leaf_node::{Capabilities, Lifetime, OpenMlsLeafNode, ValidUpdate},
         *,
     },
     versions::ProtocolVersion,
@@ -368,7 +368,7 @@ impl CoreGroup {
         framing_parameters: FramingParameters,
         // XXX: There's no need to own this. The [`UpdateProposal`] should
         //      operate on a reference to make this more efficient.
-        leaf_node: LeafNode,
+        leaf_node: LeafNode<ValidUpdate>,
         signer: &impl Signer,
     ) -> Result<AuthenticatedContent, LibraryError> {
         let update_proposal = UpdateProposal { leaf_node };
@@ -447,7 +447,10 @@ impl CoreGroup {
             let required_capabilities = required_extension.as_required_capabilities_extension()?;
             // Ensure we support all the capabilities.
             required_capabilities.check_support()?;
+            // TODO
             self.own_leaf_node()?
+                .leaf_node()
+                .clone()
                 .validate_required_capabilities(required_capabilities)?;
             // Ensure that all other leaf nodes support all the required
             // extensions as well.

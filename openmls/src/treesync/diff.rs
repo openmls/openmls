@@ -44,6 +44,7 @@ use crate::{
     group::GroupId,
     messages::PathSecret,
     schedule::CommitSecret,
+    treesync::node::leaf_node::ValidCommit,
 };
 
 pub(crate) type UpdatePathResult = (
@@ -306,7 +307,7 @@ impl<'a> TreeSyncDiff<'a> {
     }
 
     /// Set the given path as the direct path of the `sender_leaf_index` and
-    /// replace the [`KeyPackage`] in the corresponding leaf with the given one.
+    /// replace the [`LeafNode`] with the given one.
     /// The given path of ParentNodes should already include any potential path
     /// secrets.
     ///
@@ -317,7 +318,7 @@ impl<'a> TreeSyncDiff<'a> {
         backend: &impl OpenMlsCryptoProvider,
         ciphersuite: Ciphersuite,
         sender_leaf_index: LeafNodeIndex,
-        leaf_node: LeafNode,
+        leaf_node: LeafNode<ValidCommit>,
         path: Vec<ParentNode>,
     ) -> Result<(), ApplyUpdatePathError> {
         let filtered_direct_path = self.filtered_direct_path(sender_leaf_index);

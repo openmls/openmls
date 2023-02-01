@@ -1,6 +1,7 @@
 use core_group::create_commit_params::CreateCommitParams;
 use openmls_traits::signatures::Signer;
 
+use crate::treesync::node::leaf_node::ValidKeyPackage;
 use crate::{messages::group_info::GroupInfo, treesync::LeafNode, versions::ProtocolVersion};
 
 use super::*;
@@ -66,7 +67,7 @@ impl MlsGroup {
         &mut self,
         backend: &impl OpenMlsCryptoProvider<KeyStoreProvider = KeyStore>,
         signer: &impl Signer,
-        leaf_node: Option<LeafNode>,
+        leaf_node: Option<LeafNode<ValidKeyPackage>>,
     ) -> Result<MlsMessageOut, ProposeSelfUpdateError<KeyStore::Error>> {
         self.is_operational()?;
 
@@ -81,7 +82,12 @@ impl MlsGroup {
             .ok_or_else(|| LibraryError::custom("The tree is broken. Couldn't find own leaf."))?
             .clone();
         if let Some(leaf) = leaf_node {
-            own_leaf.update_and_re_sign(None, leaf, self.group_id().clone(), signer)?
+            own_leaf.update_and_re_sign(
+                None,
+                LeafNode::<Valid>::from(leaf),
+                self.group_id().clone(),
+                signer,
+            )?
         } else {
             let keypair = own_leaf.rekey(
                 self.group_id(),
@@ -98,7 +104,8 @@ impl MlsGroup {
 
         let update_proposal = self.group.create_update_proposal(
             self.framing_parameters(),
-            own_leaf.leaf_node().clone(),
+            // TODO
+            own_leaf.clone().into(),
             signer,
         )?;
 

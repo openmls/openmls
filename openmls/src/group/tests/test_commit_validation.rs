@@ -286,7 +286,8 @@ fn test_valsem201(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
         leaf_node: alice_group
             .own_leaf()
             .expect("Unable to get own leaf")
-            .clone(),
+            .clone()
+            .into(),
     }));
 
     let remove_proposal = || {

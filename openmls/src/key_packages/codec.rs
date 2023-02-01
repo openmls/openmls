@@ -2,8 +2,7 @@ use std::io::Read;
 
 use openmls_traits::types::Ciphersuite;
 
-use crate::key_packages::*;
-use crate::versions::ProtocolVersion;
+use crate::{key_packages::*, versions::ProtocolVersion};
 
 impl tls_codec::Size for KeyPackage {
     #[inline]
@@ -39,14 +38,16 @@ impl tls_codec::Deserialize for KeyPackage {
         let protocol_version = ProtocolVersion::tls_deserialize(bytes)?;
         let ciphersuite = Ciphersuite::tls_deserialize(bytes)?;
         let hpke_init_key = HpkePublicKey::tls_deserialize(bytes)?;
-        let leaf_node = LeafNode::tls_deserialize(bytes)?;
+        let leaf_node = LeafNode::<Unknown>::tls_deserialize(bytes)?;
         let extensions = Extensions::tls_deserialize(bytes)?;
         let signature = Signature::tls_deserialize(bytes)?;
         let payload = KeyPackageTBS {
             protocol_version,
             ciphersuite,
             init_key: hpke_init_key,
-            leaf_node,
+            // TODO(#1210): Validation can't be done here.
+            //              We need to return a `KeyPackage<Unknown>` later.
+            leaf_node: leaf_node.to_key_package_unchecked(),
             extensions,
         };
         let kp = KeyPackage { payload, signature };

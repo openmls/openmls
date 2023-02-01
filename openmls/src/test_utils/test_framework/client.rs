@@ -23,7 +23,10 @@ use crate::{
     messages::{group_info::GroupInfo, *},
     prelude_test::SignaturePublicKey,
     treesync::{
-        node::{leaf_node::Capabilities, Node},
+        node::{
+            leaf_node::{Capabilities, Unknown, ValidKeyPackage},
+            Node,
+        },
         LeafNode,
     },
     versions::ProtocolVersion,
@@ -192,7 +195,7 @@ impl Client {
         &self,
         action_type: ActionType,
         group_id: &GroupId,
-        leaf_node: Option<LeafNode>,
+        leaf_node: Option<LeafNode<ValidKeyPackage>>,
     ) -> Result<(MlsMessageOut, Option<Welcome>, Option<GroupInfo>), ClientError> {
         let mut groups = self.groups.write().expect("An unexpected error occurred.");
         let group = groups

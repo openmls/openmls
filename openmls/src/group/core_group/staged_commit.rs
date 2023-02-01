@@ -1,24 +1,33 @@
+use std::mem;
+
 use openmls_traits::key_store::OpenMlsKeyStore;
 
-use crate::ciphersuite::{signable::Verifiable, OpenMlsSignaturePublicKey};
-use crate::framing::mls_content::FramedContentBody;
-use crate::treesync::errors::TreeSyncAddLeaf;
-use crate::treesync::node::encryption_keys::EncryptionKeyPair;
-use crate::treesync::node::leaf_node::{
-    LeafNodeTbs, OpenMlsLeafNode, TreeInfoTbs, VerifiableLeafNode,
+use crate::{
+    ciphersuite::{signable::Verifiable, OpenMlsSignaturePublicKey},
+    framing::mls_content::FramedContentBody,
+    treesync::{
+        diff::StagedTreeSyncDiff,
+        errors::TreeSyncAddLeaf,
+        node::{
+            encryption_keys::EncryptionKeyPair,
+            leaf_node::{LeafNodeTbs, OpenMlsLeafNode, TreeInfoTbs, Valid, VerifiableLeafNode},
+        },
+        treekem::DecryptPathParams,
+    },
 };
-use crate::treesync::{diff::StagedTreeSyncDiff, treekem::DecryptPathParams};
 
-use super::proposals::{
-    ProposalQueue, ProposalStore, QueuedAddProposal, QueuedPskProposal, QueuedRemoveProposal,
-    QueuedUpdateProposal,
+use super::{
+    super::errors::*,
+    proposals::{
+        ProposalQueue, ProposalStore, QueuedAddProposal, QueuedPskProposal, QueuedRemoveProposal,
+        QueuedUpdateProposal,
+    },
+    *,
 };
 
-use super::super::errors::*;
-use super::*;
+use crate::treesync::node::leaf_node::ValidCommit;
 use core::fmt::Debug;
 use std::collections::HashSet;
-use std::mem;
 
 impl CoreGroup {
     /// Stages a commit message that was sent by another group member.
@@ -209,7 +218,7 @@ impl CoreGroup {
                 //       already too complex. This should be cleaned up in a follow
                 //       up.
                 let tbs = LeafNodeTbs::from(
-                    leaf_node.clone(),
+                    leaf_node.clone().into(),
                     TreeInfoTbs::commit(self.group_id().clone(), sender_index),
                 );
                 let verifiable_leaf_node = VerifiableLeafNode {
@@ -242,7 +251,8 @@ impl CoreGroup {
                 let (leaf_node, update_path_nodes) = path.into_parts();
 
                 // Make sure that the new path key package is valid
-                self.validate_path_key_package(&leaf_node, public_key_set)?;
+                // TODO: Old code.
+                // self.validate_path_key_package(&leaf_node, public_key_set)?;
 
                 // If the committer is a `NewMemberCommit`, we have to add the leaf to
                 // the tree before we can apply or even decrypt an update path.
@@ -254,12 +264,12 @@ impl CoreGroup {
                     // TODO: Can we do without the clone here?
                     //       The leaf node is always replaced in apply_received_update_path
                     //       below, which isn't necessary. This should be refactored.
-                    let sender_leaf_index =
-                        diff.add_leaf(leaf_node.clone().into())
-                            .map_err(|e| match e {
-                                TreeSyncAddLeaf::LibraryError(e) => e.into(),
-                                TreeSyncAddLeaf::TreeFull => StageCommitError::TooManyNewMembers,
-                            })?;
+                    let sender_leaf_index = diff
+                        .add_leaf(LeafNode::<Valid>::from(leaf_node.clone()).into())
+                        .map_err(|e| match e {
+                            TreeSyncAddLeaf::LibraryError(e) => e.into(),
+                            TreeSyncAddLeaf::TreeFull => StageCommitError::TooManyNewMembers,
+                        })?;
                     // The new member should have the same index as the claimed sender index.
                     if sender_leaf_index != sender_index {
                         return Err(StageCommitError::InconsistentSenderIndex);
@@ -548,7 +558,7 @@ pub(crate) enum StagedCommitState {
 pub struct StagedCommit {
     staged_proposal_queue: ProposalQueue,
     state: StagedCommitState,
-    commit_update_leaf_node: Option<LeafNode>,
+    commit_update_leaf_node: Option<LeafNode<ValidCommit>>,
 }
 
 impl StagedCommit {
@@ -557,7 +567,8 @@ impl StagedCommit {
     pub(crate) fn new(
         staged_proposal_queue: ProposalQueue,
         state: StagedCommitState,
-        commit_update_leaf_node: Option<LeafNode>,
+        // TODO: StateUpdate or StateCommit?
+        commit_update_leaf_node: Option<LeafNode<ValidCommit>>,
     ) -> Self {
         StagedCommit {
             staged_proposal_queue,
@@ -588,7 +599,7 @@ impl StagedCommit {
 
     /// Returns an optional leaf node from the Commit's update path.
     /// A leaf node is returned for full and empty Commits, but not for partial Commits.
-    pub fn commit_update_key_package(&self) -> Option<&LeafNode> {
+    pub fn commit_update_key_package(&self) -> Option<&LeafNode<ValidCommit>> {
         self.commit_update_leaf_node.as_ref()
     }
 

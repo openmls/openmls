@@ -1,11 +1,19 @@
-use super::utils::*;
-use crate::{
-    binary_tree::LeafNodeIndex, framing::*, group::*, key_packages::*, messages::*, test_utils::*,
-    *,
-};
 use openmls_rust_crypto::OpenMlsRustCrypto;
 use openmls_traits::crypto::OpenMlsCrypto;
 use tls_codec::{Deserialize, Serialize};
+
+use crate::{
+    binary_tree::LeafNodeIndex,
+    framing::*,
+    group::*,
+    key_packages::*,
+    messages::*,
+    test_utils::*,
+    treesync::node::leaf_node::{LeafNode, Valid},
+    *,
+};
+
+use super::utils::*;
 
 /// Creates a simple test setup for various encoding tests.
 fn create_encoding_test_setup(backend: &impl OpenMlsCryptoProvider) -> TestSetup {
@@ -119,7 +127,9 @@ fn test_update_proposal_encoding(backend: &impl OpenMlsCryptoProvider) {
         let mut update: PublicMessage = group_state
             .create_update_proposal(
                 framing_parameters,
-                key_package_bundle.key_package().leaf_node().clone(),
+                // TODO: ValidKeyPackage -> ValidUpdate
+                LeafNode::<Valid>::from(key_package_bundle.key_package().leaf_node().clone())
+                    .into(),
                 &credential_with_key_and_signer.signer,
             )
             .expect("Could not create proposal.")
@@ -269,7 +279,14 @@ fn test_commit_encoding(backend: &impl OpenMlsCryptoProvider) {
         let update = group_state
             .create_update_proposal(
                 framing_parameters,
-                alice_key_package_bundle.key_package().leaf_node().clone(),
+                LeafNode::<Valid>::from(
+                    alice_key_package_bundle
+                        // TODO: ValidKeyPackage -> ValidUpdate
+                        .key_package()
+                        .leaf_node()
+                        .clone(),
+                )
+                .into(),
                 &alice_credential_with_key_and_signer.signer,
             )
             .expect("Could not create proposal.");

@@ -1,3 +1,6 @@
+use openmls_rust_crypto::OpenMlsRustCrypto;
+use openmls_traits::key_store::OpenMlsKeyStore;
+
 use crate::{
     ciphersuite::signable::Verifiable,
     framing::*,
@@ -5,11 +8,10 @@ use crate::{
     key_packages::*,
     test_utils::*,
     tree::sender_ratchet::SenderRatchetConfiguration,
-    treesync::node::leaf_node::OpenMlsLeafNode,
+    treesync::node::leaf_node::{LeafNode, OpenMlsLeafNode, ValidUpdate},
     *,
 };
-use openmls_rust_crypto::OpenMlsRustCrypto;
-use openmls_traits::key_store::OpenMlsKeyStore;
+
 use tests::utils::{generate_credential_bundle, generate_key_package};
 
 #[apply(ciphersuites_and_backends)]
@@ -146,16 +148,14 @@ fn create_commit_optional_path(ciphersuite: Ciphersuite, backend: &impl OpenMlsC
     );
 
     // Alice updates
-    let alice_new_leaf_node = group_alice
-        .own_leaf_node()
-        .unwrap()
-        .leaf_node()
-        .updated(
-            CryptoConfig::with_default_version(ciphersuite),
-            backend,
-            &alice_credential_with_keys.signer,
-        )
-        .unwrap();
+    let alice_new_leaf_node =
+        LeafNode::<ValidUpdate>::from(group_alice.own_leaf_node().unwrap().leaf_node().clone())
+            .updated(
+                CryptoConfig::with_default_version(ciphersuite),
+                backend,
+                &alice_credential_with_keys.signer,
+            )
+            .unwrap();
     let alice_update_proposal = group_alice
         .create_update_proposal(
             framing_parameters,
@@ -392,21 +392,20 @@ fn group_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvid
             FramedContentBody::Application(message) if message.as_slice() == &message_alice[..]));
 
     // === Bob updates and commits ===
-    let bob_new_leaf_node = group_bob
-        .own_leaf_node()
-        .unwrap()
-        .leaf_node()
-        .updated(
-            CryptoConfig::with_default_version(ciphersuite),
-            backend,
-            &alice_credential_with_keys.signer,
-        )
-        .unwrap();
+    let bob_new_leaf_node =
+        LeafNode::<ValidUpdate>::from(group_bob.own_leaf_node().unwrap().clone())
+            .updated(
+                CryptoConfig::with_default_version(ciphersuite),
+                backend,
+                &alice_credential_with_keys.signer,
+            )
+            .unwrap();
 
     let update_proposal_bob = group_bob
         .create_update_proposal(
             framing_parameters,
-            bob_new_leaf_node,
+            // TODO
+            bob_new_leaf_node.into(),
             &alice_credential_with_keys.signer,
         )
         .expect("Could not create proposal.");
@@ -455,21 +454,20 @@ fn group_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvid
     }
 
     // === Alice updates and commits ===
-    let alice_new_leaf_node = group_alice
-        .own_leaf_node()
-        .unwrap()
-        .leaf_node()
-        .updated(
-            CryptoConfig::with_default_version(ciphersuite),
-            backend,
-            &alice_credential_with_keys.signer,
-        )
-        .unwrap();
+    let alice_new_leaf_node =
+        LeafNode::<ValidUpdate>::from(group_alice.own_leaf_node().unwrap().clone())
+            .updated(
+                CryptoConfig::with_default_version(ciphersuite),
+                backend,
+                &alice_credential_with_keys.signer,
+            )
+            .unwrap();
 
     let update_proposal_alice = group_alice
         .create_update_proposal(
             framing_parameters,
-            alice_new_leaf_node,
+            // TODO
+            alice_new_leaf_node.into(),
             &alice_credential_with_keys.signer,
         )
         .expect("Could not create proposal.");
@@ -514,21 +512,20 @@ fn group_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvid
     }
 
     // === Bob updates and Alice commits ===
-    let bob_new_leaf_node = group_bob
-        .own_leaf_node()
-        .unwrap()
-        .leaf_node()
-        .updated(
-            CryptoConfig::with_default_version(ciphersuite),
-            backend,
-            &bob_credential_with_keys.signer,
-        )
-        .unwrap();
+    let bob_new_leaf_node =
+        LeafNode::<ValidUpdate>::from(group_bob.own_leaf_node().unwrap().clone())
+            .updated(
+                CryptoConfig::with_default_version(ciphersuite),
+                backend,
+                &bob_credential_with_keys.signer,
+            )
+            .unwrap();
 
     let update_proposal_bob = group_bob
         .create_update_proposal(
             framing_parameters,
-            bob_new_leaf_node.clone(),
+            // TODO
+            bob_new_leaf_node.clone().into(),
             &bob_credential_with_keys.signer,
         )
         .expect("Could not create proposal.");
@@ -566,8 +563,12 @@ fn group_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvid
             .expect("Could not create StagedProposal."),
     );
 
-    let (leaf_node, encryption_keypair) =
-        OpenMlsLeafNode::from_leaf_node(backend, group_bob.own_leaf_index(), bob_new_leaf_node);
+    let (leaf_node, encryption_keypair) = OpenMlsLeafNode::from_leaf_node(
+        backend,
+        group_bob.own_leaf_index(),
+        // TODO
+        bob_new_leaf_node.into(),
+    );
     encryption_keypair.write_to_key_store(backend).unwrap();
 
     let staged_commit = group_bob
@@ -732,21 +733,20 @@ fn group_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvid
         FramedContentBody::Application(message) if message.as_slice() == &message_charlie[..]));
 
     // === Charlie updates and commits ===
-    let charlie_new_leaf_node = group_charlie
-        .own_leaf_node()
-        .unwrap()
-        .leaf_node()
-        .updated(
-            CryptoConfig::with_default_version(ciphersuite),
-            backend,
-            &charlie_credential_with_keys.signer,
-        )
-        .unwrap();
+    let charlie_new_leaf_node =
+        LeafNode::<ValidUpdate>::from(group_charlie.own_leaf_node().unwrap().clone())
+            .updated(
+                CryptoConfig::with_default_version(ciphersuite),
+                backend,
+                &charlie_credential_with_keys.signer,
+            )
+            .unwrap();
 
     let update_proposal_charlie = group_charlie
         .create_update_proposal(
             framing_parameters,
-            charlie_new_leaf_node,
+            // TODO
+            charlie_new_leaf_node.into(),
             &charlie_credential_with_keys.signer,
         )
         .expect("Could not create proposal.");

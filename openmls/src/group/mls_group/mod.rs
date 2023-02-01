@@ -30,6 +30,7 @@ mod exporting;
 mod resumption;
 mod updates;
 
+use crate::treesync::node::leaf_node::Valid;
 use config::*;
 use errors::*;
 use resumption::*;
@@ -247,7 +248,7 @@ impl MlsGroup {
     }
 
     /// Returns the leaf node of the client in the tree owning this group.
-    pub fn own_leaf_node(&self) -> Option<&LeafNode> {
+    pub fn own_leaf_node(&self) -> Option<&LeafNode<Valid>> {
         self.group.own_leaf_node().map(|l| l.leaf_node()).ok()
     }
 

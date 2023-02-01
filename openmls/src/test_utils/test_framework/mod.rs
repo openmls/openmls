@@ -21,6 +21,7 @@
 //! can be manipulated manually via the `Client` struct, which contains their
 //! group states.
 
+use crate::treesync::node::leaf_node::{Unknown, ValidKeyPackage};
 use crate::{
     binary_tree::array_representation::LeafNodeIndex,
     ciphersuite::{hash_ref::KeyPackageRef, *},
@@ -505,7 +506,7 @@ impl MlsGroupTestSetup {
         action_type: ActionType,
         group: &mut Group,
         client_id: &[u8],
-        leaf_node: Option<LeafNode>,
+        leaf_node: Option<LeafNode<ValidKeyPackage>>,
     ) -> Result<(), SetupError> {
         let clients = self.clients.read().expect("An unexpected error occurred.");
         let client = clients

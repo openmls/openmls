@@ -7,7 +7,7 @@ use openmls_traits::signatures::Signer;
 
 use crate::{
     binary_tree::array_representation::LeafNodeIndex, group::errors::CreateAddProposalError,
-    messages::group_info::GroupInfo, treesync::LeafNode,
+    messages::group_info::GroupInfo, treesync::node::leaf_node::Valid, treesync::LeafNode,
 };
 
 use super::{
@@ -90,7 +90,7 @@ impl MlsGroup {
     }
 
     /// Returns a reference to the own [`LeafNode`].
-    pub fn own_leaf(&self) -> Option<&LeafNode> {
+    pub fn own_leaf(&self) -> Option<&LeafNode<Valid>> {
         self.group
             .treesync()
             .leaf(self.group.own_leaf_index())

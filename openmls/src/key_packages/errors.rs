@@ -4,7 +4,10 @@
 
 use thiserror::Error;
 
-use crate::{ciphersuite::signable::SignatureError, error::LibraryError};
+use crate::{
+    ciphersuite::signable::SignatureError, error::LibraryError,
+    treesync::errors::LeafNodeValidationError,
+};
 
 /// KeyPackage verify error
 #[derive(Error, Debug, PartialEq, Clone)]
@@ -49,4 +52,7 @@ pub enum KeyPackageNewError<KeyStoreError> {
     /// See [`SignatureError`] for more details.
     #[error(transparent)]
     SignatureError(#[from] SignatureError),
+    /// See [`LeafNodeValidationError`] for more details.
+    #[error(transparent)]
+    LeafNodeValidation(#[from] LeafNodeValidationError),
 }

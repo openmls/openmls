@@ -95,7 +95,7 @@ use crate::{
     treesync::{
         node::{
             encryption_keys::EncryptionKeyPair,
-            leaf_node::{Capabilities, LeafNodeSource, Lifetime},
+            leaf_node::{Capabilities, Lifetime},
         },
         LeafNode,
     },
@@ -111,10 +111,11 @@ use tls_codec::{
 };
 
 #[cfg(test)]
-use crate::treesync::node::encryption_keys::EncryptionKey;
+use crate::treesync::node::{encryption_keys::EncryptionKey, leaf_node::LeafNodeSource};
 
 // Private
 mod codec;
+use crate::treesync::node::leaf_node::{Unknown, ValidKeyPackage};
 use errors::*;
 
 // Public
@@ -144,7 +145,7 @@ struct KeyPackageTBS {
     protocol_version: ProtocolVersion,
     ciphersuite: Ciphersuite,
     init_key: HpkePublicKey,
-    leaf_node: LeafNode,
+    leaf_node: LeafNode<ValidKeyPackage>,
     extensions: Extensions,
 }
 
@@ -287,10 +288,10 @@ impl KeyPackage {
     ) -> Result<(Self, EncryptionKeyPair), KeyPackageNewError<KeyStore::Error>> {
         // We don't need the private key here. It's stored in the key store for
         // use later when creating a group with this key package.
-        let (leaf_node, encryption_key_pair) = LeafNode::new(
+        let (leaf_node, encryption_key_pair) = LeafNode::key_package(
             config,
             credential_with_key,
-            LeafNodeSource::KeyPackage(Lifetime::default()),
+            Lifetime::default(),
             leaf_node_capabilities,
             leaf_node_extensions,
             backend,
@@ -339,16 +340,17 @@ impl KeyPackage {
             }
         }
 
-        // Ensure validity of the life time extension in the leaf node.
-        if let Some(life_time) = self.payload.leaf_node.life_time() {
-            if !life_time.is_valid() {
-                return Err(KeyPackageVerifyError::InvalidLifetime);
-            }
-        } else {
-            // This assumes that we only verify key packages with leaf nodes
-            // that were created for the key package.
-            return Err(KeyPackageVerifyError::MissingLifetime);
-        }
+        // TODO: This invariant is already enforced by `LeafNode<ValidKeyPackage>`.
+        // // Ensure validity of the life time extension in the leaf node.
+        // if let Some(life_time) = self.payload.leaf_node.life_time() {
+        //     if !life_time.is_valid() {
+        //         return Err(KeyPackageVerifyError::InvalidLifetime);
+        //     }
+        // } else {
+        //     // This assumes that we only verify key packages with leaf nodes
+        //     // that were created for the key package.
+        //     return Err(KeyPackageVerifyError::MissingLifetime);
+        // }
 
         // Verify the signature on this key package.
         let pk = OpenMlsSignaturePublicKey::from_signature_key(
@@ -401,7 +403,7 @@ impl KeyPackage {
     }
 
     /// Get the [`LeafNode`] reference.
-    pub fn leaf_node(&self) -> &LeafNode {
+    pub fn leaf_node(&self) -> &LeafNode<ValidKeyPackage> {
         &self.payload.leaf_node
     }
 
@@ -492,7 +494,7 @@ impl KeyPackage {
 
         // We don't need the private key here. It's stored in the key store for
         // use later when creating a group with this key package.
-        let leaf_node = LeafNode::create_new_with_key(
+        let leaf_node = LeafNode::<Unknown>::create_new_with_key(
             encryption_key,
             credential_with_key,
             LeafNodeSource::KeyPackage(Lifetime::default()),
@@ -506,7 +508,7 @@ impl KeyPackage {
             protocol_version: config.version,
             ciphersuite: config.ciphersuite,
             init_key: init_key.public.into(),
-            leaf_node,
+            leaf_node: leaf_node.to_key_package_unchecked(),
             extensions,
         };
 
@@ -565,7 +567,7 @@ impl KeyPackage {
     }
 
     /// Set the [`LeafNode`].
-    pub fn set_leaf_node(&mut self, leaf_node: LeafNode) {
+    pub fn set_leaf_node(&mut self, leaf_node: LeafNode<ValidKeyPackage>) {
         self.payload.leaf_node = leaf_node;
     }
 }

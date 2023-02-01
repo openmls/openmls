@@ -197,6 +197,9 @@ pub(crate) enum TreeKemError {
 /// Errors that can happen during leaf node validation.
 #[derive(Clone, Debug, Error, Eq, PartialEq)]
 pub enum LeafNodeValidationError {
+    /// Own LeafNode was not found in the key store.
+    #[error("Own LeafNode was not found in the key store.")]
+    MissingLeafNode,
     /// Lifetime is not acceptable.
     #[error("Lifetime is not acceptable.")]
     Lifetime(LifetimeError),

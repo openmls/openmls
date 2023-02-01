@@ -22,7 +22,7 @@ use crate::{
     test_utils::*,
     tree::sender_ratchet::*,
     treesync::node::{
-        leaf_node::{Capabilities, LeafNodeSource, Lifetime},
+        leaf_node::{Capabilities, LeafNodeSource, Lifetime, Unknown},
         Node,
     },
     versions::ProtocolVersion,
@@ -131,13 +131,12 @@ pub fn generate_test_vector(ciphersuite: Ciphersuite) -> MessagesTestVector {
     // Create a proposal to update the user's KeyPackage
     let key_package_bundle = KeyPackageBundle::new(&crypto, ciphersuite_name, &credential_bundle);
     let key_package = key_package_bundle.key_package();
-    let (leaf_node, _encryption_key_pair) = LeafNode::new(
+    let (leaf_node, _encryption_key_pair) = LeafNode::update(
         CryptoConfig {
             ciphersuite,
             version: ProtocolVersion::Mls10,
         },
         &credential_bundle,
-        LeafNodeSource::Update,
         Capabilities::default(),
         Extensions::empty(),
         &crypto,

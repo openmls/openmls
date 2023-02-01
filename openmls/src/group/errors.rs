@@ -230,6 +230,9 @@ pub enum CreateCommitError<KeyStoreError> {
     /// See [`InvalidExtensionError`] for more details.
     #[error(transparent)]
     InvalidExtensionError(#[from] InvalidExtensionError),
+    /// See [`LeafNodeValidationError`] for more details.
+    #[error(transparent)]
+    LeafNodeValidation(#[from] LeafNodeValidationError),
 }
 
 /// Validation error
@@ -444,9 +447,9 @@ pub(crate) enum ApplyProposalsError {
     /// See [`LibraryError`] for more details.
     #[error(transparent)]
     LibraryError(#[from] LibraryError),
-    /// Own LeafNode was not found in the key store.
-    #[error("Own LeafNode was not found in the key store.")]
-    MissingLeafNode,
+    /// See [`LeafNodeValidationError`] for more details.
+    #[error(transparent)]
+    LeafNodeValidation(#[from] LeafNodeValidationError),
 }
 
 // Core group build error

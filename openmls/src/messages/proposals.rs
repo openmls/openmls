@@ -14,6 +14,7 @@ use crate::{
     key_packages::*,
     prelude::LeafNode,
     schedule::psk::*,
+    treesync::node::leaf_node::ValidUpdate,
     versions::ProtocolVersion,
 };
 
@@ -218,12 +219,12 @@ impl AddProposal {
     Debug, PartialEq, Eq, Clone, Serialize, Deserialize, TlsDeserialize, TlsSerialize, TlsSize,
 )]
 pub struct UpdateProposal {
-    pub(crate) leaf_node: LeafNode,
+    pub(crate) leaf_node: LeafNode<ValidUpdate>,
 }
 
 impl UpdateProposal {
     /// Returns a reference to the key package in the proposal.
-    pub fn leaf_node(&self) -> &LeafNode {
+    pub fn leaf_node(&self) -> &LeafNode<ValidUpdate> {
         &self.leaf_node
     }
 }

@@ -4,16 +4,17 @@
 //!
 //! This module contains structs and functions to encrypt and decrypt path
 //! updates for a [`TreeSyncDiff`] instance.
-use rayon::prelude::*;
+
 use std::collections::HashSet;
-use tls_codec::{TlsDeserialize, TlsSerialize, TlsSize};
 
 use openmls_traits::{
     crypto::OpenMlsCrypto,
     types::{Ciphersuite, HpkeCiphertext},
     OpenMlsCryptoProvider,
 };
+use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
+use tls_codec::{TlsDeserialize, TlsSerialize, TlsSize};
 
 use crate::{
     binary_tree::array_representation::LeafNodeIndex,
@@ -21,7 +22,7 @@ use crate::{
     error::LibraryError,
     messages::{proposals::AddProposal, EncryptedGroupSecrets, GroupSecrets, PathSecret},
     schedule::{psk::PreSharedKeyId, CommitSecret, JoinerSecret},
-    treesync::node::NodeReference,
+    treesync::node::{leaf_node::ValidCommit, NodeReference},
     versions::ProtocolVersion,
 };
 
@@ -353,24 +354,26 @@ impl PlaintextSecret {
     Debug, PartialEq, Eq, Clone, Serialize, Deserialize, TlsSerialize, TlsDeserialize, TlsSize,
 )]
 pub struct UpdatePath {
-    leaf_node: LeafNode,
+    // Validation: If the LeafNode appears in the leaf_node value of the UpdatePath in a Commit,
+    //             verify that leaf_node_source is set to commit.
+    leaf_node: LeafNode<ValidCommit>,
     nodes: Vec<UpdatePathNode>,
 }
 
 impl UpdatePath {
     /// Generate a new update path.
-    pub(crate) fn new(leaf_node: LeafNode, nodes: Vec<UpdatePathNode>) -> Self {
+    pub(crate) fn new(leaf_node: LeafNode<ValidCommit>, nodes: Vec<UpdatePathNode>) -> Self {
         Self { leaf_node, nodes }
     }
 
     /// Return the `leaf_node` of this [`UpdatePath`].
-    pub(crate) fn leaf_node(&self) -> &LeafNode {
+    pub(crate) fn leaf_node(&self) -> &LeafNode<ValidCommit> {
         &self.leaf_node
     }
 
     /// Consume the [`UpdatePath`] and return its individual parts: A
     /// [`LeafNode`] and a vector of [`UpdatePathNode`] instances.
-    pub(crate) fn into_parts(self) -> (LeafNode, Vec<UpdatePathNode>) {
+    pub(crate) fn into_parts(self) -> (LeafNode<ValidCommit>, Vec<UpdatePathNode>) {
         (self.leaf_node, self.nodes)
     }
 
@@ -388,7 +391,7 @@ impl UpdatePath {
 
     #[cfg(test)]
     /// Set the path key package.
-    pub fn set_leaf_node(&mut self, leaf_node: LeafNode) {
+    pub fn set_leaf_node(&mut self, leaf_node: LeafNode<ValidCommit>) {
         self.leaf_node = leaf_node
     }
 

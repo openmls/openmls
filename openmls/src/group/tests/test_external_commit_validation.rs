@@ -14,6 +14,7 @@ use crate::{
     framing::*,
     group::{config::CryptoConfig, errors::*, tests::utils::resign_external_commit, *},
     messages::proposals::*,
+    //treesync::node::leaf_node::{LeafNode, StateValidated},
 };
 
 use super::utils::{generate_credential_bundle, generate_key_package, CredentialWithKeyAndSigner};
@@ -280,7 +281,7 @@ fn test_valsem242(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
             *bob_credential.clone(),
         );
         ProposalOrRef::Proposal(Proposal::Update(UpdateProposal {
-            leaf_node: bob_key_package.leaf_node().clone(),
+            leaf_node: bob_key_package.leaf_node().clone().to_update_unchecked(),
         }))
     };
 
@@ -658,7 +659,12 @@ fn test_valsem246(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
     );
 
     if let Some(ref mut path) = content.path {
-        path.set_leaf_node(bob_new_key_package.leaf_node().clone())
+        path.set_leaf_node(
+            bob_new_key_package
+                .leaf_node()
+                .clone()
+                .to_commit_unchecked(),
+        )
     }
 
     plaintext.set_content(FramedContentBody::Commit(content));

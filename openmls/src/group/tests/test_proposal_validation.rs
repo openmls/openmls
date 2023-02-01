@@ -1612,7 +1612,7 @@ fn test_valsem111(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
     );
 
     let update_proposal = Proposal::Update(UpdateProposal {
-        leaf_node: update_kp.leaf_node().clone(),
+        leaf_node: update_kp.leaf_node().clone().to_update_unchecked(),
     });
 
     // We now have Alice create a commit. That commit should not contain any

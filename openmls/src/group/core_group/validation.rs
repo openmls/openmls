@@ -3,13 +3,14 @@
 
 use std::collections::HashSet;
 
+use crate::treesync::node::leaf_node::ValidCommit;
 use crate::{
     binary_tree::array_representation::LeafNodeIndex,
     framing::Sender,
     group::errors::ExternalCommitValidationError,
     group::errors::ValidationError,
     messages::proposals::{Proposal, ProposalOrRefType, ProposalType},
-    treesync::node::leaf_node::LeafNode,
+    treesync::node::leaf_node::{LeafNode, ValidKeyPackage},
 };
 
 use super::{
@@ -297,9 +298,11 @@ impl CoreGroup {
     /// Validate the new key package in a path
     /// TODO: #730 - There's nothing testing this function.
     /// - ValSem110
+    // TODO(leaf_node_validation)
+    #[allow(unused)]
     pub(super) fn validate_path_key_package(
         &self,
-        leaf_node: &LeafNode,
+        leaf_node: &LeafNode<ValidKeyPackage>,
         public_key_set: HashSet<Vec<u8>>,
     ) -> Result<(), ProposalValidationError> {
         // ValSem110
@@ -315,10 +318,12 @@ impl CoreGroup {
     ///  - ValSem242: External Commit must only cover inline proposal in allowlist (ExternalInit, Remove, PreSharedKey)
     ///  - ValSem243: External Commit, inline Remove Proposal: The identity and the endpoint_id of the removed
     ///               leaf are identical to the ones in the path KeyPackage.
+    // TODO(leaf_node_validation)
+    #[allow(unused)]
     pub(crate) fn validate_external_commit(
         &self,
         proposal_queue: &ProposalQueue,
-        path_leaf_node: Option<&LeafNode>,
+        path_leaf_node: Option<&LeafNode<ValidCommit>>,
     ) -> Result<(), ExternalCommitValidationError> {
         let count_external_init_proposals = proposal_queue
             .filtered_by_type(ProposalType::ExternalInit)

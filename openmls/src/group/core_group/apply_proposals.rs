@@ -8,7 +8,9 @@ use crate::{
     group::errors::ApplyProposalsError,
     messages::proposals::{AddProposal, Proposal, ProposalType},
     schedule::InitSecret,
-    treesync::{diff::TreeSyncDiff, node::leaf_node::OpenMlsLeafNode},
+    treesync::{
+        diff::TreeSyncDiff, errors::LeafNodeValidationError, node::leaf_node::OpenMlsLeafNode,
+    },
 };
 
 use super::*;
@@ -100,13 +102,17 @@ impl CoreGroup {
                 };
                 let leaf_node: OpenMlsLeafNode = match own_leaf_index {
                     Some(leaf_index) if leaf_index == sender_index => {
-                        let own_leaf_node = match leaf_nodes
-                            .iter()
-                            .find(|&leaf_node| leaf_node.leaf_node() == update_proposal.leaf_node())
-                        {
+                        let own_leaf_node = match leaf_nodes.iter().find(|leaf_node| {
+                            leaf_node.leaf_node().clone()
+                                == update_proposal.leaf_node().clone().into()
+                        }) {
                             Some(leaf_node) => leaf_node,
                             // We lost the LeafNode apparently
-                            None => return Err(ApplyProposalsError::MissingLeafNode),
+                            None => {
+                                return Err(ApplyProposalsError::LeafNodeValidation(
+                                    LeafNodeValidationError::MissingLeafNode,
+                                ))
+                            }
                         };
                         own_leaf_node.clone()
                     }

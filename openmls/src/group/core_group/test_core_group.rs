@@ -5,6 +5,7 @@ use openmls_traits::{
 };
 use tls_codec::Serialize;
 
+use crate::treesync::node::leaf_node::{Unknown, ValidUpdate};
 use crate::{
     binary_tree::*,
     ciphersuite::{signable::Signable, AeadNonce},
@@ -15,7 +16,7 @@ use crate::{
     messages::{group_info::GroupInfoTBS, *},
     schedule::psk::*,
     test_utils::*,
-    treesync::errors::ApplyUpdatePathError,
+    treesync::{errors::ApplyUpdatePathError, node::leaf_node::LeafNode},
     versions::ProtocolVersion,
 };
 
@@ -202,8 +203,7 @@ fn test_update_path(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvid
 
     // === Bob updates and commits ===
     let bob_old_leaf = group_bob.own_leaf_node().unwrap();
-    let bob_update_leaf_node = bob_old_leaf
-        .leaf_node()
+    let bob_update_leaf_node = LeafNode::<ValidUpdate>::from(bob_old_leaf.leaf_node().clone())
         .updated(
             CryptoConfig::with_default_version(ciphersuite),
             backend,
@@ -412,8 +412,7 @@ fn test_psks(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
 
     // === Bob updates and commits ===
     let bob_old_leaf = group_bob.own_leaf_node().unwrap();
-    let bob_update_leaf_node = bob_old_leaf
-        .leaf_node()
+    let bob_update_leaf_node = LeafNode::<ValidUpdate>::from(bob_old_leaf.leaf_node().clone())
         .updated(
             CryptoConfig::with_default_version(ciphersuite),
             backend,
