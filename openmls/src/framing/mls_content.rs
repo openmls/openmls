@@ -21,8 +21,8 @@ use super::{
 
 use serde::{Deserialize, Serialize};
 use tls_codec::{
-    Deserialize as TlsDeserializeTrait, Serialize as TlsSerializeTrait, Size, TlsByteVecU32,
-    TlsDeserialize, TlsSerialize, TlsSize, VLBytes,
+    Deserialize as TlsDeserializeTrait, Serialize as TlsSerializeTrait, Size, TlsDeserialize,
+    TlsSerialize, TlsSize, VLBytes,
 };
 
 /// ```c
@@ -76,7 +76,7 @@ impl From<AuthenticatedContent> for FramedContent {
 #[repr(u8)]
 pub(crate) enum FramedContentBody {
     #[tls_codec(discriminant = 1)]
-    Application(TlsByteVecU32),
+    Application(VLBytes),
     #[tls_codec(discriminant = 2)]
     Proposal(Proposal),
     #[tls_codec(discriminant = 3)]
@@ -119,7 +119,7 @@ impl FramedContentBody {
     ) -> Result<Self, tls_codec::Error> {
         Ok(match content_type {
             ContentType::Application => {
-                FramedContentBody::Application(TlsByteVecU32::tls_deserialize(bytes)?)
+                FramedContentBody::Application(VLBytes::tls_deserialize(bytes)?)
             }
             ContentType::Proposal => FramedContentBody::Proposal(Proposal::tls_deserialize(bytes)?),
             ContentType::Commit => FramedContentBody::Commit(Commit::tls_deserialize(bytes)?),

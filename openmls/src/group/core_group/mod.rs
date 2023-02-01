@@ -794,18 +794,23 @@ impl CoreGroup {
         )
     }
 
-    #[cfg(test)]
-    pub(crate) fn message_secrets_test_mut(&mut self) -> &mut MessageSecrets {
-        self.message_secrets_store.message_secrets_mut()
-    }
-
     pub(crate) fn own_leaf_node(&self) -> Result<&OpenMlsLeafNode, LibraryError> {
         self.treesync()
             .leaf(self.own_leaf_index())
             .ok_or_else(|| LibraryError::custom("Tree has no own leaf."))
     }
+}
 
-    #[cfg(any(feature = "test-utils", test))]
+#[cfg(any(feature = "test-utils", test))]
+impl CoreGroup {
+    pub(crate) fn context_mut(&mut self) -> &mut GroupContext {
+        &mut self.group_context
+    }
+
+    pub(crate) fn message_secrets_test_mut(&mut self) -> &mut MessageSecrets {
+        self.message_secrets_store.message_secrets_mut()
+    }
+
     pub(crate) fn print_tree(&self, message: &str) {
         use super::tests::tree_printing::print_tree;
 

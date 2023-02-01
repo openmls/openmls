@@ -79,7 +79,10 @@ pub(crate) fn derive_tree_secret(
         length
     );
     log_crypto!(trace, "Input secret {:x?}", secret.as_slice());
-    Ok(secret.kdf_expand_label(backend, label, &generation.to_be_bytes(), length)?)
+
+    let secret = secret.kdf_expand_label(backend, label, &generation.to_be_bytes(), length)?;
+    log_crypto!(trace, "Derived secret {:x?}", secret.as_slice());
+    Ok(secret)
 }
 
 #[derive(Debug, TlsSerialize, TlsSize)]
@@ -94,8 +97,9 @@ pub(crate) struct SecretTreeNode {
     pub(crate) secret: Secret,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Serialize, Deserialize)]
 #[cfg_attr(any(feature = "test-utils", test), derive(PartialEq, Clone))]
+#[cfg_attr(feature = "crypto-debug", derive(Debug))]
 pub(crate) struct SecretTree {
     own_index: SecretTreeLeafIndex,
     nodes: Vec<Option<SecretTreeNode>>,
@@ -132,6 +136,8 @@ impl SecretTree {
         let application_sender_ratchets = std::iter::repeat_with(|| Option::<SenderRatchet>::None)
             .take(size as usize)
             .collect();
+
+        log_crypto!(trace, "nodes: {nodes:?}");
 
         SecretTree {
             own_index,

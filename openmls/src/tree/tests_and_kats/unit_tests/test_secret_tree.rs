@@ -234,7 +234,6 @@ fn secret_tree(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
         n_leaves,
         1u32.into(),
     );
-    println!("Secret tree: {secret_tree:?}");
     let (application_secret_key, application_secret_nonce) = secret_tree
         .secret_for_decryption(
             ciphersuite,
@@ -253,5 +252,4 @@ fn secret_tree(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
         "application_secret_nonce: {:x?}",
         application_secret_nonce.as_slice()
     );
-    println!("Secret tree: {secret_tree:?}");
 }

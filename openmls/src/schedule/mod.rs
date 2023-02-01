@@ -680,8 +680,7 @@ impl EncryptionSecret {
         self.secret.as_slice()
     }
 
-    #[cfg(test)]
-    #[doc(hidden)]
+    #[cfg(any(feature = "test-utils", test))]
     /// Create a new secret from a byte vector.
     pub(crate) fn from_slice(
         bytes: &[u8],
@@ -828,7 +827,7 @@ impl ConfirmationKey {
         self.secret.as_slice()
     }
 
-    #[cfg(test)]
+    #[cfg(any(feature = "test-utils", test))]
     pub(crate) fn random(ciphersuite: Ciphersuite, rng: &impl OpenMlsCryptoProvider) -> Self {
         Self {
             secret: Secret::random(ciphersuite, rng, None /* MLS version */)
@@ -878,7 +877,7 @@ impl MembershipKey {
         ))
     }
 
-    #[cfg(test)]
+    #[cfg(any(feature = "test-utils", test))]
     pub(crate) fn from_secret(secret: Secret) -> Self {
         Self { secret }
     }
@@ -888,7 +887,7 @@ impl MembershipKey {
         self.secret.as_slice()
     }
 
-    #[cfg(test)]
+    #[cfg(any(feature = "test-utils", test))]
     pub(crate) fn random(ciphersuite: Ciphersuite, rng: &impl OpenMlsCryptoProvider) -> Self {
         Self {
             secret: Secret::random(ciphersuite, rng, None /* MLS version */)
@@ -909,8 +908,9 @@ fn ciphertext_sample(ciphersuite: Ciphersuite, ciphertext: &[u8]) -> &[u8] {
 }
 
 /// A key that can be used to derive an `AeadKey` and an `AeadNonce`.
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Serialize, Deserialize)]
 #[cfg_attr(test, derive(PartialEq))]
+#[cfg_attr(any(feature = "test-utils", test), derive(Debug, Clone))]
 pub(crate) struct SenderDataSecret {
     secret: Secret,
 }
@@ -966,7 +966,7 @@ impl SenderDataSecret {
         Ok(AeadNonce::from_secret(nonce_secret))
     }
 
-    #[cfg(test)]
+    #[cfg(any(feature = "test-utils", test))]
     pub(crate) fn random(ciphersuite: Ciphersuite, rng: &impl OpenMlsCryptoProvider) -> Self {
         Self {
             secret: Secret::random(ciphersuite, rng, None /* MLS version */)
@@ -979,11 +979,9 @@ impl SenderDataSecret {
         self.secret.as_slice()
     }
 
-    // XXX[KAT]: #1051 Only used in KATs. Remove if unused.
-    #[cfg(test)]
-    #[doc(hidden)]
+    #[cfg(any(feature = "test-utils", test))]
     /// Create a new secret from a byte vector.
-    pub(crate) fn _from_slice(
+    pub(crate) fn from_slice(
         bytes: &[u8],
         mls_version: ProtocolVersion,
         ciphersuite: Ciphersuite,
