@@ -249,11 +249,6 @@ fn build_handshake_messages(
         &content,
         group.ciphersuite(),
         backend,
-        // MlsMessageHeader {
-        //     group_id: group.group_id().clone(),
-        //     epoch: group.context().epoch(),
-        //     sender: sender_index,
-        // },
         group.message_secrets_test_mut(),
         0,
     )
