@@ -756,42 +756,7 @@ impl CoreGroup {
             .leaf(self.own_leaf_index())
             .ok_or_else(|| LibraryError::custom("Tree has no own leaf."))
     }
-}
 
-#[cfg(any(feature = "test-utils", test))]
-impl CoreGroup {
-    pub(crate) fn context_mut(&mut self) -> &mut GroupContext {
-        &mut self.group_context
-    }
-
-    pub(crate) fn message_secrets_test_mut(&mut self) -> &mut MessageSecrets {
-        self.message_secrets_store.message_secrets_mut()
-    }
-
-    pub(crate) fn print_tree(&self, message: &str) {
-        use super::tests::tree_printing::print_tree;
-
-        print_tree(self, message);
-    }
-}
-
-/// Composite key for key material of a client within an epoch
-pub struct EpochKeypairId(Vec<u8>);
-
-impl EpochKeypairId {
-    fn new(group_id: &GroupId, epoch: u64, leaf_index: LeafNodeIndex) -> Self {
-        Self(
-            [
-                group_id.as_slice(),
-                &leaf_index.u32().to_be_bytes(),
-                &epoch.to_be_bytes(),
-            ]
-            .concat(),
-        )
-    }
-}
-
-impl CoreGroup {
     /// Store the given [`EncryptionKeyPair`]s in the `backend`'s key store
     /// indexed by this group's [`GroupId`] and [`GroupEpoch`].
     ///
@@ -844,6 +809,39 @@ impl CoreGroup {
             self.own_leaf_index(),
         );
         backend.key_store().delete::<Vec<EncryptionKeyPair>>(&k.0)
+    }
+}
+
+/// Composite key for key material of a client within an epoch
+pub struct EpochKeypairId(Vec<u8>);
+
+impl EpochKeypairId {
+    fn new(group_id: &GroupId, epoch: u64, leaf_index: LeafNodeIndex) -> Self {
+        Self(
+            [
+                group_id.as_slice(),
+                &leaf_index.u32().to_be_bytes(),
+                &epoch.to_be_bytes(),
+            ]
+            .concat(),
+        )
+    }
+}
+
+#[cfg(any(feature = "test-utils", test))]
+impl CoreGroup {
+    pub(crate) fn context_mut(&mut self) -> &mut GroupContext {
+        &mut self.group_context
+    }
+
+    pub(crate) fn message_secrets_test_mut(&mut self) -> &mut MessageSecrets {
+        self.message_secrets_store.message_secrets_mut()
+    }
+
+    pub(crate) fn print_tree(&self, message: &str) {
+        use super::tests::tree_printing::print_tree;
+
+        print_tree(self, message);
     }
 }
 
