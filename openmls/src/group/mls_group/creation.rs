@@ -1,6 +1,7 @@
 use openmls_traits::signatures::Signer;
 
 use crate::{
+    ciphersuite::HpkePrivateKey,
     credentials::CredentialWithKey,
     group::{
         core_group::create_commit_params::CreateCommitParams,
@@ -105,7 +106,7 @@ impl MlsGroup {
                 let hash_ref = egs.new_member().as_slice().to_vec();
                 backend
                     .key_store()
-                    .read(hash_ref.as_slice())
+                    .read(&hash_ref)
                     .map(|kp: KeyPackage| (kp, hash_ref))
             })
             .ok_or(WelcomeError::NoMatchingKeyPackage)?;
@@ -113,7 +114,7 @@ impl MlsGroup {
         // TODO #751
         let private_key = backend
             .key_store()
-            .read::<crate::prelude::HpkePrivateKey>(key_package.hpke_init_key().as_slice())
+            .read::<HpkePrivateKey>(key_package.hpke_init_key().as_slice())
             .ok_or(WelcomeError::NoMatchingKeyPackage)?;
         let key_package_bundle = KeyPackageBundle {
             key_package,

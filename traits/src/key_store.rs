@@ -16,6 +16,7 @@ pub trait MlsEntity: serde::Serialize + serde::de::DeserializeOwned {
     const ID: MlsEntityId;
 }
 
+/// Blanket impl for when you have to lookup a list of entities from the keystore
 impl<T: MlsEntity> MlsEntity for Vec<T> {
     const ID: MlsEntityId = T::ID;
 }
