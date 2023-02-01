@@ -7,17 +7,46 @@ use crate::extensions::{
     ExternalSendersExtension, RatchetTreeExtension, RequiredCapabilitiesExtension,
 };
 
+fn vlbytes_len_len(length: usize) -> usize {
+    if length < 0x40 {
+        1
+    } else if length < 0x3fff {
+        2
+    } else if length < 0x3fff_ffff {
+        4
+    } else {
+        8
+    }
+}
+
 impl Size for Extension {
     #[inline]
     fn tls_serialized_len(&self) -> usize {
-        2 /* extension type len */
-            + 4 /* u32 len */ +
-            match self {
-                Extension::ApplicationId(e) => e.tls_serialized_len(),
-                Extension::RatchetTree(e) => e.tls_serialized_len(),
-                Extension::RequiredCapabilities(e) => e.tls_serialized_len(),
-                Extension::ExternalPub(e) => e.tls_serialized_len(),
-                Extension::ExternalSenders(e) => e.tls_serialized_len(),
+        2 + /* extension type len */
+        match self {
+                // We truncate here and don't catch errors for anything that's
+                // too long.
+                // This will be caught when (de)serializing.
+                Extension::ApplicationId(e) => {
+                    let len = e.tls_serialized_len();
+                    len + vlbytes_len_len(len)
+                },
+                Extension::RatchetTree(e) => {
+                    let len = e.tls_serialized_len();
+                    len + vlbytes_len_len(len)
+                },
+                Extension::RequiredCapabilities(e) => {
+                    let len = e.tls_serialized_len();
+                    len + vlbytes_len_len(len)
+                },
+                Extension::ExternalPub(e) => {
+                    let len = e.tls_serialized_len();
+                    len + vlbytes_len_len(len)
+                },
+                Extension::ExternalSenders(e) => {
+                    let len = e.tls_serialized_len();
+                    len + vlbytes_len_len(len)
+                },
             }
     }
 }
@@ -35,7 +64,7 @@ impl Serialize for Extension {
         let written = self.extension_type().tls_serialize(writer)?;
 
         // Now serialize the extension into a separate byte vector.
-        let extension_data_len = self.tls_serialized_len() - 6 /* extension type length and u32 length */;
+        let extension_data_len = self.tls_serialized_len();
         let mut extension_data = Vec::with_capacity(extension_data_len);
 
         let extension_data_written = match self {
@@ -45,7 +74,10 @@ impl Serialize for Extension {
             Extension::ExternalPub(e) => e.tls_serialize(&mut extension_data),
             Extension::ExternalSenders(e) => e.tls_serialize(&mut extension_data),
         }?;
-        debug_assert_eq!(extension_data_written, extension_data_len);
+        debug_assert_eq!(
+            extension_data_written,
+            extension_data_len - 2 - vlbytes_len_len(extension_data_written)
+        );
         debug_assert_eq!(extension_data_written, extension_data.len());
 
         // Write the serialized extension out.

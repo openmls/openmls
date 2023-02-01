@@ -14,16 +14,16 @@ use crate::{
 };
 
 #[test]
-fn key_package_id() {
-    // A key package extension with the default values for openmls.
-    let data = &[0u8, 8, 1, 2, 3, 4, 5, 6, 6, 6];
-    let kpi = ApplicationIdExtension::new(&data[2..]);
+fn application_id() {
+    // A raw application id extension
+    let data = &[8u8, 1, 2, 3, 4, 5, 6, 6, 6];
+    let app_id = ApplicationIdExtension::new(&data[1..]);
 
-    let kpi_from_bytes = ApplicationIdExtension::tls_deserialize(&mut (data as &[u8]))
+    let app_id_from_bytes = ApplicationIdExtension::tls_deserialize(&mut (data as &[u8]))
         .expect("An unexpected error occurred.");
-    assert_eq!(kpi, kpi_from_bytes);
+    assert_eq!(app_id, app_id_from_bytes);
 
-    let serialized_extension_struct = kpi
+    let serialized_extension_struct = app_id
         .tls_serialize_detached()
         .expect("An unexpected error occurred.");
     assert_eq!(&data[..], &serialized_extension_struct);
@@ -193,14 +193,13 @@ fn ratchet_tree_extension(ciphersuite: Ciphersuite, backend: &impl OpenMlsCrypto
 
 #[test]
 fn required_capabilities() {
-    // A required capabilities extension with the default values for openmls (none).
-    let extension_bytes = vec![0u8, 3, 0, 0, 0, 3, 0, 0, 0];
-    let mut extension_bytes_mut = &extension_bytes[..];
+    // A raw required capabilities extension with the default values for openmls (none).
+    let extension_bytes = vec![0, 3, 3, 0, 0, 0];
 
     let ext = Extension::RequiredCapabilities(RequiredCapabilitiesExtension::default());
 
     // Check that decoding works
-    let required_capabilities = Extension::tls_deserialize(&mut extension_bytes_mut)
+    let required_capabilities = Extension::tls_deserialize(&mut extension_bytes.as_slice())
         .expect("An unexpected error occurred.");
     assert_eq!(ext, required_capabilities);
 
@@ -219,7 +218,7 @@ fn required_capabilities() {
         &[CredentialType::Basic],
     );
     let ext = Extension::RequiredCapabilities(required_capabilities);
-    let extension_bytes = vec![0u8, 3, 0, 0, 0, 11, 4, 0, 1, 0, 2, 2, 0, 5, 2, 0, 1];
+    let extension_bytes = vec![0u8, 3, 11, 4, 0, 1, 0, 2, 2, 0, 5, 2, 0, 1];
 
     // Test encoding and decoding
     let encoded = ext
