@@ -617,7 +617,8 @@ impl MlsGroupTestSetup {
         match operation_type {
             0 => {
                 println!(
-                    "Perfoming a self-update with action type: {action_type:?}"
+                    "Performing a self-update with action type: {:?}",
+                    action_type
                 );
                 self.self_update(action_type, group, &member_id.1, None)?;
             }
@@ -634,9 +635,7 @@ impl MlsGroupTestSetup {
                         .find(|(_, identity)| identity == &member_id.1)
                         .expect("An unexpected error occurred.")
                         .clone();
-                    println!(
-                        "Index of the member performing the {action_type:?}: {own_index:?}"
-                    );
+                    println!("Index of the member performing the {action_type:?}: {own_index:?}");
 
                     let mut target_member_leaf_indices = Vec::new();
                     let mut target_member_identities = Vec::new();
@@ -694,9 +693,7 @@ impl MlsGroupTestSetup {
                     let new_member_ids = self
                         .random_new_members_for_group(group, number_of_adds)
                         .expect("An unexpected error occurred.");
-                    println!(
-                        "{action_type:?}: Adding new clients: {new_member_ids:?}"
-                    );
+                    println!("{action_type:?}: Adding new clients: {new_member_ids:?}");
                     // Have the adder add them to the group.
                     self.add_clients(action_type, group, &member_id.1, new_member_ids)?;
                 }

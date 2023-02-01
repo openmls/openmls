@@ -103,7 +103,7 @@ async fn register_client(mut body: Payload, data: web::Data<Mutex<DsData>>) -> i
         return actix_web::HttpResponse::Conflict().finish();
     }
 
-    actix_web::HttpResponse::Ok().body(format!("Welcome {}!\n", client_name))
+    actix_web::HttpResponse::Ok().body(format!("Welcome {client_name}!\n"))
 }
 
 /// Returns a list of clients with their names and IDs.
@@ -310,7 +310,7 @@ async fn main() -> std::io::Result<()> {
         8080
     };
     let ip = "127.0.0.1";
-    let addr = format!("{}:{}", ip, port);
+    let addr = format!("{ip}:{port}");
     log::info!("Listening on: {}", addr);
 
     // Start the server.
