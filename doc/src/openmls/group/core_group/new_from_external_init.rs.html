@@ -181,7 +181,6 @@
 <a href="#181" id="181">181</a>
 <a href="#182" id="182">182</a>
 <a href="#183" id="183">183</a>
-<a href="#184" id="184">184</a>
 </pre><pre class="rust"><code><span class="kw">use crate</span>::{
     binary_tree::array_representation::LeafNodeIndex,
     ciphersuite::{signable::Verifiable, OpenMlsSignaturePublicKey},
@@ -356,9 +355,8 @@
         </span><span class="kw">let </span>create_commit_result = group.create_commit(params, backend, signer);
         <span class="macro">debug_assert!</span>(
             create_commit_result.is_ok(),
-            <span class="string">&quot;Error creating commit {:?}&quot;</span>,
-            create_commit_result
-        );
+            <span class="string">&quot;Error creating commit {create_commit_result:?}&quot;
+        </span>);
 
         <span class="prelude-val">Ok</span>((
             group,

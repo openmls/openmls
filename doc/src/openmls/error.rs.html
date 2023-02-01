@@ -251,7 +251,7 @@
     <span class="doccomment">/// A custom error (typically to avoid an unwrap())
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>custom(s: <span class="kw-2">&amp;</span><span class="lifetime">&#39;static </span>str) -&gt; <span class="self">Self </span>{
         <span class="kw">let </span>bt = Backtrace::new();
-        <span class="kw">let </span>display_string = <span class="macro">format!</span>(<span class="string">&quot;Error description: {}\n Backtrace:\n{:?}&quot;</span>, s, bt);
+        <span class="kw">let </span>display_string = <span class="macro">format!</span>(<span class="string">&quot;Error description: {s}\n Backtrace:\n{bt:?}&quot;</span>);
         <span class="self">Self </span>{
             internal: InternalLibraryError::Custom(display_string),
         }
