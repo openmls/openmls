@@ -43,7 +43,7 @@ impl<'a> PublicGroupDiff<'a> {
             original_group: public_group,
             diff: public_group.treesync().empty_diff(),
             group_context: public_group.group_context().clone(),
-            interim_transcript_hash: public_group.interim_transcript_hash.to_vec(),
+            interim_transcript_hash: public_group.interim_transcript_hash().to_vec(),
             confirmation_tag: public_group.confirmation_tag().clone(),
         }
     }
