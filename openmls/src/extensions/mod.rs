@@ -118,8 +118,7 @@ impl TryFrom<u16> for ExtensionType {
             4 => Ok(ExtensionType::ExternalPub),
             5 => Ok(ExtensionType::ExternalSenders),
             _ => Err(tls_codec::Error::DecodingError(format!(
-                "{} is an unkown extension type",
-                a
+                "{a} is an unkown extension type"
             ))),
         }
     }

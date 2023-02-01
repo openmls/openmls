@@ -73,8 +73,7 @@ impl tls_codec::Deserialize for Proposal {
             Ok(proposal_type) => proposal_type,
             Err(e) => {
                 return Err(tls_codec::Error::DecodingError(format!(
-                    "Deserialization error {}",
-                    e
+                    "Deserialization error {e}"
                 )))
             }
         };

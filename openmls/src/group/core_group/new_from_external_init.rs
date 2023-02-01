@@ -119,8 +119,7 @@ impl CoreGroup {
         let create_commit_result = group.create_commit(params, backend, signer);
         debug_assert!(
             create_commit_result.is_ok(),
-            "Error creating commit {:?}",
-            create_commit_result
+            "Error creating commit {create_commit_result:?}"
         );
 
         Ok((

@@ -263,7 +263,7 @@ fn test_welcome_message_with_version(
     let msg_encoded = msg
         .tls_serialize_detached()
         .expect("An unexpected error occurred.");
-    println!("encoded msg: {:?}", msg_encoded);
+    println!("encoded msg: {msg_encoded:?}");
     let msg_decoded = Welcome::tls_deserialize(&mut msg_encoded.as_slice())
         .expect("An unexpected error occurred.");
 

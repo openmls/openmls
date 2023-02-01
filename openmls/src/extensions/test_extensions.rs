@@ -110,7 +110,7 @@ fn ratchet_tree_extension(ciphersuite: Ciphersuite, backend: &impl OpenMlsCrypto
         backend,
     ) {
         Ok(g) => g,
-        Err(e) => panic!("Could not join group with ratchet tree extension {}", e),
+        Err(e) => panic!("Could not join group with ratchet tree extension {e}"),
     };
 
     // Make sure the group state is the same

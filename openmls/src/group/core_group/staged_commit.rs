@@ -14,7 +14,7 @@ use crate::{
     group::public_group::diff::StagedPublicGroupDiff,
     treesync::node::{
         encryption_keys::EncryptionKeyPair,
-        leaf_node::{LeafNodeTbs, OpenMlsLeafNode, TreeInfoTbs, VerifiableLeafNodeTbs},
+        leaf_node::{LeafNodeTbs, OpenMlsLeafNode, TreeInfoTbs, VerifiableLeafNode},
     },
 };
 use core::fmt::Debug;
@@ -213,7 +213,7 @@ impl CoreGroup {
                     leaf_node.clone(),
                     TreeInfoTbs::commit(self.group_id().clone(), sender_index),
                 );
-                let verifiable_leaf_node = VerifiableLeafNodeTbs {
+                let verifiable_leaf_node = VerifiableLeafNode {
                     tbs: &tbs,
                     signature: leaf_node.signature(),
                 };

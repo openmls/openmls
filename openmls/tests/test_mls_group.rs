@@ -104,7 +104,7 @@ fn mls_group_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoPr
         // === Alice adds Bob ===
         let welcome = match alice_group.add_members(backend, &alice_signer, &[bob_key_package]) {
             Ok((_, welcome, _)) => welcome,
-            Err(e) => panic!("Could not add member to group: {:?}", e),
+            Err(e) => panic!("Could not add member to group: {e:?}"),
         };
 
         // Check that we received the correct proposals
@@ -240,7 +240,7 @@ fn mls_group_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoPr
         // === Alice updates and commits ===
         let queued_message = match alice_group.propose_self_update(backend, &alice_signer, None) {
             Ok(qm) => qm,
-            Err(e) => panic!("Error performing self-update: {:?}", e),
+            Err(e) => panic!("Error performing self-update: {e:?}"),
         };
 
         let bob_processed_message = bob_group

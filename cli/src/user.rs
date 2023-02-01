@@ -118,7 +118,7 @@ impl User {
             .mls_group
             .borrow_mut()
             .create_message(&self.crypto, &self.identity.borrow().signer, msg.as_bytes())
-            .map_err(|e| format!("{}", e))?;
+            .map_err(|e| format!("{e}"))?;
 
         let msg = GroupMessage::new(message_out.into(), &self.recipients(group));
         log::debug!(" >>> send: {:?}", msg);
@@ -277,7 +277,7 @@ impl User {
         // We just take the first key package we get back from the server.
         let contact = match self.contacts.values().find(|c| c.username == name) {
             Some(v) => v,
-            None => return Err(format!("No contact with name {} known.", name)),
+            None => return Err(format!("No contact with name {name} known.")),
         };
         let (_hash, joiner_key_package) = self
             .backend
@@ -292,7 +292,7 @@ impl User {
         let mut groups = self.groups.borrow_mut();
         let group = match groups.get_mut(group_id) {
             Some(g) => g,
-            None => return Err(format!("No group with name {} known.", group)),
+            None => return Err(format!("No group with name {group} known.")),
         };
 
         let (out_messages, welcome, _group_info) = group
@@ -303,7 +303,7 @@ impl User {
                 &self.identity.borrow().signer,
                 &[joiner_key_package],
             )
-            .map_err(|e| format!("Failed to add member to group - {}", e))?;
+            .map_err(|e| format!("Failed to add member to group - {e}"))?;
 
         // First, process the invitation on our end.
         group

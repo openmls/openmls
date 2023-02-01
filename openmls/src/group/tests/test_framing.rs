@@ -88,8 +88,7 @@ fn padding(backend: &impl OpenMlsCryptoProvider) {
                 };
                 if overflow != 0 {
                     panic!(
-                        "Error: padding overflow of {} bytes, message length: {}, padding block size: {}",
-                        overflow, length, padding_size
+                        "Error: padding overflow of {overflow} bytes, message length: {length}, padding block size: {padding_size}"
                     );
                 }
             }

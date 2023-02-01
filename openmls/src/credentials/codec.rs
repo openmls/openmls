@@ -38,8 +38,7 @@ impl tls_codec::Deserialize for Credential {
                 BasicCredential::tls_deserialize(bytes)?,
             ))),
             _ => Err(tls_codec::Error::DecodingError(format!(
-                "{:?} can not be deserialized.",
-                credential_type
+                "{credential_type:?} can not be deserialized."
             ))),
         }
     }

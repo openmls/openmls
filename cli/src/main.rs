@@ -33,7 +33,7 @@ fn update(client: &mut user::User, group_id: Option<String>, stdout: &mut Stdout
     }
     messages.iter().for_each(|m| {
         stdout
-            .write_all(format!("         {}\n", m).as_bytes())
+            .write_all(format!("         {m}\n").as_bytes())
             .unwrap();
     });
     stdout.write_all(b"\n").unwrap();
@@ -62,7 +62,7 @@ fn main() {
         if let Some(client_name) = op.strip_prefix("register ") {
             client = Some(user::User::new(client_name.to_string()));
             stdout
-                .write_all(format!("registered new client {}\n\n", client_name).as_bytes())
+                .write_all(format!("registered new client {client_name}\n\n").as_bytes())
                 .unwrap();
             continue;
         }
@@ -72,7 +72,7 @@ fn main() {
             if let Some(client) = &mut client {
                 client.create_group(group_name.to_string());
                 stdout
-                    .write_all(format!(" >>> Created group {} :)\n\n", group_name).as_bytes())
+                    .write_all(format!(" >>> Created group {group_name} :)\n\n").as_bytes())
                     .unwrap();
             } else {
                 stdout
@@ -94,7 +94,7 @@ fn main() {
                     if let Some(msg) = op2.strip_prefix("send ") {
                         client.send_msg(msg, group_name.to_string()).unwrap();
                         stdout
-                            .write_all(format!("sent message to {}\n\n", group_name).as_bytes())
+                            .write_all(format!("sent message to {group_name}\n\n").as_bytes())
                             .unwrap();
                         continue;
                     }
@@ -106,8 +106,7 @@ fn main() {
                             .unwrap();
                         stdout
                             .write_all(
-                                format!("added {} to group {}\n\n", new_client, group_name)
-                                    .as_bytes(),
+                                format!("added {new_client} to group {group_name}\n\n").as_bytes(),
                             )
                             .unwrap();
                         continue;
@@ -129,7 +128,7 @@ fn main() {
                                 .unwrap();
                         } else {
                             stdout
-                                .write_all(format!("{} has no messages\n\n", group_name).as_bytes())
+                                .write_all(format!("{group_name} has no messages\n\n").as_bytes())
                                 .unwrap();
                         }
                         continue;
