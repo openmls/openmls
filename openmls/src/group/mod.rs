@@ -15,6 +15,7 @@ use tls_codec::*;
 
 // Crate
 pub(crate) mod core_group;
+pub(crate) mod public_group;
 pub(crate) use core_group::*;
 pub(crate) mod mls_group;
 #[cfg(not(any(feature = "test-utils", test)))]

@@ -2,14 +2,9 @@ use openmls_traits::OpenMlsCryptoProvider;
 
 use crate::{
     ciphersuite::signable::Signable,
-    group::{config::CryptoConfig, core_group::*, errors::CreateCommitError},
-    treesync::{
-        diff::TreeSyncDiff,
-        node::{
-            encryption_keys::EncryptionKeyPair, leaf_node::OpenMlsLeafNode,
-            parent_node::PlainUpdatePathNode,
-        },
-        treekem::{PlaintextSecret, UpdatePath},
+    group::{
+        core_group::*, errors::CreateCommitError,
+        public_group::diff::process_path::PathProcessingResult,
     },
     versions::ProtocolVersion,
 };
@@ -19,16 +14,6 @@ use super::{
     proposals::ProposalQueue,
     staged_commit::{MemberStagedCommitState, StagedCommit, StagedCommitState},
 };
-
-/// A helper struct which contains the values resulting from the preparation of
-/// a commit with path.
-#[derive(Default)]
-struct PathProcessingResult {
-    commit_secret: Option<CommitSecret>,
-    encrypted_path: Option<UpdatePath>,
-    plain_path: Option<Vec<PlainUpdatePathNode>>,
-    new_keypairs: Vec<EncryptionKeyPair>,
-}
 
 impl CoreGroup {
     pub(crate) fn create_commit<KeyStore: OpenMlsKeyStore>(
@@ -72,9 +57,6 @@ impl CoreGroup {
 
         let proposal_reference_list = proposal_queue.commit_list();
 
-        // Make a copy of the current tree to apply proposals safely
-        let mut diff: TreeSyncDiff = self.treesync().empty_diff();
-
         // Validate the proposals by doing the following checks:
 
         // ValSem101
@@ -93,117 +75,37 @@ impl CoreGroup {
             self.validate_update_proposals(&proposal_queue, *sender_index)?;
         }
 
+        // Make a copy of the public group to apply proposals safely
+        let mut diff = self.public_group.empty_diff();
+
         // Apply proposals to tree
-        let apply_proposals_values = self
-            .apply_proposals(
-                &mut diff,
-                backend,
-                &proposal_queue,
-                &[],
-                Some(self.own_leaf_index()),
-            )
-            .map_err(|e| match e {
-                crate::group::errors::ApplyProposalsError::LibraryError(e) => e.into(),
-                crate::group::errors::ApplyProposalsError::MissingLeafNode => {
-                    CreateCommitError::OwnKeyNotFound
-                }
-            })?;
+        let apply_proposals_values =
+            diff.apply_proposals(&proposal_queue, self.own_leaf_index())?;
         if apply_proposals_values.self_removed && params.commit_type() != CommitType::External {
             return Err(CreateCommitError::CannotRemoveSelf);
         }
 
-        // Update keys in the leaf.
-        let external_commit_keypair_option = if params.commit_type() == CommitType::External {
-            // If this is an external commit we add a fresh leaf to the diff.
-            // Generate a KeyPackageBundle to generate a payload from for later
-            // path generation.
-            let KeyPackageCreationResult {
-                key_package,
-                encryption_keypair,
-                // The KeyPackage is immediately put into the group. No need for
-                // the init key.
-                init_private_key: _,
-            } = KeyPackage::builder().build_without_key_storage(
-                CryptoConfig {
-                    ciphersuite,
-                    version: self.version(),
-                },
-                backend,
-                signer,
-                params
-                    .take_credential_with_key()
-                    .ok_or(CreateCommitError::MissingCredential)?,
-            )?;
-
-            let mut leaf_node: OpenMlsLeafNode = key_package.into();
-            leaf_node.set_leaf_index(self.own_leaf_index());
-            diff.add_leaf(leaf_node)
-                .map_err(|_| LibraryError::custom("Tree full: cannot add more members"))?;
-            Some(encryption_keypair)
-        } else {
-            None
-        };
-
-        let serialized_group_context = self
-            .group_context
-            .tls_serialize_detached()
-            .map_err(LibraryError::missing_bound_check)?;
         let path_processing_result =
             // If path is needed, compute path values
             if apply_proposals_values.path_required
                 || contains_own_updates
                 || params.force_self_update()
             {
-                let mut new_keypairs = if let Some(encryption_keypair) = external_commit_keypair_option {
-                    // If this is an external commit, we need to add the keypair
-                    // we generated earlier.
-                    vec![encryption_keypair]
-                } else {
-                    // If we're already in the tree, we rekey our existing leaf.
-                    let own_diff_leaf = diff
-                        .leaf_mut(self.own_leaf_index())
-                        .map_err(|_| LibraryError::custom("Unable to get own leaf from diff"))?;
-                    let encryption_keypair = own_diff_leaf.rekey(
-                        self.group_id(),
-                        self.ciphersuite,
-                        ProtocolVersion::default(), // XXX: openmls/openmls#1065
-                        backend,
-                        signer
-                    )?;
-                    vec![encryption_keypair]
-                };
-
-                // Derive and apply an update path based on the previously
-                // generated new leaf.
-                let (plain_path, mut new_parent_keypairs, commit_secret) = diff.apply_own_update_path(
+                // Process the path. This includes updating the provisional
+                // group context by updating the epoch and computing the new
+                // tree hash.
+                diff.process_path(
                     backend,
+                    self.own_leaf_index(),
+                    apply_proposals_values.exclusion_list(),
+                    params.commit_type(),
                     signer,
-                    ciphersuite,
-                    self.group_id().clone(),
-                    self.own_leaf_index()
-                )?;
-
-                new_keypairs.append(&mut new_parent_keypairs);
-
-                // Encrypt the path to the correct recipient nodes.
-                let encrypted_path = diff.encrypt_path(
-                    backend,
-                    self.ciphersuite(),
-                    &plain_path,
-                    &serialized_group_context,
-                    &apply_proposals_values.exclusion_list(),
-                    self.own_leaf_index()
-                );
-                let leaf_node = diff.leaf(self.own_leaf_index()).map_err(|_| LibraryError::custom("Couldn't find own leaf"))?.clone();
-                let encrypted_path = UpdatePath::new(leaf_node.into(),  encrypted_path);
-                PathProcessingResult {
-                    commit_secret: Some(commit_secret),
-                    encrypted_path: Some(encrypted_path),
-                    plain_path: Some(plain_path),
-                    new_keypairs,
-                }
+                    params.take_credential_with_key()
+                )?
             } else {
-                // If path is not needed, return empty path processing results
+                // If path is not needed, update the group context and return
+                // empty path processing results
+                diff.update_group_context(backend)?;
                 PathProcessingResult::default()
             };
 
@@ -212,21 +114,11 @@ impl CoreGroup {
             CommitType::Member => Sender::build_member(self.own_leaf_index()),
         };
 
-        // Keep a copy of the update path key package
-        let commit_update_leaf_node = path_processing_result
-            .encrypted_path
-            .as_ref()
-            .map(|update| update.leaf_node().clone());
-
         // Create commit message
         let commit = Commit {
             proposals: proposal_reference_list,
             path: path_processing_result.encrypted_path,
         };
-
-        // Create provisional group state
-        let mut provisional_epoch = self.group_context.epoch();
-        provisional_epoch.increment();
 
         // Build AuthenticatedContent
         let mut commit = AuthenticatedContent::commit(
@@ -237,29 +129,8 @@ impl CoreGroup {
             signer,
         )?;
 
-        // Calculate the confirmed transcript hash
-        let confirmed_transcript_hash = update_confirmed_transcript_hash(
-            ciphersuite,
-            backend,
-            // It is ok to a library error here, because we know the PublicMessage contains a
-            // Commit
-            &ConfirmedTranscriptHashInput::try_from(&commit)
-                .map_err(|_| LibraryError::custom("PublicMessage did not contain a commit"))?,
-            &self.interim_transcript_hash,
-        )?;
-
-        // Calculate tree hash
-        let tree_hash = diff.compute_tree_hashes(backend, ciphersuite)?;
-
-        // Calculate group context
-        let provisional_group_context = GroupContext::new(
-            ciphersuite,
-            self.group_context.group_id().clone(),
-            provisional_epoch,
-            tree_hash.clone(),
-            confirmed_transcript_hash.clone(),
-            self.group_context.extensions().clone(),
-        );
+        // Update the confirmed transcript hash using the commit we just created.
+        diff.update_confirmed_transcript_hash(backend, &commit)?;
 
         let joiner_secret = JoinerSecret::new(
             backend,
@@ -270,8 +141,7 @@ impl CoreGroup {
 
         // Create group secrets for later use, so we can afterwards consume the
         // `joiner_secret`.
-        let plaintext_secrets = PlaintextSecret::from_plain_update_path(
-            &diff,
+        let encrypted_secrets = diff.encrypt_group_secrets(
             &joiner_secret,
             apply_proposals_values.invitation_list,
             path_processing_result.plain_path.as_deref(),
@@ -287,7 +157,8 @@ impl CoreGroup {
         // Create key schedule
         let mut key_schedule = KeySchedule::init(ciphersuite, backend, joiner_secret, psk_secret)?;
 
-        let serialized_provisional_group_context = provisional_group_context
+        let serialized_provisional_group_context = diff
+            .group_context()
             .tls_serialize_detached()
             .map_err(LibraryError::missing_bound_check)?;
 
@@ -304,14 +175,16 @@ impl CoreGroup {
         // Calculate the confirmation tag
         let confirmation_tag = provisional_epoch_secrets
             .confirmation_key()
-            .tag(backend, &confirmed_transcript_hash)
+            .tag(backend, diff.group_context().confirmed_transcript_hash())
             .map_err(LibraryError::unexpected_crypto_error)?;
 
         // Set the confirmation tag
         commit.set_confirmation_tag(confirmation_tag.clone());
 
+        diff.update_interim_transcript_hash(ciphersuite, backend, confirmation_tag.clone())?;
+
         // only computes the group info if necessary
-        let group_info = if !plaintext_secrets.is_empty() || self.use_ratchet_tree_extension {
+        let group_info = if !encrypted_secrets.is_empty() || self.use_ratchet_tree_extension {
             // Create the ratchet tree extension if necessary
             let external_pub = provisional_epoch_secrets
                 .external_secret()
@@ -330,19 +203,10 @@ impl CoreGroup {
 
             // Create to-be-signed group info.
             let group_info_tbs = {
-                let group_context = GroupContext::new(
-                    ciphersuite,
-                    provisional_group_context.group_id().clone(),
-                    provisional_group_context.epoch(),
-                    tree_hash,
-                    confirmed_transcript_hash.clone(),
-                    self.group_context_extensions().clone(),
-                );
-
                 GroupInfoTBS::new(
-                    group_context,
+                    diff.group_context().clone(),
                     other_extensions,
-                    confirmation_tag.clone(),
+                    confirmation_tag,
                     self.own_leaf_index(),
                 )
             };
@@ -353,7 +217,7 @@ impl CoreGroup {
         };
 
         // Check if new members were added and, if so, create welcome messages
-        let welcome_option = if !plaintext_secrets.is_empty() {
+        let welcome_option = if !encrypted_secrets.is_empty() {
             // Encrypt GroupInfo object
             let (welcome_key, welcome_nonce) = welcome_secret
                 .derive_welcome_key_nonce(backend)
@@ -371,29 +235,17 @@ impl CoreGroup {
                     &welcome_nonce,
                 )
                 .map_err(LibraryError::unexpected_crypto_error)?;
-            // Encrypt group secrets
-            let secrets = plaintext_secrets
-                .into_iter()
-                .map(|pts| pts.encrypt(backend, ciphersuite))
-                .collect();
             // Create welcome message
             let welcome = Welcome::new(
                 ProtocolVersion::Mls10,
-                self.ciphersuite,
-                secrets,
+                self.ciphersuite(),
+                encrypted_secrets,
                 encrypted_group_info,
             );
             Some(welcome)
         } else {
             None
         };
-
-        let provisional_interim_transcript_hash = update_interim_transcript_hash(
-            ciphersuite,
-            backend,
-            &InterimTranscriptHashInput::from(&confirmation_tag),
-            &confirmed_transcript_hash,
-        )?;
 
         let (provisional_group_epoch_secrets, provisional_message_secrets) =
             provisional_epoch_secrets.split_secrets(
@@ -403,10 +255,8 @@ impl CoreGroup {
             );
 
         let staged_commit_state = MemberStagedCommitState::new(
-            provisional_group_context,
             provisional_group_epoch_secrets,
             provisional_message_secrets,
-            provisional_interim_transcript_hash,
             diff.into_staged_diff(backend, ciphersuite)?,
             path_processing_result.new_keypairs,
             // The committer is not allowed to include their own update
@@ -416,7 +266,6 @@ impl CoreGroup {
         let staged_commit = StagedCommit::new(
             proposal_queue,
             StagedCommitState::GroupMember(Box::new(staged_commit_state)),
-            commit_update_leaf_node,
         );
 
         Ok(CreateCommitResult {
@@ -425,41 +274,5 @@ impl CoreGroup {
             staged_commit,
             group_info: group_info.filter(|_| self.use_ratchet_tree_extension),
         })
-    }
-
-    /// Returns the leftmost free leaf index.
-    ///
-    /// For External Commits of the "resync" type, this returns the index
-    /// of the sender.
-    ///
-    /// The proposals must be validated before calling this function.
-    pub(crate) fn free_leaf_index<'a>(
-        treesync: &TreeSync,
-        mut inline_proposals: impl Iterator<Item = Option<&'a Proposal>>,
-    ) -> Result<LeafNodeIndex, LibraryError> {
-        // Leftmost free leaf in the tree
-        let free_leaf_index = treesync.free_leaf_index();
-        // Returns the first remove proposal (if there is one)
-        let remove_proposal_option = inline_proposals
-            .find(|proposal| match proposal {
-                Some(p) => p.is_type(ProposalType::Remove),
-                None => false,
-            })
-            .flatten();
-        let leaf_index = if let Some(remove_proposal) = remove_proposal_option {
-            if let Proposal::Remove(remove_proposal) = remove_proposal {
-                let removed_index = remove_proposal.removed();
-                if removed_index < free_leaf_index {
-                    removed_index
-                } else {
-                    free_leaf_index
-                }
-            } else {
-                return Err(LibraryError::custom("missing key package"));
-            }
-        } else {
-            free_leaf_index
-        };
-        Ok(leaf_index)
     }
 }

@@ -233,3 +233,30 @@ fn test_diff_mutable_access_after_manipulation() {
         .expect("error dereferencing direct path nodes");
     assert_eq!(direct_path, vec![&888, &888, &888, &888, &888, &888])
 }
+
+#[test]
+fn diff_leaf_access() {
+    // We want to test if leaf access works correctly in a diff. In particular,
+    // we want to ensure that if we access outside of the diff (but inside of
+    // the original tree, e.g. because the tree was shrunk) we get a blank (i.e. the default leaf) back.
+    let nodes = (0..7)
+        .map(|i| {
+            if i % 2 == 0 {
+                // Let's add 10 so we recognize the default leaf which should be 0.
+                TreeNode::Leaf(i + 10)
+            } else {
+                TreeNode::Parent(i + 10)
+            }
+        })
+        .collect();
+    let tree = MlsBinaryTree::new(nodes).expect("error creating tree");
+
+    let mut diff = tree.empty_diff();
+
+    // This should reduce the size of the tree by 1/2.
+    diff.shrink_tree().unwrap();
+
+    // The leaf at index 3 should be outside of the diff.
+    let leaf_outside_of_diff = diff.leaf(LeafNodeIndex::new(3));
+    assert_eq!(leaf_outside_of_diff, &0)
+}

@@ -96,7 +96,7 @@ impl CoreGroup {
         )?;
         let pk = OpenMlsSignaturePublicKey::from_signature_key(
             signature_key,
-            self.ciphersuite.signature_algorithm(),
+            self.ciphersuite().signature_algorithm(),
         );
 
         Ok(UnverifiedMessage::from_decrypted_message(
@@ -144,7 +144,7 @@ impl CoreGroup {
             UnverifiedContextMessage::from_unverified_message(unverified_message)?;
 
         let group_id = self.group_id().clone();
-        let epoch = self.group_context.epoch();
+        let epoch = self.context().epoch();
 
         match context_plaintext {
             UnverifiedContextMessage::Group(unverified_message) => {

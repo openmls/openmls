@@ -66,6 +66,12 @@ pub enum ApplyUpdatePathError {
     /// Unable to find sender in tree.
     #[error("Unable to find sender in tree.")]
     MissingSender,
+    /// Tree is already at maximum size.
+    #[error("Tree is already at maximum size.")]
+    TreeFull,
+    /// External Committer used the wrong index.
+    #[error("External Committer used the wrong index.")]
+    InconsistentSenderIndex,
 }
 
 // === Crate errors ===
@@ -84,7 +90,7 @@ pub(crate) enum TreeSyncError {
     LeafNotInTree,
     /// See [`TreeSyncSetPathError`] for more details.
     #[error(transparent)]
-    SetPathError(#[from] TreeSyncSetPathError),
+    SetPathError(#[from] DerivePathError),
     /// See [`MlsBinaryTreeError`] for more details.
     #[error(transparent)]
     BinaryTreeError(#[from] MlsBinaryTreeError),
@@ -111,9 +117,9 @@ pub(crate) enum TreeSyncError {
     UnsupportedProposal,
 }
 
-/// TreeSync set path error
+/// Derive path error
 #[derive(Error, Debug, PartialEq, Clone)]
-pub(crate) enum TreeSyncSetPathError {
+pub(crate) enum DerivePathError {
     /// See [`LibraryError`] for more details.
     #[error(transparent)]
     LibraryError(#[from] LibraryError),
@@ -135,7 +141,7 @@ pub(crate) enum TreeSyncAddLeaf {
 
 /// TreeSync from nodes error
 #[derive(Error, Debug, PartialEq, Clone)]
-pub(crate) enum TreeSyncFromNodesError {
+pub enum TreeSyncFromNodesError {
     /// See [`LibraryError`] for more details.
     #[error(transparent)]
     LibraryError(#[from] LibraryError),

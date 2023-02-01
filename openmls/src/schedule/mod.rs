@@ -126,7 +126,8 @@ use crate::{
     ciphersuite::{AeadKey, AeadNonce, HpkePrivateKey, Mac, Secret},
     error::LibraryError,
     framing::{mls_content::AuthenticatedContentTbm, MembershipTag},
-    messages::{group_info::GroupInfo, ConfirmationTag, PathSecret},
+    group::GroupContext,
+    messages::{ConfirmationTag, PathSecret},
     tree::secret_tree::SecretTree,
     versions::ProtocolVersion,
 };
@@ -290,13 +291,13 @@ impl InitSecret {
     }
 
     /// Create an `InitSecret` and the corresponding `kem_output` from a group info.
-    pub(crate) fn from_group_info(
+    pub(crate) fn from_group_context(
         backend: &impl OpenMlsCryptoProvider,
-        group_info: &GroupInfo,
+        group_context: &GroupContext,
         external_pub: &[u8],
     ) -> Result<(Self, Vec<u8>), KeyScheduleError> {
-        let ciphersuite = group_info.group_context().ciphersuite();
-        let version = group_info.group_context().protocol_version();
+        let ciphersuite = group_context.ciphersuite();
+        let version = group_context.protocol_version();
         let (kem_output, raw_init_secret) = backend.crypto().hpke_setup_sender_and_export(
             ciphersuite.hpke_config(),
             external_pub,

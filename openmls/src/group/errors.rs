@@ -16,6 +16,7 @@ use thiserror::Error;
 // === Public errors ===
 
 pub use super::mls_group::errors::*;
+use super::public_group::errors::CreationFromExternalError;
 
 /// Welcome error
 #[derive(Error, Debug, PartialEq, Clone)]
@@ -80,6 +81,10 @@ pub enum WelcomeError<KeyStoreError> {
     /// This error indicates the public tree is invalid. See [`PublicTreeError`] for more details.
     #[error(transparent)]
     PublicTreeError(#[from] PublicTreeError),
+    /// This error indicates the public tree is invalid. See
+    /// [`CreationFromExternalError`] for more details.
+    #[error(transparent)]
+    PublicGroupError(#[from] CreationFromExternalError),
     /// This error indicates the leaf node is invalid. See [`LeafNodeValidationError`] for more details.
     #[error(transparent)]
     LeafNodeValidation(#[from] LeafNodeValidationError),
@@ -97,12 +102,6 @@ pub enum ExternalCommitError {
     /// No external_pub extension available to join group by external commit.
     #[error("No external_pub extension available to join group by external commit.")]
     MissingExternalPub,
-    /// The computed tree hash does not match the one in the GroupInfo.
-    #[error("The computed tree hash does not match the one in the GroupInfo.")]
-    TreeHashMismatch,
-    /// We don't support the version of the group we are trying to join.
-    #[error("We don't support the version of the group we are trying to join.")]
-    UnsupportedMlsVersion,
     /// We don't support the ciphersuite of the group we are trying to join.
     #[error("We don't support the ciphersuite of the group we are trying to join.")]
     UnsupportedCiphersuite,
@@ -115,9 +114,10 @@ pub enum ExternalCommitError {
     /// Error creating external commit.
     #[error("Error creating external commit.")]
     CommitError,
-    /// This error indicates the public tree is invalid. See [`PublicTreeError`] for more details.
+    /// This error indicates the public tree is invalid. See
+    /// [`CreationFromExternalError`] for more details.
     #[error(transparent)]
-    PublicTreeError(#[from] PublicTreeError),
+    PublicGroupError(#[from] CreationFromExternalError),
     /// Credential is missing from external commit.
     #[error("Credential is missing from external commit.")]
     MissingCredential,
@@ -444,9 +444,6 @@ pub(crate) enum ApplyProposalsError {
     /// See [`LibraryError`] for more details.
     #[error(transparent)]
     LibraryError(#[from] LibraryError),
-    /// Own LeafNode was not found in the key store.
-    #[error("Own LeafNode was not found in the key store.")]
-    MissingLeafNode,
 }
 
 // Core group build error

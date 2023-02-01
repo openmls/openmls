@@ -3,11 +3,11 @@ use openmls_traits::{crypto::OpenMlsCrypto, key_store::OpenMlsKeyStore};
 use tls_codec::Deserialize;
 
 use crate::{
-    ciphersuite::{hash_ref::HashReference, signable::Verifiable, OpenMlsSignaturePublicKey},
+    ciphersuite::hash_ref::HashReference,
     group::{core_group::*, errors::WelcomeError},
     schedule::errors::PskError,
     treesync::{
-        errors::{PublicTreeError, TreeSyncFromNodesError, TreeSyncSetPathError},
+        errors::{DerivePathError, PublicTreeError},
         node::{encryption_keys::EncryptionKeyPair, Node},
     },
 };
@@ -134,34 +134,35 @@ impl CoreGroup {
                 },
             };
 
-        let tree = TreeSync::from_nodes(backend, ciphersuite, &nodes).map_err(|e| match e {
-            TreeSyncFromNodesError::LibraryError(e) => e.into(),
-            TreeSyncFromNodesError::PublicTreeError(e) => WelcomeError::PublicTreeError(e),
-        })?;
+        let welcome_sender_index = verifiable_group_info.signer();
+
+        // Since there is currently only the external pub extension, there is no
+        // group info extension of interest here.
+        let (public_group, _group_info_extensions) =
+            PublicGroup::from_external(backend, &nodes, verifiable_group_info)?;
 
         // Find our own leaf in the tree.
-        let own_leaf_index = tree
+        let own_leaf_index = public_group
+            .treesync()
             .find_leaf(key_package_bundle.key_package().leaf_node().signature_key())
             .ok_or(WelcomeError::PublicTreeError(
                 PublicTreeError::MalformedTree,
             ))?;
 
-        let diff = tree.empty_diff();
-
         // If we got a path secret, derive the path (which also checks if the
         // public keys match) and store the derived keys in the key store.
         let group_keypairs = if let Some(path_secret) = path_secret_option {
-            let (path_keypairs, _commit_secret) = diff
+            let (path_keypairs, _commit_secret) = public_group
                 .derive_path_secrets(
                     backend,
                     ciphersuite,
                     path_secret,
-                    verifiable_group_info.signer(),
+                    welcome_sender_index,
                     own_leaf_index,
                 )
                 .map_err(|e| match e {
-                    TreeSyncSetPathError::LibraryError(e) => e.into(),
-                    TreeSyncSetPathError::PublicKeyMismatch => {
+                    DerivePathError::LibraryError(e) => e.into(),
+                    DerivePathError::PublicKeyMismatch => {
                         WelcomeError::PublicTreeError(PublicTreeError::PublicKeyMismatch)
                     }
                 })?;
@@ -173,35 +174,8 @@ impl CoreGroup {
             vec![leaf_keypair]
         };
 
-        let group_info: GroupInfo = {
-            let signature_key = tree
-                .leaf(verifiable_group_info.signer())
-                .ok_or(WelcomeError::UnknownSender)?
-                .signature_key();
-            let group_info_signer_pk = OpenMlsSignaturePublicKey::from_signature_key(
-                signature_key.clone(),
-                ciphersuite.signature_algorithm(),
-            );
-
-            verifiable_group_info
-                .verify(backend.crypto(), &group_info_signer_pk)
-                .map_err(|_| WelcomeError::InvalidGroupInfoSignature)?
-        };
-
-        // Compute state
-        let group_context = GroupContext::new(
-            ciphersuite,
-            group_info.group_context().group_id().clone(),
-            group_info.group_context().epoch(),
-            tree.tree_hash().to_vec(),
-            group_info
-                .group_context()
-                .confirmed_transcript_hash()
-                .to_vec(),
-            group_info.group_context().extensions().clone(),
-        );
-
-        let serialized_group_context = group_context
+        let serialized_group_context = public_group
+            .group_context()
             .tls_serialize_detached()
             .map_err(LibraryError::missing_bound_check)?;
         // TODO #751: Implement PSK
@@ -214,23 +188,20 @@ impl CoreGroup {
 
         let (group_epoch_secrets, message_secrets) = epoch_secrets.split_secrets(
             serialized_group_context,
-            tree.leaf_count(),
+            public_group.treesync().leaf_count(),
             own_leaf_index,
         );
 
         let confirmation_tag = message_secrets
             .confirmation_key()
-            .tag(backend, group_context.confirmed_transcript_hash())
+            .tag(
+                backend,
+                public_group.group_context().confirmed_transcript_hash(),
+            )
             .map_err(LibraryError::unexpected_crypto_error)?;
-        let interim_transcript_hash = update_interim_transcript_hash(
-            ciphersuite,
-            backend,
-            &InterimTranscriptHashInput::from(&confirmation_tag),
-            group_context.confirmed_transcript_hash(),
-        )?;
 
         // Verify confirmation tag
-        if &confirmation_tag != group_info.confirmation_tag() {
+        if &confirmation_tag != public_group.confirmation_tag() {
             log::error!("Confirmation tag mismatch");
             log_crypto!(trace, "  Got:      {:x?}", confirmation_tag);
             log_crypto!(trace, "  Expected: {:x?}", group_info.confirmation_tag());
@@ -240,15 +211,11 @@ impl CoreGroup {
             let message_secrets_store = MessageSecretsStore::new_with_secret(0, message_secrets);
 
             let group = CoreGroup {
-                ciphersuite,
-                group_context,
+                public_group,
                 group_epoch_secrets,
-                tree,
-                interim_transcript_hash,
-                use_ratchet_tree_extension: enable_ratchet_tree_extension,
-                mls_version,
-                message_secrets_store,
                 own_leaf_index,
+                use_ratchet_tree_extension: enable_ratchet_tree_extension,
+                message_secrets_store,
             };
             group
                 .store_epoch_keypairs(backend, group_keypairs.as_slice())

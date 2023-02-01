@@ -410,6 +410,7 @@ fn test_valsem243(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
         .unwrap();
     let tree_option = alice_group.export_ratchet_tree();
 
+    println!("Bob joining");
     let (_bob_group, message) = MlsGroup::join_by_external_commit(
         backend,
         &bob_credential.signer,
@@ -484,7 +485,7 @@ fn test_valsem243(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
     );
 
     // Alice, as the creator of the group, should also be able to rejoin the group
-    let alice_external_commit = MlsGroup::join_by_external_commit(
+    let alice_new_group = MlsGroup::join_by_external_commit(
         backend,
         &alice_credential.signer,
         Some(&tree_option),
@@ -493,7 +494,7 @@ fn test_valsem243(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
         &[],
         alice_credential.credential_with_key,
     );
-    assert!(alice_external_commit.is_ok());
+    assert!(alice_new_group.is_ok());
 
     // Positive case
     alice_group

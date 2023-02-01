@@ -190,10 +190,10 @@ impl MlsClient for MlsClientImpl {
                 ("Key Schedule", kat_bytes)
             }
             Ok(TestVectorType::Transcript) => {
-                let ciphersuite = to_ciphersuite(obj.cipher_suite)?;
-                let kat_transcript = kat_transcripts::generate_test_vector(*ciphersuite);
-                let kat_bytes = into_bytes(kat_transcript);
-                ("Transcript", kat_bytes)
+                return Err(tonic::Status::new(
+                    tonic::Code::InvalidArgument,
+                    "OpenMLS currently can't generate transcript test vectors. See GitHub issue #1051 for more information.",
+                ));
             }
             Ok(TestVectorType::Treekem) => {
                 return Err(tonic::Status::new(
@@ -302,29 +302,30 @@ impl MlsClient for MlsClientImpl {
                 }
             }
             Ok(TestVectorType::Transcript) => {
-                let kat_transcript: TranscriptTestVector =
-                    match serde_json::from_slice(&obj.test_vector) {
-                        Ok(test_vector) => test_vector,
-                        Err(_) => {
-                            println!("{}", String::from_utf8_lossy(&obj.test_vector));
-                            return Err(tonic::Status::new(
-                                tonic::Code::InvalidArgument,
-                                "Couldn't decode transcript test vector.",
-                            ));
-                        }
-                    };
-                write(
-                    &format!("mlspp_transcript_{}.json", kat_transcript.cipher_suite),
-                    &obj.test_vector,
-                );
-                match kat_transcripts::run_test_vector(kat_transcript, backend) {
-                    Ok(result) => ("Transcript", result),
-                    Err(e) => {
-                        let message = "Error while running transcript test vector: ".to_string()
-                            + &e.to_string();
-                        return Err(tonic::Status::new(tonic::Code::Aborted, message));
-                    }
-                }
+                //let kat_transcript: TranscriptTestVector =
+                //    match serde_json::from_slice(&obj.test_vector) {
+                //        Ok(test_vector) => test_vector,
+                //        Err(_) => {
+                //            println!("{}", String::from_utf8_lossy(&obj.test_vector));
+                //            return Err(tonic::Status::new(
+                //                tonic::Code::InvalidArgument,
+                //                "Couldn't decode transcript test vector.",
+                //            ));
+                //        }
+                //    };
+                //write(
+                //    &format!("mlspp_transcript_{}.json", kat_transcript.cipher_suite),
+                //    &obj.test_vector,
+                //);
+                //match kat_transcripts::run_test_vector(kat_transcript, backend) {
+                //    Ok(result) => ("Transcript", result),
+                //    Err(e) => {
+                //        let message = "Error while running transcript test vector: ".to_string()
+                //            + &e.to_string();
+                //        return Err(tonic::Status::new(tonic::Code::Aborted, message));
+                //    }
+                //}
+                todo!("#1051: Transcript test vectors are currently disabled. See https://github.com/openmls/openmls/issues/1051");
             }
             Ok(TestVectorType::Treekem) => {
                 todo!("#624: See TreeKEM is currently not working. See https://github.com/openmls/openmls/issues/624");

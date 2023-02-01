@@ -616,10 +616,7 @@ impl MlsGroupTestSetup {
         let operation_type = (OsRng.next_u32() as usize) % 3;
         match operation_type {
             0 => {
-                println!(
-                    "Performing a self-update with action type: {:?}",
-                    action_type
-                );
+                println!("Performing a self-update with action type: {action_type:?}");
                 self.self_update(action_type, group, &member_id.1, None)?;
             }
             1 => {
