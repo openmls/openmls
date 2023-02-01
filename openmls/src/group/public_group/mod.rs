@@ -1,6 +1,21 @@
+//! # Public Groups
+//!
+//! There are a few use-cases that require the tracking of an MLS group based on
+//! [`PublicMessage`]s, e.g. for group membership tracking by a delivery
+//! service.
+//!
+//! This module and its submodules contain the [`PublicGroup`] struct, as well
+//! as associated helper structs the goal of which is to enable this
+//! functionality.
+//!
+//! To avoid duplication of code and functionality, [`CoreGroup`] internally
+//! relies on a [`PublicGroup`] as well.
 use openmls_traits::{crypto::OpenMlsCrypto, types::Ciphersuite, OpenMlsCryptoProvider};
 use serde::{Deserialize, Serialize};
 use tls_codec::Serialize as TlsSerialize;
+
+#[cfg(doc)]
+use crate::{framing::PublicMessage, group::CoreGroup};
 
 use crate::{
     binary_tree::LeafNodeIndex,
