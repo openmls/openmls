@@ -3,13 +3,27 @@
 use super::*;
 
 /// Combined message secrets that need to be stored for later decryption/verification
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Serialize, Deserialize)]
+#[cfg_attr(feature = "crypto-debug", derive(Debug))]
 pub(crate) struct MessageSecrets {
     sender_data_secret: SenderDataSecret,
     membership_key: MembershipKey,
     confirmation_key: ConfirmationKey,
     serialized_context: Vec<u8>,
     secret_tree: SecretTree,
+}
+
+#[cfg(not(feature = "crypto-debug"))]
+impl core::fmt::Debug for MessageSecrets {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("MessageSecrets")
+            .field("sender_data_secret", &"***")
+            .field("membership_key", &"***")
+            .field("confirmation_key", &"***")
+            .field("serialized_context", &"***")
+            .field("secret_tree", &"***")
+            .finish()
+    }
 }
 
 // Public functions
@@ -59,9 +73,8 @@ impl MessageSecrets {
 
 // Test functions
 impl MessageSecrets {
-    // XXX[KAT]: #1051 only used in KATs. Remove if not needed.
-    #[cfg(test)]
-    pub(crate) fn _sender_data_secret_mut(&mut self) -> &mut SenderDataSecret {
+    #[cfg(any(feature = "test-utils", test))]
+    pub(crate) fn sender_data_secret_mut(&mut self) -> &mut SenderDataSecret {
         &mut self.sender_data_secret
     }
 
@@ -89,7 +102,7 @@ impl MessageSecrets {
         }
     }
 
-    #[cfg(test)]
+    #[cfg(any(feature = "test-utils", test))]
     pub(crate) fn replace_secret_tree(&mut self, secret_tree: SecretTree) -> SecretTree {
         std::mem::replace(&mut self.secret_tree, secret_tree)
     }
