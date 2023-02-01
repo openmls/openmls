@@ -20,9 +20,7 @@ use crate::{
 use openmls_traits::{types::Ciphersuite, OpenMlsCryptoProvider};
 use serde::{Deserialize, Serialize};
 use std::convert::TryFrom;
-use tls_codec::{
-    Serialize as TlsSerializeTrait, TlsDeserialize, TlsSerialize, TlsSize, TlsVecU32, VLBytes,
-};
+use tls_codec::{Serialize as TlsSerializeTrait, TlsDeserialize, TlsSerialize, TlsSize, VLBytes};
 
 // Public types
 
@@ -355,7 +353,7 @@ impl From<Vec<u8>> for ExternalInitProposal {
     Debug, PartialEq, Clone, Serialize, Deserialize, TlsDeserialize, TlsSerialize, TlsSize,
 )]
 pub struct AppAckProposal {
-    received_ranges: TlsVecU32<MessageRange>,
+    received_ranges: Vec<MessageRange>,
 }
 
 /// GroupContextExtensions Proposal.
