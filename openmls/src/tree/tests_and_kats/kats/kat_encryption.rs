@@ -617,13 +617,8 @@ pub fn run_test_vector(
                     ciphersuite,
                 );
 
-            // Swap secret tree
             // We have to take the fresh_secret_tree here because the secret_for_decryption
             // above ratcheted the tree forward.
-            let _ = group
-                .message_secrets_test_mut()
-                .replace_secret_tree(fresh_secret_tree.clone());
-
             let mut message_secrets = MessageSecrets::new(
                 sender_data_secret.clone(),
                 MembershipKey::random(ciphersuite, backend), // we don't care about this value
@@ -641,7 +636,6 @@ pub fn run_test_vector(
                     ciphersuite,
                     backend,
                     &mut message_secrets,
-                    // group.message_secrets_test_mut(),
                     leaf_index.into(),
                     &SenderRatchetConfiguration::default(),
                     sender_data,
