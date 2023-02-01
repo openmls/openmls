@@ -43,7 +43,6 @@ mod tests;
 /// A simple type for HPKE public keys using [`VLBytes`] for (de)serializing.
 pub type HpkePublicKey = VLBytes;
 
-// TODO: derive zeroize
 /// A simple type for HPKE private keys using [`VLBytes`] for (de)serializing.
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 #[cfg_attr(test, derive(PartialEq))]
