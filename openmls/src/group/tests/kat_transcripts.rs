@@ -104,6 +104,8 @@ pub fn generate_test_vector(ciphersuite: Ciphersuite) -> TranscriptTestVector {
     )
     .expect("An unexpected error occurred.");
 
+    // TODO #1051: Confirmed transcript hashes need to be updated via the public
+    // group
     //let confirmed_transcript_hash_after = update_confirmed_transcript_hash(
     //    ciphersuite,
     //    &crypto,
@@ -116,6 +118,8 @@ pub fn generate_test_vector(ciphersuite: Ciphersuite) -> TranscriptTestVector {
         .expect("Could not compute confirmation tag.");
     commit.set_confirmation_tag(confirmation_tag.clone());
 
+    // TODO #1051: Interim transcript hashes need to be updated via the public
+    // group
     //let interim_transcript_hash_after = update_interim_transcript_hash(
     //    ciphersuite,
     //    &crypto,
@@ -283,6 +287,8 @@ pub fn run_test_vector(
     }
 
     // Compute new transcript hashes.
+    // TODO #1051: Confirmed transcript hashes need to be updated via the public
+    // group
     //let my_confirmed_transcript_hash_after = update_confirmed_transcript_hash(
     //    ciphersuite,
     //    backend,
@@ -302,6 +308,8 @@ pub fn run_test_vector(
 
     let interim_transcript_hash_after = hex_to_bytes(&test_vector.interim_transcript_hash_after);
 
+    // TODO #1051: Interim transcript hashes need to be updated via the public
+    // group
     //let my_interim_transcript_hash_after = update_interim_transcript_hash(
     //    ciphersuite,
     //    backend,

@@ -424,24 +424,6 @@ impl MlsGroup {
     pub(crate) fn clear_pending_proposals(&mut self) {
         self.proposal_store.empty()
     }
-
-    // Get the staged diff
-    //#[cfg(test)]
-    //pub(crate) fn staged_diff(&self) -> Option<&StagedDiff> {
-    //    match self.group_state {
-    //        MlsGroupState::PendingCommit(pending_commit_state) => match pending_commit_state {
-    //            PendingCommitState::Member(staged_commit)
-    //            | PendingCommitState::External(staged_commit) => {
-    //                match staged_commit.state() {
-    //                    staged_commit::StagedCommitState::SelfRemoved(_) => None,
-    //                    staged_commit::StagedCommitState::GroupMember(state) => state.,
-    //                }
-    //            }
-    //        },
-    //        MlsGroupState::Operational => None,
-    //        MlsGroupState::Inactive => None,
-    //    }
-    //}
 }
 
 /// `Enum` that indicates whether the inner group state has been modified since the last time it was persisted.
