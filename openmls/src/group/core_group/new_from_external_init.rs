@@ -88,7 +88,7 @@ impl CoreGroup {
             index,
             signature_key,
             ..
-        } in public_group.treesync().full_leave_members()
+        } in public_group.members()
         {
             if signature_key == params_credential_with_key.signature_key.as_slice() {
                 let remove_proposal = Proposal::Remove(RemoveProposal { removed: index });

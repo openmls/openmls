@@ -23,7 +23,7 @@ use self::{
     errors::CreationFromExternalError,
 };
 
-use super::{GroupContext, GroupEpoch, GroupId};
+use super::{GroupContext, GroupEpoch, GroupId, Member};
 
 pub(crate) mod diff;
 pub mod errors;
@@ -218,6 +218,11 @@ impl PublicGroup {
             sender_index,
             leaf_index,
         )
+    }
+
+    /// Get an iterator over all [`Member`]s of this [`PublicGroup`].
+    pub(crate) fn members(&self) -> impl Iterator<Item = Member> + '_ {
+        self.treesync().full_leave_members()
     }
 }
 
