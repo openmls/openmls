@@ -1,6 +1,6 @@
 use std::io::{Read, Write};
 
-use tls_codec::{Deserialize, Serialize, Size, TlsByteVecU32, TlsSliceU32};
+use tls_codec::{Deserialize, Serialize, Size, VLBytes};
 
 use crate::extensions::{
     ApplicationIdExtension, Extension, ExtensionType, ExternalPubExtension,
@@ -49,9 +49,7 @@ impl Serialize for Extension {
         debug_assert_eq!(extension_data_written, extension_data.len());
 
         // Write the serialized extension out.
-        TlsSliceU32(&extension_data)
-            .tls_serialize(writer)
-            .map(|l| l + written)
+        extension_data.tls_serialize(writer).map(|l| l + written)
     }
 }
 
@@ -65,7 +63,7 @@ impl Deserialize for Extension {
     fn tls_deserialize<R: Read>(bytes: &mut R) -> Result<Self, tls_codec::Error> {
         // Read the extension type and extension data.
         let extension_type = ExtensionType::tls_deserialize(bytes)?;
-        let extension_data = TlsByteVecU32::tls_deserialize(bytes)?;
+        let extension_data = VLBytes::tls_deserialize(bytes)?;
 
         // Now deserialize the extension itself from the extension data.
         let mut extension_data = extension_data.as_slice();

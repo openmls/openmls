@@ -1,4 +1,4 @@
-use tls_codec::{TlsByteVecU16, TlsDeserialize, TlsSerialize, TlsSize};
+use tls_codec::{TlsDeserialize, TlsSerialize, TlsSize, VLBytes};
 
 use super::{Deserialize, Serialize};
 
@@ -10,19 +10,10 @@ use super::{Deserialize, Serialize};
 ///
 /// A byte vector of length at most 2^16-1.
 #[derive(
-    PartialEq,
-    Eq,
-    Clone,
-    Debug,
-    Default,
-    Serialize,
-    Deserialize,
-    TlsSerialize,
-    TlsDeserialize,
-    TlsSize,
+    PartialEq, Eq, Clone, Debug, Serialize, Deserialize, TlsSerialize, TlsDeserialize, TlsSize,
 )]
 pub struct ApplicationIdExtension {
-    key_id: TlsByteVecU16,
+    key_id: VLBytes,
 }
 
 impl ApplicationIdExtension {

@@ -166,7 +166,7 @@ impl PrivateMessage {
             group_id: header.group_id.clone(),
             epoch: header.epoch,
             content_type: public_message.content().content_type(),
-            authenticated_data: TlsByteSliceU32(public_message.authenticated_data()),
+            authenticated_data: VLByteSlice(public_message.authenticated_data()),
         };
         let private_message_content_aad_bytes = private_message_content_aad
             .tls_serialize_detached()
@@ -298,7 +298,7 @@ impl PrivateMessage {
             group_id: self.group_id.clone(),
             epoch: self.epoch,
             content_type: self.content_type,
-            authenticated_data: TlsByteSliceU32(self.authenticated_data.as_slice()),
+            authenticated_data: VLByteSlice(self.authenticated_data.as_slice()),
         }
         .tls_serialize_detached()
         .map_err(LibraryError::missing_bound_check)?;
@@ -549,5 +549,5 @@ pub(crate) struct PrivateContentAad<'a> {
     pub(crate) group_id: GroupId,
     pub(crate) epoch: GroupEpoch,
     pub(crate) content_type: ContentType,
-    pub(crate) authenticated_data: TlsByteSliceU32<'a>,
+    pub(crate) authenticated_data: VLByteSlice<'a>,
 }
