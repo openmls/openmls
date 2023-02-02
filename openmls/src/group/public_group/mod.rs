@@ -42,6 +42,7 @@ use super::{GroupContext, GroupEpoch, GroupId, Member};
 
 pub(crate) mod diff;
 pub mod errors;
+mod validation;
 
 /// This struct holds all public values of an MLS group.
 #[derive(Debug, Serialize, Deserialize)]
@@ -257,10 +258,6 @@ impl PublicGroup {
 
     pub fn group_context(&self) -> &GroupContext {
         &self.group_context
-    }
-
-    pub fn extensions(&self) -> &Extensions {
-        self.group_context.extensions()
     }
 
     pub fn required_capabilities(&self) -> Option<&RequiredCapabilitiesExtension> {

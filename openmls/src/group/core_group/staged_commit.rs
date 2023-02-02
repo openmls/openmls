@@ -128,17 +128,19 @@ impl CoreGroup {
         // ValSem104
         // ValSem105
         // ValSem106
-        self.validate_add_proposals(&proposal_queue)?;
+        self.public_group.validate_add_proposals(&proposal_queue)?;
         // ValSem107
         // ValSem108
-        self.validate_remove_proposals(&proposal_queue)?;
+        self.public_group
+            .validate_remove_proposals(&proposal_queue)?;
 
         let public_key_set = match sender {
             Sender::Member(leaf_index) => {
                 // ValSem110
                 // ValSem111
                 // ValSem112
-                self.validate_update_proposals(&proposal_queue, *leaf_index)?
+                self.public_group
+                    .validate_update_proposals(&proposal_queue, *leaf_index)?
             }
             Sender::External(_) => {
                 // A commit cannot be issued by a pre-configured sender.
@@ -154,7 +156,8 @@ impl CoreGroup {
                 // ValSem242: External Commit must only cover inline proposal in allowlist (ExternalInit, Remove, PreSharedKey)
                 // ValSem243: External Commit, inline Remove Proposal: The identity and the endpoint_id of the removed
                 //            leaf are identical to the ones in the path KeyPackage.
-                self.validate_external_commit(&proposal_queue, commit_update_leaf_node.as_ref())?;
+                self.public_group
+                    .validate_external_commit(&proposal_queue, commit_update_leaf_node.as_ref())?;
                 // Since there are no update proposals in an External Commit we have no public keys to return
                 HashSet::new()
             }
@@ -237,7 +240,8 @@ impl CoreGroup {
                 };
 
                 // Make sure that the new path key package is valid
-                self.validate_path_key_package(path.leaf_node(), public_key_set)?;
+                self.public_group
+                    .validate_path_key_package(path.leaf_node(), public_key_set)?;
 
                 // Update the public group
                 diff.apply_received_update_path(backend, ciphersuite, sender_index, &path)?;

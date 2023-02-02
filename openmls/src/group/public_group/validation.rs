@@ -5,19 +5,22 @@ use std::collections::HashSet;
 
 use crate::{
     binary_tree::array_representation::LeafNodeIndex,
-    framing::Sender,
+    framing::{
+        mls_auth_content::VerifiableAuthenticatedContent, mls_content::ContentType,
+        ProtocolMessage, Sender, WireFormat,
+    },
     group::errors::ExternalCommitValidationError,
-    group::errors::ValidationError,
+    group::{
+        errors::{ProposalValidationError, ValidationError},
+        Member, ProposalQueue,
+    },
     messages::proposals::{Proposal, ProposalOrRefType, ProposalType},
     treesync::node::leaf_node::LeafNode,
 };
 
-use super::{
-    mls_content::ContentType, proposals::ProposalQueue, CoreGroup, Member, ProposalValidationError,
-    ProtocolMessage, VerifiableAuthenticatedContent, WireFormat,
-};
+use super::PublicGroup;
 
-impl CoreGroup {
+impl PublicGroup {
     // === Messages ===
 
     /// Checks the following semantic validation:
@@ -37,13 +40,13 @@ impl CoreGroup {
         match message.content_type() {
             // For application messages we allow messages for older epochs as well
             ContentType::Application => {
-                if message.epoch() > self.context().epoch() {
+                if message.epoch() > self.group_context().epoch() {
                     return Err(ValidationError::WrongEpoch);
                 }
             }
             // For all other messages we only only accept the current epoch
             _ => {
-                if message.epoch() != self.context().epoch() {
+                if message.epoch() != self.group_context().epoch() {
                     return Err(ValidationError::WrongEpoch);
                 }
             }
@@ -63,13 +66,12 @@ impl CoreGroup {
         // ValSem004
         let sender = verifiable_content.sender();
         if let Sender::Member(leaf_index) = sender {
-            // If the sender is a member, it has to be in the tree.
-            // TODO: #133 Lookup of a leaf index in the old tree isn't very
-            //       useful. Add a proper validation step here.
+            // If the sender is a member, it has to be in the tree, except if
+            // it's an application message. Then it might be okay if it's in an
+            // old secret tree instance, but we'll leave that to the CoreGroup
+            // to validate.
             if !self.treesync().is_leaf_in_tree(*leaf_index)
-                && !self
-                    .message_secrets_store
-                    .epoch_has_leaf(verifiable_content.epoch(), *leaf_index)
+                && !matches!(verifiable_content.content_type(), ContentType::Application)
             {
                 return Err(ValidationError::UnknownMember);
             }
@@ -187,7 +189,7 @@ impl CoreGroup {
             // If there is a required capabilities extension, check if that one
             // is supported.
             if let Some(required_capabilities) =
-                self.group_context_extensions().required_capabilities()
+                self.group_context().extensions().required_capabilities()
             {
                 // Check if all required capabilities are supported.
                 if !capabilities.supports_required_capabilities(required_capabilities) {
@@ -297,7 +299,7 @@ impl CoreGroup {
     /// Validate the new key package in a path
     /// TODO: #730 - There's nothing testing this function.
     /// - ValSem110
-    pub(super) fn validate_path_key_package(
+    pub(crate) fn validate_path_key_package(
         &self,
         leaf_node: &LeafNode,
         public_key_set: HashSet<Vec<u8>>,
