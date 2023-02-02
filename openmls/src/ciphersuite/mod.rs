@@ -44,7 +44,9 @@ mod tests;
 pub type HpkePublicKey = VLBytes;
 
 /// A simple type for HPKE private keys using [`VLBytes`] for (de)serializing.
-#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+#[derive(
+    Debug, Clone, serde::Serialize, serde::Deserialize, TlsSerialize, TlsDeserialize, TlsSize,
+)]
 #[cfg_attr(test, derive(PartialEq))]
 #[serde(transparent)]
 pub struct HpkePrivateKey(VLBytes);
