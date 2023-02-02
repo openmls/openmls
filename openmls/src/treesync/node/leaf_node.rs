@@ -1,5 +1,6 @@
 //! This module contains the [`LeafNode`] struct and its implementation.
 
+use std::io::{Read, Write};
 use std::marker::PhantomData;
 
 use openmls_traits::{
@@ -7,7 +8,7 @@ use openmls_traits::{
 };
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
-use tls_codec::{Serialize as TlsSerializeTrait, TlsDeserialize, TlsSerialize, TlsSize, VLBytes};
+use tls_codec::{Error, Serialize as TlsSerializeTrait, TlsDeserialize, TlsSerialize, TlsSize, VLBytes};
 
 use crate::{
     binary_tree::array_representation::LeafNodeIndex,
@@ -38,6 +39,7 @@ pub(crate) mod validation;
 pub use capabilities::*;
 pub use lifetime::Lifetime;
 pub(crate) use validation::*;
+use crate::prelude::{TlsDeserializeTrait, TlsSizeTrait};
 
 /// This struct implements the MLS leaf node.
 ///
@@ -67,12 +69,38 @@ pub(crate) use validation::*;
 /// } LeafNode;
 /// ```
 #[derive(
-    Debug, Clone, PartialEq, Eq, Serialize, Deserialize, TlsSize, TlsSerialize, TlsDeserialize,
+    Debug, Clone, PartialEq, Eq, Serialize, Deserialize,
 )]
 pub struct LeafNode<State> {
     payload: LeafNodePayload,
     signature: Signature,
     phantom: PhantomData<State>,
+}
+
+impl<T> TlsSizeTrait for LeafNode<T> {
+    fn tls_serialized_len(&self) -> usize {
+        self.payload.tls_serialize_len()? + self.signature.tls_serialize_len()?
+    }
+}
+
+impl<T> TlsSerializeTrait for LeafNode<T> where T: TlsSerializeTrait {
+    fn tls_serialize<W: Write>(&self, writer: &mut W) -> Result<usize, Error> {
+        Ok(
+            self.payload.tls_serialize(writer)? +
+        self.signature.tls_serialize(writer)?
+        )
+    }
+}
+
+impl<T> TlsDeserializeTrait for LeafNode<T> where T: TlsDeserializeTrait {
+    fn tls_deserialize<R: Read>(bytes: &mut R) -> Result<Self, Error> where Self: Sized {
+        let payload = TlsDeserializeTrait::tls_deserialize(bytes)?;
+        let signature = TlsDeserializeTrait::tls_deserialize(bytes)?;
+
+        Ok(LeafNode {
+            payload, signature, phantom: Default::default()
+        })
+    }
 }
 
 impl<T> LeafNode<T> {
@@ -199,21 +227,57 @@ impl LeafNode<ValidKeyPackage> {
             encryption_key,
         ))
     }
+
+    /// Generate a fresh leaf node with a fresh encryption key but otherwise
+    /// the same properties as the current leaf node.
+    ///
+    /// The newly generated encryption key pair is stored in the key store.
+    ///
+    /// This function can be used when generating an update. In most other cases
+    /// a leaf node should be generated as part of a new [`KeyPackage`].
+    // TODO: Leaf node validation.
+    #[allow(unused)]
+    pub(crate) fn update<KeyStore: OpenMlsKeyStore>(
+        &self,
+        config: CryptoConfig,
+        backend: &impl OpenMlsCryptoProvider<KeyStoreProvider = KeyStore>,
+        signer: &impl Signer,
+    ) -> Result<LeafNode<ValidUpdate>, LeafNodeGenerationError<KeyStore::Error>> {
+        LeafNode::<ValidUpdate>::generate(
+            config,
+            CredentialWithKey {
+                credential: self.payload.credential.clone(),
+                signature_key: self.payload.signature_key.clone(),
+            },
+            self.payload.capabilities.clone(),
+            self.payload.extensions.clone(),
+            backend,
+            signer,
+        )
+    }
 }
 
-#[cfg(test)]
 impl LeafNode<ValidUpdate> {
-    #[allow(unused)]
-    // TODO: Used in kat_messages.rs.
-    pub(crate) fn update(
+    /// Generate a fresh leaf node.
+    ///
+    /// This includes generating a new encryption key pair that is stored in the
+    /// key store.
+    ///
+    /// This function can be used when generating an update. In most other cases
+    /// a leaf node should be generated as part of a new [`KeyPackage`].
+    // TODO: Leaf node validation.
+    pub fn generate<KeyStore: OpenMlsKeyStore>(
         config: CryptoConfig,
         credential_with_key: CredentialWithKey,
         capabilities: Capabilities,
         extensions: Extensions,
-        backend: &impl OpenMlsCryptoProvider,
+        backend: &impl OpenMlsCryptoProvider<KeyStoreProvider = KeyStore>,
         signer: &impl Signer,
-    ) -> Result<(Self, EncryptionKeyPair), LibraryError> {
-        let (leaf_node, encryption_key) = LeafNode::<Unknown>::new(
+    ) -> Result<Self, LeafNodeGenerationError<KeyStore::Error>> {
+        // Note that this function is supposed to be used in the public API only
+        // because it is interacting with the key store.
+
+        let (leaf_node, encryption_key_pair) = LeafNode::<Unknown>::new(
             config,
             credential_with_key,
             LeafNodeSource::Update,
@@ -223,15 +287,77 @@ impl LeafNode<ValidUpdate> {
             signer,
         )?;
 
-        Ok((
-            LeafNode {
-                payload: leaf_node.payload,
-                signature: leaf_node.signature,
-                phantom: Default::default(),
-            },
-            encryption_key,
-        ))
+        // Store the encryption key pair in the key store.
+        encryption_key_pair
+            .write_to_key_store(backend)
+            .map_err(LeafNodeGenerationError::KeyStoreError)?;
+
+        Ok(LeafNode {
+            payload: leaf_node.payload,
+            signature: leaf_node.signature,
+            phantom: Default::default(),
+        })
     }
+}
+
+#[cfg(test)]
+impl LeafNode<ValidUpdate> {
+    /// Generate a fresh leaf node with a fresh encryption key but otherwise
+    /// the same properties as the current leaf node.
+    ///
+    /// The newly generated encryption key pair is stored in the key store.
+    ///
+    /// This function can be used when generating an update. In most other cases
+    /// a leaf node should be generated as part of a new [`KeyPackage`].
+    // TODO: Leaf node validation.
+    pub(crate) fn updated<KeyStore: OpenMlsKeyStore>(
+        &self,
+        config: CryptoConfig,
+        backend: &impl OpenMlsCryptoProvider<KeyStoreProvider = KeyStore>,
+        signer: &impl Signer,
+    ) -> Result<Self, LeafNodeGenerationError<KeyStore::Error>> {
+        Self::generate(
+            config,
+            CredentialWithKey {
+                credential: self.payload.credential.clone(),
+                signature_key: self.payload.signature_key.clone(),
+            },
+            self.payload.capabilities.clone(),
+            self.payload.extensions.clone(),
+            backend,
+            signer,
+        )
+    }
+
+    // #[allow(unused)]
+    // // TODO: Used in kat_messages.rs.
+    // pub(crate) fn update(
+    //     config: CryptoConfig,
+    //     credential_with_key: CredentialWithKey,
+    //     capabilities: Capabilities,
+    //     extensions: Extensions,
+    //     backend: &impl OpenMlsCryptoProvider,
+    //     signer: &impl Signer,
+    // ) -> Result<(Self, EncryptionKeyPair), LibraryError> {
+    //     let (leaf_node, encryption_key) = LeafNode::<Unknown>::new(
+    //         config,
+    //         credential_with_key,
+    //         LeafNodeSource::Update,
+    //         capabilities,
+    //         extensions,
+    //         backend,
+    //         signer,
+    //     )?;
+    //
+    //     Ok((
+    //         LeafNode {
+    //             payload: leaf_node.payload,
+    //             signature: leaf_node.signature,
+    //             phantom: Default::default(),
+    //         },
+    //         encryption_key,
+    //     ))
+    // }
 }
 
 impl LeafNode<Unknown> {
@@ -294,49 +420,6 @@ impl LeafNode<Unknown> {
     }
 }
 
-impl LeafNode<ValidUpdate> {
-    /// Generate a fresh leaf node.
-    ///
-    /// This includes generating a new encryption key pair that is stored in the
-    /// key store.
-    ///
-    /// This function can be used when generating an update. In most other cases
-    /// a leaf node should be generated as part of a new [`KeyPackage`].
-    // TODO: Leaf node validation.
-    pub fn generate<KeyStore: OpenMlsKeyStore>(
-        config: CryptoConfig,
-        credential_with_key: CredentialWithKey,
-        capabilities: Capabilities,
-        extensions: Extensions,
-        backend: &impl OpenMlsCryptoProvider<KeyStoreProvider = KeyStore>,
-        signer: &impl Signer,
-    ) -> Result<Self, LeafNodeGenerationError<KeyStore::Error>> {
-        // Note that this function is supposed to be used in the public API only
-        // because it is interacting with the key store.
-
-        let (leaf_node, encryption_key_pair) = LeafNode::<Unknown>::new(
-            config,
-            credential_with_key,
-            LeafNodeSource::Update,
-            capabilities,
-            extensions,
-            backend,
-            signer,
-        )?;
-
-        // Store the encryption key pair in the key store.
-        encryption_key_pair
-            .write_to_key_store(backend)
-            .map_err(LeafNodeGenerationError::KeyStoreError)?;
-
-        Ok(LeafNode {
-            payload: leaf_node.payload,
-            signature: leaf_node.signature,
-            phantom: Default::default(),
-        })
-    }
-}
-
 #[cfg(test)]
 impl LeafNode<Unknown> {
     /// Expose [`new_with_key`] for tests.
@@ -355,36 +438,6 @@ impl LeafNode<Unknown> {
             leaf_node_source,
             capabilities,
             extensions,
-            signer,
-        )
-    }
-}
-
-#[cfg(test)]
-impl LeafNode<ValidUpdate> {
-    /// Generate a fresh leaf node with a fresh encryption key but otherwise
-    /// the same properties as the current leaf node.
-    ///
-    /// The newly generated encryption key pair is stored in the key store.
-    ///
-    /// This function can be used when generating an update. In most other cases
-    /// a leaf node should be generated as part of a new [`KeyPackage`].
-    // TODO: Leaf node validation.
-    pub(crate) fn updated<KeyStore: OpenMlsKeyStore>(
-        &self,
-        config: CryptoConfig,
-        backend: &impl OpenMlsCryptoProvider<KeyStoreProvider = KeyStore>,
-        signer: &impl Signer,
-    ) -> Result<Self, LeafNodeGenerationError<KeyStore::Error>> {
-        Self::generate(
-            config,
-            CredentialWithKey {
-                credential: self.payload.credential.clone(),
-                signature_key: self.payload.signature_key.clone(),
-            },
-            self.payload.capabilities.clone(),
-            self.payload.extensions.clone(),
-            backend,
             signer,
         )
     }

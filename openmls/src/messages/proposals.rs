@@ -21,9 +21,9 @@ use crate::{
 use openmls_traits::{types::Ciphersuite, OpenMlsCryptoProvider};
 use serde::{Deserialize, Serialize};
 use std::convert::TryFrom;
-use tls_codec::{
-    Serialize as TlsSerializeTrait, TlsDeserialize, TlsSerialize, TlsSize, TlsVecU32, VLBytes,
-};
+use std::io::Read;
+use tls_codec::{Error, Serialize as TlsSerializeTrait, TlsDeserialize, TlsSerialize, TlsSize, TlsVecU32, VLBytes};
+use crate::prelude::{TlsDeserializeTrait, TlsSizeTrait};
 
 // Public types
 
@@ -138,7 +138,7 @@ impl TryFrom<u16> for ProposalType {
 #[allow(missing_docs)]
 pub enum Proposal {
     Add(AddProposal),
-    Update(UpdateProposal),
+    Update(UpdateProposal<ValidUpdate>),
     Remove(RemoveProposal),
     PreSharedKey(PreSharedKeyProposal),
     ReInit(ReInitProposal),
@@ -216,15 +216,25 @@ impl AddProposal {
 /// } Update;
 /// ```
 #[derive(
-    Debug, PartialEq, Eq, Clone, Serialize, Deserialize, TlsDeserialize, TlsSerialize, TlsSize,
+    Debug, PartialEq, Eq, Clone, Serialize, Deserialize, TlsSerialize, TlsSize,
 )]
-pub struct UpdateProposal {
-    pub(crate) leaf_node: LeafNode<ValidUpdate>,
+pub struct UpdateProposal<S> {
+    pub(crate) leaf_node: LeafNode<S>,
 }
 
-impl UpdateProposal {
+impl<S> TlsDeserializeTrait for UpdateProposal<S> where S: TlsDeserializeTrait + TlsSizeTrait {
+    fn tls_deserialize<R: Read>(bytes: &mut R) -> Result<Self, Error> where Self: Sized {
+        let leaf_node = TlsDeserializeTrait::tls_deserialize(bytes)?;
+
+        Ok(Self {
+            leaf_node
+        })
+    }
+}
+
+impl<T> UpdateProposal<T> {
     /// Returns a reference to the key package in the proposal.
-    pub fn leaf_node(&self) -> &LeafNode<ValidUpdate> {
+    pub fn leaf_node(&self) -> &LeafNode<T> {
         &self.leaf_node
     }
 }

@@ -319,7 +319,6 @@ impl CoreGroup {
     ///  - ValSem243: External Commit, inline Remove Proposal: The identity and the endpoint_id of the removed
     ///               leaf are identical to the ones in the path KeyPackage.
     // TODO(leaf_node_validation)
-    #[allow(unused)]
     pub(crate) fn validate_external_commit(
         &self,
         proposal_queue: &ProposalQueue,

@@ -281,7 +281,14 @@ fn test_valsem242(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
             *bob_credential.clone(),
         );
         ProposalOrRef::Proposal(Proposal::Update(UpdateProposal {
-            leaf_node: bob_key_package.leaf_node().clone().to_update_unchecked(),
+            leaf_node: bob_key_package
+                .leaf_node()
+                .update(
+                    CryptoConfig::with_default_version(ciphersuite),
+                    backend,
+                    &bob_credential.signer,
+                )
+                .unwrap(),
         }))
     };
 
@@ -663,6 +670,7 @@ fn test_valsem246(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
             bob_new_key_package
                 .leaf_node()
                 .clone()
+                // TODO: Parent hash?
                 .to_commit_unchecked(),
         )
     }

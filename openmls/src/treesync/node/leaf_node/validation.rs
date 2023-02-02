@@ -113,14 +113,22 @@ impl LeafNode<Unknown> {
     }
 
     /// Validate the leaf node in the context of an update.
-    // TODO: This should not be unused. This likely comes
-    //       from the conversion to and from `OpenMlsLeafNode`.
     #[allow(unused)]
-    pub(crate) fn validate_in_commit(
+    pub(crate) fn validate_in_commit<'a>(
         self,
+        required_capabilities: impl Into<Option<&'a RequiredCapabilitiesExtension>>,
+        signature_keys: &[SignaturePublicKey],
+        encryption_keys: &[EncryptionKey],
+        members_supported_credentials: &[&[CredentialType]],
+        currently_in_use: &[CredentialType],
     ) -> Result<LeafNode<ValidCommit>, LeafNodeValidationError> {
-        // TODO(#1186)
-        // self.validate()?;
+        self.validate(
+            required_capabilities,
+            signature_keys,
+            encryption_keys,
+            members_supported_credentials,
+            currently_in_use,
+        )?;
 
         match self.payload.leaf_node_source {
             LeafNodeSource::Commit(_) => Ok(LeafNode {
@@ -300,15 +308,15 @@ impl From<LeafNode<Valid>> for LeafNode<ValidUpdate> {
     }
 }
 
-impl From<LeafNode<Valid>> for LeafNode<ValidCommit> {
-    fn from(value: LeafNode<Valid>) -> Self {
-        LeafNode {
-            payload: value.payload,
-            signature: value.signature,
-            phantom: Default::default(),
-        }
-    }
-}
+// impl From<LeafNode<Valid>> for LeafNode<ValidCommit> {
+//     fn from(value: LeafNode<Valid>) -> Self {
+//         LeafNode {
+//             payload: value.payload,
+//             signature: value.signature,
+//             phantom: Default::default(),
+//         }
+//     }
+// }
 
 impl From<LeafNode<Valid>> for LeafNode<Unknown> {
     fn from(value: LeafNode<Valid>) -> Self {
@@ -396,64 +404,6 @@ impl From<OpenMlsLeafNode> for LeafNode<ValidCommit> {
     }
 }
 
-impl LeafNode<Unknown> {
-    /// Convert a `LeafNode<Unknown>` to `LeafNode<ValidKeyPackage>` without doing any validation.
-    /// Note: Do not use this method when possible.
-    pub(crate) fn to_key_package_unchecked(self) -> LeafNode<ValidKeyPackage> {
-        LeafNode {
-            payload: self.payload,
-            signature: self.signature,
-            phantom: Default::default(),
-        }
-    }
-
-    /// Convert a `LeafNode<Unknown>` to `LeafNode<ValidUpdate>` without doing any validation.
-    /// Note: Do not use this method when possible.
-    pub(crate) fn to_update_unchecked(self) -> LeafNode<ValidUpdate> {
-        LeafNode {
-            payload: self.payload,
-            signature: self.signature,
-            phantom: Default::default(),
-        }
-    }
-
-    /// Convert a `LeafNode<Unknown>` to `LeafNode<ValidCommit>` without doing any validation.
-    /// Note: Do not use this method when possible.
-    pub(crate) fn to_commit_unchecked(self) -> LeafNode<ValidCommit> {
-        LeafNode {
-            payload: self.payload,
-            signature: self.signature,
-            phantom: Default::default(),
-        }
-    }
-}
-
-impl LeafNode<ValidKeyPackage> {
-    /// Convert a `LeafNode<ValidKeyPackage>` to `LeafNode<ValidUpdate>` without doing any validation.
-    // TODO: Delete this method.
-    //      `LeafNodeSource == KeyPackage` is not correct for, e.g., update proposals.
-    #[allow(unused)]
-    pub(crate) fn to_update_unchecked(self) -> LeafNode<ValidUpdate> {
-        LeafNode {
-            payload: self.payload,
-            signature: self.signature,
-            phantom: Default::default(),
-        }
-    }
-
-    /// Convert a `LeafNode<ValidKeyPackage>` to `LeafNode<ValidUpdate>` without doing any validation.
-    // TODO): Delete this method.
-    //       `LeafNodeSource == KeyPackage` is not correct for, e.g., an update path.
-    #[allow(unused)]
-    pub(crate) fn to_commit_unchecked(self) -> LeafNode<ValidCommit> {
-        LeafNode {
-            payload: self.payload,
-            signature: self.signature,
-            phantom: Default::default(),
-        }
-    }
-}
-
 impl<T> LeafNode<T> {
     /// Check that all required capabilities are supported by this leaf node.
     // TODO: Implement this for `LeafNode<Unknown>` only.
@@ -486,5 +436,58 @@ impl<T> LeafNode<T> {
         }
 
         Ok(self)
+    }
+}
+
+// TODO: Only use this in tests.
+impl<T> LeafNode<T> {
+    /// Convert a `LeafNode<T>` to `LeafNode<ValidKeyPackage>` without doing any validation.
+    /// Note: Do not use this method when possible.
+    pub(crate) fn to_key_package_unchecked(self) -> LeafNode<ValidKeyPackage> {
+        LeafNode {
+            payload: self.payload,
+            signature: self.signature,
+            phantom: Default::default(),
+        }
+    }
+
+    /// Convert a `LeafNode<T>` to `LeafNode<ValidUpdate>` without doing any validation.
+    /// Note: Do not use this method when possible.
+    pub(crate) fn to_update_unchecked(self) -> LeafNode<ValidUpdate> {
+        LeafNode {
+            payload: self.payload,
+            signature: self.signature,
+            phantom: Default::default(),
+        }
+    }
+
+    /// Convert a `LeafNode<T>` to `LeafNode<ValidCommit>` without doing any validation.
+    /// Note: Do not use this method when possible.
+    pub(crate) fn to_commit_unchecked(self) -> LeafNode<ValidCommit> {
+        LeafNode {
+            payload: self.payload,
+            signature: self.signature,
+            phantom: Default::default(),
+        }
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use std::marker::PhantomData;
+    use crate::treesync::node::leaf_node::ValidCommit;
+    use tls_codec::{TlsDeserialize, TlsSerialize, TlsSize};
+
+    #[test]
+    fn that_not_everything_can_be_deserialized() {
+        #[derive(
+        Debug, Clone, PartialEq, Eq, TlsSize, TlsSerialize, TlsDeserialize,
+        )]
+        struct Test<T> {
+            phantom: PhantomData<T>,
+        }
+
+        let mut bytes = b"asd".as_slice();
+        let valid: Test<ValidCommit> = tls_codec::Deserialize::tls_deserialize(&mut bytes).unwrap();
     }
 }

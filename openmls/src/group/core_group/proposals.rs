@@ -15,6 +15,7 @@ use crate::{
 use openmls_traits::{types::Ciphersuite, OpenMlsCryptoProvider};
 use serde::{Deserialize, Serialize};
 use std::collections::{hash_map::Entry, HashMap, HashSet};
+use crate::treesync::node::leaf_node::ValidUpdate;
 
 /// A [ProposalStore] can store the standalone proposals that are received from the DS
 /// in between two commit messages.
@@ -524,13 +525,13 @@ impl<'a> QueuedRemoveProposal<'a> {
 /// A queued Update proposal
 #[derive(PartialEq, Eq, Debug)]
 pub struct QueuedUpdateProposal<'a> {
-    update_proposal: &'a UpdateProposal,
+    update_proposal: &'a UpdateProposal<ValidUpdate>,
     sender: &'a Sender,
 }
 
 impl<'a> QueuedUpdateProposal<'a> {
     /// Returns a reference to the proposal
-    pub fn update_proposal(&self) -> &UpdateProposal {
+    pub fn update_proposal(&self) -> &UpdateProposal<ValidUpdate> {
         self.update_proposal
     }
 

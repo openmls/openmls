@@ -126,11 +126,6 @@ impl CoreGroup {
             FromCommittedProposalsError::SelfRemoval => StageCommitError::AttemptedSelfRemoval,
         })?;
 
-        let commit_update_leaf_node = commit
-            .path()
-            .as_ref()
-            .map(|update_path| update_path.leaf_node().clone());
-
         // Validate the staged proposals by doing the following checks:
         // ValSem101
         // ValSem102
@@ -142,7 +137,12 @@ impl CoreGroup {
         // ValSem108
         self.validate_remove_proposals(&proposal_queue)?;
 
-        let public_key_set = match sender {
+        let commit_update_leaf_node = commit
+            .path()
+            .as_ref()
+            .map(|update_path| update_path.leaf_node().clone());
+
+        let _public_key_set = match sender {
             Sender::Member(leaf_index) => {
                 // ValSem110
                 // ValSem111

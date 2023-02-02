@@ -5,7 +5,7 @@ use openmls_traits::{
 };
 use tls_codec::Serialize;
 
-use crate::treesync::node::leaf_node::{Unknown, ValidUpdate};
+use crate::treesync::node::leaf_node::ValidUpdate;
 use crate::{
     binary_tree::*,
     ciphersuite::{signable::Signable, AeadNonce},
