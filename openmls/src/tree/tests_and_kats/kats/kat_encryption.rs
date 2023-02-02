@@ -25,9 +25,9 @@
 //!   },
 //!   "leaves": [
 //!     {
-//!       "generations": /* uint32 */,
 //!       "handshake": [ /* array with `generations` handshake keys and nonces */
 //!         {
+//!           "generation": /* uint32 */,
 //!           "key": /* hex-encoded binary data */,
 //!           "nonce": /* hex-encoded binary data */,
 //!           "plaintext": /* hex-encoded binary data */
@@ -37,6 +37,7 @@
 //!       ],
 //!       "application": [ /* array with `generations` application keys and nonces */
 //!         {
+//!           "generation": /* uint32 */,
 //!           "key": /* hex-encoded binary data */,
 //!           "nonce": /* hex-encoded binary data */,
 //!           "plaintext": /* hex-encoded binary data */
@@ -115,6 +116,7 @@ struct SenderDataInfo {
 
 #[derive(Serialize, Deserialize, Debug, Clone, Default)]
 struct RatchetStep {
+    generation: u32,
     key: String,
     nonce: String,
     plaintext: String,
@@ -123,7 +125,6 @@ struct RatchetStep {
 
 #[derive(Serialize, Deserialize, Debug, Clone, Default)]
 struct LeafSequence {
-    generations: u32,
     handshake: Vec<RatchetStep>,
     application: Vec<RatchetStep>,
 }
@@ -318,7 +319,7 @@ fn build_application_messages(
 
 #[cfg(any(feature = "test-utils", test))]
 pub fn generate_test_vector(
-    n_generations: u32,
+    generations: &[u32],
     n_leaves: u32,
     ciphersuite: Ciphersuite,
 ) -> EncryptionTestVector {
@@ -383,7 +384,7 @@ pub fn generate_test_vector(
 
         let mut handshake = Vec::new();
         let mut application = Vec::new();
-        for generation in 0..n_generations {
+        for &generation in generations.iter() {
             // Application
             let (application_secret_key, application_secret_nonce) = decryption_secret_tree
                 .secret_for_decryption(
@@ -401,6 +402,7 @@ pub fn generate_test_vector(
                 build_application_messages(sender_leaf, &mut group, &signer, &crypto);
             println!("Sender Group: {group:?}");
             application.push(RatchetStep {
+                generation,
                 key: application_key_string,
                 nonce: application_nonce_string,
                 plaintext: bytes_to_hex(&application_plaintext),
@@ -425,6 +427,7 @@ pub fn generate_test_vector(
                 build_handshake_messages(sender_leaf, &mut group, &signer, &crypto);
 
             handshake.push(RatchetStep {
+                generation,
                 key: handshake_key_string,
                 nonce: handshake_nonce_string,
                 plaintext: bytes_to_hex(&handshake_plaintext),
@@ -432,7 +435,6 @@ pub fn generate_test_vector(
             });
         }
         leaves.push(LeafSequence {
-            generations: n_generations,
             handshake,
             application,
         });
@@ -453,8 +455,8 @@ fn write_test_vectors() {
     let _ = pretty_env_logger::try_init();
     use openmls_traits::crypto::OpenMlsCrypto;
     let mut tests = Vec::new();
-    const NUM_LEAVES: u32 = 10;
-    const NUM_GENERATIONS: u32 = 15;
+    const NUM_LEAVES: u32 = 34;
+    const GENERATIONS: [u32; 2] = [1, 15];
 
     log::debug!("Generating new test vectors ...");
 
@@ -463,8 +465,8 @@ fn write_test_vectors() {
         .supported_ciphersuites()
         .iter()
     {
-        for n_leaves in 1u32..NUM_LEAVES {
-            let test = generate_test_vector(NUM_GENERATIONS, n_leaves, ciphersuite);
+        for n_leaves in (1u32..NUM_LEAVES).step_by(7) {
+            let test = generate_test_vector(&GENERATIONS, n_leaves, ciphersuite);
             tests.push(test);
         }
     }
@@ -538,26 +540,12 @@ pub fn run_test_vector(
 
         log_crypto!(debug, "Encryption secret tree: {secret_tree:?}");
         log::trace!("Running test vector for leaf {leaf_index:?}");
-        if leaf.generations != leaf.application.len() as u32 {
-            if cfg!(test) {
-                panic!("Invalid leaf sequence application");
-            }
-            return Err(EncTestVectorError::InvalidLeafSequenceApplication);
-        }
-        if leaf.generations != leaf.handshake.len() as u32 {
-            if cfg!(test) {
-                panic!("Invalid leaf sequence handshake");
-            }
-            return Err(EncTestVectorError::InvalidLeafSequenceHandshake);
-        }
         let leaf_index = LeafNodeIndex::new(leaf_index as u32);
 
         // We keep a fresh copy of the secret tree so we don't lose any secrets.
         let fresh_secret_tree = secret_tree.clone();
 
-        for (generation, application, handshake) in
-            izip!((0..leaf.generations), &leaf.application, &leaf.handshake,)
-        {
+        for (application, handshake) in izip!(&leaf.application, &leaf.handshake) {
             // Check application keys
             let (application_secret_key, application_secret_nonce) = secret_tree
                 .secret_for_decryption(
@@ -565,14 +553,14 @@ pub fn run_test_vector(
                     backend,
                     leaf_index.into(),
                     SecretType::ApplicationSecret,
-                    generation,
+                    application.generation,
                     &SenderRatchetConfiguration::default(),
                 )
                 .expect("Error getting decryption secret");
             log::debug!(
                 "  Secret tree after deriving application keys for leaf {:?} in generation {:?}",
                 leaf_index,
-                generation
+                application.generation
             );
             log_crypto!(debug, "  {:?}", secret_tree);
             if hex_to_bytes(&application.key) != application_secret_key.as_slice() {
@@ -663,7 +651,7 @@ pub fn run_test_vector(
                     backend,
                     leaf_index.into(),
                     SecretType::HandshakeSecret,
-                    generation,
+                    handshake.generation,
                     &SenderRatchetConfiguration::default(),
                 )
                 .expect("Error getting decryption secret");
@@ -740,7 +728,7 @@ pub fn run_test_vector(
                     backend,
                     leaf_index.into(),
                     SecretType::HandshakeSecret,
-                    generation,
+                    handshake.generation,
                     &SenderRatchetConfiguration::default(),
                 )
                 .expect("Error getting decryption secret");
