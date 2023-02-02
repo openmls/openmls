@@ -26,11 +26,11 @@ pub mod config;
 pub mod errors;
 
 pub use core_group::proposals::*;
+pub use core_group::staged_commit::StagedCommit;
 pub use mls_group::config::*;
 pub use mls_group::membership::*;
 pub use mls_group::processing::*;
 pub use mls_group::*;
-pub use public_group::staged_commit::StagedCommit;
 
 // Tests
 #[cfg(test)]

@@ -78,10 +78,9 @@ impl CoreGroup {
             leaf_node_keypairs,
         };
 
-        self.public_group.stage_commit(
+        self.public_group.stage_commit_private(
             mls_content,
             proposal_store,
-            own_leaf_nodes,
             backend,
             private_group_params,
         )
@@ -170,6 +169,50 @@ impl CoreGroup {
 pub(crate) enum StagedCommitState {
     SelfRemoved(Box<StagedPublicGroupDiff>),
     GroupMember(Box<MemberStagedCommitState>),
+}
+
+/// Contains the changes from a commit to the group state.
+#[derive(Debug, Serialize, Deserialize)]
+pub struct StagedCommit {
+    staged_proposal_queue: ProposalQueue,
+    state: StagedCommitState,
+}
+
+impl StagedCommit {
+    /// Create a new [`StagedCommit`] from the provisional group state created
+    /// during the commit process.
+    pub(crate) fn new(staged_proposal_queue: ProposalQueue, state: StagedCommitState) -> Self {
+        StagedCommit {
+            staged_proposal_queue,
+            state,
+        }
+    }
+
+    /// Returns the Add proposals that are covered by the Commit message as in iterator over [QueuedAddProposal].
+    pub fn add_proposals(&self) -> impl Iterator<Item = QueuedAddProposal> {
+        self.staged_proposal_queue.add_proposals()
+    }
+
+    /// Returns the Remove proposals that are covered by the Commit message as in iterator over [QueuedRemoveProposal].
+    pub fn remove_proposals(&self) -> impl Iterator<Item = QueuedRemoveProposal> {
+        self.staged_proposal_queue.remove_proposals()
+    }
+
+    /// Returns the Update proposals that are covered by the Commit message as in iterator over [QueuedUpdateProposal].
+    pub fn update_proposals(&self) -> impl Iterator<Item = QueuedUpdateProposal> {
+        self.staged_proposal_queue.update_proposals()
+    }
+
+    /// Returns the PresharedKey proposals that are covered by the Commit message as in iterator over [QueuedPskProposal].
+    pub fn psk_proposals(&self) -> impl Iterator<Item = QueuedPskProposal> {
+        self.staged_proposal_queue.psk_proposals()
+    }
+
+    /// Returns `true` if the member was removed through a proposal covered by this Commit message
+    /// and `false` otherwise.
+    pub fn self_removed(&self) -> bool {
+        matches!(self.state, StagedCommitState::SelfRemoved(_))
+    }
 }
 
 /// This struct is used internally by [StagedCommit] to encapsulate all the modified group state.
