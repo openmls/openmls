@@ -11,7 +11,7 @@
 //! ```text
 //! {
 //!     "cipher_suite": /* uint16 */,
-//!     "root": [ /* array of uint32 */ ],
+//!     "root": /* uint32 */,
 //!     "left": [ /* array of option<uint32> */ ],
 //!     "right": [ /* array of option<uint32> */ ],
 //!     "parent": [ /* array of option<uint32> */ ],
@@ -23,7 +23,7 @@
 //!
 //! ## Verification:
 //! * `n_nodes` is the number of nodes in the tree with `n_leaves` leaves
-//! * `root[i]` is the root node index of the tree with `i+1` leaves
+//! * `root` is the root node index of the tree
 //! * `left[i]` is the node index of the left child of the node with index `i`
 //!   in a tree with `n_leaves` leaves
 //! * `right[i]` is the node index of the right child of the node with index `i`
@@ -45,7 +45,7 @@ use thiserror::Error;
 pub struct TreeMathTestVector {
     n_leaves: u32,
     n_nodes: u32,
-    root: Vec<u32>,
+    root: u32,
     left: Vec<Option<u32>>,
     right: Vec<Option<u32>>,
     parent: Vec<Option<u32>>,
@@ -58,18 +58,14 @@ pub fn generate_test_vector(n_leaves: u32) -> TreeMathTestVector {
     let mut test_vector = TreeMathTestVector {
         n_leaves,
         n_nodes: n_nodes.u32(),
-        root: Vec::new(),
+        root: 0,
         left: Vec::new(),
         right: Vec::new(),
         parent: Vec::new(),
         sibling: Vec::new(),
     };
 
-    for i in 0..n_leaves {
-        test_vector
-            .root
-            .push(root(TreeSize::new(node_width(i as usize + 1) as u32)).test_u32());
-    }
+    test_vector.root = root(TreeSize::new(node_width(n_leaves as usize) as u32)).test_u32();
     for i in 0..n_nodes.u32() {
         let tree_index = TreeNodeIndex::test_new(i);
 
@@ -136,10 +132,8 @@ pub fn run_test_vector(test_vector: TreeMathTestVector) -> Result<(), TmTestVect
     if test_vector.n_nodes != node_width(n_leaves) as u32 {
         return Err(TmTestVectorError::TreeSizeMismatch);
     }
-    for i in 0..n_leaves {
-        if test_vector.root[i] != root(TreeSize::new(node_width(i + 1) as u32)).test_u32() {
-            return Err(TmTestVectorError::RootIndexMismatch);
-        }
+    if test_vector.root != root(TreeSize::new(node_width(n_leaves) as u32)).test_u32() {
+        return Err(TmTestVectorError::RootIndexMismatch);
     }
 
     for i in 0..n_nodes.u32() as usize {
