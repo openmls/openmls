@@ -29,6 +29,7 @@ struct PskValue {
 
 #[derive(Serialize, Deserialize, Debug, Clone, Default)]
 struct Epoch {
+    epoch: u64,
     // Chosen by the generator
     tree_hash: String,
     commit_secret: String,
@@ -223,35 +224,38 @@ pub fn generate_test_vector(n_epochs: u64, ciphersuite: Ciphersuite) -> KeySched
             })
             .collect::<Vec<_>>();
 
-        let epoch_info = Epoch {
-            tree_hash: bytes_to_hex(&tree_hash),
-            commit_secret: bytes_to_hex(commit_secret.as_slice()),
-            psks,
-            confirmed_transcript_hash: bytes_to_hex(&confirmed_transcript_hash),
-            group_context: bytes_to_hex(
-                &group_context
-                    .tls_serialize_detached()
-                    .expect("An unexpected error occurred."),
-            ),
-            joiner_secret: bytes_to_hex(joiner_secret.as_slice()),
-            welcome_secret: bytes_to_hex(welcome_secret.as_slice()),
-            init_secret: bytes_to_hex(epoch_secrets.init_secret().as_slice()),
-            sender_data_secret: bytes_to_hex(epoch_secrets.sender_data_secret().as_slice()),
-            encryption_secret: bytes_to_hex(epoch_secrets.encryption_secret().as_slice()),
-            exporter_secret: bytes_to_hex(epoch_secrets.exporter_secret().as_slice()),
-            epoch_authenticator: bytes_to_hex(epoch_secrets.epoch_authenticator().as_slice()),
-            external_secret: bytes_to_hex(epoch_secrets.external_secret().as_slice()),
-            confirmation_key: bytes_to_hex(epoch_secrets.confirmation_key().as_slice()),
-            membership_key: bytes_to_hex(epoch_secrets.membership_key().as_slice()),
-            resumption_psk: bytes_to_hex(epoch_secrets.resumption_psk().as_slice()),
-            external_pub: bytes_to_hex(
-                &HpkePublicKey::from(external_key_pair.public)
-                    .tls_serialize_detached()
-                    .expect("An unexpected error occurred."),
-            ),
-        };
-        epochs.push(epoch_info);
-        init_secret = epoch_secrets.init_secret().clone();
+        if epoch % 10 == 0 {
+            let epoch_info = Epoch {
+                epoch,
+                tree_hash: bytes_to_hex(&tree_hash),
+                commit_secret: bytes_to_hex(commit_secret.as_slice()),
+                psks,
+                confirmed_transcript_hash: bytes_to_hex(&confirmed_transcript_hash),
+                group_context: bytes_to_hex(
+                    &group_context
+                        .tls_serialize_detached()
+                        .expect("An unexpected error occurred."),
+                ),
+                joiner_secret: bytes_to_hex(joiner_secret.as_slice()),
+                welcome_secret: bytes_to_hex(welcome_secret.as_slice()),
+                init_secret: bytes_to_hex(epoch_secrets.init_secret().as_slice()),
+                sender_data_secret: bytes_to_hex(epoch_secrets.sender_data_secret().as_slice()),
+                encryption_secret: bytes_to_hex(epoch_secrets.encryption_secret().as_slice()),
+                exporter_secret: bytes_to_hex(epoch_secrets.exporter_secret().as_slice()),
+                epoch_authenticator: bytes_to_hex(epoch_secrets.epoch_authenticator().as_slice()),
+                external_secret: bytes_to_hex(epoch_secrets.external_secret().as_slice()),
+                confirmation_key: bytes_to_hex(epoch_secrets.confirmation_key().as_slice()),
+                membership_key: bytes_to_hex(epoch_secrets.membership_key().as_slice()),
+                resumption_psk: bytes_to_hex(epoch_secrets.resumption_psk().as_slice()),
+                external_pub: bytes_to_hex(
+                    &HpkePublicKey::from(external_key_pair.public)
+                        .tls_serialize_detached()
+                        .expect("An unexpected error occurred."),
+                ),
+            };
+            epochs.push(epoch_info);
+            init_secret = epoch_secrets.init_secret().clone();
+        }
     }
 
     KeyScheduleTestVector {
@@ -278,18 +282,15 @@ fn write_test_vectors() {
 
 #[apply(backends)]
 fn read_test_vectors_key_schedule(backend: &impl OpenMlsCryptoProvider) {
-    // FIXME: Silence warning. Remove this during #1051.
-    let _ = backend;
+    let _ = pretty_env_logger::try_init();
+    let tests: Vec<KeyScheduleTestVector> = read("test_vectors/kat_key_schedule_openmls.json");
 
-    let _tests: Vec<KeyScheduleTestVector> = read("test_vectors/kat_key_schedule_openmls.json");
-
-    // FIXME: Disabled for now. Tracking re-enabling them in #1051
-    // for test_vector in tests {
-    //     match run_test_vector(test_vector, backend) {
-    //         Ok(_) => {}
-    //         Err(e) => panic!("Error while checking key schedule test vector.\n{:?}", e),
-    //     }
-    // }
+    for test_vector in tests {
+        match run_test_vector(test_vector, backend) {
+            Ok(_) => {}
+            Err(e) => panic!("Error while checking key schedule test vector.\n{:?}", e),
+        }
+    }
 
     // FIXME: Interop #495
     // // mlspp test vectors
@@ -326,8 +327,8 @@ pub fn run_test_vector(
         ciphersuite,
     ));
 
-    for (i, epoch) in test_vector.epochs.iter().enumerate() {
-        log::debug!("  Epoch {:?}", i);
+    for epoch in test_vector.epochs.iter() {
+        log::debug!("  Epoch {:?}", epoch.epoch);
         let tree_hash = hex_to_bytes(&epoch.tree_hash);
         let secret = hex_to_bytes(&epoch.commit_secret);
         let commit_secret = CommitSecret::from(PathSecret::from(Secret::from_slice(
@@ -397,7 +398,7 @@ pub fn run_test_vector(
         let group_context = GroupContext::new(
             ciphersuite,
             GroupId::from_slice(&group_id),
-            i as u64,
+            epoch.epoch,
             tree_hash.to_vec(),
             confirmed_transcript_hash.clone(),
             Extensions::empty(),
