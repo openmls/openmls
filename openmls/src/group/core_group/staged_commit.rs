@@ -553,7 +553,7 @@ pub(crate) struct MemberStagedCommitState {
 }
 
 impl MemberStagedCommitState {
-    pub(super) fn new(
+    pub(crate) fn new(
         group_epoch_secrets: GroupEpochSecrets,
         message_secrets: MessageSecrets,
         staged_diff: StagedPublicGroupDiff,

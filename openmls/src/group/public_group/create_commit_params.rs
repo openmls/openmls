@@ -1,6 +1,11 @@
 //! Builder for [CreateCommitParams] that is used in [CoreGroup::create_commit()]
 
-use super::{proposals::ProposalStore, *};
+use serde::{Deserialize, Serialize};
+
+use crate::{
+    credentials::CredentialWithKey, group::ProposalStore, messages::proposals::Proposal,
+    prelude_test::FramingParameters,
+};
 
 /// Can be used to denote the type of a commit.
 #[derive(Debug, Copy, Clone, PartialEq, Serialize, Deserialize)]

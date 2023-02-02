@@ -4,8 +4,8 @@ use crate::{
     ciphersuite::HpkePrivateKey,
     credentials::CredentialWithKey,
     group::{
-        core_group::create_commit_params::CreateCommitParams,
         errors::{CoreGroupBuildError, ExternalCommitError, WelcomeError},
+        public_group::create_commit_params::CreateCommitParams,
     },
     messages::group_info::VerifiableGroupInfo,
 };

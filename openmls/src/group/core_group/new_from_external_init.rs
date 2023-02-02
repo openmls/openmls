@@ -1,14 +1,14 @@
 use crate::{
     binary_tree::array_representation::LeafNodeIndex,
-    group::errors::ExternalCommitError,
+    group::{
+        errors::ExternalCommitError,
+        public_group::create_commit_params::{CommitType, CreateCommitParams},
+    },
     messages::proposals::{ExternalInitProposal, Proposal},
     treesync::node::Node,
 };
 
-use super::{
-    create_commit_params::{CommitType, CreateCommitParams},
-    CoreGroup,
-};
+use super::CoreGroup;
 use crate::group::core_group::*;
 
 pub(crate) type ExternalCommitResult = (CoreGroup, CreateCommitResult);
