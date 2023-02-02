@@ -132,6 +132,7 @@ impl ProposalQueue {
     pub(crate) fn is_empty(&self) -> bool {
         self.proposal_references.is_empty()
     }
+
     /// Returns a new `QueuedProposalQueue` from proposals that were committed and
     /// don't need filtering.
     /// This functions does the following checks:
@@ -450,6 +451,7 @@ impl ProposalQueue {
         }
         Ok((proposal_queue, contains_own_updates))
     }
+
     /// Returns `true` if all `ProposalRef` values from the list are
     /// contained in the queue
     #[cfg(test)]
