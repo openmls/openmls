@@ -2,8 +2,9 @@
 //!
 //! Only MLS 1.0 is currently supported.
 
+use discrim::FromDiscriminant;
 use serde::{Deserialize, Serialize};
-use std::{convert::TryFrom, fmt};
+use std::fmt;
 use thiserror::Error;
 use tls_codec::{TlsDeserialize, TlsSerialize, TlsSize};
 
@@ -33,6 +34,7 @@ use tls_codec::{TlsDeserialize, TlsSerialize, TlsSize};
     TlsDeserialize,
     TlsSerialize,
     TlsSize,
+    FromDiscriminant,
 )]
 #[repr(u8)]
 #[allow(missing_docs)]
@@ -45,21 +47,6 @@ pub enum ProtocolVersion {
 impl Default for ProtocolVersion {
     fn default() -> Self {
         ProtocolVersion::Mls10
-    }
-}
-
-impl TryFrom<u8> for ProtocolVersion {
-    type Error = VersionError;
-
-    /// Convert an integer to the corresponding protocol version.
-    ///
-    /// Returns an error if the protocol version is not supported.
-    fn try_from(v: u8) -> Result<Self, Self::Error> {
-        match v {
-            1 => Ok(ProtocolVersion::Mls10),
-            200 => Ok(ProtocolVersion::Mls10Draft11),
-            _ => Err(VersionError::UnsupportedMlsVersion),
-        }
     }
 }
 

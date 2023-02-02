@@ -10,6 +10,7 @@ use crate::{ciphersuite::*, extensions::Extensions, group::*, schedule::*, test_
 #[cfg(test)]
 use crate::test_utils::{read, write};
 
+use discrim::FromDiscriminant;
 use openmls_rust_crypto::OpenMlsRustCrypto;
 use openmls_traits::{
     key_store::OpenMlsKeyStore, random::OpenMlsRand, types::HpkeKeyPair, OpenMlsCryptoProvider,
@@ -311,7 +312,8 @@ pub fn run_test_vector(
 ) -> Result<(), KsTestVectorError> {
     use tls_codec::{Deserialize, Serialize};
 
-    let ciphersuite = Ciphersuite::try_from(test_vector.cipher_suite).expect("Invalid ciphersuite");
+    let ciphersuite =
+        Ciphersuite::from_discriminant(test_vector.cipher_suite).expect("Invalid ciphersuite");
     log::trace!("  {:?}", test_vector);
 
     let group_id = hex_to_bytes(&test_vector.group_id);

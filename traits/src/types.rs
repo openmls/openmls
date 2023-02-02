@@ -2,6 +2,7 @@
 //!
 //! This module holds a number of types that are needed by the traits.
 
+use discrim::FromDiscriminant;
 use serde::{Deserialize, Serialize};
 use std::convert::TryFrom;
 use tls_codec::{TlsDeserialize, TlsSerialize, TlsSize, VLBytes};
@@ -255,6 +256,7 @@ pub type KemOutput = Vec<u8>;
     TlsDeserialize,
     TlsSerialize,
     TlsSize,
+    FromDiscriminant,
 )]
 #[repr(u16)]
 #[allow(missing_docs)]
@@ -291,26 +293,6 @@ impl From<&Ciphersuite> for u16 {
     #[inline(always)]
     fn from(s: &Ciphersuite) -> u16 {
         *s as u16
-    }
-}
-
-impl TryFrom<u16> for Ciphersuite {
-    type Error = tls_codec::Error;
-
-    #[inline(always)]
-    fn try_from(v: u16) -> Result<Self, Self::Error> {
-        match v {
-            0x0001 => Ok(Ciphersuite::MLS_128_DHKEMX25519_AES128GCM_SHA256_Ed25519),
-            0x0002 => Ok(Ciphersuite::MLS_128_DHKEMP256_AES128GCM_SHA256_P256),
-            0x0003 => Ok(Ciphersuite::MLS_128_DHKEMX25519_CHACHA20POLY1305_SHA256_Ed25519),
-            0x0004 => Ok(Ciphersuite::MLS_256_DHKEMX448_AES256GCM_SHA512_Ed448),
-            0x0005 => Ok(Ciphersuite::MLS_256_DHKEMP521_AES256GCM_SHA512_P521),
-            0x0006 => Ok(Ciphersuite::MLS_256_DHKEMX448_CHACHA20POLY1305_SHA512_Ed448),
-            0x0007 => Ok(Ciphersuite::MLS_256_DHKEMP384_AES256GCM_SHA384_P384),
-            _ => Err(Self::Error::DecodingError(format!(
-                "{v} is not a valid ciphersuite value"
-            ))),
-        }
     }
 }
 

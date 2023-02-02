@@ -97,13 +97,13 @@ use crate::{
     versions::ProtocolVersion,
 };
 
+use discrim::FromDiscriminant;
 use openmls_basic_credential::SignatureKeyPair;
 use openmls_traits::{signatures::Signer, types::SignatureScheme, OpenMlsCryptoProvider};
 
 use itertools::izip;
 use openmls_rust_crypto::OpenMlsRustCrypto;
 use serde::{self, Deserialize, Serialize};
-use std::convert::TryFrom;
 use thiserror::Error;
 
 #[derive(Serialize, Deserialize, Debug, Clone, Default)]
@@ -485,7 +485,8 @@ pub fn run_test_vector(
     if n_leaves != test_vector.leaves.len() as u32 {
         return Err(EncTestVectorError::LeafNumberMismatch);
     }
-    let ciphersuite = Ciphersuite::try_from(test_vector.cipher_suite).expect("Invalid ciphersuite");
+    let ciphersuite =
+        Ciphersuite::from_discriminant(test_vector.cipher_suite).expect("Invalid ciphersuite");
     log::debug!("Running test vector with {:?}", ciphersuite);
 
     let sender_data_secret = SenderDataSecret::from_slice(

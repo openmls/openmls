@@ -19,6 +19,7 @@
 //! - [`RequiredCapabilitiesExtension`] (GroupContext extension)
 //! - [`ExternalPubExtension`] (GroupInfo extension)
 
+use discrim::FromDiscriminant;
 use serde::{Deserialize, Serialize};
 use std::{
     collections::{btree_map::Entry, BTreeMap},
@@ -80,6 +81,7 @@ mod test_extensions;
     TlsSerialize,
     TlsDeserialize,
     TlsSize,
+    FromDiscriminant,
 )]
 #[repr(u16)]
 pub enum ExtensionType {
@@ -102,26 +104,6 @@ pub enum ExtensionType {
     /// Group context extension that contains the credentials and signature keys
     /// of senders that are permitted to send external proposals to the group.
     ExternalSenders = 5,
-}
-
-impl TryFrom<u16> for ExtensionType {
-    type Error = tls_codec::Error;
-
-    /// Get the [`ExtensionType`] from a u16.
-    /// Returns an error if the extension type is not known.
-    /// Note that this returns a [`tls_codec::Error`](`tls_codec::Error`).
-    fn try_from(a: u16) -> Result<Self, Self::Error> {
-        match a {
-            1 => Ok(ExtensionType::ApplicationId),
-            2 => Ok(ExtensionType::RatchetTree),
-            3 => Ok(ExtensionType::RequiredCapabilities),
-            4 => Ok(ExtensionType::ExternalPub),
-            5 => Ok(ExtensionType::ExternalSenders),
-            _ => Err(tls_codec::Error::DecodingError(format!(
-                "{a} is an unkown extension type"
-            ))),
-        }
-    }
 }
 
 impl ExtensionType {

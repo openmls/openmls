@@ -22,8 +22,8 @@
 //! There are multiple [`CredentialType`]s, although OpenMLS currently only
 //! supports the [`BasicCredential`].
 
+use discrim::FromDiscriminant;
 use serde::{Deserialize, Serialize};
-use std::convert::TryFrom;
 #[cfg(test)]
 use tls_codec::Serialize as TlsSerializeTrait;
 use tls_codec::{TlsDeserialize, TlsSerialize, TlsSize, VLBytes};
@@ -69,6 +69,7 @@ pub mod errors;
     TlsDeserialize,
     TlsSerialize,
     TlsSize,
+    FromDiscriminant,
 )]
 #[repr(u16)]
 pub enum CredentialType {
@@ -76,18 +77,6 @@ pub enum CredentialType {
     Basic = 1,
     /// An X.509 [`Certificate`]
     X509 = 2,
-}
-
-impl TryFrom<u16> for CredentialType {
-    type Error = &'static str;
-
-    fn try_from(value: u16) -> Result<Self, Self::Error> {
-        match value {
-            1 => Ok(CredentialType::Basic),
-            2 => Ok(CredentialType::X509),
-            _ => Err("Undefined CredentialType"),
-        }
-    }
 }
 
 /// X.509 Certificate.

@@ -17,9 +17,9 @@ use crate::{
     versions::ProtocolVersion,
 };
 
+use discrim::FromDiscriminant;
 use openmls_traits::{types::Ciphersuite, OpenMlsCryptoProvider};
 use serde::{Deserialize, Serialize};
-use std::convert::TryFrom;
 use tls_codec::{Serialize as TlsSerializeTrait, TlsDeserialize, TlsSerialize, TlsSize, VLBytes};
 
 // Public types
@@ -63,6 +63,7 @@ use tls_codec::{Serialize as TlsSerializeTrait, TlsDeserialize, TlsSerialize, Tl
     TlsSize,
     Serialize,
     Deserialize,
+    FromDiscriminant,
 )]
 #[repr(u16)]
 #[allow(missing_docs)]
@@ -90,23 +91,6 @@ impl ProposalType {
             | ProposalType::ExternalInit
             | ProposalType::GroupContextExtensions => true,
             ProposalType::AppAck => false,
-        }
-    }
-}
-
-impl TryFrom<u16> for ProposalType {
-    type Error = &'static str;
-    fn try_from(value: u16) -> Result<Self, Self::Error> {
-        match value {
-            1 => Ok(ProposalType::Add),
-            2 => Ok(ProposalType::Update),
-            3 => Ok(ProposalType::Remove),
-            4 => Ok(ProposalType::Presharedkey),
-            5 => Ok(ProposalType::Reinit),
-            6 => Ok(ProposalType::ExternalInit),
-            7 => Ok(ProposalType::GroupContextExtensions),
-            8 => Ok(ProposalType::AppAck),
-            _ => Err("Unknown proposal type."),
         }
     }
 }

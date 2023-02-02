@@ -25,22 +25,6 @@ pub mod mls_client {
 
 const IMPLEMENTATION_NAME: &str = "OpenMLS";
 
-impl TryFrom<i32> for TestVectorType {
-    type Error = ();
-
-    fn try_from(value: i32) -> Result<Self, Self::Error> {
-        match value {
-            0 => Ok(TestVectorType::TreeMath),
-            1 => Ok(TestVectorType::Encryption),
-            2 => Ok(TestVectorType::KeySchedule),
-            3 => Ok(TestVectorType::Transcript),
-            4 => Ok(TestVectorType::Treekem),
-            5 => Ok(TestVectorType::Messages),
-            _ => Err(()),
-        }
-    }
-}
-
 /// This struct contains the state for a single MLS client. The interop client
 /// doesn't consider scenarios where a credential is re-used across groups, so
 /// this simple structure is sufficient.

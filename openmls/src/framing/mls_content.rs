@@ -9,16 +9,14 @@ use crate::{
     versions::ProtocolVersion,
 };
 
-use std::{
-    convert::TryFrom,
-    io::{Read, Write},
-};
+use std::io::{Read, Write};
 
 use super::{
     mls_auth_content::{AuthenticatedContent, FramedContentAuthData},
     Sender, WireFormat,
 };
 
+use discrim::FromDiscriminant;
 use serde::{Deserialize, Serialize};
 use tls_codec::{
     Deserialize as TlsDeserializeTrait, Serialize as TlsSerializeTrait, Size, TlsDeserialize,
@@ -128,27 +126,23 @@ impl FramedContentBody {
 }
 
 #[derive(
-    PartialEq, Eq, Clone, Copy, Debug, Serialize, Deserialize, TlsDeserialize, TlsSerialize, TlsSize,
+    PartialEq,
+    Eq,
+    Clone,
+    Copy,
+    Debug,
+    Serialize,
+    Deserialize,
+    TlsDeserialize,
+    TlsSerialize,
+    TlsSize,
+    FromDiscriminant,
 )]
 #[repr(u8)]
 pub enum ContentType {
     Application = 1,
     Proposal = 2,
     Commit = 3,
-}
-
-impl TryFrom<u8> for ContentType {
-    type Error = tls_codec::Error;
-    fn try_from(value: u8) -> Result<Self, tls_codec::Error> {
-        match value {
-            1 => Ok(ContentType::Application),
-            2 => Ok(ContentType::Proposal),
-            3 => Ok(ContentType::Commit),
-            _ => Err(tls_codec::Error::DecodingError(format!(
-                "{value} is not a valid content type"
-            ))),
-        }
-    }
 }
 
 impl From<&FramedContentBody> for ContentType {

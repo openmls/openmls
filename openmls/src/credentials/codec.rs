@@ -31,7 +31,7 @@ impl tls_codec::Serialize for Credential {
 impl tls_codec::Deserialize for Credential {
     fn tls_deserialize<R: Read>(bytes: &mut R) -> Result<Self, tls_codec::Error> {
         let val = u16::tls_deserialize(bytes)?;
-        let credential_type = CredentialType::try_from(val)
+        let credential_type = CredentialType::from_discriminant(val)
             .map_err(|e| tls_codec::Error::DecodingError(e.to_string()))?;
         match credential_type {
             CredentialType::Basic => Ok(Credential::from(MlsCredentialType::Basic(
