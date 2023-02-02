@@ -17,7 +17,7 @@ use tls_codec::{TlsDeserialize, TlsSerialize, TlsSize};
 /// enum {
 ///     reserved(0),
 ///     mls10(1),
-///     (255)
+///     (65535)
 /// } ProtocolVersion;
 /// ```
 #[derive(
@@ -34,7 +34,7 @@ use tls_codec::{TlsDeserialize, TlsSerialize, TlsSize};
     TlsSerialize,
     TlsSize,
 )]
-#[repr(u8)]
+#[repr(u16)]
 #[allow(missing_docs)]
 pub enum ProtocolVersion {
     Mls10 = 1,
