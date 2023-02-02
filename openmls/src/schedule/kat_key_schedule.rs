@@ -288,7 +288,7 @@ fn read_test_vectors_key_schedule(backend: &impl OpenMlsCryptoProvider) {
     for test_vector in tests {
         match run_test_vector(test_vector, backend) {
             Ok(_) => {}
-            Err(e) => panic!("Error while checking key schedule test vector.\n{:?}", e),
+            Err(e) => panic!("Error while checking key schedule test vector.\n{e:?}"),
         }
     }
 
