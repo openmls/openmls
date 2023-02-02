@@ -1,4 +1,4 @@
-use core_group::{proposals::QueuedProposal, staged_commit::StagedCommit};
+use core_group::proposals::QueuedProposal;
 
 use crate::{
     ciphersuite::OpenMlsSignaturePublicKey,

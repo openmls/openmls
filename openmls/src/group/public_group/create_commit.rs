@@ -8,7 +8,7 @@ use crate::{
     framing::mls_auth_content::AuthenticatedContent,
     group::{
         core_group::*, errors::CreateCommitError,
-        public_group::diff::process_path::PathProcessingResult,
+        public_group::diff::process_path::PathComputationResult,
     },
     messages::{group_info::GroupInfoTBS, Commit, Welcome},
     prelude::LibraryError,
@@ -101,7 +101,7 @@ impl PublicGroup {
             return Err(CreateCommitError::CannotRemoveSelf);
         }
 
-        let path_processing_result =
+        let path_computation_result =
             // If path is needed, compute path values
             if apply_proposals_values.path_required
                 || contains_own_updates
@@ -110,7 +110,7 @@ impl PublicGroup {
                 // Process the path. This includes updating the provisional
                 // group context by updating the epoch and computing the new
                 // tree hash.
-                diff.process_path(
+                diff.compute_path(
                     backend,
                     committer_leaf_index,
                     apply_proposals_values.exclusion_list(),
@@ -122,13 +122,13 @@ impl PublicGroup {
                 // If path is not needed, update the group context and return
                 // empty path processing results
                 diff.update_group_context(backend)?;
-                PathProcessingResult::default()
+                PathComputationResult::default()
             };
 
         // Create commit message
         let commit = Commit {
             proposals: proposal_reference_list,
-            path: path_processing_result.encrypted_path,
+            path: path_computation_result.encrypted_path,
         };
 
         // Build AuthenticatedContent
@@ -144,7 +144,7 @@ impl PublicGroup {
         diff.update_confirmed_transcript_hash(backend, &commit)?;
 
         let joiner_secret =
-            JoinerSecret::new(backend, path_processing_result.commit_secret, init_secret)
+            JoinerSecret::new(backend, path_computation_result.commit_secret, init_secret)
                 .map_err(LibraryError::unexpected_crypto_error)?;
 
         // Create group secrets for later use, so we can afterwards consume the
@@ -152,7 +152,7 @@ impl PublicGroup {
         let encrypted_secrets = diff.encrypt_group_secrets(
             &joiner_secret,
             apply_proposals_values.invitation_list,
-            path_processing_result.plain_path.as_deref(),
+            path_computation_result.plain_path.as_deref(),
             &apply_proposals_values.presharedkeys,
             backend,
             committer_leaf_index,
@@ -266,7 +266,7 @@ impl PublicGroup {
             provisional_group_epoch_secrets,
             provisional_message_secrets,
             diff.into_staged_diff(backend, ciphersuite)?,
-            path_processing_result.new_keypairs,
+            path_computation_result.new_keypairs,
             // The committer is not allowed to include their own update
             // proposal, so there is no extra keypair to store here.
             None,

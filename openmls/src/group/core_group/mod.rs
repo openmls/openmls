@@ -60,7 +60,7 @@ use crate::{
     versions::ProtocolVersion,
 };
 
-use self::{past_secrets::MessageSecretsStore, staged_commit::StagedCommit};
+use self::past_secrets::MessageSecretsStore;
 use log::{debug, trace};
 use openmls_traits::key_store::OpenMlsKeyStore;
 use openmls_traits::signatures::Signer;
