@@ -196,32 +196,32 @@ key material from OpenMLS.</p>
 <p>The key store provides functions to <code>store</code>, <code>read</code>, and <code>delete</code> values.
 Note that it does not allow updating values.
 Instead, entries must be deleted and newly stored.</p>
-<pre><code class="language-rust no_run noplayground">/// The Key Store trait
+<pre><code class="language-rust no_run noplayground">{
+    /// Identifier used to downcast the actual entity within an [OpenMlsKeyStore] method.
+    /// In case for example you need to select a SQL table depending on the entity type
+    const ID: MlsEntityId;
+}
+
+/// Blanket impl for when you have to lookup a list of entities from the keystore
+impl&lt;T&gt; MlsEntity for Vec&lt;T&gt;
+where
+    T: MlsEntity + std::fmt::Debug,
+{
+    const ID: MlsEntityId = T::ID;
+}
+
+/// The Key Store trait
 pub trait OpenMlsKeyStore: Send + Sync {
     /// The error type returned by the [`OpenMlsKeyStore`].
-    type Error: std::error::Error + Debug + PartialEq;
+    type Error: std::error::Error + std::fmt::Debug + PartialEq;
 
-    /// Load all encryption keys associated with the given group ID, group epoch
-    /// and client leaf index from the key store.
-    fn read_epoch_keys&lt;V: FromKeyStoreValue&gt;(
-        &amp;self,
-        group_id: &amp;[u8],
-        epoch: u64,
-        leaf_index: u32,
-    ) -&gt; Vec&lt;V&gt;;
-
-    /// Store all encryption keys associated with the given group ID, group
-    /// epoch and client leaf index in the key store.
-    fn store_epoch_keys&lt;V: ToKeyStoreValue&gt;(
-        &amp;self,
-        group_id: &amp;[u8],
-        epoch: u64,
-        leaf_index: u32,
-        encryption_keys: &amp;[V],
-    ) -&gt; Result&lt;(), Self::Error&gt;;
-
-    /// Delete all encryption keys associated with the given group ID, group
-    /// epoch and client leaf index from the key store.</code></pre>
+    /// Store a value `v` that implements the [`MlsEntity`] trait for
+    /// serialization for ID `k`.
+    ///
+    /// Returns an error if storing fails.
+    fn store&lt;V: MlsEntity&gt;(&amp;self, k: &amp;[u8], v: &amp;V) -&gt; Result&lt;(), Self::Error&gt;
+    where
+        Self: Sized;</code></pre>
 <p><strong>NOTE:</strong> Right now, key material must be extracted from the key store.
 This will most likely change in the future.</p>
 <h3 id="openmlscryptoprovider"><a class="header" href="#openmlscryptoprovider">OpenMlsCryptoProvider</a></h3>

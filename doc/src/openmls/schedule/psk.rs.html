@@ -290,11 +290,23 @@
 <a href="#290" id="290">290</a>
 <a href="#291" id="291">291</a>
 <a href="#292" id="292">292</a>
+<a href="#293" id="293">293</a>
+<a href="#294" id="294">294</a>
+<a href="#295" id="295">295</a>
+<a href="#296" id="296">296</a>
+<a href="#297" id="297">297</a>
+<a href="#298" id="298">298</a>
+<a href="#299" id="299">299</a>
+<a href="#300" id="300">300</a>
 </pre><pre class="rust"><code><span class="doccomment">//! # Preshared keys.
 
 </span><span class="kw">use super</span>::<span class="kw-2">*</span>;
 <span class="kw">use </span><span class="kw">crate</span>::group::{GroupEpoch, GroupId};
-<span class="kw">use </span>openmls_traits::{key_store::OpenMlsKeyStore, random::OpenMlsRand, OpenMlsCryptoProvider};
+<span class="kw">use </span>openmls_traits::{
+    key_store::{MlsEntity, MlsEntityId, OpenMlsKeyStore},
+    random::OpenMlsRand,
+    OpenMlsCryptoProvider,
+};
 <span class="kw">use </span>serde::{Deserialize, Serialize};
 <span class="kw">use </span>tls_codec::{Serialize <span class="kw">as </span>TlsSerializeTrait, VLBytes};
 
@@ -355,7 +367,7 @@
 
 <span class="doccomment">/// Contains the secret part of the PSK as well as the
 /// public part that is used as a marker for injection into the key schedule.
-</span><span class="attr">#[derive(Serialize, Deserialize)]
+</span><span class="attr">#[derive(Serialize, Deserialize, TlsDeserialize, TlsSerialize, TlsSize)]
 </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct </span>PskBundle {
     secret: Secret,
 }
@@ -371,6 +383,10 @@
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>secret(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>Secret {
         <span class="kw-2">&amp;</span><span class="self">self</span>.secret
     }
+}
+
+<span class="kw">impl </span>MlsEntity <span class="kw">for </span>PskBundle {
+    <span class="kw">const </span>ID: MlsEntityId = MlsEntityId::PskBundle;
 }
 
 <span class="doccomment">/// Resumption PSK.

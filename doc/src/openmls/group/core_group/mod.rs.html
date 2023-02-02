@@ -825,6 +825,29 @@
 <a href="#825" id="825">825</a>
 <a href="#826" id="826">826</a>
 <a href="#827" id="827">827</a>
+<a href="#828" id="828">828</a>
+<a href="#829" id="829">829</a>
+<a href="#830" id="830">830</a>
+<a href="#831" id="831">831</a>
+<a href="#832" id="832">832</a>
+<a href="#833" id="833">833</a>
+<a href="#834" id="834">834</a>
+<a href="#835" id="835">835</a>
+<a href="#836" id="836">836</a>
+<a href="#837" id="837">837</a>
+<a href="#838" id="838">838</a>
+<a href="#839" id="839">839</a>
+<a href="#840" id="840">840</a>
+<a href="#841" id="841">841</a>
+<a href="#842" id="842">842</a>
+<a href="#843" id="843">843</a>
+<a href="#844" id="844">844</a>
+<a href="#845" id="845">845</a>
+<a href="#846" id="846">846</a>
+<a href="#847" id="847">847</a>
+<a href="#848" id="848">848</a>
+<a href="#849" id="849">849</a>
+<a href="#850" id="850">850</a>
 </pre><pre class="rust"><code><span class="doccomment">//! ### Don&#39;t Panic!
 //!
 //! Functions in this module should never panic. However, if there is a bug in
@@ -1574,6 +1597,12 @@
         }
     }
 
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>own_leaf_node(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="kw-2">&amp;</span>OpenMlsLeafNode, LibraryError&gt; {
+        <span class="self">self</span>.treesync()
+            .leaf(<span class="self">self</span>.own_leaf_index())
+            .ok_or_else(|| LibraryError::custom(<span class="string">&quot;Tree has no own leaf.&quot;</span>))
+    }
+
     <span class="doccomment">/// Store the given [`EncryptionKeyPair`]s in the `backend`&#39;s key store
     /// indexed by this group&#39;s [`GroupId`] and [`GroupEpoch`].
     ///
@@ -1583,12 +1612,14 @@
         backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider&lt;KeyStoreProvider = KeyStore&gt;,
         keypair_references: <span class="kw-2">&amp;</span>[EncryptionKeyPair],
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(), KeyStore::Error&gt; {
-        backend.key_store().store_epoch_keys(
-            <span class="self">self</span>.group_id().as_slice(),
+        <span class="kw">let </span>k = EpochKeypairId::new(
+            <span class="self">self</span>.group_id(),
             <span class="self">self</span>.context().epoch().as_u64(),
-            <span class="self">self</span>.own_leaf_index().u32(),
-            keypair_references,
-        )
+            <span class="self">self</span>.own_leaf_index(),
+        );
+        backend
+            .key_store()
+            .store(<span class="kw-2">&amp;</span>k.<span class="number">0</span>, <span class="kw-2">&amp;</span>keypair_references.to_vec())
     }
 
     <span class="doccomment">/// Read the [`EncryptionKeyPair`]s of this group and its current
@@ -1599,11 +1630,15 @@
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider&lt;KeyStoreProvider = KeyStore&gt;,
     ) -&gt; Vec&lt;EncryptionKeyPair&gt; {
-        backend.key_store().read_epoch_keys(
-            <span class="self">self</span>.group_id().as_slice(),
+        <span class="kw">let </span>k = EpochKeypairId::new(
+            <span class="self">self</span>.group_id(),
             <span class="self">self</span>.context().epoch().as_u64(),
-            <span class="self">self</span>.own_leaf_index().u32(),
-        )
+            <span class="self">self</span>.own_leaf_index(),
+        );
+        backend
+            .key_store()
+            .read::&lt;Vec&lt;EncryptionKeyPair&gt;&gt;(<span class="kw-2">&amp;</span>k.<span class="number">0</span>)
+            .unwrap_or_default()
     }
 
     <span class="doccomment">/// Delete the [`EncryptionKeyPair`]s from the previous [`GroupEpoch`] from
@@ -1614,17 +1649,28 @@
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider&lt;KeyStoreProvider = KeyStore&gt;,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(), KeyStore::Error&gt; {
-        backend.key_store().delete_epoch_keys(
-            <span class="self">self</span>.group_id().as_slice(),
+        <span class="kw">let </span>k = EpochKeypairId::new(
+            <span class="self">self</span>.group_id(),
             <span class="self">self</span>.context().epoch().as_u64() - <span class="number">1</span>,
-            <span class="self">self</span>.own_leaf_index().u32(),
-        )
+            <span class="self">self</span>.own_leaf_index(),
+        );
+        backend.key_store().delete::&lt;Vec&lt;EncryptionKeyPair&gt;&gt;(<span class="kw-2">&amp;</span>k.<span class="number">0</span>)
     }
+}
 
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>own_leaf_node(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="kw-2">&amp;</span>OpenMlsLeafNode, LibraryError&gt; {
-        <span class="self">self</span>.treesync()
-            .leaf(<span class="self">self</span>.own_leaf_index())
-            .ok_or_else(|| LibraryError::custom(<span class="string">&quot;Tree has no own leaf.&quot;</span>))
+<span class="doccomment">/// Composite key for key material of a client within an epoch
+</span><span class="kw">pub struct </span>EpochKeypairId(Vec&lt;u8&gt;);
+
+<span class="kw">impl </span>EpochKeypairId {
+    <span class="kw">fn </span>new(group_id: <span class="kw-2">&amp;</span>GroupId, epoch: u64, leaf_index: LeafNodeIndex) -&gt; <span class="self">Self </span>{
+        <span class="self">Self</span>(
+            [
+                group_id.as_slice(),
+                <span class="kw-2">&amp;</span>leaf_index.u32().to_be_bytes(),
+                <span class="kw-2">&amp;</span>epoch.to_be_bytes(),
+            ]
+            .concat(),
+        )
     }
 }
 

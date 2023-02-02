@@ -718,32 +718,32 @@ key material from OpenMLS.</p>
 <p>The key store provides functions to <code>store</code>, <code>read</code>, and <code>delete</code> values.
 Note that it does not allow updating values.
 Instead, entries must be deleted and newly stored.</p>
-<pre><code class="language-rust no_run noplayground">/// The Key Store trait
+<pre><code class="language-rust no_run noplayground">{
+    /// Identifier used to downcast the actual entity within an [OpenMlsKeyStore] method.
+    /// In case for example you need to select a SQL table depending on the entity type
+    const ID: MlsEntityId;
+}
+
+/// Blanket impl for when you have to lookup a list of entities from the keystore
+impl&lt;T&gt; MlsEntity for Vec&lt;T&gt;
+where
+    T: MlsEntity + std::fmt::Debug,
+{
+    const ID: MlsEntityId = T::ID;
+}
+
+/// The Key Store trait
 pub trait OpenMlsKeyStore: Send + Sync {
     /// The error type returned by the [`OpenMlsKeyStore`].
-    type Error: std::error::Error + Debug + PartialEq;
+    type Error: std::error::Error + std::fmt::Debug + PartialEq;
 
-    /// Load all encryption keys associated with the given group ID, group epoch
-    /// and client leaf index from the key store.
-    fn read_epoch_keys&lt;V: FromKeyStoreValue&gt;(
-        &amp;self,
-        group_id: &amp;[u8],
-        epoch: u64,
-        leaf_index: u32,
-    ) -&gt; Vec&lt;V&gt;;
-
-    /// Store all encryption keys associated with the given group ID, group
-    /// epoch and client leaf index in the key store.
-    fn store_epoch_keys&lt;V: ToKeyStoreValue&gt;(
-        &amp;self,
-        group_id: &amp;[u8],
-        epoch: u64,
-        leaf_index: u32,
-        encryption_keys: &amp;[V],
-    ) -&gt; Result&lt;(), Self::Error&gt;;
-
-    /// Delete all encryption keys associated with the given group ID, group
-    /// epoch and client leaf index from the key store.</code></pre>
+    /// Store a value `v` that implements the [`MlsEntity`] trait for
+    /// serialization for ID `k`.
+    ///
+    /// Returns an error if storing fails.
+    fn store&lt;V: MlsEntity&gt;(&amp;self, k: &amp;[u8], v: &amp;V) -&gt; Result&lt;(), Self::Error&gt;
+    where
+        Self: Sized;</code></pre>
 <p><strong>NOTE:</strong> Right now, key material must be extracted from the key store.
 This will most likely change in the future.</p>
 <h3 id="openmlscryptoprovider"><a class="header" href="#openmlscryptoprovider">OpenMlsCryptoProvider</a></h3>
@@ -772,16 +772,16 @@ Suppose you want to use a persisting key store. In that case, it is sufficient t
 identifiers.</p>
 <p><strong>AEADs</strong></p>
 <p>The following AEADs are defined.</p>
-<pre><code class="language-rust no_run noplayground">use crate::key_store::{FromKeyStoreValue, ToKeyStoreValue};
-
-#[derive(Debug, PartialEq, Eq, Clone, Copy, Serialize, Deserialize)]
-#[repr(u16)]
-/// AEAD types
-pub enum AeadType {
+<pre><code class="language-rust no_run noplayground">pub enum AeadType {
     /// AES GCM 128
     Aes128Gcm = 0x0001,
 
-    /// AES GCM 256</code></pre>
+    /// AES GCM 256
+    Aes256Gcm = 0x0002,
+
+    /// ChaCha20 Poly1305
+    ChaCha20Poly1305 = 0x0003,
+}</code></pre>
 <p>An AEAD provides the following functions to get the according values for each
 algorithm.</p>
 <ul>
@@ -791,11 +791,11 @@ algorithm.</p>
 </ul>
 <p><strong>Hashing</strong></p>
 <p>The following hash algorithms are defined.</p>
-<pre><code class="language-rust no_run noplayground">
-#[derive(Debug, PartialEq, Eq, Clone, Copy)]
-#[repr(u8)]
-#[allow(non_camel_case_types)]
-/// Hash types</code></pre>
+<pre><code class="language-rust no_run noplayground">pub enum HashType {
+    Sha2_256 = 0x04,
+    Sha2_384 = 0x05,
+    Sha2_512 = 0x06,
+}</code></pre>
 <p>A hash algorithm provides the following functions to get the according values for each
 algorithm.</p>
 <ul>
@@ -803,28 +803,23 @@ algorithm.</p>
 </ul>
 <p><strong>Signatures</strong></p>
 <p>The following signature schemes are defined.</p>
-<pre><code class="language-rust no_run noplayground">    TlsSerialize,
-    TlsDeserialize,
-    TlsSize,
-)]
-#[repr(u16)]
-pub enum SignatureScheme {
+<pre><code class="language-rust no_run noplayground">pub enum SignatureScheme {
     /// ECDSA_SECP256R1_SHA256
     ECDSA_SECP256R1_SHA256 = 0x0403,
     /// ECDSA_SECP384R1_SHA384
     ECDSA_SECP384R1_SHA384 = 0x0503,
     /// ECDSA_SECP521R1_SHA512
-    ECDSA_SECP521R1_SHA512 = 0x0603,</code></pre>
+    ECDSA_SECP521R1_SHA512 = 0x0603,
+    /// ED25519
+    ED25519 = 0x0807,
+    /// ED448
+    ED448 = 0x0808,
+}</code></pre>
 <h1 id="hpke-types"><a class="header" href="#hpke-types">HPKE Types</a></h1>
 <p>The HPKE implementation is part of the crypto provider as well.
 The crate, therefore, defines the necessary types too.</p>
 <p>The HPKE algorithms are defined as follows.</p>
-<pre><code class="language-rust no_run noplayground">// === HPKE === //
-
-/// Convenience tuple struct for an HPKE configuration.
-#[derive(Debug)]
-pub struct HpkeConfig(pub HpkeKemType, pub HpkeKdfType, pub HpkeAeadType);
-
+<pre><code class="language-rust no_run noplayground">
 /// KEM Types for HPKE
 #[derive(PartialEq, Eq, Copy, Clone, Debug, Serialize, Deserialize)]
 #[repr(u16)]
@@ -834,39 +829,44 @@ pub enum HpkeKemType {
 
     /// DH KEM on P384
     DhKemP384 = 0x0011,
-</code></pre>
-<pre><code class="language-rust no_run noplayground">    DhKem25519 = 0x0020,
 
-    /// DH KEM on x448
-    DhKem448 = 0x0021,
-}
+    /// DH KEM on P521
+    DhKemP521 = 0x0012,
 
+    /// DH KEM on x25519
+    DhKem25519 = 0x0020,</code></pre>
+<pre><code class="language-rust no_run noplayground">
 /// KDF Types for HPKE
 #[derive(PartialEq, Eq, Copy, Clone, Debug, Serialize, Deserialize)]
 #[repr(u16)]
-pub enum HpkeKdfType {</code></pre>
-<pre><code class="language-rust no_run noplayground">    HkdfSha384 = 0x0002,
+pub enum HpkeKdfType {
+    /// HKDF SHA 256
+    HkdfSha256 = 0x0001,
 
-    /// HKDF SHA 512
-    HkdfSha512 = 0x0003,
-}
-
+    /// HKDF SHA 384
+    HkdfSha384 = 0x0002,</code></pre>
+<pre><code class="language-rust no_run noplayground">
 /// AEAD Types for HPKE.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[repr(u16)]
 pub enum HpkeAeadType {
     /// AES GCM 128
     AesGcm128 = 0x0001,
-</code></pre>
+
+    /// AES GCM 256
+    AesGcm256 = 0x0002,
+
+    /// ChaCha20 Poly1305
+    ChaCha20Poly1305 = 0x0003,</code></pre>
 <p>In addition, helper structs for <code>HpkeCiphertext</code> and <code>HpkeKeyPair</code> are defined.</p>
-<pre><code class="language-rust no_run noplayground">/// ```text
-/// struct {
-///     opaque kem_output&lt;V&gt;;
-///     opaque ciphertext&lt;V&gt;;</code></pre>
-<pre><code class="language-rust no_run noplayground">    Debug, PartialEq, Eq, Clone, Serialize, Deserialize, TlsSerialize, TlsDeserialize, TlsSize,
-)]
-pub struct HpkeCiphertext {
-    pub kem_output: VLBytes,</code></pre>
+<pre><code class="language-rust no_run noplayground">/// ```
+#[derive(
+    Debug, PartialEq, Eq, Clone, Serialize, Deserialize, TlsSerialize, TlsDeserialize, TlsSize,
+)]</code></pre>
+<pre><code class="language-rust no_run noplayground">}
+
+/// Helper holding a (private, public) key pair as byte vectors.
+#[derive(Debug, Clone, Serialize, Deserialize)]</code></pre>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="message-validation"><a class="header" href="#message-validation">Message Validation</a></h1>
 <p>OpenMLS implements a variety of syntactical and semantical checks, both when parsing and processing incoming commits and when creating own commits.</p>
 <h2 id="validation-steps"><a class="header" href="#validation-steps">Validation steps</a></h2>
