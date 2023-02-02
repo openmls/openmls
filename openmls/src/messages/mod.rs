@@ -26,7 +26,6 @@ use proposals::*;
 use tls_codec::{Serialize as TlsSerializeTrait, *};
 
 // Public
-pub mod codec;
 pub mod external_proposals;
 pub mod group_info;
 pub mod proposals;

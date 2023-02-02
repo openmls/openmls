@@ -131,19 +131,30 @@ impl TryFrom<u16> for ProposalType {
 /// } Proposal;
 /// ```
 #[allow(clippy::large_enum_variant)]
-#[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
+#[derive(
+    Debug, PartialEq, Clone, Serialize, Deserialize, TlsSize, TlsSerialize, TlsDeserialize,
+)]
 #[allow(missing_docs)]
+#[repr(u16)]
 pub enum Proposal {
+    #[tls_codec(discriminant = 1)]
     Add(AddProposal),
+    #[tls_codec(discriminant = 2)]
     Update(UpdateProposal),
+    #[tls_codec(discriminant = 3)]
     Remove(RemoveProposal),
+    #[tls_codec(discriminant = 4)]
     PreSharedKey(PreSharedKeyProposal),
+    #[tls_codec(discriminant = 5)]
     ReInit(ReInitProposal),
+    #[tls_codec(discriminant = 6)]
     ExternalInit(ExternalInitProposal),
+    #[tls_codec(discriminant = 7)]
     GroupContextExtensions(GroupContextExtensionProposal),
     // # Extensions
     // TODO(#916): `AppAck` is not in draft-ietf-mls-protocol-17 but
     //             was moved to `draft-ietf-mls-extensions-00`.
+    #[tls_codec(discriminant = 8)]
     AppAck(AppAckProposal),
 }
 
