@@ -26,8 +26,8 @@ use super::{
     sorted_iter::sorted_iter,
     tree::{ABinaryTree, ABinaryTreeError},
     treemath::{
-        common_direct_path, copath, direct_path, left, lowest_common_ancestor, right, root,
-        LeafNodeIndex, ParentNodeIndex, TreeNodeIndex, TreeSize, MAX_TREE_SIZE, MIN_TREE_SIZE,
+        copath, direct_path, left, lowest_common_ancestor, right, root, LeafNodeIndex,
+        ParentNodeIndex, TreeNodeIndex, TreeSize, MAX_TREE_SIZE, MIN_TREE_SIZE,
     },
 };
 
@@ -264,17 +264,6 @@ impl<'a, L: Clone + Debug + Default, P: Clone + Debug + Default> AbDiff<'a, L, P
         }
     }
 
-    /// Returns a vector of [`ParentNodeIndex`]es, where the first reference is to
-    /// the root of the shared subtree of the two given leaf indices followed by
-    /// references to the nodes in the direct path of said subtree root.
-    pub(crate) fn subtree_path(
-        &self,
-        leaf_index_1: LeafNodeIndex,
-        leaf_index_2: LeafNodeIndex,
-    ) -> Vec<ParentNodeIndex> {
-        common_direct_path(leaf_index_1, leaf_index_2, self.size())
-    }
-
     // Functions pertaining to the whole diff
     /////////////////////////////////////////
 
@@ -323,10 +312,16 @@ impl<'a, L: Clone + Debug + Default, P: Clone + Debug + Default> AbDiff<'a, L, P
     pub(crate) fn leaf(&self, leaf_index: LeafNodeIndex) -> &L {
         // Check if it's in the diff.
         if let Some(node) = self.leaf_diff.get(&leaf_index) {
-            return node;
+            node
+        // If it's not in the diff, it could be that it's outside of the
+        // diff, in which case we want to return a blank here, because the
+        // diff might have been trimmed in the mean time.
+        } else if leaf_index.u32() >= self.leaf_count() {
+            &self.default_leaf
+            // If it isn't in the diff, it must be in the tree.
+        } else {
+            self.original_tree.leaf_by_index(leaf_index)
         }
-        // If it isn't in the diff, it must be in the tree.
-        self.original_tree.leaf_by_index(leaf_index)
     }
 
     /// Returns a reference to the parent node at index `parent_index`.

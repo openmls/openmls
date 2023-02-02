@@ -26,12 +26,13 @@ use super::{
     errors::*,
     node::{
         encryption_keys::{EncryptionKey, EncryptionKeyPair, EncryptionPrivateKey},
-        leaf_node::{LeafNode, OpenMlsLeafNode},
+        leaf_node::OpenMlsLeafNode,
         parent_node::{ParentNode, PathDerivationResult, PlainUpdatePathNode},
         Node, NodeReference,
     },
+    treekem::UpdatePath,
     treesync_node::{TreeSyncLeafNode, TreeSyncParentNode},
-    TreeSync, TreeSyncParentHashError, TreeSyncSetPathError,
+    TreeSync, TreeSyncParentHashError,
 };
 
 use crate::{
@@ -289,7 +290,7 @@ impl<'a> TreeSyncDiff<'a> {
         leaf_index: LeafNodeIndex,
     ) -> Result<UpdatePathResult, LibraryError> {
         debug_assert!(
-            self.leaf(leaf_index).is_ok(),
+            self.leaf(leaf_index).is_some(),
             "Tree diff is missing own leaf"
         );
 
@@ -299,16 +300,14 @@ impl<'a> TreeSyncDiff<'a> {
         let parent_hash = self.process_update_path(backend, ciphersuite, leaf_index, path)?;
 
         self.leaf_mut(leaf_index)
-            .map_err(|_| LibraryError::custom("Didn't find own leaf in diff."))?
+            .ok_or_else(|| LibraryError::custom("Didn't find own leaf in diff."))?
             .update_parent_hash(&parent_hash, group_id, signer)?;
 
         Ok((update_path_nodes, keypairs, commit_secret))
     }
 
     /// Set the given path as the direct path of the `sender_leaf_index` and
-    /// replace the [`KeyPackage`] in the corresponding leaf with the given one.
-    /// The given path of ParentNodes should already include any potential path
-    /// secrets.
+    /// replace the [`LeafNode`] in the corresponding leaf with the given one.
     ///
     /// Returns an error if the `sender_leaf_index` is outside of the tree.
     /// TODO #804
@@ -317,20 +316,45 @@ impl<'a> TreeSyncDiff<'a> {
         backend: &impl OpenMlsCryptoProvider,
         ciphersuite: Ciphersuite,
         sender_leaf_index: LeafNodeIndex,
-        leaf_node: LeafNode,
-        path: Vec<ParentNode>,
+        update_path: &UpdatePath,
     ) -> Result<(), ApplyUpdatePathError> {
+        let path = update_path.nodes();
+
+        // If the committer is a `NewMemberCommit`, we have to add the
+        // leaf to the tree before we can apply an update path. This is
+        // s.t. the tree can be grown if necessary.
+        if self.diff.leaf(sender_leaf_index).node().is_none()
+            || sender_leaf_index.u32() >= self.leaf_count()
+        {
+            let new_leaf_index = self
+                .add_leaf(update_path.leaf_node().clone().into())
+                .map_err(|e| match e {
+                    TreeSyncAddLeaf::LibraryError(e) => ApplyUpdatePathError::LibraryError(e),
+                    TreeSyncAddLeaf::TreeFull => ApplyUpdatePathError::TreeFull,
+                })?;
+            // The new member should have the same index as the claimed sender index.
+            if sender_leaf_index != new_leaf_index {
+                return Err(ApplyUpdatePathError::InconsistentSenderIndex);
+            }
+        }
+
         let filtered_direct_path = self.filtered_direct_path(sender_leaf_index);
-        debug_assert_eq!(filtered_direct_path.len(), path.len());
+        if filtered_direct_path.len() != path.len() {
+            return Err(ApplyUpdatePathError::PathLengthMismatch);
+        };
         let path = filtered_direct_path
             .into_iter()
-            .zip(path.into_iter())
+            .zip(
+                path.iter()
+                    .map(|update_path_node| update_path_node.public_key.clone().into()),
+            )
             .collect();
         let parent_hash =
             self.process_update_path(backend, ciphersuite, sender_leaf_index, path)?;
 
         // Verify the parent hash.
-        let leaf_node_parent_hash = leaf_node
+        let leaf_node_parent_hash = update_path
+            .leaf_node()
             .parent_hash()
             .ok_or(ApplyUpdatePathError::MissingParentHash)?;
         if leaf_node_parent_hash != parent_hash {
@@ -338,7 +362,7 @@ impl<'a> TreeSyncDiff<'a> {
         };
 
         // Update the `encryption_key` in the leaf.
-        let mut leaf: OpenMlsLeafNode = leaf_node.into();
+        let mut leaf: OpenMlsLeafNode = update_path.leaf_node().clone().into();
         leaf.set_leaf_index(sender_leaf_index);
         self.diff.replace_leaf(sender_leaf_index, leaf.into());
         Ok(())
@@ -375,58 +399,6 @@ impl<'a> TreeSyncDiff<'a> {
         }
 
         Ok(parent_hash)
-    }
-
-    /// Derives [`EncryptionKeyPair`]s for the nodes in the shared direct path
-    /// of the leaves with index `leaf_index` and `sender_index`.  This function
-    /// also checks that the derived public keys match the existing public keys.
-    ///
-    /// Returns the `CommitSecret` derived from the path secret of the root
-    /// node, as well as the derived [`EncryptionKeyPair`]s. Returns an error if
-    /// the target leaf is outside of the tree.
-    ///
-    /// Returns TreeSyncSetPathError::PublicKeyMismatch if the derived keys don't
-    /// match with the existing ones.
-    ///
-    /// Returns TreeSyncSetPathError::LibraryError if the sender_index is not
-    /// in the tree.
-    pub(crate) fn derive_path_secrets(
-        &self,
-        backend: &impl OpenMlsCryptoProvider,
-        ciphersuite: Ciphersuite,
-        mut path_secret: PathSecret,
-        sender_index: LeafNodeIndex,
-        leaf_index: LeafNodeIndex,
-    ) -> Result<(Vec<EncryptionKeyPair>, CommitSecret), TreeSyncSetPathError> {
-        // We assume both nodes are in the tree, since the sender_index must be in the tree
-        // Skip the nodes in the subtree path for which we are an unmerged leaf.
-        let subtree_path = self.diff.subtree_path(leaf_index, sender_index);
-        let mut keypairs = Vec::new();
-        for parent_index in subtree_path {
-            // We know the node is in the diff, since it is in the subtree path
-            let tsn = self.diff.parent(parent_index);
-            // We only care about non-blank nodes.
-            if let Some(ref parent_node) = tsn.node() {
-                // If our own leaf index is not in the list of unmerged leaves
-                // then we should have the secret for this node.
-                if !parent_node.unmerged_leaves().contains(&leaf_index) {
-                    let keypair = path_secret.derive_key_pair(backend, ciphersuite)?;
-                    // The derived public key should match the one in the node.
-                    // If not, the tree is corrupt.
-                    if parent_node.encryption_key() != keypair.public_key() {
-                        return Err(TreeSyncSetPathError::PublicKeyMismatch);
-                    } else {
-                        // If everything is ok, set the private key and derive
-                        // the next path secret.
-                        keypairs.push(keypair);
-                        path_secret = path_secret.derive_path_secret(backend, ciphersuite)?;
-                    }
-                };
-                // If the leaf is blank or our index is in the list of unmerged
-                // leaves, go to the next node.
-            }
-        }
-        Ok((keypairs, path_secret.into()))
     }
 
     /// Set the parent hash of the given nodes assuming that they are the new
@@ -741,25 +713,14 @@ impl<'a> TreeSyncDiff<'a> {
         }
     }
 
-    /// Return a reference to our own leaf.
-    pub(crate) fn leaf(&self, index: LeafNodeIndex) -> Result<&OpenMlsLeafNode, TreeSyncDiffError> {
-        let node = self.diff.leaf(index);
-        match node.node() {
-            Some(node) => Ok(node),
-            None => Err(LibraryError::custom("Node was empty.").into()),
-        }
+    /// Return a reference to the leaf with the given index.
+    pub(crate) fn leaf(&self, index: LeafNodeIndex) -> Option<&OpenMlsLeafNode> {
+        self.diff.leaf(index).node().as_ref()
     }
 
-    /// Return a mutable reference to our own leaf.
-    pub(crate) fn leaf_mut(
-        &mut self,
-        index: LeafNodeIndex,
-    ) -> Result<&mut OpenMlsLeafNode, TreeSyncDiffError> {
-        let node = self.diff.leaf_mut(index);
-        match node.node_mut() {
-            Some(node) => Ok(node),
-            None => Err(LibraryError::custom("Node was empty.").into()),
-        }
+    /// Return a mutable reference to the leaf with the given index.
+    pub(crate) fn leaf_mut(&mut self, index: LeafNodeIndex) -> Option<&mut OpenMlsLeafNode> {
+        self.diff.leaf_mut(index).node_mut().as_mut()
     }
 
     /// Compute and set the tree hash of all nodes in the tree.

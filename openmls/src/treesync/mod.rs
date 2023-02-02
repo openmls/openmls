@@ -412,4 +412,56 @@ impl TreeSync {
             .cloned()
             .collect::<Vec<EncryptionKey>>()
     }
+
+    /// Derives [`EncryptionKeyPair`]s for the nodes in the shared direct path
+    /// of the leaves with index `leaf_index` and `sender_index`.  This function
+    /// also checks that the derived public keys match the existing public keys.
+    ///
+    /// Returns the `CommitSecret` derived from the path secret of the root
+    /// node, as well as the derived [`EncryptionKeyPair`]s. Returns an error if
+    /// the target leaf is outside of the tree.
+    ///
+    /// Returns TreeSyncSetPathError::PublicKeyMismatch if the derived keys don't
+    /// match with the existing ones.
+    ///
+    /// Returns TreeSyncSetPathError::LibraryError if the sender_index is not
+    /// in the tree.
+    pub(crate) fn derive_path_secrets(
+        &self,
+        backend: &impl OpenMlsCryptoProvider,
+        ciphersuite: Ciphersuite,
+        mut path_secret: PathSecret,
+        sender_index: LeafNodeIndex,
+        leaf_index: LeafNodeIndex,
+    ) -> Result<(Vec<EncryptionKeyPair>, CommitSecret), DerivePathError> {
+        // We assume both nodes are in the tree, since the sender_index must be in the tree
+        // Skip the nodes in the subtree path for which we are an unmerged leaf.
+        let subtree_path = self.tree.subtree_path(leaf_index, sender_index);
+        let mut keypairs = Vec::new();
+        for parent_index in subtree_path {
+            // We know the node is in the tree, since it is in the subtree path
+            let tsn = self.tree.parent_by_index(parent_index);
+            // We only care about non-blank nodes.
+            if let Some(ref parent_node) = tsn.node() {
+                // If our own leaf index is not in the list of unmerged leaves
+                // then we should have the secret for this node.
+                if !parent_node.unmerged_leaves().contains(&leaf_index) {
+                    let keypair = path_secret.derive_key_pair(backend, ciphersuite)?;
+                    // The derived public key should match the one in the node.
+                    // If not, the tree is corrupt.
+                    if parent_node.encryption_key() != keypair.public_key() {
+                        return Err(DerivePathError::PublicKeyMismatch);
+                    } else {
+                        // If everything is ok, set the private key and derive
+                        // the next path secret.
+                        keypairs.push(keypair);
+                        path_secret = path_secret.derive_path_secret(backend, ciphersuite)?;
+                    }
+                };
+                // If the leaf is blank or our index is in the list of unmerged
+                // leaves, go to the next node.
+            }
+        }
+        Ok((keypairs, path_secret.into()))
+    }
 }

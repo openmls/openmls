@@ -2,6 +2,7 @@ use crate::{
     framing::{FramingParameters, WireFormat},
     group::{
         errors::ExternalCommitError,
+        public_group::errors::CreationFromExternalError,
         test_core_group::{setup_alice_group, setup_client},
     },
     messages::proposals::{ProposalOrRef, ProposalType},
@@ -269,7 +270,7 @@ fn test_external_init_broken_signature(
         .proposal_store(&proposal_store)
         .build();
     assert_eq!(
-        ExternalCommitError::InvalidGroupInfoSignature,
+        ExternalCommitError::PublicGroupError(CreationFromExternalError::InvalidGroupInfoSignature),
         CoreGroup::join_by_external_commit(
             backend,
             &charlie_signer,

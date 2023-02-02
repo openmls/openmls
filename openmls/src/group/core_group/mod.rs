@@ -33,6 +33,7 @@ mod test_proposals;
 
 #[cfg(test)]
 use super::errors::CreateGroupContextExtProposalError;
+use super::public_group::PublicGroup;
 use crate::framing::mls_auth_content::VerifiableAuthenticatedContent;
 
 use crate::group::config::CryptoConfig;
@@ -64,10 +65,8 @@ use self::{past_secrets::MessageSecretsStore, staged_commit::StagedCommit};
 use log::{debug, trace};
 use openmls_traits::key_store::OpenMlsKeyStore;
 use openmls_traits::signatures::Signer;
-use openmls_traits::{crypto::OpenMlsCrypto, types::Ciphersuite};
+use openmls_traits::types::Ciphersuite;
 use serde::{Deserialize, Serialize};
-#[cfg(test)]
-use std::convert::TryFrom;
 #[cfg(test)]
 use std::io::{Error, Read, Write};
 use tls_codec::Serialize as TlsSerializeTrait;
@@ -121,18 +120,13 @@ impl Member {
 #[derive(Debug, Serialize, Deserialize)]
 #[cfg_attr(test, derive(PartialEq))]
 pub(crate) struct CoreGroup {
-    ciphersuite: Ciphersuite,
-    group_context: GroupContext,
+    public_group: PublicGroup,
     group_epoch_secrets: GroupEpochSecrets,
-    tree: TreeSync,
     own_leaf_index: LeafNodeIndex,
-    interim_transcript_hash: Vec<u8>,
     // Group config.
     // Set to true if the ratchet tree extension is added to the `GroupInfo`.
     // Defaults to `false`.
     use_ratchet_tree_extension: bool,
-    // The MLS protocol version used in this group.
-    mls_version: ProtocolVersion,
     /// A [`MessageSecretsStore`] that stores message secrets.
     /// By default this store has the length of 1, i.e. only the [`MessageSecrets`]
     /// of the current epoch is kept.
@@ -292,19 +286,21 @@ impl CoreGroupBuilder {
 
         let (group_epoch_secrets, message_secrets) =
             epoch_secrets.split_secrets(serialized_group_context, 1u32, LeafNodeIndex::new(0u32));
+
+        let initial_confirmation_tag = message_secrets
+            .confirmation_key()
+            .tag(backend, &[])
+            .map_err(LibraryError::unexpected_crypto_error)?;
+
         let message_secrets_store =
             MessageSecretsStore::new_with_secret(self.max_past_epochs, message_secrets);
 
-        let interim_transcript_hash = vec![];
+        let public_group = PublicGroup::new(tree, group_context, initial_confirmation_tag);
 
         let group = CoreGroup {
-            ciphersuite,
-            group_context,
+            public_group,
             group_epoch_secrets,
-            tree,
-            interim_transcript_hash,
             use_ratchet_tree_extension: config.add_ratchet_tree_extension,
-            mls_version: version,
             message_secrets_store,
             own_leaf_index: LeafNodeIndex::new(0),
         };
@@ -495,7 +491,7 @@ impl CoreGroup {
         log::trace!("{:?}", public_message.confirmation_tag());
         PrivateMessage::try_from_authenticated_content(
             &public_message,
-            self.ciphersuite,
+            self.ciphersuite(),
             backend,
             self.message_secrets_store.message_secrets_mut(),
             padding_size,
@@ -570,7 +566,7 @@ impl CoreGroup {
                 let external_pub = self
                     .group_epoch_secrets()
                     .external_secret()
-                    .derive_external_keypair(backend.crypto(), self.ciphersuite)
+                    .derive_external_keypair(backend.crypto(), self.ciphersuite())
                     .public;
                 Extension::ExternalPub(ExternalPubExtension::new(HpkePublicKey::from(external_pub)))
             };
@@ -589,7 +585,7 @@ impl CoreGroup {
 
         // Create to-be-signed group info.
         let group_info_tbs = GroupInfoTBS::new(
-            self.group_context.clone(),
+            self.context().clone(),
             extensions,
             self.message_secrets()
                 .confirmation_key()
@@ -629,37 +625,37 @@ impl CoreGroup {
 
     /// Returns a reference to the ratchet tree
     pub(crate) fn treesync(&self) -> &TreeSync {
-        &self.tree
+        self.public_group.treesync()
     }
 
     /// Get the ciphersuite implementation used in this group.
     pub(crate) fn ciphersuite(&self) -> Ciphersuite {
-        self.ciphersuite
+        self.public_group.ciphersuite()
     }
 
     /// Get the MLS version used in this group.
     pub(crate) fn version(&self) -> ProtocolVersion {
-        self.mls_version
+        self.public_group.version()
     }
 
     /// Get the group context
     pub(crate) fn context(&self) -> &GroupContext {
-        &self.group_context
+        self.public_group.group_context()
     }
 
     /// Get the group ID
     pub(crate) fn group_id(&self) -> &GroupId {
-        self.group_context.group_id()
+        self.public_group.group_id()
     }
 
     /// Get the group context extensions.
     pub(crate) fn group_context_extensions(&self) -> &Extensions {
-        self.group_context.extensions()
+        self.public_group.extensions()
     }
 
     /// Get the required capabilities extension of this group.
     pub(crate) fn required_capabilities(&self) -> Option<&RequiredCapabilitiesExtension> {
-        self.group_context.required_capabilities()
+        self.public_group.required_capabilities()
     }
 
     /// Returns `true` if the group uses the ratchet tree extension anf `false
@@ -752,7 +748,7 @@ impl CoreGroup {
     }
 
     pub(crate) fn own_leaf_node(&self) -> Result<&OpenMlsLeafNode, LibraryError> {
-        self.tree
+        self.treesync()
             .leaf(self.own_leaf_index())
             .ok_or_else(|| LibraryError::custom("Tree has no own leaf."))
     }
@@ -831,7 +827,7 @@ impl EpochKeypairId {
 #[cfg(any(feature = "test-utils", test))]
 impl CoreGroup {
     pub(crate) fn context_mut(&mut self) -> &mut GroupContext {
-        &mut self.group_context
+        self.public_group.context_mut()
     }
 
     pub(crate) fn message_secrets_test_mut(&mut self) -> &mut MessageSecrets {
@@ -843,44 +839,6 @@ impl CoreGroup {
 
         print_tree(self, message);
     }
-}
-
-// Helper functions
-
-pub(crate) fn update_confirmed_transcript_hash(
-    ciphersuite: Ciphersuite,
-    backend: &impl OpenMlsCryptoProvider,
-    mls_plaintext_commit_content: &ConfirmedTranscriptHashInput,
-    interim_transcript_hash: &[u8],
-) -> Result<Vec<u8>, LibraryError> {
-    let commit_content_bytes = mls_plaintext_commit_content
-        .tls_serialize_detached()
-        .map_err(LibraryError::missing_bound_check)?;
-    backend
-        .crypto()
-        .hash(
-            ciphersuite.hash_algorithm(),
-            &[interim_transcript_hash, &commit_content_bytes].concat(),
-        )
-        .map_err(LibraryError::unexpected_crypto_error)
-}
-
-pub(crate) fn update_interim_transcript_hash(
-    ciphersuite: Ciphersuite,
-    backend: &impl OpenMlsCryptoProvider,
-    mls_plaintext_commit_auth_data: &InterimTranscriptHashInput,
-    confirmed_transcript_hash: &[u8],
-) -> Result<Vec<u8>, LibraryError> {
-    let commit_auth_data_bytes = mls_plaintext_commit_auth_data
-        .tls_serialize_detached()
-        .map_err(LibraryError::missing_bound_check)?;
-    backend
-        .crypto()
-        .hash(
-            ciphersuite.hash_algorithm(),
-            &[confirmed_transcript_hash, &commit_auth_data_bytes].concat(),
-        )
-        .map_err(LibraryError::unexpected_crypto_error)
 }
 
 /// Configuration for core group.

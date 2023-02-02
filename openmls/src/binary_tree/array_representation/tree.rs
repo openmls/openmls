@@ -13,7 +13,7 @@ use thiserror::Error;
 
 use super::{
     diff::{AbDiff, StagedAbDiff},
-    treemath::{LeafNodeIndex, ParentNodeIndex, TreeSize, MAX_TREE_SIZE},
+    treemath::{common_direct_path, LeafNodeIndex, ParentNodeIndex, TreeSize, MAX_TREE_SIZE},
 };
 
 #[derive(Clone, Debug)]
@@ -99,7 +99,7 @@ impl<L: Clone + Debug + Default, P: Clone + Debug + Default> ABinaryTree<L, P> {
     /// `parent_index`, where the indexing corresponds to the array
     /// representation of the underlying binary tree. Returns the default value
     /// if the node cannot be found.
-    pub(in crate::binary_tree) fn parent_by_index(&self, parent_index: ParentNodeIndex) -> &P {
+    pub(crate) fn parent_by_index(&self, parent_index: ParentNodeIndex) -> &P {
         self.parent_nodes
             .get(parent_index.usize())
             .unwrap_or(&self.default_parent)
@@ -200,6 +200,17 @@ impl<L: Clone + Debug + Default, P: Clone + Debug + Default> ABinaryTree<L, P> {
         self.leaf_nodes
             .get(leaf_index.usize())
             .unwrap_or(&self.default_leaf)
+    }
+
+    /// Returns a vector of [`ParentNodeIndex`]es, where the first reference is to
+    /// the root of the shared subtree of the two given leaf indices followed by
+    /// references to the nodes in the direct path of said subtree root.
+    pub(crate) fn subtree_path(
+        &self,
+        leaf_index_1: LeafNodeIndex,
+        leaf_index_2: LeafNodeIndex,
+    ) -> Vec<ParentNodeIndex> {
+        common_direct_path(leaf_index_1, leaf_index_2, self.size())
     }
 }
 

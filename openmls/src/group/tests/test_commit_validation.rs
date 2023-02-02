@@ -9,12 +9,16 @@ use rstest::*;
 use rstest_reuse::{self, *};
 
 use crate::{
+    binary_tree::LeafNodeIndex,
     ciphersuite::signable::Signable,
     framing::*,
     group::{config::CryptoConfig, errors::*, *},
     messages::proposals::*,
     schedule::psk::*,
-    treesync::errors::ApplyUpdatePathError,
+    treesync::{
+        errors::ApplyUpdatePathError, node::parent_node::PlainUpdatePathNode, treekem::UpdatePath,
+    },
+    versions::ProtocolVersion,
 };
 
 use super::utils::{
@@ -566,7 +570,7 @@ fn test_valsem204(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
         mut alice_group,
         alice_credential,
         mut bob_group,
-        ..
+        mut charlie_group,
     } = validation_test_setup(PURE_PLAINTEXT_WIRE_FORMAT_POLICY, ciphersuite, backend);
 
     // Have Alice generate a self-updating commit, flip the last byte of one of
@@ -593,9 +597,51 @@ fn test_valsem204(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
         panic!("Unexpected content type.");
     };
 
-    // This should cause decryption to fail.
+    // Let's piece together a context that we can use for decryption.
+    // Let Charlie process the commit, so we can pull the post-merge tree hash
+    // from them.
+    let message = charlie_group
+        .process_message(backend, original_plaintext.clone())
+        .unwrap();
+    match message.into_content() {
+        ProcessedMessageContent::StagedCommitMessage(staged_commit) => charlie_group
+            .merge_staged_commit(backend, *staged_commit)
+            .unwrap(),
+        _ => panic!("Unexpected message type."),
+    }
+    let mut encryption_context = alice_group.export_group_context().clone();
+    let post_merge_tree_hash = charlie_group.export_group_context().tree_hash().to_vec();
+    // We want a context, where everything is post-merge except the confirmed transcript hash.
+    encryption_context.increment_epoch();
+    encryption_context.update_tree_hash(post_merge_tree_hash);
+
+    // We want to fail the check for public key equality, but we don't want to
+    // invalidate the parent hash. So we'll have to encrypt new secrets. The
+    // public keys derived from those secrets will then differ from the public
+    // keys in the update path, thus causing the error.
     if let Some(ref mut path) = commit_content.path {
-        path.flip_node_bytes();
+        let new_plain_path: Vec<PlainUpdatePathNode> = path
+            .nodes()
+            .iter()
+            .map(|upn| {
+                PlainUpdatePathNode::new(
+                    upn.encryption_key().clone(),
+                    Secret::random(ciphersuite, backend, ProtocolVersion::default())
+                        .unwrap()
+                        .into(),
+                )
+            })
+            .collect();
+        let new_nodes = alice_group.group().treesync().empty_diff().encrypt_path(
+            backend,
+            ciphersuite,
+            &new_plain_path,
+            &encryption_context.tls_serialize_detached().unwrap(),
+            &[].into(),
+            LeafNodeIndex::new(0),
+        );
+        let new_path = UpdatePath::new(path.leaf_node().clone(), new_nodes);
+        commit_content.path = Some(new_path);
     };
 
     plaintext.set_content(FramedContentBody::Commit(commit_content));

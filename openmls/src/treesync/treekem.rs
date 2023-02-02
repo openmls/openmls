@@ -17,7 +17,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::{
     binary_tree::array_representation::LeafNodeIndex,
-    ciphersuite::{hash_ref::KeyPackageRef, HpkePublicKey},
+    ciphersuite::HpkePublicKey,
     error::LibraryError,
     messages::{proposals::AddProposal, EncryptedGroupSecrets, GroupSecrets, PathSecret},
     schedule::{psk::PreSharedKeyId, CommitSecret, JoinerSecret},
@@ -88,7 +88,6 @@ impl<'a> TreeSyncDiff<'a> {
     /// well as the [`CommitSecret`] resulting from their derivation. Returns an
     /// error if the `sender_leaf_index` is outside of the tree.
     ///
-    /// ValSem202: Path must be the right length
     /// ValSem203: Path secrets must decrypt correctly
     /// ValSem204: Public keys from Path must be verified and match the private keys from the direct path
     /// TODO #804
@@ -99,20 +98,7 @@ impl<'a> TreeSyncDiff<'a> {
         params: DecryptPathParams,
         owned_keys: &[&EncryptionKeyPair],
         own_leaf_index: LeafNodeIndex,
-    ) -> Result<(Vec<ParentNode>, Vec<EncryptionKeyPair>, CommitSecret), ApplyUpdatePathError> {
-        // ValSem202: Path must be the right length
-        let direct_path_length = self.filtered_direct_path(params.sender_leaf_index).len();
-        if direct_path_length != params.update_path.len() {
-            // XXX: Rewrite tests to allow for debug asserts.
-            // debug_assert!(
-            //     false,
-            //     "Path length mismatch {} != {}",
-            //     direct_path_length,
-            //     params.update_path.len()
-            // );
-            return Err(ApplyUpdatePathError::PathLengthMismatch);
-        }
-
+    ) -> Result<(Vec<EncryptionKeyPair>, CommitSecret), ApplyUpdatePathError> {
         let path_position = self
             .subtree_root_position(params.sender_leaf_index, own_leaf_index)
             .map_err(|_| LibraryError::custom("Expected own leaf to be in the tree"))?;
@@ -168,28 +154,71 @@ impl<'a> TreeSyncDiff<'a> {
             }
         }
 
-        let _update_path_len = params.update_path.len();
+        Ok((keypairs, commit_secret))
+    }
 
-        // Finally, we append the derived path to the part of the update path
-        // below the first node that we have a private key for.
-        let mut path: Vec<ParentNode> = params
-            .update_path
-            .into_iter()
-            .take(path_position)
-            .map(|update_path_node| update_path_node.public_key.into())
-            .collect();
-        path.append(&mut derived_path.into_iter().map(|(_, node)| node).collect());
+    /// Prepare the [`EncryptedGroupSecrets`] for a number of `invited_members`
+    /// based on a [`TreeSyncDiff`]. If a slice of [`PlainUpdatePathNode`] is
+    /// given, they are included in the [`GroupSecrets`] of the path.
+    ///
+    /// Returns an error if
+    ///  - the own node is outside the tree
+    ///  - the invited members are not part of the tree yet
+    ///  - the leaf index of a new member is identical to the own leaf index
+    ///  - the plain path does not contain the correct secrets
+    pub(crate) fn encrypt_group_secrets(
+        &self,
+        joiner_secret: &JoinerSecret,
+        invited_members: Vec<(LeafNodeIndex, AddProposal)>,
+        plain_path_option: Option<&[PlainUpdatePathNode]>,
+        presharedkeys: &[PreSharedKeyId],
+        backend: &impl OpenMlsCryptoProvider,
+        encryptor_leaf_index: LeafNodeIndex,
+    ) -> Result<Vec<EncryptedGroupSecrets>, LibraryError> {
+        let mut encrypted_group_secrets_vec = vec![];
+        for (leaf_index, add_proposal) in invited_members {
+            let key_package = add_proposal.key_package;
 
-        // The output should have the same length as the input.
-        debug_assert_eq!(_update_path_len, path.len());
+            let direct_path_position = self
+                .subtree_root_position(encryptor_leaf_index, leaf_index)
+                // This can only fail if the nodes are outside the tree or identical
+                .map_err(|_| LibraryError::custom("Unexpected error in subtree_root_position"))?;
 
-        Ok((path, keypairs, commit_secret))
+            // If a plain path was given, there have to be secrets for every new member.
+            let path_secret_option = if let Some(plain_path) = plain_path_option {
+                Some(
+                    plain_path
+                        .get(direct_path_position)
+                        .map(|pupn| pupn.path_secret())
+                        // This only fails if the supplied plain path is invalid
+                        .ok_or_else(|| LibraryError::custom("Invalid plain path"))?,
+                )
+            } else {
+                None
+            };
+
+            // Create the GroupSecrets object for the respective member.
+            let group_secrets_bytes =
+                GroupSecrets::new_encoded(joiner_secret, path_secret_option, presharedkeys)
+                    .map_err(LibraryError::missing_bound_check)?;
+            let ciphertext = backend.crypto().hpke_seal(
+                key_package.ciphersuite().hpke_config(),
+                key_package.hpke_init_key().as_slice(),
+                &[],
+                &[],
+                &group_secrets_bytes,
+            );
+            let encrypted_group_secrets =
+                EncryptedGroupSecrets::new(key_package.hash_ref(backend.crypto())?, ciphertext);
+            encrypted_group_secrets_vec.push(encrypted_group_secrets);
+        }
+        Ok(encrypted_group_secrets_vec)
     }
 }
 
 pub(crate) struct DecryptPathParams<'a> {
     pub(crate) version: ProtocolVersion,
-    pub(crate) update_path: Vec<UpdatePathNode>,
+    pub(crate) update_path: &'a [UpdatePathNode],
     pub(crate) sender_leaf_index: LeafNodeIndex,
     pub(crate) exclusion_list: &'a HashSet<&'a LeafNodeIndex>,
     pub(crate) group_context: &'a [u8],
@@ -220,6 +249,11 @@ impl UpdatePathNode {
     /// Return the `public_key`.
     fn public_key(&self) -> &HpkePublicKey {
         self.public_key.key()
+    }
+
+    #[cfg(test)]
+    pub(crate) fn encryption_key(&self) -> &EncryptionKey {
+        &self.public_key
     }
 
     /// Flip the last byte of every `encrypted_path_secret` in this node.
@@ -258,89 +292,6 @@ impl UpdatePathNode {
     }
 }
 
-/// Helper struct holding values that are encrypted in the
-/// `EncryptedGroupSecrets`. In particular, the `group_secrets_bytes` are
-/// encrypted for the `public_key` into `encrypted_group_secrets` later.
-pub(crate) struct PlaintextSecret {
-    public_key: HpkePublicKey,
-    group_secrets_bytes: Vec<u8>,
-    new_member: KeyPackageRef,
-}
-
-impl PlaintextSecret {
-    /// Prepare the `GroupSecrets` for a number of `invited_members` based on a
-    /// [`TreeSyncDiff`]. If a slice of [`PlainUpdatePathNode`] is given, they
-    /// are included in the [`GroupSecrets`] of the path.
-    ///
-    /// Returns an error if
-    ///  - the own node is outside the tree
-    ///  - the invited members are not part of the tree yet
-    ///  - the leaf index of a new member is identical to the own leaf index
-    ///  - the plain path does not contain the correct secrets
-    pub(crate) fn from_plain_update_path(
-        diff: &TreeSyncDiff,
-        joiner_secret: &JoinerSecret,
-        invited_members: Vec<(LeafNodeIndex, AddProposal)>,
-        plain_path_option: Option<&[PlainUpdatePathNode]>,
-        presharedkeys: &[PreSharedKeyId],
-        backend: &impl OpenMlsCryptoProvider,
-        own_leaf_index: LeafNodeIndex,
-    ) -> Result<Vec<Self>, LibraryError> {
-        let mut plaintext_secrets = vec![];
-        for (leaf_index, add_proposal) in invited_members {
-            let key_package = add_proposal.key_package;
-
-            let direct_path_position = diff
-                .subtree_root_position(own_leaf_index, leaf_index)
-                // This can only fail if the nodes are outside the tree or identical
-                .map_err(|_| LibraryError::custom("Unexpected error in subtree_root_position"))?;
-
-            // If a plain path was given, there have to be secrets for every new member.
-            let path_secret_option = if let Some(plain_path) = plain_path_option {
-                Some(
-                    plain_path
-                        .get(direct_path_position)
-                        .map(|pupn| pupn.path_secret())
-                        // This only fails if the supplied plain path is invalid
-                        .ok_or_else(|| LibraryError::custom("Invalid plain path"))?,
-                )
-            } else {
-                None
-            };
-
-            // Create the GroupSecrets object for the respective member.
-            let group_secrets_bytes =
-                GroupSecrets::new_encoded(joiner_secret, path_secret_option, presharedkeys)
-                    .map_err(LibraryError::missing_bound_check)?;
-            plaintext_secrets.push(PlaintextSecret {
-                public_key: key_package.hpke_init_key().clone(),
-                group_secrets_bytes,
-                new_member: key_package.hash_ref(backend.crypto())?,
-            });
-        }
-        Ok(plaintext_secrets)
-    }
-
-    /// Encrypt the `group_secret_bytes` using the `public_key`, both contained
-    /// in this [`PlaintextSecret`].
-    ///
-    /// Returns the resulting [`EncryptedGroupSecrets`].
-    pub(crate) fn encrypt(
-        self,
-        backend: &impl OpenMlsCryptoProvider,
-        ciphersuite: Ciphersuite,
-    ) -> EncryptedGroupSecrets {
-        let encrypted_group_secrets = backend.crypto().hpke_seal(
-            ciphersuite.hpke_config(),
-            self.public_key.as_slice(),
-            &[],
-            &[],
-            &self.group_secrets_bytes,
-        );
-        EncryptedGroupSecrets::new(self.new_member, encrypted_group_secrets)
-    }
-}
-
 /// 8.6. Update Paths
 ///
 /// ```text
@@ -368,10 +319,9 @@ impl UpdatePath {
         &self.leaf_node
     }
 
-    /// Consume the [`UpdatePath`] and return its individual parts: A
-    /// [`LeafNode`] and a vector of [`UpdatePathNode`] instances.
-    pub(crate) fn into_parts(self) -> (LeafNode, Vec<UpdatePathNode>) {
-        (self.leaf_node, self.nodes)
+    /// Return the `nodes` of this [`UpdatePath`].
+    pub(crate) fn nodes(&self) -> &[UpdatePathNode] {
+        &self.nodes
     }
 
     #[cfg(test)]

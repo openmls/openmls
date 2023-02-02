@@ -119,7 +119,12 @@ fn test_external_commit(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoPr
         )
         .unwrap_err();
 
-        assert_eq!(got_error, ExternalCommitError::InvalidGroupInfoSignature);
+        assert_eq!(
+            got_error,
+            ExternalCommitError::PublicGroupError(
+                CreationFromExternalError::InvalidGroupInfoSignature
+            )
+        );
     }
 }
 
