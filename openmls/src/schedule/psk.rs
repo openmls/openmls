@@ -2,7 +2,11 @@
 
 use super::*;
 use crate::group::{GroupEpoch, GroupId};
-use openmls_traits::{key_store::OpenMlsKeyStore, random::OpenMlsRand, OpenMlsCryptoProvider};
+use openmls_traits::{
+    key_store::{MlsEntity, MlsEntityId, OpenMlsKeyStore},
+    random::OpenMlsRand,
+    OpenMlsCryptoProvider,
+};
 use serde::{Deserialize, Serialize};
 use tls_codec::{Serialize as TlsSerializeTrait, VLBytes};
 
@@ -63,7 +67,7 @@ impl ExternalPsk {
 
 /// Contains the secret part of the PSK as well as the
 /// public part that is used as a marker for injection into the key schedule.
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, TlsDeserialize, TlsSerialize, TlsSize)]
 pub(crate) struct PskBundle {
     secret: Secret,
 }
@@ -79,6 +83,10 @@ impl PskBundle {
     pub(crate) fn secret(&self) -> &Secret {
         &self.secret
     }
+}
+
+impl MlsEntity for PskBundle {
+    const ID: MlsEntityId = MlsEntityId::PskBundle;
 }
 
 /// Resumption PSK.

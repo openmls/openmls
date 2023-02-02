@@ -17,6 +17,7 @@ use rstest::*;
 use rstest_reuse::{self, *};
 
 use crate::group::GroupContext;
+use crate::prelude::HpkePrivateKey;
 use openmls_rust_crypto::OpenMlsRustCrypto;
 use openmls_traits::{
     crypto::OpenMlsCrypto, key_store::OpenMlsKeyStore, types::Ciphersuite, OpenMlsCryptoProvider,
@@ -163,10 +164,7 @@ fn test_welcome_ciphersuite_mismatch(
         .unwrap();
     backend
         .key_store()
-        .store(
-            bob_kp.hpke_init_key().as_slice(),
-            &bob_private_key.as_slice().to_vec(),
-        )
+        .store::<HpkePrivateKey>(bob_kp.hpke_init_key().as_slice(), bob_private_key)
         .unwrap();
 
     encryption_keypair.write_to_key_store(backend).unwrap();

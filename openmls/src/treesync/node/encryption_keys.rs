@@ -1,7 +1,9 @@
-use openmls_traits::crypto::OpenMlsCrypto;
-use openmls_traits::key_store::{FromKeyStoreValue, OpenMlsKeyStore, ToKeyStoreValue};
-use openmls_traits::types::{Ciphersuite, CryptoError, HpkeCiphertext, HpkeKeyPair};
-use openmls_traits::OpenMlsCryptoProvider;
+use openmls_traits::{
+    crypto::OpenMlsCrypto,
+    key_store::{MlsEntity, MlsEntityId, OpenMlsKeyStore},
+    types::{Ciphersuite, CryptoError, HpkeCiphertext, HpkeKeyPair},
+    OpenMlsCryptoProvider,
+};
 use serde::{Deserialize, Serialize};
 use tls_codec::{TlsDeserialize, TlsSerialize, TlsSize, VLBytes};
 
@@ -41,9 +43,15 @@ impl EncryptionKey {
     }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, TlsDeserialize, TlsSerialize, TlsSize)]
 pub(crate) struct EncryptionPrivateKey {
     key: HpkePrivateKey,
+}
+
+impl From<Vec<u8>> for EncryptionPrivateKey {
+    fn from(key: Vec<u8>) -> Self {
+        Self { key: key.into() }
+    }
 }
 
 impl From<HpkePrivateKey> for EncryptionPrivateKey {
@@ -84,7 +92,7 @@ impl From<HpkePublicKey> for EncryptionKey {
     }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, TlsDeserialize, TlsSerialize, TlsSize)]
 pub(crate) struct EncryptionKeyPair {
     public_key: EncryptionKey,
     private_key: EncryptionPrivateKey,
@@ -132,7 +140,7 @@ impl EncryptionKeyPair {
     ) -> Result<(), KeyStore::Error> {
         backend
             .key_store()
-            .delete(&self.public_key().to_bytes_with_prefix())
+            .delete::<Self>(&self.public_key().to_bytes_with_prefix())
     }
 
     pub(crate) fn public_key(&self) -> &EncryptionKey {
@@ -168,7 +176,7 @@ impl From<(HpkePublicKey, HpkePrivateKey)> for EncryptionKeyPair {
 impl From<HpkeKeyPair> for EncryptionKeyPair {
     fn from(hpke_keypair: HpkeKeyPair) -> Self {
         let public_bytes: VLBytes = hpke_keypair.public.into();
-        let private_bytes: VLBytes = hpke_keypair.private.into();
+        let private_bytes = hpke_keypair.private;
         Self {
             public_key: public_bytes.into(),
             private_key: private_bytes.into(),
@@ -185,19 +193,6 @@ impl From<(EncryptionKey, EncryptionPrivateKey)> for EncryptionKeyPair {
     }
 }
 
-impl ToKeyStoreValue for EncryptionKeyPair {
-    type Error = LibraryError;
-
-    fn to_key_store_value(&self) -> Result<Vec<u8>, Self::Error> {
-        serde_json::to_vec(self)
-            .map_err(|_| LibraryError::custom("Error serializing encryption key."))
-    }
-}
-
-impl FromKeyStoreValue for EncryptionKeyPair {
-    type Error = LibraryError;
-
-    fn from_key_store_value(ksv: &[u8]) -> Result<Self, Self::Error> {
-        serde_json::from_slice(ksv).map_err(|_| LibraryError::custom("Invalid encryption key."))
-    }
+impl MlsEntity for EncryptionKeyPair {
+    const ID: MlsEntityId = MlsEntityId::SignatureKeyPair;
 }

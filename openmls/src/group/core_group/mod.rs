@@ -747,6 +747,12 @@ impl CoreGroup {
         }
     }
 
+    pub(crate) fn own_leaf_node(&self) -> Result<&OpenMlsLeafNode, LibraryError> {
+        self.treesync()
+            .leaf(self.own_leaf_index())
+            .ok_or_else(|| LibraryError::custom("Tree has no own leaf."))
+    }
+
     /// Store the given [`EncryptionKeyPair`]s in the `backend`'s key store
     /// indexed by this group's [`GroupId`] and [`GroupEpoch`].
     ///
@@ -756,12 +762,14 @@ impl CoreGroup {
         backend: &impl OpenMlsCryptoProvider<KeyStoreProvider = KeyStore>,
         keypair_references: &[EncryptionKeyPair],
     ) -> Result<(), KeyStore::Error> {
-        backend.key_store().store_epoch_keys(
-            self.group_id().as_slice(),
+        let k = EpochKeypairId::new(
+            self.group_id(),
             self.context().epoch().as_u64(),
-            self.own_leaf_index().u32(),
-            keypair_references,
-        )
+            self.own_leaf_index(),
+        );
+        backend
+            .key_store()
+            .store(&k.0, &keypair_references.to_vec())
     }
 
     /// Read the [`EncryptionKeyPair`]s of this group and its current
@@ -772,11 +780,15 @@ impl CoreGroup {
         &self,
         backend: &impl OpenMlsCryptoProvider<KeyStoreProvider = KeyStore>,
     ) -> Vec<EncryptionKeyPair> {
-        backend.key_store().read_epoch_keys(
-            self.group_id().as_slice(),
+        let k = EpochKeypairId::new(
+            self.group_id(),
             self.context().epoch().as_u64(),
-            self.own_leaf_index().u32(),
-        )
+            self.own_leaf_index(),
+        );
+        backend
+            .key_store()
+            .read::<Vec<EncryptionKeyPair>>(&k.0)
+            .unwrap_or_default()
     }
 
     /// Delete the [`EncryptionKeyPair`]s from the previous [`GroupEpoch`] from
@@ -787,17 +799,28 @@ impl CoreGroup {
         &self,
         backend: &impl OpenMlsCryptoProvider<KeyStoreProvider = KeyStore>,
     ) -> Result<(), KeyStore::Error> {
-        backend.key_store().delete_epoch_keys(
-            self.group_id().as_slice(),
+        let k = EpochKeypairId::new(
+            self.group_id(),
             self.context().epoch().as_u64() - 1,
-            self.own_leaf_index().u32(),
-        )
+            self.own_leaf_index(),
+        );
+        backend.key_store().delete::<Vec<EncryptionKeyPair>>(&k.0)
     }
+}
 
-    pub(crate) fn own_leaf_node(&self) -> Result<&OpenMlsLeafNode, LibraryError> {
-        self.treesync()
-            .leaf(self.own_leaf_index())
-            .ok_or_else(|| LibraryError::custom("Tree has no own leaf."))
+/// Composite key for key material of a client within an epoch
+pub struct EpochKeypairId(Vec<u8>);
+
+impl EpochKeypairId {
+    fn new(group_id: &GroupId, epoch: u64, leaf_index: LeafNodeIndex) -> Self {
+        Self(
+            [
+                group_id.as_slice(),
+                &leaf_index.u32().to_be_bytes(),
+                &epoch.to_be_bytes(),
+            ]
+            .concat(),
+        )
     }
 }
 

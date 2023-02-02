@@ -28,9 +28,6 @@ pub use crate::framing::{message_in::*, message_out::*, sender::*, validation::*
 // Key packages
 pub use crate::key_packages::{errors::*, *};
 
-// Key store
-pub use crate::key_store::*;
-
 // Tree
 pub use crate::tree::sender_ratchet::SenderRatchetConfiguration;
 

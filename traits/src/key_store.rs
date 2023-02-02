@@ -1,82 +1,54 @@
 //! # OpenMLS Key Store Trait
 
-use std::{convert::Infallible, fmt::Debug};
-
-pub trait FromKeyStoreValue: Sized {
-    type Error: std::error::Error + Debug;
-    fn from_key_store_value(ksv: &[u8]) -> Result<Self, Self::Error>;
+/// Sealed list of struct openmls manages (create/read/delete) through [OpenMlsKeyStore]
+pub enum MlsEntityId {
+    SignatureKeyPair,
+    HpkePrivateKey,
+    KeyPackage,
+    PskBundle,
+    EncryptionKeyPair,
 }
 
-pub trait ToKeyStoreValue {
-    type Error: std::error::Error + Debug;
-    fn to_key_store_value(&self) -> Result<Vec<u8>, Self::Error>;
+/// To implement by any struct owned by openmls aiming to be persisted in [OpenMlsKeyStore]
+pub trait MlsEntity:
+    serde::Serialize + serde::de::DeserializeOwned + tls_codec::Serialize + tls_codec::Deserialize
+{
+    /// Identifier used to downcast the actual entity within an [OpenMlsKeyStore] method.
+    /// In case for example you need to select a SQL table depending on the entity type
+    const ID: MlsEntityId;
+}
+
+/// Blanket impl for when you have to lookup a list of entities from the keystore
+impl<T> MlsEntity for Vec<T>
+where
+    T: MlsEntity + std::fmt::Debug,
+{
+    const ID: MlsEntityId = T::ID;
 }
 
 /// The Key Store trait
 pub trait OpenMlsKeyStore: Send + Sync {
     /// The error type returned by the [`OpenMlsKeyStore`].
-    type Error: std::error::Error + Debug + PartialEq;
+    type Error: std::error::Error + std::fmt::Debug + PartialEq;
 
-    /// Load all encryption keys associated with the given group ID, group epoch
-    /// and client leaf index from the key store.
-    fn read_epoch_keys<V: FromKeyStoreValue>(
-        &self,
-        group_id: &[u8],
-        epoch: u64,
-        leaf_index: u32,
-    ) -> Vec<V>;
-
-    /// Store all encryption keys associated with the given group ID, group
-    /// epoch and client leaf index in the key store.
-    fn store_epoch_keys<V: ToKeyStoreValue>(
-        &self,
-        group_id: &[u8],
-        epoch: u64,
-        leaf_index: u32,
-        encryption_keys: &[V],
-    ) -> Result<(), Self::Error>;
-
-    /// Delete all encryption keys associated with the given group ID, group
-    /// epoch and client leaf index from the key store.
-    fn delete_epoch_keys(
-        &self,
-        group_id: &[u8],
-        epoch: u64,
-        leaf_index: u32,
-    ) -> Result<(), Self::Error>;
-
-    /// Store a value `v` that implements the [`ToKeyStoreValue`] trait for
+    /// Store a value `v` that implements the [`MlsEntity`] trait for
     /// serialization for ID `k`.
     ///
     /// Returns an error if storing fails.
-    fn store<V: ToKeyStoreValue>(&self, k: &[u8], v: &V) -> Result<(), Self::Error>
+    fn store<V: MlsEntity>(&self, k: &[u8], v: &V) -> Result<(), Self::Error>
     where
         Self: Sized;
 
     /// Read and return a value stored for ID `k` that implements the
-    /// [`FromKeyStoreValue`] trait for deserialization.
+    /// [`MlsEntity`] trait for deserialization.
     ///
     /// Returns [`None`] if no value is stored for `k` or reading fails.
-    fn read<V: FromKeyStoreValue>(&self, k: &[u8]) -> Option<V>
+    fn read<V: MlsEntity>(&self, k: &[u8]) -> Option<V>
     where
         Self: Sized;
 
     /// Delete a value stored for ID `k`.
     ///
     /// Returns an error if storing fails.
-    fn delete(&self, k: &[u8]) -> Result<(), Self::Error>;
-}
-
-impl ToKeyStoreValue for Vec<u8> {
-    type Error = Infallible;
-    fn to_key_store_value(&self) -> Result<Vec<u8>, Self::Error> {
-        Ok(self.clone())
-    }
-}
-
-impl FromKeyStoreValue for Vec<u8> {
-    type Error = Infallible;
-    fn from_key_store_value(ksv: &[u8]) -> Result<Self, Self::Error> {
-        Ok(ksv.to_vec())
-    }
+    fn delete<V: MlsEntity>(&self, k: &[u8]) -> Result<(), Self::Error>;
 }
