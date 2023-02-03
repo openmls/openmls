@@ -221,13 +221,9 @@ impl SecretTree {
 
         let handshake_ratchet_secret =
             node_secret.kdf_expand_label(backend, "handshake", b"", ciphersuite.hash_length())?;
-        let application_ratchet_secret = derive_tree_secret(
-            node_secret,
-            "application",
-            0,
-            ciphersuite.hash_length(),
-            backend,
-        )?;
+        let application_ratchet_secret =
+            node_secret.kdf_expand_label(backend, "application", b"", ciphersuite.hash_length())?;
+
         let (handshake_sender_ratchet, application_sender_ratchet) = if index == self.own_index {
             let handshake_sender_ratchet = SenderRatchet::EncryptionRatchet(
                 RatchetSecret::initial_ratchet_secret(handshake_ratchet_secret),
