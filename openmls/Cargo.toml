@@ -51,10 +51,11 @@ rstest_reuse = "0.4"
 backtrace = "0.3"
 lazy_static = "1.4"
 
-# x64 targets get evercrypt compiled into dev-dependencies.
-[target.'cfg(target_arch = "x86_64")'.dev-dependencies.openmls]
-path = "."
-features = ["test-utils", "evercrypt"]
+# TODO: Switch to the official HACL crate.
+# # x64 targets get evercrypt compiled into dev-dependencies.
+# [target.'cfg(target_arch = "x86_64")'.dev-dependencies.openmls]
+# path = "."
+# features = ["test-utils", "evercrypt"]
 
 [[bench]]
 name = "benchmark"
