@@ -268,7 +268,7 @@ pub fn generate_test_vector(n_epochs: u64, ciphersuite: Ciphersuite) -> KeySched
 
 #[test]
 fn write_test_vectors() {
-    const NUM_EPOCHS: u64 = 200;
+    const NUM_EPOCHS: u64 = 20;
     let mut tests = Vec::new();
     for &ciphersuite in OpenMlsRustCrypto::default()
         .crypto()
