@@ -10,9 +10,6 @@ on:
       - main
       - konrad/treesync
   pull_request:
-    branches:
-      - main
-      - konrad/treesync
   workflow_dispatch:
 
 env:
