@@ -7,7 +7,7 @@ pub use crate::framing::{mls_content::*, *};
 // KATs
 pub use crate::binary_tree::array_representation::kat_treemath;
 pub use crate::key_packages::KeyPackage;
-pub use crate::schedule::kat_key_schedule::{self, KeyScheduleTestVector};
+// pub use crate::schedule::kat_key_schedule::{self, KeyScheduleTestVector};
 // TODO: #624 - re-enable test vectors.
 // pub use crate::group::tests::{
 //     kat_messages::{self, MessagesTestVector},
