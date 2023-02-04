@@ -11,16 +11,15 @@ readme = "../README.md"
 
 [dependencies]
 openmls_traits = { version = "0.1.0", path = "../traits" }
-uuid = { version = "1.0", features = ["v4"] }
 serde = { version = "^1.0", features = ["derive"] }
 serde_json = "^1.0"
 log = { version = "0.4", features = ["std"] }
 tls_codec = { version = "0.2.0", features = ["derive", "serde", "mls"] }
+rayon = "^1.5.0"
+thiserror = "^1.0"
+backtrace = "0.3"
 # Only required for tests.
 rand = { version = "0.8", optional = true }
-# The js feature is required for wasm.
-# We enable the feature here because other dependencies need getrandom.
-getrandom = { version = "0.2", features = ["js"] }
 # Crypto backends required for KAT and testing - "test-utils" feature
 itertools = { version = "0.10", optional = true }
 openmls_rust_crypto = { version = "0.1.0", path = "../openmls_rust_crypto", optional = true }
@@ -28,9 +27,6 @@ openmls_evercrypt = { version = "0.1.0", path = "../evercrypt_backend", optional
 openmls_basic_credential = { version = "0.1.0", path = "../basic_credential", optional = true }
 rstest = {version = "^0.16", optional = true}
 rstest_reuse = {version = "0.4", optional = true}
-rayon = "^1.5.0"
-thiserror = "^1.0"
-backtrace = "0.3"
 
 [features]
 default = []
