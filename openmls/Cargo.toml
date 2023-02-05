@@ -49,9 +49,9 @@ lazy_static = "1.4"
 
 # TODO: #1250 Switch to the official HACL crate.
 # x64 targets get evercrypt compiled into dev-dependencies.
-[target.'cfg(target_arch = "x86_64")'.dev-dependencies.openmls]
-path = "."
-features = ["test-utils", "evercrypt"]
+# [target.'cfg(target_arch = "x86_64")'.dev-dependencies.openmls]
+# path = "."
+# features = ["test-utils", "evercrypt"]
 
 [[bench]]
 name = "benchmark"

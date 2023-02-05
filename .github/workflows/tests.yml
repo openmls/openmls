@@ -25,13 +25,11 @@ jobs:
           - windows-latest
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v2
-        with:
-          ref: ${{ github.event.pull_request.head.sha }}
-      - name: Tests debug build
-        run: cargo test -p openmls --verbose
+      - uses: actions/checkout@v3
       - name: Tests release build
         run: cargo test -p openmls --verbose --release
+      - name: Tests debug build
+        run: cargo test -p openmls --verbose
         # Test 32 bit builds on windows
       - name: Install rust target
         if: matrix.os == 'windows-latest'

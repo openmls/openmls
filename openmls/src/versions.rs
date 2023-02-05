@@ -3,15 +3,13 @@
 //! Only MLS 1.0 is currently supported.
 
 use serde::{Deserialize, Serialize};
-use std::{convert::TryFrom, fmt};
+use std::fmt;
 use thiserror::Error;
 use tls_codec::{TlsDeserialize, TlsSerialize, TlsSize};
 
 // Public types
 
 /// # Protocol Version
-///
-/// 7. Key Packages
 ///
 /// ```text
 /// enum {
