@@ -27,7 +27,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::{
     binary_tree::{
-        array_representation::{is_node_in_tree, tree::TreeNode, LeafNodeIndex},
+        array_representation::{is_node_in_tree, tree::TreeNode, LeafNodeIndex, TreeSize},
         MlsBinaryTree, MlsBinaryTreeError,
     },
     ciphersuite::{Secret, SignaturePublicKey},
@@ -255,12 +255,9 @@ impl TreeSync {
         diff.verify_parent_hashes(backend, ciphersuite)
     }
 
-    /// Returns the number of leaves in the tree.
-    ///
-    /// This function should not fail and only returns a [`Result`], because it
-    /// might throw a [LibraryError](TreeSyncError::LibraryError).
-    pub(crate) fn leaf_count(&self) -> u32 {
-        self.tree.leaf_count()
+    /// Returns the tree size
+    pub(crate) fn tree_size(&self) -> TreeSize {
+        self.tree.tree_size()
     }
 
     /// Returns a list of [`LeafNodeIndex`]es containing only full nodes.
@@ -401,7 +398,7 @@ impl TreeSync {
     /// Returns a [`TreeSyncError`] if the `leaf_index` is not a leaf in this
     /// tree or empty.
     pub(crate) fn is_leaf_in_tree(&self, leaf_index: LeafNodeIndex) -> bool {
-        is_node_in_tree(leaf_index.into(), self.tree.size())
+        is_node_in_tree(leaf_index.into(), self.tree.tree_size())
     }
 
     /// Return a vector containing all [`EncryptionKey`]s for which the owner of

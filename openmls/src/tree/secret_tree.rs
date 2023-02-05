@@ -1,8 +1,14 @@
 use super::*;
 use crate::{
+    binary_tree::{
+        array_representation::{
+            direct_path, left, right, root, ParentNodeIndex, TreeNodeIndex, TreeSize,
+        },
+        LeafNodeIndex,
+    },
     framing::{mls_content::ContentType, *},
     schedule::*,
-    tree::{index::*, sender_ratchet::*, treemath::*},
+    tree::sender_ratchet::*,
 };
 use openmls_traits::types::{Ciphersuite, CryptoError};
 use thiserror::Error;
@@ -101,11 +107,12 @@ pub(crate) struct SecretTreeNode {
 #[cfg_attr(any(feature = "test-utils", test), derive(PartialEq, Clone))]
 #[cfg_attr(feature = "crypto-debug", derive(Debug))]
 pub(crate) struct SecretTree {
-    own_index: SecretTreeLeafIndex,
-    nodes: Vec<Option<SecretTreeNode>>,
+    own_index: LeafNodeIndex,
+    leaf_nodes: Vec<Option<SecretTreeNode>>,
+    parent_nodes: Vec<Option<SecretTreeNode>>,
     handshake_sender_ratchets: Vec<Option<SenderRatchet>>,
     application_sender_ratchets: Vec<Option<SenderRatchet>>,
-    size: u32,
+    size: TreeSize,
 }
 
 impl SecretTree {
@@ -115,33 +122,44 @@ impl SecretTree {
     /// or `next_secret()`.
     pub(crate) fn new(
         encryption_secret: EncryptionSecret,
-        size: u32,
-        own_index: SecretTreeLeafIndex,
+        size: TreeSize,
+        own_index: LeafNodeIndex,
     ) -> Self {
-        let root = root(size);
-        let num_indices = SecretTreeNodeIndex::from(size * 2).as_usize() - 1;
+        let mut leaf_nodes = std::iter::repeat_with(|| None)
+            .take(size.leaf_count() as usize)
+            .collect::<Vec<_>>();
 
-        let mut nodes: Vec<Option<SecretTreeNode>> =
-            std::iter::repeat_with(|| Option::<SecretTreeNode>::None)
-                .take(num_indices)
-                .collect();
+        let mut parent_nodes = std::iter::repeat_with(|| None)
+            .take(size.parent_count() as usize)
+            .collect::<Vec<_>>();
 
-        nodes[root.as_usize()] = Some(SecretTreeNode {
-            secret: encryption_secret.consume_secret(),
-        });
+        match root(size) {
+            TreeNodeIndex::Leaf(leaf_index) => {
+                leaf_nodes[leaf_index.usize()] = Some(SecretTreeNode {
+                    secret: encryption_secret.consume_secret(),
+                });
+            }
+            TreeNodeIndex::Parent(parent_index) => {
+                parent_nodes[parent_index.usize()] = Some(SecretTreeNode {
+                    secret: encryption_secret.consume_secret(),
+                });
+            }
+        }
+
         let handshake_sender_ratchets = std::iter::repeat_with(|| Option::<SenderRatchet>::None)
-            .take(size as usize)
+            .take(size.leaf_count() as usize)
             .collect();
 
         let application_sender_ratchets = std::iter::repeat_with(|| Option::<SenderRatchet>::None)
-            .take(size as usize)
+            .take(size.leaf_count() as usize)
             .collect();
 
         log_crypto!(trace, "nodes: {nodes:?}");
 
         SecretTree {
             own_index,
-            nodes,
+            leaf_nodes,
+            parent_nodes,
             handshake_sender_ratchets,
             application_sender_ratchets,
             size,
@@ -150,7 +168,7 @@ impl SecretTree {
 
     /// Get current generation for a specific SenderRatchet
     #[cfg(test)]
-    pub(crate) fn generation(&self, index: SecretTreeLeafIndex, secret_type: SecretType) -> u32 {
+    pub(crate) fn generation(&self, index: LeafNodeIndex, secret_type: SecretType) -> u32 {
         match self
             .ratchet_opt(index, secret_type)
             .expect("Index out of bounds.")
@@ -166,14 +184,14 @@ impl SecretTree {
         &mut self,
         ciphersuite: Ciphersuite,
         backend: &impl OpenMlsCryptoProvider,
-        index: SecretTreeLeafIndex,
+        index: LeafNodeIndex,
     ) -> Result<(), SecretTreeError> {
         log::trace!(
             "Initializing sender ratchets for {:?} with {}",
             index,
             ciphersuite
         );
-        if index.as_u32() >= self.size {
+        if index.u32() >= self.size.leaf_count() {
             log::error!("Index is larger than the tree size.");
             return Err(SecretTreeError::IndexOutOfBounds);
         }
@@ -190,33 +208,35 @@ impl SecretTree {
             log::trace!("The sender ratchets are initialized already.");
             return Ok(());
         }
-        // Calculate direct path
-        let index_in_tree = SecretTreeNodeIndex::from(index);
-        let mut dir_path = vec![index_in_tree];
-        dir_path.extend(
-            leaf_direct_path(index, self.size)
-                .expect("initialize_sender_ratchets: Error while computing direct path."),
-        );
-        log::trace!("Direct path for leaf {:?}: {:?}", index, dir_path);
-        let mut empty_nodes: Vec<SecretTreeNodeIndex> = vec![];
-        for n in dir_path {
-            empty_nodes.push(n);
-            if self.nodes[n.as_usize()].is_some() {
-                break;
+
+        // If we don't have a secret in the leaf node, we derive it
+        if self.leaf_nodes[index.usize()].is_none() {
+            // Collect empty nodes in the direct path until a non-empty node is
+            // found
+            let mut empty_nodes: Vec<ParentNodeIndex> = vec![];
+            for parent_node in direct_path(index, self.size) {
+                empty_nodes.push(parent_node);
+                if self.parent_nodes[parent_node.usize()].is_some() {
+                    break;
+                }
+            }
+
+            // Invert direct path
+            empty_nodes.reverse();
+
+            // Derive the secrets down all the way to the leaf node
+            for n in empty_nodes {
+                self.derive_down(ciphersuite, backend, n)?;
             }
         }
-        // Remove leaf and invert direct path
-        empty_nodes.remove(0);
-        empty_nodes.reverse();
-        // Find empty nodes
-        for n in empty_nodes {
-            self.derive_down(ciphersuite, backend, n)?;
-        }
+
         // Calculate node secret and initialize SenderRatchets
-        let node_secret = match &self.nodes[index_in_tree.as_usize()] {
+        let node_secret = match &self.leaf_nodes[index.usize()] {
             Some(node) => &node.secret,
             // We just derived all necessary nodes so this should not happen
-            None => return Err(SecretTreeError::LibraryError),
+            None => {
+                return Err(SecretTreeError::LibraryError);
+            }
         };
 
         let handshake_ratchet_secret =
@@ -246,10 +266,11 @@ impl SecretTree {
 
             (handshake_sender_ratchet, application_sender_ratchet)
         };
-        self.handshake_sender_ratchets[index.as_usize()] = Some(handshake_sender_ratchet);
-        self.application_sender_ratchets[index.as_usize()] = Some(application_sender_ratchet);
+        self.handshake_sender_ratchets[index.usize()] = Some(handshake_sender_ratchet);
+        self.application_sender_ratchets[index.usize()] = Some(application_sender_ratchet);
+
         // Delete leaf node
-        self.nodes[index_in_tree.as_usize()] = None;
+        self.leaf_nodes[index.usize()] = None;
         Ok(())
     }
 
@@ -260,7 +281,7 @@ impl SecretTree {
         &mut self,
         ciphersuite: Ciphersuite,
         backend: &impl OpenMlsCryptoProvider,
-        index: SecretTreeLeafIndex,
+        index: LeafNodeIndex,
         secret_type: SecretType,
         generation: u32,
         configuration: &SenderRatchetConfiguration,
@@ -273,7 +294,7 @@ impl SecretTree {
             ciphersuite,
         );
         // Check tree bounds
-        if index.as_u32() >= self.size {
+        if index.u32() >= self.size.leaf_count() {
             return Err(SecretTreeError::IndexOutOfBounds);
         }
         if self.ratchet_opt(index, secret_type)?.is_none() {
@@ -293,7 +314,7 @@ impl SecretTree {
         &mut self,
         ciphersuite: Ciphersuite,
         backend: &impl OpenMlsCryptoProvider,
-        index: SecretTreeLeafIndex,
+        index: LeafNodeIndex,
         secret_type: SecretType,
     ) -> Result<(u32, RatchetKeyMaterial), SecretTreeError> {
         if self.ratchet_opt(index, secret_type)?.is_none() {
@@ -310,18 +331,14 @@ impl SecretTree {
 
     /// Returns a mutable reference to a specific SenderRatchet. The
     /// SenderRatchet needs to be initialized.
-    fn ratchet_mut(
-        &mut self,
-        index: SecretTreeLeafIndex,
-        secret_type: SecretType,
-    ) -> &mut SenderRatchet {
+    fn ratchet_mut(&mut self, index: LeafNodeIndex, secret_type: SecretType) -> &mut SenderRatchet {
         let sender_ratchets = match secret_type {
             SecretType::HandshakeSecret => &mut self.handshake_sender_ratchets,
             SecretType::ApplicationSecret => &mut self.application_sender_ratchets,
         };
         sender_ratchets
-            .get_mut(index.as_usize())
-            .unwrap_or_else(|| panic!("SenderRatchets not initialized: {}", index.as_usize()))
+            .get_mut(index.usize())
+            .unwrap_or_else(|| panic!("SenderRatchets not initialized: {}", index.usize()))
             .as_mut()
             .expect("SecretTree not initialized")
     }
@@ -329,43 +346,43 @@ impl SecretTree {
     /// Returns an optional reference to a specific SenderRatchet
     fn ratchet_opt(
         &self,
-        index: SecretTreeLeafIndex,
+        index: LeafNodeIndex,
         secret_type: SecretType,
     ) -> Result<Option<&SenderRatchet>, SecretTreeError> {
         let sender_ratchets = match secret_type {
             SecretType::HandshakeSecret => &self.handshake_sender_ratchets,
             SecretType::ApplicationSecret => &self.application_sender_ratchets,
         };
-        match sender_ratchets.get(index.as_usize()) {
+        match sender_ratchets.get(index.usize()) {
             Some(sender_ratchet_option) => Ok(sender_ratchet_option.as_ref()),
             None => Err(SecretTreeError::IndexOutOfBounds),
         }
     }
 
-    /// Derives the secrets for the child leaves in a SecretTree and blanks the
-    /// parent leaf.
+    /// Derives the secrets for the child nodes in a SecretTree and blanks the
+    /// parent node.
     fn derive_down(
         &mut self,
         ciphersuite: Ciphersuite,
         backend: &impl OpenMlsCryptoProvider,
-        index_in_tree: SecretTreeNodeIndex,
+        index_in_tree: ParentNodeIndex,
     ) -> Result<(), SecretTreeError> {
         log::debug!(
             "Deriving tree secret for node {} with {}",
-            index_in_tree.as_u32(),
+            index_in_tree.u32(),
             ciphersuite
         );
         let hash_len = ciphersuite.hash_length();
-        let node_secret = match &self.nodes[index_in_tree.as_usize()] {
+        let node_secret = match &self.parent_nodes[index_in_tree.usize()] {
             Some(node) => &node.secret,
             // This function only gets called top to bottom, so this should not happen
-            None => return Err(SecretTreeError::LibraryError),
+            None => {
+                return Err(SecretTreeError::LibraryError);
+            }
         };
         log_crypto!(trace, "Node secret: {:x?}", node_secret.as_slice());
-        let left_index =
-            left(index_in_tree).expect("derive_down: Error while computing left child.");
-        let right_index = right(index_in_tree, self.size)
-            .expect("derive_down: Error while computing right child.");
+        let left_index = left(index_in_tree);
+        let right_index = right(index_in_tree);
         let left_secret = node_secret.kdf_expand_label(backend, "tree", b"left", hash_len)?;
         let right_secret = node_secret.kdf_expand_label(backend, "tree", b"right", hash_len)?;
         log_crypto!(
@@ -380,13 +397,35 @@ impl SecretTree {
             right_index.as_u32(),
             right_secret.as_slice()
         );
-        self.nodes[left_index.as_usize()] = Some(SecretTreeNode {
+
+        // Populate left child
+        let value = Some(SecretTreeNode {
             secret: left_secret,
         });
-        self.nodes[right_index.as_usize()] = Some(SecretTreeNode {
+        match left_index {
+            TreeNodeIndex::Leaf(leaf_index) => {
+                self.leaf_nodes[leaf_index.usize()] = value;
+            }
+            TreeNodeIndex::Parent(parent_index) => {
+                self.parent_nodes[parent_index.usize()] = value;
+            }
+        }
+
+        // Populate right child
+        let value = Some(SecretTreeNode {
             secret: right_secret,
         });
-        self.nodes[index_in_tree.as_usize()] = None;
+        match right_index {
+            TreeNodeIndex::Leaf(leaf_index) => {
+                self.leaf_nodes[leaf_index.usize()] = value;
+            }
+            TreeNodeIndex::Parent(parent_index) => {
+                self.parent_nodes[parent_index.usize()] = value;
+            }
+        }
+
+        // Delete parent node
+        self.parent_nodes[index_in_tree.usize()] = None;
         Ok(())
     }
 }
