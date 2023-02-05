@@ -34,7 +34,7 @@ use tls_codec::{TlsDeserialize, TlsSerialize, TlsSize};
     TlsSerialize,
     TlsSize,
 )]
-#[repr(u8)]
+#[repr(u16)]
 #[allow(missing_docs)]
 pub enum ProtocolVersion {
     Mls10 = 1,
@@ -48,13 +48,13 @@ impl Default for ProtocolVersion {
     }
 }
 
-impl TryFrom<u8> for ProtocolVersion {
+impl TryFrom<u16> for ProtocolVersion {
     type Error = VersionError;
 
     /// Convert an integer to the corresponding protocol version.
     ///
     /// Returns an error if the protocol version is not supported.
-    fn try_from(v: u8) -> Result<Self, Self::Error> {
+    fn try_from(v: u16) -> Result<Self, Self::Error> {
         match v {
             1 => Ok(ProtocolVersion::Mls10),
             200 => Ok(ProtocolVersion::Mls10Draft11),
