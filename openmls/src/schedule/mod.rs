@@ -148,8 +148,8 @@ use message_secrets::MessageSecrets;
 use psk::*;
 
 // Tests
-// #[cfg(any(feature = "test-utils", test))]
-// pub mod kat_key_schedule;
+#[cfg(any(feature = "test-utils", test))]
+pub mod kat_key_schedule;
 #[cfg(test)]
 mod unit_tests;
 
