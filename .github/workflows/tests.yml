@@ -27,7 +27,7 @@ jobs:
     steps:
       - uses: actions/checkout@v3
       - name: Tests release build
-        run: cargo test -p openmls --verbose --release -- --test-threads 1
+        run: cargo test -p openmls --verbose --release -j1 -- --test-threads 1
       - name: Tests debug build
         run: cargo test -p openmls --verbose
         # Test 32 bit builds on windows
