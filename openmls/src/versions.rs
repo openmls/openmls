@@ -34,7 +34,7 @@ use tls_codec::{TlsDeserialize, TlsSerialize, TlsSize};
     TlsSerialize,
     TlsSize,
 )]
-#[repr(u16)]
+#[repr(u8)]
 #[allow(missing_docs)]
 pub enum ProtocolVersion {
     Mls10 = 1,
