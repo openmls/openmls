@@ -62,7 +62,7 @@ impl ParentNodeIndex {
     }
 
     /// Return the inner value as `u32`.
-    pub(super) fn u32(&self) -> u32 {
+    pub(crate) fn u32(&self) -> u32 {
         self.0
     }
 
@@ -175,6 +175,12 @@ impl TreeSize {
         TreeSize((1 << (k + 1)) - 1)
     }
 
+    /// Creates a new `TreeSize` from a specific leaf count
+    #[cfg(any(feature = "test-utils", test))]
+    pub(crate) fn from_leaf_count(leaf_count: u32) -> Self {
+        TreeSize::new(leaf_count * 2)
+    }
+
     /// Return the number of leaf nodes in the tree.
     pub(crate) fn leaf_count(&self) -> u32 {
         (self.0 / 2) + 1
@@ -271,13 +277,13 @@ fn level(index: u32) -> usize {
     k
 }
 
-pub(super) fn root(size: TreeSize) -> TreeNodeIndex {
+pub(crate) fn root(size: TreeSize) -> TreeNodeIndex {
     let size = size.u32();
     debug_assert!(size > 0);
     TreeNodeIndex::new((1 << log2(size)) - 1)
 }
 
-pub(super) fn left(index: ParentNodeIndex) -> TreeNodeIndex {
+pub(crate) fn left(index: ParentNodeIndex) -> TreeNodeIndex {
     let x = index.to_tree_index();
     let k = level(x);
     debug_assert!(k > 0);
@@ -285,7 +291,7 @@ pub(super) fn left(index: ParentNodeIndex) -> TreeNodeIndex {
     TreeNodeIndex::new(index)
 }
 
-pub(super) fn right(index: ParentNodeIndex) -> TreeNodeIndex {
+pub(crate) fn right(index: ParentNodeIndex) -> TreeNodeIndex {
     let x = index.to_tree_index();
     let k = level(x);
     debug_assert!(k > 0);
@@ -326,7 +332,7 @@ pub(crate) fn test_sibling(index: TreeNodeIndex) -> TreeNodeIndex {
 
 /// Direct path from a node to the root.
 /// Does not include the node itself.
-pub(super) fn direct_path(node_index: LeafNodeIndex, size: TreeSize) -> Vec<ParentNodeIndex> {
+pub(crate) fn direct_path(node_index: LeafNodeIndex, size: TreeSize) -> Vec<ParentNodeIndex> {
     let r = root(size).u32();
 
     let mut d = vec![];

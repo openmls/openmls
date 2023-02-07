@@ -5,7 +5,7 @@ use serde::{Deserialize, Serialize};
 use tls_codec::Serialize as TlsSerialize;
 
 use crate::{
-    binary_tree::LeafNodeIndex,
+    binary_tree::{array_representation::TreeSize, LeafNodeIndex},
     error::LibraryError,
     framing::{mls_auth_content::AuthenticatedContent, public_message::InterimTranscriptHashInput},
     group::GroupContext,
@@ -92,10 +92,9 @@ impl<'a> PublicGroupDiff<'a> {
         )
     }
 
-    /// Returns the number of leaves in the tree that would result from merging
-    /// this diff.
-    pub(crate) fn leaf_count(&self) -> u32 {
-        self.diff.leaf_count()
+    /// Returns the tree size
+    pub(crate) fn tree_size(&self) -> TreeSize {
+        self.diff.tree_size()
     }
 
     /// Returns a vector of all nodes in the tree resulting from merging this

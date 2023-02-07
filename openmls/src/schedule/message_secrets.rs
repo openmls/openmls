@@ -96,8 +96,8 @@ impl MessageSecrets {
                 .expect("Not enough randomness."),
             secret_tree: SecretTree::new(
                 EncryptionSecret::random(ciphersuite, backend),
-                10,
-                own_index.into(),
+                TreeSize::new(10),
+                own_index,
             ),
         }
     }

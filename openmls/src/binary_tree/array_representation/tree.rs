@@ -106,7 +106,7 @@ impl<L: Clone + Debug + Default, P: Clone + Debug + Default> ABinaryTree<L, P> {
     }
 
     /// Return the number of nodes in the tree.
-    pub(crate) fn size(&self) -> TreeSize {
+    pub(crate) fn tree_size(&self) -> TreeSize {
         // We can cast the size to a u32, because the maximum size of a
         // tree is 2^30.
         TreeSize::new((self.leaf_nodes.len() + self.parent_nodes.len()) as u32)
@@ -210,7 +210,7 @@ impl<L: Clone + Debug + Default, P: Clone + Debug + Default> ABinaryTree<L, P> {
         leaf_index_1: LeafNodeIndex,
         leaf_index_2: LeafNodeIndex,
     ) -> Vec<ParentNodeIndex> {
-        common_direct_path(leaf_index_1, leaf_index_2, self.size())
+        common_direct_path(leaf_index_1, leaf_index_2, self.tree_size())
     }
 }
 

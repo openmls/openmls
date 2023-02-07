@@ -39,7 +39,7 @@
 //! ```
 // TODO #106/#151: Update the above diagram
 
-use crate::{group::errors::ValidationError, tree::index::SecretTreeLeafIndex, treesync::TreeSync};
+use crate::{group::errors::ValidationError, treesync::TreeSync};
 use core_group::{proposals::QueuedProposal, staged_commit::StagedCommit};
 use openmls_traits::{crypto::OpenMlsCrypto, OpenMlsCryptoProvider};
 
@@ -106,7 +106,6 @@ impl DecryptedMessage {
             .message_secrets_and_leaves_mut(ciphertext.epoch())
             .map_err(|_| MessageDecryptionError::AeadError)?;
         let sender_data = ciphertext.sender_data(message_secrets, backend, ciphersuite)?;
-        let sender_index = SecretTreeLeafIndex::from(sender_data.leaf_index);
         let message_secrets = group
             .message_secrets_mut(ciphertext.epoch())
             .map_err(|_| MessageDecryptionError::AeadError)?;
@@ -114,7 +113,7 @@ impl DecryptedMessage {
             ciphersuite,
             backend,
             message_secrets,
-            sender_index,
+            sender_data.leaf_index,
             sender_ratchet_configuration,
             sender_data,
         )?;

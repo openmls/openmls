@@ -34,6 +34,7 @@ mod test_proposals;
 #[cfg(test)]
 use super::errors::CreateGroupContextExtProposalError;
 use super::public_group::PublicGroup;
+use crate::binary_tree::array_representation::TreeSize;
 use crate::framing::mls_auth_content::VerifiableAuthenticatedContent;
 
 use crate::group::config::CryptoConfig;
@@ -284,8 +285,11 @@ impl CoreGroupBuilder {
             .epoch_secrets(backend)
             .map_err(|_| LibraryError::custom("Using the key schedule in the wrong state"))?;
 
-        let (group_epoch_secrets, message_secrets) =
-            epoch_secrets.split_secrets(serialized_group_context, 1u32, LeafNodeIndex::new(0u32));
+        let (group_epoch_secrets, message_secrets) = epoch_secrets.split_secrets(
+            serialized_group_context,
+            TreeSize::new(1),
+            LeafNodeIndex::new(0u32),
+        );
 
         let initial_confirmation_tag = message_secrets
             .confirmation_key()
@@ -506,8 +510,6 @@ impl CoreGroup {
         backend: &impl OpenMlsCryptoProvider,
         sender_ratchet_configuration: &SenderRatchetConfiguration,
     ) -> Result<VerifiableAuthenticatedContent, MessageDecryptionError> {
-        use crate::tree::index::SecretTreeLeafIndex;
-
         let ciphersuite = self.ciphersuite();
         let message_secrets = self
             .message_secrets_mut(private_message.epoch())
@@ -518,7 +520,6 @@ impl CoreGroup {
                 SenderError::UnknownSender,
             ));
         }
-        let sender_index = SecretTreeLeafIndex::from(sender_data.leaf_index);
         let message_secrets = self
             .message_secrets_mut(private_message.epoch())
             .map_err(|_| MessageDecryptionError::AeadError)?;
@@ -526,7 +527,7 @@ impl CoreGroup {
             ciphersuite,
             backend,
             message_secrets,
-            sender_index,
+            sender_data.leaf_index,
             sender_ratchet_configuration,
             sender_data,
         )
