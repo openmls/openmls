@@ -525,7 +525,6 @@
 <a href="#525" id="525">525</a>
 <a href="#526" id="526">526</a>
 <a href="#527" id="527">527</a>
-<a href="#528" id="528">528</a>
 </pre><pre class="rust"><code><span class="doccomment">//! # Validation steps for incoming messages
 //!
 //! ```text
@@ -567,7 +566,7 @@
 //! ```
 </span><span class="comment">// TODO #106/#151: Update the above diagram
 
-</span><span class="kw">use crate</span>::{group::errors::ValidationError, tree::index::SecretTreeLeafIndex, treesync::TreeSync};
+</span><span class="kw">use crate</span>::{group::errors::ValidationError, treesync::TreeSync};
 <span class="kw">use </span>core_group::{proposals::QueuedProposal, staged_commit::StagedCommit};
 <span class="kw">use </span>openmls_traits::{crypto::OpenMlsCrypto, OpenMlsCryptoProvider};
 
@@ -634,7 +633,6 @@
             .message_secrets_and_leaves_mut(ciphertext.epoch())
             .map_err(|<span class="kw">_</span>| MessageDecryptionError::AeadError)<span class="question-mark">?</span>;
         <span class="kw">let </span>sender_data = ciphertext.sender_data(message_secrets, backend, ciphersuite)<span class="question-mark">?</span>;
-        <span class="kw">let </span>sender_index = SecretTreeLeafIndex::from(sender_data.leaf_index);
         <span class="kw">let </span>message_secrets = group
             .message_secrets_mut(ciphertext.epoch())
             .map_err(|<span class="kw">_</span>| MessageDecryptionError::AeadError)<span class="question-mark">?</span>;
@@ -642,7 +640,7 @@
             ciphersuite,
             backend,
             message_secrets,
-            sender_index,
+            sender_data.leaf_index,
             sender_ratchet_configuration,
             sender_data,
         )<span class="question-mark">?</span>;

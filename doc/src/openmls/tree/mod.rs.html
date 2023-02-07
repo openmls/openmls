@@ -10,8 +10,6 @@
 <a href="#10" id="10">10</a>
 <a href="#11" id="11">11</a>
 <a href="#12" id="12">12</a>
-<a href="#13" id="13">13</a>
-<a href="#14" id="14">14</a>
 </pre><pre class="rust"><code><span class="kw">use </span><span class="kw">crate</span>::ciphersuite::<span class="kw-2">*</span>;
 <span class="kw">use </span>openmls_traits::OpenMlsCryptoProvider;
 
@@ -20,9 +18,7 @@
 </span><span class="kw">pub mod </span>sender_ratchet;
 
 <span class="comment">// Crate
-</span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">mod </span>index;
-<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">mod </span>secret_tree;
-<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">mod </span>treemath;
+</span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">mod </span>secret_tree;
 
 <span class="attr">#[cfg(any(feature = <span class="string">&quot;test-utils&quot;</span>, test))]
 </span><span class="kw">pub mod </span>tests_and_kats;

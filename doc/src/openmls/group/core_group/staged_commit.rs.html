@@ -956,7 +956,7 @@
         <span class="kw">let </span>(provisional_group_epoch_secrets, provisional_message_secrets) =
             provisional_epoch_secrets.split_secrets(
                 serialized_provisional_group_context,
-                diff.leaf_count(),
+                diff.tree_size(),
                 <span class="comment">// The index should be the same on TreeSync and Diff.
                 </span><span class="self">self</span>.own_leaf_index(),
             );

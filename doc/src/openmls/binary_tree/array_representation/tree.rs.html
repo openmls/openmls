@@ -335,7 +335,7 @@
     }
 
     <span class="doccomment">/// Return the number of nodes in the tree.
-    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>size(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; TreeSize {
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>tree_size(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; TreeSize {
         <span class="comment">// We can cast the size to a u32, because the maximum size of a
         // tree is 2^30.
         </span>TreeSize::new((<span class="self">self</span>.leaf_nodes.len() + <span class="self">self</span>.parent_nodes.len()) <span class="kw">as </span>u32)
@@ -439,7 +439,7 @@
         leaf_index_1: LeafNodeIndex,
         leaf_index_2: LeafNodeIndex,
     ) -&gt; Vec&lt;ParentNodeIndex&gt; {
-        common_direct_path(leaf_index_1, leaf_index_2, <span class="self">self</span>.size())
+        common_direct_path(leaf_index_1, leaf_index_2, <span class="self">self</span>.tree_size())
     }
 }
 

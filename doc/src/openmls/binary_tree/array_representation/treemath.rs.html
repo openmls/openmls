@@ -442,6 +442,12 @@
 <a href="#442" id="442">442</a>
 <a href="#443" id="443">443</a>
 <a href="#444" id="444">444</a>
+<a href="#445" id="445">445</a>
+<a href="#446" id="446">446</a>
+<a href="#447" id="447">447</a>
+<a href="#448" id="448">448</a>
+<a href="#449" id="449">449</a>
+<a href="#450" id="450">450</a>
 </pre><pre class="rust"><code><span class="kw">use </span>serde::{Deserialize, Serialize};
 <span class="kw">use </span>std::cmp::Ordering;
 <span class="kw">use </span>tls_codec::{TlsDeserialize, TlsSerialize, TlsSize};
@@ -506,7 +512,7 @@
     }
 
     <span class="doccomment">/// Return the inner value as `u32`.
-    </span><span class="kw">pub</span>(<span class="kw">super</span>) <span class="kw">fn </span>u32(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; u32 {
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>u32(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; u32 {
         <span class="self">self</span>.<span class="number">0
     </span>}
 
@@ -619,6 +625,12 @@
         TreeSize((<span class="number">1 </span>&lt;&lt; (k + <span class="number">1</span>)) - <span class="number">1</span>)
     }
 
+    <span class="doccomment">/// Creates a new `TreeSize` from a specific leaf count
+    </span><span class="attr">#[cfg(any(feature = <span class="string">&quot;test-utils&quot;</span>, test))]
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>from_leaf_count(leaf_count: u32) -&gt; <span class="self">Self </span>{
+        TreeSize::new(leaf_count * <span class="number">2</span>)
+    }
+
     <span class="doccomment">/// Return the number of leaf nodes in the tree.
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>leaf_count(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; u32 {
         (<span class="self">self</span>.<span class="number">0 </span>/ <span class="number">2</span>) + <span class="number">1
@@ -715,13 +727,13 @@
     k
 }
 
-<span class="kw">pub</span>(<span class="kw">super</span>) <span class="kw">fn </span>root(size: TreeSize) -&gt; TreeNodeIndex {
+<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>root(size: TreeSize) -&gt; TreeNodeIndex {
     <span class="kw">let </span>size = size.u32();
     <span class="macro">debug_assert!</span>(size &gt; <span class="number">0</span>);
     TreeNodeIndex::new((<span class="number">1 </span>&lt;&lt; log2(size)) - <span class="number">1</span>)
 }
 
-<span class="kw">pub</span>(<span class="kw">super</span>) <span class="kw">fn </span>left(index: ParentNodeIndex) -&gt; TreeNodeIndex {
+<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>left(index: ParentNodeIndex) -&gt; TreeNodeIndex {
     <span class="kw">let </span>x = index.to_tree_index();
     <span class="kw">let </span>k = level(x);
     <span class="macro">debug_assert!</span>(k &gt; <span class="number">0</span>);
@@ -729,7 +741,7 @@
     TreeNodeIndex::new(index)
 }
 
-<span class="kw">pub</span>(<span class="kw">super</span>) <span class="kw">fn </span>right(index: ParentNodeIndex) -&gt; TreeNodeIndex {
+<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>right(index: ParentNodeIndex) -&gt; TreeNodeIndex {
     <span class="kw">let </span>x = index.to_tree_index();
     <span class="kw">let </span>k = level(x);
     <span class="macro">debug_assert!</span>(k &gt; <span class="number">0</span>);
@@ -770,7 +782,7 @@
 
 <span class="doccomment">/// Direct path from a node to the root.
 /// Does not include the node itself.
-</span><span class="kw">pub</span>(<span class="kw">super</span>) <span class="kw">fn </span>direct_path(node_index: LeafNodeIndex, size: TreeSize) -&gt; Vec&lt;ParentNodeIndex&gt; {
+</span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>direct_path(node_index: LeafNodeIndex, size: TreeSize) -&gt; Vec&lt;ParentNodeIndex&gt; {
     <span class="kw">let </span>r = root(size).u32();
 
     <span class="kw">let </span><span class="kw-2">mut </span>d = <span class="macro">vec!</span>[];

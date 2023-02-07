@@ -462,9 +462,6 @@
 <a href="#462" id="462">462</a>
 <a href="#463" id="463">463</a>
 <a href="#464" id="464">464</a>
-<a href="#465" id="465">465</a>
-<a href="#466" id="466">466</a>
-<a href="#467" id="467">467</a>
 </pre><pre class="rust"><code><span class="doccomment">//! This module implements the ratchet tree component of MLS.
 //!
 //! It exposes the [`Node`] enum that can contain either a [`LeafNode`] or a [`ParentNode`].
@@ -494,7 +491,7 @@
 
 <span class="kw">use crate</span>::{
     binary_tree::{
-        array_representation::{is_node_in_tree, tree::TreeNode, LeafNodeIndex},
+        array_representation::{is_node_in_tree, tree::TreeNode, LeafNodeIndex, TreeSize},
         MlsBinaryTree, MlsBinaryTreeError,
     },
     ciphersuite::{Secret, SignaturePublicKey},
@@ -722,12 +719,9 @@
         </span>diff.verify_parent_hashes(backend, ciphersuite)
     }
 
-    <span class="doccomment">/// Returns the number of leaves in the tree.
-    ///
-    /// This function should not fail and only returns a [`Result`], because it
-    /// might throw a [LibraryError](TreeSyncError::LibraryError).
-    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>leaf_count(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; u32 {
-        <span class="self">self</span>.tree.leaf_count()
+    <span class="doccomment">/// Returns the tree size
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>tree_size(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; TreeSize {
+        <span class="self">self</span>.tree.tree_size()
     }
 
     <span class="doccomment">/// Returns a list of [`LeafNodeIndex`]es containing only full nodes.
@@ -868,7 +862,7 @@
     <span class="doccomment">/// Returns a [`TreeSyncError`] if the `leaf_index` is not a leaf in this
     /// tree or empty.
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>is_leaf_in_tree(<span class="kw-2">&amp;</span><span class="self">self</span>, leaf_index: LeafNodeIndex) -&gt; bool {
-        is_node_in_tree(leaf_index.into(), <span class="self">self</span>.tree.size())
+        is_node_in_tree(leaf_index.into(), <span class="self">self</span>.tree.tree_size())
     }
 
     <span class="doccomment">/// Return a vector containing all [`EncryptionKey`]s for which the owner of

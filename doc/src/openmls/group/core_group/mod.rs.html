@@ -848,6 +848,7 @@
 <a href="#848" id="848">848</a>
 <a href="#849" id="849">849</a>
 <a href="#850" id="850">850</a>
+<a href="#851" id="851">851</a>
 </pre><pre class="rust"><code><span class="doccomment">//! ### Don&#39;t Panic!
 //!
 //! Functions in this module should never panic. However, if there is a bug in
@@ -884,6 +885,7 @@
 <span class="attr">#[cfg(test)]
 </span><span class="kw">use </span><span class="kw">super</span>::errors::CreateGroupContextExtProposalError;
 <span class="kw">use </span><span class="kw">super</span>::public_group::PublicGroup;
+<span class="kw">use </span><span class="kw">crate</span>::binary_tree::array_representation::TreeSize;
 <span class="kw">use </span><span class="kw">crate</span>::framing::mls_auth_content::VerifiableAuthenticatedContent;
 
 <span class="kw">use </span><span class="kw">crate</span>::group::config::CryptoConfig;
@@ -1134,8 +1136,11 @@
             .epoch_secrets(backend)
             .map_err(|<span class="kw">_</span>| LibraryError::custom(<span class="string">&quot;Using the key schedule in the wrong state&quot;</span>))<span class="question-mark">?</span>;
 
-        <span class="kw">let </span>(group_epoch_secrets, message_secrets) =
-            epoch_secrets.split_secrets(serialized_group_context, <span class="number">1u32</span>, LeafNodeIndex::new(<span class="number">0u32</span>));
+        <span class="kw">let </span>(group_epoch_secrets, message_secrets) = epoch_secrets.split_secrets(
+            serialized_group_context,
+            TreeSize::new(<span class="number">1</span>),
+            LeafNodeIndex::new(<span class="number">0u32</span>),
+        );
 
         <span class="kw">let </span>initial_confirmation_tag = message_secrets
             .confirmation_key()
@@ -1356,8 +1361,6 @@
         backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider,
         sender_ratchet_configuration: <span class="kw-2">&amp;</span>SenderRatchetConfiguration,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;VerifiableAuthenticatedContent, MessageDecryptionError&gt; {
-        <span class="kw">use </span><span class="kw">crate</span>::tree::index::SecretTreeLeafIndex;
-
         <span class="kw">let </span>ciphersuite = <span class="self">self</span>.ciphersuite();
         <span class="kw">let </span>message_secrets = <span class="self">self
             </span>.message_secrets_mut(private_message.epoch())
@@ -1368,7 +1371,6 @@
                 SenderError::UnknownSender,
             ));
         }
-        <span class="kw">let </span>sender_index = SecretTreeLeafIndex::from(sender_data.leaf_index);
         <span class="kw">let </span>message_secrets = <span class="self">self
             </span>.message_secrets_mut(private_message.epoch())
             .map_err(|<span class="kw">_</span>| MessageDecryptionError::AeadError)<span class="question-mark">?</span>;
@@ -1376,7 +1378,7 @@
             ciphersuite,
             backend,
             message_secrets,
-            sender_index,
+            sender_data.leaf_index,
             sender_ratchet_configuration,
             sender_data,
         )

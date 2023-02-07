@@ -570,9 +570,6 @@
 <a href="#570" id="570">570</a>
 <a href="#571" id="571">571</a>
 <a href="#572" id="572">572</a>
-<a href="#573" id="573">573</a>
-<a href="#574" id="574">574</a>
-<a href="#575" id="575">575</a>
 </pre><pre class="rust"><code><span class="kw">use </span>openmls_traits::{types::Ciphersuite, OpenMlsCryptoProvider};
 <span class="kw">use </span>std::io::Write;
 <span class="kw">use </span>tls_codec::{Deserialize, Serialize, Size, TlsDeserialize, TlsSerialize, TlsSize};
@@ -589,10 +586,7 @@
     binary_tree::array_representation::LeafNodeIndex,
     error::LibraryError,
     framing::mls_content::FramedContent,
-    tree::{
-        index::SecretTreeLeafIndex, secret_tree::SecretType,
-        sender_ratchet::SenderRatchetConfiguration,
-    },
+    tree::{secret_tree::SecretType, sender_ratchet::SenderRatchetConfiguration},
 };
 
 <span class="kw">use super</span>::<span class="kw-2">*</span>;
@@ -751,7 +745,7 @@
         <span class="kw">let </span>(generation, (ratchet_key, ratchet_nonce)) = message_secrets
             .secret_tree_mut()
             <span class="comment">// Even in tests we want to use the real sender index, so we have a key to encrypt.
-            </span>.secret_for_encryption(ciphersuite, backend, sender_index.into(), secret_type)<span class="question-mark">?</span>;
+            </span>.secret_for_encryption(ciphersuite, backend, sender_index, secret_type)<span class="question-mark">?</span>;
         <span class="comment">// Sample reuse guard uniformly at random.
         </span><span class="kw">let </span>reuse_guard: ReuseGuard =
             ReuseGuard::try_from_random(backend).map_err(LibraryError::unexpected_crypto_error)<span class="question-mark">?</span>;
@@ -930,7 +924,7 @@
         ciphersuite: Ciphersuite,
         backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider,
         message_secrets: <span class="kw-2">&amp;mut </span>MessageSecrets,
-        sender_index: SecretTreeLeafIndex,
+        sender_index: LeafNodeIndex,
         sender_ratchet_configuration: <span class="kw-2">&amp;</span>SenderRatchetConfiguration,
         sender_data: MlsSenderData,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;VerifiableAuthenticatedContent, MessageDecryptionError&gt; {
