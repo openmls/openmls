@@ -12,6 +12,7 @@ use crate::{
     group::errors::ExternalCommitValidationError,
     group::{
         errors::{ProposalValidationError, ValidationError},
+        past_secrets::MessageSecretsStore,
         Member, ProposalQueue,
     },
     messages::proposals::{Proposal, ProposalOrRefType, ProposalType},
@@ -62,6 +63,7 @@ impl PublicGroup {
     pub(crate) fn validate_verifiable_content(
         &self,
         verifiable_content: &VerifiableAuthenticatedContent,
+        message_secrets_store_option: Option<&MessageSecretsStore>,
     ) -> Result<(), ValidationError> {
         // ValSem004
         let sender = verifiable_content.sender();
@@ -70,9 +72,12 @@ impl PublicGroup {
             // it's an application message. Then it might be okay if it's in an
             // old secret tree instance, but we'll leave that to the CoreGroup
             // to validate.
-            if !self.treesync().is_leaf_in_tree(*leaf_index)
-                && !matches!(verifiable_content.content_type(), ContentType::Application)
-            {
+            let is_in_secrets_store = if let Some(mss) = message_secrets_store_option {
+                mss.epoch_has_leaf(verifiable_content.epoch(), *leaf_index)
+            } else {
+                false
+            };
+            if !self.treesync().is_leaf_in_tree(*leaf_index) && !is_in_secrets_store {
                 return Err(ValidationError::UnknownMember);
             }
         }

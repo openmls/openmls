@@ -77,8 +77,10 @@ impl CoreGroup {
         //  - ValSem004
         //  - ValSem005
         //  - ValSem009
-        self.public_group
-            .validate_verifiable_content(decrypted_message.verifiable_content())?;
+        self.public_group.validate_verifiable_content(
+            decrypted_message.verifiable_content(),
+            Some(&self.message_secrets_store),
+        )?;
 
         // Extract the credential if the sender is a member or a new member.
         // Checks the following semantic validation:
