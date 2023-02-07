@@ -15,7 +15,7 @@ use crate::{
     credentials::{Credential, CredentialType, CredentialWithKey},
     error::LibraryError,
     extensions::{Extension, ExtensionType, Extensions, RequiredCapabilitiesExtension},
-    group::{config::CryptoConfig, GroupId},
+    group::{config::CryptoConfig, CoreGroup, GroupId},
     key_packages::KeyPackage,
     messages::proposals::ProposalType,
     prelude::PublicTreeError,
@@ -237,22 +237,38 @@ impl LeafNode {
     // ----- Validation ----------------------------------------------------------------------------
 
     /// Validate the leaf node in the context of a key package.
-    // TODO(#1186)
-    #[allow(unused)]
-    pub(crate) fn validate_in_key_package(&self) -> Result<&Self, LeafNodeValidationError> {
-        // TODO(#1186)
-        // self.validate()?;
+    ///
+    /// Basic:
+    /// * ValSems from [`LeafNode::validate`]
+    ///
+    /// In key package:
+    /// * ValSem306
+    /// * ValSem307
+    /// * ValSem308
+    pub(crate) fn validate_in_key_package<'a>(
+        &self,
+        backend: &impl OpenMlsCryptoProvider,
+        group: &CoreGroup,
+        exclude_signature_public_keys: &[SignaturePublicKey],
+    ) -> Result<&Self, LeafNodeValidationError> {
+        self.validate(
+            backend,
+            group,
+            TreeInfoTbs::key_package(),
+            exclude_signature_public_keys,
+        )?;
 
+        // ValSem306
         match self.payload.leaf_node_source {
             LeafNodeSource::KeyPackage(lifetime) => {
-                /// Check that lifetime range is acceptable.
+                // ValSem307
                 if !lifetime.has_acceptable_range() {
                     return Err(LeafNodeValidationError::Lifetime(
                         LifetimeError::RangeTooBig,
                     ));
                 }
 
-                /// Check that current time is between `Lifetime.not_before` and `Lifetime.not_after`.
+                // ValSem308
                 if !lifetime.is_valid() {
                     return Err(LeafNodeValidationError::Lifetime(LifetimeError::NotCurrent));
                 }
@@ -264,12 +280,27 @@ impl LeafNode {
     }
 
     /// Validate the leaf node in the context of an update.
-    // TODO(#1186)
-    #[allow(unused)]
-    pub(crate) fn validate_in_update(&self) -> Result<&Self, LeafNodeValidationError> {
-        // TODO(#1186)
-        // self.validate()?;
+    ///
+    /// Basic:
+    /// * ValSems from [`LeafNode::validate`]
+    ///
+    /// In update:
+    /// * ValSem309
+    pub(crate) fn validate_in_update<'a>(
+        &self,
+        backend: &impl OpenMlsCryptoProvider,
+        group: &CoreGroup,
+        leaf_index: LeafNodeIndex,
+        exclude_signature_public_keys: &[SignaturePublicKey],
+    ) -> Result<&Self, LeafNodeValidationError> {
+        self.validate(
+            backend,
+            group,
+            TreeInfoTbs::update(group.group_id().clone(), leaf_index),
+            exclude_signature_public_keys,
+        )?;
 
+        // ValSem309
         match self.payload.leaf_node_source {
             LeafNodeSource::Update => Ok(self),
             _ => Err(LeafNodeValidationError::InvalidLeafNodeSource),
@@ -277,12 +308,27 @@ impl LeafNode {
     }
 
     /// Validate the leaf node in the context of a commit.
-    // TODO(#1186)
-    #[allow(unused)]
-    pub(crate) fn validate_in_commit(&self) -> Result<&Self, LeafNodeValidationError> {
-        // TODO(#1186)
-        // self.validate()?;
+    ///
+    /// Basic:
+    /// * ValSems from [`LeafNode::validate`]
+    ///
+    /// In commit:
+    /// * ValSem310
+    pub(crate) fn validate_in_commit<'a>(
+        &self,
+        backend: &impl OpenMlsCryptoProvider,
+        group: &CoreGroup,
+        leaf_index: LeafNodeIndex,
+        exclude_signature_public_keys: &[SignaturePublicKey],
+    ) -> Result<&Self, LeafNodeValidationError> {
+        self.validate(
+            backend,
+            group,
+            TreeInfoTbs::commit(group.group_id().clone(), leaf_index),
+            exclude_signature_public_keys,
+        )?;
 
+        // ValSem310
         match self.payload.leaf_node_source {
             LeafNodeSource::Commit(_) => Ok(self),
             _ => Err(LeafNodeValidationError::InvalidLeafNodeSource),
@@ -290,28 +336,105 @@ impl LeafNode {
     }
 
     /// Basic validation of leaf node called in all `validate_in_*` methods.
-    // TODO(#1186)
-    #[allow(unused)]
+    ///
+    /// * ValSem300
+    /// * ValSem301
+    /// * ValSem302
+    /// * ValSem303_1
+    /// * ValSem303_2
+    /// * ValSem303_3
+    /// * ValSem304
+    /// * ValSem305
+    ///
+    /// Note: All AS validation must have happened before.
     fn validate<'a>(
         &self,
-        required_capabilities: impl Into<Option<&'a RequiredCapabilitiesExtension>>,
-        signature_keys: &[SignaturePublicKey],
-        encryption_keys: &[EncryptionKey],
-        members_supported_credentials: &[&[CredentialType]],
-        currently_in_use: &[CredentialType],
+        backend: &impl OpenMlsCryptoProvider,
+        group: &CoreGroup,
+        tree_info: TreeInfoTbs,
+        exclude_signature_public_keys: &[SignaturePublicKey],
     ) -> Result<&Self, LeafNodeValidationError> {
-        self.validate_required_capabilities(required_capabilities)?
+        let filtered_signature_public_keys = group
+            .signature_keys(false)
+            .into_iter()
+            .filter(|item| !exclude_signature_public_keys.contains(item))
+            .collect::<Vec<_>>();
+
+        self
+            // ValSem300
+            .validate_signature(backend, group.ciphersuite(), tree_info)?
+            // ValSem301
+            .validate_group_parameters(group.version(), group.ciphersuite())?
+            // ValSem302
+            .validate_required_capabilities(group.required_capabilities())?
+            // ValSem303_1
+            .validate_against_group_credentials(&group.members_supported_credentials())?
+            // ValSem303_2
+            .validate_credential_in_use(&group.members_used_credentials())?
+            // ValSem303_3
             .validate_that_capabilities_contain_extension_types()?
+            // TODO: ValSem? In spec?
             .validate_that_capabilities_contain_credential_type()?
-            .validate_that_signature_key_is_unique(signature_keys)?
-            .validate_that_encryption_key_is_unique(encryption_keys)?
-            .validate_against_group_credentials(members_supported_credentials)?
-            .validate_credential_in_use(currently_in_use)?;
+            // ValSem304
+            .validate_that_signature_key_is_unique(&filtered_signature_public_keys)?
+            // ValSem305
+            .validate_that_encryption_key_is_unique(&group.encryption_keys())?;
 
         Ok(self)
     }
 
-    /// Check that all required capabilities are supported by this leaf node.
+    /// ValSem300
+    pub(crate) fn validate_signature(
+        &self,
+        backend: &impl OpenMlsCryptoProvider,
+        ciphersuite: Ciphersuite,
+        tree_info: TreeInfoTbs,
+    ) -> Result<&Self, LeafNodeValidationError> {
+        let tbs = LeafNodeTbs::from(self.clone(), tree_info);
+
+        let verifiable_leaf_node = VerifiableLeafNode {
+            tbs: &tbs,
+            signature: self.signature(),
+        };
+
+        let signature_public_key = self
+            .signature_key()
+            .clone()
+            .into_signature_public_key_enriched(ciphersuite.signature_algorithm());
+
+        if verifiable_leaf_node
+            .verify_no_out(backend.crypto(), &signature_public_key)
+            .is_ok()
+        {
+            Ok(self)
+        } else {
+            Err(LeafNodeValidationError::InvalidSignature)
+        }
+    }
+
+    /// ValSem301
+    pub(crate) fn validate_group_parameters(
+        &self,
+        version: ProtocolVersion,
+        ciphersuite: Ciphersuite,
+    ) -> Result<&Self, LeafNodeValidationError> {
+        if !self.payload.capabilities.versions.contains(&version) {
+            return Err(LeafNodeValidationError::UnsupportedVersion);
+        }
+
+        if !self
+            .payload
+            .capabilities
+            .ciphersuites
+            .contains(&ciphersuite)
+        {
+            return Err(LeafNodeValidationError::UnsupportedCiphersuite);
+        }
+
+        Ok(self)
+    }
+
+    /// ValSem302
     pub(crate) fn validate_required_capabilities<'a>(
         &self,
         required_capabilities: impl Into<Option<&'a RequiredCapabilitiesExtension>>,
@@ -343,8 +466,36 @@ impl LeafNode {
         Ok(self)
     }
 
-    /// Check that all extensions are listed in capabilities.
-    fn validate_that_capabilities_contain_extension_types(
+    /// ValSem303_1
+    fn validate_against_group_credentials(
+        &self,
+        members_supported_credentials: &[&[CredentialType]],
+    ) -> Result<&Self, LeafNodeValidationError> {
+        for member_supported_credentials in members_supported_credentials {
+            if !member_supported_credentials.contains(&self.credential().credential_type()) {
+                return Err(LeafNodeValidationError::LeafNodeCredentialNotSupportedByMember);
+            }
+        }
+
+        Ok(self)
+    }
+
+    /// ValSem303_2
+    fn validate_credential_in_use(
+        &self,
+        currently_in_use: &[CredentialType],
+    ) -> Result<&Self, LeafNodeValidationError> {
+        for credential in currently_in_use {
+            if !self.payload.capabilities.credentials.contains(credential) {
+                return Err(LeafNodeValidationError::MemberCredentialNotSupportedByLeafNode);
+            }
+        }
+
+        Ok(self)
+    }
+
+    /// ValSem303_3
+    pub(crate) fn validate_that_capabilities_contain_extension_types(
         &self,
     ) -> Result<&Self, LeafNodeValidationError> {
         for id in self
@@ -361,7 +512,7 @@ impl LeafNode {
         Ok(self)
     }
 
-    /// Check that credential type is included in the credentials.
+    /// TODO
     fn validate_that_capabilities_contain_credential_type(
         &self,
     ) -> Result<&Self, LeafNodeValidationError> {
@@ -377,7 +528,7 @@ impl LeafNode {
         Ok(self)
     }
 
-    /// Validate that the signature key is unique among the members of the group.
+    /// ValSem304
     fn validate_that_signature_key_is_unique(
         &self,
         signature_keys: &[SignaturePublicKey],
@@ -389,43 +540,13 @@ impl LeafNode {
         Ok(self)
     }
 
-    /// Validate that the encryption key is unique among the members of the group.
+    /// ValSem305
     fn validate_that_encryption_key_is_unique(
         &self,
         encryption_keys: &[EncryptionKey],
     ) -> Result<&Self, LeafNodeValidationError> {
         if encryption_keys.contains(self.encryption_key()) {
             return Err(LeafNodeValidationError::EncryptionKeyAlreadyInUse);
-        }
-
-        Ok(self)
-    }
-
-    /// Verify that the credential type is supported by all members of the group, as
-    /// specified by the capabilities field of each member's LeafNode.
-    fn validate_against_group_credentials(
-        &self,
-        members_supported_credentials: &[&[CredentialType]],
-    ) -> Result<&Self, LeafNodeValidationError> {
-        for member_supported_credentials in members_supported_credentials {
-            if !member_supported_credentials.contains(&self.credential().credential_type()) {
-                return Err(LeafNodeValidationError::LeafNodeCredentialNotSupportedByMember);
-            }
-        }
-
-        Ok(self)
-    }
-
-    /// Verify that the capabilities field of this LeafNode indicates support for all the
-    /// credential types currently in use by other members.
-    fn validate_credential_in_use(
-        &self,
-        currently_in_use: &[CredentialType],
-    ) -> Result<&Self, LeafNodeValidationError> {
-        for credential in currently_in_use {
-            if !self.payload.capabilities.credentials.contains(credential) {
-                return Err(LeafNodeValidationError::MemberCredentialNotSupportedByLeafNode);
-            }
         }
 
         Ok(self)
@@ -495,6 +616,11 @@ impl LeafNode {
             }
         }
         Ok(())
+    }
+
+    #[allow(unused)]
+    pub(crate) fn set_leaf_node_source(&mut self, new_leaf_node_source: LeafNodeSource) {
+        self.payload.leaf_node_source = new_leaf_node_source;
     }
 }
 
@@ -657,6 +783,17 @@ pub(crate) enum TreeInfoTbs {
 }
 
 impl TreeInfoTbs {
+    pub(crate) fn key_package() -> Self {
+        Self::KeyPackage
+    }
+
+    pub(crate) fn update(group_id: GroupId, leaf_index: LeafNodeIndex) -> Self {
+        Self::Update(TreePosition {
+            group_id,
+            leaf_index,
+        })
+    }
+
     pub(crate) fn commit(group_id: GroupId, leaf_index: LeafNodeIndex) -> Self {
         Self::Commit(TreePosition {
             group_id,

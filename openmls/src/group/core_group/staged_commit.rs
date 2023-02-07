@@ -18,7 +18,7 @@ use crate::{
     },
 };
 use core::fmt::Debug;
-use std::{collections::HashSet, mem};
+use std::mem;
 
 impl CoreGroup {
     /// Stages a commit message that was sent by another group member.
@@ -117,28 +117,31 @@ impl CoreGroup {
             FromCommittedProposalsError::SelfRemoval => StageCommitError::AttemptedSelfRemoval,
         })?;
 
-        let commit_update_leaf_node = commit
-            .path()
-            .as_ref()
-            .map(|update_path| update_path.leaf_node().clone());
-
         // Validate the staged proposals by doing the following checks:
         // ValSem101
         // ValSem102
         // ValSem104
         // ValSem105
         // ValSem106
-        self.validate_add_proposals(&proposal_queue)?;
+        self.validate_add_proposals(backend, &proposal_queue)?;
         // ValSem107
         // ValSem108
         self.validate_remove_proposals(&proposal_queue)?;
 
-        let public_key_set = match sender {
+        let inline_proposals = commit.proposals.iter().filter_map(|p| {
+            if let ProposalOrRef::Proposal(inline_proposal) = p {
+                Some(Some(inline_proposal))
+            } else {
+                None
+            }
+        });
+
+        match sender {
             Sender::Member(leaf_index) => {
                 // ValSem110
                 // ValSem111
                 // ValSem112
-                self.validate_update_proposals(&proposal_queue, *leaf_index)?
+                self.validate_update_proposals(backend, &proposal_queue, *leaf_index)?;
             }
             Sender::External(_) => {
                 // A commit cannot be issued by a pre-configured sender.
@@ -149,14 +152,23 @@ impl CoreGroup {
                 return Err(StageCommitError::SenderTypeNewMemberProposal);
             }
             Sender::NewMemberCommit => {
+                let commit_update_leaf_node = commit
+                    .path()
+                    .as_ref()
+                    .map(|update_path| update_path.leaf_node().clone());
+
                 // ValSem240: External Commit, inline Proposals: There MUST be at least one ExternalInit proposal.
                 // ValSem241: External Commit, inline Proposals: There MUST be at most one ExternalInit proposal.
                 // ValSem242: External Commit must only cover inline proposal in allowlist (ExternalInit, Remove, PreSharedKey)
                 // ValSem243: External Commit, inline Remove Proposal: The identity and the endpoint_id of the removed
-                //            leaf are identical to the ones in the path KeyPackage.
-                self.validate_external_commit(&proposal_queue, commit_update_leaf_node.as_ref())?;
-                // Since there are no update proposals in an External Commit we have no public keys to return
-                HashSet::new()
+                //            leaf are identical to the ones in the path.
+                self.validate_external_commit(
+                    backend,
+                    &proposal_queue,
+                    commit_update_leaf_node.as_ref(),
+                    self.public_group
+                        .free_leaf_index(inline_proposals.clone())?,
+                )?;
             }
         };
 
@@ -169,16 +181,7 @@ impl CoreGroup {
                 }
                 *leaf_index
             }
-            Sender::NewMemberCommit => {
-                let inline_proposals = commit.proposals.iter().filter_map(|p| {
-                    if let ProposalOrRef::Proposal(inline_proposal) = p {
-                        Some(Some(inline_proposal))
-                    } else {
-                        None
-                    }
-                });
-                self.public_group.free_leaf_index(inline_proposals)?
-            }
+            Sender::NewMemberCommit => self.public_group.free_leaf_index(inline_proposals)?,
             _ => {
                 return Err(StageCommitError::SenderTypeExternal);
             }
@@ -235,9 +238,6 @@ impl CoreGroup {
                     );
                     return Err(StageCommitError::PathLeafNodeVerificationFailure);
                 };
-
-                // Make sure that the new path key package is valid
-                self.validate_path_key_package(path.leaf_node(), public_key_set)?;
 
                 // Update the public group
                 diff.apply_received_update_path(backend, ciphersuite, sender_index, &path)?;

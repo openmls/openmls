@@ -89,3 +89,24 @@ The following is a list of the individual semantic validation steps performed by
 | `ValSem244`    | External Commit must not include any proposals by reference                                       | ✅          | ✅     | `openmls/src/group/tests/test_external_commit_validation.rs` |
 | `ValSem245`    | External Commit must contain a path                                                               | ✅          | ✅     | `openmls/src/group/tests/test_external_commit_validation.rs` |
 | `ValSem246`    | External Commit signature must be verified using the credential in the path KeyPackage            | ✅          | ✅     | `openmls/src/group/tests/test_external_commit_validation.rs` |
+
+### Leaf node validation
+
+| ValidationStep     | Description                                                                                                                                                                   | Implemented | Tested | Test File |
+|--------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|-------------|--------|-----------|
+| `ValSem300`        | Verify that the signature on the LeafNode is valid using signature_key                                                                                                        | ✅           |        |           |
+| `ValSem301`        | Verify that the LeafNode is compatible with the group's parameters...                                                                                                         | ✅           |        |           |
+| `ValSem302`        | If the GroupContext has a required_capabilities extension, then the required extensions, proposals, and credential types MUST be listed in the LeafNode's capabilities field. | ✅           |        |           |
+| `ValSem303_1`      | Verify that the credential type is supported by all members of the group, as specified by the capabilities field of each member's LeafNode, ...                               | ✅           |        |           |
+| `ValSem303_2`      | ... and that the capabilities field of this LeafNode indicates support for all the credential types currently in use by other members.                                        | ✅           |        |           |
+| `ValSem303_3`      | Check that the ID for each extension in the extensions field is listed in the capabilities.extensions field of the LeafNode.                                                  | ✅           |        |           |
+| `ValSem304`        | Verify that `signature_key`s are unique among the members of the group.                                                                                                       | ✅           |        |           |
+| `ValSem305`        | Verify that `encryption_key`s are unique among the members of the group.                                                                                                      | ✅           |        |           |
+| **In key package** |                                                                                                                                                                               | ✅           |        |           |
+| `ValSem306`        | If the LeafNode appears in a KeyPackage, verify that leaf_node_source is set to key_package.                                                                                  | ✅           |        |           |
+| `ValSem307`        | Enforce a maximum total lifetime that is acceptable for a LeafNode                                                                                                            | ✅           |        |           |
+| `ValSem308`        | Verify that the current time is within the range of the lifetime field                                                                                                        | ✅           |        |           |
+| **In update**      |                                                                                                                                                                               | ✅           |        |           |
+| `ValSem309`        | If the LeafNode appears in an Update proposal, verify that leaf_node_source is set to update.                                                                                 | ✅           |        |           |
+| **In commit**      |                                                                                                                                                                               | ✅           |        |           |
+| `ValSem310`        | If the LeafNode appears in the leaf_node value of the UpdatePath in a Commit, verify that leaf_node_source is set to commit.                                                  | ✅           |        |           |

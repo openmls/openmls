@@ -203,6 +203,15 @@ pub(crate) enum TreeKemError {
 /// Errors that can happen during leaf node validation.
 #[derive(Clone, Debug, Error, Eq, PartialEq)]
 pub enum LeafNodeValidationError {
+    /// Signature is invalid.
+    #[error("Signature is invalid.")]
+    InvalidSignature,
+    /// Version is not supported..
+    #[error("Version is not supported.")]
+    UnsupportedVersion,
+    /// Ciphersuite is not supported..
+    #[error("Ciphersuite is not supported.")]
+    UnsupportedCiphersuite,
     /// Lifetime is not acceptable.
     #[error("Lifetime is not acceptable.")]
     Lifetime(LifetimeError),

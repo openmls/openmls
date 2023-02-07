@@ -8,7 +8,7 @@ use crate::{
     schedule::errors::PskError,
     treesync::{
         errors::{DerivePathError, PublicTreeError},
-        node::{encryption_keys::EncryptionKeyPair, Node},
+        node::{encryption_keys::EncryptionKeyPair, leaf_node::TreeInfoTbs, Node},
     },
 };
 
@@ -102,20 +102,15 @@ impl CoreGroup {
             return Err(WelcomeError::GroupInfoCiphersuiteMismatch);
         }
 
-        // Make sure that we can support the required capabilities in the group info.
-        if let Some(required_capabilities) =
-            verifiable_group_info.extensions().required_capabilities()
-        {
-            required_capabilities
-                .check_support()
-                .map_err(|_| WelcomeError::UnsupportedCapability)?;
-            // Also check that our key package actually supports the extensions.
-            // Per spec the sender must have checked this. But you never know.
-            key_package_bundle
-                .key_package()
-                .leaf_node()
-                .validate_required_capabilities(required_capabilities)?;
-        }
+        // Leaf node validation
+        let leaf_node = key_package_bundle.key_package.leaf_node();
+        leaf_node
+            .validate_signature(backend, ciphersuite, TreeInfoTbs::key_package())?
+            .validate_required_capabilities(
+                verifiable_group_info.extensions().required_capabilities(),
+            )?
+            .validate_group_parameters(mls_version, ciphersuite)?
+            .validate_that_capabilities_contain_extension_types()?;
 
         let path_secret_option = group_secrets.path_secret;
 

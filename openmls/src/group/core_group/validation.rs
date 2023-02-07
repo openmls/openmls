@@ -1,15 +1,18 @@
 //! This module contains validation functions for incoming messages
 //! as defined in <https://github.com/openmls/openmls/wiki/Message-validation>
 
+use openmls_traits::OpenMlsCryptoProvider;
 use std::collections::HashSet;
 
+use crate::prelude::ProposalType;
 use crate::{
     binary_tree::array_representation::LeafNodeIndex,
+    ciphersuite::SignaturePublicKey,
     framing::Sender,
     group::errors::ExternalCommitValidationError,
     group::errors::ValidationError,
-    messages::proposals::{Proposal, ProposalOrRefType, ProposalType},
-    treesync::node::leaf_node::LeafNode,
+    messages::proposals::{Proposal, ProposalOrRefType},
+    treesync::{errors::LeafNodeValidationError, node::leaf_node::LeafNode},
 };
 
 use super::{
@@ -104,6 +107,7 @@ impl CoreGroup {
     ///  - ValSem106
     pub(crate) fn validate_add_proposals(
         &self,
+        backend: &impl OpenMlsCryptoProvider,
         proposal_queue: &ProposalQueue,
     ) -> Result<(), ProposalValidationError> {
         let add_proposals = proposal_queue.add_proposals();
@@ -155,20 +159,58 @@ impl CoreGroup {
             }
 
             // ValSem106: Check the required capabilities of the add proposals
-            // This includes the following checks:
             // - Do ciphersuite and version match that of the group?
-            // - Are the two listed in the `Capabilities` Extension?
-            // - If a `RequiredCapabilitiesExtension` is present in the group:
-            //   Does the key package advertise the capabilities required by that
-            //   extension?
-
-            // Check if ciphersuite and version of the group are correct.
             if add_proposal.add_proposal().key_package().ciphersuite() != self.ciphersuite()
                 || add_proposal.add_proposal().key_package().protocol_version() != self.version()
             {
                 log::error!("Tried to commit an Add proposal, where either the `Ciphersuite` or the `ProtocolVersion` is not compatible with the group.");
 
                 return Err(ProposalValidationError::InsufficientCapabilities);
+            }
+
+            // Leaf node validation.
+            {
+                let leaf_node = add_proposal.add_proposal().key_package().leaf_node();
+
+                let exclude_group_signature_keys = {
+                    let mut tmp = Vec::new();
+
+                    for Member {
+                        index,
+                        signature_key,
+                        ..
+                    } in self.treesync().full_leave_members()
+                    {
+                        // Exclude signature keys that will be removed.
+                        let has_remove_proposal = proposal_queue
+                            .remove_proposals()
+                            .any(|p| p.remove_proposal().removed == index);
+
+                        if has_remove_proposal {
+                            tmp.push(SignaturePublicKey::from(signature_key));
+                        }
+                    }
+
+                    tmp
+                };
+
+                leaf_node
+                    .validate_in_key_package(backend, self, &exclude_group_signature_keys)
+                    .map_err(|error| match error {
+                        LeafNodeValidationError::UnsupportedVersion => {
+                            ProposalValidationError::InsufficientCapabilities
+                        }
+                        LeafNodeValidationError::UnsupportedCiphersuite => {
+                            ProposalValidationError::InsufficientCapabilities
+                        }
+                        LeafNodeValidationError::SignatureKeyAlreadyInUse => {
+                            ProposalValidationError::ExistingSignatureKeyAddProposal
+                        }
+                        LeafNodeValidationError::EncryptionKeyAlreadyInUse => {
+                            ProposalValidationError::ExistingPublicKeyAddProposal
+                        }
+                        _ => error.into(),
+                    })?;
             }
 
             // Check if the ciphersuite and the version of the group are
@@ -184,17 +226,6 @@ impl CoreGroup {
                 log::error!("Tried to commit an Add proposal, where either the group's `Ciphersuite` or the group's `ProtocolVersion` is not in the `KeyPackage`'s `Capabilities`.");
                 return Err(ProposalValidationError::InsufficientCapabilities);
             }
-            // If there is a required capabilities extension, check if that one
-            // is supported.
-            if let Some(required_capabilities) =
-                self.group_context_extensions().required_capabilities()
-            {
-                // Check if all required capabilities are supported.
-                if !capabilities.supports_required_capabilities(required_capabilities) {
-                    log::error!("Tried to commit an Add proposal, where the `Capabilities` of the given `KeyPackage` do not fulfill the `RequiredCapabilities` of the group.");
-                    return Err(ProposalValidationError::InsufficientCapabilities);
-                }
-            }
         }
 
         for Member {
@@ -208,10 +239,14 @@ impl CoreGroup {
                 .remove_proposals()
                 .any(|p| p.remove_proposal().removed == index);
             // ValSem104
+            // Note: This is different to the leaf node check above. It checks for duplicate
+            // signature keys after all proposals would have been applied.
             if signature_key_set.contains(&signature_key) && !has_remove_proposal {
                 return Err(ProposalValidationError::ExistingSignatureKeyAddProposal);
             }
             // ValSem114
+            // Note: This is different to the leaf node check above. It checks for duplicate
+            // encryption keys after all proposals would have been be applied.
             if encryption_key_set.contains(&encryption_key) {
                 return Err(ProposalValidationError::ExistingPublicKeyAddProposal);
             }
@@ -254,20 +289,12 @@ impl CoreGroup {
     /// TODO: #133 This validation must be updated according to Sec. 13.2
     pub(crate) fn validate_update_proposals(
         &self,
+        backend: &impl OpenMlsCryptoProvider,
         proposal_queue: &ProposalQueue,
         committer: LeafNodeIndex,
-    ) -> Result<HashSet<Vec<u8>>, ProposalValidationError> {
-        let mut encryption_keys = HashSet::new();
-        for leaf in self.treesync().full_leaves() {
-            // 8.3. Leaf Node Validation
-            // encryption key must be unique
-            encryption_keys.insert(leaf.public_key().as_slice().to_vec());
-        }
-
+    ) -> Result<(), ProposalValidationError> {
         // Check the update proposals from the proposal queue first
-        let update_proposals = proposal_queue.update_proposals();
-
-        for update_proposal in update_proposals {
+        for update_proposal in proposal_queue.update_proposals() {
             // ValSem112
             // The sender of a standalone update proposal must be of type member
             if let Sender::Member(sender_index) = update_proposal.sender() {
@@ -276,36 +303,15 @@ impl CoreGroup {
                 if committer == *sender_index {
                     return Err(ProposalValidationError::CommitterIncludedOwnUpdate);
                 }
+
+                // Leaf node validation.
+                let leaf_node = update_proposal.update_proposal().leaf_node();
+                leaf_node.validate_in_update(backend, self, *sender_index, &[])?;
             } else {
                 return Err(ProposalValidationError::UpdateFromNonMember);
             }
-
-            let encryption_key = update_proposal
-                .update_proposal()
-                .leaf_node()
-                .encryption_key()
-                .as_slice();
-            // ValSem110
-            // HPKE init key must be unique among existing members
-            if encryption_keys.contains(encryption_key) {
-                return Err(ProposalValidationError::ExistingPublicKeyUpdateProposal);
-            }
         }
-        Ok(encryption_keys)
-    }
 
-    /// Validate the new key package in a path
-    /// TODO: #730 - There's nothing testing this function.
-    /// - ValSem110
-    pub(super) fn validate_path_key_package(
-        &self,
-        leaf_node: &LeafNode,
-        public_key_set: HashSet<Vec<u8>>,
-    ) -> Result<(), ProposalValidationError> {
-        // ValSem110
-        if public_key_set.contains(leaf_node.encryption_key().as_slice()) {
-            return Err(ProposalValidationError::ExistingPublicKeyUpdateProposal);
-        }
         Ok(())
     }
 
@@ -317,8 +323,10 @@ impl CoreGroup {
     ///               leaf are identical to the ones in the path KeyPackage.
     pub(crate) fn validate_external_commit(
         &self,
+        backend: &impl OpenMlsCryptoProvider,
         proposal_queue: &ProposalQueue,
         path_leaf_node: Option<&LeafNode>,
+        sender_index: LeafNodeIndex,
     ) -> Result<(), ExternalCommitValidationError> {
         let count_external_init_proposals = proposal_queue
             .filtered_by_type(ProposalType::ExternalInit)
@@ -344,29 +352,33 @@ impl CoreGroup {
             return Err(ExternalCommitValidationError::InvalidInlineProposals);
         }
 
-        let remove_proposals = proposal_queue.filtered_by_type(ProposalType::Remove);
-        for proposal in remove_proposals {
-            if proposal.proposal_or_ref_type() == ProposalOrRefType::Proposal {
-                if let Proposal::Remove(remove_proposal) = proposal.proposal() {
-                    let removed_leaf = remove_proposal.removed();
+        // ValSem245
+        // "External Commits MUST contain a path field (and is therefore a "full" Commit).
+        // The joiner is added at the leftmost free leaf node (just as if they were added with an
+        // Add proposal), and the path is calculated relative to that leaf node."
+        // TODO: This is also checked in [`DecryptedMessage::credential`] ...
+        let leaf_node = if let Some(leaf_node) = path_leaf_node {
+            // Leaf node validation.
+            leaf_node.validate_in_commit(backend, self, sender_index, &[])?
+        } else {
+            return Err(ExternalCommitValidationError::NoPath);
+        };
 
-                    if let Some(new_leaf) = path_leaf_node {
-                        // ValSem243: External Commit, inline Remove Proposal:
-                        //            The identity and the endpoint_id of the
-                        //            removed leaf are identical to the ones
-                        //            in the path leaf node.
-                        let removed_leaf = self
-                            .treesync()
-                            .leaf(removed_leaf)
-                            .ok_or(ExternalCommitValidationError::UnknownMemberRemoval)?;
-                        if removed_leaf.credential().identity() != new_leaf.credential().identity()
-                        {
-                            return Err(ExternalCommitValidationError::InvalidRemoveProposal);
-                        }
-                    };
-                }
+        for remove_proposal in proposal_queue.remove_proposals() {
+            let removed_leaf = remove_proposal.remove_proposal().removed();
+            // ValSem243: External Commit, inline Remove Proposal:
+            //            The identity and the endpoint_id of the
+            //            removed leaf are identical to the ones
+            //            in the path leaf node.
+            let removed_leaf = self
+                .treesync()
+                .leaf(removed_leaf)
+                .ok_or(ExternalCommitValidationError::UnknownMemberRemoval)?;
+            if removed_leaf.credential().identity() != leaf_node.credential().identity() {
+                return Err(ExternalCommitValidationError::InvalidRemoveProposal);
             }
         }
+
         Ok(())
     }
 }

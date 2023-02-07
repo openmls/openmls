@@ -3,9 +3,7 @@ use serde::{Deserialize, Serialize};
 use tls_codec::{TlsDeserialize, TlsSerialize, TlsSize};
 
 use crate::{
-    credentials::CredentialType,
-    extensions::{ExtensionType, RequiredCapabilitiesExtension},
-    messages::proposals::ProposalType,
+    credentials::CredentialType, extensions::ExtensionType, messages::proposals::ProposalType,
     versions::ProtocolVersion,
 };
 
@@ -103,34 +101,6 @@ impl Capabilities {
     /// Get a reference to the list of supported credential types.
     pub fn credentials(&self) -> &[CredentialType] {
         &self.credentials
-    }
-
-    // ---------------------------------------------------------------------------------------------
-
-    /// Check if these [`Capabilities`] support all the capabilities
-    /// required by the given [`RequiredCapabilities`] extension. Returns
-    /// `true` if that is the case and `false` otherwise.
-    pub(crate) fn supports_required_capabilities(
-        &self,
-        required_capabilities: &RequiredCapabilitiesExtension,
-    ) -> bool {
-        // Check if all required extensions are supported.
-        if required_capabilities
-            .extension_types()
-            .iter()
-            .any(|e| !self.extensions().contains(e))
-        {
-            return false;
-        }
-        // Check if all required proposals are supported.
-        if required_capabilities
-            .proposal_types()
-            .iter()
-            .any(|p| !self.proposals().contains(p))
-        {
-            return false;
-        }
-        true
     }
 }
 

@@ -63,7 +63,7 @@ impl CoreGroup {
         // ValSem102
         // ValSem104
         // ValSem106
-        self.validate_add_proposals(&proposal_queue)?;
+        self.validate_add_proposals(backend, &proposal_queue)?;
         // ValSem107
         // ValSem108
         self.validate_remove_proposals(&proposal_queue)?;
@@ -72,7 +72,7 @@ impl CoreGroup {
             // ValSem110
             // ValSem111
             // ValSem112
-            self.validate_update_proposals(&proposal_queue, *sender_index)?;
+            self.validate_update_proposals(backend, &proposal_queue, *sender_index)?;
         }
 
         // Make a copy of the public group to apply proposals safely
