@@ -1,7 +1,7 @@
 use tls_codec::{TlsDeserialize, TlsSerialize, TlsSize};
 
 use super::{Deserialize, Serialize};
-use crate::prelude::HpkePublicKey;
+use crate::ciphersuite::HpkePublicKey;
 
 /// ```c
 /// // draft-ietf-mls-protocol-16
