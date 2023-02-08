@@ -4,21 +4,20 @@
 //! Most tests require to set up groups, clients, credentials, and identities.
 //! This module implements helpers to do that.
 
-use std::cell::RefCell;
-use std::collections::HashMap;
+use std::{cell::RefCell, collections::HashMap};
 
-use crate::{
-    credentials::*, framing::*, group::*, key_packages::*, test_utils::*,
-    versions::ProtocolVersion, *,
-};
-use ::rand::rngs::OsRng;
-use ::rand::RngCore;
 use config::CryptoConfig;
 use openmls_basic_credential::SignatureKeyPair;
-use openmls_traits::types::SignatureScheme;
-use openmls_traits::OpenMlsCryptoProvider;
-use openmls_traits::{key_store::OpenMlsKeyStore, signatures::Signer};
+use openmls_traits::{
+    key_store::OpenMlsKeyStore, signatures::Signer, types::SignatureScheme, OpenMlsCryptoProvider,
+};
+use rand::{rngs::OsRng, RngCore};
 use tls_codec::Serialize;
+
+use crate::{
+    ciphersuite::signable::Signable, credentials::*, framing::*, group::*, key_packages::*,
+    test_utils::*, versions::ProtocolVersion, *,
+};
 
 /// Configuration of a client meant to be used in a test setup.
 #[derive(Clone)]
@@ -380,8 +379,6 @@ pub(crate) fn resign_message(
     backend: &impl OpenMlsCryptoProvider,
     signer: &impl Signer,
 ) -> PublicMessage {
-    use prelude::signable::Signable;
-
     let serialized_context = alice_group
         .export_group_context()
         .tls_serialize_detached()
@@ -413,6 +410,7 @@ pub(crate) fn resign_message(
             alice_group.group().message_secrets().serialized_context(),
         )
         .expect("error refreshing membership tag");
+
     signed_plaintext
 }
 
@@ -424,9 +422,6 @@ pub(crate) fn resign_external_commit(
     serialized_context: Vec<u8>,
 ) -> PublicMessage {
     let serialized_context = Some(serialized_context);
-    // We have to re-sign, since we changed the content.
-
-    use prelude::signable::Signable;
     let tbs: FramedContentTbs = plaintext.into();
     let mut signed_plaintext: AuthenticatedContent = if let Some(context) = serialized_context {
         tbs.with_context(context)
@@ -444,7 +439,5 @@ pub(crate) fn resign_external_commit(
             .clone(),
     );
 
-    let signed_plaintext: PublicMessage = signed_plaintext.into();
-
-    signed_plaintext
+    signed_plaintext.into()
 }
