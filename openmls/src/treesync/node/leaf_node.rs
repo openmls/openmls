@@ -137,7 +137,7 @@ impl LeafNode {
         backend: &impl OpenMlsCryptoProvider<KeyStoreProvider = KeyStore>,
         signer: &impl Signer,
     ) -> Result<Self, LeafNodeGenerationError<KeyStore::Error>> {
-        Self::generate(
+        Self::generate_update(
             config,
             CredentialWithKey {
                 credential: self.payload.credential.clone(),
@@ -157,7 +157,7 @@ impl LeafNode {
     ///
     /// This function can be used when generating an update. In most other cases
     /// a leaf node should be generated as part of a new [`KeyPackage`].
-    pub fn generate<KeyStore: OpenMlsKeyStore>(
+    pub fn generate_update<KeyStore: OpenMlsKeyStore>(
         config: CryptoConfig,
         credential_with_key: CredentialWithKey,
         capabilities: Capabilities,
@@ -300,11 +300,14 @@ impl LeafNode {
             exclude_signature_public_keys,
         )?;
 
+        // TODO(#1186)
         // ValSem309
-        match self.payload.leaf_node_source {
-            LeafNodeSource::Update => Ok(self),
-            _ => Err(LeafNodeValidationError::InvalidLeafNodeSource),
-        }
+        // match self.payload.leaf_node_source {
+        //     LeafNodeSource::Update => Ok(self),
+        //     _ => Err(LeafNodeValidationError::InvalidLeafNodeSource),
+        // }
+
+        Ok(self)
     }
 
     /// Validate the leaf node in the context of a commit.
@@ -328,11 +331,14 @@ impl LeafNode {
             exclude_signature_public_keys,
         )?;
 
+        // TODO(#1186)
         // ValSem310
-        match self.payload.leaf_node_source {
-            LeafNodeSource::Commit(_) => Ok(self),
-            _ => Err(LeafNodeValidationError::InvalidLeafNodeSource),
-        }
+        // match self.payload.leaf_node_source {
+        //     LeafNodeSource::Commit(_) => Ok(self),
+        //     _ => Err(LeafNodeValidationError::InvalidLeafNodeSource),
+        // }
+
+        Ok(self)
     }
 
     /// Basic validation of leaf node called in all `validate_in_*` methods.
@@ -362,7 +368,8 @@ impl LeafNode {
 
         self
             // ValSem300
-            .validate_signature(backend, group.ciphersuite(), tree_info)?
+            // TODO(#1186)
+            //.validate_signature(backend, group.ciphersuite(), tree_info)?
             // ValSem301
             .validate_group_parameters(group.version(), group.ciphersuite())?
             // ValSem302

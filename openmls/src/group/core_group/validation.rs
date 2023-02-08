@@ -1,23 +1,22 @@
 //! This module contains validation functions for incoming messages
 //! as defined in <https://github.com/openmls/openmls/wiki/Message-validation>
 
-use openmls_traits::OpenMlsCryptoProvider;
 use std::collections::HashSet;
 
-use crate::prelude::ProposalType;
-use crate::{
-    binary_tree::array_representation::LeafNodeIndex,
-    ciphersuite::SignaturePublicKey,
-    framing::Sender,
-    group::errors::ExternalCommitValidationError,
-    group::errors::ValidationError,
-    messages::proposals::{Proposal, ProposalOrRefType},
-    treesync::{errors::LeafNodeValidationError, node::leaf_node::LeafNode},
-};
+use openmls_traits::OpenMlsCryptoProvider;
 
 use super::{
     mls_content::ContentType, proposals::ProposalQueue, CoreGroup, Member, ProposalValidationError,
     ProtocolMessage, VerifiableAuthenticatedContent, WireFormat,
+};
+use crate::{
+    binary_tree::array_representation::LeafNodeIndex,
+    ciphersuite::SignaturePublicKey,
+    framing::Sender,
+    group::errors::{ExternalCommitValidationError, ValidationError},
+    messages::proposals::{Proposal, ProposalOrRefType},
+    prelude::ProposalType,
+    treesync::{errors::LeafNodeValidationError, node::leaf_node::LeafNode},
 };
 
 impl CoreGroup {
@@ -194,7 +193,7 @@ impl CoreGroup {
                     tmp
                 };
 
-                leaf_node
+                let res = leaf_node
                     .validate_in_key_package(backend, self, &exclude_group_signature_keys)
                     .map_err(|error| match error {
                         LeafNodeValidationError::UnsupportedVersion => {
@@ -210,7 +209,8 @@ impl CoreGroup {
                             ProposalValidationError::ExistingPublicKeyAddProposal
                         }
                         _ => error.into(),
-                    })?;
+                    });
+                res?;
             }
 
             // Check if the ciphersuite and the version of the group are
@@ -306,7 +306,14 @@ impl CoreGroup {
 
                 // Leaf node validation.
                 let leaf_node = update_proposal.update_proposal().leaf_node();
-                leaf_node.validate_in_update(backend, self, *sender_index, &[])?;
+                leaf_node
+                    .validate_in_update(backend, self, *sender_index, &self.signature_keys(true))
+                    .map_err(|error| match error {
+                        LeafNodeValidationError::EncryptionKeyAlreadyInUse => {
+                            ProposalValidationError::ExistingPublicKeyUpdateProposal
+                        }
+                        error => error.into(),
+                    })?;
             } else {
                 return Err(ProposalValidationError::UpdateFromNonMember);
             }

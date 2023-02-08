@@ -3,13 +3,18 @@
 
 use openmls_rust_crypto::OpenMlsRustCrypto;
 use openmls_traits::{
-    key_store::OpenMlsKeyStore, signatures::Signer, types::Ciphersuite, OpenMlsCryptoProvider,
+    key_store::OpenMlsKeyStore,
+    signatures::Signer,
+    types::{Ciphersuite, SignatureScheme},
+    OpenMlsCryptoProvider,
 };
-
 use rstest::*;
 use rstest_reuse::{self, *};
 use tls_codec::{Deserialize, Serialize};
 
+use super::utils::{
+    generate_credential_bundle, generate_key_package, resign_message, CredentialWithKeyAndSigner,
+};
 use crate::{
     binary_tree::LeafNodeIndex,
     ciphersuite::hash_ref::ProposalRef,
@@ -24,12 +29,12 @@ use crate::{
         proposals::{AddProposal, Proposal, ProposalOrRef, RemoveProposal, UpdateProposal},
         Welcome,
     },
-    treesync::{errors::ApplyUpdatePathError, node::leaf_node::Capabilities},
+    treesync::{
+        errors::{ApplyUpdatePathError, LeafNodeValidationError},
+        node::leaf_node::{Capabilities, LeafNodeSource},
+        LeafNode,
+    },
     versions::ProtocolVersion,
-};
-
-use super::utils::{
-    generate_credential_bundle, generate_key_package, resign_message, CredentialWithKeyAndSigner,
 };
 
 /// Helper function to generate and output CredentialBundle and KeyPackage
