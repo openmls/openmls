@@ -333,3 +333,25 @@ impl TlsSerializeTrait for FramedContentTbs {
         )
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use crate::binary_tree::LeafNodeIndex;
+
+    use super::*;
+
+    #[test]
+    fn framed_content_serialization() {
+        let fc = FramedContent {
+            group_id: GroupId::from_slice(&[8, 8, 8]),
+            epoch: GroupEpoch::from(666),
+            sender: Sender::Member(LeafNodeIndex::new(9)),
+            authenticated_data: vec![1, 2, 3].into(),
+            body: FramedContentBody::Application(vec![7, 8, 9].into()),
+        };
+
+        let serialized = fc.tls_serialize_detached().unwrap();
+        let fc_deserialized = FramedContent::tls_deserialize(&mut serialized.as_slice()).unwrap();
+        assert_eq!(fc_deserialized, fc);
+    }
+}

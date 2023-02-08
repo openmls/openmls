@@ -401,7 +401,6 @@ pub fn generate_test_vector(
             let application_nonce_string = bytes_to_hex(application_secret_nonce.as_slice());
             let (application_plaintext, application_ciphertext) =
                 build_application_messages(sender_leaf, &mut group, &signer, &crypto);
-            println!("Sender Group: {group:?}");
             application.push(RatchetStep {
                 generation,
                 key: application_key_string,
@@ -456,7 +455,7 @@ fn write_test_vectors() {
     let _ = pretty_env_logger::try_init();
     use openmls_traits::crypto::OpenMlsCrypto;
     let mut tests = Vec::new();
-    const NUM_LEAVES: u32 = 34;
+    const NUM_LEAVES: u32 = 32;
     const GENERATIONS: [u32; 2] = [1, 15];
 
     log::debug!("Generating new test vectors ...");
@@ -761,20 +760,23 @@ pub fn run_test_vector(
                     ciphersuite,
                 );
 
-            // Swap secret tree
-            let _ = group
-                .message_secrets_test_mut()
-                .replace_secret_tree(fresh_secret_tree.clone());
+            let mut message_secrets = MessageSecrets::new(
+                sender_data_secret.clone(),
+                MembershipKey::random(ciphersuite, backend), // we don't care about this value
+                ConfirmationKey::random(ciphersuite, backend), // we don't care about this value
+                group.context().tls_serialize_detached().unwrap(),
+                fresh_secret_tree.clone(),
+            );
 
             // Decrypt and check message
             let sender_data = mls_ciphertext_handshake
-                .sender_data(group.message_secrets_test_mut(), backend, ciphersuite)
+                .sender_data(&message_secrets, backend, ciphersuite)
                 .expect("Unable to get sender data");
             let mls_plaintext_handshake: AuthenticatedContent = mls_ciphertext_handshake
                 .to_verifiable_content(
                     ciphersuite,
                     backend,
-                    group.message_secrets_test_mut(),
+                    &mut message_secrets,
                     leaf_index,
                     &SenderRatchetConfiguration::default(),
                     sender_data,
@@ -793,11 +795,6 @@ pub fn run_test_vector(
             if expected_plaintext.content() != mls_plaintext_handshake.content() {
                 return Err(EncTestVectorError::DecryptedHandshakeMessageMismatch);
             }
-
-            // Swap secret tree back
-            let _ = group
-                .message_secrets_test_mut()
-                .replace_secret_tree(fresh_secret_tree.clone());
         }
         log::trace!("Finished test vector for leaf {:?}", leaf_index);
     }

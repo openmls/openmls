@@ -348,3 +348,41 @@ impl TlsSerializeTrait for PublicMessage {
         Ok(written)
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use crate::binary_tree::LeafNodeIndex;
+
+    use super::*;
+
+    #[test]
+    fn public_group_serialization() {
+        let content = FramedContent {
+            group_id: GroupId::from_slice(&[8, 8, 8]),
+            epoch: GroupEpoch::from(666),
+            sender: Sender::Member(LeafNodeIndex::new(9)),
+            authenticated_data: vec![1, 2, 3].into(),
+            body: FramedContentBody::Application(vec![7, 8, 9].into()),
+        };
+
+        let auth = FramedContentAuthData {
+            signature: vec![3; 71].into(),
+            confirmation_tag: None,
+        };
+
+        let membership_tag = Some(MembershipTag(Mac {
+            mac_value: vec![44, 44].into(),
+        }));
+
+        let pm = PublicMessage {
+            content,
+            auth,
+            membership_tag,
+        };
+
+        let serialized = pm.tls_serialize_detached().unwrap();
+        eprintln!("serialized: {serialized:x?}");
+        let pm_deserialized = PublicMessage::tls_deserialize(&mut serialized.as_slice()).unwrap();
+        assert_eq!(pm_deserialized, pm);
+    }
+}
