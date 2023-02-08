@@ -69,7 +69,7 @@ fn test_valsem240(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
         resign_external_commit(
             &bob_credential.signer,
             public_message_commit_bad,
-            &public_message_commit,
+            public_message_commit.confirmation_tag().unwrap().clone(),
             alice_group
                 .export_group_context()
                 .tls_serialize_detached()
@@ -132,11 +132,11 @@ fn test_valsem241(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
         resign_external_commit(
             &bob_credential.signer,
             public_message_commit_bad,
-            &public_message_commit,
+            public_message_commit.confirmation_tag().unwrap().clone(),
             alice_group
                 .export_group_context()
                 .tls_serialize_detached()
-                .expect("error serializing context"),
+                .unwrap(),
         )
     };
 
@@ -292,11 +292,11 @@ fn test_valsem242(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
             resign_external_commit(
                 &bob_credential.signer,
                 public_message_commit_bad,
-                &public_message_commit,
+                public_message_commit.confirmation_tag().unwrap().clone(),
                 alice_group
                     .export_group_context()
                     .tls_serialize_detached()
-                    .expect("error serializing context"),
+                    .unwrap(),
             )
         };
 
@@ -350,8 +350,8 @@ fn test_valsem243(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
         .unwrap();
     let tree_option = alice_group.export_ratchet_tree();
 
-    println!("Bob joining");
-    let (_bob_group, public_message_commit) = MlsGroup::join_by_external_commit(
+    // Note: This will create a remove proposal because Bob is already a member of the group.
+    let (_, public_message_commit) = MlsGroup::join_by_external_commit(
         backend,
         &bob_credential.signer,
         Some(&tree_option),
@@ -407,11 +407,11 @@ fn test_valsem243(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
         resign_external_commit(
             &bob_credential.signer,
             public_message_commit_bad,
-            &public_message_commit,
+            public_message_commit.confirmation_tag().unwrap().clone(),
             alice_group
                 .export_group_context()
                 .tls_serialize_detached()
-                .expect("error serializing context"),
+                .unwrap(),
         )
     };
 
@@ -495,11 +495,11 @@ fn test_valsem244(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
         resign_external_commit(
             &bob_credential.signer,
             public_message_commit_bad,
-            &public_message_commit,
+            public_message_commit.confirmation_tag().unwrap().clone(),
             alice_group
                 .export_group_context()
                 .tls_serialize_detached()
-                .expect("error serializing context"),
+                .unwrap(),
         )
     };
 
@@ -555,11 +555,11 @@ fn test_valsem245(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
         resign_external_commit(
             &bob_credential.signer,
             public_message_commit_bad,
-            &public_message_commit,
+            public_message_commit.confirmation_tag().unwrap().clone(),
             alice_group
                 .export_group_context()
                 .tls_serialize_detached()
-                .expect("error serializing context"),
+                .unwrap(),
         )
     };
 
@@ -626,11 +626,11 @@ fn test_valsem246(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
         resign_external_commit(
             &bob_credential.signer,
             public_message_commit_bad,
-            &public_message_commit,
+            public_message_commit.confirmation_tag().unwrap().clone(),
             alice_group
                 .export_group_context()
                 .tls_serialize_detached()
-                .expect("error serializing context"),
+                .unwrap(),
         )
     };
 

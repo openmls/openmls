@@ -16,7 +16,7 @@ use tls_codec::Serialize;
 
 use crate::{
     ciphersuite::signable::Signable, credentials::*, framing::*, group::*, key_packages::*,
-    test_utils::*, versions::ProtocolVersion, *,
+    messages::ConfirmationTag, test_utils::*, versions::ProtocolVersion, *,
 };
 
 /// Configuration of a client meant to be used in a test setup.
@@ -417,27 +417,19 @@ pub(crate) fn resign_message(
 #[cfg(test)]
 pub(crate) fn resign_external_commit(
     signer: &impl Signer,
-    plaintext: PublicMessage,
-    original_plaintext: &PublicMessage,
+    public_message: PublicMessage,
+    old_confirmation_tag: ConfirmationTag,
     serialized_context: Vec<u8>,
 ) -> PublicMessage {
-    let serialized_context = Some(serialized_context);
-    let tbs: FramedContentTbs = plaintext.into();
-    let mut signed_plaintext: AuthenticatedContent = if let Some(context) = serialized_context {
-        tbs.with_context(context)
-            .sign(signer)
-            .expect("Error signing modified payload.")
-    } else {
-        tbs.sign(signer).expect("Error signing modified payload.")
-    };
+    let tbs: FramedContentTbs = public_message.into();
+
+    let mut public_message: AuthenticatedContent = tbs
+        .with_context(serialized_context)
+        .sign(signer)
+        .expect("Error signing modified payload.");
 
     // Set old confirmation tag
-    signed_plaintext.set_confirmation_tag(
-        original_plaintext
-            .confirmation_tag()
-            .expect("no confirmation tag on original message")
-            .clone(),
-    );
+    public_message.set_confirmation_tag(old_confirmation_tag);
 
-    signed_plaintext.into()
+    public_message.into()
 }

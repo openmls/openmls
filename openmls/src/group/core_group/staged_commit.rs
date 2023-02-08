@@ -1,3 +1,6 @@
+use core::fmt::Debug;
+use std::mem;
+
 use openmls_traits::key_store::OpenMlsKeyStore;
 
 use super::{
@@ -17,8 +20,6 @@ use crate::{
         leaf_node::{LeafNodeTbs, OpenMlsLeafNode, TreeInfoTbs, VerifiableLeafNode},
     },
 };
-use core::fmt::Debug;
-use std::mem;
 
 impl CoreGroup {
     /// Stages a commit message that was sent by another group member.
@@ -167,7 +168,7 @@ impl CoreGroup {
                     &proposal_queue,
                     commit_update_leaf_node.as_ref(),
                     self.public_group
-                        .free_leaf_index(inline_proposals.clone())?,
+                        .free_leaf_index_after_removals(inline_proposals.clone())?,
                 )?;
             }
         };
@@ -181,7 +182,9 @@ impl CoreGroup {
                 }
                 *leaf_index
             }
-            Sender::NewMemberCommit => self.public_group.free_leaf_index(inline_proposals)?,
+            Sender::NewMemberCommit => self
+                .public_group
+                .free_leaf_index_after_removals(inline_proposals)?,
             _ => {
                 return Err(StageCommitError::SenderTypeExternal);
             }

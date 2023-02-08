@@ -14,9 +14,11 @@ use openmls_traits::{crypto::OpenMlsCrypto, types::Ciphersuite, OpenMlsCryptoPro
 use serde::{Deserialize, Serialize};
 use tls_codec::Serialize as TlsSerialize;
 
-#[cfg(doc)]
-use crate::{framing::PublicMessage, group::CoreGroup};
-
+use self::{
+    diff::{PublicGroupDiff, StagedPublicGroupDiff},
+    errors::CreationFromExternalError,
+};
+use super::{GroupContext, GroupEpoch, GroupId, Member};
 use crate::{
     binary_tree::LeafNodeIndex,
     ciphersuite::signable::Verifiable,
@@ -32,13 +34,8 @@ use crate::{
     treesync::{errors::DerivePathError, node::encryption_keys::EncryptionKeyPair, Node, TreeSync},
     versions::ProtocolVersion,
 };
-
-use self::{
-    diff::{PublicGroupDiff, StagedPublicGroupDiff},
-    errors::CreationFromExternalError,
-};
-
-use super::{GroupContext, GroupEpoch, GroupId, Member};
+#[cfg(doc)]
+use crate::{framing::PublicMessage, group::CoreGroup};
 
 pub(crate) mod diff;
 pub mod errors;
@@ -161,7 +158,7 @@ impl PublicGroup {
     /// of the sender.
     ///
     /// The proposals must be validated before calling this function.
-    pub(crate) fn free_leaf_index<'a>(
+    pub(crate) fn free_leaf_index_after_removals<'a>(
         &self,
         mut inline_proposals: impl Iterator<Item = Option<&'a Proposal>>,
     ) -> Result<LeafNodeIndex, LibraryError> {
