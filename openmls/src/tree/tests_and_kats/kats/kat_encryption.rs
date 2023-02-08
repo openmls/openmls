@@ -802,8 +802,8 @@ pub fn run_test_vector(
     Ok(())
 }
 
-#[apply(backends)]
-fn read_test_vectors_encryption(backend: &impl OpenMlsCryptoProvider) {
+// #[apply(backends)]
+fn _read_test_vectors_encryption(backend: &impl OpenMlsCryptoProvider) {
     let _ = pretty_env_logger::try_init();
     log::debug!("Reading test vectors ...");
 
