@@ -37,7 +37,9 @@ use super::{
 
 use crate::{
     binary_tree::{
-        array_representation::{LeafNodeIndex, ParentNodeIndex, TreeNodeIndex, MIN_TREE_SIZE},
+        array_representation::{
+            LeafNodeIndex, ParentNodeIndex, TreeNodeIndex, TreeSize, MIN_TREE_SIZE,
+        },
         MlsBinaryTreeDiff, StagedMlsBinaryTreeDiff,
     },
     ciphersuite::Secret,
@@ -175,6 +177,11 @@ impl<'a> TreeSyncDiff<'a> {
     /// this diff.
     pub(crate) fn leaf_count(&self) -> u32 {
         self.diff.leaf_count()
+    }
+
+    /// Returns the tree size
+    pub(crate) fn tree_size(&self) -> TreeSize {
+        self.diff.size()
     }
 
     /// Updates an existing leaf node and blanks the nodes in the updated leaf's

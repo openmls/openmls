@@ -9,7 +9,7 @@ use signable::Verifiable;
 use tls_codec::{Deserialize, Serialize};
 
 use crate::{
-    binary_tree::LeafNodeIndex,
+    binary_tree::{array_representation::TreeSize, LeafNodeIndex},
     ciphersuite::signable::{Signable, SignatureError},
     extensions::Extensions,
     framing::*,
@@ -179,13 +179,13 @@ fn wire_format_checks(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProv
     );
     let sender_secret_tree = SecretTree::new(
         sender_encryption_secret,
-        2u32,
-        LeafNodeIndex::new(0u32).into(),
+        TreeSize::new(2u32),
+        LeafNodeIndex::new(0u32),
     );
     let receiver_secret_tree = SecretTree::new(
         receiver_encryption_secret,
-        2u32,
-        LeafNodeIndex::new(1u32).into(),
+        TreeSize::new(2u32),
+        LeafNodeIndex::new(1u32),
     );
 
     message_secrets.replace_secret_tree(sender_secret_tree);
@@ -217,7 +217,7 @@ fn wire_format_checks(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProv
             ciphersuite,
             backend,
             &mut message_secrets,
-            sender_index.into(),
+            sender_index,
             configuration,
             sender_data,
         )
@@ -259,7 +259,7 @@ fn wire_format_checks(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProv
             ciphersuite,
             backend,
             &mut message_secrets,
-            sender_index.into(),
+            sender_index,
             configuration,
             sender_data,
         )

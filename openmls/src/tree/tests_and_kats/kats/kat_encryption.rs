@@ -325,6 +325,8 @@ pub fn generate_test_vector(
 ) -> EncryptionTestVector {
     use openmls_traits::random::OpenMlsRand;
 
+    use crate::binary_tree::array_representation::TreeSize;
+
     let ciphersuite_name = ciphersuite;
     let crypto = OpenMlsRustCrypto::default();
     let encryption_secret_bytes = crypto
@@ -370,15 +372,14 @@ pub fn generate_test_vector(
             ProtocolVersion::default(),
             ciphersuite,
         );
-        let encryption_secret_tree =
-            SecretTree::new(encryption_secret, n_leaves, sender_leaf.into());
+        let size = TreeSize::from_leaf_count(n_leaves);
+        let encryption_secret_tree = SecretTree::new(encryption_secret, size, sender_leaf);
         let decryption_secret = EncryptionSecret::from_slice(
             &encryption_secret_bytes[..],
             ProtocolVersion::default(),
             ciphersuite,
         );
-        let mut decryption_secret_tree =
-            SecretTree::new(decryption_secret, n_leaves, receiver_leaf.into());
+        let mut decryption_secret_tree = SecretTree::new(decryption_secret, size, receiver_leaf);
 
         *group.message_secrets_test_mut().secret_tree_mut() = encryption_secret_tree;
 
@@ -390,7 +391,7 @@ pub fn generate_test_vector(
                 .secret_for_decryption(
                     ciphersuite,
                     &crypto,
-                    sender_leaf.into(),
+                    sender_leaf,
                     SecretType::ApplicationSecret,
                     generation,
                     &SenderRatchetConfiguration::default(),
@@ -414,7 +415,7 @@ pub fn generate_test_vector(
                 .secret_for_decryption(
                     ciphersuite,
                     &crypto,
-                    sender_leaf.into(),
+                    sender_leaf,
                     SecretType::HandshakeSecret,
                     generation,
                     &SenderRatchetConfiguration::default(),
@@ -481,12 +482,16 @@ pub fn run_test_vector(
 ) -> Result<(), EncTestVectorError> {
     use tls_codec::{Deserialize, Serialize};
 
-    use crate::schedule::{message_secrets::MessageSecrets, ConfirmationKey, MembershipKey};
+    use crate::{
+        binary_tree::array_representation::TreeSize,
+        schedule::{message_secrets::MessageSecrets, ConfirmationKey, MembershipKey},
+    };
 
     let n_leaves = test_vector.n_leaves;
     if n_leaves != test_vector.leaves.len() as u32 {
         return Err(EncTestVectorError::LeafNumberMismatch);
     }
+    let size = TreeSize::from_leaf_count(n_leaves);
     let ciphersuite = Ciphersuite::try_from(test_vector.cipher_suite).expect("Invalid ciphersuite");
     log::debug!("Running test vector with {:?}", ciphersuite);
 
@@ -534,8 +539,8 @@ pub fn run_test_vector(
                 ProtocolVersion::default(),
                 ciphersuite,
             ),
-            n_leaves,
-            receiver_leaf.into(),
+            size,
+            receiver_leaf,
         );
 
         log_crypto!(debug, "Encryption secret tree: {secret_tree:?}");
@@ -551,7 +556,7 @@ pub fn run_test_vector(
                 .secret_for_decryption(
                     ciphersuite,
                     backend,
-                    leaf_index.into(),
+                    leaf_index,
                     SecretType::ApplicationSecret,
                     application.generation,
                     &SenderRatchetConfiguration::default(),
@@ -619,7 +624,7 @@ pub fn run_test_vector(
                     ciphersuite,
                     backend,
                     &mut message_secrets,
-                    leaf_index.into(),
+                    leaf_index,
                     &SenderRatchetConfiguration::default(),
                     sender_data,
                 )
@@ -649,7 +654,7 @@ pub fn run_test_vector(
                 .secret_for_decryption(
                     ciphersuite,
                     backend,
-                    leaf_index.into(),
+                    leaf_index,
                     SecretType::HandshakeSecret,
                     handshake.generation,
                     &SenderRatchetConfiguration::default(),
@@ -694,7 +699,7 @@ pub fn run_test_vector(
                     ciphersuite,
                     backend,
                     group.message_secrets_test_mut(),
-                    leaf_index.into(),
+                    leaf_index,
                     &SenderRatchetConfiguration::default(),
                     sender_data,
                 )
@@ -726,7 +731,7 @@ pub fn run_test_vector(
                 .secret_for_decryption(
                     ciphersuite,
                     backend,
-                    leaf_index.into(),
+                    leaf_index,
                     SecretType::HandshakeSecret,
                     handshake.generation,
                     &SenderRatchetConfiguration::default(),
@@ -770,7 +775,7 @@ pub fn run_test_vector(
                     ciphersuite,
                     backend,
                     group.message_secrets_test_mut(),
-                    leaf_index.into(),
+                    leaf_index,
                     &SenderRatchetConfiguration::default(),
                     sender_data,
                 )

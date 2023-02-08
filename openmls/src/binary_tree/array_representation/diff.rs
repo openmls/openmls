@@ -94,7 +94,7 @@ impl<'a, L: Clone + Debug + Default, P: Clone + Debug + Default> From<&'a ABinar
             original_tree: tree,
             leaf_diff: BTreeMap::new(),
             parent_diff: BTreeMap::new(),
-            size: tree.size(),
+            size: tree.tree_size(),
             default_leaf: L::default(),
             default_parent: P::default(),
         }

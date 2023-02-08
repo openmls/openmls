@@ -14,10 +14,7 @@ use crate::{
     binary_tree::array_representation::LeafNodeIndex,
     error::LibraryError,
     framing::mls_content::FramedContent,
-    tree::{
-        index::SecretTreeLeafIndex, secret_tree::SecretType,
-        sender_ratchet::SenderRatchetConfiguration,
-    },
+    tree::{secret_tree::SecretType, sender_ratchet::SenderRatchetConfiguration},
 };
 
 use super::*;
@@ -176,7 +173,7 @@ impl PrivateMessage {
         let (generation, (ratchet_key, ratchet_nonce)) = message_secrets
             .secret_tree_mut()
             // Even in tests we want to use the real sender index, so we have a key to encrypt.
-            .secret_for_encryption(ciphersuite, backend, sender_index.into(), secret_type)?;
+            .secret_for_encryption(ciphersuite, backend, sender_index, secret_type)?;
         // Sample reuse guard uniformly at random.
         let reuse_guard: ReuseGuard =
             ReuseGuard::try_from_random(backend).map_err(LibraryError::unexpected_crypto_error)?;
@@ -355,7 +352,7 @@ impl PrivateMessage {
         ciphersuite: Ciphersuite,
         backend: &impl OpenMlsCryptoProvider,
         message_secrets: &mut MessageSecrets,
-        sender_index: SecretTreeLeafIndex,
+        sender_index: LeafNodeIndex,
         sender_ratchet_configuration: &SenderRatchetConfiguration,
         sender_data: MlsSenderData,
     ) -> Result<VerifiableAuthenticatedContent, MessageDecryptionError> {

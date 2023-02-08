@@ -67,7 +67,7 @@ impl CoreGroup {
             group_context
                 .tls_serialize_detached()
                 .map_err(LibraryError::missing_bound_check)?,
-            public_group.treesync().leaf_count(),
+            public_group.treesync().tree_size(),
             // We use a fake own index of 0 here, as we're not going to use the
             // tree for encryption until after the first commit. This issue is
             // tracked in #767.
