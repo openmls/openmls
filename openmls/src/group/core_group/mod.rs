@@ -8,7 +8,6 @@
 // Private
 mod apply_proposals;
 mod new_from_welcome;
-mod validation;
 
 // Crate
 pub(crate) mod create_commit;
@@ -35,7 +34,6 @@ mod test_proposals;
 use super::errors::CreateGroupContextExtProposalError;
 use super::public_group::PublicGroup;
 use crate::binary_tree::array_representation::TreeSize;
-use crate::framing::mls_auth_content::VerifiableAuthenticatedContent;
 
 use crate::group::config::CryptoConfig;
 use crate::treesync::node::encryption_keys::EncryptionKeyPair;
@@ -73,10 +71,7 @@ use std::io::{Error, Read, Write};
 use tls_codec::Serialize as TlsSerializeTrait;
 
 use super::{
-    errors::{
-        CoreGroupBuildError, CreateAddProposalError, ExporterError, ProposalValidationError,
-        ValidationError,
-    },
+    errors::{CoreGroupBuildError, CreateAddProposalError, ExporterError, ValidationError},
     group_context::*,
 };
 
@@ -650,8 +645,9 @@ impl CoreGroup {
     }
 
     /// Get the group context extensions.
+    #[cfg(test)]
     pub(crate) fn group_context_extensions(&self) -> &Extensions {
-        self.public_group.extensions()
+        self.public_group.group_context().extensions()
     }
 
     /// Get the required capabilities extension of this group.

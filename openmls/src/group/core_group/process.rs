@@ -38,7 +38,7 @@ impl CoreGroup {
         // Checks the following semantic validation:
         //  - ValSem002
         //  - ValSem003
-        self.validate_framing(&message)?;
+        self.public_group.validate_framing(&message)?;
 
         let epoch = message.epoch();
 
@@ -77,7 +77,10 @@ impl CoreGroup {
         //  - ValSem004
         //  - ValSem005
         //  - ValSem009
-        self.validate_verifiable_content(decrypted_message.verifiable_content())?;
+        self.public_group.validate_verifiable_content(
+            decrypted_message.verifiable_content(),
+            Some(&self.message_secrets_store),
+        )?;
 
         // Extract the credential if the sender is a member or a new member.
         // Checks the following semantic validation:
