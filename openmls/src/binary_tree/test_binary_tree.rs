@@ -24,7 +24,7 @@ fn test_tree_basics() {
     let tree1 = MlsBinaryTree::new(nodes.clone()).expect("Error when creating tree from nodes.");
 
     // Test size reporting
-    assert_eq!(tree1.size(), TreeSize::new(3));
+    assert_eq!(tree1.tree_size(), TreeSize::new(3));
     assert_eq!(tree1.leaf_count(), 2);
 
     // Test tree creation: Too many nodes (only in cases where usize is 64 bit).
@@ -130,7 +130,7 @@ fn test_diff_merging() {
     let staged_diff = diff.into();
     tree.merge_diff(staged_diff);
 
-    assert_eq!(tree.size().u32(), 511);
+    assert_eq!(tree.tree_size().u32(), 511);
 
     // Verify that the tree has changed post-merge.
     let leaves: Vec<(LeafNodeIndex, &u32)> = tree.leaves().collect();

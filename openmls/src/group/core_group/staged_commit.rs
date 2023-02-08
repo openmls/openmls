@@ -393,7 +393,7 @@ impl CoreGroup {
         let (provisional_group_epoch_secrets, provisional_message_secrets) =
             provisional_epoch_secrets.split_secrets(
                 serialized_provisional_group_context,
-                diff.leaf_count(),
+                diff.tree_size(),
                 // The index should be the same on TreeSync and Diff.
                 self.own_leaf_index(),
             );

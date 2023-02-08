@@ -10,14 +10,14 @@ use tls_codec::Serialize;
 
 use super::utils::*;
 use crate::{
-    binary_tree::*,
+    binary_tree::{array_representation::TreeSize, *},
     ciphersuite::signable::Signable,
     framing::{MessageDecryptionError, WireFormat, *},
     group::*,
     schedule::{message_secrets::MessageSecrets, EncryptionSecret},
     test_utils::*,
     tree::{
-        index::SecretTreeLeafIndex, secret_tree::SecretTree, secret_tree::SecretType,
+        secret_tree::SecretTree, secret_tree::SecretType,
         sender_ratchet::SenderRatchetConfiguration,
     },
     versions::ProtocolVersion,
@@ -166,8 +166,8 @@ fn bad_padding(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
 
             SecretTree::new(
                 sender_encryption_secret,
-                2u32,
-                LeafNodeIndex::new(0u32).into(),
+                TreeSize::new(2u32),
+                LeafNodeIndex::new(0u32),
             )
         };
 
@@ -180,8 +180,8 @@ fn bad_padding(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
 
             SecretTree::new(
                 receiver_encryption_secret,
-                2u32,
-                LeafNodeIndex::new(1u32).into(),
+                TreeSize::new(2u32),
+                LeafNodeIndex::new(1u32),
             )
         };
 
@@ -213,7 +213,7 @@ fn bad_padding(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
             let secret_type = SecretType::from(&plaintext.content().content_type());
             let (generation, (ratchet_key, ratchet_nonce)) = message_secrets
                 .secret_tree_mut()
-                .secret_for_encryption(ciphersuite, backend, SecretTreeLeafIndex(0), secret_type)
+                .secret_for_encryption(ciphersuite, backend, LeafNodeIndex::new(0), secret_type)
                 .unwrap();
 
             // Sample reuse guard uniformly at random.
@@ -327,7 +327,7 @@ fn bad_padding(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
             ciphersuite,
             backend,
             &mut message_secrets,
-            SecretTreeLeafIndex(0),
+            LeafNodeIndex::new(0),
             &SenderRatchetConfiguration::default(),
             sender_data,
         );

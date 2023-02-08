@@ -188,7 +188,7 @@ impl CoreGroup {
 
         let (group_epoch_secrets, message_secrets) = epoch_secrets.split_secrets(
             serialized_group_context,
-            public_group.treesync().leaf_count(),
+            public_group.treesync().tree_size(),
             own_leaf_index,
         );
 
