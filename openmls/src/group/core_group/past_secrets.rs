@@ -149,8 +149,6 @@ impl MessageSecretsStore {
     }
 
     /// Check if the provided epoch contains a leaf index.
-    /// XXX: We'll need this in validation on CoreGroup level
-    #[allow(unused)]
     pub(crate) fn epoch_has_leaf(
         &self,
         group_epoch: GroupEpoch,
