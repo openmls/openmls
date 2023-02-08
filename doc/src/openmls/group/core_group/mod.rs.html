@@ -845,10 +845,6 @@
 <a href="#845" id="845">845</a>
 <a href="#846" id="846">846</a>
 <a href="#847" id="847">847</a>
-<a href="#848" id="848">848</a>
-<a href="#849" id="849">849</a>
-<a href="#850" id="850">850</a>
-<a href="#851" id="851">851</a>
 </pre><pre class="rust"><code><span class="doccomment">//! ### Don&#39;t Panic!
 //!
 //! Functions in this module should never panic. However, if there is a bug in
@@ -859,7 +855,6 @@
 </span><span class="comment">// Private
 </span><span class="kw">mod </span>apply_proposals;
 <span class="kw">mod </span>new_from_welcome;
-<span class="kw">mod </span>validation;
 
 <span class="comment">// Crate
 </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">mod </span>create_commit;
@@ -886,7 +881,6 @@
 </span><span class="kw">use </span><span class="kw">super</span>::errors::CreateGroupContextExtProposalError;
 <span class="kw">use </span><span class="kw">super</span>::public_group::PublicGroup;
 <span class="kw">use </span><span class="kw">crate</span>::binary_tree::array_representation::TreeSize;
-<span class="kw">use </span><span class="kw">crate</span>::framing::mls_auth_content::VerifiableAuthenticatedContent;
 
 <span class="kw">use </span><span class="kw">crate</span>::group::config::CryptoConfig;
 <span class="kw">use </span><span class="kw">crate</span>::treesync::node::encryption_keys::EncryptionKeyPair;
@@ -924,10 +918,7 @@
 <span class="kw">use </span>tls_codec::Serialize <span class="kw">as </span>TlsSerializeTrait;
 
 <span class="kw">use super</span>::{
-    errors::{
-        CoreGroupBuildError, CreateAddProposalError, ExporterError, ProposalValidationError,
-        ValidationError,
-    },
+    errors::{CoreGroupBuildError, CreateAddProposalError, ExporterError, ValidationError},
     group_context::<span class="kw-2">*</span>,
 };
 
@@ -1501,8 +1492,9 @@
     }
 
     <span class="doccomment">/// Get the group context extensions.
+    </span><span class="attr">#[cfg(test)]
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>group_context_extensions(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>Extensions {
-        <span class="self">self</span>.public_group.extensions()
+        <span class="self">self</span>.public_group.group_context().extensions()
     }
 
     <span class="doccomment">/// Get the required capabilities extension of this group.

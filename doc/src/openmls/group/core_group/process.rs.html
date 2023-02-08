@@ -345,6 +345,9 @@
 <a href="#345" id="345">345</a>
 <a href="#346" id="346">346</a>
 <a href="#347" id="347">347</a>
+<a href="#348" id="348">348</a>
+<a href="#349" id="349">349</a>
+<a href="#350" id="350">350</a>
 </pre><pre class="rust"><code><span class="kw">use </span>core_group::{proposals::QueuedProposal, staged_commit::StagedCommit};
 
 <span class="kw">use crate</span>::{
@@ -385,7 +388,7 @@
         <span class="comment">// Checks the following semantic validation:
         //  - ValSem002
         //  - ValSem003
-        </span><span class="self">self</span>.validate_framing(<span class="kw-2">&amp;</span>message)<span class="question-mark">?</span>;
+        </span><span class="self">self</span>.public_group.validate_framing(<span class="kw-2">&amp;</span>message)<span class="question-mark">?</span>;
 
         <span class="kw">let </span>epoch = message.epoch();
 
@@ -424,7 +427,10 @@
         //  - ValSem004
         //  - ValSem005
         //  - ValSem009
-        </span><span class="self">self</span>.validate_verifiable_content(decrypted_message.verifiable_content())<span class="question-mark">?</span>;
+        </span><span class="self">self</span>.public_group.validate_verifiable_content(
+            decrypted_message.verifiable_content(),
+            <span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.message_secrets_store),
+        )<span class="question-mark">?</span>;
 
         <span class="comment">// Extract the credential if the sender is a member or a new member.
         // Checks the following semantic validation:

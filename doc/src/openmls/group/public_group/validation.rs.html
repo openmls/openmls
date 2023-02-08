@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `openmls/src/group/core_group/validation.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>validation.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/SourceSerif4-Regular-1f7d512b176f0f72.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/SourceSerif4-Bold-124a1ca42af929b6.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../../static.files/rustdoc-6827029ac823cab7.css" id="mainThemeStyle"><link rel="stylesheet" id="themeStyle" href="../../../../static.files/light-ebce58d0a40c3431.css"><link rel="stylesheet" disabled href="../../../../static.files/dark-f23faae4a2daf9a6.css"><link rel="stylesheet" disabled href="../../../../static.files/ayu-8af5e100b21cd173.css"><script id="default-settings" ></script><script src="../../../../static.files/storage-d43fa987303ecbbb.js"></script><script defer src="../../../../static.files/source-script-5cf2e01a42cc9858.js"></script><script defer src="../../../../source-files.js"></script><script defer src="../../../../static.files/main-c55e1eb52e1886b4.js"></script><noscript><link rel="stylesheet" href="../../../../static.files/noscript-13285aec31fa243e.css"></noscript><link rel="alternate icon" type="image/png" href="../../../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><div class="width-limiter"><nav class="sub"><a class="sub-logo-container" href="../../../../openmls/index.html"><img class="rust-logo" src="../../../../static.files/rust-logo-151179464ae7ed46.svg" alt="logo"></a><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../../static.files/wheel-5ec35bf9ca753509.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><pre class="src-line-numbers"><a href="#1" id="1">1</a>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `openmls/src/group/public_group/validation.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>validation.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/SourceSerif4-Regular-1f7d512b176f0f72.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/SourceSerif4-Bold-124a1ca42af929b6.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../../static.files/rustdoc-6827029ac823cab7.css" id="mainThemeStyle"><link rel="stylesheet" id="themeStyle" href="../../../../static.files/light-ebce58d0a40c3431.css"><link rel="stylesheet" disabled href="../../../../static.files/dark-f23faae4a2daf9a6.css"><link rel="stylesheet" disabled href="../../../../static.files/ayu-8af5e100b21cd173.css"><script id="default-settings" ></script><script src="../../../../static.files/storage-d43fa987303ecbbb.js"></script><script defer src="../../../../static.files/source-script-5cf2e01a42cc9858.js"></script><script defer src="../../../../source-files.js"></script><script defer src="../../../../static.files/main-c55e1eb52e1886b4.js"></script><noscript><link rel="stylesheet" href="../../../../static.files/noscript-13285aec31fa243e.css"></noscript><link rel="alternate icon" type="image/png" href="../../../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><div class="width-limiter"><nav class="sub"><a class="sub-logo-container" href="../../../../openmls/index.html"><img class="rust-logo" src="../../../../static.files/rust-logo-151179464ae7ed46.svg" alt="logo"></a><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../../static.files/wheel-5ec35bf9ca753509.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><pre class="src-line-numbers"><a href="#1" id="1">1</a>
 <a href="#2" id="2">2</a>
 <a href="#3" id="3">3</a>
 <a href="#4" id="4">4</a>
@@ -370,6 +370,13 @@
 <a href="#370" id="370">370</a>
 <a href="#371" id="371">371</a>
 <a href="#372" id="372">372</a>
+<a href="#373" id="373">373</a>
+<a href="#374" id="374">374</a>
+<a href="#375" id="375">375</a>
+<a href="#376" id="376">376</a>
+<a href="#377" id="377">377</a>
+<a href="#378" id="378">378</a>
+<a href="#379" id="379">379</a>
 </pre><pre class="rust"><code><span class="doccomment">//! This module contains validation functions for incoming messages
 //! as defined in &lt;https://github.com/openmls/openmls/wiki/Message-validation&gt;
 
@@ -377,19 +384,23 @@
 
 <span class="kw">use crate</span>::{
     binary_tree::array_representation::LeafNodeIndex,
-    framing::Sender,
+    framing::{
+        mls_auth_content::VerifiableAuthenticatedContent, mls_content::ContentType,
+        ProtocolMessage, Sender, WireFormat,
+    },
     group::errors::ExternalCommitValidationError,
-    group::errors::ValidationError,
+    group::{
+        errors::{ProposalValidationError, ValidationError},
+        past_secrets::MessageSecretsStore,
+        Member, ProposalQueue,
+    },
     messages::proposals::{Proposal, ProposalOrRefType, ProposalType},
     treesync::node::leaf_node::LeafNode,
 };
 
-<span class="kw">use super</span>::{
-    mls_content::ContentType, proposals::ProposalQueue, CoreGroup, Member, ProposalValidationError,
-    ProtocolMessage, VerifiableAuthenticatedContent, WireFormat,
-};
+<span class="kw">use </span><span class="kw">super</span>::PublicGroup;
 
-<span class="kw">impl </span>CoreGroup {
+<span class="kw">impl </span>PublicGroup {
     <span class="comment">// === Messages ===
 
     </span><span class="doccomment">/// Checks the following semantic validation:
@@ -409,13 +420,13 @@
         </span><span class="kw">match </span>message.content_type() {
             <span class="comment">// For application messages we allow messages for older epochs as well
             </span>ContentType::Application =&gt; {
-                <span class="kw">if </span>message.epoch() &gt; <span class="self">self</span>.context().epoch() {
+                <span class="kw">if </span>message.epoch() &gt; <span class="self">self</span>.group_context().epoch() {
                     <span class="kw">return </span><span class="prelude-val">Err</span>(ValidationError::WrongEpoch);
                 }
             }
             <span class="comment">// For all other messages we only only accept the current epoch
             </span><span class="kw">_ </span>=&gt; {
-                <span class="kw">if </span>message.epoch() != <span class="self">self</span>.context().epoch() {
+                <span class="kw">if </span>message.epoch() != <span class="self">self</span>.group_context().epoch() {
                     <span class="kw">return </span><span class="prelude-val">Err</span>(ValidationError::WrongEpoch);
                 }
             }
@@ -431,18 +442,21 @@
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>validate_verifiable_content(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         verifiable_content: <span class="kw-2">&amp;</span>VerifiableAuthenticatedContent,
+        message_secrets_store_option: <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>MessageSecretsStore&gt;,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(), ValidationError&gt; {
         <span class="comment">// ValSem004
         </span><span class="kw">let </span>sender = verifiable_content.sender();
         <span class="kw">if let </span>Sender::Member(leaf_index) = sender {
-            <span class="comment">// If the sender is a member, it has to be in the tree.
-            // TODO: #133 Lookup of a leaf index in the old tree isn&#39;t very
-            //       useful. Add a proper validation step here.
-            </span><span class="kw">if </span>!<span class="self">self</span>.treesync().is_leaf_in_tree(<span class="kw-2">*</span>leaf_index)
-                &amp;&amp; !<span class="self">self
-                    </span>.message_secrets_store
-                    .epoch_has_leaf(verifiable_content.epoch(), <span class="kw-2">*</span>leaf_index)
-            {
+            <span class="comment">// If the sender is a member, it has to be in the tree, except if
+            // it&#39;s an application message. Then it might be okay if it&#39;s in an
+            // old secret tree instance, but we&#39;ll leave that to the CoreGroup
+            // to validate.
+            </span><span class="kw">let </span>is_in_secrets_store = <span class="kw">if let </span><span class="prelude-val">Some</span>(mss) = message_secrets_store_option {
+                mss.epoch_has_leaf(verifiable_content.epoch(), <span class="kw-2">*</span>leaf_index)
+            } <span class="kw">else </span>{
+                <span class="bool-val">false
+            </span>};
+            <span class="kw">if </span>!<span class="self">self</span>.treesync().is_leaf_in_tree(<span class="kw-2">*</span>leaf_index) &amp;&amp; !is_in_secrets_store {
                 <span class="kw">return </span><span class="prelude-val">Err</span>(ValidationError::UnknownMember);
             }
         }
@@ -559,7 +573,7 @@
             <span class="comment">// If there is a required capabilities extension, check if that one
             // is supported.
             </span><span class="kw">if let </span><span class="prelude-val">Some</span>(required_capabilities) =
-                <span class="self">self</span>.group_context_extensions().required_capabilities()
+                <span class="self">self</span>.group_context().extensions().required_capabilities()
             {
                 <span class="comment">// Check if all required capabilities are supported.
                 </span><span class="kw">if </span>!capabilities.supports_required_capabilities(required_capabilities) {
@@ -669,7 +683,7 @@
     <span class="doccomment">/// Validate the new key package in a path
     /// TODO: #730 - There&#39;s nothing testing this function.
     /// - ValSem110
-    </span><span class="kw">pub</span>(<span class="kw">super</span>) <span class="kw">fn </span>validate_path_key_package(
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>validate_path_key_package(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         leaf_node: <span class="kw-2">&amp;</span>LeafNode,
         public_key_set: HashSet&lt;Vec&lt;u8&gt;&gt;,
