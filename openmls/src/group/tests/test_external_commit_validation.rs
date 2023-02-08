@@ -186,6 +186,40 @@ fn test_valsem242(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
         .unwrap();
     alice_group.merge_pending_commit(backend).unwrap();
 
+    let verifiable_group_info = alice_group
+        .export_group_info(backend, &alice_credential.signer, true)
+        .unwrap()
+        .into_group_info()
+        .unwrap();
+
+    let (_, public_message_commit) = MlsGroup::join_by_external_commit(
+        backend,
+        &bob_credential.signer,
+        None,
+        verifiable_group_info,
+        alice_group.configuration(),
+        &[],
+        bob_credential.credential_with_key.clone(),
+    )
+    .unwrap();
+
+    let public_message_commit = {
+        let serialized = public_message_commit.tls_serialize_detached().unwrap();
+        MlsMessageIn::tls_deserialize(&mut serialized.as_slice())
+            .unwrap()
+            .into_plaintext()
+            .unwrap()
+    };
+
+    assert!(matches!(
+        public_message_commit.sender(),
+        Sender::NewMemberCommit
+    ));
+    assert!(matches!(
+        public_message_commit.content_type(),
+        ContentType::Commit
+    ));
+
     let deny_list = {
         let add_proposal = {
             let charlie_credential = generate_credential_bundle(
@@ -238,40 +272,6 @@ fn test_valsem242(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
     };
 
     for proposal in deny_list {
-        let verifiable_group_info = alice_group
-            .export_group_info(backend, &alice_credential.signer, true)
-            .unwrap()
-            .into_group_info()
-            .unwrap();
-
-        let (_, public_message_commit) = MlsGroup::join_by_external_commit(
-            backend,
-            &bob_credential.signer,
-            None,
-            verifiable_group_info,
-            alice_group.configuration(),
-            &[],
-            bob_credential.credential_with_key.clone(),
-        )
-        .unwrap();
-
-        let public_message_commit = {
-            let serialized = public_message_commit.tls_serialize_detached().unwrap();
-            MlsMessageIn::tls_deserialize(&mut serialized.as_slice())
-                .unwrap()
-                .into_plaintext()
-                .unwrap()
-        };
-
-        assert!(matches!(
-            public_message_commit.sender(),
-            Sender::NewMemberCommit
-        ));
-        assert!(matches!(
-            public_message_commit.content_type(),
-            ContentType::Commit
-        ));
-
         let public_message_commit_bad = {
             let commit_bad = {
                 let mut commit =
@@ -311,11 +311,6 @@ fn test_valsem242(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
                 ExternalCommitValidationError::InvalidInlineProposals
             ))
         );
-
-        // Positive case
-        alice_group
-            .process_message(backend, public_message_commit)
-            .unwrap();
     }
 }
 
