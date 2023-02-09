@@ -137,7 +137,7 @@ impl LeafNode {
         backend: &impl OpenMlsCryptoProvider<KeyStoreProvider = KeyStore>,
         signer: &impl Signer,
     ) -> Result<Self, LeafNodeGenerationError<KeyStore::Error>> {
-        Self::generate(
+        Self::generate_update(
             config,
             CredentialWithKey {
                 credential: self.payload.credential.clone(),
@@ -157,7 +157,7 @@ impl LeafNode {
     ///
     /// This function can be used when generating an update. In most other cases
     /// a leaf node should be generated as part of a new [`KeyPackage`].
-    pub fn generate<KeyStore: OpenMlsKeyStore>(
+    pub fn generate_update<KeyStore: OpenMlsKeyStore>(
         config: CryptoConfig,
         credential_with_key: CredentialWithKey,
         capabilities: Capabilities,
