@@ -41,6 +41,25 @@ impl EncryptionKey {
         key_store_index.extend_from_slice(self.as_slice());
         key_store_index
     }
+
+    /// Encrypt to this HPKE public key.
+    pub(crate) fn encrypt(
+        &self,
+        backend: &impl OpenMlsCryptoProvider,
+        ciphersuite: Ciphersuite,
+        context: &[u8],
+        plaintext: &[u8],
+    ) -> Result<HpkeCiphertext, LibraryError> {
+        hpke::encrypt_with_label(
+            self.as_slice(),
+            "UpdatePathNode",
+            context,
+            plaintext,
+            ciphersuite,
+            backend.crypto(),
+        )
+        .map_err(|_| LibraryError::custom("Encryption failed. A serialization issue really"))
+    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, TlsDeserialize, TlsSerialize, TlsSize)]
