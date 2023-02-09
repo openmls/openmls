@@ -804,31 +804,33 @@ impl CoreGroup {
     /// Return supported credentials of all members.
     // TODO(#1186)
     #[allow(unused)]
-    pub(crate) fn members_supported_credentials(&self) -> Vec<&[CredentialType]> {
+    pub(crate) fn members_supported_credentials(
+        &self,
+    ) -> impl Iterator<Item = &[CredentialType]> + '_ {
         self.treesync()
             .full_leaves()
-            .iter()
             .map(|leaf_node| leaf_node.leaf_node().capabilities().credentials())
-            .collect()
     }
 
     /// Return currently used credentials of all members.
     // TODO(#1186)
     #[allow(unused)]
-    pub(crate) fn members_used_credentials(&self) -> Vec<CredentialType> {
+    pub(crate) fn members_used_credentials(&self) -> impl Iterator<Item = CredentialType> + '_ {
         self.treesync()
             .full_leave_members()
             .map(|Member { credential, .. }| credential.credential_type())
-            .collect()
     }
 
     /// Return currently used signature keys of all members.
     // TODO(#1186)
     #[allow(unused)]
-    pub(crate) fn signature_keys(&self, exclude_own: bool) -> Vec<SignaturePublicKey> {
+    pub(crate) fn signature_keys(
+        &self,
+        exclude_own: bool,
+    ) -> impl Iterator<Item = SignaturePublicKey> + '_ {
         self.treesync()
             .full_leave_members()
-            .filter(|member| {
+            .filter(move |member| {
                 if exclude_own {
                     member.index != self.own_leaf_index
                 } else {
@@ -836,19 +838,17 @@ impl CoreGroup {
                 }
             })
             .map(|Member { signature_key, .. }| SignaturePublicKey::from(signature_key))
-            .collect()
     }
 
     /// Return currently used encryption keys of all members.
     // TODO(#1186)
     #[allow(unused)]
-    pub(crate) fn encryption_keys(&self) -> Vec<EncryptionKey> {
+    pub(crate) fn encryption_keys(&self) -> impl Iterator<Item = EncryptionKey> + '_ {
         self.treesync()
             .full_leave_members()
             .map(|Member { encryption_key, .. }| {
                 EncryptionKey::from(HpkePublicKey::new(encryption_key))
             })
-            .collect()
     }
 }
 
