@@ -373,7 +373,7 @@ impl PublicGroup {
             )?
             .split_secrets(
                 serialized_provisional_group_context,
-                diff.leaf_count(),
+                diff.tree_size(),
                 own_leaf_index,
             );
 
