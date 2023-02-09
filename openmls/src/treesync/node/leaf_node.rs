@@ -59,6 +59,7 @@ pub use lifetime::Lifetime;
 ///     opaque signature<V>;
 /// } LeafNode;
 /// ```
+// TODO(#1242): Do not derive `TlsDeserialize`.
 #[derive(
     Debug, Clone, PartialEq, Eq, Serialize, Deserialize, TlsSerialize, TlsDeserialize, TlsSize,
 )]
