@@ -8,7 +8,7 @@ use crate::{
     error::LibraryError,
     schedule::{psk::PreSharedKeyId, JoinerSecret},
     treesync::{
-        node::encryption_keys::{EncryptionKeyPair, EncryptionPrivateKey},
+        node::encryption_keys::{EncryptionKey, EncryptionKeyPair, EncryptionPrivateKey},
         treekem::UpdatePath,
     },
     versions::ProtocolVersion,
@@ -234,18 +234,15 @@ impl PathSecret {
         &self,
         backend: &impl OpenMlsCryptoProvider,
         ciphersuite: Ciphersuite,
-        public_key: &HpkePublicKey,
+        public_key: &EncryptionKey,
         group_context: &[u8],
     ) -> Result<HpkeCiphertext, LibraryError> {
-        hpke::encrypt_with_label(
-            public_key.as_slice(),
-            "UpdatePathNode",
+        public_key.encrypt(
+            backend,
+            ciphersuite,
             group_context,
             self.path_secret.as_slice(),
-            ciphersuite,
-            backend.crypto(),
         )
-        .map_err(|_| LibraryError::custom("Encryption failed. A serialization issue really"))
     }
 
     /// Consume the `PathSecret`, returning the internal `Secret` value.

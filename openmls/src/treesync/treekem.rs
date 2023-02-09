@@ -58,12 +58,12 @@ impl<'a> TreeSyncDiff<'a> {
                 resolution
                     .into_iter()
                     .map(|(_, node_ref)| match node_ref {
-                        NodeReference::Leaf(leaf) => leaf.public_key().clone(),
-                        NodeReference::Parent(parent) => parent.public_key().clone(),
+                        NodeReference::Leaf(leaf) => leaf.encryption_key().clone(),
+                        NodeReference::Parent(parent) => parent.encryption_key().clone(),
                     })
-                    .collect::<Vec<HpkePublicKey>>()
+                    .collect::<Vec<EncryptionKey>>()
             })
-            .collect::<Vec<Vec<HpkePublicKey>>>();
+            .collect::<Vec<Vec<EncryptionKey>>>();
 
         // There should be as many copath resolutions.
         debug_assert_eq!(copath_resolutions.len(), path.len());

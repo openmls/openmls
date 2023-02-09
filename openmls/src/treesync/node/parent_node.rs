@@ -56,7 +56,7 @@ impl PlainUpdatePathNode {
         &self,
         backend: &impl OpenMlsCryptoProvider,
         ciphersuite: Ciphersuite,
-        public_keys: &[HpkePublicKey],
+        public_keys: &[EncryptionKey],
         group_context: &[u8],
     ) -> Result<UpdatePathNode, LibraryError> {
         public_keys

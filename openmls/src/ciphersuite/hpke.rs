@@ -28,11 +28,11 @@
 //! context = Context;
 //! ```
 //!
-//! Here, the functions `SealBase` and `OpenBase` are defined {{RFC9180}}, using the
+//! Here, the functions `SealBase` and `OpenBase` are defined RFC9180, using the
 //! HPKE algorithms specified by the group's ciphersuite.  If MLS extensions
 //! require HPKE encryption operations, they should re-use the EncryptWithLabel
 //! construction, using a distinct label.  To avoid collisions in these labels, an
-//! IANA registry is defined in {{mls-public-key-encryption-labels}}.
+//! IANA registry is defined in mls-public-key-encryption-labels.
 
 use openmls_traits::{
     crypto::OpenMlsCrypto,
@@ -40,6 +40,8 @@ use openmls_traits::{
 };
 use thiserror::Error;
 use tls_codec::{Serialize, TlsDeserialize, TlsSerialize, TlsSize, VLBytes};
+
+use super::LABEL_PREFIX;
 
 /// HPKE labeled encryption errors.
 #[derive(Error, Debug, PartialEq, Clone)]
@@ -65,8 +67,6 @@ impl From<CryptoError> for Error {
         Self::DecryptionFailed
     }
 }
-
-const LABEL_PREFIX: &str = "MLS 1.0 ";
 
 #[derive(Debug, Clone, TlsSerialize, TlsDeserialize, TlsSize)]
 pub struct EncryptContext {
