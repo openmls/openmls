@@ -36,7 +36,7 @@ pub struct SignContent {
     content: VLBytes,
 }
 
-const SIGN_LABEL_PREFIX: &str = "MLS 1.0";
+const SIGN_LABEL_PREFIX: &str = "MLS 1.0 ";
 
 impl SignContent {
     /// Create a new [`SignContent`] from a string label and the content bytes.
