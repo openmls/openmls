@@ -157,6 +157,9 @@ impl MlsGroup {
     /// created using this function based on the latest `ratchet_tree` and
     /// group info. For more information on the external init process,
     /// please see Section 11.2.1 in the MLS specification.
+    ///
+    /// Note: If there is a group member in the group with the same identity as us,
+    /// this will create a remove proposal.
     pub fn join_by_external_commit(
         backend: &impl OpenMlsCryptoProvider,
         signer: &impl Signer,

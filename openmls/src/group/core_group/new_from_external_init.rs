@@ -22,6 +22,9 @@ impl CoreGroup {
     ///
     /// Returns the new `CoreGroup` object, as well as the `PublicMessage`
     /// containing the commit.
+    ///
+    /// Note: If there is a group member in the group with the same identity as us,
+    /// this will create a remove proposal.
     pub(crate) fn join_by_external_commit(
         backend: &impl OpenMlsCryptoProvider,
         signer: &impl Signer,
