@@ -3,8 +3,8 @@
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    credentials::CredentialWithKey, group::ProposalStore, messages::proposals::Proposal,
-    prelude_test::FramingParameters,
+    credentials::CredentialWithKey, framing::FramingParameters, group::ProposalStore,
+    messages::proposals::Proposal,
 };
 
 /// Can be used to denote the type of a commit.
@@ -36,8 +36,8 @@ pub(crate) struct CreateCommitParamsBuilder<'a> {
 impl TempBuilderCCPM0 {
     pub(crate) fn framing_parameters(
         self,
-        framing_parameters: FramingParameters,
-    ) -> TempBuilderCCPM1 {
+        framing_parameters: FramingParameters<'_>,
+    ) -> TempBuilderCCPM1<'_> {
         TempBuilderCCPM1 { framing_parameters }
     }
 }
