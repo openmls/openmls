@@ -1,16 +1,19 @@
 use openmls_traits::{
     crypto::OpenMlsCrypto,
     key_store::{MlsEntity, MlsEntityId, OpenMlsKeyStore},
-    types::{Ciphersuite, CryptoError, HpkeCiphertext, HpkeKeyPair},
+    types::{Ciphersuite, HpkeCiphertext, HpkeKeyPair},
     OpenMlsCryptoProvider,
 };
 use serde::{Deserialize, Serialize};
 use tls_codec::{TlsDeserialize, TlsSerialize, TlsSize, VLBytes};
 
-use crate::ciphersuite::{HpkePrivateKey, HpkePublicKey, Secret};
 use crate::error::LibraryError;
 use crate::group::config::CryptoConfig;
 use crate::versions::ProtocolVersion;
+use crate::{
+    ciphersuite::{HpkePrivateKey, HpkePublicKey, Secret},
+    prelude_test::hpke,
+};
 
 /// [`EncryptionKey`] contains an HPKE public key that allows the encryption of
 /// path secrets in MLS commits.
@@ -73,16 +76,17 @@ impl EncryptionPrivateKey {
         version: ProtocolVersion,
         ciphertext: &HpkeCiphertext,
         group_context: &[u8],
-    ) -> Result<Secret, CryptoError> {
+    ) -> Result<Secret, hpke::Error> {
         // ValSem203: Path secrets must decrypt correctly
-        let secret_bytes = backend.crypto().hpke_open(
-            ciphersuite.hpke_config(),
-            ciphertext,
+        hpke::decrypt_with_label(
             self.key.as_slice(),
+            "UpdatePathNode",
             group_context,
-            &[],
-        )?;
-        Ok(Secret::from_slice(&secret_bytes, version, ciphersuite))
+            ciphertext,
+            ciphersuite,
+            backend.crypto(),
+        )
+        .map(|secret_bytes| Secret::from_slice(&secret_bytes, version, ciphersuite))
     }
 }
 

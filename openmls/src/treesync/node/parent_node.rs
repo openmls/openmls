@@ -58,19 +58,18 @@ impl PlainUpdatePathNode {
         ciphersuite: Ciphersuite,
         public_keys: &[HpkePublicKey],
         group_context: &[u8],
-    ) -> UpdatePathNode {
-        let encrypted_path_secrets: Vec<HpkeCiphertext> = public_keys
+    ) -> Result<UpdatePathNode, LibraryError> {
+        public_keys
             .par_iter()
             .map(|pk| {
                 self.path_secret
                     .encrypt(backend, ciphersuite, pk, group_context)
             })
-            .collect();
-
-        UpdatePathNode {
-            public_key: self.public_key.clone(),
-            encrypted_path_secrets,
-        }
+            .collect::<Result<Vec<HpkeCiphertext>, LibraryError>>()
+            .map(|encrypted_path_secrets| UpdatePathNode {
+                public_key: self.public_key.clone(),
+                encrypted_path_secrets,
+            })
     }
 
     /// Return a reference to the `path_secret` of this node.

@@ -15,7 +15,7 @@ use crate::{
 };
 use openmls_traits::{
     crypto::OpenMlsCrypto,
-    types::{Ciphersuite, CryptoError, HpkeCiphertext},
+    types::{Ciphersuite, HpkeCiphertext},
     OpenMlsCryptoProvider,
 };
 use serde::{Deserialize, Serialize};
@@ -236,14 +236,16 @@ impl PathSecret {
         ciphersuite: Ciphersuite,
         public_key: &HpkePublicKey,
         group_context: &[u8],
-    ) -> HpkeCiphertext {
-        backend.crypto().hpke_seal(
-            ciphersuite.hpke_config(),
+    ) -> Result<HpkeCiphertext, LibraryError> {
+        hpke::encrypt_with_label(
             public_key.as_slice(),
+            "UpdatePathNode",
             group_context,
-            &[],
             self.path_secret.as_slice(),
+            ciphersuite,
+            backend.crypto(),
         )
+        .map_err(|_| LibraryError::custom("Encryption failed. A serialization issue really"))
     }
 
     /// Consume the `PathSecret`, returning the internal `Secret` value.
@@ -266,18 +268,19 @@ impl PathSecret {
         group_context: &[u8],
     ) -> Result<PathSecret, PathSecretError> {
         // ValSem203: Path secrets must decrypt correctly
-        let path_secret =
-            private_key.decrypt(backend, ciphersuite, version, ciphertext, group_context)?;
-        Ok(Self { path_secret })
+        private_key
+            .decrypt(backend, ciphersuite, version, ciphertext, group_context)
+            .map(|path_secret| Self { path_secret })
+            .map_err(|e| e.into())
     }
 }
 
 /// Path secret error
 #[derive(Error, Debug, PartialEq, Clone)]
 pub(crate) enum PathSecretError {
-    /// See [`CryptoError`] for more details.
+    /// See [`hpke::Error`] for more details.
     #[error(transparent)]
-    DecryptionError(#[from] CryptoError),
+    DecryptionError(#[from] hpke::Error),
 }
 
 /// GroupSecrets
