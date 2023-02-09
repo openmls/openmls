@@ -1,16 +1,14 @@
 use super::{super::errors::*, diff::apply_proposals::ApplyProposalsValues, *};
 use crate::{
     ciphersuite::signable::Verifiable,
-    framing::mls_auth_content::AuthenticatedContent,
-    framing::mls_content::FramedContentBody,
-    group::core_group::proposals::{ProposalQueue, ProposalStore},
+    framing::{mls_auth_content::AuthenticatedContent, mls_content::FramedContentBody, Sender},
     group::{
+        core_group::proposals::{ProposalQueue, ProposalStore},
         public_group::diff::StagedPublicGroupDiff,
         staged_commit::{MemberStagedCommitState, StagedCommitState},
         StagedCommit,
     },
     messages::{proposals::ProposalOrRef, Commit},
-    prelude_test::Sender,
     schedule::{
         psk::PskSecret, EpochSecrets, GroupEpochSecrets, InitSecret, JoinerSecret, KeySchedule,
     },
@@ -202,15 +200,15 @@ impl PublicGroup {
 
         // Determine if Commit has a path
         if let Some(path) = commit.path.clone() {
-            // Update the public group
+            // If there is a path, apply it.
             diff.apply_received_update_path(backend, ciphersuite, sender_index, &path)?;
-
-            // Update group context
-            diff.update_group_context(backend)?;
         } else if apply_proposals_values.path_required {
             // ValSem201
             return Err(StageCommitError::RequiredPathNotFound);
         }
+
+        // Update group context
+        diff.update_group_context(backend)?;
 
         // Update the confirmed transcript hash
         diff.update_confirmed_transcript_hash(backend, mls_content)?;

@@ -790,13 +790,12 @@ impl<'a> TreeSyncDiff<'a> {
         if let Some((resolution_position, private_key)) = sender_copath_resolution
             .iter()
             .enumerate()
-            .filter_map(|(position, pk)| {
+            .find_map(|(position, pk)| {
                 owned_keys
                     .iter()
                     .find(|&owned_keypair| owned_keypair.public_key() == pk)
                     .map(|keypair| (position, keypair.private_key()))
             })
-            .next()
         {
             return Ok((private_key, resolution_position));
         };
