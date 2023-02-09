@@ -7,13 +7,10 @@ use openmls_traits::{
 use serde::{Deserialize, Serialize};
 use tls_codec::{TlsDeserialize, TlsSerialize, TlsSize, VLBytes};
 
+use crate::ciphersuite::{hpke, HpkePrivateKey, HpkePublicKey, Secret};
 use crate::error::LibraryError;
 use crate::group::config::CryptoConfig;
 use crate::versions::ProtocolVersion;
-use crate::{
-    ciphersuite::{HpkePrivateKey, HpkePublicKey, Secret},
-    prelude_test::hpke,
-};
 
 /// [`EncryptionKey`] contains an HPKE public key that allows the encryption of
 /// path secrets in MLS commits.

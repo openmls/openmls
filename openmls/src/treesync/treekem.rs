@@ -16,10 +16,9 @@ use serde::{Deserialize, Serialize};
 
 use crate::{
     binary_tree::array_representation::LeafNodeIndex,
-    ciphersuite::HpkePublicKey,
+    ciphersuite::{hpke, HpkePublicKey},
     error::LibraryError,
     messages::{proposals::AddProposal, EncryptedGroupSecrets, GroupSecrets, PathSecret},
-    prelude_test::hpke,
     schedule::{psk::PreSharedKeyId, CommitSecret, JoinerSecret},
     treesync::node::NodeReference,
     versions::ProtocolVersion,
