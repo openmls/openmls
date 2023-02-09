@@ -1,13 +1,13 @@
 use openmls_traits::{
     crypto::OpenMlsCrypto,
     key_store::{MlsEntity, MlsEntityId, OpenMlsKeyStore},
-    types::{Ciphersuite, CryptoError, HpkeCiphertext, HpkeKeyPair},
+    types::{Ciphersuite, HpkeCiphertext, HpkeKeyPair},
     OpenMlsCryptoProvider,
 };
 use serde::{Deserialize, Serialize};
 use tls_codec::{TlsDeserialize, TlsSerialize, TlsSize, VLBytes};
 
-use crate::ciphersuite::{HpkePrivateKey, HpkePublicKey, Secret};
+use crate::ciphersuite::{hpke, HpkePrivateKey, HpkePublicKey, Secret};
 use crate::error::LibraryError;
 use crate::group::config::CryptoConfig;
 use crate::versions::ProtocolVersion;
@@ -41,6 +41,25 @@ impl EncryptionKey {
         key_store_index.extend_from_slice(self.as_slice());
         key_store_index
     }
+
+    /// Encrypt to this HPKE public key.
+    pub(crate) fn encrypt(
+        &self,
+        backend: &impl OpenMlsCryptoProvider,
+        ciphersuite: Ciphersuite,
+        context: &[u8],
+        plaintext: &[u8],
+    ) -> Result<HpkeCiphertext, LibraryError> {
+        hpke::encrypt_with_label(
+            self.as_slice(),
+            "UpdatePathNode",
+            context,
+            plaintext,
+            ciphersuite,
+            backend.crypto(),
+        )
+        .map_err(|_| LibraryError::custom("Encryption failed. A serialization issue really"))
+    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, TlsDeserialize, TlsSerialize, TlsSize)]
@@ -73,16 +92,17 @@ impl EncryptionPrivateKey {
         version: ProtocolVersion,
         ciphertext: &HpkeCiphertext,
         group_context: &[u8],
-    ) -> Result<Secret, CryptoError> {
+    ) -> Result<Secret, hpke::Error> {
         // ValSem203: Path secrets must decrypt correctly
-        let secret_bytes = backend.crypto().hpke_open(
-            ciphersuite.hpke_config(),
-            ciphertext,
+        hpke::decrypt_with_label(
             self.key.as_slice(),
+            "UpdatePathNode",
             group_context,
-            &[],
-        )?;
-        Ok(Secret::from_slice(&secret_bytes, version, ciphersuite))
+            ciphertext,
+            ciphersuite,
+            backend.crypto(),
+        )
+        .map(|secret_bytes| Secret::from_slice(&secret_bytes, version, ciphersuite))
     }
 }
 

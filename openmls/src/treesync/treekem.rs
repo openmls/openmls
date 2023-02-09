@@ -9,7 +9,6 @@ use std::collections::HashSet;
 use tls_codec::{TlsDeserialize, TlsSerialize, TlsSize};
 
 use openmls_traits::{
-    crypto::OpenMlsCrypto,
     types::{Ciphersuite, HpkeCiphertext},
     OpenMlsCryptoProvider,
 };
@@ -17,7 +16,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::{
     binary_tree::array_representation::LeafNodeIndex,
-    ciphersuite::HpkePublicKey,
+    ciphersuite::{hpke, HpkePublicKey},
     error::LibraryError,
     messages::{proposals::AddProposal, EncryptedGroupSecrets, GroupSecrets, PathSecret},
     schedule::{psk::PreSharedKeyId, CommitSecret, JoinerSecret},
@@ -50,7 +49,7 @@ impl<'a> TreeSyncDiff<'a> {
         group_context: &[u8],
         exclusion_list: &HashSet<&LeafNodeIndex>,
         own_leaf_index: LeafNodeIndex,
-    ) -> Vec<UpdatePathNode> {
+    ) -> Result<Vec<UpdatePathNode>, LibraryError> {
         // Copath resolutions with the corresponding public keys.
         let copath_resolutions = self
             .filtered_copath_resolutions(own_leaf_index, exclusion_list)
@@ -59,24 +58,21 @@ impl<'a> TreeSyncDiff<'a> {
                 resolution
                     .into_iter()
                     .map(|(_, node_ref)| match node_ref {
-                        NodeReference::Leaf(leaf) => leaf.public_key().clone(),
-                        NodeReference::Parent(parent) => parent.public_key().clone(),
+                        NodeReference::Leaf(leaf) => leaf.encryption_key().clone(),
+                        NodeReference::Parent(parent) => parent.encryption_key().clone(),
                     })
-                    .collect::<Vec<HpkePublicKey>>()
+                    .collect::<Vec<EncryptionKey>>()
             })
-            .collect::<Vec<Vec<HpkePublicKey>>>();
+            .collect::<Vec<Vec<EncryptionKey>>>();
 
         // There should be as many copath resolutions.
         debug_assert_eq!(copath_resolutions.len(), path.len());
 
         // Encrypt the secrets
-        let nodes = path
-            .par_iter()
+        path.par_iter()
             .zip(copath_resolutions.par_iter())
             .map(|(node, resolution)| node.encrypt(backend, ciphersuite, resolution, group_context))
-            .collect::<Vec<UpdatePathNode>>();
-
-        nodes
+            .collect::<Result<Vec<UpdatePathNode>, LibraryError>>()
     }
 
     /// Decrypt an [`UpdatePath`] originating from the given
@@ -201,13 +197,21 @@ impl<'a> TreeSyncDiff<'a> {
             let group_secrets_bytes =
                 GroupSecrets::new_encoded(joiner_secret, path_secret_option, presharedkeys)
                     .map_err(LibraryError::missing_bound_check)?;
-            let ciphertext = backend.crypto().hpke_seal(
-                key_package.ciphersuite().hpke_config(),
+            let ciphertext = hpke::encrypt_with_label(
                 key_package.hpke_init_key().as_slice(),
-                &[],
+                "Welcome",
                 &[],
                 &group_secrets_bytes,
-            );
+                key_package.ciphersuite(),
+                backend.crypto(),
+            )
+            .map_err(|_| {
+                LibraryError::custom(
+                    "Error while encrypting group secrets. \
+                     This could have really only been a missing bounds check in \
+                     the serialization",
+                )
+            })?;
             let encrypted_group_secrets =
                 EncryptedGroupSecrets::new(key_package.hash_ref(backend.crypto())?, ciphertext);
             encrypted_group_secrets_vec.push(encrypted_group_secrets);
