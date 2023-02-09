@@ -2,6 +2,7 @@
 //! variants of the enum are `LeafNode` and [`ParentNode`], both of which are
 //! defined in the respective [`leaf_node`] and [`parent_node`] submodules.
 use serde::{Deserialize, Serialize};
+use tls_codec::{TlsDeserialize, TlsSerialize, TlsSize};
 
 use self::{leaf_node::OpenMlsLeafNode, parent_node::ParentNode};
 
@@ -11,11 +12,27 @@ pub(crate) mod leaf_node;
 pub(crate) mod parent_node;
 
 /// Container enum for leaf and parent nodes.
-#[derive(Debug, PartialEq, Eq, Clone, Serialize, Deserialize)]
+///
+/// ```c
+/// // draft-ietf-mls-protocol-17
+/// struct {
+///     NodeType node_type;
+///     select (Node.node_type) {
+///         case leaf:   LeafNode leaf_node;
+///         case parent: ParentNode parent_node;
+///     };
+/// } Node;
+/// ```
+#[derive(
+    Debug, PartialEq, Eq, Clone, Serialize, Deserialize, TlsSize, TlsDeserialize, TlsSerialize,
+)]
 #[allow(missing_docs)]
 #[allow(clippy::large_enum_variant)]
+#[repr(u8)]
 pub enum Node {
+    #[tls_codec(discriminant = 1)]
     LeafNode(OpenMlsLeafNode),
+    #[tls_codec(discriminant = 2)]
     ParentNode(ParentNode),
 }
 
