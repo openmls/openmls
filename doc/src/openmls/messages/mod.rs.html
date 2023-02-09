@@ -376,14 +376,14 @@
     error::LibraryError,
     schedule::{psk::PreSharedKeyId, JoinerSecret},
     treesync::{
-        node::encryption_keys::{EncryptionKeyPair, EncryptionPrivateKey},
+        node::encryption_keys::{EncryptionKey, EncryptionKeyPair, EncryptionPrivateKey},
         treekem::UpdatePath,
     },
     versions::ProtocolVersion,
 };
 <span class="kw">use </span>openmls_traits::{
     crypto::OpenMlsCrypto,
-    types::{Ciphersuite, CryptoError, HpkeCiphertext},
+    types::{Ciphersuite, HpkeCiphertext},
     OpenMlsCryptoProvider,
 };
 <span class="kw">use </span>serde::{Deserialize, Serialize};
@@ -602,14 +602,13 @@
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider,
         ciphersuite: Ciphersuite,
-        public_key: <span class="kw-2">&amp;</span>HpkePublicKey,
+        public_key: <span class="kw-2">&amp;</span>EncryptionKey,
         group_context: <span class="kw-2">&amp;</span>[u8],
-    ) -&gt; HpkeCiphertext {
-        backend.crypto().hpke_seal(
-            ciphersuite.hpke_config(),
-            public_key.as_slice(),
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;HpkeCiphertext, LibraryError&gt; {
+        public_key.encrypt(
+            backend,
+            ciphersuite,
             group_context,
-            <span class="kw-2">&amp;</span>[],
             <span class="self">self</span>.path_secret.as_slice(),
         )
     }
@@ -634,18 +633,19 @@
         group_context: <span class="kw-2">&amp;</span>[u8],
     ) -&gt; <span class="prelude-ty">Result</span>&lt;PathSecret, PathSecretError&gt; {
         <span class="comment">// ValSem203: Path secrets must decrypt correctly
-        </span><span class="kw">let </span>path_secret =
-            private_key.decrypt(backend, ciphersuite, version, ciphertext, group_context)<span class="question-mark">?</span>;
-        <span class="prelude-val">Ok</span>(<span class="self">Self </span>{ path_secret })
+        </span>private_key
+            .decrypt(backend, ciphersuite, version, ciphertext, group_context)
+            .map(|path_secret| <span class="self">Self </span>{ path_secret })
+            .map_err(|e| e.into())
     }
 }
 
 <span class="doccomment">/// Path secret error
 </span><span class="attr">#[derive(Error, Debug, PartialEq, Clone)]
 </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">enum </span>PathSecretError {
-    <span class="doccomment">/// See [`CryptoError`] for more details.
+    <span class="doccomment">/// See [`hpke::Error`] for more details.
     </span><span class="attr">#[error(transparent)]
-    </span>DecryptionError(<span class="attr">#[from] </span>CryptoError),
+    </span>DecryptionError(<span class="attr">#[from] </span>hpke::Error),
 }
 
 <span class="doccomment">/// GroupSecrets

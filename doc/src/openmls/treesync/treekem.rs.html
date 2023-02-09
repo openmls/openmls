@@ -357,6 +357,10 @@
 <a href="#357" id="357">357</a>
 <a href="#358" id="358">358</a>
 <a href="#359" id="359">359</a>
+<a href="#360" id="360">360</a>
+<a href="#361" id="361">361</a>
+<a href="#362" id="362">362</a>
+<a href="#363" id="363">363</a>
 </pre><pre class="rust"><code><span class="doccomment">//! Module to encrypt and decrypt update paths for a [`TreeSyncDiff`] instance.
 //!
 //! # About
@@ -368,7 +372,6 @@
 <span class="kw">use </span>tls_codec::{TlsDeserialize, TlsSerialize, TlsSize};
 
 <span class="kw">use </span>openmls_traits::{
-    crypto::OpenMlsCrypto,
     types::{Ciphersuite, HpkeCiphertext},
     OpenMlsCryptoProvider,
 };
@@ -376,7 +379,7 @@
 
 <span class="kw">use crate</span>::{
     binary_tree::array_representation::LeafNodeIndex,
-    ciphersuite::HpkePublicKey,
+    ciphersuite::{hpke, HpkePublicKey},
     error::LibraryError,
     messages::{proposals::AddProposal, EncryptedGroupSecrets, GroupSecrets, PathSecret},
     schedule::{psk::PreSharedKeyId, CommitSecret, JoinerSecret},
@@ -409,7 +412,7 @@
         group_context: <span class="kw-2">&amp;</span>[u8],
         exclusion_list: <span class="kw-2">&amp;</span>HashSet&lt;<span class="kw-2">&amp;</span>LeafNodeIndex&gt;,
         own_leaf_index: LeafNodeIndex,
-    ) -&gt; Vec&lt;UpdatePathNode&gt; {
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;Vec&lt;UpdatePathNode&gt;, LibraryError&gt; {
         <span class="comment">// Copath resolutions with the corresponding public keys.
         </span><span class="kw">let </span>copath_resolutions = <span class="self">self
             </span>.filtered_copath_resolutions(own_leaf_index, exclusion_list)
@@ -418,24 +421,21 @@
                 resolution
                     .into_iter()
                     .map(|(<span class="kw">_</span>, node_ref)| <span class="kw">match </span>node_ref {
-                        NodeReference::Leaf(leaf) =&gt; leaf.public_key().clone(),
-                        NodeReference::Parent(parent) =&gt; parent.public_key().clone(),
+                        NodeReference::Leaf(leaf) =&gt; leaf.encryption_key().clone(),
+                        NodeReference::Parent(parent) =&gt; parent.encryption_key().clone(),
                     })
-                    .collect::&lt;Vec&lt;HpkePublicKey&gt;&gt;()
+                    .collect::&lt;Vec&lt;EncryptionKey&gt;&gt;()
             })
-            .collect::&lt;Vec&lt;Vec&lt;HpkePublicKey&gt;&gt;&gt;();
+            .collect::&lt;Vec&lt;Vec&lt;EncryptionKey&gt;&gt;&gt;();
 
         <span class="comment">// There should be as many copath resolutions.
         </span><span class="macro">debug_assert_eq!</span>(copath_resolutions.len(), path.len());
 
         <span class="comment">// Encrypt the secrets
-        </span><span class="kw">let </span>nodes = path
-            .par_iter()
+        </span>path.par_iter()
             .zip(copath_resolutions.par_iter())
             .map(|(node, resolution)| node.encrypt(backend, ciphersuite, resolution, group_context))
-            .collect::&lt;Vec&lt;UpdatePathNode&gt;&gt;();
-
-        nodes
+            .collect::&lt;<span class="prelude-ty">Result</span>&lt;Vec&lt;UpdatePathNode&gt;, LibraryError&gt;&gt;()
     }
 
     <span class="doccomment">/// Decrypt an [`UpdatePath`] originating from the given
@@ -560,13 +560,21 @@
             </span><span class="kw">let </span>group_secrets_bytes =
                 GroupSecrets::new_encoded(joiner_secret, path_secret_option, presharedkeys)
                     .map_err(LibraryError::missing_bound_check)<span class="question-mark">?</span>;
-            <span class="kw">let </span>ciphertext = backend.crypto().hpke_seal(
-                key_package.ciphersuite().hpke_config(),
+            <span class="kw">let </span>ciphertext = hpke::encrypt_with_label(
                 key_package.hpke_init_key().as_slice(),
-                <span class="kw-2">&amp;</span>[],
+                <span class="string">&quot;Welcome&quot;</span>,
                 <span class="kw-2">&amp;</span>[],
                 <span class="kw-2">&amp;</span>group_secrets_bytes,
-            );
+                key_package.ciphersuite(),
+                backend.crypto(),
+            )
+            .map_err(|<span class="kw">_</span>| {
+                LibraryError::custom(
+                    <span class="string">&quot;Error while encrypting group secrets. \
+                     This could have really only been a missing bounds check in \
+                     the serialization&quot;</span>,
+                )
+            })<span class="question-mark">?</span>;
             <span class="kw">let </span>encrypted_group_secrets =
                 EncryptedGroupSecrets::new(key_package.hash_ref(backend.crypto())<span class="question-mark">?</span>, ciphertext);
             encrypted_group_secrets_vec.push(encrypted_group_secrets);

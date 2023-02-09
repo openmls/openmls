@@ -204,20 +204,13 @@
 <a href="#204" id="204">204</a>
 <a href="#205" id="205">205</a>
 <a href="#206" id="206">206</a>
-<a href="#207" id="207">207</a>
-<a href="#208" id="208">208</a>
-<a href="#209" id="209">209</a>
-<a href="#210" id="210">210</a>
-<a href="#211" id="211">211</a>
-<a href="#212" id="212">212</a>
-<a href="#213" id="213">213</a>
 </pre><pre class="rust"><code><span class="doccomment">//! Signatures.
 //!
 //! This module contains structs for creating signature keys, issuing signatures and verifying them.
 
 </span><span class="kw">use </span>tls_codec::Serialize;
 
-<span class="kw">use super</span>::<span class="kw-2">*</span>;
+<span class="kw">use super</span>::{LABEL_PREFIX, <span class="kw-2">*</span>};
 
 <span class="doccomment">/// Signature.
 </span><span class="attr">#[derive(
@@ -249,12 +242,10 @@
     content: VLBytes,
 }
 
-<span class="kw">const </span>SIGN_LABEL_PREFIX: <span class="kw-2">&amp;</span>str = <span class="string">&quot;MLS 1.0&quot;</span>;
-
 <span class="kw">impl </span>SignContent {
     <span class="doccomment">/// Create a new [`SignContent`] from a string label and the content bytes.
     </span><span class="kw">pub fn </span>new(label: <span class="kw-2">&amp;</span>str, content: VLBytes) -&gt; <span class="self">Self </span>{
-        <span class="kw">let </span>label_string = SIGN_LABEL_PREFIX.to_owned() + label;
+        <span class="kw">let </span>label_string = LABEL_PREFIX.to_owned() + label;
         <span class="kw">let </span>label = label_string.as_bytes().into();
         <span class="self">Self </span>{ label, content }
     }
@@ -262,12 +253,7 @@
 
 <span class="kw">impl </span>From&lt;(<span class="kw-2">&amp;</span>str, <span class="kw-2">&amp;</span>[u8])&gt; <span class="kw">for </span>SignContent {
     <span class="kw">fn </span>from((label, content): (<span class="kw-2">&amp;</span>str, <span class="kw-2">&amp;</span>[u8])) -&gt; <span class="self">Self </span>{
-        <span class="kw">let </span>label_string = SIGN_LABEL_PREFIX.to_owned() + label;
-        <span class="kw">let </span>label = label_string.as_bytes().into();
-        <span class="self">Self </span>{
-            label,
-            content: content.into(),
-        }
+        <span class="self">Self</span>::new(label, content.into())
     }
 }
 

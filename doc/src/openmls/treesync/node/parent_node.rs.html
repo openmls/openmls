@@ -254,7 +254,6 @@
 <a href="#254" id="254">254</a>
 <a href="#255" id="255">255</a>
 <a href="#256" id="256">256</a>
-<a href="#257" id="257">257</a>
 </pre><pre class="rust"><code><span class="doccomment">//! This module contains the [`ParentNode`] struct, its implementation, as well
 //! as the [`PlainUpdatePathNode`], a helper struct for the creation of
 //! [`UpdatePathNode`] instances.
@@ -313,21 +312,20 @@
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider,
         ciphersuite: Ciphersuite,
-        public_keys: <span class="kw-2">&amp;</span>[HpkePublicKey],
+        public_keys: <span class="kw-2">&amp;</span>[EncryptionKey],
         group_context: <span class="kw-2">&amp;</span>[u8],
-    ) -&gt; UpdatePathNode {
-        <span class="kw">let </span>encrypted_path_secrets: Vec&lt;HpkeCiphertext&gt; = public_keys
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;UpdatePathNode, LibraryError&gt; {
+        public_keys
             .par_iter()
             .map(|pk| {
                 <span class="self">self</span>.path_secret
                     .encrypt(backend, ciphersuite, pk, group_context)
             })
-            .collect();
-
-        UpdatePathNode {
-            public_key: <span class="self">self</span>.public_key.clone(),
-            encrypted_path_secrets,
-        }
+            .collect::&lt;<span class="prelude-ty">Result</span>&lt;Vec&lt;HpkeCiphertext&gt;, LibraryError&gt;&gt;()
+            .map(|encrypted_path_secrets| UpdatePathNode {
+                public_key: <span class="self">self</span>.public_key.clone(),
+                encrypted_path_secrets,
+            })
     }
 
     <span class="doccomment">/// Return a reference to the `path_secret` of this node.
