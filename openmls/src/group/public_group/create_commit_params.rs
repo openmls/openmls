@@ -1,11 +1,14 @@
-//! Builder for [CreateCommitParams] that is used in [CoreGroup::create_commit()]
+//! Builder for [CreateCommitParams] that is used in [PublicGroup::create_commit()]
 
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    credentials::CredentialWithKey, group::ProposalStore, messages::proposals::Proposal,
-    prelude_test::FramingParameters,
+    credentials::CredentialWithKey, framing::FramingParameters, group::ProposalStore,
+    messages::proposals::Proposal,
 };
+
+#[cfg(doc)]
+use super::PublicGroup;
 
 /// Can be used to denote the type of a commit.
 #[derive(Debug, Copy, Clone, PartialEq, Serialize, Deserialize)]
@@ -36,8 +39,8 @@ pub(crate) struct CreateCommitParamsBuilder<'a> {
 impl TempBuilderCCPM0 {
     pub(crate) fn framing_parameters(
         self,
-        framing_parameters: FramingParameters,
-    ) -> TempBuilderCCPM1 {
+        framing_parameters: FramingParameters<'_>,
+    ) -> TempBuilderCCPM1<'_> {
         TempBuilderCCPM1 { framing_parameters }
     }
 }
