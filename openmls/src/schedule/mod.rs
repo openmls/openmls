@@ -736,7 +736,7 @@ impl ExporterSecret {
         Ok(self
             .secret
             .derive_secret(backend, label)?
-            .kdf_expand_label(backend, label, context_hash, key_length)?
+            .kdf_expand_label(backend, "exporter", context_hash, key_length)?
             .as_slice()
             .to_vec())
     }
