@@ -11,8 +11,6 @@ use tls_codec::{TlsDeserialize, TlsSerialize, TlsSize};
 
 /// # Protocol Version
 ///
-/// 7. Key Packages
-///
 /// ```text
 /// enum {
 ///     reserved(0),
