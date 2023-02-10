@@ -364,12 +364,18 @@ impl JoinerSecret {
         backend: &impl OpenMlsCryptoProvider,
         commit_secret_option: impl Into<Option<CommitSecret>>,
         init_secret: &InitSecret,
+        serialized_group_context: &[u8],
     ) -> Result<Self, CryptoError> {
         let intermediate_secret = init_secret.secret.hkdf_extract(
             backend,
             commit_secret_option.into().as_ref().map(|cs| &cs.secret),
         )?;
-        let secret = intermediate_secret.derive_secret(backend, "joiner")?;
+        let secret = intermediate_secret.kdf_expand_label(
+            backend,
+            "joiner",
+            serialized_group_context,
+            intermediate_secret.ciphersuite().hash_length(),
+        )?;
         log_crypto!(trace, "Joiner secret: {:x?}", secret);
         Ok(JoinerSecret { secret })
     }

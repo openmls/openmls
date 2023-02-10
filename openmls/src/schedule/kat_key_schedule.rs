@@ -131,19 +131,6 @@ fn generate(
     // let psk_secret =
     //     PskSecret::new(ciphersuite, &crypto, &psk_ids).expect("Could not create PskSecret.");
 
-    let joiner_secret = JoinerSecret::new(&crypto, commit_secret.clone(), init_secret)
-        .expect("Could not create JoinerSecret.");
-    let mut key_schedule = KeySchedule::init(
-        ciphersuite,
-        &crypto,
-        joiner_secret.clone(),
-        None, //Some(psk_secret.clone()),
-    )
-    .expect("Could not create KeySchedule.");
-    let welcome_secret = key_schedule
-        .welcome(&crypto)
-        .expect("An unexpected error occurred.");
-
     let confirmed_transcript_hash = crypto
         .rand()
         .random_vec(ciphersuite.hash_length())
@@ -157,6 +144,24 @@ fn generate(
         confirmed_transcript_hash.clone(),
         Extensions::empty(),
     );
+
+    let joiner_secret = JoinerSecret::new(
+        &crypto,
+        commit_secret.clone(),
+        init_secret,
+        &group_context.tls_serialize_detached().unwrap(),
+    )
+    .expect("Could not create JoinerSecret.");
+    let mut key_schedule = KeySchedule::init(
+        ciphersuite,
+        &crypto,
+        joiner_secret.clone(),
+        None, //Some(psk_secret.clone()),
+    )
+    .expect("Could not create KeySchedule.");
+    let welcome_secret = key_schedule
+        .welcome(&crypto)
+        .expect("An unexpected error occurred.");
 
     let serialized_group_context = group_context
         .tls_serialize_detached()
@@ -348,7 +353,7 @@ pub fn run_test_vector(
         )));
         log::trace!("    CommitSecret from tve {:?}", epoch.commit_secret);
         // let mut psks = Vec::new();
-        let mut psk_ids = Vec::new();
+        // let mut psk_ids = Vec::new();
         // for psk_value in epoch.psks.iter() {
         //     let psk_id =
         //         PreSharedKeyId::tls_deserialize(&mut hex_to_bytes(&psk_value.psk_id).as_slice())
@@ -373,35 +378,8 @@ pub fn run_test_vector(
         //         .expect("Could not store PskBundle in key store.");
         // }
 
-        let psk_secret =
-            PskSecret::new(ciphersuite, backend, &psk_ids).expect("An unexpected error occurred.");
-
-        let joiner_secret = JoinerSecret::new(backend, commit_secret, &init_secret)
-            .expect("Could not create JoinerSecret.");
-        if hex_to_bytes(&epoch.joiner_secret) != joiner_secret.as_slice() {
-            if cfg!(test) {
-                panic!("Joiner secret mismatch");
-            }
-            return Err(KsTestVectorError::JoinerSecretMismatch);
-        }
-
-        let mut key_schedule = KeySchedule::init(
-            ciphersuite,
-            backend,
-            joiner_secret.clone(),
-            Some(psk_secret),
-        )
-        .expect("Could not create KeySchedule.");
-        let welcome_secret = key_schedule
-            .welcome(backend)
-            .expect("An unexpected error occurred.");
-
-        if hex_to_bytes(&epoch.welcome_secret) != welcome_secret.as_slice() {
-            if cfg!(test) {
-                panic!("Welcome secret mismatch");
-            }
-            return Err(KsTestVectorError::WelcomeSecretMismatch);
-        }
+        // let psk_secret =
+        //     PskSecret::new(ciphersuite, backend, &psk_ids).expect("An unexpected error occurred.");
 
         let confirmed_transcript_hash = hex_to_bytes(&epoch.confirmed_transcript_hash);
 
@@ -413,6 +391,33 @@ pub fn run_test_vector(
             confirmed_transcript_hash.clone(),
             Extensions::empty(),
         );
+
+        let joiner_secret = JoinerSecret::new(
+            backend,
+            commit_secret,
+            &init_secret,
+            &group_context.tls_serialize_detached().unwrap(),
+        )
+        .expect("Could not create JoinerSecret.");
+        if hex_to_bytes(&epoch.joiner_secret) != joiner_secret.as_slice() {
+            if cfg!(test) {
+                panic!("Joiner secret mismatch");
+            }
+            return Err(KsTestVectorError::JoinerSecretMismatch);
+        }
+
+        let mut key_schedule = KeySchedule::init(ciphersuite, backend, joiner_secret.clone(), None)
+            .expect("Could not create KeySchedule.");
+        let welcome_secret = key_schedule
+            .welcome(backend)
+            .expect("An unexpected error occurred.");
+
+        if hex_to_bytes(&epoch.welcome_secret) != welcome_secret.as_slice() {
+            if cfg!(test) {
+                panic!("Welcome secret mismatch");
+            }
+            return Err(KsTestVectorError::WelcomeSecretMismatch);
+        }
 
         let expected_group_context = hex_to_bytes(&epoch.group_context);
         let group_context_serialized = group_context

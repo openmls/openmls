@@ -134,10 +134,16 @@ impl CoreGroup {
         // Update the confirmed transcript hash using the commit we just created.
         diff.update_confirmed_transcript_hash(backend, &commit)?;
 
+        let serialized_provisional_group_context = diff
+            .group_context()
+            .tls_serialize_detached()
+            .map_err(LibraryError::missing_bound_check)?;
+
         let joiner_secret = JoinerSecret::new(
             backend,
             path_processing_result.commit_secret,
             self.group_epoch_secrets().init_secret(),
+            &serialized_provisional_group_context,
         )
         .map_err(LibraryError::unexpected_crypto_error)?;
 
@@ -158,11 +164,6 @@ impl CoreGroup {
 
         // Create key schedule
         let mut key_schedule = KeySchedule::init(ciphersuite, backend, joiner_secret, psk_secret)?;
-
-        let serialized_provisional_group_context = diff
-            .group_context()
-            .tls_serialize_detached()
-            .map_err(LibraryError::missing_bound_check)?;
 
         let welcome_secret = key_schedule
             .welcome(backend)

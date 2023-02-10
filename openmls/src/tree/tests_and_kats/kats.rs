@@ -2,3 +2,4 @@
 
 pub mod kat_encryption;
 pub mod kat_message_protection;
+pub mod secret_tree;
