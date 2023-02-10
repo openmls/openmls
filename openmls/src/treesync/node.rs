@@ -26,12 +26,12 @@ pub(crate) mod parent_node;
 #[derive(
     Debug, PartialEq, Eq, Clone, Serialize, Deserialize, TlsSize, TlsDeserialize, TlsSerialize,
 )]
-#[allow(missing_docs)]
-#[allow(clippy::large_enum_variant)]
 #[repr(u8)]
 pub enum Node {
+    /// A leaf node.
     #[tls_codec(discriminant = 1)]
     LeafNode(OpenMlsLeafNode),
+    /// A parent node.
     #[tls_codec(discriminant = 2)]
     ParentNode(ParentNode),
 }
