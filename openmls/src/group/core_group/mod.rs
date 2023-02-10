@@ -836,6 +836,10 @@ impl CoreGroup {
 
         print_tree(self, message);
     }
+
+    pub(crate) fn set_group_context(&mut self, group_context: GroupContext) {
+        self.public_group.set_group_context(group_context)
+    }
 }
 
 /// Configuration for core group.
