@@ -22,3 +22,4 @@ rand = "0.8"
 
 [features]
 clonable = [] # Make the keys clonable
+test-utils = [] # Only use for tests!

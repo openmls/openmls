@@ -139,16 +139,17 @@ fn test_failed_groupinfo_decryption(
             .expect("Not enough randomness.")
             .as_slice(),
     );
-    let hpke_info = b"group info welcome test info";
-    let hpke_aad = b"group info welcome test aad";
-    let hpke_input = b"these should be the group secrets";
-    let mut encrypted_group_secrets = backend.crypto().hpke_seal(
-        ciphersuite.hpke_config(),
+    let hpke_context = b"group info welcome test info";
+    let group_secrets = b"these should be the group secrets";
+    let mut encrypted_group_secrets = hpke::encrypt_with_label(
         receiver_key_pair.public.as_slice(),
-        hpke_info,
-        hpke_aad,
-        hpke_input,
-    );
+        "Welcome",
+        hpke_context,
+        group_secrets,
+        ciphersuite,
+        backend.crypto(),
+    )
+    .unwrap();
 
     let group_info = group_info_tbs
         .sign(&alice_signature_keys)

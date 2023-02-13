@@ -17,6 +17,7 @@ use std::hash::Hash;
 
 mod aead;
 mod codec;
+pub(crate) mod hpke;
 mod kdf_label;
 mod mac;
 mod reuse_guard;
@@ -39,6 +40,8 @@ pub(crate) use serde::{Deserialize, Serialize};
 
 #[cfg(test)]
 mod tests;
+
+const LABEL_PREFIX: &str = "MLS 1.0 ";
 
 /// A simple type for HPKE public keys using [`VLBytes`] for (de)serializing.
 pub type HpkePublicKey = VLBytes;

@@ -8,14 +8,14 @@ use crate::{
     error::LibraryError,
     schedule::{psk::PreSharedKeyId, JoinerSecret},
     treesync::{
-        node::encryption_keys::{EncryptionKeyPair, EncryptionPrivateKey},
+        node::encryption_keys::{EncryptionKey, EncryptionKeyPair, EncryptionPrivateKey},
         treekem::UpdatePath,
     },
     versions::ProtocolVersion,
 };
 use openmls_traits::{
     crypto::OpenMlsCrypto,
-    types::{Ciphersuite, CryptoError, HpkeCiphertext},
+    types::{Ciphersuite, HpkeCiphertext},
     OpenMlsCryptoProvider,
 };
 use serde::{Deserialize, Serialize};
@@ -234,14 +234,13 @@ impl PathSecret {
         &self,
         backend: &impl OpenMlsCryptoProvider,
         ciphersuite: Ciphersuite,
-        public_key: &HpkePublicKey,
+        public_key: &EncryptionKey,
         group_context: &[u8],
-    ) -> HpkeCiphertext {
-        backend.crypto().hpke_seal(
-            ciphersuite.hpke_config(),
-            public_key.as_slice(),
+    ) -> Result<HpkeCiphertext, LibraryError> {
+        public_key.encrypt(
+            backend,
+            ciphersuite,
             group_context,
-            &[],
             self.path_secret.as_slice(),
         )
     }
@@ -266,18 +265,19 @@ impl PathSecret {
         group_context: &[u8],
     ) -> Result<PathSecret, PathSecretError> {
         // ValSem203: Path secrets must decrypt correctly
-        let path_secret =
-            private_key.decrypt(backend, ciphersuite, version, ciphertext, group_context)?;
-        Ok(Self { path_secret })
+        private_key
+            .decrypt(backend, ciphersuite, version, ciphertext, group_context)
+            .map(|path_secret| Self { path_secret })
+            .map_err(|e| e.into())
     }
 }
 
 /// Path secret error
 #[derive(Error, Debug, PartialEq, Clone)]
 pub(crate) enum PathSecretError {
-    /// See [`CryptoError`] for more details.
+    /// See [`hpke::Error`] for more details.
     #[error(transparent)]
-    DecryptionError(#[from] CryptoError),
+    DecryptionError(#[from] hpke::Error),
 }
 
 /// GroupSecrets
