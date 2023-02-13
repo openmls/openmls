@@ -20,9 +20,9 @@ jobs:
       - uses: actions/checkout@v3
         with:
           ref: ${{ github.event.pull_request.head.sha }}
-      - name: Stable with rustfmt
-        uses: dtolnay/rust-toolchain@stable
+      - uses: dtolnay/rust-toolchain@stable
         with:
           components: rustfmt
+      - uses: Swatinem/rust-cache@v2
       - name: Cargo fmt
         run: cargo fmt -- --check

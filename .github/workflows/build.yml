@@ -50,6 +50,7 @@ jobs:
       - uses: dtolnay/rust-toolchain@stable
         with:
           target: ${{ matrix.arch }}
+      - uses: Swatinem/rust-cache@v2
       - name: Build debug
         run: cargo build --verbose --target ${{ matrix.arch }} -p openmls
       - name: Build release

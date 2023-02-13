@@ -13,8 +13,8 @@ jobs:
         with:
           submodules: true
 
-      - name: Install nightly toolchain
-        uses: dtolnay/rust-toolchain@nightly
+      - uses: dtolnay/rust-toolchain@nightly
+      - uses: Swatinem/rust-cache@v2
       - name: Run profiling tests
         run: cargo test --no-fail-fast
         env:
