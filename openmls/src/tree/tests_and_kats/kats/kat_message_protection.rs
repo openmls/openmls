@@ -213,7 +213,7 @@ pub fn run_test_vector(
         test.cipher_suite.try_into().unwrap(),
         GroupId::from_slice(&hex_to_bytes(&test.group_id)),
         test.epoch,
-        hex_to_bytes(&test.tree_hash).into(),
+        hex_to_bytes(&test.tree_hash),
         hex_to_bytes(&test.confirmed_transcript_hash).into(),
         Extensions::empty(),
     );

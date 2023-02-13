@@ -11,15 +11,11 @@ use crate::{ciphersuite::*, extensions::Extensions, group::*, schedule::*, test_
 use crate::test_utils::{read, write};
 
 use openmls_rust_crypto::OpenMlsRustCrypto;
-use openmls_traits::{
-    key_store::OpenMlsKeyStore, random::OpenMlsRand, types::HpkeKeyPair, OpenMlsCryptoProvider,
-};
-use rand::{rngs::OsRng, RngCore};
+use openmls_traits::{random::OpenMlsRand, types::HpkeKeyPair, OpenMlsCryptoProvider};
 use serde::{self, Deserialize, Serialize};
-use tls_codec::Serialize as TlsSerialize;
+use tls_codec::Serialize as TlsSerializeTrait;
 
-use super::{errors::KsTestVectorError, PskSecret};
-use super::{CommitSecret, PreSharedKeyId};
+use super::{errors::KsTestVectorError, CommitSecret};
 
 #[derive(Serialize, Deserialize, Debug, Clone, Default)]
 struct PskValue {
@@ -29,9 +25,9 @@ struct PskValue {
 
 #[derive(Serialize, Deserialize, Debug, Clone, Default)]
 struct Exporter {
-    exporter_label: String,
-    exporter_length: u32,
-    exported: String,
+    label: String,
+    length: u32,
+    secret: String,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, Default)]
@@ -80,7 +76,6 @@ fn generate(
     Vec<u8>,
     CommitSecret,
     JoinerSecret,
-    // Vec<(PreSharedKeyId, Secret)>,
     WelcomeSecret,
     EpochSecrets,
     Vec<u8>,
@@ -93,43 +88,6 @@ fn generate(
         .random_vec(ciphersuite.hash_length())
         .expect("An unexpected error occurred.");
     let commit_secret = CommitSecret::random(ciphersuite, &crypto);
-
-    // Build the PSK secret.
-    // let mut psk_ids = Vec::new();
-    // let mut psks = Vec::new();
-    // let mut psks_out = Vec::new();
-    // for _ in 0..(OsRng.next_u32() % 0x10) {
-    //     let psk_id =
-    //     // XXX: Test all different PSK types.
-    //     PreSharedKeyId::new(
-    //         ciphersuite,
-    //         crypto.rand(),
-    //         Psk::Resumption(
-    //             ResumptionPsk::new(
-    //                 ResumptionPskUsage::Branch,
-    //                 GroupId::random(&crypto),
-    //                 epoch.into()
-    //             )
-    //         ),
-    //     ).expect("An unexpected error occurred.");
-    //     let psk = PskSecret::random(ciphersuite, &crypto);
-    //     psk_ids.push(psk_id.clone());
-    //     psks.push(psk.secret().clone());
-    //     psks_out.push((psk_id.clone(), psk.secret().clone()));
-    //     let psk_bundle = PskBundle::new(psk.secret().clone()).expect("Could not create PskBundle.");
-    //     crypto
-    //         .key_store()
-    //         .store(
-    //             psk_id
-    //                 .tls_serialize_detached()
-    //                 .expect("Error serializing signature key.")
-    //                 .as_slice(),
-    //             &psk_bundle,
-    //         )
-    //         .expect("Could not store PskBundle in key store.");
-    // }
-    // let psk_secret =
-    //     PskSecret::new(ciphersuite, &crypto, &psk_ids).expect("Could not create PskSecret.");
 
     let confirmed_transcript_hash = crypto
         .rand()
@@ -273,15 +231,11 @@ pub fn generate_test_vector(
             confirmation_key: bytes_to_hex(epoch_secrets.confirmation_key().as_slice()),
             membership_key: bytes_to_hex(epoch_secrets.membership_key().as_slice()),
             resumption_psk: bytes_to_hex(epoch_secrets.resumption_psk().as_slice()),
-            external_pub: bytes_to_hex(
-                &HpkePublicKey::from(external_key_pair.public)
-                    .tls_serialize_detached()
-                    .expect("An unexpected error occurred."),
-            ),
+            external_pub: bytes_to_hex(&external_key_pair.public),
             exporter: Exporter {
-                exporter_label: exporter_label.into(),
-                exporter_length,
-                exported: bytes_to_hex(&exported),
+                label: exporter_label.into(),
+                length: exporter_length,
+                secret: bytes_to_hex(&exported),
             },
         };
         epochs.push(epoch_info);
@@ -325,8 +279,6 @@ pub fn run_test_vector(
     test_vector: KeyScheduleTestVector,
     backend: &impl OpenMlsCryptoProvider,
 ) -> Result<(), KsTestVectorError> {
-    use tls_codec::{Deserialize, Serialize};
-
     let ciphersuite = Ciphersuite::try_from(test_vector.cipher_suite).expect("Invalid ciphersuite");
     log::trace!("  {:?}", test_vector);
 
@@ -352,34 +304,6 @@ pub fn run_test_vector(
             ciphersuite,
         )));
         log::trace!("    CommitSecret from tve {:?}", epoch.commit_secret);
-        // let mut psks = Vec::new();
-        // let mut psk_ids = Vec::new();
-        // for psk_value in epoch.psks.iter() {
-        //     let psk_id =
-        //         PreSharedKeyId::tls_deserialize(&mut hex_to_bytes(&psk_value.psk_id).as_slice())
-        //             .expect("An unexpected error occurred.");
-        //     psk_ids.push(psk_id.clone());
-        //     let secret = Secret::from_slice(
-        //         &hex_to_bytes(&psk_value.psk),
-        //         ProtocolVersion::default(),
-        //         ciphersuite,
-        //     );
-        //     psks.push(secret.clone());
-        //     let psk_bundle = PskBundle::new(secret).expect("Could not create PskBundle.");
-        //     backend
-        //         .key_store()
-        //         .store(
-        //             psk_id
-        //                 .tls_serialize_detached()
-        //                 .expect("Error serializing signature key.")
-        //                 .as_slice(),
-        //             &psk_bundle,
-        //         )
-        //         .expect("Could not store PskBundle in key store.");
-        // }
-
-        // let psk_secret =
-        //     PskSecret::new(ciphersuite, backend, &psk_ids).expect("An unexpected error occurred.");
 
         let confirmed_transcript_hash = hex_to_bytes(&epoch.confirmed_transcript_hash);
 
@@ -510,11 +434,7 @@ pub fn run_test_vector(
         let external_key_pair = epoch_secrets
             .external_secret()
             .derive_external_keypair(backend.crypto(), ciphersuite);
-        if hex_to_bytes(&epoch.external_pub)
-            != HpkePublicKey::from(external_key_pair.public.clone())
-                .tls_serialize_detached()
-                .expect("An unexpected error occurred.")
-        {
+        if hex_to_bytes(&epoch.external_pub) != external_key_pair.public {
             log::error!("  External public key mismatch");
             log::debug!(
                 "    Computed: {:x?}",

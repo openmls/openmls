@@ -73,12 +73,6 @@ pub(crate) struct PskBundle {
 }
 
 impl PskBundle {
-    /// Create a new bundle
-    #[cfg(any(feature = "test-utils", test))]
-    pub(crate) fn new(secret: Secret) -> Result<Self, CryptoError> {
-        Ok(Self { secret })
-    }
-
     /// Return the secret
     pub(crate) fn secret(&self) -> &Secret {
         &self.secret
@@ -281,20 +275,5 @@ impl PskSecret {
     /// Return the inner secret
     pub(crate) fn secret(&self) -> &Secret {
         &self.secret
-    }
-
-    #[cfg(any(feature = "test-utils", test))]
-    pub(crate) fn random(ciphersuite: Ciphersuite, rng: &impl OpenMlsCryptoProvider) -> Self {
-        Self {
-            secret: Secret::random(ciphersuite, rng, None /* MLS version */)
-                .expect("Not enough randomness."),
-        }
-    }
-
-    #[cfg(any(feature = "test-utils", test))]
-    pub(crate) fn clone(&self) -> Self {
-        Self {
-            secret: self.secret.clone(),
-        }
     }
 }
