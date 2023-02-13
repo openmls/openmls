@@ -200,7 +200,6 @@ impl CoreGroup {
         if &confirmation_tag != public_group.confirmation_tag() {
             log::error!("Confirmation tag mismatch");
             log_crypto!(trace, "  Got:      {:x?}", confirmation_tag);
-            log_crypto!(trace, "  Expected: {:x?}", group_info.confirmation_tag());
             debug_assert!(false, "Confirmation tag mismatch");
             Err(WelcomeError::ConfirmationTagMismatch)
         } else {

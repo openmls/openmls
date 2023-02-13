@@ -63,21 +63,21 @@ pub struct SenderData {
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
-pub struct Leave {
+pub struct Leaf {
     generation: u32,
-    handshake_key: String,
-    handshake_nonce: String,
     application_key: String,
     application_nonce: String,
+    handshake_key: String,
+    handshake_nonce: String,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct SecretTree {
     cipher_suite: u16,
 
-    sender_data: SenderData,
     encryption_secret: String,
-    leaves: Vec<Leave>,
+    sender_data: SenderData,
+    leaves: Vec<Vec<Leaf>>,
 }
 
 #[cfg(any(feature = "test-utils", test))]
@@ -85,12 +85,123 @@ pub fn run_test_vector(
     test: SecretTree,
     backend: &impl OpenMlsCryptoProvider,
 ) -> Result<(), String> {
+    use openmls_traits::crypto::OpenMlsCrypto;
+
+    use crate::{
+        binary_tree::{array_representation::TreeSize, LeafNodeIndex},
+        prelude::SenderRatchetConfiguration,
+        schedule::{EncryptionSecret, SenderDataSecret},
+        tree::secret_tree::{SecretTree, SecretType},
+        versions::ProtocolVersion,
+    };
+
+    let ciphersuite = Ciphersuite::try_from(test.cipher_suite).unwrap();
+    // Skip unsupported ciphersuites.
+    if !backend
+        .crypto()
+        .supported_ciphersuites()
+        .contains(&ciphersuite)
+    {
+        log::debug!("Unsupported ciphersuite {ciphersuite:?} ...");
+        return Ok(());
+    }
+    log::debug!("Secret tree test for {ciphersuite:?} ...");
+
+    // Check sender data
+    let sender_data_secret = hex_to_bytes(&test.sender_data.sender_data_secret);
+    let sender_data_secret =
+        SenderDataSecret::from_slice(&sender_data_secret, ProtocolVersion::Mls10, ciphersuite);
+    let sender_data_ciphertext = hex_to_bytes(&test.sender_data.ciphertext);
+    let sender_data_key = hex_to_bytes(&test.sender_data.key);
+    let sender_data_nonce = hex_to_bytes(&test.sender_data.nonce);
+
+    let my_sender_data_key = sender_data_secret
+        .derive_aead_key(backend, &sender_data_ciphertext)
+        .unwrap();
+    assert_eq!(&sender_data_key, my_sender_data_key.as_slice());
+    let my_sender_data_nonce = sender_data_secret
+        .derive_aead_nonce(ciphersuite, backend, &sender_data_ciphertext)
+        .unwrap();
+    assert_eq!(&sender_data_nonce, my_sender_data_nonce.as_slice());
+
+    let encryption_secret = hex_to_bytes(&test.encryption_secret);
+    let num_leaves = test.leaves.len();
+
+    if num_leaves == 1 {
+        // FIXME: testing
+        return Ok(());
+    }
+    for (leaf_index, leaf) in test.leaves.iter().enumerate() {
+        log::trace!("Testing leaf {leaf_index}");
+
+        for leaf_generation in leaf {
+            let generation = leaf_generation.generation;
+            log::trace!("   Testing generation {generation}");
+
+            let mut secret_tree = SecretTree::new(
+                EncryptionSecret::from_slice(
+                    &encryption_secret,
+                    ProtocolVersion::Mls10,
+                    ciphersuite,
+                ),
+                TreeSize::from_leaf_count(num_leaves as u32),
+                LeafNodeIndex::new(leaf_index as u32),
+            );
+
+            // Generate the secrets for the `generation`
+            let (application, handshake) = loop {
+                log::trace!("       Computing generation {generation}");
+                let handshake = secret_tree
+                    .secret_for_encryption(
+                        ciphersuite,
+                        backend,
+                        LeafNodeIndex::new(leaf_index as u32),
+                        SecretType::HandshakeSecret,
+                    )
+                    .unwrap();
+                let application = secret_tree
+                    .secret_for_encryption(
+                        ciphersuite,
+                        backend,
+                        LeafNodeIndex::new(leaf_index as u32),
+                        SecretType::HandshakeSecret,
+                    )
+                    .unwrap();
+                if handshake.0 == generation {
+                    break (application, handshake);
+                }
+            };
+
+            eprintln!(
+                "app {}\t{}",
+                bytes_to_hex(application.1 .0.as_slice()),
+                bytes_to_hex(application.1 .1.as_slice())
+            );
+            assert_eq!(
+                application.1 .0.as_slice(),
+                &hex_to_bytes(&leaf_generation.application_key)
+            );
+            assert_eq!(
+                application.1 .1.as_slice(),
+                &hex_to_bytes(&leaf_generation.application_nonce)
+            );
+            assert_eq!(
+                handshake.1 .0.as_slice(),
+                &hex_to_bytes(&leaf_generation.handshake_key)
+            );
+            assert_eq!(
+                handshake.1 .1.as_slice(),
+                &hex_to_bytes(&leaf_generation.handshake_nonce)
+            );
+        }
+    }
+
     Ok(())
 }
 
 #[apply(backends)]
 fn read_test_vectors_st(backend: &impl OpenMlsCryptoProvider) {
-    // let _ = pretty_env_logger::try_init();
+    let _ = pretty_env_logger::try_init();
     log::debug!("Reading test vectors ...");
 
     let tests: Vec<SecretTree> = read("test_vectors/secret-tree.json");

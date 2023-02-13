@@ -178,7 +178,7 @@ impl Secret {
             context
         );
         let info = KdfLabel::serialized_label(context, full_label, length)?;
-        log::trace!("  serialized context: {:x?}", info);
+        log::trace!("  serialized info: {:x?}", info);
         log_crypto!(trace, "  secret: {:x?}", self.value);
         self.hkdf_expand(backend, &info, length)
     }
