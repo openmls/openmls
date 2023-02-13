@@ -154,7 +154,11 @@ impl SecretTree {
             .take(size.leaf_count() as usize)
             .collect();
 
-        log_crypto!(trace, "nodes: {nodes:?}");
+        log::trace!(
+            "Created secret tree with {} leaves and {} nodes.",
+            leaf_nodes.len(),
+            parent_nodes.len()
+        );
 
         SecretTree {
             own_index,
@@ -384,13 +388,13 @@ impl SecretTree {
         log_crypto!(
             trace,
             "Left node ({}) secret: {:x?}",
-            left_index.as_u32(),
+            left_index.test_u32(),
             left_secret.as_slice()
         );
         log_crypto!(
             trace,
             "Right node ({}) secret: {:x?}",
-            right_index.as_u32(),
+            right_index.test_u32(),
             right_secret.as_slice()
         );
 
