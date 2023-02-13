@@ -77,8 +77,6 @@
 <a href="#77" id="77">77</a>
 <a href="#78" id="78">78</a>
 <a href="#79" id="79">79</a>
-<a href="#80" id="80">80</a>
-<a href="#81" id="81">81</a>
 </pre><pre class="rust"><code><span class="doccomment">//! # MLS versions
 //!
 //! Only MLS 1.0 is currently supported.
@@ -92,13 +90,11 @@
 
 </span><span class="doccomment">/// # Protocol Version
 ///
-/// 7. Key Packages
-///
 /// ```text
 /// enum {
 ///     reserved(0),
 ///     mls10(1),
-///     (255)
+///     (65535)
 /// } ProtocolVersion;
 /// ```
 </span><span class="attr">#[derive(
@@ -115,7 +111,7 @@
     TlsSerialize,
     TlsSize,
 )]
-#[repr(u8)]
+#[repr(u16)]
 #[allow(missing_docs)]
 </span><span class="kw">pub enum </span>ProtocolVersion {
     Mls10 = <span class="number">1</span>,
@@ -129,13 +125,13 @@
     }
 }
 
-<span class="kw">impl </span>TryFrom&lt;u8&gt; <span class="kw">for </span>ProtocolVersion {
+<span class="kw">impl </span>TryFrom&lt;u16&gt; <span class="kw">for </span>ProtocolVersion {
     <span class="kw">type </span>Error = VersionError;
 
     <span class="doccomment">/// Convert an integer to the corresponding protocol version.
     ///
     /// Returns an error if the protocol version is not supported.
-    </span><span class="kw">fn </span>try_from(v: u8) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, <span class="self">Self</span>::Error&gt; {
+    </span><span class="kw">fn </span>try_from(v: u16) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, <span class="self">Self</span>::Error&gt; {
         <span class="kw">match </span>v {
             <span class="number">1 </span>=&gt; <span class="prelude-val">Ok</span>(ProtocolVersion::Mls10),
             <span class="number">200 </span>=&gt; <span class="prelude-val">Ok</span>(ProtocolVersion::Mls10Draft11),
