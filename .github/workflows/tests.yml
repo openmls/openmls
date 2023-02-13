@@ -35,11 +35,8 @@ jobs:
         # Test 32 bit builds on windows
       - name: Install rust target
         if: matrix.os == 'windows-latest'
-        uses: actions-rs/toolchain@v1
+        uses: dtolnay/rust-toolchain@stable
         with:
-          toolchain: stable
-          profile: minimal
-          override: true
           target: i686-pc-windows-msvc
       - name: Tests 32bit windows debug & release build
         if: matrix.os == 'windows-latest'
@@ -49,11 +46,8 @@ jobs:
         # Test 32 bit builds on linux
       - name: Install rust target
         if: matrix.os == 'ubuntu-latest'
-        uses: actions-rs/toolchain@v1
+        uses: dtolnay/rust-toolchain@stable
         with:
-          toolchain: stable
-          profile: minimal
-          override: true
           target: i686-unknown-linux-gnu
       - name: Tests 32bit linux debug & release build
         if: matrix.os == 'ubuntu-latest'

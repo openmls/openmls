@@ -15,8 +15,5 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
-      - name: cargo doc
-        uses: actions-rs/cargo@v1
-        with:
-          command: doc
-          args: -p openmls --message-format json
+      - uses: dtolnay/rust-toolchain@stable
+      - run: cargo doc -p openmls --message-format json

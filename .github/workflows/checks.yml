@@ -21,10 +21,8 @@ jobs:
         with:
           ref: ${{ github.event.pull_request.head.sha }}
       - name: Stable with rustfmt
-        uses: actions-rs/toolchain@v1
+        uses: dtolnay/rust-toolchain@stable
         with:
-          profile: minimal
-          toolchain: stable
           components: rustfmt
       - name: Cargo fmt
         run: cargo fmt -- --check

@@ -47,11 +47,8 @@ jobs:
     steps:
       - uses: actions/checkout@v3
       # Install the required target
-      - uses: actions-rs/toolchain@v1
+      - uses: dtolnay/rust-toolchain@stable
         with:
-          toolchain: stable
-          profile: minimal
-          override: true
           target: ${{ matrix.arch }}
       - name: Build debug
         run: cargo build --verbose --target ${{ matrix.arch }} -p openmls
