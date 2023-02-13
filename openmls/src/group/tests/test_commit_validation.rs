@@ -632,14 +632,19 @@ fn test_valsem204(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
                 )
             })
             .collect();
-        let new_nodes = alice_group.group().treesync().empty_diff().encrypt_path(
-            backend,
-            ciphersuite,
-            &new_plain_path,
-            &encryption_context.tls_serialize_detached().unwrap(),
-            &[].into(),
-            LeafNodeIndex::new(0),
-        );
+        let new_nodes = alice_group
+            .group()
+            .treesync()
+            .empty_diff()
+            .encrypt_path(
+                backend,
+                ciphersuite,
+                &new_plain_path,
+                &encryption_context.tls_serialize_detached().unwrap(),
+                &[].into(),
+                LeafNodeIndex::new(0),
+            )
+            .unwrap();
         let new_path = UpdatePath::new(path.leaf_node().clone(), new_nodes);
         commit_content.path = Some(new_path);
     };
