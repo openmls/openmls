@@ -190,11 +190,7 @@ impl SecretTree {
         backend: &impl OpenMlsCryptoProvider,
         index: LeafNodeIndex,
     ) -> Result<(), SecretTreeError> {
-        log::trace!(
-            "Initializing sender ratchets for {:?} with {}",
-            index,
-            ciphersuite
-        );
+        log::trace!("Initializing sender ratchets for {index:?} with {ciphersuite}");
         if index.u32() >= self.size.leaf_count() {
             log::error!("Index is larger than the tree size.");
             return Err(SecretTreeError::IndexOutOfBounds);
@@ -218,6 +214,10 @@ impl SecretTree {
             // Collect empty nodes in the direct path until a non-empty node is
             // found
             let mut empty_nodes: Vec<ParentNodeIndex> = vec![];
+            log::trace!(
+                "Direct path for node {index:?}: {:?}",
+                direct_path(index, self.size)
+            );
             for parent_node in direct_path(index, self.size) {
                 empty_nodes.push(parent_node);
                 if self.parent_nodes[parent_node.usize()].is_some() {
@@ -230,6 +230,7 @@ impl SecretTree {
 
             // Derive the secrets down all the way to the leaf node
             for n in empty_nodes {
+                log::trace!("Derive down for parent node {n:?}.");
                 self.derive_down(ciphersuite, backend, n)?;
             }
         }
@@ -368,7 +369,7 @@ impl SecretTree {
         index_in_tree: ParentNodeIndex,
     ) -> Result<(), SecretTreeError> {
         log::debug!(
-            "Deriving tree secret for node {} with {}",
+            "Deriving tree secret for parent node {} with {}",
             index_in_tree.u32(),
             ciphersuite
         );
