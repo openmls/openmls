@@ -26,18 +26,43 @@ use serde::{self, Deserialize, Serialize};
 use thiserror::Error;
 use tls_codec::{Deserialize as TlsDeserialize, Serialize as TlsSerializeTrait};
 
+/// ```json
+/// {
+///   "cipher_suite": /* uint16 */,
+///
+///   // Chosen by the generator
+///   "group_id": /* hex-encoded binary data */,
+///   "epoch": /* uint64 */,
+///   "tree_hash_before": /* hex-encoded binary data */,
+///   "confirmed_transcript_hash_before": /* hex-encoded binary data */,
+///   "interim_transcript_hash_before": /* hex-encoded binary data */,
+///   "credential": /* hex-encoded binary data */,
+///
+///   "membership_key": /* hex-encoded binary data */,
+///   "confirmation_key": /* hex-encoded binary data */,
+///   "commit": /* hex-encoded TLS-serialized MLSPlaintext(Commit) */
+///
+///   // Computed values
+///   "group_context": /* hex-encoded binary data */,
+///   "confirmed_transcript_hash_after": /* hex-encoded binary data */,
+///   "interim_transcript_hash_after": /* hex-encoded binary data */,
+/// }
+/// ```
 #[derive(Serialize, Deserialize, Debug, Clone, Default)]
 pub struct TranscriptTestVector {
     pub cipher_suite: u16,
+
     group_id: String,
     epoch: u64,
     tree_hash_before: String,
     confirmed_transcript_hash_before: String,
     interim_transcript_hash_before: String,
     credential: String,
+
     membership_key: String,
     confirmation_key: String,
     commit: String, // TLS serialized PublicMessage(Commit)
+
     group_context: String,
     confirmed_transcript_hash_after: String,
     interim_transcript_hash_after: String,

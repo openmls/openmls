@@ -334,10 +334,8 @@ impl GroupSecrets {
         self
     }
 
-    // XXX[KAT]: #1051 Used in kat_messages.
-    //           Get in when kat's are in again.
     #[cfg(test)]
-    pub fn _random_encoded(
+    pub fn random_encoded(
         ciphersuite: Ciphersuite,
         backend: &impl OpenMlsCryptoProvider,
         version: ProtocolVersion,
