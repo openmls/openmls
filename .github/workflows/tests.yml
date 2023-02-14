@@ -36,29 +36,23 @@ jobs:
           targets: i686-pc-windows-msvc, i686-unknown-linux-gnu
       - uses: Swatinem/rust-cache@v2
 
-      - name: Tests debug
-        if: matrix.mode == 'debug'
-        run: cargo test -p openmls --verbose
-      - name: Tests release
-        if: matrix.mode == 'release'
-        run: cargo test --release -p openmls --verbose
+      - run: |
+          if [ ${{ matrix.mode }} == debug ]; then
+            echo "TEST_MODE=" >> $GITHUB_ENV
+          else
+            echo "TEST_MODE=--release" >> $GITHUB_ENV
+          fi
+      - name: Tests
+        run: cargo test $TEST_MODE -p openmls --verbose
 
         # Test 32 bit builds on windows
-      - name: Tests 32bit windows debug
+      - name: Tests 32bit windows
         if: matrix.mode == 'debug' && matrix.os == 'windows-latest'
-        run: cargo test -p openmls --verbose --target i686-pc-windows-msvc
-      - name: Tests 32bit windows release
-        if: matrix.mode == 'release' && matrix.os == 'windows-latest'
-        run: cargo test --release -p openmls --verbose --target i686-pc-windows-msvc
+        run: cargo test $TEST_MODE -p openmls --verbose --target i686-pc-windows-msvc
 
         # Test 32 bit builds on linux
-      - name: Tests 32bit linux debug
+      - name: Tests 32bit linux
         if: matrix.mode == 'debug' && matrix.os == 'ubuntu-latest'
         run: |
           sudo apt update && sudo apt install gcc-multilib
-          cargo test -p openmls --verbose --target i686-unknown-linux-gnu
-      - name: Tests 32bit linux release
-        if: matrix.mode == 'release' && matrix.os == 'ubuntu-latest'
-        run: |
-          sudo apt update && sudo apt install gcc-multilib
-          cargo test --release -p openmls --verbose --target i686-unknown-linux-gnu
+          cargo test $TEST_MODE -p openmls --verbose --target i686-unknown-linux-gnu
