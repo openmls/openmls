@@ -61,6 +61,5 @@ jobs:
           else
             echo "TEST_MODE=--release" >> $GITHUB_ENV
           fi
-          shell: bash
       - name: Build
         run: cargo build $TEST_MODE --verbose --target ${{ matrix.arch }} -p openmls
