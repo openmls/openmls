@@ -17,7 +17,7 @@ fn test_boundaries(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvide
     let encryption_secret = EncryptionSecret::random(ciphersuite, backend);
     let mut secret_tree = SecretTree::new(
         encryption_secret,
-        TreeSize::from_leaf_count(3u32),
+        TreeSize::from_some_count(3u32),
         LeafNodeIndex::new(2u32),
     );
     let secret_type = SecretType::ApplicationSecret;
@@ -108,7 +108,7 @@ fn test_boundaries(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvide
     let encryption_secret = EncryptionSecret::random(ciphersuite, backend);
     let mut largetree = SecretTree::new(
         encryption_secret,
-        TreeSize::from_leaf_count(100_000u32),
+        TreeSize::from_some_count(100_000u32),
         LeafNodeIndex::new(2u32),
     );
     assert!(largetree
@@ -165,7 +165,7 @@ fn increment_generation(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoPr
     let encryption_secret = EncryptionSecret::random(ciphersuite, backend);
     let mut secret_tree = SecretTree::new(
         encryption_secret,
-        TreeSize::from_leaf_count(SIZE as u32),
+        TreeSize::from_some_count(SIZE as u32),
         LeafNodeIndex::new(0u32),
     );
     for i in 0..SIZE {

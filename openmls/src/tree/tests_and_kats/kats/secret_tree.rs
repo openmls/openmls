@@ -89,7 +89,6 @@ pub fn run_test_vector(
 
     use crate::{
         binary_tree::{array_representation::TreeSize, LeafNodeIndex},
-        prelude::SenderRatchetConfiguration,
         schedule::{EncryptionSecret, SenderDataSecret},
         tree::secret_tree::{SecretTree, SecretType},
         versions::ProtocolVersion,
@@ -127,10 +126,7 @@ pub fn run_test_vector(
     let encryption_secret = hex_to_bytes(&test.encryption_secret);
     let num_leaves = test.leaves.len();
 
-    if num_leaves == 1 {
-        // FIXME: testing
-        return Ok(());
-    }
+    log::trace!("Testing tree with {num_leaves} leaves.");
     for (leaf_index, leaf) in test.leaves.iter().enumerate() {
         log::trace!("Testing leaf {leaf_index}");
 
@@ -144,11 +140,12 @@ pub fn run_test_vector(
                     ProtocolVersion::Mls10,
                     ciphersuite,
                 ),
-                TreeSize::from_leaf_count(num_leaves as u32),
+                TreeSize::new(num_leaves as u32),
                 LeafNodeIndex::new(leaf_index as u32),
             );
 
             // Generate the secrets for the `generation`
+            log::trace!("       Computing generation {generation}");
             let (application, handshake) = loop {
                 log::trace!("       Computing generation {generation}");
                 let handshake = secret_tree
@@ -164,33 +161,28 @@ pub fn run_test_vector(
                         ciphersuite,
                         backend,
                         LeafNodeIndex::new(leaf_index as u32),
-                        SecretType::HandshakeSecret,
+                        SecretType::ApplicationSecret,
                     )
                     .unwrap();
                 if handshake.0 == generation {
-                    break (application, handshake);
+                    break (application.1, handshake.1);
                 }
             };
 
-            eprintln!(
-                "app {}\t{}",
-                bytes_to_hex(application.1 .0.as_slice()),
-                bytes_to_hex(application.1 .1.as_slice())
-            );
             assert_eq!(
-                application.1 .0.as_slice(),
+                application.0.as_slice(),
                 &hex_to_bytes(&leaf_generation.application_key)
             );
             assert_eq!(
-                application.1 .1.as_slice(),
+                application.1.as_slice(),
                 &hex_to_bytes(&leaf_generation.application_nonce)
             );
             assert_eq!(
-                handshake.1 .0.as_slice(),
+                handshake.0.as_slice(),
                 &hex_to_bytes(&leaf_generation.handshake_key)
             );
             assert_eq!(
-                handshake.1 .1.as_slice(),
+                handshake.1.as_slice(),
                 &hex_to_bytes(&leaf_generation.handshake_nonce)
             );
         }
