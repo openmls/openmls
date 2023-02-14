@@ -32,6 +32,30 @@ use serde::{self, Deserialize, Serialize};
 use std::{collections::HashSet, convert::TryFrom};
 use tls_codec::{Deserialize as TlsDeserialize, TlsVecU32};
 
+/// ```json
+/// {
+///   "cipher_suite": /* uint16 */,
+///
+///   // Chosen by the generator
+///   "ratchet_tree_before": /* hex-encoded binary data */,
+///
+///   "add_sender": /* uint32 */,
+///   "my_leaf_secret": /* hex-encoded binary data */,
+///   "my_key_package": /* hex-encoded binary data */,
+///   "my_path_secret": /* hex-encoded binary data */,
+///
+///   "update_sender": /* uint32 */,
+///   "update_path": /* hex-encoded binary data */,
+///   "update_group_context": /* hex-encoded binary data */,
+///
+///   // Computed values
+///   "tree_hash_before": /* hex-encoded binary data */,
+///   "root_secret_after_add": /* hex-encoded binary data */
+///   "root_secret_after_update": /* hex-encoded binary data */
+///   "ratchet_tree_after": /* hex-encoded binary data */,
+///   "tree_hash_after": /* hex-encoded binary data */
+/// }
+/// ```
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct TreeKemTestVector {
     pub cipher_suite: u16,
