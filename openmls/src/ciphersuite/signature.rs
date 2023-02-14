@@ -4,7 +4,7 @@
 
 use tls_codec::Serialize;
 
-use super::*;
+use super::{LABEL_PREFIX, *};
 
 /// Signature.
 #[derive(
@@ -36,12 +36,10 @@ pub struct SignContent {
     content: VLBytes,
 }
 
-const SIGN_LABEL_PREFIX: &str = "MLS 1.0";
-
 impl SignContent {
     /// Create a new [`SignContent`] from a string label and the content bytes.
     pub fn new(label: &str, content: VLBytes) -> Self {
-        let label_string = SIGN_LABEL_PREFIX.to_owned() + label;
+        let label_string = LABEL_PREFIX.to_owned() + label;
         let label = label_string.as_bytes().into();
         Self { label, content }
     }
@@ -49,12 +47,7 @@ impl SignContent {
 
 impl From<(&str, &[u8])> for SignContent {
     fn from((label, content): (&str, &[u8])) -> Self {
-        let label_string = SIGN_LABEL_PREFIX.to_owned() + label;
-        let label = label_string.as_bytes().into();
-        Self {
-            label,
-            content: content.into(),
-        }
+        Self::new(label, content.into())
     }
 }
 

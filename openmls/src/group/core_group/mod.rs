@@ -29,22 +29,33 @@ mod test_past_secrets;
 mod test_proposals;
 
 use super::errors::CreateCommitError;
+
 #[cfg(test)]
 use super::errors::CreateGroupContextExtProposalError;
 use super::public_group::create_commit_params::CreateCommitParams;
 use super::public_group::PublicGroup;
 use crate::binary_tree::array_representation::TreeSize;
+#[cfg(test)]
+use std::io::{Error, Read, Write};
 
-use crate::group::config::CryptoConfig;
-use crate::treesync::node::encryption_keys::EncryptionKeyPair;
+use log::{debug, trace};
+use openmls_traits::{key_store::OpenMlsKeyStore, signatures::Signer, types::Ciphersuite};
+use serde::{Deserialize, Serialize};
+use tls_codec::Serialize as TlsSerializeTrait;
+
+use self::{past_secrets::MessageSecretsStore, staged_commit::StagedCommit};
+use super::{
+    errors::{CoreGroupBuildError, CreateAddProposalError, ExporterError, ValidationError},
+    group_context::*,
+};
 use crate::{
     binary_tree::array_representation::LeafNodeIndex,
-    ciphersuite::{signable::Signable, HpkePublicKey},
+    ciphersuite::{signable::Signable, HpkePublicKey, SignaturePublicKey},
     credentials::*,
     error::LibraryError,
     extensions::errors::*,
     framing::{mls_auth_content::AuthenticatedContent, *},
-    group::*,
+    group::{config::CryptoConfig, *},
     key_packages::*,
     messages::{
         group_info::{GroupInfo, GroupInfoTBS, VerifiableGroupInfo},
@@ -54,25 +65,13 @@ use crate::{
     schedule::{message_secrets::*, psk::*, *},
     tree::{secret_tree::SecretTreeError, sender_ratchet::SenderRatchetConfiguration},
     treesync::{
-        node::leaf_node::{Capabilities, Lifetime, OpenMlsLeafNode},
+        node::{
+            encryption_keys::{EncryptionKey, EncryptionKeyPair},
+            leaf_node::{Capabilities, Lifetime, OpenMlsLeafNode},
+        },
         *,
     },
     versions::ProtocolVersion,
-};
-
-use self::{past_secrets::MessageSecretsStore, staged_commit::StagedCommit};
-use log::{debug, trace};
-use openmls_traits::key_store::OpenMlsKeyStore;
-use openmls_traits::signatures::Signer;
-use openmls_traits::types::Ciphersuite;
-use serde::{Deserialize, Serialize};
-#[cfg(test)]
-use std::io::{Error, Read, Write};
-use tls_codec::Serialize as TlsSerializeTrait;
-
-use super::{
-    errors::{CoreGroupBuildError, CreateAddProposalError, ExporterError, ValidationError},
-    group_context::*,
 };
 
 #[derive(Debug)]
@@ -818,6 +817,56 @@ impl CoreGroup {
             backend,
             signer,
         )
+    }
+
+    /// Return supported credentials of all members.
+    // TODO(#1186)
+    #[allow(unused)]
+    pub(crate) fn members_supported_credentials(
+        &self,
+    ) -> impl Iterator<Item = &[CredentialType]> + '_ {
+        self.treesync()
+            .full_leaves()
+            .map(|leaf_node| leaf_node.leaf_node().capabilities().credentials())
+    }
+
+    /// Return currently used credentials of all members.
+    // TODO(#1186)
+    #[allow(unused)]
+    pub(crate) fn members_used_credentials(&self) -> impl Iterator<Item = CredentialType> + '_ {
+        self.treesync()
+            .full_leave_members()
+            .map(|Member { credential, .. }| credential.credential_type())
+    }
+
+    /// Return currently used signature keys of all members.
+    // TODO(#1186)
+    #[allow(unused)]
+    pub(crate) fn signature_keys(
+        &self,
+        exclude_own: bool,
+    ) -> impl Iterator<Item = SignaturePublicKey> + '_ {
+        self.treesync()
+            .full_leave_members()
+            .filter(move |member| {
+                if exclude_own {
+                    member.index != self.own_leaf_index
+                } else {
+                    true
+                }
+            })
+            .map(|Member { signature_key, .. }| SignaturePublicKey::from(signature_key))
+    }
+
+    /// Return currently used encryption keys of all members.
+    // TODO(#1186)
+    #[allow(unused)]
+    pub(crate) fn encryption_keys(&self) -> impl Iterator<Item = EncryptionKey> + '_ {
+        self.treesync()
+            .full_leave_members()
+            .map(|Member { encryption_key, .. }| {
+                EncryptionKey::from(HpkePublicKey::new(encryption_key))
+            })
     }
 }
 
