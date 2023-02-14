@@ -54,7 +54,7 @@ pub struct MlsMessageOut {
 /// ```
 #[derive(Debug, PartialEq, Clone, TlsSerialize, TlsSize)]
 #[cfg_attr(feature = "test-utils", derive(TlsDeserialize))]
-#[repr(u8)]
+#[repr(u16)]
 pub(crate) enum MlsMessageOutBody {
     /// Plaintext message
     #[tls_codec(discriminant = 1)]
