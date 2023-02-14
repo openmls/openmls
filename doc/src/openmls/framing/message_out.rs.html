@@ -195,6 +195,15 @@
 <a href="#195" id="195">195</a>
 <a href="#196" id="196">196</a>
 <a href="#197" id="197">197</a>
+<a href="#198" id="198">198</a>
+<a href="#199" id="199">199</a>
+<a href="#200" id="200">200</a>
+<a href="#201" id="201">201</a>
+<a href="#202" id="202">202</a>
+<a href="#203" id="203">203</a>
+<a href="#204" id="204">204</a>
+<a href="#205" id="205">205</a>
+<a href="#206" id="206">206</a>
 </pre><pre class="rust"><code><span class="doccomment">//! MLS Message (Output)
 //!
 //! This module defines the [`MlsMessageOut`] structs which implements the
@@ -291,6 +300,15 @@
         <span class="self">Self </span>{
             version: group_info.group_context().protocol_version(),
             body: MlsMessageOutBody::GroupInfo(group_info),
+        }
+    }
+}
+
+<span class="kw">impl </span>From&lt;KeyPackage&gt; <span class="kw">for </span>MlsMessageOut {
+    <span class="kw">fn </span>from(key_package: KeyPackage) -&gt; <span class="self">Self </span>{
+        <span class="self">Self </span>{
+            version: key_package.protocol_version(),
+            body: MlsMessageOutBody::KeyPackage(key_package),
         }
     }
 }

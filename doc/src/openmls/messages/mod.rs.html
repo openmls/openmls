@@ -365,8 +365,6 @@
 <a href="#365" id="365">365</a>
 <a href="#366" id="366">366</a>
 <a href="#367" id="367">367</a>
-<a href="#368" id="368">368</a>
-<a href="#369" id="369">369</a>
 </pre><pre class="rust"><code><span class="doccomment">//! # Messages
 //!
 //! This module contains the types and implementations for Commit &amp; Welcome messages,
@@ -703,10 +701,8 @@
         <span class="self">self
     </span>}
 
-    <span class="comment">// XXX[KAT]: #1051 Used in kat_messages.
-    //           Get in when kat&#39;s are in again.
-    </span><span class="attr">#[cfg(test)]
-    </span><span class="kw">pub fn </span>_random_encoded(
+    <span class="attr">#[cfg(test)]
+    </span><span class="kw">pub fn </span>random_encoded(
         ciphersuite: Ciphersuite,
         backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider,
         version: ProtocolVersion,
