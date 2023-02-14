@@ -10,8 +10,6 @@ mod apply_proposals;
 mod new_from_welcome;
 
 // Crate
-pub(crate) mod create_commit;
-pub(crate) mod create_commit_params;
 pub(crate) mod new_from_external_init;
 pub(crate) mod past_secrets;
 pub(crate) mod process;
@@ -30,6 +28,13 @@ mod test_past_secrets;
 #[cfg(test)]
 mod test_proposals;
 
+use super::errors::CreateCommitError;
+
+#[cfg(test)]
+use super::errors::CreateGroupContextExtProposalError;
+use super::public_group::create_commit_params::CreateCommitParams;
+use super::public_group::PublicGroup;
+use crate::binary_tree::array_representation::TreeSize;
 #[cfg(test)]
 use std::io::{Error, Read, Write};
 
@@ -39,15 +44,12 @@ use serde::{Deserialize, Serialize};
 use tls_codec::Serialize as TlsSerializeTrait;
 
 use self::{past_secrets::MessageSecretsStore, staged_commit::StagedCommit};
-#[cfg(test)]
-use super::errors::CreateGroupContextExtProposalError;
 use super::{
     errors::{CoreGroupBuildError, CreateAddProposalError, ExporterError, ValidationError},
     group_context::*,
-    public_group::PublicGroup,
 };
 use crate::{
-    binary_tree::array_representation::{LeafNodeIndex, TreeSize},
+    binary_tree::array_representation::LeafNodeIndex,
     ciphersuite::{signable::Signable, HpkePublicKey, SignaturePublicKey},
     credentials::*,
     error::LibraryError,
@@ -800,6 +802,22 @@ impl CoreGroup {
             self.own_leaf_index(),
         );
         backend.key_store().delete::<Vec<EncryptionKeyPair>>(&k.0)
+    }
+
+    pub(crate) fn create_commit<KeyStore: OpenMlsKeyStore>(
+        &self,
+        params: CreateCommitParams,
+        backend: &impl OpenMlsCryptoProvider<KeyStoreProvider = KeyStore>,
+        signer: &impl Signer,
+    ) -> Result<CreateCommitResult, CreateCommitError<KeyStore::Error>> {
+        self.public_group.create_commit(
+            params,
+            self.own_leaf_index(),
+            self.use_ratchet_tree_extension,
+            self.group_epoch_secrets().init_secret(),
+            backend,
+            signer,
+        )
     }
 
     /// Return supported credentials of all members.

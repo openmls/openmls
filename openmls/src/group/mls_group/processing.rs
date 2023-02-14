@@ -2,10 +2,12 @@
 
 use std::mem;
 
-use core_group::{create_commit_params::CreateCommitParams, staged_commit::StagedCommit};
+use core_group::staged_commit::StagedCommit;
 use openmls_traits::signatures::Signer;
 
-use crate::messages::group_info::GroupInfo;
+use crate::{
+    group::public_group::create_commit_params::CreateCommitParams, messages::group_info::GroupInfo,
+};
 
 use crate::group::errors::MergeCommitError;
 

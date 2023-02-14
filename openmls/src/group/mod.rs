@@ -34,7 +34,7 @@ pub use mls_group::*;
 
 // Tests
 #[cfg(test)]
-pub(crate) use create_commit_params::*;
+pub(crate) use public_group::create_commit_params::*;
 #[cfg(any(feature = "test-utils", test))]
 pub(crate) mod tests;
 #[cfg(any(feature = "test-utils", test))]

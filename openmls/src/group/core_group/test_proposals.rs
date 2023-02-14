@@ -12,9 +12,9 @@ use crate::{
     framing::{mls_auth_content::AuthenticatedContent, FramingParameters, WireFormat},
     group::{config::CryptoConfig, test_core_group::setup_client},
     group::{
-        create_commit_params::CreateCommitParams,
         errors::*,
         proposals::{ProposalQueue, ProposalStore, QueuedProposal},
+        public_group::create_commit_params::CreateCommitParams,
         GroupContext, GroupId,
     },
     key_packages::KeyPackageBundle,
