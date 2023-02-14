@@ -1003,6 +1003,7 @@
 <a href="#1003" id="1003">1003</a>
 <a href="#1004" id="1004">1004</a>
 <a href="#1005" id="1005">1005</a>
+<a href="#1006" id="1006">1006</a>
 </pre><pre class="rust"><code><span class="doccomment">//! This module contains the [`LeafNode`] struct and its implementation.
 </span><span class="kw">use </span>openmls_traits::{
     key_store::OpenMlsKeyStore, signatures::Signer, types::Ciphersuite, OpenMlsCryptoProvider,
@@ -1064,6 +1065,7 @@
 ///     opaque signature&lt;V&gt;;
 /// } LeafNode;
 /// ```
+</span><span class="comment">// TODO(#1242): Do not derive `TlsDeserialize`.
 </span><span class="attr">#[derive(
     Debug, Clone, PartialEq, Eq, Serialize, Deserialize, TlsSerialize, TlsDeserialize, TlsSize,
 )]
@@ -1141,7 +1143,7 @@
         backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider&lt;KeyStoreProvider = KeyStore&gt;,
         signer: <span class="kw-2">&amp;</span><span class="kw">impl </span>Signer,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, LeafNodeGenerationError&lt;KeyStore::Error&gt;&gt; {
-        <span class="self">Self</span>::generate(
+        <span class="self">Self</span>::generate_update(
             config,
             CredentialWithKey {
                 credential: <span class="self">self</span>.payload.credential.clone(),
@@ -1161,7 +1163,7 @@
     ///
     /// This function can be used when generating an update. In most other cases
     /// a leaf node should be generated as part of a new [`KeyPackage`].
-    </span><span class="kw">pub fn </span>generate&lt;KeyStore: OpenMlsKeyStore&gt;(
+    </span><span class="kw">pub fn </span>generate_update&lt;KeyStore: OpenMlsKeyStore&gt;(
         config: CryptoConfig,
         credential_with_key: CredentialWithKey,
         capabilities: Capabilities,

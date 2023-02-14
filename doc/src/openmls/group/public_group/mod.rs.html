@@ -448,7 +448,7 @@
     /// of the sender.
     ///
     /// The proposals must be validated before calling this function.
-    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>free_leaf_index&lt;<span class="lifetime">&#39;a</span>&gt;(
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>free_leaf_index_after_remove&lt;<span class="lifetime">&#39;a</span>&gt;(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         <span class="kw-2">mut </span>inline_proposals: <span class="kw">impl </span>Iterator&lt;Item = <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>Proposal&gt;&gt;,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;LeafNodeIndex, LibraryError&gt; {

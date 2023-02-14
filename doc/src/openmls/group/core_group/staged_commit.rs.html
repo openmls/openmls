@@ -569,7 +569,12 @@
 <a href="#569" id="569">569</a>
 <a href="#570" id="570">570</a>
 <a href="#571" id="571">571</a>
-</pre><pre class="rust"><code><span class="kw">use </span>openmls_traits::key_store::OpenMlsKeyStore;
+<a href="#572" id="572">572</a>
+<a href="#573" id="573">573</a>
+</pre><pre class="rust"><code><span class="kw">use </span>core::fmt::Debug;
+<span class="kw">use </span>std::{collections::HashSet, mem};
+
+<span class="kw">use </span>openmls_traits::key_store::OpenMlsKeyStore;
 
 <span class="kw">use super</span>::{
     <span class="kw">super</span>::errors::<span class="kw-2">*</span>,
@@ -588,8 +593,6 @@
         leaf_node::{LeafNodeTbs, OpenMlsLeafNode, TreeInfoTbs, VerifiableLeafNode},
     },
 };
-<span class="kw">use </span>core::fmt::Debug;
-<span class="kw">use </span>std::{collections::HashSet, mem};
 
 <span class="kw">impl </span>CoreGroup {
     <span class="doccomment">/// Stages a commit message that was sent by another group member.
@@ -751,7 +754,8 @@
                         <span class="prelude-val">None
                     </span>}
                 });
-                <span class="self">self</span>.public_group.free_leaf_index(inline_proposals)<span class="question-mark">?
+                <span class="self">self</span>.public_group
+                    .free_leaf_index_after_remove(inline_proposals)<span class="question-mark">?
             </span>}
             <span class="kw">_ </span>=&gt; {
                 <span class="kw">return </span><span class="prelude-val">Err</span>(StageCommitError::SenderTypeExternal);

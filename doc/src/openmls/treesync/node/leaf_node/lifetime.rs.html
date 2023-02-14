@@ -123,14 +123,15 @@
 /// The value is in seconds and amounts to 3 * 28 Days, i.e. about 3 months.
 </span><span class="kw">const </span>DEFAULT_KEY_PACKAGE_LIFETIME_SECONDS: u64 = <span class="number">60 </span>* <span class="number">60 </span>* <span class="number">24 </span>* <span class="number">28 </span>* <span class="number">3</span>;
 
-<span class="doccomment">/// The maximum total lifetime range that is acceptable for a leaf node.
-/// The value is in seconds and amounts to 3 * 28 Days, i.e., about 3 months.
-</span><span class="kw">const </span>DEFAULT_MAX_LEAF_NODE_LIFETIME_RANGE_SECONDS: u64 = <span class="number">60 </span>* <span class="number">60 </span>* <span class="number">24 </span>* <span class="number">28 </span>* <span class="number">3</span>;
-
 <span class="doccomment">/// This value is used as the default amount of time (in seconds) the lifetime
 /// of a `KeyPackage` is extended into the past to allow for skewed clocks. The
 /// value is in seconds and amounts to 1h.
 </span><span class="kw">const </span>DEFAULT_KEY_PACKAGE_LIFETIME_MARGIN_SECONDS: u64 = <span class="number">60 </span>* <span class="number">60</span>;
+
+<span class="doccomment">/// The maximum total lifetime range that is acceptable for a leaf node.
+/// The value is in seconds and amounts to 3 * 28 Days, i.e., about 3 months.
+</span><span class="kw">const </span>MAX_LEAF_NODE_LIFETIME_RANGE_SECONDS: u64 =
+    DEFAULT_KEY_PACKAGE_LIFETIME_MARGIN_SECONDS + DEFAULT_KEY_PACKAGE_LIFETIME_SECONDS;
 
 <span class="doccomment">/// The lifetime represents the times between which clients will
 /// consider a KeyPackage valid. This time is represented as an absolute time,
@@ -193,8 +194,7 @@
     /// Applications MUST define a maximum total lifetime that is acceptable for a LeafNode,
     /// and reject any LeafNode where the total lifetime is longer than this duration.
     </span><span class="kw">pub fn </span>has_acceptable_range(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; bool {
-        <span class="self">self</span>.not_after.saturating_sub(<span class="self">self</span>.not_before)
-            &lt;= DEFAULT_MAX_LEAF_NODE_LIFETIME_RANGE_SECONDS
+        <span class="self">self</span>.not_after.saturating_sub(<span class="self">self</span>.not_before) &lt;= MAX_LEAF_NODE_LIFETIME_RANGE_SECONDS
     }
 }
 

@@ -124,22 +124,16 @@
 <a href="#124" id="124">124</a>
 <a href="#125" id="125">125</a>
 <a href="#126" id="126">126</a>
-<a href="#127" id="127">127</a>
-<a href="#128" id="128">128</a>
-<a href="#129" id="129">129</a>
-<a href="#130" id="130">130</a>
-</pre><pre class="rust"><code><span class="kw">use crate</span>::{
-    binary_tree::array_representation::LeafNodeIndex,
-    group::errors::ExternalCommitError,
-    messages::proposals::{ExternalInitProposal, Proposal},
-    treesync::node::Node,
-};
-
-<span class="kw">use super</span>::{
+</pre><pre class="rust"><code><span class="kw">use super</span>::{
     create_commit_params::{CommitType, CreateCommitParams},
     CoreGroup,
 };
-<span class="kw">use </span><span class="kw">crate</span>::group::core_group::<span class="kw-2">*</span>;
+<span class="kw">use crate</span>::{
+    binary_tree::array_representation::LeafNodeIndex,
+    group::{core_group::<span class="kw-2">*</span>, errors::ExternalCommitError},
+    messages::proposals::{ExternalInitProposal, Proposal},
+    treesync::node::Node,
+};
 
 <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">type </span>ExternalCommitResult = (CoreGroup, CreateCommitResult);
 
@@ -152,6 +146,9 @@
     ///
     /// Returns the new `CoreGroup` object, as well as the `PublicMessage`
     /// containing the commit.
+    ///
+    /// Note: If there is a group member in the group with the same identity as us,
+    /// this will create a remove proposal.
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>join_by_external_commit(
         backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider,
         signer: <span class="kw-2">&amp;</span><span class="kw">impl </span>Signer,
@@ -214,20 +211,15 @@
         </span><span class="kw">let </span>params_credential_with_key = params
             .take_credential_with_key()
             .ok_or(ExternalCommitError::MissingCredential)<span class="question-mark">?</span>;
-        <span class="kw">for </span>Member {
-            index,
-            signature_key,
-            ..
-        } <span class="kw">in </span>public_group.members()
-        {
-            <span class="kw">if </span>signature_key == params_credential_with_key.signature_key.as_slice() {
-                <span class="kw">let </span>remove_proposal = Proposal::Remove(RemoveProposal { removed: index });
-                inline_proposals.push(remove_proposal);
-                <span class="kw">break</span>;
-            };
-        }
+        <span class="kw">if let </span><span class="prelude-val">Some</span>(us) = public_group.members().find(|member| {
+            member.signature_key == params_credential_with_key.signature_key.as_slice()
+        }) {
+            <span class="kw">let </span>remove_proposal = Proposal::Remove(RemoveProposal { removed: us.index });
+            inline_proposals.push(remove_proposal);
+        };
 
-        <span class="kw">let </span>own_leaf_index = public_group.free_leaf_index(inline_proposals.iter().map(<span class="prelude-val">Some</span>))<span class="question-mark">?</span>;
+        <span class="kw">let </span>own_leaf_index =
+            public_group.free_leaf_index_after_remove(inline_proposals.iter().map(<span class="prelude-val">Some</span>))<span class="question-mark">?</span>;
 
         <span class="kw">let </span>group = CoreGroup {
             public_group,
