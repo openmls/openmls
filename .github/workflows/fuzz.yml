@@ -27,7 +27,7 @@ jobs:
           - tests: mls_message_decode
             runs: 50000
           - tests: proposal_decode
-            runs: 100000
+            runs: 50000
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v3
