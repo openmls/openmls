@@ -19,7 +19,6 @@ use crate::{
     },
     messages::{group_info::GroupInfoTBS, Commit, Welcome},
     schedule::{psk::PskSecret, InitSecret, JoinerSecret, KeySchedule},
-    versions::ProtocolVersion,
 };
 
 use super::{
@@ -242,12 +241,7 @@ impl PublicGroup {
                 )
                 .map_err(LibraryError::unexpected_crypto_error)?;
             // Create welcome message
-            let welcome = Welcome::new(
-                ProtocolVersion::Mls10,
-                self.ciphersuite(),
-                encrypted_secrets,
-                encrypted_group_info,
-            );
+            let welcome = Welcome::new(self.ciphersuite(), encrypted_secrets, encrypted_group_info);
             Some(welcome)
         } else {
             None
