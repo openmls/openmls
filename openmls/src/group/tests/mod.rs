@@ -1,7 +1,7 @@
 //! Unit tests for the core group
 
-// #[cfg(feature = "test-utils")]
-// pub mod kat_messages;
+#[cfg(test)]
+pub mod kat_messages;
 
 // #[cfg(feature = "test-utils")]
 // pub mod kat_transcripts;
