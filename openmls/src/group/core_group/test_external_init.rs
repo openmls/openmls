@@ -2,6 +2,7 @@ use crate::{
     framing::{FramingParameters, WireFormat},
     group::{
         errors::ExternalCommitError,
+        public_group::create_commit_params::CreateCommitParams,
         public_group::errors::CreationFromExternalError,
         test_core_group::{setup_alice_group, setup_client},
     },
@@ -13,7 +14,7 @@ use crate::{
 use openmls_rust_crypto::OpenMlsRustCrypto;
 use openmls_traits::{types::Ciphersuite, OpenMlsCryptoProvider};
 
-use super::{create_commit_params::CreateCommitParams, proposals::ProposalStore, CoreGroup};
+use super::{proposals::ProposalStore, CoreGroup};
 
 #[apply(ciphersuites_and_backends)]
 fn test_external_init(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {

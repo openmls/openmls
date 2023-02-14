@@ -8,8 +8,8 @@ use crate::{
     credentials::CredentialWithKey,
     error::LibraryError,
     group::{
-        config::CryptoConfig, core_group::create_commit_params::CommitType,
-        errors::CreateCommitError,
+        config::CryptoConfig, errors::CreateCommitError,
+        public_group::create_commit_params::CommitType,
     },
     key_packages::{KeyPackage, KeyPackageCreationResult},
     schedule::CommitSecret,
