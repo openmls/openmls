@@ -83,6 +83,17 @@ pub use validation::*;
 pub(crate) mod test_framing;
 
 /// Wire format of MLS messages.
+///
+/// // draft-ietf-mls-protocol-17
+/// | Value           | Name                     | Recommended | Reference |
+/// |-----------------|--------------------------|-------------|-----------|
+/// | 0x0000          | RESERVED                 | N/A         | RFC XXXX  |
+/// | 0x0001          | mls_plaintext            | Y           | RFC XXXX  |
+/// | 0x0002          | mls_ciphertext           | Y           | RFC XXXX  |
+/// | 0x0003          | mls_welcome              | Y           | RFC XXXX  |
+/// | 0x0004          | mls_group_info           | Y           | RFC XXXX  |
+/// | 0x0005          | mls_key_package          | Y           | RFC XXXX  |
+/// | 0xf000 - 0xffff | Reserved for Private Use | N/A         | RFC XXXX  |
 #[derive(
     PartialEq, Eq, Clone, Copy, Debug, Serialize, Deserialize, TlsDeserialize, TlsSerialize, TlsSize,
 )]

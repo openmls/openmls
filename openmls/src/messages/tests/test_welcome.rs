@@ -181,14 +181,10 @@ fn test_welcome_ciphersuite_mismatch(
 
 #[apply(ciphersuites_and_backends)]
 fn test_welcome_msg(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
-    test_welcome_message_with_version(ciphersuite, backend, ProtocolVersion::Mls10);
+    test_welcome_message(ciphersuite, backend);
 }
 
-fn test_welcome_message_with_version(
-    ciphersuite: Ciphersuite,
-    backend: &impl OpenMlsCryptoProvider,
-    version: ProtocolVersion,
-) {
+fn test_welcome_message(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
     // We use this dummy group info in all test cases.
     let group_info_tbs = {
         let group_context = GroupContext::new(
@@ -257,7 +253,7 @@ fn test_welcome_message_with_version(
         .expect("An unexpected error occurred.");
 
     // Now build the welcome message.
-    let msg = Welcome::new(version, ciphersuite, secrets, encrypted_group_info.clone());
+    let msg = Welcome::new(ciphersuite, secrets, encrypted_group_info.clone());
 
     // Encode, decode and re-assemble
     let msg_encoded = msg
@@ -268,7 +264,6 @@ fn test_welcome_message_with_version(
         .expect("An unexpected error occurred.");
 
     // Check that the welcome message is the same
-    assert_eq!(msg_decoded.version, version);
     assert_eq!(msg_decoded.cipher_suite, ciphersuite);
     for secret in msg_decoded.secrets.iter() {
         assert_eq!(new_member.as_slice(), secret.new_member.as_slice());

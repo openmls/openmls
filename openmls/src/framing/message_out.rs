@@ -54,7 +54,7 @@ pub struct MlsMessageOut {
 /// ```
 #[derive(Debug, PartialEq, Clone, TlsSerialize, TlsSize)]
 #[cfg_attr(feature = "test-utils", derive(TlsDeserialize))]
-#[repr(u8)]
+#[repr(u16)]
 pub(crate) enum MlsMessageOutBody {
     /// Plaintext message
     #[tls_codec(discriminant = 1)]
@@ -94,6 +94,15 @@ impl From<GroupInfo> for MlsMessageOut {
         Self {
             version: group_info.group_context().protocol_version(),
             body: MlsMessageOutBody::GroupInfo(group_info),
+        }
+    }
+}
+
+impl From<KeyPackage> for MlsMessageOut {
+    fn from(key_package: KeyPackage) -> Self {
+        Self {
+            version: key_package.protocol_version(),
+            body: MlsMessageOutBody::KeyPackage(key_package),
         }
     }
 }

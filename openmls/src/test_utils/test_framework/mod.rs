@@ -46,7 +46,6 @@ use tls_codec::*;
 
 pub mod client;
 pub mod errors;
-pub mod messages;
 
 use self::client::*;
 use self::errors::*;
