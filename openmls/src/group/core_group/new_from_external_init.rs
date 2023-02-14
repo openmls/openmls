@@ -1,15 +1,13 @@
-use crate::{
-    binary_tree::array_representation::LeafNodeIndex,
-    group::errors::ExternalCommitError,
-    messages::proposals::{ExternalInitProposal, Proposal},
-    treesync::node::Node,
-};
-
 use super::{
     create_commit_params::{CommitType, CreateCommitParams},
     CoreGroup,
 };
-use crate::group::core_group::*;
+use crate::{
+    binary_tree::array_representation::LeafNodeIndex,
+    group::{core_group::*, errors::ExternalCommitError},
+    messages::proposals::{ExternalInitProposal, Proposal},
+    treesync::node::Node,
+};
 
 pub(crate) type ExternalCommitResult = (CoreGroup, CreateCommitResult);
 
@@ -22,6 +20,9 @@ impl CoreGroup {
     ///
     /// Returns the new `CoreGroup` object, as well as the `PublicMessage`
     /// containing the commit.
+    ///
+    /// Note: If there is a group member in the group with the same identity as us,
+    /// this will create a remove proposal.
     pub(crate) fn join_by_external_commit(
         backend: &impl OpenMlsCryptoProvider,
         signer: &impl Signer,
@@ -84,20 +85,15 @@ impl CoreGroup {
         let params_credential_with_key = params
             .take_credential_with_key()
             .ok_or(ExternalCommitError::MissingCredential)?;
-        for Member {
-            index,
-            signature_key,
-            ..
-        } in public_group.members()
-        {
-            if signature_key == params_credential_with_key.signature_key.as_slice() {
-                let remove_proposal = Proposal::Remove(RemoveProposal { removed: index });
-                inline_proposals.push(remove_proposal);
-                break;
-            };
-        }
+        if let Some(us) = public_group.members().find(|member| {
+            member.signature_key == params_credential_with_key.signature_key.as_slice()
+        }) {
+            let remove_proposal = Proposal::Remove(RemoveProposal { removed: us.index });
+            inline_proposals.push(remove_proposal);
+        };
 
-        let own_leaf_index = public_group.free_leaf_index(inline_proposals.iter().map(Some))?;
+        let own_leaf_index =
+            public_group.free_leaf_index_after_remove(inline_proposals.iter().map(Some))?;
 
         let group = CoreGroup {
             public_group,

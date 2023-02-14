@@ -6,7 +6,6 @@ use crate::{
         core_group::*, errors::CreateCommitError,
         public_group::diff::process_path::PathProcessingResult,
     },
-    versions::ProtocolVersion,
 };
 
 use super::{
@@ -239,12 +238,7 @@ impl CoreGroup {
                 )
                 .map_err(LibraryError::unexpected_crypto_error)?;
             // Create welcome message
-            let welcome = Welcome::new(
-                ProtocolVersion::Mls10,
-                self.ciphersuite(),
-                encrypted_secrets,
-                encrypted_group_info,
-            );
+            let welcome = Welcome::new(self.ciphersuite(), encrypted_secrets, encrypted_group_info);
             Some(welcome)
         } else {
             None

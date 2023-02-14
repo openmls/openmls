@@ -25,6 +25,14 @@ use openmls_traits::{
 };
 use serde::{Deserialize, Serialize};
 
+use self::{
+    diff::{StagedTreeSyncDiff, TreeSyncDiff},
+    node::{
+        encryption_keys::{EncryptionKey, EncryptionKeyPair},
+        leaf_node::{Capabilities, LeafNodeSource, Lifetime, OpenMlsLeafNode},
+    },
+    treesync_node::{TreeSyncLeafNode, TreeSyncNode, TreeSyncParentNode},
+};
 use crate::{
     binary_tree::{
         array_representation::{is_node_in_tree, tree::TreeNode, LeafNodeIndex, TreeSize},
@@ -38,15 +46,6 @@ use crate::{
     group::{config::CryptoConfig, Member},
     messages::{PathSecret, PathSecretError},
     schedule::CommitSecret,
-};
-
-use self::{
-    diff::{StagedTreeSyncDiff, TreeSyncDiff},
-    node::{
-        encryption_keys::{EncryptionKey, EncryptionKeyPair},
-        leaf_node::{Capabilities, LeafNodeSource, Lifetime, OpenMlsLeafNode},
-    },
-    treesync_node::{TreeSyncLeafNode, TreeSyncNode, TreeSyncParentNode},
 };
 
 // Private
@@ -261,11 +260,10 @@ impl TreeSync {
     }
 
     /// Returns a list of [`LeafNodeIndex`]es containing only full nodes.
-    pub(crate) fn full_leaves(&self) -> Vec<&OpenMlsLeafNode> {
+    pub(crate) fn full_leaves(&self) -> impl Iterator<Item = &OpenMlsLeafNode> {
         self.tree
             .leaves()
             .filter_map(|(_, tsn)| tsn.node().as_ref())
-            .collect()
     }
 
     /// Returns the [`LeafNodeIndex`] of the leaf that contains the given
