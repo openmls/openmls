@@ -105,6 +105,15 @@ impl SignatureKeyPair {
         })
     }
 
+    /// Create a new signature key pair from the raw keys.
+    pub fn from_raw(signature_scheme: SignatureScheme, private: Vec<u8>, public: Vec<u8>) -> Self {
+        Self {
+            private,
+            public,
+            signature_scheme,
+        }
+    }
+
     fn id(&self) -> Vec<u8> {
         id(&self.public, self.signature_scheme)
     }
@@ -139,5 +148,10 @@ impl SignatureKeyPair {
     /// Get the [`SignatureScheme`] of this signature key.
     pub fn signature_scheme(&self) -> SignatureScheme {
         self.signature_scheme
+    }
+
+    #[cfg(feature = "test-utils")]
+    pub fn private(&self) -> &[u8] {
+        &self.private
     }
 }

@@ -1,6 +1,8 @@
 use crate::{
     binary_tree::LeafNodeIndex,
-    ciphersuite::{hash_ref::KeyPackageRef, signable::Signable, AeadKey, AeadNonce, Mac, Secret},
+    ciphersuite::{
+        hash_ref::KeyPackageRef, hpke, signable::Signable, AeadKey, AeadNonce, Mac, Secret,
+    },
     extensions::Extensions,
     group::{config::CryptoConfig, errors::WelcomeError, GroupId, MlsGroup, MlsGroupConfigBuilder},
     messages::{
@@ -81,16 +83,15 @@ fn test_welcome_ciphersuite_mismatch(
 
     let egs = welcome.secrets[0].clone();
 
-    let group_secrets_bytes = backend
-        .crypto()
-        .hpke_open(
-            ciphersuite.hpke_config(),
-            egs.encrypted_group_secrets(),
-            bob_private_key.as_slice(),
-            &[],
-            &[],
-        )
-        .expect("Could not decrypt group secrets.");
+    let group_secrets_bytes = hpke::decrypt_with_label(
+        bob_private_key.as_slice(),
+        "Welcome",
+        &[],
+        egs.encrypted_group_secrets(),
+        ciphersuite,
+        backend.crypto(),
+    )
+    .expect("Could not decrypt group secrets.");
     let group_secrets = GroupSecrets::tls_deserialize(&mut group_secrets_bytes.as_slice())
         .expect("Could not deserialize group secrets.")
         .config(ciphersuite, ProtocolVersion::Mls10);
@@ -227,19 +228,20 @@ fn test_welcome_message_with_version(
             .expect("Not enough randomness.")
             .as_slice(),
     );
-    let hpke_info = b"group info welcome test info";
-    let hpke_aad = b"group info welcome test aad";
-    let hpke_input = b"these should be the group secrets";
+    let hpke_context = b"group info welcome test info";
+    let group_secrets = b"these should be the group secrets";
     let new_member = KeyPackageRef::from_slice(&[0u8; 16]);
     let secrets = vec![EncryptedGroupSecrets {
         new_member: new_member.clone(),
-        encrypted_group_secrets: backend.crypto().hpke_seal(
-            ciphersuite.hpke_config(),
+        encrypted_group_secrets: hpke::encrypt_with_label(
             receiver_key_pair.public.as_slice(),
-            hpke_info,
-            hpke_aad,
-            hpke_input,
-        ),
+            "Welcome",
+            hpke_context,
+            group_secrets,
+            ciphersuite,
+            backend.crypto(),
+        )
+        .unwrap(),
     }];
 
     // Encrypt the group info.
@@ -270,17 +272,16 @@ fn test_welcome_message_with_version(
     assert_eq!(msg_decoded.cipher_suite, ciphersuite);
     for secret in msg_decoded.secrets.iter() {
         assert_eq!(new_member.as_slice(), secret.new_member.as_slice());
-        let ptxt = backend
-            .crypto()
-            .hpke_open(
-                ciphersuite.hpke_config(),
-                &secret.encrypted_group_secrets,
-                &receiver_key_pair.private,
-                hpke_info,
-                hpke_aad,
-            )
-            .expect("Error decrypting valid ciphertext in Welcome message test.");
-        assert_eq!(&hpke_input[..], &ptxt[..]);
+        let ptxt = hpke::decrypt_with_label(
+            &receiver_key_pair.private,
+            "Welcome",
+            hpke_context,
+            &secret.encrypted_group_secrets,
+            ciphersuite,
+            backend.crypto(),
+        )
+        .expect("Error decrypting valid ciphertext in Welcome message test.");
+        assert_eq!(&group_secrets[..], &ptxt[..]);
     }
     assert_eq!(
         msg_decoded.encrypted_group_info.as_slice(),

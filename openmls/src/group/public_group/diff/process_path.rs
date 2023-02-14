@@ -117,7 +117,7 @@ impl<'a> PublicGroupDiff<'a> {
             &serialized_group_context,
             &exclusion_list,
             leaf_index,
-        );
+        )?;
         let leaf_node = self
             .diff
             .leaf(leaf_index)

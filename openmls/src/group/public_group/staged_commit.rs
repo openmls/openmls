@@ -133,7 +133,7 @@ impl PublicGroup {
                         None
                     }
                 });
-                self.free_leaf_index(inline_proposals)?
+                self.free_leaf_index_after_remove(inline_proposals)?
             }
             _ => {
                 return Err(StageCommitError::SenderTypeExternal);

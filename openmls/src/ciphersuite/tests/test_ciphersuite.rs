@@ -15,20 +15,24 @@ fn test_hpke_seal_open(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoPro
             .expect("Not enough randomness.")
             .as_slice(),
     );
-    let ciphertext =
-        backend
-            .crypto()
-            .hpke_seal(ciphersuite.hpke_config(), &kp.public, &[], &[], plaintext);
-    let decrypted_payload = backend
-        .crypto()
-        .hpke_open(
-            ciphersuite.hpke_config(),
-            &ciphertext,
-            &kp.private,
-            &[],
-            &[],
-        )
-        .expect("Unexpected error while decrypting a valid ciphertext.");
+    let ciphertext = hpke::encrypt_with_label(
+        &kp.public,
+        "label",
+        &[1, 2, 3],
+        plaintext,
+        ciphersuite,
+        backend.crypto(),
+    )
+    .unwrap();
+    let decrypted_payload = hpke::decrypt_with_label(
+        &kp.private,
+        "label",
+        &[1, 2, 3],
+        &ciphertext,
+        ciphersuite,
+        backend.crypto(),
+    )
+    .expect("Unexpected error while decrypting a valid ciphertext.");
     assert_eq!(decrypted_payload, plaintext);
 
     let mut broken_kem_output = ciphertext.kem_output.clone();
@@ -44,31 +48,29 @@ fn test_hpke_seal_open(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoPro
         ciphertext: broken_ciphertext,
     };
     assert_eq!(
-        backend
-            .crypto()
-            .hpke_open(
-                ciphersuite.hpke_config(),
-                &broken_ciphertext1,
-                &kp.private,
-                &[],
-                &[]
-            )
-            .map_err(|_| CryptoError::HpkeDecryptionError)
-            .expect_err("Erroneously correct ciphertext decryption of broken ciphertext."),
+        hpke::decrypt_with_label(
+            &kp.private,
+            "label",
+            &[1, 2, 3],
+            &broken_ciphertext1,
+            ciphersuite,
+            backend.crypto(),
+        )
+        .map_err(|_| CryptoError::HpkeDecryptionError)
+        .expect_err("Erroneously correct ciphertext decryption of broken ciphertext."),
         CryptoError::HpkeDecryptionError
     );
     assert_eq!(
-        backend
-            .crypto()
-            .hpke_open(
-                ciphersuite.hpke_config(),
-                &broken_ciphertext2,
-                &kp.private,
-                &[],
-                &[]
-            )
-            .map_err(|_| CryptoError::HpkeDecryptionError)
-            .expect_err("Erroneously correct ciphertext decryption of broken ciphertext."),
+        hpke::decrypt_with_label(
+            &kp.private,
+            "label",
+            &[1, 2, 3],
+            &broken_ciphertext2,
+            ciphersuite,
+            backend.crypto(),
+        )
+        .map_err(|_| CryptoError::HpkeDecryptionError)
+        .expect_err("Erroneously correct ciphertext decryption of broken ciphertext."),
         CryptoError::HpkeDecryptionError
     );
 }

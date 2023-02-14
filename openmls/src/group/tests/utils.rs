@@ -4,21 +4,20 @@
 //! Most tests require to set up groups, clients, credentials, and identities.
 //! This module implements helpers to do that.
 
-use std::cell::RefCell;
-use std::collections::HashMap;
+use std::{cell::RefCell, collections::HashMap};
 
-use crate::{
-    credentials::*, framing::*, group::*, key_packages::*, test_utils::*,
-    versions::ProtocolVersion, *,
-};
-use ::rand::rngs::OsRng;
-use ::rand::RngCore;
 use config::CryptoConfig;
 use openmls_basic_credential::SignatureKeyPair;
-use openmls_traits::types::SignatureScheme;
-use openmls_traits::OpenMlsCryptoProvider;
-use openmls_traits::{key_store::OpenMlsKeyStore, signatures::Signer};
+use openmls_traits::{
+    key_store::OpenMlsKeyStore, signatures::Signer, types::SignatureScheme, OpenMlsCryptoProvider,
+};
+use rand::{rngs::OsRng, RngCore};
 use tls_codec::Serialize;
+
+use crate::{
+    ciphersuite::signable::Signable, credentials::*, framing::*, group::*, key_packages::*,
+    messages::ConfirmationTag, test_utils::*, versions::ProtocolVersion, *,
+};
 
 /// Configuration of a client meant to be used in a test setup.
 #[derive(Clone)]
@@ -380,8 +379,6 @@ pub(crate) fn resign_message(
     backend: &impl OpenMlsCryptoProvider,
     signer: &impl Signer,
 ) -> PublicMessage {
-    use prelude::signable::Signable;
-
     let serialized_context = alice_group
         .export_group_context()
         .tls_serialize_detached()
@@ -419,32 +416,19 @@ pub(crate) fn resign_message(
 #[cfg(test)]
 pub(crate) fn resign_external_commit(
     signer: &impl Signer,
-    plaintext: PublicMessage,
-    original_plaintext: &PublicMessage,
+    public_message: PublicMessage,
+    old_confirmation_tag: ConfirmationTag,
     serialized_context: Vec<u8>,
 ) -> PublicMessage {
-    let serialized_context = Some(serialized_context);
-    // We have to re-sign, since we changed the content.
+    let tbs: FramedContentTbs = public_message.into();
 
-    use prelude::signable::Signable;
-    let tbs: FramedContentTbs = plaintext.into();
-    let mut signed_plaintext: AuthenticatedContent = if let Some(context) = serialized_context {
-        tbs.with_context(context)
-            .sign(signer)
-            .expect("Error signing modified payload.")
-    } else {
-        tbs.sign(signer).expect("Error signing modified payload.")
-    };
+    let mut public_message: AuthenticatedContent = tbs
+        .with_context(serialized_context)
+        .sign(signer)
+        .expect("Error signing modified payload.");
 
     // Set old confirmation tag
-    signed_plaintext.set_confirmation_tag(
-        original_plaintext
-            .confirmation_tag()
-            .expect("no confirmation tag on original message")
-            .clone(),
-    );
+    public_message.set_confirmation_tag(old_confirmation_tag);
 
-    let signed_plaintext: PublicMessage = signed_plaintext.into();
-
-    signed_plaintext
+    public_message.into()
 }

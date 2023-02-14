@@ -1,9 +1,9 @@
 use log::debug;
-use openmls_traits::{crypto::OpenMlsCrypto, key_store::OpenMlsKeyStore};
+use openmls_traits::key_store::OpenMlsKeyStore;
 use tls_codec::Deserialize;
 
 use crate::{
-    ciphersuite::hash_ref::HashReference,
+    ciphersuite::{hash_ref::HashReference, hpke},
     group::{core_group::*, errors::WelcomeError},
     schedule::errors::PskError,
     treesync::{
@@ -58,16 +58,15 @@ impl CoreGroup {
             return Err(e);
         }
 
-        let group_secrets_bytes = backend
-            .crypto()
-            .hpke_open(
-                ciphersuite.hpke_config(),
-                egs.encrypted_group_secrets(),
-                key_package_bundle.private_key.as_slice(),
-                &[],
-                &[],
-            )
-            .map_err(|_| WelcomeError::UnableToDecrypt)?;
+        let group_secrets_bytes = hpke::decrypt_with_label(
+            key_package_bundle.private_key.as_slice(),
+            "Welcome",
+            &[],
+            egs.encrypted_group_secrets(),
+            ciphersuite,
+            backend.crypto(),
+        )
+        .map_err(|_| WelcomeError::UnableToDecrypt)?;
         let group_secrets = GroupSecrets::tls_deserialize(&mut group_secrets_bytes.as_slice())
             .map_err(|_| WelcomeError::MalformedWelcomeMessage)?
             .config(ciphersuite, mls_version);

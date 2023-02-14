@@ -1,3 +1,6 @@
+use core::fmt::Debug;
+use std::mem;
+
 use openmls_traits::key_store::OpenMlsKeyStore;
 
 use super::{super::errors::*, proposals::ProposalStore, *};
@@ -5,8 +8,6 @@ use crate::{
     group::public_group::{diff::StagedPublicGroupDiff, staged_commit::PrivateGroupParams},
     treesync::node::{encryption_keys::EncryptionKeyPair, leaf_node::OpenMlsLeafNode},
 };
-use core::fmt::Debug;
-use std::mem;
 
 impl CoreGroup {
     /// Stages a commit message that was sent by another group member.
