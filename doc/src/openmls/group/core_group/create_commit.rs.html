@@ -272,12 +272,6 @@
 <a href="#272" id="272">272</a>
 <a href="#273" id="273">273</a>
 <a href="#274" id="274">274</a>
-<a href="#275" id="275">275</a>
-<a href="#276" id="276">276</a>
-<a href="#277" id="277">277</a>
-<a href="#278" id="278">278</a>
-<a href="#279" id="279">279</a>
-<a href="#280" id="280">280</a>
 </pre><pre class="rust"><code><span class="kw">use </span>openmls_traits::OpenMlsCryptoProvider;
 
 <span class="kw">use crate</span>::{
@@ -286,7 +280,6 @@
         core_group::<span class="kw-2">*</span>, errors::CreateCommitError,
         public_group::diff::process_path::PathProcessingResult,
     },
-    versions::ProtocolVersion,
 };
 
 <span class="kw">use super</span>::{
@@ -518,12 +511,7 @@
                 )
                 .map_err(LibraryError::unexpected_crypto_error)<span class="question-mark">?</span>;
             <span class="comment">// Create welcome message
-            </span><span class="kw">let </span>welcome = Welcome::new(
-                ProtocolVersion::Mls10,
-                <span class="self">self</span>.ciphersuite(),
-                encrypted_secrets,
-                encrypted_group_info,
-            );
+            </span><span class="kw">let </span>welcome = Welcome::new(<span class="self">self</span>.ciphersuite(), encrypted_secrets, encrypted_group_info);
             <span class="prelude-val">Some</span>(welcome)
         } <span class="kw">else </span>{
             <span class="prelude-val">None

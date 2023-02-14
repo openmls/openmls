@@ -235,9 +235,6 @@
 <a href="#235" id="235">235</a>
 <a href="#236" id="236">236</a>
 <a href="#237" id="237">237</a>
-<a href="#238" id="238">238</a>
-<a href="#239" id="239">239</a>
-<a href="#240" id="240">240</a>
 </pre><pre class="rust"><code><span class="kw">use </span>log::debug;
 <span class="kw">use </span>openmls_traits::key_store::OpenMlsKeyStore;
 <span class="kw">use </span>tls_codec::Deserialize;
@@ -274,11 +271,6 @@
             .delete_from_key_store(backend)
             .map_err(|<span class="kw">_</span>| WelcomeError::NoMatchingEncryptionKey)<span class="question-mark">?</span>;
 
-        <span class="kw">let </span>mls_version = <span class="kw-2">*</span>welcome.version();
-        <span class="kw">if </span>mls_version != ProtocolVersion::Mls10 {
-            <span class="kw">return </span><span class="prelude-val">Err</span>(WelcomeError::UnsupportedMlsVersion);
-        }
-
         <span class="kw">let </span>ciphersuite = welcome.ciphersuite();
 
         <span class="comment">// Find key_package in welcome secrets
@@ -309,7 +301,9 @@
         .map_err(|<span class="kw">_</span>| WelcomeError::UnableToDecrypt)<span class="question-mark">?</span>;
         <span class="kw">let </span>group_secrets = GroupSecrets::tls_deserialize(<span class="kw-2">&amp;mut </span>group_secrets_bytes.as_slice())
             .map_err(|<span class="kw">_</span>| WelcomeError::MalformedWelcomeMessage)<span class="question-mark">?
-            </span>.config(ciphersuite, mls_version);
+            </span><span class="comment">// TODO(#1065)
+            </span>.config(ciphersuite, ProtocolVersion::Mls10);
+
         <span class="kw">let </span>joiner_secret = group_secrets.joiner_secret;
 
         <span class="comment">// Prepare the PskSecret

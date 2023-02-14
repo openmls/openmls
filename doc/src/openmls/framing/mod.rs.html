@@ -123,6 +123,17 @@
 <a href="#123" id="123">123</a>
 <a href="#124" id="124">124</a>
 <a href="#125" id="125">125</a>
+<a href="#126" id="126">126</a>
+<a href="#127" id="127">127</a>
+<a href="#128" id="128">128</a>
+<a href="#129" id="129">129</a>
+<a href="#130" id="130">130</a>
+<a href="#131" id="131">131</a>
+<a href="#132" id="132">132</a>
+<a href="#133" id="133">133</a>
+<a href="#134" id="134">134</a>
+<a href="#135" id="135">135</a>
+<a href="#136" id="136">136</a>
 </pre><pre class="rust"><code><span class="doccomment">//! # Message framing
 //!
 //! This module contains framing-related operations for MLS messages, including validation operations.
@@ -208,6 +219,17 @@
 </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">mod </span>test_framing;
 
 <span class="doccomment">/// Wire format of MLS messages.
+///
+/// // draft-ietf-mls-protocol-17
+/// | Value           | Name                     | Recommended | Reference |
+/// |-----------------|--------------------------|-------------|-----------|
+/// | 0x0000          | RESERVED                 | N/A         | RFC XXXX  |
+/// | 0x0001          | mls_plaintext            | Y           | RFC XXXX  |
+/// | 0x0002          | mls_ciphertext           | Y           | RFC XXXX  |
+/// | 0x0003          | mls_welcome              | Y           | RFC XXXX  |
+/// | 0x0004          | mls_group_info           | Y           | RFC XXXX  |
+/// | 0x0005          | mls_key_package          | Y           | RFC XXXX  |
+/// | 0xf000 - 0xffff | Reserved for Private Use | N/A         | RFC XXXX  |
 </span><span class="attr">#[derive(
     PartialEq, Eq, Clone, Copy, Debug, Serialize, Deserialize, TlsDeserialize, TlsSerialize, TlsSize,
 )]

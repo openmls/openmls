@@ -366,6 +366,7 @@
 <a href="#366" id="366">366</a>
 <a href="#367" id="367">367</a>
 <a href="#368" id="368">368</a>
+<a href="#369" id="369">369</a>
 </pre><pre class="rust"><code><span class="doccomment">//! # Messages
 //!
 //! This module contains the types and implementations for Commit &amp; Welcome messages,
@@ -411,9 +412,17 @@
 /// This message is generated when a new member is added to a group.
 /// The invited member can use this message to join the group using
 /// [`MlsGroup::new_from_welcome()`](crate::group::mls_group::MlsGroup::new_from_welcome()).
+///
+/// ```c
+/// // draft-ietf-mls-protocol-17
+/// struct {
+///   CipherSuite cipher_suite;
+///   EncryptedGroupSecrets secrets&lt;V&gt;;
+///   opaque encrypted_group_info&lt;V&gt;;
+/// } Welcome;
+/// ```
 </span><span class="attr">#[derive(Clone, Debug, Eq, PartialEq, TlsDeserialize, TlsSerialize, TlsSize)]
 </span><span class="kw">pub struct </span>Welcome {
-    version: ProtocolVersion,
     cipher_suite: Ciphersuite,
     secrets: Vec&lt;EncryptedGroupSecrets&gt;,
     encrypted_group_info: VLBytes,
@@ -423,13 +432,11 @@
     <span class="doccomment">/// Create a new welcome message from the provided data.
     /// Note that secrets and the encrypted group info are consumed.
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>new(
-        version: ProtocolVersion,
         cipher_suite: Ciphersuite,
         secrets: Vec&lt;EncryptedGroupSecrets&gt;,
         encrypted_group_info: Vec&lt;u8&gt;,
     ) -&gt; <span class="self">Self </span>{
         <span class="self">Self </span>{
-            version,
             cipher_suite,
             secrets,
             encrypted_group_info: encrypted_group_info.into(),
@@ -449,11 +456,6 @@
     <span class="doccomment">/// Returns a reference to the encrypted group info.
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>encrypted_group_info(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>[u8] {
         <span class="self">self</span>.encrypted_group_info.as_slice()
-    }
-
-    <span class="doccomment">/// Returns a reference to the protocol version in the `Welcome`.
-    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>version(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>ProtocolVersion {
-        <span class="kw-2">&amp;</span><span class="self">self</span>.version
     }
 
     <span class="doccomment">/// Set the welcome&#39;s encrypted group info.

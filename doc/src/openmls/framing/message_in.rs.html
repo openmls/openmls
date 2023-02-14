@@ -310,7 +310,7 @@
 /// ```
 </span><span class="attr">#[derive(Debug, PartialEq, Clone, TlsDeserialize, TlsSize)]
 #[cfg_attr(feature = <span class="string">&quot;test-utils&quot;</span>, derive(TlsSerialize))]
-#[repr(u8)]
+#[repr(u16)]
 </span><span class="kw">pub enum </span>MlsMessageInBody {
     <span class="doccomment">/// Plaintext message
     </span><span class="attr">#[tls_codec(discriminant = <span class="number">1</span>)]
