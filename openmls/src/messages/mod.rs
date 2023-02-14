@@ -43,9 +43,17 @@ use crate::schedule::psk::{ExternalPsk, Psk};
 /// This message is generated when a new member is added to a group.
 /// The invited member can use this message to join the group using
 /// [`MlsGroup::new_from_welcome()`](crate::group::mls_group::MlsGroup::new_from_welcome()).
+///
+/// ```c
+/// // draft-ietf-mls-protocol-17
+/// struct {
+///   CipherSuite cipher_suite;
+///   EncryptedGroupSecrets secrets<V>;
+///   opaque encrypted_group_info<V>;
+/// } Welcome;
+/// ```
 #[derive(Clone, Debug, Eq, PartialEq, TlsDeserialize, TlsSerialize, TlsSize)]
 pub struct Welcome {
-    version: ProtocolVersion,
     cipher_suite: Ciphersuite,
     secrets: Vec<EncryptedGroupSecrets>,
     encrypted_group_info: VLBytes,
@@ -55,13 +63,11 @@ impl Welcome {
     /// Create a new welcome message from the provided data.
     /// Note that secrets and the encrypted group info are consumed.
     pub(crate) fn new(
-        version: ProtocolVersion,
         cipher_suite: Ciphersuite,
         secrets: Vec<EncryptedGroupSecrets>,
         encrypted_group_info: Vec<u8>,
     ) -> Self {
         Self {
-            version,
             cipher_suite,
             secrets,
             encrypted_group_info: encrypted_group_info.into(),
@@ -81,11 +87,6 @@ impl Welcome {
     /// Returns a reference to the encrypted group info.
     pub(crate) fn encrypted_group_info(&self) -> &[u8] {
         self.encrypted_group_info.as_slice()
-    }
-
-    /// Returns a reference to the protocol version in the `Welcome`.
-    pub(crate) fn version(&self) -> &ProtocolVersion {
-        &self.version
     }
 
     /// Set the welcome's encrypted group info.

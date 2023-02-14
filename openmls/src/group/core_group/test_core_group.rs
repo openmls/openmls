@@ -16,7 +16,6 @@ use crate::{
     schedule::psk::*,
     test_utils::*,
     treesync::errors::ApplyUpdatePathError,
-    versions::ProtocolVersion,
 };
 
 pub(crate) fn setup_alice_group(
@@ -85,7 +84,6 @@ fn test_failed_groupinfo_decryption(
     ciphersuite: Ciphersuite,
     backend: &impl OpenMlsCryptoProvider,
 ) {
-    let version = ProtocolVersion::Mls10;
     let epoch = 123;
     let group_id = GroupId::random(backend);
     let tree_hash = vec![1, 2, 3, 4, 5, 6, 7, 8, 9];
@@ -179,7 +177,7 @@ fn test_failed_groupinfo_decryption(
         .expect("An unexpected error occurred.");
 
     // Now build the welcome message.
-    let broken_welcome = Welcome::new(version, ciphersuite, broken_secrets, encrypted_group_info);
+    let broken_welcome = Welcome::new(ciphersuite, broken_secrets, encrypted_group_info);
 
     let error = CoreGroup::new_from_welcome(broken_welcome, None, key_package_bundle, backend)
         .expect_err("Creation of core group from a broken Welcome was successful.");
