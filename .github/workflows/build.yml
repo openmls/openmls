@@ -55,9 +55,12 @@ jobs:
           target: ${{ matrix.arch }}
       - uses: Swatinem/rust-cache@v2
 
-      - name: Build debug
-        if: matrix.mode == 'debug'
-        run: cargo build --verbose --target ${{ matrix.arch }} -p openmls
-      - name: Build release
-        if: matrix.mode == 'release'
-        run: cargo build --release --verbose --target ${{ matrix.arch }} -p openmls
+      - run: |
+          if [ ${{ matrix.mode }} == 'debug' ]; then
+            echo "TEST_MODE=" > $GITHUB_ENV
+          else
+            echo "TEST_MODE=--release" > $GITHUB_ENV
+          fi
+          shell: bash
+      - name: Build
+        run: cargo build $TEST_MODE --verbose --target ${{ matrix.arch }} -p openmls
