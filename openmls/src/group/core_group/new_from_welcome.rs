@@ -34,11 +34,6 @@ impl CoreGroup {
             .delete_from_key_store(backend)
             .map_err(|_| WelcomeError::NoMatchingEncryptionKey)?;
 
-        let mls_version = *welcome.version();
-        if mls_version != ProtocolVersion::Mls10 {
-            return Err(WelcomeError::UnsupportedMlsVersion);
-        }
-
         let ciphersuite = welcome.ciphersuite();
 
         // Find key_package in welcome secrets
@@ -69,7 +64,9 @@ impl CoreGroup {
         .map_err(|_| WelcomeError::UnableToDecrypt)?;
         let group_secrets = GroupSecrets::tls_deserialize(&mut group_secrets_bytes.as_slice())
             .map_err(|_| WelcomeError::MalformedWelcomeMessage)?
-            .config(ciphersuite, mls_version);
+            // TODO(#1065)
+            .config(ciphersuite, ProtocolVersion::Mls10);
+
         let joiner_secret = group_secrets.joiner_secret;
 
         // Prepare the PskSecret
