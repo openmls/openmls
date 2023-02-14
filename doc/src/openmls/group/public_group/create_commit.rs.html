@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `openmls/src/group/core_group/create_commit.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>create_commit.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/SourceSerif4-Regular-1f7d512b176f0f72.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/SourceSerif4-Bold-124a1ca42af929b6.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../../static.files/rustdoc-6827029ac823cab7.css" id="mainThemeStyle"><link rel="stylesheet" id="themeStyle" href="../../../../static.files/light-ebce58d0a40c3431.css"><link rel="stylesheet" disabled href="../../../../static.files/dark-f23faae4a2daf9a6.css"><link rel="stylesheet" disabled href="../../../../static.files/ayu-8af5e100b21cd173.css"><script id="default-settings" ></script><script src="../../../../static.files/storage-d43fa987303ecbbb.js"></script><script defer src="../../../../static.files/source-script-5cf2e01a42cc9858.js"></script><script defer src="../../../../source-files.js"></script><script defer src="../../../../static.files/main-c55e1eb52e1886b4.js"></script><noscript><link rel="stylesheet" href="../../../../static.files/noscript-13285aec31fa243e.css"></noscript><link rel="alternate icon" type="image/png" href="../../../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><div class="width-limiter"><nav class="sub"><a class="sub-logo-container" href="../../../../openmls/index.html"><img class="rust-logo" src="../../../../static.files/rust-logo-151179464ae7ed46.svg" alt="logo"></a><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../../static.files/wheel-5ec35bf9ca753509.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><pre class="src-line-numbers"><a href="#1" id="1">1</a>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `openmls/src/group/public_group/create_commit.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>create_commit.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/SourceSerif4-Regular-1f7d512b176f0f72.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/SourceSerif4-Bold-124a1ca42af929b6.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../../static.files/rustdoc-6827029ac823cab7.css" id="mainThemeStyle"><link rel="stylesheet" id="themeStyle" href="../../../../static.files/light-ebce58d0a40c3431.css"><link rel="stylesheet" disabled href="../../../../static.files/dark-f23faae4a2daf9a6.css"><link rel="stylesheet" disabled href="../../../../static.files/ayu-8af5e100b21cd173.css"><script id="default-settings" ></script><script src="../../../../static.files/storage-d43fa987303ecbbb.js"></script><script defer src="../../../../static.files/source-script-5cf2e01a42cc9858.js"></script><script defer src="../../../../source-files.js"></script><script defer src="../../../../static.files/main-c55e1eb52e1886b4.js"></script><noscript><link rel="stylesheet" href="../../../../static.files/noscript-13285aec31fa243e.css"></noscript><link rel="alternate icon" type="image/png" href="../../../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><div class="width-limiter"><nav class="sub"><a class="sub-logo-container" href="../../../../openmls/index.html"><img class="rust-logo" src="../../../../static.files/rust-logo-151179464ae7ed46.svg" alt="logo"></a><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../../static.files/wheel-5ec35bf9ca753509.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><pre class="src-line-numbers"><a href="#1" id="1">1</a>
 <a href="#2" id="2">2</a>
 <a href="#3" id="3">3</a>
 <a href="#4" id="4">4</a>
@@ -272,26 +272,45 @@
 <a href="#272" id="272">272</a>
 <a href="#273" id="273">273</a>
 <a href="#274" id="274">274</a>
-</pre><pre class="rust"><code><span class="kw">use </span>openmls_traits::OpenMlsCryptoProvider;
+<a href="#275" id="275">275</a>
+<a href="#276" id="276">276</a>
+<a href="#277" id="277">277</a>
+<a href="#278" id="278">278</a>
+</pre><pre class="rust"><code><span class="kw">use </span>openmls_traits::{key_store::OpenMlsKeyStore, signatures::Signer, OpenMlsCryptoProvider};
+
+<span class="kw">use </span>tls_codec::Serialize;
 
 <span class="kw">use crate</span>::{
+    binary_tree::LeafNodeIndex,
     ciphersuite::signable::Signable,
+    error::LibraryError,
+    extensions::{Extension, Extensions, ExternalPubExtension, RatchetTreeExtension},
+    framing::{mls_auth_content::AuthenticatedContent, Sender},
     group::{
-        core_group::<span class="kw-2">*</span>, errors::CreateCommitError,
+        core_group::{
+            proposals::ProposalQueue,
+            staged_commit::{MemberStagedCommitState, StagedCommit, StagedCommitState},
+            <span class="kw-2">*</span>,
+        },
+        errors::CreateCommitError,
         public_group::diff::process_path::PathProcessingResult,
     },
+    messages::{group_info::GroupInfoTBS, Commit, Welcome},
+    schedule::{psk::PskSecret, InitSecret, JoinerSecret, KeySchedule},
 };
 
 <span class="kw">use super</span>::{
     create_commit_params::{CommitType, CreateCommitParams},
-    proposals::ProposalQueue,
-    staged_commit::{MemberStagedCommitState, StagedCommit, StagedCommitState},
+    PublicGroup,
 };
 
-<span class="kw">impl </span>CoreGroup {
+<span class="kw">impl </span>PublicGroup {
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>create_commit&lt;KeyStore: OpenMlsKeyStore&gt;(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         <span class="kw-2">mut </span>params: CreateCommitParams,
+        committer_leaf_index: LeafNodeIndex,
+        use_ratchet_tree_extension: bool,
+        init_secret: <span class="kw-2">&amp;</span>InitSecret,
         backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider&lt;KeyStoreProvider = KeyStore&gt;,
         signer: <span class="kw-2">&amp;</span><span class="kw">impl </span>Signer,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;CreateCommitResult, CreateCommitError&lt;KeyStore::Error&gt;&gt; {
@@ -299,7 +318,7 @@
 
         <span class="kw">let </span>sender = <span class="kw">match </span>params.commit_type() {
             CommitType::External =&gt; Sender::NewMemberCommit,
-            CommitType::Member =&gt; Sender::build_member(<span class="self">self</span>.own_leaf_index()),
+            CommitType::Member =&gt; Sender::build_member(committer_leaf_index),
         };
 
         <span class="comment">// Filter proposals
@@ -309,7 +328,7 @@
             sender.clone(),
             params.proposal_store(),
             params.inline_proposals(),
-            <span class="self">self</span>.own_leaf_index(),
+            committer_leaf_index,
         )
         .map_err(|e| <span class="kw">match </span>e {
             <span class="kw">crate</span>::group::errors::ProposalQueueError::LibraryError(e) =&gt; e.into(),
@@ -336,26 +355,23 @@
         // ValSem102
         // ValSem104
         // ValSem106
-        </span><span class="self">self</span>.public_group.validate_add_proposals(<span class="kw-2">&amp;</span>proposal_queue)<span class="question-mark">?</span>;
+        </span><span class="self">self</span>.validate_add_proposals(<span class="kw-2">&amp;</span>proposal_queue)<span class="question-mark">?</span>;
         <span class="comment">// ValSem107
         // ValSem108
-        </span><span class="self">self</span>.public_group
-            .validate_remove_proposals(<span class="kw-2">&amp;</span>proposal_queue)<span class="question-mark">?</span>;
+        </span><span class="self">self</span>.validate_remove_proposals(<span class="kw-2">&amp;</span>proposal_queue)<span class="question-mark">?</span>;
         <span class="comment">// Validate update proposals for member commits
         </span><span class="kw">if let </span>Sender::Member(sender_index) = <span class="kw-2">&amp;</span>sender {
             <span class="comment">// ValSem110
             // ValSem111
             // ValSem112
-            </span><span class="self">self</span>.public_group
-                .validate_update_proposals(<span class="kw-2">&amp;</span>proposal_queue, <span class="kw-2">*</span>sender_index)<span class="question-mark">?</span>;
+            </span><span class="self">self</span>.validate_update_proposals(<span class="kw-2">&amp;</span>proposal_queue, <span class="kw-2">*</span>sender_index)<span class="question-mark">?</span>;
         }
 
         <span class="comment">// Make a copy of the public group to apply proposals safely
-        </span><span class="kw">let </span><span class="kw-2">mut </span>diff = <span class="self">self</span>.public_group.empty_diff();
+        </span><span class="kw">let </span><span class="kw-2">mut </span>diff = <span class="self">self</span>.empty_diff();
 
         <span class="comment">// Apply proposals to tree
-        </span><span class="kw">let </span>apply_proposals_values =
-            diff.apply_proposals(<span class="kw-2">&amp;</span>proposal_queue, <span class="self">self</span>.own_leaf_index())<span class="question-mark">?</span>;
+        </span><span class="kw">let </span>apply_proposals_values = diff.apply_proposals(<span class="kw-2">&amp;</span>proposal_queue, committer_leaf_index)<span class="question-mark">?</span>;
         <span class="kw">if </span>apply_proposals_values.self_removed &amp;&amp; params.commit_type() != CommitType::External {
             <span class="kw">return </span><span class="prelude-val">Err</span>(CreateCommitError::CannotRemoveSelf);
         }
@@ -371,7 +387,7 @@
                 // tree hash.
                 </span>diff.process_path(
                     backend,
-                    <span class="self">self</span>.own_leaf_index(),
+                    committer_leaf_index,
                     apply_proposals_values.exclusion_list(),
                     params.commit_type(),
                     signer,
@@ -384,11 +400,6 @@
                 PathProcessingResult::default()
             };
 
-        <span class="kw">let </span>sender = <span class="kw">match </span>params.commit_type() {
-            CommitType::External =&gt; Sender::NewMemberCommit,
-            CommitType::Member =&gt; Sender::build_member(<span class="self">self</span>.own_leaf_index()),
-        };
-
         <span class="comment">// Create commit message
         </span><span class="kw">let </span>commit = Commit {
             proposals: proposal_reference_list,
@@ -400,19 +411,16 @@
             <span class="kw-2">*</span>params.framing_parameters(),
             sender,
             commit,
-            <span class="self">self</span>.context(),
+            <span class="self">self</span>.group_context(),
             signer,
         )<span class="question-mark">?</span>;
 
         <span class="comment">// Update the confirmed transcript hash using the commit we just created.
         </span>diff.update_confirmed_transcript_hash(backend, <span class="kw-2">&amp;</span>commit)<span class="question-mark">?</span>;
 
-        <span class="kw">let </span>joiner_secret = JoinerSecret::new(
-            backend,
-            path_processing_result.commit_secret,
-            <span class="self">self</span>.group_epoch_secrets().init_secret(),
-        )
-        .map_err(LibraryError::unexpected_crypto_error)<span class="question-mark">?</span>;
+        <span class="kw">let </span>joiner_secret =
+            JoinerSecret::new(backend, path_processing_result.commit_secret, init_secret)
+                .map_err(LibraryError::unexpected_crypto_error)<span class="question-mark">?</span>;
 
         <span class="comment">// Create group secrets for later use, so we can afterwards consume the
         // `joiner_secret`.
@@ -422,7 +430,7 @@
             path_processing_result.plain_path.as_deref(),
             <span class="kw-2">&amp;</span>apply_proposals_values.presharedkeys,
             backend,
-            <span class="self">self</span>.own_leaf_index(),
+            committer_leaf_index,
         )<span class="question-mark">?</span>;
 
         <span class="comment">// Prepare the PskSecret
@@ -459,7 +467,7 @@
         diff.update_interim_transcript_hash(ciphersuite, backend, confirmation_tag.clone())<span class="question-mark">?</span>;
 
         <span class="comment">// only computes the group info if necessary
-        </span><span class="kw">let </span>group_info = <span class="kw">if </span>!encrypted_secrets.is_empty() || <span class="self">self</span>.use_ratchet_tree_extension {
+        </span><span class="kw">let </span>group_info = <span class="kw">if </span>!encrypted_secrets.is_empty() || use_ratchet_tree_extension {
             <span class="comment">// Create the ratchet tree extension if necessary
             </span><span class="kw">let </span>external_pub = provisional_epoch_secrets
                 .external_secret()
@@ -467,7 +475,7 @@
                 .public;
             <span class="kw">let </span>external_pub_extension =
                 Extension::ExternalPub(ExternalPubExtension::new(external_pub.into()));
-            <span class="kw">let </span>other_extensions: Extensions = <span class="kw">if </span><span class="self">self</span>.use_ratchet_tree_extension {
+            <span class="kw">let </span>other_extensions: Extensions = <span class="kw">if </span>use_ratchet_tree_extension {
                 Extensions::from_vec(<span class="macro">vec!</span>[
                     Extension::RatchetTree(RatchetTreeExtension::new(diff.export_nodes())),
                     external_pub_extension,
@@ -482,7 +490,7 @@
                     diff.group_context().clone(),
                     other_extensions,
                     confirmation_tag,
-                    <span class="self">self</span>.own_leaf_index(),
+                    committer_leaf_index,
                 )
             };
             <span class="comment">// Sign to-be-signed group info.
@@ -521,7 +529,7 @@
             provisional_epoch_secrets.split_secrets(
                 serialized_provisional_group_context,
                 diff.tree_size(),
-                <span class="self">self</span>.own_leaf_index(),
+                committer_leaf_index,
             );
 
         <span class="kw">let </span>staged_commit_state = MemberStagedCommitState::new(
@@ -542,7 +550,7 @@
             commit,
             welcome_option,
             staged_commit,
-            group_info: group_info.filter(|<span class="kw">_</span>| <span class="self">self</span>.use_ratchet_tree_extension),
+            group_info: group_info.filter(|<span class="kw">_</span>| use_ratchet_tree_extension),
         })
     }
 }

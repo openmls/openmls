@@ -124,16 +124,20 @@
 <a href="#124" id="124">124</a>
 <a href="#125" id="125">125</a>
 <a href="#126" id="126">126</a>
-</pre><pre class="rust"><code><span class="kw">use super</span>::{
-    create_commit_params::{CommitType, CreateCommitParams},
-    CoreGroup,
-};
-<span class="kw">use crate</span>::{
+<a href="#127" id="127">127</a>
+<a href="#128" id="128">128</a>
+</pre><pre class="rust"><code><span class="kw">use crate</span>::{
     binary_tree::array_representation::LeafNodeIndex,
-    group::{core_group::<span class="kw-2">*</span>, errors::ExternalCommitError},
+    group::{
+        errors::ExternalCommitError,
+        public_group::create_commit_params::{CommitType, CreateCommitParams},
+    },
     messages::proposals::{ExternalInitProposal, Proposal},
     treesync::node::Node,
 };
+
+<span class="kw">use </span><span class="kw">super</span>::CoreGroup;
+<span class="kw">use </span><span class="kw">crate</span>::group::core_group::<span class="kw-2">*</span>;
 
 <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">type </span>ExternalCommitResult = (CoreGroup, CreateCommitResult);
 

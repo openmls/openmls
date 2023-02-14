@@ -168,14 +168,18 @@
 <a href="#168" id="168">168</a>
 <a href="#169" id="169">169</a>
 <a href="#170" id="170">170</a>
+<a href="#171" id="171">171</a>
+<a href="#172" id="172">172</a>
 </pre><pre class="rust"><code><span class="doccomment">//! Processing functions of an [`MlsGroup`] for incoming messages.
 
 </span><span class="kw">use </span>std::mem;
 
-<span class="kw">use </span>core_group::{create_commit_params::CreateCommitParams, staged_commit::StagedCommit};
+<span class="kw">use </span>core_group::staged_commit::StagedCommit;
 <span class="kw">use </span>openmls_traits::signatures::Signer;
 
-<span class="kw">use </span><span class="kw">crate</span>::messages::group_info::GroupInfo;
+<span class="kw">use crate</span>::{
+    group::public_group::create_commit_params::CreateCommitParams, messages::group_info::GroupInfo,
+};
 
 <span class="kw">use </span><span class="kw">crate</span>::group::errors::MergeCommitError;
 
