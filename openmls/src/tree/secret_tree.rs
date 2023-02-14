@@ -214,11 +214,9 @@ impl SecretTree {
             // Collect empty nodes in the direct path until a non-empty node is
             // found
             let mut empty_nodes: Vec<ParentNodeIndex> = vec![];
-            log::trace!(
-                "Direct path for node {index:?}: {:?}",
-                direct_path(index, self.size)
-            );
-            for parent_node in direct_path(index, self.size) {
+            let direct_path = direct_path(index, self.size);
+            log::trace!("Direct path for node {index:?}: {:?}", direct_path);
+            for parent_node in direct_path {
                 empty_nodes.push(parent_node);
                 if self.parent_nodes[parent_node.usize()].is_some() {
                     break;
@@ -244,10 +242,21 @@ impl SecretTree {
             }
         };
 
+        log::trace!("Deriving leaf node secrets for leaf {index:?}");
+
         let handshake_ratchet_secret =
             node_secret.kdf_expand_label(backend, "handshake", b"", ciphersuite.hash_length())?;
         let application_ratchet_secret =
             node_secret.kdf_expand_label(backend, "application", b"", ciphersuite.hash_length())?;
+
+        log_crypto!(
+            trace,
+            "handshake ratchet secret {handshake_ratchet_secret:x?}"
+        );
+        log_crypto!(
+            trace,
+            "application ratchet secret {application_ratchet_secret:x?}"
+        );
 
         let (handshake_sender_ratchet, application_sender_ratchet) = if index == self.own_index {
             let handshake_sender_ratchet = SenderRatchet::EncryptionRatchet(

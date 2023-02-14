@@ -224,7 +224,7 @@ pub fn run_test_vector(
         group_context.ciphersuite(),
     );
     let own_index = LeafNodeIndex::new(0);
-    let secret_tree = SecretTree::new(encryption_secret, TreeSize::from_leaf_count(2), own_index);
+    let secret_tree = SecretTree::new(encryption_secret, TreeSize::from_some_count(2), own_index);
 
     let sender = LeafNodeIndex::new(1);
 
