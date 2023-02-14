@@ -1,23 +1,38 @@
-use openmls_traits::OpenMlsCryptoProvider;
+use openmls_traits::{key_store::OpenMlsKeyStore, signatures::Signer, OpenMlsCryptoProvider};
+
+use tls_codec::Serialize;
 
 use crate::{
+    binary_tree::LeafNodeIndex,
     ciphersuite::signable::Signable,
+    error::LibraryError,
+    extensions::{Extension, Extensions, ExternalPubExtension, RatchetTreeExtension},
+    framing::{mls_auth_content::AuthenticatedContent, Sender},
     group::{
-        core_group::*, errors::CreateCommitError,
+        core_group::{
+            proposals::ProposalQueue,
+            staged_commit::{MemberStagedCommitState, StagedCommit, StagedCommitState},
+            *,
+        },
+        errors::CreateCommitError,
         public_group::diff::process_path::PathProcessingResult,
     },
+    messages::{group_info::GroupInfoTBS, Commit, Welcome},
+    schedule::{psk::PskSecret, InitSecret, JoinerSecret, KeySchedule},
 };
 
 use super::{
     create_commit_params::{CommitType, CreateCommitParams},
-    proposals::ProposalQueue,
-    staged_commit::{MemberStagedCommitState, StagedCommit, StagedCommitState},
+    PublicGroup,
 };
 
-impl CoreGroup {
+impl PublicGroup {
     pub(crate) fn create_commit<KeyStore: OpenMlsKeyStore>(
         &self,
         mut params: CreateCommitParams,
+        committer_leaf_index: LeafNodeIndex,
+        use_ratchet_tree_extension: bool,
+        init_secret: &InitSecret,
         backend: &impl OpenMlsCryptoProvider<KeyStoreProvider = KeyStore>,
         signer: &impl Signer,
     ) -> Result<CreateCommitResult, CreateCommitError<KeyStore::Error>> {
@@ -25,7 +40,7 @@ impl CoreGroup {
 
         let sender = match params.commit_type() {
             CommitType::External => Sender::NewMemberCommit,
-            CommitType::Member => Sender::build_member(self.own_leaf_index()),
+            CommitType::Member => Sender::build_member(committer_leaf_index),
         };
 
         // Filter proposals
@@ -35,7 +50,7 @@ impl CoreGroup {
             sender.clone(),
             params.proposal_store(),
             params.inline_proposals(),
-            self.own_leaf_index(),
+            committer_leaf_index,
         )
         .map_err(|e| match e {
             crate::group::errors::ProposalQueueError::LibraryError(e) => e.into(),
@@ -62,26 +77,23 @@ impl CoreGroup {
         // ValSem102
         // ValSem104
         // ValSem106
-        self.public_group.validate_add_proposals(&proposal_queue)?;
+        self.validate_add_proposals(&proposal_queue)?;
         // ValSem107
         // ValSem108
-        self.public_group
-            .validate_remove_proposals(&proposal_queue)?;
+        self.validate_remove_proposals(&proposal_queue)?;
         // Validate update proposals for member commits
         if let Sender::Member(sender_index) = &sender {
             // ValSem110
             // ValSem111
             // ValSem112
-            self.public_group
-                .validate_update_proposals(&proposal_queue, *sender_index)?;
+            self.validate_update_proposals(&proposal_queue, *sender_index)?;
         }
 
         // Make a copy of the public group to apply proposals safely
-        let mut diff = self.public_group.empty_diff();
+        let mut diff = self.empty_diff();
 
         // Apply proposals to tree
-        let apply_proposals_values =
-            diff.apply_proposals(&proposal_queue, self.own_leaf_index())?;
+        let apply_proposals_values = diff.apply_proposals(&proposal_queue, committer_leaf_index)?;
         if apply_proposals_values.self_removed && params.commit_type() != CommitType::External {
             return Err(CreateCommitError::CannotRemoveSelf);
         }
@@ -97,7 +109,7 @@ impl CoreGroup {
                 // tree hash.
                 diff.process_path(
                     backend,
-                    self.own_leaf_index(),
+                    committer_leaf_index,
                     apply_proposals_values.exclusion_list(),
                     params.commit_type(),
                     signer,
@@ -110,11 +122,6 @@ impl CoreGroup {
                 PathProcessingResult::default()
             };
 
-        let sender = match params.commit_type() {
-            CommitType::External => Sender::NewMemberCommit,
-            CommitType::Member => Sender::build_member(self.own_leaf_index()),
-        };
-
         // Create commit message
         let commit = Commit {
             proposals: proposal_reference_list,
@@ -126,19 +133,16 @@ impl CoreGroup {
             *params.framing_parameters(),
             sender,
             commit,
-            self.context(),
+            self.group_context(),
             signer,
         )?;
 
         // Update the confirmed transcript hash using the commit we just created.
         diff.update_confirmed_transcript_hash(backend, &commit)?;
 
-        let joiner_secret = JoinerSecret::new(
-            backend,
-            path_processing_result.commit_secret,
-            self.group_epoch_secrets().init_secret(),
-        )
-        .map_err(LibraryError::unexpected_crypto_error)?;
+        let joiner_secret =
+            JoinerSecret::new(backend, path_processing_result.commit_secret, init_secret)
+                .map_err(LibraryError::unexpected_crypto_error)?;
 
         // Create group secrets for later use, so we can afterwards consume the
         // `joiner_secret`.
@@ -148,7 +152,7 @@ impl CoreGroup {
             path_processing_result.plain_path.as_deref(),
             &apply_proposals_values.presharedkeys,
             backend,
-            self.own_leaf_index(),
+            committer_leaf_index,
         )?;
 
         // Prepare the PskSecret
@@ -185,7 +189,7 @@ impl CoreGroup {
         diff.update_interim_transcript_hash(ciphersuite, backend, confirmation_tag.clone())?;
 
         // only computes the group info if necessary
-        let group_info = if !encrypted_secrets.is_empty() || self.use_ratchet_tree_extension {
+        let group_info = if !encrypted_secrets.is_empty() || use_ratchet_tree_extension {
             // Create the ratchet tree extension if necessary
             let external_pub = provisional_epoch_secrets
                 .external_secret()
@@ -193,7 +197,7 @@ impl CoreGroup {
                 .public;
             let external_pub_extension =
                 Extension::ExternalPub(ExternalPubExtension::new(external_pub.into()));
-            let other_extensions: Extensions = if self.use_ratchet_tree_extension {
+            let other_extensions: Extensions = if use_ratchet_tree_extension {
                 Extensions::from_vec(vec![
                     Extension::RatchetTree(RatchetTreeExtension::new(diff.export_nodes())),
                     external_pub_extension,
@@ -208,7 +212,7 @@ impl CoreGroup {
                     diff.group_context().clone(),
                     other_extensions,
                     confirmation_tag,
-                    self.own_leaf_index(),
+                    committer_leaf_index,
                 )
             };
             // Sign to-be-signed group info.
@@ -247,7 +251,7 @@ impl CoreGroup {
             provisional_epoch_secrets.split_secrets(
                 serialized_provisional_group_context,
                 diff.tree_size(),
-                self.own_leaf_index(),
+                committer_leaf_index,
             );
 
         let staged_commit_state = MemberStagedCommitState::new(
@@ -268,7 +272,7 @@ impl CoreGroup {
             commit,
             welcome_option,
             staged_commit,
-            group_info: group_info.filter(|_| self.use_ratchet_tree_extension),
+            group_info: group_info.filter(|_| use_ratchet_tree_extension),
         })
     }
 }

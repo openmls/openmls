@@ -1,5 +1,5 @@
-use core_group::create_commit_params::CreateCommitParams;
 use openmls_traits::signatures::Signer;
+use public_group::create_commit_params::CreateCommitParams;
 
 use crate::{messages::group_info::GroupInfo, treesync::LeafNode, versions::ProtocolVersion};
 

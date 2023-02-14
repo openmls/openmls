@@ -2,8 +2,8 @@
 //!
 //! This module contains membership-related operations and exposes [`RemoveOperation`].
 
-use core_group::create_commit_params::CreateCommitParams;
 use openmls_traits::signatures::Signer;
+use public_group::create_commit_params::CreateCommitParams;
 
 use crate::{
     binary_tree::array_representation::LeafNodeIndex, group::errors::CreateAddProposalError,

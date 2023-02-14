@@ -17,7 +17,6 @@ use crate::{
     framing::{mls_auth_content::AuthenticatedContent, mls_content::FramedContentBody, *},
     group::{
         config::CryptoConfig,
-        create_commit_params::CreateCommitParams,
         tests::utils::{generate_credential_bundle, generate_key_package, randombytes},
         *,
     },
