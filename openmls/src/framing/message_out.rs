@@ -98,6 +98,15 @@ impl From<GroupInfo> for MlsMessageOut {
     }
 }
 
+impl From<KeyPackage> for MlsMessageOut {
+    fn from(key_package: KeyPackage) -> Self {
+        Self {
+            version: key_package.protocol_version(),
+            body: MlsMessageOutBody::KeyPackage(key_package),
+        }
+    }
+}
+
 impl MlsMessageOut {
     /// Create an [`MlsMessageOut`] from a [`PrivateMessage`], as well as the
     /// currently used [`ProtocolVersion`].
