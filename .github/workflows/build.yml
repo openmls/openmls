@@ -56,10 +56,10 @@ jobs:
       - uses: Swatinem/rust-cache@v2
 
       - run: |
-          if [ ${{ matrix.mode }} == 'debug' ]; then
-            echo "TEST_MODE=" > $GITHUB_ENV
+          if [ ${{ matrix.mode }} == debug ]; then
+            echo "TEST_MODE=" >> $GITHUB_ENV
           else
-            echo "TEST_MODE=--release" > $GITHUB_ENV
+            echo "TEST_MODE=--release" >> $GITHUB_ENV
           fi
           shell: bash
       - name: Build
