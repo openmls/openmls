@@ -40,8 +40,6 @@ use self::{
 
 use super::{GroupContext, GroupEpoch, GroupId, Member};
 
-pub(crate) mod create_commit;
-pub(crate) mod create_commit_params;
 pub(crate) mod diff;
 pub mod errors;
 pub(crate) mod staged_commit;
