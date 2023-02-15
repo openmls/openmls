@@ -25,8 +25,8 @@ itertools = { version = "0.10", optional = true }
 openmls_rust_crypto = { version = "0.1.0", path = "../openmls_rust_crypto", optional = true }
 openmls_evercrypt = { version = "0.1.0", path = "../evercrypt_backend", optional = true }
 openmls_basic_credential = { version = "0.1.0", path = "../basic_credential", optional = true }
-rstest = {version = "^0.16", optional = true}
-rstest_reuse = {version = "0.4", optional = true}
+rstest = { version = "^0.16", optional = true }
+rstest_reuse = { version = "0.4", optional = true }
 
 [features]
 default = []
@@ -46,15 +46,16 @@ crypto-debug = [] # ☣️ Enable logging of sensitive cryptographic information
 content-debug = [] # ☣️ Enable logging of sensitive message content
 
 [dev-dependencies]
+backtrace = "0.3"
 criterion = "^0.4"
-pretty_env_logger = "0.4"
+hex = { version = "0.4", features = ["serde"] }
 itertools = "0.10"
+lazy_static = "1.4"
 openmls = { path = ".", features = ["test-utils"] }
-tempfile = "3"
+pretty_env_logger = "0.4"
 rstest = "^0.16"
 rstest_reuse = "0.4"
-backtrace = "0.3"
-lazy_static = "1.4"
+tempfile = "3"
 
 # x64 targets get evercrypt compiled into dev-dependencies.
 [target.'cfg(target_arch = "x86_64")'.dev-dependencies.openmls]

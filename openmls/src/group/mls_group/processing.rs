@@ -2,6 +2,7 @@
 
 use std::mem;
 
+use core_group::staged_commit::StagedCommit;
 use openmls_traits::signatures::Signer;
 
 use crate::{
