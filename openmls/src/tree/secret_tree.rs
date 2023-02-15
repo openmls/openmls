@@ -1,3 +1,7 @@
+use openmls_traits::types::{Ciphersuite, CryptoError};
+use thiserror::Error;
+use tls_codec::{Error as TlsCodecError, TlsSerialize, TlsSize};
+
 use super::*;
 use crate::{
     binary_tree::{
@@ -10,9 +14,6 @@ use crate::{
     schedule::*,
     tree::sender_ratchet::*,
 };
-use openmls_traits::types::{Ciphersuite, CryptoError};
-use thiserror::Error;
-use tls_codec::{Error as TlsCodecError, TlsSerialize, TlsSize};
 
 /// Secret tree error
 #[derive(Error, Debug, Eq, PartialEq, Clone)]
