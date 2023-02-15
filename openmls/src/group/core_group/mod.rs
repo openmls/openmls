@@ -34,7 +34,7 @@ use super::errors::CreateCommitError;
 use self::create_commit_params::{CommitType, CreateCommitParams};
 #[cfg(test)]
 use super::errors::CreateGroupContextExtProposalError;
-use super::public_group::diff::process_path::PathComputationResult;
+use super::public_group::diff::compute_path::PathComputationResult;
 use super::public_group::PublicGroup;
 use crate::binary_tree::array_representation::TreeSize;
 #[cfg(test)]
