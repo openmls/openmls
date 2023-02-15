@@ -273,7 +273,6 @@ pub fn run_test_vector(
     ));
 
     for (epoch_ctr, epoch) in test_vector.epochs.iter().enumerate() {
-        log::debug!("  Epoch {:?}", epoch.epoch);
         let tree_hash = hex_to_bytes(&epoch.tree_hash);
         let secret = hex_to_bytes(&epoch.commit_secret);
         let commit_secret = CommitSecret::from(PathSecret::from(Secret::from_slice(
