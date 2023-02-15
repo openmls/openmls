@@ -321,6 +321,11 @@ impl CoreGroup {
         // Update the confirmed transcript hash before we compute the confirmation tag.
         diff.update_confirmed_transcript_hash(backend, mls_content)?;
 
+        let serialized_provisional_group_context = diff
+            .group_context()
+            .tls_serialize_detached()
+            .map_err(LibraryError::missing_bound_check)?;
+
         // Check if we need to include the init secret from an external commit
         // we applied earlier or if we use the one from the previous epoch.
         let joiner_secret = if let Some(ref external_init_proposal) =
@@ -340,13 +345,19 @@ impl CoreGroup {
                 &external_priv,
                 external_init_proposal.kem_output(),
             )?;
-            JoinerSecret::new(backend, commit_secret, &init_secret)
-                .map_err(LibraryError::unexpected_crypto_error)?
+            JoinerSecret::new(
+                backend,
+                commit_secret,
+                &init_secret,
+                &serialized_provisional_group_context,
+            )
+            .map_err(LibraryError::unexpected_crypto_error)?
         } else {
             JoinerSecret::new(
                 backend,
                 commit_secret,
                 self.group_epoch_secrets.init_secret(),
+                &serialized_provisional_group_context,
             )
             .map_err(LibraryError::unexpected_crypto_error)?
         };
@@ -357,11 +368,6 @@ impl CoreGroup {
 
         // Create key schedule
         let mut key_schedule = KeySchedule::init(ciphersuite, backend, joiner_secret, psk_secret)?;
-
-        let serialized_provisional_group_context = diff
-            .group_context()
-            .tls_serialize_detached()
-            .map_err(LibraryError::missing_bound_check)?;
 
         key_schedule
             .add_context(backend, &serialized_provisional_group_context)
