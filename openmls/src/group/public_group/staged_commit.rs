@@ -173,11 +173,13 @@ impl PublicGroup {
     ///  - Applies the proposals covered by the commit to the tree
     ///  - Applies the (optional) update path to the tree
     ///  - Updates the [`GroupContext`]
-    /// If [`PrivateGroupParams`] are provided as input, it also does the
-    /// following:
-    ///  - Decrypts and calculates the path secrets
+    ///
+    /// A similar function to this exists in [`CoreGroup`], which in addition
+    /// does the following:
+    ///  - Decrypts and derives the path secrets
     ///  - Initializes the key schedule for epoch rollover
-    ///  - Verifies the confirmation tag/membership tag
+    ///  - Verifies the confirmation tag
+    ///
     /// Returns a [`StagedCommit`] that can be inspected and later merged into
     /// the group state either with [`CoreGroup::merge_commit()`] or
     /// [`PublicGroup::merge_diff()`] This function does the following checks:
@@ -219,11 +221,29 @@ impl PublicGroup {
         let (commit, proposal_queue, sender_index) =
             self.validate_commit(mls_content, proposal_store, backend)?;
 
-        // Create the provisional public group state (including the tree and
-        // group context) and apply proposals.
+        let staged_diff = self.stage_diff(mls_content, &proposal_queue, sender_index, backend)?;
+
+        let staged_commit_state = StagedCommitState::PublicState(Box::new(staged_diff));
+
+        Ok(StagedCommit::new(proposal_queue, staged_commit_state))
+    }
+
+    fn stage_diff(
+        &self,
+        mls_content: &AuthenticatedContent,
+        proposal_queue: &ProposalQueue,
+        sender_index: LeafNodeIndex,
+        backend: &impl OpenMlsCryptoProvider,
+    ) -> Result<StagedPublicGroupDiff, StageCommitError> {
+        let ciphersuite = self.ciphersuite();
         let mut diff = self.empty_diff();
 
-        let apply_proposals_values = diff.apply_proposals(&proposal_queue, None)?;
+        let apply_proposals_values = diff.apply_proposals(proposal_queue, None)?;
+
+        let commit = match mls_content.content() {
+            FramedContentBody::Commit(commit) => commit,
+            _ => return Err(StageCommitError::WrongPlaintextContentType),
+        };
 
         // Determine if Commit has a path
         if let Some(path) = commit.path.clone() {
@@ -252,9 +272,9 @@ impl PublicGroup {
             backend,
             received_confirmation_tag.clone(),
         )?;
-        let staged_diff = diff.into_staged_diff(backend, ciphersuite)?;
-        let staged_commit_state = StagedCommitState::PublicState(Box::new(staged_diff));
 
-        Ok(StagedCommit::new(proposal_queue, staged_commit_state))
+        let staged_diff = diff.into_staged_diff(backend, ciphersuite)?;
+
+        Ok(staged_diff)
     }
 }
