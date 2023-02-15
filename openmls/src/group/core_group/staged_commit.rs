@@ -61,6 +61,7 @@ impl CoreGroup {
             .epoch_secrets(backend)
             .map_err(|_| LibraryError::custom("Using the key schedule in the wrong state"))?)
     }
+
     /// Stages a commit message that was sent by another group member.
     /// This function does the following:
     ///  - Applies the proposals covered by the commit to the tree
@@ -199,7 +200,6 @@ impl CoreGroup {
                 // Even if there is no path, we have to update the group context.
                 diff.update_group_context(backend)?;
 
-                // Default values for path processing. If there is a path, these will be set.
                 (
                     CommitSecret::zero_secret(ciphersuite, self.version()),
                     vec![],
