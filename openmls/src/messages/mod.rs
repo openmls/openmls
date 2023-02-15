@@ -291,7 +291,7 @@ pub(crate) enum PathSecretError {
 ///   PreSharedKeyID psks<V>;
 /// } GroupSecrets;
 /// ```
-#[derive(TlsDeserialize, TlsSize)]
+#[derive(Debug, TlsDeserialize, TlsSize)]
 pub(crate) struct GroupSecrets {
     pub(crate) joiner_secret: JoinerSecret,
     pub(crate) path_secret: Option<PathSecret>,
