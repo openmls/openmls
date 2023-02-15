@@ -5,11 +5,62 @@ use openmls_traits::key_store::OpenMlsKeyStore;
 
 use super::{super::errors::*, proposals::ProposalStore, *};
 use crate::{
-    group::public_group::{diff::StagedPublicGroupDiff, staged_commit::PrivateGroupParams},
+    group::public_group::diff::{apply_proposals::ApplyProposalsValues, StagedPublicGroupDiff},
     treesync::node::{encryption_keys::EncryptionKeyPair, leaf_node::OpenMlsLeafNode},
 };
 
 impl CoreGroup {
+    fn derive_epoch_secrets(
+        &self,
+        backend: &impl OpenMlsCryptoProvider,
+        apply_proposals_values: ApplyProposalsValues,
+        epoch_secrets: &GroupEpochSecrets,
+        commit_secret: CommitSecret,
+        serialized_provisional_group_context: &[u8],
+    ) -> Result<EpochSecrets, StageCommitError> {
+        // Check if we need to include the init secret from an external commit
+        // we applied earlier or if we use the one from the previous epoch.
+        let joiner_secret = if let Some(ref external_init_proposal) =
+            apply_proposals_values.external_init_proposal_option
+        {
+            // Decrypt the content and derive the external init secret.
+            let external_priv = epoch_secrets
+                .external_secret()
+                .derive_external_keypair(backend.crypto(), self.ciphersuite())
+                .private
+                .into();
+            let init_secret = InitSecret::from_kem_output(
+                backend,
+                self.ciphersuite(),
+                self.version(),
+                &external_priv,
+                external_init_proposal.kem_output(),
+            )?;
+            JoinerSecret::new(backend, commit_secret, &init_secret)
+                .map_err(LibraryError::unexpected_crypto_error)?
+        } else {
+            JoinerSecret::new(backend, commit_secret, epoch_secrets.init_secret())
+                .map_err(LibraryError::unexpected_crypto_error)?
+        };
+
+        // Prepare the PskSecret
+        let psk_secret = PskSecret::new(
+            self.ciphersuite(),
+            backend,
+            &apply_proposals_values.presharedkeys,
+        )?;
+
+        // Create key schedule
+        let mut key_schedule =
+            KeySchedule::init(self.ciphersuite(), backend, joiner_secret, psk_secret)?;
+
+        key_schedule
+            .add_context(backend, serialized_provisional_group_context)
+            .map_err(|_| LibraryError::custom("Using the key schedule in the wrong state"))?;
+        Ok(key_schedule
+            .epoch_secrets(backend)
+            .map_err(|_| LibraryError::custom("Using the key schedule in the wrong state"))?)
+    }
     /// Stages a commit message that was sent by another group member.
     /// This function does the following:
     ///  - Applies the proposals covered by the commit to the tree
@@ -72,19 +123,145 @@ impl CoreGroup {
             })
             .collect::<Result<Vec<EncryptionKeyPair>, StageCommitError>>()?;
 
-        let private_group_params = PrivateGroupParams {
-            own_leaf_index: self.own_leaf_index(),
-            epoch_secrets: self.group_epoch_secrets(),
-            old_epoch_keypairs,
-            leaf_node_keypairs,
-        };
+        let ciphersuite = self.ciphersuite();
 
-        self.public_group.stage_commit(
-            mls_content,
-            proposal_store,
-            backend,
-            Some(private_group_params),
-        )
+        let (commit, proposal_queue, sender_index) =
+            self.public_group
+                .validate_commit(mls_content, proposal_store, backend)?;
+
+        // Create the provisional public group state (including the tree and
+        // group context) and apply proposals.
+        let mut diff = self.public_group.empty_diff();
+
+        let apply_proposals_values =
+            diff.apply_proposals(&proposal_queue, self.own_leaf_index())?;
+
+        // Check if we were removed from the group
+        if apply_proposals_values.self_removed {
+            let staged_diff = diff.into_staged_diff(backend, ciphersuite)?;
+            return Ok(StagedCommit::new(
+                proposal_queue,
+                StagedCommitState::PublicState(Box::new(staged_diff)),
+            ));
+        }
+
+        // Determine if Commit has a path
+        let (commit_secret, new_keypairs, new_leaf_keypair_option) =
+            if let Some(path) = commit.path.clone() {
+                // Update the public group
+                // ValSem202: Path must be the right length
+                diff.apply_received_update_path(backend, ciphersuite, sender_index, &path)?;
+
+                // Update group context
+                diff.update_group_context(backend)?;
+
+                let decryption_keypairs: Vec<&EncryptionKeyPair> = old_epoch_keypairs
+                    .iter()
+                    .chain(leaf_node_keypairs.iter())
+                    .collect();
+
+                // ValSem203: Path secrets must decrypt correctly
+                // ValSem204: Public keys from Path must be verified and match the private keys from the direct path
+                let (new_keypairs, commit_secret) = diff.decrypt_path(
+                    backend,
+                    &decryption_keypairs,
+                    self.own_leaf_index(),
+                    sender_index,
+                    path.nodes(),
+                    &apply_proposals_values.exclusion_list(),
+                )?;
+
+                // Check if one of our update proposals was applied. If so, we
+                // need to store that keypair separately, because after merging
+                // it needs to be removed from the key store separately and in
+                // addition to the removal of the keypairs of the previous
+                // epoch.
+                let new_leaf_keypair_option = if let Some(leaf) = diff.leaf(self.own_leaf_index()) {
+                    leaf_node_keypairs.into_iter().find_map(|keypair| {
+                        if leaf.encryption_key() == keypair.public_key() {
+                            Some(keypair)
+                        } else {
+                            None
+                        }
+                    })
+                } else {
+                    // We should have an own leaf at this point.
+                    debug_assert!(false);
+                    None
+                };
+                (commit_secret, new_keypairs, new_leaf_keypair_option)
+            } else {
+                if apply_proposals_values.path_required {
+                    // ValSem201
+                    return Err(StageCommitError::RequiredPathNotFound);
+                }
+
+                // Even if there is no path, we have to update the group context.
+                diff.update_group_context(backend)?;
+
+                // Default values for path processing. If there is a path, these will be set.
+                (
+                    CommitSecret::zero_secret(ciphersuite, self.version()),
+                    vec![],
+                    None,
+                )
+            };
+
+        // Update the confirmed transcript hash before we compute the confirmation tag.
+        diff.update_confirmed_transcript_hash(backend, mls_content)?;
+
+        let received_confirmation_tag = mls_content
+            .confirmation_tag()
+            .ok_or(StageCommitError::ConfirmationTagMissing)?;
+
+        let serialized_provisional_group_context = diff
+            .group_context()
+            .tls_serialize_detached()
+            .map_err(LibraryError::missing_bound_check)?;
+
+        let (provisional_group_secrets, provisional_message_secrets) = self
+            .derive_epoch_secrets(
+                backend,
+                apply_proposals_values,
+                self.group_epoch_secrets(),
+                commit_secret,
+                &serialized_provisional_group_context,
+            )?
+            .split_secrets(
+                serialized_provisional_group_context,
+                diff.tree_size(),
+                self.own_leaf_index(),
+            );
+
+        // Verify confirmation tag
+        // ValSem205
+        let own_confirmation_tag = provisional_message_secrets
+            .confirmation_key()
+            .tag(backend, diff.group_context().confirmed_transcript_hash())
+            .map_err(LibraryError::unexpected_crypto_error)?;
+        if &own_confirmation_tag != received_confirmation_tag {
+            log::error!("Confirmation tag mismatch");
+            log_crypto!(trace, "  Got:      {:x?}", received_confirmation_tag);
+            log_crypto!(trace, "  Expected: {:x?}", own_confirmation_tag);
+            // TODO: We have tests expecting this error.
+            //       They need to be rewritten.
+            // debug_assert!(false, "Confirmation tag mismatch");
+            return Err(StageCommitError::ConfirmationTagMismatch);
+        }
+
+        diff.update_interim_transcript_hash(ciphersuite, backend, own_confirmation_tag)?;
+
+        let staged_diff = diff.into_staged_diff(backend, ciphersuite)?;
+        let staged_commit_state =
+            StagedCommitState::GroupMember(Box::new(MemberStagedCommitState::new(
+                provisional_group_secrets,
+                provisional_message_secrets,
+                staged_diff,
+                new_keypairs,
+                new_leaf_keypair_option,
+            )));
+
+        Ok(StagedCommit::new(proposal_queue, staged_commit_state))
     }
 
     /// Merges a [StagedCommit] into the group state and optionally return a [`SecretTree`]
