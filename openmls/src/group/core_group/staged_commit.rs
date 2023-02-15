@@ -79,11 +79,11 @@ impl CoreGroup {
             leaf_node_keypairs,
         };
 
-        self.public_group.stage_commit_private(
+        self.public_group.stage_commit(
             mls_content,
             proposal_store,
             backend,
-            private_group_params,
+            Some(private_group_params),
         )
     }
 
@@ -101,7 +101,7 @@ impl CoreGroup {
         // that are still relevant in the new epoch.
         let old_epoch_keypairs = self.read_epoch_keypairs(backend);
         match staged_commit.state {
-            StagedCommitState::SelfRemoved(staged_diff) => {
+            StagedCommitState::PublicState(staged_diff) => {
                 self.public_group.merge_diff(*staged_diff);
                 Ok(None)
             }
@@ -168,7 +168,7 @@ impl CoreGroup {
 
 #[derive(Debug, Serialize, Deserialize)]
 pub(crate) enum StagedCommitState {
-    SelfRemoved(Box<StagedPublicGroupDiff>),
+    PublicState(Box<StagedPublicGroupDiff>),
     GroupMember(Box<MemberStagedCommitState>),
 }
 
@@ -212,7 +212,7 @@ impl StagedCommit {
     /// Returns `true` if the member was removed through a proposal covered by this Commit message
     /// and `false` otherwise.
     pub fn self_removed(&self) -> bool {
-        matches!(self.state, StagedCommitState::SelfRemoved(_))
+        matches!(self.state, StagedCommitState::PublicState(_))
     }
 }
 

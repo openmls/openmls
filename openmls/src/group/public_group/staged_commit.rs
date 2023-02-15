@@ -4,7 +4,6 @@ use crate::{
     framing::{mls_auth_content::AuthenticatedContent, mls_content::FramedContentBody, Sender},
     group::{
         core_group::proposals::{ProposalQueue, ProposalStore},
-        public_group::diff::StagedPublicGroupDiff,
         staged_commit::{MemberStagedCommitState, StagedCommitState},
         StagedCommit,
     },
@@ -66,6 +65,7 @@ impl PublicGroup {
 
         // Build a queue with all proposals from the Commit and check that we have all
         // of the proposals by reference locally
+        // ValSem240: Commit must not cover inline self Remove proposal
         let proposal_queue = ProposalQueue::from_committed_proposals(
             ciphersuite,
             backend,
@@ -181,60 +181,19 @@ impl PublicGroup {
         Ok((commit, proposal_queue, sender_index))
     }
 
-    #[allow(unused)]
-    pub(crate) fn stage_commit_public(
-        &self,
-        mls_content: &AuthenticatedContent,
-        proposal_store: &ProposalStore,
-        backend: &impl OpenMlsCryptoProvider,
-    ) -> Result<(ProposalQueue, StagedPublicGroupDiff), StageCommitError> {
-        let ciphersuite = self.ciphersuite();
-
-        let (commit, proposal_queue, sender_index) =
-            self.validate_commit(mls_content, proposal_store, backend)?;
-
-        // Create provisional tree and apply proposals
-        let mut diff = self.empty_diff();
-
-        let apply_proposals_values = diff.apply_proposals(&proposal_queue, None)?;
-
-        // Determine if Commit has a path
-        if let Some(path) = commit.path.clone() {
-            // If there is a path, apply it.
-            diff.apply_received_update_path(backend, ciphersuite, sender_index, &path)?;
-        } else if apply_proposals_values.path_required {
-            // ValSem201
-            return Err(StageCommitError::RequiredPathNotFound);
-        }
-
-        // Update group context
-        diff.update_group_context(backend)?;
-
-        // Update the confirmed transcript hash
-        diff.update_confirmed_transcript_hash(backend, mls_content)?;
-
-        let confirmation_tag = mls_content
-            .confirmation_tag()
-            .ok_or(StageCommitError::ConfirmationTagMissing)?;
-
-        diff.update_interim_transcript_hash(ciphersuite, backend, confirmation_tag.clone())?;
-
-        // Make the diff a staged diff. This finalizes the diff and no more changes can be applied to it.
-        let staged_diff = diff.into_staged_diff(backend, ciphersuite)?;
-
-        Ok((proposal_queue, staged_diff))
-    }
-
     /// Stages a commit message that was sent by another group member.
     /// This function does the following:
     ///  - Applies the proposals covered by the commit to the tree
     ///  - Applies the (optional) update path to the tree
-    ///  - Calculates the path secrets
+    ///  - Updates the [`GroupContext`]
+    /// If [`PrivateGroupParams`] are provided as input, it also does the
+    /// following:
+    ///  - Decrypts and calculates the path secrets
     ///  - Initializes the key schedule for epoch rollover
     ///  - Verifies the confirmation tag/membership tag
-    /// Returns a [StagedCommit] that can be inspected and later merged
-    /// into the group state with [CoreGroup::merge_commit()]
-    /// This function does the following checks:
+    /// Returns a [`StagedCommit`] that can be inspected and later merged into
+    /// the group state either with [`CoreGroup::merge_commit()`] or
+    /// [`PublicGroup::merge_diff()`] This function does the following checks:
     ///  - ValSem101
     ///  - ValSem102
     ///  - ValSem104
@@ -259,19 +218,43 @@ impl PublicGroup {
     ///  - ValSem244
     /// Returns an error if the given commit was sent by the owner of this
     /// group.
-    pub(crate) fn stage_commit_private(
+    pub(crate) fn stage_commit(
         &self,
         mls_content: &AuthenticatedContent,
         proposal_store: &ProposalStore,
         backend: &impl OpenMlsCryptoProvider,
-        private_group_params: PrivateGroupParams,
+        private_group_params: Option<PrivateGroupParams>,
     ) -> Result<StagedCommit, StageCommitError> {
-        let PrivateGroupParams {
-            own_leaf_index,
-            epoch_secrets,
-            old_epoch_keypairs,
-            leaf_node_keypairs,
-        } = private_group_params;
+        // Let's split up the private params so we don't run into conflicts with
+        // the borrow-checker later on.
+        let own_leaf_index = private_group_params
+            .as_ref()
+            .map(|params| params.own_leaf_index);
+
+        let (path_decryption_material, secret_derivation_material) =
+            if let Some(PrivateGroupParams {
+                own_leaf_index,
+                epoch_secrets,
+                old_epoch_keypairs,
+                leaf_node_keypairs,
+            }) = private_group_params
+            {
+                (
+                    Some((own_leaf_index, leaf_node_keypairs, old_epoch_keypairs)),
+                    Some((own_leaf_index, epoch_secrets)),
+                )
+            } else {
+                (None, None)
+            };
+
+        // Check that the sender is another member of the group
+        if let Sender::Member(member) = mls_content.sender() {
+            if let Some(own_leaf_index) = own_leaf_index {
+                if member == &own_leaf_index {
+                    return Err(StageCommitError::OwnCommit);
+                }
+            }
+        }
 
         let ciphersuite = self.ciphersuite();
 
@@ -288,28 +271,35 @@ impl PublicGroup {
             let staged_diff = diff.into_staged_diff(backend, ciphersuite)?;
             return Ok(StagedCommit::new(
                 proposal_queue,
-                StagedCommitState::SelfRemoved(Box::new(staged_diff)),
+                StagedCommitState::PublicState(Box::new(staged_diff)),
             ));
         }
 
+        let mut commit_secret = CommitSecret::zero_secret(ciphersuite, self.version());
+        let mut new_keypairs = vec![];
+        let mut new_leaf_keypair_option = None;
+
         // Determine if Commit has a path
-        let (commit_secret, new_keypairs, new_leaf_keypair_option) =
-            if let Some(path) = commit.path.clone() {
-                // Update the public group
-                diff.apply_received_update_path(backend, ciphersuite, sender_index, &path)?;
+        if let Some(path) = commit.path.clone() {
+            // Update the public group
+            // ValSem202: Path must be the right length
+            diff.apply_received_update_path(backend, ciphersuite, sender_index, &path)?;
 
-                // Update group context
-                diff.update_group_context(backend)?;
+            // Update group context
+            diff.update_group_context(backend)?;
 
+            // If we have private key material, also try to decrypt the path.
+            if let Some((own_leaf_index, leaf_node_keypairs, old_epoch_keypairs)) =
+                path_decryption_material
+            {
                 let decryption_keypairs: Vec<&EncryptionKeyPair> = old_epoch_keypairs
                     .iter()
                     .chain(leaf_node_keypairs.iter())
                     .collect();
 
-                // ValSem202: Path must be the right length
                 // ValSem203: Path secrets must decrypt correctly
                 // ValSem204: Public keys from Path must be verified and match the private keys from the direct path
-                let (new_epoch_keypairs, commit_secret) = diff.decrypt_path(
+                let (derived_keypairs, derived_commit_secret) = diff.decrypt_path(
                     backend,
                     &decryption_keypairs,
                     own_leaf_index,
@@ -318,12 +308,15 @@ impl PublicGroup {
                     &apply_proposals_values.exclusion_list(),
                 )?;
 
+                commit_secret = derived_commit_secret;
+                new_keypairs = derived_keypairs;
+
                 // Check if one of our update proposals was applied. If so, we
                 // need to store that keypair separately, because after merging
                 // it needs to be removed from the key store separately and in
                 // addition to the removal of the keypairs of the previous
                 // epoch.
-                let new_leaf_keypair_option = if let Some(leaf) = diff.leaf(own_leaf_index) {
+                new_leaf_keypair_option = if let Some(leaf) = diff.leaf(own_leaf_index) {
                     leaf_node_keypairs.into_iter().find_map(|keypair| {
                         if leaf.encryption_key() == keypair.public_key() {
                             Some(keypair)
@@ -336,78 +329,86 @@ impl PublicGroup {
                     debug_assert!(false);
                     None
                 };
-                (commit_secret, new_epoch_keypairs, new_leaf_keypair_option)
-            } else {
-                if apply_proposals_values.path_required {
-                    // ValSem201
-                    return Err(StageCommitError::RequiredPathNotFound);
-                }
-
-                // Update group context
-                diff.update_group_context(backend)?;
-
-                (
-                    CommitSecret::zero_secret(ciphersuite, self.version()),
-                    vec![],
-                    None,
-                )
             };
+        } else {
+            if apply_proposals_values.path_required {
+                // ValSem201
+                return Err(StageCommitError::RequiredPathNotFound);
+            }
+
+            // Update group context
+            diff.update_group_context(backend)?;
+        };
 
         // Update the confirmed transcript hash before we compute the confirmation tag.
         diff.update_confirmed_transcript_hash(backend, mls_content)?;
-
-        let serialized_provisional_group_context = diff
-            .group_context()
-            .tls_serialize_detached()
-            .map_err(LibraryError::missing_bound_check)?;
-
-        let (provisional_group_secrets, provisional_message_secrets) = self
-            .derive_epoch_secrets(
-                backend,
-                apply_proposals_values,
-                epoch_secrets,
-                commit_secret,
-                &serialized_provisional_group_context,
-            )?
-            .split_secrets(
-                serialized_provisional_group_context,
-                diff.tree_size(),
-                own_leaf_index,
-            );
 
         let received_confirmation_tag = mls_content
             .confirmation_tag()
             .ok_or(StageCommitError::ConfirmationTagMissing)?;
 
-        // Verify confirmation tag
-        // ValSem205
-        let own_confirmation_tag = provisional_message_secrets
-            .confirmation_key()
-            .tag(backend, diff.group_context().confirmed_transcript_hash())
-            .map_err(LibraryError::unexpected_crypto_error)?;
-        if &own_confirmation_tag != received_confirmation_tag {
-            log::error!("Confirmation tag mismatch");
-            log_crypto!(trace, "  Got:      {:x?}", received_confirmation_tag);
-            log_crypto!(trace, "  Expected: {:x?}", own_confirmation_tag);
-            // TODO: We have tests expecting this error.
-            //       They need to be rewritten.
-            // debug_assert!(false, "Confirmation tag mismatch");
-            return Err(StageCommitError::ConfirmationTagMismatch);
-        }
-
-        diff.update_interim_transcript_hash(ciphersuite, backend, own_confirmation_tag)?;
-
-        // Make the diff a staged diff. This finalizes the diff and no more changes can be applied to it.
-        let staged_diff = diff.into_staged_diff(backend, ciphersuite)?;
-
+        // If we have private key material, derive the secrets for the next epoch and check the confirmation tag.
         let staged_commit_state =
-            StagedCommitState::GroupMember(Box::new(MemberStagedCommitState::new(
-                provisional_group_secrets,
-                provisional_message_secrets,
-                staged_diff,
-                new_keypairs,
-                new_leaf_keypair_option,
-            )));
+            if let Some((own_leaf_index, epoch_secrets)) = secret_derivation_material {
+                let serialized_provisional_group_context = diff
+                    .group_context()
+                    .tls_serialize_detached()
+                    .map_err(LibraryError::missing_bound_check)?;
+
+                let (provisional_group_secrets, provisional_message_secrets) = self
+                    .derive_epoch_secrets(
+                        backend,
+                        apply_proposals_values,
+                        epoch_secrets,
+                        commit_secret,
+                        &serialized_provisional_group_context,
+                    )?
+                    .split_secrets(
+                        serialized_provisional_group_context,
+                        diff.tree_size(),
+                        own_leaf_index,
+                    );
+
+                // Verify confirmation tag
+                // ValSem205
+                let own_confirmation_tag = provisional_message_secrets
+                    .confirmation_key()
+                    .tag(backend, diff.group_context().confirmed_transcript_hash())
+                    .map_err(LibraryError::unexpected_crypto_error)?;
+                if &own_confirmation_tag != received_confirmation_tag {
+                    log::error!("Confirmation tag mismatch");
+                    log_crypto!(trace, "  Got:      {:x?}", received_confirmation_tag);
+                    log_crypto!(trace, "  Expected: {:x?}", own_confirmation_tag);
+                    // TODO: We have tests expecting this error.
+                    //       They need to be rewritten.
+                    // debug_assert!(false, "Confirmation tag mismatch");
+                    return Err(StageCommitError::ConfirmationTagMismatch);
+                }
+
+                diff.update_interim_transcript_hash(
+                    ciphersuite,
+                    backend,
+                    received_confirmation_tag.clone(),
+                )?;
+                // Make the diff a staged diff. This finalizes the diff and no more changes can be applied to it.
+                let staged_diff = diff.into_staged_diff(backend, ciphersuite)?;
+                StagedCommitState::GroupMember(Box::new(MemberStagedCommitState::new(
+                    provisional_group_secrets,
+                    provisional_message_secrets,
+                    staged_diff,
+                    new_keypairs,
+                    new_leaf_keypair_option,
+                )))
+            } else {
+                diff.update_interim_transcript_hash(
+                    ciphersuite,
+                    backend,
+                    received_confirmation_tag.clone(),
+                )?;
+                // Make the diff a staged diff. This finalizes the diff and no more changes can be applied to it.
+                let staged_diff = diff.into_staged_diff(backend, ciphersuite)?;
+                StagedCommitState::PublicState(Box::new(staged_diff))
+            };
 
         Ok(StagedCommit::new(proposal_queue, staged_commit_state))
     }

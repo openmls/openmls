@@ -317,6 +317,7 @@ impl<'a> TreeSyncDiff<'a> {
     /// replace the [`LeafNode`] in the corresponding leaf with the given one.
     ///
     /// Returns an error if the `sender_leaf_index` is outside of the tree.
+    /// ValSem202: Path must be the right length
     /// TODO #804
     pub(crate) fn apply_received_update_path(
         &mut self,
@@ -346,6 +347,7 @@ impl<'a> TreeSyncDiff<'a> {
         }
 
         let filtered_direct_path = self.filtered_direct_path(sender_leaf_index);
+        // ValSem202: Path must be the right length
         if filtered_direct_path.len() != path.len() {
             return Err(ApplyUpdatePathError::PathLengthMismatch);
         };
