@@ -283,13 +283,12 @@ pub(crate) enum PathSecretError {
 
 /// GroupSecrets
 ///
-/// > 11.2.2. Welcoming New Members
-///
-/// ```text
+/// ```c
+/// // draft-ietf-mls-protocol-17
 /// struct {
-///   opaque joiner_secret<1..255>;
+///   opaque joiner_secret<V>;
 ///   optional<PathSecret> path_secret;
-///   optional<PreSharedKeys> psks;
+///   PreSharedKeyID psks<V>;
 /// } GroupSecrets;
 /// ```
 #[derive(TlsDeserialize, TlsSize)]
