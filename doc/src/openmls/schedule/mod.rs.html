@@ -1254,6 +1254,12 @@
 <a href="#1254" id="1254">1254</a>
 <a href="#1255" id="1255">1255</a>
 <a href="#1256" id="1256">1256</a>
+<a href="#1257" id="1257">1257</a>
+<a href="#1258" id="1258">1258</a>
+<a href="#1259" id="1259">1259</a>
+<a href="#1260" id="1260">1260</a>
+<a href="#1261" id="1261">1261</a>
+<a href="#1262" id="1262">1262</a>
 </pre><pre class="rust"><code><span class="doccomment">//! # Key schedule
 //!
 //! This module contains the types and implementations for key schedule operations.
@@ -1620,12 +1626,18 @@
         backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider,
         commit_secret_option: <span class="kw">impl </span>Into&lt;<span class="prelude-ty">Option</span>&lt;CommitSecret&gt;&gt;,
         init_secret: <span class="kw-2">&amp;</span>InitSecret,
+        serialized_group_context: <span class="kw-2">&amp;</span>[u8],
     ) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, CryptoError&gt; {
         <span class="kw">let </span>intermediate_secret = init_secret.secret.hkdf_extract(
             backend,
             commit_secret_option.into().as_ref().map(|cs| <span class="kw-2">&amp;</span>cs.secret),
         )<span class="question-mark">?</span>;
-        <span class="kw">let </span>secret = intermediate_secret.derive_secret(backend, <span class="string">&quot;joiner&quot;</span>)<span class="question-mark">?</span>;
+        <span class="kw">let </span>secret = intermediate_secret.kdf_expand_label(
+            backend,
+            <span class="string">&quot;joiner&quot;</span>,
+            serialized_group_context,
+            intermediate_secret.ciphersuite().hash_length(),
+        )<span class="question-mark">?</span>;
         <span class="macro">log_crypto!</span>(trace, <span class="string">&quot;Joiner secret: {:x?}&quot;</span>, secret);
         <span class="prelude-val">Ok</span>(JoinerSecret { secret })
     }
@@ -1992,7 +2004,7 @@
         <span class="prelude-val">Ok</span>(<span class="self">self
             </span>.secret
             .derive_secret(backend, label)<span class="question-mark">?
-            </span>.kdf_expand_label(backend, label, context_hash, key_length)<span class="question-mark">?
+            </span>.kdf_expand_label(backend, <span class="string">&quot;exporter&quot;</span>, context_hash, key_length)<span class="question-mark">?
             </span>.as_slice()
             .to_vec())
     }

@@ -571,6 +571,12 @@
 <a href="#571" id="571">571</a>
 <a href="#572" id="572">572</a>
 <a href="#573" id="573">573</a>
+<a href="#574" id="574">574</a>
+<a href="#575" id="575">575</a>
+<a href="#576" id="576">576</a>
+<a href="#577" id="577">577</a>
+<a href="#578" id="578">578</a>
+<a href="#579" id="579">579</a>
 </pre><pre class="rust"><code><span class="kw">use </span>core::fmt::Debug;
 <span class="kw">use </span>std::{collections::HashSet, mem};
 
@@ -894,6 +900,11 @@
         <span class="comment">// Update the confirmed transcript hash before we compute the confirmation tag.
         </span>diff.update_confirmed_transcript_hash(backend, mls_content)<span class="question-mark">?</span>;
 
+        <span class="kw">let </span>serialized_provisional_group_context = diff
+            .group_context()
+            .tls_serialize_detached()
+            .map_err(LibraryError::missing_bound_check)<span class="question-mark">?</span>;
+
         <span class="comment">// Check if we need to include the init secret from an external commit
         // we applied earlier or if we use the one from the previous epoch.
         </span><span class="kw">let </span>joiner_secret = <span class="kw">if let </span><span class="prelude-val">Some</span>(<span class="kw-2">ref </span>external_init_proposal) =
@@ -913,13 +924,19 @@
                 <span class="kw-2">&amp;</span>external_priv,
                 external_init_proposal.kem_output(),
             )<span class="question-mark">?</span>;
-            JoinerSecret::new(backend, commit_secret, <span class="kw-2">&amp;</span>init_secret)
-                .map_err(LibraryError::unexpected_crypto_error)<span class="question-mark">?
+            JoinerSecret::new(
+                backend,
+                commit_secret,
+                <span class="kw-2">&amp;</span>init_secret,
+                <span class="kw-2">&amp;</span>serialized_provisional_group_context,
+            )
+            .map_err(LibraryError::unexpected_crypto_error)<span class="question-mark">?
         </span>} <span class="kw">else </span>{
             JoinerSecret::new(
                 backend,
                 commit_secret,
                 <span class="self">self</span>.group_epoch_secrets.init_secret(),
+                <span class="kw-2">&amp;</span>serialized_provisional_group_context,
             )
             .map_err(LibraryError::unexpected_crypto_error)<span class="question-mark">?
         </span>};
@@ -930,11 +947,6 @@
 
         <span class="comment">// Create key schedule
         </span><span class="kw">let </span><span class="kw-2">mut </span>key_schedule = KeySchedule::init(ciphersuite, backend, joiner_secret, psk_secret)<span class="question-mark">?</span>;
-
-        <span class="kw">let </span>serialized_provisional_group_context = diff
-            .group_context()
-            .tls_serialize_detached()
-            .map_err(LibraryError::missing_bound_check)<span class="question-mark">?</span>;
 
         key_schedule
             .add_context(backend, <span class="kw-2">&amp;</span>serialized_provisional_group_context)

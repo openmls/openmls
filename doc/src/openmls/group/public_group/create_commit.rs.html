@@ -276,6 +276,10 @@
 <a href="#276" id="276">276</a>
 <a href="#277" id="277">277</a>
 <a href="#278" id="278">278</a>
+<a href="#279" id="279">279</a>
+<a href="#280" id="280">280</a>
+<a href="#281" id="281">281</a>
+<a href="#282" id="282">282</a>
 </pre><pre class="rust"><code><span class="kw">use </span>openmls_traits::{key_store::OpenMlsKeyStore, signatures::Signer, OpenMlsCryptoProvider};
 
 <span class="kw">use </span>tls_codec::Serialize;
@@ -418,9 +422,18 @@
         <span class="comment">// Update the confirmed transcript hash using the commit we just created.
         </span>diff.update_confirmed_transcript_hash(backend, <span class="kw-2">&amp;</span>commit)<span class="question-mark">?</span>;
 
-        <span class="kw">let </span>joiner_secret =
-            JoinerSecret::new(backend, path_processing_result.commit_secret, init_secret)
-                .map_err(LibraryError::unexpected_crypto_error)<span class="question-mark">?</span>;
+        <span class="kw">let </span>serialized_provisional_group_context = diff
+            .group_context()
+            .tls_serialize_detached()
+            .map_err(LibraryError::missing_bound_check)<span class="question-mark">?</span>;
+
+        <span class="kw">let </span>joiner_secret = JoinerSecret::new(
+            backend,
+            path_processing_result.commit_secret,
+            init_secret,
+            <span class="kw-2">&amp;</span>serialized_provisional_group_context,
+        )
+        .map_err(LibraryError::unexpected_crypto_error)<span class="question-mark">?</span>;
 
         <span class="comment">// Create group secrets for later use, so we can afterwards consume the
         // `joiner_secret`.
@@ -439,11 +452,6 @@
 
         <span class="comment">// Create key schedule
         </span><span class="kw">let </span><span class="kw-2">mut </span>key_schedule = KeySchedule::init(ciphersuite, backend, joiner_secret, psk_secret)<span class="question-mark">?</span>;
-
-        <span class="kw">let </span>serialized_provisional_group_context = diff
-            .group_context()
-            .tls_serialize_detached()
-            .map_err(LibraryError::missing_bound_check)<span class="question-mark">?</span>;
 
         <span class="kw">let </span>welcome_secret = key_schedule
             .welcome(backend)
