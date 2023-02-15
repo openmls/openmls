@@ -261,7 +261,8 @@ impl PublicGroup {
         let (commit, proposal_queue, sender_index) =
             self.validate_commit(mls_content, proposal_store, backend)?;
 
-        // Create provisional tree and apply proposals
+        // Create the provisional public group state (including the tree and
+        // group context) and apply proposals.
         let mut diff = self.empty_diff();
 
         let apply_proposals_values = diff.apply_proposals(&proposal_queue, own_leaf_index)?;
@@ -275,6 +276,7 @@ impl PublicGroup {
             ));
         }
 
+        // Default values for path processing. If there is a path, these will be set.
         let mut commit_secret = CommitSecret::zero_secret(ciphersuite, self.version());
         let mut new_keypairs = vec![];
         let mut new_leaf_keypair_option = None;
@@ -336,7 +338,7 @@ impl PublicGroup {
                 return Err(StageCommitError::RequiredPathNotFound);
             }
 
-            // Update group context
+            // Even if there is no path, we have to update the group context.
             diff.update_group_context(backend)?;
         };
 
@@ -347,7 +349,8 @@ impl PublicGroup {
             .confirmation_tag()
             .ok_or(StageCommitError::ConfirmationTagMissing)?;
 
-        // If we have private key material, derive the secrets for the next epoch and check the confirmation tag.
+        // If we have private key material, derive the secrets for the next
+        // epoch and check the confirmation tag.
         let staged_commit_state =
             if let Some((own_leaf_index, epoch_secrets)) = secret_derivation_material {
                 let serialized_provisional_group_context = diff
@@ -385,12 +388,8 @@ impl PublicGroup {
                     return Err(StageCommitError::ConfirmationTagMismatch);
                 }
 
-                diff.update_interim_transcript_hash(
-                    ciphersuite,
-                    backend,
-                    received_confirmation_tag.clone(),
-                )?;
-                // Make the diff a staged diff. This finalizes the diff and no more changes can be applied to it.
+                diff.update_interim_transcript_hash(ciphersuite, backend, own_confirmation_tag)?;
+
                 let staged_diff = diff.into_staged_diff(backend, ciphersuite)?;
                 StagedCommitState::GroupMember(Box::new(MemberStagedCommitState::new(
                     provisional_group_secrets,
@@ -400,12 +399,13 @@ impl PublicGroup {
                     new_leaf_keypair_option,
                 )))
             } else {
+                // If there is no private key material, we just update the
+                // interim transcript hash and return the diff.
                 diff.update_interim_transcript_hash(
                     ciphersuite,
                     backend,
                     received_confirmation_tag.clone(),
                 )?;
-                // Make the diff a staged diff. This finalizes the diff and no more changes can be applied to it.
                 let staged_diff = diff.into_staged_diff(backend, ciphersuite)?;
                 StagedCommitState::PublicState(Box::new(staged_diff))
             };
