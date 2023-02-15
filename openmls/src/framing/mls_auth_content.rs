@@ -170,13 +170,12 @@ impl AuthenticatedContent {
     }
 
     /// This constructor builds an `PublicMessage` containing an External Proposal.
-    /// The sender is [Sender::NewMemberProposal].
-    // TODO #151/#106: We don't support preconfigured senders yet
     pub(crate) fn new_external_proposal(
         proposal: Proposal,
         group_id: GroupId,
         epoch: GroupEpoch,
         signer: &impl Signer,
+        sender: Sender,
     ) -> Result<Self, LibraryError> {
         let body = FramedContentBody::Proposal(proposal);
 
@@ -184,7 +183,7 @@ impl AuthenticatedContent {
             WireFormat::PublicMessage,
             group_id,
             epoch,
-            Sender::NewMemberProposal,
+            sender,
             vec![].into(),
             body,
         );

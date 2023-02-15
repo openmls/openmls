@@ -96,6 +96,7 @@ impl CoreGroup {
             self.treesync(),
             self.message_secrets_store
                 .leaves_for_epoch(decrypted_message.verifiable_content().epoch()),
+            self.group_context_extensions().external_senders(),
         )?;
         let pk = OpenMlsSignaturePublicKey::from_signature_key(
             signature_key,
@@ -214,10 +215,35 @@ impl CoreGroup {
                     Some(credential),
                 ))
             }
-            UnverifiedContextMessage::External(_external_message) => {
-                // We don't support messages from external senders yet
-                // TODO #151/#106
-                todo!()
+            UnverifiedContextMessage::External(external_message) => {
+                let verified_external_message = external_message
+                    .into_verified(backend.crypto())
+                    .map_err(|_| ProcessMessageError::InvalidSignature)?;
+                let authenticated_content = verified_external_message.take_authenticated_content();
+                let sender = authenticated_content.sender().clone();
+                let data = authenticated_content.authenticated_data().to_owned();
+                match authenticated_content.content() {
+                    FramedContentBody::Application(_) => {
+                        Err(ProcessMessageError::UnauthorizedExternalApplicationMessage)
+                    }
+                    FramedContentBody::Proposal(Proposal::Remove(_)) => {
+                        let content = ProcessedMessageContent::ProposalMessage(Box::new(
+                            QueuedProposal::from_authenticated_content(
+                                self.ciphersuite(),
+                                backend,
+                                authenticated_content,
+                            )?,
+                        ));
+                        Ok(ProcessedMessage::new(
+                            group_id, epoch, sender, data, content, None,
+                        ))
+                    }
+                    // TODO #151/#106
+                    FramedContentBody::Proposal(_) => {
+                        Err(ProcessMessageError::UnsupportedProposalType)
+                    }
+                    FramedContentBody::Commit(_) => unimplemented!(),
+                }
             }
             UnverifiedContextMessage::NewMember(unverified_new_member_message) => {
                 let credential = unverified_new_member_message.credential().clone();

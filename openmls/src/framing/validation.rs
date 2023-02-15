@@ -39,8 +39,10 @@
 //! ```
 // TODO #106/#151: Update the above diagram
 
-use crate::{group::errors::ValidationError, treesync::TreeSync};
-use core_group::proposals::QueuedProposal;
+use crate::{
+    extensions::ExternalSendersExtension, group::errors::ValidationError, treesync::TreeSync,
+};
+use core_group::{proposals::QueuedProposal, staged_commit::StagedCommit};
 use openmls_traits::{crypto::OpenMlsCrypto, OpenMlsCryptoProvider};
 
 use crate::{
@@ -157,6 +159,7 @@ impl DecryptedMessage {
         &self,
         treesync: &TreeSync,
         old_leaves: &[Member],
+        external_senders: Option<&ExternalSendersExtension>,
     ) -> Result<CredentialWithKey, ValidationError> {
         let sender = self.sender();
         match sender {
@@ -199,8 +202,16 @@ impl DecryptedMessage {
                     }
                 }
             }
-            // External senders are not supported yet #106/#151.
-            Sender::External(_) => unimplemented!(),
+            Sender::External(index) => {
+                let sender = external_senders
+                    .ok_or(ValidationError::NoExternalSendersExtension)?
+                    .get(*index as usize)
+                    .ok_or(ValidationError::UnauthorizedExternalSender)?;
+                Ok(CredentialWithKey {
+                    credential: sender.credential().clone(),
+                    signature_key: sender.signature_key().clone(),
+                })
+            }
             Sender::NewMemberCommit | Sender::NewMemberProposal => {
                 // Fetch the credential from the message itself.
                 self.verifiable_content.new_member_credential()
@@ -291,7 +302,12 @@ impl UnverifiedContextMessage {
                 }))
             }
             // TODO #151/#106: We don't support external senders yet
-            Sender::External(_) => unimplemented!(),
+            Sender::External(_) => Ok(UnverifiedContextMessage::External(
+                UnverifiedExternalMessage {
+                    verifiable_content,
+                    sender_pk,
+                },
+            )),
             Sender::NewMemberProposal | Sender::NewMemberCommit => {
                 Ok(UnverifiedContextMessage::NewMember(
                     UnverifiedNewMemberMessage {
@@ -374,7 +390,27 @@ impl UnverifiedNewMemberMessage {
 // TODO #151/#106: We don't support external senders yet
 /// Part of [UnverifiedContextMessage].
 pub(crate) struct UnverifiedExternalMessage {
-    _verifiable_content: VerifiableAuthenticatedContent,
+    verifiable_content: VerifiableAuthenticatedContent,
+    sender_pk: OpenMlsSignaturePublicKey,
+}
+
+impl UnverifiedExternalMessage {
+    /// Verifies the signature on an [UnverifiedExternalMessage] and returns a [VerifiedExternalMessage] if the
+    /// verification is successful.
+    /// This function implements the following checks:
+    ///  - ValSem010
+    pub(crate) fn into_verified(
+        self,
+        crypto: &impl OpenMlsCrypto,
+    ) -> Result<VerifiedExternalMessage, ValidationError> {
+        // ValSem010
+        self.verifiable_content
+            .verify(crypto, &self.sender_pk)
+            .map(|authenticated_content| VerifiedExternalMessage {
+                authenticated_content,
+            })
+            .map_err(|_| ValidationError::InvalidSignature)
+    }
 }
 
 /// Member message, where all semantic checks on the framing have been successfully performed.

@@ -41,7 +41,8 @@ pub enum Sender {
     #[tls_codec(discriminant = 1)]
     Member(LeafNodeIndex),
     /// The sender is not a member of the group and has an external value instead
-    External(LeafNodeIndex),
+    /// The index refers to the [ExternalSendersExtension] and is 0 indexed
+    External(u32),
     /// The sender is a new member of the group that joins itself through
     /// an [External Add proposal](crate::messages::external_proposals::JoinProposal)
     NewMemberProposal,

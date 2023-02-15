@@ -143,6 +143,7 @@ pub(crate) struct CoreGroupBuilder {
     psk_ids: Vec<PreSharedKeyId>,
     version: Option<ProtocolVersion>,
     required_capabilities: Option<RequiredCapabilitiesExtension>,
+    external_senders: Option<ExternalSendersExtension>,
     max_past_epochs: usize,
     lifetime: Option<Lifetime>,
     credential_with_key: CredentialWithKey,
@@ -161,6 +162,7 @@ impl CoreGroupBuilder {
             psk_ids: vec![],
             version: None,
             required_capabilities: None,
+            external_senders: None,
             max_past_epochs: 0,
             own_leaf_extensions: Extensions::empty(),
             lifetime: None,
@@ -185,6 +187,16 @@ impl CoreGroupBuilder {
         required_capabilities: RequiredCapabilitiesExtension,
     ) -> Self {
         self.required_capabilities = Some(required_capabilities);
+        self
+    }
+    /// Set the [`ExternalSendersExtension`] of the [`CoreGroup`].
+    pub(crate) fn with_external_senders(
+        mut self,
+        external_senders: ExternalSendersExtension,
+    ) -> Self {
+        if !external_senders.is_empty() {
+            self.external_senders = Some(external_senders);
+        }
         self
     }
     /// Set the number of past epochs the group should keep secrets.
@@ -246,14 +258,19 @@ impl CoreGroupBuilder {
             }
             _ => LibraryError::custom("Unexpected ExtensionError").into(),
         })?;
-        let required_capabilities =
-            Extensions::single(Extension::RequiredCapabilities(required_capabilities));
+        let required_capabilities = Extension::RequiredCapabilities(required_capabilities);
+        let extensions =
+            if let Some(ext_senders) = self.external_senders.map(Extension::ExternalSenders) {
+                vec![required_capabilities, ext_senders]
+            } else {
+                vec![required_capabilities]
+            };
 
         let group_context = GroupContext::create_initial_group_context(
             ciphersuite,
             self.group_id,
             tree.tree_hash().to_vec(),
-            required_capabilities,
+            Extensions::from_vec(extensions)?,
         );
         let serialized_group_context = group_context
             .tls_serialize_detached()
@@ -648,7 +665,6 @@ impl CoreGroup {
     }
 
     /// Get the group context extensions.
-    #[cfg(test)]
     pub(crate) fn group_context_extensions(&self) -> &Extensions {
         self.public_group.group_context().extensions()
     }

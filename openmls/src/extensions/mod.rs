@@ -42,7 +42,7 @@ pub mod errors;
 // Public re-exports
 pub use application_id_extension::ApplicationIdExtension;
 pub use external_pub_extension::ExternalPubExtension;
-pub use external_sender_extension::ExternalSendersExtension;
+pub use external_sender_extension::{ExternalSender, ExternalSendersExtension};
 pub use ratchet_tree_extension::RatchetTreeExtension;
 pub use required_capabilities::RequiredCapabilitiesExtension;
 
