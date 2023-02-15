@@ -66,9 +66,10 @@ impl CoreGroup {
     /// This function does the following:
     ///  - Applies the proposals covered by the commit to the tree
     ///  - Applies the (optional) update path to the tree
-    ///  - Calculates the path secrets
+    ///  - Decrypts and calculates the path secrets
     ///  - Initializes the key schedule for epoch rollover
-    ///  - Verifies the confirmation tag/membership tag
+    ///  - Verifies the confirmation tag
+    ///
     /// Returns a [StagedCommit] that can be inspected and later merged
     /// into the group state with [CoreGroup::merge_commit()]
     /// This function does the following checks:
