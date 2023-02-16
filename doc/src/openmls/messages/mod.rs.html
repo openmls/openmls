@@ -364,7 +364,6 @@
 <a href="#364" id="364">364</a>
 <a href="#365" id="365">365</a>
 <a href="#366" id="366">366</a>
-<a href="#367" id="367">367</a>
 </pre><pre class="rust"><code><span class="doccomment">//! # Messages
 //!
 //! This module contains the types and implementations for Commit &amp; Welcome messages,
@@ -650,16 +649,15 @@
 
 <span class="doccomment">/// GroupSecrets
 ///
-/// &gt; 11.2.2. Welcoming New Members
-///
-/// ```text
+/// ```c
+/// // draft-ietf-mls-protocol-17
 /// struct {
-///   opaque joiner_secret&lt;1..255&gt;;
+///   opaque joiner_secret&lt;V&gt;;
 ///   optional&lt;PathSecret&gt; path_secret;
-///   optional&lt;PreSharedKeys&gt; psks;
+///   PreSharedKeyID psks&lt;V&gt;;
 /// } GroupSecrets;
 /// ```
-</span><span class="attr">#[derive(TlsDeserialize, TlsSize)]
+</span><span class="attr">#[derive(Debug, TlsDeserialize, TlsSize)]
 </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct </span>GroupSecrets {
     <span class="kw">pub</span>(<span class="kw">crate</span>) joiner_secret: JoinerSecret,
     <span class="kw">pub</span>(<span class="kw">crate</span>) path_secret: <span class="prelude-ty">Option</span>&lt;PathSecret&gt;,
