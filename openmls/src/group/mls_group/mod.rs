@@ -2,10 +2,7 @@
 //!
 //! This module contains [`MlsGroup`] and its submodules.
 
-use super::{
-    proposals::{ProposalStore, QueuedProposal},
-    staged_commit::StagedCommit,
-};
+use super::proposals::{ProposalStore, QueuedProposal};
 use crate::{
     binary_tree::array_representation::LeafNodeIndex,
     credentials::Credential,
