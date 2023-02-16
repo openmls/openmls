@@ -1,10 +1,9 @@
 use core_group::proposals::QueuedProposal;
 
 use crate::{
-    ciphersuite::OpenMlsSignaturePublicKey,
-    framing::mls_content::FramedContentBody,
+    framing::mls_content::{ContentType, FramedContentBody},
     group::{
-        errors::{MergeCommitError, ValidationError},
+        errors::{MergeCommitError, StageCommitError, ValidationError},
         mls_group::errors::ProcessMessageError,
     },
     treesync::node::leaf_node::OpenMlsLeafNode,
@@ -140,7 +139,8 @@ impl CoreGroup {
         &self,
         unverified_message: UnverifiedMessage,
         proposal_store: &ProposalStore,
-        own_leaf_nodes: &[OpenMlsLeafNode],
+        old_epoch_keypairs: Vec<EncryptionKeyPair>,
+        leaf_node_keypairs: Vec<EncryptionKeyPair>,
         backend: &impl OpenMlsCryptoProvider,
     ) -> Result<ProcessedMessage, ProcessMessageError> {
         let context_plaintext =
@@ -252,7 +252,8 @@ impl CoreGroup {
                         let staged_commit = self.stage_commit(
                             verified_new_member_message.authenticated_content(),
                             proposal_store,
-                            own_leaf_nodes,
+                            old_epoch_keypairs,
+                            leaf_node_keypairs,
                             backend,
                         )?;
                         ProcessedMessageContent::StagedCommitMessage(Box::new(staged_commit))
@@ -318,12 +319,50 @@ impl CoreGroup {
         message: impl Into<ProtocolMessage>,
         sender_ratchet_configuration: &SenderRatchetConfiguration,
         proposal_store: &ProposalStore,
-        own_kpbs: &[OpenMlsLeafNode],
+        own_leaf_nodes: &[OpenMlsLeafNode],
     ) -> Result<ProcessedMessage, ProcessMessageError> {
         let unverified_message = self
             .parse_message(backend, message.into(), sender_ratchet_configuration)
             .map_err(ProcessMessageError::from)?;
         self.process_unverified_message(unverified_message, proposal_store, own_kpbs, backend)
+        // If this is a commit, we need to load the private key material we need for decryption.
+        let (old_epoch_keypairs, leaf_node_keypairs) =
+            if let ContentType::Commit = unverified_message.content_type() {
+                self.read_decryption_keypairs(backend, own_leaf_nodes)?
+            } else {
+                (vec![], vec![])
+            };
+
+        self.process_unverified_message(
+            unverified_message,
+            proposal_store,
+            old_epoch_keypairs,
+            leaf_node_keypairs,
+            backend,
+        )
+    }
+
+    /// Helper function to read decryption keypairs.
+    pub(super) fn read_decryption_keypairs(
+        &self,
+        backend: &impl OpenMlsCryptoProvider,
+        own_leaf_nodes: &[OpenMlsLeafNode],
+    ) -> Result<(Vec<EncryptionKeyPair>, Vec<EncryptionKeyPair>), StageCommitError> {
+        // All keys from the previous epoch are potential decryption keypairs.
+        let old_epoch_keypairs = self.read_epoch_keypairs(backend);
+
+        // If we are processing an update proposal that originally came from
+        // us, the keypair corresponding to the leaf in the update is also a
+        // potential decryption keypair.
+        let leaf_node_keypairs = own_leaf_nodes
+            .iter()
+            .map(|leaf_node| {
+                EncryptionKeyPair::read_from_key_store(backend, leaf_node.encryption_key())
+                    .ok_or(StageCommitError::MissingDecryptionKey)
+            })
+            .collect::<Result<Vec<EncryptionKeyPair>, StageCommitError>>()?;
+
+        Ok((old_epoch_keypairs, leaf_node_keypairs))
     }
 
     /// Merge a [StagedCommit] into the group after inspection
