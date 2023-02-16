@@ -40,7 +40,7 @@
 // TODO #106/#151: Update the above diagram
 
 use crate::{group::errors::ValidationError, treesync::TreeSync};
-use core_group::{proposals::QueuedProposal, staged_commit::StagedCommit};
+use core_group::proposals::QueuedProposal;
 use openmls_traits::{crypto::OpenMlsCrypto, OpenMlsCryptoProvider};
 
 use crate::{

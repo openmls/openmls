@@ -1,8 +1,8 @@
 use crate::{
     binary_tree::array_representation::LeafNodeIndex,
     group::{
+        core_group::create_commit_params::{CommitType, CreateCommitParams},
         errors::ExternalCommitError,
-        public_group::create_commit_params::{CommitType, CreateCommitParams},
     },
     messages::proposals::{ExternalInitProposal, Proposal},
     treesync::node::Node,

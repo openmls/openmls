@@ -1470,10 +1470,10 @@ fn test_valsem110(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
     // to have Bob propose the update. This is due to the commit logic filtering
     // out own proposals and just including a path instead.
 
-    // We first try make Alice create a commit, where she commits an update
+    // We first try to make Alice create a commit, where she commits an update
     // proposal by bob that contains alice's existing encryption key.
 
-    // We begin by creating a KPB with a colliding encryption key.
+    // We begin by creating a leaf node with a colliding encryption key.
     let bob_leaf_node = bob_group
         .group()
         .own_leaf_node()
@@ -1486,10 +1486,11 @@ fn test_valsem110(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
         .unwrap()
         .encryption_key()
         .clone();
+
     let mut update_leaf_node = bob_leaf_node;
     update_leaf_node
         .update_and_re_sign(
-            alice_encryption_key,
+            alice_encryption_key.clone(),
             None,
             bob_group.group_id().clone(),
             &bob_credential_with_key_and_signer.signer,
@@ -1531,7 +1532,8 @@ fn test_valsem110(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
         )
     );
 
-    // Clear commit to try another way of committing two identical removes.
+    // Clear commit to see if Bob will process a commit containing two colliding
+    // keys.
     alice_group.clear_pending_commit();
     alice_group.clear_pending_proposals();
 
@@ -1567,6 +1569,16 @@ fn test_valsem110(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
     );
 
     let update_message_in = ProtocolMessage::from(verifiable_plaintext);
+
+    // We have to store the keypair with the proper label s.t. Bob can actually
+    // process the commit.
+    let leaf_keypair = alice_group
+        .group()
+        .read_epoch_keypairs(backend)
+        .into_iter()
+        .find(|keypair| keypair.public_key() == &alice_encryption_key)
+        .unwrap();
+    leaf_keypair.write_to_key_store(backend).unwrap();
 
     // Have bob process the resulting plaintext
     let err = bob_group
