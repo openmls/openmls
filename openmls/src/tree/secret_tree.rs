@@ -154,7 +154,11 @@ impl SecretTree {
             .take(size.leaf_count() as usize)
             .collect();
 
-        log_crypto!(trace, "nodes: {nodes:?}");
+        log::trace!(
+            "Created secret tree with {} leaves and {} nodes.",
+            leaf_nodes.len(),
+            parent_nodes.len()
+        );
 
         SecretTree {
             own_index,
@@ -186,11 +190,7 @@ impl SecretTree {
         backend: &impl OpenMlsCryptoProvider,
         index: LeafNodeIndex,
     ) -> Result<(), SecretTreeError> {
-        log::trace!(
-            "Initializing sender ratchets for {:?} with {}",
-            index,
-            ciphersuite
-        );
+        log::trace!("Initializing sender ratchets for {index:?} with {ciphersuite}");
         if index.u32() >= self.size.leaf_count() {
             log::error!("Index is larger than the tree size.");
             return Err(SecretTreeError::IndexOutOfBounds);
@@ -214,7 +214,9 @@ impl SecretTree {
             // Collect empty nodes in the direct path until a non-empty node is
             // found
             let mut empty_nodes: Vec<ParentNodeIndex> = vec![];
-            for parent_node in direct_path(index, self.size) {
+            let direct_path = direct_path(index, self.size);
+            log::trace!("Direct path for node {index:?}: {:?}", direct_path);
+            for parent_node in direct_path {
                 empty_nodes.push(parent_node);
                 if self.parent_nodes[parent_node.usize()].is_some() {
                     break;
@@ -226,6 +228,7 @@ impl SecretTree {
 
             // Derive the secrets down all the way to the leaf node
             for n in empty_nodes {
+                log::trace!("Derive down for parent node {n:?}.");
                 self.derive_down(ciphersuite, backend, n)?;
             }
         }
@@ -239,10 +242,21 @@ impl SecretTree {
             }
         };
 
+        log::trace!("Deriving leaf node secrets for leaf {index:?}");
+
         let handshake_ratchet_secret =
             node_secret.kdf_expand_label(backend, "handshake", b"", ciphersuite.hash_length())?;
         let application_ratchet_secret =
             node_secret.kdf_expand_label(backend, "application", b"", ciphersuite.hash_length())?;
+
+        log_crypto!(
+            trace,
+            "handshake ratchet secret {handshake_ratchet_secret:x?}"
+        );
+        log_crypto!(
+            trace,
+            "application ratchet secret {application_ratchet_secret:x?}"
+        );
 
         let (handshake_sender_ratchet, application_sender_ratchet) = if index == self.own_index {
             let handshake_sender_ratchet = SenderRatchet::EncryptionRatchet(
@@ -364,7 +378,7 @@ impl SecretTree {
         index_in_tree: ParentNodeIndex,
     ) -> Result<(), SecretTreeError> {
         log::debug!(
-            "Deriving tree secret for node {} with {}",
+            "Deriving tree secret for parent node {} with {}",
             index_in_tree.u32(),
             ciphersuite
         );
@@ -384,13 +398,13 @@ impl SecretTree {
         log_crypto!(
             trace,
             "Left node ({}) secret: {:x?}",
-            left_index.as_u32(),
+            left_index.test_u32(),
             left_secret.as_slice()
         );
         log_crypto!(
             trace,
             "Right node ({}) secret: {:x?}",
-            right_index.as_u32(),
+            right_index.test_u32(),
             right_secret.as_slice()
         );
 
