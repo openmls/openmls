@@ -1,4 +1,4 @@
-//! Builder for [CreateCommitParams] that is used in [PublicGroup::create_commit()]
+//! Builder for [CreateCommitParams] that is used in [CoreGroup::create_commit()]
 
 use serde::{Deserialize, Serialize};
 
@@ -8,7 +8,7 @@ use crate::{
 };
 
 #[cfg(doc)]
-use super::PublicGroup;
+use super::CoreGroup;
 
 /// Can be used to denote the type of a commit.
 #[derive(Debug, Copy, Clone, PartialEq, Serialize, Deserialize)]
