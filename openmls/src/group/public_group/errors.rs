@@ -24,3 +24,17 @@ pub enum CreationFromExternalError {
     #[error("We don't support the version of the group we are trying to join.")]
     UnsupportedMlsVersion,
 }
+
+/// Public group builder error.
+#[derive(Error, Debug, PartialEq, Clone)]
+pub enum PublicGroupBuildError {
+    /// See [`LibraryError`] for more details.
+    #[error(transparent)]
+    LibraryError(#[from] LibraryError),
+    /// Unsupported proposal type in required capabilities.
+    #[error("Unsupported proposal type in required capabilities.")]
+    UnsupportedProposalType,
+    /// Unsupported extension type in required capabilities.
+    #[error("Unsupported extension type in required capabilities.")]
+    UnsupportedExtensionType,
+}

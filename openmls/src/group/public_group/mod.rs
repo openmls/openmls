@@ -40,6 +40,7 @@ use self::{
 
 use super::{GroupContext, GroupEpoch, GroupId, Member};
 
+pub(crate) mod builder;
 pub(crate) mod diff;
 pub mod errors;
 pub(crate) mod staged_commit;
