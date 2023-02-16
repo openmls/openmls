@@ -371,7 +371,7 @@ pub fn generate_test_vector(
             ProtocolVersion::default(),
             ciphersuite,
         );
-        let size = TreeSize::from_some_count(n_leaves);
+        let size = TreeSize::from_leaf_count(n_leaves);
         let encryption_secret_tree = SecretTree::new(encryption_secret, size, sender_leaf);
         let decryption_secret = EncryptionSecret::from_slice(
             &encryption_secret_bytes[..],
@@ -489,7 +489,7 @@ pub fn run_test_vector(
     if n_leaves != test_vector.leaves.len() as u32 {
         return Err(EncTestVectorError::LeafNumberMismatch);
     }
-    let size = TreeSize::from_some_count(n_leaves);
+    let size = TreeSize::from_leaf_count(n_leaves);
     let ciphersuite = Ciphersuite::try_from(test_vector.cipher_suite).expect("Invalid ciphersuite");
     log::debug!("Running test vector with {:?}", ciphersuite);
 

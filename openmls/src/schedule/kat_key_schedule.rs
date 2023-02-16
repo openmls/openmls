@@ -25,13 +25,6 @@ struct Exporter {
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, Default)]
-struct Exporter {
-    label: String,
-    length: u32,
-    secret: String,
-}
-
-#[derive(Serialize, Deserialize, Debug, Clone, Default)]
 struct Epoch {
     // Chosen by the generator
     tree_hash: String,
