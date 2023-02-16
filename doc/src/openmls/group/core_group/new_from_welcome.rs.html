@@ -437,7 +437,7 @@
         </span><span class="kw">if </span><span class="kw-2">&amp;</span>confirmation_tag != public_group.confirmation_tag() {
             <span class="macro">log::error!</span>(<span class="string">&quot;Confirmation tag mismatch&quot;</span>);
             <span class="macro">log_crypto!</span>(trace, <span class="string">&quot;  Got:      {:x?}&quot;</span>, confirmation_tag);
-            <span class="macro">log_crypto!</span>(trace, <span class="string">&quot;  Expected: {:x?}&quot;</span>, group_info.confirmation_tag());
+            <span class="macro">log_crypto!</span>(trace, <span class="string">&quot;  Expected: {:x?}&quot;</span>, public_group.confirmation_tag());
             <span class="macro">debug_assert!</span>(<span class="bool-val">false</span>, <span class="string">&quot;Confirmation tag mismatch&quot;</span>);
             <span class="prelude-val">Err</span>(WelcomeError::ConfirmationTagMismatch)
         } <span class="kw">else </span>{

@@ -265,6 +265,9 @@
 <a href="#265" id="265">265</a>
 <a href="#266" id="266">266</a>
 <a href="#267" id="267">267</a>
+<a href="#268" id="268">268</a>
+<a href="#269" id="269">269</a>
+<a href="#270" id="270">270</a>
 </pre><pre class="rust"><code><span class="doccomment">//! ### Don&#39;t Panic!
 //!
 //! Functions in this module should never panic. However, if there is a bug in
@@ -387,6 +390,9 @@
         backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider,
         ciphersuite: Ciphersuite,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(Generation, RatchetKeyMaterial), SecretTreeError&gt; {
+        <span class="macro">log::trace!</span>(<span class="string">&quot;Ratcheting forward in generation {}.&quot;</span>, <span class="self">self</span>.generation);
+        <span class="macro">log_crypto!</span>(trace, <span class="string">&quot;    with secret {:x?}&quot;</span>, <span class="self">self</span>.secret);
+
         <span class="comment">// Check if the generation is getting too large.
         </span><span class="kw">if </span><span class="self">self</span>.generation == u32::MAX {
             <span class="kw">return </span><span class="prelude-val">Err</span>(SecretTreeError::RatchetTooLong);
