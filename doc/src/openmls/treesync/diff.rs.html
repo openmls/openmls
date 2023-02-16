@@ -911,6 +911,7 @@
 <a href="#911" id="911">911</a>
 <a href="#912" id="912">912</a>
 <a href="#913" id="913">913</a>
+<a href="#914" id="914">914</a>
 </pre><pre class="rust"><code><span class="doccomment">//! This module provides the diff functionality for [`TreeSync`].
 //!
 //! # About
@@ -1230,6 +1231,7 @@
     /// replace the [`LeafNode`] in the corresponding leaf with the given one.
     ///
     /// Returns an error if the `sender_leaf_index` is outside of the tree.
+    /// ValSem202: Path must be the right length
     /// TODO #804
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>apply_received_update_path(
         <span class="kw-2">&amp;mut </span><span class="self">self</span>,
@@ -1259,7 +1261,8 @@
         }
 
         <span class="kw">let </span>filtered_direct_path = <span class="self">self</span>.filtered_direct_path(sender_leaf_index);
-        <span class="kw">if </span>filtered_direct_path.len() != path.len() {
+        <span class="comment">// ValSem202: Path must be the right length
+        </span><span class="kw">if </span>filtered_direct_path.len() != path.len() {
             <span class="kw">return </span><span class="prelude-val">Err</span>(ApplyUpdatePathError::PathLengthMismatch);
         };
         <span class="kw">let </span>path = filtered_direct_path
@@ -1703,13 +1706,12 @@
         <span class="kw">if let </span><span class="prelude-val">Some</span>((resolution_position, private_key)) = sender_copath_resolution
             .iter()
             .enumerate()
-            .filter_map(|(position, pk)| {
+            .find_map(|(position, pk)| {
                 owned_keys
                     .iter()
                     .find(|<span class="kw-2">&amp;</span>owned_keypair| owned_keypair.public_key() == pk)
                     .map(|keypair| (position, keypair.private_key()))
             })
-            .next()
         {
             <span class="kw">return </span><span class="prelude-val">Ok</span>((private_key, resolution_position));
         };
