@@ -178,6 +178,14 @@ impl PreSharedKeyId {
         })
     }
 
+    #[cfg(test)]
+    pub(crate) fn new_with_nonce(psk: Psk, psk_nonce: Vec<u8>) -> Self {
+        Self {
+            psk,
+            psk_nonce: psk_nonce.into(),
+        }
+    }
+
     /// Return the PSK
     pub fn psk(&self) -> &Psk {
         &self.psk

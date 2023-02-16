@@ -151,6 +151,8 @@ use psk::*;
 #[cfg(any(feature = "test-utils", test))]
 pub mod kat_key_schedule;
 #[cfg(test)]
+pub mod kat_psk_secret;
+#[cfg(test)]
 mod unit_tests;
 
 // Public types
