@@ -36,11 +36,21 @@ impl CoreGroup {
                 &external_priv,
                 external_init_proposal.kem_output(),
             )?;
-            JoinerSecret::new(backend, commit_secret, &init_secret)
-                .map_err(LibraryError::unexpected_crypto_error)?
+            JoinerSecret::new(
+                backend,
+                commit_secret,
+                &init_secret,
+                serialized_provisional_group_context,
+            )
+            .map_err(LibraryError::unexpected_crypto_error)?
         } else {
-            JoinerSecret::new(backend, commit_secret, epoch_secrets.init_secret())
-                .map_err(LibraryError::unexpected_crypto_error)?
+            JoinerSecret::new(
+                backend,
+                commit_secret,
+                epoch_secrets.init_secret(),
+                serialized_provisional_group_context,
+            )
+            .map_err(LibraryError::unexpected_crypto_error)?
         };
 
         // Prepare the PskSecret

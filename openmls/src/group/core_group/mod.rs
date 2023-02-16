@@ -255,6 +255,10 @@ impl CoreGroupBuilder {
             tree.tree_hash().to_vec(),
             required_capabilities,
         );
+        let serialized_group_context = group_context
+            .tls_serialize_detached()
+            .map_err(LibraryError::missing_bound_check)?;
+
         // Derive an initial joiner secret based on the commit secret.
         // Derive an epoch secret from the joiner secret.
         // We use a random `InitSecret` for initialization.
@@ -263,12 +267,9 @@ impl CoreGroupBuilder {
             commit_secret,
             &InitSecret::random(ciphersuite, backend, version)
                 .map_err(LibraryError::unexpected_crypto_error)?,
+            &serialized_group_context,
         )
         .map_err(LibraryError::unexpected_crypto_error)?;
-
-        let serialized_group_context = group_context
-            .tls_serialize_detached()
-            .map_err(LibraryError::missing_bound_check)?;
 
         // Prepare the PskSecret
         let psk_secret = PskSecret::new(ciphersuite, backend, &self.psk_ids)?;
@@ -919,10 +920,16 @@ impl CoreGroup {
         // Update the confirmed transcript hash using the commit we just created.
         diff.update_confirmed_transcript_hash(backend, &commit)?;
 
+        let serialized_provisional_group_context = diff
+            .group_context()
+            .tls_serialize_detached()
+            .map_err(LibraryError::missing_bound_check)?;
+
         let joiner_secret = JoinerSecret::new(
             backend,
             path_computation_result.commit_secret,
             self.group_epoch_secrets().init_secret(),
+            &serialized_provisional_group_context,
         )
         .map_err(LibraryError::unexpected_crypto_error)?;
 
