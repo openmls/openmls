@@ -49,7 +49,6 @@
 //!     * `application_key = application_ratchet_key_[i]_[generation]`
 //!     * `application_nonce = application_ratchet_nonce_[i]_[generation]`
 
-use openmls_traits::OpenMlsCryptoProvider;
 use serde::{Deserialize, Serialize};
 
 use crate::test_utils::*;
@@ -80,7 +79,7 @@ pub struct SecretTree {
     leaves: Vec<Vec<Leaf>>,
 }
 
-#[cfg(any(feature = "test-utils", test))]
+#[cfg(test)]
 pub fn run_test_vector(
     test: SecretTree,
     backend: &impl OpenMlsCryptoProvider,

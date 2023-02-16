@@ -14,9 +14,9 @@ use crate::{
     extensions::Extensions,
     framing::*,
     group::{
+        core_group::create_commit_params::CreateCommitParams,
         core_group::proposals::{ProposalStore, QueuedProposal},
         errors::*,
-        public_group::create_commit_params::CreateCommitParams,
         tests::tree_printing::print_tree,
     },
     key_packages::KeyPackageBundle,

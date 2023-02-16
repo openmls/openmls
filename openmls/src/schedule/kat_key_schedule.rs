@@ -18,9 +18,10 @@ use tls_codec::Serialize as TlsSerializeTrait;
 use super::{errors::KsTestVectorError, CommitSecret};
 
 #[derive(Serialize, Deserialize, Debug, Clone, Default)]
-struct PskValue {
-    psk_id: String, /* hex encoded PreSharedKeyID */
-    psk: String,    /* hex-encoded binary data */
+struct Exporter {
+    label: String,
+    length: u32,
+    secret: String,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, Default)]
@@ -35,8 +36,6 @@ struct Epoch {
     // Chosen by the generator
     tree_hash: String,
     commit_secret: String,
-    // XXX: PSK is not supported in OpenMLS yet #751
-    // psks: Vec<PskValue>,
     confirmed_transcript_hash: String,
 
     // Computed values
@@ -53,7 +52,7 @@ struct Epoch {
     membership_key: String,
     resumption_psk: String,
 
-    external_pub: String, // TLS serialized HpkePublicKey
+    external_pub: String,
     exporter: Exporter,
 }
 
@@ -141,7 +140,6 @@ fn generate(
         confirmed_transcript_hash,
         commit_secret,
         joiner_secret,
-        // psks_out,
         welcome_secret,
         epoch_secrets,
         tree_hash,
@@ -184,18 +182,6 @@ pub fn generate_test_vector(
             external_key_pair,
         ) = generate(ciphersuite, &init_secret, &group_id, epoch);
 
-        // let psks = psks
-        //     .iter()
-        //     .map(|(psk_id, psk)| PskValue {
-        //         psk_id: bytes_to_hex(
-        //             &psk_id
-        //                 .tls_serialize_detached()
-        //                 .expect("An unexpected error occurred."),
-        //         ),
-        //         psk: bytes_to_hex(psk.as_slice()),
-        //     })
-        //     .collect::<Vec<_>>();
-
         // exporter
         let exporter_label = "exporter label";
         let exporter_length = 32u32;
@@ -205,7 +191,7 @@ pub fn generate_test_vector(
                 ciphersuite,
                 backend,
                 exporter_label,
-                &&group_context.tls_serialize_detached().unwrap(),
+                &group_context.tls_serialize_detached().unwrap(),
                 exporter_length as usize,
             )
             .unwrap();
@@ -213,7 +199,6 @@ pub fn generate_test_vector(
         let epoch_info = Epoch {
             tree_hash: bytes_to_hex(&tree_hash),
             commit_secret: bytes_to_hex(commit_secret.as_slice()),
-            // psks,
             confirmed_transcript_hash: bytes_to_hex(&confirmed_transcript_hash),
             group_context: bytes_to_hex(
                 &group_context
@@ -295,7 +280,6 @@ pub fn run_test_vector(
     ));
 
     for (epoch_ctr, epoch) in test_vector.epochs.iter().enumerate() {
-        // log::debug!("  Epoch {:?}", epoch.epoch);
         let tree_hash = hex_to_bytes(&epoch.tree_hash);
         let secret = hex_to_bytes(&epoch.commit_secret);
         let commit_secret = CommitSecret::from(PathSecret::from(Secret::from_slice(

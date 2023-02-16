@@ -25,7 +25,7 @@ use crate::{
 use super::PublicGroup;
 
 pub(crate) mod apply_proposals;
-pub(crate) mod process_path;
+pub(crate) mod compute_path;
 
 pub(crate) struct PublicGroupDiff<'a> {
     original_group: &'a PublicGroup,
