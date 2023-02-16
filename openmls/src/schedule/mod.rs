@@ -350,7 +350,7 @@ impl InitSecret {
     }
 }
 
-#[derive(TlsDeserialize, TlsSerialize, TlsSize)]
+#[derive(Debug, TlsDeserialize, TlsSerialize, TlsSize)]
 pub(crate) struct JoinerSecret {
     secret: Secret,
 }
