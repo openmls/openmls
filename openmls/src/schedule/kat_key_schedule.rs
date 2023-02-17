@@ -89,8 +89,17 @@ fn generate(
         .random_vec(ciphersuite.hash_length())
         .expect("An unexpected error occurred.");
 
-    let psk_secret =
-        PskSecret::from(Secret::random(ciphersuite, &crypto, ProtocolVersion::Mls10).unwrap());
+    // PSK secret can sometimes be null
+    let a: [u8; 1] = crypto.rand().random_array().unwrap();
+    let psk_secret = if a[0] > 127 {
+        log::trace!("PSK secret is not null");
+        Some(PskSecret::from(
+            Secret::random(ciphersuite, &crypto, ProtocolVersion::Mls10).unwrap(),
+        ))
+    } else {
+        log::trace!("PSK secret is null");
+        None
+    };
 
     let group_context = GroupContext::new(
         ciphersuite,
@@ -112,7 +121,7 @@ fn generate(
         ciphersuite,
         &crypto,
         joiner_secret.clone(),
-        Some(psk_secret.clone()),
+        psk_secret.clone(),
     )
     .expect("Could not create KeySchedule.");
     let welcome_secret = key_schedule
@@ -138,7 +147,7 @@ fn generate(
     (
         confirmed_transcript_hash,
         commit_secret,
-        psk_secret,
+        psk_secret.unwrap_or(PskSecret::from(Secret::default())),
         joiner_secret,
         welcome_secret,
         epoch_secrets,
@@ -322,15 +331,15 @@ pub fn run_test_vector(
             ProtocolVersion::Mls10,
             ciphersuite,
         );
-        let psk_secret = PskSecret::from(psk_secret_inner);
+        let psk_secret = if psk_secret_inner.as_slice().is_empty() {
+            None
+        } else {
+            Some(PskSecret::from(psk_secret_inner))
+        };
 
-        let mut key_schedule = KeySchedule::init(
-            ciphersuite,
-            backend,
-            joiner_secret.clone(),
-            Some(psk_secret),
-        )
-        .expect("Could not create KeySchedule.");
+        let mut key_schedule =
+            KeySchedule::init(ciphersuite, backend, joiner_secret.clone(), psk_secret)
+                .expect("Could not create KeySchedule.");
         let welcome_secret = key_schedule
             .welcome(backend)
             .expect("An unexpected error occurred.");
