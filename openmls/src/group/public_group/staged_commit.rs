@@ -3,8 +3,10 @@ use crate::{
     ciphersuite::signable::Verifiable,
     framing::{mls_auth_content::AuthenticatedContent, mls_content::FramedContentBody, Sender},
     group::{
-        core_group::proposals::{ProposalQueue, ProposalStore},
-        staged_commit::StagedCommitState,
+        core_group::{
+            proposals::{ProposalQueue, ProposalStore},
+            staged_commit::StagedCommitState,
+        },
         StagedCommit,
     },
     messages::{proposals::ProposalOrRef, Commit},
@@ -276,5 +278,17 @@ impl PublicGroup {
         let staged_diff = diff.into_staged_diff(backend, ciphersuite)?;
 
         Ok(staged_diff)
+    }
+
+    /// Merges a [StagedCommit] into the public group state.
+    ///
+    /// This function should not fail and only returns a [`Result`], because it
+    /// might throw a `LibraryError`.
+    pub fn merge_commit(&mut self, staged_commit: StagedCommit) {
+        match staged_commit.into_state() {
+            StagedCommitState::PublicState(staged_diff) => self.merge_diff(*staged_diff),
+            StagedCommitState::GroupMember(_) => (),
+        }
+        self.proposal_store.empty()
     }
 }

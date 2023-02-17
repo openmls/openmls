@@ -47,12 +47,18 @@ impl CoreGroup {
             },
         };
 
-        let (public_group, group_info_extensions) =
-            PublicGroup::from_external(backend, &nodes, verifiable_group_info)?;
+        let (public_group, group_info) = PublicGroup::from_external(
+            backend,
+            nodes,
+            verifiable_group_info,
+            // Existing proposals are discarded when joining by external commit.
+            ProposalStore::new(),
+        )?;
         let group_context = public_group.group_context();
 
         // Obtain external_pub from GroupInfo extensions.
-        let external_pub = group_info_extensions
+        let external_pub = group_info
+            .extensions()
             .external_pub()
             .ok_or(ExternalCommitError::MissingExternalPub)?
             .external_pub();

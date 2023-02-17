@@ -134,8 +134,12 @@ impl CoreGroup {
 
         // Since there is currently only the external pub extension, there is no
         // group info extension of interest here.
-        let (public_group, _group_info_extensions) =
-            PublicGroup::from_external(backend, &nodes, verifiable_group_info)?;
+        let (public_group, _group_info_extensions) = PublicGroup::from_external(
+            backend,
+            nodes,
+            verifiable_group_info,
+            ProposalStore::new(),
+        )?;
 
         // Find our own leaf in the tree.
         let own_leaf_index = public_group

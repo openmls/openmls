@@ -410,6 +410,11 @@ impl StagedCommit {
     pub fn self_removed(&self) -> bool {
         matches!(self.state, StagedCommitState::PublicState(_))
     }
+
+    /// Consume this [`StagedCommit`] and return the internal [`StagedCommitState`].
+    pub(crate) fn into_state(self) -> StagedCommitState {
+        self.state
+    }
 }
 
 /// This struct is used internally by [StagedCommit] to encapsulate all the modified group state.

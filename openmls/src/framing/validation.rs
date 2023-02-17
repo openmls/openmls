@@ -41,18 +41,18 @@
 
 use crate::{group::errors::ValidationError, treesync::TreeSync};
 use core_group::proposals::QueuedProposal;
-use openmls_traits::{crypto::OpenMlsCrypto, OpenMlsCryptoProvider};
+use mls_group::errors::ProcessMessageError;
+use openmls_traits::OpenMlsCryptoProvider;
 
 use crate::{
     ciphersuite::signable::Verifiable, error::LibraryError,
+    framing::mls_auth_content::AuthenticatedContent,
     tree::sender_ratchet::SenderRatchetConfiguration,
 };
 
 use super::{
-    mls_auth_content::{AuthenticatedContent, VerifiableAuthenticatedContent},
-    mls_content::ContentType,
-    public_message::PublicMessage,
-    *,
+    mls_auth_content::VerifiableAuthenticatedContent, mls_content::ContentType,
+    public_message::PublicMessage, *,
 };
 
 /// Intermediate message that can be constructed either from a public message or from private message.
@@ -67,25 +67,31 @@ pub(crate) struct DecryptedMessage {
 
 impl DecryptedMessage {
     /// Constructs a [DecryptedMessage] from a [VerifiableAuthenticatedContent].
-    pub(crate) fn from_inbound_public_message(
+    pub(crate) fn from_inbound_public_message<'a>(
         public_message: PublicMessage,
-        message_secrets: &MessageSecrets,
+        message_secrets_option: impl Into<Option<&'a MessageSecrets>>,
+        serialized_context: Vec<u8>,
         backend: &impl OpenMlsCryptoProvider,
     ) -> Result<Self, ValidationError> {
         if public_message.sender().is_member() {
-            // Verify the membership tag. This needs to be done explicitly for PublicMessage messages,
-            // it is implicit for PrivateMessage messages (because the encryption can only be known by members).
             // ValSem007 Membership tag presence
-            // ValSem008
-            public_message.verify_membership(
-                backend,
-                message_secrets.membership_key(),
-                message_secrets.serialized_context(),
-            )?;
+            if public_message.membership_tag().is_none() {
+                return Err(ValidationError::MissingMembershipTag);
+            }
+
+            if let Some(message_secrets) = message_secrets_option.into() {
+                // Verify the membership tag. This needs to be done explicitly for PublicMessage messages,
+                // it is implicit for PrivateMessage messages (because the encryption can only be known by members).
+                // ValSem008
+                public_message.verify_membership(
+                    backend,
+                    message_secrets.membership_key(),
+                    message_secrets.serialized_context(),
+                )?;
+            }
         }
 
-        let verifiable_content =
-            public_message.into_verifiable_content(message_secrets.serialized_context().to_vec());
+        let verifiable_content = public_message.into_verifiable_content(serialized_context);
 
         Self::from_verifiable_content(verifiable_content)
     }
