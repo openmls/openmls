@@ -50,36 +50,37 @@ pub mod errors;
 use self::client::*;
 use self::errors::*;
 
+#[derive(Clone)]
 /// The `Group` struct represents the "global" shared state of the group. Note,
 /// that this state is only consistent if operations are conducted as per spec
 /// and messages are distributed correctly to all clients via the
 /// `distribute_to_members` function of `TestSetup`, which also updates the
 /// `public_tree` field.
 pub struct Group {
-    pub public_group: PublicGroup,
+    pub group_id: GroupId,
+    pub members: Vec<(usize, Vec<u8>)>,
+    pub ciphersuite: Ciphersuite,
     pub group_config: MlsGroupConfig,
+    pub public_tree: Vec<Option<Node>>,
     pub exporter_secret: Vec<u8>,
 }
 
 impl Group {
     /// Return the identity of a random member of the group.
     pub fn random_group_member(&self) -> (u32, Vec<u8>) {
-        let members: Vec<Member> = self.public_group.members().collect();
-        let index = (OsRng.next_u32() as usize) % members.len();
-        let Member {
-            index, credential, ..
-        } = members[index].clone();
-        (index.u32(), credential.identity().to_vec())
+        let index = (OsRng.next_u32() as usize) % self.members.len();
+        let (i, identity) = self.members[index].clone();
+        (i as u32, identity)
     }
-
     pub fn group_id(&self) -> &GroupId {
-        self.public_group.group_id()
+        &self.group_id
     }
 
     pub fn members(&self) -> impl Iterator<Item = (u32, Vec<u8>)> + '_ {
-        self.public_group
-            .members()
-            .map(|member| (member.index.u32(), member.credential.identity().to_vec()))
+        self.members
+            .clone()
+            .into_iter()
+            .map(|(index, id)| (index as u32, id))
     }
 }
 
@@ -205,39 +206,34 @@ impl MlsGroupTestSetup {
 
     /// Convert an index in the tree into the corresponding identity.
     pub fn identity_by_index(&self, index: usize, group: &Group) -> Option<Vec<u8>> {
-        let id = group
-            .public_group
-            .members()
-            .find_map(|member| {
-                if member.index.usize() == index {
-                    Some(member.credential.identity().to_vec())
-                } else {
-                    None
-                }
-            })
+        let (_, id) = group
+            .members
+            .iter()
+            .find(|(leaf_index, _)| index == *leaf_index)
             .expect("Couldn't find member at leaf index");
         let clients = self.clients.read().expect("An unexpected error occurred.");
         let client = clients
-            .get(&id)
+            .get(id)
             .expect("An unexpected error occurred.")
             .read()
             .expect("An unexpected error occurred.");
-        client.identity(group.group_id())
+        client.identity(&group.group_id)
     }
 
     /// Convert an identity in the tree into the corresponding key package reference.
     pub fn identity_by_id(&self, id: &[u8], group: &Group) -> Option<Vec<u8>> {
         let (_, id) = group
-            .members()
+            .members
+            .iter()
             .find(|(_, leaf_id)| id == leaf_id)
             .expect("Couldn't find member at leaf index");
         let clients = self.clients.read().expect("An unexpected error occurred.");
         let client = clients
-            .get(&id)
+            .get(id)
             .expect("An unexpected error occurred.")
             .read()
             .expect("An unexpected error occurred.");
-        client.identity(group.group_id())
+        client.identity(&group.group_id)
     }
 
     /// Deliver a Welcome message to the intended recipients. It uses the given
@@ -275,7 +271,7 @@ impl MlsGroupTestSetup {
             client.join_group(
                 group.group_config.clone(),
                 welcome.clone(),
-                Some(group.public_group.export_nodes()),
+                Some(group.public_tree.clone()),
             )?;
         }
         Ok(())
@@ -305,10 +301,10 @@ impl MlsGroupTestSetup {
         .into_protocol_message()
         .expect("Unexptected message type.");
         let clients = self.clients.read().expect("An unexpected error occurred.");
-
         // Distribute message to all members, except to the sender in the case of application messages
         let results: Result<Vec<_>, _> = group
-            .members()
+            .members
+            .par_iter()
             .filter_map(|(_index, member_id)| {
                 if message.content_type() == ContentType::Application && member_id == sender_id {
                     None
@@ -318,7 +314,7 @@ impl MlsGroupTestSetup {
             })
             .map(|member_id| {
                 let member = clients
-                    .get(&member_id)
+                    .get(member_id)
                     .expect("An unexpected error occurred.")
                     .read()
                     .expect("An unexpected error occurred.");
@@ -326,8 +322,8 @@ impl MlsGroupTestSetup {
             })
             .collect();
 
+        // Check if we received an error
         results?;
-
         // Get the current tree and figure out who's still in the group.
         let sender = clients
             .get(sender_id)
@@ -336,54 +332,18 @@ impl MlsGroupTestSetup {
             .expect("An unexpected error occurred.");
         let sender_groups = sender.groups.read().expect("An unexpected error occurred.");
         let sender_group = sender_groups
-            .get(group.group_id())
+            .get(&group.group_id)
             .expect("An unexpected error occurred.");
-
-        let signature_pk = sender_group.own_leaf().unwrap().signature_key();
-        let signer = SignatureKeyPair::read(
-            sender.crypto.key_store(),
-            signature_pk.as_slice(),
-            sender_group.ciphersuite().signature_algorithm(),
-        )
-        .unwrap();
-
-        // Update the public group. If it's a public message, just process it. Create a new group from the sender.
-        match message {
-            ProtocolMessage::PrivateMessage(_) => {
-                // If it's a ciphertext we can't track group membership with a
-                // PublicGroup, so we have to create a new one every time with
-                // the sender's state.
-                let (new_public_group, _extensions) = PublicGroup::from_external(
-                    &sender.crypto,
-                    sender_group.export_ratchet_tree(),
-                    sender_group
-                        .export_group_info(&sender.crypto, &signer, false)
-                        .unwrap()
-                        .into_group_info()
-                        .unwrap(),
-                    ProposalStore::new(),
-                )
-                .unwrap();
-                group.public_group = new_public_group;
-            }
-            ProtocolMessage::PublicMessage(message) => {
-                let processed_message = group
-                    .public_group
-                    .process_message(&sender.crypto, message)
-                    .unwrap();
-                match processed_message.into_content() {
-                    ProcessedMessageContent::ApplicationMessage(_) => (),
-                    ProcessedMessageContent::ProposalMessage(proposal)
-                    | ProcessedMessageContent::ExternalJoinProposalMessage(proposal) => {
-                        group.public_group.add_proposal(*proposal)
-                    }
-                    ProcessedMessageContent::StagedCommitMessage(staged_commit) => {
-                        let staged_commit = *staged_commit;
-                        group.public_group.merge_commit(staged_commit)
-                    }
-                }
-            }
-        }
+        group.members = sender
+            .get_members_of_group(&group.group_id)?
+            .iter()
+            .map(
+                |Member {
+                     index, credential, ..
+                 }| { (index.usize(), credential.identity().to_vec()) },
+            )
+            .collect();
+        group.public_tree = sender_group.export_ratchet_tree();
         group.exporter_secret = sender_group.export_secret(&sender.crypto, "test", &[], 32)?;
         Ok(())
     }
@@ -396,16 +356,24 @@ impl MlsGroupTestSetup {
     pub fn check_group_states(&self, group: &mut Group) {
         let clients = self.clients.read().expect("An unexpected error occurred.");
         let messages = group
-            .members()
+            .members
+            .par_iter()
             .filter_map(|(_, m_id)| {
                 let m = clients
-                    .get(&m_id)
+                    .get(m_id)
                     .expect("An unexpected error occurred.")
                     .read()
                     .expect("An unexpected error occurred.");
                 let mut group_states = m.groups.write().expect("An unexpected error occurred.");
                 // Some group members may not have received their welcome messages yet.
-                if let Some(group_state) = group_states.get_mut(group.group_id()) {
+                if let Some(group_state) = group_states.get_mut(&group.group_id) {
+                    assert_eq!(group_state.export_ratchet_tree(), group.public_tree);
+                    assert_eq!(
+                        group_state
+                            .export_secret(&m.crypto, "test", &[], 32)
+                            .expect("An unexpected error occurred."),
+                        group.exporter_secret
+                    );
                     // Get the signature public key to read the signer from the
                     // key store.
                     let signature_pk = group_state.own_leaf().unwrap().signature_key();
@@ -415,16 +383,6 @@ impl MlsGroupTestSetup {
                         group_state.ciphersuite().signature_algorithm(),
                     )
                     .unwrap();
-                    assert_eq!(
-                        group_state.export_ratchet_tree(),
-                        group.public_group.export_nodes()
-                    );
-                    assert_eq!(
-                        group_state
-                            .export_secret(&m.crypto, "test", &[], 32)
-                            .expect("An unexpected error occurred."),
-                        group.exporter_secret
-                    );
                     let message = group_state
                         .create_message(&m.crypto, &signer, "Hello World!".as_bytes())
                         .expect("Error composing message while checking group states.");
@@ -452,7 +410,7 @@ impl MlsGroupTestSetup {
         number_of_members: usize,
     ) -> Result<Vec<Vec<u8>>, SetupError> {
         let clients = self.clients.read().expect("An unexpected error occurred.");
-        if number_of_members + group.members().count() > clients.len() {
+        if number_of_members + group.members.len() > clients.len() {
             return Err(SetupError::NotEnoughClients);
         }
         let mut new_member_ids: Vec<Vec<u8>> = Vec::new();
@@ -465,8 +423,9 @@ impl MlsGroupTestSetup {
             };
             let is_in_group = |client_id| {
                 group
-                    .members()
-                    .any(|(_, member_id)| client_id == &member_id)
+                    .members
+                    .iter()
+                    .any(|(_, member_id)| client_id == member_id)
             };
             let new_member_id = clients
                 .keys()
@@ -503,35 +462,16 @@ impl MlsGroupTestSetup {
         let group = creator_groups
             .get(&group_id)
             .expect("An unexpected error occurred.");
-        let nodes = group.export_ratchet_tree();
-        let creator_signature_key = SignatureKeyPair::read(
-            group_creator.crypto.key_store(),
-            group_creator
-                .credentials
-                .get(&ciphersuite)
-                .unwrap()
-                .signature_key
-                .as_slice(),
-            ciphersuite.signature_algorithm(),
-        )
-        .unwrap();
-        let group_info = group
-            .export_group_info(&group_creator.crypto, &creator_signature_key, false)
-            .unwrap()
-            .into_group_info()
-            .unwrap();
+        let public_tree = group.export_ratchet_tree();
         let exporter_secret = group.export_secret(&group_creator.crypto, "test", &[], 32)?;
-        let (public_group, _extensions) = PublicGroup::from_external(
-            &group_creator.crypto,
-            nodes,
-            group_info,
-            ProposalStore::new(),
-        )
-        .unwrap();
+        let member_ids = vec![(0, group_creator_id)];
         let group = Group {
+            group_id: group_id.clone(),
+            members: member_ids,
+            ciphersuite,
             group_config: self.default_mgc.clone(),
+            public_tree,
             exporter_secret,
-            public_group,
         };
         groups.insert(group_id.clone(), group);
         Ok(group_id)
@@ -583,7 +523,7 @@ impl MlsGroupTestSetup {
             .read()
             .expect("An unexpected error occurred.");
         let (messages, welcome_option, _) =
-            client.self_update(action_type, group.group_id(), leaf_node)?;
+            client.self_update(action_type, &group.group_id, leaf_node)?;
         self.distribute_to_members(&client.identity, group, &messages.into())?;
         if let Some(welcome) = welcome_option {
             self.deliver_welcome(welcome, group)?;
@@ -611,8 +551,9 @@ impl MlsGroupTestSetup {
             .read()
             .expect("An unexpected error occurred.");
         if group
-            .members()
-            .any(|(_, id)| addees.iter().any(|client_id| client_id == &id))
+            .members
+            .iter()
+            .any(|(_, id)| addees.iter().any(|client_id| client_id == id))
         {
             return Err(SetupError::ClientAlreadyInGroup);
         }
@@ -623,12 +564,11 @@ impl MlsGroupTestSetup {
                 .ok_or(SetupError::UnknownClientId)?
                 .read()
                 .expect("An unexpected error occurred.");
-            let key_package =
-                self.get_fresh_key_package(&addee, group.public_group.ciphersuite())?;
+            let key_package = self.get_fresh_key_package(&addee, group.ciphersuite)?;
             key_packages.push(key_package);
         }
         let (messages, welcome_option, _) =
-            adder.add_members(action_type, group.group_id(), &key_packages)?;
+            adder.add_members(action_type, &group.group_id, &key_packages)?;
         for message in messages {
             self.distribute_to_members(adder_id, group, &message.into())?;
         }
@@ -656,7 +596,7 @@ impl MlsGroupTestSetup {
             .read()
             .expect("An unexpected error occurred.");
         let (messages, welcome_option, _) =
-            remover.remove_members(action_type, group.group_id(), target_members)?;
+            remover.remove_members(action_type, &group.group_id, target_members)?;
         for message in messages {
             self.distribute_to_members(remover_id, group, &message.into())?;
         }
@@ -683,7 +623,6 @@ impl MlsGroupTestSetup {
 
         // TODO: Do multiple things.
         let operation_type = (OsRng.next_u32() as usize) % 3;
-        let members_len = group.members().count();
         match operation_type {
             0 => {
                 println!("Performing a self-update with action type: {action_type:?}");
@@ -691,14 +630,17 @@ impl MlsGroupTestSetup {
             }
             1 => {
                 // If it's a single-member group, don't remove anyone.
-                if members_len > 1 {
+                if group.members.len() > 1 {
                     // How many members?
-                    let number_of_removals = (((OsRng.next_u32() as usize) % members_len) % 5) + 1;
+                    let number_of_removals =
+                        (((OsRng.next_u32() as usize) % group.members.len()) % 5) + 1;
 
                     let (own_index, _) = group
-                        .members()
+                        .members
+                        .iter()
                         .find(|(_, identity)| identity == &member_id.1)
-                        .expect("An unexpected error occurred.");
+                        .expect("An unexpected error occurred.")
+                        .clone();
                     println!("Index of the member performing the {action_type:?}: {own_index:?}");
 
                     let mut target_member_leaf_indices = Vec::new();
@@ -708,17 +650,18 @@ impl MlsGroupTestSetup {
                     println!("Removing members:");
                     for _ in 0..number_of_removals {
                         // Get a random index.
-                        let mut member_list_index = (OsRng.next_u32() as usize) % members_len;
+                        let mut member_list_index =
+                            (OsRng.next_u32() as usize) % group.members.len();
                         // Re-sample until the index is not our own index and
                         // not one that is not already being removed.
                         let (mut leaf_index, mut identity) =
-                            group.members().nth(member_list_index).unwrap().clone();
+                            group.members[member_list_index].clone();
                         while leaf_index == own_index
                             || target_member_identities.contains(&identity)
                         {
-                            member_list_index = (OsRng.next_u32() as usize) % members_len;
+                            member_list_index = (OsRng.next_u32() as usize) % group.members.len();
                             let (new_leaf_index, new_identity) =
-                                group.members().nth(member_list_index).unwrap().clone();
+                                group.members[member_list_index].clone();
                             leaf_index = new_leaf_index;
                             identity = new_identity;
                         }
@@ -730,7 +673,7 @@ impl MlsGroupTestSetup {
                         let client_group =
                             client.groups.read().expect("An unexpected error occurred.");
                         let client_group = client_group
-                            .get(group.group_id())
+                            .get(&group.group_id)
                             .expect("An unexpected error occurred.");
                         target_member_leaf_indices.push(client_group.own_leaf_index());
                         target_member_identities.push(identity);
@@ -750,7 +693,7 @@ impl MlsGroupTestSetup {
                     .read()
                     .expect("An unexpected error occurred.")
                     .len()
-                    - members_len;
+                    - group.members.len();
                 if clients_left > 0 {
                     let number_of_adds = (((OsRng.next_u32() as usize) % clients_left) % 5) + 1;
                     let new_member_ids = self
