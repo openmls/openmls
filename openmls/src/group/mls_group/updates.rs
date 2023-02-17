@@ -6,6 +6,66 @@ use crate::{messages::group_info::GroupInfo, treesync::LeafNode, versions::Proto
 use super::*;
 
 impl MlsGroup {
+    #[allow(clippy::type_complexity)]
+    pub fn self_update_leaf<KeyStore: OpenMlsKeyStore>(
+        &mut self,
+        backend: &impl OpenMlsCryptoProvider<KeyStoreProvider = KeyStore>,
+        leaf_node: LeafNode,
+        signer: &impl Signer,
+    ) -> Result<
+        (MlsMessageOut, Option<MlsMessageOut>, Option<GroupInfo>),
+        SelfUpdateError<KeyStore::Error>,
+    > {
+        self.is_operational()?;
+
+        let tree = self.group.treesync();
+
+        // Here we clone our own leaf to rekey it such that we don't change the
+        // tree.
+        // The new leaf node will be applied later when the proposal is
+        // committed.
+        let mut own_leaf = tree
+            .leaf(self.own_leaf_index())
+            .ok_or_else(|| LibraryError::custom("The tree is broken. Couldn't find own leaf."))?
+            .clone();
+
+        own_leaf
+            .update_and_re_sign(None, leaf_node, self.group_id().clone(), signer)
+            .unwrap();
+
+        self.own_leaf_nodes.push(own_leaf.clone());
+
+        let params = CreateCommitParams::builder()
+            .framing_parameters(self.framing_parameters())
+            .proposal_store(&self.proposal_store)
+            .leaf_node(own_leaf)
+            .build();
+        // Create Commit over all proposals.
+        // TODO #751
+        let create_commit_result = self.group.create_commit(params, backend, signer)?;
+
+        // Convert PublicMessage messages to MLSMessage and encrypt them if required by
+        // the configuration
+        let mls_message = self.content_to_mls_message(create_commit_result.commit, backend)?;
+
+        // Set the current group state to [`MlsGroupState::PendingCommit`],
+        // storing the current [`StagedCommit`] from the commit results
+        self.group_state = MlsGroupState::PendingCommit(Box::new(PendingCommitState::Member(
+            create_commit_result.staged_commit,
+        )));
+
+        // Since the state of the group might be changed, arm the state flag
+        self.flag_state_change();
+
+        Ok((
+            mls_message,
+            create_commit_result
+                .welcome_option
+                .map(|w| MlsMessageOut::from_welcome(w, self.group.version())),
+            create_commit_result.group_info,
+        ))
+    }
+
     /// Updates the own leaf node.
     ///
     /// If successful, it returns a tuple of [`MlsMessageOut`] (containing the

@@ -850,7 +850,8 @@ impl CoreGroup {
                     apply_proposals_values.exclusion_list(),
                     params.commit_type(),
                     signer,
-                    params.take_credential_with_key()
+                    params.take_credential_with_key(),
+                    params.take_leaf_node(),
                 )?
             } else {
                 // If path is not needed, update the group context and return

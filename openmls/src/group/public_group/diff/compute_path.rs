@@ -35,6 +35,7 @@ pub(crate) struct PathComputationResult {
 }
 
 impl<'a> PublicGroupDiff<'a> {
+    #[allow(clippy::too_many_arguments)]
     pub(crate) fn compute_path<KeyStore: OpenMlsKeyStore>(
         &mut self,
         backend: &impl OpenMlsCryptoProvider<KeyStoreProvider = KeyStore>,
@@ -43,6 +44,7 @@ impl<'a> PublicGroupDiff<'a> {
         commit_type: CommitType,
         signer: &impl Signer,
         credential_with_key: Option<CredentialWithKey>,
+        leaf_node_option: Option<OpenMlsLeafNode>,
     ) -> Result<PathComputationResult, CreateCommitError<KeyStore::Error>> {
         let version = self.group_context().protocol_version();
         let ciphersuite = self.group_context().ciphersuite();
@@ -74,6 +76,8 @@ impl<'a> PublicGroupDiff<'a> {
                 .add_leaf(leaf_node)
                 .map_err(|_| LibraryError::custom("Tree full: cannot add more members"))?;
             vec![encryption_keypair]
+        } else if let Some(leaf_node) = leaf_node_option {
+            todo!()
         } else {
             // If we're already in the tree, we rekey our existing leaf.
             let own_diff_leaf = self

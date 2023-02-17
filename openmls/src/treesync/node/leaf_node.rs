@@ -782,6 +782,7 @@ impl OpenMlsLeafNode {
         if let Some(leaf_node) = leaf_node.into() {
             leaf_node_tbs.payload.credential = leaf_node.credential().clone();
             leaf_node_tbs.payload.encryption_key = leaf_node.encryption_key().clone();
+            leaf_node_tbs.payload.signature_key = leaf_node.signature_key().clone();
         } else if let Some(new_encryption_key) = new_encryption_key.into() {
             // If there's no new leaf, the encryption key must be provided
             // explicitly.
