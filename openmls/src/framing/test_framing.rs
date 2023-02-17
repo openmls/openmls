@@ -20,6 +20,7 @@ use crate::{
         CreateCommitParams,
     },
     key_packages::KeyPackageBundle,
+    schedule::psk::PskSecret,
     tree::{secret_tree::SecretTree, sender_ratchet::SenderRatchetConfiguration},
     versions::ProtocolVersion,
 };
@@ -115,7 +116,7 @@ fn codec_ciphertext(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvid
         ciphersuite,
         backend,
         JoinerSecret::random(ciphersuite, backend, ProtocolVersion::default()),
-        None, // PSK
+        PskSecret::from(Secret::zero(ciphersuite, ProtocolVersion::Mls10)),
     )
     .expect("Could not create KeySchedule.");
 

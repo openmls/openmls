@@ -89,8 +89,13 @@ fn generate(
         .random_vec(ciphersuite.hash_length())
         .expect("An unexpected error occurred.");
 
-    let psk_secret =
-        PskSecret::from(Secret::random(ciphersuite, &crypto, ProtocolVersion::Mls10).unwrap());
+    // PSK secret can sometimes be the all zero vector
+    let a: [u8; 1] = crypto.rand().random_array().unwrap();
+    let psk_secret = if a[0] > 127 {
+        PskSecret::from(Secret::random(ciphersuite, &crypto, ProtocolVersion::Mls10).unwrap())
+    } else {
+        PskSecret::from(Secret::zero(ciphersuite, ProtocolVersion::Mls10))
+    };
 
     let group_context = GroupContext::new(
         ciphersuite,
@@ -112,7 +117,7 @@ fn generate(
         ciphersuite,
         &crypto,
         joiner_secret.clone(),
-        Some(psk_secret.clone()),
+        psk_secret.clone(),
     )
     .expect("Could not create KeySchedule.");
     let welcome_secret = key_schedule
@@ -324,13 +329,9 @@ pub fn run_test_vector(
         );
         let psk_secret = PskSecret::from(psk_secret_inner);
 
-        let mut key_schedule = KeySchedule::init(
-            ciphersuite,
-            backend,
-            joiner_secret.clone(),
-            Some(psk_secret),
-        )
-        .expect("Could not create KeySchedule.");
+        let mut key_schedule =
+            KeySchedule::init(ciphersuite, backend, joiner_secret.clone(), psk_secret)
+                .expect("Could not create KeySchedule.");
         let welcome_secret = key_schedule
             .welcome(backend)
             .expect("An unexpected error occurred.");
