@@ -348,9 +348,8 @@ impl CoreGroup {
         own_leaf_nodes: &[OpenMlsLeafNode],
         backend: &impl OpenMlsCryptoProvider,
     ) -> Result<StagedCommit, StageCommitError> {
-        let (old_epoch_keypairs, leaf_node_keypairs) = self
-            .read_decryption_keypairs(backend, own_leaf_nodes)
-            .unwrap();
+        let (old_epoch_keypairs, leaf_node_keypairs) =
+            self.read_decryption_keypairs(backend, own_leaf_nodes)?;
 
         self.stage_commit(
             mls_content,
