@@ -1,4 +1,4 @@
-use std::collections::HashSet;
+use std::{collections::HashSet, mem};
 
 use openmls_traits::{key_store::OpenMlsKeyStore, signatures::Signer, OpenMlsCryptoProvider};
 use tls_codec::Serialize;
@@ -44,7 +44,7 @@ impl<'a> PublicGroupDiff<'a> {
         commit_type: CommitType,
         signer: &impl Signer,
         credential_with_key: Option<CredentialWithKey>,
-        leaf_node_option: Option<OpenMlsLeafNode>,
+        leaf_node_and_keypair_option: Option<(OpenMlsLeafNode, EncryptionKeyPair)>,
     ) -> Result<PathComputationResult, CreateCommitError<KeyStore::Error>> {
         let version = self.group_context().protocol_version();
         let ciphersuite = self.group_context().ciphersuite();
@@ -76,8 +76,14 @@ impl<'a> PublicGroupDiff<'a> {
                 .add_leaf(leaf_node)
                 .map_err(|_| LibraryError::custom("Tree full: cannot add more members"))?;
             vec![encryption_keypair]
-        } else if let Some(leaf_node) = leaf_node_option {
-            todo!()
+        } else if let Some((mut leaf_node, encryption_keypair)) = leaf_node_and_keypair_option {
+            // If we're already in the tree, we rekey our existing leaf.
+            let own_diff_leaf = self
+                .diff
+                .leaf_mut(leaf_index)
+                .ok_or_else(|| LibraryError::custom("Unable to get own leaf from diff"))?;
+            mem::swap(&mut leaf_node, own_diff_leaf);
+            vec![encryption_keypair]
         } else {
             // If we're already in the tree, we rekey our existing leaf.
             let own_diff_leaf = self

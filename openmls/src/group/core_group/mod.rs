@@ -851,7 +851,7 @@ impl CoreGroup {
                     params.commit_type(),
                     signer,
                     params.take_credential_with_key(),
-                    params.take_leaf_node(),
+                    params.take_leaf_node_and_keypair(),
                 )?
             } else {
                 // If path is not needed, update the group context and return

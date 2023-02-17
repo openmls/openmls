@@ -3,8 +3,11 @@
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    credentials::CredentialWithKey, framing::FramingParameters, group::ProposalStore,
-    messages::proposals::Proposal, treesync::node::leaf_node::OpenMlsLeafNode,
+    credentials::CredentialWithKey,
+    framing::FramingParameters,
+    group::ProposalStore,
+    messages::proposals::Proposal,
+    treesync::node::{encryption_keys::EncryptionKeyPair, leaf_node::OpenMlsLeafNode},
 };
 
 #[cfg(doc)]
@@ -24,7 +27,7 @@ pub(crate) struct CreateCommitParams<'a> {
     force_self_update: bool,                        // Optional
     commit_type: CommitType,                        // Optional (default is `Member`)
     credential_with_key: Option<CredentialWithKey>, // Mandatory for external commits
-    leaf_node_option: Option<OpenMlsLeafNode>,      // Optional
+    leaf_node_and_keypair_option: Option<(OpenMlsLeafNode, EncryptionKeyPair)>, // Optional
 }
 
 pub(crate) struct TempBuilderCCPM0 {}
@@ -59,7 +62,7 @@ impl<'a> TempBuilderCCPM1<'a> {
                 force_self_update: true,
                 commit_type: CommitType::Member,
                 credential_with_key: None,
-                leaf_node_option: None,
+                leaf_node_and_keypair_option: None,
             },
         }
     }
@@ -79,8 +82,12 @@ impl<'a> CreateCommitParamsBuilder<'a> {
         self.ccp.commit_type = commit_type;
         self
     }
-    pub(crate) fn leaf_node(mut self, leaf_node: OpenMlsLeafNode) -> Self {
-        self.ccp.leaf_node_option = Some(leaf_node);
+    pub(crate) fn leaf_node_and_keypair(
+        mut self,
+        leaf_node: OpenMlsLeafNode,
+        keypair: EncryptionKeyPair,
+    ) -> Self {
+        self.ccp.leaf_node_and_keypair_option = Some((leaf_node, keypair));
         self
     }
     pub(crate) fn credential_with_key(mut self, credential_with_key: CredentialWithKey) -> Self {
@@ -114,7 +121,9 @@ impl<'a> CreateCommitParams<'a> {
     pub(crate) fn take_credential_with_key(&mut self) -> Option<CredentialWithKey> {
         self.credential_with_key.take()
     }
-    pub(crate) fn take_leaf_node(&mut self) -> Option<OpenMlsLeafNode> {
-        self.leaf_node_option.take()
+    pub(crate) fn take_leaf_node_and_keypair(
+        &mut self,
+    ) -> Option<(OpenMlsLeafNode, EncryptionKeyPair)> {
+        self.leaf_node_and_keypair_option.take()
     }
 }

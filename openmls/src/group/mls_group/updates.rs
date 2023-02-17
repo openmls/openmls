@@ -1,7 +1,11 @@
 use core_group::create_commit_params::CreateCommitParams;
 use openmls_traits::signatures::Signer;
 
-use crate::{messages::group_info::GroupInfo, treesync::LeafNode, versions::ProtocolVersion};
+use crate::{
+    messages::group_info::GroupInfo,
+    treesync::{node::encryption_keys::EncryptionKeyPair, LeafNode},
+    versions::ProtocolVersion,
+};
 
 use super::*;
 
@@ -10,7 +14,7 @@ impl MlsGroup {
     pub fn self_update_leaf<KeyStore: OpenMlsKeyStore>(
         &mut self,
         backend: &impl OpenMlsCryptoProvider<KeyStoreProvider = KeyStore>,
-        leaf_node: LeafNode,
+        leaf_node: Option<LeafNode>,
         signer: &impl Signer,
     ) -> Result<
         (MlsMessageOut, Option<MlsMessageOut>, Option<GroupInfo>),
@@ -20,26 +24,46 @@ impl MlsGroup {
 
         let tree = self.group.treesync();
 
-        // Here we clone our own leaf to rekey it such that we don't change the
-        // tree.
-        // The new leaf node will be applied later when the proposal is
-        // committed.
-        let mut own_leaf = tree
-            .leaf(self.own_leaf_index())
-            .ok_or_else(|| LibraryError::custom("The tree is broken. Couldn't find own leaf."))?
-            .clone();
+        let leaf_update = if let Some(leaf_node) = leaf_node {
+            // Here we clone our own leaf to rekey it such that we don't change the
+            // tree.
+            // The new leaf node will be applied later when the proposal is
+            // committed.
+            let mut own_leaf = tree
+                .leaf(self.own_leaf_index())
+                .ok_or_else(|| LibraryError::custom("The tree is broken. Couldn't find own leaf."))?
+                .clone();
 
-        own_leaf
-            .update_and_re_sign(None, leaf_node, self.group_id().clone(), signer)
-            .unwrap();
+            own_leaf
+                .update_and_re_sign(None, leaf_node, self.group_id().clone(), signer)
+                .unwrap();
 
-        self.own_leaf_nodes.push(own_leaf.clone());
+            self.own_leaf_nodes.push(own_leaf.clone());
 
-        let params = CreateCommitParams::builder()
-            .framing_parameters(self.framing_parameters())
-            .proposal_store(&self.proposal_store)
-            .leaf_node(own_leaf)
-            .build();
+            // XXX: This should not be a library error.
+            let keypair =
+                EncryptionKeyPair::read_from_key_store(backend, own_leaf.encryption_key()).ok_or(
+                    SelfUpdateError::LibraryError(LibraryError::custom(
+                        "This should not be a LibraryError.",
+                    )),
+                )?;
+            Some((own_leaf, keypair))
+        } else {
+            None
+        };
+        let params = if let Some((leaf_node, keypair)) = leaf_update {
+            CreateCommitParams::builder()
+                .framing_parameters(self.framing_parameters())
+                .proposal_store(&self.proposal_store)
+                .leaf_node_and_keypair(leaf_node, keypair)
+                .build()
+        } else {
+            CreateCommitParams::builder()
+                .framing_parameters(self.framing_parameters())
+                .proposal_store(&self.proposal_store)
+                .build()
+        };
+
         // Create Commit over all proposals.
         // TODO #751
         let create_commit_result = self.group.create_commit(params, backend, signer)?;
@@ -89,36 +113,7 @@ impl MlsGroup {
         (MlsMessageOut, Option<MlsMessageOut>, Option<GroupInfo>),
         SelfUpdateError<KeyStore::Error>,
     > {
-        self.is_operational()?;
-
-        let params = CreateCommitParams::builder()
-            .framing_parameters(self.framing_parameters())
-            .proposal_store(&self.proposal_store)
-            .build();
-        // Create Commit over all proposals.
-        // TODO #751
-        let create_commit_result = self.group.create_commit(params, backend, signer)?;
-
-        // Convert PublicMessage messages to MLSMessage and encrypt them if required by
-        // the configuration
-        let mls_message = self.content_to_mls_message(create_commit_result.commit, backend)?;
-
-        // Set the current group state to [`MlsGroupState::PendingCommit`],
-        // storing the current [`StagedCommit`] from the commit results
-        self.group_state = MlsGroupState::PendingCommit(Box::new(PendingCommitState::Member(
-            create_commit_result.staged_commit,
-        )));
-
-        // Since the state of the group might be changed, arm the state flag
-        self.flag_state_change();
-
-        Ok((
-            mls_message,
-            create_commit_result
-                .welcome_option
-                .map(|w| MlsMessageOut::from_welcome(w, self.group.version())),
-            create_commit_result.group_info,
-        ))
+        self.self_update_leaf(backend, None, signer)
     }
 
     /// Creates a proposal to update the own leaf node.
