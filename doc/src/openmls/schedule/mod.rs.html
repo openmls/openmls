@@ -1260,6 +1260,8 @@
 <a href="#1260" id="1260">1260</a>
 <a href="#1261" id="1261">1261</a>
 <a href="#1262" id="1262">1262</a>
+<a href="#1263" id="1263">1263</a>
+<a href="#1264" id="1264">1264</a>
 </pre><pre class="rust"><code><span class="doccomment">//! # Key schedule
 //!
 //! This module contains the types and implementations for key schedule operations.
@@ -1412,6 +1414,8 @@
 <span class="comment">// Tests
 </span><span class="attr">#[cfg(any(feature = <span class="string">&quot;test-utils&quot;</span>, test))]
 </span><span class="kw">pub mod </span>kat_key_schedule;
+<span class="attr">#[cfg(test)]
+</span><span class="kw">pub mod </span>kat_psk_secret;
 <span class="attr">#[cfg(test)]
 </span><span class="kw">mod </span>unit_tests;
 
