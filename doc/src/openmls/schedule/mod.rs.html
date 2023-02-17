@@ -1258,10 +1258,6 @@
 <a href="#1258" id="1258">1258</a>
 <a href="#1259" id="1259">1259</a>
 <a href="#1260" id="1260">1260</a>
-<a href="#1261" id="1261">1261</a>
-<a href="#1262" id="1262">1262</a>
-<a href="#1263" id="1263">1263</a>
-<a href="#1264" id="1264">1264</a>
 </pre><pre class="rust"><code><span class="doccomment">//! # Key schedule
 //!
 //! This module contains the types and implementations for key schedule operations.
@@ -1696,7 +1692,7 @@
         ciphersuite: Ciphersuite,
         backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider,
         joiner_secret: JoinerSecret,
-        psk: <span class="kw">impl </span>Into&lt;<span class="prelude-ty">Option</span>&lt;PskSecret&gt;&gt;,
+        psk: PskSecret,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, LibraryError&gt; {
         <span class="macro">log::debug!</span>(<span class="string">&quot;Initializing the key schedule with {:?} ...&quot;</span>, ciphersuite);
         <span class="macro">log_crypto!</span>(
@@ -1704,8 +1700,6 @@
             <span class="string">&quot;  joiner_secret: {:x?}&quot;</span>,
             joiner_secret.secret.as_slice()
         );
-        <span class="kw">let </span>psk = psk.into();
-        <span class="macro">log_crypto!</span>(trace, <span class="string">&quot;  {}&quot;</span>, <span class="kw">if </span>psk.is_some() { <span class="string">&quot;with PSK&quot; </span>} <span class="kw">else </span>{ <span class="string">&quot;&quot; </span>});
         <span class="kw">let </span>intermediate_secret = IntermediateSecret::new(backend, <span class="kw-2">&amp;</span>joiner_secret, psk)
             .map_err(LibraryError::unexpected_crypto_error)<span class="question-mark">?</span>;
         <span class="prelude-val">Ok</span>(<span class="self">Self </span>{
@@ -1811,12 +1805,10 @@
     </span><span class="kw">fn </span>new(
         backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider,
         joiner_secret: <span class="kw-2">&amp;</span>JoinerSecret,
-        psk: <span class="prelude-ty">Option</span>&lt;PskSecret&gt;,
+        psk: PskSecret,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, CryptoError&gt; {
         <span class="macro">log_crypto!</span>(trace, <span class="string">&quot;PSK input: {:x?}&quot;</span>, psk.as_ref().map(|p| p.secret()));
-        <span class="kw">let </span>secret = joiner_secret
-            .secret
-            .hkdf_extract(backend, psk.as_ref().map(|p| p.secret()))<span class="question-mark">?</span>;
+        <span class="kw">let </span>secret = joiner_secret.secret.hkdf_extract(backend, psk.secret())<span class="question-mark">?</span>;
         <span class="macro">log_crypto!</span>(trace, <span class="string">&quot;Intermediate secret: {:x?}&quot;</span>, secret);
         <span class="prelude-val">Ok</span>(<span class="self">Self </span>{ secret })
     }
