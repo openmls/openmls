@@ -14,10 +14,10 @@ use crate::{
     extensions::Extensions,
     framing::*,
     group::{
-        core_group::create_commit_params::CreateCommitParams,
         core_group::proposals::{ProposalStore, QueuedProposal},
         errors::*,
         tests::tree_printing::print_tree,
+        CreateCommitParams,
     },
     key_packages::KeyPackageBundle,
     tree::{secret_tree::SecretTree, sender_ratchet::SenderRatchetConfiguration},
@@ -530,7 +530,7 @@ fn unknown_sender(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
         .expect("Error creating Commit");
 
     let staged_commit = group_charlie
-        .stage_commit(&create_commit_result.commit, &proposal_store, &[], backend)
+        .read_keys_and_stage_commit(&create_commit_result.commit, &proposal_store, &[], backend)
         .expect("Charlie: Could not stage Commit");
     group_charlie
         .merge_commit(backend, staged_commit)
@@ -595,7 +595,7 @@ fn confirmation_tag_presence(ciphersuite: Ciphersuite, backend: &impl OpenMlsCry
     create_commit_result.commit.unset_confirmation_tag();
 
     let err = group_bob
-        .stage_commit(&create_commit_result.commit, &proposal_store, &[], backend)
+        .read_keys_and_stage_commit(&create_commit_result.commit, &proposal_store, &[], backend)
         .expect_err("No error despite missing confirmation tag.");
 
     assert_eq!(err, StageCommitError::ConfirmationTagMissing);

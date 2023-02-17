@@ -275,7 +275,7 @@ fn test_update_path(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvid
     );
 
     let staged_commit_res =
-        group_alice.stage_commit(&broken_plaintext, &proposal_store, &[], backend);
+        group_alice.read_keys_and_stage_commit(&broken_plaintext, &proposal_store, &[], backend);
     assert_eq!(
         staged_commit_res.expect_err("Successful processing of a broken commit."),
         StageCommitError::UpdatePathError(ApplyUpdatePathError::UnableToDecrypt)
@@ -545,7 +545,7 @@ fn test_own_commit_processing(ciphersuite: Ciphersuite, backend: &impl OpenMlsCr
 
     // Alice attempts to process her own commit
     let error = alice_group
-        .stage_commit(&create_commit_result.commit, &proposal_store, &[], backend)
+        .read_keys_and_stage_commit(&create_commit_result.commit, &proposal_store, &[], backend)
         .expect_err("no error while processing own commit");
     assert_eq!(error, StageCommitError::OwnCommit);
 }
@@ -693,7 +693,7 @@ fn test_proposal_application_after_self_was_removed(
         .expect("Error creating commit");
 
     let staged_commit = bob_group
-        .stage_commit(
+        .read_keys_and_stage_commit(
             &remove_add_commit_result.commit,
             &remove_add_proposal_store,
             &[],
