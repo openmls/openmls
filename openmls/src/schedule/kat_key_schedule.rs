@@ -94,11 +94,7 @@ fn generate(
     let psk_secret = if a[0] > 127 {
         PskSecret::from(Secret::random(ciphersuite, &crypto, ProtocolVersion::Mls10).unwrap())
     } else {
-        PskSecret::from(Secret::from_slice(
-            &vec![0; ciphersuite.hash_length()],
-            ProtocolVersion::Mls10,
-            ciphersuite,
-        ))
+        PskSecret::from(Secret::zero(ciphersuite, ProtocolVersion::Mls10))
     };
 
     let group_context = GroupContext::new(
@@ -331,11 +327,7 @@ pub fn run_test_vector(
             ProtocolVersion::Mls10,
             ciphersuite,
         );
-        let psk_secret = if psk_secret_inner.as_slice().is_empty() {
-            None
-        } else {
-            Some(PskSecret::from(psk_secret_inner))
-        };
+        let psk_secret = PskSecret::from(psk_secret_inner);
 
         let mut key_schedule =
             KeySchedule::init(ciphersuite, backend, joiner_secret.clone(), psk_secret)
