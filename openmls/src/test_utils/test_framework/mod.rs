@@ -419,7 +419,6 @@ impl MlsGroupTestSetup {
                         group_state.export_ratchet_tree(),
                         group.public_group.export_nodes()
                     );
-                    //assert_eq!(group_state.export_group_info(&m.crypto, &signer, false), group.public_group.grou);
                     assert_eq!(
                         group_state
                             .export_secret(&m.crypto, "test", &[], 32)
@@ -453,9 +452,7 @@ impl MlsGroupTestSetup {
         number_of_members: usize,
     ) -> Result<Vec<Vec<u8>>, SetupError> {
         let clients = self.clients.read().expect("An unexpected error occurred.");
-        if number_of_members + group.members().collect::<Vec<(u32, Vec<u8>)>>().len()
-            > clients.len()
-        {
+        if number_of_members + group.members().count() > clients.len() {
             return Err(SetupError::NotEnoughClients);
         }
         let mut new_member_ids: Vec<Vec<u8>> = Vec::new();
@@ -686,7 +683,7 @@ impl MlsGroupTestSetup {
 
         // TODO: Do multiple things.
         let operation_type = (OsRng.next_u32() as usize) % 3;
-        let members_len = group.members().collect::<Vec<(u32, Vec<u8>)>>().len();
+        let members_len = group.members().count();
         match operation_type {
             0 => {
                 println!("Performing a self-update with action type: {action_type:?}");
