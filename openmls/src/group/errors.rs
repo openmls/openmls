@@ -16,7 +16,7 @@ use thiserror::Error;
 // === Public errors ===
 
 pub use super::mls_group::errors::*;
-use super::public_group::errors::CreationFromExternalError;
+use super::public_group::errors::{CreationFromExternalError, PublicGroupBuildError};
 
 /// Welcome error
 #[derive(Error, Debug, PartialEq, Clone)]
@@ -452,15 +452,12 @@ pub(crate) enum CoreGroupBuildError<KeyStoreError> {
     /// See [`LibraryError`] for more details.
     #[error(transparent)]
     LibraryError(#[from] LibraryError),
-    /// Unsupported proposal type in required capabilities.
-    #[error("Unsupported proposal type in required capabilities.")]
-    UnsupportedProposalType,
-    /// Unsupported extension type in required capabilities.
-    #[error("Unsupported extension type in required capabilities.")]
-    UnsupportedExtensionType,
+    /// See [`PublicGroupBuildError`] for more details.
+    #[error(transparent)]
+    PublicGroupBuildError(#[from] PublicGroupBuildError),
     /// See [`PskError`] for more details.
     #[error(transparent)]
-    PskError(#[from] PskError),
+    Psk(#[from] PskError),
     /// Error storing leaf private key in key store.
     #[error("Error storing leaf private key in key store.")]
     KeyStoreError(KeyStoreError),

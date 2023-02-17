@@ -6,7 +6,6 @@
 //! error, will still return a `Result` since they may throw a `LibraryError`.
 
 // Private
-mod apply_proposals;
 mod new_from_welcome;
 
 // Crate
