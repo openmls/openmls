@@ -144,7 +144,10 @@ impl PublicGroup {
                 tbs: &tbs,
                 signature: leaf_node.signature(),
             };
-            let signature_public_key = leaf_node
+            let signature_public_key = self
+                .treesync
+                .leaf(sender_index)
+                .ok_or(StageCommitError::PathLeafNodeVerificationFailure)?
                 .signature_key()
                 .clone()
                 .into_signature_public_key_enriched(self.ciphersuite().signature_algorithm());

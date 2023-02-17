@@ -1,6 +1,7 @@
 use openmls::{
     prelude::{config::CryptoConfig, test_utils::new_credential, *},
     test_utils::*,
+    treesync::Capabilities,
     *,
 };
 
@@ -405,8 +406,30 @@ fn mls_group_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoPr
             .expect("Could not process message.");
 
         // === Charlie updates and commits ===
-        let (queued_message, welcome_option, _group_info) =
-            charlie_group.self_update(backend, &charlie_signer).unwrap();
+        let (charlie_new_credential, charlie_new_signer) = new_credential(
+            backend,
+            b"Charlie",
+            CredentialType::Basic,
+            ciphersuite.signature_algorithm(),
+        );
+
+        let leaf_node = LeafNode::generate_update(
+            CryptoConfig {
+                ciphersuite,
+                version: ProtocolVersion::default(),
+            },
+            charlie_new_credential,
+            Capabilities::default(),
+            Extensions::empty(),
+            backend,
+            &charlie_new_signer,
+        )
+        .unwrap();
+        let (queued_message, welcome_option, _group_info) = charlie_group
+            .self_update_leaf(backend, Some(leaf_node), &charlie_signer)
+            .unwrap();
+
+        let charlie_signer = charlie_new_signer;
 
         let alice_processed_message = alice_group
             .process_message(

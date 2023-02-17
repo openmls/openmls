@@ -29,7 +29,7 @@ use self::{
     diff::{StagedTreeSyncDiff, TreeSyncDiff},
     node::{
         encryption_keys::{EncryptionKey, EncryptionKeyPair},
-        leaf_node::{Capabilities, LeafNodeSource, Lifetime, OpenMlsLeafNode},
+        leaf_node::{LeafNodeSource, Lifetime, OpenMlsLeafNode},
     },
     treesync_node::{TreeSyncLeafNode, TreeSyncNode, TreeSyncParentNode},
 };
@@ -62,7 +62,11 @@ pub(crate) mod treesync_node;
 pub mod errors;
 
 // Public re-exports
-pub use node::{leaf_node::LeafNode, parent_node::ParentNode, Node};
+pub use node::{
+    leaf_node::{Capabilities, LeafNode},
+    parent_node::ParentNode,
+    Node,
+};
 
 // Tests
 #[cfg(any(feature = "test-utils", test))]
