@@ -178,6 +178,14 @@ impl PreSharedKeyId {
         })
     }
 
+    #[cfg(test)]
+    pub(crate) fn new_with_nonce(psk: Psk, psk_nonce: Vec<u8>) -> Self {
+        Self {
+            psk,
+            psk_nonce: psk_nonce.into(),
+        }
+    }
+
     /// Return the PSK
     pub fn psk(&self) -> &Psk {
         &self.psk
@@ -211,6 +219,7 @@ impl<'a> PskLabel<'a> {
 
 /// This contains the `psk-secret` calculated from the PSKs contained in a
 /// Commit or a PreSharedKey proposal.
+#[derive(Clone)]
 pub struct PskSecret {
     secret: Secret,
 }
@@ -281,5 +290,17 @@ impl PskSecret {
     /// Return the inner secret
     pub(crate) fn secret(&self) -> &Secret {
         &self.secret
+    }
+
+    #[cfg(any(feature = "test-utils", test))]
+    pub(crate) fn as_slice(&self) -> &[u8] {
+        self.secret.as_slice()
+    }
+}
+
+#[cfg(any(feature = "test-utils", test))]
+impl From<Secret> for PskSecret {
+    fn from(secret: Secret) -> Self {
+        Self { secret }
     }
 }
