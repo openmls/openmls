@@ -247,7 +247,7 @@ impl PublicGroup {
     }
 
     /// Get an iterator over all [`Member`]s of this [`PublicGroup`].
-    pub(crate) fn members(&self) -> impl Iterator<Item = Member> + '_ {
+    pub fn members(&self) -> impl Iterator<Item = Member> + '_ {
         self.treesync().full_leave_members()
     }
 
