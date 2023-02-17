@@ -20,6 +20,7 @@ use super::{errors::KsTestVectorError, CommitSecret};
 #[derive(Serialize, Deserialize, Debug, Clone, Default)]
 struct Exporter {
     label: String,
+    context: String,
     length: u32,
     secret: String,
 }
@@ -184,13 +185,14 @@ pub fn generate_test_vector(
         // exporter
         let exporter_label = "exporter label";
         let exporter_length = 32u32;
+        let exporter_context = b"exporter context";
         let exported = epoch_secrets
             .exporter_secret()
             .derive_exported_secret(
                 ciphersuite,
                 backend,
                 exporter_label,
-                &group_context.tls_serialize_detached().unwrap(),
+                exporter_context,
                 exporter_length as usize,
             )
             .unwrap();
@@ -219,6 +221,7 @@ pub fn generate_test_vector(
             external_pub: bytes_to_hex(&external_key_pair.public),
             exporter: Exporter {
                 label: exporter_label.into(),
+                context: bytes_to_hex(exporter_context),
                 length: exporter_length,
                 secret: bytes_to_hex(&exported),
             },
@@ -443,6 +446,24 @@ pub fn run_test_vector(
                 panic!("External pub mismatch");
             }
             return Err(KsTestVectorError::ExternalPubMismatch);
+        }
+
+        // Check exported secret
+        let exported = epoch_secrets
+            .exporter_secret()
+            .derive_exported_secret(
+                ciphersuite,
+                backend,
+                &epoch.exporter.label,
+                &hex_to_bytes(&epoch.exporter.context),
+                epoch.exporter.length as usize,
+            )
+            .unwrap();
+        if hex_to_bytes(&epoch.exporter.secret) != exported {
+            if cfg!(test) {
+                panic!("Exporter mismatch");
+            }
+            return Err(KsTestVectorError::ExporterMismatch);
         }
     }
     Ok(())

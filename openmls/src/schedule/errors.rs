@@ -91,4 +91,7 @@ pub enum KsTestVectorError {
     /// The computed external public key doesn't match the one in the test vector.
     #[error("The computed external public key doesn't match the one in the test vector.")]
     ExternalPubMismatch,
+    /// The computed exporter secret doesn't match the on ein the test vector.
+    #[error("The computed exporter secret doesn't match the on ein the test vector.")]
+    ExporterMismatch,
 }
