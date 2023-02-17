@@ -89,16 +89,16 @@ fn generate(
         .random_vec(ciphersuite.hash_length())
         .expect("An unexpected error occurred.");
 
-    // PSK secret can sometimes be null
+    // PSK secret can sometimes be the all zero vector
     let a: [u8; 1] = crypto.rand().random_array().unwrap();
     let psk_secret = if a[0] > 127 {
-        log::trace!("PSK secret is not null");
-        Some(PskSecret::from(
-            Secret::random(ciphersuite, &crypto, ProtocolVersion::Mls10).unwrap(),
-        ))
+        PskSecret::from(Secret::random(ciphersuite, &crypto, ProtocolVersion::Mls10).unwrap())
     } else {
-        log::trace!("PSK secret is null");
-        None
+        PskSecret::from(Secret::from_slice(
+            &vec![0; ciphersuite.hash_length()],
+            ProtocolVersion::Mls10,
+            ciphersuite,
+        ))
     };
 
     let group_context = GroupContext::new(
@@ -147,7 +147,7 @@ fn generate(
     (
         confirmed_transcript_hash,
         commit_secret,
-        psk_secret.unwrap_or(PskSecret::from(Secret::default())),
+        psk_secret,
         joiner_secret,
         welcome_secret,
         epoch_secrets,
