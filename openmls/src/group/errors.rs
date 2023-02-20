@@ -27,9 +27,6 @@ pub enum WelcomeError<KeyStoreError> {
     /// Ciphersuites in Welcome and key package bundle don't match.
     #[error("Ciphersuites in Welcome and key package bundle don't match.")]
     CiphersuiteMismatch,
-    /// Ciphersuites in Welcome/GroupInfo and key package bundle don't match.
-    #[error("Ciphersuites in Welcome/GroupInfo and key package bundle don't match.")]
-    GroupInfoCiphersuiteMismatch,
     /// No joiner secret found in the Welcome message.
     #[error("No joiner secret found in the Welcome message.")]
     JoinerSecretNotFound,
