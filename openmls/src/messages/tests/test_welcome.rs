@@ -26,15 +26,14 @@ use openmls_traits::{
 };
 use tls_codec::{Deserialize, Serialize};
 
-/// This test detects discrepancies between ciphersuites in the GroupInfo of a
-/// Welcome message and the KeyPackage of a new member. We expect that to fail
-/// as the ciphersuite should be identical in the Welcome message, the GroupInfo
-/// and the KeyPackage.
+/// This test detects if the decryption of the encrypted group secrets fails due to a change in
+/// the encrypted group info. As the group info is part of the decryption context of the encrypted
+/// group info, it is not possible to generate a matching encrypted group context with different
+/// parameters.
 #[apply(ciphersuites_and_backends)]
-fn test_welcome_ciphersuite_mismatch(
-    ciphersuite: Ciphersuite,
-    backend: &impl OpenMlsCryptoProvider,
-) {
+fn test_welcome_context_mismatch(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
+    let _ = pretty_env_logger::try_init();
+
     // We need a ciphersuite that is different from the current one to create
     // the mismatch
     let mismatched_ciphersuite = match ciphersuite {
@@ -86,7 +85,7 @@ fn test_welcome_ciphersuite_mismatch(
     let group_secrets_bytes = hpke::decrypt_with_label(
         bob_private_key.as_slice(),
         "Welcome",
-        &[],
+        welcome.encrypted_group_info(),
         egs.encrypted_group_secrets(),
         ciphersuite,
         backend.crypto(),
@@ -150,7 +149,7 @@ fn test_welcome_ciphersuite_mismatch(
     )
     .expect_err("Created a group from an invalid Welcome.");
 
-    assert_eq!(err, WelcomeError::GroupInfoCiphersuiteMismatch);
+    assert_eq!(err, WelcomeError::UnableToDecrypt);
 
     // === Process the original Welcome ===
 
