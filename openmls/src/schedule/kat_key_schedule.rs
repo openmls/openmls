@@ -113,13 +113,9 @@ fn generate(
         &group_context.tls_serialize_detached().unwrap(),
     )
     .expect("Could not create JoinerSecret.");
-    let mut key_schedule = KeySchedule::init(
-        ciphersuite,
-        &crypto,
-        &joiner_secret,
-        psk_secret.clone(),
-    )
-    .expect("Could not create KeySchedule.");
+    let mut key_schedule =
+        KeySchedule::init(ciphersuite, &crypto, &joiner_secret, psk_secret.clone())
+            .expect("Could not create KeySchedule.");
     let welcome_secret = key_schedule
         .welcome(&crypto)
         .expect("An unexpected error occurred.");
