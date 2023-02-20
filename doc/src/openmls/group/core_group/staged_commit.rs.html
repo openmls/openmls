@@ -495,7 +495,7 @@
 
         <span class="comment">// Create key schedule
         </span><span class="kw">let </span><span class="kw-2">mut </span>key_schedule =
-            KeySchedule::init(<span class="self">self</span>.ciphersuite(), backend, joiner_secret, psk_secret)<span class="question-mark">?</span>;
+            KeySchedule::init(<span class="self">self</span>.ciphersuite(), backend, <span class="kw-2">&amp;</span>joiner_secret, psk_secret)<span class="question-mark">?</span>;
 
         key_schedule
             .add_context(backend, serialized_provisional_group_context)

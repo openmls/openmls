@@ -237,6 +237,9 @@
 <a href="#237" id="237">237</a>
 <a href="#238" id="238">238</a>
 <a href="#239" id="239">239</a>
+<a href="#240" id="240">240</a>
+<a href="#241" id="241">241</a>
+<a href="#242" id="242">242</a>
 </pre><pre class="rust"><code><span class="kw">use </span>std::collections::HashSet;
 
 <span class="kw">use </span>openmls_traits::{crypto::OpenMlsCrypto, types::Ciphersuite, OpenMlsCryptoProvider};
@@ -312,12 +315,14 @@
     ///  - the invited members are not part of the tree yet
     ///  - the leaf index of a new member is identical to the own leaf index
     ///  - the plain path does not contain the correct secrets
+    </span><span class="attr">#[allow(clippy::too_many_arguments)]
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>encrypt_group_secrets(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         joiner_secret: <span class="kw-2">&amp;</span>JoinerSecret,
         invited_members: Vec&lt;(LeafNodeIndex, AddProposal)&gt;,
         plain_path_option: <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>[PlainUpdatePathNode]&gt;,
         presharedkeys: <span class="kw-2">&amp;</span>[PreSharedKeyId],
+        encrypted_group_info: <span class="kw-2">&amp;</span>[u8],
         backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider,
         leaf_index: LeafNodeIndex,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;Vec&lt;EncryptedGroupSecrets&gt;, LibraryError&gt; {
@@ -326,6 +331,7 @@
             invited_members,
             plain_path_option,
             presharedkeys,
+            encrypted_group_info,
             backend,
             leaf_index,
         )

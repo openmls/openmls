@@ -506,9 +506,6 @@
 <a href="#506" id="506">506</a>
 <a href="#507" id="507">507</a>
 <a href="#508" id="508">508</a>
-<a href="#509" id="509">509</a>
-<a href="#510" id="510">510</a>
-<a href="#511" id="511">511</a>
 </pre><pre class="rust"><code><span class="doccomment">//! # MLS group errors
 //!
 //! This module contains errors that originate at lower levels and are partially re-exported in errors thrown by functions of the `MlsGroup` API.
@@ -538,9 +535,6 @@
     <span class="doccomment">/// Ciphersuites in Welcome and key package bundle don&#39;t match.
     </span><span class="attr">#[error(<span class="string">&quot;Ciphersuites in Welcome and key package bundle don&#39;t match.&quot;</span>)]
     </span>CiphersuiteMismatch,
-    <span class="doccomment">/// Ciphersuites in Welcome/GroupInfo and key package bundle don&#39;t match.
-    </span><span class="attr">#[error(<span class="string">&quot;Ciphersuites in Welcome/GroupInfo and key package bundle don&#39;t match.&quot;</span>)]
-    </span>GroupInfoCiphersuiteMismatch,
     <span class="doccomment">/// No joiner secret found in the Welcome message.
     </span><span class="attr">#[error(<span class="string">&quot;No joiner secret found in the Welcome message.&quot;</span>)]
     </span>JoinerSecretNotFound,

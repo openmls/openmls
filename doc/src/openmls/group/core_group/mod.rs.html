@@ -1156,6 +1156,10 @@
 <a href="#1156" id="1156">1156</a>
 <a href="#1157" id="1157">1157</a>
 <a href="#1158" id="1158">1158</a>
+<a href="#1159" id="1159">1159</a>
+<a href="#1160" id="1160">1160</a>
+<a href="#1161" id="1161">1161</a>
+<a href="#1162" id="1162">1162</a>
 </pre><pre class="rust"><code><span class="doccomment">//! ### Don&#39;t Panic!
 //!
 //! Functions in this module should never panic. However, if there is a bug in
@@ -1432,7 +1436,7 @@
         <span class="comment">// Prepare the PskSecret
         </span><span class="kw">let </span>psk_secret = PskSecret::new(ciphersuite, backend, <span class="kw-2">&amp;</span><span class="self">self</span>.psk_ids)<span class="question-mark">?</span>;
 
-        <span class="kw">let </span><span class="kw-2">mut </span>key_schedule = KeySchedule::init(ciphersuite, backend, joiner_secret, psk_secret)<span class="question-mark">?</span>;
+        <span class="kw">let </span><span class="kw-2">mut </span>key_schedule = KeySchedule::init(ciphersuite, backend, <span class="kw-2">&amp;</span>joiner_secret, psk_secret)<span class="question-mark">?</span>;
         key_schedule
             .add_context(backend, <span class="kw-2">&amp;</span>serialized_group_context)
             .map_err(|<span class="kw">_</span>| LibraryError::custom(<span class="string">&quot;Using the key schedule in the wrong state&quot;</span>))<span class="question-mark">?</span>;
@@ -2091,23 +2095,12 @@
         )
         .map_err(LibraryError::unexpected_crypto_error)<span class="question-mark">?</span>;
 
-        <span class="comment">// Create group secrets for later use, so we can afterwards consume the
-        // `joiner_secret`.
-        </span><span class="kw">let </span>encrypted_secrets = diff.encrypt_group_secrets(
-            <span class="kw-2">&amp;</span>joiner_secret,
-            apply_proposals_values.invitation_list,
-            path_computation_result.plain_path.as_deref(),
-            <span class="kw-2">&amp;</span>apply_proposals_values.presharedkeys,
-            backend,
-            <span class="self">self</span>.own_leaf_index(),
-        )<span class="question-mark">?</span>;
-
         <span class="comment">// Prepare the PskSecret
         </span><span class="kw">let </span>psk_secret =
             PskSecret::new(ciphersuite, backend, <span class="kw-2">&amp;</span>apply_proposals_values.presharedkeys)<span class="question-mark">?</span>;
 
         <span class="comment">// Create key schedule
-        </span><span class="kw">let </span><span class="kw-2">mut </span>key_schedule = KeySchedule::init(ciphersuite, backend, joiner_secret, psk_secret)<span class="question-mark">?</span>;
+        </span><span class="kw">let </span><span class="kw-2">mut </span>key_schedule = KeySchedule::init(ciphersuite, backend, <span class="kw-2">&amp;</span>joiner_secret, psk_secret)<span class="question-mark">?</span>;
 
         <span class="kw">let </span>serialized_provisional_group_context = diff
             .group_context()
@@ -2136,7 +2129,9 @@
         diff.update_interim_transcript_hash(ciphersuite, backend, confirmation_tag.clone())<span class="question-mark">?</span>;
 
         <span class="comment">// only computes the group info if necessary
-        </span><span class="kw">let </span>group_info = <span class="kw">if </span>!encrypted_secrets.is_empty() || <span class="self">self</span>.use_ratchet_tree_extension {
+        </span><span class="kw">let </span>group_info = <span class="kw">if </span>!apply_proposals_values.invitation_list.is_empty()
+            || <span class="self">self</span>.use_ratchet_tree_extension
+        {
             <span class="comment">// Create the ratchet tree extension if necessary
             </span><span class="kw">let </span>external_pub = provisional_epoch_secrets
                 .external_secret()
@@ -2169,7 +2164,7 @@
         </span>};
 
         <span class="comment">// Check if new members were added and, if so, create welcome messages
-        </span><span class="kw">let </span>welcome_option = <span class="kw">if </span>!encrypted_secrets.is_empty() {
+        </span><span class="kw">let </span>welcome_option = <span class="kw">if </span>!apply_proposals_values.invitation_list.is_empty() {
             <span class="comment">// Encrypt GroupInfo object
             </span><span class="kw">let </span>(welcome_key, welcome_nonce) = welcome_secret
                 .derive_welcome_key_nonce(backend)
@@ -2187,6 +2182,19 @@
                     <span class="kw-2">&amp;</span>welcome_nonce,
                 )
                 .map_err(LibraryError::unexpected_crypto_error)<span class="question-mark">?</span>;
+
+            <span class="comment">// Create group secrets for later use, so we can afterwards consume the
+            // `joiner_secret`.
+            </span><span class="kw">let </span>encrypted_secrets = diff.encrypt_group_secrets(
+                <span class="kw-2">&amp;</span>joiner_secret,
+                apply_proposals_values.invitation_list,
+                path_computation_result.plain_path.as_deref(),
+                <span class="kw-2">&amp;</span>apply_proposals_values.presharedkeys,
+                <span class="kw-2">&amp;</span>encrypted_group_info,
+                backend,
+                <span class="self">self</span>.own_leaf_index(),
+            )<span class="question-mark">?</span>;
+
             <span class="comment">// Create welcome message
             </span><span class="kw">let </span>welcome = Welcome::new(<span class="self">self</span>.ciphersuite(), encrypted_secrets, encrypted_group_info);
             <span class="prelude-val">Some</span>(welcome)
