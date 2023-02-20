@@ -547,7 +547,7 @@ impl IntermediateSecret {
         joiner_secret: &JoinerSecret,
         psk: PskSecret,
     ) -> Result<Self, CryptoError> {
-        log_crypto!(trace, "PSK input: {:x?}", psk.as_ref().map(|p| p.secret()));
+        log_crypto!(trace, "PSK input: {:x?}", psk.as_slice());
         let secret = joiner_secret.secret.hkdf_extract(backend, psk.secret())?;
         log_crypto!(trace, "Intermediate secret: {:x?}", secret);
         Ok(Self { secret })
