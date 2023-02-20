@@ -1,7 +1,8 @@
 //! This module contains all types related to group info handling.
 
 use openmls_traits::types::Ciphersuite;
-use tls_codec::{Serialize, TlsDeserialize, TlsSerialize, TlsSize};
+use serde::{Deserialize, Serialize};
+use tls_codec::{Serialize as TlsSerializeTrait, TlsDeserialize, TlsSerialize, TlsSize};
 
 use crate::{
     binary_tree::LeafNodeIndex,
@@ -29,10 +30,27 @@ pub struct VerifiableGroupInfo {
 }
 
 impl VerifiableGroupInfo {
+    /// Create a [`VerifiableGroupInfo`] from its components.
+    pub fn new(
+        group_context: GroupContext,
+        extensions: Extensions,
+        confirmation_tag: ConfirmationTag,
+        signer: LeafNodeIndex,
+        signature: Signature,
+    ) -> Self {
+        let payload = GroupInfoTBS {
+            group_context,
+            extensions,
+            confirmation_tag,
+            signer,
+        };
+        Self { payload, signature }
+    }
+
     /// Get (unverified) ciphersuite of the verifiable group info.
     ///
     /// Note: This method should only be used when necessary to verify the group info signature.
-    pub(crate) fn ciphersuite(&self) -> Ciphersuite {
+    pub fn ciphersuite(&self) -> Ciphersuite {
         self.payload.group_context.ciphersuite()
     }
 
@@ -89,7 +107,7 @@ impl From<VerifiableGroupInfo> for GroupInfo {
 ///     opaque signature<V>;
 /// } GroupInfo;
 /// ```
-#[derive(Debug, PartialEq, Clone, TlsSerialize, TlsSize)]
+#[derive(Debug, PartialEq, Clone, TlsSerialize, TlsSize, Serialize, Deserialize)]
 #[cfg_attr(feature = "test-utils", derive(TlsDeserialize))]
 pub struct GroupInfo {
     payload: GroupInfoTBS,
@@ -98,7 +116,7 @@ pub struct GroupInfo {
 
 impl GroupInfo {
     /// Returns the group context.
-    pub(crate) fn group_context(&self) -> &GroupContext {
+    pub fn group_context(&self) -> &GroupContext {
         &self.payload.group_context
     }
 
@@ -138,7 +156,9 @@ impl GroupInfo {
 ///     uint32 signer;
 /// } GroupInfoTBS;
 /// ```
-#[derive(Debug, PartialEq, Clone, TlsDeserialize, TlsSerialize, TlsSize)]
+#[derive(
+    Debug, PartialEq, Clone, TlsDeserialize, TlsSerialize, TlsSize, Serialize, Deserialize,
+)]
 pub(crate) struct GroupInfoTBS {
     group_context: GroupContext,
     extensions: Extensions,

@@ -405,6 +405,18 @@ impl StagedCommit {
         self.staged_proposal_queue.psk_proposals()
     }
 
+    /// Returns the inline proposals that are covered by the commit as an iterator over [QueuedProposal].
+    pub fn inline_proposals(&self) -> impl Iterator<Item = &QueuedProposal> {
+        self.staged_proposal_queue
+            .queued_proposals()
+            .filter(
+                |&queued_proposal| match queued_proposal.proposal_or_ref_type() {
+                    ProposalOrRefType::Proposal => true,
+                    ProposalOrRefType::Reference => false,
+                },
+            )
+    }
+
     /// Returns `true` if the member was removed through a proposal covered by this Commit message
     /// and `false` otherwise.
     pub fn self_removed(&self) -> bool {
@@ -414,6 +426,16 @@ impl StagedCommit {
     /// Consume this [`StagedCommit`] and return the internal [`StagedCommitState`].
     pub(crate) fn into_state(self) -> StagedCommitState {
         self.state
+    }
+
+    /// Returns a reference to the internal [`StagedCommitState`].
+    pub fn staged_context(&self) -> &GroupContext {
+        match &self.state {
+            StagedCommitState::PublicState(public_state) => public_state.group_context(),
+            StagedCommitState::GroupMember(member_state) => {
+                member_state.staged_diff.group_context()
+            }
+        }
     }
 }
 

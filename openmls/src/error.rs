@@ -74,7 +74,7 @@ pub struct LibraryError {
 
 impl LibraryError {
     /// A custom error (typically to avoid an unwrap())
-    pub(crate) fn custom(s: &'static str) -> Self {
+    pub fn custom(s: &'static str) -> Self {
         let bt = Backtrace::new();
         let display_string = format!("Error description: {s}\n Backtrace:\n{bt:?}");
         Self {
@@ -83,14 +83,14 @@ impl LibraryError {
     }
 
     /// Used when encoding doesn't work because of missing bound checks
-    pub(crate) fn missing_bound_check(e: TlsCodecError) -> Self {
+    pub fn missing_bound_check(e: TlsCodecError) -> Self {
         Self {
             internal: InternalLibraryError::MissingBoundsCheck(e),
         }
     }
 
     /// Used when the crypto provider returns an unexpected error
-    pub(crate) fn unexpected_crypto_error(e: CryptoError) -> Self {
+    pub fn unexpected_crypto_error(e: CryptoError) -> Self {
         Self {
             internal: InternalLibraryError::CryptoError(e),
         }

@@ -100,8 +100,7 @@ impl CoreGroup {
             inline_proposals.push(remove_proposal);
         };
 
-        let own_leaf_index =
-            public_group.free_leaf_index_after_remove(inline_proposals.iter().map(Some))?;
+        let own_leaf_index = public_group.free_leaf_index_after_remove(inline_proposals.iter())?;
 
         let group = CoreGroup {
             public_group,

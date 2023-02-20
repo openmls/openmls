@@ -13,6 +13,8 @@ use crate::{
 
 use super::*;
 
+/// The [`GroupContext`] summarizes information about the group and is held by
+/// each of the group members.
 #[derive(
     Debug, Clone, PartialEq, Eq, Serialize, Deserialize, TlsSerialize, TlsDeserialize, TlsSize,
 )]

@@ -9,7 +9,7 @@ use crate::ciphersuite::*;
 use crate::extensions::*;
 use crate::utils::*;
 
-use openmls_traits::OpenMlsCryptoProvider;
+use openmls_traits::{random::OpenMlsRand, OpenMlsCryptoProvider};
 use serde::{Deserialize, Serialize};
 use tls_codec::*;
 
@@ -18,15 +18,14 @@ pub(crate) mod core_group;
 pub(crate) mod public_group;
 pub(crate) use core_group::*;
 pub(crate) mod mls_group;
-#[cfg(not(any(feature = "test-utils", test)))]
-pub(crate) use group_context::*;
 
 // Public
 pub mod config;
 pub mod errors;
 
 pub use core_group::proposals::*;
-pub use core_group::staged_commit::StagedCommit;
+pub use core_group::staged_commit::*;
+pub use group_context::*;
 pub use mls_group::config::*;
 pub use mls_group::membership::*;
 pub use mls_group::processing::*;
@@ -38,9 +37,6 @@ pub use public_group::*;
 pub(crate) use core_group::create_commit_params::*;
 #[cfg(any(feature = "test-utils", test))]
 pub(crate) mod tests;
-#[cfg(any(feature = "test-utils", test))]
-pub use group_context::GroupContext;
-use openmls_traits::random::OpenMlsRand;
 #[cfg(any(feature = "test-utils", test))]
 pub use proposals::*;
 

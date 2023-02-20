@@ -75,10 +75,6 @@ impl PublicMessage {
         self.content.epoch = epoch.into();
     }
 
-    pub fn confirmation_tag(&self) -> Option<&ConfirmationTag> {
-        self.auth.confirmation_tag.as_ref()
-    }
-
     pub(crate) fn invalidate_signature(&mut self) {
         let mut modified_signature = self.auth.signature.as_slice().to_vec();
         modified_signature[0] ^= 0xFF;
@@ -230,6 +226,11 @@ impl PublicMessage {
     /// Get the [`MembershipTag`].
     pub(crate) fn membership_tag(&self) -> Option<&MembershipTag> {
         self.membership_tag.as_ref()
+    }
+
+    /// Get the [`ConfirmationTag`].
+    pub fn confirmation_tag(&self) -> Option<&ConfirmationTag> {
+        self.auth.confirmation_tag.as_ref()
     }
 
     #[cfg(test)]

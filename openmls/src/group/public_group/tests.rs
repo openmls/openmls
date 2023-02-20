@@ -82,7 +82,7 @@ fn public_group(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) 
         }
         ProcessedMessageContent::StagedCommitMessage(staged_commit) => {
             // Merge the diff
-            public_group.merge_commit(*staged_commit)
+            public_group.finalize_processing(*staged_commit)
         }
     };
 
@@ -125,7 +125,7 @@ fn public_group(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) 
     let ppm = public_group
         .process_message(backend, into_public_message(queued_messages))
         .unwrap();
-    public_group.merge_commit(extract_staged_commit(ppm));
+    public_group.finalize_processing(extract_staged_commit(ppm));
 
     // Bob merges
     bob_group
@@ -205,7 +205,7 @@ fn public_group(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) 
     let ppm = public_group
         .process_message(backend, into_public_message(queued_messages.clone()))
         .unwrap();
-    public_group.merge_commit(extract_staged_commit(ppm));
+    public_group.finalize_processing(extract_staged_commit(ppm));
 
     // Check that we receive the correct proposal
     if let Some(staged_commit) = charlie_group.pending_commit() {

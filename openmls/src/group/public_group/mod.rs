@@ -172,19 +172,15 @@ impl PublicGroup {
     /// of the sender.
     ///
     /// The proposals must be validated before calling this function.
-    pub(crate) fn free_leaf_index_after_remove<'a>(
+    pub fn free_leaf_index_after_remove<'a>(
         &self,
-        mut inline_proposals: impl Iterator<Item = Option<&'a Proposal>>,
+        mut inline_proposals: impl Iterator<Item = &'a Proposal>,
     ) -> Result<LeafNodeIndex, LibraryError> {
         // Leftmost free leaf in the tree
         let free_leaf_index = self.treesync().free_leaf_index();
         // Returns the first remove proposal (if there is one)
-        let remove_proposal_option = inline_proposals
-            .find(|proposal| match proposal {
-                Some(p) => p.is_type(ProposalType::Remove),
-                None => false,
-            })
-            .flatten();
+        let remove_proposal_option =
+            inline_proposals.find(|proposal| proposal.is_type(ProposalType::Remove));
         let leaf_index = if let Some(remove_proposal) = remove_proposal_option {
             if let Proposal::Remove(remove_proposal) = remove_proposal {
                 let removed_index = remove_proposal.removed();
@@ -247,7 +243,7 @@ impl PublicGroup {
     }
 
     /// Get an iterator over all [`Member`]s of this [`PublicGroup`].
-    pub(crate) fn members(&self) -> impl Iterator<Item = Member> + '_ {
+    pub fn members(&self) -> impl Iterator<Item = Member> + '_ {
         self.treesync().full_leave_members()
     }
 

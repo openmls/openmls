@@ -233,9 +233,16 @@ impl<'a> PublicGroupDiff<'a> {
 /// The staged version of a [`PublicGroupDiff`], which means it can no longer be
 /// modified. Its only use is to merge it into the original [`PublicGroup`].
 #[derive(Debug, Serialize, Deserialize)]
-pub(crate) struct StagedPublicGroupDiff {
+pub struct StagedPublicGroupDiff {
     pub(super) staged_diff: StagedTreeSyncDiff,
     pub(super) group_context: GroupContext,
     pub(super) interim_transcript_hash: Vec<u8>,
     pub(super) confirmation_tag: ConfirmationTag,
+}
+
+impl StagedPublicGroupDiff {
+    /// Get the staged [`GroupContext`].
+    pub fn group_context(&self) -> &GroupContext {
+        &self.group_context
+    }
 }
