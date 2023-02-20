@@ -388,13 +388,6 @@ impl JoinerSecret {
     }
 
     #[cfg(any(feature = "test-utils", test))]
-    pub(crate) fn clone(&self) -> Self {
-        Self {
-            secret: self.secret.clone(),
-        }
-    }
-
-    #[cfg(any(feature = "test-utils", test))]
     pub(crate) fn as_slice(&self) -> &[u8] {
         self.secret.as_slice()
     }
@@ -440,7 +433,7 @@ impl KeySchedule {
             "  joiner_secret: {:x?}",
             joiner_secret.secret.as_slice()
         );
-        let intermediate_secret = IntermediateSecret::new(backend, &joiner_secret, psk)
+        let intermediate_secret = IntermediateSecret::new(backend, joiner_secret, psk)
             .map_err(LibraryError::unexpected_crypto_error)?;
         Ok(Self {
             ciphersuite,
