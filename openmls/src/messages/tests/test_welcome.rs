@@ -101,7 +101,7 @@ fn test_welcome_context_mismatch(ciphersuite: Ciphersuite, backend: &impl OpenMl
         .expect("Could not create PskSecret.");
 
     // Create key schedule
-    let key_schedule = KeySchedule::init(ciphersuite, backend, joiner_secret, psk_secret)
+    let key_schedule = KeySchedule::init(ciphersuite, backend, &joiner_secret, psk_secret)
         .expect("Could not create KeySchedule.");
 
     // Derive welcome key & nonce from the key schedule
