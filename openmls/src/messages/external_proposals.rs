@@ -60,8 +60,8 @@ impl ExternalProposal {
     /// * `group_id` - unique group identifier of the group to join
     /// * `epoch` - group's epoch
     /// * `signer` - of the sender to sign the message
-    /// * `sender` - index of the sender of the proposal (in the [ExternalSendersExtension] array
-    /// from the [GroupContext])
+    /// * `sender` - index of the sender of the proposal (in the [crate::extensions::ExternalSendersExtension] array
+    /// from the Group Context)
     pub fn new_remove(
         removed: LeafNodeIndex,
         group_id: GroupId,
