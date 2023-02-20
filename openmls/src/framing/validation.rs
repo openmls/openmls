@@ -349,7 +349,7 @@ pub enum ProcessedMessageContent {
     /// If the proposal is deemed to be allowed, it should be added to the group's proposal
     /// queue using [`MlsGroup::store_pending_proposal()`](crate::group::mls_group::MlsGroup::store_pending_proposal()).
     ProposalMessage(Box<QueuedProposal>),
-    /// An [external join proposal](crate::prelude::JoinProposal) sent by a
+    /// An [external join proposal](crate::prelude::ExternalProposal) sent by a
     /// [NewMemberProposal](crate::prelude::Sender::NewMemberProposal) sender which is outside the group.
     ///
     /// Since this originates from a party outside the group, the [`QueuedProposal`] SHOULD be
