@@ -35,7 +35,9 @@ use self::{
 };
 use crate::{
     binary_tree::{
-        array_representation::{is_node_in_tree, tree::TreeNode, LeafNodeIndex, TreeSize},
+        array_representation::{
+            is_node_in_tree, tree::TreeNode, LeafNodeIndex, ParentNodeIndex, TreeSize,
+        },
         MlsBinaryTree, MlsBinaryTreeError,
     },
     ciphersuite::{Secret, SignaturePublicKey},
@@ -81,7 +83,7 @@ pub mod tests_and_kats;
 /// creating a new instance from an imported set of nodes, as well as when
 /// merging a diff.
 #[derive(Debug, Serialize, Deserialize)]
-#[cfg_attr(test, derive(PartialEq))]
+#[cfg_attr(test, derive(PartialEq, Clone))]
 pub(crate) struct TreeSync {
     tree: MlsBinaryTree<TreeSyncLeafNode, TreeSyncParentNode>,
     tree_hash: Vec<u8>,
@@ -259,6 +261,10 @@ impl TreeSync {
         self.tree.tree_size()
     }
 
+    pub(crate) fn leaf_count(&self) -> u32 {
+        self.tree.leaf_count()
+    }
+
     /// Returns a list of [`LeafNodeIndex`]es containing only full nodes.
     pub(crate) fn full_leaves(&self) -> impl Iterator<Item = &OpenMlsLeafNode> {
         self.tree
@@ -390,6 +396,13 @@ impl TreeSync {
     /// leaf is blank.
     pub(crate) fn leaf(&self, leaf_index: LeafNodeIndex) -> Option<&OpenMlsLeafNode> {
         let tsn = self.tree.leaf(leaf_index);
+        tsn.node().as_ref()
+    }
+
+    /// Return a reference to the parent node at the given `ParentNodeIndex` or
+    /// `None` if the node is blank.
+    pub(crate) fn parent(&self, node_index: ParentNodeIndex) -> Option<&ParentNode> {
+        let tsn = self.tree.parent(node_index);
         tsn.node().as_ref()
     }
 

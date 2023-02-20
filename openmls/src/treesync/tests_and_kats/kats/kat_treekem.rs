@@ -5,18 +5,23 @@ use serde::{Deserialize, Serialize};
 use tls_codec::Deserialize as TlsDeserializeTrait;
 
 use crate::{
-    binary_tree::LeafNodeIndex,
+    binary_tree::{array_representation::ParentNodeIndex, LeafNodeIndex},
     credentials::{Credential, CredentialType, CredentialWithKey},
     extensions::{Extensions, RatchetTreeExtension},
-    group::{config::CryptoConfig, GroupId},
-    prelude_test::Verifiable,
+    group::{config::CryptoConfig, GroupContext, GroupEpoch, GroupId},
+    prelude_test::{Secret, Verifiable},
     test_utils::read,
     tree::tests_and_kats::kats::secret_tree::Leaf,
     treesync::{
         self,
-        node::leaf_node::{Capabilities, LeafNodeTbs, Lifetime, TreeInfoTbs, VerifiableLeafNode},
+        node::{
+            encryption_keys::EncryptionKeyPair,
+            leaf_node::{Capabilities, LeafNodeTbs, Lifetime, TreeInfoTbs, VerifiableLeafNode},
+        },
+        treekem::UpdatePath,
         TreeSync,
     },
+    versions::ProtocolVersion,
 };
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -82,41 +87,91 @@ pub fn run_test_vector(test: TreeKemTest, backend: &impl OpenMlsCryptoProvider) 
         RatchetTreeExtension::tls_deserialize(&mut test.ratchet_tree.as_slice()).unwrap();
     let treesync = TreeSync::from_nodes(backend, ciphersuite, ratchet_tree.as_slice()).unwrap();
 
-    let mut treekems = vec![];
-    for (leaf_index, leaf_private) in test.leaves_private.into_iter().enumerate() {
+    struct OwnLeaf {
+        index: u32,
+        signature_key_pair: SignatureKeyPair,
+        encryption_key_pair: EncryptionKeyPair,
+    };
+    for leaf_private in test.leaves_private.into_iter() {
+        let mut treekem = treesync.clone();
+
         let signature_key = treesync
-            .leaf(LeafNodeIndex::new(leaf_index as u32))
+            .leaf(LeafNodeIndex::new(leaf_private.index as u32))
             .unwrap()
             .signature_key();
+        let mut private_key = leaf_private.signature_priv.clone();
+        private_key.append(&mut signature_key.as_slice().to_vec());
         let signer = SignatureKeyPair::from_raw(
             ciphersuite.signature_algorithm(),
-            leaf_private.signature_priv,
+            private_key,
             signature_key.as_slice().to_vec(),
         );
         let credential_with_key = CredentialWithKey {
             credential: Credential::new("id".into(), CredentialType::Basic).unwrap(),
             signature_key: signature_key.clone(),
         };
-        let (treekem, commit_secret, encryption_key_pair) = TreeSync::new(
-            backend,
-            &signer,
-            CryptoConfig {
+
+        let path_secrets = leaf_private.path_secrets;
+        for path_secret in path_secrets {
+            let my_path_secret = crate::messages::PathSecret::from(Secret::from_slice(
+                &path_secret.path_secret,
+                ProtocolVersion::Mls10,
                 ciphersuite,
-                version: crate::versions::ProtocolVersion::Mls10,
-            },
-            credential_with_key,
-            Lifetime::new(500),
-            Capabilities::default(),
-            Extensions::default(),
+            ));
+            let keypair = my_path_secret
+                .derive_key_pair(backend, ciphersuite)
+                .unwrap();
+            assert_eq!(
+                keypair.public_key(),
+                treesync
+                    .parent(ParentNodeIndex::from_tree_index(path_secret.node))
+                    .unwrap()
+                    .encryption_key()
+            );
+        }
+    }
+
+    let group_context = GroupContext::new(
+        ciphersuite,
+        GroupId::from_slice(&test.group_id),
+        GroupEpoch::from(test.epoch),
+        treesync.tree_hash().into(),
+        test.confirmed_transcript_hash.clone(),
+        Extensions::default(),
+    );
+
+    for (i, path) in test.update_paths.iter().enumerate() {
+        let update_path = UpdatePath::tls_deserialize(&mut path.update_path.as_slice()).unwrap();
+        let mut diff = treesync.empty_diff();
+        diff.apply_received_update_path(
+            backend,
+            ciphersuite,
+            LeafNodeIndex::new(path.sender),
+            &update_path,
         )
         .unwrap();
 
-        treekems.push(treekem);
+        diff.verify_parent_hashes(backend, ciphersuite).unwrap();
+
+        let staged_diff = diff.into_staged_diff(backend, ciphersuite).unwrap();
+        let mut new_tree = treesync.clone();
+        new_tree.merge_diff(staged_diff);
+
+        // Check tree hash in new tree.
+        assert_eq!(path.tree_hash_after, new_tree.tree_hash());
+
+        assert_eq!(path.path_secrets.len(), treesync.leaf_count() as usize);
+        for (j, leaf) in path.path_secrets.iter().enumerate() {
+            if i == j {
+                assert!(leaf.is_none());
+            }
+        }
     }
 }
 
 #[test]
 fn read_test_vectors_treekem() {
+    let _ = pretty_env_logger::try_init();
     let tests: Vec<TreeKemTest> = read("test_vectors/treekem.json");
 
     let backend = OpenMlsRustCrypto::default();

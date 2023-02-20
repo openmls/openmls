@@ -202,6 +202,12 @@ impl<L: Clone + Debug + Default, P: Clone + Debug + Default> ABinaryTree<L, P> {
             .unwrap_or(&self.default_leaf)
     }
 
+    pub(crate) fn parent(&self, parent_index: ParentNodeIndex) -> &P {
+        self.parent_nodes
+            .get(parent_index.usize())
+            .unwrap_or(&self.default_parent)
+    }
+
     /// Returns a vector of [`ParentNodeIndex`]es, where the first reference is to
     /// the root of the shared subtree of the two given leaf indices followed by
     /// references to the nodes in the direct path of said subtree root.

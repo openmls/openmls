@@ -4,7 +4,9 @@ use openmls_traits::{
 };
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
-use tls_codec::{Serialize as TlsSerializeTrait, TlsDeserialize, TlsSerialize, TlsSize, VLBytes};
+use tls_codec::{
+    Serialize as TlsSerializeTrait, Size, TlsDeserialize, TlsSerialize, TlsSize, VLBytes,
+};
 
 use crate::{
     binary_tree::array_representation::LeafNodeIndex,
@@ -720,12 +722,31 @@ impl<'a> Verifiable for VerifiableLeafNode<'a> {
 /// that we need:
 /// * the HPKE private key for to the public key that's in the [`LeafNode`].
 /// * the leaf index of the [`LeafNode`].
-#[derive(
-    Debug, Clone, PartialEq, Eq, Serialize, Deserialize, TlsSerialize, TlsDeserialize, TlsSize,
-)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct OpenMlsLeafNode {
     pub(in crate::treesync) leaf_node: LeafNode,
     leaf_index: Option<LeafNodeIndex>,
+}
+
+impl Size for OpenMlsLeafNode {
+    fn tls_serialized_len(&self) -> usize {
+        self.leaf_node.tls_serialized_len()
+    }
+}
+
+impl tls_codec::Serialize for OpenMlsLeafNode {
+    fn tls_serialize<W: std::io::Write>(&self, writer: &mut W) -> Result<usize, tls_codec::Error> {
+        self.leaf_node.tls_serialize(writer)
+    }
+}
+
+impl tls_codec::Deserialize for OpenMlsLeafNode {
+    fn tls_deserialize<R: std::io::Read>(bytes: &mut R) -> Result<Self, tls_codec::Error> {
+        Ok(Self {
+            leaf_node: LeafNode::tls_deserialize(bytes)?,
+            leaf_index: None,
+        })
+    }
 }
 
 impl OpenMlsLeafNode {
