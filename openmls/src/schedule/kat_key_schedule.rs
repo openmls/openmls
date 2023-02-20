@@ -116,7 +116,7 @@ fn generate(
     let mut key_schedule = KeySchedule::init(
         ciphersuite,
         &crypto,
-        joiner_secret.clone(),
+        &joiner_secret,
         psk_secret.clone(),
     )
     .expect("Could not create KeySchedule.");
@@ -329,9 +329,8 @@ pub fn run_test_vector(
         );
         let psk_secret = PskSecret::from(psk_secret_inner);
 
-        let mut key_schedule =
-            KeySchedule::init(ciphersuite, backend, joiner_secret.clone(), psk_secret)
-                .expect("Could not create KeySchedule.");
+        let mut key_schedule = KeySchedule::init(ciphersuite, backend, &joiner_secret, psk_secret)
+            .expect("Could not create KeySchedule.");
         let welcome_secret = key_schedule
             .welcome(backend)
             .expect("An unexpected error occurred.");

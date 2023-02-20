@@ -431,7 +431,7 @@ impl KeySchedule {
     pub(crate) fn init(
         ciphersuite: Ciphersuite,
         backend: &impl OpenMlsCryptoProvider,
-        joiner_secret: JoinerSecret,
+        joiner_secret: &JoinerSecret,
         psk: PskSecret,
     ) -> Result<Self, LibraryError> {
         log::debug!("Initializing the key schedule with {:?} ...", ciphersuite);

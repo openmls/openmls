@@ -78,7 +78,7 @@ impl CoreGroup {
             })?;
 
         // Create key schedule
-        let mut key_schedule = KeySchedule::init(ciphersuite, backend, joiner_secret, psk_secret)?;
+        let mut key_schedule = KeySchedule::init(ciphersuite, backend, &joiner_secret, psk_secret)?;
 
         // Derive welcome key & nonce from the key schedule
         let (welcome_key, welcome_nonce) = key_schedule
