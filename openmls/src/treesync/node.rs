@@ -41,3 +41,13 @@ pub(crate) enum NodeReference<'a> {
     Leaf(&'a OpenMlsLeafNode),
     Parent(&'a ParentNode),
 }
+
+#[cfg(test)]
+impl Node {
+    pub(crate) fn into_leaf(self) -> OpenMlsLeafNode {
+        match self {
+            Node::LeafNode(l) => l,
+            Node::ParentNode(_) => panic!("Tried to convert parent node into leaf node."),
+        }
+    }
+}
