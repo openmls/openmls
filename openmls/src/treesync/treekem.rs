@@ -168,6 +168,7 @@ impl<'a> TreeSyncDiff<'a> {
         invited_members: Vec<(LeafNodeIndex, AddProposal)>,
         plain_path_option: Option<&[PlainUpdatePathNode]>,
         presharedkeys: &[PreSharedKeyId],
+        encrypted_group_info: &[u8],
         backend: &impl OpenMlsCryptoProvider,
         encryptor_leaf_index: LeafNodeIndex,
     ) -> Result<Vec<EncryptedGroupSecrets>, LibraryError> {
@@ -200,7 +201,7 @@ impl<'a> TreeSyncDiff<'a> {
             let ciphertext = hpke::encrypt_with_label(
                 key_package.hpke_init_key().as_slice(),
                 "Welcome",
-                &[],
+                encrypted_group_info,
                 &group_secrets_bytes,
                 key_package.ciphersuite(),
                 backend.crypto(),

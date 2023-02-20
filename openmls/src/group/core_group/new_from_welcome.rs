@@ -56,7 +56,7 @@ impl CoreGroup {
         let group_secrets_bytes = hpke::decrypt_with_label(
             key_package_bundle.private_key.as_slice(),
             "Welcome",
-            &[],
+            welcome.encrypted_group_info(),
             egs.encrypted_group_secrets(),
             ciphersuite,
             backend.crypto(),
@@ -93,10 +93,6 @@ impl CoreGroup {
         let verifiable_group_info =
             VerifiableGroupInfo::tls_deserialize(&mut group_info_bytes.as_slice())
                 .map_err(|_| WelcomeError::MalformedWelcomeMessage)?;
-
-        if ciphersuite != verifiable_group_info.ciphersuite() {
-            return Err(WelcomeError::GroupInfoCiphersuiteMismatch);
-        }
 
         // Make sure that we can support the required capabilities in the group info.
         if let Some(required_capabilities) =

@@ -79,6 +79,7 @@ impl<'a> PublicGroupDiff<'a> {
         invited_members: Vec<(LeafNodeIndex, AddProposal)>,
         plain_path_option: Option<&[PlainUpdatePathNode]>,
         presharedkeys: &[PreSharedKeyId],
+        encrypted_group_info: &[u8],
         backend: &impl OpenMlsCryptoProvider,
         leaf_index: LeafNodeIndex,
     ) -> Result<Vec<EncryptedGroupSecrets>, LibraryError> {
@@ -87,6 +88,7 @@ impl<'a> PublicGroupDiff<'a> {
             invited_members,
             plain_path_option,
             presharedkeys,
+            encrypted_group_info,
             backend,
             leaf_index,
         )

@@ -933,23 +933,13 @@ impl CoreGroup {
         )
         .map_err(LibraryError::unexpected_crypto_error)?;
 
-        // Create group secrets for later use, so we can afterwards consume the
-        // `joiner_secret`.
-        let encrypted_secrets = diff.encrypt_group_secrets(
-            &joiner_secret,
-            apply_proposals_values.invitation_list,
-            path_computation_result.plain_path.as_deref(),
-            &apply_proposals_values.presharedkeys,
-            backend,
-            self.own_leaf_index(),
-        )?;
-
         // Prepare the PskSecret
         let psk_secret =
             PskSecret::new(ciphersuite, backend, &apply_proposals_values.presharedkeys)?;
 
         // Create key schedule
-        let mut key_schedule = KeySchedule::init(ciphersuite, backend, joiner_secret, psk_secret)?;
+        let mut key_schedule =
+            KeySchedule::init(ciphersuite, backend, joiner_secret.clone(), psk_secret)?;
 
         let serialized_provisional_group_context = diff
             .group_context()
@@ -978,7 +968,7 @@ impl CoreGroup {
         diff.update_interim_transcript_hash(ciphersuite, backend, confirmation_tag.clone())?;
 
         // only computes the group info if necessary
-        let group_info = if !encrypted_secrets.is_empty() || self.use_ratchet_tree_extension {
+        let group_info = {
             // Create the ratchet tree extension if necessary
             let external_pub = provisional_epoch_secrets
                 .external_secret()
@@ -1006,12 +996,10 @@ impl CoreGroup {
             };
             // Sign to-be-signed group info.
             Some(group_info_tbs.sign(signer)?)
-        } else {
-            None
         };
 
         // Check if new members were added and, if so, create welcome messages
-        let welcome_option = if !encrypted_secrets.is_empty() {
+        let welcome_option = {
             // Encrypt GroupInfo object
             let (welcome_key, welcome_nonce) = welcome_secret
                 .derive_welcome_key_nonce(backend)
@@ -1029,11 +1017,27 @@ impl CoreGroup {
                     &welcome_nonce,
                 )
                 .map_err(LibraryError::unexpected_crypto_error)?;
-            // Create welcome message
-            let welcome = Welcome::new(self.ciphersuite(), encrypted_secrets, encrypted_group_info);
-            Some(welcome)
-        } else {
-            None
+
+            // Create group secrets for later use, so we can afterwards consume the
+            // `joiner_secret`.
+            let encrypted_secrets = diff.encrypt_group_secrets(
+                &joiner_secret,
+                apply_proposals_values.invitation_list,
+                path_computation_result.plain_path.as_deref(),
+                &apply_proposals_values.presharedkeys,
+                &encrypted_group_info,
+                backend,
+                self.own_leaf_index(),
+            )?;
+
+            if !encrypted_secrets.is_empty() {
+                // Create welcome message
+                let welcome =
+                    Welcome::new(self.ciphersuite(), encrypted_secrets, encrypted_group_info);
+                Some(welcome)
+            } else {
+                None
+            }
         };
 
         let (provisional_group_epoch_secrets, provisional_message_secrets) =
