@@ -4,7 +4,10 @@
 use serde::{Deserialize, Serialize};
 use tls_codec::{TlsDeserialize, TlsSerialize, TlsSize};
 
-use self::{leaf_node::OpenMlsLeafNode, parent_node::ParentNode};
+use self::{
+    leaf_node::{LeafNode, OpenMlsLeafNode},
+    parent_node::ParentNode,
+};
 
 mod codec;
 pub(crate) mod encryption_keys;
@@ -40,4 +43,23 @@ pub enum Node {
 pub(crate) enum NodeReference<'a> {
     Leaf(&'a OpenMlsLeafNode),
     Parent(&'a ParentNode),
+}
+
+#[derive(
+    Debug, PartialEq, Eq, Clone, Serialize, Deserialize, TlsSize, TlsDeserialize, TlsSerialize,
+)]
+#[repr(u8)]
+pub(crate) enum RawNode {
+    #[tls_codec(discriminant = 1)]
+    Leaf(LeafNode),
+    Parent(ParentNode),
+}
+
+impl From<RawNode> for Node {
+    fn from(raw_node: RawNode) -> Self {
+        match raw_node {
+            RawNode::Leaf(leaf) => Node::LeafNode(leaf.into()),
+            RawNode::Parent(parent) => Node::ParentNode(parent),
+        }
+    }
 }
