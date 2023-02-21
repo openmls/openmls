@@ -29,6 +29,7 @@ use crate::{
         proposals::{Proposal, ProposalType},
         ConfirmationTag, PathSecret,
     },
+    prelude::LeafNode,
     schedule::CommitSecret,
     treesync::{errors::DerivePathError, node::encryption_keys::EncryptionKeyPair, Node, TreeSync},
     versions::ProtocolVersion,
@@ -255,6 +256,11 @@ impl PublicGroup {
     /// Add the [`QueuedProposal`] to the [`PublicGroup`]s internal [`ProposalStore`].
     pub fn add_proposal(&mut self, proposal: QueuedProposal) {
         self.proposal_store.add(proposal)
+    }
+
+    /// Get the [`LeafNode`] of the member with the given [`LeafNodeIndex`]
+    pub fn leaf(&self, leaf_index: LeafNodeIndex) -> Option<&LeafNode> {
+        self.treesync().leaf(leaf_index).map(|oln| oln.leaf_node())
     }
 }
 
