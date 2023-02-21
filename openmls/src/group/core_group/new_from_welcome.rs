@@ -1,9 +1,8 @@
 use log::debug;
 use openmls_traits::key_store::OpenMlsKeyStore;
-use tls_codec::Deserialize;
 
 use crate::{
-    ciphersuite::{hash_ref::HashReference, hpke},
+    ciphersuite::hash_ref::HashReference,
     group::{core_group::*, errors::WelcomeError},
     schedule::errors::PskError,
     treesync::{
@@ -53,21 +52,13 @@ impl CoreGroup {
             return Err(e);
         }
 
-        let group_secrets_bytes = hpke::decrypt_with_label(
-            key_package_bundle.private_key.as_slice(),
-            "Welcome",
-            welcome.encrypted_group_info(),
+        let group_secrets = GroupSecrets::try_from_ciphertext(
+            key_package_bundle.private_key(),
             egs.encrypted_group_secrets(),
+            welcome.encrypted_group_info(),
             ciphersuite,
             backend.crypto(),
-        )
-        .map_err(|_| WelcomeError::UnableToDecrypt)?;
-        let group_secrets = GroupSecrets::tls_deserialize(&mut group_secrets_bytes.as_slice())
-            .map_err(|_| WelcomeError::MalformedWelcomeMessage)?
-            // TODO(#1065)
-            .config(ciphersuite, ProtocolVersion::Mls10);
-
-        let joiner_secret = group_secrets.joiner_secret;
+        )?;
 
         // Prepare the PskSecret
         let psk_secret =
@@ -78,7 +69,12 @@ impl CoreGroup {
             })?;
 
         // Create key schedule
-        let mut key_schedule = KeySchedule::init(ciphersuite, backend, &joiner_secret, psk_secret)?;
+        let mut key_schedule = KeySchedule::init(
+            ciphersuite,
+            backend,
+            &group_secrets.joiner_secret,
+            psk_secret,
+        )?;
 
         // Derive welcome key & nonce from the key schedule
         let (welcome_key, welcome_nonce) = key_schedule
@@ -87,12 +83,13 @@ impl CoreGroup {
             .derive_welcome_key_nonce(backend)
             .map_err(LibraryError::unexpected_crypto_error)?;
 
-        let group_info_bytes = welcome_key
-            .aead_open(backend, welcome.encrypted_group_info(), &[], &welcome_nonce)
-            .map_err(|_| WelcomeError::GroupInfoDecryptionFailure)?;
-        let verifiable_group_info =
-            VerifiableGroupInfo::tls_deserialize(&mut group_info_bytes.as_slice())
-                .map_err(|_| WelcomeError::MalformedWelcomeMessage)?;
+        let verifiable_group_info = VerifiableGroupInfo::try_from_ciphertext(
+            &welcome_key,
+            &welcome_nonce,
+            welcome.encrypted_group_info(),
+            &[],
+            backend,
+        )?;
 
         // Make sure that we can support the required capabilities in the group info.
         if let Some(required_capabilities) =
