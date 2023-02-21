@@ -65,10 +65,8 @@ use openmls_traits::{crypto::OpenMlsCrypto, OpenMlsCryptoProvider};
 use tls_codec::Deserialize as TlsDeserialize;
 
 use crate::{
-    binary_tree::array_representation::TreeNodeIndex,
-    test_utils::*,
+    binary_tree::array_representation::TreeNodeIndex, test_utils::*, treesync::Node,
     treesync::TreeSync,
-    treesync::{node::RawNode, Node},
 };
 
 #[derive(Deserialize)]
@@ -98,11 +96,7 @@ fn run_test_vector(test: TestElement, backend: &impl OpenMlsCryptoProvider) -> R
         return Ok(());
     }
 
-    let nodes = Vec::<Option<RawNode>>::tls_deserialize(&mut test.tree.as_slice())
-        .unwrap()
-        .into_iter()
-        .map(|n| n.map(Node::from))
-        .collect::<Vec<_>>();
+    let nodes = Vec::<Option<Node>>::tls_deserialize(&mut test.tree.as_slice()).unwrap();
 
     let treesync = TreeSync::from_nodes(backend, ciphersuite, &nodes)
         .map_err(|e| format!("Error while creating tree sync: {0:?}", e))?;
