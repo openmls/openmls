@@ -699,6 +699,11 @@ impl KeyPackageBundle {
     pub(crate) fn key_package(&self) -> &KeyPackage {
         &self.key_package
     }
+
+    /// Get a reference to the private key.
+    pub fn private_key(&self) -> &HpkePrivateKey {
+        &self.private_key
+    }
 }
 
 #[cfg(test)]
@@ -728,9 +733,5 @@ impl KeyPackageBundle {
             key_package,
             private_key,
         }
-    }
-
-    pub fn private_key(&self) -> &HpkePrivateKey {
-        &self.private_key
     }
 }

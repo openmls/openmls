@@ -182,7 +182,10 @@ fn test_failed_groupinfo_decryption(
     let error = CoreGroup::new_from_welcome(broken_welcome, None, key_package_bundle, backend)
         .expect_err("Creation of core group from a broken Welcome was successful.");
 
-    assert_eq!(error, WelcomeError::UnableToDecrypt)
+    assert_eq!(
+        error,
+        WelcomeError::GroupSecrets(GroupSecretsError::DecryptionFailed)
+    )
 }
 
 /// Test what happens if the KEM ciphertext for the receiver in the UpdatePath
