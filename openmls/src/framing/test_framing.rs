@@ -20,6 +20,7 @@ use crate::{
         tests::tree_printing::print_tree,
     },
     key_packages::KeyPackageBundle,
+    schedule::psk::PskSecret,
     tree::{secret_tree::SecretTree, sender_ratchet::SenderRatchetConfiguration},
     versions::ProtocolVersion,
 };
@@ -114,8 +115,8 @@ fn codec_ciphertext(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvid
     let mut key_schedule = KeySchedule::init(
         ciphersuite,
         backend,
-        JoinerSecret::random(ciphersuite, backend, ProtocolVersion::default()),
-        None, // PSK
+        &JoinerSecret::random(ciphersuite, backend, ProtocolVersion::default()),
+        PskSecret::from(Secret::zero(ciphersuite, ProtocolVersion::Mls10)),
     )
     .expect("Could not create KeySchedule.");
 
