@@ -19,13 +19,17 @@ use openmls_traits::signatures::Signer;
 
 use super::proposals::RemoveProposal;
 
-/// External Proposal where sender is [NewMemberProposal](crate::prelude::Sender::NewMemberProposal). A client
 /// outside the group can request joining the group. This proposal should then be committed by a
 /// group member. Note that this is unconstrained i.e. it works for any [MLS group](crate::group::MlsGroup).
 /// This is not the case for the same external proposal with a [Preconfigured sender](crate::prelude::Sender::External)
+pub struct JoinProposal;
+
+/// External Proposal where sender is [External](crate::prelude::Sender::External). A party
+/// outside the group can request to add or remove a member to the group. This proposal should then
+/// be committed by a group member. The sender must be pre configured within the group through the [crate::extensions::ExternalSendersExtension]
 pub struct ExternalProposal;
 
-impl ExternalProposal {
+impl JoinProposal {
     /// Creates an external Add proposal. For clients requesting to be added to a group. This
     /// proposal will have to be committed later by a group member.
     ///
@@ -34,7 +38,8 @@ impl ExternalProposal {
     /// * `group_id` - unique group identifier of the group to join
     /// * `epoch` - group's epoch
     /// * `signer` - of the sender to sign the message
-    pub fn new_join(
+    #[allow(clippy::new_ret_no_self)]
+    pub fn new(
         key_package: KeyPackage,
         group_id: GroupId,
         epoch: GroupEpoch,
@@ -51,7 +56,9 @@ impl ExternalProposal {
         .map(MlsMessageOut::from)
         .map_err(ProposeAddMemberError::from)
     }
+}
 
+impl ExternalProposal {
     /// Creates an external Remove proposal. For delivery services requesting to remove a client.
     /// This proposal will have to be committed later by a group member.
     ///
