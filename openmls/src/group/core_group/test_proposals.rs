@@ -14,8 +14,7 @@ use crate::{
     group::{
         errors::*,
         proposals::{ProposalQueue, ProposalStore, QueuedProposal},
-        public_group::create_commit_params::CreateCommitParams,
-        GroupContext, GroupId,
+        CreateCommitParams, GroupContext, GroupId,
     },
     key_packages::KeyPackageBundle,
     messages::proposals::{AddProposal, Proposal, ProposalOrRef, ProposalType},

@@ -14,12 +14,13 @@ use crate::{
     extensions::Extensions,
     framing::*,
     group::{
+        core_group::create_commit_params::CreateCommitParams,
         core_group::proposals::{ProposalStore, QueuedProposal},
         errors::*,
-        public_group::create_commit_params::CreateCommitParams,
         tests::tree_printing::print_tree,
     },
     key_packages::KeyPackageBundle,
+    schedule::psk::PskSecret,
     tree::{secret_tree::SecretTree, sender_ratchet::SenderRatchetConfiguration},
     versions::ProtocolVersion,
 };
@@ -114,8 +115,8 @@ fn codec_ciphertext(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvid
     let mut key_schedule = KeySchedule::init(
         ciphersuite,
         backend,
-        JoinerSecret::random(ciphersuite, backend, ProtocolVersion::default()),
-        None, // PSK
+        &JoinerSecret::random(ciphersuite, backend, ProtocolVersion::default()),
+        PskSecret::from(Secret::zero(ciphersuite, ProtocolVersion::Mls10)),
     )
     .expect("Could not create KeySchedule.");
 

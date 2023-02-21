@@ -151,6 +151,8 @@ use psk::*;
 #[cfg(any(feature = "test-utils", test))]
 pub mod kat_key_schedule;
 #[cfg(test)]
+pub mod kat_psk_secret;
+#[cfg(test)]
 mod unit_tests;
 
 // Public types
@@ -350,7 +352,7 @@ impl InitSecret {
     }
 }
 
-#[derive(TlsDeserialize, TlsSerialize, TlsSize)]
+#[derive(Debug, TlsDeserialize, TlsSerialize, TlsSize)]
 pub(crate) struct JoinerSecret {
     secret: Secret,
 }
@@ -383,13 +385,6 @@ impl JoinerSecret {
     /// Set the config for the secret, i.e. ciphersuite and MLS version.
     pub(crate) fn config(&mut self, ciphersuite: Ciphersuite, mls_version: ProtocolVersion) {
         self.secret.config(ciphersuite, mls_version);
-    }
-
-    #[cfg(any(feature = "test-utils", test))]
-    pub(crate) fn clone(&self) -> Self {
-        Self {
-            secret: self.secret.clone(),
-        }
     }
 
     #[cfg(any(feature = "test-utils", test))]
@@ -429,8 +424,8 @@ impl KeySchedule {
     pub(crate) fn init(
         ciphersuite: Ciphersuite,
         backend: &impl OpenMlsCryptoProvider,
-        joiner_secret: JoinerSecret,
-        psk: impl Into<Option<PskSecret>>,
+        joiner_secret: &JoinerSecret,
+        psk: PskSecret,
     ) -> Result<Self, LibraryError> {
         log::debug!("Initializing the key schedule with {:?} ...", ciphersuite);
         log_crypto!(
@@ -438,9 +433,7 @@ impl KeySchedule {
             "  joiner_secret: {:x?}",
             joiner_secret.secret.as_slice()
         );
-        let psk = psk.into();
-        log_crypto!(trace, "  {}", if psk.is_some() { "with PSK" } else { "" });
-        let intermediate_secret = IntermediateSecret::new(backend, &joiner_secret, psk)
+        let intermediate_secret = IntermediateSecret::new(backend, joiner_secret, psk)
             .map_err(LibraryError::unexpected_crypto_error)?;
         Ok(Self {
             ciphersuite,
@@ -545,12 +538,10 @@ impl IntermediateSecret {
     fn new(
         backend: &impl OpenMlsCryptoProvider,
         joiner_secret: &JoinerSecret,
-        psk: Option<PskSecret>,
+        psk: PskSecret,
     ) -> Result<Self, CryptoError> {
-        log_crypto!(trace, "PSK input: {:x?}", psk.as_ref().map(|p| p.secret()));
-        let secret = joiner_secret
-            .secret
-            .hkdf_extract(backend, psk.as_ref().map(|p| p.secret()))?;
+        log_crypto!(trace, "PSK input: {:x?}", psk.as_slice());
+        let secret = joiner_secret.secret.hkdf_extract(backend, psk.secret())?;
         log_crypto!(trace, "Intermediate secret: {:x?}", secret);
         Ok(Self { secret })
     }

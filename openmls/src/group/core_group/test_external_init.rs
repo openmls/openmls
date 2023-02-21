@@ -2,9 +2,9 @@ use crate::{
     framing::{FramingParameters, WireFormat},
     group::{
         errors::ExternalCommitError,
-        public_group::create_commit_params::CreateCommitParams,
         public_group::errors::CreationFromExternalError,
         test_core_group::{setup_alice_group, setup_client},
+        CreateCommitParams,
     },
     messages::proposals::{ProposalOrRef, ProposalType},
     prelude_test::test_framing::setup_alice_bob_group,

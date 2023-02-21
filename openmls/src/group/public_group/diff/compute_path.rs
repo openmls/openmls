@@ -8,8 +8,8 @@ use crate::{
     credentials::CredentialWithKey,
     error::LibraryError,
     group::{
-        config::CryptoConfig, errors::CreateCommitError,
-        public_group::create_commit_params::CommitType,
+        config::CryptoConfig, core_group::create_commit_params::CommitType,
+        errors::CreateCommitError,
     },
     key_packages::{KeyPackage, KeyPackageCreationResult},
     schedule::CommitSecret,
@@ -27,7 +27,7 @@ use super::PublicGroupDiff;
 /// A helper struct which contains the values resulting from the preparation of
 /// a commit with path.
 #[derive(Default)]
-pub(crate) struct PathProcessingResult {
+pub(crate) struct PathComputationResult {
     pub(crate) commit_secret: Option<CommitSecret>,
     pub(crate) encrypted_path: Option<UpdatePath>,
     pub(crate) plain_path: Option<Vec<PlainUpdatePathNode>>,
@@ -35,7 +35,7 @@ pub(crate) struct PathProcessingResult {
 }
 
 impl<'a> PublicGroupDiff<'a> {
-    pub(crate) fn process_path<KeyStore: OpenMlsKeyStore>(
+    pub(crate) fn compute_path<KeyStore: OpenMlsKeyStore>(
         &mut self,
         backend: &impl OpenMlsCryptoProvider<KeyStoreProvider = KeyStore>,
         leaf_index: LeafNodeIndex,
@@ -43,7 +43,7 @@ impl<'a> PublicGroupDiff<'a> {
         commit_type: CommitType,
         signer: &impl Signer,
         credential_with_key: Option<CredentialWithKey>,
-    ) -> Result<PathProcessingResult, CreateCommitError<KeyStore::Error>> {
+    ) -> Result<PathComputationResult, CreateCommitError<KeyStore::Error>> {
         let mut new_keypairs = if commit_type == CommitType::External {
             // If this is an external commit we add a fresh leaf to the diff.
             // Generate a KeyPackageBundle to generate a payload from for later
@@ -124,7 +124,7 @@ impl<'a> PublicGroupDiff<'a> {
             .ok_or_else(|| LibraryError::custom("Couldn't find own leaf"))?
             .clone();
         let encrypted_path = UpdatePath::new(leaf_node.into(), encrypted_path);
-        Ok(PathProcessingResult {
+        Ok(PathComputationResult {
             commit_secret: Some(commit_secret),
             encrypted_path: Some(encrypted_path),
             plain_path: Some(plain_path),

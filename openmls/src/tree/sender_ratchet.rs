@@ -120,6 +120,9 @@ impl RatchetSecret {
         backend: &impl OpenMlsCryptoProvider,
         ciphersuite: Ciphersuite,
     ) -> Result<(Generation, RatchetKeyMaterial), SecretTreeError> {
+        log::trace!("Ratcheting forward in generation {}.", self.generation);
+        log_crypto!(trace, "    with secret {:x?}", self.secret);
+
         // Check if the generation is getting too large.
         if self.generation == u32::MAX {
             return Err(SecretTreeError::RatchetTooLong);

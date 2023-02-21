@@ -1,14 +1,32 @@
-use super::kdf_label::KdfLabel;
-use super::*;
+use std::fmt::{Debug, Formatter};
+
+use super::{kdf_label::KdfLabel, *};
 
 /// A struct to contain secrets. This is to provide better visibility into where
 /// and how secrets are used and to avoid passing secrets in their raw
 /// representation.
-#[derive(Clone, Debug, Serialize, Deserialize, Eq)]
+///
+/// Note: This has a hand-written `Debug` implementation.
+///       Please update as well when changing this struct.
+#[derive(Clone, Serialize, Deserialize, Eq)]
 pub(crate) struct Secret {
     pub(in crate::ciphersuite) ciphersuite: Ciphersuite,
     pub(in crate::ciphersuite) value: Vec<u8>,
     pub(in crate::ciphersuite) mls_version: ProtocolVersion,
+}
+
+impl Debug for Secret {
+    fn fmt(&self, f: &mut Formatter) -> std::fmt::Result {
+        let mut ds = f.debug_struct("Secret");
+        ds.field("ciphersuite", &self.ciphersuite);
+
+        #[cfg(feature = "crypto-debug")]
+        ds.field("value", &self.value);
+        #[cfg(not(feature = "crypto-debug"))]
+        ds.field("value", &"***");
+
+        ds.field("mls_version", &self.mls_version).finish()
+    }
 }
 
 impl Default for Secret {
@@ -178,7 +196,7 @@ impl Secret {
             context
         );
         let info = KdfLabel::serialized_label(context, full_label, length)?;
-        log::trace!("  serialized context: {:x?}", info);
+        log::trace!("  serialized info: {:x?}", info);
         log_crypto!(trace, "  secret: {:x?}", self.value);
         self.hkdf_expand(backend, &info, length)
     }

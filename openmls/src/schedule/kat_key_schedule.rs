@@ -20,6 +20,7 @@ use super::{errors::KsTestVectorError, CommitSecret};
 #[derive(Serialize, Deserialize, Debug, Clone, Default)]
 struct Exporter {
     label: String,
+    context: String,
     length: u32,
     secret: String,
 }
@@ -29,6 +30,7 @@ struct Epoch {
     // Chosen by the generator
     tree_hash: String,
     commit_secret: String,
+    psk_secret: String,
     confirmed_transcript_hash: String,
 
     // Computed values
@@ -67,6 +69,7 @@ fn generate(
 ) -> (
     Vec<u8>,
     CommitSecret,
+    PskSecret,
     JoinerSecret,
     WelcomeSecret,
     EpochSecrets,
@@ -86,6 +89,14 @@ fn generate(
         .random_vec(ciphersuite.hash_length())
         .expect("An unexpected error occurred.");
 
+    // PSK secret can sometimes be the all zero vector
+    let a: [u8; 1] = crypto.rand().random_array().unwrap();
+    let psk_secret = if a[0] > 127 {
+        PskSecret::from(Secret::random(ciphersuite, &crypto, ProtocolVersion::Mls10).unwrap())
+    } else {
+        PskSecret::from(Secret::zero(ciphersuite, ProtocolVersion::Mls10))
+    };
+
     let group_context = GroupContext::new(
         ciphersuite,
         GroupId::from_slice(group_id),
@@ -102,13 +113,9 @@ fn generate(
         &group_context.tls_serialize_detached().unwrap(),
     )
     .expect("Could not create JoinerSecret.");
-    let mut key_schedule = KeySchedule::init(
-        ciphersuite,
-        &crypto,
-        joiner_secret.clone(),
-        None, //Some(psk_secret.clone()),
-    )
-    .expect("Could not create KeySchedule.");
+    let mut key_schedule =
+        KeySchedule::init(ciphersuite, &crypto, &joiner_secret, psk_secret.clone())
+            .expect("Could not create KeySchedule.");
     let welcome_secret = key_schedule
         .welcome(&crypto)
         .expect("An unexpected error occurred.");
@@ -132,6 +139,7 @@ fn generate(
     (
         confirmed_transcript_hash,
         commit_secret,
+        psk_secret,
         joiner_secret,
         welcome_secret,
         epoch_secrets,
@@ -166,8 +174,8 @@ pub fn generate_test_vector(
         let (
             confirmed_transcript_hash,
             commit_secret,
+            psk_secret,
             joiner_secret,
-            // psks,
             welcome_secret,
             epoch_secrets,
             tree_hash,
@@ -178,13 +186,14 @@ pub fn generate_test_vector(
         // exporter
         let exporter_label = "exporter label";
         let exporter_length = 32u32;
+        let exporter_context = b"exporter context";
         let exported = epoch_secrets
             .exporter_secret()
             .derive_exported_secret(
                 ciphersuite,
                 backend,
                 exporter_label,
-                &group_context.tls_serialize_detached().unwrap(),
+                exporter_context,
                 exporter_length as usize,
             )
             .unwrap();
@@ -192,6 +201,7 @@ pub fn generate_test_vector(
         let epoch_info = Epoch {
             tree_hash: bytes_to_hex(&tree_hash),
             commit_secret: bytes_to_hex(commit_secret.as_slice()),
+            psk_secret: bytes_to_hex(psk_secret.as_slice()),
             confirmed_transcript_hash: bytes_to_hex(&confirmed_transcript_hash),
             group_context: bytes_to_hex(
                 &group_context
@@ -212,6 +222,7 @@ pub fn generate_test_vector(
             external_pub: bytes_to_hex(&external_key_pair.public),
             exporter: Exporter {
                 label: exporter_label.into(),
+                context: bytes_to_hex(exporter_context),
                 length: exporter_length,
                 secret: bytes_to_hex(&exported),
             },
@@ -307,7 +318,14 @@ pub fn run_test_vector(
             return Err(KsTestVectorError::JoinerSecretMismatch);
         }
 
-        let mut key_schedule = KeySchedule::init(ciphersuite, backend, joiner_secret.clone(), None)
+        let psk_secret_inner = Secret::from_slice(
+            &hex_to_bytes(&epoch.psk_secret),
+            ProtocolVersion::Mls10,
+            ciphersuite,
+        );
+        let psk_secret = PskSecret::from(psk_secret_inner);
+
+        let mut key_schedule = KeySchedule::init(ciphersuite, backend, &joiner_secret, psk_secret)
             .expect("Could not create KeySchedule.");
         let welcome_secret = key_schedule
             .welcome(backend)
@@ -424,6 +442,24 @@ pub fn run_test_vector(
                 panic!("External pub mismatch");
             }
             return Err(KsTestVectorError::ExternalPubMismatch);
+        }
+
+        // Check exported secret
+        let exported = epoch_secrets
+            .exporter_secret()
+            .derive_exported_secret(
+                ciphersuite,
+                backend,
+                &epoch.exporter.label,
+                &hex_to_bytes(&epoch.exporter.context),
+                epoch.exporter.length as usize,
+            )
+            .unwrap();
+        if hex_to_bytes(&epoch.exporter.secret) != exported {
+            if cfg!(test) {
+                panic!("Exporter mismatch");
+            }
+            return Err(KsTestVectorError::ExporterMismatch);
         }
     }
     Ok(())

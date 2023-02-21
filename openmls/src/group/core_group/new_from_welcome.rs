@@ -56,7 +56,7 @@ impl CoreGroup {
         let group_secrets_bytes = hpke::decrypt_with_label(
             key_package_bundle.private_key.as_slice(),
             "Welcome",
-            &[],
+            welcome.encrypted_group_info(),
             egs.encrypted_group_secrets(),
             ciphersuite,
             backend.crypto(),
@@ -78,7 +78,7 @@ impl CoreGroup {
             })?;
 
         // Create key schedule
-        let mut key_schedule = KeySchedule::init(ciphersuite, backend, joiner_secret, psk_secret)?;
+        let mut key_schedule = KeySchedule::init(ciphersuite, backend, &joiner_secret, psk_secret)?;
 
         // Derive welcome key & nonce from the key schedule
         let (welcome_key, welcome_nonce) = key_schedule
@@ -93,10 +93,6 @@ impl CoreGroup {
         let verifiable_group_info =
             VerifiableGroupInfo::tls_deserialize(&mut group_info_bytes.as_slice())
                 .map_err(|_| WelcomeError::MalformedWelcomeMessage)?;
-
-        if ciphersuite != verifiable_group_info.ciphersuite() {
-            return Err(WelcomeError::GroupInfoCiphersuiteMismatch);
-        }
 
         // Make sure that we can support the required capabilities in the group info.
         if let Some(required_capabilities) =
@@ -200,7 +196,7 @@ impl CoreGroup {
         if &confirmation_tag != public_group.confirmation_tag() {
             log::error!("Confirmation tag mismatch");
             log_crypto!(trace, "  Got:      {:x?}", confirmation_tag);
-            log_crypto!(trace, "  Expected: {:x?}", group_info.confirmation_tag());
+            log_crypto!(trace, "  Expected: {:x?}", public_group.confirmation_tag());
             debug_assert!(false, "Confirmation tag mismatch");
             Err(WelcomeError::ConfirmationTagMismatch)
         } else {
