@@ -192,7 +192,7 @@ fn test_valsem242(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
         .into_group_info()
         .unwrap();
 
-    let (_, public_message_commit) = MlsGroup::join_by_external_commit(
+    let (_, public_message_commit, _) = MlsGroup::join_by_external_commit(
         backend,
         &bob_credential.signer,
         None,
@@ -356,7 +356,7 @@ fn test_valsem243(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
     let tree_option = alice_group.export_ratchet_tree();
 
     // Note: This will create a remove proposal because Bob is already a member of the group.
-    let (_, public_message_commit) = MlsGroup::join_by_external_commit(
+    let (_, public_message_commit, _) = MlsGroup::join_by_external_commit(
         backend,
         &bob_credential.signer,
         Some(&tree_option),
@@ -712,7 +712,7 @@ fn test_pure_ciphertest(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoPr
         .into_group_info()
         .unwrap();
 
-    let (_bob_group, message) = MlsGroup::join_by_external_commit(
+    let (_bob_group, message, _) = MlsGroup::join_by_external_commit(
         backend,
         &bob_credential.signer,
         None,
@@ -790,7 +790,7 @@ mod utils {
             .unwrap();
         let tree_option = alice_group.export_ratchet_tree();
 
-        let (_, public_message_commit) = MlsGroup::join_by_external_commit(
+        let (_, public_message_commit, _) = MlsGroup::join_by_external_commit(
             backend,
             &bob_credential.signer,
             Some(&tree_option),

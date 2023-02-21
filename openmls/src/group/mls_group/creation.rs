@@ -7,7 +7,7 @@ use crate::{
         core_group::create_commit_params::CreateCommitParams,
         errors::{CoreGroupBuildError, ExternalCommitError, WelcomeError},
     },
-    messages::group_info::VerifiableGroupInfo,
+    messages::group_info::{GroupInfo, VerifiableGroupInfo},
 };
 
 use super::*;
@@ -168,7 +168,7 @@ impl MlsGroup {
         mls_group_config: &MlsGroupConfig,
         aad: &[u8],
         credential_with_key: CredentialWithKey,
-    ) -> Result<(Self, MlsMessageOut), ExternalCommitError> {
+    ) -> Result<(Self, MlsMessageOut, Option<GroupInfo>), ExternalCommitError> {
         let resumption_psk_store =
             ResumptionPskStore::new(mls_group_config.number_of_resumption_psks);
 
@@ -205,6 +205,10 @@ impl MlsGroup {
 
         let public_message: PublicMessage = create_commit_result.commit.into();
 
-        Ok((mls_group, public_message.into()))
+        Ok((
+            mls_group,
+            public_message.into(),
+            create_commit_result.group_info,
+        ))
     }
 }

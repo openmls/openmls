@@ -83,7 +83,7 @@ fn test_external_commit(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoPr
             ciphersuite.signature_algorithm(),
         );
 
-        let (_bob_group, _) = MlsGroup::join_by_external_commit(
+        let (_bob_group, _, _) = MlsGroup::join_by_external_commit(
             backend,
             &bob_signature_keys,
             None,
@@ -150,7 +150,7 @@ fn test_group_info(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvide
 
         VerifiableGroupInfo::tls_deserialize(&mut serialized_group_info.as_slice()).unwrap()
     };
-    let (mut bob_group, msg) = MlsGroup::join_by_external_commit(
+    let (mut bob_group, msg, group_info) = MlsGroup::join_by_external_commit(
         backend,
         &bob_signature_keys,
         None,
@@ -161,7 +161,7 @@ fn test_group_info(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvide
         b"",
         bob_credential,
     )
-    .map(|(group, msg)| (group, MlsMessageIn::from(msg)))
+    .map(|(group, msg, group_info)| (group, MlsMessageIn::from(msg), group_info))
     .unwrap();
     bob_group.merge_pending_commit(backend).unwrap();
 
@@ -189,6 +189,33 @@ fn test_group_info(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvide
         _ => panic!("Not an ApplicationMessage"),
     };
     assert_eq!(decrypted, b"Hello Alice");
+
+    // check that the returned group info from the external join is valid
+    // Bob wants to join with another client
+    let (bob_credential, bob_signature_keys) = new_credential(
+        backend,
+        b"Bob 2",
+        CredentialType::Basic,
+        ciphersuite.signature_algorithm(),
+    );
+    let verifiable_group_info = {
+        let serialized_group_info = group_info.unwrap().tls_serialize_detached().unwrap();
+
+        VerifiableGroupInfo::tls_deserialize(&mut serialized_group_info.as_slice()).unwrap()
+    };
+    let (mut bob_group, ..) = MlsGroup::join_by_external_commit(
+        backend,
+        &bob_signature_keys,
+        None,
+        verifiable_group_info,
+        &MlsGroupConfigBuilder::new()
+            .crypto_config(CryptoConfig::with_default_version(ciphersuite))
+            .build(),
+        b"",
+        bob_credential,
+    )
+    .unwrap();
+    bob_group.merge_pending_commit(backend).unwrap();
 }
 
 #[apply(ciphersuites_and_backends)]
