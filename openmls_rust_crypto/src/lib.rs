@@ -4,10 +4,9 @@
 //! OpenMLS.
 
 pub use openmls_memory_keystore::{MemoryKeyStore, MemoryKeyStoreError};
+use openmls_traits::OpenMlsCryptoProvider;
 
 mod provider;
-// Re-export trait.
-pub use openmls_traits::OpenMlsCryptoProvider;
 pub use provider::*;
 
 #[derive(Default, Debug)]
