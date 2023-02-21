@@ -371,17 +371,7 @@ impl MlsGroupTestSetup {
                     .public_group
                     .process_message(&sender.crypto, message)
                     .unwrap();
-                match processed_message.into_content() {
-                    ProcessedMessageContent::ApplicationMessage(_) => (),
-                    ProcessedMessageContent::ProposalMessage(proposal)
-                    | ProcessedMessageContent::ExternalJoinProposalMessage(proposal) => {
-                        group.public_group.add_proposal(*proposal)
-                    }
-                    ProcessedMessageContent::StagedCommitMessage(staged_commit) => {
-                        let staged_commit = *staged_commit;
-                        group.public_group.merge_commit(staged_commit)
-                    }
-                }
+                group.public_group.finalize_processing(processed_message);
             }
         }
         group.exporter_secret = sender_group.export_secret(&sender.crypto, "test", &[], 32)?;
