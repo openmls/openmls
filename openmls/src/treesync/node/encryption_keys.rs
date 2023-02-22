@@ -184,6 +184,21 @@ impl EncryptionKeyPair {
     }
 }
 
+#[cfg(test)]
+impl EncryptionKeyPair {
+    /// Build a key pair from raw bytes for testing.
+    pub(crate) fn from_raw(public_key: Vec<u8>, private_key: Vec<u8>) -> Self {
+        Self {
+            public_key: EncryptionKey {
+                key: public_key.into(),
+            },
+            private_key: EncryptionPrivateKey {
+                key: private_key.into(),
+            },
+        }
+    }
+}
+
 impl From<(HpkePublicKey, HpkePrivateKey)> for EncryptionKeyPair {
     fn from((public_key, private_key): (HpkePublicKey, HpkePrivateKey)) -> Self {
         Self {

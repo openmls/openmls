@@ -1,24 +1,23 @@
+use std::collections::HashSet;
+
 use openmls_basic_credential::SignatureKeyPair;
 use openmls_rust_crypto::OpenMlsRustCrypto;
 use openmls_traits::{crypto::OpenMlsCrypto, types::Ciphersuite, OpenMlsCryptoProvider};
 use serde::{Deserialize, Serialize};
-use tls_codec::Deserialize as TlsDeserializeTrait;
+use tls_codec::{Deserialize as TlsDeserializeTrait, Serialize as TlsSerializeTrait};
 
 use crate::{
     binary_tree::{array_representation::ParentNodeIndex, LeafNodeIndex},
     credentials::{Credential, CredentialType, CredentialWithKey},
     extensions::{Extensions, RatchetTreeExtension},
-    group::{config::CryptoConfig, GroupContext, GroupEpoch, GroupId},
-    prelude_test::{Secret, Verifiable},
-    test_utils::read,
-    tree::tests_and_kats::kats::secret_tree::Leaf,
+    group::{GroupContext, GroupEpoch, GroupId},
+    messages::EncryptedGroupSecrets,
+    prelude::LeafNode,
+    prelude_test::Secret,
+    test_utils::{hex_to_bytes, read},
     treesync::{
-        self,
-        node::{
-            encryption_keys::EncryptionKeyPair,
-            leaf_node::{Capabilities, LeafNodeTbs, Lifetime, TreeInfoTbs, VerifiableLeafNode},
-        },
-        treekem::UpdatePath,
+        node::encryption_keys::{EncryptionKey, EncryptionKeyPair},
+        treekem::{DecryptPathParams, UpdatePath},
         TreeSync,
     },
     versions::ProtocolVersion,
@@ -87,21 +86,24 @@ pub fn run_test_vector(test: TreeKemTest, backend: &impl OpenMlsCryptoProvider) 
         RatchetTreeExtension::tls_deserialize(&mut test.ratchet_tree.as_slice()).unwrap();
     let treesync = TreeSync::from_nodes(backend, ciphersuite, ratchet_tree.as_slice()).unwrap();
 
-    struct OwnLeaf {
-        index: u32,
-        signature_key_pair: SignatureKeyPair,
-        encryption_key_pair: EncryptionKeyPair,
+    struct LeafNodeInfo {
+        index: LeafNodeIndex,
+        encryption_keys: Vec<EncryptionKeyPair>,
+        encryption_keypair: EncryptionKeyPair,
+        signature_keypair: SignatureKeyPair,
     };
+    let mut full_leaf_nodes = vec![];
+
     for leaf_private in test.leaves_private.into_iter() {
         let mut treekem = treesync.clone();
 
-        let signature_key = treesync
+        let own_leaf = treesync
             .leaf(LeafNodeIndex::new(leaf_private.index as u32))
-            .unwrap()
-            .signature_key();
+            .unwrap();
+        let signature_key = own_leaf.signature_key();
         let mut private_key = leaf_private.signature_priv.clone();
         private_key.append(&mut signature_key.as_slice().to_vec());
-        let signer = SignatureKeyPair::from_raw(
+        let signature_keypair = SignatureKeyPair::from_raw(
             ciphersuite.signature_algorithm(),
             private_key,
             signature_key.as_slice().to_vec(),
@@ -112,6 +114,10 @@ pub fn run_test_vector(test: TreeKemTest, backend: &impl OpenMlsCryptoProvider) 
         };
 
         let path_secrets = leaf_private.path_secrets;
+        let mut encyrption_keys = vec![EncryptionKeyPair::from_raw(
+            own_leaf.encryption_key().as_slice().to_vec(),
+            leaf_private.encryption_priv.clone(),
+        )];
         for path_secret in path_secrets {
             let my_path_secret = crate::messages::PathSecret::from(Secret::from_slice(
                 &path_secret.path_secret,
@@ -121,6 +127,8 @@ pub fn run_test_vector(test: TreeKemTest, backend: &impl OpenMlsCryptoProvider) 
             let keypair = my_path_secret
                 .derive_key_pair(backend, ciphersuite)
                 .unwrap();
+
+            // Check that the public key matches the key in the tree.
             assert_eq!(
                 keypair.public_key(),
                 treesync
@@ -128,7 +136,20 @@ pub fn run_test_vector(test: TreeKemTest, backend: &impl OpenMlsCryptoProvider) 
                     .unwrap()
                     .encryption_key()
             );
+
+            encyrption_keys.push(keypair);
         }
+
+        // Store the key pairs for decrypting the path later
+        full_leaf_nodes.push(LeafNodeInfo {
+            index: LeafNodeIndex::new(leaf_private.index),
+            encryption_keys: encyrption_keys,
+            encryption_keypair: EncryptionKeyPair::from_raw(
+                own_leaf.encryption_key().as_slice().to_vec(),
+                leaf_private.encryption_priv,
+            ),
+            signature_keypair,
+        });
     }
 
     let group_context = GroupContext::new(
@@ -151,8 +172,10 @@ pub fn run_test_vector(test: TreeKemTest, backend: &impl OpenMlsCryptoProvider) 
         )
         .unwrap();
 
-        diff.verify_parent_hashes(backend, ciphersuite).unwrap();
+        // Check the parent hash in the diff is correct.
+        assert!(diff.verify_parent_hashes(backend, ciphersuite).is_ok());
 
+        // Merge the diff into a new tree.
         let staged_diff = diff.into_staged_diff(backend, ciphersuite).unwrap();
         let mut new_tree = treesync.clone();
         new_tree.merge_diff(staged_diff);
@@ -162,8 +185,29 @@ pub fn run_test_vector(test: TreeKemTest, backend: &impl OpenMlsCryptoProvider) 
 
         assert_eq!(path.path_secrets.len(), treesync.leaf_count() as usize);
         for (j, leaf) in path.path_secrets.iter().enumerate() {
-            if i == j {
-                assert!(leaf.is_none());
+            if let Some(leaf) = leaf {
+                if i != j {
+                    // Process the update path for private_leaf[j]
+                    // let encrypted_path_secret = hex_to_bytes(leaf);
+                    let leaf_j = &full_leaf_nodes[j];
+                    let params = DecryptPathParams {
+                        version: ProtocolVersion::Mls10,
+                        update_path: update_path.nodes(),
+                        sender_leaf_index: LeafNodeIndex::new(path.sender),
+                        exclusion_list: &HashSet::default(),
+                        group_context: &group_context.tls_serialize_detached().unwrap(),
+                    };
+
+                    let diff = treesync.empty_diff();
+                    diff.decrypt_path(
+                        backend,
+                        ciphersuite,
+                        params,
+                        &leaf_j.encryption_keys.iter().collect::<Vec<_>>(),
+                        LeafNodeIndex::new(j as u32),
+                    )
+                    .unwrap();
+                }
             }
         }
     }
