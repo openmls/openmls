@@ -558,6 +558,7 @@
 <a href="#558" id="558">558</a>
 <a href="#559" id="559">559</a>
 <a href="#560" id="560">560</a>
+<a href="#561" id="561">561</a>
 </pre><pre class="rust"><code><span class="kw">use crate</span>::{
     binary_tree::array_representation::LeafNodeIndex,
     ciphersuite::hash_ref::ProposalRef,
@@ -584,7 +585,8 @@
 }
 
 <span class="kw">impl </span>ProposalStore {
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>new() -&gt; <span class="self">Self </span>{
+    <span class="doccomment">/// Create a new [`ProposalStore`].
+    </span><span class="kw">pub fn </span>new() -&gt; <span class="self">Self </span>{
         <span class="self">Self </span>{
             queued_proposals: Vec::new(),
         }

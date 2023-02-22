@@ -1117,49 +1117,6 @@
 <a href="#1117" id="1117">1117</a>
 <a href="#1118" id="1118">1118</a>
 <a href="#1119" id="1119">1119</a>
-<a href="#1120" id="1120">1120</a>
-<a href="#1121" id="1121">1121</a>
-<a href="#1122" id="1122">1122</a>
-<a href="#1123" id="1123">1123</a>
-<a href="#1124" id="1124">1124</a>
-<a href="#1125" id="1125">1125</a>
-<a href="#1126" id="1126">1126</a>
-<a href="#1127" id="1127">1127</a>
-<a href="#1128" id="1128">1128</a>
-<a href="#1129" id="1129">1129</a>
-<a href="#1130" id="1130">1130</a>
-<a href="#1131" id="1131">1131</a>
-<a href="#1132" id="1132">1132</a>
-<a href="#1133" id="1133">1133</a>
-<a href="#1134" id="1134">1134</a>
-<a href="#1135" id="1135">1135</a>
-<a href="#1136" id="1136">1136</a>
-<a href="#1137" id="1137">1137</a>
-<a href="#1138" id="1138">1138</a>
-<a href="#1139" id="1139">1139</a>
-<a href="#1140" id="1140">1140</a>
-<a href="#1141" id="1141">1141</a>
-<a href="#1142" id="1142">1142</a>
-<a href="#1143" id="1143">1143</a>
-<a href="#1144" id="1144">1144</a>
-<a href="#1145" id="1145">1145</a>
-<a href="#1146" id="1146">1146</a>
-<a href="#1147" id="1147">1147</a>
-<a href="#1148" id="1148">1148</a>
-<a href="#1149" id="1149">1149</a>
-<a href="#1150" id="1150">1150</a>
-<a href="#1151" id="1151">1151</a>
-<a href="#1152" id="1152">1152</a>
-<a href="#1153" id="1153">1153</a>
-<a href="#1154" id="1154">1154</a>
-<a href="#1155" id="1155">1155</a>
-<a href="#1156" id="1156">1156</a>
-<a href="#1157" id="1157">1157</a>
-<a href="#1158" id="1158">1158</a>
-<a href="#1159" id="1159">1159</a>
-<a href="#1160" id="1160">1160</a>
-<a href="#1161" id="1161">1161</a>
-<a href="#1162" id="1162">1162</a>
 </pre><pre class="rust"><code><span class="doccomment">//! ### Don&#39;t Panic!
 //!
 //! Functions in this module should never panic. However, if there is a bug in
@@ -1168,8 +1125,7 @@
 //! error, will still return a `Result` since they may throw a `LibraryError`.
 
 </span><span class="comment">// Private
-</span><span class="kw">mod </span>apply_proposals;
-<span class="kw">mod </span>new_from_welcome;
+</span><span class="kw">mod </span>new_from_welcome;
 
 <span class="comment">// Crate
 </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">mod </span>create_commit_params;
@@ -1191,6 +1147,7 @@
 <span class="attr">#[cfg(test)]
 </span><span class="kw">mod </span>test_proposals;
 
+<span class="kw">use </span><span class="kw">super</span>::builder::TempBuilderPG1;
 <span class="kw">use </span><span class="kw">super</span>::errors::CreateCommitError;
 
 <span class="kw">use </span><span class="self">self</span>::create_commit_params::{CommitType, CreateCommitParams};
@@ -1218,7 +1175,6 @@
     ciphersuite::{signable::Signable, HpkePublicKey, SignaturePublicKey},
     credentials::<span class="kw-2">*</span>,
     error::LibraryError,
-    extensions::errors::<span class="kw-2">*</span>,
     framing::{mls_auth_content::AuthenticatedContent, <span class="kw-2">*</span>},
     group::{config::CryptoConfig, <span class="kw-2">*</span>},
     key_packages::<span class="kw-2">*</span>,
@@ -1232,7 +1188,7 @@
     treesync::{
         node::{
             encryption_keys::{EncryptionKey, EncryptionKeyPair},
-            leaf_node::{Capabilities, Lifetime, OpenMlsLeafNode},
+            leaf_node::{Lifetime, OpenMlsLeafNode},
         },
         <span class="kw-2">*</span>,
     },
@@ -1298,16 +1254,10 @@
 
 <span class="doccomment">/// Builder for [`CoreGroup`].
 </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct </span>CoreGroupBuilder {
-    own_leaf_extensions: Extensions,
-    group_id: GroupId,
-    crypto_config: CryptoConfig,
+    public_group_builder: TempBuilderPG1,
     config: <span class="prelude-ty">Option</span>&lt;CoreGroupConfig&gt;,
     psk_ids: Vec&lt;PreSharedKeyId&gt;,
-    version: <span class="prelude-ty">Option</span>&lt;ProtocolVersion&gt;,
-    required_capabilities: <span class="prelude-ty">Option</span>&lt;RequiredCapabilitiesExtension&gt;,
     max_past_epochs: usize,
-    lifetime: <span class="prelude-ty">Option</span>&lt;Lifetime&gt;,
-    credential_with_key: CredentialWithKey,
 }
 
 <span class="kw">impl </span>CoreGroupBuilder {
@@ -1317,17 +1267,13 @@
         crypto_config: CryptoConfig,
         credential_with_key: CredentialWithKey,
     ) -&gt; <span class="self">Self </span>{
+        <span class="kw">let </span>public_group_builder =
+            PublicGroup::builder(group_id, crypto_config, credential_with_key);
         <span class="self">Self </span>{
-            group_id,
             config: <span class="prelude-val">None</span>,
             psk_ids: <span class="macro">vec!</span>[],
-            version: <span class="prelude-val">None</span>,
-            required_capabilities: <span class="prelude-val">None</span>,
             max_past_epochs: <span class="number">0</span>,
-            own_leaf_extensions: Extensions::empty(),
-            lifetime: <span class="prelude-val">None</span>,
-            crypto_config,
-            credential_with_key,
+            public_group_builder,
         }
     }
     <span class="doccomment">/// Set the [`CoreGroupConfig`] of the [`CoreGroup`].
@@ -1346,7 +1292,9 @@
         <span class="kw-2">mut </span><span class="self">self</span>,
         required_capabilities: RequiredCapabilitiesExtension,
     ) -&gt; <span class="self">Self </span>{
-        <span class="self">self</span>.required_capabilities = <span class="prelude-val">Some</span>(required_capabilities);
+        <span class="self">self</span>.public_group_builder = <span class="self">self
+            </span>.public_group_builder
+            .with_required_capabilities(required_capabilities);
         <span class="self">self
     </span>}
     <span class="doccomment">/// Set the number of past epochs the group should keep secrets.
@@ -1356,7 +1304,7 @@
     </span>}
     <span class="doccomment">/// Set the [`Lifetime`] for the own leaf in the group.
     </span><span class="kw">pub fn </span>with_lifetime(<span class="kw-2">mut </span><span class="self">self</span>, lifetime: Lifetime) -&gt; <span class="self">Self </span>{
-        <span class="self">self</span>.lifetime = <span class="prelude-val">Some</span>(lifetime);
+        <span class="self">self</span>.public_group_builder = <span class="self">self</span>.public_group_builder.with_lifetime(lifetime);
         <span class="self">self
     </span>}
 
@@ -1371,56 +1319,20 @@
         backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider&lt;KeyStoreProvider = KeyStore&gt;,
         signer: <span class="kw-2">&amp;</span><span class="kw">impl </span>Signer,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;CoreGroup, CoreGroupBuildError&lt;KeyStore::Error&gt;&gt; {
-        <span class="kw">let </span>ciphersuite = <span class="self">self</span>.crypto_config.ciphersuite;
+        <span class="kw">let </span>(public_group_builder, commit_secret, leaf_keypair) =
+            <span class="self">self</span>.public_group_builder.get_secrets(backend, signer)<span class="question-mark">?</span>;
+
+        <span class="kw">let </span>ciphersuite = public_group_builder.crypto_config().ciphersuite;
         <span class="kw">let </span>config = <span class="self">self</span>.config.unwrap_or_default();
-        <span class="kw">let </span>capabilities = <span class="self">self
-            </span>.required_capabilities
-            .as_ref()
-            .map(|re| re.extension_types());
-        <span class="kw">let </span>version = <span class="self">self</span>.version.unwrap_or_default();
+        <span class="kw">let </span>version = public_group_builder.crypto_config().version;
 
-        <span class="macro">debug!</span>(<span class="string">&quot;Created group {:x?}&quot;</span>, <span class="self">self</span>.group_id);
-        <span class="macro">trace!</span>(<span class="string">&quot; &gt;&gt;&gt; with {:?}, {:?}&quot;</span>, ciphersuite, config);
-        <span class="kw">let </span>(tree, commit_secret, leaf_keypair) = TreeSync::new(
-            backend,
-            signer,
-            CryptoConfig {
-                ciphersuite,
-                version,
-            },
-            <span class="self">self</span>.credential_with_key,
-            <span class="self">self</span>.lifetime.unwrap_or_default(),
-            Capabilities::new(
-                <span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span>[version]),     <span class="comment">// TODO: Allow more versions
-                </span><span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span>[ciphersuite]), <span class="comment">// TODO: allow more ciphersuites
-                </span>capabilities,
-                <span class="prelude-val">None</span>,
-                <span class="prelude-val">None</span>,
-            ),
-            <span class="self">self</span>.own_leaf_extensions,
-        )<span class="question-mark">?</span>;
-
-        <span class="kw">let </span>required_capabilities = <span class="self">self</span>.required_capabilities.unwrap_or_default();
-        required_capabilities.check_support().map_err(|e| <span class="kw">match </span>e {
-            ExtensionError::UnsupportedProposalType =&gt; CoreGroupBuildError::UnsupportedProposalType,
-            ExtensionError::UnsupportedExtensionType =&gt; {
-                CoreGroupBuildError::UnsupportedExtensionType
-            }
-            <span class="kw">_ </span>=&gt; LibraryError::custom(<span class="string">&quot;Unexpected ExtensionError&quot;</span>).into(),
-        })<span class="question-mark">?</span>;
-        <span class="kw">let </span>required_capabilities =
-            Extensions::single(Extension::RequiredCapabilities(required_capabilities));
-
-        <span class="kw">let </span>group_context = GroupContext::create_initial_group_context(
-            ciphersuite,
-            <span class="self">self</span>.group_id,
-            tree.tree_hash().to_vec(),
-            required_capabilities,
-        );
-        <span class="kw">let </span>serialized_group_context = group_context
+        <span class="kw">let </span>serialized_group_context = public_group_builder
+            .group_context()
             .tls_serialize_detached()
             .map_err(LibraryError::missing_bound_check)<span class="question-mark">?</span>;
 
+        <span class="macro">debug!</span>(<span class="string">&quot;Created group {:x?}&quot;</span>, public_group_builder.group_id());
+        <span class="macro">trace!</span>(<span class="string">&quot; &gt;&gt;&gt; with {:?}, {:?}&quot;</span>, ciphersuite, config);
         <span class="comment">// Derive an initial joiner secret based on the commit secret.
         // Derive an epoch secret from the joiner secret.
         // We use a random `InitSecret` for initialization.
@@ -1459,7 +1371,9 @@
         <span class="kw">let </span>message_secrets_store =
             MessageSecretsStore::new_with_secret(<span class="self">self</span>.max_past_epochs, message_secrets);
 
-        <span class="kw">let </span>public_group = PublicGroup::new(tree, group_context, initial_confirmation_tag);
+        <span class="kw">let </span>public_group = public_group_builder
+            .with_confirmation_tag(initial_confirmation_tag)
+            .build();
 
         <span class="kw">let </span>group = CoreGroup {
             public_group,

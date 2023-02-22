@@ -439,7 +439,7 @@
     ///  - ValSem004
     ///  - ValSem005
     ///  - ValSem009
-    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>validate_verifiable_content(
+    </span><span class="kw">pub</span>(<span class="kw">super</span>) <span class="kw">fn </span>validate_verifiable_content(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         verifiable_content: <span class="kw-2">&amp;</span>VerifiableAuthenticatedContent,
         message_secrets_store_option: <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>MessageSecretsStore&gt;,
@@ -701,7 +701,7 @@
     ///  - ValSem242: External Commit must only cover inline proposal in allowlist (ExternalInit, Remove, PreSharedKey)
     ///  - ValSem243: External Commit, inline Remove Proposal: The identity and the endpoint_id of the removed
     ///               leaf are identical to the ones in the path KeyPackage.
-    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>validate_external_commit(
+    </span><span class="kw">pub</span>(<span class="kw">super</span>) <span class="kw">fn </span>validate_external_commit(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         proposal_queue: <span class="kw-2">&amp;</span>ProposalQueue,
         path_leaf_node: <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>LeafNode&gt;,

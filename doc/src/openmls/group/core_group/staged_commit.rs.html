@@ -431,16 +431,26 @@
 <a href="#431" id="431">431</a>
 <a href="#432" id="432">432</a>
 <a href="#433" id="433">433</a>
+<a href="#434" id="434">434</a>
+<a href="#435" id="435">435</a>
+<a href="#436" id="436">436</a>
+<a href="#437" id="437">437</a>
+<a href="#438" id="438">438</a>
+<a href="#439" id="439">439</a>
+<a href="#440" id="440">440</a>
+<a href="#441" id="441">441</a>
+<a href="#442" id="442">442</a>
+<a href="#443" id="443">443</a>
+<a href="#444" id="444">444</a>
+<a href="#445" id="445">445</a>
 </pre><pre class="rust"><code><span class="kw">use </span>core::fmt::Debug;
 <span class="kw">use </span>std::mem;
 
 <span class="kw">use </span>openmls_traits::key_store::OpenMlsKeyStore;
+<span class="kw">use </span>public_group::diff::{apply_proposals::ApplyProposalsValues, StagedPublicGroupDiff};
 
 <span class="kw">use super</span>::{<span class="kw">super</span>::errors::<span class="kw-2">*</span>, proposals::ProposalStore, <span class="kw-2">*</span>};
-<span class="kw">use crate</span>::{
-    group::public_group::diff::{apply_proposals::ApplyProposalsValues, StagedPublicGroupDiff},
-    treesync::node::{encryption_keys::EncryptionKeyPair, leaf_node::OpenMlsLeafNode},
-};
+<span class="kw">use </span><span class="kw">crate</span>::treesync::node::encryption_keys::EncryptionKeyPair;
 
 <span class="kw">impl </span>CoreGroup {
     <span class="kw">fn </span>derive_epoch_secrets(
@@ -544,7 +554,8 @@
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         mls_content: <span class="kw-2">&amp;</span>AuthenticatedContent,
         proposal_store: <span class="kw-2">&amp;</span>ProposalStore,
-        own_leaf_nodes: <span class="kw-2">&amp;</span>[OpenMlsLeafNode],
+        old_epoch_keypairs: Vec&lt;EncryptionKeyPair&gt;,
+        leaf_node_keypairs: Vec&lt;EncryptionKeyPair&gt;,
         backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;StagedCommit, StageCommitError&gt; {
         <span class="comment">// Check that the sender is another member of the group
@@ -553,20 +564,6 @@
                 <span class="kw">return </span><span class="prelude-val">Err</span>(StageCommitError::OwnCommit);
             }
         }
-
-        <span class="comment">// All keys from the previous epoch are potential decryption keypairs.
-        </span><span class="kw">let </span>old_epoch_keypairs = <span class="self">self</span>.read_epoch_keypairs(backend);
-
-        <span class="comment">// If we are processing an update proposal that originally came from
-        // us, the keypair corresponding to the leaf in the update is also a
-        // potential decryption keypair.
-        </span><span class="kw">let </span>leaf_node_keypairs = own_leaf_nodes
-            .iter()
-            .map(|leaf_node| {
-                EncryptionKeyPair::read_from_key_store(backend, leaf_node.encryption_key())
-                    .ok_or(StageCommitError::MissingDecryptionKey)
-            })
-            .collect::&lt;<span class="prelude-ty">Result</span>&lt;Vec&lt;EncryptionKeyPair&gt;, StageCommitError&gt;&gt;()<span class="question-mark">?</span>;
 
         <span class="kw">let </span>ciphersuite = <span class="self">self</span>.ciphersuite();
 
@@ -785,6 +782,28 @@
             }
         }
     }
+
+    <span class="attr">#[cfg(test)]
+    </span><span class="doccomment">/// Helper function that reads the decryption keys from the key store
+    /// (unwrapping the result) and stages the given commit.
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>read_keys_and_stage_commit(
+        <span class="kw-2">&amp;</span><span class="self">self</span>,
+        mls_content: <span class="kw-2">&amp;</span>AuthenticatedContent,
+        proposal_store: <span class="kw-2">&amp;</span>ProposalStore,
+        own_leaf_nodes: <span class="kw-2">&amp;</span>[OpenMlsLeafNode],
+        backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;StagedCommit, StageCommitError&gt; {
+        <span class="kw">let </span>(old_epoch_keypairs, leaf_node_keypairs) =
+            <span class="self">self</span>.read_decryption_keypairs(backend, own_leaf_nodes)<span class="question-mark">?</span>;
+
+        <span class="self">self</span>.stage_commit(
+            mls_content,
+            proposal_store,
+            old_epoch_keypairs,
+            leaf_node_keypairs,
+            backend,
+        )
+    }
 }
 
 <span class="attr">#[derive(Debug, Serialize, Deserialize)]
@@ -834,6 +853,11 @@
     /// and `false` otherwise.
     </span><span class="kw">pub fn </span>self_removed(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; bool {
         <span class="macro">matches!</span>(<span class="self">self</span>.state, StagedCommitState::PublicState(<span class="kw">_</span>))
+    }
+
+    <span class="doccomment">/// Consume this [`StagedCommit`] and return the internal [`StagedCommitState`].
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>into_state(<span class="self">self</span>) -&gt; StagedCommitState {
+        <span class="self">self</span>.state
     }
 }
 

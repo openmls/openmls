@@ -126,12 +126,6 @@
 <a href="#126" id="126">126</a>
 <a href="#127" id="127">127</a>
 <a href="#128" id="128">128</a>
-<a href="#129" id="129">129</a>
-<a href="#130" id="130">130</a>
-<a href="#131" id="131">131</a>
-<a href="#132" id="132">132</a>
-<a href="#133" id="133">133</a>
-<a href="#134" id="134">134</a>
 </pre><pre class="rust"><code><span class="kw">use </span>std::collections::HashSet;
 
 <span class="kw">use </span>openmls_traits::{key_store::OpenMlsKeyStore, signatures::Signer, OpenMlsCryptoProvider};
@@ -178,6 +172,10 @@
         signer: <span class="kw-2">&amp;</span><span class="kw">impl </span>Signer,
         credential_with_key: <span class="prelude-ty">Option</span>&lt;CredentialWithKey&gt;,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;PathComputationResult, CreateCommitError&lt;KeyStore::Error&gt;&gt; {
+        <span class="kw">let </span>version = <span class="self">self</span>.group_context().protocol_version();
+        <span class="kw">let </span>ciphersuite = <span class="self">self</span>.group_context().ciphersuite();
+        <span class="kw">let </span>group_id = <span class="self">self</span>.group_context().group_id().clone();
+
         <span class="kw">let </span><span class="kw-2">mut </span>new_keypairs = <span class="kw">if </span>commit_type == CommitType::External {
             <span class="comment">// If this is an external commit we add a fresh leaf to the diff.
             // Generate a KeyPackageBundle to generate a payload from for later
@@ -190,8 +188,8 @@
                 </span>init_private_key: <span class="kw">_</span>,
             } = KeyPackage::builder().build_without_key_storage(
                 CryptoConfig {
-                    ciphersuite: <span class="self">self</span>.original_group.ciphersuite(),
-                    version: <span class="self">self</span>.original_group.version(),
+                    ciphersuite,
+                    version,
                 },
                 backend,
                 signer,
@@ -210,26 +208,16 @@
                 </span>.diff
                 .leaf_mut(leaf_index)
                 .ok_or_else(|| LibraryError::custom(<span class="string">&quot;Unable to get own leaf from diff&quot;</span>))<span class="question-mark">?</span>;
-            <span class="kw">let </span>encryption_keypair = own_diff_leaf.rekey(
-                <span class="self">self</span>.original_group.group_id(),
-                <span class="self">self</span>.original_group.ciphersuite(),
-                <span class="self">self</span>.original_group.version(), <span class="comment">// XXX: openmls/openmls#1065
-                </span>backend,
-                signer,
-            )<span class="question-mark">?</span>;
+            <span class="kw">let </span>encryption_keypair =
+                own_diff_leaf.rekey(<span class="kw-2">&amp;</span>group_id, ciphersuite, version, backend, signer)<span class="question-mark">?</span>;
             <span class="macro">vec!</span>[encryption_keypair]
         };
 
         <span class="comment">// Derive and apply an update path based on the previously
         // generated new leaf.
-        </span><span class="kw">let </span>(plain_path, <span class="kw-2">mut </span>new_parent_keypairs, commit_secret) =
-            <span class="self">self</span>.diff.apply_own_update_path(
-                backend,
-                signer,
-                <span class="self">self</span>.original_group.ciphersuite(),
-                <span class="self">self</span>.original_group.group_id().clone(),
-                leaf_index,
-            )<span class="question-mark">?</span>;
+        </span><span class="kw">let </span>(plain_path, <span class="kw-2">mut </span>new_parent_keypairs, commit_secret) = <span class="self">self
+            </span>.diff
+            .apply_own_update_path(backend, signer, ciphersuite, group_id, leaf_index)<span class="question-mark">?</span>;
 
         new_keypairs.append(<span class="kw-2">&amp;mut </span>new_parent_keypairs);
 
@@ -246,7 +234,7 @@
         <span class="comment">// Encrypt the path to the correct recipient nodes.
         </span><span class="kw">let </span>encrypted_path = <span class="self">self</span>.diff.encrypt_path(
             backend,
-            <span class="self">self</span>.original_group.ciphersuite(),
+            ciphersuite,
             <span class="kw-2">&amp;</span>plain_path,
             <span class="kw-2">&amp;</span>serialized_group_context,
             <span class="kw-2">&amp;</span>exclusion_list,

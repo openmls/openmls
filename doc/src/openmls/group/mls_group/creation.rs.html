@@ -208,6 +208,12 @@
 <a href="#208" id="208">208</a>
 <a href="#209" id="209">209</a>
 <a href="#210" id="210">210</a>
+<a href="#211" id="211">211</a>
+<a href="#212" id="212">212</a>
+<a href="#213" id="213">213</a>
+<a href="#214" id="214">214</a>
+<a href="#215" id="215">215</a>
+<a href="#216" id="216">216</a>
 </pre><pre class="rust"><code><span class="kw">use </span>openmls_traits::signatures::Signer;
 
 <span class="kw">use crate</span>::{
@@ -216,6 +222,7 @@
     group::{
         core_group::create_commit_params::CreateCommitParams,
         errors::{CoreGroupBuildError, ExternalCommitError, WelcomeError},
+        public_group::errors::PublicGroupBuildError,
     },
     messages::group_info::VerifiableGroupInfo,
 };
@@ -269,16 +276,21 @@
         .build(backend, signer)
         .map_err(|e| <span class="kw">match </span>e {
             CoreGroupBuildError::LibraryError(e) =&gt; e.into(),
-            CoreGroupBuildError::UnsupportedProposalType =&gt; NewGroupError::UnsupportedProposalType,
-            CoreGroupBuildError::UnsupportedExtensionType =&gt; {
-                NewGroupError::UnsupportedExtensionType
-            }
             <span class="comment">// We don&#39;t support PSKs yet
-            </span>CoreGroupBuildError::PskError(e) =&gt; {
+            </span>CoreGroupBuildError::Psk(e) =&gt; {
                 <span class="macro">log::debug!</span>(<span class="string">&quot;Unexpected PSK error: {:?}&quot;</span>, e);
                 LibraryError::custom(<span class="string">&quot;Unexpected PSK error&quot;</span>).into()
             }
             CoreGroupBuildError::KeyStoreError(e) =&gt; NewGroupError::KeyStoreError(e),
+            CoreGroupBuildError::PublicGroupBuildError(e) =&gt; <span class="kw">match </span>e {
+                PublicGroupBuildError::LibraryError(e) =&gt; e.into(),
+                PublicGroupBuildError::UnsupportedProposalType =&gt; {
+                    NewGroupError::UnsupportedProposalType
+                }
+                PublicGroupBuildError::UnsupportedExtensionType =&gt; {
+                    NewGroupError::UnsupportedExtensionType
+                }
+            },
         })<span class="question-mark">?</span>;
 
         <span class="kw">let </span>resumption_psk_store =

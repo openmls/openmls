@@ -231,6 +231,10 @@
 <a href="#231" id="231">231</a>
 <a href="#232" id="232">232</a>
 <a href="#233" id="233">233</a>
+<a href="#234" id="234">234</a>
+<a href="#235" id="235">235</a>
+<a href="#236" id="236">236</a>
+<a href="#237" id="237">237</a>
 </pre><pre class="rust"><code><span class="kw">use </span>log::debug;
 <span class="kw">use </span>openmls_traits::key_store::OpenMlsKeyStore;
 <span class="kw">use </span>tls_codec::Deserialize;
@@ -363,8 +367,12 @@
 
         <span class="comment">// Since there is currently only the external pub extension, there is no
         // group info extension of interest here.
-        </span><span class="kw">let </span>(public_group, _group_info_extensions) =
-            PublicGroup::from_external(backend, <span class="kw-2">&amp;</span>nodes, verifiable_group_info)<span class="question-mark">?</span>;
+        </span><span class="kw">let </span>(public_group, _group_info_extensions) = PublicGroup::from_external(
+            backend,
+            nodes,
+            verifiable_group_info,
+            ProposalStore::new(),
+        )<span class="question-mark">?</span>;
 
         <span class="comment">// Find our own leaf in the tree.
         </span><span class="kw">let </span>own_leaf_index = public_group

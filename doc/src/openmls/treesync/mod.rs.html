@@ -619,14 +619,14 @@
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>from_nodes(
         backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider,
         ciphersuite: Ciphersuite,
-        node_options: <span class="kw-2">&amp;</span>[<span class="prelude-ty">Option</span>&lt;Node&gt;],
+        node_options: Vec&lt;<span class="prelude-ty">Option</span>&lt;Node&gt;&gt;,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, TreeSyncFromNodesError&gt; {
         <span class="comment">// TODO #800: Unmerged leaves should be checked
         </span><span class="kw">let </span><span class="kw-2">mut </span>ts_nodes: Vec&lt;TreeNode&lt;TreeSyncLeafNode, TreeSyncParentNode&gt;&gt; =
             Vec::with_capacity(node_options.len());
 
         <span class="comment">// Set the leaf indices in all the leaves and convert the node types.
-        </span><span class="kw">for </span>(node_index, node_option) <span class="kw">in </span>node_options.iter().enumerate() {
+        </span><span class="kw">for </span>(node_index, node_option) <span class="kw">in </span>node_options.into_iter().enumerate() {
             <span class="kw">let </span>ts_node_option: TreeNode&lt;TreeSyncLeafNode, TreeSyncParentNode&gt; = <span class="kw">match </span>node_option {
                 <span class="prelude-val">Some</span>(node) =&gt; {
                     <span class="kw">let </span><span class="kw-2">mut </span>node = node.clone();

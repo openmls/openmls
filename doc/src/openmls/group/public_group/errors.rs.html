@@ -24,6 +24,20 @@
 <a href="#24" id="24">24</a>
 <a href="#25" id="25">25</a>
 <a href="#26" id="26">26</a>
+<a href="#27" id="27">27</a>
+<a href="#28" id="28">28</a>
+<a href="#29" id="29">29</a>
+<a href="#30" id="30">30</a>
+<a href="#31" id="31">31</a>
+<a href="#32" id="32">32</a>
+<a href="#33" id="33">33</a>
+<a href="#34" id="34">34</a>
+<a href="#35" id="35">35</a>
+<a href="#36" id="36">36</a>
+<a href="#37" id="37">37</a>
+<a href="#38" id="38">38</a>
+<a href="#39" id="39">39</a>
+<a href="#40" id="40">40</a>
 </pre><pre class="rust"><code><span class="kw">use </span>thiserror::Error;
 
 <span class="kw">use crate</span>::{error::LibraryError, treesync::errors::TreeSyncFromNodesError};
@@ -49,6 +63,20 @@
     <span class="doccomment">/// We don&#39;t support the version of the group we are trying to join.
     </span><span class="attr">#[error(<span class="string">&quot;We don&#39;t support the version of the group we are trying to join.&quot;</span>)]
     </span>UnsupportedMlsVersion,
+}
+
+<span class="doccomment">/// Public group builder error.
+</span><span class="attr">#[derive(Error, Debug, PartialEq, Clone)]
+</span><span class="kw">pub enum </span>PublicGroupBuildError {
+    <span class="doccomment">/// See [`LibraryError`] for more details.
+    </span><span class="attr">#[error(transparent)]
+    </span>LibraryError(<span class="attr">#[from] </span>LibraryError),
+    <span class="doccomment">/// Unsupported proposal type in required capabilities.
+    </span><span class="attr">#[error(<span class="string">&quot;Unsupported proposal type in required capabilities.&quot;</span>)]
+    </span>UnsupportedProposalType,
+    <span class="doccomment">/// Unsupported extension type in required capabilities.
+    </span><span class="attr">#[error(<span class="string">&quot;Unsupported extension type in required capabilities.&quot;</span>)]
+    </span>UnsupportedExtensionType,
 }
 </code></pre></div>
 </section></div></main><div id="rustdoc-vars" data-root-path="../../../../" data-static-root-path="../../../../static.files/" data-current-crate="openmls" data-themes="" data-resource-suffix="" data-rustdoc-version="1.67.1 (d5a82bbd2 2023-02-07)" data-search-js="search-444266647c4dba98.js" data-settings-js="settings-bebeae96e00e4617.js" data-settings-css="settings-af96d9e2fc13e081.css" ></div></body></html>

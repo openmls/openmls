@@ -126,6 +126,12 @@
 <a href="#126" id="126">126</a>
 <a href="#127" id="127">127</a>
 <a href="#128" id="128">128</a>
+<a href="#129" id="129">129</a>
+<a href="#130" id="130">130</a>
+<a href="#131" id="131">131</a>
+<a href="#132" id="132">132</a>
+<a href="#133" id="133">133</a>
+<a href="#134" id="134">134</a>
 </pre><pre class="rust"><code><span class="kw">use crate</span>::{
     binary_tree::array_representation::LeafNodeIndex,
     group::{
@@ -175,12 +181,18 @@
             },
         };
 
-        <span class="kw">let </span>(public_group, group_info_extensions) =
-            PublicGroup::from_external(backend, <span class="kw-2">&amp;</span>nodes, verifiable_group_info)<span class="question-mark">?</span>;
+        <span class="kw">let </span>(public_group, group_info) = PublicGroup::from_external(
+            backend,
+            nodes,
+            verifiable_group_info,
+            <span class="comment">// Existing proposals are discarded when joining by external commit.
+            </span>ProposalStore::new(),
+        )<span class="question-mark">?</span>;
         <span class="kw">let </span>group_context = public_group.group_context();
 
         <span class="comment">// Obtain external_pub from GroupInfo extensions.
-        </span><span class="kw">let </span>external_pub = group_info_extensions
+        </span><span class="kw">let </span>external_pub = group_info
+            .extensions()
             .external_pub()
             .ok_or(ExternalCommitError::MissingExternalPub)<span class="question-mark">?
             </span>.external_pub();

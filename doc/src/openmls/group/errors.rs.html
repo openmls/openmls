@@ -503,9 +503,6 @@
 <a href="#503" id="503">503</a>
 <a href="#504" id="504">504</a>
 <a href="#505" id="505">505</a>
-<a href="#506" id="506">506</a>
-<a href="#507" id="507">507</a>
-<a href="#508" id="508">508</a>
 </pre><pre class="rust"><code><span class="doccomment">//! # MLS group errors
 //!
 //! This module contains errors that originate at lower levels and are partially re-exported in errors thrown by functions of the `MlsGroup` API.
@@ -524,7 +521,7 @@
 <span class="comment">// === Public errors ===
 
 </span><span class="kw">pub use </span><span class="kw">super</span>::mls_group::errors::<span class="kw-2">*</span>;
-<span class="kw">use </span><span class="kw">super</span>::public_group::errors::CreationFromExternalError;
+<span class="kw">use </span><span class="kw">super</span>::public_group::errors::{CreationFromExternalError, PublicGroupBuildError};
 
 <span class="doccomment">/// Welcome error
 </span><span class="attr">#[derive(Error, Debug, PartialEq, Clone)]
@@ -957,15 +954,12 @@
     <span class="doccomment">/// See [`LibraryError`] for more details.
     </span><span class="attr">#[error(transparent)]
     </span>LibraryError(<span class="attr">#[from] </span>LibraryError),
-    <span class="doccomment">/// Unsupported proposal type in required capabilities.
-    </span><span class="attr">#[error(<span class="string">&quot;Unsupported proposal type in required capabilities.&quot;</span>)]
-    </span>UnsupportedProposalType,
-    <span class="doccomment">/// Unsupported extension type in required capabilities.
-    </span><span class="attr">#[error(<span class="string">&quot;Unsupported extension type in required capabilities.&quot;</span>)]
-    </span>UnsupportedExtensionType,
+    <span class="doccomment">/// See [`PublicGroupBuildError`] for more details.
+    </span><span class="attr">#[error(transparent)]
+    </span>PublicGroupBuildError(<span class="attr">#[from] </span>PublicGroupBuildError),
     <span class="doccomment">/// See [`PskError`] for more details.
     </span><span class="attr">#[error(transparent)]
-    </span>PskError(<span class="attr">#[from] </span>PskError),
+    </span>Psk(<span class="attr">#[from] </span>PskError),
     <span class="doccomment">/// Error storing leaf private key in key store.
     </span><span class="attr">#[error(<span class="string">&quot;Error storing leaf private key in key store.&quot;</span>)]
     </span>KeyStoreError(KeyStoreError),

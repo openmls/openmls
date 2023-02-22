@@ -285,6 +285,32 @@
 <a href="#285" id="285">285</a>
 <a href="#286" id="286">286</a>
 <a href="#287" id="287">287</a>
+<a href="#288" id="288">288</a>
+<a href="#289" id="289">289</a>
+<a href="#290" id="290">290</a>
+<a href="#291" id="291">291</a>
+<a href="#292" id="292">292</a>
+<a href="#293" id="293">293</a>
+<a href="#294" id="294">294</a>
+<a href="#295" id="295">295</a>
+<a href="#296" id="296">296</a>
+<a href="#297" id="297">297</a>
+<a href="#298" id="298">298</a>
+<a href="#299" id="299">299</a>
+<a href="#300" id="300">300</a>
+<a href="#301" id="301">301</a>
+<a href="#302" id="302">302</a>
+<a href="#303" id="303">303</a>
+<a href="#304" id="304">304</a>
+<a href="#305" id="305">305</a>
+<a href="#306" id="306">306</a>
+<a href="#307" id="307">307</a>
+<a href="#308" id="308">308</a>
+<a href="#309" id="309">309</a>
+<a href="#310" id="310">310</a>
+<a href="#311" id="311">311</a>
+<a href="#312" id="312">312</a>
+<a href="#313" id="313">313</a>
 </pre><pre class="rust"><code><span class="doccomment">//! # Public Groups
 //!
 //! There are a few use-cases that require the tracking of an MLS group based on
@@ -297,6 +323,7 @@
 //!
 //! To avoid duplication of code and functionality, [`CoreGroup`] internally
 //! relies on a [`PublicGroup`] as well.
+
 </span><span class="kw">use </span>openmls_traits::{crypto::OpenMlsCrypto, types::Ciphersuite, OpenMlsCryptoProvider};
 <span class="kw">use </span>serde::{Deserialize, Serialize};
 <span class="kw">use </span>tls_codec::Serialize <span class="kw">as </span>TlsSerialize;
@@ -308,7 +335,7 @@
     binary_tree::LeafNodeIndex,
     ciphersuite::signable::Verifiable,
     error::LibraryError,
-    extensions::{Extensions, RequiredCapabilitiesExtension},
+    extensions::RequiredCapabilitiesExtension,
     framing::InterimTranscriptHashInput,
     messages::{
         group_info::{GroupInfo, VerifiableGroupInfo},
@@ -325,11 +352,15 @@
     errors::CreationFromExternalError,
 };
 
-<span class="kw">use super</span>::{GroupContext, GroupEpoch, GroupId, Member};
+<span class="kw">use super</span>::{GroupContext, GroupEpoch, GroupId, Member, ProposalStore, QueuedProposal};
 
+<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">mod </span>builder;
 <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">mod </span>diff;
 <span class="kw">pub mod </span>errors;
+<span class="kw">pub mod </span>process;
 <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">mod </span>staged_commit;
+<span class="attr">#[cfg(test)]
+</span><span class="kw">mod </span>tests;
 <span class="kw">mod </span>validation;
 
 <span class="doccomment">/// This struct holds all public values of an MLS group.
@@ -337,6 +368,7 @@
 #[cfg_attr(test, derive(PartialEq))]
 </span><span class="kw">pub struct </span>PublicGroup {
     treesync: TreeSync,
+    proposal_store: ProposalStore,
     group_context: GroupContext,
     interim_transcript_hash: Vec&lt;u8&gt;,
     <span class="comment">// Most recent confirmation tag. Kept here for verification purposes.
@@ -346,7 +378,7 @@
 <span class="kw">impl </span>PublicGroup {
     <span class="doccomment">/// Create a new PublicGroup from a [`TreeSync`] instance and a
     /// [`GroupInfo`].
-    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>new(
+    </span><span class="kw">fn </span>new(
         treesync: TreeSync,
         group_context: GroupContext,
         initial_confirmation_tag: ConfirmationTag,
@@ -355,6 +387,7 @@
 
         PublicGroup {
             treesync,
+            proposal_store: ProposalStore::new(),
             group_context,
             interim_transcript_hash,
             confirmation_tag: initial_confirmation_tag,
@@ -368,9 +401,10 @@
     /// details.
     </span><span class="kw">pub fn </span>from_external(
         backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider,
-        nodes: <span class="kw-2">&amp;</span>[<span class="prelude-ty">Option</span>&lt;Node&gt;],
+        nodes: Vec&lt;<span class="prelude-ty">Option</span>&lt;Node&gt;&gt;,
         verifiable_group_info: VerifiableGroupInfo,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;(<span class="self">Self</span>, Extensions), CreationFromExternalError&gt; {
+        proposal_store: ProposalStore,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;(<span class="self">Self</span>, GroupInfo), CreationFromExternalError&gt; {
         <span class="kw">let </span>ciphersuite = verifiable_group_info.ciphersuite();
 
         <span class="comment">// Create a RatchetTree from the given nodes. We have to do this before
@@ -439,8 +473,9 @@
                 group_context,
                 interim_transcript_hash,
                 confirmation_tag: group_info.confirmation_tag().clone(),
+                proposal_store,
             },
-            group_info.extensions().clone(),
+            group_info,
         ))
     }
 
@@ -525,38 +560,55 @@
     }
 
     <span class="doccomment">/// Get an iterator over all [`Member`]s of this [`PublicGroup`].
-    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>members(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw">impl </span>Iterator&lt;Item = Member&gt; + <span class="lifetime">&#39;_ </span>{
+    </span><span class="kw">pub fn </span>members(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw">impl </span>Iterator&lt;Item = Member&gt; + <span class="lifetime">&#39;_ </span>{
         <span class="self">self</span>.treesync().full_leave_members()
+    }
+
+    <span class="doccomment">/// Export the nodes of the public tree.
+    </span><span class="kw">pub fn </span>export_nodes(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; Vec&lt;<span class="prelude-ty">Option</span>&lt;Node&gt;&gt; {
+        <span class="self">self</span>.treesync().export_nodes()
+    }
+
+    <span class="doccomment">/// Add the [`QueuedProposal`] to the [`PublicGroup`]s internal [`ProposalStore`].
+    </span><span class="kw">pub fn </span>add_proposal(<span class="kw-2">&amp;mut </span><span class="self">self</span>, proposal: QueuedProposal) {
+        <span class="self">self</span>.proposal_store.add(proposal)
     }
 }
 
 <span class="comment">// Getters
 </span><span class="kw">impl </span>PublicGroup {
-    <span class="kw">pub fn </span>ciphersuite(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; Ciphersuite {
+    <span class="doccomment">/// Get the ciphersuite.
+    </span><span class="kw">pub fn </span>ciphersuite(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; Ciphersuite {
         <span class="self">self</span>.group_context.ciphersuite()
     }
 
-    <span class="kw">pub fn </span>version(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; ProtocolVersion {
+    <span class="doccomment">/// Get the version.
+    </span><span class="kw">pub fn </span>version(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; ProtocolVersion {
         <span class="self">self</span>.group_context.protocol_version()
     }
 
-    <span class="kw">pub fn </span>group_id(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>GroupId {
+    <span class="doccomment">/// Get the group id.
+    </span><span class="kw">pub fn </span>group_id(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>GroupId {
         <span class="self">self</span>.group_context.group_id()
     }
 
-    <span class="kw">pub fn </span>group_context(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>GroupContext {
+    <span class="doccomment">/// Get the group context.
+    </span><span class="kw">pub fn </span>group_context(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>GroupContext {
         <span class="kw-2">&amp;</span><span class="self">self</span>.group_context
     }
 
-    <span class="kw">pub fn </span>required_capabilities(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>RequiredCapabilitiesExtension&gt; {
+    <span class="doccomment">/// Get the required capabilities.
+    </span><span class="kw">pub fn </span>required_capabilities(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>RequiredCapabilitiesExtension&gt; {
         <span class="self">self</span>.group_context.required_capabilities()
     }
 
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>treesync(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>TreeSync {
+    <span class="doccomment">/// Get treesync.
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>treesync(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>TreeSync {
         <span class="kw-2">&amp;</span><span class="self">self</span>.treesync
     }
 
-    <span class="kw">pub fn </span>confirmation_tag(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>ConfirmationTag {
+    <span class="doccomment">/// Get confirmation tag.
+    </span><span class="kw">pub fn </span>confirmation_tag(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>ConfirmationTag {
         <span class="kw-2">&amp;</span><span class="self">self</span>.confirmation_tag
     }
 
