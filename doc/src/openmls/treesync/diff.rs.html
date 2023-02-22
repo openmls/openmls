@@ -1372,7 +1372,7 @@
 
     <span class="doccomment">/// Helper function computing the resolution of a node with the given index.
     /// If an exclusion list is given, do not add the leaves given in the list.
-    </span><span class="kw">fn </span>resolution(
+    </span><span class="kw">pub</span>(<span class="kw">super</span>) <span class="kw">fn </span>resolution(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         node_index: TreeNodeIndex,
         excluded_indices: <span class="kw-2">&amp;</span>HashSet&lt;<span class="kw-2">&amp;</span>LeafNodeIndex&gt;,
@@ -1602,7 +1602,7 @@
     <span class="doccomment">/// Helper function to compute and set the tree hash of the given node and
     /// all nodes below it in the tree. The leaf nodes in `exclusion_list` are
     /// not included in the tree hash.
-    </span><span class="kw">fn </span>compute_tree_hash(
+    </span><span class="kw">pub</span>(<span class="kw">super</span>) <span class="kw">fn </span>compute_tree_hash(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider,
         ciphersuite: Ciphersuite,
