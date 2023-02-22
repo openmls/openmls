@@ -98,7 +98,7 @@ fn run_test_vector(test: TestElement, backend: &impl OpenMlsCryptoProvider) -> R
 
     let nodes = Vec::<Option<Node>>::tls_deserialize(&mut test.tree.as_slice()).unwrap();
 
-    let treesync = TreeSync::from_nodes(backend, ciphersuite, &nodes)
+    let treesync = TreeSync::from_nodes(backend, ciphersuite, nodes.clone())
         .map_err(|e| format!("Error while creating tree sync: {0:?}", e))?;
 
     let diff = treesync.empty_diff();
