@@ -25,7 +25,7 @@ fn test_mls_group_api(ciphersuite: Ciphersuite) {
         .expect("An unexpected error occurred.");
 
     // Add two new members.
-    let (_, adder_id) = group.members[0].clone();
+    let (_, adder_id) = group.members().next().unwrap();
     let new_members = setup
         .random_new_members_for_group(group, 2)
         .expect("An unexpected error occurred.");
@@ -34,14 +34,14 @@ fn test_mls_group_api(ciphersuite: Ciphersuite) {
         .expect("An unexpected error occurred.");
 
     // Remove a member
-    let (_, remover_id) = group.members[2].clone();
-    let (target_index, _) = group.members[3].clone();
+    let (_, remover_id) = group.members().nth(2).unwrap();
+    let (target_index, _) = group.members().nth(3).unwrap();
     setup
         .remove_clients(
             ActionType::Commit,
             group,
             &remover_id,
-            &[LeafNodeIndex::new(target_index as u32)],
+            &[LeafNodeIndex::new(target_index)],
         )
         .expect("An unexpected error occurred.");
 

@@ -438,7 +438,7 @@ fn group_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvid
     assert!(create_commit_result.welcome_option.is_none());
 
     let staged_commit = group_alice
-        .stage_commit(&create_commit_result.commit, &proposal_store, &[], backend)
+        .read_keys_and_stage_commit(&create_commit_result.commit, &proposal_store, &[], backend)
         .expect("Error applying commit (Alice)");
     group_alice
         .merge_commit(backend, staged_commit)
@@ -501,7 +501,7 @@ fn group_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvid
         .merge_commit(backend, create_commit_result.staged_commit)
         .expect("error merging own commits");
     let staged_commit = group_bob
-        .stage_commit(&create_commit_result.commit, &proposal_store, &[], backend)
+        .read_keys_and_stage_commit(&create_commit_result.commit, &proposal_store, &[], backend)
         .expect("Error applying commit (Bob)");
     group_bob
         .merge_commit(backend, staged_commit)
@@ -571,7 +571,7 @@ fn group_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvid
     encryption_keypair.write_to_key_store(backend).unwrap();
 
     let staged_commit = group_bob
-        .stage_commit(
+        .read_keys_and_stage_commit(
             &create_commit_result.commit,
             &proposal_store,
             &[leaf_node],
@@ -639,7 +639,7 @@ fn group_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvid
     assert!(create_commit_result.welcome_option.is_some());
 
     let staged_commit = group_alice
-        .stage_commit(&create_commit_result.commit, &proposal_store, &[], backend)
+        .read_keys_and_stage_commit(&create_commit_result.commit, &proposal_store, &[], backend)
         .expect("Error applying commit (Alice)");
     group_alice
         .merge_commit(backend, staged_commit)
@@ -776,13 +776,13 @@ fn group_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvid
     assert!(commit.has_path());
 
     let staged_commit = group_alice
-        .stage_commit(&create_commit_result.commit, &proposal_store, &[], backend)
+        .read_keys_and_stage_commit(&create_commit_result.commit, &proposal_store, &[], backend)
         .expect("Error applying commit (Alice)");
     group_alice
         .merge_commit(backend, staged_commit)
         .expect("error merging commit");
     let staged_commit = group_bob
-        .stage_commit(&create_commit_result.commit, &proposal_store, &[], backend)
+        .read_keys_and_stage_commit(&create_commit_result.commit, &proposal_store, &[], backend)
         .expect("Error applying commit (Bob)");
     group_bob
         .merge_commit(backend, staged_commit)
@@ -838,13 +838,13 @@ fn group_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvid
     assert!(commit.has_path());
 
     let staged_commit = group_alice
-        .stage_commit(&create_commit_result.commit, &proposal_store, &[], backend)
+        .read_keys_and_stage_commit(&create_commit_result.commit, &proposal_store, &[], backend)
         .expect("Error applying commit (Alice)");
     group_alice
         .merge_commit(backend, staged_commit)
         .expect("error merging commit");
     assert!(group_bob
-        .stage_commit(&create_commit_result.commit, &proposal_store, &[], backend,)
+        .read_keys_and_stage_commit(&create_commit_result.commit, &proposal_store, &[], backend)
         .expect("Could not stage commit.")
         .self_removed());
     group_charlie

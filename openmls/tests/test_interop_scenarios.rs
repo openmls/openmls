@@ -35,10 +35,9 @@ fn one_to_one_join(ciphersuite: Ciphersuite) {
         .expect("An unexpected error occurred.");
 
     let (_, alice_id) = group
-        .members
-        .first()
-        .expect("An unexpected error occurred.")
-        .clone();
+        .members()
+        .next()
+        .expect("An unexpected error occurred.");
 
     // A vector including bob's id.
     let bob_id = setup
@@ -82,10 +81,9 @@ fn three_party_join(ciphersuite: Ciphersuite) {
         .expect("An unexpected error occurred.");
 
     let (_, alice_id) = group
-        .members
-        .first()
-        .expect("An unexpected error occurred.")
-        .clone();
+        .members()
+        .next()
+        .expect("An unexpected error occurred.");
 
     // A vector including Bob's id.
     let bob_id = setup
@@ -138,10 +136,9 @@ fn multiple_joins(ciphersuite: Ciphersuite) {
         .expect("An unexpected error occurred.");
 
     let (_, alice_id) = group
-        .members
-        .first()
-        .expect("An unexpected error occurred.")
-        .clone();
+        .members()
+        .next()
+        .expect("An unexpected error occurred.");
 
     // A vector including Bob's and Charly's id.
     let bob_charly_id = setup
@@ -186,10 +183,9 @@ fn update(ciphersuite: Ciphersuite) {
         .expect("An unexpected error occurred.");
 
     let (_, alice_id) = group
-        .members
-        .first()
-        .expect("An unexpected error occurred.")
-        .clone();
+        .members()
+        .next()
+        .expect("An unexpected error occurred.");
 
     // Let Alice create an update with a self-generated KeyPackageBundle.
     setup
@@ -229,15 +225,13 @@ fn remove(ciphersuite: Ciphersuite) {
         .expect("An unexpected error occurred.");
 
     let (_, alice_id) = group
-        .members
-        .first()
-        .expect("An unexpected error occurred.")
-        .clone();
+        .members()
+        .next()
+        .expect("An unexpected error occurred.");
     let (bob_index, _) = group
-        .members
+        .members()
         .last()
-        .expect("An unexpected error occurred.")
-        .clone();
+        .expect("An unexpected error occurred.");
 
     // Have alice remove Bob.
     setup
@@ -245,7 +239,7 @@ fn remove(ciphersuite: Ciphersuite) {
             ActionType::Commit,
             group,
             &alice_id,
-            &[LeafNodeIndex::new(bob_index as u32)],
+            &[LeafNodeIndex::new(bob_index)],
         )
         .expect("Error removing Bob from the group.");
 
@@ -287,7 +281,7 @@ fn large_group_lifecycle(ciphersuite: Ciphersuite) {
         .get_mut(&group_id)
         .expect("An unexpected error occurred.");
 
-    let mut group_members = group.members.clone();
+    let mut group_members = group.members().collect::<Vec<(u32, Vec<u8>)>>();
 
     // Have each member in turn update. In between each update, messages are
     // delivered to each member.
@@ -312,7 +306,7 @@ fn large_group_lifecycle(ciphersuite: Ciphersuite) {
                 &[LeafNodeIndex::new(target_id.0)],
             )
             .expect("Error while removing group member.");
-        group_members = group.members.clone();
+        group_members = group.members().collect::<Vec<(u32, Vec<u8>)>>();
         setup.check_group_states(group);
     }
 

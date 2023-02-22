@@ -60,7 +60,7 @@ impl PublicGroup {
     ///  - ValSem004
     ///  - ValSem005
     ///  - ValSem009
-    pub(crate) fn validate_verifiable_content(
+    pub(super) fn validate_verifiable_content(
         &self,
         verifiable_content: &VerifiableAuthenticatedContent,
         message_secrets_store_option: Option<&MessageSecretsStore>,
@@ -322,7 +322,7 @@ impl PublicGroup {
     ///  - ValSem242: External Commit must only cover inline proposal in allowlist (ExternalInit, Remove, PreSharedKey)
     ///  - ValSem243: External Commit, inline Remove Proposal: The identity and the endpoint_id of the removed
     ///               leaf are identical to the ones in the path KeyPackage.
-    pub(crate) fn validate_external_commit(
+    pub(super) fn validate_external_commit(
         &self,
         proposal_queue: &ProposalQueue,
         path_leaf_node: Option<&LeafNode>,

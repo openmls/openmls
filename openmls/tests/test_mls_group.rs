@@ -170,10 +170,7 @@ fn mls_group_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoPr
                     .expect("Unexpected message type"),
             )
             .expect("Could not process message.");
-        let sender = processed_message
-            .credential()
-            .expect("Expected a credential.")
-            .clone();
+        let sender = processed_message.credential().clone();
 
         // Check that we received the correct message
         if let ProcessedMessageContent::ApplicationMessage(application_message) =
@@ -750,10 +747,7 @@ fn mls_group_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoPr
                     .expect("Unexpected message type"),
             )
             .expect("Could not process message.");
-        let sender = bob_processed_message
-            .credential()
-            .expect("Expected a credential.")
-            .clone();
+        let sender = bob_processed_message.credential().clone();
 
         // Check that we received the correct message
         if let ProcessedMessageContent::ApplicationMessage(application_message) =
