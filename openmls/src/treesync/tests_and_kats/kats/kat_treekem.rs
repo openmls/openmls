@@ -80,6 +80,7 @@ pub fn run_test_vector(test: TreeKemTest, backend: &impl OpenMlsCryptoProvider) 
         return;
     }
     log::debug!("Testing ciphersuite {ciphersuite:?}");
+    log::trace!("The tree has {} leaves.", test.leaves_private.len());
 
     // Build public tree
     let ratchet_tree =
@@ -89,14 +90,11 @@ pub fn run_test_vector(test: TreeKemTest, backend: &impl OpenMlsCryptoProvider) 
     struct LeafNodeInfo {
         index: LeafNodeIndex,
         encryption_keys: Vec<EncryptionKeyPair>,
-        encryption_keypair: EncryptionKeyPair,
         signature_keypair: SignatureKeyPair,
     };
     let mut full_leaf_nodes = vec![];
 
     for leaf_private in test.leaves_private.into_iter() {
-        let mut treekem = treesync.clone();
-
         let own_leaf = treesync
             .leaf(LeafNodeIndex::new(leaf_private.index as u32))
             .unwrap();
@@ -108,13 +106,14 @@ pub fn run_test_vector(test: TreeKemTest, backend: &impl OpenMlsCryptoProvider) 
             private_key,
             signature_key.as_slice().to_vec(),
         );
-        let credential_with_key = CredentialWithKey {
-            credential: Credential::new("id".into(), CredentialType::Basic).unwrap(),
-            signature_key: signature_key.clone(),
-        };
+        // let credential_with_key = CredentialWithKey {
+        //     credential: Credential::new("id".into(), CredentialType::Basic).unwrap(),
+        //     signature_key: signature_key.clone(),
+        // };
 
+        // Collect all path key pairs
         let path_secrets = leaf_private.path_secrets;
-        let mut encyrption_keys = vec![EncryptionKeyPair::from_raw(
+        let mut encryption_keys = vec![EncryptionKeyPair::from_raw(
             own_leaf.encryption_key().as_slice().to_vec(),
             leaf_private.encryption_priv.clone(),
         )];
@@ -137,29 +136,16 @@ pub fn run_test_vector(test: TreeKemTest, backend: &impl OpenMlsCryptoProvider) 
                     .encryption_key()
             );
 
-            encyrption_keys.push(keypair);
+            encryption_keys.push(keypair);
         }
 
         // Store the key pairs for decrypting the path later
         full_leaf_nodes.push(LeafNodeInfo {
             index: LeafNodeIndex::new(leaf_private.index),
-            encryption_keys: encyrption_keys,
-            encryption_keypair: EncryptionKeyPair::from_raw(
-                own_leaf.encryption_key().as_slice().to_vec(),
-                leaf_private.encryption_priv,
-            ),
+            encryption_keys,
             signature_keypair,
         });
     }
-
-    let group_context = GroupContext::new(
-        ciphersuite,
-        GroupId::from_slice(&test.group_id),
-        GroupEpoch::from(test.epoch),
-        treesync.tree_hash().into(),
-        test.confirmed_transcript_hash.clone(),
-        Extensions::default(),
-    );
 
     for (i, path) in test.update_paths.iter().enumerate() {
         let update_path = UpdatePath::tls_deserialize(&mut path.update_path.as_slice()).unwrap();
@@ -183,51 +169,80 @@ pub fn run_test_vector(test: TreeKemTest, backend: &impl OpenMlsCryptoProvider) 
         // Check tree hash in new tree.
         assert_eq!(path.tree_hash_after, new_tree.tree_hash());
 
+        // Sanity check.
         assert_eq!(path.path_secrets.len(), treesync.leaf_count() as usize);
-        for (j, leaf) in path.path_secrets.iter().enumerate() {
-            // if let Some(leaf) = leaf {
-            if j == 1 {
-                // FIXME: skipping to the test we want -> remove
+
+        for leaf_i in full_leaf_nodes.iter() {
+            // Process the update path for private_leaf[i]
+            log::trace!("Processing update path for leaf {}.", leaf_i.index.u32());
+            // let leaf_i = &full_leaf_nodes[i];
+
+            let group_context = GroupContext::new(
+                ciphersuite,
+                GroupId::from_slice(&test.group_id),
+                GroupEpoch::from(test.epoch),
+                new_tree.tree_hash().into(),
+                test.confirmed_transcript_hash.clone(),
+                Extensions::default(),
+            );
+
+            let params = DecryptPathParams {
+                version: ProtocolVersion::Mls10,
+                update_path: update_path.nodes(),
+                sender_leaf_index: LeafNodeIndex::new(path.sender),
+                exclusion_list: &HashSet::default(),
+                group_context: &group_context.tls_serialize_detached().unwrap(),
+            };
+
+            let diff = treesync.empty_diff();
+
+            log::trace!("sender_leaf_index: {:?}", params.sender_leaf_index.u32());
+
+            if leaf_i.index.usize() == i {
+                log::trace!("Skipping own leaf {i}.");
+                // Don't do this for our own leaf.
                 continue;
             }
-            if i != j {
-                log::trace!("Processing update path for leaf {j}.");
-                // Process the update path for private_leaf[j]
-                let leaf_j = &full_leaf_nodes[j];
-                assert_eq!(leaf_j.index.usize(), j);
 
-                let group_context = GroupContext::new(
-                    ciphersuite,
-                    GroupId::from_slice(&test.group_id),
-                    GroupEpoch::from(test.epoch + 1),
-                    new_tree.tree_hash().into(),
-                    test.confirmed_transcript_hash.clone(),
-                    Extensions::default(),
-                );
-
-                let params = DecryptPathParams {
-                    version: ProtocolVersion::Mls10,
-                    update_path: update_path.nodes(),
-                    sender_leaf_index: LeafNodeIndex::new(path.sender),
-                    exclusion_list: &HashSet::default(),
-                    group_context: &group_context.tls_serialize_detached().unwrap(),
-                };
-
-                let diff = treesync.empty_diff();
-
-                log::trace!("sender_leaf_index: {:?}", params.sender_leaf_index.u32());
-
-                diff.decrypt_path(
+            let (encryption_keys, commit_secret) = diff
+                .decrypt_path(
                     backend,
                     ciphersuite,
                     params,
-                    &leaf_j.encryption_keys.iter().collect::<Vec<_>>(),
-                    LeafNodeIndex::new(j as u32),
+                    &leaf_i.encryption_keys.iter().collect::<Vec<_>>(),
+                    LeafNodeIndex::new(i as u32),
                 )
                 .unwrap();
+
+            log::trace!("Successfully decrypted path secrets.");
+
+            // Check that the path secrets are correct. We can only do this indirectly
+            // by looking at the encryption keys.
+            for (j, encryption_key) in encryption_keys.into_iter().enumerate() {
+                if let Some(expected_path_secret) = &path.path_secrets[j] {
+                    let expected_keypair = {
+                        let path_secret = crate::messages::PathSecret::from(Secret::from_slice(
+                            &hex_to_bytes(expected_path_secret),
+                            ProtocolVersion::Mls10,
+                            ciphersuite,
+                        ));
+                        path_secret.derive_key_pair(backend, ciphersuite).unwrap()
+                    };
+
+                    assert_eq!(encryption_key, expected_keypair);
+                }
             }
+
+            // Check that the commit secret is correct.
+            assert_eq!(&path.commit_secret, commit_secret.as_slice());
+            log::trace!("Successfully checked all path secrets and the commit secret.");
         }
     }
+
+    // for (j, leaf) in path.path_secrets.iter().enumerate() {
+    //     // if let Some(leaf) = leaf {
+    // }
+    // }
 }
 
 #[test]
