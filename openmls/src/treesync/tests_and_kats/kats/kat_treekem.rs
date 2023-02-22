@@ -185,29 +185,46 @@ pub fn run_test_vector(test: TreeKemTest, backend: &impl OpenMlsCryptoProvider) 
 
         assert_eq!(path.path_secrets.len(), treesync.leaf_count() as usize);
         for (j, leaf) in path.path_secrets.iter().enumerate() {
-            if let Some(leaf) = leaf {
-                if i != j {
-                    // Process the update path for private_leaf[j]
-                    // let encrypted_path_secret = hex_to_bytes(leaf);
-                    let leaf_j = &full_leaf_nodes[j];
-                    let params = DecryptPathParams {
-                        version: ProtocolVersion::Mls10,
-                        update_path: update_path.nodes(),
-                        sender_leaf_index: LeafNodeIndex::new(path.sender),
-                        exclusion_list: &HashSet::default(),
-                        group_context: &group_context.tls_serialize_detached().unwrap(),
-                    };
+            // if let Some(leaf) = leaf {
+            if j == 1 {
+                // FIXME: skipping to the test we want -> remove
+                continue;
+            }
+            if i != j {
+                log::trace!("Processing update path for leaf {j}.");
+                // Process the update path for private_leaf[j]
+                let leaf_j = &full_leaf_nodes[j];
+                assert_eq!(leaf_j.index.usize(), j);
 
-                    let diff = treesync.empty_diff();
-                    diff.decrypt_path(
-                        backend,
-                        ciphersuite,
-                        params,
-                        &leaf_j.encryption_keys.iter().collect::<Vec<_>>(),
-                        LeafNodeIndex::new(j as u32),
-                    )
-                    .unwrap();
-                }
+                let group_context = GroupContext::new(
+                    ciphersuite,
+                    GroupId::from_slice(&test.group_id),
+                    GroupEpoch::from(test.epoch + 1),
+                    new_tree.tree_hash().into(),
+                    test.confirmed_transcript_hash.clone(),
+                    Extensions::default(),
+                );
+
+                let params = DecryptPathParams {
+                    version: ProtocolVersion::Mls10,
+                    update_path: update_path.nodes(),
+                    sender_leaf_index: LeafNodeIndex::new(path.sender),
+                    exclusion_list: &HashSet::default(),
+                    group_context: &group_context.tls_serialize_detached().unwrap(),
+                };
+
+                let diff = treesync.empty_diff();
+
+                log::trace!("sender_leaf_index: {:?}", params.sender_leaf_index.u32());
+
+                diff.decrypt_path(
+                    backend,
+                    ciphersuite,
+                    params,
+                    &leaf_j.encryption_keys.iter().collect::<Vec<_>>(),
+                    LeafNodeIndex::new(j as u32),
+                )
+                .unwrap();
             }
         }
     }

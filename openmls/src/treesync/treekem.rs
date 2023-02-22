@@ -135,7 +135,15 @@ impl<'a> TreeSyncDiff<'a> {
             decryption_key,
             params.group_context,
         )
-        .map_err(|_| ApplyUpdatePathError::UnableToDecrypt)?;
+        .map_err(|_| {
+            let msg = format!(
+                "Unable to decrypt encrypted path secrets {ciphertext:x?} for own leaf index {} with secret {decryption_key:x?}",
+                own_leaf_index.u32()
+            );
+            log::error!("{msg}");
+            debug_assert!(false, "{msg}");
+            ApplyUpdatePathError::UnableToDecrypt
+        })?;
 
         let common_path =
             self.filtered_common_direct_path(own_leaf_index, params.sender_leaf_index);

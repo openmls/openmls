@@ -119,8 +119,13 @@ pub(crate) fn decrypt_with_label(
     ciphersuite: Ciphersuite,
     crypto: &impl OpenMlsCrypto,
 ) -> Result<Vec<u8>, Error> {
+    log::debug!("HPKE Decrypt with label {label} and ciphersuite {ciphersuite:?}");
+    log::trace!("   ciphertext: {ciphertext:x?}");
     let context: EncryptContext = (label, context).into();
     let context = context.tls_serialize_detached()?;
+
+    log::trace!("  with context {context:x?}");
+    log::trace!("  and private key {private_key:x?}");
 
     crypto
         .hpke_open(

@@ -998,27 +998,6 @@ impl OpenMlsLeafNode {
     }
 }
 
-impl Size for OpenMlsLeafNode {
-    fn tls_serialized_len(&self) -> usize {
-        self.leaf_node.tls_serialized_len()
-    }
-}
-
-impl tls_codec::Serialize for OpenMlsLeafNode {
-    fn tls_serialize<W: std::io::Write>(&self, writer: &mut W) -> Result<usize, tls_codec::Error> {
-        self.leaf_node.tls_serialize(writer)
-    }
-}
-
-impl tls_codec::Deserialize for OpenMlsLeafNode {
-    fn tls_deserialize<R: std::io::Read>(bytes: &mut R) -> Result<Self, tls_codec::Error> {
-        Ok(Self {
-            leaf_node: LeafNode::tls_deserialize(bytes)?,
-            leaf_index: None,
-        })
-    }
-}
-
 impl From<LeafNode> for OpenMlsLeafNode {
     fn from(leaf_node: LeafNode) -> Self {
         Self {
