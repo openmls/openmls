@@ -31,6 +31,7 @@ pub use mls_group::config::*;
 pub use mls_group::membership::*;
 pub use mls_group::processing::*;
 pub use mls_group::*;
+pub use public_group::*;
 
 // Tests
 #[cfg(test)]

@@ -36,11 +36,9 @@ fn decryption_key_index_computation(ciphersuite: Ciphersuite) {
 
     // Find the identity of the member with leaf index 0.
     let (_, remover_id) = &group
-        .members
-        .iter()
+        .members()
         .find(|(index, _)| index == &0)
-        .expect("An unexpected error occurred.")
-        .clone();
+        .expect("An unexpected error occurred.");
     setup
         .remove_clients(
             ActionType::Commit,
@@ -57,11 +55,9 @@ fn decryption_key_index_computation(ciphersuite: Ciphersuite) {
 
     // Find the identity of the member with leaf index 7.
     let (_, remover_id) = &group
-        .members
-        .iter()
+        .members()
         .find(|(index, _)| index == &7)
-        .expect("An unexpected error occurred.")
-        .clone();
+        .expect("An unexpected error occurred.");
     setup
         .remove_clients(
             ActionType::Commit,
