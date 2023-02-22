@@ -458,7 +458,7 @@ impl<'a> TreeSyncDiff<'a> {
 
     /// Helper function computing the resolution of a node with the given index.
     /// If an exclusion list is given, do not add the leaves given in the list.
-    fn resolution(
+    pub(super) fn resolution(
         &self,
         node_index: TreeNodeIndex,
         excluded_indices: &HashSet<&LeafNodeIndex>,
@@ -688,7 +688,7 @@ impl<'a> TreeSyncDiff<'a> {
     /// Helper function to compute and set the tree hash of the given node and
     /// all nodes below it in the tree. The leaf nodes in `exclusion_list` are
     /// not included in the tree hash.
-    fn compute_tree_hash(
+    pub(super) fn compute_tree_hash(
         &self,
         backend: &impl OpenMlsCryptoProvider,
         ciphersuite: Ciphersuite,

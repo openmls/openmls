@@ -62,7 +62,7 @@ impl CoreGroup {
 
         // Create key schedule
         let mut key_schedule =
-            KeySchedule::init(self.ciphersuite(), backend, joiner_secret, psk_secret)?;
+            KeySchedule::init(self.ciphersuite(), backend, &joiner_secret, psk_secret)?;
 
         key_schedule
             .add_context(backend, serialized_provisional_group_context)

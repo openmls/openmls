@@ -167,12 +167,14 @@ impl<'a> TreeSyncDiff<'a> {
     ///  - the invited members are not part of the tree yet
     ///  - the leaf index of a new member is identical to the own leaf index
     ///  - the plain path does not contain the correct secrets
+    #[allow(clippy::too_many_arguments)]
     pub(crate) fn encrypt_group_secrets(
         &self,
         joiner_secret: &JoinerSecret,
         invited_members: Vec<(LeafNodeIndex, AddProposal)>,
         plain_path_option: Option<&[PlainUpdatePathNode]>,
         presharedkeys: &[PreSharedKeyId],
+        encrypted_group_info: &[u8],
         backend: &impl OpenMlsCryptoProvider,
         encryptor_leaf_index: LeafNodeIndex,
     ) -> Result<Vec<EncryptedGroupSecrets>, LibraryError> {
@@ -205,7 +207,7 @@ impl<'a> TreeSyncDiff<'a> {
             let ciphertext = hpke::encrypt_with_label(
                 key_package.hpke_init_key().as_slice(),
                 "Welcome",
-                &[],
+                encrypted_group_info,
                 &group_secrets_bytes,
                 key_package.ciphersuite(),
                 backend.crypto(),

@@ -388,13 +388,6 @@ impl JoinerSecret {
     }
 
     #[cfg(any(feature = "test-utils", test))]
-    pub(crate) fn clone(&self) -> Self {
-        Self {
-            secret: self.secret.clone(),
-        }
-    }
-
-    #[cfg(any(feature = "test-utils", test))]
     pub(crate) fn as_slice(&self) -> &[u8] {
         self.secret.as_slice()
     }
@@ -431,7 +424,7 @@ impl KeySchedule {
     pub(crate) fn init(
         ciphersuite: Ciphersuite,
         backend: &impl OpenMlsCryptoProvider,
-        joiner_secret: JoinerSecret,
+        joiner_secret: &JoinerSecret,
         psk: PskSecret,
     ) -> Result<Self, LibraryError> {
         log::debug!("Initializing the key schedule with {:?} ...", ciphersuite);
@@ -440,7 +433,7 @@ impl KeySchedule {
             "  joiner_secret: {:x?}",
             joiner_secret.secret.as_slice()
         );
-        let intermediate_secret = IntermediateSecret::new(backend, &joiner_secret, psk)
+        let intermediate_secret = IntermediateSecret::new(backend, joiner_secret, psk)
             .map_err(LibraryError::unexpected_crypto_error)?;
         Ok(Self {
             ciphersuite,
@@ -547,7 +540,7 @@ impl IntermediateSecret {
         joiner_secret: &JoinerSecret,
         psk: PskSecret,
     ) -> Result<Self, CryptoError> {
-        log_crypto!(trace, "PSK input: {:x?}", psk.as_ref().map(|p| p.secret()));
+        log_crypto!(trace, "PSK input: {:x?}", psk.as_slice());
         let secret = joiner_secret.secret.hkdf_extract(backend, psk.secret())?;
         log_crypto!(trace, "Intermediate secret: {:x?}", secret);
         Ok(Self { secret })
