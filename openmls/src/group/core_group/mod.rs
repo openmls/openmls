@@ -909,7 +909,7 @@ impl CoreGroup {
         };
 
         // Build AuthenticatedContent
-        let mut commit = AuthenticatedContent::commit(
+        let mut authenticated_content = AuthenticatedContent::commit(
             *params.framing_parameters(),
             sender,
             commit,
@@ -918,7 +918,7 @@ impl CoreGroup {
         )?;
 
         // Update the confirmed transcript hash using the commit we just created.
-        diff.update_confirmed_transcript_hash(backend, &commit)?;
+        diff.update_confirmed_transcript_hash(backend, &authenticated_content)?;
 
         let serialized_provisional_group_context = diff
             .group_context()
@@ -962,7 +962,7 @@ impl CoreGroup {
             .map_err(LibraryError::unexpected_crypto_error)?;
 
         // Set the confirmation tag
-        commit.set_confirmation_tag(confirmation_tag.clone());
+        authenticated_content.set_confirmation_tag(confirmation_tag.clone());
 
         diff.update_interim_transcript_hash(ciphersuite, backend, confirmation_tag.clone())?;
 
@@ -1062,7 +1062,7 @@ impl CoreGroup {
         );
 
         Ok(CreateCommitResult {
-            commit,
+            commit: authenticated_content,
             welcome_option,
             staged_commit,
             group_info: group_info.filter(|_| self.use_ratchet_tree_extension),
@@ -1150,6 +1150,11 @@ impl CoreGroup {
         use super::tests::tree_printing::print_tree;
 
         print_tree(self, message);
+    }
+
+    #[cfg(test)]
+    pub(crate) fn set_group_context(&mut self, group_context: GroupContext) {
+        self.public_group.set_group_context(group_context)
     }
 }
 

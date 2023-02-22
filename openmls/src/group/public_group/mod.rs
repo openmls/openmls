@@ -284,4 +284,9 @@ impl PublicGroup {
     pub(crate) fn context_mut(&mut self) -> &mut GroupContext {
         &mut self.group_context
     }
+
+    #[cfg(test)]
+    pub(crate) fn set_group_context(&mut self, group_context: GroupContext) {
+        self.group_context = group_context;
+    }
 }
