@@ -148,6 +148,8 @@ pub fn run_test_vector(test: TreeKemTest, backend: &impl OpenMlsCryptoProvider) 
     }
 
     for (i, path) in test.update_paths.iter().enumerate() {
+        log::trace!("Processing update path sent from {}.", path.sender);
+
         let update_path = UpdatePath::tls_deserialize(&mut path.update_path.as_slice()).unwrap();
         let mut diff = treesync.empty_diff();
         diff.apply_received_update_path(
@@ -172,19 +174,24 @@ pub fn run_test_vector(test: TreeKemTest, backend: &impl OpenMlsCryptoProvider) 
         // Sanity check.
         assert_eq!(path.path_secrets.len(), treesync.leaf_count() as usize);
 
+        let group_context = GroupContext::new(
+            ciphersuite,
+            GroupId::from_slice(&test.group_id),
+            GroupEpoch::from(test.epoch),
+            new_tree.tree_hash().into(),
+            test.confirmed_transcript_hash.clone(),
+            Extensions::default(),
+        );
+
         for leaf_i in full_leaf_nodes.iter() {
             // Process the update path for private_leaf[i]
-            log::trace!("Processing update path for leaf {}.", leaf_i.index.u32());
-            // let leaf_i = &full_leaf_nodes[i];
+            log::trace!("   Processing update path for leaf {}.", leaf_i.index.u32());
 
-            let group_context = GroupContext::new(
-                ciphersuite,
-                GroupId::from_slice(&test.group_id),
-                GroupEpoch::from(test.epoch),
-                new_tree.tree_hash().into(),
-                test.confirmed_transcript_hash.clone(),
-                Extensions::default(),
-            );
+            if leaf_i.index.u32() == path.sender {
+                log::trace!("       Skipping own leaf {i}.");
+                // Don't do this for our own leaf.
+                continue;
+            }
 
             let params = DecryptPathParams {
                 version: ProtocolVersion::Mls10,
@@ -194,55 +201,37 @@ pub fn run_test_vector(test: TreeKemTest, backend: &impl OpenMlsCryptoProvider) 
                 group_context: &group_context.tls_serialize_detached().unwrap(),
             };
 
-            let diff = treesync.empty_diff();
-
-            log::trace!("sender_leaf_index: {:?}", params.sender_leaf_index.u32());
-
-            if leaf_i.index.usize() == i {
-                log::trace!("Skipping own leaf {i}.");
-                // Don't do this for our own leaf.
-                continue;
-            }
-
-            let (encryption_keys, commit_secret) = diff
+            let (encryption_keys, commit_secret) = treesync
+                .empty_diff()
                 .decrypt_path(
                     backend,
                     ciphersuite,
                     params,
                     &leaf_i.encryption_keys.iter().collect::<Vec<_>>(),
-                    LeafNodeIndex::new(i as u32),
+                    leaf_i.index,
                 )
                 .unwrap();
 
-            log::trace!("Successfully decrypted path secrets.");
+            log::trace!("       Successfully decrypted path secrets.");
 
             // Check that the path secrets are correct. We can only do this indirectly
             // by looking at the encryption keys.
-            for (j, encryption_key) in encryption_keys.into_iter().enumerate() {
-                if let Some(expected_path_secret) = &path.path_secrets[j] {
-                    let expected_keypair = {
-                        let path_secret = crate::messages::PathSecret::from(Secret::from_slice(
-                            &hex_to_bytes(expected_path_secret),
-                            ProtocolVersion::Mls10,
-                            ciphersuite,
-                        ));
-                        path_secret.derive_key_pair(backend, ciphersuite).unwrap()
-                    };
-
-                    assert_eq!(encryption_key, expected_keypair);
-                }
-            }
+            let expected_path_secret = path.path_secrets[leaf_i.index.usize()].as_ref().unwrap();
+            let expected_keypair = {
+                let path_secret = crate::messages::PathSecret::from(Secret::from_slice(
+                    &hex_to_bytes(expected_path_secret),
+                    ProtocolVersion::Mls10,
+                    ciphersuite,
+                ));
+                path_secret.derive_key_pair(backend, ciphersuite).unwrap()
+            };
+            assert_eq!(encryption_keys[0], expected_keypair);
 
             // Check that the commit secret is correct.
             assert_eq!(&path.commit_secret, commit_secret.as_slice());
-            log::trace!("Successfully checked all path secrets and the commit secret.");
+            log::trace!("       Successfully checked all path secrets and the commit secret.");
         }
     }
-
-    // for (j, leaf) in path.path_secrets.iter().enumerate() {
-    //     // if let Some(leaf) = leaf {
-    // }
-    // }
 }
 
 #[test]

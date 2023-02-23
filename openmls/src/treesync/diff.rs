@@ -789,9 +789,6 @@ impl<'a> TreeSyncDiff<'a> {
             })
             .collect();
 
-        eprintln!(
-            "Finding decryption key in sender copath resolution {sender_copath_resolution:x?}\n  with own keys {owned_keys:x?}."
-        );
         if let Some((resolution_position, private_key)) = sender_copath_resolution
             .iter()
             .enumerate()
