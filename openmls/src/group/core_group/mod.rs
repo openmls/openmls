@@ -406,7 +406,7 @@ impl CoreGroup {
                 .validate_required_capabilities(required_capabilities)?;
             // Ensure that all other leaf nodes support all the required
             // extensions as well.
-            self.treesync()
+            self.public_group()
                 .check_extension_support(required_capabilities.extension_types())?;
         }
         let proposal = GroupContextExtensionProposal::new(extensions);
@@ -470,7 +470,7 @@ impl CoreGroup {
             .message_secrets_mut(private_message.epoch())
             .map_err(|_| MessageDecryptionError::AeadError)?;
         let sender_data = private_message.sender_data(message_secrets, backend, ciphersuite)?;
-        if !self.treesync().is_leaf_in_tree(sender_data.leaf_index) {
+        if self.public_group().leaf(sender_data.leaf_index).is_none() {
             return Err(MessageDecryptionError::SenderError(
                 SenderError::UnknownSender,
             ));

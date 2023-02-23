@@ -297,29 +297,6 @@ impl TreeSync {
             })
     }
 
-    /// Returns a [`TreeSyncError::UnsupportedExtension`] if an [`ExtensionType`]
-    /// in `extensions` is not supported by a leaf in this tree.
-    #[cfg(test)]
-    pub(crate) fn check_extension_support(
-        &self,
-        extensions: &[crate::extensions::ExtensionType],
-    ) -> Result<(), TreeSyncError> {
-        if self.tree.leaves().any(|(_, tsn)| {
-            tsn.node()
-                .as_ref()
-                .map(|node| {
-                    node.leaf_node()
-                        .check_extension_support(extensions)
-                        .map_err(|_| LibraryError::custom("This is never used, so we don't care"))
-                })
-                .is_none() // Return true if this is none
-        }) {
-            Err(TreeSyncError::UnsupportedExtension)
-        } else {
-            Ok(())
-        }
-    }
-
     /// Returns the nodes in the tree ordered according to the
     /// array-representation of the underlying binary tree.
     pub fn export_nodes(&self) -> Vec<Option<Node>> {

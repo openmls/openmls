@@ -11,6 +11,11 @@
 //! To avoid duplication of code and functionality, [`CoreGroup`] internally
 //! relies on a [`PublicGroup`] as well.
 
+#[cfg(test)]
+use crate::treesync::{node::parent_node::PlainUpdatePathNode, treekem::UpdatePathNode};
+#[cfg(test)]
+use std::collections::HashSet;
+
 use openmls_traits::{crypto::OpenMlsCrypto, types::Ciphersuite, OpenMlsCryptoProvider};
 use serde::{Deserialize, Serialize};
 use tls_codec::Serialize as TlsSerialize;
@@ -333,5 +338,25 @@ impl PublicGroup {
 impl PublicGroup {
     pub(crate) fn context_mut(&mut self) -> &mut GroupContext {
         &mut self.group_context
+    }
+
+    #[cfg(test)]
+    pub(crate) fn encrypt_path(
+        &self,
+        backend: &impl OpenMlsCryptoProvider,
+        ciphersuite: Ciphersuite,
+        path: &[PlainUpdatePathNode],
+        group_context: &[u8],
+        exclusion_list: &HashSet<&LeafNodeIndex>,
+        own_leaf_index: LeafNodeIndex,
+    ) -> Result<Vec<UpdatePathNode>, LibraryError> {
+        self.treesync().empty_diff().encrypt_path(
+            backend,
+            ciphersuite,
+            path,
+            group_context,
+            exclusion_list,
+            own_leaf_index,
+        )
     }
 }
