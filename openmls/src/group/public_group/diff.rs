@@ -1,3 +1,7 @@
+//! # Public group diffs
+//!
+//! This module contains the [`PublicGroupDiff`] struct, as well as the
+//! [`StagedPublicGroupDiff`] and associated functions and types.
 use std::collections::HashSet;
 
 use openmls_traits::{crypto::OpenMlsCrypto, types::Ciphersuite, OpenMlsCryptoProvider};
@@ -28,7 +32,6 @@ pub(crate) mod apply_proposals;
 pub(crate) mod compute_path;
 
 pub(crate) struct PublicGroupDiff<'a> {
-    original_group: &'a PublicGroup,
     diff: TreeSyncDiff<'a>,
     group_context: GroupContext,
     interim_transcript_hash: Vec<u8>,
@@ -40,7 +43,6 @@ impl<'a> PublicGroupDiff<'a> {
     /// Create a new [`PublicGroupDiff`] based on the given [`PublicGroup`].
     pub(super) fn new(public_group: &'a PublicGroup) -> PublicGroupDiff<'a> {
         Self {
-            original_group: public_group,
             diff: public_group.treesync().empty_diff(),
             group_context: public_group.group_context().clone(),
             interim_transcript_hash: public_group.interim_transcript_hash().to_vec(),
@@ -73,12 +75,14 @@ impl<'a> PublicGroupDiff<'a> {
     ///  - the invited members are not part of the tree yet
     ///  - the leaf index of a new member is identical to the own leaf index
     ///  - the plain path does not contain the correct secrets
+    #[allow(clippy::too_many_arguments)]
     pub(crate) fn encrypt_group_secrets(
         &self,
         joiner_secret: &JoinerSecret,
         invited_members: Vec<(LeafNodeIndex, AddProposal)>,
         plain_path_option: Option<&[PlainUpdatePathNode]>,
         presharedkeys: &[PreSharedKeyId],
+        encrypted_group_info: &[u8],
         backend: &impl OpenMlsCryptoProvider,
         leaf_index: LeafNodeIndex,
     ) -> Result<Vec<EncryptedGroupSecrets>, LibraryError> {
@@ -87,6 +91,7 @@ impl<'a> PublicGroupDiff<'a> {
             invited_members,
             plain_path_option,
             presharedkeys,
+            encrypted_group_info,
             backend,
             leaf_index,
         )
@@ -202,7 +207,7 @@ impl<'a> PublicGroupDiff<'a> {
         // Calculate tree hash
         let new_tree_hash = self
             .diff
-            .compute_tree_hashes(backend, self.original_group.ciphersuite())?;
+            .compute_tree_hashes(backend, self.group_context().ciphersuite())?;
         self.group_context.update_tree_hash(new_tree_hash);
         self.group_context.increment_epoch();
         Ok(())

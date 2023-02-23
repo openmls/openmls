@@ -6,7 +6,6 @@
 //! error, will still return a `Result` since they may throw a `LibraryError`.
 
 // Private
-mod apply_proposals;
 mod new_from_welcome;
 
 // Crate
@@ -29,6 +28,7 @@ mod test_past_secrets;
 #[cfg(test)]
 mod test_proposals;
 
+use super::builder::TempBuilderPG1;
 use super::errors::CreateCommitError;
 
 use self::create_commit_params::{CommitType, CreateCommitParams};
@@ -56,7 +56,6 @@ use crate::{
     ciphersuite::{signable::Signable, HpkePublicKey, SignaturePublicKey},
     credentials::*,
     error::LibraryError,
-    extensions::errors::*,
     framing::{mls_auth_content::AuthenticatedContent, *},
     group::{config::CryptoConfig, *},
     key_packages::*,
@@ -70,7 +69,7 @@ use crate::{
     treesync::{
         node::{
             encryption_keys::{EncryptionKey, EncryptionKeyPair},
-            leaf_node::{Capabilities, Lifetime, OpenMlsLeafNode},
+            leaf_node::{Lifetime, OpenMlsLeafNode},
         },
         *,
     },
@@ -136,16 +135,10 @@ pub(crate) struct CoreGroup {
 
 /// Builder for [`CoreGroup`].
 pub(crate) struct CoreGroupBuilder {
-    own_leaf_extensions: Extensions,
-    group_id: GroupId,
-    crypto_config: CryptoConfig,
+    public_group_builder: TempBuilderPG1,
     config: Option<CoreGroupConfig>,
     psk_ids: Vec<PreSharedKeyId>,
-    version: Option<ProtocolVersion>,
-    required_capabilities: Option<RequiredCapabilitiesExtension>,
     max_past_epochs: usize,
-    lifetime: Option<Lifetime>,
-    credential_with_key: CredentialWithKey,
 }
 
 impl CoreGroupBuilder {
@@ -155,17 +148,13 @@ impl CoreGroupBuilder {
         crypto_config: CryptoConfig,
         credential_with_key: CredentialWithKey,
     ) -> Self {
+        let public_group_builder =
+            PublicGroup::builder(group_id, crypto_config, credential_with_key);
         Self {
-            group_id,
             config: None,
             psk_ids: vec![],
-            version: None,
-            required_capabilities: None,
             max_past_epochs: 0,
-            own_leaf_extensions: Extensions::empty(),
-            lifetime: None,
-            crypto_config,
-            credential_with_key,
+            public_group_builder,
         }
     }
     /// Set the [`CoreGroupConfig`] of the [`CoreGroup`].
@@ -184,7 +173,9 @@ impl CoreGroupBuilder {
         mut self,
         required_capabilities: RequiredCapabilitiesExtension,
     ) -> Self {
-        self.required_capabilities = Some(required_capabilities);
+        self.public_group_builder = self
+            .public_group_builder
+            .with_required_capabilities(required_capabilities);
         self
     }
     /// Set the number of past epochs the group should keep secrets.
@@ -194,7 +185,7 @@ impl CoreGroupBuilder {
     }
     /// Set the [`Lifetime`] for the own leaf in the group.
     pub fn with_lifetime(mut self, lifetime: Lifetime) -> Self {
-        self.lifetime = Some(lifetime);
+        self.public_group_builder = self.public_group_builder.with_lifetime(lifetime);
         self
     }
 
@@ -209,56 +200,20 @@ impl CoreGroupBuilder {
         backend: &impl OpenMlsCryptoProvider<KeyStoreProvider = KeyStore>,
         signer: &impl Signer,
     ) -> Result<CoreGroup, CoreGroupBuildError<KeyStore::Error>> {
-        let ciphersuite = self.crypto_config.ciphersuite;
+        let (public_group_builder, commit_secret, leaf_keypair) =
+            self.public_group_builder.get_secrets(backend, signer)?;
+
+        let ciphersuite = public_group_builder.crypto_config().ciphersuite;
         let config = self.config.unwrap_or_default();
-        let capabilities = self
-            .required_capabilities
-            .as_ref()
-            .map(|re| re.extension_types());
-        let version = self.version.unwrap_or_default();
+        let version = public_group_builder.crypto_config().version;
 
-        debug!("Created group {:x?}", self.group_id);
-        trace!(" >>> with {:?}, {:?}", ciphersuite, config);
-        let (tree, commit_secret, leaf_keypair) = TreeSync::new(
-            backend,
-            signer,
-            CryptoConfig {
-                ciphersuite,
-                version,
-            },
-            self.credential_with_key,
-            self.lifetime.unwrap_or_default(),
-            Capabilities::new(
-                Some(&[version]),     // TODO: Allow more versions
-                Some(&[ciphersuite]), // TODO: allow more ciphersuites
-                capabilities,
-                None,
-                None,
-            ),
-            self.own_leaf_extensions,
-        )?;
-
-        let required_capabilities = self.required_capabilities.unwrap_or_default();
-        required_capabilities.check_support().map_err(|e| match e {
-            ExtensionError::UnsupportedProposalType => CoreGroupBuildError::UnsupportedProposalType,
-            ExtensionError::UnsupportedExtensionType => {
-                CoreGroupBuildError::UnsupportedExtensionType
-            }
-            _ => LibraryError::custom("Unexpected ExtensionError").into(),
-        })?;
-        let required_capabilities =
-            Extensions::single(Extension::RequiredCapabilities(required_capabilities));
-
-        let group_context = GroupContext::create_initial_group_context(
-            ciphersuite,
-            self.group_id,
-            tree.tree_hash().to_vec(),
-            required_capabilities,
-        );
-        let serialized_group_context = group_context
+        let serialized_group_context = public_group_builder
+            .group_context()
             .tls_serialize_detached()
             .map_err(LibraryError::missing_bound_check)?;
 
+        debug!("Created group {:x?}", public_group_builder.group_id());
+        trace!(" >>> with {:?}, {:?}", ciphersuite, config);
         // Derive an initial joiner secret based on the commit secret.
         // Derive an epoch secret from the joiner secret.
         // We use a random `InitSecret` for initialization.
@@ -274,7 +229,7 @@ impl CoreGroupBuilder {
         // Prepare the PskSecret
         let psk_secret = PskSecret::new(ciphersuite, backend, &self.psk_ids)?;
 
-        let mut key_schedule = KeySchedule::init(ciphersuite, backend, joiner_secret, psk_secret)?;
+        let mut key_schedule = KeySchedule::init(ciphersuite, backend, &joiner_secret, psk_secret)?;
         key_schedule
             .add_context(backend, &serialized_group_context)
             .map_err(|_| LibraryError::custom("Using the key schedule in the wrong state"))?;
@@ -297,7 +252,9 @@ impl CoreGroupBuilder {
         let message_secrets_store =
             MessageSecretsStore::new_with_secret(self.max_past_epochs, message_secrets);
 
-        let public_group = PublicGroup::new(tree, group_context, initial_confirmation_tag);
+        let public_group = public_group_builder
+            .with_confirmation_tag(initial_confirmation_tag)
+            .build();
 
         let group = CoreGroup {
             public_group,
@@ -933,23 +890,12 @@ impl CoreGroup {
         )
         .map_err(LibraryError::unexpected_crypto_error)?;
 
-        // Create group secrets for later use, so we can afterwards consume the
-        // `joiner_secret`.
-        let encrypted_secrets = diff.encrypt_group_secrets(
-            &joiner_secret,
-            apply_proposals_values.invitation_list,
-            path_computation_result.plain_path.as_deref(),
-            &apply_proposals_values.presharedkeys,
-            backend,
-            self.own_leaf_index(),
-        )?;
-
         // Prepare the PskSecret
         let psk_secret =
             PskSecret::new(ciphersuite, backend, &apply_proposals_values.presharedkeys)?;
 
         // Create key schedule
-        let mut key_schedule = KeySchedule::init(ciphersuite, backend, joiner_secret, psk_secret)?;
+        let mut key_schedule = KeySchedule::init(ciphersuite, backend, &joiner_secret, psk_secret)?;
 
         let serialized_provisional_group_context = diff
             .group_context()
@@ -978,7 +924,9 @@ impl CoreGroup {
         diff.update_interim_transcript_hash(ciphersuite, backend, confirmation_tag.clone())?;
 
         // only computes the group info if necessary
-        let group_info = if !encrypted_secrets.is_empty() || self.use_ratchet_tree_extension {
+        let group_info = if !apply_proposals_values.invitation_list.is_empty()
+            || self.use_ratchet_tree_extension
+        {
             // Create the ratchet tree extension if necessary
             let external_pub = provisional_epoch_secrets
                 .external_secret()
@@ -1011,7 +959,7 @@ impl CoreGroup {
         };
 
         // Check if new members were added and, if so, create welcome messages
-        let welcome_option = if !encrypted_secrets.is_empty() {
+        let welcome_option = if !apply_proposals_values.invitation_list.is_empty() {
             // Encrypt GroupInfo object
             let (welcome_key, welcome_nonce) = welcome_secret
                 .derive_welcome_key_nonce(backend)
@@ -1029,6 +977,19 @@ impl CoreGroup {
                     &welcome_nonce,
                 )
                 .map_err(LibraryError::unexpected_crypto_error)?;
+
+            // Create group secrets for later use, so we can afterwards consume the
+            // `joiner_secret`.
+            let encrypted_secrets = diff.encrypt_group_secrets(
+                &joiner_secret,
+                apply_proposals_values.invitation_list,
+                path_computation_result.plain_path.as_deref(),
+                &apply_proposals_values.presharedkeys,
+                &encrypted_group_info,
+                backend,
+                self.own_leaf_index(),
+            )?;
+
             // Create welcome message
             let welcome = Welcome::new(self.ciphersuite(), encrypted_secrets, encrypted_group_info);
             Some(welcome)

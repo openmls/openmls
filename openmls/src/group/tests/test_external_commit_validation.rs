@@ -671,6 +671,11 @@ fn test_valsem246(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
     let decrypted_message = DecryptedMessage::from_inbound_public_message(
         public_message_commit.clone(),
         alice_group.group().message_secrets(),
+        alice_group
+            .group()
+            .message_secrets()
+            .serialized_context()
+            .to_vec(),
         backend,
     )
     .unwrap();

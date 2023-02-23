@@ -72,6 +72,16 @@ impl Group {
         let (i, identity) = self.members[index].clone();
         (i as u32, identity)
     }
+    pub fn group_id(&self) -> &GroupId {
+        &self.group_id
+    }
+
+    pub fn members(&self) -> impl Iterator<Item = (u32, Vec<u8>)> + '_ {
+        self.members
+            .clone()
+            .into_iter()
+            .map(|(index, id)| (index as u32, id))
+    }
 }
 
 #[derive(Debug)]

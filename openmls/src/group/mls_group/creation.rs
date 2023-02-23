@@ -6,6 +6,7 @@ use crate::{
     group::{
         core_group::create_commit_params::CreateCommitParams,
         errors::{CoreGroupBuildError, ExternalCommitError, WelcomeError},
+        public_group::errors::PublicGroupBuildError,
     },
     messages::group_info::{GroupInfo, VerifiableGroupInfo},
 };
@@ -59,16 +60,21 @@ impl MlsGroup {
         .build(backend, signer)
         .map_err(|e| match e {
             CoreGroupBuildError::LibraryError(e) => e.into(),
-            CoreGroupBuildError::UnsupportedProposalType => NewGroupError::UnsupportedProposalType,
-            CoreGroupBuildError::UnsupportedExtensionType => {
-                NewGroupError::UnsupportedExtensionType
-            }
             // We don't support PSKs yet
-            CoreGroupBuildError::PskError(e) => {
+            CoreGroupBuildError::Psk(e) => {
                 log::debug!("Unexpected PSK error: {:?}", e);
                 LibraryError::custom("Unexpected PSK error").into()
             }
             CoreGroupBuildError::KeyStoreError(e) => NewGroupError::KeyStoreError(e),
+            CoreGroupBuildError::PublicGroupBuildError(e) => match e {
+                PublicGroupBuildError::LibraryError(e) => e.into(),
+                PublicGroupBuildError::UnsupportedProposalType => {
+                    NewGroupError::UnsupportedProposalType
+                }
+                PublicGroupBuildError::UnsupportedExtensionType => {
+                    NewGroupError::UnsupportedExtensionType
+                }
+            },
         })?;
 
         let resumption_psk_store =

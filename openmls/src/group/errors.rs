@@ -16,7 +16,7 @@ use thiserror::Error;
 // === Public errors ===
 
 pub use super::mls_group::errors::*;
-use super::public_group::errors::CreationFromExternalError;
+use super::public_group::errors::{CreationFromExternalError, PublicGroupBuildError};
 
 /// Welcome error
 #[derive(Error, Debug, PartialEq, Clone)]
@@ -27,9 +27,6 @@ pub enum WelcomeError<KeyStoreError> {
     /// Ciphersuites in Welcome and key package bundle don't match.
     #[error("Ciphersuites in Welcome and key package bundle don't match.")]
     CiphersuiteMismatch,
-    /// Ciphersuites in Welcome/GroupInfo and key package bundle don't match.
-    #[error("Ciphersuites in Welcome/GroupInfo and key package bundle don't match.")]
-    GroupInfoCiphersuiteMismatch,
     /// No joiner secret found in the Welcome message.
     #[error("No joiner secret found in the Welcome message.")]
     JoinerSecretNotFound,
@@ -452,15 +449,12 @@ pub(crate) enum CoreGroupBuildError<KeyStoreError> {
     /// See [`LibraryError`] for more details.
     #[error(transparent)]
     LibraryError(#[from] LibraryError),
-    /// Unsupported proposal type in required capabilities.
-    #[error("Unsupported proposal type in required capabilities.")]
-    UnsupportedProposalType,
-    /// Unsupported extension type in required capabilities.
-    #[error("Unsupported extension type in required capabilities.")]
-    UnsupportedExtensionType,
+    /// See [`PublicGroupBuildError`] for more details.
+    #[error(transparent)]
+    PublicGroupBuildError(#[from] PublicGroupBuildError),
     /// See [`PskError`] for more details.
     #[error(transparent)]
-    PskError(#[from] PskError),
+    Psk(#[from] PskError),
     /// Error storing leaf private key in key store.
     #[error("Error storing leaf private key in key store.")]
     KeyStoreError(KeyStoreError),
