@@ -660,7 +660,7 @@ fn book_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvide
         Sender::Member(index) => index,
         _ => panic!("Sender should have been a member"),
     };
-    let sender_credential = alice_processed_message.credential().unwrap();
+    let sender_credential = alice_processed_message.credential();
 
     assert!(alice_members.any(|Member { index, .. }| &index == sender_leaf_index));
     drop(alice_members);
@@ -956,10 +956,7 @@ fn book_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvide
 
     // Get sender information
     // As provided by the processed message
-    let sender_cred_from_msg = bob_processed_message
-        .credential()
-        .expect("Expected a credential.")
-        .clone();
+    let sender_cred_from_msg = bob_processed_message.credential().clone();
 
     // As provided by looking up the sender manually via the `member()` function
     // ANCHOR: member_lookup
@@ -1115,7 +1112,7 @@ fn book_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvide
     );
 
     // ANCHOR: external_join_proposal
-    let proposal = JoinProposal::new(
+    let proposal = ExternalProposal::new_join(
         bob_key_package,
         alice_group.group_id().clone(),
         alice_group.epoch(),

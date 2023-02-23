@@ -13,27 +13,11 @@
 //!                                  │                      │
 //!                                  ▼                    -'
 //!                           UnverifiedMessage
-//!                                  │                                       -.
-//!                                  │                                         │
-//!                                  │                                         │
-//!                                  ▼                                         │
-//!                       UnverifiedContextMessage                             │
-//!                                  │                                         │
-//!                                  │                                         │
-//!             (sender is member)   │   (sender is external)                  │
-//!               ┌──────────────────┴───────────────────┐                     │
-//!               │                                      │                     │
-//!               ▼                                      ▼                     +-- process_unverified_message
-//!     UnverifiedGroupMessage              UnverifiedExternalMessage          │
-//!               │                                      │                     │
-//!               │ (verify_signature)                   │ (verify_signature)  │
-//!               │                                      │                     │
-//!               ▼                                      ▼                     │
-//!     VerifiedMemberMessage                VerifiedExternalMessage           │
-//!               │                                      │                     │
-//!               └──────────────────┬───────────────────┘                     │
-//!                                  │                                         │
-//!                                  ▼                                       -'
+//!                                  │                    -.
+//!                                  │                      │
+//!                                  │                      +-- process_unverified_message
+//!                                  │                      │
+//!                                  ▼                    -'
 //!                          ProcessedMessage
 //!
 //! ```
@@ -43,18 +27,19 @@ use crate::{
     extensions::ExternalSendersExtension, group::errors::ValidationError, treesync::TreeSync,
 };
 use core_group::{proposals::QueuedProposal, staged_commit::StagedCommit};
-use openmls_traits::{crypto::OpenMlsCrypto, OpenMlsCryptoProvider};
+use openmls_traits::OpenMlsCryptoProvider;
 
 use crate::{
     ciphersuite::signable::Verifiable, error::LibraryError,
+    framing::mls_auth_content::AuthenticatedContent,
     tree::sender_ratchet::SenderRatchetConfiguration,
 };
 
+use self::mls_group::errors::ProcessMessageError;
+
 use super::{
-    mls_auth_content::{AuthenticatedContent, VerifiableAuthenticatedContent},
-    mls_content::ContentType,
-    public_message::PublicMessage,
-    *,
+    mls_auth_content::VerifiableAuthenticatedContent, mls_content::ContentType,
+    public_message::PublicMessage, *,
 };
 
 /// Intermediate message that can be constructed either from a public message or from private message.
@@ -69,25 +54,31 @@ pub(crate) struct DecryptedMessage {
 
 impl DecryptedMessage {
     /// Constructs a [DecryptedMessage] from a [VerifiableAuthenticatedContent].
-    pub(crate) fn from_inbound_public_message(
+    pub(crate) fn from_inbound_public_message<'a>(
         public_message: PublicMessage,
-        message_secrets: &MessageSecrets,
+        message_secrets_option: impl Into<Option<&'a MessageSecrets>>,
+        serialized_context: Vec<u8>,
         backend: &impl OpenMlsCryptoProvider,
     ) -> Result<Self, ValidationError> {
         if public_message.sender().is_member() {
-            // Verify the membership tag. This needs to be done explicitly for PublicMessage messages,
-            // it is implicit for PrivateMessage messages (because the encryption can only be known by members).
             // ValSem007 Membership tag presence
-            // ValSem008
-            public_message.verify_membership(
-                backend,
-                message_secrets.membership_key(),
-                message_secrets.serialized_context(),
-            )?;
+            if public_message.membership_tag().is_none() {
+                return Err(ValidationError::MissingMembershipTag);
+            }
+
+            if let Some(message_secrets) = message_secrets_option.into() {
+                // Verify the membership tag. This needs to be done explicitly for PublicMessage messages,
+                // it is implicit for PrivateMessage messages (because the encryption can only be known by members).
+                // ValSem008
+                public_message.verify_membership(
+                    backend,
+                    message_secrets.membership_key(),
+                    message_secrets.serialized_context(),
+                )?;
+            }
         }
 
-        let verifiable_content =
-            public_message.into_verifiable_content(message_secrets.serialized_context().to_vec());
+        let verifiable_content = public_message.into_verifiable_content(serialized_context);
 
         Self::from_verifiable_content(verifiable_content)
     }
@@ -238,7 +229,7 @@ impl DecryptedMessage {
 #[derive(Debug, Clone)]
 pub(crate) struct UnverifiedMessage {
     verifiable_content: VerifiableAuthenticatedContent,
-    credential: Option<Credential>,
+    credential: Credential,
     sender_pk: OpenMlsSignaturePublicKey,
 }
 
@@ -246,7 +237,7 @@ impl UnverifiedMessage {
     /// Construct an [UnverifiedMessage] from a [DecryptedMessage] and an optional [Credential].
     pub(crate) fn from_decrypted_message(
         decrypted_message: DecryptedMessage,
-        credential: Option<Credential>,
+        credential: Credential,
         sender_pk: OpenMlsSignaturePublicKey,
     ) -> Self {
         UnverifiedMessage {
@@ -256,191 +247,22 @@ impl UnverifiedMessage {
         }
     }
 
-    /// Decomposes an [UnverifiedMessage] into its parts.
-    pub(crate) fn into_parts(
+    /// Verify the [`UnverifiedMessage`]. Returns the [`AuthenticatedContent`]
+    /// and the internal [`Credential`].
+    pub(crate) fn verify(
         self,
-    ) -> (
-        VerifiableAuthenticatedContent,
-        Option<Credential>,
-        OpenMlsSignaturePublicKey,
-    ) {
-        (self.verifiable_content, self.credential, self.sender_pk)
-    }
-}
-
-/// Contains an VerifiableAuthenticatedContent and a [Credential] if it is a message
-/// from a `Member`, a `Preconfigured`, a `NewMemberProposal` or a `NewMemberCommit`. It sets the
-/// serialized group context and verifies the membership tag for member messages. It can be
-/// converted to a verified message by verifying the signature, either with the credential or an
-/// external signature key.
-pub(crate) enum UnverifiedContextMessage {
-    /// Unverified message from a group member
-    Group(UnverifiedGroupMessage),
-    /// Unverified message from either a `NewMemberProposal` or a `NewMemberCommit`
-    NewMember(UnverifiedNewMemberMessage),
-    /// Unverified message from an external sender
-    /// TODO: #106
-    #[allow(dead_code)]
-    External(UnverifiedExternalMessage),
-}
-
-impl UnverifiedContextMessage {
-    /// Constructs an [UnverifiedContextMessage] from an [UnverifiedMessage].
-    pub(crate) fn from_unverified_message(
-        unverified_message: UnverifiedMessage,
-    ) -> Result<Self, LibraryError> {
-        // Decompose UnverifiedMessage
-        let (verifiable_content, credential_option, sender_pk) = unverified_message.into_parts();
-        match verifiable_content.sender() {
-            Sender::Member(_) => {
-                Ok(UnverifiedContextMessage::Group(UnverifiedGroupMessage {
-                    verifiable_content,
-                    // If the message type is `Member` it always contains credentials
-                    credential: credential_option
-                        .ok_or_else(|| LibraryError::custom("Expected credential"))?,
-                    sender_pk,
-                }))
-            }
-            // TODO #151/#106: We don't support external senders yet
-            Sender::External(_) => Ok(UnverifiedContextMessage::External(
-                UnverifiedExternalMessage {
-                    verifiable_content,
-                    sender_pk,
-                },
-            )),
-            Sender::NewMemberProposal | Sender::NewMemberCommit => {
-                Ok(UnverifiedContextMessage::NewMember(
-                    UnverifiedNewMemberMessage {
-                        verifiable_content,
-                        // If the message type is `NewMemberCommit` or `NewMemberProposal` it always contains credentials
-                        credential: credential_option
-                            .ok_or_else(|| LibraryError::custom("Expected credential"))?,
-                        sender_pk,
-                    },
-                ))
-            }
-        }
-    }
-}
-
-/// Part of [UnverifiedContextMessage].
-pub(crate) struct UnverifiedGroupMessage {
-    verifiable_content: VerifiableAuthenticatedContent,
-    credential: Credential,
-    sender_pk: OpenMlsSignaturePublicKey,
-}
-
-impl UnverifiedGroupMessage {
-    /// Verifies the signature on an [UnverifiedGroupMessage] and returns a [VerifiedMemberMessage] if the
-    /// verification is successful.
-    /// This function implements the following checks:
-    ///  - ValSem010
-    pub(crate) fn into_verified(
-        self,
-        crypto: &impl OpenMlsCrypto,
-    ) -> Result<VerifiedMemberMessage, ValidationError> {
-        // ValSem010
-        self.verifiable_content
-            .verify(crypto, &self.sender_pk)
-            .map(|authenticated_content| VerifiedMemberMessage {
-                authenticated_content,
-            })
-            .map_err(|_| ValidationError::InvalidSignature)
-    }
-
-    /// Returns the credential.
-    pub(crate) fn credential(&self) -> &Credential {
-        &self.credential
-    }
-}
-
-/// Part of [UnverifiedContextMessage].
-pub(crate) struct UnverifiedNewMemberMessage {
-    verifiable_content: VerifiableAuthenticatedContent,
-    credential: Credential,
-    sender_pk: OpenMlsSignaturePublicKey,
-}
-
-impl UnverifiedNewMemberMessage {
-    /// Verifies the signature of an [UnverifiedNewMemberMessage] and returns a
-    /// [VerifiedExternalMessage] if the verification is successful.
-    /// This function implements the following checks:
-    /// - ValSem010
-    pub(crate) fn into_verified(
-        self,
-        crypto: &impl OpenMlsCrypto,
-    ) -> Result<VerifiedExternalMessage, ValidationError> {
-        // ValSem010
-        let verified_external_message = self
+        backend: &impl OpenMlsCryptoProvider,
+    ) -> Result<(AuthenticatedContent, Credential), ProcessMessageError> {
+        let content: AuthenticatedContent = self
             .verifiable_content
-            .verify(crypto, &self.sender_pk)
-            .map(|authenticated_content| VerifiedExternalMessage {
-                authenticated_content,
-            })
-            .map_err(|_| ValidationError::InvalidSignature)?;
-        Ok(verified_external_message)
+            .verify(backend.crypto(), &self.sender_pk)
+            .map_err(|_| ProcessMessageError::InvalidSignature)?;
+        Ok((content, self.credential))
     }
 
-    /// Returns the credential.
-    pub(crate) fn credential(&self) -> &Credential {
-        &self.credential
-    }
-}
-
-// TODO #151/#106: We don't support external senders yet
-/// Part of [UnverifiedContextMessage].
-pub(crate) struct UnverifiedExternalMessage {
-    verifiable_content: VerifiableAuthenticatedContent,
-    sender_pk: OpenMlsSignaturePublicKey,
-}
-
-impl UnverifiedExternalMessage {
-    /// Verifies the signature on an [UnverifiedExternalMessage] and returns a [VerifiedExternalMessage] if the
-    /// verification is successful.
-    /// This function implements the following checks:
-    ///  - ValSem010
-    pub(crate) fn into_verified(
-        self,
-        crypto: &impl OpenMlsCrypto,
-    ) -> Result<VerifiedExternalMessage, ValidationError> {
-        // ValSem010
-        self.verifiable_content
-            .verify(crypto, &self.sender_pk)
-            .map(|authenticated_content| VerifiedExternalMessage {
-                authenticated_content,
-            })
-            .map_err(|_| ValidationError::InvalidSignature)
-    }
-}
-
-/// Member message, where all semantic checks on the framing have been successfully performed.
-#[derive(Debug)]
-pub(crate) struct VerifiedMemberMessage {
-    authenticated_content: AuthenticatedContent,
-}
-
-impl VerifiedMemberMessage {
-    /// Consumes the message and returns the inner [PublicMessage].
-    pub(crate) fn take_authenticated_content(self) -> AuthenticatedContent {
-        self.authenticated_content
-    }
-}
-
-/// External message, where all semantic checks on the framing have been successfully performed.
-/// Note: External messages are not fully supported yet #106
-pub(crate) struct VerifiedExternalMessage {
-    authenticated_content: AuthenticatedContent,
-}
-
-impl VerifiedExternalMessage {
-    /// Returns a reference to the inner [FramedContent].
-    pub(crate) fn authenticated_content(&self) -> &AuthenticatedContent {
-        &self.authenticated_content
-    }
-
-    /// Consumes the message and returns the inner [PublicMessage].
-    pub(crate) fn take_authenticated_content(self) -> AuthenticatedContent {
-        self.authenticated_content
+    /// Get the content type of the message.
+    pub(crate) fn content_type(&self) -> ContentType {
+        self.verifiable_content.content_type()
     }
 }
 
@@ -452,7 +274,7 @@ pub struct ProcessedMessage {
     sender: Sender,
     authenticated_data: Vec<u8>,
     content: ProcessedMessageContent,
-    credential: Option<Credential>,
+    credential: Credential,
 }
 
 impl ProcessedMessage {
@@ -463,7 +285,7 @@ impl ProcessedMessage {
         sender: Sender,
         authenticated_data: Vec<u8>,
         content: ProcessedMessageContent,
-        credential: Option<Credential>,
+        credential: Credential,
     ) -> Self {
         Self {
             group_id,
@@ -505,9 +327,9 @@ impl ProcessedMessage {
         self.content
     }
 
-    /// Returns the credential of the message if present.
-    pub fn credential(&self) -> Option<&Credential> {
-        self.credential.as_ref()
+    /// Returns the credential of the message.
+    pub fn credential(&self) -> &Credential {
+        &self.credential
     }
 }
 

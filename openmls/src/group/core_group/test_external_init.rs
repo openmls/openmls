@@ -54,15 +54,16 @@ fn test_external_init(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProv
 
     // Have alice and bob process the commit resulting from external init.
     let proposal_store = ProposalStore::default();
+
     let staged_commit = group_alice
-        .stage_commit(&create_commit_result.commit, &proposal_store, &[], backend)
+        .read_keys_and_stage_commit(&create_commit_result.commit, &proposal_store, &[], backend)
         .expect("error staging commit");
     group_alice
         .merge_commit(backend, staged_commit)
         .expect("error merging commit");
 
     let staged_commit = group_bob
-        .stage_commit(&create_commit_result.commit, &proposal_store, &[], backend)
+        .read_keys_and_stage_commit(&create_commit_result.commit, &proposal_store, &[], backend)
         .expect("error staging commit");
     group_bob
         .merge_commit(backend, staged_commit)
@@ -94,7 +95,7 @@ fn test_external_init(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProv
         .expect("Error creating commit");
 
     let staged_commit = group_alice
-        .stage_commit(&create_commit_result.commit, &proposal_store, &[], backend)
+        .read_keys_and_stage_commit(&create_commit_result.commit, &proposal_store, &[], backend)
         .expect("error staging commit");
     group_alice
         .merge_commit(backend, staged_commit)
@@ -147,14 +148,14 @@ fn test_external_init(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProv
     // Have alice and charly process the commit resulting from external init.
     let proposal_store = ProposalStore::default();
     let staged_commit = group_alice
-        .stage_commit(&create_commit_result.commit, &proposal_store, &[], backend)
+        .read_keys_and_stage_commit(&create_commit_result.commit, &proposal_store, &[], backend)
         .expect("error staging commit");
     group_alice
         .merge_commit(backend, staged_commit)
         .expect("error merging commit");
 
     let staged_commit = group_charly
-        .stage_commit(&create_commit_result.commit, &proposal_store, &[], backend)
+        .read_keys_and_stage_commit(&create_commit_result.commit, &proposal_store, &[], backend)
         .expect("error staging commit");
     group_charly
         .merge_commit(backend, staged_commit)
@@ -217,7 +218,7 @@ fn test_external_init_single_member_group(
     // Have alice and bob process the commit resulting from external init.
     let proposal_store = ProposalStore::default();
     let staged_commit = group_alice
-        .stage_commit(&create_commit_result.commit, &proposal_store, &[], backend)
+        .read_keys_and_stage_commit(&create_commit_result.commit, &proposal_store, &[], backend)
         .expect("error staging commit");
     group_alice
         .merge_commit(backend, staged_commit)

@@ -260,11 +260,9 @@ fn test_invalid_plaintext(ciphersuite: Ciphersuite, backend: &impl OpenMlsCrypto
         .expect("An unexpected error occurred.");
 
     let (_, client_id) = &group
-        .members
-        .iter()
+        .members()
         .find(|(index, _)| index == &0)
-        .expect("An unexpected error occurred.")
-        .clone();
+        .expect("An unexpected error occurred.");
 
     let clients = setup.clients.read().expect("An unexpected error occurred.");
     let client = clients

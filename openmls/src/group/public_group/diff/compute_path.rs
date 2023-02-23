@@ -44,6 +44,10 @@ impl<'a> PublicGroupDiff<'a> {
         signer: &impl Signer,
         credential_with_key: Option<CredentialWithKey>,
     ) -> Result<PathComputationResult, CreateCommitError<KeyStore::Error>> {
+        let version = self.group_context().protocol_version();
+        let ciphersuite = self.group_context().ciphersuite();
+        let group_id = self.group_context().group_id().clone();
+
         let mut new_keypairs = if commit_type == CommitType::External {
             // If this is an external commit we add a fresh leaf to the diff.
             // Generate a KeyPackageBundle to generate a payload from for later
@@ -56,8 +60,8 @@ impl<'a> PublicGroupDiff<'a> {
                 init_private_key: _,
             } = KeyPackage::builder().build_without_key_storage(
                 CryptoConfig {
-                    ciphersuite: self.original_group.ciphersuite(),
-                    version: self.original_group.version(),
+                    ciphersuite,
+                    version,
                 },
                 backend,
                 signer,
@@ -76,26 +80,16 @@ impl<'a> PublicGroupDiff<'a> {
                 .diff
                 .leaf_mut(leaf_index)
                 .ok_or_else(|| LibraryError::custom("Unable to get own leaf from diff"))?;
-            let encryption_keypair = own_diff_leaf.rekey(
-                self.original_group.group_id(),
-                self.original_group.ciphersuite(),
-                self.original_group.version(), // XXX: openmls/openmls#1065
-                backend,
-                signer,
-            )?;
+            let encryption_keypair =
+                own_diff_leaf.rekey(&group_id, ciphersuite, version, backend, signer)?;
             vec![encryption_keypair]
         };
 
         // Derive and apply an update path based on the previously
         // generated new leaf.
-        let (plain_path, mut new_parent_keypairs, commit_secret) =
-            self.diff.apply_own_update_path(
-                backend,
-                signer,
-                self.original_group.ciphersuite(),
-                self.original_group.group_id().clone(),
-                leaf_index,
-            )?;
+        let (plain_path, mut new_parent_keypairs, commit_secret) = self
+            .diff
+            .apply_own_update_path(backend, signer, ciphersuite, group_id, leaf_index)?;
 
         new_keypairs.append(&mut new_parent_keypairs);
 
@@ -112,7 +106,7 @@ impl<'a> PublicGroupDiff<'a> {
         // Encrypt the path to the correct recipient nodes.
         let encrypted_path = self.diff.encrypt_path(
             backend,
-            self.original_group.ciphersuite(),
+            ciphersuite,
             &plain_path,
             &serialized_group_context,
             &exclusion_list,

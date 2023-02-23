@@ -227,6 +227,11 @@ impl PublicMessage {
         )
     }
 
+    /// Get the [`MembershipTag`].
+    pub(crate) fn membership_tag(&self) -> Option<&MembershipTag> {
+        self.membership_tag.as_ref()
+    }
+
     #[cfg(test)]
     pub(crate) fn set_membership_tag_test(&mut self, membership_tag: MembershipTag) {
         self.membership_tag = Some(membership_tag);

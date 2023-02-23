@@ -2,12 +2,10 @@ use core::fmt::Debug;
 use std::mem;
 
 use openmls_traits::key_store::OpenMlsKeyStore;
+use public_group::diff::{apply_proposals::ApplyProposalsValues, StagedPublicGroupDiff};
 
 use super::{super::errors::*, proposals::ProposalStore, *};
-use crate::{
-    group::public_group::diff::{apply_proposals::ApplyProposalsValues, StagedPublicGroupDiff},
-    treesync::node::{encryption_keys::EncryptionKeyPair, leaf_node::OpenMlsLeafNode},
-};
+use crate::treesync::node::encryption_keys::EncryptionKeyPair;
 
 impl CoreGroup {
     fn derive_epoch_secrets(
@@ -111,7 +109,8 @@ impl CoreGroup {
         &self,
         mls_content: &AuthenticatedContent,
         proposal_store: &ProposalStore,
-        own_leaf_nodes: &[OpenMlsLeafNode],
+        old_epoch_keypairs: Vec<EncryptionKeyPair>,
+        leaf_node_keypairs: Vec<EncryptionKeyPair>,
         backend: &impl OpenMlsCryptoProvider,
     ) -> Result<StagedCommit, StageCommitError> {
         // Check that the sender is another member of the group
@@ -120,20 +119,6 @@ impl CoreGroup {
                 return Err(StageCommitError::OwnCommit);
             }
         }
-
-        // All keys from the previous epoch are potential decryption keypairs.
-        let old_epoch_keypairs = self.read_epoch_keypairs(backend);
-
-        // If we are processing an update proposal that originally came from
-        // us, the keypair corresponding to the leaf in the update is also a
-        // potential decryption keypair.
-        let leaf_node_keypairs = own_leaf_nodes
-            .iter()
-            .map(|leaf_node| {
-                EncryptionKeyPair::read_from_key_store(backend, leaf_node.encryption_key())
-                    .ok_or(StageCommitError::MissingDecryptionKey)
-            })
-            .collect::<Result<Vec<EncryptionKeyPair>, StageCommitError>>()?;
 
         let ciphersuite = self.ciphersuite();
 
@@ -352,6 +337,28 @@ impl CoreGroup {
             }
         }
     }
+
+    #[cfg(test)]
+    /// Helper function that reads the decryption keys from the key store
+    /// (unwrapping the result) and stages the given commit.
+    pub(crate) fn read_keys_and_stage_commit(
+        &self,
+        mls_content: &AuthenticatedContent,
+        proposal_store: &ProposalStore,
+        own_leaf_nodes: &[OpenMlsLeafNode],
+        backend: &impl OpenMlsCryptoProvider,
+    ) -> Result<StagedCommit, StageCommitError> {
+        let (old_epoch_keypairs, leaf_node_keypairs) =
+            self.read_decryption_keypairs(backend, own_leaf_nodes)?;
+
+        self.stage_commit(
+            mls_content,
+            proposal_store,
+            old_epoch_keypairs,
+            leaf_node_keypairs,
+            backend,
+        )
+    }
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -401,6 +408,11 @@ impl StagedCommit {
     /// and `false` otherwise.
     pub fn self_removed(&self) -> bool {
         matches!(self.state, StagedCommitState::PublicState(_))
+    }
+
+    /// Consume this [`StagedCommit`] and return the internal [`StagedCommitState`].
+    pub(crate) fn into_state(self) -> StagedCommitState {
+        self.state
     }
 }
 

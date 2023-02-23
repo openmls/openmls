@@ -132,7 +132,7 @@ fn external_add_proposal_should_succeed(
             charlie_credential.clone(),
         );
 
-        let proposal = JoinProposal::new(
+        let proposal = ExternalProposal::new_join(
             charlie_kp.clone(),
             alice_group.group_id().clone(),
             alice_group.epoch(),
@@ -238,7 +238,7 @@ fn external_add_proposal_should_be_signed_by_key_package_it_references(
         attacker_credential,
     );
 
-    let invalid_proposal = JoinProposal::new(
+    let invalid_proposal = ExternalProposal::new_join(
         charlie_kp,
         alice_group.group_id().clone(),
         alice_group.epoch(),
@@ -279,7 +279,7 @@ fn new_member_proposal_sender_should_be_reserved_for_join_proposals(
         any_credential.clone(),
     );
 
-    let join_proposal = JoinProposal::new(
+    let join_proposal = ExternalProposal::new_join(
         any_kp,
         alice_group.group_id().clone(),
         alice_group.epoch(),
