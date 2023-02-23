@@ -38,7 +38,7 @@ use crate::{
         array_representation::{is_node_in_tree, tree::TreeNode, LeafNodeIndex, TreeSize},
         MlsBinaryTree, MlsBinaryTreeError,
     },
-    ciphersuite::{Secret, SignaturePublicKey},
+    ciphersuite::Secret,
     credentials::CredentialWithKey,
     error::LibraryError,
     extensions::Extensions,
@@ -264,22 +264,6 @@ impl TreeSync {
         self.tree
             .leaves()
             .filter_map(|(_, tsn)| tsn.node().as_ref())
-    }
-
-    /// Returns the [`LeafNodeIndex`] of the leaf that contains the given
-    /// [`SignaturePublicKey`].
-    ///
-    /// Returns `None` if no matching leaf can be found.
-    pub(crate) fn find_leaf(&self, signature_key: &SignaturePublicKey) -> Option<LeafNodeIndex> {
-        self.full_leave_members()
-            .filter_map(|m| {
-                if m.signature_key == signature_key.as_slice() {
-                    Some(m.index)
-                } else {
-                    None
-                }
-            })
-            .next()
     }
 
     /// Returns the index of the last full leaf in the tree.

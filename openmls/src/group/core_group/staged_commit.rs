@@ -302,8 +302,7 @@ impl CoreGroup {
 
                 // Figure out which keys we need in the new epoch.
                 let new_owned_encryption_keys = self
-                    .public_group
-                    .treesync()
+                    .public_group()
                     .owned_encryption_keys(self.own_leaf_index());
                 // From the old and new keys, keep the ones that are still relevant in the new epoch.
                 let epoch_keypairs: Vec<EncryptionKeyPair> = old_epoch_keypairs

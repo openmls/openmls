@@ -19,7 +19,7 @@ use tls_codec::Serialize as TlsSerialize;
 use crate::{framing::PublicMessage, group::CoreGroup};
 
 use crate::{
-    binary_tree::LeafNodeIndex,
+    binary_tree::{array_representation::TreeSize, LeafNodeIndex},
     ciphersuite::signable::Verifiable,
     error::LibraryError,
     extensions::RequiredCapabilitiesExtension,
@@ -30,7 +30,14 @@ use crate::{
         ConfirmationTag, PathSecret,
     },
     schedule::CommitSecret,
-    treesync::{errors::DerivePathError, node::encryption_keys::EncryptionKeyPair, Node, TreeSync},
+    treesync::{
+        errors::DerivePathError,
+        node::{
+            encryption_keys::{EncryptionKey, EncryptionKeyPair},
+            leaf_node::OpenMlsLeafNode,
+        },
+        Node, TreeSync,
+    },
     versions::ProtocolVersion,
 };
 
@@ -290,7 +297,7 @@ impl PublicGroup {
     }
 
     /// Get treesync.
-    pub(crate) fn treesync(&self) -> &TreeSync {
+    fn treesync(&self) -> &TreeSync {
         &self.treesync
     }
 
@@ -299,8 +306,25 @@ impl PublicGroup {
         &self.confirmation_tag
     }
 
+    /// Return a reference to the leaf at the given `LeafNodeIndex` or `None` if the
+    /// leaf is blank.
+    pub fn leaf(&self, leaf_index: LeafNodeIndex) -> Option<&OpenMlsLeafNode> {
+        self.treesync().leaf(leaf_index)
+    }
+
+    /// Returns the tree size
+    pub(crate) fn tree_size(&self) -> TreeSize {
+        self.treesync().tree_size()
+    }
+
     fn interim_transcript_hash(&self) -> &[u8] {
         &self.interim_transcript_hash
+    }
+
+    /// Return a vector containing all [`EncryptionKey`]s for which the owner of
+    /// the given `leaf_index` should have private key material.
+    pub(crate) fn owned_encryption_keys(&self, leaf_index: LeafNodeIndex) -> Vec<EncryptionKey> {
+        self.treesync().owned_encryption_keys(leaf_index)
     }
 }
 
