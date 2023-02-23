@@ -82,6 +82,12 @@ impl GroupId {
     }
 }
 
+impl From<GroupId> for Vec<u8> {
+    fn from(value: GroupId) -> Self {
+        value.to_vec()
+    }
+}
+
 /// Group epoch. Internally this is stored as a `u64`.
 /// The group epoch is incremented with every valid Commit that is merged into the group state.
 #[derive(
@@ -98,6 +104,12 @@ impl GroupId {
     TlsSize,
 )]
 pub struct GroupEpoch(u64);
+
+impl From<GroupEpoch> for Vec<u8> {
+    fn from(value: GroupEpoch) -> Self {
+        value.0.to_be_bytes().into()
+    }
+}
 
 impl GroupEpoch {
     /// Increment the group epoch by 1.
