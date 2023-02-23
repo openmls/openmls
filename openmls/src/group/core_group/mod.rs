@@ -1110,6 +1110,16 @@ impl CoreGroup {
     }
 
     #[cfg(test)]
+    pub(crate) fn message_secrets_store(&self) -> &MessageSecretsStore {
+        &self.message_secrets_store
+    }
+
+    #[cfg(test)]
+    pub(crate) fn public_group(&self) -> &PublicGroup {
+        &self.public_group
+    }
+
+    #[cfg(test)]
     pub(crate) fn set_group_context(&mut self, group_context: GroupContext) {
         self.public_group.set_group_context(group_context)
     }

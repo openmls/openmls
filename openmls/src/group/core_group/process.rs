@@ -149,44 +149,14 @@ impl CoreGroup {
         own_leaf_nodes: &[OpenMlsLeafNode],
     ) -> Result<ProcessedMessage, ProcessMessageError> {
         let message: ProtocolMessage = message.into();
+
         // Checks the following semantic validation:
         //  - ValSem002
         //  - ValSem003
-        self.public_group.validate_framing(&message)?;
-
-        let epoch = message.epoch();
-
-        // Checks the following semantic validation:
         //  - ValSem006
         //  - ValSem007 MembershipTag presence
-        let decrypted_message = match message {
-            ProtocolMessage::PublicMessage(public_message) => {
-                // If the message is older than the current epoch, we need to fetch the correct secret tree first.
-                let message_secrets =
-                    self.message_secrets_for_epoch(epoch).map_err(|e| match e {
-                        SecretTreeError::TooDistantInThePast => ValidationError::NoPastEpochData,
-                        _ => LibraryError::custom(
-                            "Unexpected error while retrieving message secrets for epoch.",
-                        )
-                        .into(),
-                    })?;
-                DecryptedMessage::from_inbound_public_message(
-                    public_message,
-                    message_secrets,
-                    message_secrets.serialized_context().to_vec(),
-                    backend,
-                )?
-            }
-            ProtocolMessage::PrivateMessage(ciphertext) => {
-                // If the message is older than the current epoch, we need to fetch the correct secret tree first
-                DecryptedMessage::from_inbound_ciphertext(
-                    ciphertext,
-                    backend,
-                    self,
-                    sender_ratchet_configuration,
-                )?
-            }
-        };
+        let decrypted_message =
+            self.decrypt_message(backend, message, sender_ratchet_configuration)?;
 
         let unverified_message = self
             .public_group
@@ -208,6 +178,62 @@ impl CoreGroup {
             leaf_node_keypairs,
             backend,
         )
+    }
+
+    /// Performs framing validation and, if necessary, decrypts the given message.
+    ///
+    /// Returns the [`DecryptedMessage`] if processing is successful, or a
+    /// [`ValidationError`] if it is not.
+    ///
+    /// Checks the following semantic validation:
+    ///  - ValSem002
+    ///  - ValSem003
+    ///  - ValSem006
+    ///  - ValSem007 MembershipTag presence
+    pub(crate) fn decrypt_message(
+        &mut self,
+        backend: &impl OpenMlsCryptoProvider,
+        message: ProtocolMessage,
+        sender_ratchet_configuration: &SenderRatchetConfiguration,
+    ) -> Result<DecryptedMessage, ValidationError> {
+        // Checks the following semantic validation:
+        //  - ValSem002
+        //  - ValSem003
+        self.public_group.validate_framing(&message)?;
+
+        let epoch = message.epoch();
+
+        // Checks the following semantic validation:
+        //  - ValSem006
+        //  - ValSem007 MembershipTag presence
+        match message {
+            ProtocolMessage::PublicMessage(public_message) => {
+                // If the message is older than the current epoch, we need to fetch the correct secret tree first.
+                let message_secrets =
+                    self.message_secrets_for_epoch(epoch).map_err(|e| match e {
+                        SecretTreeError::TooDistantInThePast => ValidationError::NoPastEpochData,
+                        _ => LibraryError::custom(
+                            "Unexpected error while retrieving message secrets for epoch.",
+                        )
+                        .into(),
+                    })?;
+                DecryptedMessage::from_inbound_public_message(
+                    public_message,
+                    message_secrets,
+                    message_secrets.serialized_context().to_vec(),
+                    backend,
+                )
+            }
+            ProtocolMessage::PrivateMessage(ciphertext) => {
+                // If the message is older than the current epoch, we need to fetch the correct secret tree first
+                DecryptedMessage::from_inbound_ciphertext(
+                    ciphertext,
+                    backend,
+                    self,
+                    sender_ratchet_configuration,
+                )
+            }
+        }
     }
 
     /// Helper function to read decryption keypairs.
