@@ -159,14 +159,14 @@ impl TreeSync {
     pub(crate) fn from_nodes(
         backend: &impl OpenMlsCryptoProvider,
         ciphersuite: Ciphersuite,
-        node_options: &[Option<Node>],
+        node_options: Vec<Option<Node>>,
     ) -> Result<Self, TreeSyncFromNodesError> {
         // TODO #800: Unmerged leaves should be checked
         let mut ts_nodes: Vec<TreeNode<TreeSyncLeafNode, TreeSyncParentNode>> =
             Vec::with_capacity(node_options.len());
 
         // Set the leaf indices in all the leaves and convert the node types.
-        for (node_index, node_option) in node_options.iter().enumerate() {
+        for (node_index, node_option) in node_options.into_iter().enumerate() {
             let ts_node_option: TreeNode<TreeSyncLeafNode, TreeSyncParentNode> = match node_option {
                 Some(node) => {
                     let mut node = node.clone();
