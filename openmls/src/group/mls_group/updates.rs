@@ -67,7 +67,7 @@ impl MlsGroup {
         backend: &impl OpenMlsCryptoProvider<KeyStoreProvider = KeyStore>,
         signer: &impl Signer,
         leaf_node: Option<LeafNode>,
-    ) -> Result<MlsMessageOut, ProposeSelfUpdateError<KeyStore::Error>> {
+    ) -> Result<(MlsMessageOut, ProposalRef), ProposeSelfUpdateError<KeyStore::Error>> {
         self.is_operational()?;
 
         // Here we clone our own leaf to rekey it such that we don't change the
@@ -103,18 +103,19 @@ impl MlsGroup {
         )?;
 
         self.own_leaf_nodes.push(own_leaf);
-        self.proposal_store
-            .add(QueuedProposal::from_authenticated_content(
-                self.ciphersuite(),
-                backend,
-                update_proposal.clone(),
-            )?);
+        let proposal = QueuedProposal::from_authenticated_content(
+            self.ciphersuite(),
+            backend,
+            update_proposal.clone(),
+        )?;
+        let proposal_ref = proposal.proposal_reference();
+        self.proposal_store.add(proposal);
 
         let mls_message = self.content_to_mls_message(update_proposal, backend)?;
 
         // Since the state of the group might be changed, arm the state flag
         self.flag_state_change();
 
-        Ok(mls_message)
+        Ok((mls_message, proposal_ref))
     }
 }

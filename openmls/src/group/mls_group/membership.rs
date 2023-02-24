@@ -7,7 +7,7 @@ use openmls_traits::signatures::Signer;
 
 use crate::{
     binary_tree::array_representation::LeafNodeIndex, group::errors::CreateAddProposalError,
-    messages::group_info::GroupInfo, treesync::LeafNode,
+    messages::group_info::GroupInfo, prelude::hash_ref::ProposalRef, treesync::LeafNode,
 };
 
 use super::{
@@ -174,7 +174,7 @@ impl MlsGroup {
         backend: &impl OpenMlsCryptoProvider,
         signer: &impl Signer,
         key_package: &KeyPackage,
-    ) -> Result<MlsMessageOut, ProposeAddMemberError> {
+    ) -> Result<(MlsMessageOut, ProposalRef), ProposeAddMemberError> {
         self.is_operational()?;
 
         let add_proposal = self
@@ -187,19 +187,20 @@ impl MlsGroup {
                 }
             })?;
 
-        self.proposal_store
-            .add(QueuedProposal::from_authenticated_content(
-                self.ciphersuite(),
-                backend,
-                add_proposal.clone(),
-            )?);
+        let proposal = QueuedProposal::from_authenticated_content(
+            self.ciphersuite(),
+            backend,
+            add_proposal.clone(),
+        )?;
+        let proposal_ref = proposal.proposal_reference();
+        self.proposal_store.add(proposal);
 
         let mls_message = self.content_to_mls_message(add_proposal, backend)?;
 
         // Since the state of the group might be changed, arm the state flag
         self.flag_state_change();
 
-        Ok(mls_message)
+        Ok((mls_message, proposal_ref))
     }
 
     /// Creates proposals to remove members from the group.
@@ -211,7 +212,7 @@ impl MlsGroup {
         backend: &impl OpenMlsCryptoProvider,
         signer: &impl Signer,
         member: LeafNodeIndex,
-    ) -> Result<MlsMessageOut, ProposeRemoveMemberError> {
+    ) -> Result<(MlsMessageOut, ProposalRef), ProposeRemoveMemberError> {
         self.is_operational()?;
 
         let remove_proposal = self
@@ -219,19 +220,20 @@ impl MlsGroup {
             .create_remove_proposal(self.framing_parameters(), member, signer)
             .map_err(|_| ProposeRemoveMemberError::UnknownMember)?;
 
-        self.proposal_store
-            .add(QueuedProposal::from_authenticated_content(
-                self.ciphersuite(),
-                backend,
-                remove_proposal.clone(),
-            )?);
+        let proposal = QueuedProposal::from_authenticated_content(
+            self.ciphersuite(),
+            backend,
+            remove_proposal.clone(),
+        )?;
+        let proposal_ref = proposal.proposal_reference();
+        self.proposal_store.add(proposal);
 
         let mls_message = self.content_to_mls_message(remove_proposal, backend)?;
 
         // Since the state of the group might be changed, arm the state flag
         self.flag_state_change();
 
-        Ok(mls_message)
+        Ok((mls_message, proposal_ref))
     }
 
     /// Leave the group.

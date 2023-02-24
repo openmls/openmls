@@ -48,6 +48,14 @@ impl ProposalStore {
     pub(crate) fn empty(&mut self) {
         self.queued_proposals = Vec::new();
     }
+    pub(crate) fn remove(&mut self, proposal_ref: ProposalRef) -> Option<()> {
+        let index = self
+            .queued_proposals
+            .iter()
+            .position(|p| p.proposal_reference() == proposal_ref)?;
+        self.queued_proposals.swap_remove(index);
+        Some(())
+    }
 }
 
 /// Alternative representation of a Proposal, where the sender is extracted from

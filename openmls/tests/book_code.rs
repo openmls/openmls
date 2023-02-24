@@ -353,7 +353,7 @@ fn book_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvide
 
     // === Alice updates and commits ===
     // ANCHOR: propose_self_update
-    let mls_message_out = alice_group
+    let (mls_message_out, _proposal_ref) = alice_group
         .propose_self_update(
             backend,
             &alice_signature_keys,
@@ -776,7 +776,7 @@ fn book_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvide
 
     // Create RemoveProposal and process it
     // ANCHOR: propose_remove
-    let mls_message_out = alice_group
+    let (mls_message_out, _proposal_ref) = alice_group
         .propose_remove_member(
             backend,
             &alice_signature_keys,
@@ -816,9 +816,19 @@ fn book_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvide
         unreachable!("Expected a QueuedProposal.");
     }
 
+    // Create AddProposal and remove it
+    // ANCHOR: remove_proposal_by_ref
+    let (_mls_message_out, proposal_ref) = alice_group
+        .propose_add_member(backend, &alice_signature_keys, &bob_key_package)
+        .expect("Could not create proposal to add Bob");
+    alice_group
+        .clear_pending_proposal(proposal_ref)
+        .expect("The proposal was not found");
+    // ANCHOR_END: remove_proposal_by_ref
+
     // Create AddProposal and process it
     // ANCHOR: propose_add
-    let mls_message_out = alice_group
+    let (mls_message_out, _proposal_ref) = alice_group
         .propose_add_member(backend, &alice_signature_keys, &bob_key_package)
         .expect("Could not create proposal to add Bob");
     // ANCHOR_END: propose_add

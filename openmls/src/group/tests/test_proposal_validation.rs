@@ -1504,8 +1504,8 @@ fn test_valsem110(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
             &bob_credential_with_key_and_signer.signer,
             Some(update_leaf_node.clone().into()),
         )
-        .expect("error while creating remove proposal")
-        .into();
+        .map(|(out, _)| MlsMessageIn::from(out))
+        .expect("error while creating remove proposal");
 
     // Have Alice process this proposal.
     if let ProcessedMessageContent::ProposalMessage(proposal) = alice_group

@@ -45,6 +45,15 @@ Standalone proposals are returned as a `QueuedProposal`, indicating that they ar
 {{#include ../../../openmls/tests/book_code.rs:inspect_add_proposal}}
 ```
 
+#### Removing proposals from the queue
+
+Operations that add a proposal to the queue, will return the its reference. This reference can be used to remove
+a proposal from the queue.
+
+```rust,no_run,noplayground
+{{#include ../../../openmls/tests/book_code.rs:remove_proposal_by_ref}}
+```
+
 ### Commit messages
 
 Commit messages are returned as `StagedCommit` objects. The proposals they cover can be inspected through different functions, depending on the proposal type. After the application has inspected the `StagedCommit` and approved all the proposals it covers, the `StagedCommit` can be merged in the current group state by calling the `.merge_staged_commit()` function. For more details, see the `StagedCommit` documentation.

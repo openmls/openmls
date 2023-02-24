@@ -11,6 +11,7 @@ use crate::{
     group::*,
     key_packages::{KeyPackage, KeyPackageBundle},
     messages::{proposals::*, Welcome},
+    prelude::hash_ref::ProposalRef,
     schedule::ResumptionPskSecret,
     treesync::{
         node::leaf_node::{LeafNode, OpenMlsLeafNode},
@@ -421,6 +422,16 @@ impl MlsGroup {
     #[cfg(test)]
     pub(crate) fn clear_pending_proposals(&mut self) {
         self.proposal_store.empty()
+    }
+
+    /// Removes a specific proposal from the store and return it if it exists.
+    pub fn clear_pending_proposal(
+        &mut self,
+        proposal_ref: ProposalRef,
+    ) -> Result<(), MlsGroupStateError> {
+        self.proposal_store
+            .remove(proposal_ref)
+            .ok_or(MlsGroupStateError::PendingProposalNotFound)
     }
 }
 
