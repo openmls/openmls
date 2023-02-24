@@ -80,8 +80,8 @@ fn test_external_init(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProv
     );
 
     assert_eq!(
-        group_charly.treesync().export_nodes(),
-        group_bob.treesync().export_nodes()
+        group_charly.public_group().export_nodes(),
+        group_bob.public_group().export_nodes()
     );
 
     // Check if charly can create valid commits
@@ -113,7 +113,7 @@ fn test_external_init(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProv
         .export_group_info(backend, &alice_signer, false)
         .unwrap()
         .into_verifiable_group_info();
-    let nodes_option = group_alice.treesync().export_nodes();
+    let nodes_option = group_alice.public_group().export_nodes();
 
     let proposal_store = ProposalStore::new();
     let params = CreateCommitParams::builder()
@@ -172,8 +172,8 @@ fn test_external_init(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProv
     );
 
     assert_eq!(
-        group_charly.treesync().export_nodes(),
-        new_group_bob.treesync().export_nodes()
+        group_charly.public_group().export_nodes(),
+        new_group_bob.public_group().export_nodes()
     );
 }
 
@@ -198,7 +198,7 @@ fn test_external_init_single_member_group(
         .export_group_info(backend, &alice_signer, false)
         .unwrap()
         .into_verifiable_group_info();
-    let nodes_option = group_alice.treesync().export_nodes();
+    let nodes_option = group_alice.public_group().export_nodes();
 
     let proposal_store = ProposalStore::new();
     let params = CreateCommitParams::builder()
@@ -234,8 +234,8 @@ fn test_external_init_single_member_group(
     );
 
     assert_eq!(
-        group_charly.treesync().export_nodes(),
-        group_alice.treesync().export_nodes()
+        group_charly.public_group().export_nodes(),
+        group_alice.public_group().export_nodes()
     );
 }
 
