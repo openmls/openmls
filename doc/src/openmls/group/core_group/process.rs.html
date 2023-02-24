@@ -500,7 +500,7 @@
         <span class="comment">// Save the past epoch
         </span><span class="kw">let </span>past_epoch = <span class="self">self</span>.context().epoch();
         <span class="comment">// Get all the full leaves
-        </span><span class="kw">let </span>leaves = <span class="self">self</span>.treesync().full_leave_members().collect();
+        </span><span class="kw">let </span>leaves = <span class="self">self</span>.public_group().members().collect();
         <span class="comment">// Merge the staged commit into the group state and store the secret tree from the
         // previous epoch in the message secrets store.
         </span><span class="kw">if let </span><span class="prelude-val">Some</span>(message_secrets) = <span class="self">self</span>.merge_commit(backend, staged_commit)<span class="question-mark">? </span>{

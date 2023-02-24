@@ -442,7 +442,6 @@
 <a href="#442" id="442">442</a>
 <a href="#443" id="443">443</a>
 <a href="#444" id="444">444</a>
-<a href="#445" id="445">445</a>
 </pre><pre class="rust"><code><span class="kw">use </span>core::fmt::Debug;
 <span class="kw">use </span>std::mem;
 
@@ -747,8 +746,7 @@
 
                 <span class="comment">// Figure out which keys we need in the new epoch.
                 </span><span class="kw">let </span>new_owned_encryption_keys = <span class="self">self
-                    </span>.public_group
-                    .treesync()
+                    </span>.public_group()
                     .owned_encryption_keys(<span class="self">self</span>.own_leaf_index());
                 <span class="comment">// From the old and new keys, keep the ones that are still relevant in the new epoch.
                 </span><span class="kw">let </span>epoch_keypairs: Vec&lt;EncryptionKeyPair&gt; = old_epoch_keypairs

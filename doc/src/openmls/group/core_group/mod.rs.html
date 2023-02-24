@@ -1117,6 +1117,10 @@
 <a href="#1117" id="1117">1117</a>
 <a href="#1118" id="1118">1118</a>
 <a href="#1119" id="1119">1119</a>
+<a href="#1120" id="1120">1120</a>
+<a href="#1121" id="1121">1121</a>
+<a href="#1122" id="1122">1122</a>
+<a href="#1123" id="1123">1123</a>
 </pre><pre class="rust"><code><span class="doccomment">//! ### Don&#39;t Panic!
 //!
 //! Functions in this module should never panic. However, if there is a bug in
@@ -1466,7 +1470,7 @@
         removed: LeafNodeIndex,
         signer: <span class="kw-2">&amp;</span><span class="kw">impl </span>Signer,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;AuthenticatedContent, ValidationError&gt; {
-        <span class="kw">if </span>!<span class="self">self</span>.treesync().is_leaf_in_tree(removed) {
+        <span class="kw">if </span><span class="self">self</span>.public_group().leaf(removed).is_none() {
             <span class="kw">return </span><span class="prelude-val">Err</span>(ValidationError::UnknownMember);
         }
         <span class="kw">let </span>remove_proposal = RemoveProposal { removed };
@@ -1525,7 +1529,7 @@
                 </span>.validate_required_capabilities(required_capabilities)<span class="question-mark">?</span>;
             <span class="comment">// Ensure that all other leaf nodes support all the required
             // extensions as well.
-            </span><span class="self">self</span>.treesync()
+            </span><span class="self">self</span>.public_group()
                 .check_extension_support(required_capabilities.extension_types())<span class="question-mark">?</span>;
         }
         <span class="kw">let </span>proposal = GroupContextExtensionProposal::new(extensions);
@@ -1589,7 +1593,7 @@
             </span>.message_secrets_mut(private_message.epoch())
             .map_err(|<span class="kw">_</span>| MessageDecryptionError::AeadError)<span class="question-mark">?</span>;
         <span class="kw">let </span>sender_data = private_message.sender_data(message_secrets, backend, ciphersuite)<span class="question-mark">?</span>;
-        <span class="kw">if </span>!<span class="self">self</span>.treesync().is_leaf_in_tree(sender_data.leaf_index) {
+        <span class="kw">if </span><span class="self">self</span>.public_group().leaf(sender_data.leaf_index).is_none() {
             <span class="kw">return </span><span class="prelude-val">Err</span>(MessageDecryptionError::SenderError(
                 SenderError::UnknownSender,
             ));
@@ -1634,7 +1638,9 @@
     ) -&gt; <span class="prelude-ty">Result</span>&lt;GroupInfo, LibraryError&gt; {
         <span class="kw">let </span>extensions = {
             <span class="kw">let </span>ratchet_tree_extension = || {
-                Extension::RatchetTree(RatchetTreeExtension::new(<span class="self">self</span>.treesync().export_nodes()))
+                Extension::RatchetTree(RatchetTreeExtension::new(
+                    <span class="self">self</span>.public_group().export_nodes(),
+                ))
             };
 
             <span class="kw">let </span>external_pub_extension = || {
@@ -1698,9 +1704,9 @@
         writer.write_all(<span class="kw-2">&amp;</span>serialized_core_group.into_bytes())
     }
 
-    <span class="doccomment">/// Returns a reference to the ratchet tree
-    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>treesync(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>TreeSync {
-        <span class="self">self</span>.public_group.treesync()
+    <span class="doccomment">/// Returns a reference to the public group.
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>public_group(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>PublicGroup {
+        <span class="kw-2">&amp;</span><span class="self">self</span>.public_group
     }
 
     <span class="doccomment">/// Get the ciphersuite implementation used in this group.
@@ -1751,7 +1757,7 @@
 
     <span class="doccomment">/// Get the identity of the client&#39;s [`Credential`] owning this group.
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>own_identity(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>[u8]&gt; {
-        <span class="self">self</span>.treesync()
+        <span class="self">self</span>.public_group()
             .leaf(<span class="self">self</span>.own_leaf_index)
             .map(|node| node.credential().identity())
     }
@@ -1824,7 +1830,7 @@
     }
 
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>own_leaf_node(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="kw-2">&amp;</span>OpenMlsLeafNode, LibraryError&gt; {
-        <span class="self">self</span>.treesync()
+        <span class="self">self</span>.public_group()
             .leaf(<span class="self">self</span>.own_leaf_index())
             .ok_or_else(|| LibraryError::custom(<span class="string">&quot;Tree has no own leaf.&quot;</span>))
     }
@@ -2151,17 +2157,19 @@
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>members_supported_credentials(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
     ) -&gt; <span class="kw">impl </span>Iterator&lt;Item = <span class="kw-2">&amp;</span>[CredentialType]&gt; + <span class="lifetime">&#39;_ </span>{
-        <span class="self">self</span>.treesync()
-            .full_leaves()
-            .map(|leaf_node| leaf_node.leaf_node().capabilities().credentials())
+        <span class="self">self</span>.public_group().members().filter_map(|member| {
+            <span class="self">self</span>.public_group()
+                .leaf(member.index)
+                .map(|leaf| leaf.leaf_node().capabilities().credentials())
+        })
     }
 
     <span class="doccomment">/// Return currently used credentials of all members.
     </span><span class="comment">// TODO(#1186)
     </span><span class="attr">#[allow(unused)]
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>members_used_credentials(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw">impl </span>Iterator&lt;Item = CredentialType&gt; + <span class="lifetime">&#39;_ </span>{
-        <span class="self">self</span>.treesync()
-            .full_leave_members()
+        <span class="self">self</span>.public_group()
+            .members()
             .map(|Member { credential, .. }| credential.credential_type())
     }
 
@@ -2172,8 +2180,8 @@
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         exclude_own: bool,
     ) -&gt; <span class="kw">impl </span>Iterator&lt;Item = SignaturePublicKey&gt; + <span class="lifetime">&#39;_ </span>{
-        <span class="self">self</span>.treesync()
-            .full_leave_members()
+        <span class="self">self</span>.public_group()
+            .members()
             .filter(<span class="kw">move </span>|member| {
                 <span class="kw">if </span>exclude_own {
                     member.index != <span class="self">self</span>.own_leaf_index
@@ -2188,8 +2196,8 @@
     </span><span class="comment">// TODO(#1186)
     </span><span class="attr">#[allow(unused)]
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>encryption_keys(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw">impl </span>Iterator&lt;Item = EncryptionKey&gt; + <span class="lifetime">&#39;_ </span>{
-        <span class="self">self</span>.treesync()
-            .full_leave_members()
+        <span class="self">self</span>.public_group()
+            .members()
             .map(|Member { encryption_key, .. }| {
                 EncryptionKey::from(HpkePublicKey::new(encryption_key))
             })

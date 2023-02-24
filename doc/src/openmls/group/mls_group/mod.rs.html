@@ -433,6 +433,7 @@
 <a href="#433" id="433">433</a>
 <a href="#434" id="434">434</a>
 <a href="#435" id="435">435</a>
+<a href="#436" id="436">436</a>
 </pre><pre class="rust"><code><span class="doccomment">//! MLS Group
 //!
 //! This module contains [`MlsGroup`] and its submodules.
@@ -662,8 +663,9 @@
         <span class="kw">if </span>!<span class="self">self</span>.is_active() {
             <span class="kw">return </span><span class="prelude-val">Err</span>(MlsGroupStateError::UseAfterEviction);
         }
-        <span class="kw">let </span>tree = <span class="self">self</span>.group.treesync();
-        tree.leaf(<span class="self">self</span>.own_leaf_index())
+        <span class="self">self</span>.group
+            .public_group()
+            .leaf(<span class="self">self</span>.own_leaf_index())
             .map(|node| node.credential())
             .ok_or_else(|| LibraryError::custom(<span class="string">&quot;Own leaf node missing&quot;</span>).into())
     }
@@ -761,7 +763,7 @@
 
     </span><span class="doccomment">/// Exports the Ratchet Tree.
     </span><span class="kw">pub fn </span>export_ratchet_tree(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; Vec&lt;<span class="prelude-ty">Option</span>&lt;Node&gt;&gt; {
-        <span class="self">self</span>.group.treesync().export_nodes()
+        <span class="self">self</span>.group.public_group().export_nodes()
     }
 }
 
@@ -837,7 +839,7 @@
 
     <span class="attr">#[cfg(any(feature = <span class="string">&quot;test-utils&quot;</span>, test))]
     </span><span class="kw">pub fn </span>tree_hash(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>[u8] {
-        <span class="self">self</span>.group.treesync().tree_hash()
+        <span class="self">self</span>.group.public_group().group_context().tree_hash()
     }
 
     <span class="attr">#[cfg(any(feature = <span class="string">&quot;test-utils&quot;</span>, test))]

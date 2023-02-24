@@ -435,7 +435,7 @@
     <span class="doccomment">/// Returns a reference to the own [`LeafNode`].
     </span><span class="kw">pub fn </span>own_leaf(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>LeafNode&gt; {
         <span class="self">self</span>.group
-            .treesync()
+            .public_group()
             .leaf(<span class="self">self</span>.group.own_leaf_index())
             .map(|l| l.leaf_node())
     }
@@ -608,14 +608,14 @@
 
     <span class="doccomment">/// Returns a list of [`Member`]s in the group.
     </span><span class="kw">pub fn </span>members(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw">impl </span>Iterator&lt;Item = Member&gt; + <span class="lifetime">&#39;_ </span>{
-        <span class="self">self</span>.group.treesync().full_leave_members()
+        <span class="self">self</span>.group.public_group().members()
     }
 
     <span class="doccomment">/// Returns the [`Credential`] of a member corresponding to the given
     /// leaf index. Returns `None` if the member can not be found in this group.
     </span><span class="kw">pub fn </span>member(<span class="kw-2">&amp;</span><span class="self">self</span>, leaf_index: LeafNodeIndex) -&gt; <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>Credential&gt; {
         <span class="self">self</span>.group
-            .treesync()
+            .public_group()
             <span class="comment">// This will return an error if the member can&#39;t be found.
             </span>.leaf(leaf_index)
             .map(|leaf| leaf.credential())

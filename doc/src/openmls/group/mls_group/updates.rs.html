@@ -190,13 +190,13 @@
     ) -&gt; <span class="prelude-ty">Result</span>&lt;MlsMessageOut, ProposeSelfUpdateError&lt;KeyStore::Error&gt;&gt; {
         <span class="self">self</span>.is_operational()<span class="question-mark">?</span>;
 
-        <span class="kw">let </span>tree = <span class="self">self</span>.group.treesync();
-
         <span class="comment">// Here we clone our own leaf to rekey it such that we don&#39;t change the
         // tree.
         // The new leaf node will be applied later when the proposal is
         // committed.
-        </span><span class="kw">let </span><span class="kw-2">mut </span>own_leaf = tree
+        </span><span class="kw">let </span><span class="kw-2">mut </span>own_leaf = <span class="self">self
+            </span>.group
+            .public_group()
             .leaf(<span class="self">self</span>.own_leaf_index())
             .ok_or_else(|| LibraryError::custom(<span class="string">&quot;The tree is broken. Couldn&#39;t find own leaf.&quot;</span>))<span class="question-mark">?
             </span>.clone();
