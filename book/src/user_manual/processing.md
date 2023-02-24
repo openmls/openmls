@@ -45,10 +45,10 @@ Standalone proposals are returned as a `QueuedProposal`, indicating that they ar
 {{#include ../../../openmls/tests/book_code.rs:inspect_add_proposal}}
 ```
 
-#### Removing proposals from the queue
+#### Rolling back proposals
 
 Operations that add a proposal to the queue, will return the its reference. This reference can be used to remove
-a proposal from the queue.
+a proposal from the store. This can be useful for example to rollback in case of errors.
 
 ```rust,no_run,noplayground
 {{#include ../../../openmls/tests/book_code.rs:remove_proposal_by_ref}}
