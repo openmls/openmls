@@ -461,7 +461,7 @@ fn unknown_sender(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
         create_commit_result
             .welcome_option
             .expect("An unexpected error occurred."),
-        Some(group_alice.treesync().export_nodes()),
+        Some(group_alice.public_group().export_nodes()),
         bob_key_package_bundle,
         backend,
     )
@@ -500,7 +500,7 @@ fn unknown_sender(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
         create_commit_result
             .welcome_option
             .expect("An unexpected error occurred."),
-        Some(group_alice.treesync().export_nodes()),
+        Some(group_alice.public_group().export_nodes()),
         charlie_key_package_bundle,
         backend,
     )
@@ -690,7 +690,7 @@ pub(crate) fn setup_alice_bob_group(
         create_commit_result
             .welcome_option
             .expect("commit didn't return a welcome as expected"),
-        Some(group_alice.treesync().export_nodes()),
+        Some(group_alice.public_group().export_nodes()),
         bob_key_package_bundle,
         backend,
     )
