@@ -24,7 +24,8 @@ pub struct ProposalStore {
 }
 
 impl ProposalStore {
-    pub(crate) fn new() -> Self {
+    /// Create a new [`ProposalStore`].
+    pub fn new() -> Self {
         Self {
             queued_proposals: Vec::new(),
         }

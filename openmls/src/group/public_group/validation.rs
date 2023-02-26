@@ -19,6 +19,9 @@ use crate::{
     treesync::node::leaf_node::LeafNode,
 };
 
+#[cfg(test)]
+use crate::treesync::errors::LeafNodeValidationError;
+
 use super::PublicGroup;
 
 impl PublicGroup {
@@ -60,7 +63,7 @@ impl PublicGroup {
     ///  - ValSem004
     ///  - ValSem005
     ///  - ValSem009
-    pub(crate) fn validate_verifiable_content(
+    pub(super) fn validate_verifiable_content(
         &self,
         verifiable_content: &VerifiableAuthenticatedContent,
         message_secrets_store_option: Option<&MessageSecretsStore>,
@@ -322,7 +325,7 @@ impl PublicGroup {
     ///  - ValSem242: External Commit must only cover inline proposal in allowlist (ExternalInit, Remove, PreSharedKey)
     ///  - ValSem243: External Commit, inline Remove Proposal: The identity and the endpoint_id of the removed
     ///               leaf are identical to the ones in the path KeyPackage.
-    pub(crate) fn validate_external_commit(
+    pub(super) fn validate_external_commit(
         &self,
         proposal_queue: &ProposalQueue,
         path_leaf_node: Option<&LeafNode>,
@@ -373,6 +376,19 @@ impl PublicGroup {
                     };
                 }
             }
+        }
+        Ok(())
+    }
+
+    /// Returns a [`LeafNodeValidationError`] if an [`ExtensionType`]
+    /// in `extensions` is not supported by a leaf in this tree.
+    #[cfg(test)]
+    pub(crate) fn check_extension_support(
+        &self,
+        extensions: &[crate::extensions::ExtensionType],
+    ) -> Result<(), LeafNodeValidationError> {
+        for leaf in self.treesync().full_leaves() {
+            leaf.leaf_node().check_extension_support(extensions)?;
         }
         Ok(())
     }

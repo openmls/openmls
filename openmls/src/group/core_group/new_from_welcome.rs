@@ -130,13 +130,29 @@ impl CoreGroup {
 
         // Since there is currently only the external pub extension, there is no
         // group info extension of interest here.
-        let (public_group, _group_info_extensions) =
-            PublicGroup::from_external(backend, &nodes, verifiable_group_info)?;
+        let (public_group, _group_info_extensions) = PublicGroup::from_external(
+            backend,
+            nodes,
+            verifiable_group_info,
+            ProposalStore::new(),
+        )?;
 
         // Find our own leaf in the tree.
         let own_leaf_index = public_group
-            .treesync()
-            .find_leaf(key_package_bundle.key_package().leaf_node().signature_key())
+            .members()
+            .find_map(|m| {
+                if m.signature_key
+                    == key_package_bundle
+                        .key_package()
+                        .leaf_node()
+                        .signature_key()
+                        .as_slice()
+                {
+                    Some(m.index)
+                } else {
+                    None
+                }
+            })
             .ok_or(WelcomeError::PublicTreeError(
                 PublicTreeError::MalformedTree,
             ))?;
@@ -180,7 +196,7 @@ impl CoreGroup {
 
         let (group_epoch_secrets, message_secrets) = epoch_secrets.split_secrets(
             serialized_group_context,
-            public_group.treesync().tree_size(),
+            public_group.tree_size(),
             own_leaf_index,
         );
 

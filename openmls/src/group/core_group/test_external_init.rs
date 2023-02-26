@@ -54,15 +54,16 @@ fn test_external_init(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProv
 
     // Have alice and bob process the commit resulting from external init.
     let proposal_store = ProposalStore::default();
+
     let staged_commit = group_alice
-        .stage_commit(&create_commit_result.commit, &proposal_store, &[], backend)
+        .read_keys_and_stage_commit(&create_commit_result.commit, &proposal_store, &[], backend)
         .expect("error staging commit");
     group_alice
         .merge_commit(backend, staged_commit)
         .expect("error merging commit");
 
     let staged_commit = group_bob
-        .stage_commit(&create_commit_result.commit, &proposal_store, &[], backend)
+        .read_keys_and_stage_commit(&create_commit_result.commit, &proposal_store, &[], backend)
         .expect("error staging commit");
     group_bob
         .merge_commit(backend, staged_commit)
@@ -79,8 +80,8 @@ fn test_external_init(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProv
     );
 
     assert_eq!(
-        group_charly.treesync().export_nodes(),
-        group_bob.treesync().export_nodes()
+        group_charly.public_group().export_nodes(),
+        group_bob.public_group().export_nodes()
     );
 
     // Check if charly can create valid commits
@@ -94,7 +95,7 @@ fn test_external_init(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProv
         .expect("Error creating commit");
 
     let staged_commit = group_alice
-        .stage_commit(&create_commit_result.commit, &proposal_store, &[], backend)
+        .read_keys_and_stage_commit(&create_commit_result.commit, &proposal_store, &[], backend)
         .expect("error staging commit");
     group_alice
         .merge_commit(backend, staged_commit)
@@ -112,7 +113,7 @@ fn test_external_init(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProv
         .export_group_info(backend, &alice_signer, false)
         .unwrap()
         .into_verifiable_group_info();
-    let nodes_option = group_alice.treesync().export_nodes();
+    let nodes_option = group_alice.public_group().export_nodes();
 
     let proposal_store = ProposalStore::new();
     let params = CreateCommitParams::builder()
@@ -147,14 +148,14 @@ fn test_external_init(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProv
     // Have alice and charly process the commit resulting from external init.
     let proposal_store = ProposalStore::default();
     let staged_commit = group_alice
-        .stage_commit(&create_commit_result.commit, &proposal_store, &[], backend)
+        .read_keys_and_stage_commit(&create_commit_result.commit, &proposal_store, &[], backend)
         .expect("error staging commit");
     group_alice
         .merge_commit(backend, staged_commit)
         .expect("error merging commit");
 
     let staged_commit = group_charly
-        .stage_commit(&create_commit_result.commit, &proposal_store, &[], backend)
+        .read_keys_and_stage_commit(&create_commit_result.commit, &proposal_store, &[], backend)
         .expect("error staging commit");
     group_charly
         .merge_commit(backend, staged_commit)
@@ -171,8 +172,8 @@ fn test_external_init(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProv
     );
 
     assert_eq!(
-        group_charly.treesync().export_nodes(),
-        new_group_bob.treesync().export_nodes()
+        group_charly.public_group().export_nodes(),
+        new_group_bob.public_group().export_nodes()
     );
 }
 
@@ -197,7 +198,7 @@ fn test_external_init_single_member_group(
         .export_group_info(backend, &alice_signer, false)
         .unwrap()
         .into_verifiable_group_info();
-    let nodes_option = group_alice.treesync().export_nodes();
+    let nodes_option = group_alice.public_group().export_nodes();
 
     let proposal_store = ProposalStore::new();
     let params = CreateCommitParams::builder()
@@ -217,7 +218,7 @@ fn test_external_init_single_member_group(
     // Have alice and bob process the commit resulting from external init.
     let proposal_store = ProposalStore::default();
     let staged_commit = group_alice
-        .stage_commit(&create_commit_result.commit, &proposal_store, &[], backend)
+        .read_keys_and_stage_commit(&create_commit_result.commit, &proposal_store, &[], backend)
         .expect("error staging commit");
     group_alice
         .merge_commit(backend, staged_commit)
@@ -233,8 +234,8 @@ fn test_external_init_single_member_group(
     );
 
     assert_eq!(
-        group_charly.treesync().export_nodes(),
-        group_alice.treesync().export_nodes()
+        group_charly.public_group().export_nodes(),
+        group_alice.public_group().export_nodes()
     );
 }
 

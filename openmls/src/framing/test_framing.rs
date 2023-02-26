@@ -14,10 +14,10 @@ use crate::{
     extensions::Extensions,
     framing::*,
     group::{
-        core_group::create_commit_params::CreateCommitParams,
         core_group::proposals::{ProposalStore, QueuedProposal},
         errors::*,
         tests::tree_printing::print_tree,
+        CreateCommitParams,
     },
     key_packages::KeyPackageBundle,
     schedule::psk::PskSecret,
@@ -461,7 +461,7 @@ fn unknown_sender(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
         create_commit_result
             .welcome_option
             .expect("An unexpected error occurred."),
-        Some(group_alice.treesync().export_nodes()),
+        Some(group_alice.public_group().export_nodes()),
         bob_key_package_bundle,
         backend,
     )
@@ -500,7 +500,7 @@ fn unknown_sender(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
         create_commit_result
             .welcome_option
             .expect("An unexpected error occurred."),
-        Some(group_alice.treesync().export_nodes()),
+        Some(group_alice.public_group().export_nodes()),
         charlie_key_package_bundle,
         backend,
     )
@@ -531,7 +531,7 @@ fn unknown_sender(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
         .expect("Error creating Commit");
 
     let staged_commit = group_charlie
-        .stage_commit(&create_commit_result.commit, &proposal_store, &[], backend)
+        .read_keys_and_stage_commit(&create_commit_result.commit, &proposal_store, &[], backend)
         .expect("Charlie: Could not stage Commit");
     group_charlie
         .merge_commit(backend, staged_commit)
@@ -596,7 +596,7 @@ fn confirmation_tag_presence(ciphersuite: Ciphersuite, backend: &impl OpenMlsCry
     create_commit_result.commit.unset_confirmation_tag();
 
     let err = group_bob
-        .stage_commit(&create_commit_result.commit, &proposal_store, &[], backend)
+        .read_keys_and_stage_commit(&create_commit_result.commit, &proposal_store, &[], backend)
         .expect_err("No error despite missing confirmation tag.");
 
     assert_eq!(err, StageCommitError::ConfirmationTagMissing);
@@ -690,7 +690,7 @@ pub(crate) fn setup_alice_bob_group(
         create_commit_result
             .welcome_option
             .expect("commit didn't return a welcome as expected"),
-        Some(group_alice.treesync().export_nodes()),
+        Some(group_alice.public_group().export_nodes()),
         bob_key_package_bundle,
         backend,
     )

@@ -10,6 +10,12 @@
 //!
 //! To avoid duplication of code and functionality, [`CoreGroup`] internally
 //! relies on a [`PublicGroup`] as well.
+
+#[cfg(test)]
+use crate::treesync::{node::parent_node::PlainUpdatePathNode, treekem::UpdatePathNode};
+#[cfg(test)]
+use std::collections::HashSet;
+
 use openmls_traits::{crypto::OpenMlsCrypto, types::Ciphersuite, OpenMlsCryptoProvider};
 use serde::{Deserialize, Serialize};
 use tls_codec::Serialize as TlsSerialize;
@@ -18,10 +24,10 @@ use tls_codec::Serialize as TlsSerialize;
 use crate::{framing::PublicMessage, group::CoreGroup};
 
 use crate::{
-    binary_tree::LeafNodeIndex,
+    binary_tree::{array_representation::TreeSize, LeafNodeIndex},
     ciphersuite::signable::Verifiable,
     error::LibraryError,
-    extensions::{Extensions, RequiredCapabilitiesExtension},
+    extensions::RequiredCapabilitiesExtension,
     framing::InterimTranscriptHashInput,
     messages::{
         group_info::{GroupInfo, VerifiableGroupInfo},
@@ -29,7 +35,14 @@ use crate::{
         ConfirmationTag, PathSecret,
     },
     schedule::CommitSecret,
-    treesync::{errors::DerivePathError, node::encryption_keys::EncryptionKeyPair, Node, TreeSync},
+    treesync::{
+        errors::DerivePathError,
+        node::{
+            encryption_keys::{EncryptionKey, EncryptionKeyPair},
+            leaf_node::OpenMlsLeafNode,
+        },
+        Node, TreeSync,
+    },
     versions::ProtocolVersion,
 };
 
@@ -38,11 +51,15 @@ use self::{
     errors::CreationFromExternalError,
 };
 
-use super::{GroupContext, GroupEpoch, GroupId, Member};
+use super::{GroupContext, GroupEpoch, GroupId, Member, ProposalStore, QueuedProposal};
 
+pub(crate) mod builder;
 pub(crate) mod diff;
 pub mod errors;
+pub mod process;
 pub(crate) mod staged_commit;
+#[cfg(test)]
+mod tests;
 mod validation;
 
 /// This struct holds all public values of an MLS group.
@@ -50,6 +67,7 @@ mod validation;
 #[cfg_attr(test, derive(PartialEq))]
 pub struct PublicGroup {
     treesync: TreeSync,
+    proposal_store: ProposalStore,
     group_context: GroupContext,
     interim_transcript_hash: Vec<u8>,
     // Most recent confirmation tag. Kept here for verification purposes.
@@ -59,7 +77,7 @@ pub struct PublicGroup {
 impl PublicGroup {
     /// Create a new PublicGroup from a [`TreeSync`] instance and a
     /// [`GroupInfo`].
-    pub(crate) fn new(
+    fn new(
         treesync: TreeSync,
         group_context: GroupContext,
         initial_confirmation_tag: ConfirmationTag,
@@ -68,6 +86,7 @@ impl PublicGroup {
 
         PublicGroup {
             treesync,
+            proposal_store: ProposalStore::new(),
             group_context,
             interim_transcript_hash,
             confirmation_tag: initial_confirmation_tag,
@@ -81,9 +100,10 @@ impl PublicGroup {
     /// details.
     pub fn from_external(
         backend: &impl OpenMlsCryptoProvider,
-        nodes: &[Option<Node>],
+        nodes: Vec<Option<Node>>,
         verifiable_group_info: VerifiableGroupInfo,
-    ) -> Result<(Self, Extensions), CreationFromExternalError> {
+        proposal_store: ProposalStore,
+    ) -> Result<(Self, GroupInfo), CreationFromExternalError> {
         let ciphersuite = verifiable_group_info.ciphersuite();
 
         // Create a RatchetTree from the given nodes. We have to do this before
@@ -152,8 +172,9 @@ impl PublicGroup {
                 group_context,
                 interim_transcript_hash,
                 confirmation_tag: group_info.confirmation_tag().clone(),
+                proposal_store,
             },
-            group_info.extensions().clone(),
+            group_info,
         ))
     }
 
@@ -238,43 +259,77 @@ impl PublicGroup {
     }
 
     /// Get an iterator over all [`Member`]s of this [`PublicGroup`].
-    pub(crate) fn members(&self) -> impl Iterator<Item = Member> + '_ {
+    pub fn members(&self) -> impl Iterator<Item = Member> + '_ {
         self.treesync().full_leave_members()
+    }
+
+    /// Export the nodes of the public tree.
+    pub fn export_nodes(&self) -> Vec<Option<Node>> {
+        self.treesync().export_nodes()
+    }
+
+    /// Add the [`QueuedProposal`] to the [`PublicGroup`]s internal [`ProposalStore`].
+    pub fn add_proposal(&mut self, proposal: QueuedProposal) {
+        self.proposal_store.add(proposal)
     }
 }
 
 // Getters
 impl PublicGroup {
+    /// Get the ciphersuite.
     pub fn ciphersuite(&self) -> Ciphersuite {
         self.group_context.ciphersuite()
     }
 
+    /// Get the version.
     pub fn version(&self) -> ProtocolVersion {
         self.group_context.protocol_version()
     }
 
+    /// Get the group id.
     pub fn group_id(&self) -> &GroupId {
         self.group_context.group_id()
     }
 
+    /// Get the group context.
     pub fn group_context(&self) -> &GroupContext {
         &self.group_context
     }
 
+    /// Get the required capabilities.
     pub fn required_capabilities(&self) -> Option<&RequiredCapabilitiesExtension> {
         self.group_context.required_capabilities()
     }
 
-    pub(crate) fn treesync(&self) -> &TreeSync {
+    /// Get treesync.
+    fn treesync(&self) -> &TreeSync {
         &self.treesync
     }
 
+    /// Get confirmation tag.
     pub fn confirmation_tag(&self) -> &ConfirmationTag {
         &self.confirmation_tag
     }
 
+    /// Return a reference to the leaf at the given `LeafNodeIndex` or `None` if the
+    /// leaf is blank.
+    pub fn leaf(&self, leaf_index: LeafNodeIndex) -> Option<&OpenMlsLeafNode> {
+        self.treesync().leaf(leaf_index)
+    }
+
+    /// Returns the tree size
+    pub(crate) fn tree_size(&self) -> TreeSize {
+        self.treesync().tree_size()
+    }
+
     fn interim_transcript_hash(&self) -> &[u8] {
         &self.interim_transcript_hash
+    }
+
+    /// Return a vector containing all [`EncryptionKey`]s for which the owner of
+    /// the given `leaf_index` should have private key material.
+    pub(crate) fn owned_encryption_keys(&self, leaf_index: LeafNodeIndex) -> Vec<EncryptionKey> {
+        self.treesync().owned_encryption_keys(leaf_index)
     }
 }
 
@@ -283,5 +338,30 @@ impl PublicGroup {
 impl PublicGroup {
     pub(crate) fn context_mut(&mut self) -> &mut GroupContext {
         &mut self.group_context
+    }
+
+    #[cfg(test)]
+    pub(crate) fn set_group_context(&mut self, group_context: GroupContext) {
+        self.group_context = group_context;
+    }
+
+    #[cfg(test)]
+    pub(crate) fn encrypt_path(
+        &self,
+        backend: &impl OpenMlsCryptoProvider,
+        ciphersuite: Ciphersuite,
+        path: &[PlainUpdatePathNode],
+        group_context: &[u8],
+        exclusion_list: &HashSet<&LeafNodeIndex>,
+        own_leaf_index: LeafNodeIndex,
+    ) -> Result<Vec<UpdatePathNode>, LibraryError> {
+        self.treesync().empty_diff().encrypt_path(
+            backend,
+            ciphersuite,
+            path,
+            group_context,
+            exclusion_list,
+            own_leaf_index,
+        )
     }
 }

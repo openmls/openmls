@@ -1,7 +1,5 @@
-use openmls_rust_crypto::OpenMlsRustCrypto;
-use openmls_traits::{types::Ciphersuite, OpenMlsCryptoProvider};
-
 use super::CoreGroup;
+use crate::group::public_group::errors::PublicGroupBuildError;
 use crate::{
     binary_tree::LeafNodeIndex,
     ciphersuite::hash_ref::ProposalRef,
@@ -21,6 +19,8 @@ use crate::{
     test_utils::*,
     treesync::errors::LeafNodeValidationError,
 };
+use openmls_rust_crypto::OpenMlsRustCrypto;
+use openmls_traits::{types::Ciphersuite, OpenMlsCryptoProvider};
 
 /// This test makes sure ProposalQueue works as intended. This functionality is
 /// used in `create_commit` to filter the epoch proposals. Expected result:
@@ -267,7 +267,10 @@ fn test_required_unsupported_proposals(
     .expect_err(
         "CoreGroup creation must fail because AppAck proposals aren't supported in OpenMLS yet.",
     );
-    assert_eq!(e, CoreGroupBuildError::UnsupportedProposalType)
+    assert_eq!(
+        e,
+        CoreGroupBuildError::PublicGroupBuildError(PublicGroupBuildError::UnsupportedProposalType)
+    )
 }
 
 #[apply(ciphersuites_and_backends)]
@@ -379,7 +382,7 @@ fn test_group_context_extensions(ciphersuite: Ciphersuite, backend: &impl OpenMl
     alice_group
         .merge_commit(backend, create_commit_result.staged_commit)
         .expect("error merging own staged commit");
-    let ratchet_tree = alice_group.treesync().export_nodes();
+    let ratchet_tree = alice_group.public_group().export_nodes();
 
     // Make sure that Bob can join the group with the required extension in place
     // and Bob's key package supporting them.
@@ -475,7 +478,7 @@ fn test_group_context_extension_proposal_fails(
     alice_group
         .merge_commit(backend, create_commit_result.staged_commit)
         .expect("error merging pending commit");
-    let ratchet_tree = alice_group.treesync().export_nodes();
+    let ratchet_tree = alice_group.public_group().export_nodes();
 
     let _bob_group = CoreGroup::new_from_welcome(
         create_commit_result
@@ -555,7 +558,7 @@ fn test_group_context_extension_proposal(
         .merge_commit(backend, create_commit_results.staged_commit)
         .expect("error merging pending commit");
 
-    let ratchet_tree = alice_group.treesync().export_nodes();
+    let ratchet_tree = alice_group.public_group().export_nodes();
 
     let mut bob_group = CoreGroup::new_from_welcome(
         create_commit_results
@@ -599,7 +602,7 @@ fn test_group_context_extension_proposal(
     log::info!(" >>> Staging & merging commit ...");
 
     let staged_commit = bob_group
-        .stage_commit(&create_commit_result.commit, &proposal_store, &[], backend)
+        .read_keys_and_stage_commit(&create_commit_result.commit, &proposal_store, &[], backend)
         .expect("error staging commit");
     bob_group
         .merge_commit(backend, staged_commit)

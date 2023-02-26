@@ -227,8 +227,9 @@ impl MlsGroup {
         if !self.is_active() {
             return Err(MlsGroupStateError::UseAfterEviction);
         }
-        let tree = self.group.treesync();
-        tree.leaf(self.own_leaf_index())
+        self.group
+            .public_group()
+            .leaf(self.own_leaf_index())
             .map(|node| node.credential())
             .ok_or_else(|| LibraryError::custom("Own leaf node missing").into())
     }
@@ -326,7 +327,7 @@ impl MlsGroup {
 
     /// Exports the Ratchet Tree.
     pub fn export_ratchet_tree(&self) -> Vec<Option<Node>> {
-        self.group.treesync().export_nodes()
+        self.group.public_group().export_nodes()
     }
 }
 
@@ -402,7 +403,7 @@ impl MlsGroup {
 
     #[cfg(any(feature = "test-utils", test))]
     pub fn tree_hash(&self) -> &[u8] {
-        self.group.treesync().tree_hash()
+        self.group.public_group().group_context().tree_hash()
     }
 
     #[cfg(any(feature = "test-utils", test))]

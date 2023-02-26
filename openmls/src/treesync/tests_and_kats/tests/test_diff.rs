@@ -46,7 +46,7 @@ fn test_free_leaf_computation(ciphersuite: Ciphersuite, backend: &impl OpenMlsCr
     ];
 
     // Get the encryption key pair from the leaf.
-    let tree = TreeSync::from_nodes(backend, ciphersuite, &nodes).expect("error generating tree");
+    let tree = TreeSync::from_nodes(backend, ciphersuite, nodes).expect("error generating tree");
 
     // Create and add a new leaf. It should go to leaf index 1
 

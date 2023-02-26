@@ -38,7 +38,7 @@ use crate::{
         array_representation::{is_node_in_tree, tree::TreeNode, LeafNodeIndex, TreeSize},
         MlsBinaryTree, MlsBinaryTreeError,
     },
-    ciphersuite::{Secret, SignaturePublicKey},
+    ciphersuite::Secret,
     credentials::CredentialWithKey,
     error::LibraryError,
     extensions::Extensions,
@@ -157,14 +157,14 @@ impl TreeSync {
     pub(crate) fn from_nodes(
         backend: &impl OpenMlsCryptoProvider,
         ciphersuite: Ciphersuite,
-        node_options: &[Option<Node>],
+        node_options: Vec<Option<Node>>,
     ) -> Result<Self, TreeSyncFromNodesError> {
         // TODO #800: Unmerged leaves should be checked
         let mut ts_nodes: Vec<TreeNode<TreeSyncLeafNode, TreeSyncParentNode>> =
             Vec::with_capacity(node_options.len());
 
         // Set the leaf indices in all the leaves and convert the node types.
-        for (node_index, node_option) in node_options.iter().enumerate() {
+        for (node_index, node_option) in node_options.into_iter().enumerate() {
             let ts_node_option: TreeNode<TreeSyncLeafNode, TreeSyncParentNode> = match node_option {
                 Some(node) => {
                     let mut node = node.clone();
@@ -266,22 +266,6 @@ impl TreeSync {
             .filter_map(|(_, tsn)| tsn.node().as_ref())
     }
 
-    /// Returns the [`LeafNodeIndex`] of the leaf that contains the given
-    /// [`SignaturePublicKey`].
-    ///
-    /// Returns `None` if no matching leaf can be found.
-    pub(crate) fn find_leaf(&self, signature_key: &SignaturePublicKey) -> Option<LeafNodeIndex> {
-        self.full_leave_members()
-            .filter_map(|m| {
-                if m.signature_key == signature_key.as_slice() {
-                    Some(m.index)
-                } else {
-                    None
-                }
-            })
-            .next()
-    }
-
     /// Returns the index of the last full leaf in the tree.
     fn rightmost_full_leaf(&self) -> LeafNodeIndex {
         let mut index = LeafNodeIndex::new(0);
@@ -311,29 +295,6 @@ impl TreeSync {
                     leaf_node.leaf_node.credential().clone(),
                 )
             })
-    }
-
-    /// Returns a [`TreeSyncError::UnsupportedExtension`] if an [`ExtensionType`]
-    /// in `extensions` is not supported by a leaf in this tree.
-    #[cfg(test)]
-    pub(crate) fn check_extension_support(
-        &self,
-        extensions: &[crate::extensions::ExtensionType],
-    ) -> Result<(), TreeSyncError> {
-        if self.tree.leaves().any(|(_, tsn)| {
-            tsn.node()
-                .as_ref()
-                .map(|node| {
-                    node.leaf_node()
-                        .check_extension_support(extensions)
-                        .map_err(|_| LibraryError::custom("This is never used, so we don't care"))
-                })
-                .is_none() // Return true if this is none
-        }) {
-            Err(TreeSyncError::UnsupportedExtension)
-        } else {
-            Ok(())
-        }
     }
 
     /// Returns the nodes in the tree ordered according to the
