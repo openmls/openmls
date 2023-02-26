@@ -347,7 +347,7 @@ impl CoreGroup {
         removed: LeafNodeIndex,
         signer: &impl Signer,
     ) -> Result<AuthenticatedContent, ValidationError> {
-        if !self.treesync().is_leaf_in_tree(removed) {
+        if self.public_group().leaf(removed).is_none() {
             return Err(ValidationError::UnknownMember);
         }
         let remove_proposal = RemoveProposal { removed };
@@ -406,7 +406,7 @@ impl CoreGroup {
                 .validate_required_capabilities(required_capabilities)?;
             // Ensure that all other leaf nodes support all the required
             // extensions as well.
-            self.treesync()
+            self.public_group()
                 .check_extension_support(required_capabilities.extension_types())?;
         }
         let proposal = GroupContextExtensionProposal::new(extensions);
@@ -470,7 +470,7 @@ impl CoreGroup {
             .message_secrets_mut(private_message.epoch())
             .map_err(|_| MessageDecryptionError::AeadError)?;
         let sender_data = private_message.sender_data(message_secrets, backend, ciphersuite)?;
-        if !self.treesync().is_leaf_in_tree(sender_data.leaf_index) {
+        if self.public_group().leaf(sender_data.leaf_index).is_none() {
             return Err(MessageDecryptionError::SenderError(
                 SenderError::UnknownSender,
             ));
@@ -515,7 +515,9 @@ impl CoreGroup {
     ) -> Result<GroupInfo, LibraryError> {
         let extensions = {
             let ratchet_tree_extension = || {
-                Extension::RatchetTree(RatchetTreeExtension::new(self.treesync().export_nodes()))
+                Extension::RatchetTree(RatchetTreeExtension::new(
+                    self.public_group().export_nodes(),
+                ))
             };
 
             let external_pub_extension = || {
@@ -579,9 +581,9 @@ impl CoreGroup {
         writer.write_all(&serialized_core_group.into_bytes())
     }
 
-    /// Returns a reference to the ratchet tree
-    pub(crate) fn treesync(&self) -> &TreeSync {
-        self.public_group.treesync()
+    /// Returns a reference to the public group.
+    pub(crate) fn public_group(&self) -> &PublicGroup {
+        &self.public_group
     }
 
     /// Get the ciphersuite implementation used in this group.
@@ -632,7 +634,7 @@ impl CoreGroup {
 
     /// Get the identity of the client's [`Credential`] owning this group.
     pub(crate) fn own_identity(&self) -> Option<&[u8]> {
-        self.treesync()
+        self.public_group()
             .leaf(self.own_leaf_index)
             .map(|node| node.credential().identity())
     }
@@ -705,7 +707,7 @@ impl CoreGroup {
     }
 
     pub(crate) fn own_leaf_node(&self) -> Result<&OpenMlsLeafNode, LibraryError> {
-        self.treesync()
+        self.public_group()
             .leaf(self.own_leaf_index())
             .ok_or_else(|| LibraryError::custom("Tree has no own leaf."))
     }
@@ -1032,17 +1034,19 @@ impl CoreGroup {
     pub(crate) fn members_supported_credentials(
         &self,
     ) -> impl Iterator<Item = &[CredentialType]> + '_ {
-        self.treesync()
-            .full_leaves()
-            .map(|leaf_node| leaf_node.leaf_node().capabilities().credentials())
+        self.public_group().members().filter_map(|member| {
+            self.public_group()
+                .leaf(member.index)
+                .map(|leaf| leaf.leaf_node().capabilities().credentials())
+        })
     }
 
     /// Return currently used credentials of all members.
     // TODO(#1186)
     #[allow(unused)]
     pub(crate) fn members_used_credentials(&self) -> impl Iterator<Item = CredentialType> + '_ {
-        self.treesync()
-            .full_leave_members()
+        self.public_group()
+            .members()
             .map(|Member { credential, .. }| credential.credential_type())
     }
 
@@ -1053,8 +1057,8 @@ impl CoreGroup {
         &self,
         exclude_own: bool,
     ) -> impl Iterator<Item = SignaturePublicKey> + '_ {
-        self.treesync()
-            .full_leave_members()
+        self.public_group()
+            .members()
             .filter(move |member| {
                 if exclude_own {
                     member.index != self.own_leaf_index
@@ -1069,8 +1073,8 @@ impl CoreGroup {
     // TODO(#1186)
     #[allow(unused)]
     pub(crate) fn encryption_keys(&self) -> impl Iterator<Item = EncryptionKey> + '_ {
-        self.treesync()
-            .full_leave_members()
+        self.public_group()
+            .members()
             .map(|Member { encryption_key, .. }| {
                 EncryptionKey::from(HpkePublicKey::new(encryption_key))
             })
@@ -1112,11 +1116,6 @@ impl CoreGroup {
     #[cfg(test)]
     pub(crate) fn message_secrets_store(&self) -> &MessageSecretsStore {
         &self.message_secrets_store
-    }
-
-    #[cfg(test)]
-    pub(crate) fn public_group(&self) -> &PublicGroup {
-        &self.public_group
     }
 
     #[cfg(test)]

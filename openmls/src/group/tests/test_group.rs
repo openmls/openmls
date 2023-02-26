@@ -116,7 +116,7 @@ fn create_commit_optional_path(ciphersuite: Ciphersuite, backend: &impl OpenMlsC
     group_alice
         .merge_commit(backend, create_commit_result.staged_commit)
         .expect("error merging pending commit");
-    let ratchet_tree = group_alice.treesync().export_nodes();
+    let ratchet_tree = group_alice.public_group().export_nodes();
 
     let bob_private_key = backend
         .key_store()
@@ -141,8 +141,8 @@ fn create_commit_optional_path(ciphersuite: Ciphersuite, backend: &impl OpenMlsC
     };
 
     assert_eq!(
-        group_alice.treesync().export_nodes(),
-        group_bob.treesync().export_nodes()
+        group_alice.public_group().export_nodes(),
+        group_bob.public_group().export_nodes()
     );
 
     // Alice updates
@@ -332,7 +332,7 @@ fn group_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvid
     group_alice
         .merge_commit(backend, create_commit_result.staged_commit)
         .expect("error merging own commits");
-    let ratchet_tree = group_alice.treesync().export_nodes();
+    let ratchet_tree = group_alice.public_group().export_nodes();
 
     let mut group_bob = match CoreGroup::new_from_welcome(
         create_commit_result
@@ -347,7 +347,7 @@ fn group_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvid
     };
 
     // Make sure that both groups have the same public tree
-    if group_alice.treesync().export_nodes() != group_bob.treesync().export_nodes() {
+    if group_alice.public_group().export_nodes() != group_bob.public_group().export_nodes() {
         print_tree(&group_alice, "Alice added Bob");
         panic!("Different public trees");
     }
@@ -449,7 +449,7 @@ fn group_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvid
         .expect("error merging own commits");
 
     // Make sure that both groups have the same public tree
-    if group_alice.treesync().export_nodes() != group_bob.treesync().export_nodes() {
+    if group_alice.public_group().export_nodes() != group_bob.public_group().export_nodes() {
         print_tree(&group_alice, "Alice added Bob");
         panic!("Different public trees");
     }
@@ -508,7 +508,7 @@ fn group_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvid
         .expect("error merging commit");
 
     // Make sure that both groups have the same public tree
-    if group_alice.treesync().export_nodes() != group_bob.treesync().export_nodes() {
+    if group_alice.public_group().export_nodes() != group_bob.public_group().export_nodes() {
         print_tree(&group_alice, "Alice added Bob");
         panic!("Different public trees");
     }
@@ -583,7 +583,7 @@ fn group_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvid
         .expect("error merging commit");
 
     // Make sure that both groups have the same public tree
-    if group_alice.treesync().export_nodes() != group_bob.treesync().export_nodes() {
+    if group_alice.public_group().export_nodes() != group_bob.public_group().export_nodes() {
         print_tree(&group_alice, "Alice added Bob");
         panic!("Different public trees");
     }
@@ -648,7 +648,7 @@ fn group_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvid
         .merge_commit(backend, create_commit_result.staged_commit)
         .expect("error merging own commits");
 
-    let ratchet_tree = group_alice.treesync().export_nodes();
+    let ratchet_tree = group_alice.public_group().export_nodes();
     let mut group_charlie = match CoreGroup::new_from_welcome(
         create_commit_result
             .welcome_option
@@ -662,11 +662,11 @@ fn group_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvid
     };
 
     // Make sure that all groups have the same public tree
-    if group_alice.treesync().export_nodes() != group_bob.treesync().export_nodes() {
+    if group_alice.public_group().export_nodes() != group_bob.public_group().export_nodes() {
         print_tree(&group_alice, "Bob added Charlie");
         panic!("Different public trees");
     }
-    if group_alice.treesync().export_nodes() != group_charlie.treesync().export_nodes() {
+    if group_alice.public_group().export_nodes() != group_charlie.public_group().export_nodes() {
         print_tree(&group_alice, "Bob added Charlie");
         panic!("Different public trees");
     }
@@ -792,11 +792,11 @@ fn group_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvid
         .expect("error merging own commits");
 
     // Make sure that all groups have the same public tree
-    if group_alice.treesync().export_nodes() != group_bob.treesync().export_nodes() {
+    if group_alice.public_group().export_nodes() != group_bob.public_group().export_nodes() {
         print_tree(&group_alice, "Charlie updated");
         panic!("Different public trees");
     }
-    if group_alice.treesync().export_nodes() != group_charlie.treesync().export_nodes() {
+    if group_alice.public_group().export_nodes() != group_charlie.public_group().export_nodes() {
         print_tree(&group_alice, "Charlie updated");
         panic!("Different public trees");
     }
@@ -852,11 +852,11 @@ fn group_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvid
         .expect("error merging own commits");
 
     // Make sure that all groups have the same public tree
-    if group_alice.treesync().export_nodes() == group_bob.treesync().export_nodes() {
+    if group_alice.public_group().export_nodes() == group_bob.public_group().export_nodes() {
         print_tree(&group_alice, "Charlie removed Bob");
         panic!("Same public trees");
     }
-    if group_alice.treesync().export_nodes() != group_charlie.treesync().export_nodes() {
+    if group_alice.public_group().export_nodes() != group_charlie.public_group().export_nodes() {
         print_tree(&group_alice, "Charlie removed Bob");
         panic!("Different public trees");
     }

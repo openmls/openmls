@@ -382,7 +382,7 @@ fn test_group_context_extensions(ciphersuite: Ciphersuite, backend: &impl OpenMl
     alice_group
         .merge_commit(backend, create_commit_result.staged_commit)
         .expect("error merging own staged commit");
-    let ratchet_tree = alice_group.treesync().export_nodes();
+    let ratchet_tree = alice_group.public_group().export_nodes();
 
     // Make sure that Bob can join the group with the required extension in place
     // and Bob's key package supporting them.
@@ -478,7 +478,7 @@ fn test_group_context_extension_proposal_fails(
     alice_group
         .merge_commit(backend, create_commit_result.staged_commit)
         .expect("error merging pending commit");
-    let ratchet_tree = alice_group.treesync().export_nodes();
+    let ratchet_tree = alice_group.public_group().export_nodes();
 
     let _bob_group = CoreGroup::new_from_welcome(
         create_commit_result
@@ -558,7 +558,7 @@ fn test_group_context_extension_proposal(
         .merge_commit(backend, create_commit_results.staged_commit)
         .expect("error merging pending commit");
 
-    let ratchet_tree = alice_group.treesync().export_nodes();
+    let ratchet_tree = alice_group.public_group().export_nodes();
 
     let mut bob_group = CoreGroup::new_from_welcome(
         create_commit_results
