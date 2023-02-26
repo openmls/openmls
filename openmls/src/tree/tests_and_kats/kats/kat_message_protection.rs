@@ -342,15 +342,20 @@ pub fn run_test_vector(
         // TODO: wrap `proposal` into a `PublicMessage`.
 
         // check that the proposal in proposal_pub == proposal
-        let processed_unverified_message = group
-            .parse_message(
+        let decrypted_message = group
+            .decrypt_message(
                 backend,
                 proposal_pub.into_protocol_message().unwrap(),
                 &sender_ratchet_config,
             )
             .unwrap();
+
+        let processed_unverified_message = group
+            .public_group()
+            .parse_message(decrypted_message, group.message_secrets_store())
+            .unwrap();
         let processed_message: AuthenticatedContent =
-            processed_unverified_message.into_parts().0.into();
+            processed_unverified_message.verify(backend).unwrap().0;
         match processed_message.content() {
             FramedContentBody::Proposal(p) => assert_eq!(&proposal, p),
             _ => panic!("Wrong processed message content"),
@@ -399,15 +404,20 @@ pub fn run_test_vector(
         // TODO: wrap `commit` into a `PublicMessage`.
 
         // check that the proposal in proposal_pub == proposal
-        let processed_unverified_message = group
-            .parse_message(
+        let decrypted_message = group
+            .decrypt_message(
                 backend,
                 commit_pub.into_protocol_message().unwrap(),
                 &sender_ratchet_config,
             )
             .unwrap();
+
+        let processed_unverified_message = group
+            .public_group()
+            .parse_message(decrypted_message, group.message_secrets_store())
+            .unwrap();
         let processed_message: AuthenticatedContent =
-            processed_unverified_message.into_parts().0.into();
+            processed_unverified_message.verify(backend).unwrap().0;
         match processed_message.content() {
             FramedContentBody::Commit(c) => {
                 assert_eq!(&commit, c)
@@ -416,15 +426,20 @@ pub fn run_test_vector(
         }
 
         // check that the proposal in proposal_priv == proposal
-        let processed_unverified_message = group
-            .parse_message(
+        let decrypted_message = group
+            .decrypt_message(
                 backend,
                 commit_priv.into_protocol_message().unwrap(),
                 &sender_ratchet_config,
             )
             .unwrap();
+
+        let processed_unverified_message = group
+            .public_group()
+            .parse_message(decrypted_message, group.message_secrets_store())
+            .unwrap();
         let processed_message: AuthenticatedContent =
-            processed_unverified_message.into_parts().0.into();
+            processed_unverified_message.verify(backend).unwrap().0;
         match processed_message.content() {
             FramedContentBody::Commit(c) => {
                 assert_eq!(&commit, c)
