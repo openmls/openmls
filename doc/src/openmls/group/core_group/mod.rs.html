@@ -1121,6 +1121,16 @@
 <a href="#1121" id="1121">1121</a>
 <a href="#1122" id="1122">1122</a>
 <a href="#1123" id="1123">1123</a>
+<a href="#1124" id="1124">1124</a>
+<a href="#1125" id="1125">1125</a>
+<a href="#1126" id="1126">1126</a>
+<a href="#1127" id="1127">1127</a>
+<a href="#1128" id="1128">1128</a>
+<a href="#1129" id="1129">1129</a>
+<a href="#1130" id="1130">1130</a>
+<a href="#1131" id="1131">1131</a>
+<a href="#1132" id="1132">1132</a>
+<a href="#1133" id="1133">1133</a>
 </pre><pre class="rust"><code><span class="doccomment">//! ### Don&#39;t Panic!
 //!
 //! Functions in this module should never panic. However, if there is a bug in
@@ -1991,7 +2001,7 @@
         };
 
         <span class="comment">// Build AuthenticatedContent
-        </span><span class="kw">let </span><span class="kw-2">mut </span>commit = AuthenticatedContent::commit(
+        </span><span class="kw">let </span><span class="kw-2">mut </span>authenticated_content = AuthenticatedContent::commit(
             <span class="kw-2">*</span>params.framing_parameters(),
             sender,
             commit,
@@ -2000,7 +2010,7 @@
         )<span class="question-mark">?</span>;
 
         <span class="comment">// Update the confirmed transcript hash using the commit we just created.
-        </span>diff.update_confirmed_transcript_hash(backend, <span class="kw-2">&amp;</span>commit)<span class="question-mark">?</span>;
+        </span>diff.update_confirmed_transcript_hash(backend, <span class="kw-2">&amp;</span>authenticated_content)<span class="question-mark">?</span>;
 
         <span class="kw">let </span>serialized_provisional_group_context = diff
             .group_context()
@@ -2044,7 +2054,7 @@
             .map_err(LibraryError::unexpected_crypto_error)<span class="question-mark">?</span>;
 
         <span class="comment">// Set the confirmation tag
-        </span>commit.set_confirmation_tag(confirmation_tag.clone());
+        </span>authenticated_content.set_confirmation_tag(confirmation_tag.clone());
 
         diff.update_interim_transcript_hash(ciphersuite, backend, confirmation_tag.clone())<span class="question-mark">?</span>;
 
@@ -2144,7 +2154,7 @@
         );
 
         <span class="prelude-val">Ok</span>(CreateCommitResult {
-            commit,
+            commit: authenticated_content,
             welcome_option,
             staged_commit,
             group_info: group_info.filter(|<span class="kw">_</span>| <span class="self">self</span>.use_ratchet_tree_extension),
@@ -2234,6 +2244,16 @@
         <span class="kw">use </span><span class="kw">super</span>::tests::tree_printing::print_tree;
 
         print_tree(<span class="self">self</span>, message);
+    }
+
+    <span class="attr">#[cfg(test)]
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>message_secrets_store(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>MessageSecretsStore {
+        <span class="kw-2">&amp;</span><span class="self">self</span>.message_secrets_store
+    }
+
+    <span class="attr">#[cfg(test)]
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>set_group_context(<span class="kw-2">&amp;mut </span><span class="self">self</span>, group_context: GroupContext) {
+        <span class="self">self</span>.public_group.set_group_context(group_context)
     }
 }
 

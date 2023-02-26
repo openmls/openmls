@@ -255,6 +255,32 @@
 <a href="#255" id="255">255</a>
 <a href="#256" id="256">256</a>
 <a href="#257" id="257">257</a>
+<a href="#258" id="258">258</a>
+<a href="#259" id="259">259</a>
+<a href="#260" id="260">260</a>
+<a href="#261" id="261">261</a>
+<a href="#262" id="262">262</a>
+<a href="#263" id="263">263</a>
+<a href="#264" id="264">264</a>
+<a href="#265" id="265">265</a>
+<a href="#266" id="266">266</a>
+<a href="#267" id="267">267</a>
+<a href="#268" id="268">268</a>
+<a href="#269" id="269">269</a>
+<a href="#270" id="270">270</a>
+<a href="#271" id="271">271</a>
+<a href="#272" id="272">272</a>
+<a href="#273" id="273">273</a>
+<a href="#274" id="274">274</a>
+<a href="#275" id="275">275</a>
+<a href="#276" id="276">276</a>
+<a href="#277" id="277">277</a>
+<a href="#278" id="278">278</a>
+<a href="#279" id="279">279</a>
+<a href="#280" id="280">280</a>
+<a href="#281" id="281">281</a>
+<a href="#282" id="282">282</a>
+<a href="#283" id="283">283</a>
 </pre><pre class="rust"><code><span class="kw">use </span>core_group::proposals::QueuedProposal;
 
 <span class="kw">use crate</span>::{
@@ -406,44 +432,14 @@
         own_leaf_nodes: <span class="kw-2">&amp;</span>[OpenMlsLeafNode],
     ) -&gt; <span class="prelude-ty">Result</span>&lt;ProcessedMessage, ProcessMessageError&gt; {
         <span class="kw">let </span>message: ProtocolMessage = message.into();
+
         <span class="comment">// Checks the following semantic validation:
         //  - ValSem002
         //  - ValSem003
-        </span><span class="self">self</span>.public_group.validate_framing(<span class="kw-2">&amp;</span>message)<span class="question-mark">?</span>;
-
-        <span class="kw">let </span>epoch = message.epoch();
-
-        <span class="comment">// Checks the following semantic validation:
         //  - ValSem006
         //  - ValSem007 MembershipTag presence
-        </span><span class="kw">let </span>decrypted_message = <span class="kw">match </span>message {
-            ProtocolMessage::PublicMessage(public_message) =&gt; {
-                <span class="comment">// If the message is older than the current epoch, we need to fetch the correct secret tree first.
-                </span><span class="kw">let </span>message_secrets =
-                    <span class="self">self</span>.message_secrets_for_epoch(epoch).map_err(|e| <span class="kw">match </span>e {
-                        SecretTreeError::TooDistantInThePast =&gt; ValidationError::NoPastEpochData,
-                        <span class="kw">_ </span>=&gt; LibraryError::custom(
-                            <span class="string">&quot;Unexpected error while retrieving message secrets for epoch.&quot;</span>,
-                        )
-                        .into(),
-                    })<span class="question-mark">?</span>;
-                DecryptedMessage::from_inbound_public_message(
-                    public_message,
-                    message_secrets,
-                    message_secrets.serialized_context().to_vec(),
-                    backend,
-                )<span class="question-mark">?
-            </span>}
-            ProtocolMessage::PrivateMessage(ciphertext) =&gt; {
-                <span class="comment">// If the message is older than the current epoch, we need to fetch the correct secret tree first
-                </span>DecryptedMessage::from_inbound_ciphertext(
-                    ciphertext,
-                    backend,
-                    <span class="self">self</span>,
-                    sender_ratchet_configuration,
-                )<span class="question-mark">?
-            </span>}
-        };
+        </span><span class="kw">let </span>decrypted_message =
+            <span class="self">self</span>.decrypt_message(backend, message, sender_ratchet_configuration)<span class="question-mark">?</span>;
 
         <span class="kw">let </span>unverified_message = <span class="self">self
             </span>.public_group
@@ -465,6 +461,62 @@
             leaf_node_keypairs,
             backend,
         )
+    }
+
+    <span class="doccomment">/// Performs framing validation and, if necessary, decrypts the given message.
+    ///
+    /// Returns the [`DecryptedMessage`] if processing is successful, or a
+    /// [`ValidationError`] if it is not.
+    ///
+    /// Checks the following semantic validation:
+    ///  - ValSem002
+    ///  - ValSem003
+    ///  - ValSem006
+    ///  - ValSem007 MembershipTag presence
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>decrypt_message(
+        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
+        backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider,
+        message: ProtocolMessage,
+        sender_ratchet_configuration: <span class="kw-2">&amp;</span>SenderRatchetConfiguration,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;DecryptedMessage, ValidationError&gt; {
+        <span class="comment">// Checks the following semantic validation:
+        //  - ValSem002
+        //  - ValSem003
+        </span><span class="self">self</span>.public_group.validate_framing(<span class="kw-2">&amp;</span>message)<span class="question-mark">?</span>;
+
+        <span class="kw">let </span>epoch = message.epoch();
+
+        <span class="comment">// Checks the following semantic validation:
+        //  - ValSem006
+        //  - ValSem007 MembershipTag presence
+        </span><span class="kw">match </span>message {
+            ProtocolMessage::PublicMessage(public_message) =&gt; {
+                <span class="comment">// If the message is older than the current epoch, we need to fetch the correct secret tree first.
+                </span><span class="kw">let </span>message_secrets =
+                    <span class="self">self</span>.message_secrets_for_epoch(epoch).map_err(|e| <span class="kw">match </span>e {
+                        SecretTreeError::TooDistantInThePast =&gt; ValidationError::NoPastEpochData,
+                        <span class="kw">_ </span>=&gt; LibraryError::custom(
+                            <span class="string">&quot;Unexpected error while retrieving message secrets for epoch.&quot;</span>,
+                        )
+                        .into(),
+                    })<span class="question-mark">?</span>;
+                DecryptedMessage::from_inbound_public_message(
+                    public_message,
+                    message_secrets,
+                    message_secrets.serialized_context().to_vec(),
+                    backend,
+                )
+            }
+            ProtocolMessage::PrivateMessage(ciphertext) =&gt; {
+                <span class="comment">// If the message is older than the current epoch, we need to fetch the correct secret tree first
+                </span>DecryptedMessage::from_inbound_ciphertext(
+                    ciphertext,
+                    backend,
+                    <span class="self">self</span>,
+                    sender_ratchet_configuration,
+                )
+            }
+        }
     }
 
     <span class="doccomment">/// Helper function to read decryption keypairs.

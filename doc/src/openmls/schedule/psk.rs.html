@@ -304,6 +304,7 @@
 <a href="#304" id="304">304</a>
 <a href="#305" id="305">305</a>
 <a href="#306" id="306">306</a>
+<a href="#307" id="307">307</a>
 </pre><pre class="rust"><code><span class="doccomment">//! # Preshared keys.
 
 </span><span class="kw">use super</span>::<span class="kw-2">*</span>;
@@ -563,6 +564,7 @@
             ) {
                 psk_bundles.push(psk_bundle);
             } <span class="kw">else </span>{
+                <span class="macro">debug_assert!</span>(<span class="bool-val">false</span>, <span class="string">&quot;PSK not found in the key store.&quot;</span>);
                 <span class="kw">return </span><span class="prelude-val">Err</span>(PskError::KeyNotFound);
             }
         }
