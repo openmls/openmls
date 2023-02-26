@@ -341,6 +341,11 @@ impl PublicGroup {
     }
 
     #[cfg(test)]
+    pub(crate) fn set_group_context(&mut self, group_context: GroupContext) {
+        self.group_context = group_context;
+    }
+
+    #[cfg(test)]
     pub(crate) fn encrypt_path(
         &self,
         backend: &impl OpenMlsCryptoProvider,
