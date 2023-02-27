@@ -132,12 +132,12 @@ impl PublicMessage {
     }
 
     /// Returns the [`ContentType`] of the message.
-    pub(crate) fn content_type(&self) -> ContentType {
+    pub fn content_type(&self) -> ContentType {
         self.content.body.content_type()
     }
 
     /// Get the sender of this message.
-    pub(crate) fn sender(&self) -> &Sender {
+    pub fn sender(&self) -> &Sender {
         &self.content.sender
     }
 
@@ -201,12 +201,12 @@ impl PublicMessage {
     }
 
     /// Get the group epoch.
-    pub(crate) fn epoch(&self) -> GroupEpoch {
+    pub fn epoch(&self) -> GroupEpoch {
         self.content.epoch
     }
 
     /// Get the [`GroupId`].
-    pub(crate) fn group_id(&self) -> &GroupId {
+    pub fn group_id(&self) -> &GroupId {
         &self.content.group_id
     }
 
