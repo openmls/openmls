@@ -40,7 +40,7 @@ use crate::{
         },
         MlsBinaryTree, MlsBinaryTreeError,
     },
-    ciphersuite::{Secret, SignaturePublicKey},
+    ciphersuite::Secret,
     credentials::CredentialWithKey,
     error::LibraryError,
     extensions::Extensions,
@@ -272,22 +272,6 @@ impl TreeSync {
             .filter_map(|(_, tsn)| tsn.node().as_ref())
     }
 
-    /// Returns the [`LeafNodeIndex`] of the leaf that contains the given
-    /// [`SignaturePublicKey`].
-    ///
-    /// Returns `None` if no matching leaf can be found.
-    pub(crate) fn find_leaf(&self, signature_key: &SignaturePublicKey) -> Option<LeafNodeIndex> {
-        self.full_leave_members()
-            .filter_map(|m| {
-                if m.signature_key == signature_key.as_slice() {
-                    Some(m.index)
-                } else {
-                    None
-                }
-            })
-            .next()
-    }
-
     /// Returns the index of the last full leaf in the tree.
     fn rightmost_full_leaf(&self) -> LeafNodeIndex {
         let mut index = LeafNodeIndex::new(0);
@@ -317,29 +301,6 @@ impl TreeSync {
                     leaf_node.leaf_node.credential().clone(),
                 )
             })
-    }
-
-    /// Returns a [`TreeSyncError::UnsupportedExtension`] if an [`ExtensionType`]
-    /// in `extensions` is not supported by a leaf in this tree.
-    #[cfg(test)]
-    pub(crate) fn check_extension_support(
-        &self,
-        extensions: &[crate::extensions::ExtensionType],
-    ) -> Result<(), TreeSyncError> {
-        if self.tree.leaves().any(|(_, tsn)| {
-            tsn.node()
-                .as_ref()
-                .map(|node| {
-                    node.leaf_node()
-                        .check_extension_support(extensions)
-                        .map_err(|_| LibraryError::custom("This is never used, so we don't care"))
-                })
-                .is_none() // Return true if this is none
-        }) {
-            Err(TreeSyncError::UnsupportedExtension)
-        } else {
-            Ok(())
-        }
     }
 
     /// Returns the nodes in the tree ordered according to the

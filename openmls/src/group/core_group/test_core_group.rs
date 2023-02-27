@@ -397,7 +397,7 @@ fn test_psks(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
     alice_group
         .merge_commit(backend, create_commit_result.staged_commit)
         .expect("error merging pending commit");
-    let ratchet_tree = alice_group.treesync().export_nodes();
+    let ratchet_tree = alice_group.public_group().export_nodes();
 
     let group_bob = CoreGroup::new_from_welcome(
         create_commit_result
@@ -491,7 +491,7 @@ fn test_staged_commit_creation(ciphersuite: Ciphersuite, backend: &impl OpenMlsC
         create_commit_result
             .welcome_option
             .expect("An unexpected error occurred."),
-        Some(alice_group.treesync().export_nodes()),
+        Some(alice_group.public_group().export_nodes()),
         bob_key_package_bundle,
         backend,
     )
@@ -503,8 +503,8 @@ fn test_staged_commit_creation(ciphersuite: Ciphersuite, backend: &impl OpenMlsC
         alice_group.export_secret(backend, "", b"test", ciphersuite.hash_length())
     );
     assert_eq!(
-        group_bob.treesync().export_nodes(),
-        alice_group.treesync().export_nodes()
+        group_bob.public_group().export_nodes(),
+        alice_group.public_group().export_nodes()
     )
 }
 
@@ -637,7 +637,7 @@ fn test_proposal_application_after_self_was_removed(
         .merge_commit(backend, add_commit_result.staged_commit)
         .expect("error merging pending commit");
 
-    let ratchet_tree = alice_group.treesync().export_nodes();
+    let ratchet_tree = alice_group.public_group().export_nodes();
 
     let mut bob_group = CoreGroup::new_from_welcome(
         add_commit_result
@@ -651,8 +651,8 @@ fn test_proposal_application_after_self_was_removed(
 
     // Alice adds Charlie and removes Bob in the same commit.
     let bob_index = alice_group
-        .treesync()
-        .full_leave_members()
+        .public_group()
+        .members()
         .find(
             |Member {
                  index: _,
@@ -708,7 +708,7 @@ fn test_proposal_application_after_self_was_removed(
         .merge_commit(backend, remove_add_commit_result.staged_commit)
         .expect("Error merging commit.");
 
-    let ratchet_tree = alice_group.treesync().export_nodes();
+    let ratchet_tree = alice_group.public_group().export_nodes();
 
     let charlie_group = CoreGroup::new_from_welcome(
         remove_add_commit_result
@@ -724,11 +724,11 @@ fn test_proposal_application_after_self_was_removed(
     // to his tree after he was removed by comparing membership lists. In
     // particular, Bob's list should show that he was removed and Charlie was
     // added.
-    let alice_members = alice_group.treesync().full_leave_members();
+    let alice_members = alice_group.public_group().members();
 
-    let bob_members = bob_group.treesync().full_leave_members();
+    let bob_members = bob_group.public_group().members();
 
-    let charlie_members = charlie_group.treesync().full_leave_members();
+    let charlie_members = charlie_group.public_group().members();
 
     for (alice_member, (bob_member, charlie_member)) in
         alice_members.zip(bob_members.zip(charlie_members))
@@ -750,7 +750,7 @@ fn test_proposal_application_after_self_was_removed(
         assert_eq!(charlie_member.encryption_key, alice_member.encryption_key);
     }
 
-    let mut bob_members = bob_group.treesync().full_leave_members();
+    let mut bob_members = bob_group.public_group().members();
 
     assert_eq!(bob_members.next().unwrap().credential.identity(), b"Alice");
     assert_eq!(
