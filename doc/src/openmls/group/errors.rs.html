@@ -503,6 +503,13 @@
 <a href="#503" id="503">503</a>
 <a href="#504" id="504">504</a>
 <a href="#505" id="505">505</a>
+<a href="#506" id="506">506</a>
+<a href="#507" id="507">507</a>
+<a href="#508" id="508">508</a>
+<a href="#509" id="509">509</a>
+<a href="#510" id="510">510</a>
+<a href="#511" id="511">511</a>
+<a href="#512" id="512">512</a>
 </pre><pre class="rust"><code><span class="doccomment">//! # MLS group errors
 //!
 //! This module contains errors that originate at lower levels and are partially re-exported in errors thrown by functions of the `MlsGroup` API.
@@ -513,6 +520,7 @@
     extensions::errors::{ExtensionError, InvalidExtensionError},
     framing::errors::{MessageDecryptionError, SenderError},
     key_packages::errors::{KeyPackageExtensionSupportError, KeyPackageNewError},
+    messages::{group_info::GroupInfoError, GroupSecretsError},
     schedule::errors::PskError,
     treesync::errors::<span class="kw-2">*</span>,
 };
@@ -526,12 +534,21 @@
 <span class="doccomment">/// Welcome error
 </span><span class="attr">#[derive(Error, Debug, PartialEq, Clone)]
 </span><span class="kw">pub enum </span>WelcomeError&lt;KeyStoreError&gt; {
+    <span class="doccomment">/// See [`GroupSecretsError`] for more details.
+    </span><span class="attr">#[error(transparent)]
+    </span>GroupSecrets(<span class="attr">#[from] </span>GroupSecretsError),
+    <span class="doccomment">/// Private part of `init_key` not found in key store.
+    </span><span class="attr">#[error(<span class="string">&quot;Private part of `init_key` not found in key store.&quot;</span>)]
+    </span>PrivateInitKeyNotFound,
     <span class="doccomment">/// See [`LibraryError`] for more details.
     </span><span class="attr">#[error(transparent)]
     </span>LibraryError(<span class="attr">#[from] </span>LibraryError),
     <span class="doccomment">/// Ciphersuites in Welcome and key package bundle don&#39;t match.
     </span><span class="attr">#[error(<span class="string">&quot;Ciphersuites in Welcome and key package bundle don&#39;t match.&quot;</span>)]
     </span>CiphersuiteMismatch,
+    <span class="doccomment">/// See [`GroupInfoError`] for more details.
+    </span><span class="attr">#[error(transparent)]
+    </span>GroupInfo(<span class="attr">#[from] </span>GroupInfoError),
     <span class="doccomment">/// No joiner secret found in the Welcome message.
     </span><span class="attr">#[error(<span class="string">&quot;No joiner secret found in the Welcome message.&quot;</span>)]
     </span>JoinerSecretNotFound,
@@ -544,9 +561,6 @@
     <span class="doccomment">/// The signature on the GroupInfo is not valid.
     </span><span class="attr">#[error(<span class="string">&quot;The signature on the GroupInfo is not valid.&quot;</span>)]
     </span>InvalidGroupInfoSignature,
-    <span class="doccomment">/// Unable to decrypt the GroupInfo.
-    </span><span class="attr">#[error(<span class="string">&quot;Unable to decrypt the GroupInfo.&quot;</span>)]
-    </span>GroupInfoDecryptionFailure,
     <span class="doccomment">/// We don&#39;t support the version of the group we are trying to join.
     </span><span class="attr">#[error(<span class="string">&quot;We don&#39;t support the version of the group we are trying to join.&quot;</span>)]
     </span>UnsupportedMlsVersion,

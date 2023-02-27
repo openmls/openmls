@@ -734,6 +734,7 @@
 <a href="#734" id="734">734</a>
 <a href="#735" id="735">735</a>
 <a href="#736" id="736">736</a>
+<a href="#737" id="737">737</a>
 </pre><pre class="rust"><code><span class="doccomment">//! # Key Packages
 //!
 //! Key packages are pre-published public keys that provide some information
@@ -1435,6 +1436,11 @@
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>key_package(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>KeyPackage {
         <span class="kw-2">&amp;</span><span class="self">self</span>.key_package
     }
+
+    <span class="doccomment">/// Get a reference to the private key.
+    </span><span class="kw">pub fn </span>private_key(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>HpkePrivateKey {
+        <span class="kw-2">&amp;</span><span class="self">self</span>.private_key
+    }
 }
 
 <span class="attr">#[cfg(test)]
@@ -1464,10 +1470,6 @@
             key_package,
             private_key,
         }
-    }
-
-    <span class="kw">pub fn </span>private_key(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>HpkePrivateKey {
-        <span class="kw-2">&amp;</span><span class="self">self</span>.private_key
     }
 }
 </code></pre></div>

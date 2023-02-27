@@ -247,12 +247,12 @@
 <a href="#247" id="247">247</a>
 <a href="#248" id="248">248</a>
 <a href="#249" id="249">249</a>
+<a href="#250" id="250">250</a>
 </pre><pre class="rust"><code><span class="kw">use </span>log::debug;
 <span class="kw">use </span>openmls_traits::key_store::OpenMlsKeyStore;
-<span class="kw">use </span>tls_codec::Deserialize;
 
 <span class="kw">use crate</span>::{
-    ciphersuite::{hash_ref::HashReference, hpke},
+    ciphersuite::hash_ref::HashReference,
     group::{core_group::<span class="kw-2">*</span>, errors::WelcomeError},
     schedule::errors::PskError,
     treesync::{
@@ -302,21 +302,13 @@
             <span class="kw">return </span><span class="prelude-val">Err</span>(e);
         }
 
-        <span class="kw">let </span>group_secrets_bytes = hpke::decrypt_with_label(
-            key_package_bundle.private_key.as_slice(),
-            <span class="string">&quot;Welcome&quot;</span>,
-            welcome.encrypted_group_info(),
+        <span class="kw">let </span>group_secrets = GroupSecrets::try_from_ciphertext(
+            key_package_bundle.private_key(),
             egs.encrypted_group_secrets(),
+            welcome.encrypted_group_info(),
             ciphersuite,
             backend.crypto(),
-        )
-        .map_err(|<span class="kw">_</span>| WelcomeError::UnableToDecrypt)<span class="question-mark">?</span>;
-        <span class="kw">let </span>group_secrets = GroupSecrets::tls_deserialize(<span class="kw-2">&amp;mut </span>group_secrets_bytes.as_slice())
-            .map_err(|<span class="kw">_</span>| WelcomeError::MalformedWelcomeMessage)<span class="question-mark">?
-            </span><span class="comment">// TODO(#1065)
-            </span>.config(ciphersuite, ProtocolVersion::Mls10);
-
-        <span class="kw">let </span>joiner_secret = group_secrets.joiner_secret;
+        )<span class="question-mark">?</span>;
 
         <span class="comment">// Prepare the PskSecret
         </span><span class="kw">let </span>psk_secret =
@@ -327,7 +319,12 @@
             })<span class="question-mark">?</span>;
 
         <span class="comment">// Create key schedule
-        </span><span class="kw">let </span><span class="kw-2">mut </span>key_schedule = KeySchedule::init(ciphersuite, backend, <span class="kw-2">&amp;</span>joiner_secret, psk_secret)<span class="question-mark">?</span>;
+        </span><span class="kw">let </span><span class="kw-2">mut </span>key_schedule = KeySchedule::init(
+            ciphersuite,
+            backend,
+            <span class="kw-2">&amp;</span>group_secrets.joiner_secret,
+            psk_secret,
+        )<span class="question-mark">?</span>;
 
         <span class="comment">// Derive welcome key &amp; nonce from the key schedule
         </span><span class="kw">let </span>(welcome_key, welcome_nonce) = key_schedule
@@ -336,12 +333,13 @@
             </span>.derive_welcome_key_nonce(backend)
             .map_err(LibraryError::unexpected_crypto_error)<span class="question-mark">?</span>;
 
-        <span class="kw">let </span>group_info_bytes = welcome_key
-            .aead_open(backend, welcome.encrypted_group_info(), <span class="kw-2">&amp;</span>[], <span class="kw-2">&amp;</span>welcome_nonce)
-            .map_err(|<span class="kw">_</span>| WelcomeError::GroupInfoDecryptionFailure)<span class="question-mark">?</span>;
-        <span class="kw">let </span>verifiable_group_info =
-            VerifiableGroupInfo::tls_deserialize(<span class="kw-2">&amp;mut </span>group_info_bytes.as_slice())
-                .map_err(|<span class="kw">_</span>| WelcomeError::MalformedWelcomeMessage)<span class="question-mark">?</span>;
+        <span class="kw">let </span>verifiable_group_info = VerifiableGroupInfo::try_from_ciphertext(
+            <span class="kw-2">&amp;</span>welcome_key,
+            <span class="kw-2">&amp;</span>welcome_nonce,
+            welcome.encrypted_group_info(),
+            <span class="kw-2">&amp;</span>[],
+            backend,
+        )<span class="question-mark">?</span>;
 
         <span class="comment">// Make sure that we can support the required capabilities in the group info.
         </span><span class="kw">if let </span><span class="prelude-val">Some</span>(required_capabilities) =
@@ -431,23 +429,27 @@
             <span class="macro">vec!</span>[leaf_keypair]
         };
 
-        <span class="kw">let </span>serialized_group_context = public_group
-            .group_context()
-            .tls_serialize_detached()
-            .map_err(LibraryError::missing_bound_check)<span class="question-mark">?</span>;
-        <span class="comment">// TODO #751: Implement PSK
-        </span>key_schedule
-            .add_context(backend, <span class="kw-2">&amp;</span>serialized_group_context)
-            .map_err(|<span class="kw">_</span>| LibraryError::custom(<span class="string">&quot;Using the key schedule in the wrong state&quot;</span>))<span class="question-mark">?</span>;
-        <span class="kw">let </span>epoch_secrets = key_schedule
-            .epoch_secrets(backend)
-            .map_err(|<span class="kw">_</span>| LibraryError::custom(<span class="string">&quot;Using the key schedule in the wrong state&quot;</span>))<span class="question-mark">?</span>;
+        <span class="kw">let </span>(group_epoch_secrets, message_secrets) = {
+            <span class="kw">let </span>serialized_group_context = public_group
+                .group_context()
+                .tls_serialize_detached()
+                .map_err(LibraryError::missing_bound_check)<span class="question-mark">?</span>;
 
-        <span class="kw">let </span>(group_epoch_secrets, message_secrets) = epoch_secrets.split_secrets(
-            serialized_group_context,
-            public_group.tree_size(),
-            own_leaf_index,
-        );
+            <span class="comment">// TODO #751: Implement PSK
+            </span>key_schedule
+                .add_context(backend, <span class="kw-2">&amp;</span>serialized_group_context)
+                .map_err(|<span class="kw">_</span>| LibraryError::custom(<span class="string">&quot;Using the key schedule in the wrong state&quot;</span>))<span class="question-mark">?</span>;
+
+            <span class="kw">let </span>epoch_secrets = key_schedule
+                .epoch_secrets(backend)
+                .map_err(|<span class="kw">_</span>| LibraryError::custom(<span class="string">&quot;Using the key schedule in the wrong state&quot;</span>))<span class="question-mark">?</span>;
+
+            epoch_secrets.split_secrets(
+                serialized_group_context,
+                public_group.tree_size(),
+                own_leaf_index,
+            )
+        };
 
         <span class="kw">let </span>confirmation_tag = message_secrets
             .confirmation_key()
@@ -463,23 +465,23 @@
             <span class="macro">log_crypto!</span>(trace, <span class="string">&quot;  Got:      {:x?}&quot;</span>, confirmation_tag);
             <span class="macro">log_crypto!</span>(trace, <span class="string">&quot;  Expected: {:x?}&quot;</span>, public_group.confirmation_tag());
             <span class="macro">debug_assert!</span>(<span class="bool-val">false</span>, <span class="string">&quot;Confirmation tag mismatch&quot;</span>);
-            <span class="prelude-val">Err</span>(WelcomeError::ConfirmationTagMismatch)
-        } <span class="kw">else </span>{
-            <span class="kw">let </span>message_secrets_store = MessageSecretsStore::new_with_secret(<span class="number">0</span>, message_secrets);
-
-            <span class="kw">let </span>group = CoreGroup {
-                public_group,
-                group_epoch_secrets,
-                own_leaf_index,
-                use_ratchet_tree_extension: enable_ratchet_tree_extension,
-                message_secrets_store,
-            };
-            group
-                .store_epoch_keypairs(backend, group_keypairs.as_slice())
-                .map_err(WelcomeError::KeyStoreError)<span class="question-mark">?</span>;
-
-            <span class="prelude-val">Ok</span>(group)
+            <span class="kw">return </span><span class="prelude-val">Err</span>(WelcomeError::ConfirmationTagMismatch);
         }
+
+        <span class="kw">let </span>message_secrets_store = MessageSecretsStore::new_with_secret(<span class="number">0</span>, message_secrets);
+
+        <span class="kw">let </span>group = CoreGroup {
+            public_group,
+            group_epoch_secrets,
+            own_leaf_index,
+            use_ratchet_tree_extension: enable_ratchet_tree_extension,
+            message_secrets_store,
+        };
+        group
+            .store_epoch_keypairs(backend, group_keypairs.as_slice())
+            .map_err(WelcomeError::KeyStoreError)<span class="question-mark">?</span>;
+
+        <span class="prelude-val">Ok</span>(group)
     }
 
     <span class="comment">// Helper functions
