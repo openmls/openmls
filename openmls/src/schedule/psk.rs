@@ -257,6 +257,7 @@ impl PskSecret {
             ) {
                 psk_bundles.push(psk_bundle);
             } else {
+                debug_assert!(false, "PSK not found in the key store.");
                 return Err(PskError::KeyNotFound);
             }
         }

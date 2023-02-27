@@ -19,6 +19,7 @@ use rstest::*;
 use rstest_reuse::{self, *};
 
 use crate::group::GroupContext;
+use crate::messages::GroupSecretsError;
 use crate::prelude::HpkePrivateKey;
 use openmls_rust_crypto::OpenMlsRustCrypto;
 use openmls_traits::{
@@ -149,7 +150,10 @@ fn test_welcome_context_mismatch(ciphersuite: Ciphersuite, backend: &impl OpenMl
     )
     .expect_err("Created a group from an invalid Welcome.");
 
-    assert_eq!(err, WelcomeError::UnableToDecrypt);
+    assert_eq!(
+        err,
+        WelcomeError::GroupSecrets(GroupSecretsError::DecryptionFailed)
+    );
 
     // === Process the original Welcome ===
 

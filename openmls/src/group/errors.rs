@@ -8,6 +8,7 @@ use crate::{
     extensions::errors::{ExtensionError, InvalidExtensionError},
     framing::errors::{MessageDecryptionError, SenderError},
     key_packages::errors::{KeyPackageExtensionSupportError, KeyPackageNewError},
+    messages::{group_info::GroupInfoError, GroupSecretsError},
     schedule::errors::PskError,
     treesync::errors::*,
 };
@@ -21,12 +22,21 @@ use super::public_group::errors::{CreationFromExternalError, PublicGroupBuildErr
 /// Welcome error
 #[derive(Error, Debug, PartialEq, Clone)]
 pub enum WelcomeError<KeyStoreError> {
+    /// See [`GroupSecretsError`] for more details.
+    #[error(transparent)]
+    GroupSecrets(#[from] GroupSecretsError),
+    /// Private part of `init_key` not found in key store.
+    #[error("Private part of `init_key` not found in key store.")]
+    PrivateInitKeyNotFound,
     /// See [`LibraryError`] for more details.
     #[error(transparent)]
     LibraryError(#[from] LibraryError),
     /// Ciphersuites in Welcome and key package bundle don't match.
     #[error("Ciphersuites in Welcome and key package bundle don't match.")]
     CiphersuiteMismatch,
+    /// See [`GroupInfoError`] for more details.
+    #[error(transparent)]
+    GroupInfo(#[from] GroupInfoError),
     /// No joiner secret found in the Welcome message.
     #[error("No joiner secret found in the Welcome message.")]
     JoinerSecretNotFound,
@@ -39,9 +49,6 @@ pub enum WelcomeError<KeyStoreError> {
     /// The signature on the GroupInfo is not valid.
     #[error("The signature on the GroupInfo is not valid.")]
     InvalidGroupInfoSignature,
-    /// Unable to decrypt the GroupInfo.
-    #[error("Unable to decrypt the GroupInfo.")]
-    GroupInfoDecryptionFailure,
     /// We don't support the version of the group we are trying to join.
     #[error("We don't support the version of the group we are trying to join.")]
     UnsupportedMlsVersion,

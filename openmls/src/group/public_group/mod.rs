@@ -12,23 +12,23 @@
 //! relies on a [`PublicGroup`] as well.
 
 #[cfg(test)]
-use crate::treesync::{node::parent_node::PlainUpdatePathNode, treekem::UpdatePathNode};
-#[cfg(test)]
 use std::collections::HashSet;
 
-use openmls_traits::{crypto::OpenMlsCrypto, types::Ciphersuite, OpenMlsCryptoProvider};
+use openmls_traits::{types::Ciphersuite, OpenMlsCryptoProvider};
 use serde::{Deserialize, Serialize};
-use tls_codec::Serialize as TlsSerialize;
 
-#[cfg(doc)]
-use crate::{framing::PublicMessage, group::CoreGroup};
-
+use self::{
+    diff::{PublicGroupDiff, StagedPublicGroupDiff},
+    errors::CreationFromExternalError,
+};
+use super::{GroupContext, GroupId, Member, ProposalStore, QueuedProposal};
+#[cfg(test)]
+use crate::treesync::{node::parent_node::PlainUpdatePathNode, treekem::UpdatePathNode};
 use crate::{
     binary_tree::{array_representation::TreeSize, LeafNodeIndex},
     ciphersuite::signable::Verifiable,
     error::LibraryError,
     extensions::RequiredCapabilitiesExtension,
-    framing::InterimTranscriptHashInput,
     messages::{
         group_info::{GroupInfo, VerifiableGroupInfo},
         proposals::{Proposal, ProposalType},
@@ -45,13 +45,8 @@ use crate::{
     },
     versions::ProtocolVersion,
 };
-
-use self::{
-    diff::{PublicGroupDiff, StagedPublicGroupDiff},
-    errors::CreationFromExternalError,
-};
-
-use super::{GroupContext, GroupEpoch, GroupId, Member, ProposalStore, QueuedProposal};
+#[cfg(doc)]
+use crate::{framing::PublicMessage, group::CoreGroup};
 
 pub(crate) mod builder;
 pub(crate) mod diff;
@@ -107,7 +102,7 @@ impl PublicGroup {
         let ciphersuite = verifiable_group_info.ciphersuite();
 
         // Create a RatchetTree from the given nodes. We have to do this before
-        // verifying the PGS, since we need to find the Credential to verify the
+        // verifying the group info, since we need to find the Credential to verify the
         // signature against.
         let treesync = TreeSync::from_nodes(backend, ciphersuite, nodes)?;
 
@@ -132,40 +127,11 @@ impl PublicGroup {
             return Err(CreationFromExternalError::UnsupportedMlsVersion);
         }
 
-        let group_context = GroupContext::new(
-            ciphersuite,
-            group_info.group_context().group_id().clone(),
-            group_info.group_context().epoch(),
-            treesync.tree_hash().to_vec(),
-            group_info
-                .group_context()
-                .confirmed_transcript_hash()
-                .to_vec(),
-            group_info.group_context().extensions().clone(),
-        );
+        let interim_transcript_hash =
+            group_info.calculate_interim_transcript_hash(backend.crypto())?;
 
-        let interim_transcript_hash = if group_context.epoch() == GroupEpoch::from(0) {
-            vec![]
-        } else {
-            // New members compute the interim transcript hash using
-            // the confirmation_tag field of the GroupInfo struct.
-            {
-                let mls_plaintext_commit_auth_data =
-                    &InterimTranscriptHashInput::from(group_info.confirmation_tag());
-                let confirmed_transcript_hash =
-                    group_info.group_context().confirmed_transcript_hash();
-                let commit_auth_data_bytes = mls_plaintext_commit_auth_data
-                    .tls_serialize_detached()
-                    .map_err(LibraryError::missing_bound_check)?;
-                backend
-                    .crypto()
-                    .hash(
-                        ciphersuite.hash_algorithm(),
-                        &[confirmed_transcript_hash, &commit_auth_data_bytes].concat(),
-                    )
-                    .map_err(LibraryError::unexpected_crypto_error)
-            }?
-        };
+        let group_context = GroupContext::from(group_info.clone());
+
         Ok((
             Self {
                 treesync,
@@ -338,6 +304,11 @@ impl PublicGroup {
 impl PublicGroup {
     pub(crate) fn context_mut(&mut self) -> &mut GroupContext {
         &mut self.group_context
+    }
+
+    #[cfg(test)]
+    pub(crate) fn set_group_context(&mut self, group_context: GroupContext) {
+        self.group_context = group_context;
     }
 
     #[cfg(test)]
