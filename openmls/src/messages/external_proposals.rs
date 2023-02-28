@@ -6,6 +6,7 @@
 
 use crate::{
     binary_tree::LeafNodeIndex,
+    extensions::SenderExtensionIndex,
     framing::{mls_auth_content::AuthenticatedContent, MlsMessageOut, PublicMessage},
     group::{
         errors::ProposeRemoveMemberError, mls_group::errors::ProposeAddMemberError, GroupEpoch,
@@ -13,7 +14,6 @@ use crate::{
     },
     key_packages::KeyPackage,
     messages::{AddProposal, Proposal},
-    prelude::Sender,
 };
 use openmls_traits::signatures::Signer;
 
@@ -46,12 +46,11 @@ impl JoinProposal {
         epoch: GroupEpoch,
         signer: &impl Signer,
     ) -> Result<MlsMessageOut, ProposeAddMemberError> {
-        AuthenticatedContent::new_external_proposal(
+        AuthenticatedContent::new_join_proposal(
             Proposal::Add(AddProposal { key_package }),
             group_id,
             epoch,
             signer,
-            Sender::NewMemberProposal,
         )
         .map(PublicMessage::from)
         .map(MlsMessageOut::from)
@@ -75,14 +74,14 @@ impl ExternalProposal {
         group_id: GroupId,
         epoch: GroupEpoch,
         signer: &impl Signer,
-        sender: u32,
+        sender_index: SenderExtensionIndex,
     ) -> Result<MlsMessageOut, ProposeRemoveMemberError> {
         AuthenticatedContent::new_external_proposal(
             Proposal::Remove(RemoveProposal { removed }),
             group_id,
             epoch,
             signer,
-            Sender::External(sender),
+            sender_index,
         )
         .map(PublicMessage::from)
         .map(MlsMessageOut::from)

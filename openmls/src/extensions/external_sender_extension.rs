@@ -1,3 +1,5 @@
+use std::usize;
+
 use serde::{Deserialize, Serialize};
 use tls_codec::{TlsDeserialize, TlsSerialize, TlsSize};
 
@@ -46,6 +48,23 @@ impl ExternalSender {
 /// ExternalSender external_senders<V>;
 /// ```
 pub type ExternalSendersExtension = Vec<ExternalSender>;
+/// Identifies an external sender in the `ExternalSendersExtension`.
+#[derive(
+    Debug, PartialEq, Eq, Copy, Clone, Serialize, Deserialize, TlsSerialize, TlsDeserialize, TlsSize,
+)]
+pub struct SenderExtensionIndex(u32);
+
+impl SenderExtensionIndex {
+    /// Creates a new `SenderExtensionIndex` instance.
+    pub fn new(index: u32) -> Self {
+        Self(index)
+    }
+
+    /// Returns the internal index as usize
+    pub(crate) fn index(&self) -> Result<usize, std::num::TryFromIntError> {
+        self.0.try_into()
+    }
+}
 
 #[cfg(test)]
 mod test {

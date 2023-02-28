@@ -1176,7 +1176,7 @@ fn book_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvide
         alice_group.group_id().clone(),
         alice_group.epoch(),
         &ds_signature_keys,
-        0,
+        SenderExtensionIndex::new(0),
     )
     .expect("Could not create external Remove proposal");
     // ANCHOR_END: external_remove_proposal

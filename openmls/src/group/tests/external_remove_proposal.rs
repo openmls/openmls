@@ -128,7 +128,7 @@ fn external_remove_proposal_should_remove_member(
         alice_group.group_id().clone(),
         alice_group.epoch(),
         &ds_credential_bundle.signer,
-        0,
+        SenderExtensionIndex::new(0),
     )
     .unwrap()
     .into();
@@ -152,7 +152,7 @@ fn external_remove_proposal_should_remove_member(
         alice_group.group_id().clone(),
         alice_group.epoch(),
         &ds_credential_bundle.signer,
-        0,
+        SenderExtensionIndex::new(0),
     )
     .unwrap()
     .into();
@@ -211,7 +211,7 @@ fn external_remove_proposal_should_fail_with_invalid_external_senders_index(
         alice_group.group_id().clone(),
         alice_group.epoch(),
         &ds_credential_bundle.signer,
-        10, // invalid sender index
+        SenderExtensionIndex::new(10), // invalid sender index
     )
     .unwrap()
     .into();
@@ -269,7 +269,7 @@ fn external_remove_proposal_should_fail_with_invalid_external_senders(
         alice_group.group_id().clone(),
         alice_group.epoch(),
         &ds_invalid_credential_bundle.signer,
-        0,
+        SenderExtensionIndex::new(0),
     )
     .unwrap()
     .into();
@@ -311,7 +311,7 @@ fn external_remove_proposal_should_fail_with_no_external_senders(
         alice_group.group_id().clone(),
         alice_group.epoch(),
         &ds_credential_bundle.signer,
-        1, // invalid sender index
+        SenderExtensionIndex::new(1), // invalid sender index
     )
     .unwrap()
     .into();
