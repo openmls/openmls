@@ -23,7 +23,7 @@ use crate::{
             parent_node::PlainUpdatePathNode,
         },
         treekem::{DecryptPathParams, UpdatePath, UpdatePathNode},
-        RatchetTreeExported,
+        RatchetTree,
     },
 };
 
@@ -105,7 +105,7 @@ impl<'a> PublicGroupDiff<'a> {
 
     /// Returns a vector of all nodes in the tree resulting from merging this
     /// diff.
-    pub(crate) fn export_ratchet_tree(&self) -> RatchetTreeExported {
+    pub(crate) fn export_ratchet_tree(&self) -> RatchetTree {
         self.diff.export_ratchet_tree()
     }
 

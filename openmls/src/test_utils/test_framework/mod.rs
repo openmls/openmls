@@ -29,7 +29,7 @@ use crate::{
     group::*,
     key_packages::*,
     messages::*,
-    treesync::{node::Node, LeafNode, RatchetTreeExported},
+    treesync::{node::Node, LeafNode, RatchetTree},
 };
 use ::rand::{rngs::OsRng, RngCore};
 use openmls_basic_credential::SignatureKeyPair;
@@ -61,7 +61,7 @@ pub struct Group {
     pub members: Vec<(usize, Vec<u8>)>,
     pub ciphersuite: Ciphersuite,
     pub group_config: MlsGroupConfig,
-    pub public_tree: RatchetTreeExported,
+    pub public_tree: RatchetTree,
     pub exporter_secret: Vec<u8>,
 }
 

@@ -28,7 +28,7 @@ impl CoreGroup {
         backend: &impl OpenMlsCryptoProvider,
         signer: &impl Signer,
         mut params: CreateCommitParams,
-        ratchet_tree: Option<RatchetTreeExported>,
+        ratchet_tree: Option<RatchetTree>,
         verifiable_group_info: VerifiableGroupInfo,
     ) -> Result<ExternalCommitResult, ExternalCommitError> {
         // Build the ratchet tree

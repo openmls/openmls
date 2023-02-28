@@ -1,7 +1,7 @@
 use tls_codec::{TlsDeserialize, TlsSerialize, TlsSize};
 
 use super::{Deserialize, Serialize};
-use crate::treesync::RatchetTreeExported;
+use crate::treesync::RatchetTree;
 
 /// # Ratchet Tree Extension.
 ///
@@ -25,17 +25,17 @@ use crate::treesync::RatchetTreeExported;
     TlsSize,
 )]
 pub struct RatchetTreeExtension {
-    ratchet_tree: RatchetTreeExported,
+    ratchet_tree: RatchetTree,
 }
 
 impl RatchetTreeExtension {
     /// Build a new extension from a vector of [`Node`](crate::treesync::node::Node)s.
-    pub fn new(ratchet_tree: RatchetTreeExported) -> Self {
+    pub fn new(ratchet_tree: RatchetTree) -> Self {
         RatchetTreeExtension { ratchet_tree }
     }
 
     /// Return the [`RatchetTreeExported`] from this extension.
-    pub fn ratchet_tree(&self) -> &RatchetTreeExported {
+    pub fn ratchet_tree(&self) -> &RatchetTree {
         &self.ratchet_tree
     }
 }

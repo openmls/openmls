@@ -14,7 +14,7 @@ use crate::{
     schedule::ResumptionPskSecret,
     treesync::{
         node::leaf_node::{LeafNode, OpenMlsLeafNode},
-        RatchetTreeExported,
+        RatchetTree,
     },
 };
 use openmls_traits::{key_store::OpenMlsKeyStore, types::Ciphersuite, OpenMlsCryptoProvider};
@@ -326,7 +326,7 @@ impl MlsGroup {
     // === Extensions ===
 
     /// Exports the Ratchet Tree.
-    pub fn export_ratchet_tree(&self) -> RatchetTreeExported {
+    pub fn export_ratchet_tree(&self) -> RatchetTree {
         self.group.public_group().export_ratchet_tree()
     }
 }

@@ -67,7 +67,7 @@ use tls_codec::Deserialize as TlsDeserialize;
 use crate::{
     binary_tree::array_representation::TreeNodeIndex,
     test_utils::*,
-    treesync::{RatchetTreeExported, TreeSync},
+    treesync::{RatchetTree, TreeSync},
 };
 
 #[derive(Deserialize)]
@@ -97,7 +97,7 @@ fn run_test_vector(test: TestElement, backend: &impl OpenMlsCryptoProvider) -> R
         return Ok(());
     }
 
-    let ratchet_tree = RatchetTreeExported::tls_deserialize(&mut test.tree.as_slice()).unwrap();
+    let ratchet_tree = RatchetTree::tls_deserialize(&mut test.tree.as_slice()).unwrap();
 
     let treesync = TreeSync::from_ratchet_tree(backend, ciphersuite, ratchet_tree.clone())
         .map_err(|e| format!("Error while creating tree sync: {e:?}"))?;

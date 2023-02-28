@@ -91,14 +91,14 @@ pub mod tests_and_kats;
     TlsDeserialize,
     TlsSize,
 )]
-// TODO(validation):
+// TODO(#1305): Make the ratchet tree non-malleable.
 //
 // * ValSemXXX: "If the tree has 2^d leaves, then it has 2^(d+1) - 1 nodes. The ratchet_tree vector logically has this number of entries, but the sender SHOULD NOT include blank nodes after the last non-blank node."
 // * ValSemXXX: "Regardless of how the client obtains the tree, the client MUST verify that the root hash of the ratchet tree matches the tree_hash of the GroupContext before using the tree for MLS operations."
-pub struct RatchetTreeExported(Vec<Option<Node>>);
+pub struct RatchetTree(Vec<Option<Node>>);
 
 #[cfg(any(feature = "test-utils", test))]
-impl fmt::Display for RatchetTreeExported {
+impl fmt::Display for RatchetTree {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let factor = 3;
         let nodes = &self.0;
@@ -168,7 +168,7 @@ impl fmt::Display for RatchetTreeExported {
     }
 }
 
-impl From<Vec<Option<Node>>> for RatchetTreeExported {
+impl From<Vec<Option<Node>>> for RatchetTree {
     fn from(value: Vec<Option<Node>>) -> Self {
         Self(value)
     }
@@ -263,7 +263,7 @@ impl TreeSync {
     pub(crate) fn from_ratchet_tree(
         backend: &impl OpenMlsCryptoProvider,
         ciphersuite: Ciphersuite,
-        ratchet_tree: RatchetTreeExported,
+        ratchet_tree: RatchetTree,
     ) -> Result<Self, TreeSyncFromNodesError> {
         // TODO #800: Unmerged leaves should be checked
         let mut ts_nodes: Vec<TreeNode<TreeSyncLeafNode, TreeSyncParentNode>> =
@@ -405,7 +405,7 @@ impl TreeSync {
 
     /// Returns the nodes in the tree ordered according to the
     /// array-representation of the underlying binary tree.
-    pub fn export_ratchet_tree(&self) -> RatchetTreeExported {
+    pub fn export_ratchet_tree(&self) -> RatchetTree {
         let mut nodes = Vec::new();
 
         // Determine the index of the rightmost full leaf.

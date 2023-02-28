@@ -47,7 +47,7 @@ use crate::{
     group::GroupId,
     messages::PathSecret,
     schedule::CommitSecret,
-    treesync::RatchetTreeExported,
+    treesync::RatchetTree,
 };
 
 pub(crate) type UpdatePathResult = (
@@ -807,7 +807,7 @@ impl<'a> TreeSyncDiff<'a> {
 
     /// Returns a vector of all nodes in the tree resulting from merging this
     /// diff.
-    pub(crate) fn export_ratchet_tree(&self) -> RatchetTreeExported {
+    pub(crate) fn export_ratchet_tree(&self) -> RatchetTree {
         let mut nodes = Vec::new();
 
         // Determine the index of the rightmost full leaf.

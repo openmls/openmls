@@ -5,7 +5,7 @@ use rstest_reuse::apply;
 use crate::{
     credentials::{test_utils::new_credential, CredentialType},
     key_packages::KeyPackageBundle,
-    treesync::{node::Node, RatchetTreeExported, TreeSync},
+    treesync::{node::Node, RatchetTree, TreeSync},
 };
 
 use openmls_rust_crypto::OpenMlsRustCrypto;
@@ -31,7 +31,7 @@ fn test_free_leaf_computation(ciphersuite: Ciphersuite, backend: &impl OpenMlsCr
     let kpb_3 = KeyPackageBundle::new(backend, &sk_3, ciphersuite, c_3);
 
     // Build a rudimentary tree with two populated and two empty leaf nodes.
-    let ratchet_tree = RatchetTreeExported::from(vec![
+    let ratchet_tree = RatchetTree::from(vec![
         Some(Node::LeafNode(
             kpb_0.key_package().leaf_node().clone().into(),
         )), // Leaf 0

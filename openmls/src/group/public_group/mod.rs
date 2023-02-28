@@ -41,7 +41,7 @@ use crate::{
             encryption_keys::{EncryptionKey, EncryptionKeyPair},
             leaf_node::OpenMlsLeafNode,
         },
-        RatchetTreeExported, TreeSync,
+        RatchetTree, TreeSync,
     },
     versions::ProtocolVersion,
 };
@@ -95,7 +95,7 @@ impl PublicGroup {
     /// details.
     pub fn from_external(
         backend: &impl OpenMlsCryptoProvider,
-        ratchet_tree: RatchetTreeExported,
+        ratchet_tree: RatchetTree,
         verifiable_group_info: VerifiableGroupInfo,
         proposal_store: ProposalStore,
     ) -> Result<(Self, GroupInfo), CreationFromExternalError> {
@@ -230,7 +230,7 @@ impl PublicGroup {
     }
 
     /// Export the nodes of the public tree.
-    pub fn export_ratchet_tree(&self) -> RatchetTreeExported {
+    pub fn export_ratchet_tree(&self) -> RatchetTree {
         self.treesync().export_ratchet_tree()
     }
 

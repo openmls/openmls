@@ -9,7 +9,7 @@ use crate::{
         public_group::errors::PublicGroupBuildError,
     },
     messages::group_info::VerifiableGroupInfo,
-    treesync::RatchetTreeExported,
+    treesync::RatchetTree,
 };
 
 use super::*;
@@ -102,7 +102,7 @@ impl MlsGroup {
         backend: &impl OpenMlsCryptoProvider<KeyStoreProvider = KeyStore>,
         mls_group_config: &MlsGroupConfig,
         welcome: Welcome,
-        ratchet_tree: Option<RatchetTreeExported>,
+        ratchet_tree: Option<RatchetTree>,
     ) -> Result<Self, WelcomeError<KeyStore::Error>> {
         let resumption_psk_store =
             ResumptionPskStore::new(mls_group_config.number_of_resumption_psks);
@@ -170,7 +170,7 @@ impl MlsGroup {
     pub fn join_by_external_commit(
         backend: &impl OpenMlsCryptoProvider,
         signer: &impl Signer,
-        ratchet_tree: Option<RatchetTreeExported>,
+        ratchet_tree: Option<RatchetTree>,
         verifiable_group_info: VerifiableGroupInfo,
         mls_group_config: &MlsGroupConfig,
         aad: &[u8],
