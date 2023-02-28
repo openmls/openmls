@@ -16,7 +16,6 @@ use crate::{
     group::{
         core_group::proposals::{ProposalStore, QueuedProposal},
         errors::*,
-        tests::tree_printing::print_tree,
         CreateCommitParams,
     },
     key_packages::KeyPackageBundle,
@@ -461,7 +460,7 @@ fn unknown_sender(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
         create_commit_result
             .welcome_option
             .expect("An unexpected error occurred."),
-        Some(group_alice.public_group().export_nodes()),
+        Some(group_alice.public_group().export_ratchet_tree()),
         bob_key_package_bundle,
         backend,
     )
@@ -500,7 +499,7 @@ fn unknown_sender(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
         create_commit_result
             .welcome_option
             .expect("An unexpected error occurred."),
-        Some(group_alice.public_group().export_nodes()),
+        Some(group_alice.public_group().export_ratchet_tree()),
         charlie_key_package_bundle,
         backend,
     )
@@ -541,8 +540,8 @@ fn unknown_sender(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
         .merge_commit(backend, create_commit_result.staged_commit)
         .expect("error merging pending commit");
 
-    print_tree(&group_alice, "Alice tree");
-    print_tree(&group_charlie, "Charlie tree");
+    group_alice.print_ratchet_tree("Alice tree");
+    group_charlie.print_ratchet_tree("Charlie tree");
 
     // Alice sends a message with a sender that is outside of the group
     // Expected result: SenderError::UnknownSender
@@ -690,7 +689,7 @@ pub(crate) fn setup_alice_bob_group(
         create_commit_result
             .welcome_option
             .expect("commit didn't return a welcome as expected"),
-        Some(group_alice.public_group().export_nodes()),
+        Some(group_alice.public_group().export_ratchet_tree()),
         bob_key_package_bundle,
         backend,
     )

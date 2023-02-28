@@ -23,6 +23,9 @@ pub(crate) use treemath::{
     MIN_TREE_SIZE,
 };
 
+#[cfg(any(feature = "test-utils", test))]
+pub(crate) use treemath::level;
+
 mod treemath;
 
 // Tests

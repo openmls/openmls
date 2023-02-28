@@ -1,12 +1,17 @@
 use tls_codec::{TlsDeserialize, TlsSerialize, TlsSize};
 
 use super::{Deserialize, Serialize};
-use crate::treesync::node::Node;
+use crate::treesync::RatchetTreeExported;
 
 /// # Ratchet Tree Extension.
 ///
-/// The ratchet tree extension contains a list of (optional) [`Node`]s that
+/// The ratchet tree extension contains a list of (optional) [`Node`](crate::treesync::node::Node)s that
 /// represent the public state of the tree in an MLS group.
+///
+/// ```c
+/// // draft-ietf-mls-protocol-17
+/// optional<Node> ratchet_tree<V>;
+/// ```
 #[derive(
     PartialEq,
     Eq,
@@ -20,17 +25,17 @@ use crate::treesync::node::Node;
     TlsSize,
 )]
 pub struct RatchetTreeExtension {
-    tree: Vec<Option<Node>>,
+    ratchet_tree: RatchetTreeExported,
 }
 
 impl RatchetTreeExtension {
-    /// Build a new extension from a vector of [`Node`]s.
-    pub fn new(tree: Vec<Option<Node>>) -> Self {
-        RatchetTreeExtension { tree }
+    /// Build a new extension from a vector of [`Node`](crate::treesync::node::Node)s.
+    pub fn new(ratchet_tree: RatchetTreeExported) -> Self {
+        RatchetTreeExtension { ratchet_tree }
     }
 
-    /// Get a slice of the nodes in tis tree.
-    pub(crate) fn as_slice(&self) -> &[Option<Node>] {
-        self.tree.as_slice()
+    /// Return the [`RatchetTreeExported`] from this extension.
+    pub fn ratchet_tree(&self) -> &RatchetTreeExported {
+        &self.ratchet_tree
     }
 }

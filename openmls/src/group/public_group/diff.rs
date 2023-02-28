@@ -20,9 +20,10 @@ use crate::{
         errors::ApplyUpdatePathError,
         node::{
             encryption_keys::EncryptionKeyPair, leaf_node::OpenMlsLeafNode,
-            parent_node::PlainUpdatePathNode, Node,
+            parent_node::PlainUpdatePathNode,
         },
         treekem::{DecryptPathParams, UpdatePath, UpdatePathNode},
+        RatchetTreeExported,
     },
 };
 
@@ -104,8 +105,8 @@ impl<'a> PublicGroupDiff<'a> {
 
     /// Returns a vector of all nodes in the tree resulting from merging this
     /// diff.
-    pub(crate) fn export_nodes(&self) -> Vec<Option<Node>> {
-        self.diff.export_nodes()
+    pub(crate) fn export_ratchet_tree(&self) -> RatchetTreeExported {
+        self.diff.export_ratchet_tree()
     }
 
     /// Decrypt an [`UpdatePath`] originating from the given

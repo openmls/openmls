@@ -41,7 +41,7 @@ use crate::{
             encryption_keys::{EncryptionKey, EncryptionKeyPair},
             leaf_node::OpenMlsLeafNode,
         },
-        Node, TreeSync,
+        RatchetTreeExported, TreeSync,
     },
     versions::ProtocolVersion,
 };
@@ -95,7 +95,7 @@ impl PublicGroup {
     /// details.
     pub fn from_external(
         backend: &impl OpenMlsCryptoProvider,
-        nodes: Vec<Option<Node>>,
+        ratchet_tree: RatchetTreeExported,
         verifiable_group_info: VerifiableGroupInfo,
         proposal_store: ProposalStore,
     ) -> Result<(Self, GroupInfo), CreationFromExternalError> {
@@ -104,7 +104,7 @@ impl PublicGroup {
         // Create a RatchetTree from the given nodes. We have to do this before
         // verifying the group info, since we need to find the Credential to verify the
         // signature against.
-        let treesync = TreeSync::from_nodes(backend, ciphersuite, nodes)?;
+        let treesync = TreeSync::from_ratchet_tree(backend, ciphersuite, ratchet_tree)?;
 
         let group_info: GroupInfo = {
             let signer_signature_key = treesync
@@ -230,8 +230,8 @@ impl PublicGroup {
     }
 
     /// Export the nodes of the public tree.
-    pub fn export_nodes(&self) -> Vec<Option<Node>> {
-        self.treesync().export_nodes()
+    pub fn export_ratchet_tree(&self) -> RatchetTreeExported {
+        self.treesync().export_ratchet_tree()
     }
 
     /// Add the [`QueuedProposal`] to the [`PublicGroup`]s internal [`ProposalStore`].

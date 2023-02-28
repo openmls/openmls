@@ -255,11 +255,11 @@ fn public_group(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) 
     );
     assert_eq!(
         alice_group.export_ratchet_tree(),
-        public_group.export_nodes()
+        public_group.export_ratchet_tree()
     );
     assert_eq!(
         charlie_group.export_ratchet_tree(),
-        public_group.export_nodes()
+        public_group.export_ratchet_tree()
     );
 }
 

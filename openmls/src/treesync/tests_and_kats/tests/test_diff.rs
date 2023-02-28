@@ -5,7 +5,7 @@ use rstest_reuse::apply;
 use crate::{
     credentials::{test_utils::new_credential, CredentialType},
     key_packages::KeyPackageBundle,
-    treesync::{node::Node, TreeSync},
+    treesync::{node::Node, RatchetTreeExported, TreeSync},
 };
 
 use openmls_rust_crypto::OpenMlsRustCrypto;
@@ -31,7 +31,7 @@ fn test_free_leaf_computation(ciphersuite: Ciphersuite, backend: &impl OpenMlsCr
     let kpb_3 = KeyPackageBundle::new(backend, &sk_3, ciphersuite, c_3);
 
     // Build a rudimentary tree with two populated and two empty leaf nodes.
-    let nodes: Vec<Option<Node>> = vec![
+    let ratchet_tree = RatchetTreeExported::from(vec![
         Some(Node::LeafNode(
             kpb_0.key_package().leaf_node().clone().into(),
         )), // Leaf 0
@@ -43,10 +43,11 @@ fn test_free_leaf_computation(ciphersuite: Ciphersuite, backend: &impl OpenMlsCr
         Some(Node::LeafNode(
             kpb_3.key_package().leaf_node().clone().into(),
         )), // Leaf 3
-    ];
+    ]);
 
     // Get the encryption key pair from the leaf.
-    let tree = TreeSync::from_nodes(backend, ciphersuite, nodes).expect("error generating tree");
+    let tree = TreeSync::from_ratchet_tree(backend, ciphersuite, ratchet_tree)
+        .expect("error generating tree");
 
     // Create and add a new leaf. It should go to leaf index 1
 
