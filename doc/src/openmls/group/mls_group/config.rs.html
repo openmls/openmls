@@ -315,6 +315,19 @@
 <a href="#315" id="315">315</a>
 <a href="#316" id="316">316</a>
 <a href="#317" id="317">317</a>
+<a href="#318" id="318">318</a>
+<a href="#319" id="319">319</a>
+<a href="#320" id="320">320</a>
+<a href="#321" id="321">321</a>
+<a href="#322" id="322">322</a>
+<a href="#323" id="323">323</a>
+<a href="#324" id="324">324</a>
+<a href="#325" id="325">325</a>
+<a href="#326" id="326">326</a>
+<a href="#327" id="327">327</a>
+<a href="#328" id="328">328</a>
+<a href="#329" id="329">329</a>
+<a href="#330" id="330">330</a>
 </pre><pre class="rust"><code><span class="doccomment">//! Configuration module for [`MlsGroup`] configurations.
 //!
 //! ## Building an MlsGroupConfig
@@ -369,6 +382,8 @@
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) use_ratchet_tree_extension: bool,
     <span class="doccomment">/// Required capabilities (extensions and proposal types)
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) required_capabilities: RequiredCapabilitiesExtension,
+    <span class="doccomment">/// Senders authorized to send external remove proposals
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) external_senders: ExternalSendersExtension,
     <span class="doccomment">/// Sender ratchet configuration
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) sender_ratchet_configuration: SenderRatchetConfiguration,
     <span class="doccomment">/// Lifetime of the own leaf node
@@ -411,6 +426,11 @@
     <span class="doccomment">/// Returns the [`MlsGroupConfig`] sender ratchet configuration.
     </span><span class="kw">pub fn </span>sender_ratchet_configuration(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>SenderRatchetConfiguration {
         <span class="kw-2">&amp;</span><span class="self">self</span>.sender_ratchet_configuration
+    }
+
+    <span class="doccomment">/// Returns the [`MlsGroupConfig`] external senders extension
+    </span><span class="kw">pub fn </span>external_senders(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>ExternalSendersExtension {
+        <span class="kw-2">&amp;</span><span class="self">self</span>.external_senders
     }
 
     <span class="doccomment">/// Returns the [`MlsGroupConfig`] lifetime configuration.
@@ -506,6 +526,12 @@
     <span class="doccomment">/// Sets the `crypto_config` property of the MlsGroupConfig.
     </span><span class="kw">pub fn </span>crypto_config(<span class="kw-2">mut </span><span class="self">self</span>, config: CryptoConfig) -&gt; <span class="self">Self </span>{
         <span class="self">self</span>.config.crypto_config = config;
+        <span class="self">self
+    </span>}
+
+    <span class="doccomment">/// Sets the `external_senders` property of the MlsGroupConfig.
+    </span><span class="kw">pub fn </span>external_senders(<span class="kw-2">mut </span><span class="self">self</span>, external_senders: ExternalSendersExtension) -&gt; <span class="self">Self </span>{
+        <span class="self">self</span>.config.external_senders = external_senders;
         <span class="self">self
     </span>}
 

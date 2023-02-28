@@ -539,6 +539,8 @@
 <a href="#539" id="539">539</a>
 <a href="#540" id="540">540</a>
 <a href="#541" id="541">541</a>
+<a href="#542" id="542">542</a>
+<a href="#543" id="543">543</a>
 </pre><pre class="rust"><code><span class="doccomment">//! # Extensions
 //!
 //! In MLS, extensions appear in the following places:
@@ -583,7 +585,9 @@
 <span class="comment">// Public re-exports
 </span><span class="kw">pub use </span>application_id_extension::ApplicationIdExtension;
 <span class="kw">pub use </span>external_pub_extension::ExternalPubExtension;
-<span class="kw">pub use </span>external_sender_extension::ExternalSendersExtension;
+<span class="kw">pub use </span>external_sender_extension::{
+    ExternalSender, ExternalSendersExtension, SenderExtensionIndex,
+};
 <span class="kw">pub use </span>ratchet_tree_extension::RatchetTreeExtension;
 <span class="kw">pub use </span>required_capabilities::RequiredCapabilitiesExtension;
 

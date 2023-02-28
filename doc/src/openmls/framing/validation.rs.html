@@ -383,12 +383,6 @@
 <a href="#383" id="383">383</a>
 <a href="#384" id="384">384</a>
 <a href="#385" id="385">385</a>
-<a href="#386" id="386">386</a>
-<a href="#387" id="387">387</a>
-<a href="#388" id="388">388</a>
-<a href="#389" id="389">389</a>
-<a href="#390" id="390">390</a>
-<a href="#391" id="391">391</a>
 </pre><pre class="rust"><code><span class="doccomment">//! # Validation steps for incoming messages
 //!
 //! ```text
@@ -404,35 +398,20 @@
 //!                                  │                      │
 //!                                  ▼                    -&#39;
 //!                           UnverifiedMessage
-//!                                  │                                       -.
-//!                                  │                                         │
-//!                                  │                                         │
-//!                                  ▼                                         │
-//!                       UnverifiedContextMessage                             │
-//!                                  │                                         │
-//!                                  │                                         │
-//!             (sender is member)   │   (sender is external)                  │
-//!               ┌──────────────────┴───────────────────┐                     │
-//!               │                                      │                     │
-//!               ▼                                      ▼                     +-- process_unverified_message
-//!     UnverifiedGroupMessage              UnverifiedExternalMessage          │
-//!               │                                      │                     │
-//!               │ (verify_signature)                   │ (verify_signature)  │
-//!               │                                      │                     │
-//!               ▼                                      ▼                     │
-//!     VerifiedMemberMessage                VerifiedExternalMessage           │
-//!               │                                      │                     │
-//!               └──────────────────┬───────────────────┘                     │
-//!                                  │                                         │
-//!                                  ▼                                       -&#39;
+//!                                  │                    -.
+//!                                  │                      │
+//!                                  │                      +-- process_unverified_message
+//!                                  │                      │
+//!                                  ▼                    -&#39;
 //!                          ProcessedMessage
 //!
 //! ```
 </span><span class="comment">// TODO #106/#151: Update the above diagram
 
-</span><span class="kw">use crate</span>::{group::errors::ValidationError, treesync::TreeSync};
-<span class="kw">use </span>core_group::proposals::QueuedProposal;
-<span class="kw">use </span>mls_group::errors::ProcessMessageError;
+</span><span class="kw">use crate</span>::{
+    extensions::ExternalSendersExtension, group::errors::ValidationError, treesync::TreeSync,
+};
+<span class="kw">use </span>core_group::{proposals::QueuedProposal, staged_commit::StagedCommit};
 <span class="kw">use </span>openmls_traits::OpenMlsCryptoProvider;
 
 <span class="kw">use crate</span>::{
@@ -440,6 +419,8 @@
     framing::mls_auth_content::AuthenticatedContent,
     tree::sender_ratchet::SenderRatchetConfiguration,
 };
+
+<span class="kw">use </span><span class="self">self</span>::mls_group::errors::ProcessMessageError;
 
 <span class="kw">use super</span>::{
     mls_auth_content::VerifiableAuthenticatedContent, mls_content::ContentType,
@@ -554,6 +535,7 @@
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         treesync: <span class="kw-2">&amp;</span>TreeSync,
         old_leaves: <span class="kw-2">&amp;</span>[Member],
+        external_senders: <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>ExternalSendersExtension&gt;,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;CredentialWithKey, ValidationError&gt; {
         <span class="kw">let </span>sender = <span class="self">self</span>.sender();
         <span class="kw">match </span>sender {
@@ -596,8 +578,16 @@
                     }
                 }
             }
-            <span class="comment">// External senders are not supported yet #106/#151.
-            </span>Sender::External(<span class="kw">_</span>) =&gt; <span class="macro">unimplemented!</span>(),
+            Sender::External(index) =&gt; {
+                <span class="kw">let </span>sender = external_senders
+                    .ok_or(ValidationError::NoExternalSendersExtension)<span class="question-mark">?
+                    </span>.get(index.index())
+                    .ok_or(ValidationError::UnauthorizedExternalSender)<span class="question-mark">?</span>;
+                <span class="prelude-val">Ok</span>(CredentialWithKey {
+                    credential: sender.credential().clone(),
+                    signature_key: sender.signature_key().clone(),
+                })
+            }
             Sender::NewMemberCommit | Sender::NewMemberProposal =&gt; {
                 <span class="comment">// Fetch the credential from the message itself.
                 </span><span class="self">self</span>.verifiable_content.new_member_credential()
@@ -635,12 +625,10 @@
         credential: Credential,
         sender_pk: OpenMlsSignaturePublicKey,
     ) -&gt; <span class="self">Self </span>{
-        {
-            UnverifiedMessage {
-                verifiable_content: decrypted_message.verifiable_content,
-                credential,
-                sender_pk,
-            }
+        UnverifiedMessage {
+            verifiable_content: decrypted_message.verifiable_content,
+            credential,
+            sender_pk,
         }
     }
 

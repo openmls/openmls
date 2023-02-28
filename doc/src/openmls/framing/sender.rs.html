@@ -75,9 +75,10 @@
 <a href="#75" id="75">75</a>
 <a href="#76" id="76">76</a>
 <a href="#77" id="77">77</a>
+<a href="#78" id="78">78</a>
 </pre><pre class="rust"><code><span class="doccomment">//! # The sender of a message.
 
-</span><span class="kw">use </span><span class="kw">crate</span>::binary_tree::array_representation::LeafNodeIndex;
+</span><span class="kw">use crate</span>::{binary_tree::array_representation::LeafNodeIndex, extensions::SenderExtensionIndex};
 
 <span class="kw">use super</span>::<span class="kw-2">*</span>;
 <span class="kw">use </span>tls_codec::{TlsDeserialize, TlsSerialize, TlsSize};
@@ -118,7 +119,8 @@
     </span><span class="attr">#[tls_codec(discriminant = <span class="number">1</span>)]
     </span>Member(LeafNodeIndex),
     <span class="doccomment">/// The sender is not a member of the group and has an external value instead
-    </span>External(LeafNodeIndex),
+    /// The index refers to the [crate::extensions::ExternalSendersExtension] and is 0 indexed
+    </span>External(SenderExtensionIndex),
     <span class="doccomment">/// The sender is a new member of the group that joins itself through
     /// an [External Add proposal](crate::messages::external_proposals::JoinProposal)
     </span>NewMemberProposal,

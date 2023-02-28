@@ -1133,6 +1133,18 @@
 <a href="#1133" id="1133">1133</a>
 <a href="#1134" id="1134">1134</a>
 <a href="#1135" id="1135">1135</a>
+<a href="#1136" id="1136">1136</a>
+<a href="#1137" id="1137">1137</a>
+<a href="#1138" id="1138">1138</a>
+<a href="#1139" id="1139">1139</a>
+<a href="#1140" id="1140">1140</a>
+<a href="#1141" id="1141">1141</a>
+<a href="#1142" id="1142">1142</a>
+<a href="#1143" id="1143">1143</a>
+<a href="#1144" id="1144">1144</a>
+<a href="#1145" id="1145">1145</a>
+<a href="#1146" id="1146">1146</a>
+<a href="#1147" id="1147">1147</a>
 </pre><pre class="rust"><code><span class="doccomment">//! ### Don&#39;t Panic!
 //!
 //! Functions in this module should never panic. However, if there is a bug in
@@ -1313,6 +1325,18 @@
         <span class="self">self</span>.public_group_builder = <span class="self">self
             </span>.public_group_builder
             .with_required_capabilities(required_capabilities);
+        <span class="self">self
+    </span>}
+    <span class="doccomment">/// Set the [`ExternalSendersExtension`] of the [`CoreGroup`].
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>with_external_senders(
+        <span class="kw-2">mut </span><span class="self">self</span>,
+        external_senders: ExternalSendersExtension,
+    ) -&gt; <span class="self">Self </span>{
+        <span class="kw">if </span>!external_senders.is_empty() {
+            <span class="self">self</span>.public_group_builder = <span class="self">self
+                </span>.public_group_builder
+                .with_external_senders(external_senders);
+        }
         <span class="self">self
     </span>}
     <span class="doccomment">/// Set the number of past epochs the group should keep secrets.

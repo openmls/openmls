@@ -162,6 +162,10 @@
             10,   // out_of_order_tolerance
             2000, // maximum_forward_distance
         ))
+        .external_senders(vec![ExternalSender::new(
+            ds_credential_bundle.signature_key,
+            ds_credential_bundle.credential,
+        )])
         .crypto_config(CryptoConfig::with_default_version(ciphersuite))
         .use_ratchet_tree_extension(true)
         .build();</code></pre>

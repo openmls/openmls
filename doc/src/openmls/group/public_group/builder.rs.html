@@ -153,12 +153,35 @@
 <a href="#153" id="153">153</a>
 <a href="#154" id="154">154</a>
 <a href="#155" id="155">155</a>
+<a href="#156" id="156">156</a>
+<a href="#157" id="157">157</a>
+<a href="#158" id="158">158</a>
+<a href="#159" id="159">159</a>
+<a href="#160" id="160">160</a>
+<a href="#161" id="161">161</a>
+<a href="#162" id="162">162</a>
+<a href="#163" id="163">163</a>
+<a href="#164" id="164">164</a>
+<a href="#165" id="165">165</a>
+<a href="#166" id="166">166</a>
+<a href="#167" id="167">167</a>
+<a href="#168" id="168">168</a>
+<a href="#169" id="169">169</a>
+<a href="#170" id="170">170</a>
+<a href="#171" id="171">171</a>
+<a href="#172" id="172">172</a>
+<a href="#173" id="173">173</a>
+<a href="#174" id="174">174</a>
+<a href="#175" id="175">175</a>
 </pre><pre class="rust"><code><span class="kw">use </span>openmls_traits::{signatures::Signer, OpenMlsCryptoProvider};
 
 <span class="kw">use crate</span>::{
     credentials::CredentialWithKey,
     error::LibraryError,
-    extensions::{errors::ExtensionError, Extension, Extensions, RequiredCapabilitiesExtension},
+    extensions::{
+        errors::ExtensionError, Extension, Extensions, ExternalSendersExtension,
+        RequiredCapabilitiesExtension,
+    },
     group::{config::CryptoConfig, GroupContext, GroupId},
     messages::ConfirmationTag,
     schedule::CommitSecret,
@@ -179,6 +202,7 @@
     credential_with_key: CredentialWithKey,
     lifetime: <span class="prelude-ty">Option</span>&lt;Lifetime&gt;,
     required_capabilities: <span class="prelude-ty">Option</span>&lt;RequiredCapabilitiesExtension&gt;,
+    external_senders: <span class="prelude-ty">Option</span>&lt;ExternalSendersExtension&gt;,
     leaf_extensions: <span class="prelude-ty">Option</span>&lt;Extensions&gt;,
 }
 
@@ -193,6 +217,16 @@
         required_capabilities: RequiredCapabilitiesExtension,
     ) -&gt; <span class="self">Self </span>{
         <span class="self">self</span>.required_capabilities = <span class="prelude-val">Some</span>(required_capabilities);
+        <span class="self">self
+    </span>}
+
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>with_external_senders(
+        <span class="kw-2">mut </span><span class="self">self</span>,
+        external_senders: ExternalSendersExtension,
+    ) -&gt; <span class="self">Self </span>{
+        <span class="kw">if </span>!external_senders.is_empty() {
+            <span class="self">self</span>.external_senders = <span class="prelude-val">Some</span>(external_senders);
+        }
         <span class="self">self
     </span>}
 
@@ -230,13 +264,18 @@
             }
             <span class="kw">_ </span>=&gt; LibraryError::custom(<span class="string">&quot;Unexpected ExtensionError&quot;</span>).into(),
         })<span class="question-mark">?</span>;
-        <span class="kw">let </span>required_capabilities =
-            Extensions::single(Extension::RequiredCapabilities(required_capabilities));
+        <span class="kw">let </span>required_capabilities = Extension::RequiredCapabilities(required_capabilities);
+        <span class="kw">let </span>extensions =
+            <span class="kw">if let </span><span class="prelude-val">Some</span>(ext_senders) = <span class="self">self</span>.external_senders.map(Extension::ExternalSenders) {
+                <span class="macro">vec!</span>[required_capabilities, ext_senders]
+            } <span class="kw">else </span>{
+                <span class="macro">vec!</span>[required_capabilities]
+            };
         <span class="kw">let </span>group_context = GroupContext::create_initial_group_context(
             <span class="self">self</span>.crypto_config.ciphersuite,
             <span class="self">self</span>.group_id,
             treesync.tree_hash().to_vec(),
-            required_capabilities,
+            Extensions::from_vec(extensions)<span class="question-mark">?</span>,
         );
         <span class="kw">let </span>next_builder = TempBuilderPG2 {
             treesync,
@@ -304,6 +343,7 @@
             credential_with_key,
             lifetime: <span class="prelude-val">None</span>,
             required_capabilities: <span class="prelude-val">None</span>,
+            external_senders: <span class="prelude-val">None</span>,
             leaf_extensions: <span class="prelude-val">None</span>,
         }
     }
