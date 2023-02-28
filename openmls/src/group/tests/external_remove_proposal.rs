@@ -23,7 +23,7 @@ fn new_test_group(
     let group_id = GroupId::from_slice(b"Test Group");
 
     // Generate credential bundles
-    let credential_with_keys =
+    let credential_when_keys =
         generate_credential_bundle(identity.into(), ciphersuite.signature_algorithm(), backend);
 
     // Define the MlsGroup configuration
@@ -34,15 +34,15 @@ fn new_test_group(
         .build();
 
     (
-        MlsGroup::new_with_group_id(
+        MlsGroup::new_when_group_id(
             backend,
-            &credential_with_keys.signer,
+            &credential_when_keys.signer,
             &mls_group_config,
             group_id,
-            credential_with_keys.credential_with_key.clone(),
+            credential_when_keys.credential_when_key.clone(),
         )
         .unwrap(),
-        credential_with_keys,
+        credential_when_keys,
     )
 }
 
@@ -54,7 +54,7 @@ fn validation_test_setup(
     external_senders: ExternalSendersExtension,
 ) -> (MlsGroup, CredentialWithKeyAndSigner) {
     // === Alice creates a group ===
-    let (mut alice_group, alice_signer_with_keys) = new_test_group(
+    let (mut alice_group, alice_signer_when_keys) = new_test_group(
         "Alice",
         wire_format_policy,
         ciphersuite,
@@ -73,7 +73,7 @@ fn validation_test_setup(
     );
 
     alice_group
-        .add_members(backend, &alice_signer_with_keys.signer, &[bob_key_package])
+        .add_members(backend, &alice_signer_when_keys.signer, &[bob_key_package])
         .expect("error adding Bob to group");
 
     alice_group
@@ -81,7 +81,7 @@ fn validation_test_setup(
         .expect("error merging pending commit");
     assert_eq!(alice_group.members().count(), 2);
 
-    (alice_group, alice_signer_with_keys)
+    (alice_group, alice_signer_when_keys)
 }
 
 #[apply(ciphersuites_and_backends)]
@@ -102,10 +102,10 @@ fn external_remove_proposal_should_remove_member(
         backend,
         vec![ExternalSender::new(
             ds_credential_bundle
-                .credential_with_key
+                .credential_when_key
                 .signature_key
                 .clone(),
-            ds_credential_bundle.credential_with_key.credential.clone(),
+            ds_credential_bundle.credential_when_key.credential.clone(),
         )],
     );
 
@@ -114,7 +114,7 @@ fn external_remove_proposal_should_remove_member(
          .group()
          .group_context_extensions()
          .iter()
-         .any(|e| matches!(e, Extension::ExternalSenders(senders) if senders.iter().any(|s| s.credential() == &ds_credential_bundle.credential_with_key.credential) )));
+         .any(|e| matches!(e, Extension::ExternalSenders(senders) if senders.iter().any(|s| s.credential() == &ds_credential_bundle.credential_when_key.credential) )));
 
     // get Bob's index
     let bob_index = alice_group
@@ -175,7 +175,7 @@ fn external_remove_proposal_should_remove_member(
 }
 
 #[apply(ciphersuites_and_backends)]
-fn external_remove_proposal_should_fail_with_invalid_external_senders_index(
+fn external_remove_proposal_should_fail_when_invalid_external_senders_index(
     ciphersuite: Ciphersuite,
     backend: &impl OpenMlsCryptoProvider,
 ) {
@@ -192,10 +192,10 @@ fn external_remove_proposal_should_fail_with_invalid_external_senders_index(
         backend,
         vec![ExternalSender::new(
             ds_credential_bundle
-                .credential_with_key
+                .credential_when_key
                 .signature_key
                 .clone(),
-            ds_credential_bundle.credential_with_key.credential.clone(),
+            ds_credential_bundle.credential_when_key.credential.clone(),
         )],
     );
 
@@ -227,7 +227,7 @@ fn external_remove_proposal_should_fail_with_invalid_external_senders_index(
 }
 
 #[apply(ciphersuites_and_backends)]
-fn external_remove_proposal_should_fail_with_invalid_external_senders(
+fn external_remove_proposal_should_fail_when_invalid_signature(
     ciphersuite: Ciphersuite,
     backend: &impl OpenMlsCryptoProvider,
 ) {
@@ -244,10 +244,10 @@ fn external_remove_proposal_should_fail_with_invalid_external_senders(
         backend,
         vec![ExternalSender::new(
             ds_credential_bundle
-                .credential_with_key
+                .credential_when_key
                 .signature_key
                 .clone(),
-            ds_credential_bundle.credential_with_key.credential,
+            ds_credential_bundle.credential_when_key.credential,
         )],
     );
 
@@ -282,7 +282,7 @@ fn external_remove_proposal_should_fail_with_invalid_external_senders(
 }
 
 #[apply(ciphersuites_and_backends)]
-fn external_remove_proposal_should_fail_with_no_external_senders(
+fn external_remove_proposal_should_fail_when_no_external_senders(
     ciphersuite: Ciphersuite,
     backend: &impl OpenMlsCryptoProvider,
 ) {
