@@ -912,6 +912,7 @@
 <a href="#912" id="912">912</a>
 <a href="#913" id="913">913</a>
 <a href="#914" id="914">914</a>
+<a href="#915" id="915">915</a>
 </pre><pre class="rust"><code><span class="doccomment">//! This module provides the diff functionality for [`TreeSync`].
 //!
 //! # About
@@ -961,6 +962,7 @@
     group::GroupId,
     messages::PathSecret,
     schedule::CommitSecret,
+    treesync::RatchetTree,
 };
 
 <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">type </span>UpdatePathResult = (
@@ -1720,7 +1722,7 @@
 
     <span class="doccomment">/// Returns a vector of all nodes in the tree resulting from merging this
     /// diff.
-    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>export_nodes(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; Vec&lt;<span class="prelude-ty">Option</span>&lt;Node&gt;&gt; {
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>export_ratchet_tree(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; RatchetTree {
         <span class="kw">let </span><span class="kw-2">mut </span>nodes = Vec::new();
 
         <span class="comment">// Determine the index of the rightmost full leaf.
@@ -1739,7 +1741,7 @@
             nodes.push(leaf.node().clone().map(Node::LeafNode));
         } <span class="kw">else </span>{
             <span class="comment">// The tree was empty.
-            </span><span class="kw">return </span><span class="macro">vec!</span>[];
+            </span><span class="kw">return </span><span class="macro">vec!</span>[].into();
         }
 
         <span class="comment">// Blank parent node used for padding
@@ -1765,7 +1767,7 @@
             nodes.push(leaf.node().clone().map(Node::LeafNode));
         }
 
-        nodes
+        nodes.into()
     }
 
     <span class="doccomment">/// Returns the filtered common path two leaf nodes share. If the leaves are

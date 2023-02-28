@@ -530,17 +530,6 @@
 <a href="#530" id="530">530</a>
 <a href="#531" id="531">531</a>
 <a href="#532" id="532">532</a>
-<a href="#533" id="533">533</a>
-<a href="#534" id="534">534</a>
-<a href="#535" id="535">535</a>
-<a href="#536" id="536">536</a>
-<a href="#537" id="537">537</a>
-<a href="#538" id="538">538</a>
-<a href="#539" id="539">539</a>
-<a href="#540" id="540">540</a>
-<a href="#541" id="541">541</a>
-<a href="#542" id="542">542</a>
-<a href="#543" id="543">543</a>
 </pre><pre class="rust"><code><span class="doccomment">//! # Extensions
 //!
 //! In MLS, extensions appear in the following places:
@@ -590,8 +579,6 @@
 };
 <span class="kw">pub use </span>ratchet_tree_extension::RatchetTreeExtension;
 <span class="kw">pub use </span>required_capabilities::RequiredCapabilitiesExtension;
-
-<span class="kw">use </span><span class="kw">crate</span>::treesync::node::Node;
 
 <span class="attr">#[cfg(test)]
 </span><span class="kw">mod </span>test_extensions;
@@ -975,15 +962,6 @@
     <span class="kw">fn </span>cmp(<span class="kw-2">&amp;</span><span class="self">self</span>, other: <span class="kw-2">&amp;</span><span class="self">Self</span>) -&gt; std::cmp::Ordering {
         <span class="self">self</span>.extension_type().cmp(<span class="kw-2">&amp;</span>other.extension_type())
     }
-}
-
-<span class="doccomment">/// This function tries to extract a vector of nodes from the given extensions.
-///
-/// Returns the vector of nodes if it finds one and `None` otherwise.
-</span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>try_nodes_from_extensions(
-    other_extensions: <span class="kw-2">&amp;</span>Extensions,
-) -&gt; <span class="prelude-ty">Option</span>&lt;Vec&lt;<span class="prelude-ty">Option</span>&lt;Node&gt;&gt;&gt; {
-    other_extensions.ratchet_tree().map(|e| e.as_slice().into())
 }
 
 <span class="attr">#[cfg(test)]

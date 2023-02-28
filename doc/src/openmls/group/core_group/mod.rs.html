@@ -1143,8 +1143,6 @@
 <a href="#1143" id="1143">1143</a>
 <a href="#1144" id="1144">1144</a>
 <a href="#1145" id="1145">1145</a>
-<a href="#1146" id="1146">1146</a>
-<a href="#1147" id="1147">1147</a>
 </pre><pre class="rust"><code><span class="doccomment">//! ### Don&#39;t Panic!
 //!
 //! Functions in this module should never panic. However, if there is a bug in
@@ -1677,7 +1675,7 @@
         <span class="kw">let </span>extensions = {
             <span class="kw">let </span>ratchet_tree_extension = || {
                 Extension::RatchetTree(RatchetTreeExtension::new(
-                    <span class="self">self</span>.public_group().export_nodes(),
+                    <span class="self">self</span>.public_group().export_ratchet_tree(),
                 ))
             };
 
@@ -2099,7 +2097,7 @@
                 Extension::ExternalPub(ExternalPubExtension::new(external_pub.into()));
             <span class="kw">let </span>other_extensions: Extensions = <span class="kw">if </span><span class="self">self</span>.use_ratchet_tree_extension {
                 Extensions::from_vec(<span class="macro">vec!</span>[
-                    Extension::RatchetTree(RatchetTreeExtension::new(diff.export_nodes())),
+                    Extension::RatchetTree(RatchetTreeExtension::new(diff.export_ratchet_tree())),
                     external_pub_extension,
                 ])<span class="question-mark">?
             </span>} <span class="kw">else </span>{
@@ -2268,10 +2266,8 @@
         <span class="self">self</span>.message_secrets_store.message_secrets_mut()
     }
 
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>print_tree(<span class="kw-2">&amp;</span><span class="self">self</span>, message: <span class="kw-2">&amp;</span>str) {
-        <span class="kw">use </span><span class="kw">super</span>::tests::tree_printing::print_tree;
-
-        print_tree(<span class="self">self</span>, message);
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>print_ratchet_tree(<span class="kw-2">&amp;</span><span class="self">self</span>, message: <span class="kw-2">&amp;</span>str) {
+        <span class="macro">println!</span>(<span class="string">&quot;{}: {}&quot;</span>, message, <span class="self">self</span>.public_group().export_ratchet_tree());
     }
 
     <span class="attr">#[cfg(test)]

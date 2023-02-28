@@ -216,6 +216,7 @@
 <a href="#216" id="216">216</a>
 <a href="#217" id="217">217</a>
 <a href="#218" id="218">218</a>
+<a href="#219" id="219">219</a>
 </pre><pre class="rust"><code><span class="kw">use </span>openmls_traits::signatures::Signer;
 
 <span class="kw">use crate</span>::{
@@ -227,6 +228,7 @@
         public_group::errors::PublicGroupBuildError,
     },
     messages::group_info::VerifiableGroupInfo,
+    treesync::RatchetTree,
 };
 
 <span class="kw">use super</span>::<span class="kw-2">*</span>;
@@ -321,7 +323,7 @@
         backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider&lt;KeyStoreProvider = KeyStore&gt;,
         mls_group_config: <span class="kw-2">&amp;</span>MlsGroupConfig,
         welcome: Welcome,
-        ratchet_tree: <span class="prelude-ty">Option</span>&lt;Vec&lt;<span class="prelude-ty">Option</span>&lt;Node&gt;&gt;&gt;,
+        ratchet_tree: <span class="prelude-ty">Option</span>&lt;RatchetTree&gt;,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, WelcomeError&lt;KeyStore::Error&gt;&gt; {
         <span class="kw">let </span>resumption_psk_store =
             ResumptionPskStore::new(mls_group_config.number_of_resumption_psks);
@@ -389,7 +391,7 @@
     </span><span class="kw">pub fn </span>join_by_external_commit(
         backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider,
         signer: <span class="kw-2">&amp;</span><span class="kw">impl </span>Signer,
-        tree_option: <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>[<span class="prelude-ty">Option</span>&lt;Node&gt;]&gt;,
+        ratchet_tree: <span class="prelude-ty">Option</span>&lt;RatchetTree&gt;,
         verifiable_group_info: VerifiableGroupInfo,
         mls_group_config: <span class="kw-2">&amp;</span>MlsGroupConfig,
         aad: <span class="kw-2">&amp;</span>[u8],
@@ -411,7 +413,7 @@
             backend,
             signer,
             params,
-            tree_option,
+            ratchet_tree,
             verifiable_group_info,
         )<span class="question-mark">?</span>;
         group.set_max_past_epochs(mls_group_config.max_past_epochs);

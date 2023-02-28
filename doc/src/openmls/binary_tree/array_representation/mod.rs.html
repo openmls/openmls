@@ -28,6 +28,9 @@
 <a href="#28" id="28">28</a>
 <a href="#29" id="29">29</a>
 <a href="#30" id="30">30</a>
+<a href="#31" id="31">31</a>
+<a href="#32" id="32">32</a>
+<a href="#33" id="33">33</a>
 </pre><pre class="rust"><code><span class="doccomment">//! This module contains an implementation of a full, left balanced binary tree
 //! that uses the array-representation to store and index the individual nodes.
 //!
@@ -52,6 +55,9 @@
     direct_path, is_node_in_tree, left, right, root, ParentNodeIndex, TreeNodeIndex, TreeSize,
     MIN_TREE_SIZE,
 };
+
+<span class="attr">#[cfg(any(feature = <span class="string">&quot;test-utils&quot;</span>, test))]
+</span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">use </span>treemath::level;
 
 <span class="kw">mod </span>treemath;
 

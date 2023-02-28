@@ -374,7 +374,7 @@
             encryption_keys::{EncryptionKey, EncryptionKeyPair},
             leaf_node::OpenMlsLeafNode,
         },
-        Node, TreeSync,
+        RatchetTree, TreeSync,
     },
     versions::ProtocolVersion,
 };
@@ -428,7 +428,7 @@
     /// details.
     </span><span class="kw">pub fn </span>from_external(
         backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider,
-        nodes: Vec&lt;<span class="prelude-ty">Option</span>&lt;Node&gt;&gt;,
+        ratchet_tree: RatchetTree,
         verifiable_group_info: VerifiableGroupInfo,
         proposal_store: ProposalStore,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(<span class="self">Self</span>, GroupInfo), CreationFromExternalError&gt; {
@@ -437,7 +437,7 @@
         <span class="comment">// Create a RatchetTree from the given nodes. We have to do this before
         // verifying the group info, since we need to find the Credential to verify the
         // signature against.
-        </span><span class="kw">let </span>treesync = TreeSync::from_nodes(backend, ciphersuite, nodes)<span class="question-mark">?</span>;
+        </span><span class="kw">let </span>treesync = TreeSync::from_ratchet_tree(backend, ciphersuite, ratchet_tree)<span class="question-mark">?</span>;
 
         <span class="kw">let </span>group_info: GroupInfo = {
             <span class="kw">let </span>signer_signature_key = treesync
@@ -563,8 +563,8 @@
     }
 
     <span class="doccomment">/// Export the nodes of the public tree.
-    </span><span class="kw">pub fn </span>export_nodes(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; Vec&lt;<span class="prelude-ty">Option</span>&lt;Node&gt;&gt; {
-        <span class="self">self</span>.treesync().export_nodes()
+    </span><span class="kw">pub fn </span>export_ratchet_tree(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; RatchetTree {
+        <span class="self">self</span>.treesync().export_ratchet_tree()
     }
 
     <span class="doccomment">/// Add the [`QueuedProposal`] to the [`PublicGroup`]s internal [`ProposalStore`].

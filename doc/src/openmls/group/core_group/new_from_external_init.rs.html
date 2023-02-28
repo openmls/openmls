@@ -131,7 +131,6 @@
 <a href="#131" id="131">131</a>
 <a href="#132" id="132">132</a>
 <a href="#133" id="133">133</a>
-<a href="#134" id="134">134</a>
 </pre><pre class="rust"><code><span class="kw">use crate</span>::{
     binary_tree::array_representation::LeafNodeIndex,
     group::{
@@ -139,7 +138,6 @@
         errors::ExternalCommitError,
     },
     messages::proposals::{ExternalInitProposal, Proposal},
-    treesync::node::Node,
 };
 
 <span class="kw">use </span><span class="kw">super</span>::CoreGroup;
@@ -163,7 +161,7 @@
         backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider,
         signer: <span class="kw-2">&amp;</span><span class="kw">impl </span>Signer,
         <span class="kw-2">mut </span>params: CreateCommitParams,
-        tree_option: <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>[<span class="prelude-ty">Option</span>&lt;Node&gt;]&gt;,
+        ratchet_tree: <span class="prelude-ty">Option</span>&lt;RatchetTree&gt;,
         verifiable_group_info: VerifiableGroupInfo,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;ExternalCommitResult, ExternalCommitError&gt; {
         <span class="comment">// Build the ratchet tree
@@ -172,18 +170,18 @@
         // If we got a ratchet tree extension in the welcome, we enable it for
         // this group. Note that this is not strictly necessary. But there&#39;s
         // currently no other mechanism to enable the extension.
-        </span><span class="kw">let </span>extension_tree_option = try_nodes_from_extensions(verifiable_group_info.extensions());
-        <span class="kw">let </span>(nodes, enable_ratchet_tree_extension) = <span class="kw">match </span>extension_tree_option {
-            <span class="prelude-val">Some</span>(nodes) =&gt; (nodes, <span class="bool-val">true</span>),
-            <span class="prelude-val">None </span>=&gt; <span class="kw">match </span>tree_option {
-                <span class="prelude-val">Some</span>(n) =&gt; (n.into(), <span class="bool-val">false</span>),
-                <span class="prelude-val">None </span>=&gt; <span class="kw">return </span><span class="prelude-val">Err</span>(ExternalCommitError::MissingRatchetTree),
-            },
-        };
+        </span><span class="kw">let </span>(ratchet_tree, enable_ratchet_tree_extension) =
+            <span class="kw">match </span>verifiable_group_info.extensions().ratchet_tree() {
+                <span class="prelude-val">Some</span>(extension) =&gt; (extension.ratchet_tree().clone(), <span class="bool-val">true</span>),
+                <span class="prelude-val">None </span>=&gt; <span class="kw">match </span>ratchet_tree {
+                    <span class="prelude-val">Some</span>(ratchet_tree) =&gt; (ratchet_tree, <span class="bool-val">false</span>),
+                    <span class="prelude-val">None </span>=&gt; <span class="kw">return </span><span class="prelude-val">Err</span>(ExternalCommitError::MissingRatchetTree),
+                },
+            };
 
         <span class="kw">let </span>(public_group, group_info) = PublicGroup::from_external(
             backend,
-            nodes,
+            ratchet_tree,
             verifiable_group_info,
             <span class="comment">// Existing proposals are discarded when joining by external commit.
             </span>ProposalStore::new(),

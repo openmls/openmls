@@ -450,7 +450,7 @@
     schedule::ResumptionPskSecret,
     treesync::{
         node::leaf_node::{LeafNode, OpenMlsLeafNode},
-        Node,
+        RatchetTree,
     },
 };
 <span class="kw">use </span>openmls_traits::{key_store::OpenMlsKeyStore, types::Ciphersuite, OpenMlsCryptoProvider};
@@ -762,8 +762,8 @@
     <span class="comment">// === Extensions ===
 
     </span><span class="doccomment">/// Exports the Ratchet Tree.
-    </span><span class="kw">pub fn </span>export_ratchet_tree(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; Vec&lt;<span class="prelude-ty">Option</span>&lt;Node&gt;&gt; {
-        <span class="self">self</span>.group.public_group().export_nodes()
+    </span><span class="kw">pub fn </span>export_ratchet_tree(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; RatchetTree {
+        <span class="self">self</span>.group.public_group().export_ratchet_tree()
     }
 }
 
@@ -843,8 +843,8 @@
     }
 
     <span class="attr">#[cfg(any(feature = <span class="string">&quot;test-utils&quot;</span>, test))]
-    </span><span class="kw">pub fn </span>print_tree(<span class="kw-2">&amp;</span><span class="self">self</span>, message: <span class="kw-2">&amp;</span>str) {
-        <span class="self">self</span>.group.print_tree(message)
+    </span><span class="kw">pub fn </span>print_ratchet_tree(<span class="kw-2">&amp;</span><span class="self">self</span>, message: <span class="kw-2">&amp;</span>str) {
+        <span class="self">self</span>.group.print_ratchet_tree(message)
     }
 
     <span class="doccomment">/// Returns the underlying [CoreGroup].

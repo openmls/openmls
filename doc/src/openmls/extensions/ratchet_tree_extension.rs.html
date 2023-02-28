@@ -34,15 +34,25 @@
 <a href="#34" id="34">34</a>
 <a href="#35" id="35">35</a>
 <a href="#36" id="36">36</a>
+<a href="#37" id="37">37</a>
+<a href="#38" id="38">38</a>
+<a href="#39" id="39">39</a>
+<a href="#40" id="40">40</a>
+<a href="#41" id="41">41</a>
 </pre><pre class="rust"><code><span class="kw">use </span>tls_codec::{TlsDeserialize, TlsSerialize, TlsSize};
 
 <span class="kw">use super</span>::{Deserialize, Serialize};
-<span class="kw">use </span><span class="kw">crate</span>::treesync::node::Node;
+<span class="kw">use </span><span class="kw">crate</span>::treesync::RatchetTree;
 
 <span class="doccomment">/// # Ratchet Tree Extension.
 ///
-/// The ratchet tree extension contains a list of (optional) [`Node`]s that
+/// The ratchet tree extension contains a list of (optional) [`Node`](crate::treesync::node::Node)s that
 /// represent the public state of the tree in an MLS group.
+///
+/// ```c
+/// // draft-ietf-mls-protocol-17
+/// optional&lt;Node&gt; ratchet_tree&lt;V&gt;;
+/// ```
 </span><span class="attr">#[derive(
     PartialEq,
     Eq,
@@ -56,18 +66,18 @@
     TlsSize,
 )]
 </span><span class="kw">pub struct </span>RatchetTreeExtension {
-    tree: Vec&lt;<span class="prelude-ty">Option</span>&lt;Node&gt;&gt;,
+    ratchet_tree: RatchetTree,
 }
 
 <span class="kw">impl </span>RatchetTreeExtension {
-    <span class="doccomment">/// Build a new extension from a vector of [`Node`]s.
-    </span><span class="kw">pub fn </span>new(tree: Vec&lt;<span class="prelude-ty">Option</span>&lt;Node&gt;&gt;) -&gt; <span class="self">Self </span>{
-        RatchetTreeExtension { tree }
+    <span class="doccomment">/// Build a new extension from a vector of [`Node`](crate::treesync::node::Node)s.
+    </span><span class="kw">pub fn </span>new(ratchet_tree: RatchetTree) -&gt; <span class="self">Self </span>{
+        RatchetTreeExtension { ratchet_tree }
     }
 
-    <span class="doccomment">/// Get a slice of the nodes in tis tree.
-    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>as_slice(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>[<span class="prelude-ty">Option</span>&lt;Node&gt;] {
-        <span class="self">self</span>.tree.as_slice()
+    <span class="doccomment">/// Return the [`RatchetTree`] from this extension.
+    </span><span class="kw">pub fn </span>ratchet_tree(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>RatchetTree {
+        <span class="kw-2">&amp;</span><span class="self">self</span>.ratchet_tree
     }
 }
 </code></pre></div>

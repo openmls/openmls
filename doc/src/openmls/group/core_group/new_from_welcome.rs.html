@@ -257,7 +257,7 @@
     schedule::errors::PskError,
     treesync::{
         errors::{DerivePathError, PublicTreeError},
-        node::{encryption_keys::EncryptionKeyPair, Node},
+        node::encryption_keys::EncryptionKeyPair,
     },
 };
 
@@ -265,7 +265,7 @@
     <span class="comment">// Join a group from a welcome message
     </span><span class="kw">pub fn </span>new_from_welcome&lt;KeyStore: OpenMlsKeyStore&gt;(
         welcome: Welcome,
-        nodes_option: <span class="prelude-ty">Option</span>&lt;Vec&lt;<span class="prelude-ty">Option</span>&lt;Node&gt;&gt;&gt;,
+        ratchet_tree: <span class="prelude-ty">Option</span>&lt;RatchetTree&gt;,
         key_package_bundle: KeyPackageBundle,
         backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider&lt;KeyStoreProvider = KeyStore&gt;,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, WelcomeError&lt;KeyStore::Error&gt;&gt; {
@@ -364,11 +364,11 @@
         // If we got a ratchet tree extension in the welcome, we enable it for
         // this group. Note that this is not strictly necessary. But there&#39;s
         // currently no other mechanism to enable the extension.
-        </span><span class="kw">let </span>(nodes, enable_ratchet_tree_extension) =
-            <span class="kw">match </span>try_nodes_from_extensions(verifiable_group_info.extensions()) {
-                <span class="prelude-val">Some</span>(nodes) =&gt; (nodes, <span class="bool-val">true</span>),
-                <span class="prelude-val">None </span>=&gt; <span class="kw">match </span>nodes_option {
-                    <span class="prelude-val">Some</span>(n) =&gt; (n, <span class="bool-val">false</span>),
+        </span><span class="kw">let </span>(ratchet_tree, enable_ratchet_tree_extension) =
+            <span class="kw">match </span>verifiable_group_info.extensions().ratchet_tree() {
+                <span class="prelude-val">Some</span>(extension) =&gt; (extension.ratchet_tree().clone(), <span class="bool-val">true</span>),
+                <span class="prelude-val">None </span>=&gt; <span class="kw">match </span>ratchet_tree {
+                    <span class="prelude-val">Some</span>(ratchet_tree) =&gt; (ratchet_tree, <span class="bool-val">false</span>),
                     <span class="prelude-val">None </span>=&gt; <span class="kw">return </span><span class="prelude-val">Err</span>(WelcomeError::MissingRatchetTree),
                 },
             };
@@ -379,7 +379,7 @@
         // group info extension of interest here.
         </span><span class="kw">let </span>(public_group, _group_info_extensions) = PublicGroup::from_external(
             backend,
-            nodes,
+            ratchet_tree,
             verifiable_group_info,
             ProposalStore::new(),
         )<span class="question-mark">?</span>;
