@@ -180,6 +180,18 @@ impl CoreGroupBuilder {
             .with_required_capabilities(required_capabilities);
         self
     }
+    /// Set the [`ExternalSendersExtension`] of the [`CoreGroup`].
+    pub(crate) fn with_external_senders(
+        mut self,
+        external_senders: ExternalSendersExtension,
+    ) -> Self {
+        if !external_senders.is_empty() {
+            self.public_group_builder = self
+                .public_group_builder
+                .with_external_senders(external_senders);
+        }
+        self
+    }
     /// Set the number of past epochs the group should keep secrets.
     pub fn with_max_past_epoch_secrets(mut self, max_past_epochs: usize) -> Self {
         self.max_past_epochs = max_past_epochs;

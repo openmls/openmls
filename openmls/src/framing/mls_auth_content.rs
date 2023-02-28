@@ -11,6 +11,7 @@ use crate::{
     ciphersuite::signable::{Signable, SignedStruct, Verifiable, VerifiedStruct},
     credentials::CredentialWithKey,
     error::LibraryError,
+    extensions::SenderExtensionIndex,
     group::errors::ValidationError,
     versions::ProtocolVersion,
 };
@@ -170,9 +171,7 @@ impl AuthenticatedContent {
     }
 
     /// This constructor builds an `PublicMessage` containing an External Proposal.
-    /// The sender is [Sender::NewMemberProposal].
-    // TODO #151/#106: We don't support preconfigured senders yet
-    pub(crate) fn new_external_proposal(
+    pub(crate) fn new_join_proposal(
         proposal: Proposal,
         group_id: GroupId,
         epoch: GroupEpoch,
@@ -185,6 +184,30 @@ impl AuthenticatedContent {
             group_id,
             epoch,
             Sender::NewMemberProposal,
+            vec![].into(),
+            body,
+        );
+
+        content_tbs
+            .sign(signer)
+            .map_err(|_| LibraryError::custom("Signing failed"))
+    }
+
+    /// This constructor builds an `PublicMessage` containing an External Proposal.
+    pub(crate) fn new_external_proposal(
+        proposal: Proposal,
+        group_id: GroupId,
+        epoch: GroupEpoch,
+        signer: &impl Signer,
+        sender_index: SenderExtensionIndex,
+    ) -> Result<Self, LibraryError> {
+        let body = FramedContentBody::Proposal(proposal);
+
+        let content_tbs = FramedContentTbs::new(
+            WireFormat::PublicMessage,
+            group_id,
+            epoch,
+            Sender::External(sender_index),
             vec![].into(),
             body,
         );

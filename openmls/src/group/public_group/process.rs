@@ -15,6 +15,7 @@ use crate::{
         mls_group::errors::ProcessMessageError,
         past_secrets::MessageSecretsStore,
     },
+    messages::proposals::Proposal,
 };
 
 use super::PublicGroup;
@@ -65,6 +66,7 @@ impl PublicGroup {
             message_secrets_store_option
                 .map(|store| store.leaves_for_epoch(decrypted_message.verifiable_content().epoch()))
                 .unwrap_or_default(),
+            self.group_context().extensions().external_senders(),
         )?;
         let pk = OpenMlsSignaturePublicKey::from_signature_key(
             signature_key,
@@ -225,9 +227,35 @@ impl PublicGroup {
                 ))
             }
             Sender::External(_) => {
-                // We don't support messages from external senders yet
-                // TODO #151/#106
-                todo!()
+                let sender = content.sender().clone();
+                let data = content.authenticated_data().to_owned();
+                match content.content() {
+                    FramedContentBody::Application(_) => {
+                        Err(ProcessMessageError::UnauthorizedExternalApplicationMessage)
+                    }
+                    FramedContentBody::Proposal(Proposal::Remove(_)) => {
+                        let content = ProcessedMessageContent::ProposalMessage(Box::new(
+                            QueuedProposal::from_authenticated_content(
+                                self.ciphersuite(),
+                                backend,
+                                content,
+                            )?,
+                        ));
+                        Ok(ProcessedMessage::new(
+                            self.group_id().clone(),
+                            self.group_context().epoch(),
+                            sender,
+                            data,
+                            content,
+                            credential,
+                        ))
+                    }
+                    // TODO #151/#106
+                    FramedContentBody::Proposal(_) => {
+                        Err(ProcessMessageError::UnsupportedProposalType)
+                    }
+                    FramedContentBody::Commit(_) => unimplemented!(),
+                }
             }
         }
     }
