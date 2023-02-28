@@ -23,7 +23,7 @@ fn new_test_group(
     let group_id = GroupId::from_slice(b"Test Group");
 
     // Generate credential bundles
-    let credential_when_keys =
+    let credential_with_keys =
         generate_credential_bundle(identity.into(), ciphersuite.signature_algorithm(), backend);
 
     // Define the MlsGroup configuration
@@ -34,15 +34,15 @@ fn new_test_group(
         .build();
 
     (
-        MlsGroup::new_when_group_id(
+        MlsGroup::new_with_group_id(
             backend,
-            &credential_when_keys.signer,
+            &credential_with_keys.signer,
             &mls_group_config,
             group_id,
-            credential_when_keys.credential_when_key.clone(),
+            credential_with_keys.credential_with_key.clone(),
         )
         .unwrap(),
-        credential_when_keys,
+        credential_with_keys,
     )
 }
 
@@ -102,10 +102,10 @@ fn external_remove_proposal_should_remove_member(
         backend,
         vec![ExternalSender::new(
             ds_credential_bundle
-                .credential_when_key
+                .credential_with_key
                 .signature_key
                 .clone(),
-            ds_credential_bundle.credential_when_key.credential.clone(),
+            ds_credential_bundle.credential_with_key.credential.clone(),
         )],
     );
 
@@ -114,7 +114,7 @@ fn external_remove_proposal_should_remove_member(
          .group()
          .group_context_extensions()
          .iter()
-         .any(|e| matches!(e, Extension::ExternalSenders(senders) if senders.iter().any(|s| s.credential() == &ds_credential_bundle.credential_when_key.credential) )));
+         .any(|e| matches!(e, Extension::ExternalSenders(senders) if senders.iter().any(|s| s.credential() == &ds_credential_bundle.credential_with_key.credential) )));
 
     // get Bob's index
     let bob_index = alice_group
@@ -192,10 +192,10 @@ fn external_remove_proposal_should_fail_when_invalid_external_senders_index(
         backend,
         vec![ExternalSender::new(
             ds_credential_bundle
-                .credential_when_key
+                .credential_with_key
                 .signature_key
                 .clone(),
-            ds_credential_bundle.credential_when_key.credential.clone(),
+            ds_credential_bundle.credential_with_key.credential.clone(),
         )],
     );
 
@@ -244,10 +244,10 @@ fn external_remove_proposal_should_fail_when_invalid_signature(
         backend,
         vec![ExternalSender::new(
             ds_credential_bundle
-                .credential_when_key
+                .credential_with_key
                 .signature_key
                 .clone(),
-            ds_credential_bundle.credential_when_key.credential,
+            ds_credential_bundle.credential_with_key.credential,
         )],
     );
 

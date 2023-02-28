@@ -196,9 +196,7 @@ impl DecryptedMessage {
             Sender::External(index) => {
                 let sender = external_senders
                     .ok_or(ValidationError::NoExternalSendersExtension)?
-                    .get(index.index().map_err(|_| {
-                        ValidationError::LibraryError(LibraryError::custom("Index out of bounds"))
-                    })?)
+                    .get(index.index())
                     .ok_or(ValidationError::UnauthorizedExternalSender)?;
                 Ok(CredentialWithKey {
                     credential: sender.credential().clone(),

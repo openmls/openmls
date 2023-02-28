@@ -1,5 +1,3 @@
-use std::usize;
-
 use serde::{Deserialize, Serialize};
 use tls_codec::{TlsDeserialize, TlsSerialize, TlsSize};
 
@@ -61,8 +59,8 @@ impl SenderExtensionIndex {
     }
 
     /// Returns the internal index as usize
-    pub(crate) fn index(&self) -> Result<usize, std::num::TryFromIntError> {
-        self.0.try_into()
+    pub(crate) fn index(&self) -> usize {
+        self.0 as usize
     }
 }
 
