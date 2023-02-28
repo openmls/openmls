@@ -34,7 +34,7 @@ impl RatchetTreeExtension {
         RatchetTreeExtension { ratchet_tree }
     }
 
-    /// Return the [`RatchetTreeExported`] from this extension.
+    /// Return the [`RatchetTree`] from this extension.
     pub fn ratchet_tree(&self) -> &RatchetTree {
         &self.ratchet_tree
     }
