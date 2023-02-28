@@ -65,8 +65,9 @@ use openmls_traits::{crypto::OpenMlsCrypto, OpenMlsCryptoProvider};
 use tls_codec::Deserialize as TlsDeserialize;
 
 use crate::{
-    binary_tree::array_representation::TreeNodeIndex, test_utils::*, treesync::Node,
-    treesync::TreeSync,
+    binary_tree::array_representation::TreeNodeIndex,
+    test_utils::*,
+    treesync::{RatchetTree, TreeSync},
 };
 
 #[derive(Deserialize)]
@@ -96,14 +97,14 @@ fn run_test_vector(test: TestElement, backend: &impl OpenMlsCryptoProvider) -> R
         return Ok(());
     }
 
-    let nodes = Vec::<Option<Node>>::tls_deserialize(&mut test.tree.as_slice()).unwrap();
+    let ratchet_tree = RatchetTree::tls_deserialize(&mut test.tree.as_slice()).unwrap();
 
-    let treesync = TreeSync::from_nodes(backend, ciphersuite, nodes.clone())
-        .map_err(|e| format!("Error while creating tree sync: {0:?}", e))?;
+    let treesync = TreeSync::from_ratchet_tree(backend, ciphersuite, ratchet_tree.clone())
+        .map_err(|e| format!("Error while creating tree sync: {e:?}"))?;
 
     let diff = treesync.empty_diff();
 
-    for index in 0..nodes.len() {
+    for index in 0..ratchet_tree.0.len() {
         let tree_node_index = TreeNodeIndex::test_new(index as u32);
         let resolution = diff
             .resolution(tree_node_index, &HashSet::new())

@@ -130,6 +130,7 @@ impl MlsGroupConfig {
 pub struct MlsGroupConfigBuilder {
     config: MlsGroupConfig,
 }
+
 impl MlsGroupConfigBuilder {
     /// Creates a new builder with default values.
     pub fn new() -> Self {

@@ -7,7 +7,7 @@ use crate::{
     schedule::errors::PskError,
     treesync::{
         errors::{DerivePathError, PublicTreeError},
-        node::{encryption_keys::EncryptionKeyPair, Node},
+        node::encryption_keys::EncryptionKeyPair,
     },
 };
 
@@ -15,7 +15,7 @@ impl CoreGroup {
     // Join a group from a welcome message
     pub fn new_from_welcome<KeyStore: OpenMlsKeyStore>(
         welcome: Welcome,
-        nodes_option: Option<Vec<Option<Node>>>,
+        ratchet_tree: Option<RatchetTree>,
         key_package_bundle: KeyPackageBundle,
         backend: &impl OpenMlsCryptoProvider<KeyStoreProvider = KeyStore>,
     ) -> Result<Self, WelcomeError<KeyStore::Error>> {
@@ -114,11 +114,11 @@ impl CoreGroup {
         // If we got a ratchet tree extension in the welcome, we enable it for
         // this group. Note that this is not strictly necessary. But there's
         // currently no other mechanism to enable the extension.
-        let (nodes, enable_ratchet_tree_extension) =
-            match try_nodes_from_extensions(verifiable_group_info.extensions()) {
-                Some(nodes) => (nodes, true),
-                None => match nodes_option {
-                    Some(n) => (n, false),
+        let (ratchet_tree, enable_ratchet_tree_extension) =
+            match verifiable_group_info.extensions().ratchet_tree() {
+                Some(extension) => (extension.ratchet_tree().clone(), true),
+                None => match ratchet_tree {
+                    Some(ratchet_tree) => (ratchet_tree, false),
                     None => return Err(WelcomeError::MissingRatchetTree),
                 },
             };
@@ -129,7 +129,7 @@ impl CoreGroup {
         // group info extension of interest here.
         let (public_group, _group_info_extensions) = PublicGroup::from_external(
             backend,
-            nodes,
+            ratchet_tree,
             verifiable_group_info,
             ProposalStore::new(),
         )?;
