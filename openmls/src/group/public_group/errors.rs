@@ -1,6 +1,9 @@
 use thiserror::Error;
 
-use crate::{error::LibraryError, treesync::errors::TreeSyncFromNodesError};
+use crate::{
+    error::LibraryError, extensions::errors::InvalidExtensionError,
+    treesync::errors::TreeSyncFromNodesError,
+};
 
 /// Public group creation from external error.
 #[derive(Error, Debug, PartialEq, Clone)]
@@ -37,4 +40,7 @@ pub enum PublicGroupBuildError {
     /// Unsupported extension type in required capabilities.
     #[error("Unsupported extension type in required capabilities.")]
     UnsupportedExtensionType,
+    /// Invalid extensions set in configuration
+    #[error("Invalid extensions set in configuration")]
+    InvalidExtensions(#[from] InvalidExtensionError),
 }

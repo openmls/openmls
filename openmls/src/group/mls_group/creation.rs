@@ -56,6 +56,7 @@ impl MlsGroup {
         )
         .with_config(group_config)
         .with_required_capabilities(mls_group_config.required_capabilities.clone())
+        .with_external_senders(mls_group_config.external_senders.clone())
         .with_max_past_epoch_secrets(mls_group_config.max_past_epochs)
         .with_lifetime(*mls_group_config.lifetime())
         .build(backend, signer)
@@ -75,6 +76,7 @@ impl MlsGroup {
                 PublicGroupBuildError::UnsupportedExtensionType => {
                     NewGroupError::UnsupportedExtensionType
                 }
+                PublicGroupBuildError::InvalidExtensions(e) => NewGroupError::InvalidExtensions(e),
             },
         })?;
 

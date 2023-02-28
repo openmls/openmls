@@ -21,15 +21,48 @@ pub struct ExternalSender {
     credential: Credential,
 }
 
+impl ExternalSender {
+    /// Creates a new `ExternalSender` instance.
+    pub fn new(signature_key: SignaturePublicKey, credential: Credential) -> Self {
+        Self {
+            signature_key,
+            credential,
+        }
+    }
+
+    pub(crate) fn credential(&self) -> &Credential {
+        &self.credential
+    }
+
+    pub(crate) fn signature_key(&self) -> &SignaturePublicKey {
+        &self.signature_key
+    }
+}
+
 /// ExternalSender (extension data)
 ///
 /// ```c
 /// // draft-ietf-mls-protocol-16
 /// ExternalSender external_senders<V>;
 /// ```
-// TODO(884): Remove `#[allow(unused)]` when #884 is closed.
-#[allow(unused)]
 pub type ExternalSendersExtension = Vec<ExternalSender>;
+/// Identifies an external sender in the `ExternalSendersExtension`.
+#[derive(
+    Debug, PartialEq, Eq, Copy, Clone, Serialize, Deserialize, TlsSerialize, TlsDeserialize, TlsSize,
+)]
+pub struct SenderExtensionIndex(u32);
+
+impl SenderExtensionIndex {
+    /// Creates a new `SenderExtensionIndex` instance.
+    pub fn new(index: u32) -> Self {
+        Self(index)
+    }
+
+    /// Returns the internal index as usize
+    pub(crate) fn index(&self) -> usize {
+        self.0 as usize
+    }
+}
 
 #[cfg(test)]
 mod test {
