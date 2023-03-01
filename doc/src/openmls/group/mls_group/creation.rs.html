@@ -217,6 +217,10 @@
 <a href="#217" id="217">217</a>
 <a href="#218" id="218">218</a>
 <a href="#219" id="219">219</a>
+<a href="#220" id="220">220</a>
+<a href="#221" id="221">221</a>
+<a href="#222" id="222">222</a>
+<a href="#223" id="223">223</a>
 </pre><pre class="rust"><code><span class="kw">use </span>openmls_traits::signatures::Signer;
 
 <span class="kw">use crate</span>::{
@@ -227,7 +231,7 @@
         errors::{CoreGroupBuildError, ExternalCommitError, WelcomeError},
         public_group::errors::PublicGroupBuildError,
     },
-    messages::group_info::VerifiableGroupInfo,
+    messages::group_info::{GroupInfo, VerifiableGroupInfo},
     treesync::RatchetTree,
 };
 
@@ -396,7 +400,7 @@
         mls_group_config: <span class="kw-2">&amp;</span>MlsGroupConfig,
         aad: <span class="kw-2">&amp;</span>[u8],
         credential_with_key: CredentialWithKey,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;(<span class="self">Self</span>, MlsMessageOut), ExternalCommitError&gt; {
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;(<span class="self">Self</span>, MlsMessageOut, <span class="prelude-ty">Option</span>&lt;GroupInfo&gt;), ExternalCommitError&gt; {
         <span class="kw">let </span>resumption_psk_store =
             ResumptionPskStore::new(mls_group_config.number_of_resumption_psks);
 
@@ -433,7 +437,11 @@
 
         <span class="kw">let </span>public_message: PublicMessage = create_commit_result.commit.into();
 
-        <span class="prelude-val">Ok</span>((mls_group, public_message.into()))
+        <span class="prelude-val">Ok</span>((
+            mls_group,
+            public_message.into(),
+            create_commit_result.group_info,
+        ))
     }
 }
 </code></pre></div>
