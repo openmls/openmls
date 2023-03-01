@@ -707,7 +707,7 @@ impl ExporterSecret {
         backend: &impl OpenMlsCryptoProvider,
         epoch_secret: &EpochSecret,
     ) -> Result<Self, CryptoError> {
-        let secret = epoch_secret.secret.derive_secret(backend, "exporter")?;
+        let secret = epoch_secret.secret.derive_secret(backend, "exported")?;
         Ok(ExporterSecret { secret })
     }
 
