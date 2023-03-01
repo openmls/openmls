@@ -254,7 +254,7 @@ fn book_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvide
     // ANCHOR_END: alice_exports_group_info
 
     // ANCHOR: charlie_joins_external_commit
-    let (mut dave_group, _out) = MlsGroup::join_by_external_commit(
+    let (mut dave_group, _out, _group_info) = MlsGroup::join_by_external_commit(
         backend,
         &dave_signature_keys,
         None,
