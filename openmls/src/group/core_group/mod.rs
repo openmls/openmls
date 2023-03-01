@@ -180,6 +180,18 @@ impl CoreGroupBuilder {
             .with_required_capabilities(required_capabilities);
         self
     }
+    /// Set the [`ExternalSendersExtension`] of the [`CoreGroup`].
+    pub(crate) fn with_external_senders(
+        mut self,
+        external_senders: ExternalSendersExtension,
+    ) -> Self {
+        if !external_senders.is_empty() {
+            self.public_group_builder = self
+                .public_group_builder
+                .with_external_senders(external_senders);
+        }
+        self
+    }
     /// Set the number of past epochs the group should keep secrets.
     pub fn with_max_past_epoch_secrets(mut self, max_past_epochs: usize) -> Self {
         self.max_past_epochs = max_past_epochs;
@@ -518,7 +530,7 @@ impl CoreGroup {
         let extensions = {
             let ratchet_tree_extension = || {
                 Extension::RatchetTree(RatchetTreeExtension::new(
-                    self.public_group().export_nodes(),
+                    self.public_group().export_ratchet_tree(),
                 ))
             };
 
@@ -940,7 +952,7 @@ impl CoreGroup {
                 Extension::ExternalPub(ExternalPubExtension::new(external_pub.into()));
             let other_extensions: Extensions = if self.use_ratchet_tree_extension {
                 Extensions::from_vec(vec![
-                    Extension::RatchetTree(RatchetTreeExtension::new(diff.export_nodes())),
+                    Extension::RatchetTree(RatchetTreeExtension::new(diff.export_ratchet_tree())),
                     external_pub_extension,
                 ])?
             } else {
@@ -1109,10 +1121,8 @@ impl CoreGroup {
         self.message_secrets_store.message_secrets_mut()
     }
 
-    pub(crate) fn print_tree(&self, message: &str) {
-        use super::tests::tree_printing::print_tree;
-
-        print_tree(self, message);
+    pub(crate) fn print_ratchet_tree(&self, message: &str) {
+        println!("{}: {}", message, self.public_group().export_ratchet_tree());
     }
 
     #[cfg(test)]

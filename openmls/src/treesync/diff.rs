@@ -47,6 +47,7 @@ use crate::{
     group::GroupId,
     messages::PathSecret,
     schedule::CommitSecret,
+    treesync::RatchetTree,
 };
 
 pub(crate) type UpdatePathResult = (
@@ -806,7 +807,7 @@ impl<'a> TreeSyncDiff<'a> {
 
     /// Returns a vector of all nodes in the tree resulting from merging this
     /// diff.
-    pub(crate) fn export_nodes(&self) -> Vec<Option<Node>> {
+    pub(crate) fn export_ratchet_tree(&self) -> RatchetTree {
         let mut nodes = Vec::new();
 
         // Determine the index of the rightmost full leaf.
@@ -825,7 +826,7 @@ impl<'a> TreeSyncDiff<'a> {
             nodes.push(leaf.node().clone().map(Node::LeafNode));
         } else {
             // The tree was empty.
-            return vec![];
+            return vec![].into();
         }
 
         // Blank parent node used for padding
@@ -851,7 +852,7 @@ impl<'a> TreeSyncDiff<'a> {
             nodes.push(leaf.node().clone().map(Node::LeafNode));
         }
 
-        nodes
+        nodes.into()
     }
 
     /// Returns the filtered common path two leaf nodes share. If the leaves are

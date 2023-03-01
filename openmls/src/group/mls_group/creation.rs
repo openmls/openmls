@@ -9,6 +9,7 @@ use crate::{
         public_group::errors::PublicGroupBuildError,
     },
     messages::group_info::{GroupInfo, VerifiableGroupInfo},
+    treesync::RatchetTree,
 };
 
 use super::*;
@@ -55,6 +56,7 @@ impl MlsGroup {
         )
         .with_config(group_config)
         .with_required_capabilities(mls_group_config.required_capabilities.clone())
+        .with_external_senders(mls_group_config.external_senders.clone())
         .with_max_past_epoch_secrets(mls_group_config.max_past_epochs)
         .with_lifetime(*mls_group_config.lifetime())
         .build(backend, signer)
@@ -74,6 +76,7 @@ impl MlsGroup {
                 PublicGroupBuildError::UnsupportedExtensionType => {
                     NewGroupError::UnsupportedExtensionType
                 }
+                PublicGroupBuildError::InvalidExtensions(e) => NewGroupError::InvalidExtensions(e),
             },
         })?;
 
@@ -101,7 +104,7 @@ impl MlsGroup {
         backend: &impl OpenMlsCryptoProvider<KeyStoreProvider = KeyStore>,
         mls_group_config: &MlsGroupConfig,
         welcome: Welcome,
-        ratchet_tree: Option<Vec<Option<Node>>>,
+        ratchet_tree: Option<RatchetTree>,
     ) -> Result<Self, WelcomeError<KeyStore::Error>> {
         let resumption_psk_store =
             ResumptionPskStore::new(mls_group_config.number_of_resumption_psks);
@@ -169,7 +172,7 @@ impl MlsGroup {
     pub fn join_by_external_commit(
         backend: &impl OpenMlsCryptoProvider,
         signer: &impl Signer,
-        tree_option: Option<&[Option<Node>]>,
+        ratchet_tree: Option<RatchetTree>,
         verifiable_group_info: VerifiableGroupInfo,
         mls_group_config: &MlsGroupConfig,
         aad: &[u8],
@@ -191,7 +194,7 @@ impl MlsGroup {
             backend,
             signer,
             params,
-            tree_option,
+            ratchet_tree,
             verifiable_group_info,
         )?;
         group.set_max_past_epochs(mls_group_config.max_past_epochs);

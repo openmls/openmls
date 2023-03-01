@@ -42,11 +42,11 @@ pub mod errors;
 // Public re-exports
 pub use application_id_extension::ApplicationIdExtension;
 pub use external_pub_extension::ExternalPubExtension;
-pub use external_sender_extension::ExternalSendersExtension;
+pub use external_sender_extension::{
+    ExternalSender, ExternalSendersExtension, SenderExtensionIndex,
+};
 pub use ratchet_tree_extension::RatchetTreeExtension;
 pub use required_capabilities::RequiredCapabilitiesExtension;
-
-use crate::treesync::node::Node;
 
 #[cfg(test)]
 mod test_extensions;
@@ -430,15 +430,6 @@ impl Ord for Extension {
     fn cmp(&self, other: &Self) -> std::cmp::Ordering {
         self.extension_type().cmp(&other.extension_type())
     }
-}
-
-/// This function tries to extract a vector of nodes from the given extensions.
-///
-/// Returns the vector of nodes if it finds one and `None` otherwise.
-pub(crate) fn try_nodes_from_extensions(
-    other_extensions: &Extensions,
-) -> Option<Vec<Option<Node>>> {
-    other_extensions.ratchet_tree().map(|e| e.as_slice().into())
 }
 
 #[cfg(test)]
