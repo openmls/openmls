@@ -1251,6 +1251,8 @@
 <a href="#1251" id="1251">1251</a>
 <a href="#1252" id="1252">1252</a>
 <a href="#1253" id="1253">1253</a>
+<a href="#1254" id="1254">1254</a>
+<a href="#1255" id="1255">1255</a>
 </pre><pre class="rust"><code><span class="doccomment">//! # Key schedule
 //!
 //! This module contains the types and implementations for key schedule operations.
@@ -1837,9 +1839,10 @@
             <span class="string">&quot;WelcomeSecret.derive_aead_key with {}&quot;</span>,
             <span class="self">self</span>.secret.ciphersuite()
         );
-        <span class="kw">let </span>aead_secret = <span class="self">self</span>.secret.hkdf_expand(
+        <span class="kw">let </span>aead_secret = <span class="self">self</span>.secret.kdf_expand_label(
             backend,
-            <span class="string">b&quot;key&quot;</span>,
+            <span class="string">&quot;key&quot;</span>,
+            <span class="string">b&quot;&quot;</span>,
             <span class="self">self</span>.secret.ciphersuite().aead_key_length(),
         )<span class="question-mark">?</span>;
         <span class="prelude-val">Ok</span>(AeadKey::from_secret(aead_secret))
@@ -1850,9 +1853,10 @@
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;AeadNonce, CryptoError&gt; {
-        <span class="kw">let </span>nonce_secret = <span class="self">self</span>.secret.hkdf_expand(
+        <span class="kw">let </span>nonce_secret = <span class="self">self</span>.secret.kdf_expand_label(
             backend,
-            <span class="string">b&quot;nonce&quot;</span>,
+            <span class="string">&quot;nonce&quot;</span>,
+            <span class="string">b&quot;&quot;</span>,
             <span class="self">self</span>.secret.ciphersuite().aead_nonce_length(),
         )<span class="question-mark">?</span>;
         <span class="prelude-val">Ok</span>(AeadNonce::from_secret(nonce_secret))
