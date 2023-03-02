@@ -1964,7 +1964,7 @@
         backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider,
         epoch_secret: <span class="kw-2">&amp;</span>EpochSecret,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, CryptoError&gt; {
-        <span class="kw">let </span>secret = epoch_secret.secret.derive_secret(backend, <span class="string">&quot;exporter&quot;</span>)<span class="question-mark">?</span>;
+        <span class="kw">let </span>secret = epoch_secret.secret.derive_secret(backend, <span class="string">&quot;exported&quot;</span>)<span class="question-mark">?</span>;
         <span class="prelude-val">Ok</span>(ExporterSecret { secret })
     }
 
