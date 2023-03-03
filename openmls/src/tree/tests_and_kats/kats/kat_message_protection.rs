@@ -226,9 +226,7 @@ pub fn run_test_vector(
     let signature_private_key = match ciphersuite {
         Ciphersuite::MLS_128_DHKEMX25519_AES128GCM_SHA256_Ed25519
         | Ciphersuite::MLS_128_DHKEMX25519_CHACHA20POLY1305_SHA256_Ed25519 => {
-            let mut private = hex_to_bytes(&test.signature_priv);
-            private.append(&mut hex_to_bytes(&test.signature_pub));
-            private
+            hex_to_bytes(&test.signature_priv)
         }
         Ciphersuite::MLS_128_DHKEMP256_AES128GCM_SHA256_P256 => hex_to_bytes(&test.signature_priv),
         _ => unimplemented!(),

@@ -17,7 +17,8 @@ use p256::ecdsa::SigningKey;
 // See https://github.com/rust-analyzer/rust-analyzer/issues/7243
 // for the rust-analyzer issue with the following line.
 use ed25519_dalek::Signer as DalekSigner;
-use rand::rngs::OsRng;
+use p256::ecdsa::signature::Signer as EcdsaSigner;
+use rand::SeedableRng;
 use tls_codec::{TlsDeserialize, TlsSerialize, TlsSize};
 
 /// A signature key pair for the basic credential.
@@ -51,8 +52,12 @@ impl Signer for SignatureKeyPair {
                 Ok(signature.to_der().to_bytes().into())
             }
             SignatureScheme::ED25519 => {
-                let k = ed25519_dalek::Keypair::from_bytes(&self.private)
-                    .map_err(|_| Error::SigningError)?;
+                let k = ed25519_dalek::SigningKey::from_bytes(
+                    self.private
+                        .as_slice()
+                        .try_into()
+                        .map_err(|_| Error::SigningError)?,
+                );
                 let signature = k.sign(payload);
                 Ok(signature.to_bytes().into())
             }
@@ -81,19 +86,19 @@ impl MlsEntity for SignatureKeyPair {
 
 impl SignatureKeyPair {
     /// Generates a fresh signature keypair using the [`SignatureScheme`].
+    /// TODO: shouldn't this be using OpenMlsCrypto?
     pub fn new(signature_scheme: SignatureScheme) -> Result<Self, CryptoError> {
+        let mut rng = rand_chacha::ChaCha20Rng::from_entropy();
         let (private, public) = match signature_scheme {
             SignatureScheme::ECDSA_SECP256R1_SHA256 => {
-                let k = SigningKey::random(&mut OsRng);
+                let k = SigningKey::random(&mut rng);
                 let pk = k.verifying_key().to_encoded_point(false).as_bytes().into();
                 (k.to_bytes().as_slice().into(), pk)
             }
             SignatureScheme::ED25519 => {
-                let k = ed25519_dalek::Keypair::generate(&mut rand_07::rngs::OsRng).to_bytes();
-                let pk = k[ed25519_dalek::SECRET_KEY_LENGTH..].to_vec();
-                // full key here because we need it to sign...
-                let sk_pk = k.into();
-                (sk_pk, pk)
+                let sk = ed25519_dalek::SigningKey::generate(&mut rng);
+                let pk = sk.verifying_key().to_bytes();
+                (sk.to_bytes().into(), pk.into())
             }
             _ => return Err(CryptoError::UnsupportedSignatureScheme),
         };

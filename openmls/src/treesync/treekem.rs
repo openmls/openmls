@@ -4,7 +4,6 @@
 //!
 //! This module contains structs and functions to encrypt and decrypt path
 //! updates for a [`TreeSyncDiff`] instance.
-use rayon::prelude::*;
 use std::collections::HashSet;
 use tls_codec::{TlsDeserialize, TlsSerialize, TlsSize};
 
@@ -32,6 +31,9 @@ use super::{
     },
     ApplyUpdatePathError, LeafNode,
 };
+
+#[cfg(not(target_family = "wasm"))]
+use rayon::prelude::*;
 
 impl<'a> TreeSyncDiff<'a> {
     /// Encrypt the given `path` to the nodes in the copath resolution of the
@@ -68,9 +70,14 @@ impl<'a> TreeSyncDiff<'a> {
         // There should be as many copath resolutions.
         debug_assert_eq!(copath_resolutions.len(), path.len());
 
+        #[cfg(target_family = "wasm")]
+        let paths = path.iter().zip(copath_resolutions.iter());
+
+        #[cfg(not(target_family = "wasm"))]
+        let paths = path.par_iter().zip(copath_resolutions.par_iter());
+
         // Encrypt the secrets
-        path.par_iter()
-            .zip(copath_resolutions.par_iter())
+        paths
             .map(|(node, resolution)| node.encrypt(backend, ciphersuite, resolution, group_context))
             .collect::<Result<Vec<UpdatePathNode>, LibraryError>>()
     }

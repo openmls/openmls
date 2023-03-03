@@ -1,0 +1,49 @@
+name: Wasm Tests
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  tests:
+    strategy:
+      fail-fast: false
+      matrix:
+        browser:
+          - firefox
+          - chrome
+        mode:
+          - debug
+          - release
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: wasm32-unknown-unknown
+      - uses: Swatinem/rust-cache@v2
+      - name: Install wasm-pack
+        run: curl https://rustwasm.github.io/wasm-pack/installer/init.sh -sSf | sh
+
+      - run: |
+          if [ ${{ matrix.mode }} == debug ]; then
+            echo "TEST_MODE=" >> $GITHUB_ENV
+          else
+            echo "TEST_MODE=--release" >> $GITHUB_ENV
+          fi
+
+      - name: Tests Wasm
+        run: |
+          wasm-pack test $TEST_MODE --${{ matrix.browser }} --headless openmls

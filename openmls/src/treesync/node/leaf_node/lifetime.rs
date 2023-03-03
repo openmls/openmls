@@ -1,4 +1,4 @@
-use std::time::{SystemTime, UNIX_EPOCH};
+use fluvio_wasm_timer::{SystemTime, UNIX_EPOCH};
 
 use serde::{Deserialize, Serialize};
 use tls_codec::{TlsDeserialize, TlsSerialize, TlsSize};

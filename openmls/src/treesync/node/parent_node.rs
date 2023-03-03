@@ -5,7 +5,6 @@ use openmls_traits::{
     types::{Ciphersuite, HpkeCiphertext},
     OpenMlsCryptoProvider,
 };
-use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
 use thiserror::*;
 use tls_codec::{TlsDeserialize, TlsSerialize, TlsSize, VLBytes};
@@ -20,6 +19,8 @@ use crate::{
 };
 
 use super::encryption_keys::{EncryptionKey, EncryptionKeyPair};
+#[cfg(not(target_family = "wasm"))]
+use rayon::prelude::*;
 
 /// This struct implements the MLS parent node. It contains its public key,
 /// parent hash and unmerged leaves. Additionally, it may contain the private
@@ -59,8 +60,13 @@ impl PlainUpdatePathNode {
         public_keys: &[EncryptionKey],
         group_context: &[u8],
     ) -> Result<UpdatePathNode, LibraryError> {
+        #[cfg(target_family = "wasm")]
+        let public_keys = public_keys.iter();
+
+        #[cfg(not(target_family = "wasm"))]
+        let public_keys = public_keys.par_iter();
+
         public_keys
-            .par_iter()
             .map(|pk| {
                 self.path_secret
                     .encrypt(backend, ciphersuite, pk, group_context)
@@ -123,9 +129,14 @@ impl ParentNode {
             Vec<PlainUpdatePathNode>,
         );
 
+        #[cfg(target_family = "wasm")]
+        let path_secrets = path_secrets.into_iter();
+
+        #[cfg(not(target_family = "wasm"))]
+        let path_secrets = path_secrets.into_par_iter();
+
         // Iterate over the path secrets and derive a key pair
         let (path_with_keypairs, update_path_nodes): PathDerivationResults = path_secrets
-            .into_par_iter()
             .zip(path_indices)
             .map(|(path_secret, index)| {
                 // Derive a key pair from the path secret. This includes the

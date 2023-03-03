@@ -273,21 +273,7 @@ pub fn run_test_vector(
         let mut parsed = ParsedSignWithLabel {
             key: SignatureKeyPair::from_raw(
                 ciphersuite.signature_algorithm(),
-                {
-                    if matches!(
-                        ciphersuite,
-                        Ciphersuite::MLS_128_DHKEMX25519_AES128GCM_SHA256_Ed25519
-                            | Ciphersuite::MLS_128_DHKEMX25519_CHACHA20POLY1305_SHA256_Ed25519
-                            | Ciphersuite::MLS_256_DHKEMX448_CHACHA20POLY1305_SHA512_Ed448
-                    ) {
-                        let mut private: Vec<u8> = private;
-                        // For the RC crypto provider we need to have the public key in here.
-                        private.append(&mut public.clone());
-                        private
-                    } else {
-                        private
-                    }
-                },
+                private,
                 public.clone(),
             ),
             content,

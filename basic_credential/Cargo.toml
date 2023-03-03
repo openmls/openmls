@@ -15,10 +15,11 @@ tls_codec = { workspace = true }
 serde = "1.0"
 
 # Rust Crypto
-ed25519-dalek = { version = "1.0" }
+ed25519-dalek = { version = "2.0.0-pre.0", features = ["rand_core"] }
 p256 = { version = "0.11" }
 rand-07 = {version = "0.7", package = "rand" } # only needed because of ed25519-dalek
 rand = "0.8"
+rand_chacha = { version = "0.3" }
 
 [features]
 clonable = [] # Make the keys clonable
