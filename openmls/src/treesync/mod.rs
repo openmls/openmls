@@ -18,16 +18,12 @@
 // Finally, this module contains the [`treekem`] module, which allows the
 // encryption and decryption of updates to the tree.
 
-#[cfg(any(feature = "test-utils", test))]
-use std::fmt;
-
 use openmls_traits::{
     signatures::Signer,
     types::{Ciphersuite, CryptoError},
     OpenMlsCryptoProvider,
 };
 use serde::{Deserialize, Serialize};
-use tls_codec::{TlsDeserialize, TlsSerialize, TlsSize};
 
 use self::{
     diff::{StagedTreeSyncDiff, TreeSyncDiff},
@@ -42,7 +38,7 @@ use crate::{
         array_representation::{is_node_in_tree, tree::TreeNode, LeafNodeIndex, TreeSize},
         MlsBinaryTree, MlsBinaryTreeError,
     },
-    ciphersuite::Secret,
+    ciphersuite::{Secret, SignaturePublicKey},
     credentials::CredentialWithKey,
     error::LibraryError,
     extensions::Extensions,
@@ -50,12 +46,6 @@ use crate::{
     group::{config::CryptoConfig, Member},
     messages::{PathSecret, PathSecretError},
     schedule::CommitSecret,
-};
-
-#[cfg(any(feature = "test-utils", test))]
-use crate::{
-    binary_tree::array_representation::level, group::tests::tree_printing::root,
-    test_utils::bytes_to_hex,
 };
 
 // Private
@@ -77,102 +67,6 @@ pub use node::{leaf_node::LeafNode, parent_node::ParentNode, Node};
 // Tests
 #[cfg(any(feature = "test-utils", test))]
 pub mod tests_and_kats;
-
-/// An exported ratchet tree as used in, e.g., [`GroupInfo`](crate::messages::group_info::GroupInfo).
-#[derive(
-    PartialEq,
-    Eq,
-    Clone,
-    Debug,
-    Default,
-    Serialize,
-    Deserialize,
-    TlsSerialize,
-    TlsDeserialize,
-    TlsSize,
-)]
-// TODO(#1305): Make the ratchet tree non-malleable.
-//
-// * ValSemXXX: "If the tree has 2^d leaves, then it has 2^(d+1) - 1 nodes. The ratchet_tree vector logically has this number of entries, but the sender SHOULD NOT include blank nodes after the last non-blank node."
-// * ValSemXXX: "Regardless of how the client obtains the tree, the client MUST verify that the root hash of the ratchet tree matches the tree_hash of the GroupContext before using the tree for MLS operations."
-pub struct RatchetTree(Vec<Option<Node>>);
-
-#[cfg(any(feature = "test-utils", test))]
-impl fmt::Display for RatchetTree {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let factor = 3;
-        let nodes = &self.0;
-        let tree_size = nodes.len() as u32;
-
-        for (i, node) in nodes.iter().enumerate() {
-            let level = level(i as u32);
-            write!(f, "{i:04}")?;
-            if let Some(node) = node {
-                let (key_bytes, parent_hash_bytes) = match node {
-                    Node::LeafNode(leaf_node) => {
-                        write!(f, "\tL      ")?;
-                        let key_bytes = leaf_node.public_key().as_slice();
-                        let parent_hash_bytes = leaf_node
-                            .leaf_node()
-                            .parent_hash()
-                            .map(bytes_to_hex)
-                            .unwrap_or_default();
-                        (key_bytes, parent_hash_bytes)
-                    }
-                    Node::ParentNode(parent_node) => {
-                        if root(tree_size) == i as u32 {
-                            write!(f, "\tP (*)  ")?;
-                        } else {
-                            write!(f, "\tP      ")?;
-                        }
-                        let key_bytes = parent_node.public_key().as_slice();
-                        let parent_hash_string = bytes_to_hex(parent_node.parent_hash());
-                        (key_bytes, parent_hash_string)
-                    }
-                };
-                write!(
-                    f,
-                    "PK: {}  PH: {} | ",
-                    bytes_to_hex(key_bytes),
-                    if !parent_hash_bytes.is_empty() {
-                        parent_hash_bytes
-                    } else {
-                        str::repeat("  ", 32)
-                    }
-                )?;
-
-                write!(f, "{}◼︎", str::repeat(" ", level * factor))?;
-            } else {
-                if root(tree_size) == i as u32 {
-                    write!(
-                        f,
-                        "\t_ (*)  PK: {}  PH: {} | ",
-                        str::repeat("__", 32),
-                        str::repeat("__", 32)
-                    )?;
-                } else {
-                    write!(
-                        f,
-                        "\t_      PK: {}  PH: {} | ",
-                        str::repeat("__", 32),
-                        str::repeat("__", 32)
-                    )?;
-                }
-
-                write!(f, "{}❑", str::repeat(" ", level * factor))?;
-            }
-            writeln!(f)?;
-        }
-
-        Ok(())
-    }
-}
-
-impl From<Vec<Option<Node>>> for RatchetTree {
-    fn from(value: Vec<Option<Node>>) -> Self {
-        Self(value)
-    }
-}
 
 /// The [`TreeSync`] struct holds an [`MlsBinaryTree`] instance, which contains
 /// the state that is synced across the group, as well as the [`LeafNodeIndex`]
@@ -260,17 +154,17 @@ impl TreeSync {
     /// A helper function that generates a [`TreeSync`] instance from the given
     /// slice of nodes. It verifies that the provided encryption key is present
     /// in the tree and that the invariants documented in [`TreeSync`] hold.
-    pub(crate) fn from_ratchet_tree(
+    pub(crate) fn from_nodes(
         backend: &impl OpenMlsCryptoProvider,
         ciphersuite: Ciphersuite,
-        ratchet_tree: RatchetTree,
+        node_options: Vec<Option<Node>>,
     ) -> Result<Self, TreeSyncFromNodesError> {
         // TODO #800: Unmerged leaves should be checked
         let mut ts_nodes: Vec<TreeNode<TreeSyncLeafNode, TreeSyncParentNode>> =
-            Vec::with_capacity(ratchet_tree.0.len());
+            Vec::with_capacity(node_options.len());
 
         // Set the leaf indices in all the leaves and convert the node types.
-        for (node_index, node_option) in ratchet_tree.0.into_iter().enumerate() {
+        for (node_index, node_option) in node_options.into_iter().enumerate() {
             let ts_node_option: TreeNode<TreeSyncLeafNode, TreeSyncParentNode> = match node_option {
                 Some(node) => {
                     let mut node = node.clone();
@@ -372,6 +266,22 @@ impl TreeSync {
             .filter_map(|(_, tsn)| tsn.node().as_ref())
     }
 
+    /// Returns the [`LeafNodeIndex`] of the leaf that contains the given
+    /// [`SignaturePublicKey`].
+    ///
+    /// Returns `None` if no matching leaf can be found.
+    pub(crate) fn find_leaf(&self, signature_key: &SignaturePublicKey) -> Option<LeafNodeIndex> {
+        self.full_leave_members()
+            .filter_map(|m| {
+                if m.signature_key == signature_key.as_slice() {
+                    Some(m.index)
+                } else {
+                    None
+                }
+            })
+            .next()
+    }
+
     /// Returns the index of the last full leaf in the tree.
     fn rightmost_full_leaf(&self) -> LeafNodeIndex {
         let mut index = LeafNodeIndex::new(0);
@@ -403,9 +313,32 @@ impl TreeSync {
             })
     }
 
+    /// Returns a [`TreeSyncError::UnsupportedExtension`] if an [`ExtensionType`]
+    /// in `extensions` is not supported by a leaf in this tree.
+    #[cfg(test)]
+    pub(crate) fn check_extension_support(
+        &self,
+        extensions: &[crate::extensions::ExtensionType],
+    ) -> Result<(), TreeSyncError> {
+        if self.tree.leaves().any(|(_, tsn)| {
+            tsn.node()
+                .as_ref()
+                .map(|node| {
+                    node.leaf_node()
+                        .check_extension_support(extensions)
+                        .map_err(|_| LibraryError::custom("This is never used, so we don't care"))
+                })
+                .is_none() // Return true if this is none
+        }) {
+            Err(TreeSyncError::UnsupportedExtension)
+        } else {
+            Ok(())
+        }
+    }
+
     /// Returns the nodes in the tree ordered according to the
     /// array-representation of the underlying binary tree.
-    pub fn export_ratchet_tree(&self) -> RatchetTree {
+    pub fn export_nodes(&self) -> Vec<Option<Node>> {
         let mut nodes = Vec::new();
 
         // Determine the index of the rightmost full leaf.
@@ -424,7 +357,7 @@ impl TreeSync {
             nodes.push(leaf.node_without_index().map(Node::LeafNode));
         } else {
             // The tree was empty.
-            return vec![].into();
+            return vec![];
         }
 
         // Blank parent node used for padding
@@ -450,7 +383,7 @@ impl TreeSync {
             nodes.push(leaf.node_without_index().clone().map(Node::LeafNode));
         }
 
-        nodes.into()
+        nodes
     }
 
     /// Return a reference to the leaf at the given `LeafNodeIndex` or `None` if the

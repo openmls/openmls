@@ -3,10 +3,7 @@ use openmls_traits::{signatures::Signer, OpenMlsCryptoProvider};
 use crate::{
     credentials::CredentialWithKey,
     error::LibraryError,
-    extensions::{
-        errors::ExtensionError, Extension, Extensions, ExternalSendersExtension,
-        RequiredCapabilitiesExtension,
-    },
+    extensions::{errors::ExtensionError, Extension, Extensions, RequiredCapabilitiesExtension},
     group::{config::CryptoConfig, GroupContext, GroupId},
     messages::ConfirmationTag,
     schedule::CommitSecret,
@@ -27,7 +24,6 @@ pub(crate) struct TempBuilderPG1 {
     credential_with_key: CredentialWithKey,
     lifetime: Option<Lifetime>,
     required_capabilities: Option<RequiredCapabilitiesExtension>,
-    external_senders: Option<ExternalSendersExtension>,
     leaf_extensions: Option<Extensions>,
 }
 
@@ -42,16 +38,6 @@ impl TempBuilderPG1 {
         required_capabilities: RequiredCapabilitiesExtension,
     ) -> Self {
         self.required_capabilities = Some(required_capabilities);
-        self
-    }
-
-    pub(crate) fn with_external_senders(
-        mut self,
-        external_senders: ExternalSendersExtension,
-    ) -> Self {
-        if !external_senders.is_empty() {
-            self.external_senders = Some(external_senders);
-        }
         self
     }
 
@@ -89,18 +75,13 @@ impl TempBuilderPG1 {
             }
             _ => LibraryError::custom("Unexpected ExtensionError").into(),
         })?;
-        let required_capabilities = Extension::RequiredCapabilities(required_capabilities);
-        let extensions =
-            if let Some(ext_senders) = self.external_senders.map(Extension::ExternalSenders) {
-                vec![required_capabilities, ext_senders]
-            } else {
-                vec![required_capabilities]
-            };
+        let required_capabilities =
+            Extensions::single(Extension::RequiredCapabilities(required_capabilities));
         let group_context = GroupContext::create_initial_group_context(
             self.crypto_config.ciphersuite,
             self.group_id,
             treesync.tree_hash().to_vec(),
-            Extensions::from_vec(extensions)?,
+            required_capabilities,
         );
         let next_builder = TempBuilderPG2 {
             treesync,
@@ -168,7 +149,6 @@ impl PublicGroup {
             credential_with_key,
             lifetime: None,
             required_capabilities: None,
-            external_senders: None,
             leaf_extensions: None,
         }
     }

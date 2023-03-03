@@ -20,10 +20,9 @@ use crate::{
         errors::ApplyUpdatePathError,
         node::{
             encryption_keys::EncryptionKeyPair, leaf_node::OpenMlsLeafNode,
-            parent_node::PlainUpdatePathNode,
+            parent_node::PlainUpdatePathNode, Node,
         },
         treekem::{DecryptPathParams, UpdatePath, UpdatePathNode},
-        RatchetTree,
     },
 };
 
@@ -76,14 +75,12 @@ impl<'a> PublicGroupDiff<'a> {
     ///  - the invited members are not part of the tree yet
     ///  - the leaf index of a new member is identical to the own leaf index
     ///  - the plain path does not contain the correct secrets
-    #[allow(clippy::too_many_arguments)]
     pub(crate) fn encrypt_group_secrets(
         &self,
         joiner_secret: &JoinerSecret,
         invited_members: Vec<(LeafNodeIndex, AddProposal)>,
         plain_path_option: Option<&[PlainUpdatePathNode]>,
         presharedkeys: &[PreSharedKeyId],
-        encrypted_group_info: &[u8],
         backend: &impl OpenMlsCryptoProvider,
         leaf_index: LeafNodeIndex,
     ) -> Result<Vec<EncryptedGroupSecrets>, LibraryError> {
@@ -92,7 +89,6 @@ impl<'a> PublicGroupDiff<'a> {
             invited_members,
             plain_path_option,
             presharedkeys,
-            encrypted_group_info,
             backend,
             leaf_index,
         )
@@ -105,8 +101,8 @@ impl<'a> PublicGroupDiff<'a> {
 
     /// Returns a vector of all nodes in the tree resulting from merging this
     /// diff.
-    pub(crate) fn export_ratchet_tree(&self) -> RatchetTree {
-        self.diff.export_ratchet_tree()
+    pub(crate) fn export_nodes(&self) -> Vec<Option<Node>> {
+        self.diff.export_nodes()
     }
 
     /// Decrypt an [`UpdatePath`] originating from the given
@@ -237,9 +233,16 @@ impl<'a> PublicGroupDiff<'a> {
 /// The staged version of a [`PublicGroupDiff`], which means it can no longer be
 /// modified. Its only use is to merge it into the original [`PublicGroup`].
 #[derive(Debug, Serialize, Deserialize)]
-pub(crate) struct StagedPublicGroupDiff {
+pub struct StagedPublicGroupDiff {
     pub(super) staged_diff: StagedTreeSyncDiff,
     pub(super) group_context: GroupContext,
     pub(super) interim_transcript_hash: Vec<u8>,
     pub(super) confirmation_tag: ConfirmationTag,
+}
+
+impl StagedPublicGroupDiff {
+    /// Get the staged [`GroupContext`].
+    pub fn group_context(&self) -> &GroupContext {
+        &self.group_context
+    }
 }

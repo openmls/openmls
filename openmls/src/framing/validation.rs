@@ -13,20 +13,35 @@
 //!                                  │                      │
 //!                                  ▼                    -'
 //!                           UnverifiedMessage
-//!                                  │                    -.
-//!                                  │                      │
-//!                                  │                      +-- process_unverified_message
-//!                                  │                      │
-//!                                  ▼                    -'
+//!                                  │                                       -.
+//!                                  │                                         │
+//!                                  │                                         │
+//!                                  ▼                                         │
+//!                       UnverifiedContextMessage                             │
+//!                                  │                                         │
+//!                                  │                                         │
+//!             (sender is member)   │   (sender is external)                  │
+//!               ┌──────────────────┴───────────────────┐                     │
+//!               │                                      │                     │
+//!               ▼                                      ▼                     +-- process_unverified_message
+//!     UnverifiedGroupMessage              UnverifiedExternalMessage          │
+//!               │                                      │                     │
+//!               │ (verify_signature)                   │ (verify_signature)  │
+//!               │                                      │                     │
+//!               ▼                                      ▼                     │
+//!     VerifiedMemberMessage                VerifiedExternalMessage           │
+//!               │                                      │                     │
+//!               └──────────────────┬───────────────────┘                     │
+//!                                  │                                         │
+//!                                  ▼                                       -'
 //!                          ProcessedMessage
 //!
 //! ```
 // TODO #106/#151: Update the above diagram
 
-use crate::{
-    extensions::ExternalSendersExtension, group::errors::ValidationError, treesync::TreeSync,
-};
-use core_group::{proposals::QueuedProposal, staged_commit::StagedCommit};
+use crate::{group::errors::ValidationError, treesync::TreeSync};
+use core_group::proposals::QueuedProposal;
+use mls_group::errors::ProcessMessageError;
 use openmls_traits::OpenMlsCryptoProvider;
 
 use crate::{
@@ -34,8 +49,6 @@ use crate::{
     framing::mls_auth_content::AuthenticatedContent,
     tree::sender_ratchet::SenderRatchetConfiguration,
 };
-
-use self::mls_group::errors::ProcessMessageError;
 
 use super::{
     mls_auth_content::VerifiableAuthenticatedContent, mls_content::ContentType,
@@ -150,7 +163,6 @@ impl DecryptedMessage {
         &self,
         treesync: &TreeSync,
         old_leaves: &[Member],
-        external_senders: Option<&ExternalSendersExtension>,
     ) -> Result<CredentialWithKey, ValidationError> {
         let sender = self.sender();
         match sender {
@@ -193,16 +205,8 @@ impl DecryptedMessage {
                     }
                 }
             }
-            Sender::External(index) => {
-                let sender = external_senders
-                    .ok_or(ValidationError::NoExternalSendersExtension)?
-                    .get(index.index())
-                    .ok_or(ValidationError::UnauthorizedExternalSender)?;
-                Ok(CredentialWithKey {
-                    credential: sender.credential().clone(),
-                    signature_key: sender.signature_key().clone(),
-                })
-            }
+            // External senders are not supported yet #106/#151.
+            Sender::External(_) => unimplemented!(),
             Sender::NewMemberCommit | Sender::NewMemberProposal => {
                 // Fetch the credential from the message itself.
                 self.verifiable_content.new_member_credential()
@@ -240,10 +244,12 @@ impl UnverifiedMessage {
         credential: Credential,
         sender_pk: OpenMlsSignaturePublicKey,
     ) -> Self {
-        UnverifiedMessage {
-            verifiable_content: decrypted_message.verifiable_content,
-            credential,
-            sender_pk,
+        {
+            UnverifiedMessage {
+                verifiable_content: decrypted_message.verifiable_content,
+                credential,
+                sender_pk,
+            }
         }
     }
 

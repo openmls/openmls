@@ -7,9 +7,7 @@ pub mod kat_messages;
 // pub mod kat_transcripts;
 
 #[cfg(test)]
-mod external_add_proposal;
-#[cfg(test)]
-mod external_remove_proposal;
+mod external_proposal;
 #[cfg(test)]
 mod test_commit_validation;
 #[cfg(test)]

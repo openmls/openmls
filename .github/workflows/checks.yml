@@ -17,12 +17,14 @@ jobs:
   checks:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v2
         with:
           ref: ${{ github.event.pull_request.head.sha }}
-      - uses: dtolnay/rust-toolchain@stable
+      - name: Stable with rustfmt
+        uses: actions-rs/toolchain@v1
         with:
+          profile: minimal
+          toolchain: stable
           components: rustfmt
-      - uses: Swatinem/rust-cache@v2
       - name: Cargo fmt
         run: cargo fmt -- --check

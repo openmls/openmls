@@ -141,7 +141,7 @@ pub fn generate_test_vector(ciphersuite: Ciphersuite) -> MessagesTestVector {
     .build(&crypto, &alice_credential_with_key_and_signer.signer)
     .unwrap();
 
-    let alice_ratchet_tree = alice_group.public_group().export_ratchet_tree();
+    let alice_ratchet_tree: Vec<Option<Node>> = alice_group.treesync().export_nodes();
 
     let alice_group_info = alice_group
         .export_group_info(&crypto, &alice_credential_with_key_and_signer.signer, true)
@@ -275,7 +275,7 @@ pub fn generate_test_vector(ciphersuite: Ciphersuite) -> MessagesTestVector {
 
     let mut receiver_group = CoreGroup::new_from_welcome(
         alice_welcome.clone(),
-        Some(alice_group.public_group().export_ratchet_tree()),
+        Some(alice_group.treesync().export_nodes()),
         bob_key_package_bundle,
         &crypto,
     )

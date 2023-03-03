@@ -19,9 +19,6 @@ use crate::{
     treesync::node::leaf_node::LeafNode,
 };
 
-#[cfg(test)]
-use crate::treesync::errors::LeafNodeValidationError;
-
 use super::PublicGroup;
 
 impl PublicGroup {
@@ -376,19 +373,6 @@ impl PublicGroup {
                     };
                 }
             }
-        }
-        Ok(())
-    }
-
-    /// Returns a [`LeafNodeValidationError`] if an [`ExtensionType`]
-    /// in `extensions` is not supported by a leaf in this tree.
-    #[cfg(test)]
-    pub(crate) fn check_extension_support(
-        &self,
-        extensions: &[crate::extensions::ExtensionType],
-    ) -> Result<(), LeafNodeValidationError> {
-        for leaf in self.treesync().full_leaves() {
-            leaf.leaf_node().check_extension_support(extensions)?;
         }
         Ok(())
     }

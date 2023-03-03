@@ -1,6 +1,6 @@
 //! # The sender of a message.
 
-use crate::{binary_tree::array_representation::LeafNodeIndex, extensions::SenderExtensionIndex};
+use crate::binary_tree::array_representation::LeafNodeIndex;
 
 use super::*;
 use tls_codec::{TlsDeserialize, TlsSerialize, TlsSize};
@@ -41,8 +41,7 @@ pub enum Sender {
     #[tls_codec(discriminant = 1)]
     Member(LeafNodeIndex),
     /// The sender is not a member of the group and has an external value instead
-    /// The index refers to the [crate::extensions::ExternalSendersExtension] and is 0 indexed
-    External(SenderExtensionIndex),
+    External(LeafNodeIndex),
     /// The sender is a new member of the group that joins itself through
     /// an [External Add proposal](crate::messages::external_proposals::JoinProposal)
     NewMemberProposal,

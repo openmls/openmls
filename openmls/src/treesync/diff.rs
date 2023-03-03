@@ -47,7 +47,6 @@ use crate::{
     group::GroupId,
     messages::PathSecret,
     schedule::CommitSecret,
-    treesync::RatchetTree,
 };
 
 pub(crate) type UpdatePathResult = (
@@ -459,7 +458,7 @@ impl<'a> TreeSyncDiff<'a> {
 
     /// Helper function computing the resolution of a node with the given index.
     /// If an exclusion list is given, do not add the leaves given in the list.
-    pub(super) fn resolution(
+    fn resolution(
         &self,
         node_index: TreeNodeIndex,
         excluded_indices: &HashSet<&LeafNodeIndex>,
@@ -689,7 +688,7 @@ impl<'a> TreeSyncDiff<'a> {
     /// Helper function to compute and set the tree hash of the given node and
     /// all nodes below it in the tree. The leaf nodes in `exclusion_list` are
     /// not included in the tree hash.
-    pub(super) fn compute_tree_hash(
+    fn compute_tree_hash(
         &self,
         backend: &impl OpenMlsCryptoProvider,
         ciphersuite: Ciphersuite,
@@ -807,7 +806,7 @@ impl<'a> TreeSyncDiff<'a> {
 
     /// Returns a vector of all nodes in the tree resulting from merging this
     /// diff.
-    pub(crate) fn export_ratchet_tree(&self) -> RatchetTree {
+    pub(crate) fn export_nodes(&self) -> Vec<Option<Node>> {
         let mut nodes = Vec::new();
 
         // Determine the index of the rightmost full leaf.
@@ -826,7 +825,7 @@ impl<'a> TreeSyncDiff<'a> {
             nodes.push(leaf.node().clone().map(Node::LeafNode));
         } else {
             // The tree was empty.
-            return vec![].into();
+            return vec![];
         }
 
         // Blank parent node used for padding
@@ -852,7 +851,7 @@ impl<'a> TreeSyncDiff<'a> {
             nodes.push(leaf.node().clone().map(Node::LeafNode));
         }
 
-        nodes.into()
+        nodes
     }
 
     /// Returns the filtered common path two leaf nodes share. If the leaves are

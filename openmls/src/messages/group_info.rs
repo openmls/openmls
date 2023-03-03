@@ -1,19 +1,17 @@
 //! This module contains all types related to group info handling.
 
-use openmls_traits::{crypto::OpenMlsCrypto, types::Ciphersuite, OpenMlsCryptoProvider};
-use thiserror::Error;
-use tls_codec::{Deserialize, Serialize, TlsDeserialize, TlsSerialize, TlsSize};
+use openmls_traits::types::Ciphersuite;
+use serde::{Deserialize, Serialize};
+use tls_codec::{Serialize as TlsSerializeTrait, TlsDeserialize, TlsSerialize, TlsSize};
 
 use crate::{
     binary_tree::LeafNodeIndex,
     ciphersuite::{
         signable::{Signable, SignedStruct, Verifiable, VerifiedStruct},
-        AeadKey, AeadNonce, Signature,
+        Signature,
     },
-    error::LibraryError,
     extensions::Extensions,
-    framing::InterimTranscriptHashInput,
-    group::{GroupContext, GroupEpoch},
+    group::GroupContext,
     messages::ConfirmationTag,
 };
 
@@ -24,53 +22,35 @@ const SIGNATURE_GROUP_INFO_LABEL: &str = "GroupInfoTBS";
 /// `verify(...)` with the signature key of the [`Credential`](crate::credentials::Credential).
 /// When receiving a serialized group info, it can only be deserialized into a
 /// [`VerifiableGroupInfo`], which can then be turned into a group info as described above.
-#[derive(Debug, PartialEq, Clone, TlsDeserialize, TlsSize)]
+#[derive(Debug, PartialEq, Clone, TlsDeserialize, TlsSize, Serialize, Deserialize)]
 #[cfg_attr(any(test, feature = "test-utils"), derive(TlsSerialize))]
 pub struct VerifiableGroupInfo {
     payload: GroupInfoTBS,
     signature: Signature,
 }
 
-/// Error related to group info.
-#[derive(Error, Debug, PartialEq, Clone)]
-pub enum GroupInfoError {
-    /// Decryption failed.
-    #[error("Decryption failed.")]
-    DecryptionFailed,
-    /// Malformed.
-    #[error("Malformed.")]
-    Malformed,
-}
-
 impl VerifiableGroupInfo {
-    pub(crate) fn try_from_ciphertext(
-        skey: &AeadKey,
-        nonce: &AeadNonce,
-        ciphertext: &[u8],
-        context: &[u8],
-        backend: &impl OpenMlsCryptoProvider,
-    ) -> Result<Self, GroupInfoError> {
-        let verifiable_group_info_plaintext = skey
-            .aead_open(backend, ciphertext, context, nonce)
-            .map_err(|_| GroupInfoError::DecryptionFailed)?;
-
-        let mut verifiable_group_info_plaintext_slice = verifiable_group_info_plaintext.as_slice();
-
-        let verifiable_group_info =
-            VerifiableGroupInfo::tls_deserialize(&mut verifiable_group_info_plaintext_slice)
-                .map_err(|_| GroupInfoError::Malformed)?;
-
-        if !verifiable_group_info_plaintext_slice.is_empty() {
-            return Err(GroupInfoError::Malformed);
-        }
-
-        Ok(verifiable_group_info)
+    /// Create a [`VerifiableGroupInfo`] from its components.
+    pub fn new(
+        group_context: GroupContext,
+        extensions: Extensions,
+        confirmation_tag: ConfirmationTag,
+        signer: LeafNodeIndex,
+        signature: Signature,
+    ) -> Self {
+        let payload = GroupInfoTBS {
+            group_context,
+            extensions,
+            confirmation_tag,
+            signer,
+        };
+        Self { payload, signature }
     }
 
     /// Get (unverified) ciphersuite of the verifiable group info.
     ///
     /// Note: This method should only be used when necessary to verify the group info signature.
-    pub(crate) fn ciphersuite(&self) -> Ciphersuite {
+    pub fn ciphersuite(&self) -> Ciphersuite {
         self.payload.group_context.ciphersuite()
     }
 
@@ -127,7 +107,7 @@ impl From<VerifiableGroupInfo> for GroupInfo {
 ///     opaque signature<V>;
 /// } GroupInfo;
 /// ```
-#[derive(Debug, PartialEq, Clone, TlsSerialize, TlsSize)]
+#[derive(Debug, PartialEq, Clone, TlsSerialize, TlsSize, Serialize, Deserialize)]
 #[cfg_attr(feature = "test-utils", derive(TlsDeserialize))]
 pub struct GroupInfo {
     payload: GroupInfoTBS,
@@ -136,7 +116,7 @@ pub struct GroupInfo {
 
 impl GroupInfo {
     /// Returns the group context.
-    pub(crate) fn group_context(&self) -> &GroupContext {
+    pub fn group_context(&self) -> &GroupContext {
         &self.payload.group_context
     }
 
@@ -148,31 +128,6 @@ impl GroupInfo {
     /// Returns the confirmation tag.
     pub(crate) fn confirmation_tag(&self) -> &ConfirmationTag {
         &self.payload.confirmation_tag
-    }
-
-    pub(crate) fn calculate_interim_transcript_hash(
-        &self,
-        crypto: &impl OpenMlsCrypto,
-    ) -> Result<Vec<u8>, LibraryError> {
-        if self.group_context().epoch() == GroupEpoch::from(0) {
-            return Ok(vec![]);
-        }
-
-        // New members compute the interim transcript hash using
-        // the confirmation_tag field of the GroupInfo struct.
-        let confirmed_transcript_hash = self.group_context().confirmed_transcript_hash();
-        let mls_plaintext_commit_auth_data =
-            &InterimTranscriptHashInput::from(self.confirmation_tag());
-        let commit_auth_data_bytes = mls_plaintext_commit_auth_data
-            .tls_serialize_detached()
-            .map_err(LibraryError::missing_bound_check)?;
-
-        crypto
-            .hash(
-                self.group_context().ciphersuite().hash_algorithm(),
-                &[confirmed_transcript_hash, &commit_auth_data_bytes].concat(),
-            )
-            .map_err(LibraryError::unexpected_crypto_error)
     }
 
     #[cfg(any(feature = "test-utils", test))]
@@ -189,12 +144,6 @@ impl GroupInfo {
     }
 }
 
-impl From<GroupInfo> for GroupContext {
-    fn from(value: GroupInfo) -> Self {
-        value.payload.group_context
-    }
-}
-
 /// GroupInfo (To Be Signed)
 ///
 /// ```c
@@ -207,7 +156,9 @@ impl From<GroupInfo> for GroupContext {
 ///     uint32 signer;
 /// } GroupInfoTBS;
 /// ```
-#[derive(Debug, PartialEq, Clone, TlsDeserialize, TlsSerialize, TlsSize)]
+#[derive(
+    Debug, PartialEq, Clone, TlsDeserialize, TlsSerialize, TlsSize, Serialize, Deserialize,
+)]
 pub(crate) struct GroupInfoTBS {
     group_context: GroupContext,
     extensions: Extensions,

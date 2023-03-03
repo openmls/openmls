@@ -9,7 +9,7 @@ use crate::ciphersuite::*;
 use crate::extensions::*;
 use crate::utils::*;
 
-use openmls_traits::OpenMlsCryptoProvider;
+use openmls_traits::{random::OpenMlsRand, OpenMlsCryptoProvider};
 use serde::{Deserialize, Serialize};
 use tls_codec::*;
 
@@ -18,15 +18,14 @@ pub(crate) mod core_group;
 pub(crate) mod public_group;
 pub(crate) use core_group::*;
 pub(crate) mod mls_group;
-#[cfg(not(any(feature = "test-utils", test)))]
-pub(crate) use group_context::*;
 
 // Public
 pub mod config;
 pub mod errors;
 
 pub use core_group::proposals::*;
-pub use core_group::staged_commit::StagedCommit;
+pub use core_group::staged_commit::*;
+pub use group_context::*;
 pub use mls_group::config::*;
 pub use mls_group::membership::*;
 pub use mls_group::processing::*;
@@ -38,9 +37,6 @@ pub use public_group::*;
 pub(crate) use core_group::create_commit_params::*;
 #[cfg(any(feature = "test-utils", test))]
 pub(crate) mod tests;
-#[cfg(any(feature = "test-utils", test))]
-pub use group_context::GroupContext;
-use openmls_traits::random::OpenMlsRand;
 #[cfg(any(feature = "test-utils", test))]
 pub use proposals::*;
 
@@ -86,6 +82,12 @@ impl GroupId {
     }
 }
 
+impl From<GroupId> for Vec<u8> {
+    fn from(value: GroupId) -> Self {
+        value.to_vec()
+    }
+}
+
 /// Group epoch. Internally this is stored as a `u64`.
 /// The group epoch is incremented with every valid Commit that is merged into the group state.
 #[derive(
@@ -102,6 +104,12 @@ impl GroupId {
     TlsSize,
 )]
 pub struct GroupEpoch(u64);
+
+impl From<GroupEpoch> for Vec<u8> {
+    fn from(value: GroupEpoch) -> Self {
+        value.0.to_be_bytes().into()
+    }
+}
 
 impl GroupEpoch {
     /// Increment the group epoch by 1.

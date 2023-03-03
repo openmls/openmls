@@ -52,8 +52,6 @@ pub struct MlsGroupConfig {
     pub(crate) use_ratchet_tree_extension: bool,
     /// Required capabilities (extensions and proposal types)
     pub(crate) required_capabilities: RequiredCapabilitiesExtension,
-    /// Senders authorized to send external remove proposals
-    pub(crate) external_senders: ExternalSendersExtension,
     /// Sender ratchet configuration
     pub(crate) sender_ratchet_configuration: SenderRatchetConfiguration,
     /// Lifetime of the own leaf node
@@ -98,11 +96,6 @@ impl MlsGroupConfig {
         &self.sender_ratchet_configuration
     }
 
-    /// Returns the [`MlsGroupConfig`] external senders extension
-    pub fn external_senders(&self) -> &ExternalSendersExtension {
-        &self.external_senders
-    }
-
     /// Returns the [`MlsGroupConfig`] lifetime configuration.
     pub fn lifetime(&self) -> &Lifetime {
         &self.lifetime
@@ -130,7 +123,6 @@ impl MlsGroupConfig {
 pub struct MlsGroupConfigBuilder {
     config: MlsGroupConfig,
 }
-
 impl MlsGroupConfigBuilder {
     /// Creates a new builder with default values.
     pub fn new() -> Self {
@@ -197,12 +189,6 @@ impl MlsGroupConfigBuilder {
     /// Sets the `crypto_config` property of the MlsGroupConfig.
     pub fn crypto_config(mut self, config: CryptoConfig) -> Self {
         self.config.crypto_config = config;
-        self
-    }
-
-    /// Sets the `external_senders` property of the MlsGroupConfig.
-    pub fn external_senders(mut self, external_senders: ExternalSendersExtension) -> Self {
-        self.config.external_senders = external_senders;
         self
     }
 

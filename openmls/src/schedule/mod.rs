@@ -151,8 +151,6 @@ use psk::*;
 #[cfg(any(feature = "test-utils", test))]
 pub mod kat_key_schedule;
 #[cfg(test)]
-pub mod kat_psk_secret;
-#[cfg(test)]
 mod unit_tests;
 
 // Public types
@@ -388,6 +386,13 @@ impl JoinerSecret {
     }
 
     #[cfg(any(feature = "test-utils", test))]
+    pub(crate) fn clone(&self) -> Self {
+        Self {
+            secret: self.secret.clone(),
+        }
+    }
+
+    #[cfg(any(feature = "test-utils", test))]
     pub(crate) fn as_slice(&self) -> &[u8] {
         self.secret.as_slice()
     }
@@ -424,8 +429,8 @@ impl KeySchedule {
     pub(crate) fn init(
         ciphersuite: Ciphersuite,
         backend: &impl OpenMlsCryptoProvider,
-        joiner_secret: &JoinerSecret,
-        psk: PskSecret,
+        joiner_secret: JoinerSecret,
+        psk: impl Into<Option<PskSecret>>,
     ) -> Result<Self, LibraryError> {
         log::debug!("Initializing the key schedule with {:?} ...", ciphersuite);
         log_crypto!(
@@ -433,7 +438,9 @@ impl KeySchedule {
             "  joiner_secret: {:x?}",
             joiner_secret.secret.as_slice()
         );
-        let intermediate_secret = IntermediateSecret::new(backend, joiner_secret, psk)
+        let psk = psk.into();
+        log_crypto!(trace, "  {}", if psk.is_some() { "with PSK" } else { "" });
+        let intermediate_secret = IntermediateSecret::new(backend, &joiner_secret, psk)
             .map_err(LibraryError::unexpected_crypto_error)?;
         Ok(Self {
             ciphersuite,
@@ -538,10 +545,12 @@ impl IntermediateSecret {
     fn new(
         backend: &impl OpenMlsCryptoProvider,
         joiner_secret: &JoinerSecret,
-        psk: PskSecret,
+        psk: Option<PskSecret>,
     ) -> Result<Self, CryptoError> {
-        log_crypto!(trace, "PSK input: {:x?}", psk.as_slice());
-        let secret = joiner_secret.secret.hkdf_extract(backend, psk.secret())?;
+        log_crypto!(trace, "PSK input: {:x?}", psk.as_ref().map(|p| p.secret()));
+        let secret = joiner_secret
+            .secret
+            .hkdf_extract(backend, psk.as_ref().map(|p| p.secret()))?;
         log_crypto!(trace, "Intermediate secret: {:x?}", secret);
         Ok(Self { secret })
     }
@@ -584,10 +593,9 @@ impl WelcomeSecret {
             "WelcomeSecret.derive_aead_key with {}",
             self.secret.ciphersuite()
         );
-        let aead_secret = self.secret.kdf_expand_label(
+        let aead_secret = self.secret.hkdf_expand(
             backend,
-            "key",
-            b"",
+            b"key",
             self.secret.ciphersuite().aead_key_length(),
         )?;
         Ok(AeadKey::from_secret(aead_secret))
@@ -598,10 +606,9 @@ impl WelcomeSecret {
         &self,
         backend: &impl OpenMlsCryptoProvider,
     ) -> Result<AeadNonce, CryptoError> {
-        let nonce_secret = self.secret.kdf_expand_label(
+        let nonce_secret = self.secret.hkdf_expand(
             backend,
-            "nonce",
-            b"",
+            b"nonce",
             self.secret.ciphersuite().aead_nonce_length(),
         )?;
         Ok(AeadNonce::from_secret(nonce_secret))
@@ -709,7 +716,7 @@ impl ExporterSecret {
         backend: &impl OpenMlsCryptoProvider,
         epoch_secret: &EpochSecret,
     ) -> Result<Self, CryptoError> {
-        let secret = epoch_secret.secret.derive_secret(backend, "exported")?;
+        let secret = epoch_secret.secret.derive_secret(backend, "exporter")?;
         Ok(ExporterSecret { secret })
     }
 

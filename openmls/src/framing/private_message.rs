@@ -331,7 +331,6 @@ impl PrivateMessage {
             )
             .map_err(|_| {
                 log::error!("  Ciphertext decryption error");
-                debug_assert!(false, "Ciphertext decryption failed");
                 MessageDecryptionError::AeadError
             })?;
         log_content!(
@@ -370,10 +369,7 @@ impl PrivateMessage {
                 sender_ratchet_configuration,
             )
             .map_err(|_| {
-                log::error!(
-                    "  Ciphertext generation out of bounds {}",
-                    sender_data.generation
-                );
+                log::error!("  Ciphertext generation out of bounds");
                 MessageDecryptionError::GenerationOutOfBound
             })?;
         // Prepare the nonce by xoring with the reuse guard.

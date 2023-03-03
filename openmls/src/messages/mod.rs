@@ -23,7 +23,7 @@ use thiserror::Error;
 
 // Private
 use proposals::*;
-use tls_codec::{Deserialize as TlsDeserialize, Serialize as TlsSerializeTrait, *};
+use tls_codec::{Serialize as TlsSerializeTrait, *};
 
 // Public
 pub mod external_proposals;
@@ -305,51 +305,7 @@ struct EncodedGroupSecrets<'a> {
     pub(crate) psks: &'a [PreSharedKeyId],
 }
 
-/// Error related to group secrets.
-#[derive(Error, Debug, PartialEq, Clone)]
-pub enum GroupSecretsError {
-    /// Decryption failed.
-    #[error("Decryption failed.")]
-    DecryptionFailed,
-    /// Malformed.
-    #[error("Malformed.")]
-    Malformed,
-}
-
 impl GroupSecrets {
-    /// Try to decrypt (and parse) a ciphertext into group secrets.
-    pub(crate) fn try_from_ciphertext(
-        skey: &HpkePrivateKey,
-        ciphertext: &HpkeCiphertext,
-        context: &[u8],
-        ciphersuite: Ciphersuite,
-        crypto: &impl OpenMlsCrypto,
-    ) -> Result<Self, GroupSecretsError> {
-        let group_secrets_plaintext = hpke::decrypt_with_label(
-            skey.as_slice(),
-            "Welcome",
-            context,
-            ciphertext,
-            ciphersuite,
-            crypto,
-        )
-        .map_err(|_| GroupSecretsError::DecryptionFailed)?;
-
-        let mut group_secrets_plaintext_slice = &mut group_secrets_plaintext.as_slice();
-
-        let group_secrets = GroupSecrets::tls_deserialize(&mut group_secrets_plaintext_slice)
-            .map_err(|_| GroupSecretsError::Malformed)?
-            // TODO(#1065)
-            .config(ciphersuite, ProtocolVersion::Mls10);
-
-        // Check that no extraneous data was encrypted.
-        if !group_secrets_plaintext_slice.is_empty() {
-            return Err(GroupSecretsError::Malformed);
-        }
-
-        Ok(group_secrets)
-    }
-
     /// Create new encoded group secrets.
     pub(crate) fn new_encoded<'a>(
         joiner_secret: &JoinerSecret,
@@ -376,10 +332,8 @@ impl GroupSecrets {
         }
         self
     }
-}
 
-#[cfg(test)]
-impl GroupSecrets {
+    #[cfg(test)]
     pub fn random_encoded(
         ciphersuite: Ciphersuite,
         backend: &impl OpenMlsCryptoProvider,

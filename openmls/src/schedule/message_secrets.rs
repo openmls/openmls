@@ -79,18 +79,6 @@ impl MessageSecrets {
     }
 
     #[cfg(test)]
-    /// Update the message secrets's serialized context.
-    pub(crate) fn set_serialized_context(&mut self, serialized_context: Vec<u8>) {
-        self.serialized_context = serialized_context;
-    }
-
-    #[cfg(test)]
-    /// Update the membership key.
-    pub(crate) fn set_membership_key(&mut self, membership_key: Secret) {
-        self.membership_key = MembershipKey::from_secret(membership_key);
-    }
-
-    #[cfg(test)]
     pub(crate) fn random(
         ciphersuite: Ciphersuite,
         backend: &impl OpenMlsCryptoProvider,

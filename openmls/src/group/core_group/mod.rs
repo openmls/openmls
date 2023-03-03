@@ -18,8 +18,6 @@ pub(crate) mod staged_commit;
 
 // Tests
 #[cfg(test)]
-pub(crate) mod kat_welcome;
-#[cfg(test)]
 pub(crate) mod test_core_group;
 #[cfg(test)]
 mod test_create_commit_params;
@@ -180,18 +178,6 @@ impl CoreGroupBuilder {
             .with_required_capabilities(required_capabilities);
         self
     }
-    /// Set the [`ExternalSendersExtension`] of the [`CoreGroup`].
-    pub(crate) fn with_external_senders(
-        mut self,
-        external_senders: ExternalSendersExtension,
-    ) -> Self {
-        if !external_senders.is_empty() {
-            self.public_group_builder = self
-                .public_group_builder
-                .with_external_senders(external_senders);
-        }
-        self
-    }
     /// Set the number of past epochs the group should keep secrets.
     pub fn with_max_past_epoch_secrets(mut self, max_past_epochs: usize) -> Self {
         self.max_past_epochs = max_past_epochs;
@@ -243,7 +229,7 @@ impl CoreGroupBuilder {
         // Prepare the PskSecret
         let psk_secret = PskSecret::new(ciphersuite, backend, &self.psk_ids)?;
 
-        let mut key_schedule = KeySchedule::init(ciphersuite, backend, &joiner_secret, psk_secret)?;
+        let mut key_schedule = KeySchedule::init(ciphersuite, backend, joiner_secret, psk_secret)?;
         key_schedule
             .add_context(backend, &serialized_group_context)
             .map_err(|_| LibraryError::custom("Using the key schedule in the wrong state"))?;
@@ -361,7 +347,7 @@ impl CoreGroup {
         removed: LeafNodeIndex,
         signer: &impl Signer,
     ) -> Result<AuthenticatedContent, ValidationError> {
-        if self.public_group().leaf(removed).is_none() {
+        if !self.treesync().is_leaf_in_tree(removed) {
             return Err(ValidationError::UnknownMember);
         }
         let remove_proposal = RemoveProposal { removed };
@@ -420,7 +406,7 @@ impl CoreGroup {
                 .validate_required_capabilities(required_capabilities)?;
             // Ensure that all other leaf nodes support all the required
             // extensions as well.
-            self.public_group()
+            self.treesync()
                 .check_extension_support(required_capabilities.extension_types())?;
         }
         let proposal = GroupContextExtensionProposal::new(extensions);
@@ -484,7 +470,7 @@ impl CoreGroup {
             .message_secrets_mut(private_message.epoch())
             .map_err(|_| MessageDecryptionError::AeadError)?;
         let sender_data = private_message.sender_data(message_secrets, backend, ciphersuite)?;
-        if self.public_group().leaf(sender_data.leaf_index).is_none() {
+        if !self.treesync().is_leaf_in_tree(sender_data.leaf_index) {
             return Err(MessageDecryptionError::SenderError(
                 SenderError::UnknownSender,
             ));
@@ -529,9 +515,7 @@ impl CoreGroup {
     ) -> Result<GroupInfo, LibraryError> {
         let extensions = {
             let ratchet_tree_extension = || {
-                Extension::RatchetTree(RatchetTreeExtension::new(
-                    self.public_group().export_ratchet_tree(),
-                ))
+                Extension::RatchetTree(RatchetTreeExtension::new(self.treesync().export_nodes()))
             };
 
             let external_pub_extension = || {
@@ -595,9 +579,9 @@ impl CoreGroup {
         writer.write_all(&serialized_core_group.into_bytes())
     }
 
-    /// Returns a reference to the public group.
-    pub(crate) fn public_group(&self) -> &PublicGroup {
-        &self.public_group
+    /// Returns a reference to the ratchet tree
+    pub(crate) fn treesync(&self) -> &TreeSync {
+        self.public_group.treesync()
     }
 
     /// Get the ciphersuite implementation used in this group.
@@ -648,7 +632,7 @@ impl CoreGroup {
 
     /// Get the identity of the client's [`Credential`] owning this group.
     pub(crate) fn own_identity(&self) -> Option<&[u8]> {
-        self.public_group()
+        self.treesync()
             .leaf(self.own_leaf_index)
             .map(|node| node.credential().identity())
     }
@@ -721,7 +705,7 @@ impl CoreGroup {
     }
 
     pub(crate) fn own_leaf_node(&self) -> Result<&OpenMlsLeafNode, LibraryError> {
-        self.public_group()
+        self.treesync()
             .leaf(self.own_leaf_index())
             .ok_or_else(|| LibraryError::custom("Tree has no own leaf."))
     }
@@ -882,7 +866,7 @@ impl CoreGroup {
         };
 
         // Build AuthenticatedContent
-        let mut authenticated_content = AuthenticatedContent::commit(
+        let mut commit = AuthenticatedContent::commit(
             *params.framing_parameters(),
             sender,
             commit,
@@ -891,7 +875,7 @@ impl CoreGroup {
         )?;
 
         // Update the confirmed transcript hash using the commit we just created.
-        diff.update_confirmed_transcript_hash(backend, &authenticated_content)?;
+        diff.update_confirmed_transcript_hash(backend, &commit)?;
 
         let serialized_provisional_group_context = diff
             .group_context()
@@ -906,12 +890,23 @@ impl CoreGroup {
         )
         .map_err(LibraryError::unexpected_crypto_error)?;
 
+        // Create group secrets for later use, so we can afterwards consume the
+        // `joiner_secret`.
+        let encrypted_secrets = diff.encrypt_group_secrets(
+            &joiner_secret,
+            apply_proposals_values.invitation_list,
+            path_computation_result.plain_path.as_deref(),
+            &apply_proposals_values.presharedkeys,
+            backend,
+            self.own_leaf_index(),
+        )?;
+
         // Prepare the PskSecret
         let psk_secret =
             PskSecret::new(ciphersuite, backend, &apply_proposals_values.presharedkeys)?;
 
         // Create key schedule
-        let mut key_schedule = KeySchedule::init(ciphersuite, backend, &joiner_secret, psk_secret)?;
+        let mut key_schedule = KeySchedule::init(ciphersuite, backend, joiner_secret, psk_secret)?;
 
         let serialized_provisional_group_context = diff
             .group_context()
@@ -935,14 +930,12 @@ impl CoreGroup {
             .map_err(LibraryError::unexpected_crypto_error)?;
 
         // Set the confirmation tag
-        authenticated_content.set_confirmation_tag(confirmation_tag.clone());
+        commit.set_confirmation_tag(confirmation_tag.clone());
 
         diff.update_interim_transcript_hash(ciphersuite, backend, confirmation_tag.clone())?;
 
         // only computes the group info if necessary
-        let group_info = if !apply_proposals_values.invitation_list.is_empty()
-            || self.use_ratchet_tree_extension
-        {
+        let group_info = if !encrypted_secrets.is_empty() || self.use_ratchet_tree_extension {
             // Create the ratchet tree extension if necessary
             let external_pub = provisional_epoch_secrets
                 .external_secret()
@@ -952,7 +945,7 @@ impl CoreGroup {
                 Extension::ExternalPub(ExternalPubExtension::new(external_pub.into()));
             let other_extensions: Extensions = if self.use_ratchet_tree_extension {
                 Extensions::from_vec(vec![
-                    Extension::RatchetTree(RatchetTreeExtension::new(diff.export_ratchet_tree())),
+                    Extension::RatchetTree(RatchetTreeExtension::new(diff.export_nodes())),
                     external_pub_extension,
                 ])?
             } else {
@@ -975,7 +968,7 @@ impl CoreGroup {
         };
 
         // Check if new members were added and, if so, create welcome messages
-        let welcome_option = if !apply_proposals_values.invitation_list.is_empty() {
+        let welcome_option = if !encrypted_secrets.is_empty() {
             // Encrypt GroupInfo object
             let (welcome_key, welcome_nonce) = welcome_secret
                 .derive_welcome_key_nonce(backend)
@@ -993,19 +986,6 @@ impl CoreGroup {
                     &welcome_nonce,
                 )
                 .map_err(LibraryError::unexpected_crypto_error)?;
-
-            // Create group secrets for later use, so we can afterwards consume the
-            // `joiner_secret`.
-            let encrypted_secrets = diff.encrypt_group_secrets(
-                &joiner_secret,
-                apply_proposals_values.invitation_list,
-                path_computation_result.plain_path.as_deref(),
-                &apply_proposals_values.presharedkeys,
-                &encrypted_group_info,
-                backend,
-                self.own_leaf_index(),
-            )?;
-
             // Create welcome message
             let welcome = Welcome::new(self.ciphersuite(), encrypted_secrets, encrypted_group_info);
             Some(welcome)
@@ -1035,7 +1015,7 @@ impl CoreGroup {
         );
 
         Ok(CreateCommitResult {
-            commit: authenticated_content,
+            commit,
             welcome_option,
             staged_commit,
             group_info: group_info.filter(|_| self.use_ratchet_tree_extension),
@@ -1048,19 +1028,17 @@ impl CoreGroup {
     pub(crate) fn members_supported_credentials(
         &self,
     ) -> impl Iterator<Item = &[CredentialType]> + '_ {
-        self.public_group().members().filter_map(|member| {
-            self.public_group()
-                .leaf(member.index)
-                .map(|leaf| leaf.leaf_node().capabilities().credentials())
-        })
+        self.treesync()
+            .full_leaves()
+            .map(|leaf_node| leaf_node.leaf_node().capabilities().credentials())
     }
 
     /// Return currently used credentials of all members.
     // TODO(#1186)
     #[allow(unused)]
     pub(crate) fn members_used_credentials(&self) -> impl Iterator<Item = CredentialType> + '_ {
-        self.public_group()
-            .members()
+        self.treesync()
+            .full_leave_members()
             .map(|Member { credential, .. }| credential.credential_type())
     }
 
@@ -1071,8 +1049,8 @@ impl CoreGroup {
         &self,
         exclude_own: bool,
     ) -> impl Iterator<Item = SignaturePublicKey> + '_ {
-        self.public_group()
-            .members()
+        self.treesync()
+            .full_leave_members()
             .filter(move |member| {
                 if exclude_own {
                     member.index != self.own_leaf_index
@@ -1087,8 +1065,8 @@ impl CoreGroup {
     // TODO(#1186)
     #[allow(unused)]
     pub(crate) fn encryption_keys(&self) -> impl Iterator<Item = EncryptionKey> + '_ {
-        self.public_group()
-            .members()
+        self.treesync()
+            .full_leave_members()
             .map(|Member { encryption_key, .. }| {
                 EncryptionKey::from(HpkePublicKey::new(encryption_key))
             })
@@ -1121,18 +1099,10 @@ impl CoreGroup {
         self.message_secrets_store.message_secrets_mut()
     }
 
-    pub(crate) fn print_ratchet_tree(&self, message: &str) {
-        println!("{}: {}", message, self.public_group().export_ratchet_tree());
-    }
+    pub(crate) fn print_tree(&self, message: &str) {
+        use super::tests::tree_printing::print_tree;
 
-    #[cfg(test)]
-    pub(crate) fn message_secrets_store(&self) -> &MessageSecretsStore {
-        &self.message_secrets_store
-    }
-
-    #[cfg(test)]
-    pub(crate) fn set_group_context(&mut self, group_context: GroupContext) {
-        self.public_group.set_group_context(group_context)
+        print_tree(self, message);
     }
 }
 

@@ -8,6 +8,7 @@ on:
   push:
     branches:
       - main
+      - konrad/treesync
   pull_request:
   workflow_dispatch:
 
@@ -43,23 +44,17 @@ jobs:
           # Compile iOS sim on macOS
           - os: macos-latest
             arch: aarch64-apple-ios-sim
-        mode:
-          - debug
-          - release
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v2
       # Install the required target
-      - uses: dtolnay/rust-toolchain@stable
+      - uses: actions-rs/toolchain@v1
         with:
+          toolchain: stable
+          profile: minimal
+          override: true
           target: ${{ matrix.arch }}
-      - uses: Swatinem/rust-cache@v2
-
-      - run: |
-          if [ ${{ matrix.mode }} == debug ]; then
-            echo "TEST_MODE=" >> $GITHUB_ENV
-          else
-            echo "TEST_MODE=--release" >> $GITHUB_ENV
-          fi
-      - name: Build
-        run: cargo build $TEST_MODE --verbose --target ${{ matrix.arch }} -p openmls
+      - name: Build debug
+        run: cargo build --verbose --target ${{ matrix.arch }} -p openmls
+      - name: Build release
+        run: cargo build --release --verbose --target ${{ matrix.arch }} -p openmls

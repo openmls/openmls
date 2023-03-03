@@ -60,7 +60,7 @@ impl CoreGroup {
 
         // Create key schedule
         let mut key_schedule =
-            KeySchedule::init(self.ciphersuite(), backend, &joiner_secret, psk_secret)?;
+            KeySchedule::init(self.ciphersuite(), backend, joiner_secret, psk_secret)?;
 
         key_schedule
             .add_context(backend, serialized_provisional_group_context)
@@ -302,7 +302,8 @@ impl CoreGroup {
 
                 // Figure out which keys we need in the new epoch.
                 let new_owned_encryption_keys = self
-                    .public_group()
+                    .public_group
+                    .treesync()
                     .owned_encryption_keys(self.own_leaf_index());
                 // From the old and new keys, keep the ones that are still relevant in the new epoch.
                 let epoch_keypairs: Vec<EncryptionKeyPair> = old_epoch_keypairs
@@ -347,8 +348,9 @@ impl CoreGroup {
         own_leaf_nodes: &[OpenMlsLeafNode],
         backend: &impl OpenMlsCryptoProvider,
     ) -> Result<StagedCommit, StageCommitError> {
-        let (old_epoch_keypairs, leaf_node_keypairs) =
-            self.read_decryption_keypairs(backend, own_leaf_nodes)?;
+        let (old_epoch_keypairs, leaf_node_keypairs) = self
+            .read_decryption_keypairs(backend, own_leaf_nodes)
+            .unwrap();
 
         self.stage_commit(
             mls_content,
@@ -403,6 +405,18 @@ impl StagedCommit {
         self.staged_proposal_queue.psk_proposals()
     }
 
+    /// Returns the inline proposals that are covered by the commit as an iterator over [QueuedProposal].
+    pub fn inline_proposals(&self) -> impl Iterator<Item = &QueuedProposal> {
+        self.staged_proposal_queue
+            .queued_proposals()
+            .filter(
+                |&queued_proposal| match queued_proposal.proposal_or_ref_type() {
+                    ProposalOrRefType::Proposal => true,
+                    ProposalOrRefType::Reference => false,
+                },
+            )
+    }
+
     /// Returns `true` if the member was removed through a proposal covered by this Commit message
     /// and `false` otherwise.
     pub fn self_removed(&self) -> bool {
@@ -412,6 +426,16 @@ impl StagedCommit {
     /// Consume this [`StagedCommit`] and return the internal [`StagedCommitState`].
     pub(crate) fn into_state(self) -> StagedCommitState {
         self.state
+    }
+
+    /// Returns a reference to the internal [`StagedCommitState`].
+    pub fn staged_context(&self) -> &GroupContext {
+        match &self.state {
+            StagedCommitState::PublicState(public_state) => public_state.group_context(),
+            StagedCommitState::GroupMember(member_state) => {
+                member_state.staged_diff.group_context()
+            }
+        }
     }
 }
 

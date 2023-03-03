@@ -92,7 +92,7 @@ impl MlsGroup {
     /// Returns a reference to the own [`LeafNode`].
     pub fn own_leaf(&self) -> Option<&LeafNode> {
         self.group
-            .public_group()
+            .treesync()
             .leaf(self.group.own_leaf_index())
             .map(|l| l.leaf_node())
     }
@@ -265,14 +265,14 @@ impl MlsGroup {
 
     /// Returns a list of [`Member`]s in the group.
     pub fn members(&self) -> impl Iterator<Item = Member> + '_ {
-        self.group.public_group().members()
+        self.group.treesync().full_leave_members()
     }
 
     /// Returns the [`Credential`] of a member corresponding to the given
     /// leaf index. Returns `None` if the member can not be found in this group.
     pub fn member(&self, leaf_index: LeafNodeIndex) -> Option<&Credential> {
         self.group
-            .public_group()
+            .treesync()
             // This will return an error if the member can't be found.
             .leaf(leaf_index)
             .map(|leaf| leaf.credential())

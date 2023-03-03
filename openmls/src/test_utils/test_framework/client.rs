@@ -23,7 +23,7 @@ use crate::{
     messages::{group_info::GroupInfo, *},
     treesync::{
         node::{leaf_node::Capabilities, Node},
-        LeafNode, RatchetTree,
+        LeafNode,
     },
     versions::ProtocolVersion,
 };
@@ -120,7 +120,7 @@ impl Client {
         &self,
         mls_group_config: MlsGroupConfig,
         welcome: Welcome,
-        ratchet_tree: Option<RatchetTree>,
+        ratchet_tree: Option<Vec<Option<Node>>>,
     ) -> Result<(), ClientError> {
         let new_group: MlsGroup =
             MlsGroup::new_from_welcome(&self.crypto, &mls_group_config, welcome, ratchet_tree)?;

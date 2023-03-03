@@ -14,7 +14,7 @@ use crate::{
     schedule::ResumptionPskSecret,
     treesync::{
         node::leaf_node::{LeafNode, OpenMlsLeafNode},
-        RatchetTree,
+        Node,
     },
 };
 use openmls_traits::{key_store::OpenMlsKeyStore, types::Ciphersuite, OpenMlsCryptoProvider};
@@ -227,9 +227,8 @@ impl MlsGroup {
         if !self.is_active() {
             return Err(MlsGroupStateError::UseAfterEviction);
         }
-        self.group
-            .public_group()
-            .leaf(self.own_leaf_index())
+        let tree = self.group.treesync();
+        tree.leaf(self.own_leaf_index())
             .map(|node| node.credential())
             .ok_or_else(|| LibraryError::custom("Own leaf node missing").into())
     }
@@ -326,8 +325,8 @@ impl MlsGroup {
     // === Extensions ===
 
     /// Exports the Ratchet Tree.
-    pub fn export_ratchet_tree(&self) -> RatchetTree {
-        self.group.public_group().export_ratchet_tree()
+    pub fn export_ratchet_tree(&self) -> Vec<Option<Node>> {
+        self.group.treesync().export_nodes()
     }
 }
 
@@ -403,12 +402,12 @@ impl MlsGroup {
 
     #[cfg(any(feature = "test-utils", test))]
     pub fn tree_hash(&self) -> &[u8] {
-        self.group.public_group().group_context().tree_hash()
+        self.group.treesync().tree_hash()
     }
 
     #[cfg(any(feature = "test-utils", test))]
-    pub fn print_ratchet_tree(&self, message: &str) {
-        self.group.print_ratchet_tree(message)
+    pub fn print_tree(&self, message: &str) {
+        self.group.print_tree(message)
     }
 
     /// Returns the underlying [CoreGroup].

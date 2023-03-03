@@ -5,6 +5,7 @@ use crate::{
         errors::ExternalCommitError,
     },
     messages::proposals::{ExternalInitProposal, Proposal},
+    treesync::node::Node,
 };
 
 use super::CoreGroup;
@@ -28,7 +29,7 @@ impl CoreGroup {
         backend: &impl OpenMlsCryptoProvider,
         signer: &impl Signer,
         mut params: CreateCommitParams,
-        ratchet_tree: Option<RatchetTree>,
+        tree_option: Option<&[Option<Node>]>,
         verifiable_group_info: VerifiableGroupInfo,
     ) -> Result<ExternalCommitResult, ExternalCommitError> {
         // Build the ratchet tree
@@ -37,18 +38,18 @@ impl CoreGroup {
         // If we got a ratchet tree extension in the welcome, we enable it for
         // this group. Note that this is not strictly necessary. But there's
         // currently no other mechanism to enable the extension.
-        let (ratchet_tree, enable_ratchet_tree_extension) =
-            match verifiable_group_info.extensions().ratchet_tree() {
-                Some(extension) => (extension.ratchet_tree().clone(), true),
-                None => match ratchet_tree {
-                    Some(ratchet_tree) => (ratchet_tree, false),
-                    None => return Err(ExternalCommitError::MissingRatchetTree),
-                },
-            };
+        let extension_tree_option = try_nodes_from_extensions(verifiable_group_info.extensions());
+        let (nodes, enable_ratchet_tree_extension) = match extension_tree_option {
+            Some(nodes) => (nodes, true),
+            None => match tree_option {
+                Some(n) => (n.into(), false),
+                None => return Err(ExternalCommitError::MissingRatchetTree),
+            },
+        };
 
         let (public_group, group_info) = PublicGroup::from_external(
             backend,
-            ratchet_tree,
+            nodes,
             verifiable_group_info,
             // Existing proposals are discarded when joining by external commit.
             ProposalStore::new(),
@@ -75,7 +76,7 @@ impl CoreGroup {
             group_context
                 .tls_serialize_detached()
                 .map_err(LibraryError::missing_bound_check)?,
-            public_group.tree_size(),
+            public_group.treesync().tree_size(),
             // We use a fake own index of 0 here, as we're not going to use the
             // tree for encryption until after the first commit. This issue is
             // tracked in #767.
@@ -99,8 +100,7 @@ impl CoreGroup {
             inline_proposals.push(remove_proposal);
         };
 
-        let own_leaf_index =
-            public_group.free_leaf_index_after_remove(inline_proposals.iter().map(Some))?;
+        let own_leaf_index = public_group.free_leaf_index_after_remove(inline_proposals.iter())?;
 
         let group = CoreGroup {
             public_group,

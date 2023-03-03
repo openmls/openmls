@@ -1,7 +1,10 @@
 use super::{super::errors::*, *};
 use crate::{
     ciphersuite::signable::Verifiable,
-    framing::{mls_auth_content::AuthenticatedContent, mls_content::FramedContentBody, Sender},
+    framing::{
+        mls_auth_content::AuthenticatedContent, mls_content::FramedContentBody, ProcessedMessage,
+        ProcessedMessageContent, Sender,
+    },
     group::{
         core_group::{
             proposals::{ProposalQueue, ProposalStore},
@@ -117,7 +120,7 @@ impl PublicGroup {
             Sender::NewMemberCommit => {
                 let inline_proposals = commit.proposals.iter().filter_map(|p| {
                     if let ProposalOrRef::Proposal(inline_proposal) = p {
-                        Some(Some(inline_proposal))
+                        Some(inline_proposal)
                     } else {
                         None
                     }
@@ -280,15 +283,28 @@ impl PublicGroup {
         Ok(staged_diff)
     }
 
-    /// Merges a [StagedCommit] into the public group state.
+    /// Finalizes processing by modifying the public group state depending on
+    /// the message's content.
     ///
-    /// This function should not fail and only returns a [`Result`], because it
-    /// might throw a `LibraryError`.
-    pub fn merge_commit(&mut self, staged_commit: StagedCommit) {
-        match staged_commit.into_state() {
-            StagedCommitState::PublicState(staged_diff) => self.merge_diff(*staged_diff),
-            StagedCommitState::GroupMember(_) => (),
+    /// If the message is an application message, this function does nothing. If
+    /// the message is a proposal message (either from a group member or an
+    /// external sender), the proposal will be added to the proposal store.
+    /// Finally, if it is a commit message, the staged commit will be merged,
+    /// the group context updated and the proposal store emptied.
+    pub fn finalize_processing(&mut self, processed_message: ProcessedMessage) {
+        match processed_message.into_content() {
+            ProcessedMessageContent::ApplicationMessage(_) => (),
+            ProcessedMessageContent::ProposalMessage(queued_proposal)
+            | ProcessedMessageContent::ExternalJoinProposalMessage(queued_proposal) => {
+                self.proposal_store.add(*queued_proposal)
+            }
+            ProcessedMessageContent::StagedCommitMessage(staged_commit) => {
+                match staged_commit.into_state() {
+                    StagedCommitState::PublicState(staged_diff) => self.merge_diff(*staged_diff),
+                    StagedCommitState::GroupMember(_) => (),
+                }
+                self.proposal_store.empty()
+            }
         }
-        self.proposal_store.empty()
     }
 }

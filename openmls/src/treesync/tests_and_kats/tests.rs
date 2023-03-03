@@ -98,7 +98,7 @@ fn that_commit_secret_is_derived_from_end_of_update_path_not_root(
             .clone(),
     )
     .unwrap();
-    alice_group.print_ratchet_tree("Alice (after new)");
+    alice_group.print_tree("Alice (after new)");
 
     let (_, welcome, _group_info) = alice_group
         .add_members(
@@ -109,7 +109,7 @@ fn that_commit_secret_is_derived_from_end_of_update_path_not_root(
         .expect("Adding members failed.");
 
     alice_group.merge_pending_commit(&alice.backend).unwrap();
-    alice_group.print_ratchet_tree("Alice (after add_members)");
+    alice_group.print_tree("Alice (after add_members)");
 
     // ---------------------------------------------------------------------------------------------
 
@@ -123,7 +123,7 @@ fn that_commit_secret_is_derived_from_end_of_update_path_not_root(
         )
         .expect("Joining the group failed.")
     };
-    charlie_group.print_ratchet_tree("Charlie (after new)");
+    charlie_group.print_tree("Charlie (after new)");
 
     let alice = get_member_leaf_index(&charlie_group, &alice.id);
     let bob = get_member_leaf_index(&charlie_group, &bob.id);
@@ -138,7 +138,7 @@ fn that_commit_secret_is_derived_from_end_of_update_path_not_root(
     charlie_group
         .merge_pending_commit(&charlie.backend)
         .unwrap();
-    charlie_group.print_ratchet_tree("Charlie (after remove)");
+    charlie_group.print_tree("Charlie (after remove)");
 
     // This leaves C and D as the only leaves in the tree.
     //

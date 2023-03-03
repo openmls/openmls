@@ -634,7 +634,8 @@ fn test_valsem204(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
             .collect();
         let new_nodes = alice_group
             .group()
-            .public_group()
+            .treesync()
+            .empty_diff()
             .encrypt_path(
                 backend,
                 ciphersuite,

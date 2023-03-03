@@ -7,12 +7,11 @@ use crate::{
     binary_tree::LeafNodeIndex,
     group::{
         config::CryptoConfig, test_core_group::setup_client, GroupId, MlsGroup,
-        MlsGroupConfigBuilder, ProposalStore, StagedCommit, PURE_PLAINTEXT_WIRE_FORMAT_POLICY,
+        MlsGroupConfigBuilder, ProposalStore, PURE_PLAINTEXT_WIRE_FORMAT_POLICY,
     },
     messages::proposals::Proposal,
     prelude_test::{
-        MlsMessageOut, ProcessedMessage, ProcessedMessageContent, ProtocolMessage, PublicMessage,
-        Sender,
+        MlsMessageOut, ProcessedMessageContent, ProtocolMessage, PublicMessage, Sender,
     },
 };
 
@@ -73,18 +72,7 @@ fn public_group(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) 
         .process_message(backend, public_message)
         .unwrap();
 
-    // Further inspection of the message can take place here ...
-    match processed_message.into_content() {
-        ProcessedMessageContent::ApplicationMessage(_)
-        | ProcessedMessageContent::ProposalMessage(_)
-        | ProcessedMessageContent::ExternalJoinProposalMessage(_) => {
-            panic!("Unexpected message type.")
-        }
-        ProcessedMessageContent::StagedCommitMessage(staged_commit) => {
-            // Merge the diff
-            public_group.merge_commit(*staged_commit)
-        }
-    };
+    public_group.finalize_processing(processed_message);
 
     // In the future, we'll use helper functions to skip the extraction steps above.
 
@@ -125,7 +113,7 @@ fn public_group(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) 
     let ppm = public_group
         .process_message(backend, into_public_message(queued_messages))
         .unwrap();
-    public_group.merge_commit(extract_staged_commit(ppm));
+    public_group.finalize_processing(ppm);
 
     // Bob merges
     bob_group
@@ -205,7 +193,7 @@ fn public_group(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) 
     let ppm = public_group
         .process_message(backend, into_public_message(queued_messages.clone()))
         .unwrap();
-    public_group.merge_commit(extract_staged_commit(ppm));
+    public_group.finalize_processing(ppm);
 
     // Check that we receive the correct proposal
     if let Some(staged_commit) = charlie_group.pending_commit() {
@@ -255,11 +243,11 @@ fn public_group(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) 
     );
     assert_eq!(
         alice_group.export_ratchet_tree(),
-        public_group.export_ratchet_tree()
+        public_group.export_nodes()
     );
     assert_eq!(
         charlie_group.export_ratchet_tree(),
-        public_group.export_ratchet_tree()
+        public_group.export_nodes()
     );
 }
 
@@ -268,16 +256,5 @@ fn into_public_message(message: MlsMessageOut) -> PublicMessage {
     match message.into_protocol_message().unwrap() {
         ProtocolMessage::PrivateMessage(_) => panic!("Unexpected message type."),
         ProtocolMessage::PublicMessage(public_message) => public_message,
-    }
-}
-
-fn extract_staged_commit(ppm: ProcessedMessage) -> StagedCommit {
-    match ppm.into_content() {
-        ProcessedMessageContent::ApplicationMessage(_)
-        | ProcessedMessageContent::ProposalMessage(_)
-        | ProcessedMessageContent::ExternalJoinProposalMessage(_) => {
-            panic!("Unexpected message type.")
-        }
-        ProcessedMessageContent::StagedCommitMessage(staged_content) => *staged_content,
     }
 }

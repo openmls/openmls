@@ -23,42 +23,41 @@ jobs:
           - macos-latest
           - ubuntu-latest
           - windows-latest
-        mode:
-          - debug
-          - release
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v2
         with:
           ref: ${{ github.event.pull_request.head.sha }}
-      - uses: dtolnay/rust-toolchain@stable
+      - name: Tests debug build
+        run: cargo test -p openmls --verbose
+      - name: Tests release build
+        run: cargo test -p openmls --verbose --release
+        # Test 32 bit builds on windows
+      - name: Install rust target
+        if: matrix.os == 'windows-latest'
+        uses: actions-rs/toolchain@v1
         with:
-          targets: i686-pc-windows-msvc, i686-unknown-linux-gnu
-      - uses: Swatinem/rust-cache@v2
-
-      - name: Toggle rustc mode
-        if: matrix.os != 'windows-latest'
+          toolchain: stable
+          profile: minimal
+          override: true
+          target: i686-pc-windows-msvc
+      - name: Tests 32bit windows debug & release build
+        if: matrix.os == 'windows-latest'
         run: |
-          if [ ${{ matrix.mode }} == debug ]; then
-            echo "TEST_MODE=" >> $GITHUB_ENV
-          else
-            echo "TEST_MODE=--release" >> $GITHUB_ENV
-          fi
-      - name: Tests
-        if: matrix.os != 'windows-latest'
-        run: cargo test $TEST_MODE -p openmls --verbose
-
-      # Test 32 bit builds on windows
-      - name: Tests 32bit windows debug
-        if: matrix.mode == 'debug' && matrix.os == 'windows-latest'
-        run: cargo test -p openmls --verbose --target i686-pc-windows-msvc
-      - name: Tests 32bit windows release
-        if: matrix.mode == 'release' && matrix.os == 'windows-latest'
-        run: cargo test --release -p openmls --verbose --target i686-pc-windows-msvc
-
+          cargo test -p openmls --verbose --target i686-pc-windows-msvc
+          cargo test -p openmls --verbose --release --target i686-pc-windows-msvc
         # Test 32 bit builds on linux
-      - name: Tests 32bit linux
+      - name: Install rust target
+        if: matrix.os == 'ubuntu-latest'
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          profile: minimal
+          override: true
+          target: i686-unknown-linux-gnu
+      - name: Tests 32bit linux debug & release build
         if: matrix.os == 'ubuntu-latest'
         run: |
           sudo apt update && sudo apt install gcc-multilib
-          cargo test $TEST_MODE -p openmls --verbose --target i686-unknown-linux-gnu
+          cargo test -p openmls --verbose --target i686-unknown-linux-gnu
+          cargo test -p openmls --verbose --release --target i686-unknown-linux-gnu

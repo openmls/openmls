@@ -265,7 +265,7 @@ fn log2(x: u32) -> usize {
     k - 1
 }
 
-pub fn level(index: u32) -> usize {
+fn level(index: u32) -> usize {
     let x = index;
     if (x & 0x01) == 0 {
         return 0;
