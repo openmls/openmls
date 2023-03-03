@@ -298,14 +298,14 @@ impl PrivateMessage {
             .map_err(|_| MessageDecryptionError::MalformedContent)
     }
 
-    /// Decrypt this [`PrivateMessage`] and return the [`PrivateContentTbe`].
+    /// Decrypt this [`PrivateMessage`] and return the [`PrivateMessageContent`].
     #[inline]
     fn decrypt(
         &self,
         backend: &impl OpenMlsCryptoProvider,
         ratchet_key: AeadKey,
         ratchet_nonce: &AeadNonce,
-    ) -> Result<PrivateContentTbe, MessageDecryptionError> {
+    ) -> Result<PrivateMessageContent, MessageDecryptionError> {
         // Serialize content AAD
         let private_message_content_aad_bytes = PrivateContentAad {
             group_id: self.group_id.clone(),
@@ -409,7 +409,7 @@ impl PrivateMessage {
         self.content_type.is_handshake_message()
     }
 
-    /// Encodes the `PrivateContentTbe` struct with padding.
+    /// Encodes the `PrivateMessageContent` struct with padding.
     fn encode_padded_ciphertext_content_detached(
         authenticated_content: &AuthenticatedContent,
         padding_size: usize,
@@ -523,10 +523,9 @@ impl MlsSenderDataAad {
     }
 }
 
-/// PrivateContentTbe
+/// PrivateMessageContent
 ///
 /// ```c
-/// // draft-ietf-mls-protocol-17
 /// struct {
 ///     select (PrivateMessage.content_type) {
 ///         case application:
@@ -541,13 +540,13 @@ impl MlsSenderDataAad {
 ///
 ///     FramedContentAuthData auth;
 ///     opaque padding[length_of_padding];
-/// } PrivateContentTbe;
+/// } PrivateMessageContent;
 /// ```
 #[derive(Debug, Clone)]
-pub(crate) struct PrivateContentTbe {
+pub(crate) struct PrivateMessageContent {
     // The `content` field is serialized and deserialized manually without the
     // `content_type`, which is not part of the struct as per MLS spec. See the
-    // implementation of `TlsSerialize` for `PrivateContentTbe`, as well as
+    // implementation of `TlsSerialize` for `PrivateMessageContent`, as well as
     // `deserialize_ciphertext_content`.
     pub(crate) content: FramedContentBody,
     pub(crate) auth: FramedContentAuthData,
