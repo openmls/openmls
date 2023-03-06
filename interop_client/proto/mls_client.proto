@@ -1,5 +1,4 @@
 // This was copied from https://github.com/mlswg/mls-implementations/blob/main/interop/proto/mls_client.proto
-
 syntax = "proto3";
 
 option go_package = "github.com/mlswg/mls-implementations/interop/proto";
@@ -14,10 +13,6 @@ service MLSClient {
   // List of supported ciphersuites
   rpc SupportedCiphersuites(SupportedCiphersuitesRequest) returns (SupportedCiphersuitesResponse) {}
 
-  // Test vector generation and verification
-  rpc GenerateTestVector(GenerateTestVectorRequest) returns (GenerateTestVectorResponse) {}
-  rpc VerifyTestVector(VerifyTestVectorRequest) returns (VerifyTestVectorResponse) {}
-
   // Ways to become a member of a group
   rpc CreateGroup(CreateGroupRequest) returns (CreateGroupResponse) {}
   rpc CreateKeyPackage(CreateKeyPackageRequest) returns (CreateKeyPackageResponse) {}
@@ -31,16 +26,16 @@ service MLSClient {
   rpc Protect(ProtectRequest) returns (ProtectResponse) {}
   rpc Unprotect(UnprotectRequest) returns (UnprotectResponse) {}
   rpc StorePSK(StorePSKRequest) returns (StorePSKResponse) {}
-
+  
   rpc AddProposal(AddProposalRequest) returns (ProposalResponse) {}
   rpc UpdateProposal(UpdateProposalRequest) returns (ProposalResponse) {}
   rpc RemoveProposal(RemoveProposalRequest) returns (ProposalResponse) {}
   rpc PSKProposal(PSKProposalRequest) returns (ProposalResponse) {}
   rpc ReInitProposal(ReInitProposalRequest) returns (ProposalResponse) {}
-  rpc AppAckProposal(AppAckProposalRequest) returns (ProposalResponse) {}
-
+  
   rpc Commit(CommitRequest) returns (CommitResponse) {}
   rpc HandleCommit(HandleCommitRequest) returns (HandleCommitResponse) {}
+  rpc HandlePendingCommit(HandlePendingCommitRequest) returns (HandleCommitResponse) {}
 }
 
 // rpc Name
@@ -57,44 +52,13 @@ message SupportedCiphersuitesResponse {
   repeated uint32 ciphersuites = 1; // Actually uint16 ciphersuite values
 }
 
-// rpc GenerateTestVector
-enum TestVectorType {
-  TREE_MATH = 0;
-  ENCRYPTION = 1;
-  KEY_SCHEDULE = 2;
-  TRANSCRIPT = 3;
-  TREEKEM = 4;
-  MESSAGES = 5;
-}
-
-// Generation parameters that are not needed for a given test type are ignored
-message GenerateTestVectorRequest {
-  TestVectorType test_vector_type = 1;
-  uint32 cipher_suite = 2; // Actually uint16
-  uint32 n_leaves = 3;
-  uint32 n_generations = 4;
-  uint32 n_epochs = 5;
-}
-
-message GenerateTestVectorResponse {
-  bytes test_vector = 1;
-}
-
-// rpc VerifyTestVector
-message VerifyTestVectorRequest {
-  TestVectorType test_vector_type = 1;
-  bytes test_vector = 2;
-}
-
-message VerifyTestVectorResponse {}
-
-
 // rpc CreateGroup
 // XXX(RLB): Credential type is omitted; let's just use Basic for these tests
-message CreateGroupRequest {
+message CreateGroupRequest { 
   bytes group_id = 1;
   uint32 cipher_suite = 2; // Actually uint16
   bool encrypt_handshake = 3;
+  bytes identity = 4;
 }
 
 message CreateGroupResponse {
@@ -104,6 +68,7 @@ message CreateGroupResponse {
 // rpc CreateKeyPackage
 message CreateKeyPackageRequest {
   uint32 cipher_suite = 1;
+  bytes identity = 2;
 }
 
 message CreateKeyPackageResponse {
@@ -116,9 +81,10 @@ message JoinGroupRequest {
   uint32 transaction_id = 1;
   bytes welcome = 2;
   bool encrypt_handshake = 3;
+  bytes identity = 4;
 }
 
-message JoinGroupResponse {
+message JoinGroupResponse { 
   uint32 state_id = 1;
 }
 
@@ -126,12 +92,12 @@ message JoinGroupResponse {
 message ExternalJoinRequest {
   bytes public_group_state = 1;
   bool encrypt_handshake = 2;
+  bytes identity = 3;
 }
 
 message ExternalJoinResponse {
-  bytes commit = 1;
-  bytes welcome = 2;
-  uint32 state_id = 3;
+  uint32 state_id = 1;
+  bytes commit = 2;
 }
 
 // rpc PublicGroupState
@@ -170,7 +136,7 @@ message ProtectRequest {
   bytes application_data = 2;
 }
 
-message ProtectResponse {
+message ProtectResponse { 
   bytes ciphertext = 1;
 }
 
@@ -211,7 +177,7 @@ message UpdateProposalRequest {
 // rpc RemoveProposal
 message RemoveProposalRequest {
   uint32 state_id = 1;
-  uint32 removed = 2;
+  bytes removed_id = 2;
 }
 
 // rpc PSKProposal
@@ -227,11 +193,6 @@ message ReInitProposalRequest {
   uint32 cipher_suite = 3; // actually uint16
 }
 
-// rpc AppAckProposal
-message AppAckProposalRequest {
-  uint32 state_id = 1;
-}
-
 // rpc Commit
 message CommitRequest {
   uint32 state_id = 1;
@@ -242,6 +203,7 @@ message CommitRequest {
 message CommitResponse {
   bytes commit = 1;
   bytes welcome = 2;
+  bytes epoch_authenticator = 3;
 }
 
 // rpc HandleCommit
@@ -251,6 +213,12 @@ message HandleCommitRequest {
   bytes commit = 3;
 }
 
-message HandleCommitResponse {
+message HandleCommitResponse { 
+  uint32 state_id = 1;
+  bytes epoch_authenticator = 2;
+}
+
+// rpc HandlePendingCommit
+message HandlePendingCommitRequest {
   uint32 state_id = 1;
 }
