@@ -139,6 +139,14 @@ fn book_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvide
     );
 
     // Define the MlsGroup configuration
+    // delivery service credentials
+    let (ds_credential_bundle, ds_signature_keys) = generate_credential(
+        "delivery-service".into(),
+        CredentialType::Basic,
+        ciphersuite.signature_algorithm(),
+        backend,
+    );
+
     // ANCHOR: mls_group_config_example
     let mls_group_config = MlsGroupConfig::builder()
         .padding_size(100)
@@ -146,6 +154,10 @@ fn book_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvide
             10,   // out_of_order_tolerance
             2000, // maximum_forward_distance
         ))
+        .external_senders(vec![ExternalSender::new(
+            ds_credential_bundle.signature_key,
+            ds_credential_bundle.credential,
+        )])
         .crypto_config(CryptoConfig::with_default_version(ciphersuite))
         .use_ratchet_tree_extension(true)
         .build();
@@ -242,7 +254,7 @@ fn book_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvide
     // ANCHOR_END: alice_exports_group_info
 
     // ANCHOR: charlie_joins_external_commit
-    let (mut dave_group, _out) = MlsGroup::join_by_external_commit(
+    let (mut dave_group, _out, _group_info) = MlsGroup::join_by_external_commit(
         backend,
         &dave_signature_keys,
         None,
@@ -1145,14 +1157,54 @@ fn book_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvide
         _ => unreachable!(),
     }
     // ANCHOR_END: decrypt_external_join_proposal
-    // now cleanup
-    alice_group
-        .remove_members(backend, &alice_signature_keys, &[LeafNodeIndex::new(1)])
-        .expect("Could not remove Bob");
-    alice_group
-        .merge_pending_commit(backend)
-        .expect("Could not nerge commit");
-    assert_eq!(alice_group.members().count(), 1);
+
+    // get Bob's index
+    let bob_index = alice_group
+        .members()
+        .find_map(|member| {
+            if member.credential.identity() == b"Bob" {
+                Some(member.index)
+            } else {
+                None
+            }
+        })
+        .unwrap();
+
+    // ANCHOR: external_remove_proposal
+    let proposal = ExternalProposal::new_remove(
+        bob_index,
+        alice_group.group_id().clone(),
+        alice_group.epoch(),
+        &ds_signature_keys,
+        SenderExtensionIndex::new(0),
+    )
+    .expect("Could not create external Remove proposal");
+    // ANCHOR_END: external_remove_proposal
+
+    // ANCHOR: decrypt_external_join_proposal
+    let alice_processed_message = alice_group
+        .process_message(
+            backend,
+            proposal
+                .into_protocol_message()
+                .expect("Unexpected message type."),
+        )
+        .expect("Could not process message.");
+    match alice_processed_message.into_content() {
+        ProcessedMessageContent::ProposalMessage(proposal) => {
+            alice_group.store_pending_proposal(*proposal);
+            assert_eq!(alice_group.members().count(), 2);
+            alice_group
+                .commit_to_pending_proposals(backend, &alice_signature_keys)
+                .expect("Could not commit");
+            alice_group
+                .merge_pending_commit(backend)
+                .expect("Could not merge commit");
+            assert_eq!(alice_group.members().count(), 1);
+        }
+        _ => unreachable!(),
+    }
+    // ANCHOR_END: decrypt_external_join_proposal
 
     // === Save the group state ===
 

@@ -182,7 +182,10 @@ fn test_failed_groupinfo_decryption(
     let error = CoreGroup::new_from_welcome(broken_welcome, None, key_package_bundle, backend)
         .expect_err("Creation of core group from a broken Welcome was successful.");
 
-    assert_eq!(error, WelcomeError::UnableToDecrypt)
+    assert_eq!(
+        error,
+        WelcomeError::GroupSecrets(GroupSecretsError::DecryptionFailed)
+    )
 }
 
 /// Test what happens if the KEM ciphertext for the receiver in the UpdatePath
@@ -397,7 +400,7 @@ fn test_psks(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
     alice_group
         .merge_commit(backend, create_commit_result.staged_commit)
         .expect("error merging pending commit");
-    let ratchet_tree = alice_group.public_group().export_nodes();
+    let ratchet_tree = alice_group.public_group().export_ratchet_tree();
 
     let group_bob = CoreGroup::new_from_welcome(
         create_commit_result
@@ -491,7 +494,7 @@ fn test_staged_commit_creation(ciphersuite: Ciphersuite, backend: &impl OpenMlsC
         create_commit_result
             .welcome_option
             .expect("An unexpected error occurred."),
-        Some(alice_group.public_group().export_nodes()),
+        Some(alice_group.public_group().export_ratchet_tree()),
         bob_key_package_bundle,
         backend,
     )
@@ -503,8 +506,8 @@ fn test_staged_commit_creation(ciphersuite: Ciphersuite, backend: &impl OpenMlsC
         alice_group.export_secret(backend, "", b"test", ciphersuite.hash_length())
     );
     assert_eq!(
-        group_bob.public_group().export_nodes(),
-        alice_group.public_group().export_nodes()
+        group_bob.public_group().export_ratchet_tree(),
+        alice_group.public_group().export_ratchet_tree()
     )
 }
 
@@ -637,7 +640,7 @@ fn test_proposal_application_after_self_was_removed(
         .merge_commit(backend, add_commit_result.staged_commit)
         .expect("error merging pending commit");
 
-    let ratchet_tree = alice_group.public_group().export_nodes();
+    let ratchet_tree = alice_group.public_group().export_ratchet_tree();
 
     let mut bob_group = CoreGroup::new_from_welcome(
         add_commit_result
@@ -708,7 +711,7 @@ fn test_proposal_application_after_self_was_removed(
         .merge_commit(backend, remove_add_commit_result.staged_commit)
         .expect("Error merging commit.");
 
-    let ratchet_tree = alice_group.public_group().export_nodes();
+    let ratchet_tree = alice_group.public_group().export_ratchet_tree();
 
     let charlie_group = CoreGroup::new_from_welcome(
         remove_add_commit_result

@@ -1,16 +1,19 @@
 //! This module contains all types related to group info handling.
 
-use openmls_traits::types::Ciphersuite;
-use tls_codec::{Serialize, TlsDeserialize, TlsSerialize, TlsSize};
+use openmls_traits::{crypto::OpenMlsCrypto, types::Ciphersuite, OpenMlsCryptoProvider};
+use thiserror::Error;
+use tls_codec::{Deserialize, Serialize, TlsDeserialize, TlsSerialize, TlsSize};
 
 use crate::{
     binary_tree::LeafNodeIndex,
     ciphersuite::{
         signable::{Signable, SignedStruct, Verifiable, VerifiedStruct},
-        Signature,
+        AeadKey, AeadNonce, Signature,
     },
+    error::LibraryError,
     extensions::Extensions,
-    group::GroupContext,
+    framing::InterimTranscriptHashInput,
+    group::{GroupContext, GroupEpoch},
     messages::ConfirmationTag,
 };
 
@@ -28,7 +31,42 @@ pub struct VerifiableGroupInfo {
     signature: Signature,
 }
 
+/// Error related to group info.
+#[derive(Error, Debug, PartialEq, Clone)]
+pub enum GroupInfoError {
+    /// Decryption failed.
+    #[error("Decryption failed.")]
+    DecryptionFailed,
+    /// Malformed.
+    #[error("Malformed.")]
+    Malformed,
+}
+
 impl VerifiableGroupInfo {
+    pub(crate) fn try_from_ciphertext(
+        skey: &AeadKey,
+        nonce: &AeadNonce,
+        ciphertext: &[u8],
+        context: &[u8],
+        backend: &impl OpenMlsCryptoProvider,
+    ) -> Result<Self, GroupInfoError> {
+        let verifiable_group_info_plaintext = skey
+            .aead_open(backend, ciphertext, context, nonce)
+            .map_err(|_| GroupInfoError::DecryptionFailed)?;
+
+        let mut verifiable_group_info_plaintext_slice = verifiable_group_info_plaintext.as_slice();
+
+        let verifiable_group_info =
+            VerifiableGroupInfo::tls_deserialize(&mut verifiable_group_info_plaintext_slice)
+                .map_err(|_| GroupInfoError::Malformed)?;
+
+        if !verifiable_group_info_plaintext_slice.is_empty() {
+            return Err(GroupInfoError::Malformed);
+        }
+
+        Ok(verifiable_group_info)
+    }
+
     /// Get (unverified) ciphersuite of the verifiable group info.
     ///
     /// Note: This method should only be used when necessary to verify the group info signature.
@@ -112,6 +150,31 @@ impl GroupInfo {
         &self.payload.confirmation_tag
     }
 
+    pub(crate) fn calculate_interim_transcript_hash(
+        &self,
+        crypto: &impl OpenMlsCrypto,
+    ) -> Result<Vec<u8>, LibraryError> {
+        if self.group_context().epoch() == GroupEpoch::from(0) {
+            return Ok(vec![]);
+        }
+
+        // New members compute the interim transcript hash using
+        // the confirmation_tag field of the GroupInfo struct.
+        let confirmed_transcript_hash = self.group_context().confirmed_transcript_hash();
+        let mls_plaintext_commit_auth_data =
+            &InterimTranscriptHashInput::from(self.confirmation_tag());
+        let commit_auth_data_bytes = mls_plaintext_commit_auth_data
+            .tls_serialize_detached()
+            .map_err(LibraryError::missing_bound_check)?;
+
+        crypto
+            .hash(
+                self.group_context().ciphersuite().hash_algorithm(),
+                &[confirmed_transcript_hash, &commit_auth_data_bytes].concat(),
+            )
+            .map_err(LibraryError::unexpected_crypto_error)
+    }
+
     #[cfg(any(feature = "test-utils", test))]
     pub(crate) fn into_verifiable_group_info(self) -> VerifiableGroupInfo {
         VerifiableGroupInfo {
@@ -123,6 +186,12 @@ impl GroupInfo {
             },
             signature: self.signature,
         }
+    }
+}
+
+impl From<GroupInfo> for GroupContext {
+    fn from(value: GroupInfo) -> Self {
+        value.payload.group_context
     }
 }
 

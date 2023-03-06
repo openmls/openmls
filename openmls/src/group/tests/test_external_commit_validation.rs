@@ -192,7 +192,7 @@ fn test_valsem242(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
         .into_group_info()
         .unwrap();
 
-    let (_, public_message_commit) = MlsGroup::join_by_external_commit(
+    let (_, public_message_commit, _) = MlsGroup::join_by_external_commit(
         backend,
         &bob_credential.signer,
         None,
@@ -353,13 +353,13 @@ fn test_valsem243(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
         .unwrap()
         .into_group_info()
         .unwrap();
-    let tree_option = alice_group.export_ratchet_tree();
+    let ratchet_tree = alice_group.export_ratchet_tree();
 
     // Note: This will create a remove proposal because Bob is already a member of the group.
-    let (_, public_message_commit) = MlsGroup::join_by_external_commit(
+    let (_, public_message_commit, _) = MlsGroup::join_by_external_commit(
         backend,
         &bob_credential.signer,
-        Some(&tree_option),
+        Some(ratchet_tree.clone()),
         verifiable_group_info.clone(),
         alice_group.configuration(),
         &[],
@@ -439,7 +439,7 @@ fn test_valsem243(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
     let alice_new_group = MlsGroup::join_by_external_commit(
         backend,
         &alice_credential.signer,
-        Some(&tree_option),
+        Some(ratchet_tree),
         verifiable_group_info,
         alice_group.configuration(),
         &[],
@@ -717,7 +717,7 @@ fn test_pure_ciphertest(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoPr
         .into_group_info()
         .unwrap();
 
-    let (_bob_group, message) = MlsGroup::join_by_external_commit(
+    let (_bob_group, message, _) = MlsGroup::join_by_external_commit(
         backend,
         &bob_credential.signer,
         None,
@@ -795,10 +795,10 @@ mod utils {
             .unwrap();
         let tree_option = alice_group.export_ratchet_tree();
 
-        let (_, public_message_commit) = MlsGroup::join_by_external_commit(
+        let (_, public_message_commit, _) = MlsGroup::join_by_external_commit(
             backend,
             &bob_credential.signer,
-            Some(&tree_option),
+            Some(tree_option),
             verifiable_group_info,
             alice_group.configuration(),
             &[],

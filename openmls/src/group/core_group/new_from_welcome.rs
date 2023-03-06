@@ -1,14 +1,13 @@
 use log::debug;
 use openmls_traits::key_store::OpenMlsKeyStore;
-use tls_codec::Deserialize;
 
 use crate::{
-    ciphersuite::{hash_ref::HashReference, hpke},
+    ciphersuite::hash_ref::HashReference,
     group::{core_group::*, errors::WelcomeError},
     schedule::errors::PskError,
     treesync::{
         errors::{DerivePathError, PublicTreeError},
-        node::{encryption_keys::EncryptionKeyPair, Node},
+        node::encryption_keys::EncryptionKeyPair,
     },
 };
 
@@ -16,7 +15,7 @@ impl CoreGroup {
     // Join a group from a welcome message
     pub fn new_from_welcome<KeyStore: OpenMlsKeyStore>(
         welcome: Welcome,
-        nodes_option: Option<Vec<Option<Node>>>,
+        ratchet_tree: Option<RatchetTree>,
         key_package_bundle: KeyPackageBundle,
         backend: &impl OpenMlsCryptoProvider<KeyStoreProvider = KeyStore>,
     ) -> Result<Self, WelcomeError<KeyStore::Error>> {
@@ -53,21 +52,13 @@ impl CoreGroup {
             return Err(e);
         }
 
-        let group_secrets_bytes = hpke::decrypt_with_label(
-            key_package_bundle.private_key.as_slice(),
-            "Welcome",
-            welcome.encrypted_group_info(),
+        let group_secrets = GroupSecrets::try_from_ciphertext(
+            key_package_bundle.private_key(),
             egs.encrypted_group_secrets(),
+            welcome.encrypted_group_info(),
             ciphersuite,
             backend.crypto(),
-        )
-        .map_err(|_| WelcomeError::UnableToDecrypt)?;
-        let group_secrets = GroupSecrets::tls_deserialize(&mut group_secrets_bytes.as_slice())
-            .map_err(|_| WelcomeError::MalformedWelcomeMessage)?
-            // TODO(#1065)
-            .config(ciphersuite, ProtocolVersion::Mls10);
-
-        let joiner_secret = group_secrets.joiner_secret;
+        )?;
 
         // Prepare the PskSecret
         let psk_secret =
@@ -78,7 +69,12 @@ impl CoreGroup {
             })?;
 
         // Create key schedule
-        let mut key_schedule = KeySchedule::init(ciphersuite, backend, &joiner_secret, psk_secret)?;
+        let mut key_schedule = KeySchedule::init(
+            ciphersuite,
+            backend,
+            &group_secrets.joiner_secret,
+            psk_secret,
+        )?;
 
         // Derive welcome key & nonce from the key schedule
         let (welcome_key, welcome_nonce) = key_schedule
@@ -87,12 +83,13 @@ impl CoreGroup {
             .derive_welcome_key_nonce(backend)
             .map_err(LibraryError::unexpected_crypto_error)?;
 
-        let group_info_bytes = welcome_key
-            .aead_open(backend, welcome.encrypted_group_info(), &[], &welcome_nonce)
-            .map_err(|_| WelcomeError::GroupInfoDecryptionFailure)?;
-        let verifiable_group_info =
-            VerifiableGroupInfo::tls_deserialize(&mut group_info_bytes.as_slice())
-                .map_err(|_| WelcomeError::MalformedWelcomeMessage)?;
+        let verifiable_group_info = VerifiableGroupInfo::try_from_ciphertext(
+            &welcome_key,
+            &welcome_nonce,
+            welcome.encrypted_group_info(),
+            &[],
+            backend,
+        )?;
 
         // Make sure that we can support the required capabilities in the group info.
         if let Some(required_capabilities) =
@@ -117,11 +114,11 @@ impl CoreGroup {
         // If we got a ratchet tree extension in the welcome, we enable it for
         // this group. Note that this is not strictly necessary. But there's
         // currently no other mechanism to enable the extension.
-        let (nodes, enable_ratchet_tree_extension) =
-            match try_nodes_from_extensions(verifiable_group_info.extensions()) {
-                Some(nodes) => (nodes, true),
-                None => match nodes_option {
-                    Some(n) => (n, false),
+        let (ratchet_tree, enable_ratchet_tree_extension) =
+            match verifiable_group_info.extensions().ratchet_tree() {
+                Some(extension) => (extension.ratchet_tree().clone(), true),
+                None => match ratchet_tree {
+                    Some(ratchet_tree) => (ratchet_tree, false),
                     None => return Err(WelcomeError::MissingRatchetTree),
                 },
             };
@@ -132,7 +129,7 @@ impl CoreGroup {
         // group info extension of interest here.
         let (public_group, _group_info_extensions) = PublicGroup::from_external(
             backend,
-            nodes,
+            ratchet_tree,
             verifiable_group_info,
             ProposalStore::new(),
         )?;
@@ -182,23 +179,27 @@ impl CoreGroup {
             vec![leaf_keypair]
         };
 
-        let serialized_group_context = public_group
-            .group_context()
-            .tls_serialize_detached()
-            .map_err(LibraryError::missing_bound_check)?;
-        // TODO #751: Implement PSK
-        key_schedule
-            .add_context(backend, &serialized_group_context)
-            .map_err(|_| LibraryError::custom("Using the key schedule in the wrong state"))?;
-        let epoch_secrets = key_schedule
-            .epoch_secrets(backend)
-            .map_err(|_| LibraryError::custom("Using the key schedule in the wrong state"))?;
+        let (group_epoch_secrets, message_secrets) = {
+            let serialized_group_context = public_group
+                .group_context()
+                .tls_serialize_detached()
+                .map_err(LibraryError::missing_bound_check)?;
 
-        let (group_epoch_secrets, message_secrets) = epoch_secrets.split_secrets(
-            serialized_group_context,
-            public_group.tree_size(),
-            own_leaf_index,
-        );
+            // TODO #751: Implement PSK
+            key_schedule
+                .add_context(backend, &serialized_group_context)
+                .map_err(|_| LibraryError::custom("Using the key schedule in the wrong state"))?;
+
+            let epoch_secrets = key_schedule
+                .epoch_secrets(backend)
+                .map_err(|_| LibraryError::custom("Using the key schedule in the wrong state"))?;
+
+            epoch_secrets.split_secrets(
+                serialized_group_context,
+                public_group.tree_size(),
+                own_leaf_index,
+            )
+        };
 
         let confirmation_tag = message_secrets
             .confirmation_key()
@@ -214,23 +215,23 @@ impl CoreGroup {
             log_crypto!(trace, "  Got:      {:x?}", confirmation_tag);
             log_crypto!(trace, "  Expected: {:x?}", public_group.confirmation_tag());
             debug_assert!(false, "Confirmation tag mismatch");
-            Err(WelcomeError::ConfirmationTagMismatch)
-        } else {
-            let message_secrets_store = MessageSecretsStore::new_with_secret(0, message_secrets);
-
-            let group = CoreGroup {
-                public_group,
-                group_epoch_secrets,
-                own_leaf_index,
-                use_ratchet_tree_extension: enable_ratchet_tree_extension,
-                message_secrets_store,
-            };
-            group
-                .store_epoch_keypairs(backend, group_keypairs.as_slice())
-                .map_err(WelcomeError::KeyStoreError)?;
-
-            Ok(group)
+            return Err(WelcomeError::ConfirmationTagMismatch);
         }
+
+        let message_secrets_store = MessageSecretsStore::new_with_secret(0, message_secrets);
+
+        let group = CoreGroup {
+            public_group,
+            group_epoch_secrets,
+            own_leaf_index,
+            use_ratchet_tree_extension: enable_ratchet_tree_extension,
+            message_secrets_store,
+        };
+        group
+            .store_epoch_keypairs(backend, group_keypairs.as_slice())
+            .map_err(WelcomeError::KeyStoreError)?;
+
+        Ok(group)
     }
 
     // Helper functions
