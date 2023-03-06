@@ -32,6 +32,7 @@ mod application_id_extension;
 mod codec;
 mod external_pub_extension;
 mod external_sender_extension;
+mod queue_config_extension;
 mod ratchet_tree_extension;
 mod required_capabilities;
 use errors::*;
@@ -43,6 +44,7 @@ pub mod errors;
 pub use application_id_extension::ApplicationIdExtension;
 pub use external_pub_extension::ExternalPubExtension;
 pub use external_sender_extension::ExternalSendersExtension;
+pub use queue_config_extension::QueueConfigExtension;
 pub use ratchet_tree_extension::RatchetTreeExtension;
 pub use required_capabilities::RequiredCapabilitiesExtension;
 
@@ -102,6 +104,9 @@ pub enum ExtensionType {
     /// Group context extension that contains the credentials and signature keys
     /// of senders that are permitted to send external proposals to the group.
     ExternalSenders = 5,
+
+    /// KeyPackage extension that contains information regarding the owner's queue.
+    QueueConfig = 0xf000,
 }
 
 impl TryFrom<u16> for ExtensionType {
@@ -132,6 +137,7 @@ impl ExtensionType {
             | ExtensionType::RatchetTree
             | ExtensionType::RequiredCapabilities
             | ExtensionType::ExternalPub
+            | ExtensionType::QueueConfig
             | ExtensionType::ExternalSenders => true,
         }
     }
@@ -167,6 +173,9 @@ pub enum Extension {
 
     /// A [`ExternalPubExtension`]
     ExternalSenders(ExternalSendersExtension),
+
+    /// A [`QueueConfigExtension`]
+    QueueConfig(QueueConfigExtension),
 }
 
 /// A list of extensions with unique extension types.
@@ -338,6 +347,16 @@ impl Extensions {
                 _ => None,
             })
     }
+
+    /// Get a reference to the [`QueueConfigExtension`] if there is any.
+    pub fn queue_config(&self) -> Option<&QueueConfigExtension> {
+        self.map
+            .get(&ExtensionType::QueueConfig)
+            .and_then(|e| match e {
+                Extension::QueueConfig(e) => Some(e),
+                _ => None,
+            })
+    }
 }
 
 impl Extension {
@@ -414,6 +433,7 @@ impl Extension {
             Extension::RequiredCapabilities(_) => ExtensionType::RequiredCapabilities,
             Extension::ExternalPub(_) => ExtensionType::ExternalPub,
             Extension::ExternalSenders(_) => ExtensionType::ExternalSenders,
+            Extension::QueueConfig(_) => todo!(),
         }
     }
 }

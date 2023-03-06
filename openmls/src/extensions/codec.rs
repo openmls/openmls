@@ -7,6 +7,8 @@ use crate::extensions::{
     ExternalSendersExtension, RatchetTreeExtension, RequiredCapabilitiesExtension,
 };
 
+use super::QueueConfigExtension;
+
 fn vlbytes_len_len(length: usize) -> usize {
     if length < 0x40 {
         1
@@ -47,6 +49,10 @@ impl Size for Extension {
                     let len = e.tls_serialized_len();
                     len + vlbytes_len_len(len)
                 },
+            Extension::QueueConfig(e) => {
+                    let len = e.tls_serialized_len();
+                    len + vlbytes_len_len(len)
+                },
             }
     }
 }
@@ -73,6 +79,7 @@ impl Serialize for Extension {
             Extension::RequiredCapabilities(e) => e.tls_serialize(&mut extension_data),
             Extension::ExternalPub(e) => e.tls_serialize(&mut extension_data),
             Extension::ExternalSenders(e) => e.tls_serialize(&mut extension_data),
+            Extension::QueueConfig(e) => e.tls_serialize(&mut extension_data),
         }?;
         debug_assert_eq!(
             extension_data_written,
@@ -115,6 +122,9 @@ impl Deserialize for Extension {
             ExtensionType::ExternalSenders => Extension::ExternalSenders(
                 ExternalSendersExtension::tls_deserialize(&mut extension_data)?,
             ),
+            ExtensionType::QueueConfig => {
+                Extension::QueueConfig(QueueConfigExtension::tls_deserialize(&mut extension_data)?)
+            }
         })
     }
 }
