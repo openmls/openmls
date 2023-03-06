@@ -1,20 +1,20 @@
 //! This is the OpenMLS client for the interop harness as described here:
 //! <https://github.com/mlswg/mls-implementations/tree/master/interop>
 //!
-//! It is based on the Mock client written by Richard Barnes.
+//! It is based on the Mock client in that repository.
 
 use clap::Parser;
 use clap_derive::*;
-use openmls::{prelude::*, prelude_test::*};
+use openmls::prelude::*;
 
 use openmls::prelude::config::CryptoConfig;
+use openmls_basic_credential::SignatureKeyPair;
 use openmls_traits::OpenMlsCryptoProvider;
 use serde::{self, Serialize};
 use std::{collections::HashMap, convert::TryFrom, fmt::Display, fs::File, io::Write, sync::Mutex};
 use tonic::{transport::Server, Request, Response, Status};
 
 use openmls_rust_crypto::OpenMlsRustCrypto;
-use openmls_traits::types::SignatureScheme;
 
 use mls_client::mls_client_server::{MlsClient, MlsClientServer};
 use mls_client::*;
@@ -25,30 +25,14 @@ pub mod mls_client {
 
 const IMPLEMENTATION_NAME: &str = "OpenMLS";
 
-impl TryFrom<i32> for TestVectorType {
-    type Error = ();
-
-    fn try_from(value: i32) -> Result<Self, Self::Error> {
-        match value {
-            0 => Ok(TestVectorType::TreeMath),
-            1 => Ok(TestVectorType::Encryption),
-            2 => Ok(TestVectorType::KeySchedule),
-            3 => Ok(TestVectorType::Transcript),
-            4 => Ok(TestVectorType::Treekem),
-            5 => Ok(TestVectorType::Messages),
-            _ => Err(()),
-        }
-    }
-}
-
 /// This struct contains the state for a single MLS client. The interop client
 /// doesn't consider scenarios where a credential is re-used across groups, so
 /// this simple structure is sufficient.
 pub struct InteropGroup {
     group: MlsGroup,
     wire_format_policy: WireFormatPolicy,
-    credential_bundle: CredentialBundle,
-    own_kps: Vec<KeyPackage>,
+    // credential: Credential,
+    signature_keys: SignatureKeyPair,
 }
 
 /// This is the main state struct of the interop client. It keeps track of the
@@ -57,7 +41,7 @@ pub struct InteropGroup {
 /// transaction ids to key package hashes.
 pub struct MlsClientImpl {
     groups: Mutex<Vec<InteropGroup>>,
-    pending_key_packages: Mutex<HashMap<Vec<u8>, (KeyPackage, CredentialBundle)>>,
+    pending_key_packages: Mutex<HashMap<Vec<u8>, (KeyPackage, Credential, SignatureKeyPair)>>,
     /// Note that the client currently doesn't really use transaction ids and
     /// instead relies on the KeyPackage hash in the Welcome message to identify
     /// what key package to use when joining a group.
@@ -106,7 +90,7 @@ fn to_ciphersuite(cs: u32) -> Result<&'static Ciphersuite, Status> {
     }
 }
 
-fn into_bytes(obj: impl Serialize) -> Vec<u8> {
+fn _into_bytes(obj: impl Serialize) -> Vec<u8> {
     serde_json::to_string_pretty(&obj)
         .expect("Error serializing test vectors")
         .as_bytes()
@@ -133,7 +117,7 @@ pub fn wire_format_policy(encrypt: bool) -> WireFormatPolicy {
 #[tonic::async_trait]
 impl MlsClient for MlsClientImpl {
     async fn name(&self, _request: Request<NameRequest>) -> Result<Response<NameResponse>, Status> {
-        println!("Got Name request");
+        log::trace!("Got Name request");
 
         let response = NameResponse {
             name: IMPLEMENTATION_NAME.to_string(),
@@ -145,8 +129,9 @@ impl MlsClient for MlsClientImpl {
         &self,
         _request: tonic::Request<SupportedCiphersuitesRequest>,
     ) -> Result<tonic::Response<SupportedCiphersuitesResponse>, tonic::Status> {
-        println!("Got SupportedCiphersuites request");
+        log::trace!("Got SupportedCiphersuites request");
 
+        // TODO: read from backend
         let ciphersuites = &[
             Ciphersuite::MLS_128_DHKEMX25519_AES128GCM_SHA256_Ed25519,
             Ciphersuite::MLS_128_DHKEMP256_AES128GCM_SHA256_P256,
@@ -159,234 +144,6 @@ impl MlsClient for MlsClientImpl {
         Ok(Response::new(response))
     }
 
-    async fn generate_test_vector(
-        &self,
-        request: tonic::Request<GenerateTestVectorRequest>,
-    ) -> Result<tonic::Response<GenerateTestVectorResponse>, tonic::Status> {
-        println!("Got GenerateTestVector request");
-
-        let obj = request.get_ref();
-        let (type_msg, test_vector) = match TestVectorType::try_from(obj.test_vector_type) {
-            Ok(TestVectorType::TreeMath) => {
-                let kat_treemath = kat_treemath::generate_test_vector(obj.n_leaves);
-                let kat_bytes = into_bytes(kat_treemath);
-                ("Tree math", kat_bytes)
-            }
-            Ok(TestVectorType::Encryption) => {
-                let ciphersuite = to_ciphersuite(obj.cipher_suite)?;
-                let kat_encryption = kat_encryption::generate_test_vector(
-                    obj.n_generations,
-                    obj.n_leaves,
-                    *ciphersuite,
-                );
-                let kat_bytes = into_bytes(kat_encryption);
-                ("Encryption", kat_bytes)
-            }
-            Ok(TestVectorType::KeySchedule) => {
-                let ciphersuite = to_ciphersuite(obj.cipher_suite)?;
-                let kat_key_schedule =
-                    kat_key_schedule::generate_test_vector(obj.n_epochs as u64, *ciphersuite);
-                let kat_bytes = into_bytes(kat_key_schedule);
-                ("Key Schedule", kat_bytes)
-            }
-            Ok(TestVectorType::Transcript) => {
-                return Err(tonic::Status::new(
-                    tonic::Code::InvalidArgument,
-                    "OpenMLS currently can't generate transcript test vectors. See GitHub issue #1051 for more information.",
-                ));
-            }
-            Ok(TestVectorType::Treekem) => {
-                return Err(tonic::Status::new(
-                    tonic::Code::InvalidArgument,
-                    "OpenMLS currently can't generate TreeKEM test vectors. See GitHub issue #423 for more information.",
-                ));
-            }
-            Ok(TestVectorType::Messages) => {
-                let ciphersuite = Ciphersuite::MLS_128_DHKEMX25519_AES128GCM_SHA256_Ed25519;
-                let kat_messages = kat_messages::generate_test_vector(ciphersuite);
-                let kat_bytes = into_bytes(kat_messages);
-                ("Messages", kat_bytes)
-            }
-            Err(_) => {
-                return Err(tonic::Status::new(
-                    tonic::Code::InvalidArgument,
-                    "Invalid test vector type",
-                ));
-            }
-        };
-        println!("{} test vector request", type_msg);
-
-        let response = GenerateTestVectorResponse { test_vector };
-
-        Ok(Response::new(response))
-    }
-
-    async fn verify_test_vector(
-        &self,
-        request: tonic::Request<VerifyTestVectorRequest>,
-    ) -> Result<tonic::Response<VerifyTestVectorResponse>, tonic::Status> {
-        println!("Got VerifyTestVector request");
-        let backend = &OpenMlsRustCrypto::default();
-
-        let obj = request.get_ref();
-        let (type_msg, _result) = match TestVectorType::try_from(obj.test_vector_type) {
-            Ok(TestVectorType::TreeMath) => {
-                write("mlspp_treemath.json", &obj.test_vector);
-                let kat_treemath = match serde_json::from_slice(&obj.test_vector) {
-                    Ok(test_vector) => test_vector,
-                    Err(_) => {
-                        return Err(tonic::Status::new(
-                            tonic::Code::InvalidArgument,
-                            "Couldn't decode treemath test vector.",
-                        ));
-                    }
-                };
-                match kat_treemath::run_test_vector(kat_treemath) {
-                    Ok(result) => ("Tree math", result),
-                    Err(e) => {
-                        let message = "Error while running treemath test vector: ".to_string()
-                            + &e.to_string();
-                        return Err(tonic::Status::new(tonic::Code::Aborted, message));
-                    }
-                }
-            }
-            Ok(TestVectorType::Encryption) => {
-                let kat_encryption: EncryptionTestVector =
-                    match serde_json::from_slice(&obj.test_vector) {
-                        Ok(test_vector) => test_vector,
-                        Err(_) => {
-                            return Err(tonic::Status::new(
-                                tonic::Code::InvalidArgument,
-                                "Couldn't decode encryption test vector.",
-                            ));
-                        }
-                    };
-                write(
-                    &format!(
-                        "mlspp_encryption_{}_{}.json",
-                        kat_encryption.cipher_suite, kat_encryption.n_leaves
-                    ),
-                    &obj.test_vector,
-                );
-                match kat_encryption::run_test_vector(kat_encryption, backend) {
-                    Ok(result) => ("Encryption", result),
-                    Err(e) => {
-                        let message = "Error while running encryption test vector: ".to_string()
-                            + &e.to_string();
-                        return Err(tonic::Status::new(tonic::Code::Aborted, message));
-                    }
-                }
-            }
-            Ok(TestVectorType::KeySchedule) => {
-                let kat_key_schedule: KeyScheduleTestVector =
-                    match serde_json::from_slice(&obj.test_vector) {
-                        Ok(test_vector) => test_vector,
-                        Err(_) => {
-                            return Err(tonic::Status::new(
-                                tonic::Code::InvalidArgument,
-                                "Couldn't decode key schedule test vector.",
-                            ));
-                        }
-                    };
-                write(
-                    &format!("mlspp_key_schedule_{}.json", kat_key_schedule.cipher_suite),
-                    &obj.test_vector,
-                );
-                match kat_key_schedule::run_test_vector(kat_key_schedule, backend) {
-                    Ok(result) => ("Key Schedule", result),
-                    Err(e) => {
-                        let message = "Error while running key schedule test vector: ".to_string()
-                            + &e.to_string();
-                        return Err(tonic::Status::new(tonic::Code::Aborted, message));
-                    }
-                }
-            }
-            Ok(TestVectorType::Transcript) => {
-                //let kat_transcript: TranscriptTestVector =
-                //    match serde_json::from_slice(&obj.test_vector) {
-                //        Ok(test_vector) => test_vector,
-                //        Err(_) => {
-                //            println!("{}", String::from_utf8_lossy(&obj.test_vector));
-                //            return Err(tonic::Status::new(
-                //                tonic::Code::InvalidArgument,
-                //                "Couldn't decode transcript test vector.",
-                //            ));
-                //        }
-                //    };
-                //write(
-                //    &format!("mlspp_transcript_{}.json", kat_transcript.cipher_suite),
-                //    &obj.test_vector,
-                //);
-                //match kat_transcripts::run_test_vector(kat_transcript, backend) {
-                //    Ok(result) => ("Transcript", result),
-                //    Err(e) => {
-                //        let message = "Error while running transcript test vector: ".to_string()
-                //            + &e.to_string();
-                //        return Err(tonic::Status::new(tonic::Code::Aborted, message));
-                //    }
-                //}
-                todo!("#1051: Transcript test vectors are currently disabled. See https://github.com/openmls/openmls/issues/1051");
-            }
-            Ok(TestVectorType::Treekem) => {
-                todo!("#624: See TreeKEM is currently not working. See https://github.com/openmls/openmls/issues/624");
-                // let kat_tree_kem: TreeKemTestVector = match
-                // serde_json::from_slice(&obj.test_vector) {
-                //     Ok(test_vector) => test_vector,
-                //     Err(_) => {
-                //         return Err(tonic::Status::new(
-                //             tonic::Code::InvalidArgument,
-                //             "Couldn't decode TreeKEM test vector.",
-                //         ));
-                //     }
-                // };
-                // write(
-                //     &format!("mlspp_tree_kem_{}.json",
-                // kat_tree_kem.cipher_suite),
-                //     &obj.test_vector,
-                // );
-                // match kat_tree_kem::run_test_vector(kat_tree_kem, backend) {
-                //     Ok(result) => ("TreeKEM", result),
-                //     Err(e) => {
-                //         let message = "Error while running TreeKEM test
-                // vector: ".to_string()             +
-                // &e.to_string();         return
-                // Err(tonic::Status::new(tonic::Code::Aborted, message));
-                //     }
-                // }
-            }
-            Ok(TestVectorType::Messages) => {
-                let kat_messages: MessagesTestVector =
-                    match serde_json::from_slice(&obj.test_vector) {
-                        Ok(test_vector) => test_vector,
-                        Err(_) => {
-                            return Err(tonic::Status::new(
-                                tonic::Code::InvalidArgument,
-                                "Couldn't decode messages test vector.",
-                            ));
-                        }
-                    };
-                write("mlspp_messages_{}.json", &obj.test_vector);
-                match kat_messages::run_test_vector(kat_messages) {
-                    Ok(result) => ("Messages", result),
-                    Err(e) => {
-                        let message = "Error while running messages test vector: ".to_string()
-                            + &e.to_string();
-                        return Err(tonic::Status::new(tonic::Code::Aborted, message));
-                    }
-                }
-            }
-            Err(_) => {
-                return Err(tonic::Status::new(
-                    tonic::Code::Unimplemented,
-                    "Invalid test vector type",
-                ));
-            }
-        };
-        println!("{} test vector request successful", type_msg);
-
-        Ok(Response::new(VerifyTestVectorResponse::default()))
-    }
-
     async fn create_group(
         &self,
         request: tonic::Request<CreateGroupRequest>,
@@ -394,13 +151,11 @@ impl MlsClient for MlsClientImpl {
         let create_group_request = request.get_ref();
 
         let ciphersuite = Ciphersuite::try_from(create_group_request.cipher_suite as u16).unwrap();
-        let credential_bundle = CredentialBundle::new(
-            "OpenMLS".bytes().collect(),
-            CredentialType::Basic,
-            SignatureScheme::from(ciphersuite),
-            &self.crypto_provider,
-        )
-        .unwrap();
+        let credential = Credential::new("OpenMLS".into(), CredentialType::Basic).unwrap();
+        let signature_keys = SignatureKeyPair::new(ciphersuite.signature_algorithm()).unwrap();
+        signature_keys
+            .store(self.crypto_provider.key_store())
+            .unwrap();
 
         let wire_format_policy = wire_format_policy(create_group_request.encrypt_handshake);
         let mls_group_config = MlsGroupConfig::builder()
@@ -409,17 +164,21 @@ impl MlsClient for MlsClientImpl {
             .build();
         let group = MlsGroup::new_with_group_id(
             &self.crypto_provider,
+            &signature_keys,
             &mls_group_config,
             GroupId::from_slice(&create_group_request.group_id),
-            credential_bundle.credential().signature_key(),
+            CredentialWithKey {
+                credential: credential.clone(),
+                signature_key: signature_keys.public().into(),
+            },
         )
         .map_err(into_status)?;
 
         let interop_group = InteropGroup {
-            credential_bundle,
+            // credential: credential.clone(),
             wire_format_policy,
             group,
-            own_kps: Vec::new(),
+            signature_keys,
         };
 
         let mut groups = self.groups.lock().unwrap();
@@ -436,13 +195,12 @@ impl MlsClient for MlsClientImpl {
         let create_kp_request = request.get_ref();
 
         let ciphersuite = *to_ciphersuite(create_kp_request.cipher_suite)?;
-        let credential_bundle = CredentialBundle::new(
-            "OpenMLS".bytes().collect(),
-            CredentialType::Basic,
-            ciphersuite.signature_algorithm(),
-            &self.crypto_provider,
-        )
-        .unwrap();
+        let credential = Credential::new("OpenMLS".into(), CredentialType::Basic).unwrap();
+        let signature_keys = SignatureKeyPair::new(ciphersuite.signature_algorithm()).unwrap();
+        signature_keys
+            .store(self.crypto_provider.key_store())
+            .unwrap();
+
         let key_package = KeyPackage::builder()
             .build(
                 CryptoConfig {
@@ -450,9 +208,14 @@ impl MlsClient for MlsClientImpl {
                     version: ProtocolVersion::default(),
                 },
                 &self.crypto_provider,
-                &credential_bundle,
+                &signature_keys,
+                CredentialWithKey {
+                    credential: credential.clone(),
+                    signature_key: signature_keys.public().into(),
+                },
             )
             .unwrap();
+
         let mut transaction_id_map = self.transaction_id_map.lock().unwrap();
         let transaction_id = transaction_id_map.len() as u32;
         transaction_id_map.insert(
@@ -470,7 +233,7 @@ impl MlsClient for MlsClientImpl {
                 .unwrap()
                 .as_slice()
                 .to_vec(),
-            (key_package.clone(), credential_bundle),
+            (key_package.clone(), credential, signature_keys),
         );
 
         Ok(Response::new(CreateKeyPackageResponse {
@@ -495,7 +258,7 @@ impl MlsClient for MlsClientImpl {
 
         let welcome = Welcome::tls_deserialize(&mut join_group_request.welcome.as_slice()).unwrap();
         let mut pending_key_packages = self.pending_key_packages.lock().unwrap();
-        let (_kpb, credential_bundle) = welcome
+        let (_kpb, _credential, signature_keys) = welcome
             .secrets()
             .iter()
             .find_map(|egs| pending_key_packages.remove(egs.new_member().as_slice()))
@@ -510,10 +273,10 @@ impl MlsClient for MlsClientImpl {
                 .map_err(into_status)?;
 
         let interop_group = InteropGroup {
-            credential_bundle,
+            // credential,
             wire_format_policy,
             group,
-            own_kps: Vec::new(),
+            signature_keys,
         };
 
         let mut groups = self.groups.lock().unwrap();
@@ -597,7 +360,11 @@ impl MlsClient for MlsClientImpl {
 
         let ciphertext = interop_group
             .group
-            .create_message(&self.crypto_provider, &protect_request.application_data)
+            .create_message(
+                &self.crypto_provider,
+                &interop_group.signature_keys,
+                &protect_request.application_data,
+            )
             .map_err(into_status)?
             .tls_serialize_detached()
             .map_err(|_| Status::aborted("failed to serialize ciphertext"))?;
@@ -661,7 +428,11 @@ impl MlsClient for MlsClientImpl {
         interop_group.group.set_configuration(&mls_group_config);
         let proposal = interop_group
             .group
-            .propose_add_member(&self.crypto_provider, &key_package)
+            .propose_add_member(
+                &self.crypto_provider,
+                &interop_group.signature_keys,
+                &key_package,
+            )
             .map_err(into_status)?
             .to_bytes()
             .unwrap();
@@ -680,16 +451,6 @@ impl MlsClient for MlsClientImpl {
             .get_mut(update_proposal_request.state_id as usize)
             .ok_or_else(|| tonic::Status::new(tonic::Code::InvalidArgument, "unknown state_id"))?;
 
-        let key_package = KeyPackage::builder()
-            .build(
-                CryptoConfig {
-                    ciphersuite: interop_group.group.ciphersuite(),
-                    version: ProtocolVersion::default(),
-                },
-                &self.crypto_provider,
-                &interop_group.credential_bundle,
-            )
-            .unwrap();
         let mls_group_config = MlsGroupConfig::builder()
             .use_ratchet_tree_extension(true)
             .wire_format_policy(interop_group.wire_format_policy)
@@ -697,12 +458,12 @@ impl MlsClient for MlsClientImpl {
         interop_group.group.set_configuration(&mls_group_config);
         let proposal = interop_group
             .group
-            .propose_self_update(&self.crypto_provider, Some(key_package.leaf_node().clone()))
+            .propose_self_update(&self.crypto_provider, &interop_group.signature_keys, None)
             .map_err(into_status)?
             .to_bytes()
             .unwrap();
 
-        interop_group.own_kps.push(key_package);
+        // XXX[FK]: Make sure the new keys are accessible?
 
         Ok(Response::new(ProposalResponse { proposal }))
     }
@@ -712,6 +473,11 @@ impl MlsClient for MlsClientImpl {
         request: tonic::Request<RemoveProposalRequest>,
     ) -> Result<tonic::Response<ProposalResponse>, tonic::Status> {
         let remove_proposal_request = request.get_ref();
+        let removed_credential = Credential::new(
+            remove_proposal_request.removed_id.clone(),
+            CredentialType::Basic,
+        )
+        .unwrap();
 
         let mut groups = self.groups.lock().unwrap();
         let interop_group = groups
@@ -726,9 +492,10 @@ impl MlsClient for MlsClientImpl {
 
         let proposal = interop_group
             .group
-            .propose_remove_member(
+            .propose_remove_member_by_credential(
                 &self.crypto_provider,
-                LeafNodeIndex::new(remove_proposal_request.removed),
+                &interop_group.signature_keys,
+                &removed_credential,
             )
             .map_err(into_status)?
             .to_bytes()
@@ -747,13 +514,6 @@ impl MlsClient for MlsClientImpl {
     async fn re_init_proposal(
         &self,
         _request: tonic::Request<ReInitProposalRequest>,
-    ) -> Result<tonic::Response<ProposalResponse>, tonic::Status> {
-        Ok(Response::new(ProposalResponse::default()))
-    }
-
-    async fn app_ack_proposal(
-        &self,
-        _request: tonic::Request<AppAckProposalRequest>,
     ) -> Result<tonic::Response<ProposalResponse>, tonic::Status> {
         Ok(Response::new(ProposalResponse::default()))
     }
@@ -796,7 +556,7 @@ impl MlsClient for MlsClientImpl {
 
         let (commit, welcome_option, _group_info) = interop_group
             .group
-            .self_update(&self.crypto_provider)
+            .self_update(&self.crypto_provider, &interop_group.signature_keys)
             .map_err(into_status)?;
 
         let commit = commit.to_bytes().unwrap();
@@ -808,8 +568,17 @@ impl MlsClient for MlsClientImpl {
         } else {
             vec![]
         };
+        let epoch_authenticator = interop_group
+            .group
+            .epoch_authenticator()
+            .as_slice()
+            .to_vec();
 
-        Ok(Response::new(CommitResponse { commit, welcome }))
+        Ok(Response::new(CommitResponse {
+            commit,
+            welcome,
+            epoch_authenticator,
+        }))
     }
 
     async fn handle_commit(
@@ -858,9 +627,27 @@ impl MlsClient for MlsClientImpl {
             }
         }
 
+        let epoch_authenticator = interop_group
+            .group
+            .epoch_authenticator()
+            .as_slice()
+            .to_vec();
+
         Ok(Response::new(HandleCommitResponse {
             state_id: handle_commit_request.state_id,
+            epoch_authenticator,
         }))
+    }
+
+    async fn handle_pending_commit(
+        &self,
+        request: tonic::Request<HandlePendingCommitRequest>,
+    ) -> Result<tonic::Response<HandleCommitResponse>, tonic::Status> {
+        let _obj = request.get_ref();
+        Err(tonic::Status::new(
+            tonic::Code::Unimplemented,
+            "handling pending commits is not yet supported by OpenMLS",
+        ))
     }
 }
 
