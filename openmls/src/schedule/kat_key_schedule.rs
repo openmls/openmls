@@ -5,17 +5,16 @@
 //!
 //! If values are not present, they are encoded as empty strings.
 
-use crate::{ciphersuite::*, extensions::Extensions, group::*, schedule::*, test_utils::*};
-
-#[cfg(test)]
-use crate::test_utils::{read, write};
-
+use log::info;
 use openmls_rust_crypto::OpenMlsRustCrypto;
 use openmls_traits::{random::OpenMlsRand, types::HpkeKeyPair, OpenMlsCryptoProvider};
 use serde::{self, Deserialize, Serialize};
 use tls_codec::Serialize as TlsSerializeTrait;
 
 use super::{errors::KsTestVectorError, CommitSecret};
+#[cfg(test)]
+use crate::test_utils::{read, write};
+use crate::{ciphersuite::*, extensions::Extensions, group::*, schedule::*, test_utils::*};
 
 #[derive(Serialize, Deserialize, Debug, Clone, Default)]
 struct Exporter {
@@ -242,6 +241,7 @@ fn write_test_vectors() {
 #[apply(backends)]
 fn read_test_vectors_key_schedule(backend: &impl OpenMlsCryptoProvider) {
     let _ = pretty_env_logger::try_init();
+
     let tests: Vec<KeyScheduleTestVector> = read("test_vectors/key-schedule.json");
 
     for test_vector in tests {
@@ -259,6 +259,15 @@ pub fn run_test_vector(
 ) -> Result<(), KsTestVectorError> {
     let ciphersuite = Ciphersuite::try_from(test_vector.cipher_suite).expect("Invalid ciphersuite");
     log::trace!("  {:?}", test_vector);
+
+    if !backend
+        .crypto()
+        .supported_ciphersuites()
+        .contains(&ciphersuite)
+    {
+        info!("Skipping unsupported ciphersuite `{ciphersuite:?}`.");
+        return Ok(());
+    }
 
     let group_id = hex_to_bytes(&test_vector.group_id);
     let init_secret = hex_to_bytes(&test_vector.initial_init_secret);
