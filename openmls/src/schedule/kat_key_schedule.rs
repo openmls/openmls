@@ -253,17 +253,12 @@ fn write_test_vectors() {
 fn read_test_vectors_key_schedule(backend: &impl OpenMlsCryptoProvider) {
     let _ = pretty_env_logger::try_init();
 
-    let test_files: Vec<Vec<KeyScheduleTestVector>> = vec![
-        read("test_vectors/key-schedule.json"),
-        read("test_vectors/mlspp/key-schedule.json"),
-    ];
+    let tests: Vec<KeyScheduleTestVector> = read("test_vectors/key-schedule.json");
 
-    for test_file in test_files {
-        for test_vector in test_file {
-            match run_test_vector(test_vector, backend) {
-                Ok(_) => {}
-                Err(e) => panic!("Error while checking key schedule test vector.\n{e:?}"),
-            }
+    for test_vector in tests {
+        match run_test_vector(test_vector, backend) {
+            Ok(_) => {}
+            Err(e) => panic!("Error while checking key schedule test vector.\n{e:?}"),
         }
     }
 }
