@@ -683,6 +683,7 @@ impl MlsClient for MlsClientImpl {
         &self,
         request: tonic::Request<HandleCommitRequest>,
     ) -> Result<tonic::Response<HandleCommitResponse>, tonic::Status> {
+        log::debug!("Handling incoming commit");
         let handle_commit_request = request.get_ref();
 
         let mut groups = self.groups.lock().unwrap();
@@ -690,6 +691,9 @@ impl MlsClient for MlsClientImpl {
             .get_mut(handle_commit_request.state_id as usize)
             .ok_or_else(|| tonic::Status::new(tonic::Code::InvalidArgument, "unknown state_id"))?;
         log::debug!("   in epoch {:?}", interop_group.group.epoch());
+        log::debug!("   for user {:x?}", interop_group.group.own_identity());
+
+        // XXX[FK]: This is a horrible API.
 
         for proposal in &handle_commit_request.proposal {
             let message = MlsMessageIn::tls_deserialize(&mut proposal.as_slice())
@@ -701,6 +705,7 @@ impl MlsClient for MlsClientImpl {
             match processed_message.into_content() {
                 ProcessedMessageContent::ApplicationMessage(_) => unreachable!(),
                 ProcessedMessageContent::ProposalMessage(proposal) => {
+                    log::trace!("   storing pending proposal");
                     interop_group.group.store_pending_proposal(*proposal);
                 }
                 ProcessedMessageContent::ExternalJoinProposalMessage(_) => unreachable!(),
@@ -719,6 +724,7 @@ impl MlsClient for MlsClientImpl {
             ProcessedMessageContent::ProposalMessage(_) => unreachable!(),
             ProcessedMessageContent::ExternalJoinProposalMessage(_) => unreachable!(),
             ProcessedMessageContent::StagedCommitMessage(_) => {
+                log::trace!("   merging pending commit");
                 interop_group
                     .group
                     .merge_pending_commit(&interop_group.crypto_provider)
@@ -731,6 +737,7 @@ impl MlsClient for MlsClientImpl {
             .epoch_authenticator()
             .as_slice()
             .to_vec();
+        log::debug!("   new epoch {:?}", interop_group.group.epoch());
 
         Ok(Response::new(HandleCommitResponse {
             state_id: handle_commit_request.state_id,
