@@ -76,6 +76,8 @@ impl MlsGroup {
     /// currently stored in the group's [ProposalStore].
     ///
     /// Returns an error if there is a pending commit.
+    /// Otherwise it returns a tuple of `Commit, Option<Welcome>, Option<GroupInfo>`,
+    /// where `Commit` and `Welcome` are MlsMessages of the type [`MlsMessageOut`].
     // FIXME: #1217
     #[allow(clippy::type_complexity)]
     pub fn commit_to_pending_proposals<KeyStore: OpenMlsKeyStore>(

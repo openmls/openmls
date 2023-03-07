@@ -189,7 +189,7 @@ impl LeafNode {
     }
 
     /// Returns the `encryption_key`.
-    pub(crate) fn encryption_key(&self) -> &EncryptionKey {
+    pub fn encryption_key(&self) -> &EncryptionKey {
         &self.payload.encryption_key
     }
 

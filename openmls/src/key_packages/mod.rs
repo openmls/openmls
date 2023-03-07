@@ -99,6 +99,7 @@ use crate::{
         },
         LeafNode,
     },
+    utils::bytes_to_hex,
     versions::ProtocolVersion,
 };
 use openmls_traits::{

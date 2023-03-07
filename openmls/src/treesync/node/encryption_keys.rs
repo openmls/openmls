@@ -17,7 +17,7 @@ use crate::versions::ProtocolVersion;
 #[derive(
     Debug, Clone, Serialize, Deserialize, TlsSerialize, TlsDeserialize, TlsSize, PartialEq, Eq,
 )]
-pub(crate) struct EncryptionKey {
+pub struct EncryptionKey {
     key: HpkePublicKey,
 }
 
@@ -113,7 +113,7 @@ impl From<HpkePublicKey> for EncryptionKey {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, TlsDeserialize, TlsSerialize, TlsSize)]
-pub(crate) struct EncryptionKeyPair {
+pub struct EncryptionKeyPair {
     public_key: EncryptionKey,
     private_key: EncryptionPrivateKey,
 }
@@ -126,7 +126,7 @@ impl EncryptionKeyPair {
     /// already in use with an MLS group.
     ///
     /// Returns a key store error if access to the key store fails.
-    pub(crate) fn write_to_key_store<KeyStore: OpenMlsKeyStore>(
+    pub fn write_to_key_store<KeyStore: OpenMlsKeyStore>(
         &self,
         backend: &impl OpenMlsCryptoProvider<KeyStoreProvider = KeyStore>,
     ) -> Result<(), KeyStore::Error> {
@@ -140,7 +140,7 @@ impl EncryptionKeyPair {
     /// already in use with an MLS group.
     ///
     /// Returns `None` if the keypair cannot be read from the store.
-    pub(crate) fn read_from_key_store(
+    pub fn read_from_key_store(
         backend: &impl OpenMlsCryptoProvider,
         encryption_key: &EncryptionKey,
     ) -> Option<EncryptionKeyPair> {

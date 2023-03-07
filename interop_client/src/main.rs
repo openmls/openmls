@@ -8,6 +8,8 @@ use clap_derive::*;
 use openmls::prelude::*;
 
 use openmls::prelude::config::CryptoConfig;
+use openmls::prelude_test::hash_ref::HashReference;
+use openmls::treesync::EncryptionKeyPair;
 use openmls_basic_credential::SignatureKeyPair;
 use openmls_traits::OpenMlsCryptoProvider;
 use serde::{self, Serialize};
@@ -33,6 +35,8 @@ pub struct InteropGroup {
     wire_format_policy: WireFormatPolicy,
     // credential: Credential,
     signature_keys: SignatureKeyPair,
+    messages_out: Vec<MlsMessageOut>,
+    crypto_provider: OpenMlsRustCrypto,
 }
 
 /// This is the main state struct of the interop client. It keeps track of the
@@ -41,12 +45,19 @@ pub struct InteropGroup {
 /// transaction ids to key package hashes.
 pub struct MlsClientImpl {
     groups: Mutex<Vec<InteropGroup>>,
-    pending_key_packages: Mutex<HashMap<Vec<u8>, (KeyPackage, Credential, SignatureKeyPair)>>,
-    /// Note that the client currently doesn't really use transaction ids and
-    /// instead relies on the KeyPackage hash in the Welcome message to identify
-    /// what key package to use when joining a group.
-    transaction_id_map: Mutex<HashMap<u32, Vec<u8>>>,
-    crypto_provider: OpenMlsRustCrypto,
+    pending_key_packages: Mutex<
+        HashMap<
+            Vec<u8>,
+            (
+                KeyPackage,
+                HpkePrivateKey,
+                EncryptionKeyPair,
+                Credential,
+                SignatureKeyPair,
+            ),
+        >,
+    >,
+    transaction_id_map: Mutex<HashMap<u32, (KeyPackage, HpkePrivateKey)>>,
 }
 
 impl MlsClientImpl {
@@ -56,7 +67,6 @@ impl MlsClientImpl {
             groups: Mutex::new(Vec::new()),
             pending_key_packages: Mutex::new(HashMap::new()),
             transaction_id_map: Mutex::new(HashMap::new()),
-            crypto_provider: OpenMlsRustCrypto::default(),
         }
     }
 }
@@ -117,7 +127,7 @@ pub fn wire_format_policy(encrypt: bool) -> WireFormatPolicy {
 #[tonic::async_trait]
 impl MlsClient for MlsClientImpl {
     async fn name(&self, _request: Request<NameRequest>) -> Result<Response<NameResponse>, Status> {
-        log::trace!("Got Name request");
+        log::debug!("Got Name request");
 
         let response = NameResponse {
             name: IMPLEMENTATION_NAME.to_string(),
@@ -148,14 +158,16 @@ impl MlsClient for MlsClientImpl {
         &self,
         request: tonic::Request<CreateGroupRequest>,
     ) -> Result<tonic::Response<CreateGroupResponse>, tonic::Status> {
+        log::debug!("Creating a new group.");
         let create_group_request = request.get_ref();
+        let crypto_provider = OpenMlsRustCrypto::default();
 
         let ciphersuite = Ciphersuite::try_from(create_group_request.cipher_suite as u16).unwrap();
-        let credential = Credential::new("OpenMLS".into(), CredentialType::Basic).unwrap();
+        let credential =
+            Credential::new(create_group_request.identity.clone(), CredentialType::Basic).unwrap();
         let signature_keys = SignatureKeyPair::new(ciphersuite.signature_algorithm()).unwrap();
-        signature_keys
-            .store(self.crypto_provider.key_store())
-            .unwrap();
+        signature_keys.store(crypto_provider.key_store()).unwrap();
+        log::trace!("   for {:x?}", create_group_request.identity);
 
         let wire_format_policy = wire_format_policy(create_group_request.encrypt_handshake);
         let mls_group_config = MlsGroupConfig::builder()
@@ -163,7 +175,7 @@ impl MlsClient for MlsClientImpl {
             .use_ratchet_tree_extension(true)
             .build();
         let group = MlsGroup::new_with_group_id(
-            &self.crypto_provider,
+            &crypto_provider,
             &signature_keys,
             &mls_group_config,
             GroupId::from_slice(&create_group_request.group_id),
@@ -175,10 +187,11 @@ impl MlsClient for MlsClientImpl {
         .map_err(into_status)?;
 
         let interop_group = InteropGroup {
-            // credential: credential.clone(),
-            wire_format_policy,
             group,
+            wire_format_policy,
             signature_keys,
+            messages_out: Vec::new(),
+            crypto_provider,
         };
 
         let mut groups = self.groups.lock().unwrap();
@@ -192,14 +205,15 @@ impl MlsClient for MlsClientImpl {
         &self,
         request: tonic::Request<CreateKeyPackageRequest>,
     ) -> Result<tonic::Response<CreateKeyPackageResponse>, tonic::Status> {
+        log::debug!("Creating a new key package");
         let create_kp_request = request.get_ref();
+        let crypto_provider = OpenMlsRustCrypto::default();
 
         let ciphersuite = *to_ciphersuite(create_kp_request.cipher_suite)?;
-        let credential = Credential::new("OpenMLS".into(), CredentialType::Basic).unwrap();
+        let credential =
+            Credential::new(create_kp_request.identity.clone(), CredentialType::Basic).unwrap();
         let signature_keys = SignatureKeyPair::new(ciphersuite.signature_algorithm()).unwrap();
-        signature_keys
-            .store(self.crypto_provider.key_store())
-            .unwrap();
+        log::trace!("   for {:x?}", create_kp_request.identity);
 
         let key_package = KeyPackage::builder()
             .build(
@@ -207,7 +221,7 @@ impl MlsClient for MlsClientImpl {
                     ciphersuite,
                     version: ProtocolVersion::default(),
                 },
-                &self.crypto_provider,
+                &crypto_provider,
                 &signature_keys,
                 CredentialWithKey {
                     credential: credential.clone(),
@@ -215,25 +229,31 @@ impl MlsClient for MlsClientImpl {
                 },
             )
             .unwrap();
+        let private_key = crypto_provider
+            .key_store()
+            .read::<HpkePrivateKey>(key_package.hpke_init_key().as_slice())
+            .unwrap();
 
+        let encryption_key_pair = EncryptionKeyPair::read_from_key_store(
+            &crypto_provider,
+            key_package.leaf_node().encryption_key(),
+        )
+        .unwrap();
+
+        // Store the key package and private key for later use.
         let mut transaction_id_map = self.transaction_id_map.lock().unwrap();
         let transaction_id = transaction_id_map.len() as u32;
-        transaction_id_map.insert(
-            transaction_id,
-            key_package
-                .hash_ref(self.crypto_provider.crypto())
-                .unwrap()
-                .as_slice()
-                .to_vec(),
-        );
+        transaction_id_map.insert(transaction_id, (key_package.clone(), private_key.clone()));
 
         self.pending_key_packages.lock().unwrap().insert(
-            key_package
-                .hash_ref(self.crypto_provider.crypto())
-                .unwrap()
-                .as_slice()
-                .to_vec(),
-            (key_package.clone(), credential, signature_keys),
+            create_kp_request.identity.clone(),
+            (
+                key_package.clone(),
+                private_key,
+                encryption_key_pair,
+                credential,
+                signature_keys,
+            ),
         );
 
         Ok(Response::new(CreateKeyPackageResponse {
@@ -248,7 +268,9 @@ impl MlsClient for MlsClientImpl {
         &self,
         request: tonic::Request<JoinGroupRequest>,
     ) -> Result<tonic::Response<JoinGroupResponse>, tonic::Status> {
+        log::debug!("Joining a group");
         let join_group_request = request.get_ref();
+        let crypto_provider = OpenMlsRustCrypto::default();
 
         let wire_format_policy = wire_format_policy(join_group_request.encrypt_handshake);
         let mls_group_config = MlsGroupConfig::builder()
@@ -256,28 +278,60 @@ impl MlsClient for MlsClientImpl {
             .use_ratchet_tree_extension(true)
             .build();
 
-        let welcome = Welcome::tls_deserialize(&mut join_group_request.welcome.as_slice()).unwrap();
         let mut pending_key_packages = self.pending_key_packages.lock().unwrap();
-        let (_kpb, _credential, signature_keys) = welcome
-            .secrets()
-            .iter()
-            .find_map(|egs| pending_key_packages.remove(egs.new_member().as_slice()))
-            .ok_or_else(|| {
-                tonic::Status::new(
-                    tonic::Code::NotFound,
-                    "No key package could be found for the given Welcome message.",
-                )
-            })?;
-        let group =
-            MlsGroup::new_from_welcome(&self.crypto_provider, &mls_group_config, welcome, None)
-                .map_err(into_status)?;
+        let (my_key_package, private_key, encryption_keypair, _my_credential, my_signature_keys) =
+            pending_key_packages
+                .remove(&join_group_request.identity)
+                .ok_or(Status::aborted(format!(
+                    "failed to find key package for identity {:x?}",
+                    join_group_request.identity
+                )))?;
+
+        // Store keys so OpenMLS can find them.
+        crypto_provider
+            .key_store()
+            .store(my_key_package.hpke_init_key().as_slice(), &private_key)
+            .map_err(|_| Status::aborted("failed to interact with the key store"))?;
+
+        // Store the key package in the key store with the hash reference as id
+        // for retrieval when parsing welcome messages.
+        crypto_provider
+            .key_store()
+            .store(
+                my_key_package
+                    .hash_ref(crypto_provider.crypto())
+                    .map_err(into_status)?
+                    .as_slice(),
+                &my_key_package,
+            )
+            .map_err(into_status)?;
+
+        // Store the encryption key pair in the key store.
+        encryption_keypair
+            .write_to_key_store(&crypto_provider)
+            .map_err(into_status)?;
+
+        // Store the private part of the init_key into the key store.
+        // The key is the public key.
+        crypto_provider
+            .key_store()
+            .store::<HpkePrivateKey>(my_key_package.hpke_init_key().as_slice(), &private_key)
+            .map_err(into_status)?;
+
+        let welcome_msg = MlsMessageIn::tls_deserialize(&mut join_group_request.welcome.as_slice())
+            .map_err(|_| Status::aborted("failed to deserialize MlsMessage with a Welcome"))?;
+
+        let group = MlsGroup::join(&crypto_provider, &mls_group_config, welcome_msg, None)
+            .map_err(into_status)?;
 
         let interop_group = InteropGroup {
-            // credential,
             wire_format_policy,
             group,
-            signature_keys,
+            signature_keys: my_signature_keys,
+            messages_out: Vec::new(),
+            crypto_provider,
         };
+        log::debug!("   in epoch {:?}", interop_group.group.epoch());
 
         let mut groups = self.groups.lock().unwrap();
         let state_id = groups.len() as u32;
@@ -300,6 +354,7 @@ impl MlsClient for MlsClientImpl {
         &self,
         _request: tonic::Request<PublicGroupStateRequest>,
     ) -> Result<tonic::Response<PublicGroupStateResponse>, tonic::Status> {
+        // FIXME: This will be removed/replaced
         Err(tonic::Status::new(
             tonic::Code::Unimplemented,
             "exporting public group state is not yet supported by OpenMLS",
@@ -310,12 +365,14 @@ impl MlsClient for MlsClientImpl {
         &self,
         request: tonic::Request<StateAuthRequest>,
     ) -> Result<tonic::Response<StateAuthResponse>, tonic::Status> {
+        log::debug!("Generating state authenticator secret");
         let state_auth_request = request.get_ref();
 
         let groups = self.groups.lock().unwrap();
         let interop_group = groups
             .get(state_auth_request.state_id as usize)
             .ok_or_else(|| tonic::Status::new(tonic::Code::InvalidArgument, "unknown state_id"))?;
+        log::debug!("   in epoch {:?}", interop_group.group.epoch());
 
         let state_auth_secret = interop_group.group.epoch_authenticator();
 
@@ -328,16 +385,19 @@ impl MlsClient for MlsClientImpl {
         &self,
         request: tonic::Request<ExportRequest>,
     ) -> Result<tonic::Response<ExportResponse>, tonic::Status> {
+        log::debug!("Exporting a secret");
         let export_request = request.get_ref();
 
         let groups = self.groups.lock().unwrap();
         let interop_group = groups
             .get(export_request.state_id as usize)
             .ok_or_else(|| tonic::Status::new(tonic::Code::InvalidArgument, "unknown state_id"))?;
+        log::debug!("   in epoch {:?}", interop_group.group.epoch());
+
         let exported_secret = interop_group
             .group
             .export_secret(
-                &self.crypto_provider,
+                &interop_group.crypto_provider,
                 &export_request.label,
                 &export_request.context,
                 export_request.key_length as usize,
@@ -351,17 +411,23 @@ impl MlsClient for MlsClientImpl {
         &self,
         request: tonic::Request<ProtectRequest>,
     ) -> Result<tonic::Response<ProtectResponse>, tonic::Status> {
+        log::debug!("Encrypting message (protect)");
         let protect_request = request.get_ref();
 
         let mut groups = self.groups.lock().unwrap();
         let interop_group = groups
             .get_mut(protect_request.state_id as usize)
             .ok_or_else(|| tonic::Status::new(tonic::Code::InvalidArgument, "unknown state_id"))?;
+        log::debug!("   in epoch {:?}", interop_group.group.epoch());
+        log::debug!(
+            "   from user {:x?}",
+            interop_group.group.own_identity().unwrap()
+        );
 
         let ciphertext = interop_group
             .group
             .create_message(
-                &self.crypto_provider,
+                &interop_group.crypto_provider,
                 &interop_group.signature_keys,
                 &protect_request.application_data,
             )
@@ -375,18 +441,20 @@ impl MlsClient for MlsClientImpl {
         &self,
         request: tonic::Request<UnprotectRequest>,
     ) -> Result<tonic::Response<UnprotectResponse>, tonic::Status> {
+        log::debug!("Decrypting message (unprotect)");
         let unprotect_request = request.get_ref();
 
         let mut groups = self.groups.lock().unwrap();
         let interop_group = groups
             .get_mut(unprotect_request.state_id as usize)
             .ok_or_else(|| tonic::Status::new(tonic::Code::InvalidArgument, "unknown state_id"))?;
+        log::debug!("   in epoch {:?}", interop_group.group.epoch());
 
         let message = MlsMessageIn::tls_deserialize(&mut unprotect_request.ciphertext.as_slice())
             .map_err(|_| Status::aborted("failed to deserialize ciphertext"))?;
         let processed_message = interop_group
             .group
-            .process_message(&self.crypto_provider, message)
+            .process_message(&interop_group.crypto_provider, message)
             .map_err(into_status)?;
         let application_data = match processed_message.into_content() {
             ProcessedMessageContent::ApplicationMessage(application_message) => {
@@ -411,16 +479,24 @@ impl MlsClient for MlsClientImpl {
         &self,
         request: tonic::Request<AddProposalRequest>,
     ) -> Result<tonic::Response<ProposalResponse>, tonic::Status> {
+        log::debug!("Create add proposal");
         let add_proposal_request = request.get_ref();
 
         let mut groups = self.groups.lock().unwrap();
         let interop_group = groups
             .get_mut(add_proposal_request.state_id as usize)
             .ok_or_else(|| tonic::Status::new(tonic::Code::InvalidArgument, "unknown state_id"))?;
+        log::debug!("   in epoch {:?}", interop_group.group.epoch());
 
         let key_package =
             KeyPackage::tls_deserialize(&mut add_proposal_request.key_package.as_slice())
                 .map_err(|_| Status::aborted("failed to deserialize key package"))?;
+        log::trace!(
+            "   for {:#x?}",
+            key_package
+                .hash_ref(interop_group.crypto_provider.crypto())
+                .unwrap()
+        );
         let mls_group_config = MlsGroupConfig::builder()
             .use_ratchet_tree_extension(true)
             .wire_format_policy(interop_group.wire_format_policy)
@@ -429,13 +505,17 @@ impl MlsClient for MlsClientImpl {
         let proposal = interop_group
             .group
             .propose_add_member(
-                &self.crypto_provider,
+                &interop_group.crypto_provider,
                 &interop_group.signature_keys,
                 &key_package,
             )
-            .map_err(into_status)?
-            .to_bytes()
-            .unwrap();
+            .map_err(into_status)?;
+
+        // Store the proposal for potential future use.
+        interop_group.messages_out.push(proposal.clone());
+
+        // log::trace!("   proposal: {proposal:#x?}");
+        let proposal = proposal.to_bytes().unwrap();
 
         Ok(Response::new(ProposalResponse { proposal }))
     }
@@ -444,12 +524,14 @@ impl MlsClient for MlsClientImpl {
         &self,
         request: tonic::Request<UpdateProposalRequest>,
     ) -> Result<tonic::Response<ProposalResponse>, tonic::Status> {
+        log::debug!("Creating update proposal");
         let update_proposal_request = request.get_ref();
 
         let mut groups = self.groups.lock().unwrap();
         let interop_group = groups
             .get_mut(update_proposal_request.state_id as usize)
             .ok_or_else(|| tonic::Status::new(tonic::Code::InvalidArgument, "unknown state_id"))?;
+        log::debug!("   in epoch {:?}", interop_group.group.epoch());
 
         let mls_group_config = MlsGroupConfig::builder()
             .use_ratchet_tree_extension(true)
@@ -458,7 +540,11 @@ impl MlsClient for MlsClientImpl {
         interop_group.group.set_configuration(&mls_group_config);
         let proposal = interop_group
             .group
-            .propose_self_update(&self.crypto_provider, &interop_group.signature_keys, None)
+            .propose_self_update(
+                &interop_group.crypto_provider,
+                &interop_group.signature_keys,
+                None,
+            )
             .map_err(into_status)?
             .to_bytes()
             .unwrap();
@@ -472,34 +558,39 @@ impl MlsClient for MlsClientImpl {
         &self,
         request: tonic::Request<RemoveProposalRequest>,
     ) -> Result<tonic::Response<ProposalResponse>, tonic::Status> {
+        log::debug!("Generate remove proposal");
         let remove_proposal_request = request.get_ref();
         let removed_credential = Credential::new(
             remove_proposal_request.removed_id.clone(),
             CredentialType::Basic,
         )
         .unwrap();
+        log::trace!("   for credential: {removed_credential:x?}");
 
         let mut groups = self.groups.lock().unwrap();
         let interop_group = groups
             .get_mut(remove_proposal_request.state_id as usize)
             .ok_or_else(|| tonic::Status::new(tonic::Code::InvalidArgument, "unknown state_id"))?;
+        log::debug!("   in epoch {:?}", interop_group.group.epoch());
 
         let mls_group_config = MlsGroupConfig::builder()
             .use_ratchet_tree_extension(true)
             .wire_format_policy(interop_group.wire_format_policy)
             .build();
         interop_group.group.set_configuration(&mls_group_config);
+        log::trace!("   prepared remove");
 
         let proposal = interop_group
             .group
             .propose_remove_member_by_credential(
-                &self.crypto_provider,
+                &interop_group.crypto_provider,
                 &interop_group.signature_keys,
                 &removed_credential,
             )
             .map_err(into_status)?
             .to_bytes()
             .unwrap();
+        log::trace!("   generated remove proposal");
 
         Ok(Response::new(ProposalResponse { proposal }))
     }
@@ -522,12 +613,14 @@ impl MlsClient for MlsClientImpl {
         &self,
         request: tonic::Request<CommitRequest>,
     ) -> Result<tonic::Response<CommitResponse>, tonic::Status> {
+        log::debug!("Create a commit");
         let commit_request = request.get_ref();
 
         let mut groups = self.groups.lock().unwrap();
         let interop_group = groups
             .get_mut(commit_request.state_id as usize)
             .ok_or_else(|| tonic::Status::new(tonic::Code::InvalidArgument, "unknown state_id"))?;
+        log::debug!("   in epoch {:?}", interop_group.group.epoch());
 
         // Proposals by reference. These proposals are standalone proposals. They should
         // be appended to the proposal store.
@@ -537,7 +630,7 @@ impl MlsClient for MlsClientImpl {
                 .map_err(|_| Status::aborted("failed to deserialize ciphertext"))?;
             let processed_message = interop_group
                 .group
-                .process_message(&self.crypto_provider, message)
+                .process_message(&interop_group.crypto_provider, message)
                 .map_err(into_status)?;
             match processed_message.into_content() {
                 ProcessedMessageContent::ApplicationMessage(_) => unreachable!(),
@@ -556,8 +649,12 @@ impl MlsClient for MlsClientImpl {
 
         let (commit, welcome_option, _group_info) = interop_group
             .group
-            .self_update(&self.crypto_provider, &interop_group.signature_keys)
+            .commit_to_pending_proposals(
+                &interop_group.crypto_provider,
+                &interop_group.signature_keys,
+            )
             .map_err(into_status)?;
+        // log::debug!("   generated Welcome: {welcome_option:?}");
 
         let commit = commit.to_bytes().unwrap();
 
@@ -568,6 +665,7 @@ impl MlsClient for MlsClientImpl {
         } else {
             vec![]
         };
+        // log::debug!("   generated Welcome bytes: {welcome:x?}");
         let epoch_authenticator = interop_group
             .group
             .epoch_authenticator()
@@ -591,13 +689,14 @@ impl MlsClient for MlsClientImpl {
         let interop_group = groups
             .get_mut(handle_commit_request.state_id as usize)
             .ok_or_else(|| tonic::Status::new(tonic::Code::InvalidArgument, "unknown state_id"))?;
+        log::debug!("   in epoch {:?}", interop_group.group.epoch());
 
         for proposal in &handle_commit_request.proposal {
             let message = MlsMessageIn::tls_deserialize(&mut proposal.as_slice())
                 .map_err(|_| Status::aborted("failed to deserialize ciphertext"))?;
             let processed_message = interop_group
                 .group
-                .process_message(&self.crypto_provider, message)
+                .process_message(&interop_group.crypto_provider, message)
                 .map_err(into_status)?;
             match processed_message.into_content() {
                 ProcessedMessageContent::ApplicationMessage(_) => unreachable!(),
@@ -613,7 +712,7 @@ impl MlsClient for MlsClientImpl {
             .map_err(|_| Status::aborted("failed to deserialize ciphertext"))?;
         let processed_message = interop_group
             .group
-            .process_message(&self.crypto_provider, message)
+            .process_message(&interop_group.crypto_provider, message)
             .map_err(into_status)?;
         match processed_message.into_content() {
             ProcessedMessageContent::ApplicationMessage(_) => unreachable!(),
@@ -622,7 +721,7 @@ impl MlsClient for MlsClientImpl {
             ProcessedMessageContent::StagedCommitMessage(_) => {
                 interop_group
                     .group
-                    .merge_pending_commit(&self.crypto_provider)
+                    .merge_pending_commit(&interop_group.crypto_provider)
                     .map_err(into_status)?;
             }
         }
@@ -643,11 +742,34 @@ impl MlsClient for MlsClientImpl {
         &self,
         request: tonic::Request<HandlePendingCommitRequest>,
     ) -> Result<tonic::Response<HandleCommitResponse>, tonic::Status> {
-        let _obj = request.get_ref();
-        Err(tonic::Status::new(
-            tonic::Code::Unimplemented,
-            "handling pending commits is not yet supported by OpenMLS",
-        ))
+        log::debug!("Handling pending commit");
+        let obj = request.get_ref();
+
+        let mut groups = self.groups.lock().unwrap();
+        let interop_group = groups
+            .get_mut(obj.state_id as usize)
+            .ok_or_else(|| tonic::Status::new(tonic::Code::InvalidArgument, "unknown state_id"))?;
+        log::debug!("   in epoch {:?}", interop_group.group.epoch());
+
+        interop_group
+            .group
+            .merge_pending_commit(&interop_group.crypto_provider)
+            .map_err(|e| {
+                log::trace!("   Error merging pending commits {e:?}");
+                Status::aborted("failed to apply pending commits")
+            })?;
+        log::trace!("   merged pending commits.");
+
+        let epoch_authenticator = interop_group
+            .group
+            .epoch_authenticator()
+            .as_slice()
+            .to_vec();
+        let response = HandleCommitResponse {
+            state_id: obj.state_id,
+            epoch_authenticator,
+        };
+        Ok(Response::new(response))
     }
 }
 
