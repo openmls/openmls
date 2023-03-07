@@ -1253,6 +1253,7 @@
 <a href="#1253" id="1253">1253</a>
 <a href="#1254" id="1254">1254</a>
 <a href="#1255" id="1255">1255</a>
+<a href="#1256" id="1256">1256</a>
 </pre><pre class="rust"><code><span class="doccomment">//! # Key schedule
 //!
 //! This module contains the types and implementations for key schedule operations.
@@ -1376,7 +1377,11 @@
 // | `resumption_psk`        | &quot;resumption&quot;    |
 // ```
 
-</span><span class="kw">use crate</span>::{
+</span><span class="kw">use </span>openmls_traits::{crypto::OpenMlsCrypto, types::<span class="kw-2">*</span>, OpenMlsCryptoProvider};
+<span class="kw">use </span>serde::{Deserialize, Serialize};
+<span class="kw">use </span>tls_codec::{TlsDeserialize, TlsSerialize, TlsSize};
+
+<span class="kw">use crate</span>::{
     binary_tree::array_representation::{LeafNodeIndex, TreeSize},
     ciphersuite::{AeadKey, AeadNonce, HpkePrivateKey, Mac, Secret},
     error::LibraryError,
@@ -1386,9 +1391,6 @@
     tree::secret_tree::SecretTree,
     versions::ProtocolVersion,
 };
-<span class="kw">use </span>openmls_traits::{crypto::OpenMlsCrypto, types::<span class="kw-2">*</span>, OpenMlsCryptoProvider};
-<span class="kw">use </span>serde::{Deserialize, Serialize};
-<span class="kw">use </span>tls_codec::{TlsDeserialize, TlsSerialize, TlsSize};
 
 <span class="comment">// Public
 </span><span class="kw">pub mod </span>errors;
@@ -1964,7 +1966,7 @@
         backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider,
         epoch_secret: <span class="kw-2">&amp;</span>EpochSecret,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, CryptoError&gt; {
-        <span class="kw">let </span>secret = epoch_secret.secret.derive_secret(backend, <span class="string">&quot;exported&quot;</span>)<span class="question-mark">?</span>;
+        <span class="kw">let </span>secret = epoch_secret.secret.derive_secret(backend, <span class="string">&quot;exporter&quot;</span>)<span class="question-mark">?</span>;
         <span class="prelude-val">Ok</span>(ExporterSecret { secret })
     }
 
@@ -1990,7 +1992,7 @@
         <span class="prelude-val">Ok</span>(<span class="self">self
             </span>.secret
             .derive_secret(backend, label)<span class="question-mark">?
-            </span>.kdf_expand_label(backend, <span class="string">&quot;exporter&quot;</span>, context_hash, key_length)<span class="question-mark">?
+            </span>.kdf_expand_label(backend, <span class="string">&quot;exported&quot;</span>, context_hash, key_length)<span class="question-mark">?
             </span>.as_slice()
             .to_vec())
     }
