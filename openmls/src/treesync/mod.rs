@@ -131,11 +131,11 @@ impl TryFrom<Vec<Option<Node>>> for RatchetTree {
             }
             Some(None) => {
                 // The ratchet tree is not empty, i.e., has a last node, *but* the last node *is* blank.
-                return Err(RatchetTreeError::TrailingBlankNodes);
+                Err(RatchetTreeError::TrailingBlankNodes)
             }
             None => {
                 // The ratchet tree is empty.
-                return Err(RatchetTreeError::MissingNodes);
+                Err(RatchetTreeError::MissingNodes)
             }
         }
     }
