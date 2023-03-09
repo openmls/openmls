@@ -184,6 +184,7 @@ impl MlsClient for MlsClientImpl {
 
         let wire_format_policy = wire_format_policy(create_group_request.encrypt_handshake);
         let mls_group_config = MlsGroupConfig::builder()
+            .crypto_config(CryptoConfig::with_default_version(ciphersuite))
             .wire_format_policy(wire_format_policy)
             .use_ratchet_tree_extension(true)
             .build();
