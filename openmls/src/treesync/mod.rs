@@ -581,6 +581,7 @@ impl TreeSync {
 mod test {
     use super::*;
 
+    #[cfg(debug_assertions)]
     #[test]
     #[should_panic]
     /// This should only panic in debug-builds.
@@ -588,9 +589,24 @@ mod test {
         RatchetTree::from_nodes(vec![]);
     }
 
+    #[cfg(debug_assertions)]
     #[test]
     #[should_panic]
     /// This should only panic in debug-builds.
+    fn test_ratchet_tree_internal_empty_after_trim() {
+        RatchetTree::from_nodes(vec![None]);
+    }
+
+    #[cfg(not(debug_assertions))]
+    #[test]
+    /// This should not panic in release-builds.
+    fn test_ratchet_tree_internal_empty() {
+        RatchetTree::from_nodes(vec![]);
+    }
+
+    #[cfg(not(debug_assertions))]
+    #[test]
+    /// This should not panic in release-builds.
     fn test_ratchet_tree_internal_empty_after_trim() {
         RatchetTree::from_nodes(vec![None]);
     }
