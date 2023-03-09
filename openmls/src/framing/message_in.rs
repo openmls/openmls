@@ -117,6 +117,14 @@ impl MlsMessageIn {
         MlsMessageIn::tls_deserialize(&mut bytes).map_err(|_| MlsMessageError::UnableToDecode)
     }
 
+    #[cfg(any(test, feature = "test-utils"))]
+    pub fn into_keypackage(self) -> Option<KeyPackage> {
+        match self.body {
+            MlsMessageInBody::KeyPackage(kp) => Some(kp),
+            _ => None,
+        }
+    }
+
     #[cfg(test)]
     pub(crate) fn into_plaintext(self) -> Option<PublicMessage> {
         match self.body {

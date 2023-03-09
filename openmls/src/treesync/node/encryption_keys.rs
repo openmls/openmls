@@ -171,6 +171,12 @@ impl EncryptionKeyPair {
         &self.private_key
     }
 
+    #[cfg(feature = "test-utils")]
+    pub fn serialized_private_key(&self) -> Vec<u8> {
+        use tls_codec::Serialize;
+        self.private_key.key.tls_serialize_detached().unwrap()
+    }
+
     pub(crate) fn random(
         backend: &impl OpenMlsCryptoProvider,
         config: CryptoConfig,

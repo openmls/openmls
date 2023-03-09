@@ -255,8 +255,19 @@ impl MlsClient for MlsClientImpl {
         )
         .unwrap();
 
-        let mut transaction_id_map = self.transaction_id_map.lock().unwrap();
+        let transaction_id_map = self.transaction_id_map.lock().unwrap();
         let transaction_id = transaction_id_map.len() as u32;
+
+        let key_package_msg: MlsMessageOut = key_package.clone().into();
+        let response = CreateKeyPackageResponse {
+            transaction_id,
+            key_package: key_package_msg
+                .tls_serialize_detached()
+                .expect("error serializing key package"),
+            encryption_priv: encryption_key_pair.serialized_private_key(),
+            init_priv: private_key.tls_serialize_detached().unwrap(),
+            signature_priv: signature_keys.private().to_vec(),
+        };
 
         self.pending_key_packages.lock().unwrap().insert(
             create_kp_request.identity.clone(),
@@ -269,12 +280,7 @@ impl MlsClient for MlsClientImpl {
             ),
         );
 
-        Ok(Response::new(CreateKeyPackageResponse {
-            transaction_id,
-            key_package: key_package
-                .tls_serialize_detached()
-                .expect("error serializing key package"),
-        }))
+        Ok(Response::new(response))
     }
 
     async fn join_group(
@@ -346,11 +352,20 @@ impl MlsClient for MlsClientImpl {
         };
         log::trace!("   in epoch {:?}", interop_group.group.epoch());
 
+        let epoch_authenticator = interop_group
+            .group
+            .epoch_authenticator()
+            .as_slice()
+            .to_vec();
+
         let mut groups = self.groups.lock().unwrap();
         let state_id = groups.len() as u32;
         groups.push(interop_group);
 
-        Ok(Response::new(JoinGroupResponse { state_id }))
+        Ok(Response::new(JoinGroupResponse {
+            state_id,
+            epoch_authenticator,
+        }))
     }
 
     async fn external_join(
@@ -502,8 +517,10 @@ impl MlsClient for MlsClientImpl {
         log::trace!("   in epoch {:?}", interop_group.group.epoch());
 
         let key_package =
-            KeyPackage::tls_deserialize(&mut add_proposal_request.key_package.as_slice())
-                .map_err(|_| Status::aborted("failed to deserialize key package"))?;
+            MlsMessageIn::tls_deserialize(&mut add_proposal_request.key_package.as_slice())
+                .map_err(|_| Status::aborted("failed to deserialize key package (MlsMessage)"))?
+                .into_keypackage()
+                .ok_or(Status::aborted("failed to deserialize key package"))?;
         log::trace!(
             "   for {:#x?}",
             key_package
@@ -677,18 +694,9 @@ impl MlsClient for MlsClientImpl {
             .map_err(into_status)?;
 
         // log::trace!("   generated Welcome bytes: {welcome:x?}");
-        let epoch_authenticator = interop_group
-            .group
-            .epoch_authenticator()
-            .as_slice()
-            .to_vec();
         log::trace!("   done committing");
 
-        Ok(Response::new(CommitResponse {
-            commit,
-            welcome,
-            epoch_authenticator,
-        }))
+        Ok(Response::new(CommitResponse { commit, welcome }))
     }
 
     async fn handle_commit(

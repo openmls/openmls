@@ -1,4 +1,3 @@
-// This was copied from https://github.com/mlswg/mls-implementations/blob/main/interop/proto/mls_client.proto
 syntax = "proto3";
 
 option go_package = "github.com/mlswg/mls-implementations/interop/proto";
@@ -74,6 +73,9 @@ message CreateKeyPackageRequest {
 message CreateKeyPackageResponse {
   uint32 transaction_id = 1;
   bytes key_package = 2;
+  bytes init_priv = 3;
+  bytes encryption_priv = 4;
+  bytes signature_priv = 5;
 }
 
 // rpc JoinGroup
@@ -86,6 +88,7 @@ message JoinGroupRequest {
 
 message JoinGroupResponse { 
   uint32 state_id = 1;
+  bytes epoch_authenticator = 2;
 }
 
 // rpc ExternalJoin
@@ -203,7 +206,6 @@ message CommitRequest {
 message CommitResponse {
   bytes commit = 1;
   bytes welcome = 2;
-  bytes epoch_authenticator = 3;
 }
 
 // rpc HandleCommit
