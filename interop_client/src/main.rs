@@ -331,7 +331,7 @@ impl MlsClient for MlsClientImpl {
             messages_out: Vec::new(),
             crypto_provider,
         };
-        log::debug!("   in epoch {:?}", interop_group.group.epoch());
+        log::trace!("   in epoch {:?}", interop_group.group.epoch());
 
         let mut groups = self.groups.lock().unwrap();
         let state_id = groups.len() as u32;
@@ -372,7 +372,7 @@ impl MlsClient for MlsClientImpl {
         let interop_group = groups
             .get(state_auth_request.state_id as usize)
             .ok_or_else(|| tonic::Status::new(tonic::Code::InvalidArgument, "unknown state_id"))?;
-        log::debug!("   in epoch {:?}", interop_group.group.epoch());
+        log::trace!("   in epoch {:?}", interop_group.group.epoch());
 
         let state_auth_secret = interop_group.group.epoch_authenticator();
 
@@ -392,7 +392,7 @@ impl MlsClient for MlsClientImpl {
         let interop_group = groups
             .get(export_request.state_id as usize)
             .ok_or_else(|| tonic::Status::new(tonic::Code::InvalidArgument, "unknown state_id"))?;
-        log::debug!("   in epoch {:?}", interop_group.group.epoch());
+        log::trace!("   in epoch {:?}", interop_group.group.epoch());
 
         let exported_secret = interop_group
             .group
@@ -418,8 +418,8 @@ impl MlsClient for MlsClientImpl {
         let interop_group = groups
             .get_mut(protect_request.state_id as usize)
             .ok_or_else(|| tonic::Status::new(tonic::Code::InvalidArgument, "unknown state_id"))?;
-        log::debug!("   in epoch {:?}", interop_group.group.epoch());
-        log::debug!(
+        log::trace!("   in epoch {:?}", interop_group.group.epoch());
+        log::trace!(
             "   from user {:x?}",
             interop_group.group.own_identity().unwrap()
         );
@@ -448,7 +448,7 @@ impl MlsClient for MlsClientImpl {
         let interop_group = groups
             .get_mut(unprotect_request.state_id as usize)
             .ok_or_else(|| tonic::Status::new(tonic::Code::InvalidArgument, "unknown state_id"))?;
-        log::debug!("   in epoch {:?}", interop_group.group.epoch());
+        log::trace!("   in epoch {:?}", interop_group.group.epoch());
 
         let message = MlsMessageIn::tls_deserialize(&mut unprotect_request.ciphertext.as_slice())
             .map_err(|_| Status::aborted("failed to deserialize ciphertext"))?;
@@ -486,7 +486,7 @@ impl MlsClient for MlsClientImpl {
         let interop_group = groups
             .get_mut(add_proposal_request.state_id as usize)
             .ok_or_else(|| tonic::Status::new(tonic::Code::InvalidArgument, "unknown state_id"))?;
-        log::debug!("   in epoch {:?}", interop_group.group.epoch());
+        log::trace!("   in epoch {:?}", interop_group.group.epoch());
 
         let key_package =
             KeyPackage::tls_deserialize(&mut add_proposal_request.key_package.as_slice())
@@ -531,7 +531,7 @@ impl MlsClient for MlsClientImpl {
         let interop_group = groups
             .get_mut(update_proposal_request.state_id as usize)
             .ok_or_else(|| tonic::Status::new(tonic::Code::InvalidArgument, "unknown state_id"))?;
-        log::debug!("   in epoch {:?}", interop_group.group.epoch());
+        log::trace!("   in epoch {:?}", interop_group.group.epoch());
 
         let mls_group_config = MlsGroupConfig::builder()
             .use_ratchet_tree_extension(true)
@@ -571,7 +571,7 @@ impl MlsClient for MlsClientImpl {
         let interop_group = groups
             .get_mut(remove_proposal_request.state_id as usize)
             .ok_or_else(|| tonic::Status::new(tonic::Code::InvalidArgument, "unknown state_id"))?;
-        log::debug!("   in epoch {:?}", interop_group.group.epoch());
+        log::trace!("   in epoch {:?}", interop_group.group.epoch());
 
         let mls_group_config = MlsGroupConfig::builder()
             .use_ratchet_tree_extension(true)
@@ -620,18 +620,22 @@ impl MlsClient for MlsClientImpl {
         let interop_group = groups
             .get_mut(commit_request.state_id as usize)
             .ok_or_else(|| tonic::Status::new(tonic::Code::InvalidArgument, "unknown state_id"))?;
-        log::debug!("   in epoch {:?}", interop_group.group.epoch());
+        log::trace!("   in epoch {:?}", interop_group.group.epoch());
 
         // Proposals by reference. These proposals are standalone proposals. They should
         // be appended to the proposal store.
 
+        // XXX[FK] This API is pretty bad.
+
         for proposal in &commit_request.by_reference {
+            log::trace!("   processing proposal ...");
             let message = MlsMessageIn::tls_deserialize(&mut proposal.as_slice())
-                .map_err(|_| Status::aborted("failed to deserialize ciphertext"))?;
+                .map_err(|_| Status::aborted("failed to deserialize proposal"))?;
             let processed_message = interop_group
                 .group
                 .process_message(&interop_group.crypto_provider, message)
                 .map_err(into_status)?;
+            log::trace!("       done");
             match processed_message.into_content() {
                 ProcessedMessageContent::ApplicationMessage(_) => unreachable!(),
                 ProcessedMessageContent::ProposalMessage(proposal) => {
@@ -654,7 +658,7 @@ impl MlsClient for MlsClientImpl {
                 &interop_group.signature_keys,
             )
             .map_err(into_status)?;
-        // log::debug!("   generated Welcome: {welcome_option:?}");
+        // log::trace!("   generated Welcome: {welcome_option:?}");
 
         let commit = commit.to_bytes().unwrap();
 
@@ -665,12 +669,19 @@ impl MlsClient for MlsClientImpl {
         } else {
             vec![]
         };
-        // log::debug!("   generated Welcome bytes: {welcome:x?}");
+
+        interop_group
+            .group
+            .merge_pending_commit(&interop_group.crypto_provider)
+            .map_err(into_status)?;
+
+        // log::trace!("   generated Welcome bytes: {welcome:x?}");
         let epoch_authenticator = interop_group
             .group
             .epoch_authenticator()
             .as_slice()
             .to_vec();
+        log::trace!("   done committing");
 
         Ok(Response::new(CommitResponse {
             commit,
@@ -690,8 +701,8 @@ impl MlsClient for MlsClientImpl {
         let interop_group = groups
             .get_mut(handle_commit_request.state_id as usize)
             .ok_or_else(|| tonic::Status::new(tonic::Code::InvalidArgument, "unknown state_id"))?;
-        log::debug!("   in epoch {:?}", interop_group.group.epoch());
-        log::debug!("   for user {:x?}", interop_group.group.own_identity());
+        log::trace!("   in epoch {:?}", interop_group.group.epoch());
+        log::trace!("   for user {:x?}", interop_group.group.own_identity());
 
         // XXX[FK]: This is a horrible API.
 
@@ -719,16 +730,21 @@ impl MlsClient for MlsClientImpl {
             .group
             .process_message(&interop_group.crypto_provider, message)
             .map_err(into_status)?;
+
         match processed_message.into_content() {
             ProcessedMessageContent::ApplicationMessage(_) => unreachable!(),
             ProcessedMessageContent::ProposalMessage(_) => unreachable!(),
             ProcessedMessageContent::ExternalJoinProposalMessage(_) => unreachable!(),
-            ProcessedMessageContent::StagedCommitMessage(_) => {
+            ProcessedMessageContent::StagedCommitMessage(staged_commit) => {
                 log::trace!("   merging pending commit");
                 interop_group
                     .group
-                    .merge_pending_commit(&interop_group.crypto_provider)
+                    .merge_staged_commit(&interop_group.crypto_provider, *staged_commit)
                     .map_err(into_status)?;
+                // interop_group
+                //     .group
+                //     .merge_pending_commit(&interop_group.crypto_provider)
+                //     .map_err(into_status)?;
             }
         }
 
@@ -737,7 +753,7 @@ impl MlsClient for MlsClientImpl {
             .epoch_authenticator()
             .as_slice()
             .to_vec();
-        log::debug!("   new epoch {:?}", interop_group.group.epoch());
+        log::trace!("   new epoch {:?}", interop_group.group.epoch());
 
         Ok(Response::new(HandleCommitResponse {
             state_id: handle_commit_request.state_id,
@@ -756,7 +772,7 @@ impl MlsClient for MlsClientImpl {
         let interop_group = groups
             .get_mut(obj.state_id as usize)
             .ok_or_else(|| tonic::Status::new(tonic::Code::InvalidArgument, "unknown state_id"))?;
-        log::debug!("   in epoch {:?}", interop_group.group.epoch());
+        log::trace!("   in epoch {:?}", interop_group.group.epoch());
 
         interop_group
             .group
