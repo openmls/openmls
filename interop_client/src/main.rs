@@ -57,7 +57,7 @@ pub struct MlsClientImpl {
             ),
         >,
     >,
-    transaction_id_map: Mutex<HashMap<u32, (KeyPackage, HpkePrivateKey)>>,
+    transaction_id_map: Mutex<HashMap<u32, Vec<Vec<u8>>>>, // List of proposals
 }
 
 impl MlsClientImpl {
@@ -68,6 +68,19 @@ impl MlsClientImpl {
             pending_key_packages: Mutex::new(HashMap::new()),
             transaction_id_map: Mutex::new(HashMap::new()),
         }
+    }
+
+    fn add_proposal_to_transaction_list(&self, proposal: Vec<u8>) {
+        let mut transaction_id_map = self.transaction_id_map.lock().unwrap();
+        let transaction_id = transaction_id_map.len() as u32;
+        transaction_id_map.insert(transaction_id, vec![proposal]);
+    }
+
+    fn own_proposal(&self, proposal_transaction_id: u32) -> Option<Vec<u8>> {
+        let mut transaction_id_map = self.transaction_id_map.lock().unwrap();
+        transaction_id_map
+            .get(&proposal_transaction_id)
+            .map(|ps| ps[0].clone())
     }
 }
 
@@ -216,6 +229,7 @@ impl MlsClient for MlsClientImpl {
         log::trace!("   for {:x?}", create_kp_request.identity);
 
         let key_package = KeyPackage::builder()
+            .leaf_node_capabilities(Capabilities::default())
             .build(
                 CryptoConfig {
                     ciphersuite,
@@ -240,10 +254,8 @@ impl MlsClient for MlsClientImpl {
         )
         .unwrap();
 
-        // Store the key package and private key for later use.
         let mut transaction_id_map = self.transaction_id_map.lock().unwrap();
         let transaction_id = transaction_id_map.len() as u32;
-        transaction_id_map.insert(transaction_id, (key_package.clone(), private_key.clone()));
 
         self.pending_key_packages.lock().unwrap().insert(
             create_kp_request.identity.clone(),
@@ -517,6 +529,9 @@ impl MlsClient for MlsClientImpl {
         // log::trace!("   proposal: {proposal:#x?}");
         let proposal = proposal.to_bytes().unwrap();
 
+        // Store proposal for this transaction
+        self.add_proposal_to_transaction_list(proposal.clone());
+
         Ok(Response::new(ProposalResponse { proposal }))
     }
 
@@ -627,23 +642,8 @@ impl MlsClient for MlsClientImpl {
 
         // XXX[FK] This API is pretty bad.
 
-        for proposal in &commit_request.by_reference {
-            log::trace!("   processing proposal ...");
-            let message = MlsMessageIn::tls_deserialize(&mut proposal.as_slice())
-                .map_err(|_| Status::aborted("failed to deserialize proposal"))?;
-            let processed_message = interop_group
-                .group
-                .process_message(&interop_group.crypto_provider, message)
-                .map_err(into_status)?;
-            log::trace!("       done");
-            match processed_message.into_content() {
-                ProcessedMessageContent::ApplicationMessage(_) => unreachable!(),
-                ProcessedMessageContent::ProposalMessage(proposal) => {
-                    interop_group.group.store_pending_proposal(*proposal);
-                }
-                ProcessedMessageContent::ExternalJoinProposalMessage(_) => unreachable!(),
-                ProcessedMessageContent::StagedCommitMessage(_) => unreachable!(),
-            }
+        for _proposal in &commit_request.by_reference {
+            log::trace!("   proposals by reference ... we don't care.");
         }
 
         // Proposals by value. These proposals are inline proposals. They should be
@@ -706,22 +706,8 @@ impl MlsClient for MlsClientImpl {
 
         // XXX[FK]: This is a horrible API.
 
-        for proposal in &handle_commit_request.proposal {
-            let message = MlsMessageIn::tls_deserialize(&mut proposal.as_slice())
-                .map_err(|_| Status::aborted("failed to deserialize ciphertext"))?;
-            let processed_message = interop_group
-                .group
-                .process_message(&interop_group.crypto_provider, message)
-                .map_err(into_status)?;
-            match processed_message.into_content() {
-                ProcessedMessageContent::ApplicationMessage(_) => unreachable!(),
-                ProcessedMessageContent::ProposalMessage(proposal) => {
-                    log::trace!("   storing pending proposal");
-                    interop_group.group.store_pending_proposal(*proposal);
-                }
-                ProcessedMessageContent::ExternalJoinProposalMessage(_) => unreachable!(),
-                ProcessedMessageContent::StagedCommitMessage(_) => unreachable!(),
-            }
+        for _proposal in &handle_commit_request.proposal {
+            log::trace!("   proposals by reference ... we don't care.");
         }
 
         let message = MlsMessageIn::tls_deserialize(&mut handle_commit_request.commit.as_slice())

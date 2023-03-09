@@ -374,6 +374,11 @@ impl PrivateMessage {
                     "  Ciphertext generation out of bounds {}",
                     sender_data.generation
                 );
+                debug_assert!(
+                    false,
+                    "  Ciphertext generation out of bounds {}",
+                    sender_data.generation
+                );
                 MessageDecryptionError::GenerationOutOfBound
             })?;
         // Prepare the nonce by xoring with the reuse guard.

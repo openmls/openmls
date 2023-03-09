@@ -41,6 +41,8 @@ fn generate_key_package<KeyStore: OpenMlsKeyStore>(
 ///  - Alice adds Charlie
 #[apply(ciphersuites_and_backends)]
 fn mls_multiple_add(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
+    let _ = pretty_env_logger::try_init();
+
     for wire_format_policy in WIRE_FORMAT_POLICIES.iter() {
         let group_id = GroupId::from_slice(b"Test Group");
 
@@ -110,9 +112,15 @@ fn mls_multiple_add(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvid
             .propose_add_member(backend, &alice_signer, &charlie_key_package)
             .unwrap();
 
-        let (queued_message, _welcome_option, _group_info) = alice_group
-            .commit_to_pending_proposals(backend, &alice_signer)
+        // Alice processes the proposals
+        let proposal_charlie: MlsMessageIn = proposal_charlie.into();
+        let processed_message = alice_group
+            .process_message(backend, proposal_charlie)
             .unwrap();
+
+        // let (queued_message, _welcome_option, _group_info) = alice_group
+        //     .commit_to_pending_proposals(backend, &alice_signer)
+        //     .unwrap();
     }
 }
 

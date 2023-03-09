@@ -42,6 +42,9 @@ impl ProposalStore {
     pub(crate) fn proposals(&self) -> impl Iterator<Item = &QueuedProposal> {
         self.queued_proposals.iter()
     }
+    pub(crate) fn proposals_mut(&mut self) -> &mut Vec<QueuedProposal> {
+        &mut self.queued_proposals
+    }
     pub(crate) fn is_empty(&self) -> bool {
         self.queued_proposals.is_empty()
     }

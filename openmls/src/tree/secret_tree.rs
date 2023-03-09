@@ -306,14 +306,20 @@ impl SecretTree {
         );
         // Check tree bounds
         if index.u32() >= self.size.leaf_count() {
+            log::error!("Sender index is not in the tree.");
             return Err(SecretTreeError::IndexOutOfBounds);
         }
         if self.ratchet_opt(index, secret_type)?.is_none() {
+            log::trace!("   initialize sender ratchets");
             self.initialize_sender_ratchets(ciphersuite, backend, index)?;
         }
         match self.ratchet_mut(index, secret_type) {
-            SenderRatchet::EncryptionRatchet(_) => Err(SecretTreeError::RatchetTypeError),
+            SenderRatchet::EncryptionRatchet(_) => {
+                log::error!("This is the wrong ratchet type.");
+                Err(SecretTreeError::RatchetTypeError)
+            }
             SenderRatchet::DecryptionRatchet(dec_ratchet) => {
+                log::trace!("   getting secret for decryption");
                 dec_ratchet.secret_for_decryption(ciphersuite, backend, generation, configuration)
             }
         }
