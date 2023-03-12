@@ -70,9 +70,9 @@ fn codec_plaintext(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvide
     let enc = orig
         .tls_serialize_detached()
         .expect("An unexpected error occurred.");
-    let copy =
-        PublicMessage::tls_deserialize(&mut enc.as_slice()).expect("An unexpected error occurred.");
-    assert_eq!(orig, copy);
+    let copy = PublicMessageIn::tls_deserialize(&mut enc.as_slice())
+        .expect("An unexpected error occurred.");
+    assert_eq!(orig, copy.into());
     assert!(!orig.is_handshake_message());
 }
 
@@ -146,10 +146,10 @@ fn codec_ciphertext(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvid
     let enc = orig
         .tls_serialize_detached()
         .expect("An unexpected error occurred.");
-    let copy = PrivateMessage::tls_deserialize(&mut enc.as_slice())
+    let copy = PrivateMessageIn::tls_deserialize(&mut enc.as_slice())
         .expect("An unexpected error occurred.");
 
-    assert_eq!(orig, copy);
+    assert_eq!(orig, copy.into());
     assert!(!orig.is_handshake_message());
 }
 
@@ -189,7 +189,7 @@ fn wire_format_checks(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProv
     message_secrets.replace_secret_tree(sender_secret_tree);
 
     let sender_index = LeafNodeIndex::new(0);
-    let ciphertext = PrivateMessage::encrypt_with_different_header(
+    let ciphertext: PrivateMessageIn = PrivateMessage::encrypt_with_different_header(
         &plaintext,
         ciphersuite,
         backend,
@@ -201,7 +201,8 @@ fn wire_format_checks(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProv
         &mut message_secrets,
         0,
     )
-    .expect("Could not encrypt PublicMessage.");
+    .expect("Could not encrypt PublicMessage.")
+    .into();
 
     // Decrypt the ciphertext and expect the correct wire format
 
@@ -237,14 +238,15 @@ fn wire_format_checks(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProv
 
     let receiver_secret_tree = message_secrets.replace_secret_tree(sender_secret_tree);
     // Bypass wire format check during encryption
-    let ciphertext = PrivateMessage::encrypt_without_check(
+    let ciphertext: PrivateMessageIn = PrivateMessage::encrypt_without_check(
         &plaintext,
         ciphersuite,
         backend,
         &mut message_secrets,
         0,
     )
-    .expect("Could not encrypt PublicMessage.");
+    .expect("Could not encrypt PublicMessage.")
+    .into();
 
     // Try to process a ciphertext with the wrong wire format
     let sender_secret_tree = message_secrets.replace_secret_tree(receiver_secret_tree);
@@ -264,7 +266,7 @@ fn wire_format_checks(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProv
         .expect("Could not decrypt PrivateMessage.");
 
     // We expect the signature to fail since the original content was signed with a different wire format.
-    let result: Result<AuthenticatedContent, SignatureError> =
+    let result: Result<AuthenticatedContentIn, SignatureError> =
         verifiable_plaintext.verify(backend.crypto(), &pk);
 
     assert_eq!(
@@ -347,7 +349,7 @@ fn membership_tag(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
         Secret::random(ciphersuite, backend, None /* MLS version */)
             .expect("Not enough randomness."),
     );
-    let mut public_message: PublicMessage = AuthenticatedContent::new_application(
+    let public_message: PublicMessage = AuthenticatedContent::new_application(
         LeafNodeIndex::new(987543210),
         &[1, 2, 3],
         &[4, 5, 6],
@@ -356,6 +358,8 @@ fn membership_tag(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
     )
     .expect("An unexpected error occurred.")
     .into();
+
+    let mut public_message = PublicMessageIn::from(public_message);
 
     let serialized_context = group_context.tls_serialize_detached().unwrap();
     public_message
@@ -373,7 +377,7 @@ fn membership_tag(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
         .is_ok());
 
     // Change the content of the plaintext message
-    public_message.set_content(FramedContentBody::Application(vec![7, 8, 9].into()));
+    public_message.set_content(FramedContentBodyIn::Application(vec![7, 8, 9].into()));
 
     // Expect the signature & membership tag verification to fail
     assert!(public_message
@@ -568,7 +572,7 @@ fn unknown_sender(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
     )
     .expect("Encryption error");
 
-    let received_message = group_charlie.decrypt(&enc_message, backend, configuration);
+    let received_message = group_charlie.decrypt(&enc_message.into(), backend, configuration);
     assert_eq!(
         received_message.unwrap_err(),
         MessageDecryptionError::SenderError(SenderError::UnknownSender)

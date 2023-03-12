@@ -475,10 +475,10 @@ impl CoreGroup {
     #[cfg(test)]
     pub(crate) fn decrypt(
         &mut self,
-        private_message: &PrivateMessage,
+        private_message: &PrivateMessageIn,
         backend: &impl OpenMlsCryptoProvider,
         sender_ratchet_configuration: &SenderRatchetConfiguration,
-    ) -> Result<VerifiableAuthenticatedContent, MessageDecryptionError> {
+    ) -> Result<VerifiableAuthenticatedContentIn, MessageDecryptionError> {
         let ciphersuite = self.ciphersuite();
         let message_secrets = self
             .message_secrets_mut(private_message.epoch())

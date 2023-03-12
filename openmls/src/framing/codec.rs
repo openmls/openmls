@@ -1,9 +1,8 @@
 use tls_codec::{Serialize, Size};
 
 use super::{
-    mls_auth_content::FramedContentAuthData,
-    mls_content::{ContentType, FramedContentBody},
-    *,
+    mls_auth_content_in::FramedContentAuthDataIn, mls_content_in::FramedContentBodyIn,
+    private_message_in::PrivateContentTbeIn, *,
 };
 use std::io::{Read, Write};
 
@@ -39,9 +38,9 @@ impl Serialize for PrivateContentTbe {
 pub(super) fn deserialize_ciphertext_content<R: Read>(
     bytes: &mut R,
     content_type: ContentType,
-) -> Result<PrivateContentTbe, tls_codec::Error> {
-    let content = FramedContentBody::deserialize_without_type(bytes, content_type)?;
-    let auth = FramedContentAuthData::deserialize(bytes, content_type)?;
+) -> Result<PrivateContentTbeIn, tls_codec::Error> {
+    let content = FramedContentBodyIn::deserialize_without_type(bytes, content_type)?;
+    let auth = FramedContentAuthDataIn::deserialize(bytes, content_type)?;
 
     let padding = {
         let mut buffer = Vec::new();
@@ -51,16 +50,10 @@ pub(super) fn deserialize_ciphertext_content<R: Read>(
         buffer
     };
 
-    let length_of_padding = padding.len();
-
     // ValSem011: PrivateContentTbe padding must be all-zero.
     if !padding.into_iter().all(|byte| byte == 0x00) {
         return Err(Error::InvalidInput);
     }
 
-    Ok(PrivateContentTbe {
-        content,
-        auth,
-        length_of_padding,
-    })
+    Ok(PrivateContentTbeIn { content, auth })
 }
