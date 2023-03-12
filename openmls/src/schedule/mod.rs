@@ -121,6 +121,10 @@
 // | `resumption_psk`        | "resumption"    |
 // ```
 
+use openmls_traits::{crypto::OpenMlsCrypto, types::*, OpenMlsCryptoProvider};
+use serde::{Deserialize, Serialize};
+use tls_codec::{TlsDeserialize, TlsSerialize, TlsSize};
+
 use crate::{
     binary_tree::array_representation::{LeafNodeIndex, TreeSize},
     ciphersuite::{AeadKey, AeadNonce, HpkePrivateKey, Mac, Secret},
@@ -134,9 +138,6 @@ use crate::{
     tree::secret_tree::SecretTree,
     versions::ProtocolVersion,
 };
-use openmls_traits::{crypto::OpenMlsCrypto, types::*, OpenMlsCryptoProvider};
-use serde::{Deserialize, Serialize};
-use tls_codec::{TlsDeserialize, TlsSerialize, TlsSize};
 
 // Public
 pub mod errors;
@@ -587,9 +588,10 @@ impl WelcomeSecret {
             "WelcomeSecret.derive_aead_key with {}",
             self.secret.ciphersuite()
         );
-        let aead_secret = self.secret.hkdf_expand(
+        let aead_secret = self.secret.kdf_expand_label(
             backend,
-            b"key",
+            "key",
+            b"",
             self.secret.ciphersuite().aead_key_length(),
         )?;
         Ok(AeadKey::from_secret(aead_secret))
@@ -600,9 +602,10 @@ impl WelcomeSecret {
         &self,
         backend: &impl OpenMlsCryptoProvider,
     ) -> Result<AeadNonce, CryptoError> {
-        let nonce_secret = self.secret.hkdf_expand(
+        let nonce_secret = self.secret.kdf_expand_label(
             backend,
-            b"nonce",
+            "nonce",
+            b"",
             self.secret.ciphersuite().aead_nonce_length(),
         )?;
         Ok(AeadNonce::from_secret(nonce_secret))
@@ -736,7 +739,7 @@ impl ExporterSecret {
         Ok(self
             .secret
             .derive_secret(backend, label)?
-            .kdf_expand_label(backend, "exporter", context_hash, key_length)?
+            .kdf_expand_label(backend, "exported", context_hash, key_length)?
             .as_slice()
             .to_vec())
     }

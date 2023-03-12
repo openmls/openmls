@@ -177,12 +177,11 @@ impl Proposal {
     /// Indicates whether a Commit containing this [Proposal] requires a path.
     pub fn is_path_required(&self) -> bool {
         match self {
-            Self::Add(_)
-            | Self::PreSharedKey(_)
-            | Self::ReInit(_)
-            | Self::AppAck(_)
-            | Self::GroupContextExtensions(_) => false,
-            Self::Update(_) | Self::Remove(_) | Self::ExternalInit(_) => true,
+            Self::Add(_) | Self::PreSharedKey(_) | Self::ReInit(_) | Self::AppAck(_) => false,
+            Self::Update(_)
+            | Self::Remove(_)
+            | Self::ExternalInit(_)
+            | Self::GroupContextExtensions(_) => true,
         }
     }
 }
