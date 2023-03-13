@@ -19,12 +19,13 @@
 //! - [`RequiredCapabilitiesExtension`] (GroupContext extension)
 //! - [`ExternalPubExtension`] (GroupInfo extension)
 
-use serde::{Deserialize, Serialize};
 use std::{
     collections::{btree_map::Entry, BTreeMap},
     fmt::Debug,
     io::{Read, Write},
 };
+
+use serde::{Deserialize, Serialize};
 use tls_codec::*;
 
 // Private
@@ -437,7 +438,7 @@ mod test {
     use itertools::Itertools;
     use tls_codec::{Deserialize, Serialize};
 
-    use crate::extensions::*;
+    use crate::{ciphersuite::HpkePublicKey, extensions::*};
 
     #[test]
     fn add() {
@@ -514,7 +515,7 @@ mod test {
         // that all permutations keep their order after being (de)serialized.
         // The extension content does not matter in this test.
         let ext_x = Extension::ApplicationId(ApplicationIdExtension::new(b"Test"));
-        let ext_y = Extension::RatchetTree(RatchetTreeExtension::default());
+        let ext_y = Extension::ExternalPub(ExternalPubExtension::new(HpkePublicKey::new(vec![])));
         let ext_z = Extension::RequiredCapabilities(RequiredCapabilitiesExtension::default());
 
         for candidate in [ext_x, ext_y, ext_z]

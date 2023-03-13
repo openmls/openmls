@@ -36,6 +36,14 @@ pub enum Node {
     ParentNode(ParentNode),
 }
 
+#[cfg(test)]
+impl Node {
+    /// Create a dummy [`Node`] for testing.
+    pub(crate) fn dummy() -> Self {
+        Node::LeafNode(OpenMlsLeafNode::dummy())
+    }
+}
+
 /// Container enum with reference to a node in a tree.
 pub(crate) enum NodeReference<'a> {
     Leaf(&'a OpenMlsLeafNode),

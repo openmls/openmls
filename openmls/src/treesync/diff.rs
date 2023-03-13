@@ -17,10 +17,10 @@
 //! functions that are not expected to fail and throw an error, will still
 //! return a [`Result`] since they may throw a
 //! [`LibraryError`](TreeSyncDiffError::LibraryError).
+use std::collections::HashSet;
+
 use openmls_traits::{signatures::Signer, types::Ciphersuite, OpenMlsCryptoProvider};
 use serde::{Deserialize, Serialize};
-
-use std::collections::HashSet;
 
 use super::{
     errors::*,
@@ -34,7 +34,6 @@ use super::{
     treesync_node::{TreeSyncLeafNode, TreeSyncParentNode},
     TreeSync, TreeSyncParentHashError,
 };
-
 use crate::{
     binary_tree::{
         array_representation::{
@@ -826,7 +825,7 @@ impl<'a> TreeSyncDiff<'a> {
             nodes.push(leaf.node().clone().map(Node::LeafNode));
         } else {
             // The tree was empty.
-            return vec![].into();
+            return RatchetTree::trimmed(vec![]);
         }
 
         // Blank parent node used for padding
@@ -852,7 +851,7 @@ impl<'a> TreeSyncDiff<'a> {
             nodes.push(leaf.node().clone().map(Node::LeafNode));
         }
 
-        nodes.into()
+        RatchetTree::trimmed(nodes)
     }
 
     /// Returns the filtered common path two leaf nodes share. If the leaves are
