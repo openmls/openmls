@@ -287,7 +287,7 @@ impl TlsSerializeTrait for FramedContentTbsIn {
 // The following two `From` implementations break abstraction layers and MUST
 // NOT be made available outside of tests or "test-utils".
 
-// TODO: re-enable #[cfg(any(feature = "test-utils", test))]
+// TODO #1186: re-enable #[cfg(any(feature = "test-utils", test))]
 impl From<FramedContentBodyIn> for FramedContentBody {
     fn from(body: FramedContentBodyIn) -> Self {
         match body {
