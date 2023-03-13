@@ -9,9 +9,7 @@
 
 use serde::{Deserialize, Serialize};
 use std::io::{Read, Write};
-use tls_codec::{
-    Deserialize as TlsDeserializeTrait, Serialize as TlsSerializeTrait, Size, TlsSerialize, TlsSize,
-};
+use tls_codec::{Deserialize as TlsDeserializeTrait, Serialize as TlsSerializeTrait, Size};
 
 use crate::{
     ciphersuite::signable::{SignedStruct, Verifiable, VerifiedStruct},
@@ -95,7 +93,7 @@ impl FramedContentAuthDataIn {
 ///     FramedContentAuthData auth;
 /// } AuthenticatedContent;
 /// ```
-#[derive(PartialEq, Debug, Clone, TlsSerialize, TlsSize)]
+#[derive(PartialEq, Debug, Clone)]
 pub(crate) struct AuthenticatedContentIn {
     pub(super) wire_format: WireFormat,
     pub(super) content: FramedContentIn,
@@ -322,7 +320,7 @@ impl TlsSerializeTrait for FramedContentAuthDataIn {
 
 // The following two `From` implementations break abstraction layers and MUST
 // NOT be made available outside of tests or "test-utils".
-
+// TODO #1186: Re-enable #[cfg(any(feature = "test-utils", test))]
 impl From<AuthenticatedContentIn> for AuthenticatedContent {
     fn from(v: AuthenticatedContentIn) -> Self {
         AuthenticatedContent {

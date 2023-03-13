@@ -19,15 +19,8 @@ use std::{
     io::{Read, Write},
 };
 use tls_codec::{
-    Deserialize as TlsDeserializeTrait, Serialize as TlsSerializeTrait, TlsDeserialize,
-    TlsSerialize, TlsSize,
+    Deserialize as TlsDeserializeTrait, Serialize as TlsSerializeTrait, TlsSerialize, TlsSize,
 };
-
-/// Wrapper around a `Mac` used for type safety.
-#[derive(
-    Debug, PartialEq, Clone, Serialize, Deserialize, TlsSerialize, TlsDeserialize, TlsSize,
-)]
-pub(crate) struct MembershipTagIn(pub(crate) Mac);
 
 /// [`PublicMessageIn`] is a framing structure for MLS messages. It can contain
 /// Proposals, Commits and application messages.
@@ -302,7 +295,7 @@ impl TlsSerializeTrait for PublicMessageIn {
 // The following two `From` implementations break abstraction layers and MUST
 // NOT be made available outside of tests or "test-utils".
 
-// TODO: Re-enable this #[cfg(any(feature = "test-utils", test))]
+// TODO #1186: Re-enable this #[cfg(any(feature = "test-utils", test))]
 impl From<PublicMessageIn> for PublicMessage {
     fn from(v: PublicMessageIn) -> Self {
         PublicMessage {
