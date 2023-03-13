@@ -10,6 +10,7 @@ use serde::{Deserialize, Serialize};
 use thiserror::*;
 use tls_codec::{TlsDeserialize, TlsSerialize, TlsSize, VLBytes};
 
+use super::encryption_keys::{EncryptionKey, EncryptionKeyPair};
 use crate::{
     binary_tree::array_representation::{LeafNodeIndex, ParentNodeIndex},
     ciphersuite::HpkePublicKey,
@@ -18,8 +19,6 @@ use crate::{
     schedule::CommitSecret,
     treesync::{hashes::ParentHashInput, treekem::UpdatePathNode},
 };
-
-use super::encryption_keys::{EncryptionKey, EncryptionKeyPair};
 
 /// This struct implements the MLS parent node. It contains its public key,
 /// parent hash and unmerged leaves. Additionally, it may contain the private
@@ -44,6 +43,7 @@ impl From<EncryptionKey> for ParentNode {
 }
 
 /// Helper struct for the encryption of a [`ParentNode`].
+#[cfg_attr(test, derive(Clone))]
 #[derive(Debug)]
 pub(crate) struct PlainUpdatePathNode {
     public_key: EncryptionKey,
