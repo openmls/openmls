@@ -20,6 +20,7 @@
 
 #[cfg(any(feature = "test-utils", test))]
 use std::fmt;
+use std::io::Read;
 
 use openmls_traits::{
     signatures::Signer,
@@ -27,7 +28,8 @@ use openmls_traits::{
     OpenMlsCryptoProvider,
 };
 use serde::{Deserialize, Serialize};
-use tls_codec::{TlsDeserialize, TlsSerialize, TlsSize};
+use thiserror::Error;
+use tls_codec::{TlsSerialize, TlsSize};
 
 use self::{
     diff::{StagedTreeSyncDiff, TreeSyncDiff},
@@ -77,23 +79,76 @@ pub use node::{leaf_node::LeafNode, parent_node::ParentNode, Node};
 pub mod tests_and_kats;
 
 /// An exported ratchet tree as used in, e.g., [`GroupInfo`](crate::messages::group_info::GroupInfo).
-#[derive(
-    PartialEq,
-    Eq,
-    Clone,
-    Debug,
-    Default,
-    Serialize,
-    Deserialize,
-    TlsSerialize,
-    TlsDeserialize,
-    TlsSize,
-)]
-// TODO(#1305): Make the ratchet tree non-malleable.
-//
-// * ValSemXXX: "If the tree has 2^d leaves, then it has 2^(d+1) - 1 nodes. The ratchet_tree vector logically has this number of entries, but the sender SHOULD NOT include blank nodes after the last non-blank node."
-// * ValSemXXX: "Regardless of how the client obtains the tree, the client MUST verify that the root hash of the ratchet tree matches the tree_hash of the GroupContext before using the tree for MLS operations."
+#[derive(PartialEq, Eq, Clone, Debug, Serialize, Deserialize, TlsSerialize, TlsSize)]
 pub struct RatchetTree(Vec<Option<Node>>);
+
+/// An error during processing of an incoming ratchet tree.
+#[derive(Error, Debug, PartialEq, Clone)]
+pub enum RatchetTreeError {
+    /// The ratchet tree is empty.
+    #[error("The ratchet tree has no nodes.")]
+    MissingNodes,
+    /// The ratchet tree has a trailing blank node.
+    #[error("The ratchet tree has trailing blank nodes.")]
+    TrailingBlankNodes,
+}
+
+impl RatchetTree {
+    /// Create a [`RatchetTree`] from a vector of nodes stripping all trailing blank nodes.
+    ///
+    /// Note: The caller must ensure to call this with a vector that is *not* empty after removing all trailing blank nodes.
+    fn trimmed(mut nodes: Vec<Option<Node>>) -> Self {
+        // Remove all trailing blank nodes.
+        match nodes.iter().enumerate().rfind(|(_, node)| node.is_some()) {
+            Some((rightmost_nonempty_position, _)) => {
+                // We need to add 1 to `rightmost_nonempty_position` to keep the rightmost node.
+                nodes.resize(rightmost_nonempty_position + 1, None);
+            }
+            None => {
+                // If there is no rightmost non-blank node, the vector consist of blank nodes only.
+                nodes.clear();
+            }
+        }
+
+        debug_assert!(!nodes.is_empty(), "Caller should have ensured that `RatchetTree::trimmed` is not called with a vector that is empty after removing all trailing blank nodes.");
+        Self(nodes)
+    }
+}
+
+impl TryFrom<Vec<Option<Node>>> for RatchetTree {
+    type Error = RatchetTreeError;
+
+    fn try_from(value: Vec<Option<Node>>) -> Result<Self, Self::Error> {
+        // ValSem300: "Exported ratchet trees must not have trailing blank nodes."
+        //
+        // We can check this by only looking at the last node (if any).
+        match value.last() {
+            Some(Some(_)) => {
+                // The ratchet tree is not empty, i.e., has a last node, and the last node is not blank.
+                Ok(Self(value))
+            }
+            Some(None) => {
+                // The ratchet tree is not empty, i.e., has a last node, *but* the last node *is* blank.
+                Err(RatchetTreeError::TrailingBlankNodes)
+            }
+            None => {
+                // The ratchet tree is empty.
+                Err(RatchetTreeError::MissingNodes)
+            }
+        }
+    }
+}
+
+impl tls_codec::Deserialize for RatchetTree {
+    fn tls_deserialize<R: Read>(bytes: &mut R) -> Result<Self, tls_codec::Error>
+    where
+        Self: Sized,
+    {
+        let nodes = Vec::<Option<Node>>::tls_deserialize(bytes)?;
+
+        RatchetTree::try_from(nodes).map_err(|_| tls_codec::Error::InvalidInput)
+    }
+}
 
 #[cfg(any(feature = "test-utils", test))]
 impl fmt::Display for RatchetTree {
@@ -163,12 +218,6 @@ impl fmt::Display for RatchetTree {
         }
 
         Ok(())
-    }
-}
-
-impl From<Vec<Option<Node>>> for RatchetTree {
-    fn from(value: Vec<Option<Node>>) -> Self {
-        Self(value)
     }
 }
 
@@ -422,7 +471,7 @@ impl TreeSync {
             nodes.push(leaf.node_without_index().map(Node::LeafNode));
         } else {
             // The tree was empty.
-            return vec![].into();
+            return RatchetTree::trimmed(vec![]);
         }
 
         // Blank parent node used for padding
@@ -448,7 +497,7 @@ impl TreeSync {
             nodes.push(leaf.node_without_index().clone().map(Node::LeafNode));
         }
 
-        nodes.into()
+        RatchetTree::trimmed(nodes)
     }
 
     /// Return a reference to the leaf at the given `LeafNodeIndex` or `None` if the
@@ -523,5 +572,62 @@ impl TreeSync {
             }
         }
         Ok((keypairs, path_secret.into()))
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    #[cfg(debug_assertions)]
+    #[test]
+    #[should_panic]
+    /// This should only panic in debug-builds.
+    fn test_ratchet_tree_internal_empty() {
+        RatchetTree::trimmed(vec![]);
+    }
+
+    #[cfg(debug_assertions)]
+    #[test]
+    #[should_panic]
+    /// This should only panic in debug-builds.
+    fn test_ratchet_tree_internal_empty_after_trim() {
+        RatchetTree::trimmed(vec![None]);
+    }
+
+    #[cfg(not(debug_assertions))]
+    #[test]
+    /// This should not panic in release-builds.
+    fn test_ratchet_tree_internal_empty() {
+        RatchetTree::trimmed(vec![]);
+    }
+
+    #[cfg(not(debug_assertions))]
+    #[test]
+    /// This should not panic in release-builds.
+    fn test_ratchet_tree_internal_empty_after_trim() {
+        RatchetTree::trimmed(vec![None]);
+    }
+
+    #[test]
+    fn test_ratchet_tree_trailing_blank_nodes() {
+        let tests = [
+            (vec![], false),
+            (vec![None], false),
+            (vec![None, None], false),
+            (vec![None, None, None], false),
+            (vec![Some(Node::dummy())], true),
+            (vec![Some(Node::dummy()), None], false),
+            (vec![Some(Node::dummy()), None, Some(Node::dummy())], true),
+            (
+                vec![Some(Node::dummy()), None, Some(Node::dummy()), None],
+                false,
+            ),
+        ];
+
+        for (test, expected) in tests.into_iter() {
+            let got = RatchetTree::try_from(test).is_ok();
+            assert_eq!(got, expected);
+        }
     }
 }

@@ -498,6 +498,14 @@ impl LeafNode {
         }
         Ok(())
     }
+
+    /// Create a dummy [`LeafNode`] for testing.
+    pub(crate) fn dummy() -> Self {
+        Self {
+            payload: LeafNodePayload::dummy(),
+            signature: Signature::from(vec![]),
+        }
+    }
 }
 
 #[cfg(any(feature = "test-utils", test))]
@@ -549,6 +557,21 @@ struct LeafNodePayload {
     capabilities: Capabilities,
     leaf_node_source: LeafNodeSource,
     extensions: Extensions,
+}
+
+#[cfg(test)]
+impl LeafNodePayload {
+    /// Create a dummy [`LeafNodePayload`] for testing.
+    pub(crate) fn dummy() -> Self {
+        Self {
+            encryption_key: EncryptionKey::from(HpkePublicKey::new(vec![])),
+            signature_key: SignaturePublicKey::from(vec![]),
+            credential: Credential::new(vec![], CredentialType::Basic).unwrap(),
+            capabilities: Capabilities::default(),
+            leaf_node_source: LeafNodeSource::Update,
+            extensions: Extensions::empty(),
+        }
+    }
 }
 
 #[derive(
@@ -974,6 +997,17 @@ impl OpenMlsLeafNode {
     /// Get a list of supported cipher suites.
     pub fn ciphersuites(&self) -> &[Ciphersuite] {
         &self.leaf_node.payload.capabilities.ciphersuites
+    }
+}
+
+#[cfg(test)]
+impl OpenMlsLeafNode {
+    /// Create a dummy [`OpenMlsLeafNode`] for testing.
+    pub(crate) fn dummy() -> Self {
+        OpenMlsLeafNode {
+            leaf_index: None,
+            leaf_node: LeafNode::dummy(),
+        }
     }
 }
 
