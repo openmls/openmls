@@ -99,7 +99,7 @@ impl RatchetTree {
     /// Create a [`RatchetTree`] from a vector of nodes stripping all trailing blank nodes.
     ///
     /// Note: The caller must ensure to call this with a vector that is *not* empty after removing all trailing blank nodes.
-    fn from_nodes(mut nodes: Vec<Option<Node>>) -> Self {
+    fn trimmed(mut nodes: Vec<Option<Node>>) -> Self {
         // Remove all trailing blank nodes.
         match nodes.iter().enumerate().rfind(|(_, node)| node.is_some()) {
             Some((rightmost_nonempty_position, _)) => {
@@ -473,7 +473,7 @@ impl TreeSync {
             nodes.push(leaf.node_without_index().map(Node::LeafNode));
         } else {
             // The tree was empty.
-            return RatchetTree::from_nodes(vec![]);
+            return RatchetTree::trimmed(vec![]);
         }
 
         // Blank parent node used for padding
@@ -499,7 +499,7 @@ impl TreeSync {
             nodes.push(leaf.node_without_index().clone().map(Node::LeafNode));
         }
 
-        RatchetTree::from_nodes(nodes)
+        RatchetTree::trimmed(nodes)
     }
 
     /// Return a reference to the leaf at the given `LeafNodeIndex` or `None` if the
@@ -586,7 +586,7 @@ mod test {
     #[should_panic]
     /// This should only panic in debug-builds.
     fn test_ratchet_tree_internal_empty() {
-        RatchetTree::from_nodes(vec![]);
+        RatchetTree::trimmed(vec![]);
     }
 
     #[cfg(debug_assertions)]
@@ -594,21 +594,21 @@ mod test {
     #[should_panic]
     /// This should only panic in debug-builds.
     fn test_ratchet_tree_internal_empty_after_trim() {
-        RatchetTree::from_nodes(vec![None]);
+        RatchetTree::trimmed(vec![None]);
     }
 
     #[cfg(not(debug_assertions))]
     #[test]
     /// This should not panic in release-builds.
     fn test_ratchet_tree_internal_empty() {
-        RatchetTree::from_nodes(vec![]);
+        RatchetTree::trimmed(vec![]);
     }
 
     #[cfg(not(debug_assertions))]
     #[test]
     /// This should not panic in release-builds.
     fn test_ratchet_tree_internal_empty_after_trim() {
-        RatchetTree::from_nodes(vec![None]);
+        RatchetTree::trimmed(vec![None]);
     }
 
     #[test]

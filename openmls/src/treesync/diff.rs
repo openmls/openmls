@@ -825,7 +825,7 @@ impl<'a> TreeSyncDiff<'a> {
             nodes.push(leaf.node().clone().map(Node::LeafNode));
         } else {
             // The tree was empty.
-            return RatchetTree::from_nodes(vec![]);
+            return RatchetTree::trimmed(vec![]);
         }
 
         // Blank parent node used for padding
@@ -851,7 +851,7 @@ impl<'a> TreeSyncDiff<'a> {
             nodes.push(leaf.node().clone().map(Node::LeafNode));
         }
 
-        RatchetTree::from_nodes(nodes)
+        RatchetTree::trimmed(nodes)
     }
 
     /// Returns the filtered common path two leaf nodes share. If the leaves are

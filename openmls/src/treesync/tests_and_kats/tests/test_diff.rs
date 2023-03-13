@@ -30,7 +30,7 @@ fn test_free_leaf_computation(ciphersuite: Ciphersuite, backend: &impl OpenMlsCr
     let kpb_3 = KeyPackageBundle::new(backend, &sk_3, ciphersuite, c_3);
 
     // Build a rudimentary tree with two populated and two empty leaf nodes.
-    let ratchet_tree = RatchetTree::from_nodes(vec![
+    let ratchet_tree = RatchetTree::trimmed(vec![
         Some(Node::LeafNode(
             kpb_0.key_package().leaf_node().clone().into(),
         )), // Leaf 0
