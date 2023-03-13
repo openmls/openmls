@@ -521,7 +521,6 @@ mod test {
         for candidate in [ext_x, ext_y, ext_z]
             .into_iter()
             .permutations(3)
-            .into_iter()
             .collect::<Vec<_>>()
         {
             let candidate: Extensions = Extensions::try_from(candidate).unwrap();
