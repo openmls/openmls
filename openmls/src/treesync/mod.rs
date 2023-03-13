@@ -39,6 +39,13 @@ use self::{
     },
     treesync_node::{TreeSyncLeafNode, TreeSyncNode, TreeSyncParentNode},
 };
+#[cfg(test)]
+use crate::binary_tree::array_representation::ParentNodeIndex;
+#[cfg(any(feature = "test-utils", test))]
+use crate::{
+    binary_tree::array_representation::level, group::tests::tree_printing::root,
+    test_utils::bytes_to_hex,
+};
 use crate::{
     binary_tree::{
         array_representation::{is_node_in_tree, tree::TreeNode, LeafNodeIndex, TreeSize},
@@ -52,12 +59,6 @@ use crate::{
     group::{config::CryptoConfig, Member},
     messages::{PathSecret, PathSecretError},
     schedule::CommitSecret,
-};
-
-#[cfg(any(feature = "test-utils", test))]
-use crate::{
-    binary_tree::array_representation::level, group::tests::tree_printing::root,
-    test_utils::bytes_to_hex,
 };
 
 // Private
@@ -236,7 +237,7 @@ impl fmt::Display for RatchetTree {
 /// creating a new instance from an imported set of nodes, as well as when
 /// merging a diff.
 #[derive(Debug, Serialize, Deserialize)]
-#[cfg_attr(test, derive(PartialEq))]
+#[cfg_attr(test, derive(PartialEq, Clone))]
 pub(crate) struct TreeSync {
     tree: MlsBinaryTree<TreeSyncLeafNode, TreeSyncParentNode>,
     tree_hash: Vec<u8>,
@@ -574,6 +575,20 @@ impl TreeSync {
             }
         }
         Ok((keypairs, path_secret.into()))
+    }
+}
+
+#[cfg(test)]
+impl TreeSync {
+    pub(crate) fn leaf_count(&self) -> u32 {
+        self.tree.leaf_count()
+    }
+
+    /// Return a reference to the parent node at the given `ParentNodeIndex` or
+    /// `None` if the node is blank.
+    pub(crate) fn parent(&self, node_index: ParentNodeIndex) -> Option<&ParentNode> {
+        let tsn = self.tree.parent(node_index);
+        tsn.node().as_ref()
     }
 }
 

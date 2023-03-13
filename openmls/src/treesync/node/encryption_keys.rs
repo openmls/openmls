@@ -138,6 +138,7 @@ impl From<HpkePublicKey> for EncryptionKey {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, TlsDeserialize, TlsSerialize, TlsSize)]
+#[cfg_attr(test, derive(PartialEq, Eq))]
 pub(crate) struct EncryptionKeyPair {
     public_key: EncryptionKey,
     private_key: EncryptionPrivateKey,
@@ -206,6 +207,21 @@ impl EncryptionKeyPair {
             .crypto()
             .derive_hpke_keypair(config.ciphersuite.hpke_config(), ikm.as_slice())
             .into())
+    }
+}
+
+#[cfg(test)]
+impl EncryptionKeyPair {
+    /// Build a key pair from raw bytes for testing.
+    pub(crate) fn from_raw(public_key: Vec<u8>, private_key: Vec<u8>) -> Self {
+        Self {
+            public_key: EncryptionKey {
+                key: public_key.into(),
+            },
+            private_key: EncryptionPrivateKey {
+                key: private_key.into(),
+            },
+        }
     }
 }
 
