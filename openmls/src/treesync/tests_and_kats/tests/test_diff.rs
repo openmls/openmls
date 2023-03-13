@@ -1,3 +1,4 @@
+use openmls_rust_crypto::OpenMlsRustCrypto;
 use openmls_traits::{types::Ciphersuite, OpenMlsCryptoProvider};
 use rstest::*;
 use rstest_reuse::apply;
@@ -7,8 +8,6 @@ use crate::{
     key_packages::KeyPackageBundle,
     treesync::{node::Node, RatchetTree, TreeSync},
 };
-
-use openmls_rust_crypto::OpenMlsRustCrypto;
 
 // Verifies that when we add a leaf to a tree with blank leaf nodes, the leaf will be added at the leftmost free leaf index
 #[apply(ciphersuites_and_backends)]
@@ -31,7 +30,7 @@ fn test_free_leaf_computation(ciphersuite: Ciphersuite, backend: &impl OpenMlsCr
     let kpb_3 = KeyPackageBundle::new(backend, &sk_3, ciphersuite, c_3);
 
     // Build a rudimentary tree with two populated and two empty leaf nodes.
-    let ratchet_tree = RatchetTree::from(vec![
+    let ratchet_tree = RatchetTree::trimmed(vec![
         Some(Node::LeafNode(
             kpb_0.key_package().leaf_node().clone().into(),
         )), // Leaf 0
