@@ -1,3 +1,5 @@
+use std::fmt::Debug;
+
 use openmls_traits::{
     crypto::OpenMlsCrypto,
     key_store::{MlsEntity, MlsEntityId, OpenMlsKeyStore},
@@ -7,10 +9,12 @@ use openmls_traits::{
 use serde::{Deserialize, Serialize};
 use tls_codec::{TlsDeserialize, TlsSerialize, TlsSize, VLBytes};
 
-use crate::ciphersuite::{hpke, HpkePrivateKey, HpkePublicKey, Secret};
-use crate::error::LibraryError;
-use crate::group::config::CryptoConfig;
-use crate::versions::ProtocolVersion;
+use crate::{
+    ciphersuite::{hpke, HpkePrivateKey, HpkePublicKey, Secret},
+    error::LibraryError,
+    group::config::CryptoConfig,
+    versions::ProtocolVersion,
+};
 
 /// [`EncryptionKey`] contains an HPKE public key that allows the encryption of
 /// path secrets in MLS commits.
@@ -62,9 +66,23 @@ impl EncryptionKey {
     }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, TlsDeserialize, TlsSerialize, TlsSize)]
+#[derive(Clone, Serialize, Deserialize, TlsDeserialize, TlsSerialize, TlsSize)]
+#[cfg_attr(test, derive(PartialEq, Eq))]
 pub(crate) struct EncryptionPrivateKey {
     key: HpkePrivateKey,
+}
+
+impl Debug for EncryptionPrivateKey {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let mut ds = f.debug_struct("EncryptionPrivateKey");
+
+        #[cfg(feature = "crypto-debug")]
+        ds.field("key", &self.key);
+        #[cfg(not(feature = "crypto-debug"))]
+        ds.field("key", &"***");
+
+        ds.finish()
+    }
 }
 
 impl From<Vec<u8>> for EncryptionPrivateKey {

@@ -19,6 +19,7 @@
 //! [`LibraryError`](TreeSyncDiffError::LibraryError).
 use std::collections::HashSet;
 
+use log::debug;
 use openmls_traits::{signatures::Signer, types::Ciphersuite, OpenMlsCryptoProvider};
 use serde::{Deserialize, Serialize};
 
@@ -789,17 +790,21 @@ impl<'a> TreeSyncDiff<'a> {
             })
             .collect();
 
-        if let Some((resolution_position, private_key)) = sender_copath_resolution
+        if let Some((keypair, resolution_position)) = sender_copath_resolution
             .iter()
             .enumerate()
             .find_map(|(position, pk)| {
                 owned_keys
                     .iter()
                     .find(|&owned_keypair| owned_keypair.public_key() == pk)
-                    .map(|keypair| (position, keypair.private_key()))
+                    .map(|keypair| (keypair, position))
             })
         {
-            return Ok((private_key, resolution_position));
+            debug!("Found fitting keypair in the filtered resolution:");
+            debug!("* private key: {:x?}", keypair.private_key());
+            debug!("* public key: {:x?}", keypair.public_key());
+
+            return Ok((keypair.private_key(), resolution_position));
         };
         Err(TreeSyncDiffError::NoPrivateKeyFound)
     }

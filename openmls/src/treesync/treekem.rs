@@ -4,25 +4,15 @@
 //!
 //! This module contains structs and functions to encrypt and decrypt path
 //! updates for a [`TreeSyncDiff`] instance.
-use rayon::prelude::*;
 use std::collections::HashSet;
-use tls_codec::{TlsDeserialize, TlsSerialize, TlsSize};
 
 use openmls_traits::{
     types::{Ciphersuite, HpkeCiphertext},
     OpenMlsCryptoProvider,
 };
+use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
-
-use crate::{
-    binary_tree::array_representation::LeafNodeIndex,
-    ciphersuite::{hpke, HpkePublicKey},
-    error::LibraryError,
-    messages::{proposals::AddProposal, EncryptedGroupSecrets, GroupSecrets, PathSecret},
-    schedule::{psk::PreSharedKeyId, CommitSecret, JoinerSecret},
-    treesync::node::NodeReference,
-    versions::ProtocolVersion,
-};
+use tls_codec::{TlsDeserialize, TlsSerialize, TlsSize};
 
 use super::{
     diff::TreeSyncDiff,
@@ -31,6 +21,15 @@ use super::{
         parent_node::{ParentNode, PlainUpdatePathNode},
     },
     ApplyUpdatePathError, LeafNode,
+};
+use crate::{
+    binary_tree::array_representation::LeafNodeIndex,
+    ciphersuite::{hpke, HpkePublicKey},
+    error::LibraryError,
+    messages::{proposals::AddProposal, EncryptedGroupSecrets, GroupSecrets, PathSecret},
+    schedule::{psk::PreSharedKeyId, CommitSecret, JoinerSecret},
+    treesync::node::NodeReference,
+    versions::ProtocolVersion,
 };
 
 impl<'a> TreeSyncDiff<'a> {

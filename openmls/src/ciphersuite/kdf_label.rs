@@ -13,7 +13,7 @@ use super::*;
 ///     opaque context<V> = Context;
 /// } KDFLabel;
 /// ```
-#[derive(TlsSerialize, TlsSize)]
+#[derive(Debug, TlsSerialize, TlsSize)]
 pub(in crate::ciphersuite) struct KdfLabel {
     length: u16,
     label: VLBytes,
@@ -36,17 +36,12 @@ impl KdfLabel {
             );
             return Err(CryptoError::KdfLabelTooLarge);
         }
-        log::trace!(
-            "KDF Label:\n length: {:?}\n label: {:?}\n context: {:x?}",
-            length as u16,
-            label,
-            context
-        );
         let kdf_label = KdfLabel {
             length: length as u16,
             label: label.as_bytes().into(),
             context: context.into(),
         };
+        log::trace!("{kdf_label:?}");
         kdf_label
             .tls_serialize_detached()
             .map_err(|_| CryptoError::KdfSerializationError)
