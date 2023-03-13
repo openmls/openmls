@@ -112,7 +112,7 @@ impl RatchetTree {
             }
         }
 
-        debug_assert!(!nodes.is_empty(), "Caller should have ensured that `RatchetTree::from_nodes` is not called with a vector that is empty after removing all trailing blank nodes.");
+        debug_assert!(!nodes.is_empty(), "Caller should have ensured that `RatchetTree::trimmed` is not called with a vector that is empty after removing all trailing blank nodes.");
         Self(nodes)
     }
 }
