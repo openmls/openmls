@@ -80,3 +80,7 @@ OpenMLS is maintained and developed by [Phoenix R&D] and [Cryspen].
 [Developer.md]: https://github.com/openmls/openmls/blob/main/Developer.md
 [Phoenix R&D]: https://phnx.im
 [Cryspen]: https://cryspen.com
+
+## Acknowledgements
+
+[Zulip](https://zulip.com/) graciously provides the OpenMLS community with a "Zulip Cloud Standard" tier [Zulip instance](https://openmls.zulipchat.com).
