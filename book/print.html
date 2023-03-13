@@ -959,6 +959,11 @@ Further syntax checks are applied for the latter case once the message is decryp
 <tr><td><code>ValSem245</code></td><td>External Commit must contain a path</td><td>✅</td><td>✅</td><td><code>openmls/src/group/tests/test_external_commit_validation.rs</code></td></tr>
 <tr><td><code>ValSem246</code></td><td>External Commit signature must be verified using the credential in the path KeyPackage</td><td>✅</td><td>✅</td><td><code>openmls/src/group/tests/test_external_commit_validation.rs</code></td></tr>
 </tbody></table>
+</div>
+<h3 id="ratchet-tree-validation"><a class="header" href="#ratchet-tree-validation">Ratchet tree validation</a></h3>
+<div class="table-wrapper"><table><thead><tr><th>ValidationStep</th><th>Description</th><th>Implemented</th><th>Tested</th><th>Test File</th></tr></thead><tbody>
+<tr><td><code>ValSem300</code></td><td>Exported ratchet trees must not have trailing blank nodes.</td><td>Yes</td><td>Yes</td><td><code>openmls/src/treesync/mod.rs</code></td></tr>
+</tbody></table>
 </div><div style="break-before: page; page-break-before: always;"></div><h1 id="performance"><a class="header" href="#performance">Performance</a></h1>
 <p>How does OpenMLS (and MLS in general) perform in different settings?</p>
 <p>Performance measurements are implemented <a href="https://github.com/openmls/openmls/blob/franziskus/benchmarks/benches/group.rs">here</a> and can be run with <code>cargo bench --bench group</code>.

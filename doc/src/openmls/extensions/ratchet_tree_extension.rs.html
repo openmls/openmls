@@ -30,15 +30,6 @@
 <a href="#30" id="30">30</a>
 <a href="#31" id="31">31</a>
 <a href="#32" id="32">32</a>
-<a href="#33" id="33">33</a>
-<a href="#34" id="34">34</a>
-<a href="#35" id="35">35</a>
-<a href="#36" id="36">36</a>
-<a href="#37" id="37">37</a>
-<a href="#38" id="38">38</a>
-<a href="#39" id="39">39</a>
-<a href="#40" id="40">40</a>
-<a href="#41" id="41">41</a>
 </pre><pre class="rust"><code><span class="kw">use </span>tls_codec::{TlsDeserialize, TlsSerialize, TlsSize};
 
 <span class="kw">use super</span>::{Deserialize, Serialize};
@@ -54,16 +45,7 @@
 /// optional&lt;Node&gt; ratchet_tree&lt;V&gt;;
 /// ```
 </span><span class="attr">#[derive(
-    PartialEq,
-    Eq,
-    Clone,
-    Debug,
-    Default,
-    Serialize,
-    Deserialize,
-    TlsSerialize,
-    TlsDeserialize,
-    TlsSize,
+    PartialEq, Eq, Clone, Debug, Serialize, Deserialize, TlsSerialize, TlsDeserialize, TlsSize,
 )]
 </span><span class="kw">pub struct </span>RatchetTreeExtension {
     ratchet_tree: RatchetTree,

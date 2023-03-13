@@ -529,6 +529,7 @@
 <a href="#529" id="529">529</a>
 <a href="#530" id="530">530</a>
 <a href="#531" id="531">531</a>
+<a href="#532" id="532">532</a>
 </pre><pre class="rust"><code><span class="doccomment">//! # Extensions
 //!
 //! In MLS, extensions appear in the following places:
@@ -550,12 +551,13 @@
 //! - [`RequiredCapabilitiesExtension`] (GroupContext extension)
 //! - [`ExternalPubExtension`] (GroupInfo extension)
 
-</span><span class="kw">use </span>serde::{Deserialize, Serialize};
-<span class="kw">use </span>std::{
+</span><span class="kw">use </span>std::{
     collections::{btree_map::Entry, BTreeMap},
     fmt::Debug,
     io::{Read, Write},
 };
+
+<span class="kw">use </span>serde::{Deserialize, Serialize};
 <span class="kw">use </span>tls_codec::<span class="kw-2">*</span>;
 
 <span class="comment">// Private
@@ -968,7 +970,7 @@
     <span class="kw">use </span>itertools::Itertools;
     <span class="kw">use </span>tls_codec::{Deserialize, Serialize};
 
-    <span class="kw">use </span><span class="kw">crate</span>::extensions::<span class="kw-2">*</span>;
+    <span class="kw">use crate</span>::{ciphersuite::HpkePublicKey, extensions::<span class="kw-2">*</span>};
 
     <span class="attr">#[test]
     </span><span class="kw">fn </span>add() {
@@ -1045,7 +1047,7 @@
         // that all permutations keep their order after being (de)serialized.
         // The extension content does not matter in this test.
         </span><span class="kw">let </span>ext_x = Extension::ApplicationId(ApplicationIdExtension::new(<span class="string">b&quot;Test&quot;</span>));
-        <span class="kw">let </span>ext_y = Extension::RatchetTree(RatchetTreeExtension::default());
+        <span class="kw">let </span>ext_y = Extension::ExternalPub(ExternalPubExtension::new(HpkePublicKey::new(<span class="macro">vec!</span>[])));
         <span class="kw">let </span>ext_z = Extension::RequiredCapabilities(RequiredCapabilitiesExtension::default());
 
         <span class="kw">for </span>candidate <span class="kw">in </span>[ext_x, ext_y, ext_z]

@@ -1025,6 +1025,40 @@
 <a href="#1025" id="1025">1025</a>
 <a href="#1026" id="1026">1026</a>
 <a href="#1027" id="1027">1027</a>
+<a href="#1028" id="1028">1028</a>
+<a href="#1029" id="1029">1029</a>
+<a href="#1030" id="1030">1030</a>
+<a href="#1031" id="1031">1031</a>
+<a href="#1032" id="1032">1032</a>
+<a href="#1033" id="1033">1033</a>
+<a href="#1034" id="1034">1034</a>
+<a href="#1035" id="1035">1035</a>
+<a href="#1036" id="1036">1036</a>
+<a href="#1037" id="1037">1037</a>
+<a href="#1038" id="1038">1038</a>
+<a href="#1039" id="1039">1039</a>
+<a href="#1040" id="1040">1040</a>
+<a href="#1041" id="1041">1041</a>
+<a href="#1042" id="1042">1042</a>
+<a href="#1043" id="1043">1043</a>
+<a href="#1044" id="1044">1044</a>
+<a href="#1045" id="1045">1045</a>
+<a href="#1046" id="1046">1046</a>
+<a href="#1047" id="1047">1047</a>
+<a href="#1048" id="1048">1048</a>
+<a href="#1049" id="1049">1049</a>
+<a href="#1050" id="1050">1050</a>
+<a href="#1051" id="1051">1051</a>
+<a href="#1052" id="1052">1052</a>
+<a href="#1053" id="1053">1053</a>
+<a href="#1054" id="1054">1054</a>
+<a href="#1055" id="1055">1055</a>
+<a href="#1056" id="1056">1056</a>
+<a href="#1057" id="1057">1057</a>
+<a href="#1058" id="1058">1058</a>
+<a href="#1059" id="1059">1059</a>
+<a href="#1060" id="1060">1060</a>
+<a href="#1061" id="1061">1061</a>
 </pre><pre class="rust"><code><span class="doccomment">//! This module contains the [`LeafNode`] struct and its implementation.
 </span><span class="kw">use </span>openmls_traits::{
     key_store::OpenMlsKeyStore, signatures::Signer, types::Ciphersuite, OpenMlsCryptoProvider,
@@ -1525,6 +1559,14 @@
         }
         <span class="prelude-val">Ok</span>(())
     }
+
+    <span class="doccomment">/// Create a dummy [`LeafNode`] for testing.
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>dummy() -&gt; <span class="self">Self </span>{
+        <span class="self">Self </span>{
+            payload: LeafNodePayload::dummy(),
+            signature: Signature::from(<span class="macro">vec!</span>[]),
+        }
+    }
 }
 
 <span class="attr">#[cfg(any(feature = <span class="string">&quot;test-utils&quot;</span>, test))]
@@ -1576,6 +1618,21 @@
     capabilities: Capabilities,
     leaf_node_source: LeafNodeSource,
     extensions: Extensions,
+}
+
+<span class="attr">#[cfg(test)]
+</span><span class="kw">impl </span>LeafNodePayload {
+    <span class="doccomment">/// Create a dummy [`LeafNodePayload`] for testing.
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>dummy() -&gt; <span class="self">Self </span>{
+        <span class="self">Self </span>{
+            encryption_key: EncryptionKey::from(HpkePublicKey::new(<span class="macro">vec!</span>[])),
+            signature_key: SignaturePublicKey::from(<span class="macro">vec!</span>[]),
+            credential: Credential::new(<span class="macro">vec!</span>[], CredentialType::Basic).unwrap(),
+            capabilities: Capabilities::default(),
+            leaf_node_source: LeafNodeSource::Update,
+            extensions: Extensions::empty(),
+        }
+    }
 }
 
 <span class="attr">#[derive(
@@ -2001,6 +2058,17 @@
     <span class="doccomment">/// Get a list of supported cipher suites.
     </span><span class="kw">pub fn </span>ciphersuites(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>[Ciphersuite] {
         <span class="kw-2">&amp;</span><span class="self">self</span>.leaf_node.payload.capabilities.ciphersuites
+    }
+}
+
+<span class="attr">#[cfg(test)]
+</span><span class="kw">impl </span>OpenMlsLeafNode {
+    <span class="doccomment">/// Create a dummy [`OpenMlsLeafNode`] for testing.
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>dummy() -&gt; <span class="self">Self </span>{
+        OpenMlsLeafNode {
+            leaf_index: <span class="prelude-val">None</span>,
+            leaf_node: LeafNode::dummy(),
+        }
     }
 }
 

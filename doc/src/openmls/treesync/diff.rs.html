@@ -911,7 +911,6 @@
 <a href="#911" id="911">911</a>
 <a href="#912" id="912">912</a>
 <a href="#913" id="913">913</a>
-<a href="#914" id="914">914</a>
 </pre><pre class="rust"><code><span class="doccomment">//! This module provides the diff functionality for [`TreeSync`].
 //!
 //! # About
@@ -931,10 +930,10 @@
 //! functions that are not expected to fail and throw an error, will still
 //! return a [`Result`] since they may throw a
 //! [`LibraryError`](TreeSyncDiffError::LibraryError).
-</span><span class="kw">use </span>openmls_traits::{signatures::Signer, types::Ciphersuite, OpenMlsCryptoProvider};
-<span class="kw">use </span>serde::{Deserialize, Serialize};
+</span><span class="kw">use </span>std::collections::HashSet;
 
-<span class="kw">use </span>std::collections::HashSet;
+<span class="kw">use </span>openmls_traits::{signatures::Signer, types::Ciphersuite, OpenMlsCryptoProvider};
+<span class="kw">use </span>serde::{Deserialize, Serialize};
 
 <span class="kw">use super</span>::{
     errors::<span class="kw-2">*</span>,
@@ -948,7 +947,6 @@
     treesync_node::{TreeSyncLeafNode, TreeSyncParentNode},
     TreeSync, TreeSyncParentHashError,
 };
-
 <span class="kw">use crate</span>::{
     binary_tree::{
         array_representation::{
@@ -1740,7 +1738,7 @@
             nodes.push(leaf.node().clone().map(Node::LeafNode));
         } <span class="kw">else </span>{
             <span class="comment">// The tree was empty.
-            </span><span class="kw">return </span><span class="macro">vec!</span>[].into();
+            </span><span class="kw">return </span>RatchetTree::trimmed(<span class="macro">vec!</span>[]);
         }
 
         <span class="comment">// Blank parent node used for padding
@@ -1766,7 +1764,7 @@
             nodes.push(leaf.node().clone().map(Node::LeafNode));
         }
 
-        nodes.into()
+        RatchetTree::trimmed(nodes)
     }
 
     <span class="doccomment">/// Returns the filtered common path two leaf nodes share. If the leaves are
