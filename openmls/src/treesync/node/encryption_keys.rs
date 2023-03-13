@@ -1,3 +1,5 @@
+use std::fmt::Debug;
+
 use openmls_traits::{
     crypto::OpenMlsCrypto,
     key_store::{MlsEntity, MlsEntityId, OpenMlsKeyStore},
@@ -64,9 +66,23 @@ impl EncryptionKey {
     }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, TlsDeserialize, TlsSerialize, TlsSize)]
+#[derive(Clone, Serialize, Deserialize, TlsDeserialize, TlsSerialize, TlsSize)]
+#[cfg_attr(test, derive(PartialEq, Eq))]
 pub(crate) struct EncryptionPrivateKey {
     key: HpkePrivateKey,
+}
+
+impl Debug for EncryptionPrivateKey {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let mut ds = f.debug_struct("EncryptionPrivateKey");
+
+        #[cfg(feature = "crypto-debug")]
+        ds.field("key", &self.key);
+        #[cfg(not(feature = "crypto-debug"))]
+        ds.field("key", &"***");
+
+        ds.finish()
+    }
 }
 
 impl From<Vec<u8>> for EncryptionPrivateKey {

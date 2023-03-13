@@ -101,13 +101,26 @@ pub(crate) fn encrypt_with_label(
     let context: EncryptContext = (label, context).into();
     let context = context.tls_serialize_detached()?;
 
-    Ok(crypto.hpke_seal(
+    #[cfg(feature = "crypto-debug")]
+    {
+        log::debug!("HPKE Encrypt with label `{label}` and ciphersuite `{ciphersuite:?}`:");
+        log::debug!("* context:     {context:x?}");
+        log::debug!("* public key:  {public_key:x?}");
+        log::debug!("* plaintext:   {plaintext:x?}");
+    }
+
+    let cipher = crypto.hpke_seal(
         ciphersuite.hpke_config(),
         public_key,
         &context,
         &[],
         plaintext,
-    ))
+    );
+
+    #[cfg(feature = "crypto-debug")]
+    log::debug!("* ciphertext:  {:x?}", cipher);
+
+    Ok(cipher)
 }
 
 /// Decrypt with HPKE and label.
@@ -122,7 +135,15 @@ pub(crate) fn decrypt_with_label(
     let context: EncryptContext = (label, context).into();
     let context = context.tls_serialize_detached()?;
 
-    crypto
+    #[cfg(feature = "crypto-debug")]
+    {
+        log::debug!("HPKE Decrypt with label `{label}` and `ciphersuite` {ciphersuite:?}:");
+        log::debug!("* context:     {context:x?}");
+        log::debug!("* private key: {private_key:x?}");
+        log::debug!("* ciphertext:  {ciphertext:x?}");
+    }
+
+    let plaintext = crypto
         .hpke_open(
             ciphersuite.hpke_config(),
             ciphertext,
@@ -130,5 +151,10 @@ pub(crate) fn decrypt_with_label(
             &context,
             &[],
         )
-        .map_err(|e| e.into())
+        .map_err(|e| e.into());
+
+    #[cfg(feature = "crypto-debug")]
+    log::debug!("* plaintext:   {plaintext:x?}");
+
+    plaintext
 }
