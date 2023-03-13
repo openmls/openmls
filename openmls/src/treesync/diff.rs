@@ -908,8 +908,7 @@ impl<'a> TreeSyncDiff<'a> {
                     } else {
                         None
                     }
-                })
-                .into_iter(),
+                }),
         )
     }
 }
