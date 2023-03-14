@@ -7,10 +7,18 @@
 //! signatures are verified before the content of an MLS [`PrivateMessageIn`] or
 //! [`PublicMessageIn`] can be accessed by processing functions of OpenMLS.
 
-use serde::{Deserialize, Serialize};
 use std::io::{Read, Write};
+
+#[cfg(any(feature = "test-utils", test))]
+use openmls_traits::signatures::Signer;
+use serde::{Deserialize, Serialize};
 use tls_codec::{Deserialize as TlsDeserializeTrait, Serialize as TlsSerializeTrait, Size};
 
+use super::{mls_auth_content::*, mls_content_in::*, *};
+#[cfg(doc)]
+use super::{PrivateMessageIn, PublicMessageIn};
+#[cfg(any(feature = "test-utils", test))]
+use crate::{binary_tree::LeafNodeIndex, ciphersuite::signable::Signable, error::LibraryError};
 use crate::{
     ciphersuite::signable::{SignedStruct, Verifiable, VerifiedStruct},
     credentials::CredentialWithKey,
@@ -18,17 +26,6 @@ use crate::{
     messages::proposals_in::ProposalIn,
     versions::ProtocolVersion,
 };
-
-use super::{mls_auth_content::*, mls_content_in::*, *};
-
-#[cfg(any(feature = "test-utils", test))]
-use crate::{binary_tree::LeafNodeIndex, ciphersuite::signable::Signable, error::LibraryError};
-
-#[cfg(any(feature = "test-utils", test))]
-use openmls_traits::signatures::Signer;
-
-#[cfg(doc)]
-use super::{PrivateMessageIn, PublicMessageIn};
 
 /// Private module to ensure protection of [`AuthenticatedContent`].
 mod private_mod {
@@ -93,7 +90,7 @@ impl FramedContentAuthDataIn {
 ///     FramedContentAuthData auth;
 /// } AuthenticatedContent;
 /// ```
-#[derive(PartialEq, Debug, Clone)]
+#[derive(PartialEq, Debug, Clone, TlsSize)]
 pub(crate) struct AuthenticatedContentIn {
     pub(super) wire_format: WireFormat,
     pub(super) content: FramedContentIn,
@@ -155,6 +152,26 @@ impl AuthenticatedContentIn {
     #[cfg(any(feature = "test-utils", test))]
     pub(crate) fn content(&self) -> &FramedContentBodyIn {
         &self.content.body
+    }
+}
+
+/// Note: we can't `derive(tls_codec::Deserialize)` because [`FramedContentAuthData`] cannot
+///       implement the usual `tls_codec::Deserialize` as it requires the content type as parameter.
+impl tls_codec::Deserialize for AuthenticatedContentIn {
+    fn tls_deserialize<R: Read>(bytes: &mut R) -> Result<Self, Error>
+    where
+        Self: Sized,
+    {
+        let wire_format = WireFormat::tls_deserialize(bytes)?;
+        let content = FramedContentIn::tls_deserialize(bytes)?;
+        // Here, content type is requires as parameter for deserialization.
+        let auth = FramedContentAuthDataIn::deserialize(bytes, content.body.content_type())?;
+
+        Ok(Self {
+            wire_format,
+            content,
+            auth,
+        })
     }
 }
 

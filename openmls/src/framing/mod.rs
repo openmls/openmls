@@ -188,3 +188,42 @@ impl ContentType {
         self == &ContentType::Proposal || self == &ContentType::Commit
     }
 }
+
+/// Convenience trait that allows to deserialize a TLS-serialized object from an bytes input.
+///
+/// Note: This is implemented for all types that implement `tls_codec::Deserialize`.
+pub trait TlsFromBytes
+where
+    Self: Sized,
+{
+    /// Construct an object from TLS-serialized bytes.
+    ///
+    /// Note: This function makes sure that the input is fully consumed, i.e., that there is no
+    ///       trailing data.
+    fn try_from_bytes(bytes: impl AsRef<[u8]>) -> Result<Self, TlsFromBytesError>;
+}
+
+impl<T> TlsFromBytes for T
+where
+    T: tls_codec::Deserialize,
+{
+    fn try_from_bytes(bytes: impl AsRef<[u8]>) -> Result<T, TlsFromBytesError> {
+        let mut input = bytes.as_ref();
+        let out = Self::tls_deserialize(&mut input).map_err(TlsFromBytesError::Tls)?;
+
+        if !input.is_empty() {
+            return Err(TlsFromBytesError::TrailingData);
+        }
+
+        Ok(out)
+    }
+}
+
+/// Error due to deserialization from input bytes.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub enum TlsFromBytesError {
+    /// Error during TLS-deserialization.
+    Tls(Error),
+    /// The input bytes were not fully consumed, i.e., there are trailing bytes.
+    TrailingData,
+}

@@ -1,14 +1,14 @@
+use std::fs::File;
+
+use lazy_static::lazy_static;
 use openmls::{
     prelude::{config::CryptoConfig, *},
     test_utils::*,
     *,
 };
-
-use lazy_static::lazy_static;
 use openmls_basic_credential::SignatureKeyPair;
 use openmls_rust_crypto::OpenMlsRustCrypto;
 use openmls_traits::{signatures::Signer, types::SignatureScheme, OpenMlsCryptoProvider};
-use std::fs::File;
 
 lazy_static! {
     static ref TEMP_DIR: tempfile::TempDir =
@@ -293,7 +293,7 @@ fn book_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvide
         .expect("Could not serialize message.");
 
     // ANCHOR: mls_message_in_from_bytes
-    let mls_message = MlsMessageIn::try_from_bytes(&bytes).expect("Could not deserialize message.");
+    let mls_message = MlsMessageIn::try_from_bytes(bytes).expect("Could not deserialize message.");
     // ANCHOR_END: mls_message_in_from_bytes
 
     // ANCHOR: process_message
