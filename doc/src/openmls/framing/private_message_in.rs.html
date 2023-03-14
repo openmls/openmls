@@ -375,14 +375,14 @@
             .map_err(|<span class="kw">_</span>| MessageDecryptionError::MalformedContent)
     }
 
-    <span class="doccomment">/// Decrypt this [`PrivateMessage`] and return the [`PrivateContentTbe`].
+    <span class="doccomment">/// Decrypt this [`PrivateMessage`] and return the [`PrivateMessageContentIn`].
     </span><span class="attr">#[inline]
     </span><span class="kw">fn </span>decrypt(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider,
         ratchet_key: AeadKey,
         ratchet_nonce: <span class="kw-2">&amp;</span>AeadNonce,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;PrivateContentTbeIn, MessageDecryptionError&gt; {
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;PrivateMessageContentIn, MessageDecryptionError&gt; {
         <span class="comment">// Serialize content AAD
         </span><span class="kw">let </span>private_message_content_aad_bytes = PrivateContentAad {
             group_id: <span class="self">self</span>.group_id.clone(),
@@ -504,7 +504,7 @@
 
 <span class="comment">// === Helper structs ===
 
-</span><span class="doccomment">/// PrivateContentTbe
+</span><span class="doccomment">/// PrivateMessageContent
 ///
 /// ```c
 /// // draft-ietf-mls-protocol-17
@@ -522,14 +522,14 @@
 ///
 ///     FramedContentAuthData auth;
 ///     opaque padding[length_of_padding];
-/// } PrivateContentTbe;
+/// } PrivateMessageContent;
 /// ```
 </span><span class="attr">#[derive(Debug, Clone)]
-</span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct </span>PrivateContentTbeIn {
+</span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct </span>PrivateMessageContentIn {
     <span class="comment">// The `content` field is serialized and deserialized manually without the
     // `content_type`, which is not part of the struct as per MLS spec. See the
-    // implementation of `TlsSerialize` for `PrivateContentTbe`, as well as
-    // `deserialize_ciphertext_content`.
+    // implementation of `TlsSerialize` for `PrivateMessageContentIn`, as well
+    // as `deserialize_ciphertext_content`.
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) content: FramedContentBodyIn,
     <span class="kw">pub</span>(<span class="kw">crate</span>) auth: FramedContentAuthDataIn,
 }

@@ -61,11 +61,11 @@
 
 <span class="kw">use super</span>::{
     mls_auth_content_in::FramedContentAuthDataIn, mls_content_in::FramedContentBodyIn,
-    private_message_in::PrivateContentTbeIn, <span class="kw-2">*</span>,
+    private_message_in::PrivateMessageContentIn, <span class="kw-2">*</span>,
 };
 <span class="kw">use </span>std::io::{Read, Write};
 
-<span class="kw">impl </span>Size <span class="kw">for </span>PrivateContentTbe {
+<span class="kw">impl </span>Size <span class="kw">for </span>PrivateMessageContent {
     <span class="kw">fn </span>tls_serialized_len(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; usize {
         <span class="self">self</span>.content.tls_serialized_len() +
            <span class="self">self</span>.auth.tls_serialized_len() +
@@ -76,7 +76,7 @@
     }
 }
 
-<span class="kw">impl </span>Serialize <span class="kw">for </span>PrivateContentTbe {
+<span class="kw">impl </span>Serialize <span class="kw">for </span>PrivateMessageContent {
     <span class="kw">fn </span>tls_serialize&lt;W: Write&gt;(<span class="kw-2">&amp;</span><span class="self">self</span>, writer: <span class="kw-2">&amp;mut </span>W) -&gt; <span class="prelude-ty">Result</span>&lt;usize, Error&gt; {
         <span class="kw">let </span><span class="kw-2">mut </span>written = <span class="number">0</span>;
 
@@ -97,7 +97,7 @@
 </span><span class="kw">pub</span>(<span class="kw">super</span>) <span class="kw">fn </span>deserialize_ciphertext_content&lt;R: Read&gt;(
     bytes: <span class="kw-2">&amp;mut </span>R,
     content_type: ContentType,
-) -&gt; <span class="prelude-ty">Result</span>&lt;PrivateContentTbeIn, tls_codec::Error&gt; {
+) -&gt; <span class="prelude-ty">Result</span>&lt;PrivateMessageContentIn, tls_codec::Error&gt; {
     <span class="kw">let </span>content = FramedContentBodyIn::deserialize_without_type(bytes, content_type)<span class="question-mark">?</span>;
     <span class="kw">let </span>auth = FramedContentAuthDataIn::deserialize(bytes, content_type)<span class="question-mark">?</span>;
 
@@ -109,12 +109,12 @@
         buffer
     };
 
-    <span class="comment">// ValSem011: PrivateContentTbe padding must be all-zero.
+    <span class="comment">// ValSem011: PrivateMessageContentIn padding must be all-zero.
     </span><span class="kw">if </span>!padding.into_iter().all(|byte| byte == <span class="number">0x00</span>) {
         <span class="kw">return </span><span class="prelude-val">Err</span>(Error::InvalidInput);
     }
 
-    <span class="prelude-val">Ok</span>(PrivateContentTbeIn { content, auth })
+    <span class="prelude-val">Ok</span>(PrivateMessageContentIn { content, auth })
 }
 </code></pre></div>
 </section></main><div id="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="openmls" data-themes="" data-resource-suffix="" data-rustdoc-version="1.68.0 (2c8cc3432 2023-03-06)" data-search-js="search-98d53477a794af0b.js" data-settings-js="settings-c3c521c753752a1a.js" data-settings-css="settings-08ddfdda51b8ee2e.css" ></div></body></html>

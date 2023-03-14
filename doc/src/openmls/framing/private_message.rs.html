@@ -351,7 +351,6 @@
 <a href="#351" id="351">351</a>
 <a href="#352" id="352">352</a>
 <a href="#353" id="353">353</a>
-<a href="#354" id="354">354</a>
 </pre><pre class="rust"><code><span class="kw">use </span>openmls_traits::{types::Ciphersuite, OpenMlsCryptoProvider};
 <span class="kw">use </span>std::io::Write;
 <span class="kw">use </span>tls_codec::{Serialize, Size, TlsSerialize, TlsSize};
@@ -607,7 +606,7 @@
         <span class="self">self</span>.content_type.is_handshake_message()
     }
 
-    <span class="doccomment">/// Encodes the `PrivateContentTbe` struct with padding.
+    <span class="doccomment">/// Encodes the `PrivateMessageContent` struct with padding.
     </span><span class="kw">fn </span>encode_padded_ciphertext_content_detached(
         authenticated_content: <span class="kw-2">&amp;</span>AuthenticatedContent,
         padding_size: usize,
@@ -655,10 +654,9 @@
 
 <span class="comment">// === Helper structs ===
 
-</span><span class="doccomment">/// PrivateContentTbe
+</span><span class="doccomment">/// PrivateMessageContent
 ///
 /// ```c
-/// // draft-ietf-mls-protocol-17
 /// struct {
 ///     select (PrivateMessage.content_type) {
 ///         case application:
@@ -673,13 +671,13 @@
 ///
 ///     FramedContentAuthData auth;
 ///     opaque padding[length_of_padding];
-/// } PrivateContentTbe;
+/// } PrivateMessageContent;
 /// ```
 </span><span class="attr">#[derive(Debug, Clone)]
-</span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct </span>PrivateContentTbe {
+</span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct </span>PrivateMessageContent {
     <span class="comment">// The `content` field is serialized and deserialized manually without the
     // `content_type`, which is not part of the struct as per MLS spec. See the
-    // implementation of `TlsSerialize` for `PrivateContentTbe`, as well as
+    // implementation of `TlsSerialize` for `PrivateMessageContent`, as well as
     // `deserialize_ciphertext_content`.
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) content: FramedContentBody,
     <span class="kw">pub</span>(<span class="kw">crate</span>) auth: FramedContentAuthData,
