@@ -4,10 +4,11 @@
 //! [`StagedPublicGroupDiff`] and associated functions and types.
 use std::collections::HashSet;
 
-use openmls_traits::{crypto::OpenMlsCrypto, types::Ciphersuite, OpenMlsCryptoProvider};
+use openmls_traits::{types::Ciphersuite, OpenMlsCryptoProvider};
 use serde::{Deserialize, Serialize};
 use tls_codec::Serialize as TlsSerialize;
 
+use super::PublicGroup;
 use crate::{
     binary_tree::{array_representation::TreeSize, LeafNodeIndex},
     error::LibraryError,
@@ -26,8 +27,6 @@ use crate::{
         RatchetTree,
     },
 };
-
-use super::PublicGroup;
 
 pub(crate) mod apply_proposals;
 pub(crate) mod compute_path;
@@ -179,22 +178,19 @@ impl<'a> PublicGroupDiff<'a> {
         backend: &impl OpenMlsCryptoProvider,
         confirmation_tag: ConfirmationTag,
     ) -> Result<(), LibraryError> {
+        let interim_transcript_hash = {
+            let input = InterimTranscriptHashInput::from(&confirmation_tag);
+
+            input.calculate_interim_transcript_hash(
+                backend.crypto(),
+                ciphersuite,
+                self.group_context.confirmed_transcript_hash(),
+            )?
+        };
+
         self.confirmation_tag = confirmation_tag;
-        self.interim_transcript_hash = {
-            let mls_plaintext_commit_auth_data =
-                &InterimTranscriptHashInput::from(&self.confirmation_tag);
-            let confirmed_transcript_hash = self.group_context.confirmed_transcript_hash();
-            let commit_auth_data_bytes = mls_plaintext_commit_auth_data
-                .tls_serialize_detached()
-                .map_err(LibraryError::missing_bound_check)?;
-            backend
-                .crypto()
-                .hash(
-                    ciphersuite.hash_algorithm(),
-                    &[confirmed_transcript_hash, &commit_auth_data_bytes].concat(),
-                )
-                .map_err(LibraryError::unexpected_crypto_error)
-        }?;
+        self.interim_transcript_hash = interim_transcript_hash;
+
         Ok(())
     }
 
