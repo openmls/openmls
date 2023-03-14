@@ -2,11 +2,11 @@ use tls_codec::{Serialize, Size};
 
 use super::{
     mls_auth_content_in::FramedContentAuthDataIn, mls_content_in::FramedContentBodyIn,
-    private_message_in::PrivateContentTbeIn, *,
+    private_message_in::PrivateMessageContentIn, *,
 };
 use std::io::{Read, Write};
 
-impl Size for PrivateContentTbe {
+impl Size for PrivateMessageContent {
     fn tls_serialized_len(&self) -> usize {
         self.content.tls_serialized_len() +
            self.auth.tls_serialized_len() +
@@ -17,7 +17,7 @@ impl Size for PrivateContentTbe {
     }
 }
 
-impl Serialize for PrivateContentTbe {
+impl Serialize for PrivateMessageContent {
     fn tls_serialize<W: Write>(&self, writer: &mut W) -> Result<usize, Error> {
         let mut written = 0;
 
@@ -38,7 +38,7 @@ impl Serialize for PrivateContentTbe {
 pub(super) fn deserialize_ciphertext_content<R: Read>(
     bytes: &mut R,
     content_type: ContentType,
-) -> Result<PrivateContentTbeIn, tls_codec::Error> {
+) -> Result<PrivateMessageContentIn, tls_codec::Error> {
     let content = FramedContentBodyIn::deserialize_without_type(bytes, content_type)?;
     let auth = FramedContentAuthDataIn::deserialize(bytes, content_type)?;
 
@@ -50,10 +50,10 @@ pub(super) fn deserialize_ciphertext_content<R: Read>(
         buffer
     };
 
-    // ValSem011: PrivateContentTbe padding must be all-zero.
+    // ValSem011: PrivateMessageContentIn padding must be all-zero.
     if !padding.into_iter().all(|byte| byte == 0x00) {
         return Err(Error::InvalidInput);
     }
 
-    Ok(PrivateContentTbeIn { content, auth })
+    Ok(PrivateMessageContentIn { content, auth })
 }

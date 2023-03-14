@@ -253,7 +253,7 @@ impl PrivateMessage {
         self.content_type.is_handshake_message()
     }
 
-    /// Encodes the `PrivateContentTbe` struct with padding.
+    /// Encodes the `PrivateMessageContent` struct with padding.
     fn encode_padded_ciphertext_content_detached(
         authenticated_content: &AuthenticatedContent,
         padding_size: usize,
@@ -301,10 +301,9 @@ impl PrivateMessage {
 
 // === Helper structs ===
 
-/// PrivateContentTbe
+/// PrivateMessageContent
 ///
 /// ```c
-/// // draft-ietf-mls-protocol-17
 /// struct {
 ///     select (PrivateMessage.content_type) {
 ///         case application:
@@ -319,13 +318,13 @@ impl PrivateMessage {
 ///
 ///     FramedContentAuthData auth;
 ///     opaque padding[length_of_padding];
-/// } PrivateContentTbe;
+/// } PrivateMessageContent;
 /// ```
 #[derive(Debug, Clone)]
-pub(crate) struct PrivateContentTbe {
+pub(crate) struct PrivateMessageContent {
     // The `content` field is serialized and deserialized manually without the
     // `content_type`, which is not part of the struct as per MLS spec. See the
-    // implementation of `TlsSerialize` for `PrivateContentTbe`, as well as
+    // implementation of `TlsSerialize` for `PrivateMessageContent`, as well as
     // `deserialize_ciphertext_content`.
     pub(crate) content: FramedContentBody,
     pub(crate) auth: FramedContentAuthData,
