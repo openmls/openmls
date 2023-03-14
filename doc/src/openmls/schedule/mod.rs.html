@@ -1281,6 +1281,8 @@
 <a href="#1281" id="1281">1281</a>
 <a href="#1282" id="1282">1282</a>
 <a href="#1283" id="1283">1283</a>
+<a href="#1284" id="1284">1284</a>
+<a href="#1285" id="1285">1285</a>
 </pre><pre class="rust"><code><span class="doccomment">//! # Key schedule
 //!
 //! This module contains the types and implementations for key schedule operations.
@@ -2105,24 +2107,26 @@
             confirmed_transcript_hash,
         )<span class="question-mark">?</span>))
     }
+}
 
-    <span class="comment">// XXX[KAT]: #1051 Only used in KATs. Remove if unused.
-    </span><span class="attr">#[cfg(test)]
-    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>_from_secret(secret: Secret) -&gt; <span class="self">Self </span>{
+<span class="attr">#[cfg(test)]
+</span><span class="kw">impl </span>ConfirmationKey {
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>from_secret(secret: Secret) -&gt; <span class="self">Self </span>{
         <span class="self">Self </span>{ secret }
     }
+}
 
-    <span class="attr">#[cfg(any(feature = <span class="string">&quot;test-utils&quot;</span>, test))]
-    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>as_slice(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>[u8] {
-        <span class="self">self</span>.secret.as_slice()
-    }
-
-    <span class="attr">#[cfg(any(feature = <span class="string">&quot;test-utils&quot;</span>, test))]
-    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>random(ciphersuite: Ciphersuite, rng: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider) -&gt; <span class="self">Self </span>{
+<span class="attr">#[cfg(any(feature = <span class="string">&quot;test-utils&quot;</span>, test))]
+</span><span class="kw">impl </span>ConfirmationKey {
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>random(ciphersuite: Ciphersuite, rng: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider) -&gt; <span class="self">Self </span>{
         <span class="self">Self </span>{
             secret: Secret::random(ciphersuite, rng, <span class="prelude-val">None </span><span class="comment">/* MLS version */</span>)
                 .expect(<span class="string">&quot;Not enough randomness.&quot;</span>),
         }
+    }
+
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>as_slice(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>[u8] {
+        <span class="self">self</span>.secret.as_slice()
     }
 }
 

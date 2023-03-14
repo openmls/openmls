@@ -239,20 +239,17 @@
 <a href="#239" id="239">239</a>
 <a href="#240" id="240">240</a>
 <a href="#241" id="241">241</a>
-<a href="#242" id="242">242</a>
-<a href="#243" id="243">243</a>
-<a href="#244" id="244">244</a>
-<a href="#245" id="245">245</a>
 </pre><pre class="rust"><code><span class="doccomment">//! # Public group diffs
 //!
 //! This module contains the [`PublicGroupDiff`] struct, as well as the
 //! [`StagedPublicGroupDiff`] and associated functions and types.
 </span><span class="kw">use </span>std::collections::HashSet;
 
-<span class="kw">use </span>openmls_traits::{crypto::OpenMlsCrypto, types::Ciphersuite, OpenMlsCryptoProvider};
+<span class="kw">use </span>openmls_traits::{types::Ciphersuite, OpenMlsCryptoProvider};
 <span class="kw">use </span>serde::{Deserialize, Serialize};
 <span class="kw">use </span>tls_codec::Serialize <span class="kw">as </span>TlsSerialize;
 
+<span class="kw">use </span><span class="kw">super</span>::PublicGroup;
 <span class="kw">use crate</span>::{
     binary_tree::{array_representation::TreeSize, LeafNodeIndex},
     error::LibraryError,
@@ -271,8 +268,6 @@
         RatchetTree,
     },
 };
-
-<span class="kw">use </span><span class="kw">super</span>::PublicGroup;
 
 <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">mod </span>apply_proposals;
 <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">mod </span>compute_path;
@@ -424,22 +419,19 @@
         backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider,
         confirmation_tag: ConfirmationTag,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(), LibraryError&gt; {
+        <span class="kw">let </span>interim_transcript_hash = {
+            <span class="kw">let </span>input = InterimTranscriptHashInput::from(<span class="kw-2">&amp;</span>confirmation_tag);
+
+            input.calculate_interim_transcript_hash(
+                backend.crypto(),
+                ciphersuite,
+                <span class="self">self</span>.group_context.confirmed_transcript_hash(),
+            )<span class="question-mark">?
+        </span>};
+
         <span class="self">self</span>.confirmation_tag = confirmation_tag;
-        <span class="self">self</span>.interim_transcript_hash = {
-            <span class="kw">let </span>mls_plaintext_commit_auth_data =
-                <span class="kw-2">&amp;</span>InterimTranscriptHashInput::from(<span class="kw-2">&amp;</span><span class="self">self</span>.confirmation_tag);
-            <span class="kw">let </span>confirmed_transcript_hash = <span class="self">self</span>.group_context.confirmed_transcript_hash();
-            <span class="kw">let </span>commit_auth_data_bytes = mls_plaintext_commit_auth_data
-                .tls_serialize_detached()
-                .map_err(LibraryError::missing_bound_check)<span class="question-mark">?</span>;
-            backend
-                .crypto()
-                .hash(
-                    ciphersuite.hash_algorithm(),
-                    <span class="kw-2">&amp;</span>[confirmed_transcript_hash, <span class="kw-2">&amp;</span>commit_auth_data_bytes].concat(),
-                )
-                .map_err(LibraryError::unexpected_crypto_error)
-        }<span class="question-mark">?</span>;
+        <span class="self">self</span>.interim_transcript_hash = interim_transcript_hash;
+
         <span class="prelude-val">Ok</span>(())
     }
 

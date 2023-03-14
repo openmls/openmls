@@ -149,24 +149,18 @@
 <a href="#149" id="149">149</a>
 <a href="#150" id="150">150</a>
 <a href="#151" id="151">151</a>
-<a href="#152" id="152">152</a>
-<a href="#153" id="153">153</a>
-<a href="#154" id="154">154</a>
-<a href="#155" id="155">155</a>
 </pre><pre class="rust"><code><span class="doccomment">//! # Group Context
 //!
 //! TODO: #779
 
-</span><span class="kw">use </span>openmls_traits::{crypto::OpenMlsCrypto, types::Ciphersuite};
-<span class="kw">use </span>tls_codec::Serialize;
+</span><span class="kw">use </span>openmls_traits::types::Ciphersuite;
 
+<span class="kw">use super</span>::<span class="kw-2">*</span>;
 <span class="kw">use crate</span>::{
     error::LibraryError,
     framing::{mls_auth_content::AuthenticatedContent, ConfirmedTranscriptHashInput},
     versions::ProtocolVersion,
 };
-
-<span class="kw">use super</span>::<span class="kw-2">*</span>;
 
 <span class="attr">#[derive(
     Debug, Clone, PartialEq, Eq, Serialize, Deserialize, TlsSerialize, TlsDeserialize, TlsSize,
@@ -248,23 +242,21 @@
         <span class="kw-2">&amp;mut </span><span class="self">self</span>,
         backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider,
         interim_transcript_hash: <span class="kw-2">&amp;</span>[u8],
-        commit_content: <span class="kw-2">&amp;</span>AuthenticatedContent,
+        authenticated_content: <span class="kw-2">&amp;</span>AuthenticatedContent,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(), LibraryError&gt; {
-        <span class="comment">// Calculate the confirmed transcript hash
-        </span><span class="kw">let </span>mls_plaintext_commit_content: <span class="kw-2">&amp;</span>ConfirmedTranscriptHashInput =
-            <span class="kw-2">&amp;</span>ConfirmedTranscriptHashInput::try_from(commit_content)
+        <span class="kw">let </span>confirmed_transcript_hash = {
+            <span class="kw">let </span>input = ConfirmedTranscriptHashInput::try_from(authenticated_content)
                 .map_err(|<span class="kw">_</span>| LibraryError::custom(<span class="string">&quot;PublicMessage did not contain a commit&quot;</span>))<span class="question-mark">?</span>;
-        <span class="kw">let </span>commit_content_bytes: Vec&lt;u8&gt; = mls_plaintext_commit_content
-            .tls_serialize_detached()
-            .map_err(LibraryError::missing_bound_check)<span class="question-mark">?</span>;
-        <span class="self">self</span>.confirmed_transcript_hash = backend
-            .crypto()
-            .hash(
-                <span class="self">self</span>.ciphersuite.hash_algorithm(),
-                <span class="kw-2">&amp;</span>[interim_transcript_hash, <span class="kw-2">&amp;</span>commit_content_bytes].concat(),
-            )
-            .map_err(LibraryError::unexpected_crypto_error)<span class="question-mark">?
-            </span>.into();
+
+            input.calculate_confirmed_transcript_hash(
+                backend.crypto(),
+                <span class="self">self</span>.ciphersuite,
+                interim_transcript_hash,
+            )<span class="question-mark">?
+        </span>};
+
+        <span class="self">self</span>.confirmed_transcript_hash = confirmed_transcript_hash.into();
+
         <span class="prelude-val">Ok</span>(())
     }
 
