@@ -93,6 +93,7 @@ impl ProposalType {
         }
     }
 
+    /// Returns `true` if the proposal type requires a path and `false`
     pub fn is_path_required(&self) -> bool {
         match self {
             Self::Add

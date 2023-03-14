@@ -203,7 +203,6 @@ impl From<FramedContentBody> for FramedContentBodyIn {
     }
 }
 
-#[cfg(any(feature = "test-utils", test))]
 impl From<crate::framing::mls_content::FramedContent> for FramedContentIn {
     fn from(value: crate::framing::mls_content::FramedContent) -> Self {
         Self {
