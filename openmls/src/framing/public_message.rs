@@ -7,7 +7,7 @@ use crate::{error::LibraryError, versions::ProtocolVersion};
 
 use super::{
     mls_auth_content::{AuthenticatedContent, FramedContentAuthData},
-    mls_content::{AuthenticatedContentTbm, FramedContent, FramedContentTbs},
+    mls_content::{framed_content_tbs_serialized_detached, AuthenticatedContentTbm, FramedContent},
     *,
 };
 
@@ -116,7 +116,7 @@ impl From<AuthenticatedContent> for PublicMessage {
 impl PublicMessage {
     /// Returns the [`ContentType`] of the message.
     pub(crate) fn content_type(&self) -> ContentType {
-        self.content.body.content_type()
+        ContentType::from(&self.content.body)
     }
 
     /// Get the sender of this message.
@@ -134,10 +134,11 @@ impl PublicMessage {
         membership_key: &MembershipKey,
         serialized_context: &[u8],
     ) -> Result<(), LibraryError> {
-        let tbs_payload = FramedContentTbs::new_and_serialize_detached(
+        let tbs_payload = framed_content_tbs_serialized_detached(
             ProtocolVersion::default(),
             WireFormat::PublicMessage,
             &self.content,
+            &self.content.sender,
             serialized_context,
         )
         .map_err(LibraryError::missing_bound_check)?;
@@ -196,7 +197,10 @@ pub(crate) struct ConfirmedTranscriptHashInput<'a> {
 
 impl<'a> ConfirmedTranscriptHashInput<'a> {
     pub(crate) fn try_from(mls_content: &'a AuthenticatedContent) -> Result<Self, &'static str> {
-        if !matches!(mls_content.content().content_type(), ContentType::Commit) {
+        if !matches!(
+            ContentType::from(mls_content.content()),
+            ContentType::Commit
+        ) {
             return Err("PublicMessage needs to contain a Commit.");
         }
         Ok(ConfirmedTranscriptHashInput {

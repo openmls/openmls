@@ -129,10 +129,7 @@ use crate::{
     binary_tree::array_representation::{LeafNodeIndex, TreeSize},
     ciphersuite::{AeadKey, AeadNonce, HpkePrivateKey, Mac, Secret},
     error::LibraryError,
-    framing::{
-        mls_content::AuthenticatedContentTbm, mls_content_in::AuthenticatedContentTbmIn,
-        MembershipTag,
-    },
+    framing::{mls_content::AuthenticatedContentTbm, MembershipTag},
     group::GroupContext,
     messages::{ConfirmationTag, PathSecret},
     tree::secret_tree::SecretTree,
@@ -871,30 +868,6 @@ impl MembershipKey {
         &self,
         backend: &impl OpenMlsCryptoProvider,
         tbm_payload: AuthenticatedContentTbm,
-    ) -> Result<MembershipTag, LibraryError> {
-        Ok(MembershipTag(
-            Mac::new(
-                backend,
-                &self.secret,
-                &tbm_payload
-                    .into_bytes()
-                    .map_err(LibraryError::missing_bound_check)?,
-            )
-            .map_err(LibraryError::unexpected_crypto_error)?,
-        ))
-    }
-
-    /// Create a new membership tag.
-    ///
-    /// 9.1 Content Authentication
-    ///
-    /// ```text
-    /// membership_tag = MAC(membership_key, MLSPlaintextTBM);
-    /// ```
-    pub(crate) fn tag_message_in(
-        &self,
-        backend: &impl OpenMlsCryptoProvider,
-        tbm_payload: AuthenticatedContentTbmIn,
     ) -> Result<MembershipTag, LibraryError> {
         Ok(MembershipTag(
             Mac::new(

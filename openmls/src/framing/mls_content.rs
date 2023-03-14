@@ -73,15 +73,17 @@ pub(crate) enum FramedContentBody {
     Commit(Commit),
 }
 
-impl FramedContentBody {
-    pub(crate) fn content_type(&self) -> ContentType {
-        match self {
-            Self::Application(_) => ContentType::Application,
-            Self::Proposal(_) => ContentType::Proposal,
-            Self::Commit(_) => ContentType::Commit,
+impl From<&FramedContentBody> for ContentType {
+    fn from(value: &FramedContentBody) -> Self {
+        match value {
+            FramedContentBody::Application(_) => ContentType::Application,
+            FramedContentBody::Proposal(_) => ContentType::Proposal,
+            FramedContentBody::Commit(_) => ContentType::Commit,
         }
     }
+}
 
+impl FramedContentBody {
     /// Returns the length of the serialized content without the `content_type` field.
     pub(crate) fn serialized_len_without_type(&self) -> usize {
         match self {
@@ -101,12 +103,6 @@ impl FramedContentBody {
             FramedContentBody::Proposal(p) => p.tls_serialize(writer),
             FramedContentBody::Commit(c) => c.tls_serialize(writer),
         }
-    }
-}
-
-impl From<&FramedContentBody> for ContentType {
-    fn from(value: &FramedContentBody) -> Self {
-        value.content_type()
     }
 }
 
@@ -188,64 +184,56 @@ impl FramedContentTbs {
         }
     }
 
-    /// Helper function to make serialization of [`FramedContentTbs`] accessible
-    /// to both the [`TlsSerialize`] implementation and the
-    /// [`FramedContentTbs::new_and_serialize_detached()`] function.
-    fn new_and_serialize<'context, W: Write>(
-        writer: &mut W,
-        version: ProtocolVersion,
-        wire_format: WireFormat,
-        content: &FramedContent,
-        serialized_context: impl Into<Option<&'context [u8]>>,
-    ) -> Result<usize, tls_codec::Error> {
-        let mut written = version.tls_serialize(writer)?;
-        written += wire_format.tls_serialize(writer)?;
-        written += content.tls_serialize(writer)?;
-        // Context is included if and only if the sender type is Member or
-        // NewMemberCommit.
-        written += match serialized_context.into() {
-            Some(context)
-                if matches!(content.sender, Sender::Member(_) | Sender::NewMemberCommit) =>
-            {
-                writer.write(context)?
-            }
-            _ => 0,
-        };
-
-        Ok(written)
-    }
-
-    /// Given references to the individual contents of a [`FramedContentTbs`],
-    /// return its serialization. This function is useful to avoid cloning the
-    /// individual contents to create a [`FramedContentTbs`] instance just to
-    /// serialize it. Note that the context is only serialized if the `sender`
-    /// in `content` is [`Sender::Member`] or [`Sender::NewMemberCommit`].
-    ///
-    /// Returns an [`tls_codec::Error`] if the serialization fails.
-    pub(super) fn new_and_serialize_detached<'context>(
-        version: ProtocolVersion,
-        wire_format: WireFormat,
-        content: &FramedContent,
-        serialized_context: impl Into<Option<&'context [u8]>>,
-    ) -> Result<Vec<u8>, tls_codec::Error> {
-        let mut writer = Vec::new();
-        Self::new_and_serialize(
-            &mut writer,
-            version,
-            wire_format,
-            content,
-            serialized_context,
-        )?;
-
-        Ok(writer)
-    }
-
     /// Adds a serialized context to FramedContentTbs.
     /// This consumes the original struct and can be used as a builder function.
     pub(crate) fn with_context(mut self, serialized_context: Vec<u8>) -> Self {
         self.serialized_context = Some(serialized_context);
         self
     }
+}
+
+pub(crate) fn framed_content_tbs_serialized_detached<'context>(
+    version: ProtocolVersion,
+    wire_format: WireFormat,
+    content: &impl TlsSerializeTrait,
+    sender: &Sender,
+    serialized_context: impl Into<Option<&'context [u8]>>,
+) -> Result<Vec<u8>, tls_codec::Error> {
+    let writer = &mut Vec::new();
+
+    framed_content_tbs_serialized(
+        writer,
+        version,
+        wire_format,
+        content,
+        sender,
+        serialized_context,
+    )?;
+
+    Ok(writer.to_vec())
+}
+
+pub(crate) fn framed_content_tbs_serialized<'context, W: Write>(
+    writer: &mut W,
+    version: ProtocolVersion,
+    wire_format: WireFormat,
+    content: &impl TlsSerializeTrait,
+    sender: &Sender,
+    serialized_context: impl Into<Option<&'context [u8]>>,
+) -> Result<usize, tls_codec::Error> {
+    let mut written = version.tls_serialize(writer)?;
+    written += wire_format.tls_serialize(writer)?;
+    written += content.tls_serialize(writer)?;
+    // Context is included if and only if the sender type is Member or
+    // NewMemberCommit.
+    written += match serialized_context.into() {
+        Some(context) if matches!(sender, Sender::Member(_) | Sender::NewMemberCommit) => {
+            writer.write(context)?
+        }
+        _ => 0,
+    };
+
+    Ok(written)
 }
 
 impl Size for FramedContentTbs {
@@ -270,11 +258,12 @@ impl Size for FramedContentTbs {
 
 impl TlsSerializeTrait for FramedContentTbs {
     fn tls_serialize<W: Write>(&self, writer: &mut W) -> Result<usize, tls_codec::Error> {
-        Self::new_and_serialize(
+        framed_content_tbs_serialized(
             writer,
             self.version,
             self.wire_format,
             &self.content,
+            &self.content.sender,
             self.serialized_context.as_deref(),
         )
     }

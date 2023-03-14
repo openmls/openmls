@@ -92,6 +92,17 @@ impl ProposalType {
             ProposalType::AppAck => false,
         }
     }
+
+    pub fn is_path_required(&self) -> bool {
+        match self {
+            Self::Add
+            | Self::Presharedkey
+            | Self::Reinit
+            | Self::AppAck
+            | Self::GroupContextExtensions => false,
+            Self::Update | Self::Remove | Self::ExternalInit => true,
+        }
+    }
 }
 
 impl TryFrom<u16> for ProposalType {
@@ -107,6 +118,21 @@ impl TryFrom<u16> for ProposalType {
             7 => Ok(ProposalType::GroupContextExtensions),
             8 => Ok(ProposalType::AppAck),
             _ => Err("Unknown proposal type."),
+        }
+    }
+}
+
+impl From<&Proposal> for ProposalType {
+    fn from(value: &Proposal) -> Self {
+        match value {
+            Proposal::Add(_) => ProposalType::Add,
+            Proposal::Update(_) => ProposalType::Update,
+            Proposal::Remove(_) => ProposalType::Remove,
+            Proposal::PreSharedKey(_) => ProposalType::Presharedkey,
+            Proposal::ReInit(_) => ProposalType::Reinit,
+            Proposal::ExternalInit(_) => ProposalType::ExternalInit,
+            Proposal::GroupContextExtensions(_) => ProposalType::GroupContextExtensions,
+            Proposal::AppAck(_) => ProposalType::AppAck,
         }
     }
 }
@@ -158,16 +184,7 @@ pub enum Proposal {
 
 impl Proposal {
     pub(crate) fn proposal_type(&self) -> ProposalType {
-        match self {
-            Self::Add(ref _a) => ProposalType::Add,
-            Self::Update(ref _u) => ProposalType::Update,
-            Self::Remove(ref _r) => ProposalType::Remove,
-            Self::PreSharedKey(ref _p) => ProposalType::Presharedkey,
-            Self::ReInit(ref _r) => ProposalType::Reinit,
-            Self::ExternalInit(ref _r) => ProposalType::ExternalInit,
-            Self::AppAck(ref _r) => ProposalType::AppAck,
-            Self::GroupContextExtensions(ref _r) => ProposalType::GroupContextExtensions,
-        }
+        self.into()
     }
 
     pub(crate) fn is_type(&self, proposal_type: ProposalType) -> bool {
@@ -176,13 +193,7 @@ impl Proposal {
 
     /// Indicates whether a Commit containing this [Proposal] requires a path.
     pub fn is_path_required(&self) -> bool {
-        match self {
-            Self::Add(_) | Self::PreSharedKey(_) | Self::ReInit(_) | Self::AppAck(_) => false,
-            Self::Update(_)
-            | Self::Remove(_)
-            | Self::ExternalInit(_)
-            | Self::GroupContextExtensions(_) => true,
-        }
+        self.proposal_type().is_path_required()
     }
 }
 

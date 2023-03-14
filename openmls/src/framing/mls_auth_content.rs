@@ -15,14 +15,16 @@ use super::{PrivateMessage, PublicMessage};
 
 use super::{
     mls_content::{FramedContent, FramedContentBody, FramedContentTbs},
-    Commit, ConfirmationTag, FramingParameters, GroupContext, GroupEpoch, GroupId, Proposal,
-    Sender, Signature, WireFormat,
+    Commit, ConfirmationTag, ContentType, FramingParameters, GroupContext, GroupEpoch, GroupId,
+    Proposal, Sender, Signature, WireFormat,
 };
 use openmls_traits::signatures::Signer;
-use std::io::Write;
+use std::io::{Read, Write};
 
 use serde::{Deserialize, Serialize};
-use tls_codec::{Serialize as TlsSerializeTrait, Size, TlsSerialize, TlsSize};
+use tls_codec::{
+    Deserialize as TlsDeserializeTrait, Serialize as TlsSerializeTrait, Size, TlsSerialize, TlsSize,
+};
 
 /// 7.1 Content Authentication
 ///
@@ -49,6 +51,24 @@ use tls_codec::{Serialize as TlsSerializeTrait, Size, TlsSerialize, TlsSize};
 pub(crate) struct FramedContentAuthData {
     pub(super) signature: Signature,
     pub(super) confirmation_tag: Option<ConfirmationTag>,
+}
+
+impl FramedContentAuthData {
+    pub(super) fn deserialize<R: Read>(
+        bytes: &mut R,
+        content_type: ContentType,
+    ) -> Result<Self, tls_codec::Error> {
+        let signature = Signature::tls_deserialize(bytes)?;
+        let confirmation_tag = if matches!(content_type, ContentType::Commit) {
+            Some(ConfirmationTag::tls_deserialize(bytes)?)
+        } else {
+            None
+        };
+        Ok(Self {
+            signature,
+            confirmation_tag,
+        })
+    }
 }
 
 /// 6 Message Framing

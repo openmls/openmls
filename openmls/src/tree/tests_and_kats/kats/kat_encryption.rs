@@ -228,16 +228,18 @@ fn build_handshake_messages(
         Secret::random(group.ciphersuite(), backend, None /* MLS version */)
             .expect("Not enough randomness."),
     );
-    let content = AuthenticatedContentIn::member_proposal(
-        framing_parameters,
-        sender_index,
-        Proposal::Remove(RemoveProposal {
-            removed: LeafNodeIndex::new(7),
-        }), // XXX: use random removed
-        group.context(),
-        signer,
-    )
-    .expect("An unexpected error occurred.");
+    let content = AuthenticatedContentIn::from(
+        AuthenticatedContent::member_proposal(
+            framing_parameters,
+            sender_index,
+            Proposal::Remove(RemoveProposal {
+                removed: LeafNodeIndex::new(7),
+            }), // XXX: use random removed
+            group.context(),
+            signer,
+        )
+        .expect("An unexpected error occurred."),
+    );
     let content = AuthenticatedContent::from(content);
     let mut plaintext: PublicMessage = content.clone().into();
     plaintext

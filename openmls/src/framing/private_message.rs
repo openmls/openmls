@@ -157,14 +157,14 @@ impl PrivateMessage {
         let private_message_content_aad = PrivateContentAad {
             group_id: header.group_id.clone(),
             epoch: header.epoch,
-            content_type: public_message.content().content_type(),
+            content_type: public_message.content().into(),
             authenticated_data: VLByteSlice(public_message.authenticated_data()),
         };
         let private_message_content_aad_bytes = private_message_content_aad
             .tls_serialize_detached()
             .map_err(LibraryError::missing_bound_check)?;
         // Extract generation and key material for encryption
-        let secret_type = SecretType::from(&public_message.content().content_type());
+        let secret_type = SecretType::from(&ContentType::from(public_message.content()));
         let (generation, (ratchet_key, ratchet_nonce)) = message_secrets
             .secret_tree_mut()
             // Even in tests we want to use the real sender index, so we have a key to encrypt.
@@ -209,7 +209,7 @@ impl PrivateMessage {
         let mls_sender_data_aad = MlsSenderDataAad::new(
             header.group_id.clone(),
             header.epoch,
-            public_message.content().content_type(),
+            public_message.content().into(),
         );
         // Serialize the sender data AAD
         let mls_sender_data_aad_bytes = mls_sender_data_aad
@@ -240,7 +240,7 @@ impl PrivateMessage {
         Ok(PrivateMessage {
             group_id: header.group_id.clone(),
             epoch: header.epoch,
-            content_type: public_message.content().content_type(),
+            content_type: public_message.content().into(),
             authenticated_data: public_message.authenticated_data().into(),
             encrypted_sender_data: encrypted_sender_data.into(),
             ciphertext: ciphertext.into(),
