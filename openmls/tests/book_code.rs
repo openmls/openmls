@@ -249,7 +249,7 @@ fn book_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvide
     let verifiable_group_info = alice_group
         .export_group_info(backend, &alice_signature_keys, true)
         .expect("Cannot export group info")
-        .into_group_info()
+        .into_verifiable_group_info()
         .expect("Could not get group info");
     // ANCHOR_END: alice_exports_group_info
 

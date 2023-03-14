@@ -14,14 +14,18 @@ use tls_codec::{Deserialize as TlsDeserialize, Serialize as TlsSerialize};
 use crate::{
     binary_tree::array_representation::LeafNodeIndex,
     ciphersuite::Mac,
-    framing::{mls_auth_content::AuthenticatedContent, mls_content::FramedContentBody, *},
+    framing::*,
     group::{
         config::CryptoConfig,
         tests::utils::{generate_credential_bundle, generate_key_package, randombytes},
         *,
     },
     key_packages::*,
-    messages::{proposals::*, *},
+    messages::{
+        proposals::*,
+        proposals_in::{AddProposalIn, UpdateProposalIn},
+        *,
+    },
     prelude::{CredentialType, LeafNode},
     schedule::psk::*,
     test_utils::*,
@@ -292,15 +296,15 @@ pub fn generate_test_vector(ciphersuite: Ciphersuite) -> MessagesTestVector {
         )
         .unwrap();
     // Replace the secret tree
-    let verifiable_public_message_application = receiver_group
+    let verifiable_public_message_application: VerifiableAuthenticatedContentIn = receiver_group
         .decrypt(
-            &private_message_application,
+            &private_message_application.into(),
             &crypto,
             &SenderRatchetConfiguration::default(),
         )
         .unwrap();
     let mls_content_application: AuthenticatedContent =
-        verifiable_public_message_application.into();
+        AuthenticatedContentIn::from(verifiable_public_message_application).into();
 
     let encryption_target = match random_u32() % 3 {
         0 => create_commit_result.commit.clone(),
@@ -479,7 +483,7 @@ pub fn run_test_vector(tv: MessagesTestVector) -> Result<(), EncodingMismatch> {
 
     // AddProposal
     let tv_add_proposal = tv.add_proposal;
-    let my_add_proposal = AddProposal::tls_deserialize(&mut tv_add_proposal.as_slice())
+    let my_add_proposal = AddProposalIn::tls_deserialize(&mut tv_add_proposal.as_slice())
         .unwrap()
         .tls_serialize_detached()
         .unwrap();
@@ -496,7 +500,7 @@ pub fn run_test_vector(tv: MessagesTestVector) -> Result<(), EncodingMismatch> {
     //update_proposal: String,         /* serialized Update */
     // UpdateProposal
     let tv_update_proposal = tv.update_proposal;
-    let my_update_proposal = UpdateProposal::tls_deserialize(&mut tv_update_proposal.as_slice())
+    let my_update_proposal = UpdateProposalIn::tls_deserialize(&mut tv_update_proposal.as_slice())
         .unwrap()
         .tls_serialize_detached()
         .unwrap();
@@ -547,7 +551,7 @@ pub fn run_test_vector(tv: MessagesTestVector) -> Result<(), EncodingMismatch> {
 
     // Commit
     let tv_commit = tv.commit;
-    let my_commit = Commit::tls_deserialize(&mut tv_commit.as_slice())
+    let my_commit = CommitIn::tls_deserialize(&mut tv_commit.as_slice())
         .unwrap()
         .tls_serialize_detached()
         .unwrap();

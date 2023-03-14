@@ -131,9 +131,7 @@ impl TryFrom<u16> for ProposalType {
 /// } Proposal;
 /// ```
 #[allow(clippy::large_enum_variant)]
-#[derive(
-    Debug, PartialEq, Clone, Serialize, Deserialize, TlsSize, TlsSerialize, TlsDeserialize,
-)]
+#[derive(Debug, PartialEq, Clone, Serialize, Deserialize, TlsSize, TlsSerialize)]
 #[allow(missing_docs)]
 #[repr(u16)]
 pub enum Proposal {
@@ -198,9 +196,7 @@ impl Proposal {
 ///     KeyPackage key_package;
 /// } Add;
 /// ```
-#[derive(
-    Debug, PartialEq, Clone, Serialize, Deserialize, TlsSerialize, TlsDeserialize, TlsSize,
-)]
+#[derive(Debug, PartialEq, Clone, Serialize, Deserialize, TlsSerialize, TlsSize)]
 pub struct AddProposal {
     pub(crate) key_package: KeyPackage,
 }
@@ -223,9 +219,7 @@ impl AddProposal {
 ///     LeafNode leaf_node;
 /// } Update;
 /// ```
-#[derive(
-    Debug, PartialEq, Eq, Clone, Serialize, Deserialize, TlsDeserialize, TlsSerialize, TlsSize,
-)]
+#[derive(Debug, PartialEq, Eq, Clone, Serialize, Deserialize, TlsSerialize, TlsSize)]
 pub struct UpdateProposal {
     pub(crate) leaf_node: LeafNode,
 }
@@ -425,9 +419,7 @@ pub(crate) enum ProposalOrRefType {
 }
 
 /// Type of Proposal, either by value or by reference.
-#[derive(
-    Debug, PartialEq, Clone, Serialize, Deserialize, TlsSerialize, TlsDeserialize, TlsSize,
-)]
+#[derive(Debug, PartialEq, Clone, Serialize, Deserialize, TlsSerialize, TlsSize)]
 #[repr(u8)]
 #[allow(missing_docs)]
 #[allow(clippy::large_enum_variant)]

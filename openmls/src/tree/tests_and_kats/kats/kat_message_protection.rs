@@ -67,7 +67,6 @@ use crate::{
     credentials::CredentialType,
     framing::{mls_auth_content::AuthenticatedContent, mls_content::FramedContentBody, *},
     group::*,
-    messages::proposals::Proposal,
     schedule::{EncryptionSecret, SenderDataSecret},
     test_utils::*,
     tree::{secret_tree::SecretTree, sender_ratchet::SenderRatchetConfiguration},
@@ -187,8 +186,11 @@ pub fn run_test_vector(
     use tls_codec::{Deserialize, Serialize};
 
     use crate::{
-        binary_tree::array_representation::TreeSize, extensions::Extensions,
-        group::config::CryptoConfig, messages::Commit, prelude::KeyPackageBundle,
+        binary_tree::array_representation::TreeSize,
+        extensions::Extensions,
+        group::config::CryptoConfig,
+        messages::{proposals_in::ProposalIn, CommitIn},
+        prelude::KeyPackageBundle,
         prelude_test::Secret,
     };
 
@@ -326,7 +328,7 @@ pub fn run_test_vector(
     // Proposal
     {
         let proposal =
-            Proposal::tls_deserialize(&mut hex_to_bytes(&test.proposal).as_slice()).unwrap();
+            ProposalIn::tls_deserialize(&mut hex_to_bytes(&test.proposal).as_slice()).unwrap();
         let proposal_pub =
             MlsMessageIn::tls_deserialize(&mut hex_to_bytes(&test.proposal_pub).as_slice())
                 .unwrap();
@@ -356,8 +358,8 @@ pub fn run_test_vector(
             .unwrap();
         let processed_message: AuthenticatedContent =
             processed_unverified_message.verify(backend).unwrap().0;
-        match processed_message.content() {
-            FramedContentBody::Proposal(p) => assert_eq!(&proposal, p),
+        match processed_message.content().to_owned() {
+            FramedContentBody::Proposal(p) => assert_eq!(proposal, p.into()),
             _ => panic!("Wrong processed message content"),
         }
 
@@ -373,8 +375,10 @@ pub fn run_test_vector(
             .unwrap();
 
         // check that proposal == processed_message
-        match processed_message.content() {
-            ProcessedMessageContent::ProposalMessage(p) => assert_eq!(&proposal, p.proposal()),
+        match processed_message.content().to_owned() {
+            ProcessedMessageContent::ProposalMessage(p) => {
+                assert_eq!(proposal, p.proposal().to_owned().into())
+            }
             _ => panic!("Wrong processed message content"),
         }
     }
@@ -391,7 +395,7 @@ pub fn run_test_vector(
 
     // Commit
     {
-        let commit = Commit::tls_deserialize(&mut hex_to_bytes(&test.commit).as_slice()).unwrap();
+        let commit = CommitIn::tls_deserialize(&mut hex_to_bytes(&test.commit).as_slice()).unwrap();
         let commit_pub =
             MlsMessageIn::tls_deserialize(&mut hex_to_bytes(&test.commit_pub).as_slice()).unwrap();
         let commit_priv =
@@ -418,9 +422,9 @@ pub fn run_test_vector(
             .unwrap();
         let processed_message: AuthenticatedContent =
             processed_unverified_message.verify(backend).unwrap().0;
-        match processed_message.content() {
+        match processed_message.content().to_owned() {
             FramedContentBody::Commit(c) => {
-                assert_eq!(&commit, c)
+                assert_eq!(commit, CommitIn::from(c))
             }
             _ => panic!("Wrong processed message content"),
         }
@@ -440,9 +444,9 @@ pub fn run_test_vector(
             .unwrap();
         let processed_message: AuthenticatedContent =
             processed_unverified_message.verify(backend).unwrap().0;
-        match processed_message.content() {
+        match processed_message.content().to_owned() {
             FramedContentBody::Commit(c) => {
-                assert_eq!(&commit, c)
+                assert_eq!(commit, CommitIn::from(c))
             }
             _ => panic!("Wrong processed message content"),
         }

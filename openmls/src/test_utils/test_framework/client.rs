@@ -17,7 +17,7 @@ use crate::{
     ciphersuite::hash_ref::KeyPackageRef,
     credentials::*,
     extensions::*,
-    framing::{mls_content::ContentType, ProtocolMessage, *},
+    framing::*,
     group::{config::CryptoConfig, *},
     key_packages::*,
     messages::{group_info::GroupInfo, *},

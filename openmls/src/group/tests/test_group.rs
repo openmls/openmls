@@ -8,6 +8,7 @@ use crate::{
     treesync::node::leaf_node::OpenMlsLeafNode,
     *,
 };
+use framing::mls_content_in::FramedContentBodyIn;
 use openmls_rust_crypto::OpenMlsRustCrypto;
 use openmls_traits::key_store::OpenMlsKeyStore;
 use tests::utils::{generate_credential_bundle, generate_key_package};
@@ -359,7 +360,7 @@ fn group_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvid
 
     // === Alice sends a message to Bob ===
     let message_alice = [1, 2, 3];
-    let mls_ciphertext_alice = group_alice
+    let mls_ciphertext_alice: PrivateMessageIn = group_alice
         .create_application_message(
             &[],
             &message_alice,
@@ -367,7 +368,8 @@ fn group_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvid
             backend,
             &alice_credential_with_keys.signer,
         )
-        .expect("An unexpected error occurred.");
+        .expect("An unexpected error occurred.")
+        .into();
 
     let verifiable_plaintext = group_bob
         .decrypt(
@@ -377,7 +379,7 @@ fn group_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvid
         )
         .expect("An unexpected error occurred.");
 
-    let mls_plaintext_bob: AuthenticatedContent = verifiable_plaintext
+    let mls_plaintext_bob: AuthenticatedContentIn = verifiable_plaintext
         .verify(
             backend.crypto(),
             &OpenMlsSignaturePublicKey::new(
@@ -390,7 +392,7 @@ fn group_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvid
 
     assert!(matches!(
         mls_plaintext_bob.content(),
-            FramedContentBody::Application(message) if message.as_slice() == &message_alice[..]));
+            FramedContentBodyIn::Application(message) if message.as_slice() == &message_alice[..]));
 
     // === Bob updates and commits ===
     let bob_new_leaf_node = group_bob
@@ -674,7 +676,7 @@ fn group_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvid
 
     // === Charlie sends a message to the group ===
     let message_charlie = [1, 2, 3];
-    let mls_ciphertext_charlie = group_charlie
+    let mls_ciphertext_charlie: PrivateMessageIn = group_charlie
         .create_application_message(
             &[],
             &message_charlie,
@@ -682,7 +684,8 @@ fn group_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvid
             backend,
             &charlie_credential_with_keys.signer,
         )
-        .expect("An unexpected error occurred.");
+        .expect("An unexpected error occurred.")
+        .into();
 
     // Alice decrypts and verifies
     let verifiable_plaintext = group_alice
@@ -693,7 +696,7 @@ fn group_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvid
         )
         .expect("An unexpected error occurred.");
 
-    let mls_plaintext_alice: AuthenticatedContent = verifiable_plaintext
+    let mls_plaintext_alice: AuthenticatedContentIn = verifiable_plaintext
         .verify(
             backend.crypto(),
             &OpenMlsSignaturePublicKey::new(
@@ -706,7 +709,7 @@ fn group_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvid
 
     assert!(matches!(
         mls_plaintext_alice.content(),
-            FramedContentBody::Application(message) if message.as_slice() == &message_charlie[..]));
+            FramedContentBodyIn::Application(message) if message.as_slice() == &message_charlie[..]));
 
     // Bob decrypts and verifies
     let verifiable_plaintext = group_bob
@@ -717,7 +720,7 @@ fn group_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvid
         )
         .expect("An unexpected error occurred.");
 
-    let mls_plaintext_bob: AuthenticatedContent = verifiable_plaintext
+    let mls_plaintext_bob: AuthenticatedContentIn = verifiable_plaintext
         .verify(
             backend.crypto(),
             &OpenMlsSignaturePublicKey::new(
@@ -730,7 +733,7 @@ fn group_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvid
 
     assert!(matches!(
         mls_plaintext_bob.content(),
-        FramedContentBody::Application(message) if message.as_slice() == &message_charlie[..]));
+        FramedContentBodyIn::Application(message) if message.as_slice() == &message_charlie[..]));
 
     // === Charlie updates and commits ===
     let charlie_new_leaf_node = group_charlie

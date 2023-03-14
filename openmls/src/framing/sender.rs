@@ -76,3 +76,48 @@ impl Sender {
         }
     }
 }
+
+#[derive(Clone, TlsDeserialize, TlsSerialize, TlsSize)]
+#[cfg_attr(test, derive(Debug))]
+pub(crate) struct MlsSenderData {
+    pub(crate) leaf_index: LeafNodeIndex,
+    pub(crate) generation: u32,
+    pub(crate) reuse_guard: ReuseGuard,
+}
+
+impl MlsSenderData {
+    /// Build new [`MlsSenderData`] for a [`Sender`].
+    pub(crate) fn from_sender(
+        leaf_index: LeafNodeIndex,
+        generation: u32,
+        reuse_guard: ReuseGuard,
+    ) -> Self {
+        MlsSenderData {
+            leaf_index,
+            generation,
+            reuse_guard,
+        }
+    }
+}
+
+#[derive(Clone, TlsDeserialize, TlsSerialize, TlsSize)]
+pub(crate) struct MlsSenderDataAad {
+    pub(crate) group_id: GroupId,
+    pub(crate) epoch: GroupEpoch,
+    pub(crate) content_type: ContentType,
+}
+
+impl MlsSenderDataAad {
+    pub(crate) fn new(group_id: GroupId, epoch: GroupEpoch, content_type: ContentType) -> Self {
+        Self {
+            group_id,
+            epoch,
+            content_type,
+        }
+    }
+
+    #[cfg(test)]
+    pub fn test_new(group_id: GroupId, epoch: GroupEpoch, content_type: ContentType) -> Self {
+        Self::new(group_id, epoch, content_type)
+    }
+}
