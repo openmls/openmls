@@ -12,6 +12,7 @@ use super::utils::*;
 use crate::{
     binary_tree::{array_representation::TreeSize, *},
     ciphersuite::signable::Signable,
+    framing::private_message_in::PrivateMessageIn,
     framing::{MessageDecryptionError, WireFormat, *},
     group::*,
     schedule::{message_secrets::MessageSecrets, EncryptionSecret},
@@ -318,6 +319,8 @@ fn bad_padding(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
         };
 
         message_secrets.replace_secret_tree(receiver_secret_tree);
+
+        let tampered_ciphertext: PrivateMessageIn = tampered_ciphertext.into();
 
         let sender_data = tampered_ciphertext
             .sender_data(&message_secrets, backend, ciphersuite)
