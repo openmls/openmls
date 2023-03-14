@@ -1254,6 +1254,33 @@
 <a href="#1254" id="1254">1254</a>
 <a href="#1255" id="1255">1255</a>
 <a href="#1256" id="1256">1256</a>
+<a href="#1257" id="1257">1257</a>
+<a href="#1258" id="1258">1258</a>
+<a href="#1259" id="1259">1259</a>
+<a href="#1260" id="1260">1260</a>
+<a href="#1261" id="1261">1261</a>
+<a href="#1262" id="1262">1262</a>
+<a href="#1263" id="1263">1263</a>
+<a href="#1264" id="1264">1264</a>
+<a href="#1265" id="1265">1265</a>
+<a href="#1266" id="1266">1266</a>
+<a href="#1267" id="1267">1267</a>
+<a href="#1268" id="1268">1268</a>
+<a href="#1269" id="1269">1269</a>
+<a href="#1270" id="1270">1270</a>
+<a href="#1271" id="1271">1271</a>
+<a href="#1272" id="1272">1272</a>
+<a href="#1273" id="1273">1273</a>
+<a href="#1274" id="1274">1274</a>
+<a href="#1275" id="1275">1275</a>
+<a href="#1276" id="1276">1276</a>
+<a href="#1277" id="1277">1277</a>
+<a href="#1278" id="1278">1278</a>
+<a href="#1279" id="1279">1279</a>
+<a href="#1280" id="1280">1280</a>
+<a href="#1281" id="1281">1281</a>
+<a href="#1282" id="1282">1282</a>
+<a href="#1283" id="1283">1283</a>
 </pre><pre class="rust"><code><span class="doccomment">//! # Key schedule
 //!
 //! This module contains the types and implementations for key schedule operations.
@@ -1385,7 +1412,10 @@
     binary_tree::array_representation::{LeafNodeIndex, TreeSize},
     ciphersuite::{AeadKey, AeadNonce, HpkePrivateKey, Mac, Secret},
     error::LibraryError,
-    framing::{mls_content::AuthenticatedContentTbm, MembershipTag},
+    framing::{
+        mls_content::AuthenticatedContentTbm, mls_content_in::AuthenticatedContentTbmIn,
+        MembershipTag,
+    },
     group::GroupContext,
     messages::{ConfirmationTag, PathSecret},
     tree::secret_tree::SecretTree,
@@ -2120,10 +2150,34 @@
     /// ```text
     /// membership_tag = MAC(membership_key, MLSPlaintextTBM);
     /// ```
-    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>tag(
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>tag_message(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider,
         tbm_payload: AuthenticatedContentTbm,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;MembershipTag, LibraryError&gt; {
+        <span class="prelude-val">Ok</span>(MembershipTag(
+            Mac::new(
+                backend,
+                <span class="kw-2">&amp;</span><span class="self">self</span>.secret,
+                <span class="kw-2">&amp;</span>tbm_payload
+                    .into_bytes()
+                    .map_err(LibraryError::missing_bound_check)<span class="question-mark">?</span>,
+            )
+            .map_err(LibraryError::unexpected_crypto_error)<span class="question-mark">?</span>,
+        ))
+    }
+
+    <span class="doccomment">/// Create a new membership tag.
+    ///
+    /// 9.1 Content Authentication
+    ///
+    /// ```text
+    /// membership_tag = MAC(membership_key, MLSPlaintextTBM);
+    /// ```
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>tag_message_in(
+        <span class="kw-2">&amp;</span><span class="self">self</span>,
+        backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider,
+        tbm_payload: AuthenticatedContentTbmIn,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;MembershipTag, LibraryError&gt; {
         <span class="prelude-val">Ok</span>(MembershipTag(
             Mac::new(

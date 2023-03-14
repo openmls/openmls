@@ -442,6 +442,9 @@
 <a href="#442" id="442">442</a>
 <a href="#443" id="443">443</a>
 <a href="#444" id="444">444</a>
+<a href="#445" id="445">445</a>
+<a href="#446" id="446">446</a>
+<a href="#447" id="447">447</a>
 </pre><pre class="rust"><code><span class="kw">use </span>core::fmt::Debug;
 <span class="kw">use </span>std::mem;
 
@@ -449,7 +452,10 @@
 <span class="kw">use </span>public_group::diff::{apply_proposals::ApplyProposalsValues, StagedPublicGroupDiff};
 
 <span class="kw">use super</span>::{<span class="kw">super</span>::errors::<span class="kw-2">*</span>, proposals::ProposalStore, <span class="kw-2">*</span>};
-<span class="kw">use </span><span class="kw">crate</span>::treesync::node::encryption_keys::EncryptionKeyPair;
+<span class="kw">use crate</span>::{
+    framing::mls_auth_content::AuthenticatedContent,
+    treesync::node::encryption_keys::EncryptionKeyPair,
+};
 
 <span class="kw">impl </span>CoreGroup {
     <span class="kw">fn </span>derive_epoch_secrets(

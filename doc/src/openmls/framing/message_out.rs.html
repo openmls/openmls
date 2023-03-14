@@ -202,8 +202,6 @@
 <a href="#202" id="202">202</a>
 <a href="#203" id="203">203</a>
 <a href="#204" id="204">204</a>
-<a href="#205" id="205">205</a>
-<a href="#206" id="206">206</a>
 </pre><pre class="rust"><code><span class="doccomment">//! MLS Message (Output)
 //!
 //! This module defines the [`MlsMessageOut`] structs which implements the
@@ -225,7 +223,6 @@
 <span class="doccomment">/// An [`MlsMessageOut`] is typically returned from an [`MlsGroup`] function and
 /// meant to be serialized and sent to the DS.
 </span><span class="attr">#[derive(Debug, Clone, PartialEq, TlsSerialize, TlsSize)]
-#[cfg_attr(feature = <span class="string">&quot;test-utils&quot;</span>, derive(TlsDeserialize))]
 </span><span class="kw">pub struct </span>MlsMessageOut {
     <span class="kw">pub</span>(<span class="kw">crate</span>) version: ProtocolVersion,
     <span class="kw">pub</span>(<span class="kw">crate</span>) body: MlsMessageOutBody,
@@ -259,7 +256,6 @@
 /// } MLSMessage;
 /// ```
 </span><span class="attr">#[derive(Debug, PartialEq, Clone, TlsSerialize, TlsSize)]
-#[cfg_attr(feature = <span class="string">&quot;test-utils&quot;</span>, derive(TlsDeserialize))]
 #[repr(u16)]
 </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">enum </span>MlsMessageOutBody {
     <span class="doccomment">/// Plaintext message
@@ -366,7 +362,7 @@
     }
 
     <span class="attr">#[cfg(any(feature = <span class="string">&quot;test-utils&quot;</span>, test))]
-    </span><span class="kw">pub fn </span>into_group_info(<span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;VerifiableGroupInfo&gt; {
+    </span><span class="kw">pub fn </span>into_verifiable_group_info(<span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;VerifiableGroupInfo&gt; {
         <span class="kw">match </span><span class="self">self</span>.body {
             MlsMessageOutBody::GroupInfo(group_info) =&gt; {
                 <span class="prelude-val">Some</span>(group_info.into_verifiable_group_info())
@@ -387,8 +383,8 @@
             MlsMessageInBody::Welcome(w) =&gt; MlsMessageOutBody::Welcome(w),
             MlsMessageInBody::GroupInfo(gi) =&gt; MlsMessageOutBody::GroupInfo(gi.into()),
             MlsMessageInBody::KeyPackage(kp) =&gt; MlsMessageOutBody::KeyPackage(kp),
-            MlsMessageInBody::PublicMessage(pm) =&gt; MlsMessageOutBody::PublicMessage(pm),
-            MlsMessageInBody::PrivateMessage(pm) =&gt; MlsMessageOutBody::PrivateMessage(pm),
+            MlsMessageInBody::PublicMessage(pm) =&gt; MlsMessageOutBody::PublicMessage(pm.into()),
+            MlsMessageInBody::PrivateMessage(pm) =&gt; MlsMessageOutBody::PrivateMessage(pm.into()),
         };
         <span class="self">Self </span>{ version, body }
     }
@@ -399,8 +395,8 @@
     <span class="kw">fn </span>from(mls_message_out: MlsMessageOut) -&gt; <span class="self">Self </span>{
         <span class="kw">let </span>version = mls_message_out.version;
         <span class="kw">let </span>body = <span class="kw">match </span>mls_message_out.body {
-            MlsMessageOutBody::PublicMessage(pm) =&gt; MlsMessageInBody::PublicMessage(pm),
-            MlsMessageOutBody::PrivateMessage(pm) =&gt; MlsMessageInBody::PrivateMessage(pm),
+            MlsMessageOutBody::PublicMessage(pm) =&gt; MlsMessageInBody::PublicMessage(pm.into()),
+            MlsMessageOutBody::PrivateMessage(pm) =&gt; MlsMessageInBody::PrivateMessage(pm.into()),
             MlsMessageOutBody::Welcome(w) =&gt; MlsMessageInBody::Welcome(w),
             MlsMessageOutBody::GroupInfo(gi) =&gt; {
                 MlsMessageInBody::GroupInfo(gi.into_verifiable_group_info())

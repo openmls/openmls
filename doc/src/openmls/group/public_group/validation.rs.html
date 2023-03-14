@@ -401,8 +401,8 @@
 <span class="kw">use crate</span>::{
     binary_tree::array_representation::LeafNodeIndex,
     framing::{
-        mls_auth_content::VerifiableAuthenticatedContent, mls_content::ContentType,
-        ProtocolMessage, Sender, WireFormat,
+        mls_auth_content_in::VerifiableAuthenticatedContentIn, ContentType, ProtocolMessage,
+        Sender, WireFormat,
     },
     group::errors::ExternalCommitValidationError,
     group::{
@@ -460,7 +460,7 @@
     ///  - ValSem009
     </span><span class="kw">pub</span>(<span class="kw">super</span>) <span class="kw">fn </span>validate_verifiable_content(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        verifiable_content: <span class="kw-2">&amp;</span>VerifiableAuthenticatedContent,
+        verifiable_content: <span class="kw-2">&amp;</span>VerifiableAuthenticatedContentIn,
         message_secrets_store_option: <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>MessageSecretsStore&gt;,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(), ValidationError&gt; {
         <span class="comment">// ValSem004

@@ -383,6 +383,10 @@
 <a href="#383" id="383">383</a>
 <a href="#384" id="384">384</a>
 <a href="#385" id="385">385</a>
+<a href="#386" id="386">386</a>
+<a href="#387" id="387">387</a>
+<a href="#388" id="388">388</a>
+<a href="#389" id="389">389</a>
 </pre><pre class="rust"><code><span class="doccomment">//! # Validation steps for incoming messages
 //!
 //! ```text
@@ -416,15 +420,17 @@
 
 <span class="kw">use crate</span>::{
     ciphersuite::signable::Verifiable, error::LibraryError,
-    framing::mls_auth_content::AuthenticatedContent,
     tree::sender_ratchet::SenderRatchetConfiguration,
 };
 
 <span class="kw">use </span><span class="self">self</span>::mls_group::errors::ProcessMessageError;
 
 <span class="kw">use super</span>::{
-    mls_auth_content::VerifiableAuthenticatedContent, mls_content::ContentType,
-    public_message::PublicMessage, <span class="kw-2">*</span>,
+    mls_auth_content::AuthenticatedContent,
+    mls_auth_content_in::{AuthenticatedContentIn, VerifiableAuthenticatedContentIn},
+    private_message_in::PrivateMessageIn,
+    public_message_in::PublicMessageIn,
+    <span class="kw-2">*</span>,
 };
 
 <span class="doccomment">/// Intermediate message that can be constructed either from a public message or from private message.
@@ -434,13 +440,13 @@
 ///  - ValSem007
 ///  - ValSem009
 </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct </span>DecryptedMessage {
-    verifiable_content: VerifiableAuthenticatedContent,
+    verifiable_content: VerifiableAuthenticatedContentIn,
 }
 
 <span class="kw">impl </span>DecryptedMessage {
     <span class="doccomment">/// Constructs a [DecryptedMessage] from a [VerifiableAuthenticatedContent].
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>from_inbound_public_message&lt;<span class="lifetime">&#39;a</span>&gt;(
-        public_message: PublicMessage,
+        public_message: PublicMessageIn,
         message_secrets_option: <span class="kw">impl </span>Into&lt;<span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>MessageSecrets&gt;&gt;,
         serialized_context: Vec&lt;u8&gt;,
         backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider,
@@ -471,7 +477,7 @@
     <span class="doccomment">/// Constructs a [DecryptedMessage] from a [PrivateMessage] by attempting to decrypt it
     /// to a [VerifiableAuthenticatedContent] first.
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>from_inbound_ciphertext(
-        ciphertext: PrivateMessage,
+        ciphertext: PrivateMessageIn,
         backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider,
         group: <span class="kw-2">&amp;mut </span>CoreGroup,
         sender_ratchet_configuration: <span class="kw-2">&amp;</span>SenderRatchetConfiguration,
@@ -503,7 +509,7 @@
     // - Membership tag must be present for member messages, if the original incoming message was not an PrivateMessage
     // - Ensures application messages were originally PrivateMessage messages
     </span><span class="kw">fn </span>from_verifiable_content(
-        verifiable_content: VerifiableAuthenticatedContent,
+        verifiable_content: VerifiableAuthenticatedContentIn,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, ValidationError&gt; {
         <span class="comment">// ValSem009
         </span><span class="kw">if </span>verifiable_content.content_type() == ContentType::Commit
@@ -601,7 +607,7 @@
     }
 
     <span class="doccomment">/// Returns the [`VerifiableAuthenticatedContent`].
-    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>verifiable_content(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>VerifiableAuthenticatedContent {
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>verifiable_content(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>VerifiableAuthenticatedContentIn {
         <span class="kw-2">&amp;</span><span class="self">self</span>.verifiable_content
     }
 }
@@ -613,7 +619,7 @@
 /// message.
 </span><span class="attr">#[derive(Debug, Clone)]
 </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct </span>UnverifiedMessage {
-    verifiable_content: VerifiableAuthenticatedContent,
+    verifiable_content: VerifiableAuthenticatedContentIn,
     credential: Credential,
     sender_pk: OpenMlsSignaturePublicKey,
 }
@@ -638,10 +644,12 @@
         <span class="self">self</span>,
         backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(AuthenticatedContent, Credential), ProcessMessageError&gt; {
-        <span class="kw">let </span>content: AuthenticatedContent = <span class="self">self
+        <span class="kw">let </span>content: AuthenticatedContentIn = <span class="self">self
             </span>.verifiable_content
             .verify(backend.crypto(), <span class="kw-2">&amp;</span><span class="self">self</span>.sender_pk)
             .map_err(|<span class="kw">_</span>| ProcessMessageError::InvalidSignature)<span class="question-mark">?</span>;
+        <span class="comment">// TODO #1186: This should be verified
+        </span><span class="kw">let </span>content = content.into();
         <span class="prelude-val">Ok</span>((content, <span class="self">self</span>.credential))
     }
 
