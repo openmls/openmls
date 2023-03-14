@@ -10,7 +10,7 @@ pub use crate::group::public_group::{errors::*, process::*, *};
 pub use crate::ciphersuite::{hash_ref::KeyPackageRef, signable::*, signature::*, *};
 
 // Messages
-pub use crate::messages::{external_proposals::*, proposals::*, *};
+pub use crate::messages::{external_proposals::*, proposals::*, proposals_in::*, *};
 
 // Credentials
 pub use crate::credentials::{errors::*, *};
@@ -22,7 +22,7 @@ pub use crate::versions::*;
 pub use crate::extensions::{errors::*, *};
 
 // Framing
-pub use crate::framing::{message_in::*, message_out::*, sender::*, validation::*};
+pub use crate::framing::{message_in::*, message_out::*, sender::*, validation::*, *};
 
 // Key packages
 pub use crate::key_packages::{errors::*, *};

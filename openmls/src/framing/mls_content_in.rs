@@ -1,23 +1,27 @@
-//! This module contains the [`FramedContent`] struct and associated helper structs
-//! such as [`FramedContentTbs`], as well as their implementations.
+//! This module contains the [`FramedContentIn`] struct and associated helper structs
+//! such as [`FramedContentTbsIn`], as well as their implementations.
 
 use crate::{
     ciphersuite::signable::Signable,
     error::LibraryError,
     group::{GroupEpoch, GroupId},
-    messages::{proposals::Proposal, Commit},
+    messages::{proposals_in::ProposalIn, CommitIn},
     versions::ProtocolVersion,
 };
 
-use std::io::Write;
+use std::io::{Read, Write};
 
 use super::{
-    mls_auth_content::{AuthenticatedContent, FramedContentAuthData},
+    mls_auth_content_in::{AuthenticatedContentIn, FramedContentAuthDataIn},
+    mls_content::FramedContentBody,
     ContentType, Sender, WireFormat,
 };
 
 use serde::{Deserialize, Serialize};
-use tls_codec::{Serialize as TlsSerializeTrait, Size, TlsSerialize, TlsSize, VLBytes};
+use tls_codec::{
+    Deserialize as TlsDeserializeTrait, Serialize as TlsSerializeTrait, Size, TlsDeserialize,
+    TlsSerialize, TlsSize, VLBytes,
+};
 
 /// ```c
 /// // draft-ietf-mls-protocol-17
@@ -30,18 +34,20 @@ use tls_codec::{Serialize as TlsSerializeTrait, Size, TlsSerialize, TlsSize, VLB
 ///     // ... continued in [FramedContentBody] ...
 /// } FramedContent;
 /// ```
-#[derive(Debug, PartialEq, Clone, Serialize, Deserialize, TlsSerialize, TlsSize)]
-pub(crate) struct FramedContent {
+#[derive(
+    Debug, PartialEq, Clone, Serialize, Deserialize, TlsSerialize, TlsDeserialize, TlsSize,
+)]
+pub(crate) struct FramedContentIn {
     pub(super) group_id: GroupId,
     pub(super) epoch: GroupEpoch,
     pub(super) sender: Sender,
     pub(super) authenticated_data: VLBytes,
 
-    pub(super) body: FramedContentBody,
+    pub(super) body: FramedContentBodyIn,
 }
 
-impl From<AuthenticatedContent> for FramedContent {
-    fn from(mls_auth_content: AuthenticatedContent) -> Self {
+impl From<AuthenticatedContentIn> for FramedContentIn {
+    fn from(mls_auth_content: AuthenticatedContentIn) -> Self {
         mls_auth_content.content
     }
 }
@@ -62,18 +68,20 @@ impl From<AuthenticatedContent> for FramedContent {
 ///     }
 /// } FramedContent;
 /// ```
-#[derive(Debug, PartialEq, Clone, Serialize, Deserialize, TlsSerialize, TlsSize)]
+#[derive(
+    Debug, PartialEq, Clone, Serialize, Deserialize, TlsSerialize, TlsDeserialize, TlsSize,
+)]
 #[repr(u8)]
-pub(crate) enum FramedContentBody {
+pub(crate) enum FramedContentBodyIn {
     #[tls_codec(discriminant = 1)]
     Application(VLBytes),
     #[tls_codec(discriminant = 2)]
-    Proposal(Proposal),
+    Proposal(ProposalIn),
     #[tls_codec(discriminant = 3)]
-    Commit(Commit),
+    Commit(CommitIn),
 }
 
-impl FramedContentBody {
+impl FramedContentBodyIn {
     pub(crate) fn content_type(&self) -> ContentType {
         match self {
             Self::Application(_) => ContentType::Application,
@@ -82,30 +90,24 @@ impl FramedContentBody {
         }
     }
 
-    /// Returns the length of the serialized content without the `content_type` field.
-    pub(crate) fn serialized_len_without_type(&self) -> usize {
-        match self {
-            FramedContentBody::Application(a) => a.tls_serialized_len(),
-            FramedContentBody::Proposal(p) => p.tls_serialized_len(),
-            FramedContentBody::Commit(c) => c.tls_serialized_len(),
-        }
-    }
-
-    /// Serializes the content without the `content_type` field.
-    pub(crate) fn serialize_without_type<W: Write>(
-        &self,
-        writer: &mut W,
-    ) -> Result<usize, tls_codec::Error> {
-        match self {
-            FramedContentBody::Application(a) => a.tls_serialize(writer),
-            FramedContentBody::Proposal(p) => p.tls_serialize(writer),
-            FramedContentBody::Commit(c) => c.tls_serialize(writer),
-        }
+    pub(super) fn deserialize_without_type<R: Read>(
+        bytes: &mut R,
+        content_type: ContentType,
+    ) -> Result<Self, tls_codec::Error> {
+        Ok(match content_type {
+            ContentType::Application => {
+                FramedContentBodyIn::Application(VLBytes::tls_deserialize(bytes)?)
+            }
+            ContentType::Proposal => {
+                FramedContentBodyIn::Proposal(ProposalIn::tls_deserialize(bytes)?)
+            }
+            ContentType::Commit => FramedContentBodyIn::Commit(CommitIn::tls_deserialize(bytes)?),
+        })
     }
 }
 
-impl From<&FramedContentBody> for ContentType {
-    fn from(value: &FramedContentBody) -> Self {
+impl From<&FramedContentBodyIn> for ContentType {
+    fn from(value: &FramedContentBodyIn) -> Self {
         value.content_type()
     }
 }
@@ -121,15 +123,15 @@ impl From<&FramedContentBody> for ContentType {
 /// } AuthenticatedContentTBM;
 /// ```
 #[derive(Debug)]
-pub(crate) struct AuthenticatedContentTbm<'a> {
+pub(crate) struct AuthenticatedContentTbmIn<'a> {
     pub(crate) tbs_payload: &'a [u8],
-    pub(crate) auth: &'a FramedContentAuthData,
+    pub(crate) auth: &'a FramedContentAuthDataIn,
 }
 
-impl<'a> AuthenticatedContentTbm<'a> {
+impl<'a> AuthenticatedContentTbmIn<'a> {
     pub(crate) fn new(
         tbs_payload: &'a [u8],
-        auth: &'a FramedContentAuthData,
+        auth: &'a FramedContentAuthDataIn,
     ) -> Result<Self, LibraryError> {
         Ok(Self { tbs_payload, auth })
     }
@@ -142,15 +144,15 @@ impl<'a> AuthenticatedContentTbm<'a> {
 }
 
 #[derive(PartialEq, Debug, Clone, Serialize, Deserialize)]
-pub(crate) struct FramedContentTbs {
+pub(crate) struct FramedContentTbsIn {
     pub(super) version: ProtocolVersion,
     pub(super) wire_format: WireFormat,
-    pub(super) content: FramedContent,
+    pub(super) content: FramedContentIn,
     pub(super) serialized_context: Option<Vec<u8>>,
 }
 
-impl Signable for FramedContentTbs {
-    type SignedOutput = AuthenticatedContent;
+impl Signable for FramedContentTbsIn {
+    type SignedOutput = AuthenticatedContentIn;
 
     fn unsigned_payload(&self) -> Result<Vec<u8>, tls_codec::Error> {
         self.tls_serialize_detached()
@@ -161,26 +163,27 @@ impl Signable for FramedContentTbs {
     }
 }
 
-impl FramedContentTbs {
-    /// Create an FramedContentTbs from an existing values.
+impl FramedContentTbsIn {
+    /// Create an FramedContentTbsIn from an existing values.
     /// Note that if you would like to add a serialized context, you
     /// should subsequently call [`with_context`].
+    #[cfg(any(feature = "test-utils", test))]
     pub(crate) fn new(
         wire_format: WireFormat,
         group_id: GroupId,
         epoch: impl Into<GroupEpoch>,
         sender: Sender,
         authenticated_data: VLBytes,
-        body: FramedContentBody,
+        body: FramedContentBodyIn,
     ) -> Self {
-        let content = FramedContent {
+        let content = FramedContentIn {
             group_id,
             epoch: epoch.into(),
             sender,
             authenticated_data,
             body,
         };
-        FramedContentTbs {
+        FramedContentTbsIn {
             version: ProtocolVersion::Mls10,
             wire_format,
             content,
@@ -188,14 +191,14 @@ impl FramedContentTbs {
         }
     }
 
-    /// Helper function to make serialization of [`FramedContentTbs`] accessible
+    /// Helper function to make serialization of [`FramedContentTbsIn`] accessible
     /// to both the [`TlsSerialize`] implementation and the
-    /// [`FramedContentTbs::new_and_serialize_detached()`] function.
+    /// [`FramedContentTbsIn::new_and_serialize_detached()`] function.
     fn new_and_serialize<'context, W: Write>(
         writer: &mut W,
         version: ProtocolVersion,
         wire_format: WireFormat,
-        content: &FramedContent,
+        content: &FramedContentIn,
         serialized_context: impl Into<Option<&'context [u8]>>,
     ) -> Result<usize, tls_codec::Error> {
         let mut written = version.tls_serialize(writer)?;
@@ -215,9 +218,9 @@ impl FramedContentTbs {
         Ok(written)
     }
 
-    /// Given references to the individual contents of a [`FramedContentTbs`],
+    /// Given references to the individual contents of a [`FramedContentTbsIn`],
     /// return its serialization. This function is useful to avoid cloning the
-    /// individual contents to create a [`FramedContentTbs`] instance just to
+    /// individual contents to create a [`FramedContentTbsIn`] instance just to
     /// serialize it. Note that the context is only serialized if the `sender`
     /// in `content` is [`Sender::Member`] or [`Sender::NewMemberCommit`].
     ///
@@ -225,7 +228,7 @@ impl FramedContentTbs {
     pub(super) fn new_and_serialize_detached<'context>(
         version: ProtocolVersion,
         wire_format: WireFormat,
-        content: &FramedContent,
+        content: &FramedContentIn,
         serialized_context: impl Into<Option<&'context [u8]>>,
     ) -> Result<Vec<u8>, tls_codec::Error> {
         let mut writer = Vec::new();
@@ -242,13 +245,14 @@ impl FramedContentTbs {
 
     /// Adds a serialized context to FramedContentTbs.
     /// This consumes the original struct and can be used as a builder function.
+    #[cfg(any(feature = "test-utils", test))]
     pub(crate) fn with_context(mut self, serialized_context: Vec<u8>) -> Self {
         self.serialized_context = Some(serialized_context);
         self
     }
 }
 
-impl Size for FramedContentTbs {
+impl Size for FramedContentTbsIn {
     #[inline]
     fn tls_serialized_len(&self) -> usize {
         self.version.tls_serialized_len()
@@ -268,7 +272,7 @@ impl Size for FramedContentTbs {
     }
 }
 
-impl TlsSerializeTrait for FramedContentTbs {
+impl TlsSerializeTrait for FramedContentTbsIn {
     fn tls_serialize<W: Write>(&self, writer: &mut W) -> Result<usize, tls_codec::Error> {
         Self::new_and_serialize(
             writer,
@@ -277,5 +281,73 @@ impl TlsSerializeTrait for FramedContentTbs {
             &self.content,
             self.serialized_context.as_deref(),
         )
+    }
+}
+
+// The following two `From` implementations break abstraction layers and MUST
+// NOT be made available outside of tests or "test-utils".
+
+// TODO #1186: re-enable #[cfg(any(feature = "test-utils", test))]
+impl From<FramedContentBodyIn> for FramedContentBody {
+    fn from(body: FramedContentBodyIn) -> Self {
+        match body {
+            FramedContentBodyIn::Application(application) => {
+                FramedContentBody::Application(application)
+            }
+            FramedContentBodyIn::Proposal(proposal) => FramedContentBody::Proposal(proposal.into()),
+            FramedContentBodyIn::Commit(commit) => FramedContentBody::Commit(commit.into()),
+        }
+    }
+}
+
+// TODO #1186: The following is temporary until the refactoring of incoming
+// messages is done.
+
+impl From<FramedContentIn> for crate::framing::mls_content::FramedContent {
+    fn from(value: FramedContentIn) -> Self {
+        Self {
+            group_id: value.group_id,
+            epoch: value.epoch,
+            sender: value.sender,
+            authenticated_data: value.authenticated_data,
+            body: value.body.into(),
+        }
+    }
+}
+
+impl From<FramedContentBody> for FramedContentBodyIn {
+    fn from(body: FramedContentBody) -> Self {
+        match body {
+            FramedContentBody::Application(application) => {
+                FramedContentBodyIn::Application(application)
+            }
+            FramedContentBody::Proposal(proposal) => FramedContentBodyIn::Proposal(proposal.into()),
+            FramedContentBody::Commit(commit) => FramedContentBodyIn::Commit(commit.into()),
+        }
+    }
+}
+
+#[cfg(any(feature = "test-utils", test))]
+impl From<crate::framing::mls_content::FramedContent> for FramedContentIn {
+    fn from(value: crate::framing::mls_content::FramedContent) -> Self {
+        Self {
+            group_id: value.group_id,
+            epoch: value.epoch,
+            sender: value.sender,
+            authenticated_data: value.authenticated_data,
+            body: value.body.into(),
+        }
+    }
+}
+
+#[cfg(any(feature = "test-utils", test))]
+impl From<FramedContentTbsIn> for crate::framing::mls_content::FramedContentTbs {
+    fn from(value: FramedContentTbsIn) -> Self {
+        Self {
+            version: value.version,
+            wire_format: value.wire_format,
+            content: value.content.into(),
+            serialized_context: value.serialized_context,
+        }
     }
 }
