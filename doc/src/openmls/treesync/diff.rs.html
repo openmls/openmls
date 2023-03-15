@@ -911,6 +911,11 @@
 <a href="#911" id="911">911</a>
 <a href="#912" id="912">912</a>
 <a href="#913" id="913">913</a>
+<a href="#914" id="914">914</a>
+<a href="#915" id="915">915</a>
+<a href="#916" id="916">916</a>
+<a href="#917" id="917">917</a>
+<a href="#918" id="918">918</a>
 </pre><pre class="rust"><code><span class="doccomment">//! This module provides the diff functionality for [`TreeSync`].
 //!
 //! # About
@@ -932,6 +937,7 @@
 //! [`LibraryError`](TreeSyncDiffError::LibraryError).
 </span><span class="kw">use </span>std::collections::HashSet;
 
+<span class="kw">use </span>log::debug;
 <span class="kw">use </span>openmls_traits::{signatures::Signer, types::Ciphersuite, OpenMlsCryptoProvider};
 <span class="kw">use </span>serde::{Deserialize, Serialize};
 
@@ -1702,17 +1708,21 @@
             })
             .collect();
 
-        <span class="kw">if let </span><span class="prelude-val">Some</span>((resolution_position, private_key)) = sender_copath_resolution
+        <span class="kw">if let </span><span class="prelude-val">Some</span>((keypair, resolution_position)) = sender_copath_resolution
             .iter()
             .enumerate()
             .find_map(|(position, pk)| {
                 owned_keys
                     .iter()
                     .find(|<span class="kw-2">&amp;</span>owned_keypair| owned_keypair.public_key() == pk)
-                    .map(|keypair| (position, keypair.private_key()))
+                    .map(|keypair| (keypair, position))
             })
         {
-            <span class="kw">return </span><span class="prelude-val">Ok</span>((private_key, resolution_position));
+            <span class="macro">debug!</span>(<span class="string">&quot;Found fitting keypair in the filtered resolution:&quot;</span>);
+            <span class="macro">debug!</span>(<span class="string">&quot;* private key: {:x?}&quot;</span>, keypair.private_key());
+            <span class="macro">debug!</span>(<span class="string">&quot;* public key: {:x?}&quot;</span>, keypair.public_key());
+
+            <span class="kw">return </span><span class="prelude-val">Ok</span>((keypair.private_key(), resolution_position));
         };
         <span class="prelude-val">Err</span>(TreeSyncDiffError::NoPrivateKeyFound)
     }

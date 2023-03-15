@@ -227,6 +227,16 @@
 <a href="#227" id="227">227</a>
 <a href="#228" id="228">228</a>
 <a href="#229" id="229">229</a>
+<a href="#230" id="230">230</a>
+<a href="#231" id="231">231</a>
+<a href="#232" id="232">232</a>
+<a href="#233" id="233">233</a>
+<a href="#234" id="234">234</a>
+<a href="#235" id="235">235</a>
+<a href="#236" id="236">236</a>
+<a href="#237" id="237">237</a>
+<a href="#238" id="238">238</a>
+<a href="#239" id="239">239</a>
 </pre><pre class="rust"><code><span class="doccomment">//! A binary tree implementation for use with MLS.
 //!
 //! # About
@@ -236,8 +246,9 @@
 //! allows the creation of an [`AbDiff`] struct, where changes can be made before
 //! merging it back into an existing tree.
 
-</span><span class="kw">use </span>serde::{Deserialize, Serialize};
-<span class="kw">use </span>std::fmt::Debug;
+</span><span class="kw">use </span>std::fmt::Debug;
+
+<span class="kw">use </span>serde::{Deserialize, Serialize};
 <span class="kw">use </span>thiserror::Error;
 
 <span class="kw">use super</span>::{
@@ -440,6 +451,15 @@
         leaf_index_2: LeafNodeIndex,
     ) -&gt; Vec&lt;ParentNodeIndex&gt; {
         common_direct_path(leaf_index_1, leaf_index_2, <span class="self">self</span>.tree_size())
+    }
+}
+
+<span class="attr">#[cfg(test)]
+</span><span class="kw">impl</span>&lt;L: Clone + Debug + Default, P: Clone + Debug + Default&gt; ABinaryTree&lt;L, P&gt; {
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>parent(<span class="kw-2">&amp;</span><span class="self">self</span>, parent_index: ParentNodeIndex) -&gt; <span class="kw-2">&amp;</span>P {
+        <span class="self">self</span>.parent_nodes
+            .get(parent_index.usize())
+            .unwrap_or(<span class="kw-2">&amp;</span><span class="self">self</span>.default_parent)
     }
 }
 

@@ -266,6 +266,7 @@
 <span class="kw">use </span>thiserror::<span class="kw-2">*</span>;
 <span class="kw">use </span>tls_codec::{TlsDeserialize, TlsSerialize, TlsSize, VLBytes};
 
+<span class="kw">use </span><span class="kw">super</span>::encryption_keys::{EncryptionKey, EncryptionKeyPair};
 <span class="kw">use crate</span>::{
     binary_tree::array_representation::{LeafNodeIndex, ParentNodeIndex},
     ciphersuite::HpkePublicKey,
@@ -274,8 +275,6 @@
     schedule::CommitSecret,
     treesync::{hashes::ParentHashInput, treekem::UpdatePathNode},
 };
-
-<span class="kw">use </span><span class="kw">super</span>::encryption_keys::{EncryptionKey, EncryptionKeyPair};
 
 <span class="doccomment">/// This struct implements the MLS parent node. It contains its public key,
 /// parent hash and unmerged leaves. Additionally, it may contain the private
@@ -300,7 +299,8 @@
 }
 
 <span class="doccomment">/// Helper struct for the encryption of a [`ParentNode`].
-</span><span class="attr">#[derive(Debug)]
+</span><span class="attr">#[cfg_attr(test, derive(Clone))]
+#[derive(Debug)]
 </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct </span>PlainUpdatePathNode {
     public_key: EncryptionKey,
     path_secret: PathSecret,

@@ -396,32 +396,21 @@
 <a href="#396" id="396">396</a>
 <a href="#397" id="397">397</a>
 <a href="#398" id="398">398</a>
-<a href="#399" id="399">399</a>
 </pre><pre class="rust"><code><span class="doccomment">//! Module to encrypt and decrypt update paths for a [`TreeSyncDiff`] instance.
 //!
 //! # About
 //!
 //! This module contains structs and functions to encrypt and decrypt path
 //! updates for a [`TreeSyncDiff`] instance.
-</span><span class="kw">use </span>rayon::prelude::<span class="kw-2">*</span>;
-<span class="kw">use </span>std::collections::HashSet;
-<span class="kw">use </span>tls_codec::{TlsDeserialize, TlsSerialize, TlsSize};
+</span><span class="kw">use </span>std::collections::HashSet;
 
 <span class="kw">use </span>openmls_traits::{
     types::{Ciphersuite, HpkeCiphertext},
     OpenMlsCryptoProvider,
 };
+<span class="kw">use </span>rayon::prelude::<span class="kw-2">*</span>;
 <span class="kw">use </span>serde::{Deserialize, Serialize};
-
-<span class="kw">use crate</span>::{
-    binary_tree::array_representation::LeafNodeIndex,
-    ciphersuite::{hpke, HpkePublicKey},
-    error::LibraryError,
-    messages::{proposals::AddProposal, EncryptedGroupSecrets, GroupSecrets, PathSecret},
-    schedule::{psk::PreSharedKeyId, CommitSecret, JoinerSecret},
-    treesync::node::NodeReference,
-    versions::ProtocolVersion,
-};
+<span class="kw">use </span>tls_codec::{TlsDeserialize, TlsSerialize, TlsSize};
 
 <span class="kw">use super</span>::{
     diff::TreeSyncDiff,
@@ -430,6 +419,15 @@
         parent_node::{ParentNode, PlainUpdatePathNode},
     },
     ApplyUpdatePathError, LeafNode,
+};
+<span class="kw">use crate</span>::{
+    binary_tree::array_representation::LeafNodeIndex,
+    ciphersuite::{hpke, HpkePublicKey},
+    error::LibraryError,
+    messages::{proposals::AddProposal, EncryptedGroupSecrets, GroupSecrets, PathSecret},
+    schedule::{psk::PreSharedKeyId, CommitSecret, JoinerSecret},
+    treesync::node::NodeReference,
+    versions::ProtocolVersion,
 };
 
 <span class="kw">impl</span>&lt;<span class="lifetime">&#39;a</span>&gt; TreeSyncDiff&lt;<span class="lifetime">&#39;a</span>&gt; {

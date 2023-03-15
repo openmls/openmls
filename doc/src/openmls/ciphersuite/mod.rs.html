@@ -140,7 +140,7 @@
 </span><span class="attr">#[derive(
     Debug, Clone, serde::Serialize, serde::Deserialize, TlsSerialize, TlsDeserialize, TlsSize,
 )]
-#[cfg_attr(test, derive(PartialEq))]
+#[cfg_attr(test, derive(PartialEq, Eq))]
 #[serde(transparent)]
 </span><span class="kw">pub struct </span>HpkePrivateKey(VLBytes);
 

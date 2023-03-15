@@ -132,6 +132,30 @@
 <a href="#132" id="132">132</a>
 <a href="#133" id="133">133</a>
 <a href="#134" id="134">134</a>
+<a href="#135" id="135">135</a>
+<a href="#136" id="136">136</a>
+<a href="#137" id="137">137</a>
+<a href="#138" id="138">138</a>
+<a href="#139" id="139">139</a>
+<a href="#140" id="140">140</a>
+<a href="#141" id="141">141</a>
+<a href="#142" id="142">142</a>
+<a href="#143" id="143">143</a>
+<a href="#144" id="144">144</a>
+<a href="#145" id="145">145</a>
+<a href="#146" id="146">146</a>
+<a href="#147" id="147">147</a>
+<a href="#148" id="148">148</a>
+<a href="#149" id="149">149</a>
+<a href="#150" id="150">150</a>
+<a href="#151" id="151">151</a>
+<a href="#152" id="152">152</a>
+<a href="#153" id="153">153</a>
+<a href="#154" id="154">154</a>
+<a href="#155" id="155">155</a>
+<a href="#156" id="156">156</a>
+<a href="#157" id="157">157</a>
+<a href="#158" id="158">158</a>
 </pre><pre class="rust"><code><span class="doccomment">//! ### Public-Key Encryption
 //!
 //! As with signing, MLS includes a label and context in encryption operations to
@@ -235,13 +259,25 @@
     <span class="kw">let </span>context: EncryptContext = (label, context).into();
     <span class="kw">let </span>context = context.tls_serialize_detached()<span class="question-mark">?</span>;
 
-    <span class="prelude-val">Ok</span>(crypto.hpke_seal(
+    <span class="macro">log_crypto!</span>(
+        debug,
+        <span class="string">&quot;HPKE Encrypt with label `{label}` and ciphersuite `{ciphersuite:?}`:&quot;
+    </span>);
+    <span class="macro">log_crypto!</span>(debug, <span class="string">&quot;* context:     {context:x?}&quot;</span>);
+    <span class="macro">log_crypto!</span>(debug, <span class="string">&quot;* public key:  {public_key:x?}&quot;</span>);
+    <span class="macro">log_crypto!</span>(debug, <span class="string">&quot;* plaintext:   {plaintext:x?}&quot;</span>);
+
+    <span class="kw">let </span>cipher = crypto.hpke_seal(
         ciphersuite.hpke_config(),
         public_key,
         <span class="kw-2">&amp;</span>context,
         <span class="kw-2">&amp;</span>[],
         plaintext,
-    ))
+    );
+
+    <span class="macro">log_crypto!</span>(debug, <span class="string">&quot;* ciphertext:  {:x?}&quot;</span>, cipher);
+
+    <span class="prelude-val">Ok</span>(cipher)
 }
 
 <span class="doccomment">/// Decrypt with HPKE and label.
@@ -256,7 +292,15 @@
     <span class="kw">let </span>context: EncryptContext = (label, context).into();
     <span class="kw">let </span>context = context.tls_serialize_detached()<span class="question-mark">?</span>;
 
-    crypto
+    <span class="macro">log_crypto!</span>(
+        debug,
+        <span class="string">&quot;HPKE Decrypt with label `{label}` and `ciphersuite` {ciphersuite:?}:&quot;
+    </span>);
+    <span class="macro">log_crypto!</span>(debug, <span class="string">&quot;* context:     {context:x?}&quot;</span>);
+    <span class="macro">log_crypto!</span>(debug, <span class="string">&quot;* private key: {private_key:x?}&quot;</span>);
+    <span class="macro">log_crypto!</span>(debug, <span class="string">&quot;* ciphertext:  {ciphertext:x?}&quot;</span>);
+
+    <span class="kw">let </span>plaintext = crypto
         .hpke_open(
             ciphersuite.hpke_config(),
             ciphertext,
@@ -264,7 +308,11 @@
             <span class="kw-2">&amp;</span>context,
             <span class="kw-2">&amp;</span>[],
         )
-        .map_err(|e| e.into())
+        .map_err(|e| e.into());
+
+    <span class="macro">log_crypto!</span>(debug, <span class="string">&quot;* plaintext:   {plaintext:x?}&quot;</span>);
+
+    plaintext
 }
 </code></pre></div>
 </section></main><div id="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="openmls" data-themes="" data-resource-suffix="" data-rustdoc-version="1.68.0 (2c8cc3432 2023-03-06)" data-search-js="search-98d53477a794af0b.js" data-settings-js="settings-c3c521c753752a1a.js" data-settings-css="settings-08ddfdda51b8ee2e.css" ></div></body></html>

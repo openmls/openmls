@@ -633,6 +633,21 @@
 <a href="#633" id="633">633</a>
 <a href="#634" id="634">634</a>
 <a href="#635" id="635">635</a>
+<a href="#636" id="636">636</a>
+<a href="#637" id="637">637</a>
+<a href="#638" id="638">638</a>
+<a href="#639" id="639">639</a>
+<a href="#640" id="640">640</a>
+<a href="#641" id="641">641</a>
+<a href="#642" id="642">642</a>
+<a href="#643" id="643">643</a>
+<a href="#644" id="644">644</a>
+<a href="#645" id="645">645</a>
+<a href="#646" id="646">646</a>
+<a href="#647" id="647">647</a>
+<a href="#648" id="648">648</a>
+<a href="#649" id="649">649</a>
+<a href="#650" id="650">650</a>
 </pre><pre class="rust"><code><span class="doccomment">//! This module implements the ratchet tree component of MLS.
 //!
 //! It exposes the [`Node`] enum that can contain either a [`LeafNode`] or a [`ParentNode`].
@@ -674,6 +689,13 @@
     },
     treesync_node::{TreeSyncLeafNode, TreeSyncNode, TreeSyncParentNode},
 };
+<span class="attr">#[cfg(test)]
+</span><span class="kw">use </span><span class="kw">crate</span>::binary_tree::array_representation::ParentNodeIndex;
+<span class="attr">#[cfg(any(feature = <span class="string">&quot;test-utils&quot;</span>, test))]
+</span><span class="kw">use crate</span>::{
+    binary_tree::array_representation::level, group::tests::tree_printing::root,
+    test_utils::bytes_to_hex,
+};
 <span class="kw">use crate</span>::{
     binary_tree::{
         array_representation::{is_node_in_tree, tree::TreeNode, LeafNodeIndex, TreeSize},
@@ -687,12 +709,6 @@
     group::{config::CryptoConfig, Member},
     messages::{PathSecret, PathSecretError},
     schedule::CommitSecret,
-};
-
-<span class="attr">#[cfg(any(feature = <span class="string">&quot;test-utils&quot;</span>, test))]
-</span><span class="kw">use crate</span>::{
-    binary_tree::array_representation::level, group::tests::tree_printing::root,
-    test_utils::bytes_to_hex,
 };
 
 <span class="comment">// Private
@@ -871,7 +887,7 @@
 /// creating a new instance from an imported set of nodes, as well as when
 /// merging a diff.
 </span><span class="attr">#[derive(Debug, Serialize, Deserialize)]
-#[cfg_attr(test, derive(PartialEq))]
+#[cfg_attr(test, derive(PartialEq, Clone))]
 </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct </span>TreeSync {
     tree: MlsBinaryTree&lt;TreeSyncLeafNode, TreeSyncParentNode&gt;,
     tree_hash: Vec&lt;u8&gt;,
@@ -1209,6 +1225,20 @@
             </span>}
         }
         <span class="prelude-val">Ok</span>((keypairs, path_secret.into()))
+    }
+}
+
+<span class="attr">#[cfg(test)]
+</span><span class="kw">impl </span>TreeSync {
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>leaf_count(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; u32 {
+        <span class="self">self</span>.tree.leaf_count()
+    }
+
+    <span class="doccomment">/// Return a reference to the parent node at the given `ParentNodeIndex` or
+    /// `None` if the node is blank.
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>parent(<span class="kw-2">&amp;</span><span class="self">self</span>, node_index: ParentNodeIndex) -&gt; <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>ParentNode&gt; {
+        <span class="kw">let </span>tsn = <span class="self">self</span>.tree.parent(node_index);
+        tsn.node().as_ref()
     }
 }
 
