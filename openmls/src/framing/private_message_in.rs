@@ -2,9 +2,8 @@ use openmls_traits::{types::Ciphersuite, OpenMlsCryptoProvider};
 use tls_codec::{Deserialize, Serialize, TlsDeserialize, TlsSerialize, TlsSize};
 
 use super::{
-    codec::deserialize_ciphertext_content,
-    mls_auth_content_in::{FramedContentAuthDataIn, VerifiableAuthenticatedContentIn},
-    mls_content_in::FramedContentBodyIn,
+    codec::deserialize_ciphertext_content, mls_auth_content::FramedContentAuthData,
+    mls_auth_content_in::VerifiableAuthenticatedContentIn, mls_content_in::FramedContentBodyIn,
 };
 
 use crate::{
@@ -88,14 +87,14 @@ impl PrivateMessageIn {
             .map_err(|_| MessageDecryptionError::MalformedContent)
     }
 
-    /// Decrypt this [`PrivateMessage`] and return the [`PrivateContentTbe`].
+    /// Decrypt this [`PrivateMessage`] and return the [`PrivateMessageContentIn`].
     #[inline]
     fn decrypt(
         &self,
         backend: &impl OpenMlsCryptoProvider,
         ratchet_key: AeadKey,
         ratchet_nonce: &AeadNonce,
-    ) -> Result<PrivateContentTbeIn, MessageDecryptionError> {
+    ) -> Result<PrivateMessageContentIn, MessageDecryptionError> {
         // Serialize content AAD
         let private_message_content_aad_bytes = PrivateContentAad {
             group_id: self.group_id.clone(),
@@ -217,7 +216,7 @@ impl PrivateMessageIn {
 
 // === Helper structs ===
 
-/// PrivateContentTbe
+/// PrivateMessageContent
 ///
 /// ```c
 /// // draft-ietf-mls-protocol-17
@@ -235,16 +234,16 @@ impl PrivateMessageIn {
 ///
 ///     FramedContentAuthData auth;
 ///     opaque padding[length_of_padding];
-/// } PrivateContentTbe;
+/// } PrivateMessageContent;
 /// ```
 #[derive(Debug, Clone)]
-pub(crate) struct PrivateContentTbeIn {
+pub(crate) struct PrivateMessageContentIn {
     // The `content` field is serialized and deserialized manually without the
     // `content_type`, which is not part of the struct as per MLS spec. See the
-    // implementation of `TlsSerialize` for `PrivateContentTbe`, as well as
-    // `deserialize_ciphertext_content`.
+    // implementation of `TlsSerialize` for `PrivateMessageContentIn`, as well
+    // as `deserialize_ciphertext_content`.
     pub(crate) content: FramedContentBodyIn,
-    pub(crate) auth: FramedContentAuthDataIn,
+    pub(crate) auth: FramedContentAuthData,
 }
 
 #[derive(TlsSerialize, TlsSize)]

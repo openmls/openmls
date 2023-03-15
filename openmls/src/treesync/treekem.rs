@@ -374,39 +374,6 @@ impl UpdatePathIn {
     pub(crate) fn leaf_node(&self) -> &LeafNode {
         &self.leaf_node
     }
-
-    #[cfg(test)]
-    /// Flip the last bytes of the ciphertexts of all contained nodes.
-    pub fn flip_eps_bytes(&mut self) {
-        let mut new_nodes = Vec::new();
-        for node in self.nodes.as_slice() {
-            let mut new_node = node.clone();
-            new_node.flip_last_byte();
-            new_nodes.push(new_node);
-        }
-        self.nodes = new_nodes;
-    }
-
-    #[cfg(test)]
-    /// Set the path key package.
-    pub fn set_leaf_node(&mut self, leaf_node: LeafNode) {
-        self.leaf_node = leaf_node
-    }
-
-    #[cfg(test)]
-    /// Remove and return the last node in the update path. Returns `None` if
-    /// the path is empty.
-    pub fn pop(&mut self) -> Option<UpdatePathNode> {
-        self.nodes.pop()
-    }
-
-    #[cfg(test)]
-    /// Flip the last bytes of the public key in the last node in the path.
-    pub fn flip_node_bytes(&mut self) {
-        let mut last_node = self.nodes.pop().expect("path empty");
-        last_node.flip_last_pk_byte();
-        self.nodes.push(last_node)
-    }
 }
 
 // TODO #1186: The following must be removed once the validation refactoring is

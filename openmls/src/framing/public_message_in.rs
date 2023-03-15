@@ -6,10 +6,10 @@
 use crate::{error::LibraryError, group::errors::ValidationError, versions::ProtocolVersion};
 
 use super::{
-    mls_auth_content_in::{
-        AuthenticatedContentIn, FramedContentAuthDataIn, VerifiableAuthenticatedContentIn,
-    },
-    mls_content_in::{AuthenticatedContentTbmIn, FramedContentIn, FramedContentTbsIn},
+    mls_auth_content::FramedContentAuthData,
+    mls_auth_content_in::{AuthenticatedContentIn, VerifiableAuthenticatedContentIn},
+    mls_content::{framed_content_tbs_serialized_detached, AuthenticatedContentTbm},
+    mls_content_in::FramedContentIn,
     *,
 };
 
@@ -39,7 +39,7 @@ use tls_codec::{
 #[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
 pub struct PublicMessageIn {
     pub(crate) content: FramedContentIn,
-    pub(crate) auth: FramedContentAuthDataIn,
+    pub(crate) auth: FramedContentAuthData,
     pub(crate) membership_tag: Option<MembershipTag>,
 }
 
@@ -92,7 +92,7 @@ impl PublicMessageIn {
     /// Build an [`PublicMessageIn`].
     pub(crate) fn new(
         content: FramedContentIn,
-        auth: FramedContentAuthDataIn,
+        auth: FramedContentAuthData,
         membership_tag: Option<MembershipTag>,
     ) -> Self {
         Self {
@@ -119,15 +119,16 @@ impl PublicMessageIn {
         membership_key: &MembershipKey,
         serialized_context: &[u8],
     ) -> Result<(), LibraryError> {
-        let tbs_payload = FramedContentTbsIn::new_and_serialize_detached(
+        let tbs_payload = framed_content_tbs_serialized_detached(
             ProtocolVersion::default(),
             WireFormat::PublicMessage,
             &self.content,
+            &self.content.sender,
             serialized_context,
         )
         .map_err(LibraryError::missing_bound_check)?;
-        let tbm_payload = AuthenticatedContentTbmIn::new(&tbs_payload, &self.auth)?;
-        let membership_tag = membership_key.tag_message_in(backend, tbm_payload)?;
+        let tbm_payload = AuthenticatedContentTbm::new(&tbs_payload, &self.auth)?;
+        let membership_tag = membership_key.tag_message(backend, tbm_payload)?;
 
         self.membership_tag = Some(membership_tag);
         Ok(())
@@ -146,15 +147,16 @@ impl PublicMessageIn {
         log::debug!("Verifying membership tag.");
         log_crypto!(trace, "  Membership key: {:x?}", membership_key);
         log_crypto!(trace, "  Serialized context: {:x?}", serialized_context);
-        let tbs_payload = FramedContentTbsIn::new_and_serialize_detached(
+        let tbs_payload = framed_content_tbs_serialized_detached(
             ProtocolVersion::default(),
             WireFormat::PublicMessage,
             &self.content,
+            &self.content.sender,
             serialized_context,
         )
         .map_err(LibraryError::missing_bound_check)?;
-        let tbm_payload = AuthenticatedContentTbmIn::new(&tbs_payload, &self.auth)?;
-        let expected_membership_tag = &membership_key.tag_message_in(backend, tbm_payload)?;
+        let tbm_payload = AuthenticatedContentTbm::new(&tbs_payload, &self.auth)?;
+        let expected_membership_tag = &membership_key.tag_message(backend, tbm_payload)?;
 
         // Verify the membership tag
         if let Some(membership_tag) = &self.membership_tag {
@@ -254,7 +256,7 @@ impl<'a> From<&'a ConfirmationTag> for InterimTranscriptHashInput<'a> {
 impl TlsDeserializeTrait for PublicMessageIn {
     fn tls_deserialize<R: Read>(bytes: &mut R) -> Result<Self, tls_codec::Error> {
         let content = FramedContentIn::tls_deserialize(bytes)?;
-        let auth = FramedContentAuthDataIn::deserialize(bytes, content.body.content_type())?;
+        let auth = FramedContentAuthData::deserialize(bytes, content.body.content_type())?;
         let membership_tag = if content.sender.is_member() {
             Some(MembershipTag::tls_deserialize(bytes)?)
         } else {
@@ -300,7 +302,7 @@ impl From<PublicMessageIn> for PublicMessage {
     fn from(v: PublicMessageIn) -> Self {
         PublicMessage {
             content: v.content.into(),
-            auth: v.auth.into(),
+            auth: v.auth,
             membership_tag: v.membership_tag,
         }
     }
@@ -311,7 +313,7 @@ impl From<PublicMessage> for PublicMessageIn {
     fn from(v: PublicMessage) -> Self {
         PublicMessageIn {
             content: v.content.into(),
-            auth: v.auth.into(),
+            auth: v.auth,
             membership_tag: v.membership_tag,
         }
     }

@@ -3,17 +3,17 @@
 //! A PublicMessage is a framing structure for MLS messages. It can contain
 //! Proposals, Commits and application messages.
 
-use crate::{error::LibraryError, versions::ProtocolVersion};
+use std::{convert::TryFrom, io::Write};
+
+use openmls_traits::{crypto::OpenMlsCrypto, types::Ciphersuite, OpenMlsCryptoProvider};
+use tls_codec::{Serialize as TlsSerializeTrait, TlsDeserialize, TlsSerialize, TlsSize};
 
 use super::{
     mls_auth_content::{AuthenticatedContent, FramedContentAuthData},
-    mls_content::{AuthenticatedContentTbm, FramedContent, FramedContentTbs},
+    mls_content::{framed_content_tbs_serialized_detached, AuthenticatedContentTbm, FramedContent},
     *,
 };
-
-use openmls_traits::OpenMlsCryptoProvider;
-use std::{convert::TryFrom, io::Write};
-use tls_codec::{Serialize as TlsSerializeTrait, TlsDeserialize, TlsSerialize, TlsSize};
+use crate::{error::LibraryError, versions::ProtocolVersion};
 
 /// Wrapper around a `Mac` used for type safety.
 #[derive(
@@ -134,10 +134,11 @@ impl PublicMessage {
         membership_key: &MembershipKey,
         serialized_context: &[u8],
     ) -> Result<(), LibraryError> {
-        let tbs_payload = FramedContentTbs::new_and_serialize_detached(
+        let tbs_payload = framed_content_tbs_serialized_detached(
             ProtocolVersion::default(),
             WireFormat::PublicMessage,
             &self.content,
+            &self.content.sender,
             serialized_context,
         )
         .map_err(LibraryError::missing_bound_check)?;
@@ -174,17 +175,14 @@ impl From<PublicMessage> for FramedContentTbs {
     }
 }
 
-// === Helper structs ===
+// -------------------------------------------------------------------------------------------------
 
-/// 9.2 Transcript Hashes
-///
 /// ```c
-/// // draft-ietf-mls-protocol-16
-///
+/// // draft-ietf-mls-protocol-17
 /// struct {
-///    WireFormat wire_format;
-///    FramedContent content; /* with content_type == commit */
-///    opaque signature<V>;
+///     WireFormat wire_format;
+///     FramedContent content; /* with content_type == commit */
+///     opaque signature<V>;
 ///} ConfirmedTranscriptHashInput;
 /// ```
 #[derive(TlsSerialize, TlsSize)]
@@ -195,10 +193,33 @@ pub(crate) struct ConfirmedTranscriptHashInput<'a> {
 }
 
 impl<'a> ConfirmedTranscriptHashInput<'a> {
-    pub(crate) fn try_from(mls_content: &'a AuthenticatedContent) -> Result<Self, &'static str> {
+    pub(crate) fn calculate_confirmed_transcript_hash(
+        self,
+        crypto: &impl OpenMlsCrypto,
+        ciphersuite: Ciphersuite,
+        interim_transcript_hash: &[u8],
+    ) -> Result<Vec<u8>, LibraryError> {
+        let serialized: Vec<u8> = self
+            .tls_serialize_detached()
+            .map_err(LibraryError::missing_bound_check)?;
+
+        crypto
+            .hash(
+                ciphersuite.hash_algorithm(),
+                &[interim_transcript_hash, &serialized].concat(),
+            )
+            .map_err(LibraryError::unexpected_crypto_error)
+    }
+}
+
+impl<'a> TryFrom<&'a AuthenticatedContent> for ConfirmedTranscriptHashInput<'a> {
+    type Error = &'static str;
+
+    fn try_from(mls_content: &'a AuthenticatedContent) -> Result<Self, Self::Error> {
         if !matches!(mls_content.content().content_type(), ContentType::Commit) {
             return Err("PublicMessage needs to contain a Commit.");
         }
+
         Ok(ConfirmedTranscriptHashInput {
             wire_format: mls_content.wire_format(),
             mls_content: &mls_content.content,
@@ -207,9 +228,37 @@ impl<'a> ConfirmedTranscriptHashInput<'a> {
     }
 }
 
+// -------------------------------------------------------------------------------------------------
+
+/// ```c
+/// // draft-ietf-mls-protocol-17
+/// struct {
+///     MAC confirmation_tag;
+/// } InterimTranscriptHashInput;
+/// ```
 #[derive(TlsSerialize, TlsSize)]
 pub(crate) struct InterimTranscriptHashInput<'a> {
     pub(crate) confirmation_tag: &'a ConfirmationTag,
+}
+
+impl<'a> InterimTranscriptHashInput<'a> {
+    pub fn calculate_interim_transcript_hash(
+        self,
+        crypto: &impl OpenMlsCrypto,
+        ciphersuite: Ciphersuite,
+        confirmed_transcript_hash: &[u8],
+    ) -> Result<Vec<u8>, LibraryError> {
+        let serialized = self
+            .tls_serialize_detached()
+            .map_err(LibraryError::missing_bound_check)?;
+
+        crypto
+            .hash(
+                ciphersuite.hash_algorithm(),
+                &[confirmed_transcript_hash, &serialized].concat(),
+            )
+            .map_err(LibraryError::unexpected_crypto_error)
+    }
 }
 
 impl<'a> TryFrom<&'a PublicMessage> for InterimTranscriptHashInput<'a> {
@@ -228,6 +277,8 @@ impl<'a> From<&'a ConfirmationTag> for InterimTranscriptHashInput<'a> {
         InterimTranscriptHashInput { confirmation_tag }
     }
 }
+
+// -------------------------------------------------------------------------------------------------
 
 impl Size for PublicMessage {
     #[inline]

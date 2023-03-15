@@ -158,21 +158,13 @@ impl GroupInfo {
             return Ok(vec![]);
         }
 
-        // New members compute the interim transcript hash using
-        // the confirmation_tag field of the GroupInfo struct.
-        let confirmed_transcript_hash = self.group_context().confirmed_transcript_hash();
-        let mls_plaintext_commit_auth_data =
-            &InterimTranscriptHashInput::from(self.confirmation_tag());
-        let commit_auth_data_bytes = mls_plaintext_commit_auth_data
-            .tls_serialize_detached()
-            .map_err(LibraryError::missing_bound_check)?;
+        let input = InterimTranscriptHashInput::from(self.confirmation_tag());
 
-        crypto
-            .hash(
-                self.group_context().ciphersuite().hash_algorithm(),
-                &[confirmed_transcript_hash, &commit_auth_data_bytes].concat(),
-            )
-            .map_err(LibraryError::unexpected_crypto_error)
+        input.calculate_interim_transcript_hash(
+            crypto,
+            self.group_context().ciphersuite(),
+            self.group_context().confirmed_transcript_hash(),
+        )
     }
 
     #[cfg(any(feature = "test-utils", test))]
