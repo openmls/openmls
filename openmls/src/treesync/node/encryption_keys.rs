@@ -152,7 +152,7 @@ impl EncryptionKeyPair {
     /// already in use with an MLS group.
     ///
     /// Returns a key store error if access to the key store fails.
-    pub fn write_to_key_store<KeyStore: OpenMlsKeyStore>(
+    pub(crate) fn write_to_key_store<KeyStore: OpenMlsKeyStore>(
         &self,
         backend: &impl OpenMlsCryptoProvider<KeyStoreProvider = KeyStore>,
     ) -> Result<(), KeyStore::Error> {
@@ -166,7 +166,7 @@ impl EncryptionKeyPair {
     /// already in use with an MLS group.
     ///
     /// Returns `None` if the keypair cannot be read from the store.
-    pub fn read_from_key_store(
+    pub(crate) fn read_from_key_store(
         backend: &impl OpenMlsCryptoProvider,
         encryption_key: &EncryptionKey,
     ) -> Option<EncryptionKeyPair> {

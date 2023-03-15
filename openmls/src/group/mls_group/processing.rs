@@ -6,7 +6,6 @@ use core_group::staged_commit::StagedCommit;
 use openmls_traits::signatures::Signer;
 
 use crate::{
-    ciphersuite::hash_ref::ProposalRef,
     group::core_group::create_commit_params::CreateCommitParams, messages::group_info::GroupInfo,
 };
 
@@ -71,18 +70,6 @@ impl MlsGroup {
 
         // Since the state of the group might be changed, arm the state flag
         self.flag_state_change();
-    }
-
-    /// Only keep the `proposals` in the proposal store.
-    pub fn filter_proposals<KeyStore: OpenMlsKeyStore>(
-        &mut self,
-        proposals: &[ProposalRef],
-    ) -> Result<(), CommitToPendingProposalsError<KeyStore::Error>> {
-        self.proposal_store
-            .proposals_mut()
-            .retain(|proposal| proposals.contains(&proposal.proposal_reference()));
-
-        Ok(())
     }
 
     /// Creates a Commit message that covers the pending proposals that are

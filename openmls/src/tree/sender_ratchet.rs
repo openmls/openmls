@@ -210,12 +210,6 @@ impl DecryptionRatchet {
         configuration: &SenderRatchetConfiguration,
     ) -> Result<RatchetKeyMaterial, SecretTreeError> {
         log::debug!("secret_for_decryption");
-        log::trace!("   generation: {generation:?}");
-        log::trace!(
-            "   maximum_forward_distance: {:?}",
-            configuration.maximum_forward_distance()
-        );
-        log::trace!("   self.generation(): {:?}", self.generation());
         // If generation is too distant in the future
         if self.generation() < u32::MAX - configuration.maximum_forward_distance()
             && generation > self.generation() + configuration.maximum_forward_distance()
