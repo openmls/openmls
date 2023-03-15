@@ -2,8 +2,9 @@
 //!
 //! This module holds a number of types that are needed by the traits.
 
-use serde::{Deserialize, Serialize};
 use std::convert::TryFrom;
+
+use serde::{Deserialize, Serialize};
 use tls_codec::{TlsDeserialize, TlsSerialize, TlsSize, VLBytes};
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy, Serialize, Deserialize)]
@@ -284,6 +285,13 @@ pub enum Ciphersuite {
 impl core::fmt::Display for Ciphersuite {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{self:?}")
+    }
+}
+
+impl From<Ciphersuite> for u16 {
+    #[inline(always)]
+    fn from(s: Ciphersuite) -> u16 {
+        s as u16
     }
 }
 
