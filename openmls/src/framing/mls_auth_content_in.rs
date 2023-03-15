@@ -7,18 +7,11 @@
 //! signatures are verified before the content of an MLS [`PrivateMessageIn`] or
 //! [`PublicMessageIn`] can be accessed by processing functions of OpenMLS.
 
-use std::io::{Read, Write};
+use std::io::Read;
 
-#[cfg(any(feature = "test-utils", test))]
-use openmls_traits::signatures::Signer;
-use serde::{Deserialize, Serialize};
-use tls_codec::{Deserialize as TlsDeserializeTrait, Serialize as TlsSerializeTrait, Size};
+use tls_codec::Serialize as TlsSerializeTrait;
 
 use super::{mls_auth_content::*, mls_content_in::*, *};
-#[cfg(doc)]
-use super::{PrivateMessageIn, PublicMessageIn};
-#[cfg(any(feature = "test-utils", test))]
-use crate::{binary_tree::LeafNodeIndex, ciphersuite::signable::Signable, error::LibraryError};
 use crate::{
     ciphersuite::signable::{SignedStruct, Verifiable, VerifiedStruct},
     credentials::CredentialWithKey,
@@ -27,56 +20,13 @@ use crate::{
     versions::ProtocolVersion,
 };
 
+#[cfg(doc)]
+use super::{PrivateMessageIn, PublicMessageIn};
+
 /// Private module to ensure protection of [`AuthenticatedContent`].
 mod private_mod {
     #[derive(Default)]
     pub(crate) struct Seal;
-}
-
-/// 7.1 Content Authentication
-///
-/// ```c
-/// // draft-ietf-mls-protocol-17
-///
-/// struct {
-///    /* SignWithLabel(., "FramedContentTBS", FramedContentTBS) */
-///    opaque signature<V>;
-///    select (FramedContent.content_type) {
-///        case commit:
-///            /*
-///              MAC(confirmation_key,
-///                  GroupContext.confirmed_transcript_hash)
-///            */
-///            MAC confirmation_tag;
-///        case application:
-///        case proposal:
-///            struct{};
-///    };
-///} FramedContentAuthData;
-/// ```
-
-#[derive(PartialEq, Debug, Clone, Serialize, Deserialize)]
-pub(crate) struct FramedContentAuthDataIn {
-    pub(super) signature: Signature,
-    pub(super) confirmation_tag: Option<ConfirmationTag>,
-}
-
-impl FramedContentAuthDataIn {
-    pub(super) fn deserialize<R: Read>(
-        bytes: &mut R,
-        content_type: ContentType,
-    ) -> Result<Self, tls_codec::Error> {
-        let signature = Signature::tls_deserialize(bytes)?;
-        let confirmation_tag = if matches!(content_type, ContentType::Commit) {
-            Some(ConfirmationTag::tls_deserialize(bytes)?)
-        } else {
-            None
-        };
-        Ok(Self {
-            signature,
-            confirmation_tag,
-        })
-    }
 }
 
 /// 6 Message Framing
@@ -94,62 +44,12 @@ impl FramedContentAuthDataIn {
 pub(crate) struct AuthenticatedContentIn {
     pub(super) wire_format: WireFormat,
     pub(super) content: FramedContentIn,
-    pub(super) auth: FramedContentAuthDataIn,
+    pub(super) auth: FramedContentAuthData,
 }
 
 #[cfg(any(feature = "test-utils", test))]
 impl AuthenticatedContentIn {
-    /// Convenience function for creating a [`VerifiableAuthenticatedContent`].
-    #[cfg(any(feature = "test-utils", test))]
-    fn new_and_sign(
-        framing_parameters: FramingParameters,
-        sender: Sender,
-        body: FramedContentBodyIn,
-        context: &GroupContext,
-        signer: &impl Signer,
-    ) -> Result<Self, LibraryError> {
-        let mut content_tbs = FramedContentTbsIn::new(
-            framing_parameters.wire_format(),
-            context.group_id().clone(),
-            context.epoch(),
-            sender.clone(),
-            framing_parameters.aad().into(),
-            body,
-        );
-
-        if matches!(sender, Sender::NewMemberCommit | Sender::Member(_)) {
-            let serialized_context = context
-                .tls_serialize_detached()
-                .map_err(LibraryError::missing_bound_check)?;
-            content_tbs = content_tbs.with_context(serialized_context);
-        }
-
-        content_tbs
-            .sign(signer)
-            .map_err(|_| LibraryError::custom("Signing failed"))
-    }
-
-    /// This constructor builds an `PublicMessage` containing a Proposal.
-    /// The sender type is always `SenderType::Member`.
-    #[cfg(any(feature = "test-utils", test))]
-    pub(crate) fn member_proposal(
-        framing_parameters: FramingParameters,
-        sender_leaf_index: LeafNodeIndex,
-        proposal: Proposal,
-        context: &GroupContext,
-        signer: &impl Signer,
-    ) -> Result<Self, LibraryError> {
-        Self::new_and_sign(
-            framing_parameters,
-            Sender::Member(sender_leaf_index),
-            FramedContentBodyIn::Proposal(proposal.into()),
-            context,
-            signer,
-        )
-    }
-
     /// Get the content body of the message.
-    #[cfg(any(feature = "test-utils", test))]
     pub(crate) fn content(&self) -> &FramedContentBodyIn {
         &self.content.body
     }
@@ -165,7 +65,7 @@ impl tls_codec::Deserialize for AuthenticatedContentIn {
         let wire_format = WireFormat::tls_deserialize(bytes)?;
         let content = FramedContentIn::tls_deserialize(bytes)?;
         // Here, content type is requires as parameter for deserialization.
-        let auth = FramedContentAuthDataIn::deserialize(bytes, content.body.content_type())?;
+        let auth = FramedContentAuthData::deserialize(bytes, content.body.content_type())?;
 
         Ok(Self {
             wire_format,
@@ -191,7 +91,7 @@ impl From<VerifiableAuthenticatedContentIn> for AuthenticatedContentIn {
 #[derive(PartialEq, Debug, Clone)]
 pub(crate) struct VerifiableAuthenticatedContentIn {
     tbs: FramedContentTbsIn,
-    auth: FramedContentAuthDataIn,
+    auth: FramedContentAuthData,
 }
 
 impl VerifiableAuthenticatedContentIn {
@@ -201,7 +101,7 @@ impl VerifiableAuthenticatedContentIn {
         wire_format: WireFormat,
         content: FramedContentIn,
         serialized_context: impl Into<Option<Vec<u8>>>,
-        auth: FramedContentAuthDataIn,
+        auth: FramedContentAuthData,
     ) -> Self {
         let tbs = FramedContentTbsIn {
             version: ProtocolVersion::default(),
@@ -298,7 +198,7 @@ impl VerifiedStruct<VerifiableAuthenticatedContentIn> for AuthenticatedContentIn
 
 impl SignedStruct<FramedContentTbsIn> for AuthenticatedContentIn {
     fn from_payload(tbs: FramedContentTbsIn, signature: Signature) -> Self {
-        let auth = FramedContentAuthDataIn {
+        let auth = FramedContentAuthData {
             signature,
             // Tags must always be added after the signature
             confirmation_tag: None,
@@ -311,30 +211,6 @@ impl SignedStruct<FramedContentTbsIn> for AuthenticatedContentIn {
     }
 }
 
-impl Size for FramedContentAuthDataIn {
-    #[inline]
-    fn tls_serialized_len(&self) -> usize {
-        self.signature.tls_serialized_len()
-            + if let Some(confirmation_tag) = &self.confirmation_tag {
-                confirmation_tag.tls_serialized_len()
-            } else {
-                0
-            }
-    }
-}
-
-impl TlsSerializeTrait for FramedContentAuthDataIn {
-    fn tls_serialize<W: Write>(&self, writer: &mut W) -> Result<usize, tls_codec::Error> {
-        let mut written = self.signature.tls_serialize(writer)?;
-        written += if let Some(confirmation_tag) = &self.confirmation_tag {
-            confirmation_tag.tls_serialize(writer)?
-        } else {
-            0
-        };
-        Ok(written)
-    }
-}
-
 // The following two `From` implementations break abstraction layers and MUST
 // NOT be made available outside of tests or "test-utils".
 // TODO #1186: Re-enable #[cfg(any(feature = "test-utils", test))]
@@ -343,29 +219,17 @@ impl From<AuthenticatedContentIn> for AuthenticatedContent {
         AuthenticatedContent {
             wire_format: v.wire_format,
             content: v.content.into(),
-            auth: v.auth.into(),
+            auth: v.auth,
         }
     }
 }
 
-// TODO #1186: The following is temporary until the refactoring of incoming
-// messages is done.
-
-impl From<FramedContentAuthDataIn> for crate::framing::mls_auth_content::FramedContentAuthData {
-    fn from(v: FramedContentAuthDataIn) -> Self {
-        Self {
-            signature: v.signature,
-            confirmation_tag: v.confirmation_tag,
-        }
-    }
-}
-
-#[cfg(any(feature = "test-utils", test))]
-impl From<crate::framing::mls_auth_content::FramedContentAuthData> for FramedContentAuthDataIn {
-    fn from(v: crate::framing::mls_auth_content::FramedContentAuthData) -> Self {
-        Self {
-            signature: v.signature,
-            confirmation_tag: v.confirmation_tag,
+impl From<AuthenticatedContent> for AuthenticatedContentIn {
+    fn from(v: AuthenticatedContent) -> Self {
+        AuthenticatedContentIn {
+            wire_format: v.wire_format,
+            content: v.content.into(),
+            auth: v.auth,
         }
     }
 }

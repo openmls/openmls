@@ -2,9 +2,8 @@ use openmls_traits::{types::Ciphersuite, OpenMlsCryptoProvider};
 use tls_codec::{Deserialize, Serialize, TlsDeserialize, TlsSerialize, TlsSize};
 
 use super::{
-    codec::deserialize_ciphertext_content,
-    mls_auth_content_in::{FramedContentAuthDataIn, VerifiableAuthenticatedContentIn},
-    mls_content_in::FramedContentBodyIn,
+    codec::deserialize_ciphertext_content, mls_auth_content::FramedContentAuthData,
+    mls_auth_content_in::VerifiableAuthenticatedContentIn, mls_content_in::FramedContentBodyIn,
 };
 
 use crate::{
@@ -244,7 +243,7 @@ pub(crate) struct PrivateMessageContentIn {
     // implementation of `TlsSerialize` for `PrivateMessageContentIn`, as well
     // as `deserialize_ciphertext_content`.
     pub(crate) content: FramedContentBodyIn,
-    pub(crate) auth: FramedContentAuthDataIn,
+    pub(crate) auth: FramedContentAuthData,
 }
 
 #[derive(TlsSerialize, TlsSize)]

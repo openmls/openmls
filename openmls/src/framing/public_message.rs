@@ -10,7 +10,7 @@ use tls_codec::{Serialize as TlsSerializeTrait, TlsDeserialize, TlsSerialize, Tl
 
 use super::{
     mls_auth_content::{AuthenticatedContent, FramedContentAuthData},
-    mls_content::{AuthenticatedContentTbm, FramedContent, FramedContentTbs},
+    mls_content::{framed_content_tbs_serialized_detached, AuthenticatedContentTbm, FramedContent},
     *,
 };
 use crate::{error::LibraryError, versions::ProtocolVersion};
@@ -134,10 +134,11 @@ impl PublicMessage {
         membership_key: &MembershipKey,
         serialized_context: &[u8],
     ) -> Result<(), LibraryError> {
-        let tbs_payload = FramedContentTbs::new_and_serialize_detached(
+        let tbs_payload = framed_content_tbs_serialized_detached(
             ProtocolVersion::default(),
             WireFormat::PublicMessage,
             &self.content,
+            &self.content.sender,
             serialized_context,
         )
         .map_err(LibraryError::missing_bound_check)?;

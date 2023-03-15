@@ -11,102 +11,12 @@ use crate::{
 };
 
 use serde::{Deserialize, Serialize};
-use std::convert::TryFrom;
 use tls_codec::{TlsDeserialize, TlsSerialize, TlsSize};
 
 use super::proposals::{
     AppAckProposal, ExternalInitProposal, GroupContextExtensionProposal, PreSharedKeyProposal,
-    ReInitProposal, RemoveProposal,
+    ProposalType, ReInitProposal, RemoveProposal,
 };
-
-// Public types
-
-/// ## MLS Proposal Types
-///
-///
-/// ```c
-/// // draft-ietf-mls-protocol-17
-/// // See IANA registry for registered values
-/// uint16 ProposalType;
-/// ```
-///
-/// | Value           | Name                     | Recommended | Path Required | Reference |
-/// |:================|:=========================|:============|:==============|:==========|
-/// | 0x0000          | RESERVED                 | N/A         | N/A           | RFC XXXX  |
-/// | 0x0001          | add                      | Y           | N             | RFC XXXX  |
-/// | 0x0002          | update                   | Y           | Y             | RFC XXXX  |
-/// | 0x0003          | remove                   | Y           | Y             | RFC XXXX  |
-/// | 0x0004          | psk                      | Y           | N             | RFC XXXX  |
-/// | 0x0005          | reinit                   | Y           | N             | RFC XXXX  |
-/// | 0x0006          | external_init            | Y           | Y             | RFC XXXX  |
-/// | 0x0007          | group_context_extensions | Y           | Y             | RFC XXXX  |
-/// | 0xf000 - 0xffff | Reserved for Private Use | N/A         | N/A           | RFC XXXX  |
-///
-/// # Extensions
-///
-/// | Value  | Name    | Recommended | Path Required | Reference | Notes                        |
-/// |:=======|:========|:============|:==============|:==========|:=============================|
-/// | 0x0008 | app_ack | Y           | Y             | RFC XXXX  | draft-ietf-mls-extensions-00 |
-#[derive(
-    PartialEq,
-    Eq,
-    PartialOrd,
-    Ord,
-    Clone,
-    Copy,
-    Debug,
-    TlsSerialize,
-    TlsDeserialize,
-    TlsSize,
-    Serialize,
-    Deserialize,
-)]
-#[repr(u16)]
-#[allow(missing_docs)]
-pub enum ProposalType {
-    Add = 1,
-    Update = 2,
-    Remove = 3,
-    Presharedkey = 4,
-    Reinit = 5,
-    ExternalInit = 6,
-    GroupContextExtensions = 7,
-    AppAck = 8,
-}
-
-impl ProposalType {
-    /// Check whether a proposal type is supported or not. Returns `true`
-    /// if a proposal is supported and `false` otherwise.
-    pub fn is_supported(&self) -> bool {
-        match self {
-            ProposalType::Add
-            | ProposalType::Update
-            | ProposalType::Remove
-            | ProposalType::Presharedkey
-            | ProposalType::Reinit
-            | ProposalType::ExternalInit
-            | ProposalType::GroupContextExtensions => true,
-            ProposalType::AppAck => false,
-        }
-    }
-}
-
-impl TryFrom<u16> for ProposalType {
-    type Error = &'static str;
-    fn try_from(value: u16) -> Result<Self, Self::Error> {
-        match value {
-            1 => Ok(ProposalType::Add),
-            2 => Ok(ProposalType::Update),
-            3 => Ok(ProposalType::Remove),
-            4 => Ok(ProposalType::Presharedkey),
-            5 => Ok(ProposalType::Reinit),
-            6 => Ok(ProposalType::ExternalInit),
-            7 => Ok(ProposalType::GroupContextExtensions),
-            8 => Ok(ProposalType::AppAck),
-            _ => Err("Unknown proposal type."),
-        }
-    }
-}
 
 /// Proposal.
 ///
@@ -156,16 +66,23 @@ pub enum ProposalIn {
 }
 
 impl ProposalIn {
+    /// Returns the proposal type.
+    pub fn proposal_type(&self) -> ProposalType {
+        match self {
+            ProposalIn::Add(_) => ProposalType::Add,
+            ProposalIn::Update(_) => ProposalType::Update,
+            ProposalIn::Remove(_) => ProposalType::Remove,
+            ProposalIn::PreSharedKey(_) => ProposalType::Presharedkey,
+            ProposalIn::ReInit(_) => ProposalType::Reinit,
+            ProposalIn::ExternalInit(_) => ProposalType::ExternalInit,
+            ProposalIn::GroupContextExtensions(_) => ProposalType::GroupContextExtensions,
+            ProposalIn::AppAck(_) => ProposalType::AppAck,
+        }
+    }
+
     /// Indicates whether a Commit containing this [ProposalIn] requires a path.
     pub fn is_path_required(&self) -> bool {
-        match self {
-            Self::Add(_)
-            | Self::PreSharedKey(_)
-            | Self::ReInit(_)
-            | Self::AppAck(_)
-            | Self::GroupContextExtensions(_) => false,
-            Self::Update(_) | Self::Remove(_) | Self::ExternalInit(_) => true,
-        }
+        self.proposal_type().is_path_required()
     }
 }
 

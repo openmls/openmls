@@ -1,7 +1,7 @@
 use tls_codec::{Serialize, Size};
 
 use super::{
-    mls_auth_content_in::FramedContentAuthDataIn, mls_content_in::FramedContentBodyIn,
+    mls_auth_content::FramedContentAuthData, mls_content_in::FramedContentBodyIn,
     private_message_in::PrivateMessageContentIn, *,
 };
 use std::io::{Read, Write};
@@ -40,7 +40,7 @@ pub(super) fn deserialize_ciphertext_content<R: Read>(
     content_type: ContentType,
 ) -> Result<PrivateMessageContentIn, tls_codec::Error> {
     let content = FramedContentBodyIn::deserialize_without_type(bytes, content_type)?;
-    let auth = FramedContentAuthDataIn::deserialize(bytes, content_type)?;
+    let auth = FramedContentAuthData::deserialize(bytes, content_type)?;
 
     let padding = {
         let mut buffer = Vec::new();
