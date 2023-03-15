@@ -17,7 +17,7 @@ use crate::{
     test_utils::{hex_to_bytes, read},
     treesync::{
         node::encryption_keys::EncryptionKeyPair,
-        treekem::{DecryptPathParams, UpdatePath},
+        treekem::{DecryptPathParams, UpdatePath, UpdatePathIn},
         TreeSync,
     },
     versions::ProtocolVersion,
@@ -161,8 +161,9 @@ pub fn run_test_vector(test: TreeKemTest, backend: &impl OpenMlsCryptoProvider) 
     for path_test in test.update_paths.iter() {
         log::trace!("Processing update path sent from {}.", path_test.sender);
 
-        let update_path =
-            UpdatePath::tls_deserialize(&mut path_test.update_path.as_slice()).unwrap();
+        let update_path = UpdatePath::from(
+            UpdatePathIn::tls_deserialize(&mut path_test.update_path.as_slice()).unwrap(),
+        );
 
         let mut diff = treesync.empty_diff();
         diff.apply_received_update_path(
