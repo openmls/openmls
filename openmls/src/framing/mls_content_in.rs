@@ -80,17 +80,16 @@ pub(crate) enum FramedContentBodyIn {
     Commit(CommitIn),
 }
 
-impl From<&FramedContentBodyIn> for ContentType {
-    fn from(value: &FramedContentBodyIn) -> Self {
-        match value {
+impl FramedContentBodyIn {
+    /// Returns the [`ContentType`].
+    pub(crate) fn content_type(&self) -> ContentType {
+        match self {
             FramedContentBodyIn::Application(_) => ContentType::Application,
             FramedContentBodyIn::Proposal(_) => ContentType::Proposal,
             FramedContentBodyIn::Commit(_) => ContentType::Commit,
         }
     }
-}
 
-impl FramedContentBodyIn {
     pub(super) fn deserialize_without_type<R: Read>(
         bytes: &mut R,
         content_type: ContentType,

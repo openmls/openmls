@@ -819,24 +819,26 @@ impl ConfirmationKey {
             confirmed_transcript_hash,
         )?))
     }
+}
 
-    // XXX[KAT]: #1051 Only used in KATs. Remove if unused.
-    #[cfg(test)]
-    pub(crate) fn _from_secret(secret: Secret) -> Self {
+#[cfg(test)]
+impl ConfirmationKey {
+    pub(crate) fn from_secret(secret: Secret) -> Self {
         Self { secret }
     }
+}
 
-    #[cfg(any(feature = "test-utils", test))]
-    pub(crate) fn as_slice(&self) -> &[u8] {
-        self.secret.as_slice()
-    }
-
-    #[cfg(any(feature = "test-utils", test))]
+#[cfg(any(feature = "test-utils", test))]
+impl ConfirmationKey {
     pub(crate) fn random(ciphersuite: Ciphersuite, rng: &impl OpenMlsCryptoProvider) -> Self {
         Self {
             secret: Secret::random(ciphersuite, rng, None /* MLS version */)
                 .expect("Not enough randomness."),
         }
+    }
+
+    pub(crate) fn as_slice(&self) -> &[u8] {
+        self.secret.as_slice()
     }
 }
 

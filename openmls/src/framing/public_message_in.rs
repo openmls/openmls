@@ -104,7 +104,7 @@ impl PublicMessageIn {
 
     /// Returns the [`ContentType`] of the message.
     pub(crate) fn content_type(&self) -> ContentType {
-        ContentType::from(&self.content.body)
+        self.content.body.content_type()
     }
 
     /// Get the sender of this message.
@@ -256,7 +256,7 @@ impl<'a> From<&'a ConfirmationTag> for InterimTranscriptHashInput<'a> {
 impl TlsDeserializeTrait for PublicMessageIn {
     fn tls_deserialize<R: Read>(bytes: &mut R) -> Result<Self, tls_codec::Error> {
         let content = FramedContentIn::tls_deserialize(bytes)?;
-        let auth = FramedContentAuthData::deserialize(bytes, ContentType::from(&content.body))?;
+        let auth = FramedContentAuthData::deserialize(bytes, content.body.content_type())?;
         let membership_tag = if content.sender.is_member() {
             Some(MembershipTag::tls_deserialize(bytes)?)
         } else {

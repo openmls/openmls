@@ -123,21 +123,6 @@ impl TryFrom<u16> for ProposalType {
     }
 }
 
-impl From<&Proposal> for ProposalType {
-    fn from(value: &Proposal) -> Self {
-        match value {
-            Proposal::Add(_) => ProposalType::Add,
-            Proposal::Update(_) => ProposalType::Update,
-            Proposal::Remove(_) => ProposalType::Remove,
-            Proposal::PreSharedKey(_) => ProposalType::Presharedkey,
-            Proposal::ReInit(_) => ProposalType::Reinit,
-            Proposal::ExternalInit(_) => ProposalType::ExternalInit,
-            Proposal::GroupContextExtensions(_) => ProposalType::GroupContextExtensions,
-            Proposal::AppAck(_) => ProposalType::AppAck,
-        }
-    }
-}
-
 /// Proposal.
 ///
 /// This `enum` contains the different proposals in its variants.
@@ -184,8 +169,18 @@ pub enum Proposal {
 }
 
 impl Proposal {
-    pub(crate) fn proposal_type(&self) -> ProposalType {
-        self.into()
+    /// Returns the proposal type.
+    pub fn proposal_type(&self) -> ProposalType {
+        match self {
+            Proposal::Add(_) => ProposalType::Add,
+            Proposal::Update(_) => ProposalType::Update,
+            Proposal::Remove(_) => ProposalType::Remove,
+            Proposal::PreSharedKey(_) => ProposalType::Presharedkey,
+            Proposal::ReInit(_) => ProposalType::Reinit,
+            Proposal::ExternalInit(_) => ProposalType::ExternalInit,
+            Proposal::GroupContextExtensions(_) => ProposalType::GroupContextExtensions,
+            Proposal::AppAck(_) => ProposalType::AppAck,
+        }
     }
 
     pub(crate) fn is_type(&self, proposal_type: ProposalType) -> bool {

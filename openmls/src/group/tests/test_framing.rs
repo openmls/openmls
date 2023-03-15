@@ -201,7 +201,7 @@ fn bad_padding(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
                 let private_message_content_aad = PrivateContentAad {
                     group_id: group_id.clone(),
                     epoch,
-                    content_type: plaintext.content().into(),
+                    content_type: plaintext.content().content_type(),
                     authenticated_data: VLByteSlice(plaintext.authenticated_data()),
                 };
 
@@ -211,7 +211,7 @@ fn bad_padding(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
             };
 
             // Extract generation and key material for encryption
-            let secret_type = SecretType::from(&ContentType::from(plaintext.content()));
+            let secret_type = SecretType::from(&plaintext.content().content_type());
             let (generation, (ratchet_key, ratchet_nonce)) = message_secrets
                 .secret_tree_mut()
                 .secret_for_encryption(ciphersuite, backend, LeafNodeIndex::new(0), secret_type)
@@ -290,8 +290,11 @@ fn bad_padding(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
             // Compute sender data nonce by xoring reuse guard and key schedule
             // nonce as per spec.
 
-            let mls_sender_data_aad =
-                MlsSenderDataAad::test_new(group_id.clone(), epoch, plaintext.content().into());
+            let mls_sender_data_aad = MlsSenderDataAad::test_new(
+                group_id.clone(),
+                epoch,
+                plaintext.content().content_type(),
+            );
             // Serialize the sender data AAD
             let mls_sender_data_aad_bytes = mls_sender_data_aad.tls_serialize_detached().unwrap();
             let sender_data = MlsSenderData::from_sender(leaf_index, generation, reuse_guard);
@@ -308,7 +311,7 @@ fn bad_padding(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
             PrivateMessage::new(
                 group_id,
                 epoch,
-                plaintext.content().into(),
+                plaintext.content().content_type(),
                 plaintext.authenticated_data().into(),
                 encrypted_sender_data.into(),
                 ciphertext.into(),

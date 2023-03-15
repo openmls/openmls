@@ -10,9 +10,6 @@ use crate::{
     extensions::SenderExtensionIndex,
 };
 
-#[cfg(doc)]
-use super::{PrivateMessage, PublicMessage};
-
 use super::{
     mls_content::{FramedContent, FramedContentBody, FramedContentTbs},
     Commit, ConfirmationTag, ContentType, FramingParameters, GroupContext, GroupEpoch, GroupId,

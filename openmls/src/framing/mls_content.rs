@@ -73,17 +73,16 @@ pub(crate) enum FramedContentBody {
     Commit(Commit),
 }
 
-impl From<&FramedContentBody> for ContentType {
-    fn from(value: &FramedContentBody) -> Self {
-        match value {
+impl FramedContentBody {
+    /// Returns the [`ContentType`].
+    pub(crate) fn content_type(&self) -> ContentType {
+        match self {
             FramedContentBody::Application(_) => ContentType::Application,
             FramedContentBody::Proposal(_) => ContentType::Proposal,
             FramedContentBody::Commit(_) => ContentType::Commit,
         }
     }
-}
 
-impl FramedContentBody {
     /// Returns the length of the serialized content without the `content_type` field.
     pub(crate) fn serialized_len_without_type(&self) -> usize {
         match self {

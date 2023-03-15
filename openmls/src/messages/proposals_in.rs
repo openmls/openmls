@@ -65,9 +65,10 @@ pub enum ProposalIn {
     AppAck(AppAckProposal),
 }
 
-impl From<&ProposalIn> for ProposalType {
-    fn from(value: &ProposalIn) -> Self {
-        match value {
+impl ProposalIn {
+    /// Returns the proposal type.
+    pub fn proposal_type(&self) -> ProposalType {
+        match self {
             ProposalIn::Add(_) => ProposalType::Add,
             ProposalIn::Update(_) => ProposalType::Update,
             ProposalIn::Remove(_) => ProposalType::Remove,
@@ -78,12 +79,10 @@ impl From<&ProposalIn> for ProposalType {
             ProposalIn::AppAck(_) => ProposalType::AppAck,
         }
     }
-}
 
-impl ProposalIn {
     /// Indicates whether a Commit containing this [ProposalIn] requires a path.
     pub fn is_path_required(&self) -> bool {
-        ProposalType::from(self).is_path_required()
+        self.proposal_type().is_path_required()
     }
 }
 

@@ -13,10 +13,7 @@
 //! If an [`MlsMessageIn`] contains a [`PublicMessage`] or [`PrivateMessage`],
 //! can be used to determine which group can be used to process the message.
 
-use tls_codec::Deserialize;
-
 use super::*;
-
 use crate::{
     key_packages::KeyPackage, messages::group_info::VerifiableGroupInfo, versions::ProtocolVersion,
 };
@@ -110,11 +107,6 @@ impl MlsMessageIn {
     /// with the [`MlsGroup`] API.
     pub fn extract(self) -> MlsMessageInBody {
         self.body
-    }
-
-    /// Tries to deserialize from a byte slice. Returns [`MlsMessageError::UnableToDecode`] on failure.
-    pub fn try_from_bytes(mut bytes: &[u8]) -> Result<Self, MlsMessageError> {
-        MlsMessageIn::tls_deserialize(&mut bytes).map_err(|_| MlsMessageError::UnableToDecode)
     }
 
     #[cfg(test)]
