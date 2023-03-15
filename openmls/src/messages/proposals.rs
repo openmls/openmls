@@ -436,17 +436,51 @@ pub(crate) enum ProposalOrRef {
     Reference(ProposalRef),
 }
 
+#[derive(Debug)]
+pub(crate) enum ProposalRefError {
+    AuthenticatedContentHasWrongType,
+    Other(LibraryError),
+}
+
 impl ProposalRef {
-    pub(crate) fn from_proposal(
+    pub(crate) fn from_authenticated_content(
+        crypto: &impl OpenMlsCrypto,
+        ciphersuite: Ciphersuite,
+        authenticated_content: &AuthenticatedContent,
+    ) -> Result<Self, ProposalRefError> {
+        if !matches!(
+            authenticated_content.content(),
+            FramedContentBody::Proposal(_)
+        ) {
+            return Err(ProposalRefError::AuthenticatedContentHasWrongType);
+        };
+
+        let encoded = authenticated_content
+            .tls_serialize_detached()
+            .map_err(|error| ProposalRefError::Other(LibraryError::missing_bound_check(error)))?;
+
+        make_proposal_ref(&encoded, ciphersuite, crypto)
+            .map_err(|error| ProposalRefError::Other(LibraryError::unexpected_crypto_error(error)))
+    }
+
+    /// Note: A [`ProposalRef`] should be calculated by using TLS-serialized [`AuthenticatedContent`]
+    ///       as value input and not the TLS-serialized proposal. However, to spare us a major refactoring,
+    ///       we calculate it from the raw value in some places that do not interact with the outside world.
+    pub(crate) fn from_raw_proposal(
         ciphersuite: Ciphersuite,
         backend: &impl OpenMlsCryptoProvider,
         proposal: &Proposal,
     ) -> Result<Self, LibraryError> {
-        let encoded = proposal
+        // This is used for hash domain separation.
+        let mut data = b"Internal OpenMLS ProposalRef Label".to_vec();
+
+        let mut encoded = proposal
             .tls_serialize_detached()
             .map_err(LibraryError::missing_bound_check)?;
 
-        make_proposal_ref(&encoded, ciphersuite, backend.crypto())
+        data.append(&mut encoded);
+
+        make_proposal_ref(&data, ciphersuite, backend.crypto())
             .map_err(LibraryError::unexpected_crypto_error)
     }
 }
