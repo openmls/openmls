@@ -5,7 +5,10 @@ use openmls_traits::key_store::OpenMlsKeyStore;
 use public_group::diff::{apply_proposals::ApplyProposalsValues, StagedPublicGroupDiff};
 
 use super::{super::errors::*, proposals::ProposalStore, *};
-use crate::treesync::node::encryption_keys::EncryptionKeyPair;
+use crate::{
+    framing::mls_auth_content::AuthenticatedContent,
+    treesync::node::encryption_keys::EncryptionKeyPair,
+};
 
 impl CoreGroup {
     fn derive_epoch_secrets(

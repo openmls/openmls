@@ -3,25 +3,17 @@
 //! A PublicMessage is a framing structure for MLS messages. It can contain
 //! Proposals, Commits and application messages.
 
-use crate::{error::LibraryError, group::errors::ValidationError, versions::ProtocolVersion};
+use std::{convert::TryFrom, io::Write};
+
+use openmls_traits::{crypto::OpenMlsCrypto, types::Ciphersuite, OpenMlsCryptoProvider};
+use tls_codec::{Serialize as TlsSerializeTrait, TlsDeserialize, TlsSerialize, TlsSize};
 
 use super::{
-    mls_auth_content::{
-        AuthenticatedContent, FramedContentAuthData, VerifiableAuthenticatedContent,
-    },
-    mls_content::{AuthenticatedContentTbm, ContentType, FramedContent, FramedContentTbs},
+    mls_auth_content::{AuthenticatedContent, FramedContentAuthData},
+    mls_content::{framed_content_tbs_serialized_detached, AuthenticatedContentTbm, FramedContent},
     *,
 };
-
-use openmls_traits::OpenMlsCryptoProvider;
-use std::{
-    convert::TryFrom,
-    io::{Read, Write},
-};
-use tls_codec::{
-    Deserialize as TlsDeserializeTrait, Serialize as TlsSerializeTrait, TlsDeserialize,
-    TlsSerialize, TlsSize,
-};
+use crate::{error::LibraryError, versions::ProtocolVersion};
 
 /// Wrapper around a `Mac` used for type safety.
 #[derive(
@@ -45,12 +37,12 @@ pub(crate) struct MembershipTag(pub(crate) Mac);
 /// ```
 #[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
 pub struct PublicMessage {
-    content: FramedContent,
-    auth: FramedContentAuthData,
-    membership_tag: Option<MembershipTag>,
+    pub(crate) content: FramedContent,
+    pub(crate) auth: FramedContentAuthData,
+    pub(crate) membership_tag: Option<MembershipTag>,
 }
 
-#[cfg(any(test, feature = "test-utils"))]
+#[cfg(test)]
 impl PublicMessage {
     pub(crate) fn content(&self) -> &crate::framing::mls_content::FramedContentBody {
         &self.content.body
@@ -122,19 +114,6 @@ impl From<AuthenticatedContent> for PublicMessage {
 }
 
 impl PublicMessage {
-    /// Build an [`PublicMessage`].
-    pub(crate) fn new(
-        content: FramedContent,
-        auth: FramedContentAuthData,
-        membership_tag: Option<MembershipTag>,
-    ) -> Self {
-        Self {
-            content,
-            auth,
-            membership_tag,
-        }
-    }
-
     /// Returns the [`ContentType`] of the message.
     pub(crate) fn content_type(&self) -> ContentType {
         self.content.body.content_type()
@@ -155,81 +134,19 @@ impl PublicMessage {
         membership_key: &MembershipKey,
         serialized_context: &[u8],
     ) -> Result<(), LibraryError> {
-        let tbs_payload = FramedContentTbs::new_and_serialize_detached(
+        let tbs_payload = framed_content_tbs_serialized_detached(
             ProtocolVersion::default(),
             WireFormat::PublicMessage,
             &self.content,
+            &self.content.sender,
             serialized_context,
         )
         .map_err(LibraryError::missing_bound_check)?;
         let tbm_payload = AuthenticatedContentTbm::new(&tbs_payload, &self.auth)?;
-        let membership_tag = membership_key.tag(backend, tbm_payload)?;
+        let membership_tag = membership_key.tag_message(backend, tbm_payload)?;
 
         self.membership_tag = Some(membership_tag);
         Ok(())
-    }
-
-    /// Verify the membership tag of a [`PublicMessage`] sent from a group
-    /// member. Returns `Ok(())` if successful or [`ValidationError`] otherwise.
-    /// Note, that the context must have been set before calling this function.
-    // TODO #133: Include this in the validation
-    pub(crate) fn verify_membership(
-        &self,
-        backend: &impl OpenMlsCryptoProvider,
-        membership_key: &MembershipKey,
-        serialized_context: &[u8],
-    ) -> Result<(), ValidationError> {
-        log::debug!("Verifying membership tag.");
-        log_crypto!(trace, "  Membership key: {:x?}", membership_key);
-        log_crypto!(trace, "  Serialized context: {:x?}", serialized_context);
-        let tbs_payload = FramedContentTbs::new_and_serialize_detached(
-            ProtocolVersion::default(),
-            WireFormat::PublicMessage,
-            &self.content,
-            serialized_context,
-        )
-        .map_err(LibraryError::missing_bound_check)?;
-        let tbm_payload = AuthenticatedContentTbm::new(&tbs_payload, &self.auth)?;
-        let expected_membership_tag = &membership_key.tag(backend, tbm_payload)?;
-
-        // Verify the membership tag
-        if let Some(membership_tag) = &self.membership_tag {
-            // TODO #133: make this a constant-time comparison
-            if membership_tag != expected_membership_tag {
-                return Err(ValidationError::InvalidMembershipTag);
-            }
-        } else {
-            return Err(ValidationError::MissingMembershipTag);
-        }
-        Ok(())
-    }
-
-    /// Get the group epoch.
-    pub(crate) fn epoch(&self) -> GroupEpoch {
-        self.content.epoch
-    }
-
-    /// Get the [`GroupId`].
-    pub(crate) fn group_id(&self) -> &GroupId {
-        &self.content.group_id
-    }
-
-    /// Turn this [`PublicMessage`] into a [`VerifiableAuthenticatedContent`].
-    pub(crate) fn into_verifiable_content(
-        self,
-        serialized_context: impl Into<Option<Vec<u8>>>,
-    ) -> VerifiableAuthenticatedContent {
-        VerifiableAuthenticatedContent::new(
-            WireFormat::PublicMessage,
-            self.content,
-            serialized_context,
-            self.auth,
-        )
-    }
-
-    /// Get the [`MembershipTag`].
-    pub(crate) fn membership_tag(&self) -> Option<&MembershipTag> {
-        self.membership_tag.as_ref()
     }
 
     #[cfg(test)]
@@ -258,17 +175,14 @@ impl From<PublicMessage> for FramedContentTbs {
     }
 }
 
-// === Helper structs ===
+// -------------------------------------------------------------------------------------------------
 
-/// 9.2 Transcript Hashes
-///
 /// ```c
-/// // draft-ietf-mls-protocol-16
-///
+/// // draft-ietf-mls-protocol-17
 /// struct {
-///    WireFormat wire_format;
-///    FramedContent content; /* with content_type == commit */
-///    opaque signature<V>;
+///     WireFormat wire_format;
+///     FramedContent content; /* with content_type == commit */
+///     opaque signature<V>;
 ///} ConfirmedTranscriptHashInput;
 /// ```
 #[derive(TlsSerialize, TlsSize)]
@@ -279,10 +193,33 @@ pub(crate) struct ConfirmedTranscriptHashInput<'a> {
 }
 
 impl<'a> ConfirmedTranscriptHashInput<'a> {
-    pub(crate) fn try_from(mls_content: &'a AuthenticatedContent) -> Result<Self, &'static str> {
+    pub(crate) fn calculate_confirmed_transcript_hash(
+        self,
+        crypto: &impl OpenMlsCrypto,
+        ciphersuite: Ciphersuite,
+        interim_transcript_hash: &[u8],
+    ) -> Result<Vec<u8>, LibraryError> {
+        let serialized: Vec<u8> = self
+            .tls_serialize_detached()
+            .map_err(LibraryError::missing_bound_check)?;
+
+        crypto
+            .hash(
+                ciphersuite.hash_algorithm(),
+                &[interim_transcript_hash, &serialized].concat(),
+            )
+            .map_err(LibraryError::unexpected_crypto_error)
+    }
+}
+
+impl<'a> TryFrom<&'a AuthenticatedContent> for ConfirmedTranscriptHashInput<'a> {
+    type Error = &'static str;
+
+    fn try_from(mls_content: &'a AuthenticatedContent) -> Result<Self, Self::Error> {
         if !matches!(mls_content.content().content_type(), ContentType::Commit) {
             return Err("PublicMessage needs to contain a Commit.");
         }
+
         Ok(ConfirmedTranscriptHashInput {
             wire_format: mls_content.wire_format(),
             mls_content: &mls_content.content,
@@ -291,9 +228,37 @@ impl<'a> ConfirmedTranscriptHashInput<'a> {
     }
 }
 
+// -------------------------------------------------------------------------------------------------
+
+/// ```c
+/// // draft-ietf-mls-protocol-17
+/// struct {
+///     MAC confirmation_tag;
+/// } InterimTranscriptHashInput;
+/// ```
 #[derive(TlsSerialize, TlsSize)]
 pub(crate) struct InterimTranscriptHashInput<'a> {
     pub(crate) confirmation_tag: &'a ConfirmationTag,
+}
+
+impl<'a> InterimTranscriptHashInput<'a> {
+    pub fn calculate_interim_transcript_hash(
+        self,
+        crypto: &impl OpenMlsCrypto,
+        ciphersuite: Ciphersuite,
+        confirmed_transcript_hash: &[u8],
+    ) -> Result<Vec<u8>, LibraryError> {
+        let serialized = self
+            .tls_serialize_detached()
+            .map_err(LibraryError::missing_bound_check)?;
+
+        crypto
+            .hash(
+                ciphersuite.hash_algorithm(),
+                &[confirmed_transcript_hash, &serialized].concat(),
+            )
+            .map_err(LibraryError::unexpected_crypto_error)
+    }
 }
 
 impl<'a> TryFrom<&'a PublicMessage> for InterimTranscriptHashInput<'a> {
@@ -313,19 +278,7 @@ impl<'a> From<&'a ConfirmationTag> for InterimTranscriptHashInput<'a> {
     }
 }
 
-impl TlsDeserializeTrait for PublicMessage {
-    fn tls_deserialize<R: Read>(bytes: &mut R) -> Result<Self, tls_codec::Error> {
-        let content: FramedContent = FramedContent::tls_deserialize(bytes)?;
-        let auth = FramedContentAuthData::deserialize(bytes, content.body.content_type())?;
-        let membership_tag = if content.sender.is_member() {
-            Some(MembershipTag::tls_deserialize(bytes)?)
-        } else {
-            None
-        };
-
-        Ok(PublicMessage::new(content, auth, membership_tag))
-    }
-}
+// -------------------------------------------------------------------------------------------------
 
 impl Size for PublicMessage {
     #[inline]

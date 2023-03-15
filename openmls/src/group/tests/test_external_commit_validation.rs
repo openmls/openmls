@@ -12,8 +12,8 @@ use self::utils::*;
 use crate::{
     ciphersuite::{hash_ref::ProposalRef, signable::Verifiable},
     framing::{
-        AuthenticatedContent, ContentType, DecryptedMessage, FramedContentBody, MlsMessageIn,
-        ProtocolMessage, Sender, WireFormat,
+        mls_auth_content_in::AuthenticatedContentIn, ContentType, DecryptedMessage,
+        FramedContentBody, MlsMessageIn, ProtocolMessage, Sender, WireFormat,
     },
     group::{
         errors::{
@@ -189,7 +189,7 @@ fn test_valsem242(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
     let verifiable_group_info = alice_group
         .export_group_info(backend, &alice_credential.signer, true)
         .unwrap()
-        .into_group_info()
+        .into_verifiable_group_info()
         .unwrap();
 
     let (_, public_message_commit, _) = MlsGroup::join_by_external_commit(
@@ -351,7 +351,7 @@ fn test_valsem243(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
     let verifiable_group_info = alice_group
         .export_group_info(backend, &alice_credential.signer, false)
         .unwrap()
-        .into_group_info()
+        .into_verifiable_group_info()
         .unwrap();
     let ratchet_tree = alice_group.export_ratchet_tree();
 
@@ -669,7 +669,7 @@ fn test_valsem246(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
 
     // This shows that the message is actually signed using this credential.
     let decrypted_message = DecryptedMessage::from_inbound_public_message(
-        public_message_commit.clone(),
+        public_message_commit.clone().into(),
         alice_group.group().message_secrets(),
         alice_group
             .group()
@@ -679,7 +679,7 @@ fn test_valsem246(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
         backend,
     )
     .unwrap();
-    let verification_result: Result<AuthenticatedContent, _> =
+    let verification_result: Result<AuthenticatedContentIn, _> =
         decrypted_message.verifiable_content().clone().verify(
             backend.crypto(),
             &OpenMlsSignaturePublicKey::from_signature_key(
@@ -714,7 +714,7 @@ fn test_pure_ciphertest(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoPr
     let verifiable_group_info = alice_group
         .export_group_info(backend, &alice_credential.signer, true)
         .unwrap()
-        .into_group_info()
+        .into_verifiable_group_info()
         .unwrap();
 
     let (_bob_group, message, _) = MlsGroup::join_by_external_commit(
@@ -791,7 +791,7 @@ mod utils {
         let verifiable_group_info = alice_group
             .export_group_info(backend, &alice_credential.signer, false)
             .unwrap()
-            .into_group_info()
+            .into_verifiable_group_info()
             .unwrap();
         let tree_option = alice_group.export_ratchet_tree();
 
