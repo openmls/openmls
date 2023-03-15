@@ -154,8 +154,5 @@ pub(crate) fn decrypt_with_label(
 
     log_crypto!(debug, "* plaintext:   {plaintext:x?}");
 
-    // Clippy can't "see" the `crypto-debug`-gated code above.
-    // Thus, it produces a false positive.
-    #[allow(clippy::let_and_return)]
     plaintext
 }
