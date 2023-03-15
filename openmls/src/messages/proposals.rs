@@ -9,6 +9,7 @@ use std::convert::TryFrom;
 
 use openmls_traits::{crypto::OpenMlsCrypto, types::Ciphersuite, OpenMlsCryptoProvider};
 use serde::{Deserialize, Serialize};
+use thiserror::Error;
 use tls_codec::{Serialize as TlsSerializeTrait, TlsDeserialize, TlsSerialize, TlsSize, VLBytes};
 
 use crate::{
@@ -16,7 +17,9 @@ use crate::{
     ciphersuite::hash_ref::{make_proposal_ref, KeyPackageRef, ProposalRef},
     error::LibraryError,
     extensions::Extensions,
-    framing::{mls_auth_content::AuthenticatedContent, mls_content::FramedContentBody},
+    framing::{
+        mls_auth_content::AuthenticatedContent, mls_content::FramedContentBody, ContentType,
+    },
     group::GroupId,
     key_packages::*,
     prelude::LeafNode,
@@ -433,10 +436,12 @@ pub(crate) enum ProposalOrRef {
     Reference(ProposalRef),
 }
 
-#[derive(Debug)]
+#[derive(Error, Debug)]
 pub(crate) enum ProposalRefError {
-    AuthenticatedContentHasWrongType,
-    Other(LibraryError),
+    #[error("Expected `Proposal`, got `{wrong:?}`.")]
+    AuthenticatedContentHasWrongType { wrong: ContentType },
+    #[error(transparent)]
+    Other(#[from] LibraryError),
 }
 
 impl ProposalRef {
@@ -449,7 +454,9 @@ impl ProposalRef {
             authenticated_content.content(),
             FramedContentBody::Proposal(_)
         ) {
-            return Err(ProposalRefError::AuthenticatedContentHasWrongType);
+            return Err(ProposalRefError::AuthenticatedContentHasWrongType {
+                wrong: authenticated_content.content().content_type(),
+            });
         };
 
         let encoded = authenticated_content
