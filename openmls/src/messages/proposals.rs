@@ -5,24 +5,27 @@
 //! To find out if a specific proposal type is supported,
 //! [`ProposalType::is_supported()`] can be used.
 
+use std::convert::TryFrom;
+
+use openmls_traits::{crypto::OpenMlsCrypto, types::Ciphersuite, OpenMlsCryptoProvider};
+use serde::{Deserialize, Serialize};
+use thiserror::Error;
+use tls_codec::{Serialize as TlsSerializeTrait, TlsDeserialize, TlsSerialize, TlsSize, VLBytes};
+
 use crate::{
     binary_tree::array_representation::LeafNodeIndex,
     ciphersuite::hash_ref::{make_proposal_ref, KeyPackageRef, ProposalRef},
     error::LibraryError,
     extensions::Extensions,
+    framing::{
+        mls_auth_content::AuthenticatedContent, mls_content::FramedContentBody, ContentType,
+    },
     group::GroupId,
     key_packages::*,
     prelude::LeafNode,
     schedule::psk::*,
     versions::ProtocolVersion,
 };
-
-use openmls_traits::{types::Ciphersuite, OpenMlsCryptoProvider};
-use serde::{Deserialize, Serialize};
-use std::convert::TryFrom;
-use tls_codec::{Serialize as TlsSerializeTrait, TlsDeserialize, TlsSerialize, TlsSize, VLBytes};
-
-// Public types
 
 /// ## MLS Proposal Types
 ///
@@ -281,20 +284,17 @@ pub struct PreSharedKeyProposal {
 }
 
 impl PreSharedKeyProposal {
-    /// Create a new PSK proposal
-    #[cfg(test)]
-    pub(crate) fn new(psk: PreSharedKeyId) -> Self {
-        Self { psk }
-    }
-
-    /// Returns a reference to the [`PreSharedKeyId`] in this proposal.
-    pub(crate) fn _psk(&self) -> &PreSharedKeyId {
-        &self.psk
-    }
-
     /// Returns the [`PreSharedKeyId`] and consume this proposal.
     pub(crate) fn into_psk_id(self) -> PreSharedKeyId {
         self.psk
+    }
+}
+
+#[cfg(test)]
+impl PreSharedKeyProposal {
+    /// Create a new PSK proposal
+    pub(crate) fn new(psk: PreSharedKeyId) -> Self {
+        Self { psk }
     }
 }
 
@@ -436,17 +436,55 @@ pub(crate) enum ProposalOrRef {
     Reference(ProposalRef),
 }
 
+#[derive(Error, Debug)]
+pub(crate) enum ProposalRefError {
+    #[error("Expected `Proposal`, got `{wrong:?}`.")]
+    AuthenticatedContentHasWrongType { wrong: ContentType },
+    #[error(transparent)]
+    Other(#[from] LibraryError),
+}
+
 impl ProposalRef {
-    pub(crate) fn from_proposal(
+    pub(crate) fn from_authenticated_content(
+        crypto: &impl OpenMlsCrypto,
+        ciphersuite: Ciphersuite,
+        authenticated_content: &AuthenticatedContent,
+    ) -> Result<Self, ProposalRefError> {
+        if !matches!(
+            authenticated_content.content(),
+            FramedContentBody::Proposal(_)
+        ) {
+            return Err(ProposalRefError::AuthenticatedContentHasWrongType {
+                wrong: authenticated_content.content().content_type(),
+            });
+        };
+
+        let encoded = authenticated_content
+            .tls_serialize_detached()
+            .map_err(|error| ProposalRefError::Other(LibraryError::missing_bound_check(error)))?;
+
+        make_proposal_ref(&encoded, ciphersuite, crypto)
+            .map_err(|error| ProposalRefError::Other(LibraryError::unexpected_crypto_error(error)))
+    }
+
+    /// Note: A [`ProposalRef`] should be calculated by using TLS-serialized [`AuthenticatedContent`]
+    ///       as value input and not the TLS-serialized proposal. However, to spare us a major refactoring,
+    ///       we calculate it from the raw value in some places that do not interact with the outside world.
+    pub(crate) fn from_raw_proposal(
         ciphersuite: Ciphersuite,
         backend: &impl OpenMlsCryptoProvider,
         proposal: &Proposal,
     ) -> Result<Self, LibraryError> {
-        let encoded = proposal
+        // This is used for hash domain separation.
+        let mut data = b"Internal OpenMLS ProposalRef Label".to_vec();
+
+        let mut encoded = proposal
             .tls_serialize_detached()
             .map_err(LibraryError::missing_bound_check)?;
 
-        make_proposal_ref(&encoded, ciphersuite, backend.crypto())
+        data.append(&mut encoded);
+
+        make_proposal_ref(&data, ciphersuite, backend.crypto())
             .map_err(LibraryError::unexpected_crypto_error)
     }
 }

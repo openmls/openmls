@@ -32,7 +32,7 @@ fn proposals_codec(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvide
 
     // Reference
 
-    let reference = ProposalRef::from_proposal(ciphersuite, backend, &proposal)
+    let reference = ProposalRef::from_raw_proposal(ciphersuite, backend, &proposal)
         .expect("An unexpected error occurred.");
     let proposal_or_ref = ProposalOrRef::Reference(reference);
     let encoded = proposal_or_ref

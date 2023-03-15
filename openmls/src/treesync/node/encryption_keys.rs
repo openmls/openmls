@@ -124,6 +124,13 @@ impl EncryptionPrivateKey {
     }
 }
 
+#[cfg(test)]
+impl EncryptionPrivateKey {
+    pub(crate) fn key(&self) -> &HpkePrivateKey {
+        &self.key
+    }
+}
+
 impl From<HpkePublicKey> for EncryptionKey {
     fn from(key: HpkePublicKey) -> Self {
         Self { key }
