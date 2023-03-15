@@ -111,10 +111,7 @@ fn test_read_vectors() {
 
     for (i, test_vector) in test_vectors.into_iter().enumerate() {
         println!("# {i:04}");
-        match run_test_vector(test_vector) {
-            Ok(_) => {}
-            Err(e) => panic!("Error while checking messages test vector.\n{:?}", e),
-        }
+        run_test_vector(test_vector);
         println!()
     }
 }
@@ -544,7 +541,7 @@ fn update_inline(
     }
 }
 
-pub fn run_test_vector(test_vector: PassiveClientWelcomeTestVector) -> Result<(), &'static str> {
+pub fn run_test_vector(test_vector: PassiveClientWelcomeTestVector) {
     let _ = pretty_env_logger::formatted_builder()
         .is_test(true)
         .try_init();
@@ -553,7 +550,7 @@ pub fn run_test_vector(test_vector: PassiveClientWelcomeTestVector) -> Result<()
     let cipher_suite = test_vector.cipher_suite.try_into().unwrap();
     if backend.crypto().supports(cipher_suite).is_err() {
         println!("Skipping {}", cipher_suite);
-        return Ok(());
+        return;
     }
 
     let group_config = MlsGroupConfig::builder()
@@ -579,7 +576,7 @@ pub fn run_test_vector(test_vector: PassiveClientWelcomeTestVector) -> Result<()
 
             let kp = match mls_message_key_package.body {
                 MlsMessageInBody::KeyPackage(key_package) => key_package,
-                _ => return Err("Expected MLSMessage.wire_format == mls_key_package."),
+                _ => panic!("Expected MLSMessage.wire_format == mls_key_package."),
             };
 
             KeyPackageBundle {
@@ -597,7 +594,7 @@ pub fn run_test_vector(test_vector: PassiveClientWelcomeTestVector) -> Result<()
 
             match mls_message_welcome.body {
                 MlsMessageInBody::Welcome(welcome) => welcome,
-                _ => return Err("Expected MLSMessage.wire_format == mls_welcome."),
+                _ => panic!("Expected MLSMessage.wire_format == mls_welcome."),
             }
         };
 
@@ -675,6 +672,4 @@ pub fn run_test_vector(test_vector: PassiveClientWelcomeTestVector) -> Result<()
             passive_client.epoch_authenticator()
         );
     }
-
-    Ok(())
 }
