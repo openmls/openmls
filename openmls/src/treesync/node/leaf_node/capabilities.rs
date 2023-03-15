@@ -2,6 +2,8 @@ use openmls_traits::types::Ciphersuite;
 use serde::{Deserialize, Serialize};
 use tls_codec::{TlsDeserialize, TlsSerialize, TlsSize};
 
+#[cfg(doc)]
+use super::LeafNode;
 use crate::{
     credentials::CredentialType,
     extensions::{ExtensionType, RequiredCapabilitiesExtension},
