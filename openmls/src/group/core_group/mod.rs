@@ -18,6 +18,8 @@ pub(crate) mod staged_commit;
 
 // Tests
 #[cfg(test)]
+pub(crate) mod kat_passive_client;
+#[cfg(test)]
 pub(crate) mod kat_welcome;
 #[cfg(test)]
 pub(crate) mod test_core_group;
