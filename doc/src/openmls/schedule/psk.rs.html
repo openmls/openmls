@@ -305,11 +305,33 @@
 <a href="#305" id="305">305</a>
 <a href="#306" id="306">306</a>
 <a href="#307" id="307">307</a>
+<a href="#308" id="308">308</a>
+<a href="#309" id="309">309</a>
+<a href="#310" id="310">310</a>
+<a href="#311" id="311">311</a>
+<a href="#312" id="312">312</a>
+<a href="#313" id="313">313</a>
+<a href="#314" id="314">314</a>
+<a href="#315" id="315">315</a>
+<a href="#316" id="316">316</a>
+<a href="#317" id="317">317</a>
+<a href="#318" id="318">318</a>
+<a href="#319" id="319">319</a>
+<a href="#320" id="320">320</a>
+<a href="#321" id="321">321</a>
+<a href="#322" id="322">322</a>
+<a href="#323" id="323">323</a>
+<a href="#324" id="324">324</a>
+<a href="#325" id="325">325</a>
+<a href="#326" id="326">326</a>
+<a href="#327" id="327">327</a>
+<a href="#328" id="328">328</a>
+<a href="#329" id="329">329</a>
+<a href="#330" id="330">330</a>
+<a href="#331" id="331">331</a>
 </pre><pre class="rust"><code><span class="doccomment">//! # Preshared keys.
 
-</span><span class="kw">use super</span>::<span class="kw-2">*</span>;
-<span class="kw">use </span><span class="kw">crate</span>::group::{GroupEpoch, GroupId};
-<span class="kw">use </span>openmls_traits::{
+</span><span class="kw">use </span>openmls_traits::{
     key_store::{MlsEntity, MlsEntityId, OpenMlsKeyStore},
     random::OpenMlsRand,
     OpenMlsCryptoProvider,
@@ -317,10 +339,13 @@
 <span class="kw">use </span>serde::{Deserialize, Serialize};
 <span class="kw">use </span>tls_codec::{Serialize <span class="kw">as </span>TlsSerializeTrait, VLBytes};
 
+<span class="kw">use super</span>::<span class="kw-2">*</span>;
+<span class="kw">use </span><span class="kw">crate</span>::group::{GroupEpoch, GroupId};
+
 <span class="doccomment">/// ResumptionPSKUsage
 ///
 /// ```c
-/// // draft-ietf-mls-protocol-16
+/// // draft-ietf-mls-protocol-18
 /// enum {
 ///   reserved(0),
 ///   application(1),
@@ -380,15 +405,17 @@
 }
 
 <span class="kw">impl </span>PskBundle {
-    <span class="doccomment">/// Create a new bundle
-    </span><span class="attr">#[cfg(test)]
-    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>new(secret: Secret) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, CryptoError&gt; {
-        <span class="prelude-val">Ok</span>(<span class="self">Self </span>{ secret })
-    }
-
     <span class="doccomment">/// Return the secret
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>secret(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>Secret {
         <span class="kw-2">&amp;</span><span class="self">self</span>.secret
+    }
+}
+
+<span class="attr">#[cfg(test)]
+</span><span class="kw">impl </span>PskBundle {
+    <span class="doccomment">/// Create a new bundle
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>new(secret: Secret) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, CryptoError&gt; {
+        <span class="prelude-val">Ok</span>(<span class="self">Self </span>{ secret })
     }
 }
 
@@ -433,6 +460,16 @@
 }
 
 <span class="doccomment">/// PSK enum that can contain the different PSK types
+///
+/// ```c
+/// // draft-ietf-mls-protocol-18
+/// enum {
+///   reserved(0),
+///   external(1),
+///   resumption(2),
+///   (255)
+/// } PSKType;
+/// ```
 </span><span class="attr">#[derive(
     Debug, PartialEq, Eq, Clone, Serialize, Deserialize, TlsSerialize, TlsDeserialize, TlsSize,
 )]
@@ -448,16 +485,18 @@
 /// in the key schedule.
 ///
 /// ```c
-/// // draft-ietf-mls-protocol-16
+/// // draft-ietf-mls-protocol-18
 /// struct {
 ///   PSKType psktype;
 ///   select (PreSharedKeyID.psktype) {
-///   case external:
-///     opaque psk_id&lt;V&gt;;
-///   case resumption:
-///     ResumptionPSKUsage usage;
-///     opaque psk_group_id&lt;V&gt;;
-///     uint64 psk_epoch;
+///     case external:
+///       opaque psk_id&lt;V&gt;;
+///
+///     case resumption:
+///       ResumptionPSKUsage usage;
+///       opaque psk_group_id&lt;V&gt;;
+///       uint64 psk_epoch;
+///   };
 ///   opaque psk_nonce&lt;V&gt;;
 /// } PreSharedKeyID;
 /// ```
@@ -485,14 +524,6 @@
         })
     }
 
-    <span class="attr">#[cfg(test)]
-    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>new_with_nonce(psk: Psk, psk_nonce: Vec&lt;u8&gt;) -&gt; <span class="self">Self </span>{
-        <span class="self">Self </span>{
-            psk,
-            psk_nonce: psk_nonce.into(),
-        }
-    }
-
     <span class="doccomment">/// Return the PSK
     </span><span class="kw">pub fn </span>psk(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>Psk {
         <span class="kw-2">&amp;</span><span class="self">self</span>.psk
@@ -501,6 +532,23 @@
     <span class="doccomment">/// Return the PSK nonce
     </span><span class="kw">pub fn </span>psk_nonce(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>[u8] {
         <span class="self">self</span>.psk_nonce.as_slice()
+    }
+}
+
+<span class="attr">#[cfg(test)]
+</span><span class="kw">impl </span>PreSharedKeyId {
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>new_with_nonce(psk: Psk, psk_nonce: Vec&lt;u8&gt;) -&gt; <span class="self">Self </span>{
+        <span class="self">Self </span>{
+            psk,
+            psk_nonce: psk_nonce.into(),
+        }
+    }
+
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>external_id(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>[u8]&gt; {
+        <span class="kw">match </span><span class="self">self</span>.psk {
+            Psk::External(<span class="kw-2">ref </span>external_psk) =&gt; <span class="prelude-val">Some</span>(external_psk.psk_id.as_slice()),
+            <span class="kw">_ </span>=&gt; <span class="prelude-val">None</span>,
+        }
     }
 }
 

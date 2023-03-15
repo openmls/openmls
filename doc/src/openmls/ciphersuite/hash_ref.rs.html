@@ -167,7 +167,7 @@
 </span><span class="kw">use </span>openmls_traits::{crypto::OpenMlsCrypto, types::CryptoError};
 <span class="kw">use </span>serde::{Deserialize, Serialize};
 <span class="kw">use </span>tls_codec::{
-    Serialize <span class="kw">as </span>TlsSerializeTrait, TlsDeserialize, TlsSerialize, TlsSize, TlsSliceU8, VLBytes,
+    Serialize <span class="kw">as </span>TlsSerializeTrait, TlsDeserialize, TlsSerialize, TlsSize, VLByteSlice, VLBytes,
 };
 
 <span class="kw">use </span><span class="kw">super</span>::Ciphersuite;
@@ -203,7 +203,7 @@
 
 <span class="attr">#[derive(TlsSerialize, TlsSize)]
 </span><span class="kw">struct </span>HashReferenceInput&lt;<span class="lifetime">&#39;a</span>&gt; {
-    label: TlsSliceU8&lt;<span class="lifetime">&#39;a</span>, u8&gt;,
+    label: VLByteSlice&lt;<span class="lifetime">&#39;a</span>&gt;,
     value: VLBytes,
 }
 
@@ -234,7 +234,7 @@
         label: <span class="kw-2">&amp;</span>[u8],
     ) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, CryptoError&gt; {
         <span class="kw">let </span>input = HashReferenceInput {
-            label: TlsSliceU8(label),
+            label: VLByteSlice(label),
             value: VLBytes::new(value.to_vec()),
         };
         <span class="kw">let </span>payload = input

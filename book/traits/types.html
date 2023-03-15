@@ -149,7 +149,8 @@
 identifiers.</p>
 <p><strong>AEADs</strong></p>
 <p>The following AEADs are defined.</p>
-<pre><code class="language-rust no_run noplayground">pub enum AeadType {
+<pre><code class="language-rust no_run noplayground">/// AEAD types
+pub enum AeadType {
     /// AES GCM 128
     Aes128Gcm = 0x0001,
 
@@ -157,8 +158,7 @@ identifiers.</p>
     Aes256Gcm = 0x0002,
 
     /// ChaCha20 Poly1305
-    ChaCha20Poly1305 = 0x0003,
-}</code></pre>
+    ChaCha20Poly1305 = 0x0003,</code></pre>
 <p>An AEAD provides the following functions to get the according values for each
 algorithm.</p>
 <ul>
@@ -168,11 +168,11 @@ algorithm.</p>
 </ul>
 <p><strong>Hashing</strong></p>
 <p>The following hash algorithms are defined.</p>
-<pre><code class="language-rust no_run noplayground">pub enum HashType {
+<pre><code class="language-rust no_run noplayground">/// Hash types
+pub enum HashType {
     Sha2_256 = 0x04,
     Sha2_384 = 0x05,
-    Sha2_512 = 0x06,
-}</code></pre>
+    Sha2_512 = 0x06,</code></pre>
 <p>A hash algorithm provides the following functions to get the according values for each
 algorithm.</p>
 <ul>
@@ -180,7 +180,8 @@ algorithm.</p>
 </ul>
 <p><strong>Signatures</strong></p>
 <p>The following signature schemes are defined.</p>
-<pre><code class="language-rust no_run noplayground">pub enum SignatureScheme {
+<pre><code class="language-rust no_run noplayground">#[repr(u16)]
+pub enum SignatureScheme {
     /// ECDSA_SECP256R1_SHA256
     ECDSA_SECP256R1_SHA256 = 0x0403,
     /// ECDSA_SECP384R1_SHA384
@@ -190,13 +191,13 @@ algorithm.</p>
     /// ED25519
     ED25519 = 0x0807,
     /// ED448
-    ED448 = 0x0808,
-}</code></pre>
+    ED448 = 0x0808,</code></pre>
 <h1 id="hpke-types"><a class="header" href="#hpke-types">HPKE Types</a></h1>
 <p>The HPKE implementation is part of the crypto provider as well.
 The crate, therefore, defines the necessary types too.</p>
 <p>The HPKE algorithms are defined as follows.</p>
-<pre><code class="language-rust no_run noplayground">
+<pre><code class="language-rust no_run noplayground">pub struct HpkeConfig(pub HpkeKemType, pub HpkeKdfType, pub HpkeAeadType);
+
 /// KEM Types for HPKE
 #[derive(PartialEq, Eq, Copy, Clone, Debug, Serialize, Deserialize)]
 #[repr(u16)]
@@ -210,9 +211,9 @@ pub enum HpkeKemType {
     /// DH KEM on P521
     DhKemP521 = 0x0012,
 
-    /// DH KEM on x25519
-    DhKem25519 = 0x0020,</code></pre>
-<pre><code class="language-rust no_run noplayground">
+    /// DH KEM on x25519</code></pre>
+<pre><code class="language-rust no_run noplayground">}
+
 /// KDF Types for HPKE
 #[derive(PartialEq, Eq, Copy, Clone, Debug, Serialize, Deserialize)]
 #[repr(u16)]
@@ -220,9 +221,9 @@ pub enum HpkeKdfType {
     /// HKDF SHA 256
     HkdfSha256 = 0x0001,
 
-    /// HKDF SHA 384
-    HkdfSha384 = 0x0002,</code></pre>
-<pre><code class="language-rust no_run noplayground">
+    /// HKDF SHA 384</code></pre>
+<pre><code class="language-rust no_run noplayground">}
+
 /// AEAD Types for HPKE.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[repr(u16)]
@@ -233,17 +234,16 @@ pub enum HpkeAeadType {
     /// AES GCM 256
     AesGcm256 = 0x0002,
 
-    /// ChaCha20 Poly1305
-    ChaCha20Poly1305 = 0x0003,</code></pre>
+    /// ChaCha20 Poly1305</code></pre>
 <p>In addition, helper structs for <code>HpkeCiphertext</code> and <code>HpkeKeyPair</code> are defined.</p>
-<pre><code class="language-rust no_run noplayground">/// ```
+<pre><code class="language-rust no_run noplayground">/// } HPKECiphertext;
+/// ```
 #[derive(
-    Debug, PartialEq, Eq, Clone, Serialize, Deserialize, TlsSerialize, TlsDeserialize, TlsSize,
-)]</code></pre>
-<pre><code class="language-rust no_run noplayground">}
+    Debug, PartialEq, Eq, Clone, Serialize, Deserialize, TlsSerialize, TlsDeserialize, TlsSize,</code></pre>
+<pre><code class="language-rust no_run noplayground">    pub ciphertext: VLBytes,
+}
 
-/// Helper holding a (private, public) key pair as byte vectors.
-#[derive(Debug, Clone, Serialize, Deserialize)]</code></pre>
+/// Helper holding a (private, public) key pair as byte vectors.</code></pre>
 
                     </main>
 

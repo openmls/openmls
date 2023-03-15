@@ -316,16 +316,30 @@
 <a href="#316" id="316">316</a>
 <a href="#317" id="317">317</a>
 <a href="#318" id="318">318</a>
+<a href="#319" id="319">319</a>
+<a href="#320" id="320">320</a>
+<a href="#321" id="321">321</a>
+<a href="#322" id="322">322</a>
+<a href="#323" id="323">323</a>
+<a href="#324" id="324">324</a>
+<a href="#325" id="325">325</a>
+<a href="#326" id="326">326</a>
+<a href="#327" id="327">327</a>
+<a href="#328" id="328">328</a>
+<a href="#329" id="329">329</a>
+<a href="#330" id="330">330</a>
+<a href="#331" id="331">331</a>
 </pre><pre class="rust"><code><span class="doccomment">//! # MLS content authentication
 //!
 //! This module contains structs and implementation that pertain to content
 //! authentication in MLS.
 
-</span><span class="kw">use crate</span>::{
-    binary_tree::LeafNodeIndex,
-    ciphersuite::signable::{Signable, SignedStruct},
-    error::LibraryError,
-    extensions::SenderExtensionIndex,
+</span><span class="kw">use </span>std::io::{Read, Write};
+
+<span class="kw">use </span>openmls_traits::signatures::Signer;
+<span class="kw">use </span>serde::{Deserialize, Serialize};
+<span class="kw">use </span>tls_codec::{
+    Deserialize <span class="kw">as </span>TlsDeserializeTrait, Serialize <span class="kw">as </span>TlsSerializeTrait, Size, TlsSerialize, TlsSize,
 };
 
 <span class="kw">use super</span>::{
@@ -333,12 +347,11 @@
     Commit, ConfirmationTag, ContentType, FramingParameters, GroupContext, GroupEpoch, GroupId,
     Proposal, Sender, Signature, WireFormat,
 };
-<span class="kw">use </span>openmls_traits::signatures::Signer;
-<span class="kw">use </span>std::io::{Read, Write};
-
-<span class="kw">use </span>serde::{Deserialize, Serialize};
-<span class="kw">use </span>tls_codec::{
-    Deserialize <span class="kw">as </span>TlsDeserializeTrait, Serialize <span class="kw">as </span>TlsSerializeTrait, Size, TlsSerialize, TlsSize,
+<span class="kw">use crate</span>::{
+    binary_tree::LeafNodeIndex,
+    ciphersuite::signable::{Signable, SignedStruct},
+    error::LibraryError,
+    extensions::SenderExtensionIndex,
 };
 
 <span class="doccomment">/// 7.1 Content Authentication
@@ -584,14 +597,27 @@
     </span><span class="kw">pub fn </span>sender(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>Sender {
         <span class="kw-2">&amp;</span><span class="self">self</span>.content.sender
     }
+}
 
-    <span class="attr">#[cfg(test)]
-    </span><span class="kw">pub fn </span>test_signature(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>Signature {
+<span class="attr">#[cfg(test)]
+</span><span class="kw">impl </span>AuthenticatedContent {
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>new(
+        wire_format: WireFormat,
+        content: FramedContent,
+        auth: FramedContentAuthData,
+    ) -&gt; <span class="self">Self </span>{
+        <span class="self">Self </span>{
+            wire_format,
+            content,
+            auth,
+        }
+    }
+
+    <span class="kw">pub fn </span>test_signature(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>Signature {
         <span class="kw-2">&amp;</span><span class="self">self</span>.auth.signature
     }
 
-    <span class="attr">#[cfg(test)]
-    </span><span class="kw">pub</span>(<span class="kw">super</span>) <span class="kw">fn </span>unset_confirmation_tag(<span class="kw-2">&amp;mut </span><span class="self">self</span>) {
+    <span class="kw">pub</span>(<span class="kw">super</span>) <span class="kw">fn </span>unset_confirmation_tag(<span class="kw-2">&amp;mut </span><span class="self">self</span>) {
         <span class="self">self</span>.auth.confirmation_tag = <span class="prelude-val">None</span>;
     }
 }
