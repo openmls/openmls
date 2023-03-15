@@ -299,6 +299,23 @@
 <a href="#299" id="299">299</a>
 <a href="#300" id="300">300</a>
 <a href="#301" id="301">301</a>
+<a href="#302" id="302">302</a>
+<a href="#303" id="303">303</a>
+<a href="#304" id="304">304</a>
+<a href="#305" id="305">305</a>
+<a href="#306" id="306">306</a>
+<a href="#307" id="307">307</a>
+<a href="#308" id="308">308</a>
+<a href="#309" id="309">309</a>
+<a href="#310" id="310">310</a>
+<a href="#311" id="311">311</a>
+<a href="#312" id="312">312</a>
+<a href="#313" id="313">313</a>
+<a href="#314" id="314">314</a>
+<a href="#315" id="315">315</a>
+<a href="#316" id="316">316</a>
+<a href="#317" id="317">317</a>
+<a href="#318" id="318">318</a>
 </pre><pre class="rust"><code><span class="doccomment">//! # MLS content authentication
 //!
 //! This module contains structs and implementation that pertain to content
@@ -311,19 +328,18 @@
     extensions::SenderExtensionIndex,
 };
 
-<span class="attr">#[cfg(doc)]
-</span><span class="kw">use super</span>::{PrivateMessage, PublicMessage};
-
 <span class="kw">use super</span>::{
     mls_content::{FramedContent, FramedContentBody, FramedContentTbs},
-    Commit, ConfirmationTag, FramingParameters, GroupContext, GroupEpoch, GroupId, Proposal,
-    Sender, Signature, WireFormat,
+    Commit, ConfirmationTag, ContentType, FramingParameters, GroupContext, GroupEpoch, GroupId,
+    Proposal, Sender, Signature, WireFormat,
 };
 <span class="kw">use </span>openmls_traits::signatures::Signer;
-<span class="kw">use </span>std::io::Write;
+<span class="kw">use </span>std::io::{Read, Write};
 
 <span class="kw">use </span>serde::{Deserialize, Serialize};
-<span class="kw">use </span>tls_codec::{Serialize <span class="kw">as </span>TlsSerializeTrait, Size, TlsSerialize, TlsSize};
+<span class="kw">use </span>tls_codec::{
+    Deserialize <span class="kw">as </span>TlsDeserializeTrait, Serialize <span class="kw">as </span>TlsSerializeTrait, Size, TlsSerialize, TlsSize,
+};
 
 <span class="doccomment">/// 7.1 Content Authentication
 ///
@@ -350,6 +366,24 @@
 </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct </span>FramedContentAuthData {
     <span class="kw">pub</span>(<span class="kw">super</span>) signature: Signature,
     <span class="kw">pub</span>(<span class="kw">super</span>) confirmation_tag: <span class="prelude-ty">Option</span>&lt;ConfirmationTag&gt;,
+}
+
+<span class="kw">impl </span>FramedContentAuthData {
+    <span class="kw">pub</span>(<span class="kw">super</span>) <span class="kw">fn </span>deserialize&lt;R: Read&gt;(
+        bytes: <span class="kw-2">&amp;mut </span>R,
+        content_type: ContentType,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, tls_codec::Error&gt; {
+        <span class="kw">let </span>signature = Signature::tls_deserialize(bytes)<span class="question-mark">?</span>;
+        <span class="kw">let </span>confirmation_tag = <span class="kw">if </span><span class="macro">matches!</span>(content_type, ContentType::Commit) {
+            <span class="prelude-val">Some</span>(ConfirmationTag::tls_deserialize(bytes)<span class="question-mark">?</span>)
+        } <span class="kw">else </span>{
+            <span class="prelude-val">None
+        </span>};
+        <span class="prelude-val">Ok</span>(<span class="self">Self </span>{
+            signature,
+            confirmation_tag,
+        })
+    }
 }
 
 <span class="doccomment">/// 6 Message Framing

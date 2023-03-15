@@ -284,14 +284,12 @@
 <a href="#284" id="284">284</a>
 <a href="#285" id="285">285</a>
 <a href="#286" id="286">286</a>
-<a href="#287" id="287">287</a>
 </pre><pre class="rust"><code><span class="kw">use </span>openmls_traits::{types::Ciphersuite, OpenMlsCryptoProvider};
 <span class="kw">use </span>tls_codec::{Deserialize, Serialize, TlsDeserialize, TlsSerialize, TlsSize};
 
 <span class="kw">use super</span>::{
-    codec::deserialize_ciphertext_content,
-    mls_auth_content_in::{FramedContentAuthDataIn, VerifiableAuthenticatedContentIn},
-    mls_content_in::FramedContentBodyIn,
+    codec::deserialize_ciphertext_content, mls_auth_content::FramedContentAuthData,
+    mls_auth_content_in::VerifiableAuthenticatedContentIn, mls_content_in::FramedContentBodyIn,
 };
 
 <span class="kw">use crate</span>::{
@@ -531,7 +529,7 @@
     // implementation of `TlsSerialize` for `PrivateMessageContentIn`, as well
     // as `deserialize_ciphertext_content`.
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) content: FramedContentBodyIn,
-    <span class="kw">pub</span>(<span class="kw">crate</span>) auth: FramedContentAuthDataIn,
+    <span class="kw">pub</span>(<span class="kw">crate</span>) auth: FramedContentAuthData,
 }
 
 <span class="attr">#[derive(TlsSerialize, TlsSize)]

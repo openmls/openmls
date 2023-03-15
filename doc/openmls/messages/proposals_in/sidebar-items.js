@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"enum":[["ProposalIn","Proposal."],["ProposalType","MLS Proposal Types"]],"struct":[["AddProposalIn","Add Proposal."],["UpdateProposalIn","Update Proposal."]]};
+window.SIDEBAR_ITEMS = {"enum":[["ProposalIn","Proposal."]],"struct":[["AddProposalIn","Add Proposal."],["UpdateProposalIn","Update Proposal."]]};

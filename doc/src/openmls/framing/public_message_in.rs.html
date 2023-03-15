@@ -316,6 +316,8 @@
 <a href="#316" id="316">316</a>
 <a href="#317" id="317">317</a>
 <a href="#318" id="318">318</a>
+<a href="#319" id="319">319</a>
+<a href="#320" id="320">320</a>
 </pre><pre class="rust"><code><span class="doccomment">//! # PublicMessageIn
 //!
 //! A PublicMessageIn is a framing structure for MLS messages. It can contain
@@ -324,10 +326,10 @@
 </span><span class="kw">use crate</span>::{error::LibraryError, group::errors::ValidationError, versions::ProtocolVersion};
 
 <span class="kw">use super</span>::{
-    mls_auth_content_in::{
-        AuthenticatedContentIn, FramedContentAuthDataIn, VerifiableAuthenticatedContentIn,
-    },
-    mls_content_in::{AuthenticatedContentTbmIn, FramedContentIn, FramedContentTbsIn},
+    mls_auth_content::FramedContentAuthData,
+    mls_auth_content_in::{AuthenticatedContentIn, VerifiableAuthenticatedContentIn},
+    mls_content::{framed_content_tbs_serialized_detached, AuthenticatedContentTbm},
+    mls_content_in::FramedContentIn,
     <span class="kw-2">*</span>,
 };
 
@@ -357,7 +359,7 @@
 </span><span class="attr">#[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
 </span><span class="kw">pub struct </span>PublicMessageIn {
     <span class="kw">pub</span>(<span class="kw">crate</span>) content: FramedContentIn,
-    <span class="kw">pub</span>(<span class="kw">crate</span>) auth: FramedContentAuthDataIn,
+    <span class="kw">pub</span>(<span class="kw">crate</span>) auth: FramedContentAuthData,
     <span class="kw">pub</span>(<span class="kw">crate</span>) membership_tag: <span class="prelude-ty">Option</span>&lt;MembershipTag&gt;,
 }
 
@@ -410,7 +412,7 @@
     <span class="doccomment">/// Build an [`PublicMessageIn`].
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>new(
         content: FramedContentIn,
-        auth: FramedContentAuthDataIn,
+        auth: FramedContentAuthData,
         membership_tag: <span class="prelude-ty">Option</span>&lt;MembershipTag&gt;,
     ) -&gt; <span class="self">Self </span>{
         <span class="self">Self </span>{
@@ -437,15 +439,16 @@
         membership_key: <span class="kw-2">&amp;</span>MembershipKey,
         serialized_context: <span class="kw-2">&amp;</span>[u8],
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(), LibraryError&gt; {
-        <span class="kw">let </span>tbs_payload = FramedContentTbsIn::new_and_serialize_detached(
+        <span class="kw">let </span>tbs_payload = framed_content_tbs_serialized_detached(
             ProtocolVersion::default(),
             WireFormat::PublicMessage,
             <span class="kw-2">&amp;</span><span class="self">self</span>.content,
+            <span class="kw-2">&amp;</span><span class="self">self</span>.content.sender,
             serialized_context,
         )
         .map_err(LibraryError::missing_bound_check)<span class="question-mark">?</span>;
-        <span class="kw">let </span>tbm_payload = AuthenticatedContentTbmIn::new(<span class="kw-2">&amp;</span>tbs_payload, <span class="kw-2">&amp;</span><span class="self">self</span>.auth)<span class="question-mark">?</span>;
-        <span class="kw">let </span>membership_tag = membership_key.tag_message_in(backend, tbm_payload)<span class="question-mark">?</span>;
+        <span class="kw">let </span>tbm_payload = AuthenticatedContentTbm::new(<span class="kw-2">&amp;</span>tbs_payload, <span class="kw-2">&amp;</span><span class="self">self</span>.auth)<span class="question-mark">?</span>;
+        <span class="kw">let </span>membership_tag = membership_key.tag_message(backend, tbm_payload)<span class="question-mark">?</span>;
 
         <span class="self">self</span>.membership_tag = <span class="prelude-val">Some</span>(membership_tag);
         <span class="prelude-val">Ok</span>(())
@@ -464,15 +467,16 @@
         <span class="macro">log::debug!</span>(<span class="string">&quot;Verifying membership tag.&quot;</span>);
         <span class="macro">log_crypto!</span>(trace, <span class="string">&quot;  Membership key: {:x?}&quot;</span>, membership_key);
         <span class="macro">log_crypto!</span>(trace, <span class="string">&quot;  Serialized context: {:x?}&quot;</span>, serialized_context);
-        <span class="kw">let </span>tbs_payload = FramedContentTbsIn::new_and_serialize_detached(
+        <span class="kw">let </span>tbs_payload = framed_content_tbs_serialized_detached(
             ProtocolVersion::default(),
             WireFormat::PublicMessage,
             <span class="kw-2">&amp;</span><span class="self">self</span>.content,
+            <span class="kw-2">&amp;</span><span class="self">self</span>.content.sender,
             serialized_context,
         )
         .map_err(LibraryError::missing_bound_check)<span class="question-mark">?</span>;
-        <span class="kw">let </span>tbm_payload = AuthenticatedContentTbmIn::new(<span class="kw-2">&amp;</span>tbs_payload, <span class="kw-2">&amp;</span><span class="self">self</span>.auth)<span class="question-mark">?</span>;
-        <span class="kw">let </span>expected_membership_tag = <span class="kw-2">&amp;</span>membership_key.tag_message_in(backend, tbm_payload)<span class="question-mark">?</span>;
+        <span class="kw">let </span>tbm_payload = AuthenticatedContentTbm::new(<span class="kw-2">&amp;</span>tbs_payload, <span class="kw-2">&amp;</span><span class="self">self</span>.auth)<span class="question-mark">?</span>;
+        <span class="kw">let </span>expected_membership_tag = <span class="kw-2">&amp;</span>membership_key.tag_message(backend, tbm_payload)<span class="question-mark">?</span>;
 
         <span class="comment">// Verify the membership tag
         </span><span class="kw">if let </span><span class="prelude-val">Some</span>(membership_tag) = <span class="kw-2">&amp;</span><span class="self">self</span>.membership_tag {
@@ -572,7 +576,7 @@
 <span class="kw">impl </span>TlsDeserializeTrait <span class="kw">for </span>PublicMessageIn {
     <span class="kw">fn </span>tls_deserialize&lt;R: Read&gt;(bytes: <span class="kw-2">&amp;mut </span>R) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, tls_codec::Error&gt; {
         <span class="kw">let </span>content = FramedContentIn::tls_deserialize(bytes)<span class="question-mark">?</span>;
-        <span class="kw">let </span>auth = FramedContentAuthDataIn::deserialize(bytes, content.body.content_type())<span class="question-mark">?</span>;
+        <span class="kw">let </span>auth = FramedContentAuthData::deserialize(bytes, content.body.content_type())<span class="question-mark">?</span>;
         <span class="kw">let </span>membership_tag = <span class="kw">if </span>content.sender.is_member() {
             <span class="prelude-val">Some</span>(MembershipTag::tls_deserialize(bytes)<span class="question-mark">?</span>)
         } <span class="kw">else </span>{
@@ -618,7 +622,7 @@
     <span class="kw">fn </span>from(v: PublicMessageIn) -&gt; <span class="self">Self </span>{
         PublicMessage {
             content: v.content.into(),
-            auth: v.auth.into(),
+            auth: v.auth,
             membership_tag: v.membership_tag,
         }
     }
@@ -629,7 +633,7 @@
     <span class="kw">fn </span>from(v: PublicMessage) -&gt; <span class="self">Self </span>{
         PublicMessageIn {
             content: v.content.into(),
-            auth: v.auth.into(),
+            auth: v.auth,
             membership_tag: v.membership_tag,
         }
     }

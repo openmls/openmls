@@ -305,6 +305,7 @@
 <a href="#305" id="305">305</a>
 <a href="#306" id="306">306</a>
 <a href="#307" id="307">307</a>
+<a href="#308" id="308">308</a>
 </pre><pre class="rust"><code><span class="doccomment">//! # PublicMessage
 //!
 //! A PublicMessage is a framing structure for MLS messages. It can contain
@@ -317,7 +318,7 @@
 
 <span class="kw">use super</span>::{
     mls_auth_content::{AuthenticatedContent, FramedContentAuthData},
-    mls_content::{AuthenticatedContentTbm, FramedContent, FramedContentTbs},
+    mls_content::{framed_content_tbs_serialized_detached, AuthenticatedContentTbm, FramedContent},
     <span class="kw-2">*</span>,
 };
 <span class="kw">use crate</span>::{error::LibraryError, versions::ProtocolVersion};
@@ -441,10 +442,11 @@
         membership_key: <span class="kw-2">&amp;</span>MembershipKey,
         serialized_context: <span class="kw-2">&amp;</span>[u8],
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(), LibraryError&gt; {
-        <span class="kw">let </span>tbs_payload = FramedContentTbs::new_and_serialize_detached(
+        <span class="kw">let </span>tbs_payload = framed_content_tbs_serialized_detached(
             ProtocolVersion::default(),
             WireFormat::PublicMessage,
             <span class="kw-2">&amp;</span><span class="self">self</span>.content,
+            <span class="kw-2">&amp;</span><span class="self">self</span>.content.sender,
             serialized_context,
         )
         .map_err(LibraryError::missing_bound_check)<span class="question-mark">?</span>;

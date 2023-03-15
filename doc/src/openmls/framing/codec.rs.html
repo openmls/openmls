@@ -60,7 +60,7 @@
 </pre><pre class="rust"><code><span class="kw">use </span>tls_codec::{Serialize, Size};
 
 <span class="kw">use super</span>::{
-    mls_auth_content_in::FramedContentAuthDataIn, mls_content_in::FramedContentBodyIn,
+    mls_auth_content::FramedContentAuthData, mls_content_in::FramedContentBodyIn,
     private_message_in::PrivateMessageContentIn, <span class="kw-2">*</span>,
 };
 <span class="kw">use </span>std::io::{Read, Write};
@@ -99,7 +99,7 @@
     content_type: ContentType,
 ) -&gt; <span class="prelude-ty">Result</span>&lt;PrivateMessageContentIn, tls_codec::Error&gt; {
     <span class="kw">let </span>content = FramedContentBodyIn::deserialize_without_type(bytes, content_type)<span class="question-mark">?</span>;
-    <span class="kw">let </span>auth = FramedContentAuthDataIn::deserialize(bytes, content_type)<span class="question-mark">?</span>;
+    <span class="kw">let </span>auth = FramedContentAuthData::deserialize(bytes, content_type)<span class="question-mark">?</span>;
 
     <span class="kw">let </span>padding = {
         <span class="kw">let </span><span class="kw-2">mut </span>buffer = Vec::new();

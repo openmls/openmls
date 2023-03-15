@@ -460,6 +460,13 @@
 <a href="#460" id="460">460</a>
 <a href="#461" id="461">461</a>
 <a href="#462" id="462">462</a>
+<a href="#463" id="463">463</a>
+<a href="#464" id="464">464</a>
+<a href="#465" id="465">465</a>
+<a href="#466" id="466">466</a>
+<a href="#467" id="467">467</a>
+<a href="#468" id="468">468</a>
+<a href="#469" id="469">469</a>
 </pre><pre class="rust"><code><span class="doccomment">//! # Proposals
 //!
 //! This module defines all the different types of Proposals.
@@ -554,6 +561,18 @@
             ProposalType::AppAck =&gt; <span class="bool-val">false</span>,
         }
     }
+
+    <span class="doccomment">/// Returns `true` if the proposal type requires a path and `false`
+    </span><span class="kw">pub fn </span>is_path_required(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; bool {
+        <span class="kw">match </span><span class="self">self </span>{
+            <span class="self">Self</span>::Add
+            | <span class="self">Self</span>::Presharedkey
+            | <span class="self">Self</span>::Reinit
+            | <span class="self">Self</span>::AppAck
+            | <span class="self">Self</span>::GroupContextExtensions =&gt; <span class="bool-val">false</span>,
+            <span class="self">Self</span>::Update | <span class="self">Self</span>::Remove | <span class="self">Self</span>::ExternalInit =&gt; <span class="bool-val">true</span>,
+        }
+    }
 }
 
 <span class="kw">impl </span>TryFrom&lt;u16&gt; <span class="kw">for </span>ProposalType {
@@ -619,16 +638,17 @@
 }
 
 <span class="kw">impl </span>Proposal {
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>proposal_type(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; ProposalType {
+    <span class="doccomment">/// Returns the proposal type.
+    </span><span class="kw">pub fn </span>proposal_type(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; ProposalType {
         <span class="kw">match </span><span class="self">self </span>{
-            <span class="self">Self</span>::Add(<span class="kw-2">ref </span>_a) =&gt; ProposalType::Add,
-            <span class="self">Self</span>::Update(<span class="kw-2">ref </span>_u) =&gt; ProposalType::Update,
-            <span class="self">Self</span>::Remove(<span class="kw-2">ref </span>_r) =&gt; ProposalType::Remove,
-            <span class="self">Self</span>::PreSharedKey(<span class="kw-2">ref </span>_p) =&gt; ProposalType::Presharedkey,
-            <span class="self">Self</span>::ReInit(<span class="kw-2">ref </span>_r) =&gt; ProposalType::Reinit,
-            <span class="self">Self</span>::ExternalInit(<span class="kw-2">ref </span>_r) =&gt; ProposalType::ExternalInit,
-            <span class="self">Self</span>::AppAck(<span class="kw-2">ref </span>_r) =&gt; ProposalType::AppAck,
-            <span class="self">Self</span>::GroupContextExtensions(<span class="kw-2">ref </span>_r) =&gt; ProposalType::GroupContextExtensions,
+            Proposal::Add(<span class="kw">_</span>) =&gt; ProposalType::Add,
+            Proposal::Update(<span class="kw">_</span>) =&gt; ProposalType::Update,
+            Proposal::Remove(<span class="kw">_</span>) =&gt; ProposalType::Remove,
+            Proposal::PreSharedKey(<span class="kw">_</span>) =&gt; ProposalType::Presharedkey,
+            Proposal::ReInit(<span class="kw">_</span>) =&gt; ProposalType::Reinit,
+            Proposal::ExternalInit(<span class="kw">_</span>) =&gt; ProposalType::ExternalInit,
+            Proposal::GroupContextExtensions(<span class="kw">_</span>) =&gt; ProposalType::GroupContextExtensions,
+            Proposal::AppAck(<span class="kw">_</span>) =&gt; ProposalType::AppAck,
         }
     }
 
@@ -638,13 +658,7 @@
 
     <span class="doccomment">/// Indicates whether a Commit containing this [Proposal] requires a path.
     </span><span class="kw">pub fn </span>is_path_required(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; bool {
-        <span class="kw">match </span><span class="self">self </span>{
-            <span class="self">Self</span>::Add(<span class="kw">_</span>) | <span class="self">Self</span>::PreSharedKey(<span class="kw">_</span>) | <span class="self">Self</span>::ReInit(<span class="kw">_</span>) | <span class="self">Self</span>::AppAck(<span class="kw">_</span>) =&gt; <span class="bool-val">false</span>,
-            <span class="self">Self</span>::Update(<span class="kw">_</span>)
-            | <span class="self">Self</span>::Remove(<span class="kw">_</span>)
-            | <span class="self">Self</span>::ExternalInit(<span class="kw">_</span>)
-            | <span class="self">Self</span>::GroupContextExtensions(<span class="kw">_</span>) =&gt; <span class="bool-val">true</span>,
-        }
+        <span class="self">self</span>.proposal_type().is_path_required()
     }
 }
 
