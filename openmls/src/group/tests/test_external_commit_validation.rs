@@ -485,7 +485,8 @@ fn test_valsem244(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
             key_package: bob_key_package,
         });
 
-        let proposal_ref = ProposalRef::from_proposal(ciphersuite, backend, &add_proposal).unwrap();
+        let proposal_ref =
+            ProposalRef::from_raw_proposal(ciphersuite, backend, &add_proposal).unwrap();
 
         // Add an Add proposal to the external commit.
         let add_proposal_ref = ProposalOrRef::Reference(proposal_ref);
