@@ -12,8 +12,6 @@ use std::io::Read;
 use tls_codec::Serialize as TlsSerializeTrait;
 
 use super::{mls_auth_content::*, mls_content_in::*, *};
-#[cfg(doc)]
-use super::{PrivateMessageIn, PublicMessageIn};
 use crate::{
     ciphersuite::signable::{SignedStruct, Verifiable, VerifiedStruct},
     credentials::CredentialWithKey,
