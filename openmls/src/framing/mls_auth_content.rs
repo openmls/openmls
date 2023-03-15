@@ -3,11 +3,12 @@
 //! This module contains structs and implementation that pertain to content
 //! authentication in MLS.
 
-use crate::{
-    binary_tree::LeafNodeIndex,
-    ciphersuite::signable::{Signable, SignedStruct},
-    error::LibraryError,
-    extensions::SenderExtensionIndex,
+use std::io::{Read, Write};
+
+use openmls_traits::signatures::Signer;
+use serde::{Deserialize, Serialize};
+use tls_codec::{
+    Deserialize as TlsDeserializeTrait, Serialize as TlsSerializeTrait, Size, TlsSerialize, TlsSize,
 };
 
 use super::{
@@ -15,12 +16,11 @@ use super::{
     Commit, ConfirmationTag, ContentType, FramingParameters, GroupContext, GroupEpoch, GroupId,
     Proposal, Sender, Signature, WireFormat,
 };
-use openmls_traits::signatures::Signer;
-use std::io::{Read, Write};
-
-use serde::{Deserialize, Serialize};
-use tls_codec::{
-    Deserialize as TlsDeserializeTrait, Serialize as TlsSerializeTrait, Size, TlsSerialize, TlsSize,
+use crate::{
+    binary_tree::LeafNodeIndex,
+    ciphersuite::signable::{Signable, SignedStruct},
+    error::LibraryError,
+    extensions::SenderExtensionIndex,
 };
 
 /// 7.1 Content Authentication
@@ -266,13 +266,26 @@ impl AuthenticatedContent {
     pub fn sender(&self) -> &Sender {
         &self.content.sender
     }
+}
 
-    #[cfg(test)]
+#[cfg(test)]
+impl AuthenticatedContent {
+    pub(crate) fn new(
+        wire_format: WireFormat,
+        content: FramedContent,
+        auth: FramedContentAuthData,
+    ) -> Self {
+        Self {
+            wire_format,
+            content,
+            auth,
+        }
+    }
+
     pub fn test_signature(&self) -> &Signature {
         &self.auth.signature
     }
 
-    #[cfg(test)]
     pub(super) fn unset_confirmation_tag(&mut self) {
         self.auth.confirmation_tag = None;
     }
