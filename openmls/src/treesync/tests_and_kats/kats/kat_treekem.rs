@@ -381,7 +381,7 @@ fn read_test_vectors_treekem() {
 
     let backend = OpenMlsRustCrypto::default();
 
-    for test in tests.into_iter().take(1) {
+    for test in tests.into_iter() {
         run_test_vector(test, &backend);
     }
 }
