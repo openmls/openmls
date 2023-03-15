@@ -14,7 +14,7 @@ use crate::group::{GroupEpoch, GroupId};
 /// ResumptionPSKUsage
 ///
 /// ```c
-/// // draft-ietf-mls-protocol-17
+/// // draft-ietf-mls-protocol-18
 /// enum {
 ///   reserved(0),
 ///   application(1),
@@ -131,7 +131,7 @@ impl ResumptionPsk {
 /// PSK enum that can contain the different PSK types
 ///
 /// ```c
-/// // draft-ietf-mls-protocol-17
+/// // draft-ietf-mls-protocol-18
 /// enum {
 ///   reserved(0),
 ///   external(1),
@@ -154,7 +154,7 @@ pub enum Psk {
 /// in the key schedule.
 ///
 /// ```c
-/// // draft-ietf-mls-protocol-17
+/// // draft-ietf-mls-protocol-18
 /// struct {
 ///   PSKType psktype;
 ///   select (PreSharedKeyID.psktype) {
