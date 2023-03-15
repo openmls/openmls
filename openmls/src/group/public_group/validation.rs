@@ -182,7 +182,6 @@ impl PublicGroup {
                     "   add_proposal.add_proposal().key_package().ciphersuite(): {:?}",
                     add_proposal.add_proposal().key_package().ciphersuite()
                 );
-                debug_assert!(false, "insufficient capabilities");
                 return Err(ProposalValidationError::InsufficientCapabilities);
             }
 
