@@ -35,24 +35,21 @@ pub struct InteropGroup {
     crypto_provider: OpenMlsRustCrypto,
 }
 
+type PendingState = (
+    KeyPackage,
+    HpkePrivateKey,
+    HpkeKeyPair,
+    Credential,
+    SignatureKeyPair,
+);
+
 /// This is the main state struct of the interop client. It keeps track of the
 /// individual MLS clients, as well as pending key packages that it was told to
 /// create. It also contains a transaction id map, that maps the `u32`
 /// transaction ids to key package hashes.
 pub struct MlsClientImpl {
     groups: Mutex<Vec<InteropGroup>>,
-    pending_key_packages: Mutex<
-        HashMap<
-            Vec<u8>,
-            (
-                KeyPackage,
-                HpkePrivateKey,
-                HpkeKeyPair,
-                Credential,
-                SignatureKeyPair,
-            ),
-        >,
-    >,
+    pending_key_packages: Mutex<HashMap<Vec<u8>, PendingState>>,
     transaction_id_map: Mutex<HashMap<u32, Vec<Vec<u8>>>>, // List of proposals
 }
 
@@ -178,7 +175,7 @@ impl MlsClient for MlsClientImpl {
             &mls_group_config,
             GroupId::from_slice(&create_group_request.group_id),
             CredentialWithKey {
-                credential: credential.clone(),
+                credential,
                 signature_key: signature_keys.public().into(),
             },
         )
@@ -259,7 +256,7 @@ impl MlsClient for MlsClientImpl {
         self.pending_key_packages.lock().unwrap().insert(
             create_kp_request.identity.clone(),
             (
-                key_package.clone(),
+                key_package,
                 private_key,
                 encryption_key_pair,
                 credential,
@@ -313,7 +310,7 @@ impl MlsClient for MlsClientImpl {
             .map_err(into_status)?;
 
         // Store the encryption key pair in the key store.
-        write_keys_from_key_store(&crypto_provider, encryption_keypair.clone());
+        write_keys_from_key_store(&crypto_provider, encryption_keypair);
 
         // Store the private part of the init_key into the key store.
         // The key is the public key.
