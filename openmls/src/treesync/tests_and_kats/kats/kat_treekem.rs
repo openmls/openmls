@@ -1,6 +1,6 @@
 use std::collections::HashSet;
 
-use log::trace;
+use log::{debug, trace};
 use openmls_basic_credential::SignatureKeyPair;
 use openmls_rust_crypto::OpenMlsRustCrypto;
 use openmls_traits::{crypto::OpenMlsCrypto, types::Ciphersuite, OpenMlsCryptoProvider};
@@ -76,22 +76,18 @@ struct LeafNodeInfoTest {
     signature_keypair: SignatureKeyPair,
 }
 
-pub fn run_test_vector(test: TreeKemTest, backend: &impl OpenMlsCryptoProvider) -> () {
+pub fn run_test_vector(test: TreeKemTest, backend: &impl OpenMlsCryptoProvider) {
     // Skip unsupported cipher suites (for now).
     let ciphersuite = Ciphersuite::try_from(test.cipher_suite).unwrap();
 
-    if !backend
-        .crypto()
-        .supported_ciphersuites()
-        .contains(&ciphersuite)
-    {
-        log::debug!("Skipping unsupported ciphersuite {ciphersuite:?}");
+    if !backend.crypto().supports(ciphersuite).is_ok() {
+        debug!("Skipping unsupported ciphersuite {ciphersuite:?}");
         return;
-    } else {
-        log::debug!("Testing ciphersuite {ciphersuite:?}");
     }
 
-    log::trace!("The tree has {} leaves.", test.leaves_private.len());
+    debug!("Testing ciphersuite {ciphersuite:?}");
+
+    trace!("The tree has {} leaves.", test.leaves_private.len());
 
     let treesync = {
         let ratchet_tree =
@@ -159,7 +155,7 @@ pub fn run_test_vector(test: TreeKemTest, backend: &impl OpenMlsCryptoProvider) 
     };
 
     for path_test in test.update_paths.iter() {
-        log::trace!("Processing update path sent from {}.", path_test.sender);
+        trace!("Processing update path sent from {}.", path_test.sender);
 
         let update_path = UpdatePath::from(
             UpdatePathIn::tls_deserialize(&mut path_test.update_path.as_slice()).unwrap(),
@@ -202,10 +198,10 @@ pub fn run_test_vector(test: TreeKemTest, backend: &impl OpenMlsCryptoProvider) 
         // For each leaf node index j != i for which the leaf node is not blank:
         for leaf_i in full_leaf_nodes.iter() {
             // Process the update path for private_leaf[i]
-            log::trace!("   Processing update path for leaf {}.", leaf_i.index.u32());
+            trace!("   Processing update path for leaf {}.", leaf_i.index.u32());
 
             if leaf_i.index.u32() == path_test.sender {
-                log::trace!("       Skipping own leaf {}.", path_test.sender);
+                trace!("       Skipping own leaf {}.", path_test.sender);
                 // Don't do this for our own leaf.
                 continue;
             }
@@ -224,7 +220,7 @@ pub fn run_test_vector(test: TreeKemTest, backend: &impl OpenMlsCryptoProvider) 
             // Check that the commit secret is correct.
             assert_eq!(&path_test.commit_secret, commit_secret.as_slice());
 
-            log::trace!("       Successfully checked all path secrets and the commit secret.");
+            trace!("       Successfully checked all path secrets and the commit secret.");
         }
 
         trace!("--------------------------------------------");
@@ -234,16 +230,18 @@ pub fn run_test_vector(test: TreeKemTest, backend: &impl OpenMlsCryptoProvider) 
         let mut diff_after_kat = tree_after_kat.empty_diff();
 
         let (update_path, new_commit_secret) = {
-            let skp = full_leaf_nodes
-                .iter()
-                .find(|node| node.index == LeafNodeIndex::new(path_test.sender))
-                .unwrap();
+            let signer = {
+                let full_leaf = full_leaf_nodes
+                    .iter()
+                    .find(|node| node.index == LeafNodeIndex::new(path_test.sender))
+                    .unwrap();
 
-            let signer = SignatureKeyPair::from_raw(
-                ciphersuite.signature_algorithm(),
-                skp.signature_keypair.private().to_vec(),
-                skp.signature_keypair.to_public_vec(),
-            );
+                SignatureKeyPair::from_raw(
+                    ciphersuite.signature_algorithm(),
+                    full_leaf.signature_keypair.private().to_vec(),
+                    full_leaf.signature_keypair.to_public_vec(),
+                )
+            };
 
             // XXX: Update own leaf.
             let (vec_plain_update_path_nodes, _, commit_secret) = diff_after_kat
@@ -289,7 +287,7 @@ pub fn run_test_vector(test: TreeKemTest, backend: &impl OpenMlsCryptoProvider) 
         //     Process new_update_path using private_leaf[j]
         //     Verify that the resulting commit secret is new_commit_secret
         for leaf_i in full_leaf_nodes.iter() {
-            log::trace!("   Processing self-update for leaf {}.", leaf_i.index.u32());
+            trace!("   Processing self-update for leaf {}.", leaf_i.index.u32());
 
             if leaf_i.index.u32() == path_test.sender {
                 continue;
@@ -314,7 +312,7 @@ pub fn run_test_vector(test: TreeKemTest, backend: &impl OpenMlsCryptoProvider) 
                 )
                 .unwrap();
 
-            log::trace!("       Successfully decrypted path secrets.");
+            trace!("       Successfully decrypted path secrets.");
 
             assert_eq!(new_commit_secret, commit_secret_inner);
         }
@@ -353,7 +351,7 @@ fn apply_update_path<'a>(
         )
         .unwrap();
 
-    log::trace!("       Successfully decrypted path secrets.");
+    trace!("       Successfully decrypted path secrets.");
 
     let expected_keypair = {
         // Check that the path secrets are correct. We can only do this indirectly
