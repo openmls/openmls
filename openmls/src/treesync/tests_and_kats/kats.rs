@@ -2,3 +2,5 @@
 // pub mod kat_tree_kem;
 #[cfg(test)]
 pub mod kat_tree_validation;
+#[cfg(test)]
+pub mod kat_treekem;

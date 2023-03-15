@@ -50,7 +50,7 @@ pub type HpkePublicKey = VLBytes;
 #[derive(
     Debug, Clone, serde::Serialize, serde::Deserialize, TlsSerialize, TlsDeserialize, TlsSize,
 )]
-#[cfg_attr(test, derive(PartialEq))]
+#[cfg_attr(test, derive(PartialEq, Eq))]
 #[serde(transparent)]
 pub struct HpkePrivateKey(VLBytes);
 

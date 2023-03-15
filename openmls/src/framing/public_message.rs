@@ -47,10 +47,7 @@ impl PublicMessage {
     pub(crate) fn content(&self) -> &crate::framing::mls_content::FramedContentBody {
         &self.content.body
     }
-}
 
-#[cfg(test)]
-impl PublicMessage {
     pub fn set_confirmation_tag(&mut self, confirmation_tag: Option<ConfirmationTag>) {
         self.auth.confirmation_tag = confirmation_tag;
     }

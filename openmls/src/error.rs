@@ -104,7 +104,7 @@ impl Display for LibraryError {
 }
 
 /// Internal enum to differentiate between the different types of library errors
-#[derive(Error, Debug, PartialEq, Eq, Clone)]
+#[derive(Error, PartialEq, Eq, Clone)]
 enum InternalLibraryError {
     /// See [`TlsCodecError`] for more details.
     #[error(transparent)]
@@ -114,6 +114,22 @@ enum InternalLibraryError {
     CryptoError(#[from] CryptoError),
     #[error("Custom library error: {0}")]
     Custom(String),
+}
+
+impl std::fmt::Debug for InternalLibraryError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            InternalLibraryError::MissingBoundsCheck(e) => f
+                .debug_struct("InternalLibraryError")
+                .field("MissingBoundsCheck", e)
+                .finish(),
+            InternalLibraryError::CryptoError(e) => f
+                .debug_struct("InternalLibraryError")
+                .field("CryptoError", e)
+                .finish(),
+            InternalLibraryError::Custom(s) => writeln!(f, "InternalLibraryError: {s}"),
+        }
+    }
 }
 
 /// A wrapper struct for an error string. This can be used when no complex error

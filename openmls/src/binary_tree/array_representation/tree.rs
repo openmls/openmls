@@ -7,8 +7,9 @@
 //! allows the creation of an [`AbDiff`] struct, where changes can be made before
 //! merging it back into an existing tree.
 
-use serde::{Deserialize, Serialize};
 use std::fmt::Debug;
+
+use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
 use super::{
@@ -211,6 +212,15 @@ impl<L: Clone + Debug + Default, P: Clone + Debug + Default> ABinaryTree<L, P> {
         leaf_index_2: LeafNodeIndex,
     ) -> Vec<ParentNodeIndex> {
         common_direct_path(leaf_index_1, leaf_index_2, self.tree_size())
+    }
+}
+
+#[cfg(test)]
+impl<L: Clone + Debug + Default, P: Clone + Debug + Default> ABinaryTree<L, P> {
+    pub(crate) fn parent(&self, parent_index: ParentNodeIndex) -> &P {
+        self.parent_nodes
+            .get(parent_index.usize())
+            .unwrap_or(&self.default_parent)
     }
 }
 

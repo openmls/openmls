@@ -1,3 +1,5 @@
+use std::fmt::Debug;
+
 use openmls_traits::{
     crypto::OpenMlsCrypto,
     key_store::{MlsEntity, MlsEntityId, OpenMlsKeyStore},
@@ -7,10 +9,12 @@ use openmls_traits::{
 use serde::{Deserialize, Serialize};
 use tls_codec::{TlsDeserialize, TlsSerialize, TlsSize, VLBytes};
 
-use crate::ciphersuite::{hpke, HpkePrivateKey, HpkePublicKey, Secret};
-use crate::error::LibraryError;
-use crate::group::config::CryptoConfig;
-use crate::versions::ProtocolVersion;
+use crate::{
+    ciphersuite::{hpke, HpkePrivateKey, HpkePublicKey, Secret},
+    error::LibraryError,
+    group::config::CryptoConfig,
+    versions::ProtocolVersion,
+};
 
 /// [`EncryptionKey`] contains an HPKE public key that allows the encryption of
 /// path secrets in MLS commits.
@@ -62,9 +66,23 @@ impl EncryptionKey {
     }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, TlsDeserialize, TlsSerialize, TlsSize)]
+#[derive(Clone, Serialize, Deserialize, TlsDeserialize, TlsSerialize, TlsSize)]
+#[cfg_attr(test, derive(PartialEq, Eq))]
 pub(crate) struct EncryptionPrivateKey {
     key: HpkePrivateKey,
+}
+
+impl Debug for EncryptionPrivateKey {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let mut ds = f.debug_struct("EncryptionPrivateKey");
+
+        #[cfg(feature = "crypto-debug")]
+        ds.field("key", &self.key);
+        #[cfg(not(feature = "crypto-debug"))]
+        ds.field("key", &"***");
+
+        ds.finish()
+    }
 }
 
 impl From<Vec<u8>> for EncryptionPrivateKey {
@@ -106,6 +124,13 @@ impl EncryptionPrivateKey {
     }
 }
 
+#[cfg(test)]
+impl EncryptionPrivateKey {
+    pub(crate) fn key(&self) -> &HpkePrivateKey {
+        &self.key
+    }
+}
+
 impl From<HpkePublicKey> for EncryptionKey {
     fn from(key: HpkePublicKey) -> Self {
         Self { key }
@@ -113,7 +138,8 @@ impl From<HpkePublicKey> for EncryptionKey {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, TlsDeserialize, TlsSerialize, TlsSize)]
-pub struct EncryptionKeyPair {
+#[cfg_attr(test, derive(PartialEq, Eq))]
+pub(crate) struct EncryptionKeyPair {
     public_key: EncryptionKey,
     private_key: EncryptionPrivateKey,
 }
@@ -187,6 +213,21 @@ impl EncryptionKeyPair {
             .crypto()
             .derive_hpke_keypair(config.ciphersuite.hpke_config(), ikm.as_slice())
             .into())
+    }
+}
+
+#[cfg(test)]
+impl EncryptionKeyPair {
+    /// Build a key pair from raw bytes for testing.
+    pub(crate) fn from_raw(public_key: Vec<u8>, private_key: Vec<u8>) -> Self {
+        Self {
+            public_key: EncryptionKey {
+                key: public_key.into(),
+            },
+            private_key: EncryptionPrivateKey {
+                key: private_key.into(),
+            },
+        }
     }
 }
 
