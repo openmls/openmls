@@ -127,7 +127,7 @@ impl std::fmt::Debug for InternalLibraryError {
                 .debug_struct("InternalLibraryError")
                 .field("CryptoError", e)
                 .finish(),
-            InternalLibraryError::Custom(s) => write!(f, "InternalLibraryError: {s}\n"),
+            InternalLibraryError::Custom(s) => writeln!(f, "InternalLibraryError: {s}"),
         }
     }
 }

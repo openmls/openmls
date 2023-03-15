@@ -80,7 +80,7 @@ pub fn run_test_vector(test: TreeKemTest, backend: &impl OpenMlsCryptoProvider) 
     // Skip unsupported cipher suites (for now).
     let ciphersuite = Ciphersuite::try_from(test.cipher_suite).unwrap();
 
-    if !backend.crypto().supports(ciphersuite).is_ok() {
+    if backend.crypto().supports(ciphersuite).is_err() {
         debug!("Skipping unsupported ciphersuite {ciphersuite:?}");
         return;
     }
@@ -103,7 +103,7 @@ pub fn run_test_vector(test: TreeKemTest, backend: &impl OpenMlsCryptoProvider) 
         for leaf_private_test in test.leaves_private.into_iter() {
             // * Associate encryption_priv and signature_priv with the leaf node
             let own_leaf = treesync
-                .leaf(LeafNodeIndex::new(leaf_private_test.index as u32))
+                .leaf(LeafNodeIndex::new(leaf_private_test.index))
                 .unwrap();
             let signature_key = own_leaf.signature_key();
             let mut private_key = leaf_private_test.signature_priv.clone();
@@ -213,10 +213,10 @@ pub fn run_test_vector(test: TreeKemTest, backend: &impl OpenMlsCryptoProvider) 
                 ciphersuite,
                 treesync.clone(),
                 path_test.sender,
-                &path_test,
+                path_test,
                 &update_path,
                 &group_context,
-                &leaf_i,
+                leaf_i,
             );
 
             // Check that the commit secret is correct.
@@ -321,7 +321,8 @@ pub fn run_test_vector(test: TreeKemTest, backend: &impl OpenMlsCryptoProvider) 
     }
 }
 
-fn apply_update_path<'a>(
+#[allow(clippy::too_many_arguments)]
+fn apply_update_path(
     backend: &impl OpenMlsCryptoProvider,
     ciphersuite: Ciphersuite,
     treesync: TreeSync,
