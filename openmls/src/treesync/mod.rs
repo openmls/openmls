@@ -68,9 +68,13 @@ pub(crate) mod node;
 pub(crate) mod treekem;
 pub(crate) mod treesync_node;
 
+use node::encryption_keys::EncryptionKeyPair;
+
 // Public
 pub mod errors;
-pub use node::encryption_keys::{EncryptionKey, EncryptionKeyPair};
+#[cfg(feature = "test-utils")]
+pub use node::encryption_keys::test_utils;
+pub use node::encryption_keys::EncryptionKey;
 
 // Public re-exports
 pub use node::{leaf_node::LeafNode, parent_node::ParentNode, Node};

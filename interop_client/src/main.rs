@@ -5,11 +5,10 @@
 
 use clap::Parser;
 use clap_derive::*;
-use openmls::{ciphersuite, prelude::*};
+use openmls::prelude::*;
 
 use openmls::prelude::config::CryptoConfig;
-use openmls::prelude_test::hash_ref::HashReference;
-use openmls::treesync::EncryptionKeyPair;
+use openmls::treesync::test_utils::{read_keys_from_key_store, write_keys_from_key_store};
 use openmls_basic_credential::SignatureKeyPair;
 use openmls_traits::OpenMlsCryptoProvider;
 use serde::{self, Serialize};
@@ -48,7 +47,7 @@ pub struct MlsClientImpl {
             (
                 KeyPackage,
                 HpkePrivateKey,
-                EncryptionKeyPair,
+                HpkeKeyPair,
                 Credential,
                 SignatureKeyPair,
             ),
@@ -237,11 +236,8 @@ impl MlsClient for MlsClientImpl {
             .read::<HpkePrivateKey>(key_package.hpke_init_key().as_slice())
             .unwrap();
 
-        let encryption_key_pair = EncryptionKeyPair::read_from_key_store(
-            &crypto_provider,
-            key_package.leaf_node().encryption_key(),
-        )
-        .unwrap();
+        let encryption_key_pair =
+            read_keys_from_key_store(&crypto_provider, key_package.leaf_node().encryption_key());
 
         let transaction_id_map = self.transaction_id_map.lock().unwrap();
         let transaction_id = transaction_id_map.len() as u32;
@@ -252,7 +248,10 @@ impl MlsClient for MlsClientImpl {
             key_package: key_package_msg
                 .tls_serialize_detached()
                 .expect("error serializing key package"),
-            encryption_priv: encryption_key_pair.serialized_private_key(),
+            encryption_priv: encryption_key_pair
+                .private
+                .tls_serialize_detached()
+                .unwrap(),
             init_priv: private_key.tls_serialize_detached().unwrap(),
             signature_priv: signature_keys.private().to_vec(),
         };
@@ -314,9 +313,7 @@ impl MlsClient for MlsClientImpl {
             .map_err(into_status)?;
 
         // Store the encryption key pair in the key store.
-        encryption_keypair
-            .write_to_key_store(&crypto_provider)
-            .map_err(into_status)?;
+        write_keys_from_key_store(&crypto_provider, encryption_keypair.clone());
 
         // Store the private part of the init_key into the key store.
         // The key is the public key.

@@ -57,18 +57,3 @@ macro_rules! log_content {
     (debug, $($arg:tt)*) => {{}};
     (trace, $($arg:tt)*) => {{}};
 }
-
-/// Return the bytes from the `data` slice as hex string.
-pub(crate) fn bytes_to_hex(data: &[u8]) -> String {
-    let mut out = "".to_owned();
-    if !data.is_empty() {
-        out += "0x";
-        for byte in data {
-            out.push_str(&format!("{byte:02x}"));
-        }
-    } else {
-        out += "b\"\"";
-    }
-
-    out
-}
