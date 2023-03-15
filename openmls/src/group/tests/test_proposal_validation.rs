@@ -18,13 +18,13 @@ use crate::{
     credentials::*,
     framing::{
         mls_content::FramedContentBody, validation::ProcessedMessageContent, AuthenticatedContent,
-        FramedContent, MlsMessageIn, ProtocolMessage, PublicMessage, Sender,
+        FramedContent, MlsMessageIn, MlsMessageOut, ProtocolMessage, PublicMessage, Sender,
     },
     group::{config::CryptoConfig, errors::*, *},
     key_packages::*,
     messages::{
         proposals::{AddProposal, Proposal, ProposalOrRef, RemoveProposal, UpdateProposal},
-        Welcome,
+        Commit, Welcome,
     },
     prelude::MlsMessageInBody,
     treesync::{errors::ApplyUpdatePathError, node::leaf_node::Capabilities},
@@ -1265,6 +1265,26 @@ fn test_valsem106(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
 /// Removed member must be unique among proposals
 #[apply(ciphersuites_and_backends)]
 fn test_valsem107(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
+    // Helper function to unwrap a commit with a single proposal from an mls message.
+    fn unwrap_specific_commit(commit_ref_remove: MlsMessageOut) -> Commit {
+        let serialized_message = commit_ref_remove.tls_serialize_detached().unwrap();
+
+        let plaintext = MlsMessageIn::tls_deserialize(&mut serialized_message.as_slice())
+            .unwrap()
+            .into_plaintext()
+            .unwrap();
+
+        let commit_content = if let FramedContentBody::Commit(commit) = plaintext.content() {
+            commit.clone()
+        } else {
+            panic!("Unexpected content type.");
+        };
+
+        // The commit should contain only one proposal.
+        assert_eq!(commit_content.proposals.len(), 1);
+        commit_content
+    }
+
     // Before we can test creation of (invalid) proposals, we set up a new group
     // with Alice and Bob.
     let ProposalValidationTestSetup {
@@ -1284,23 +1304,28 @@ fn test_valsem107(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
     // expected.
     let bob_leaf_index = bob_group.own_leaf_index();
 
-    // We first go the manual route
-    let ref_propose1 = alice_group
-        .propose_remove_member(
-            backend,
-            &alice_credential_with_key_and_signer.signer,
-            bob_leaf_index,
-        )
-        .unwrap();
-    let ref_propose2 = alice_group
-        .propose_remove_member(
-            backend,
-            &alice_credential_with_key_and_signer.signer,
-            bob_leaf_index,
-        )
-        .unwrap();
+    let ref_propose = {
+        // We first go the manual route
+        let ref_propose1 = alice_group
+            .propose_remove_member(
+                backend,
+                &alice_credential_with_key_and_signer.signer,
+                bob_leaf_index,
+            )
+            .unwrap();
 
-    assert_eq!(ref_propose1, ref_propose2);
+        let ref_propose2 = alice_group
+            .propose_remove_member(
+                backend,
+                &alice_credential_with_key_and_signer.signer,
+                bob_leaf_index,
+            )
+            .unwrap();
+
+        assert_eq!(ref_propose1, ref_propose2);
+
+        ref_propose1
+    };
 
     // While this shouldn't fail, it should produce a valid commit, i.e. one
     // that contains only one remove proposal.
@@ -1322,25 +1347,11 @@ fn test_valsem107(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
 
     // Check commit with referenced remove proposals.
     {
-        let serialized_message = commit_ref_remove.tls_serialize_detached().unwrap();
-
-        let plaintext = MlsMessageIn::tls_deserialize(&mut serialized_message.as_slice())
-            .unwrap()
-            .into_plaintext()
-            .unwrap();
-
-        let commit_content = if let FramedContentBody::Commit(commit) = plaintext.content() {
-            commit.clone()
-        } else {
-            panic!("Unexpected content type.");
-        };
-
-        // The commit should contain only one proposal.
-        assert_eq!(commit_content.proposals.len(), 1);
+        let commit_content = unwrap_specific_commit(commit_ref_remove);
 
         // And it should be the proposal to remove bob.
         let expected = {
-            let mls_message_in = MlsMessageIn::from(ref_propose1);
+            let mls_message_in = MlsMessageIn::from(ref_propose);
 
             let authenticated_content = match mls_message_in.body {
                 MlsMessageInBody::PublicMessage(ref public) => AuthenticatedContent::new(
@@ -1372,21 +1383,7 @@ fn test_valsem107(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
 
     // Check commit with inline remove proposals.
     {
-        let serialized_message = commit_inline_remove.tls_serialize_detached().unwrap();
-
-        let plaintext = MlsMessageIn::tls_deserialize(&mut serialized_message.as_slice())
-            .unwrap()
-            .into_plaintext()
-            .unwrap();
-
-        let commit_content = if let FramedContentBody::Commit(commit) = plaintext.content() {
-            commit.clone()
-        } else {
-            panic!("Unexpected content type.");
-        };
-
-        // The commit should contain only one proposal.
-        assert_eq!(commit_content.proposals.len(), 1);
+        let commit_content = unwrap_specific_commit(commit_inline_remove);
 
         // And it should be the proposal to remove bob.
         let expected = ProposalOrRef::Proposal(Proposal::Remove(RemoveProposal {
