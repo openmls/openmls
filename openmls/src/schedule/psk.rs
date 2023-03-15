@@ -1,7 +1,5 @@
 //! # Preshared keys.
 
-use super::*;
-use crate::group::{GroupEpoch, GroupId};
 use openmls_traits::{
     key_store::{MlsEntity, MlsEntityId, OpenMlsKeyStore},
     random::OpenMlsRand,
@@ -10,10 +8,13 @@ use openmls_traits::{
 use serde::{Deserialize, Serialize};
 use tls_codec::{Serialize as TlsSerializeTrait, VLBytes};
 
+use super::*;
+use crate::group::{GroupEpoch, GroupId};
+
 /// ResumptionPSKUsage
 ///
 /// ```c
-/// // draft-ietf-mls-protocol-16
+/// // draft-ietf-mls-protocol-17
 /// enum {
 ///   reserved(0),
 ///   application(1),
@@ -73,15 +74,17 @@ pub(crate) struct PskBundle {
 }
 
 impl PskBundle {
-    /// Create a new bundle
-    #[cfg(test)]
-    pub(crate) fn new(secret: Secret) -> Result<Self, CryptoError> {
-        Ok(Self { secret })
-    }
-
     /// Return the secret
     pub(crate) fn secret(&self) -> &Secret {
         &self.secret
+    }
+}
+
+#[cfg(test)]
+impl PskBundle {
+    /// Create a new bundle
+    pub(crate) fn new(secret: Secret) -> Result<Self, CryptoError> {
+        Ok(Self { secret })
     }
 }
 
@@ -126,6 +129,16 @@ impl ResumptionPsk {
 }
 
 /// PSK enum that can contain the different PSK types
+///
+/// ```c
+/// // draft-ietf-mls-protocol-17
+/// enum {
+///   reserved(0),
+///   external(1),
+///   resumption(2),
+///   (255)
+/// } PSKType;
+/// ```
 #[derive(
     Debug, PartialEq, Eq, Clone, Serialize, Deserialize, TlsSerialize, TlsDeserialize, TlsSize,
 )]
@@ -141,16 +154,18 @@ pub enum Psk {
 /// in the key schedule.
 ///
 /// ```c
-/// // draft-ietf-mls-protocol-16
+/// // draft-ietf-mls-protocol-17
 /// struct {
 ///   PSKType psktype;
 ///   select (PreSharedKeyID.psktype) {
-///   case external:
-///     opaque psk_id<V>;
-///   case resumption:
-///     ResumptionPSKUsage usage;
-///     opaque psk_group_id<V>;
-///     uint64 psk_epoch;
+///     case external:
+///       opaque psk_id<V>;
+///
+///     case resumption:
+///       ResumptionPSKUsage usage;
+///       opaque psk_group_id<V>;
+///       uint64 psk_epoch;
+///   };
 ///   opaque psk_nonce<V>;
 /// } PreSharedKeyID;
 /// ```
@@ -178,14 +193,6 @@ impl PreSharedKeyId {
         })
     }
 
-    #[cfg(test)]
-    pub(crate) fn new_with_nonce(psk: Psk, psk_nonce: Vec<u8>) -> Self {
-        Self {
-            psk,
-            psk_nonce: psk_nonce.into(),
-        }
-    }
-
     /// Return the PSK
     pub fn psk(&self) -> &Psk {
         &self.psk
@@ -194,6 +201,23 @@ impl PreSharedKeyId {
     /// Return the PSK nonce
     pub fn psk_nonce(&self) -> &[u8] {
         self.psk_nonce.as_slice()
+    }
+}
+
+#[cfg(test)]
+impl PreSharedKeyId {
+    pub(crate) fn new_with_nonce(psk: Psk, psk_nonce: Vec<u8>) -> Self {
+        Self {
+            psk,
+            psk_nonce: psk_nonce.into(),
+        }
+    }
+
+    pub(crate) fn external_id(&self) -> Option<&[u8]> {
+        match self.psk {
+            Psk::External(ref external_psk) => Some(external_psk.psk_id.as_slice()),
+            _ => None,
+        }
     }
 }
 

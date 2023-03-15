@@ -5,24 +5,24 @@
 //! To find out if a specific proposal type is supported,
 //! [`ProposalType::is_supported()`] can be used.
 
+use std::convert::TryFrom;
+
+use openmls_traits::{crypto::OpenMlsCrypto, types::Ciphersuite, OpenMlsCryptoProvider};
+use serde::{Deserialize, Serialize};
+use tls_codec::{Serialize as TlsSerializeTrait, TlsDeserialize, TlsSerialize, TlsSize, VLBytes};
+
 use crate::{
     binary_tree::array_representation::LeafNodeIndex,
     ciphersuite::hash_ref::{make_proposal_ref, KeyPackageRef, ProposalRef},
     error::LibraryError,
     extensions::Extensions,
+    framing::{mls_auth_content::AuthenticatedContent, mls_content::FramedContentBody},
     group::GroupId,
     key_packages::*,
     prelude::LeafNode,
     schedule::psk::*,
     versions::ProtocolVersion,
 };
-
-use openmls_traits::{types::Ciphersuite, OpenMlsCryptoProvider};
-use serde::{Deserialize, Serialize};
-use std::convert::TryFrom;
-use tls_codec::{Serialize as TlsSerializeTrait, TlsDeserialize, TlsSerialize, TlsSize, VLBytes};
-
-// Public types
 
 /// ## MLS Proposal Types
 ///
@@ -281,20 +281,17 @@ pub struct PreSharedKeyProposal {
 }
 
 impl PreSharedKeyProposal {
-    /// Create a new PSK proposal
-    #[cfg(test)]
-    pub(crate) fn new(psk: PreSharedKeyId) -> Self {
-        Self { psk }
-    }
-
-    /// Returns a reference to the [`PreSharedKeyId`] in this proposal.
-    pub(crate) fn _psk(&self) -> &PreSharedKeyId {
-        &self.psk
-    }
-
     /// Returns the [`PreSharedKeyId`] and consume this proposal.
     pub(crate) fn into_psk_id(self) -> PreSharedKeyId {
         self.psk
+    }
+}
+
+#[cfg(test)]
+impl PreSharedKeyProposal {
+    /// Create a new PSK proposal
+    pub(crate) fn new(psk: PreSharedKeyId) -> Self {
+        Self { psk }
     }
 }
 
