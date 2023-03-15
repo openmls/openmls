@@ -133,7 +133,9 @@ impl MlsMessageIn {
         }
     }
 
-    #[cfg(any(feature = "test-utils", test))]
+    /// Convert this message into a [`Welcome`].
+    ///
+    /// Returns `None` if this message is not a welcome message.
     pub fn into_welcome(self) -> Option<Welcome> {
         match self.body {
             MlsMessageInBody::Welcome(w) => Some(w),
