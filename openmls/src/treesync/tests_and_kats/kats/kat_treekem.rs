@@ -107,7 +107,9 @@ pub fn run_test_vector(test: TreeKemTest, backend: &impl OpenMlsCryptoProvider) 
                 .unwrap();
             let signature_key = own_leaf.signature_key();
             let mut private_key = leaf_private_test.signature_priv.clone();
-            private_key.append(&mut signature_key.as_slice().to_vec());
+            if ciphersuite != Ciphersuite::MLS_128_DHKEMP256_AES128GCM_SHA256_P256 {
+                private_key.append(&mut signature_key.as_slice().to_vec());
+            }
             let signature_keypair = SignatureKeyPair::from_raw(
                 ciphersuite.signature_algorithm(),
                 private_key,
