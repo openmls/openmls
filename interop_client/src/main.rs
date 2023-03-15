@@ -21,9 +21,7 @@ use openmls_rust_crypto::OpenMlsRustCrypto;
 use mls_client::mls_client_server::{MlsClient, MlsClientServer};
 use mls_client::*;
 
-pub mod mls_client {
-    tonic::include_proto!("mls_client");
-}
+use mls_interop_proto::mls_client;
 
 const IMPLEMENTATION_NAME: &str = "OpenMLS";
 
@@ -372,17 +370,6 @@ impl MlsClient for MlsClientImpl {
         ))
     }
 
-    async fn public_group_state(
-        &self,
-        _request: tonic::Request<PublicGroupStateRequest>,
-    ) -> Result<tonic::Response<PublicGroupStateResponse>, tonic::Status> {
-        // FIXME: This will be removed/replaced
-        Err(tonic::Status::new(
-            tonic::Code::Unimplemented,
-            "exporting public group state is not yet supported by OpenMLS",
-        ))
-    }
-
     async fn state_auth(
         &self,
         request: tonic::Request<StateAuthRequest>,
@@ -459,7 +446,7 @@ impl MlsClient for MlsClientImpl {
             .create_message(
                 &interop_group.crypto_provider,
                 &interop_group.signature_keys,
-                &protect_request.application_data,
+                &protect_request.plaintext,
             )
             .map_err(into_status)?
             .tls_serialize_detached()
@@ -490,7 +477,8 @@ impl MlsClient for MlsClientImpl {
             .group
             .process_message(&interop_group.crypto_provider, message)
             .map_err(into_status)?;
-        let application_data = match processed_message.into_content() {
+        let authenticated_data = processed_message.authenticated_data().to_vec();
+        let plaintext = match processed_message.into_content() {
             ProcessedMessageContent::ApplicationMessage(application_message) => {
                 application_message.into_bytes()
             }
@@ -499,7 +487,10 @@ impl MlsClient for MlsClientImpl {
             ProcessedMessageContent::StagedCommitMessage(_) => unreachable!(),
         };
 
-        Ok(Response::new(UnprotectResponse { application_data }))
+        Ok(Response::new(UnprotectResponse {
+            plaintext,
+            authenticated_data,
+        }))
     }
 
     async fn store_psk(
@@ -649,13 +640,6 @@ impl MlsClient for MlsClientImpl {
         Ok(Response::new(ProposalResponse { proposal }))
     }
 
-    async fn psk_proposal(
-        &self,
-        _request: tonic::Request<PskProposalRequest>,
-    ) -> Result<tonic::Response<ProposalResponse>, tonic::Status> {
-        Ok(Response::new(ProposalResponse::default()))
-    }
-
     async fn re_init_proposal(
         &self,
         _request: tonic::Request<ReInitProposalRequest>,
@@ -738,10 +722,24 @@ impl MlsClient for MlsClientImpl {
             .merge_pending_commit(&interop_group.crypto_provider)
             .map_err(into_status)?;
 
+        let ratchet_tree = if commit_request.external_tree {
+            interop_group
+                .group
+                .export_ratchet_tree()
+                .tls_serialize_detached()
+                .map_err(|_| Status::aborted("failed to serialize ratchet tree"))?
+        } else {
+            vec![]
+        };
+
         // log::trace!("   generated Welcome bytes: {welcome:x?}");
         log::trace!("   done committing");
 
-        Ok(Response::new(CommitResponse { commit, welcome }))
+        Ok(Response::new(CommitResponse {
+            commit,
+            welcome,
+            ratchet_tree,
+        }))
     }
 
     async fn handle_commit(
@@ -860,11 +858,39 @@ impl MlsClient for MlsClientImpl {
         };
         Ok(Response::new(response))
     }
+
+    async fn group_info(
+        &self,
+        _request: tonic::Request<GroupInfoRequest>,
+    ) -> Result<tonic::Response<GroupInfoResponse>, tonic::Status> {
+        Ok(Response::new(GroupInfoResponse::default()))
+    }
+
+    async fn external_psk_proposal(
+        &self,
+        _request: tonic::Request<ExternalPskProposalRequest>,
+    ) -> Result<tonic::Response<ProposalResponse>, tonic::Status> {
+        Ok(Response::new(ProposalResponse::default()))
+    }
+
+    async fn resumption_psk_proposal(
+        &self,
+        _request: tonic::Request<ResumptionPskProposalRequest>,
+    ) -> Result<tonic::Response<ProposalResponse>, tonic::Status> {
+        Ok(Response::new(ProposalResponse::default()))
+    }
+
+    async fn group_context_extensions_proposal(
+        &self,
+        _request: tonic::Request<GroupContextExtensionsProposalRequest>,
+    ) -> Result<tonic::Response<ProposalResponse>, tonic::Status> {
+        Ok(Response::new(ProposalResponse::default()))
+    }
 }
 
 #[derive(Parser)]
 struct Opts {
-    #[clap(short, long, default_value = "[::1]")]
+    #[clap(long, default_value = "[::1]")]
     host: String,
 
     #[clap(short, long, default_value = "50051")]
