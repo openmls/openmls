@@ -137,7 +137,7 @@ pub fn run_test_vector(test: TreeKemTest, backend: &impl OpenMlsCryptoProvider) 
                 assert_eq!(
                     keypair.public_key(),
                     treesync
-                        .parent(ParentNodeIndex::from_tree_index(path_secret.node))
+                        .parent(ParentNodeIndex::test_from_tree_index(path_secret.node))
                         .unwrap()
                         .encryption_key()
                 );
@@ -187,7 +187,7 @@ pub fn run_test_vector(test: TreeKemTest, backend: &impl OpenMlsCryptoProvider) 
         assert_eq!(path_test.path_secrets.len(), treesync.leaf_count() as usize);
 
         // Construct a GroupContext object using the provided cipher_suite, group_id, epoch, and confirmed_transcript_hash, and the root tree hash of ratchet_tree
-        // XXX: Update GroupContext.
+        // TODO(#1279): Update GroupContext.
         let group_context = GroupContext::new(
             ciphersuite,
             GroupId::from_slice(&test.group_id),
@@ -227,8 +227,8 @@ pub fn run_test_vector(test: TreeKemTest, backend: &impl OpenMlsCryptoProvider) 
 
         trace!("--------------------------------------------");
 
-        // Create a new UpdatePath new_update_path, using ratchet_tree, leaves[i].signature_priv, and the GroupContext computed above.
-        // Note the resulting commit secret new_commit_secret
+        // Create a new `new_update_path`, using `ratchet_tree`, `leaves[i].signature_priv`,
+        // and the group context computed above. Note the resulting `new_commit_secret`.
         let mut diff_after_kat = tree_after_kat.empty_diff();
 
         let (update_path, new_commit_secret) = {
@@ -245,7 +245,7 @@ pub fn run_test_vector(test: TreeKemTest, backend: &impl OpenMlsCryptoProvider) 
                 )
             };
 
-            // XXX: Update own leaf.
+            // TODO(#1279): Update own leaf.
             let (vec_plain_update_path_nodes, _, commit_secret) = diff_after_kat
                 .apply_own_update_path(
                     backend,
@@ -256,7 +256,7 @@ pub fn run_test_vector(test: TreeKemTest, backend: &impl OpenMlsCryptoProvider) 
                 )
                 .unwrap();
 
-            // XXX: Update GroupContext.
+            // TODO(#1279): Update GroupContext.
             let serialized_group_context = group_context.tls_serialize_detached().unwrap();
 
             // Encrypt path to according recipients.

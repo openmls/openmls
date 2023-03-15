@@ -135,13 +135,13 @@ pub(crate) fn decrypt_with_label(
     let context: EncryptContext = (label, context).into();
     let context = context.tls_serialize_detached()?;
 
-    #[cfg(feature = "crypto-debug")]
-    {
-        log::debug!("HPKE Decrypt with label `{label}` and `ciphersuite` {ciphersuite:?}:");
-        log::debug!("* context:     {context:x?}");
-        log::debug!("* private key: {private_key:x?}");
-        log::debug!("* ciphertext:  {ciphertext:x?}");
-    }
+    log_crypto!(
+        debug,
+        "HPKE Decrypt with label `{label}` and `ciphersuite` {ciphersuite:?}:"
+    );
+    log_crypto!(debug, "* context:     {context:x?}");
+    log_crypto!(debug, "* private key: {private_key:x?}");
+    log_crypto!(debug, "* ciphertext:  {ciphertext:x?}");
 
     let plaintext = crypto
         .hpke_open(
@@ -153,8 +153,7 @@ pub(crate) fn decrypt_with_label(
         )
         .map_err(|e| e.into());
 
-    #[cfg(feature = "crypto-debug")]
-    log::debug!("* plaintext:   {plaintext:x?}");
+    log_crypto!(debug, "* plaintext:   {plaintext:x?}");
 
     // Clippy can't "see" the `crypto-debug`-gated code above.
     // Thus, it produces a false positive.
