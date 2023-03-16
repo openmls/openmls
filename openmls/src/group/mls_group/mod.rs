@@ -5,13 +5,13 @@
 use super::proposals::{ProposalStore, QueuedProposal};
 use crate::{
     binary_tree::array_representation::LeafNodeIndex,
+    ciphersuite::hash_ref::ProposalRef,
     credentials::Credential,
     error::LibraryError,
     framing::{mls_auth_content::AuthenticatedContent, *},
     group::*,
     key_packages::{KeyPackage, KeyPackageBundle},
     messages::{proposals::*, Welcome},
-    ciphersuite::hash_ref::ProposalRef,
     schedule::ResumptionPskSecret,
     treesync::{
         node::leaf_node::{LeafNode, OpenMlsLeafNode},
