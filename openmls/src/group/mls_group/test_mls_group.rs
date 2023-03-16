@@ -619,12 +619,12 @@ fn remove_prosposal_by_ref(ciphersuite: Ciphersuite, backend: &impl OpenMlsCrypt
     assert_eq!(alice_group.proposal_store.proposals().count(), 1);
     // clearing the proposal by reference
     alice_group
-        .clear_pending_proposal(reference.clone())
+        .remove_pending_proposal(reference.clone())
         .unwrap();
     assert!(alice_group.proposal_store.is_empty());
 
     // the proposal should not be stored anymore
-    let err = alice_group.clear_pending_proposal(reference).unwrap_err();
+    let err = alice_group.remove_pending_proposal(reference).unwrap_err();
     assert_eq!(err, MlsGroupStateError::PendingProposalNotFound);
 
     // the commit should have no proposal

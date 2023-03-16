@@ -425,7 +425,7 @@ impl MlsGroup {
     }
 
     /// Removes a specific proposal from the store and return it if it exists.
-    pub fn clear_pending_proposal(
+    pub fn remove_pending_proposal(
         &mut self,
         proposal_ref: ProposalRef,
     ) -> Result<(), MlsGroupStateError> {

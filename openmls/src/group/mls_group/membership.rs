@@ -6,8 +6,8 @@ use core_group::create_commit_params::CreateCommitParams;
 use openmls_traits::signatures::Signer;
 
 use crate::{
-    binary_tree::array_representation::LeafNodeIndex, group::errors::CreateAddProposalError,
-    messages::group_info::GroupInfo, prelude::hash_ref::ProposalRef, treesync::LeafNode,
+    binary_tree::array_representation::LeafNodeIndex, ciphersuite::hash_ref::ProposalRef,
+    group::errors::CreateAddProposalError, messages::group_info::GroupInfo, treesync::LeafNode,
 };
 
 use super::{
