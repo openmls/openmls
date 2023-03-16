@@ -287,6 +287,12 @@ pub enum ValidationError {
     /// The message is from an epoch too far in the past.
     #[error("The message is from an epoch too far in the past.")]
     NoPastEpochData,
+    /// The provided external sender is not authorized to send external proposals
+    #[error("The provided external sender is not authorized to send external proposals")]
+    UnauthorizedExternalSender,
+    /// The group doesn't contain external senders extension
+    #[error("The group doesn't contain external senders extension")]
+    NoExternalSendersExtension,
 }
 
 /// Proposal validation error

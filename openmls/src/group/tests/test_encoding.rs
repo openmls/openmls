@@ -82,11 +82,11 @@ fn test_application_message_encoding(backend: &impl OpenMlsCryptoProvider) {
                 .tls_serialize_detached()
                 .expect("An unexpected error occurred.");
             let encrypted_message_decoded =
-                match PrivateMessage::tls_deserialize(&mut encrypted_message_bytes.as_slice()) {
+                match PrivateMessageIn::tls_deserialize(&mut encrypted_message_bytes.as_slice()) {
                     Ok(a) => a,
                     Err(err) => panic!("Error decoding PrivateMessage: {err:?}"),
                 };
-            assert_eq!(encrypted_message, encrypted_message_decoded);
+            assert_eq!(encrypted_message, encrypted_message_decoded.into());
         }
     }
 }
@@ -134,12 +134,13 @@ fn test_update_proposal_encoding(backend: &impl OpenMlsCryptoProvider) {
         let update_encoded = update
             .tls_serialize_detached()
             .expect("Could not encode proposal.");
-        let update_decoded = match PublicMessage::tls_deserialize(&mut update_encoded.as_slice()) {
+        let update_decoded = match PublicMessageIn::tls_deserialize(&mut update_encoded.as_slice())
+        {
             Ok(a) => a,
             Err(err) => panic!("Error decoding MPLSPlaintext Update: {err:?}"),
         };
 
-        assert_eq!(update, update_decoded);
+        assert_eq!(update, update_decoded.into());
     }
 }
 
@@ -186,10 +187,10 @@ fn test_add_proposal_encoding(backend: &impl OpenMlsCryptoProvider) {
         let add_encoded = add
             .tls_serialize_detached()
             .expect("Could not encode proposal.");
-        let add_decoded = PublicMessage::tls_deserialize(&mut add_encoded.as_slice())
+        let add_decoded = PublicMessageIn::tls_deserialize(&mut add_encoded.as_slice())
             .expect("An unexpected error occurred.");
 
-        assert_eq!(add, add_decoded);
+        assert_eq!(add, add_decoded.into());
     }
 }
 
@@ -229,10 +230,10 @@ fn test_remove_proposal_encoding(backend: &impl OpenMlsCryptoProvider) {
         let remove_encoded = remove
             .tls_serialize_detached()
             .expect("Could not encode proposal.");
-        let remove_decoded = PublicMessage::tls_deserialize(&mut remove_encoded.as_slice())
+        let remove_decoded = PublicMessageIn::tls_deserialize(&mut remove_encoded.as_slice())
             .expect("An unexpected error occurred.");
 
-        assert_eq!(remove, remove_decoded);
+        assert_eq!(remove, remove_decoded.into());
     }
 }
 
@@ -322,10 +323,10 @@ fn test_commit_encoding(backend: &impl OpenMlsCryptoProvider) {
             .tls_serialize_detached()
             .expect("An unexpected error occurred.");
 
-        let commit_decoded = PublicMessage::tls_deserialize(&mut commit_encoded.as_slice())
+        let commit_decoded = PublicMessageIn::tls_deserialize(&mut commit_encoded.as_slice())
             .expect("An unexpected error occurred.");
 
-        assert_eq!(commit, commit_decoded);
+        assert_eq!(commit, commit_decoded.into());
     }
 }
 
@@ -410,7 +411,7 @@ fn test_welcome_message_encoding(backend: &impl OpenMlsCryptoProvider) {
         // example the RatchetTreeExtension.
         assert!(CoreGroup::new_from_welcome(
             welcome,
-            Some(group_state.public_group().export_nodes()),
+            Some(group_state.public_group().export_ratchet_tree()),
             charlie_key_package_bundle,
             backend
         )

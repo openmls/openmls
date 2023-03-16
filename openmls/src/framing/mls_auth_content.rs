@@ -1,41 +1,27 @@
 //! # MLS content authentication
 //!
 //! This module contains structs and implementation that pertain to content
-//! authentication in MLS. Besides structs that directly represent structs in
-//! the MLS specification, this module also contains
-//! [`VerifiableAuthenticatedContent`], a wrapper struct which ensures that the
-//! signatures are verified before the content of an MLS [`PrivateMessage`] or
-//! [`PublicMessage`] can be accessed by processing functions of OpenMLS.
-use crate::{
-    binary_tree::LeafNodeIndex,
-    ciphersuite::signable::{Signable, SignedStruct, Verifiable, VerifiedStruct},
-    credentials::CredentialWithKey,
-    error::LibraryError,
-    group::errors::ValidationError,
-    versions::ProtocolVersion,
-};
+//! authentication in MLS.
 
-#[cfg(doc)]
-use super::{PrivateMessage, PublicMessage};
-
-use super::{
-    mls_content::{ContentType, FramedContent, FramedContentBody, FramedContentTbs},
-    AddProposal, Commit, ConfirmationTag, FramingParameters, GroupContext, GroupEpoch, GroupId,
-    Proposal, Sender, Signature, WireFormat,
-};
-use openmls_traits::signatures::Signer;
 use std::io::{Read, Write};
 
+use openmls_traits::signatures::Signer;
 use serde::{Deserialize, Serialize};
 use tls_codec::{
     Deserialize as TlsDeserializeTrait, Serialize as TlsSerializeTrait, Size, TlsSerialize, TlsSize,
 };
 
-/// Private module to ensure protection of [`AuthenticatedContent`].
-mod private_mod {
-    #[derive(Default)]
-    pub(crate) struct Seal;
-}
+use super::{
+    mls_content::{FramedContent, FramedContentBody, FramedContentTbs},
+    Commit, ConfirmationTag, ContentType, FramingParameters, GroupContext, GroupEpoch, GroupId,
+    Proposal, Sender, Signature, WireFormat,
+};
+use crate::{
+    binary_tree::LeafNodeIndex,
+    ciphersuite::signable::{Signable, SignedStruct},
+    error::LibraryError,
+    extensions::SenderExtensionIndex,
+};
 
 /// 7.1 Content Authentication
 ///
@@ -170,9 +156,7 @@ impl AuthenticatedContent {
     }
 
     /// This constructor builds an `PublicMessage` containing an External Proposal.
-    /// The sender is [Sender::NewMemberProposal].
-    // TODO #151/#106: We don't support preconfigured senders yet
-    pub(crate) fn new_external_proposal(
+    pub(crate) fn new_join_proposal(
         proposal: Proposal,
         group_id: GroupId,
         epoch: GroupEpoch,
@@ -185,6 +169,30 @@ impl AuthenticatedContent {
             group_id,
             epoch,
             Sender::NewMemberProposal,
+            vec![].into(),
+            body,
+        );
+
+        content_tbs
+            .sign(signer)
+            .map_err(|_| LibraryError::custom("Signing failed"))
+    }
+
+    /// This constructor builds an `PublicMessage` containing an External Proposal.
+    pub(crate) fn new_external_proposal(
+        proposal: Proposal,
+        group_id: GroupId,
+        epoch: GroupEpoch,
+        signer: &impl Signer,
+        sender_index: SenderExtensionIndex,
+    ) -> Result<Self, LibraryError> {
+        let body = FramedContentBody::Proposal(proposal);
+
+        let content_tbs = FramedContentTbs::new(
+            WireFormat::PublicMessage,
+            group_id,
+            epoch,
+            Sender::External(sender_index),
             vec![].into(),
             body,
         );
@@ -258,150 +266,29 @@ impl AuthenticatedContent {
     pub fn sender(&self) -> &Sender {
         &self.content.sender
     }
+}
 
-    #[cfg(test)]
+#[cfg(test)]
+impl AuthenticatedContent {
+    pub(crate) fn new(
+        wire_format: WireFormat,
+        content: FramedContent,
+        auth: FramedContentAuthData,
+    ) -> Self {
+        Self {
+            wire_format,
+            content,
+            auth,
+        }
+    }
+
     pub fn test_signature(&self) -> &Signature {
         &self.auth.signature
     }
 
-    #[cfg(test)]
     pub(super) fn unset_confirmation_tag(&mut self) {
         self.auth.confirmation_tag = None;
     }
-}
-
-#[cfg(any(feature = "test-utils", test))]
-impl From<VerifiableAuthenticatedContent> for AuthenticatedContent {
-    fn from(v: VerifiableAuthenticatedContent) -> Self {
-        AuthenticatedContent {
-            wire_format: v.tbs.wire_format,
-            content: v.tbs.content,
-            auth: v.auth,
-        }
-    }
-}
-
-/// Wrapper struct around [`AuthenticatedContent`] to enforce signature verification
-/// before content can be accessed.
-#[derive(PartialEq, Debug, Clone)]
-pub(crate) struct VerifiableAuthenticatedContent {
-    tbs: FramedContentTbs,
-    auth: FramedContentAuthData,
-}
-
-impl VerifiableAuthenticatedContent {
-    /// Create a new [`VerifiableAuthenticatedContent`] from a [`FramedContentTbs`] and
-    /// a [`Signature`].
-    pub(crate) fn new(
-        wire_format: WireFormat,
-        content: FramedContent,
-        serialized_context: impl Into<Option<Vec<u8>>>,
-        auth: FramedContentAuthData,
-    ) -> Self {
-        let tbs = FramedContentTbs {
-            version: ProtocolVersion::default(),
-            wire_format,
-            content,
-            serialized_context: serialized_context.into(),
-        };
-        Self { tbs, auth }
-    }
-
-    /// Get the [`Sender`].
-    pub fn sender(&self) -> &Sender {
-        &self.tbs.content.sender
-    }
-
-    /// Get the epoch.
-    pub(crate) fn epoch(&self) -> GroupEpoch {
-        self.tbs.content.epoch
-    }
-
-    /// Returns the [`Credential`] and the [`SignaturePublicKey`] contained in
-    /// the [`VerifiableAuthenticatedContent`] if the `sender_type` is either
-    /// [`Sender::NewMemberCommit`] or [`Sender::NewMemberProposal`].
-    ///
-    /// Returns a [`ValidationError`] if
-    /// * the sender type is not one of the above,
-    /// * the content type doesn't match the sender type, or
-    /// * if it's a NewMemberCommit and the Commit doesn't contain a `path`.
-    pub(crate) fn new_member_credential(&self) -> Result<CredentialWithKey, ValidationError> {
-        match self.tbs.content.sender {
-            Sender::NewMemberCommit => {
-                // only external commits can have a sender type `NewMemberCommit`
-                match &self.tbs.content.body {
-                    FramedContentBody::Commit(Commit { path, .. }) => path
-                        .as_ref()
-                        .map(|p| {
-                            let credential = p.leaf_node().credential().clone();
-                            let pk = p.leaf_node().signature_key().clone();
-                            CredentialWithKey {
-                                credential,
-                                signature_key: pk,
-                            }
-                        })
-                        .ok_or(ValidationError::NoPath),
-                    _ => Err(ValidationError::NotACommit),
-                }
-            }
-            Sender::NewMemberProposal => {
-                // only External Add proposals can have a sender type `NewMemberProposal`
-                match &self.tbs.content.body {
-                    FramedContentBody::Proposal(Proposal::Add(AddProposal { key_package })) => {
-                        let credential = key_package.leaf_node().credential().clone();
-                        let signature_key = key_package.leaf_node().signature_key().clone();
-                        Ok(CredentialWithKey {
-                            credential,
-                            signature_key,
-                        })
-                    }
-                    _ => Err(ValidationError::NotAnExternalAddProposal),
-                }
-            }
-            _ => Err(ValidationError::UnknownMember),
-        }
-    }
-
-    /// Get the wire format.
-    pub(crate) fn wire_format(&self) -> WireFormat {
-        self.tbs.wire_format
-    }
-
-    /// Get the confirmation tag.
-    pub(crate) fn confirmation_tag(&self) -> Option<&ConfirmationTag> {
-        self.auth.confirmation_tag.as_ref()
-    }
-
-    /// Get the content type
-    pub(crate) fn content_type(&self) -> ContentType {
-        self.tbs.content.body.content_type()
-    }
-}
-
-impl Verifiable for VerifiableAuthenticatedContent {
-    fn unsigned_payload(&self) -> Result<Vec<u8>, tls_codec::Error> {
-        self.tbs.tls_serialize_detached()
-    }
-
-    fn signature(&self) -> &Signature {
-        &self.auth.signature
-    }
-
-    fn label(&self) -> &str {
-        "FramedContentTBS"
-    }
-}
-
-impl VerifiedStruct<VerifiableAuthenticatedContent> for AuthenticatedContent {
-    fn from_verifiable(v: VerifiableAuthenticatedContent, _seal: Self::SealingType) -> Self {
-        AuthenticatedContent {
-            wire_format: v.tbs.wire_format,
-            content: v.tbs.content,
-            auth: v.auth,
-        }
-    }
-
-    type SealingType = private_mod::Seal;
 }
 
 impl SignedStruct<FramedContentTbs> for AuthenticatedContent {

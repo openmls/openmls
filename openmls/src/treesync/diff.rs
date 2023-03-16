@@ -17,10 +17,11 @@
 //! functions that are not expected to fail and throw an error, will still
 //! return a [`Result`] since they may throw a
 //! [`LibraryError`](TreeSyncDiffError::LibraryError).
+use std::collections::HashSet;
+
+use log::debug;
 use openmls_traits::{signatures::Signer, types::Ciphersuite, OpenMlsCryptoProvider};
 use serde::{Deserialize, Serialize};
-
-use std::collections::HashSet;
 
 use super::{
     errors::*,
@@ -34,7 +35,6 @@ use super::{
     treesync_node::{TreeSyncLeafNode, TreeSyncParentNode},
     TreeSync, TreeSyncParentHashError,
 };
-
 use crate::{
     binary_tree::{
         array_representation::{
@@ -47,6 +47,7 @@ use crate::{
     group::GroupId,
     messages::PathSecret,
     schedule::CommitSecret,
+    treesync::RatchetTree,
 };
 
 pub(crate) type UpdatePathResult = (
@@ -789,24 +790,28 @@ impl<'a> TreeSyncDiff<'a> {
             })
             .collect();
 
-        if let Some((resolution_position, private_key)) = sender_copath_resolution
+        if let Some((keypair, resolution_position)) = sender_copath_resolution
             .iter()
             .enumerate()
             .find_map(|(position, pk)| {
                 owned_keys
                     .iter()
                     .find(|&owned_keypair| owned_keypair.public_key() == pk)
-                    .map(|keypair| (position, keypair.private_key()))
+                    .map(|keypair| (keypair, position))
             })
         {
-            return Ok((private_key, resolution_position));
+            debug!("Found fitting keypair in the filtered resolution:");
+            debug!("* private key: {:x?}", keypair.private_key());
+            debug!("* public key: {:x?}", keypair.public_key());
+
+            return Ok((keypair.private_key(), resolution_position));
         };
         Err(TreeSyncDiffError::NoPrivateKeyFound)
     }
 
     /// Returns a vector of all nodes in the tree resulting from merging this
     /// diff.
-    pub(crate) fn export_nodes(&self) -> Vec<Option<Node>> {
+    pub(crate) fn export_ratchet_tree(&self) -> RatchetTree {
         let mut nodes = Vec::new();
 
         // Determine the index of the rightmost full leaf.
@@ -825,7 +830,7 @@ impl<'a> TreeSyncDiff<'a> {
             nodes.push(leaf.node().clone().map(Node::LeafNode));
         } else {
             // The tree was empty.
-            return vec![];
+            return RatchetTree::trimmed(vec![]);
         }
 
         // Blank parent node used for padding
@@ -851,7 +856,7 @@ impl<'a> TreeSyncDiff<'a> {
             nodes.push(leaf.node().clone().map(Node::LeafNode));
         }
 
-        nodes
+        RatchetTree::trimmed(nodes)
     }
 
     /// Returns the filtered common path two leaf nodes share. If the leaves are
@@ -907,8 +912,7 @@ impl<'a> TreeSyncDiff<'a> {
                     } else {
                         None
                     }
-                })
-                .into_iter(),
+                }),
         )
     }
 }

@@ -6,8 +6,8 @@ use std::collections::HashSet;
 use crate::{
     binary_tree::array_representation::LeafNodeIndex,
     framing::{
-        mls_auth_content::VerifiableAuthenticatedContent, mls_content::ContentType,
-        ProtocolMessage, Sender, WireFormat,
+        mls_auth_content_in::VerifiableAuthenticatedContentIn, ContentType, ProtocolMessage,
+        Sender, WireFormat,
     },
     group::errors::ExternalCommitValidationError,
     group::{
@@ -65,7 +65,7 @@ impl PublicGroup {
     ///  - ValSem009
     pub(super) fn validate_verifiable_content(
         &self,
-        verifiable_content: &VerifiableAuthenticatedContent,
+        verifiable_content: &VerifiableAuthenticatedContentIn,
         message_secrets_store_option: Option<&MessageSecretsStore>,
     ) -> Result<(), ValidationError> {
         // ValSem004

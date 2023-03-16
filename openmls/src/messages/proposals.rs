@@ -5,24 +5,27 @@
 //! To find out if a specific proposal type is supported,
 //! [`ProposalType::is_supported()`] can be used.
 
+use std::convert::TryFrom;
+
+use openmls_traits::{crypto::OpenMlsCrypto, types::Ciphersuite, OpenMlsCryptoProvider};
+use serde::{Deserialize, Serialize};
+use thiserror::Error;
+use tls_codec::{Serialize as TlsSerializeTrait, TlsDeserialize, TlsSerialize, TlsSize, VLBytes};
+
 use crate::{
     binary_tree::array_representation::LeafNodeIndex,
     ciphersuite::hash_ref::{make_proposal_ref, KeyPackageRef, ProposalRef},
     error::LibraryError,
     extensions::Extensions,
+    framing::{
+        mls_auth_content::AuthenticatedContent, mls_content::FramedContentBody, ContentType,
+    },
     group::GroupId,
     key_packages::*,
     prelude::LeafNode,
     schedule::psk::*,
     versions::ProtocolVersion,
 };
-
-use openmls_traits::{types::Ciphersuite, OpenMlsCryptoProvider};
-use serde::{Deserialize, Serialize};
-use std::convert::TryFrom;
-use tls_codec::{Serialize as TlsSerializeTrait, TlsDeserialize, TlsSerialize, TlsSize, VLBytes};
-
-// Public types
 
 /// ## MLS Proposal Types
 ///
@@ -92,6 +95,18 @@ impl ProposalType {
             ProposalType::AppAck => false,
         }
     }
+
+    /// Returns `true` if the proposal type requires a path and `false`
+    pub fn is_path_required(&self) -> bool {
+        match self {
+            Self::Add
+            | Self::Presharedkey
+            | Self::Reinit
+            | Self::AppAck
+            | Self::GroupContextExtensions => false,
+            Self::Update | Self::Remove | Self::ExternalInit => true,
+        }
+    }
 }
 
 impl TryFrom<u16> for ProposalType {
@@ -131,9 +146,7 @@ impl TryFrom<u16> for ProposalType {
 /// } Proposal;
 /// ```
 #[allow(clippy::large_enum_variant)]
-#[derive(
-    Debug, PartialEq, Clone, Serialize, Deserialize, TlsSize, TlsSerialize, TlsDeserialize,
-)]
+#[derive(Debug, PartialEq, Clone, Serialize, Deserialize, TlsSize, TlsSerialize)]
 #[allow(missing_docs)]
 #[repr(u16)]
 pub enum Proposal {
@@ -159,16 +172,17 @@ pub enum Proposal {
 }
 
 impl Proposal {
-    pub(crate) fn proposal_type(&self) -> ProposalType {
+    /// Returns the proposal type.
+    pub fn proposal_type(&self) -> ProposalType {
         match self {
-            Self::Add(ref _a) => ProposalType::Add,
-            Self::Update(ref _u) => ProposalType::Update,
-            Self::Remove(ref _r) => ProposalType::Remove,
-            Self::PreSharedKey(ref _p) => ProposalType::Presharedkey,
-            Self::ReInit(ref _r) => ProposalType::Reinit,
-            Self::ExternalInit(ref _r) => ProposalType::ExternalInit,
-            Self::AppAck(ref _r) => ProposalType::AppAck,
-            Self::GroupContextExtensions(ref _r) => ProposalType::GroupContextExtensions,
+            Proposal::Add(_) => ProposalType::Add,
+            Proposal::Update(_) => ProposalType::Update,
+            Proposal::Remove(_) => ProposalType::Remove,
+            Proposal::PreSharedKey(_) => ProposalType::Presharedkey,
+            Proposal::ReInit(_) => ProposalType::Reinit,
+            Proposal::ExternalInit(_) => ProposalType::ExternalInit,
+            Proposal::GroupContextExtensions(_) => ProposalType::GroupContextExtensions,
+            Proposal::AppAck(_) => ProposalType::AppAck,
         }
     }
 
@@ -178,14 +192,7 @@ impl Proposal {
 
     /// Indicates whether a Commit containing this [Proposal] requires a path.
     pub fn is_path_required(&self) -> bool {
-        match self {
-            Self::Add(_)
-            | Self::PreSharedKey(_)
-            | Self::ReInit(_)
-            | Self::AppAck(_)
-            | Self::GroupContextExtensions(_) => false,
-            Self::Update(_) | Self::Remove(_) | Self::ExternalInit(_) => true,
-        }
+        self.proposal_type().is_path_required()
     }
 }
 
@@ -199,9 +206,7 @@ impl Proposal {
 ///     KeyPackage key_package;
 /// } Add;
 /// ```
-#[derive(
-    Debug, PartialEq, Clone, Serialize, Deserialize, TlsSerialize, TlsDeserialize, TlsSize,
-)]
+#[derive(Debug, PartialEq, Clone, Serialize, Deserialize, TlsSerialize, TlsSize)]
 pub struct AddProposal {
     pub(crate) key_package: KeyPackage,
 }
@@ -224,9 +229,7 @@ impl AddProposal {
 ///     LeafNode leaf_node;
 /// } Update;
 /// ```
-#[derive(
-    Debug, PartialEq, Eq, Clone, Serialize, Deserialize, TlsDeserialize, TlsSerialize, TlsSize,
-)]
+#[derive(Debug, PartialEq, Eq, Clone, Serialize, Deserialize, TlsSerialize, TlsSize)]
 pub struct UpdateProposal {
     pub(crate) leaf_node: LeafNode,
 }
@@ -281,20 +284,17 @@ pub struct PreSharedKeyProposal {
 }
 
 impl PreSharedKeyProposal {
-    /// Create a new PSK proposal
-    #[cfg(test)]
-    pub(crate) fn new(psk: PreSharedKeyId) -> Self {
-        Self { psk }
-    }
-
-    /// Returns a reference to the [`PreSharedKeyId`] in this proposal.
-    pub(crate) fn _psk(&self) -> &PreSharedKeyId {
-        &self.psk
-    }
-
     /// Returns the [`PreSharedKeyId`] and consume this proposal.
     pub(crate) fn into_psk_id(self) -> PreSharedKeyId {
         self.psk
+    }
+}
+
+#[cfg(test)]
+impl PreSharedKeyProposal {
+    /// Create a new PSK proposal
+    pub(crate) fn new(psk: PreSharedKeyId) -> Self {
+        Self { psk }
     }
 }
 
@@ -426,9 +426,7 @@ pub(crate) enum ProposalOrRefType {
 }
 
 /// Type of Proposal, either by value or by reference.
-#[derive(
-    Debug, PartialEq, Clone, Serialize, Deserialize, TlsSerialize, TlsDeserialize, TlsSize,
-)]
+#[derive(Debug, PartialEq, Clone, Serialize, Deserialize, TlsSerialize, TlsSize)]
 #[repr(u8)]
 #[allow(missing_docs)]
 #[allow(clippy::large_enum_variant)]
@@ -438,17 +436,55 @@ pub(crate) enum ProposalOrRef {
     Reference(ProposalRef),
 }
 
+#[derive(Error, Debug)]
+pub(crate) enum ProposalRefError {
+    #[error("Expected `Proposal`, got `{wrong:?}`.")]
+    AuthenticatedContentHasWrongType { wrong: ContentType },
+    #[error(transparent)]
+    Other(#[from] LibraryError),
+}
+
 impl ProposalRef {
-    pub(crate) fn from_proposal(
+    pub(crate) fn from_authenticated_content(
+        crypto: &impl OpenMlsCrypto,
+        ciphersuite: Ciphersuite,
+        authenticated_content: &AuthenticatedContent,
+    ) -> Result<Self, ProposalRefError> {
+        if !matches!(
+            authenticated_content.content(),
+            FramedContentBody::Proposal(_)
+        ) {
+            return Err(ProposalRefError::AuthenticatedContentHasWrongType {
+                wrong: authenticated_content.content().content_type(),
+            });
+        };
+
+        let encoded = authenticated_content
+            .tls_serialize_detached()
+            .map_err(|error| ProposalRefError::Other(LibraryError::missing_bound_check(error)))?;
+
+        make_proposal_ref(&encoded, ciphersuite, crypto)
+            .map_err(|error| ProposalRefError::Other(LibraryError::unexpected_crypto_error(error)))
+    }
+
+    /// Note: A [`ProposalRef`] should be calculated by using TLS-serialized [`AuthenticatedContent`]
+    ///       as value input and not the TLS-serialized proposal. However, to spare us a major refactoring,
+    ///       we calculate it from the raw value in some places that do not interact with the outside world.
+    pub(crate) fn from_raw_proposal(
         ciphersuite: Ciphersuite,
         backend: &impl OpenMlsCryptoProvider,
         proposal: &Proposal,
     ) -> Result<Self, LibraryError> {
-        let encoded = proposal
+        // This is used for hash domain separation.
+        let mut data = b"Internal OpenMLS ProposalRef Label".to_vec();
+
+        let mut encoded = proposal
             .tls_serialize_detached()
             .map_err(LibraryError::missing_bound_check)?;
 
-        make_proposal_ref(&encoded, ciphersuite, backend.crypto())
+        data.append(&mut encoded);
+
+        make_proposal_ref(&data, ciphersuite, backend.crypto())
             .map_err(LibraryError::unexpected_crypto_error)
     }
 }

@@ -15,7 +15,7 @@ use crate::{
     schedule::ResumptionPskSecret,
     treesync::{
         node::leaf_node::{LeafNode, OpenMlsLeafNode},
-        Node,
+        RatchetTree,
     },
 };
 use openmls_traits::{key_store::OpenMlsKeyStore, types::Ciphersuite, OpenMlsCryptoProvider};
@@ -327,8 +327,8 @@ impl MlsGroup {
     // === Extensions ===
 
     /// Exports the Ratchet Tree.
-    pub fn export_ratchet_tree(&self) -> Vec<Option<Node>> {
-        self.group.public_group().export_nodes()
+    pub fn export_ratchet_tree(&self) -> RatchetTree {
+        self.group.public_group().export_ratchet_tree()
     }
 }
 
@@ -408,8 +408,8 @@ impl MlsGroup {
     }
 
     #[cfg(any(feature = "test-utils", test))]
-    pub fn print_tree(&self, message: &str) {
-        self.group.print_tree(message)
+    pub fn print_ratchet_tree(&self, message: &str) {
+        self.group.print_ratchet_tree(message)
     }
 
     /// Returns the underlying [CoreGroup].

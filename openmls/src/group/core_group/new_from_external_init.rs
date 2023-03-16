@@ -5,7 +5,6 @@ use crate::{
         errors::ExternalCommitError,
     },
     messages::proposals::{ExternalInitProposal, Proposal},
-    treesync::node::Node,
 };
 
 use super::CoreGroup;
@@ -29,7 +28,7 @@ impl CoreGroup {
         backend: &impl OpenMlsCryptoProvider,
         signer: &impl Signer,
         mut params: CreateCommitParams,
-        tree_option: Option<&[Option<Node>]>,
+        ratchet_tree: Option<RatchetTree>,
         verifiable_group_info: VerifiableGroupInfo,
     ) -> Result<ExternalCommitResult, ExternalCommitError> {
         // Build the ratchet tree
@@ -38,18 +37,18 @@ impl CoreGroup {
         // If we got a ratchet tree extension in the welcome, we enable it for
         // this group. Note that this is not strictly necessary. But there's
         // currently no other mechanism to enable the extension.
-        let extension_tree_option = try_nodes_from_extensions(verifiable_group_info.extensions());
-        let (nodes, enable_ratchet_tree_extension) = match extension_tree_option {
-            Some(nodes) => (nodes, true),
-            None => match tree_option {
-                Some(n) => (n.into(), false),
-                None => return Err(ExternalCommitError::MissingRatchetTree),
-            },
-        };
+        let (ratchet_tree, enable_ratchet_tree_extension) =
+            match verifiable_group_info.extensions().ratchet_tree() {
+                Some(extension) => (extension.ratchet_tree().clone(), true),
+                None => match ratchet_tree {
+                    Some(ratchet_tree) => (ratchet_tree, false),
+                    None => return Err(ExternalCommitError::MissingRatchetTree),
+                },
+            };
 
         let (public_group, group_info) = PublicGroup::from_external(
             backend,
-            nodes,
+            ratchet_tree,
             verifiable_group_info,
             // Existing proposals are discarded when joining by external commit.
             ProposalStore::new(),

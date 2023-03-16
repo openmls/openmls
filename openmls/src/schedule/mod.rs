@@ -121,6 +121,10 @@
 // | `resumption_psk`        | "resumption"    |
 // ```
 
+use openmls_traits::{crypto::OpenMlsCrypto, types::*, OpenMlsCryptoProvider};
+use serde::{Deserialize, Serialize};
+use tls_codec::{TlsDeserialize, TlsSerialize, TlsSize};
+
 use crate::{
     binary_tree::array_representation::{LeafNodeIndex, TreeSize},
     ciphersuite::{AeadKey, AeadNonce, HpkePrivateKey, Mac, Secret},
@@ -131,9 +135,6 @@ use crate::{
     tree::secret_tree::SecretTree,
     versions::ProtocolVersion,
 };
-use openmls_traits::{crypto::OpenMlsCrypto, types::*, OpenMlsCryptoProvider};
-use serde::{Deserialize, Serialize};
-use tls_codec::{TlsDeserialize, TlsSerialize, TlsSize};
 
 // Public
 pub mod errors;
@@ -584,9 +585,10 @@ impl WelcomeSecret {
             "WelcomeSecret.derive_aead_key with {}",
             self.secret.ciphersuite()
         );
-        let aead_secret = self.secret.hkdf_expand(
+        let aead_secret = self.secret.kdf_expand_label(
             backend,
-            b"key",
+            "key",
+            b"",
             self.secret.ciphersuite().aead_key_length(),
         )?;
         Ok(AeadKey::from_secret(aead_secret))
@@ -597,9 +599,10 @@ impl WelcomeSecret {
         &self,
         backend: &impl OpenMlsCryptoProvider,
     ) -> Result<AeadNonce, CryptoError> {
-        let nonce_secret = self.secret.hkdf_expand(
+        let nonce_secret = self.secret.kdf_expand_label(
             backend,
-            b"nonce",
+            "nonce",
+            b"",
             self.secret.ciphersuite().aead_nonce_length(),
         )?;
         Ok(AeadNonce::from_secret(nonce_secret))
@@ -733,7 +736,7 @@ impl ExporterSecret {
         Ok(self
             .secret
             .derive_secret(backend, label)?
-            .kdf_expand_label(backend, "exporter", context_hash, key_length)?
+            .kdf_expand_label(backend, "exported", context_hash, key_length)?
             .as_slice()
             .to_vec())
     }
@@ -816,24 +819,26 @@ impl ConfirmationKey {
             confirmed_transcript_hash,
         )?))
     }
+}
 
-    // XXX[KAT]: #1051 Only used in KATs. Remove if unused.
-    #[cfg(test)]
-    pub(crate) fn _from_secret(secret: Secret) -> Self {
+#[cfg(test)]
+impl ConfirmationKey {
+    pub(crate) fn from_secret(secret: Secret) -> Self {
         Self { secret }
     }
+}
 
-    #[cfg(any(feature = "test-utils", test))]
-    pub(crate) fn as_slice(&self) -> &[u8] {
-        self.secret.as_slice()
-    }
-
-    #[cfg(any(feature = "test-utils", test))]
+#[cfg(any(feature = "test-utils", test))]
+impl ConfirmationKey {
     pub(crate) fn random(ciphersuite: Ciphersuite, rng: &impl OpenMlsCryptoProvider) -> Self {
         Self {
             secret: Secret::random(ciphersuite, rng, None /* MLS version */)
                 .expect("Not enough randomness."),
         }
+    }
+
+    pub(crate) fn as_slice(&self) -> &[u8] {
+        self.secret.as_slice()
     }
 }
 
@@ -861,7 +866,7 @@ impl MembershipKey {
     /// ```text
     /// membership_tag = MAC(membership_key, MLSPlaintextTBM);
     /// ```
-    pub(crate) fn tag(
+    pub(crate) fn tag_message(
         &self,
         backend: &impl OpenMlsCryptoProvider,
         tbm_payload: AuthenticatedContentTbm,

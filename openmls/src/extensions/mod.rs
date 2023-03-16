@@ -19,12 +19,13 @@
 //! - [`RequiredCapabilitiesExtension`] (GroupContext extension)
 //! - [`ExternalPubExtension`] (GroupInfo extension)
 
-use serde::{Deserialize, Serialize};
 use std::{
     collections::{btree_map::Entry, BTreeMap},
     fmt::Debug,
     io::{Read, Write},
 };
+
+use serde::{Deserialize, Serialize};
 use tls_codec::*;
 
 // Private
@@ -42,11 +43,11 @@ pub mod errors;
 // Public re-exports
 pub use application_id_extension::ApplicationIdExtension;
 pub use external_pub_extension::ExternalPubExtension;
-pub use external_sender_extension::ExternalSendersExtension;
+pub use external_sender_extension::{
+    ExternalSender, ExternalSendersExtension, SenderExtensionIndex,
+};
 pub use ratchet_tree_extension::RatchetTreeExtension;
 pub use required_capabilities::RequiredCapabilitiesExtension;
-
-use crate::treesync::node::Node;
 
 #[cfg(test)]
 mod test_extensions;
@@ -432,21 +433,12 @@ impl Ord for Extension {
     }
 }
 
-/// This function tries to extract a vector of nodes from the given extensions.
-///
-/// Returns the vector of nodes if it finds one and `None` otherwise.
-pub(crate) fn try_nodes_from_extensions(
-    other_extensions: &Extensions,
-) -> Option<Vec<Option<Node>>> {
-    other_extensions.ratchet_tree().map(|e| e.as_slice().into())
-}
-
 #[cfg(test)]
 mod test {
     use itertools::Itertools;
     use tls_codec::{Deserialize, Serialize};
 
-    use crate::extensions::*;
+    use crate::{ciphersuite::HpkePublicKey, extensions::*};
 
     #[test]
     fn add() {
@@ -523,13 +515,12 @@ mod test {
         // that all permutations keep their order after being (de)serialized.
         // The extension content does not matter in this test.
         let ext_x = Extension::ApplicationId(ApplicationIdExtension::new(b"Test"));
-        let ext_y = Extension::RatchetTree(RatchetTreeExtension::default());
+        let ext_y = Extension::ExternalPub(ExternalPubExtension::new(HpkePublicKey::new(vec![])));
         let ext_z = Extension::RequiredCapabilities(RequiredCapabilitiesExtension::default());
 
         for candidate in [ext_x, ext_y, ext_z]
             .into_iter()
             .permutations(3)
-            .into_iter()
             .collect::<Vec<_>>()
         {
             let candidate: Extensions = Extensions::try_from(candidate).unwrap();

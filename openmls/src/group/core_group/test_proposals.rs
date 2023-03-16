@@ -1,17 +1,21 @@
+use openmls_rust_crypto::OpenMlsRustCrypto;
+use openmls_traits::{types::Ciphersuite, OpenMlsCryptoProvider};
+
 use super::CoreGroup;
-use crate::group::public_group::errors::PublicGroupBuildError;
 use crate::{
     binary_tree::LeafNodeIndex,
     ciphersuite::hash_ref::ProposalRef,
     credentials::CredentialType,
-    extensions::Extensions,
-    extensions::{Extension, ExtensionType, RequiredCapabilitiesExtension},
-    framing::sender::Sender,
-    framing::{mls_auth_content::AuthenticatedContent, FramingParameters, WireFormat},
-    group::{config::CryptoConfig, test_core_group::setup_client},
+    extensions::{Extension, ExtensionType, Extensions, RequiredCapabilitiesExtension},
+    framing::{
+        mls_auth_content::AuthenticatedContent, sender::Sender, FramingParameters, WireFormat,
+    },
     group::{
+        config::CryptoConfig,
         errors::*,
         proposals::{ProposalQueue, ProposalStore, QueuedProposal},
+        public_group::errors::PublicGroupBuildError,
+        test_core_group::setup_client,
         CreateCommitParams, GroupContext, GroupId,
     },
     key_packages::KeyPackageBundle,
@@ -19,8 +23,6 @@ use crate::{
     test_utils::*,
     treesync::errors::LeafNodeValidationError,
 };
-use openmls_rust_crypto::OpenMlsRustCrypto;
-use openmls_traits::{types::Ciphersuite, OpenMlsCryptoProvider};
 
 /// This test makes sure ProposalQueue works as intended. This functionality is
 /// used in `create_commit` to filter the epoch proposals. Expected result:
@@ -57,22 +59,13 @@ fn proposal_queue_functions(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryp
     let add_proposal_alice2 = AddProposal {
         key_package: alice_key_package_bundle.key_package().clone(),
     };
-    let add_proposal_bob1 = AddProposal {
+    let add_proposal_bob = AddProposal {
         key_package: bob_key_package.clone(),
     };
 
     let proposal_add_alice1 = Proposal::Add(add_proposal_alice1);
-    let proposal_reference_add_alice1 =
-        ProposalRef::from_proposal(ciphersuite, backend, &proposal_add_alice1)
-            .expect("An unexpected error occurred.");
     let proposal_add_alice2 = Proposal::Add(add_proposal_alice2);
-    let proposal_reference_add_alice2 =
-        ProposalRef::from_proposal(ciphersuite, backend, &proposal_add_alice2)
-            .expect("An unexpected error occurred.");
-    let proposal_add_bob1 = Proposal::Add(add_proposal_bob1);
-    let proposal_reference_add_bob1 =
-        ProposalRef::from_proposal(ciphersuite, backend, &proposal_add_bob1)
-            .expect("An unexpected error occurred.");
+    let proposal_add_bob = Proposal::Add(add_proposal_bob);
 
     // Test proposal types
     assert!(proposal_add_alice1.is_type(ProposalType::Add));
@@ -87,7 +80,7 @@ fn proposal_queue_functions(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryp
         &group_context,
         &alice_signer,
     )
-    .expect("Could not create proposal.");
+    .unwrap();
     let mls_plaintext_add_alice2 = AuthenticatedContent::member_proposal(
         framing_parameters,
         LeafNodeIndex::new(1),
@@ -95,15 +88,34 @@ fn proposal_queue_functions(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryp
         &group_context,
         &alice_signer,
     )
-    .expect("Could not create proposal.");
-    let _mls_plaintext_add_bob1 = AuthenticatedContent::member_proposal(
+    .unwrap();
+    let mls_plaintext_add_bob = AuthenticatedContent::member_proposal(
         framing_parameters,
         LeafNodeIndex::new(1),
-        proposal_add_bob1,
+        proposal_add_bob,
         &group_context,
         &alice_signer,
     )
-    .expect("Could not create proposal.");
+    .unwrap();
+
+    let proposal_reference_add_alice1 = ProposalRef::from_authenticated_content(
+        backend.crypto(),
+        ciphersuite,
+        &mls_plaintext_add_alice1,
+    )
+    .unwrap();
+    let proposal_reference_add_alice2 = ProposalRef::from_authenticated_content(
+        backend.crypto(),
+        ciphersuite,
+        &mls_plaintext_add_alice2,
+    )
+    .unwrap();
+    let proposal_reference_add_bob = ProposalRef::from_authenticated_content(
+        backend.crypto(),
+        ciphersuite,
+        &mls_plaintext_add_bob,
+    )
+    .unwrap();
 
     let mut proposal_store = ProposalStore::from_queued_proposal(
         QueuedProposal::from_authenticated_content(ciphersuite, backend, mls_plaintext_add_alice1)
@@ -137,7 +149,7 @@ fn proposal_queue_functions(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryp
     let invalid_proposal_reference_list = &[
         proposal_reference_add_alice1,
         proposal_reference_add_alice2,
-        proposal_reference_add_bob1,
+        proposal_reference_add_bob,
     ];
     assert!(!proposal_queue.contains(invalid_proposal_reference_list));
 
@@ -182,9 +194,6 @@ fn proposal_queue_order(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoPr
     };
 
     let proposal_add_alice1 = Proposal::Add(add_proposal_alice1);
-    let proposal_reference_add_alice1 =
-        ProposalRef::from_proposal(ciphersuite, backend, &proposal_add_alice1)
-            .expect("An unexpected error occurred.");
     let proposal_add_bob1 = Proposal::Add(add_proposal_bob1);
 
     // Frame proposals in PublicMessage
@@ -195,7 +204,14 @@ fn proposal_queue_order(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoPr
         &group_context,
         &alice_signer,
     )
-    .expect("Could not create proposal.");
+    .unwrap();
+    let proposal_reference_add_alice1 = ProposalRef::from_authenticated_content(
+        backend.crypto(),
+        ciphersuite,
+        &mls_plaintext_add_alice1,
+    )
+    .unwrap();
+
     let mls_plaintext_add_bob1 = AuthenticatedContent::member_proposal(
         framing_parameters,
         LeafNodeIndex::new(1),
@@ -203,16 +219,16 @@ fn proposal_queue_order(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoPr
         &group_context,
         &alice_signer,
     )
-    .expect("Could not create proposal.");
+    .unwrap();
 
     // This should set the order of the proposals.
     let mut proposal_store = ProposalStore::from_queued_proposal(
         QueuedProposal::from_authenticated_content(ciphersuite, backend, mls_plaintext_add_alice1)
-            .expect("Could not create QueuedProposal."),
+            .unwrap(),
     );
     proposal_store.add(
         QueuedProposal::from_authenticated_content(ciphersuite, backend, mls_plaintext_add_bob1)
-            .expect("Could not create QueuedProposal."),
+            .unwrap(),
     );
 
     let proposal_or_refs = vec![
@@ -232,7 +248,7 @@ fn proposal_queue_order(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoPr
         &proposal_store,
         &sender,
     )
-    .expect("An unexpected error occurred.");
+    .unwrap();
 
     let proposal_collection: Vec<&QueuedProposal> =
         proposal_queue.filtered_by_type(ProposalType::Add).collect();
@@ -382,7 +398,7 @@ fn test_group_context_extensions(ciphersuite: Ciphersuite, backend: &impl OpenMl
     alice_group
         .merge_commit(backend, create_commit_result.staged_commit)
         .expect("error merging own staged commit");
-    let ratchet_tree = alice_group.public_group().export_nodes();
+    let ratchet_tree = alice_group.public_group().export_ratchet_tree();
 
     // Make sure that Bob can join the group with the required extension in place
     // and Bob's key package supporting them.
@@ -478,7 +494,7 @@ fn test_group_context_extension_proposal_fails(
     alice_group
         .merge_commit(backend, create_commit_result.staged_commit)
         .expect("error merging pending commit");
-    let ratchet_tree = alice_group.public_group().export_nodes();
+    let ratchet_tree = alice_group.public_group().export_ratchet_tree();
 
     let _bob_group = CoreGroup::new_from_welcome(
         create_commit_result
@@ -558,7 +574,7 @@ fn test_group_context_extension_proposal(
         .merge_commit(backend, create_commit_results.staged_commit)
         .expect("error merging pending commit");
 
-    let ratchet_tree = alice_group.public_group().export_nodes();
+    let ratchet_tree = alice_group.public_group().export_ratchet_tree();
 
     let mut bob_group = CoreGroup::new_from_welcome(
         create_commit_results

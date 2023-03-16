@@ -2,17 +2,28 @@
 #![allow(dead_code)]
 #![allow(unused_imports)]
 
+use std::{
+    fmt::Write as FmtWrite,
+    fs::File,
+    io::{BufReader, Write},
+};
+
+use openmls_basic_credential::SignatureKeyPair;
+use openmls_traits::{key_store::OpenMlsKeyStore, types::HpkeKeyPair};
 pub use openmls_traits::{types::Ciphersuite, OpenMlsCryptoProvider};
 pub use rstest::*;
 pub use rstest_reuse::{self, *};
-
-pub use crate::utils::*;
-
 use serde::{self, de::DeserializeOwned, Serialize};
-use std::fmt::Write as FmtWrite;
-use std::{
-    fs::File,
-    io::{BufReader, Write},
+
+#[cfg(test)]
+use crate::group::tests::utils::CredentialWithKeyAndSigner;
+pub use crate::utils::*;
+use crate::{
+    ciphersuite::{HpkePrivateKey, OpenMlsSignaturePublicKey},
+    credentials::{Credential, CredentialType, CredentialWithKey},
+    key_packages::KeyPackage,
+    prelude::{CryptoConfig, KeyPackageBuilder},
+    treesync::node::encryption_keys::{EncryptionKeyPair, EncryptionPrivateKey},
 };
 
 pub mod test_framework;
@@ -72,6 +83,123 @@ pub fn hex_to_bytes_option(hex: Option<String>) -> Vec<u8> {
     }
 }
 
+// === Convenience functions ===
+
+#[cfg(test)]
+pub(crate) struct GroupCandidate {
+    pub identity: Vec<u8>,
+    pub key_package: KeyPackage,
+    pub encryption_keypair: EncryptionKeyPair,
+    pub init_keypair: HpkeKeyPair,
+    pub signature_keypair: SignatureKeyPair,
+    pub credential_with_key_and_signer: CredentialWithKeyAndSigner,
+}
+
+#[cfg(test)]
+pub(crate) fn generate_group_candidate(
+    identity: &[u8],
+    ciphersuite: Ciphersuite,
+    backend: Option<&impl OpenMlsCryptoProvider>,
+) -> GroupCandidate {
+    let credential_with_key_and_signer = {
+        let credential = Credential::new(identity.to_vec(), CredentialType::Basic).unwrap();
+
+        let signature_keypair = SignatureKeyPair::new(ciphersuite.signature_algorithm()).unwrap();
+
+        // Store if there is a key store.
+        if let Some(backend) = backend {
+            signature_keypair.store(backend.key_store()).unwrap();
+        }
+
+        let signature_pkey = OpenMlsSignaturePublicKey::new(
+            signature_keypair.to_public_vec().into(),
+            ciphersuite.signature_algorithm(),
+        )
+        .unwrap();
+
+        CredentialWithKeyAndSigner {
+            credential_with_key: CredentialWithKey {
+                credential,
+                signature_key: signature_pkey.into(),
+            },
+            signer: signature_keypair,
+        }
+    };
+
+    let (key_package, encryption_keypair, init_keypair) = {
+        let builder = KeyPackageBuilder::new();
+
+        match backend {
+            Some(backend) => {
+                let key_package = builder
+                    .build(
+                        CryptoConfig::with_default_version(ciphersuite),
+                        backend,
+                        &credential_with_key_and_signer.signer,
+                        credential_with_key_and_signer.credential_with_key.clone(),
+                    )
+                    .unwrap();
+
+                let encryption_keypair = EncryptionKeyPair::read_from_key_store(
+                    backend,
+                    key_package.leaf_node().encryption_key(),
+                )
+                .unwrap();
+                let init_keypair = {
+                    let private = backend
+                        .key_store()
+                        .read::<HpkePrivateKey>(key_package.hpke_init_key().as_slice())
+                        .unwrap();
+
+                    HpkeKeyPair {
+                        private: private.as_slice().to_vec(),
+                        public: key_package.hpke_init_key().as_slice().to_vec(),
+                    }
+                };
+
+                (key_package, encryption_keypair, init_keypair)
+            }
+            None => {
+                // We don't want to store anything. So...
+                let backend = OpenMlsRustCrypto::default();
+
+                let key_package_creation_result = builder
+                    .build_without_key_storage(
+                        CryptoConfig::with_default_version(ciphersuite),
+                        &backend,
+                        &credential_with_key_and_signer.signer,
+                        credential_with_key_and_signer.credential_with_key.clone(),
+                    )
+                    .unwrap();
+
+                let init_keypair = HpkeKeyPair {
+                    private: key_package_creation_result.init_private_key,
+                    public: key_package_creation_result
+                        .key_package
+                        .hpke_init_key()
+                        .as_slice()
+                        .to_vec(),
+                };
+
+                (
+                    key_package_creation_result.key_package,
+                    key_package_creation_result.encryption_keypair,
+                    init_keypair,
+                )
+            }
+        }
+    };
+
+    GroupCandidate {
+        identity: identity.as_ref().to_vec(),
+        key_package,
+        encryption_keypair,
+        init_keypair,
+        signature_keypair: credential_with_key_and_signer.signer.clone(),
+        credential_with_key_and_signer,
+    }
+}
+
 // === Define backend per platform ===
 
 // For now we only use Evercrypt on specific platforms and only if the feature was enabled
@@ -83,7 +211,6 @@ pub fn hex_to_bytes_option(hex: Option<String>) -> Vec<u8> {
     feature = "evercrypt",
 ))]
 pub use openmls_evercrypt::OpenMlsEvercrypt;
-
 // This backend is currently used on all platforms
 pub use openmls_rust_crypto::OpenMlsRustCrypto;
 

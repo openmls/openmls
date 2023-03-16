@@ -1,5 +1,6 @@
-use serde::{Deserialize, Serialize};
 use std::cmp::Ordering;
+
+use serde::{Deserialize, Serialize};
 use tls_codec::{TlsDeserialize, TlsSerialize, TlsSize};
 
 pub(crate) const MAX_TREE_SIZE: u32 = 1 << 30;
@@ -75,17 +76,27 @@ impl ParentNodeIndex {
         self.0 * 2 + 1
     }
 
-    /// Re-exported for testing.
-    #[cfg(any(feature = "test-utils", test))]
-    pub(crate) fn test_to_tree_index(self) -> u32 {
-        self.to_tree_index()
-    }
-
     /// Warning: Only use when the node index represents a parent node
     fn from_tree_index(node_index: u32) -> Self {
         debug_assert!(node_index > 0);
         debug_assert!(node_index % 2 == 1);
         ParentNodeIndex((node_index - 1) / 2)
+    }
+}
+
+#[cfg(test)]
+impl ParentNodeIndex {
+    /// Re-exported for testing.
+    pub(crate) fn test_from_tree_index(node_index: u32) -> Self {
+        Self::from_tree_index(node_index)
+    }
+}
+
+#[cfg(any(feature = "test-utils", test))]
+impl ParentNodeIndex {
+    /// Re-exported for testing.
+    pub(crate) fn test_to_tree_index(self) -> u32 {
+        self.to_tree_index()
     }
 }
 
@@ -265,7 +276,7 @@ fn log2(x: u32) -> usize {
     k - 1
 }
 
-fn level(index: u32) -> usize {
+pub fn level(index: u32) -> usize {
     let x = index;
     if (x & 0x01) == 0 {
         return 0;

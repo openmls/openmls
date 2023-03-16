@@ -5,15 +5,15 @@ use rstest_reuse::{self, *};
 
 use crate::{
     binary_tree::LeafNodeIndex,
+    framing::{
+        public_message_in::PublicMessageIn, MlsMessageOut, ProcessedMessage,
+        ProcessedMessageContent, ProtocolMessage, Sender,
+    },
     group::{
         config::CryptoConfig, test_core_group::setup_client, GroupId, MlsGroup,
         MlsGroupConfigBuilder, ProposalStore, StagedCommit, PURE_PLAINTEXT_WIRE_FORMAT_POLICY,
     },
     messages::proposals::Proposal,
-    prelude_test::{
-        MlsMessageOut, ProcessedMessage, ProcessedMessageContent, ProtocolMessage, PublicMessage,
-        Sender,
-    },
 };
 
 use super::PublicGroup;
@@ -49,7 +49,7 @@ fn public_group(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) 
     let verifiable_group_info = alice_group
         .export_group_info(backend, &alice_signer, false)
         .unwrap()
-        .into_group_info()
+        .into_verifiable_group_info()
         .unwrap();
     let nodes = alice_group.export_ratchet_tree();
     let (mut public_group, _extensions) =
@@ -255,16 +255,16 @@ fn public_group(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) 
     );
     assert_eq!(
         alice_group.export_ratchet_tree(),
-        public_group.export_nodes()
+        public_group.export_ratchet_tree()
     );
     assert_eq!(
         charlie_group.export_ratchet_tree(),
-        public_group.export_nodes()
+        public_group.export_ratchet_tree()
     );
 }
 
 // A helper function
-fn into_public_message(message: MlsMessageOut) -> PublicMessage {
+fn into_public_message(message: MlsMessageOut) -> PublicMessageIn {
     match message.into_protocol_message().unwrap() {
         ProtocolMessage::PrivateMessage(_) => panic!("Unexpected message type."),
         ProtocolMessage::PublicMessage(public_message) => public_message,

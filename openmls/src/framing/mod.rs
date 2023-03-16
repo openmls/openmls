@@ -52,20 +52,26 @@ pub(crate) mod codec;
 pub(crate) mod message_in;
 pub(crate) mod message_out;
 pub(crate) mod mls_auth_content;
+pub(crate) mod mls_auth_content_in;
 pub(crate) mod mls_content;
+pub(crate) mod mls_content_in;
 pub(crate) mod private_message;
+pub(crate) mod private_message_in;
 pub(crate) mod public_message;
+pub(crate) mod public_message_in;
 pub(crate) mod sender;
 pub(crate) mod validation;
 pub(crate) use errors::*;
-pub use private_message::*;
-pub use public_message::*;
 
 #[cfg(test)]
 pub(crate) use mls_auth_content::*;
+#[cfg(test)]
+pub(crate) use mls_auth_content_in::*;
 
 #[cfg(test)]
 pub(crate) use mls_content::*;
+#[cfg(test)]
+pub(crate) use mls_content_in::*;
 
 // Crate
 pub(crate) use sender::*;
@@ -75,6 +81,10 @@ pub mod errors;
 
 pub use message_in::*;
 pub use message_out::*;
+pub use private_message::*;
+pub use private_message_in::*;
+pub use public_message::*;
+pub use public_message_in::*;
 pub use sender::*;
 pub use validation::*;
 
@@ -133,4 +143,87 @@ impl<'a> FramingParameters<'a> {
     pub(crate) fn wire_format(&self) -> WireFormat {
         self.wire_format
     }
+}
+
+/// ```c
+/// // draft-ietf-mls-protocol-17
+/// enum {
+///     reserved(0),
+///     application(1),
+///     proposal(2),
+///     commit(3),
+///     (255)
+/// } ContentType;
+/// ```
+#[derive(
+    PartialEq, Eq, Clone, Copy, Debug, Serialize, Deserialize, TlsDeserialize, TlsSerialize, TlsSize,
+)]
+#[repr(u8)]
+pub enum ContentType {
+    /// Application message
+    Application = 1,
+    /// Proposal
+    Proposal = 2,
+    /// Commit
+    Commit = 3,
+}
+
+impl TryFrom<u8> for ContentType {
+    type Error = tls_codec::Error;
+    fn try_from(value: u8) -> Result<Self, tls_codec::Error> {
+        match value {
+            1 => Ok(ContentType::Application),
+            2 => Ok(ContentType::Proposal),
+            3 => Ok(ContentType::Commit),
+            _ => Err(tls_codec::Error::DecodingError(format!(
+                "{value} is not a valid content type"
+            ))),
+        }
+    }
+}
+
+impl ContentType {
+    /// Returns `true` if this is a handshake message and `false` otherwise.
+    pub(crate) fn is_handshake_message(&self) -> bool {
+        self == &ContentType::Proposal || self == &ContentType::Commit
+    }
+}
+
+/// Convenience trait that allows to deserialize a TLS-serialized object from an bytes input.
+///
+/// Note: This is implemented for all types that implement `tls_codec::Deserialize`.
+pub trait TlsFromBytes
+where
+    Self: Sized,
+{
+    /// Construct an object from TLS-serialized bytes.
+    ///
+    /// Note: This function makes sure that the input is fully consumed, i.e., that there is no
+    ///       trailing data.
+    fn try_from_bytes(bytes: impl AsRef<[u8]>) -> Result<Self, TlsFromBytesError>;
+}
+
+impl<T> TlsFromBytes for T
+where
+    T: tls_codec::Deserialize,
+{
+    fn try_from_bytes(bytes: impl AsRef<[u8]>) -> Result<T, TlsFromBytesError> {
+        let mut input = bytes.as_ref();
+        let out = Self::tls_deserialize(&mut input).map_err(TlsFromBytesError::Tls)?;
+
+        if !input.is_empty() {
+            return Err(TlsFromBytesError::TrailingData);
+        }
+
+        Ok(out)
+    }
+}
+
+/// Error due to deserialization from input bytes.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub enum TlsFromBytesError {
+    /// Error during TLS-deserialization.
+    Tls(Error),
+    /// The input bytes were not fully consumed, i.e., there are trailing bytes.
+    TrailingData,
 }

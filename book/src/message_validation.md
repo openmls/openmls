@@ -49,7 +49,7 @@ The following is a list of the individual semantic validation steps performed by
 | `ValSem008`    | Membership tag verification                                 | ✅          | ✅     | `openmls/src/group/tests/test_framing_validation.rs` |
 | `ValSem009`    | Confirmation tag presence                                   | ✅          | ✅     | `openmls/src/group/tests/test_framing_validation.rs` |
 | `ValSem010`    | Signature verification                                      | ✅          | ✅     | `openmls/src/group/tests/test_framing_validation.rs` |
-| `ValSem011`    | PrivateContentTbe padding must be all-zero                  | ✅          | ✅     | `openmls/src/group/tests/test_framing.rs`            |
+| `ValSem011`    | PrivateMessageContent padding must be all-zero              | ✅          | ✅     | `openmls/src/group/tests/test_framing.rs`            |
 
 ### Semantic validation of proposals covered by a Commit
 
@@ -89,3 +89,9 @@ The following is a list of the individual semantic validation steps performed by
 | `ValSem244`    | External Commit must not include any proposals by reference                                       | ✅          | ✅     | `openmls/src/group/tests/test_external_commit_validation.rs` |
 | `ValSem245`    | External Commit must contain a path                                                               | ✅          | ✅     | `openmls/src/group/tests/test_external_commit_validation.rs` |
 | `ValSem246`    | External Commit signature must be verified using the credential in the path KeyPackage            | ✅          | ✅     | `openmls/src/group/tests/test_external_commit_validation.rs` |
+
+### Ratchet tree validation
+
+| ValidationStep | Description                                                | Implemented | Tested | Test File                     |
+|----------------|------------------------------------------------------------|-------------|--------|-------------------------------|
+| `ValSem300`    | Exported ratchet trees must not have trailing blank nodes. | Yes         | Yes    | `openmls/src/treesync/mod.rs` |

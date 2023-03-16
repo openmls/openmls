@@ -5,11 +5,12 @@
 
 use crate::{
     ciphersuite::{hash_ref::KeyPackageRef, *},
+    credentials::CredentialWithKey,
     error::LibraryError,
     schedule::{psk::PreSharedKeyId, JoinerSecret},
     treesync::{
         node::encryption_keys::{EncryptionKey, EncryptionKeyPair, EncryptionPrivateKey},
-        treekem::UpdatePath,
+        treekem::{UpdatePath, UpdatePathIn},
     },
     versions::ProtocolVersion,
 };
@@ -29,12 +30,15 @@ use tls_codec::{Deserialize as TlsDeserialize, Serialize as TlsSerializeTrait, *
 pub mod external_proposals;
 pub mod group_info;
 pub mod proposals;
+pub mod proposals_in;
 
 // Tests
 #[cfg(test)]
 mod tests;
 #[cfg(test)]
 use crate::schedule::psk::{ExternalPsk, Psk};
+
+use self::proposals_in::ProposalOrRefIn;
 
 // Public types
 
@@ -145,9 +149,7 @@ impl EncryptedGroupSecrets {
 ///     optional<UpdatePath> path;
 /// } Commit;
 /// ```
-#[derive(
-    Debug, PartialEq, Clone, Serialize, Deserialize, TlsDeserialize, TlsSerialize, TlsSize,
-)]
+#[derive(Debug, PartialEq, Clone, Serialize, Deserialize, TlsSerialize, TlsSize)]
 pub(crate) struct Commit {
     pub(crate) proposals: Vec<ProposalOrRef>,
     pub(crate) path: Option<UpdatePath>,
@@ -163,6 +165,48 @@ impl Commit {
     /// Returns the update path of the Commit if it has one.
     pub(crate) fn path(&self) -> &Option<UpdatePath> {
         &self.path
+    }
+}
+
+#[derive(
+    Debug, PartialEq, Clone, Serialize, Deserialize, TlsDeserialize, TlsSerialize, TlsSize,
+)]
+pub(crate) struct CommitIn {
+    proposals: Vec<ProposalOrRefIn>,
+    path: Option<UpdatePathIn>,
+}
+
+impl CommitIn {
+    pub(crate) fn unverified_credential(&self) -> Option<CredentialWithKey> {
+        self.path.as_ref().map(|p| {
+            let credential = p.leaf_node().credential().clone();
+            let pk = p.leaf_node().signature_key().clone();
+            CredentialWithKey {
+                credential,
+                signature_key: pk,
+            }
+        })
+    }
+}
+
+// TODO #1186: The following must be removed once the validation refactoring is
+// complete.
+
+impl From<CommitIn> for Commit {
+    fn from(commit: CommitIn) -> Self {
+        Self {
+            proposals: commit.proposals.into_iter().map(Into::into).collect(),
+            path: commit.path.map(Into::into),
+        }
+    }
+}
+
+impl From<Commit> for CommitIn {
+    fn from(commit: Commit) -> Self {
+        Self {
+            proposals: commit.proposals.into_iter().map(Into::into).collect(),
+            path: commit.path.map(Into::into),
+        }
     }
 }
 

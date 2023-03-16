@@ -9,6 +9,7 @@ use thiserror::Error;
 
 use crate::{
     error::LibraryError,
+    extensions::errors::InvalidExtensionError,
     group::errors::{CreateCommitError, MergeCommitError, StageCommitError, ValidationError},
     treesync::errors::{LeafNodeValidationError, PublicTreeError},
 };
@@ -34,6 +35,9 @@ pub enum NewGroupError<KeyStoreError> {
     /// Unsupported extension type in required capabilities.
     #[error("Unsupported extension type in required capabilities.")]
     UnsupportedExtensionType,
+    /// Invalid extensions set in configuration
+    #[error("Invalid extensions set in configuration")]
+    InvalidExtensions(InvalidExtensionError),
 }
 
 /// EmptyInput error
@@ -102,6 +106,12 @@ pub enum ProcessMessageError {
     /// See [`StageCommitError`] for more details.
     #[error(transparent)]
     InvalidCommit(#[from] StageCommitError),
+    /// External application messages are not permitted.
+    #[error("External application messages are not permitted.")]
+    UnauthorizedExternalApplicationMessage,
+    /// The proposal is invalid for the Sender of type [External](crate::prelude::Sender::External)
+    #[error("The proposal is invalid for the Sender of type External")]
+    UnsupportedProposalType,
 }
 
 /// Create message error

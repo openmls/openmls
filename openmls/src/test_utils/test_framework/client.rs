@@ -17,13 +17,13 @@ use crate::{
     ciphersuite::hash_ref::KeyPackageRef,
     credentials::*,
     extensions::*,
-    framing::{mls_content::ContentType, ProtocolMessage, *},
+    framing::*,
     group::{config::CryptoConfig, *},
     key_packages::*,
     messages::{group_info::GroupInfo, *},
     treesync::{
         node::{leaf_node::Capabilities, Node},
-        LeafNode,
+        LeafNode, RatchetTree,
     },
     versions::ProtocolVersion,
 };
@@ -120,7 +120,7 @@ impl Client {
         &self,
         mls_group_config: MlsGroupConfig,
         welcome: Welcome,
-        ratchet_tree: Option<Vec<Option<Node>>>,
+        ratchet_tree: Option<RatchetTree>,
     ) -> Result<(), ClientError> {
         let new_group: MlsGroup =
             MlsGroup::new_from_welcome(&self.crypto, &mls_group_config, welcome, ratchet_tree)?;
