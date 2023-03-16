@@ -11,7 +11,7 @@ use crate::{
     group::*,
     key_packages::{KeyPackage, KeyPackageBundle},
     messages::{proposals::*, Welcome},
-    prelude::hash_ref::ProposalRef,
+    ciphersuite::hash_ref::ProposalRef,
     schedule::ResumptionPskSecret,
     treesync::{
         node::leaf_node::{LeafNode, OpenMlsLeafNode},

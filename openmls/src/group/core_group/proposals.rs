@@ -49,6 +49,7 @@ impl ProposalStore {
     pub(crate) fn empty(&mut self) {
         self.queued_proposals = Vec::new();
     }
+
     pub(crate) fn remove(&mut self, proposal_ref: ProposalRef) -> Option<()> {
         let index = self
             .queued_proposals
