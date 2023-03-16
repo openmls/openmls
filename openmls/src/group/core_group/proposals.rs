@@ -55,7 +55,7 @@ impl ProposalStore {
             .queued_proposals
             .iter()
             .position(|p| p.proposal_reference() == proposal_ref)?;
-        self.queued_proposals.swap_remove(index);
+        self.queued_proposals.remove(index);
         Some(())
     }
 }
