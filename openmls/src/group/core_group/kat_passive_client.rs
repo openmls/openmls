@@ -161,7 +161,7 @@ pub fn run_test_vector(test_vector: PassiveClientWelcomeTestVector) {
         .map(|bytes| RatchetTree::tls_deserialize(&mut bytes.0.as_slice()).unwrap());
 
     passive_client.join_by_welcome(
-        MlsMessageIn::try_from_bytes(&test_vector.welcome).unwrap(),
+        MlsMessageIn::tls_deserialize_complete(&test_vector.welcome).unwrap(),
         ratchet_tree,
     );
 
@@ -180,11 +180,13 @@ pub fn run_test_vector(test_vector: PassiveClientWelcomeTestVector) {
 
         for proposal in epoch.proposals {
             println!("Proposal");
-            passive_client.process_message(MlsMessageIn::try_from_bytes(&proposal.0).unwrap());
+            passive_client
+                .process_message(MlsMessageIn::tls_deserialize_complete(&proposal.0).unwrap());
         }
 
         println!("Commit");
-        passive_client.process_message(MlsMessageIn::try_from_bytes(&epoch.commit).unwrap());
+        passive_client
+            .process_message(MlsMessageIn::tls_deserialize_complete(&epoch.commit).unwrap());
 
         assert_eq!(
             epoch.epoch_authenticator,
@@ -248,11 +250,8 @@ impl PassiveClient {
         init_priv: Vec<u8>,
     ) {
         let key_package: KeyPackage = {
-            let mut mls_message_key_package_slice = key_package.as_slice();
             let mls_message_key_package =
-                MlsMessageIn::tls_deserialize(&mut mls_message_key_package_slice).unwrap();
-            #[cfg(test)]
-            assert!(mls_message_key_package_slice.is_empty());
+                MlsMessageIn::tls_deserialize_complete(key_package.as_slice()).unwrap();
 
             match mls_message_key_package.body {
                 MlsMessageInBody::KeyPackage(key_package) => key_package,
