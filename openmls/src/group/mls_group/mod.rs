@@ -424,7 +424,7 @@ impl MlsGroup {
         self.proposal_store.empty()
     }
 
-    /// Removes a specific proposal from the store and return it if it exists.
+    /// Removes a specific proposal from the store.
     pub fn remove_pending_proposal(
         &mut self,
         proposal_ref: ProposalRef,
