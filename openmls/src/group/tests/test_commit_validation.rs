@@ -323,8 +323,7 @@ fn test_valsem201(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
         (vec![remove_proposal(), add_proposal()], true),
         // path_required + path_required = path_required
         (vec![update_proposal, remove_proposal()], true),
-        // TODO: #566 this should work if GCE proposals validation were implemented
-        // (vec![add_proposal(), gce_proposal()], true),
+        (vec![add_proposal(), gce_proposal()], true),
     ];
 
     for (proposal, is_path_required) in cases {

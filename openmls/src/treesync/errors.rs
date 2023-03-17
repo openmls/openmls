@@ -6,7 +6,8 @@ use thiserror::Error;
 
 use super::*;
 use crate::{
-    binary_tree::MlsBinaryTreeDiffError, ciphersuite::signable::SignatureError, error::LibraryError,
+    binary_tree::MlsBinaryTreeDiffError, ciphersuite::signable::SignatureError,
+    error::LibraryError, extensions::errors::ExtensionError,
 };
 
 // === Public errors ===
@@ -198,6 +199,20 @@ pub(crate) enum TreeKemError {
     /// See [`PathSecretError`] for more details.
     #[error(transparent)]
     PathSecretError(#[from] PathSecretError),
+}
+
+/// Errors that can happen during leaf node extension support validation.
+#[derive(Clone, Debug, Error, PartialEq)]
+pub enum MemberExtensionValidationError {
+    /// See [`LibraryError`] for more details.
+    #[error(transparent)]
+    LibraryError(#[from] LibraryError),
+    /// See [`LeafNodeValidationError`] for more details.
+    #[error(transparent)]
+    LeafNodeValidationError(#[from] LeafNodeValidationError),
+    /// See [`ExtensionError`] for more details.
+    #[error(transparent)]
+    ExtensionError(#[from] ExtensionError),
 }
 
 /// Errors that can happen during leaf node validation.

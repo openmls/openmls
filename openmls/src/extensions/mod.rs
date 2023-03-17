@@ -244,6 +244,11 @@ impl Extensions {
         self.unique.iter()
     }
 
+    /// Checks if the extensions list is empty
+    pub fn is_empty(&self) -> bool {
+        self.unique.is_empty()
+    }
+
     /// Add an extension to the extension list.
     ///
     /// Returns an error when there already is an extension with the same extension type.

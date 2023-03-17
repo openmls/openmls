@@ -459,6 +459,20 @@ impl LeafNode {
             .credentials
             .contains(credential_type)
     }
+
+    /// Check whether the this leaf node supports all the required extensions
+    /// in the provided list.
+    pub(crate) fn check_extension_support(
+        &self,
+        extensions: &[ExtensionType],
+    ) -> Result<(), LeafNodeValidationError> {
+        for required in extensions.iter() {
+            if !self.supports_extension(required) {
+                return Err(LeafNodeValidationError::UnsupportedExtensions);
+            }
+        }
+        Ok(())
+    }
 }
 
 #[cfg(test)]
@@ -485,20 +499,6 @@ impl LeafNode {
     /// Return a mutable reference to [`Capabilities`].
     pub fn capabilities_mut(&mut self) -> &mut Capabilities {
         &mut self.payload.capabilities
-    }
-
-    /// Check whether the this leaf node supports all the required extensions
-    /// in the provided list.
-    pub(crate) fn check_extension_support(
-        &self,
-        extensions: &[ExtensionType],
-    ) -> Result<(), LeafNodeValidationError> {
-        for required in extensions.iter() {
-            if !self.supports_extension(required) {
-                return Err(LeafNodeValidationError::UnsupportedExtensions);
-            }
-        }
-        Ok(())
     }
 
     /// Create a dummy [`LeafNode`] for testing.
@@ -950,7 +950,6 @@ impl OpenMlsLeafNode {
 
     /// Check that all extensions that are required, are supported by this leaf
     /// node.
-    #[cfg(test)]
     pub(crate) fn validate_required_capabilities<'a>(
         &self,
         required_capabilities: impl Into<Option<&'a RequiredCapabilitiesExtension>>,

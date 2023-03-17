@@ -74,6 +74,10 @@ impl GroupContext {
         self.epoch.increment()
     }
 
+    pub(crate) fn set_extensions(&mut self, extensions: Extensions) {
+        self.extensions = extensions;
+    }
+
     /// Update the current tree hash to the new value
     pub(crate) fn update_tree_hash(&mut self, new_tree_hash: Vec<u8>) {
         self.tree_hash = new_tree_hash.into()

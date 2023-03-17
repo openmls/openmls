@@ -19,6 +19,8 @@ mod test_framing;
 #[cfg(test)]
 mod test_framing_validation;
 #[cfg(test)]
+mod test_gce_proposals;
+#[cfg(test)]
 mod test_group;
 #[cfg(test)]
 mod test_past_secrets;
@@ -26,6 +28,8 @@ mod test_past_secrets;
 mod test_proposal_validation;
 #[cfg(test)]
 mod test_remove_operation;
+#[cfg(test)]
+mod test_update_extensions;
 #[cfg(test)]
 mod test_wire_format_policy;
 #[cfg(test)]

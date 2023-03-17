@@ -9,10 +9,11 @@ use super::public_group::errors::{CreationFromExternalError, PublicGroupBuildErr
 use crate::{
     ciphersuite::signable::SignatureError,
     error::LibraryError,
-    extensions::errors::{ExtensionError, InvalidExtensionError},
+    extensions::errors::InvalidExtensionError,
     framing::errors::{MessageDecryptionError, SenderError},
-    key_packages::errors::{KeyPackageExtensionSupportError, KeyPackageNewError},
+    key_packages::errors::KeyPackageNewError,
     messages::{group_info::GroupInfoError, GroupSecretsError},
+    prelude::KeyPackageExtensionSupportError,
     schedule::errors::PskError,
     treesync::errors::*,
 };
@@ -347,6 +348,9 @@ pub enum ProposalValidationError {
     /// See [`PskError`] for more details.
     #[error(transparent)]
     Psk(#[from] PskError),
+    /// There cannot be more than 1 GroupContextExtensions proposal in a commit
+    #[error("Expected 1 GroupContextExtensions proposal per commit found {0}")]
+    TooManyGroupContextExtensions(usize),
 }
 
 /// External Commit validaton error
@@ -452,6 +456,9 @@ pub(crate) enum ApplyProposalsError {
     /// See [`LibraryError`] for more details.
     #[error(transparent)]
     LibraryError(#[from] LibraryError),
+    /// See [`KeyPackageExtensionSupportError`] for more details.
+    #[error(transparent)]
+    KeyPackageExtensionSupportError(#[from] KeyPackageExtensionSupportError),
 }
 
 // Core group build error
@@ -482,26 +489,6 @@ pub(crate) enum CoreGroupParseMessageError {
     /// See [`ValidationError`] for more details.
     #[error(transparent)]
     ValidationError(#[from] ValidationError),
-}
-
-/// Create group context ext proposal error
-#[derive(Error, Debug, PartialEq, Clone)]
-pub(crate) enum CreateGroupContextExtProposalError {
-    /// See [`LibraryError`] for more details.
-    #[error(transparent)]
-    LibraryError(#[from] LibraryError),
-    /// See [`KeyPackageExtensionSupportError`] for more details.
-    #[error(transparent)]
-    KeyPackageExtensionSupport(#[from] KeyPackageExtensionSupportError),
-    /// See [`TreeSyncError`] for more details.
-    #[error(transparent)]
-    TreeSyncError(#[from] TreeSyncError),
-    /// See [`ExtensionError`] for more details.
-    #[error(transparent)]
-    Extension(#[from] ExtensionError),
-    /// See [`LeafNodeValidationError`] for more details.
-    #[error(transparent)]
-    LeafNodeValidation(#[from] LeafNodeValidationError),
 }
 
 /// Error merging a commit.

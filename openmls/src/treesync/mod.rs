@@ -424,6 +424,15 @@ impl TreeSync {
             .filter_map(|(_, tsn)| tsn.node().as_ref())
     }
 
+    /// Returns an indexed list of [`LeafNodeIndex`]es containing only full nodes.
+    pub(crate) fn full_leaves_indexed(
+        &self,
+    ) -> impl Iterator<Item = (LeafNodeIndex, &OpenMlsLeafNode)> {
+        self.tree
+            .leaves()
+            .filter_map(|(index, tsn)| tsn.node().as_ref().map(|node| (index, node)))
+    }
+
     /// Returns the index of the last full leaf in the tree.
     fn rightmost_full_leaf(&self) -> LeafNodeIndex {
         let mut index = LeafNodeIndex::new(0);

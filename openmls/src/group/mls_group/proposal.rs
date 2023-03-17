@@ -318,35 +318,4 @@ impl MlsGroup {
             ))
         }
     }
-
-    #[cfg(test)]
-    pub fn propose_group_context_extensions(
-        &mut self,
-        backend: &impl OpenMlsCryptoProvider,
-        extensions: Extensions,
-        signer: &impl Signer,
-    ) -> Result<(MlsMessageOut, ProposalRef), ProposalError<()>> {
-        self.is_operational()?;
-
-        let proposal = self
-            .group
-            .create_group_context_ext_proposal(self.framing_parameters(), extensions, signer)
-            .unwrap();
-
-        let queued_proposal = QueuedProposal::from_authenticated_content_by_ref(
-            self.ciphersuite(),
-            backend,
-            proposal.clone(),
-        )?;
-
-        let proposal_ref = queued_proposal.proposal_reference();
-        self.proposal_store.add(queued_proposal);
-
-        let mls_message = self.content_to_mls_message(proposal, backend)?;
-
-        // Since the state of the group might be changed, arm the state flag
-        self.flag_state_change();
-
-        Ok((mls_message, proposal_ref))
-    }
 }

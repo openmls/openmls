@@ -12,15 +12,16 @@ use crate::{
 use super::*;
 
 /// This struct contain the return values of the `apply_proposals()` function
-pub(crate) struct ApplyProposalsValues {
+pub(crate) struct ApplyProposalsValues<'a> {
     pub(crate) path_required: bool,
     pub(crate) self_removed: bool,
     pub(crate) invitation_list: Vec<(LeafNodeIndex, AddProposal)>,
     pub(crate) presharedkeys: Vec<PreSharedKeyId>,
     pub(crate) external_init_proposal_option: Option<ExternalInitProposal>,
+    pub(crate) extensions: Option<&'a Extensions>,
 }
 
-impl ApplyProposalsValues {
+impl ApplyProposalsValues<'_> {
     /// This function creates a `HashSet` of node indexes of the new nodes that
     /// were added to the tree. The `HashSet` will be querried by the
     /// `resolve()` function to filter out those nodes from the resolution.
@@ -50,11 +51,30 @@ impl ApplyProposalsValues {
 impl<'a> PublicGroupDiff<'a> {
     pub(crate) fn apply_proposals(
         &mut self,
-        proposal_queue: &ProposalQueue,
+        proposal_queue: &'a ProposalQueue,
         own_leaf_index: impl Into<Option<LeafNodeIndex>>,
-    ) -> Result<ApplyProposalsValues, LibraryError> {
+    ) -> Result<ApplyProposalsValues<'a>, LibraryError> {
         log::debug!("Applying proposal");
         let mut self_removed = false;
+
+        // Process GroupContextExtensions first because they have to be used to validate other proposals.
+        // For example, an add proposal will have to fulfill the required capabilities present in those extensions
+        let extensions = proposal_queue
+            .filtered_by_type(ProposalType::GroupContextExtensions)
+            .find_map(|queued_proposal| {
+                if let Proposal::GroupContextExtensions(ext_proposal) = queued_proposal.proposal() {
+                    Some(ext_proposal.extensions())
+                } else {
+                    None
+                }
+            });
+
+        let required_extensions = extensions
+            .and_then(|exts| {
+                exts.iter()
+                    .find_map(|i| i.as_required_capabilities_extension().ok())
+            })
+            .map(|e| e.extension_types());
 
         // Process external init proposals. We do this before the removes, so we
         // know that removing "ourselves" (i.e. removing the group member in the
@@ -119,10 +139,15 @@ impl<'a> PublicGroupDiff<'a> {
         let mut invitation_list = Vec::new();
         for add_proposal in add_proposals {
             // XXX: There are too many clones here.
-            let leaf_node = add_proposal.key_package.leaf_node();
+            let kp = add_proposal.key_package();
+            if let Some(required) = required_extensions {
+                kp.check_extension_support(required).map_err(|_| {
+                    LibraryError::custom("Keypackage doens't support required capability")
+                })?;
+            }
             let leaf_index = self
                 .diff
-                .add_leaf(leaf_node.clone().into())
+                .add_leaf(kp.leaf_node().clone().into())
                 // TODO #810
                 .map_err(|_| LibraryError::custom("Tree full: cannot add more members"))?;
             invitation_list.push((leaf_index, add_proposal.clone()))
@@ -159,6 +184,7 @@ impl<'a> PublicGroupDiff<'a> {
             invitation_list,
             presharedkeys,
             external_init_proposal_option,
+            extensions,
         })
     }
 }

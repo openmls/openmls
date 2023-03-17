@@ -60,6 +60,8 @@ pub struct MlsGroupConfig {
     pub(crate) lifetime: Lifetime,
     /// Ciphersuite and protocol version
     pub(crate) crypto_config: CryptoConfig,
+    /// Extensions to be added to the own leaf node
+    pub(crate) leaf_extensions: Option<Extensions>,
 }
 
 impl MlsGroupConfig {
@@ -111,6 +113,11 @@ impl MlsGroupConfig {
     /// Returns the [`CryptoConfig`].
     pub fn crypto_config(&self) -> &CryptoConfig {
         &self.crypto_config
+    }
+
+    /// Returns the [`MlsGroupConfig`] leaf extensions configuration.
+    pub fn leaf_extensions(&self) -> Option<&Extensions> {
+        self.leaf_extensions.as_ref()
     }
 
     #[cfg(any(feature = "test-utils", test))]
@@ -203,6 +210,12 @@ impl MlsGroupConfigBuilder {
     /// Sets the `external_senders` property of the MlsGroupConfig.
     pub fn external_senders(mut self, external_senders: ExternalSendersExtension) -> Self {
         self.config.external_senders = external_senders;
+        self
+    }
+
+    /// Sets the group creator's leaf extensions
+    pub fn leaf_extensions(mut self, leaf_extensions: Extensions) -> Self {
+        self.config.leaf_extensions = Some(leaf_extensions);
         self
     }
 

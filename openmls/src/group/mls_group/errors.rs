@@ -9,13 +9,14 @@ use thiserror::Error;
 
 use crate::{
     error::LibraryError,
-    extensions::errors::InvalidExtensionError,
+    extensions::errors::{ExtensionError, InvalidExtensionError},
     group::errors::{
         CreateAddProposalError, CreateCommitError, MergeCommitError, StageCommitError,
         ValidationError,
     },
+    prelude::KeyPackageExtensionSupportError,
     schedule::errors::PskError,
-    treesync::errors::{LeafNodeValidationError, PublicTreeError},
+    treesync::errors::{LeafNodeValidationError, MemberExtensionValidationError, PublicTreeError},
 };
 
 /// New group error
@@ -264,6 +265,46 @@ pub enum ProposeSelfUpdateError<KeyStoreError> {
     /// See [`PublicTreeError`] for more details.
     #[error(transparent)]
     PublicTreeError(#[from] PublicTreeError),
+}
+
+/// Create group context ext proposal error
+#[derive(Error, Debug, PartialEq, Clone)]
+pub enum UpdateExtensionsError<KeyStoreError> {
+    /// See [`LibraryError`] for more details.
+    #[error(transparent)]
+    LibraryError(#[from] LibraryError),
+    /// See [`MemberExtensionValidationError`] for more details.
+    #[error(transparent)]
+    MemberExtensionValidationError(#[from] MemberExtensionValidationError),
+    /// See [`CreateCommitError`] for more details.
+    #[error(transparent)]
+    CreateCommitError(#[from] CreateCommitError<KeyStoreError>),
+    /// See [`MlsGroupStateError`] for more details.
+    #[error(transparent)]
+    GroupStateError(#[from] MlsGroupStateError),
+}
+
+/// Create group context ext proposal error
+#[derive(Error, Debug, PartialEq, Clone)]
+pub enum ProposeGroupContextExtensionError {
+    /// See [`LibraryError`] for more details.
+    #[error(transparent)]
+    LibraryError(#[from] LibraryError),
+    /// See [`KeyPackageExtensionSupportError`] for more details.
+    #[error(transparent)]
+    KeyPackageExtensionSupport(#[from] KeyPackageExtensionSupportError),
+    /// See [`ExtensionError`] for more details.
+    #[error(transparent)]
+    Extension(#[from] ExtensionError),
+    /// The own CredentialBundle could not be found in the key store.
+    #[error("The own CredentialBundle could not be found in the key store.")]
+    NoMatchingCredentialBundle,
+    /// See [`MlsGroupStateError`] for more details.
+    #[error(transparent)]
+    GroupStateError(#[from] MlsGroupStateError),
+    /// See [`MemberExtensionValidationError`] for more details.
+    #[error(transparent)]
+    MemberExtensionValidationError(#[from] MemberExtensionValidationError),
 }
 
 /// Commit to pending proposals error

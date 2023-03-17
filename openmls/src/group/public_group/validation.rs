@@ -6,7 +6,6 @@ use std::collections::{BTreeSet, HashSet};
 use openmls_traits::types::VerifiableCiphersuite;
 
 use super::PublicGroup;
-#[cfg(test)]
 use crate::treesync::errors::LeafNodeValidationError;
 use crate::{
     binary_tree::array_representation::LeafNodeIndex,
@@ -420,15 +419,39 @@ impl PublicGroup {
         Ok(())
     }
 
+    /// Validate GroupContextExtensions proposals. There must not be more than 1
+    pub(crate) fn validate_group_context_extensions_proposals(
+        &self,
+        proposal_queue: &ProposalQueue,
+    ) -> Result<(), ProposalValidationError> {
+        let nb_gce = proposal_queue
+            .queued_proposals()
+            .filter(|p| matches!(p.proposal(), Proposal::GroupContextExtensions(_)))
+            .count();
+
+        if nb_gce > 1 {
+            return Err(ProposalValidationError::TooManyGroupContextExtensions(
+                nb_gce,
+            ));
+        }
+
+        Ok(())
+    }
+
     /// Returns a [`LeafNodeValidationError`] if an [`ExtensionType`]
     /// in `extensions` is not supported by a leaf in this tree.
-    #[cfg(test)]
+    /// A list leaves proposed to be removed must be provided as they
+    /// should be ignored by this validation
     pub(crate) fn check_extension_support(
         &self,
         extensions: &[crate::extensions::ExtensionType],
+        removed: impl Iterator<Item = LeafNodeIndex>,
     ) -> Result<(), LeafNodeValidationError> {
-        for leaf in self.treesync().full_leaves() {
-            leaf.leaf_node().check_extension_support(extensions)?;
+        let removed = removed.collect::<Vec<_>>();
+        for (index, leaf) in self.treesync().full_leaves_indexed() {
+            if !removed.contains(&index) {
+                leaf.leaf_node().check_extension_support(extensions)?;
+            }
         }
         Ok(())
     }

@@ -54,15 +54,25 @@ impl TempBuilderPG1 {
         self
     }
 
+    pub(crate) fn with_leaf_extensions(mut self, leaf_extensions: Extensions) -> Self {
+        if !leaf_extensions.is_empty() {
+            self.leaf_extensions = Some(leaf_extensions);
+        }
+        self
+    }
+
     pub(crate) fn get_secrets(
         self,
         backend: &impl OpenMlsCryptoProvider,
         signer: &impl Signer,
     ) -> Result<(TempBuilderPG2, CommitSecret, EncryptionKeyPair), PublicGroupBuildError> {
-        let capabilities = self
-            .required_capabilities
-            .as_ref()
-            .map(|re| re.extension_types());
+        let leaf_extensions = self.leaf_extensions.unwrap_or_default();
+        let rc = leaf_extensions
+            .required_capabilities()
+            .or(self.required_capabilities.as_ref());
+        let extension_capabilities = rc.map(RequiredCapabilitiesExtension::extension_types);
+        let proposal_capabilities = rc.map(RequiredCapabilitiesExtension::proposal_types);
+        let credential_capabilities = rc.map(RequiredCapabilitiesExtension::credential_types);
         let (treesync, commit_secret, leaf_keypair) = TreeSync::new(
             backend,
             signer,
@@ -72,11 +82,11 @@ impl TempBuilderPG1 {
             Capabilities::new(
                 Some(&[self.crypto_config.version]), // TODO: Allow more versions
                 Some(&[self.crypto_config.ciphersuite]), // TODO: allow more ciphersuites
-                capabilities,
-                None,
-                None,
+                extension_capabilities,
+                proposal_capabilities,
+                credential_capabilities,
             ),
-            self.leaf_extensions.unwrap_or(Extensions::empty()),
+            leaf_extensions,
         )?;
         let required_capabilities = self.required_capabilities.unwrap_or_default();
         required_capabilities.check_support().map_err(|e| match e {

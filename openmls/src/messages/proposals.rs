@@ -426,9 +426,12 @@ pub struct GroupContextExtensionProposal {
 
 impl GroupContextExtensionProposal {
     /// Create a new [`GroupContextExtensionProposal`].
-    #[cfg(test)]
     pub(crate) fn new(extensions: Extensions) -> Self {
         Self { extensions }
+    }
+
+    pub(crate) fn extensions(&self) -> &Extensions {
+        &self.extensions
     }
 }
 
