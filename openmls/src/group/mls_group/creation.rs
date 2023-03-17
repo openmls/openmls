@@ -100,21 +100,7 @@ impl MlsGroup {
     /// Creates a new group from a [`Welcome`] message. Returns an error
     /// ([`WelcomeError::NoMatchingKeyPackage`]) if no [`KeyPackage`]
     /// can be found.
-    pub fn join<KeyStore: OpenMlsKeyStore>(
-        backend: &impl OpenMlsCryptoProvider<KeyStoreProvider = KeyStore>,
-        mls_group_config: &MlsGroupConfig,
-        welcome: MlsMessageIn,
-        ratchet_tree: Option<RatchetTree>,
-    ) -> Result<Self, WelcomeError<KeyStore::Error>> {
-        let welcome = welcome
-            .into_welcome()
-            .ok_or(WelcomeError::MalformedWelcomeMessage)?;
-        Self::new_from_welcome(backend, mls_group_config, welcome, ratchet_tree)
-    }
-
-    /// Creates a new group from a [`Welcome`] message. Returns an error
-    /// ([`WelcomeError::NoMatchingKeyPackage`]) if no [`KeyPackage`]
-    /// can be found.
+    // TODO: #1326 This should take an MlsMessage rather than a Welcome message.
     pub fn new_from_welcome<KeyStore: OpenMlsKeyStore>(
         backend: &impl OpenMlsCryptoProvider<KeyStoreProvider = KeyStore>,
         mls_group_config: &MlsGroupConfig,

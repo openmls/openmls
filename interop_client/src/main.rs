@@ -322,7 +322,10 @@ impl MlsClient for MlsClientImpl {
         let welcome_msg = MlsMessageIn::tls_deserialize(&mut join_group_request.welcome.as_slice())
             .map_err(|_| Status::aborted("failed to deserialize MlsMessage with a Welcome"))?;
 
-        let group = MlsGroup::join(&crypto_provider, &mls_group_config, welcome_msg, None)
+        let welcome = welcome_msg.into_welcome().ok_or(Status::invalid_argument(
+            "unable to get Welcome from MlsMessage",
+        ))?;
+        let group = MlsGroup::new_from_welcome(&crypto_provider, &mls_group_config, welcome, None)
             .map_err(into_status)?;
 
         let interop_group = InteropGroup {
