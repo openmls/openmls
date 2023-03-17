@@ -100,6 +100,7 @@ impl MlsGroup {
     /// Creates a new group from a [`Welcome`] message. Returns an error
     /// ([`WelcomeError::NoMatchingKeyPackage`]) if no [`KeyPackage`]
     /// can be found.
+    // TODO: #1326 This should take an MlsMessage rather than a Welcome message.
     pub fn new_from_welcome<KeyStore: OpenMlsKeyStore>(
         backend: &impl OpenMlsCryptoProvider<KeyStoreProvider = KeyStore>,
         mls_group_config: &MlsGroupConfig,

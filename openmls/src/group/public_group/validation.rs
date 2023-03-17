@@ -177,7 +177,11 @@ impl PublicGroup {
                 || add_proposal.add_proposal().key_package().protocol_version() != self.version()
             {
                 log::error!("Tried to commit an Add proposal, where either the `Ciphersuite` or the `ProtocolVersion` is not compatible with the group.");
-
+                log::error!("   self.ciphersuite: {:?}", self.ciphersuite());
+                log::error!(
+                    "   add_proposal.add_proposal().key_package().ciphersuite(): {:?}",
+                    add_proposal.add_proposal().key_package().ciphersuite()
+                );
                 return Err(ProposalValidationError::InsufficientCapabilities);
             }
 
