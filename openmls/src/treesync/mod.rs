@@ -33,10 +33,7 @@ use tls_codec::{TlsSerialize, TlsSize};
 
 use self::{
     diff::{StagedTreeSyncDiff, TreeSyncDiff},
-    node::{
-        encryption_keys::{EncryptionKey, EncryptionKeyPair},
-        leaf_node::{Capabilities, LeafNodeSource, Lifetime, OpenMlsLeafNode},
-    },
+    node::leaf_node::{Capabilities, LeafNodeSource, Lifetime, OpenMlsLeafNode},
     treesync_node::{TreeSyncLeafNode, TreeSyncNode, TreeSyncParentNode},
 };
 #[cfg(test)]
@@ -71,8 +68,13 @@ pub(crate) mod node;
 pub(crate) mod treekem;
 pub(crate) mod treesync_node;
 
+use node::encryption_keys::EncryptionKeyPair;
+
 // Public
 pub mod errors;
+#[cfg(feature = "test-utils")]
+pub use node::encryption_keys::test_utils;
+pub use node::encryption_keys::EncryptionKey;
 
 // Public re-exports
 pub use node::{leaf_node::LeafNode, parent_node::ParentNode, Node};
