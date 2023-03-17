@@ -51,7 +51,7 @@ Operations that add a proposal to the proposal store, will return its reference.
 a proposal from the proposal store. This can be useful for example to roll back in case of errors.
 
 ```rust,no_run,noplayground
-{{#include ../../../openmls/tests/book_code.rs:remove_proposal_by_ref}}
+{{#include ../../../openmls/tests/book_code.rs:rollback_proposal_by_ref}}
 ```
 
 ### Commit messages
