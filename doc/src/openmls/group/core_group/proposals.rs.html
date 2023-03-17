@@ -567,6 +567,10 @@
 <a href="#567" id="567">567</a>
 <a href="#568" id="568">568</a>
 <a href="#569" id="569">569</a>
+<a href="#570" id="570">570</a>
+<a href="#571" id="571">571</a>
+<a href="#572" id="572">572</a>
+<a href="#573" id="573">573</a>
 </pre><pre class="rust"><code><span class="kw">use </span>std::collections::{hash_map::Entry, HashMap, HashSet};
 
 <span class="kw">use </span>openmls_traits::{types::Ciphersuite, OpenMlsCryptoProvider};
@@ -721,6 +725,7 @@
         proposal_store: <span class="kw-2">&amp;</span>ProposalStore,
         sender: <span class="kw-2">&amp;</span>Sender,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, FromCommittedProposalsError&gt; {
+        <span class="macro">log::debug!</span>(<span class="string">&quot;from_committed_proposals&quot;</span>);
         <span class="comment">// Feed the `proposals_by_reference` in a `HashMap` so that we can easily
         // extract then by reference later
         </span><span class="kw">let </span><span class="kw-2">mut </span>proposals_by_reference_queue: HashMap&lt;ProposalRef, QueuedProposal&gt; = HashMap::new();
@@ -730,11 +735,14 @@
                 queued_proposal.clone(),
             );
         }
+        <span class="macro">log::trace!</span>(<span class="string">&quot;   known proposals:\n{:#?}&quot;</span>, proposals_by_reference_queue);
         <span class="comment">// Build the actual queue
         </span><span class="kw">let </span><span class="kw-2">mut </span>proposal_queue = ProposalQueue::default();
 
         <span class="comment">// Iterate over the committed proposals and insert the proposals in the queue
-        </span><span class="kw">for </span>proposal_or_ref <span class="kw">in </span>committed_proposals.into_iter() {
+        </span><span class="macro">log::trace!</span>(<span class="string">&quot;   committed proposals ...&quot;</span>);
+        <span class="kw">for </span>proposal_or_ref <span class="kw">in </span>committed_proposals.into_iter() {
+            <span class="macro">log::trace!</span>(<span class="string">&quot;       proposal_or_ref:\n{:#?}&quot;</span>, proposal_or_ref);
             <span class="kw">let </span>queued_proposal = <span class="kw">match </span>proposal_or_ref {
                 ProposalOrRef::Proposal(proposal) =&gt; {
                     <span class="comment">// ValSem200

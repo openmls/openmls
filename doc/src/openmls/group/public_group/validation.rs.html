@@ -393,6 +393,10 @@
 <a href="#393" id="393">393</a>
 <a href="#394" id="394">394</a>
 <a href="#395" id="395">395</a>
+<a href="#396" id="396">396</a>
+<a href="#397" id="397">397</a>
+<a href="#398" id="398">398</a>
+<a href="#399" id="399">399</a>
 </pre><pre class="rust"><code><span class="doccomment">//! This module contains validation functions for incoming messages
 //! as defined in &lt;https://github.com/openmls/openmls/wiki/Message-validation&gt;
 
@@ -572,7 +576,11 @@
                 || add_proposal.add_proposal().key_package().protocol_version() != <span class="self">self</span>.version()
             {
                 <span class="macro">log::error!</span>(<span class="string">&quot;Tried to commit an Add proposal, where either the `Ciphersuite` or the `ProtocolVersion` is not compatible with the group.&quot;</span>);
-
+                <span class="macro">log::error!</span>(<span class="string">&quot;   self.ciphersuite: {:?}&quot;</span>, <span class="self">self</span>.ciphersuite());
+                <span class="macro">log::error!</span>(
+                    <span class="string">&quot;   add_proposal.add_proposal().key_package().ciphersuite(): {:?}&quot;</span>,
+                    add_proposal.add_proposal().key_package().ciphersuite()
+                );
                 <span class="kw">return </span><span class="prelude-val">Err</span>(ProposalValidationError::InsufficientCapabilities);
             }
 

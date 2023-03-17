@@ -648,6 +648,8 @@
 <a href="#648" id="648">648</a>
 <a href="#649" id="649">649</a>
 <a href="#650" id="650">650</a>
+<a href="#651" id="651">651</a>
+<a href="#652" id="652">652</a>
 </pre><pre class="rust"><code><span class="doccomment">//! This module implements the ratchet tree component of MLS.
 //!
 //! It exposes the [`Node`] enum that can contain either a [`LeafNode`] or a [`ParentNode`].
@@ -683,10 +685,7 @@
 
 <span class="kw">use </span><span class="self">self</span>::{
     diff::{StagedTreeSyncDiff, TreeSyncDiff},
-    node::{
-        encryption_keys::{EncryptionKey, EncryptionKeyPair},
-        leaf_node::{Capabilities, LeafNodeSource, Lifetime, OpenMlsLeafNode},
-    },
+    node::leaf_node::{Capabilities, LeafNodeSource, Lifetime, OpenMlsLeafNode},
     treesync_node::{TreeSyncLeafNode, TreeSyncNode, TreeSyncParentNode},
 };
 <span class="attr">#[cfg(test)]
@@ -721,8 +720,13 @@
 <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">mod </span>treekem;
 <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">mod </span>treesync_node;
 
+<span class="kw">use </span>node::encryption_keys::EncryptionKeyPair;
+
 <span class="comment">// Public
 </span><span class="kw">pub mod </span>errors;
+<span class="attr">#[cfg(feature = <span class="string">&quot;test-utils&quot;</span>)]
+</span><span class="kw">pub use </span>node::encryption_keys::test_utils;
+<span class="kw">pub use </span>node::encryption_keys::EncryptionKey;
 
 <span class="comment">// Public re-exports
 </span><span class="kw">pub use </span>node::{leaf_node::LeafNode, parent_node::ParentNode, Node};

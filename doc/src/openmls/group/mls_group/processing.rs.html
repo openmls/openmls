@@ -170,6 +170,8 @@
 <a href="#170" id="170">170</a>
 <a href="#171" id="171">171</a>
 <a href="#172" id="172">172</a>
+<a href="#173" id="173">173</a>
+<a href="#174" id="174">174</a>
 </pre><pre class="rust"><code><span class="doccomment">//! Processing functions of an [`MlsGroup`] for incoming messages.
 
 </span><span class="kw">use </span>std::mem;
@@ -248,6 +250,8 @@
     /// currently stored in the group&#39;s [ProposalStore].
     ///
     /// Returns an error if there is a pending commit.
+    /// Otherwise it returns a tuple of `Commit, Option&lt;Welcome&gt;, Option&lt;GroupInfo&gt;`,
+    /// where `Commit` and `Welcome` are MlsMessages of the type [`MlsMessageOut`].
     </span><span class="comment">// FIXME: #1217
     </span><span class="attr">#[allow(clippy::type_complexity)]
     </span><span class="kw">pub fn </span>commit_to_pending_proposals&lt;KeyStore: OpenMlsKeyStore&gt;(

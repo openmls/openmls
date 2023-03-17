@@ -292,6 +292,9 @@
 <a href="#292" id="292">292</a>
 <a href="#293" id="293">293</a>
 <a href="#294" id="294">294</a>
+<a href="#295" id="295">295</a>
+<a href="#296" id="296">296</a>
+<a href="#297" id="297">297</a>
 </pre><pre class="rust"><code><span class="kw">use super</span>::{<span class="kw">super</span>::errors::<span class="kw-2">*</span>, <span class="kw-2">*</span>};
 <span class="kw">use crate</span>::{
     ciphersuite::signable::Verifiable,
@@ -356,10 +359,13 @@
             proposal_store,
             sender,
         )
-        .map_err(|e| <span class="kw">match </span>e {
-            FromCommittedProposalsError::LibraryError(e) =&gt; StageCommitError::LibraryError(e),
-            FromCommittedProposalsError::ProposalNotFound =&gt; StageCommitError::MissingProposal,
-            FromCommittedProposalsError::SelfRemoval =&gt; StageCommitError::AttemptedSelfRemoval,
+        .map_err(|e| {
+            <span class="macro">log::error!</span>(<span class="string">&quot;Error building the proposal queue for the commit ({e:?})&quot;</span>);
+            <span class="kw">match </span>e {
+                FromCommittedProposalsError::LibraryError(e) =&gt; StageCommitError::LibraryError(e),
+                FromCommittedProposalsError::ProposalNotFound =&gt; StageCommitError::MissingProposal,
+                FromCommittedProposalsError::SelfRemoval =&gt; StageCommitError::AttemptedSelfRemoval,
+            }
         })<span class="question-mark">?</span>;
 
         <span class="kw">let </span>commit_update_leaf_node = commit
