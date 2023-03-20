@@ -1,8 +1,6 @@
 use openmls_basic_credential::SignatureKeyPair;
 use openmls_rust_crypto::OpenMlsRustCrypto;
-use openmls_traits::{
-    crypto::OpenMlsCrypto, key_store::OpenMlsKeyStore, types::HpkeCiphertext, OpenMlsCryptoProvider,
-};
+use openmls_traits::{crypto::OpenMlsCrypto, types::HpkeCiphertext, OpenMlsCryptoProvider};
 use tls_codec::Serialize;
 
 use crate::{
@@ -344,15 +342,9 @@ fn test_psks(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
         PreSharedKeyId::new(ciphersuite, backend.rand(), Psk::External(external_psk))
             .expect("An unexpected error occured.");
     let psk_bundle = PskBundle::new(secret).expect("Could not create PskBundle.");
-    backend
-        .key_store()
-        .store(
-            &preshared_key_id
-                .tls_serialize_detached()
-                .expect("Error serializing signature key."),
-            &psk_bundle,
-        )
-        .expect("An unexpected error occurred.");
+    preshared_key_id
+        .write_to_key_store(backend, ciphersuite, psk_bundle.secret().as_slice())
+        .unwrap();
     let mut alice_group = CoreGroup::builder(
         GroupId::random(backend),
         config::CryptoConfig::with_default_version(ciphersuite),
