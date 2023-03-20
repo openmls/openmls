@@ -245,7 +245,7 @@ impl MlsGroup {
         backend: &impl OpenMlsCryptoProvider,
         signer: &impl Signer,
         member: &Credential,
-    ) -> Result<MlsMessageOut, ProposeRemoveMemberError> {
+    ) -> Result<(MlsMessageOut, ProposalRef), ProposeRemoveMemberError> {
         // Find the user for the credential first.
         let member_index = self
             .group
