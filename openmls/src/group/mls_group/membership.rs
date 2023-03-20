@@ -236,6 +236,31 @@ impl MlsGroup {
         Ok((mls_message, proposal_ref))
     }
 
+    /// Creates proposals to remove members from the group.
+    /// The `member` has to be the member's credential.
+    ///
+    /// Returns an error if there is a pending commit.
+    pub fn propose_remove_member_by_credential(
+        &mut self,
+        backend: &impl OpenMlsCryptoProvider,
+        signer: &impl Signer,
+        member: &Credential,
+    ) -> Result<MlsMessageOut, ProposeRemoveMemberError> {
+        // Find the user for the credential first.
+        let member_index = self
+            .group
+            .public_group()
+            .members()
+            .find(|m| &m.credential == member)
+            .map(|m| m.index);
+
+        if let Some(member_index) = member_index {
+            self.propose_remove_member(backend, signer, member_index)
+        } else {
+            Err(ProposeRemoveMemberError::UnknownMember)
+        }
+    }
+
     /// Leave the group.
     ///
     /// Creates a Remove Proposal that needs to be covered by a Commit from a different member.

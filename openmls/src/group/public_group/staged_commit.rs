@@ -62,10 +62,13 @@ impl PublicGroup {
             proposal_store,
             sender,
         )
-        .map_err(|e| match e {
-            FromCommittedProposalsError::LibraryError(e) => StageCommitError::LibraryError(e),
-            FromCommittedProposalsError::ProposalNotFound => StageCommitError::MissingProposal,
-            FromCommittedProposalsError::SelfRemoval => StageCommitError::AttemptedSelfRemoval,
+        .map_err(|e| {
+            log::error!("Error building the proposal queue for the commit ({e:?})");
+            match e {
+                FromCommittedProposalsError::LibraryError(e) => StageCommitError::LibraryError(e),
+                FromCommittedProposalsError::ProposalNotFound => StageCommitError::MissingProposal,
+                FromCommittedProposalsError::SelfRemoval => StageCommitError::AttemptedSelfRemoval,
+            }
         })?;
 
         let commit_update_leaf_node = commit

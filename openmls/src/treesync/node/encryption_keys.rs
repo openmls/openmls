@@ -21,7 +21,7 @@ use crate::{
 #[derive(
     Debug, Clone, Serialize, Deserialize, TlsSerialize, TlsDeserialize, TlsSize, PartialEq, Eq,
 )]
-pub(crate) struct EncryptionKey {
+pub struct EncryptionKey {
     key: HpkePublicKey,
 }
 
@@ -207,6 +207,32 @@ impl EncryptionKeyPair {
             .crypto()
             .derive_hpke_keypair(config.ciphersuite.hpke_config(), ikm.as_slice())
             .into())
+    }
+}
+
+#[cfg(feature = "test-utils")]
+pub mod test_utils {
+    use super::*;
+
+    pub fn read_keys_from_key_store(
+        backend: &impl OpenMlsCryptoProvider,
+        encryption_key: &EncryptionKey,
+    ) -> HpkeKeyPair {
+        let keys = EncryptionKeyPair::read_from_key_store(backend, encryption_key).unwrap();
+
+        HpkeKeyPair {
+            private: keys.private_key.key.as_slice().to_vec(),
+            public: keys.public_key.key.as_slice().to_vec(),
+        }
+    }
+
+    pub fn write_keys_from_key_store(
+        backend: &impl OpenMlsCryptoProvider,
+        encryption_key: HpkeKeyPair,
+    ) {
+        let keypair = EncryptionKeyPair::from(encryption_key);
+
+        keypair.write_to_key_store(backend).unwrap();
     }
 }
 
