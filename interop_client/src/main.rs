@@ -530,7 +530,7 @@ impl MlsClient for MlsClientImpl {
             .wire_format_policy(interop_group.wire_format_policy)
             .build();
         interop_group.group.set_configuration(&mls_group_config);
-        let proposal = interop_group
+        let (proposal, _) = interop_group
             .group
             .propose_add_member(
                 &interop_group.crypto_provider,
@@ -570,7 +570,7 @@ impl MlsClient for MlsClientImpl {
             .wire_format_policy(interop_group.wire_format_policy)
             .build();
         interop_group.group.set_configuration(&mls_group_config);
-        let proposal = interop_group
+        let (proposal, _) = interop_group
             .group
             .propose_self_update(
                 &interop_group.crypto_provider,
@@ -619,7 +619,7 @@ impl MlsClient for MlsClientImpl {
         interop_group.group.set_configuration(&mls_group_config);
         log::trace!("   prepared remove");
 
-        let proposal = interop_group
+        let (proposal, _) = interop_group
             .group
             .propose_remove_member_by_credential(
                 &interop_group.crypto_provider,

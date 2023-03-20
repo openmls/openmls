@@ -765,10 +765,10 @@ fn test_partial_proposal_commit(ciphersuite: Ciphersuite, backend: &impl OpenMls
         .index;
 
     // Create first proposal in Alice's group
-    let proposal_1: MlsMessageIn = alice_group
+    let proposal_1 = alice_group
         .propose_remove_member(backend, &alice_credential.signer, charlie_index)
-        .unwrap()
-        .into();
+        .map(|(out, _)| MlsMessageIn::from(out))
+        .unwrap();
     let proposal_1 = bob_group.process_message(backend, proposal_1).unwrap();
     match proposal_1.into_content() {
         ProcessedMessageContent::ProposalMessage(p) => bob_group.store_pending_proposal(*p),
@@ -776,10 +776,10 @@ fn test_partial_proposal_commit(ciphersuite: Ciphersuite, backend: &impl OpenMls
     }
 
     // Create second proposal in Alice's group
-    let proposal_2: MlsMessageIn = alice_group
+    let proposal_2 = alice_group
         .propose_self_update(backend, &alice_credential.signer, None)
-        .unwrap()
-        .into();
+        .map(|(out, _)| MlsMessageIn::from(out))
+        .unwrap();
     let proposal_2 = bob_group.process_message(backend, proposal_2).unwrap();
     match proposal_2.into_content() {
         ProcessedMessageContent::ProposalMessage(p) => bob_group.store_pending_proposal(*p),

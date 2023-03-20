@@ -142,7 +142,7 @@ fn public_group(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) 
 
     // === Alice removes Bob & Charlie commits ===
 
-    let queued_messages = alice_group
+    let (queued_messages, _) = alice_group
         .propose_remove_member(backend, &alice_signer, LeafNodeIndex::new(1))
         .expect("Could not propose removal");
 

@@ -235,10 +235,9 @@ fn mls_group_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoPr
         );
 
         // === Alice updates and commits ===
-        let queued_message = match alice_group.propose_self_update(backend, &alice_signer, None) {
-            Ok(qm) => qm,
-            Err(e) => panic!("Error performing self-update: {e:?}"),
-        };
+        let (queued_message, _) = alice_group
+            .propose_self_update(backend, &alice_signer, None)
+            .unwrap();
 
         let bob_processed_message = bob_group
             .process_message(
@@ -589,7 +588,7 @@ fn mls_group_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoPr
         );
 
         // Create RemoveProposal and process it
-        let queued_message = alice_group
+        let (queued_message, _) = alice_group
             .propose_remove_member(backend, &alice_signer, charlie_group.own_leaf_index())
             .expect("Could not create proposal to remove Charlie");
 
@@ -626,7 +625,7 @@ fn mls_group_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoPr
         }
 
         // Create AddProposal and process it
-        let queued_message = alice_group
+        let (queued_message, _) = alice_group
             .propose_add_member(backend, &alice_signer, &bob_key_package)
             .expect("Could not create proposal to add Bob");
 

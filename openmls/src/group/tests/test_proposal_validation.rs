@@ -1306,7 +1306,7 @@ fn test_valsem107(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
 
     let ref_propose = {
         // We first go the manual route
-        let ref_propose1 = alice_group
+        let (ref_propose1, _) = alice_group
             .propose_remove_member(
                 backend,
                 &alice_credential_with_key_and_signer.signer,
@@ -1314,7 +1314,7 @@ fn test_valsem107(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
             )
             .unwrap();
 
-        let ref_propose2 = alice_group
+        let (ref_propose2, _) = alice_group
             .propose_remove_member(
                 backend,
                 &alice_credential_with_key_and_signer.signer,
@@ -1582,8 +1582,8 @@ fn test_valsem110(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
             &bob_credential_with_key_and_signer.signer,
             Some(update_leaf_node.clone().into()),
         )
-        .expect("error while creating remove proposal")
-        .into();
+        .map(|(out, _)| MlsMessageIn::from(out))
+        .expect("error while creating remove proposal");
 
     // Have Alice process this proposal.
     if let ProcessedMessageContent::ProposalMessage(proposal) = alice_group

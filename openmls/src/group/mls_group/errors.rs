@@ -69,6 +69,9 @@ pub enum MlsGroupStateError {
     /// Can't execute operation because there is no pending commit.
     #[error("Can't execute operation because there is no pending commit")]
     NoPendingCommit,
+    /// Requested pending proposal hasn't been found in local pending proposals
+    #[error("Requested pending proposal hasn't been found in local pending proposals.")]
+    PendingProposalNotFound,
 }
 
 /// Error merging pending commit

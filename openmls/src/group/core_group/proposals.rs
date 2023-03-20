@@ -49,6 +49,17 @@ impl ProposalStore {
     pub(crate) fn empty(&mut self) {
         self.queued_proposals = Vec::new();
     }
+
+    /// Removes a proposal from the store using its reference. It will return None if it wasn't
+    /// found in the store.
+    pub(crate) fn remove(&mut self, proposal_ref: ProposalRef) -> Option<()> {
+        let index = self
+            .queued_proposals
+            .iter()
+            .position(|p| p.proposal_reference() == proposal_ref)?;
+        self.queued_proposals.remove(index);
+        Some(())
+    }
 }
 
 /// Alternative representation of a Proposal, where the sender is extracted from
