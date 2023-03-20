@@ -118,6 +118,7 @@
 <a href="#118" id="118">118</a>
 <a href="#119" id="119">119</a>
 <a href="#120" id="120">120</a>
+<a href="#121" id="121">121</a>
 </pre><pre class="rust"><code><span class="kw">use </span>core_group::create_commit_params::CreateCommitParams;
 <span class="kw">use </span>openmls_traits::signatures::Signer;
 
@@ -187,7 +188,7 @@
         backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider&lt;KeyStoreProvider = KeyStore&gt;,
         signer: <span class="kw-2">&amp;</span><span class="kw">impl </span>Signer,
         leaf_node: <span class="prelude-ty">Option</span>&lt;LeafNode&gt;,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;MlsMessageOut, ProposeSelfUpdateError&lt;KeyStore::Error&gt;&gt; {
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;(MlsMessageOut, ProposalRef), ProposeSelfUpdateError&lt;KeyStore::Error&gt;&gt; {
         <span class="self">self</span>.is_operational()<span class="question-mark">?</span>;
 
         <span class="comment">// Here we clone our own leaf to rekey it such that we don&#39;t change the
@@ -223,19 +224,20 @@
         )<span class="question-mark">?</span>;
 
         <span class="self">self</span>.own_leaf_nodes.push(own_leaf);
-        <span class="self">self</span>.proposal_store
-            .add(QueuedProposal::from_authenticated_content(
-                <span class="self">self</span>.ciphersuite(),
-                backend,
-                update_proposal.clone(),
-            )<span class="question-mark">?</span>);
+        <span class="kw">let </span>proposal = QueuedProposal::from_authenticated_content(
+            <span class="self">self</span>.ciphersuite(),
+            backend,
+            update_proposal.clone(),
+        )<span class="question-mark">?</span>;
+        <span class="kw">let </span>proposal_ref = proposal.proposal_reference();
+        <span class="self">self</span>.proposal_store.add(proposal);
 
         <span class="kw">let </span>mls_message = <span class="self">self</span>.content_to_mls_message(update_proposal, backend)<span class="question-mark">?</span>;
 
         <span class="comment">// Since the state of the group might be changed, arm the state flag
         </span><span class="self">self</span>.flag_state_change();
 
-        <span class="prelude-val">Ok</span>(mls_message)
+        <span class="prelude-val">Ok</span>((mls_message, proposal_ref))
     }
 }
 </code></pre></div>

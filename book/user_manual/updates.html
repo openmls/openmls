@@ -155,7 +155,7 @@ The application can optionally provide a <code>KeyPackage</code> manually. If no
 Even though the member updates its own key package only in this operation, the Commit message could potentially also cover Add Proposals that were previously received in the epoch. Therefore the function can also optionally return a <code>Welcome</code> message. The <code>Welcome</code> message must be sent to the newly added members.</p>
 <h2 id="proposal"><a class="header" href="#proposal">Proposal</a></h2>
 <p>Members can also update their key package as a proposal (without the corresponding Commit message) by using the <code>.propose_self_update()</code> function. Just like with the <code>.self_update()</code> function, an optional key package can be provided:</p>
-<pre><code class="language-rust no_run noplayground">    let mls_message_out = alice_group
+<pre><code class="language-rust no_run noplayground">    let (mls_message_out, _proposal_ref) = alice_group
         .propose_self_update(
             backend,
             &amp;alice_signature_keys,

@@ -434,6 +434,17 @@
 <a href="#434" id="434">434</a>
 <a href="#435" id="435">435</a>
 <a href="#436" id="436">436</a>
+<a href="#437" id="437">437</a>
+<a href="#438" id="438">438</a>
+<a href="#439" id="439">439</a>
+<a href="#440" id="440">440</a>
+<a href="#441" id="441">441</a>
+<a href="#442" id="442">442</a>
+<a href="#443" id="443">443</a>
+<a href="#444" id="444">444</a>
+<a href="#445" id="445">445</a>
+<a href="#446" id="446">446</a>
+<a href="#447" id="447">447</a>
 </pre><pre class="rust"><code><span class="doccomment">//! MLS Group
 //!
 //! This module contains [`MlsGroup`] and its submodules.
@@ -441,6 +452,7 @@
 </span><span class="kw">use </span><span class="kw">super</span>::proposals::{ProposalStore, QueuedProposal};
 <span class="kw">use crate</span>::{
     binary_tree::array_representation::LeafNodeIndex,
+    ciphersuite::hash_ref::ProposalRef,
     credentials::Credential,
     error::LibraryError,
     framing::{mls_auth_content::AuthenticatedContent, <span class="kw-2">*</span>},
@@ -857,6 +869,16 @@
     </span><span class="attr">#[cfg(test)]
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>clear_pending_proposals(<span class="kw-2">&amp;mut </span><span class="self">self</span>) {
         <span class="self">self</span>.proposal_store.empty()
+    }
+
+    <span class="doccomment">/// Removes a specific proposal from the store.
+    </span><span class="kw">pub fn </span>remove_pending_proposal(
+        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
+        proposal_ref: ProposalRef,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;(), MlsGroupStateError&gt; {
+        <span class="self">self</span>.proposal_store
+            .remove(proposal_ref)
+            .ok_or(MlsGroupStateError::PendingProposalNotFound)
     }
 }
 

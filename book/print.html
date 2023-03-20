@@ -352,7 +352,7 @@ Delivery Service. Otherwise, you would end up with an invalid MLS group instance
 <p>The function returns the tuple <code>(MlsMessageOut, Welcome)</code>. The <code>MlsMessageOut</code> contains a Commit message that needs to be fanned out to existing group members. The <code>Welcome</code> message must be sent to the newly added members.</p>
 <h2 id="proposal"><a class="header" href="#proposal">Proposal</a></h2>
 <p>Members can also be added as a proposal (without the corresponding Commit message) by using the <code>.propose_add_member()</code> function:</p>
-<pre><code class="language-rust no_run noplayground">    let mls_message_out = alice_group
+<pre><code class="language-rust no_run noplayground">    let (mls_message_out, _proposal_ref) = alice_group
         .propose_add_member(backend, &amp;alice_signature_keys, &amp;bob_key_package)
         .expect(&quot;Could not create proposal to add Bob&quot;);</code></pre>
 <p>In this case, the function returns an <code>MlsMessageOut</code> that needs to be fanned out to existing group members.</p>
@@ -412,7 +412,7 @@ Note that in this scenario it is up to the application to define a proper author
 Even though members were removed in this operation, the Commit message could potentially also cover Add Proposals previously received in the epoch. Therefore the function can also optionally return a <code>Welcome</code> message. The <code>Welcome</code> message must be sent to the newly added members.</p>
 <h2 id="proposal-1"><a class="header" href="#proposal-1">Proposal</a></h2>
 <p>Members can also be removed as a proposal (without the corresponding Commit message) by using the <code>.propose_remove_member()</code> function:</p>
-<pre><code class="language-rust no_run noplayground">    let mls_message_out = alice_group
+<pre><code class="language-rust no_run noplayground">    let (mls_message_out, _proposal_ref) = alice_group
         .propose_remove_member(
             backend,
             &amp;alice_signature_keys,
@@ -486,7 +486,7 @@ The application can optionally provide a <code>KeyPackage</code> manually. If no
 Even though the member updates its own key package only in this operation, the Commit message could potentially also cover Add Proposals that were previously received in the epoch. Therefore the function can also optionally return a <code>Welcome</code> message. The <code>Welcome</code> message must be sent to the newly added members.</p>
 <h2 id="proposal-2"><a class="header" href="#proposal-2">Proposal</a></h2>
 <p>Members can also update their key package as a proposal (without the corresponding Commit message) by using the <code>.propose_self_update()</code> function. Just like with the <code>.self_update()</code> function, an optional key package can be provided:</p>
-<pre><code class="language-rust no_run noplayground">    let mls_message_out = alice_group
+<pre><code class="language-rust no_run noplayground">    let (mls_message_out, _proposal_ref) = alice_group
         .propose_self_update(
             backend,
             &amp;alice_signature_keys,
@@ -572,6 +572,15 @@ sender, and authenticated data. It also exposes the message's content. There are
         // Store proposal
         charlie_group.store_pending_proposal(*staged_proposal);
     }</code></pre>
+<h4 id="rolling-back-proposals"><a class="header" href="#rolling-back-proposals">Rolling back proposals</a></h4>
+<p>Operations that add a proposal to the proposal store, will return its reference. This reference can be used to remove
+a proposal from the proposal store. This can be useful for example to roll back in case of errors.</p>
+<pre><code class="language-rust no_run noplayground">    let (_mls_message_out, proposal_ref) = alice_group
+        .propose_add_member(backend, &amp;alice_signature_keys, &amp;bob_key_package)
+        .expect(&quot;Could not create proposal to add Bob&quot;);
+    alice_group
+        .remove_pending_proposal(proposal_ref)
+        .expect(&quot;The proposal was not found&quot;);</code></pre>
 <h3 id="commit-messages"><a class="header" href="#commit-messages">Commit messages</a></h3>
 <p>Commit messages are returned as <code>StagedCommit</code> objects. The proposals they cover can be inspected through different functions, depending on the proposal type. After the application has inspected the <code>StagedCommit</code> and approved all the proposals it covers, the <code>StagedCommit</code> can be merged in the current group state by calling the <code>.merge_staged_commit()</code> function. For more details, see the <code>StagedCommit</code> documentation.</p>
 <pre><code class="language-rust no_run noplayground">    if let ProcessedMessageContent::StagedCommitMessage(staged_commit) =

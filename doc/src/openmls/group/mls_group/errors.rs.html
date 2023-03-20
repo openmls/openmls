@@ -303,6 +303,9 @@
 <a href="#303" id="303">303</a>
 <a href="#304" id="304">304</a>
 <a href="#305" id="305">305</a>
+<a href="#306" id="306">306</a>
+<a href="#307" id="307">307</a>
+<a href="#308" id="308">308</a>
 </pre><pre class="rust"><code><span class="doccomment">//! # MlsGroup errors
 //!
 //! This module defines the public errors that can be returned from all calls
@@ -374,6 +377,9 @@
     <span class="doccomment">/// Can&#39;t execute operation because there is no pending commit.
     </span><span class="attr">#[error(<span class="string">&quot;Can&#39;t execute operation because there is no pending commit&quot;</span>)]
     </span>NoPendingCommit,
+    <span class="doccomment">/// Requested pending proposal hasn&#39;t been found in local pending proposals
+    </span><span class="attr">#[error(<span class="string">&quot;Requested pending proposal hasn&#39;t been found in local pending proposals.&quot;</span>)]
+    </span>PendingProposalNotFound,
 }
 
 <span class="doccomment">/// Error merging pending commit

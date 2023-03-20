@@ -366,6 +366,8 @@
 <a href="#366" id="366">366</a>
 <a href="#367" id="367">367</a>
 <a href="#368" id="368">368</a>
+<a href="#369" id="369">369</a>
+<a href="#370" id="370">370</a>
 </pre><pre class="rust"><code><span class="doccomment">//! MLS group membership
 //!
 //! This module contains membership-related operations and exposes [`RemoveOperation`].
@@ -374,8 +376,8 @@
 <span class="kw">use </span>openmls_traits::signatures::Signer;
 
 <span class="kw">use crate</span>::{
-    binary_tree::array_representation::LeafNodeIndex, group::errors::CreateAddProposalError,
-    messages::group_info::GroupInfo, treesync::LeafNode,
+    binary_tree::array_representation::LeafNodeIndex, ciphersuite::hash_ref::ProposalRef,
+    group::errors::CreateAddProposalError, messages::group_info::GroupInfo, treesync::LeafNode,
 };
 
 <span class="kw">use super</span>::{
@@ -542,7 +544,7 @@
         backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider,
         signer: <span class="kw-2">&amp;</span><span class="kw">impl </span>Signer,
         key_package: <span class="kw-2">&amp;</span>KeyPackage,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;MlsMessageOut, ProposeAddMemberError&gt; {
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;(MlsMessageOut, ProposalRef), ProposeAddMemberError&gt; {
         <span class="self">self</span>.is_operational()<span class="question-mark">?</span>;
 
         <span class="kw">let </span>add_proposal = <span class="self">self
@@ -555,19 +557,20 @@
                 }
             })<span class="question-mark">?</span>;
 
-        <span class="self">self</span>.proposal_store
-            .add(QueuedProposal::from_authenticated_content(
-                <span class="self">self</span>.ciphersuite(),
-                backend,
-                add_proposal.clone(),
-            )<span class="question-mark">?</span>);
+        <span class="kw">let </span>proposal = QueuedProposal::from_authenticated_content(
+            <span class="self">self</span>.ciphersuite(),
+            backend,
+            add_proposal.clone(),
+        )<span class="question-mark">?</span>;
+        <span class="kw">let </span>proposal_ref = proposal.proposal_reference();
+        <span class="self">self</span>.proposal_store.add(proposal);
 
         <span class="kw">let </span>mls_message = <span class="self">self</span>.content_to_mls_message(add_proposal, backend)<span class="question-mark">?</span>;
 
         <span class="comment">// Since the state of the group might be changed, arm the state flag
         </span><span class="self">self</span>.flag_state_change();
 
-        <span class="prelude-val">Ok</span>(mls_message)
+        <span class="prelude-val">Ok</span>((mls_message, proposal_ref))
     }
 
     <span class="doccomment">/// Creates proposals to remove members from the group.
@@ -579,7 +582,7 @@
         backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider,
         signer: <span class="kw-2">&amp;</span><span class="kw">impl </span>Signer,
         member: LeafNodeIndex,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;MlsMessageOut, ProposeRemoveMemberError&gt; {
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;(MlsMessageOut, ProposalRef), ProposeRemoveMemberError&gt; {
         <span class="self">self</span>.is_operational()<span class="question-mark">?</span>;
 
         <span class="kw">let </span>remove_proposal = <span class="self">self
@@ -587,19 +590,20 @@
             .create_remove_proposal(<span class="self">self</span>.framing_parameters(), member, signer)
             .map_err(|<span class="kw">_</span>| ProposeRemoveMemberError::UnknownMember)<span class="question-mark">?</span>;
 
-        <span class="self">self</span>.proposal_store
-            .add(QueuedProposal::from_authenticated_content(
-                <span class="self">self</span>.ciphersuite(),
-                backend,
-                remove_proposal.clone(),
-            )<span class="question-mark">?</span>);
+        <span class="kw">let </span>proposal = QueuedProposal::from_authenticated_content(
+            <span class="self">self</span>.ciphersuite(),
+            backend,
+            remove_proposal.clone(),
+        )<span class="question-mark">?</span>;
+        <span class="kw">let </span>proposal_ref = proposal.proposal_reference();
+        <span class="self">self</span>.proposal_store.add(proposal);
 
         <span class="kw">let </span>mls_message = <span class="self">self</span>.content_to_mls_message(remove_proposal, backend)<span class="question-mark">?</span>;
 
         <span class="comment">// Since the state of the group might be changed, arm the state flag
         </span><span class="self">self</span>.flag_state_change();
 
-        <span class="prelude-val">Ok</span>(mls_message)
+        <span class="prelude-val">Ok</span>((mls_message, proposal_ref))
     }
 
     <span class="doccomment">/// Creates proposals to remove members from the group.
@@ -611,7 +615,7 @@
         backend: <span class="kw-2">&amp;</span><span class="kw">impl </span>OpenMlsCryptoProvider,
         signer: <span class="kw-2">&amp;</span><span class="kw">impl </span>Signer,
         member: <span class="kw-2">&amp;</span>Credential,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;MlsMessageOut, ProposeRemoveMemberError&gt; {
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;(MlsMessageOut, ProposalRef), ProposeRemoveMemberError&gt; {
         <span class="comment">// Find the user for the credential first.
         </span><span class="kw">let </span>member_index = <span class="self">self
             </span>.group
