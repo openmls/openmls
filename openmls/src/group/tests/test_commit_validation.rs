@@ -268,7 +268,6 @@ fn test_valsem201(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
 
     let psk_proposal = || {
         let secret = Secret::random(ciphersuite, backend, None).unwrap();
-        let psk_bundle = PskBundle::new(secret).unwrap();
         let rand = backend
             .rand()
             .random_vec(ciphersuite.hash_length())
@@ -280,7 +279,7 @@ fn test_valsem201(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
         )
         .unwrap();
         psk_id
-            .write_to_key_store(backend, ciphersuite, psk_bundle.secret().as_slice())
+            .write_to_key_store(backend, ciphersuite, secret.as_slice())
             .unwrap();
         queued(Proposal::PreSharedKey(PreSharedKeyProposal::new(psk_id)))
     };
