@@ -95,6 +95,7 @@
 <a href="#95" id="95">95</a>
 <a href="#96" id="96">96</a>
 <a href="#97" id="97">97</a>
+<a href="#98" id="98">98</a>
 </pre><pre class="rust"><code><span class="doccomment">//! Key schedule errors.
 
 </span><span class="kw">use </span>openmls_traits::types::CryptoError;
@@ -102,9 +103,7 @@
 
 <span class="kw">use </span><span class="kw">crate</span>::error::LibraryError;
 
-<span class="comment">// === Public ===
-
-</span><span class="doccomment">/// PSK secret error
+<span class="doccomment">/// PSK secret error
 </span><span class="attr">#[derive(Error, Debug, PartialEq, Clone)]
 </span><span class="kw">pub enum </span>PskError {
     <span class="doccomment">/// See [`LibraryError`] for more details.
@@ -116,6 +115,9 @@
     <span class="doccomment">/// The PSK could not be found in the key store.
     </span><span class="attr">#[error(<span class="string">&quot;The PSK could not be found in the key store.&quot;</span>)]
     </span>KeyNotFound,
+    <span class="doccomment">/// Failed to write PSK into keystore.
+    </span><span class="attr">#[error(<span class="string">&quot;Failed to write PSK into keystore.&quot;</span>)]
+    </span>KeyStore,
 }
 
 <span class="comment">// === Crate ===

@@ -511,16 +511,15 @@
 <a href="#511" id="511">511</a>
 <a href="#512" id="512">512</a>
 <a href="#513" id="513">513</a>
-<a href="#514" id="514">514</a>
-<a href="#515" id="515">515</a>
-<a href="#516" id="516">516</a>
-<a href="#517" id="517">517</a>
-<a href="#518" id="518">518</a>
 </pre><pre class="rust"><code><span class="doccomment">//! # MLS group errors
 //!
 //! This module contains errors that originate at lower levels and are partially re-exported in errors thrown by functions of the `MlsGroup` API.
 
-</span><span class="kw">use crate</span>::{
+</span><span class="kw">use </span>thiserror::Error;
+
+<span class="kw">pub use </span><span class="kw">super</span>::mls_group::errors::<span class="kw-2">*</span>;
+<span class="kw">use </span><span class="kw">super</span>::public_group::errors::{CreationFromExternalError, PublicGroupBuildError};
+<span class="kw">use crate</span>::{
     ciphersuite::signable::SignatureError,
     error::LibraryError,
     extensions::errors::{ExtensionError, InvalidExtensionError},
@@ -530,12 +529,6 @@
     schedule::errors::PskError,
     treesync::errors::<span class="kw-2">*</span>,
 };
-<span class="kw">use </span>thiserror::Error;
-
-<span class="comment">// === Public errors ===
-
-</span><span class="kw">pub use </span><span class="kw">super</span>::mls_group::errors::<span class="kw-2">*</span>;
-<span class="kw">use </span><span class="kw">super</span>::public_group::errors::{CreationFromExternalError, PublicGroupBuildError};
 
 <span class="doccomment">/// Welcome error
 </span><span class="attr">#[derive(Error, Debug, PartialEq, Clone)]
@@ -585,12 +578,9 @@
     <span class="doccomment">/// Unsupported extensions found in the KeyPackage of another member.
     </span><span class="attr">#[error(<span class="string">&quot;Unsupported extensions found in the KeyPackage of another member.&quot;</span>)]
     </span>UnsupportedExtensions,
-    <span class="doccomment">/// More than 2^16 PSKs were provided.
-    </span><span class="attr">#[error(<span class="string">&quot;More than 2^16 PSKs were provided.&quot;</span>)]
-    </span>PskTooManyKeys,
-    <span class="doccomment">/// The PSK could not be found in the key store.
-    </span><span class="attr">#[error(<span class="string">&quot;The PSK could not be found in the key store.&quot;</span>)]
-    </span>PskNotFound,
+    <span class="doccomment">/// See [`PskError`] for more details.
+    </span><span class="attr">#[error(transparent)]
+    </span>Psk(<span class="attr">#[from] </span>PskError),
     <span class="doccomment">/// No matching encryption key was found in the key store.
     </span><span class="attr">#[error(<span class="string">&quot;No matching encryption key was found in the key store.&quot;</span>)]
     </span>NoMatchingEncryptionKey,
