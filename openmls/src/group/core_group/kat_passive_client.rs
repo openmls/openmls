@@ -7,10 +7,9 @@ use crate::{
     framing::{
         MlsMessageIn, MlsMessageInBody, MlsMessageOut, ProcessedMessageContent, TlsFromBytes,
     },
-    group::{config::CryptoConfig, core_group::GroupSecrets, *},
+    group::{config::CryptoConfig, *},
     key_packages::*,
-    prelude::ProtocolVersion,
-    schedule::psk::{PreSharedKeyId, PskBundle},
+    schedule::psk::PreSharedKeyId,
     test_utils::*,
     treesync::{
         node::encryption_keys::{EncryptionKeyPair, EncryptionPrivateKey},
@@ -141,35 +140,17 @@ struct PassiveClient {
 }
 
 impl PassiveClient {
-    fn new(
-        group_config: MlsGroupConfig,
-        psk_ids: Vec<PreSharedKeyId>,
-        psks: Vec<ExternalPskTest>,
-    ) -> Self {
+    fn new(group_config: MlsGroupConfig, psks: Vec<ExternalPskTest>) -> Self {
         let backend = OpenMlsRustCrypto::default();
 
         // Load all PSKs into key store.
-        for psk_id in psk_ids.into_iter() {
-            let psk_bundle = {
-                let secret = {
-                    let entry = psks
-                        .iter()
-                        .find(|s| s.psk_id == psk_id.external_id().unwrap())
-                        .unwrap();
-
-                    Secret::from_slice(
-                        &entry.psk,
-                        ProtocolVersion::default(),
-                        group_config.crypto_config.ciphersuite,
-                    )
-                };
-
-                PskBundle::new(secret).unwrap()
-            };
-
-            backend
-                .key_store()
-                .store(&psk_id.tls_serialize_detached().unwrap(), &psk_bundle)
+        for psk in psks.into_iter() {
+            // TODO: Better API?
+            // We only construct this to easily save the PSK in the keystore.
+            // The nonce is not saved, so it can be empty...
+            let psk_id = PreSharedKeyId::external(psk.psk_id, vec![]);
+            psk_id
+                .write_to_key_store(&backend, group_config.crypto_config.ciphersuite, &psk.psk)
                 .unwrap();
         }
 
@@ -564,70 +545,7 @@ pub fn run_test_vector(test_vector: PassiveClientWelcomeTestVector) {
         ))
         .build();
 
-    let psk_ids = {
-        let init_priv = HpkePrivateKey::from(test_vector.init_priv.clone());
-
-        let key_package_bundle: KeyPackageBundle = {
-            let mut mls_message_key_package_slice = test_vector.key_package.as_slice();
-            let mls_message_key_package =
-                MlsMessageIn::tls_deserialize(&mut mls_message_key_package_slice).unwrap();
-            #[cfg(test)]
-            assert!(mls_message_key_package_slice.is_empty());
-
-            let kp = match mls_message_key_package.body {
-                MlsMessageInBody::KeyPackage(key_package) => key_package,
-                _ => panic!("Expected MLSMessage.wire_format == mls_key_package."),
-            };
-
-            KeyPackageBundle {
-                key_package: kp,
-                private_key: init_priv,
-            }
-        };
-
-        let welcome = {
-            let mut mls_message_welcome_slice = test_vector.welcome.as_slice();
-            let mls_message_welcome =
-                MlsMessageIn::tls_deserialize(&mut mls_message_welcome_slice).unwrap();
-            #[cfg(test)]
-            assert!(mls_message_welcome_slice.is_empty());
-
-            match mls_message_welcome.body {
-                MlsMessageInBody::Welcome(welcome) => welcome,
-                _ => panic!("Expected MLSMessage.wire_format == mls_welcome."),
-            }
-        };
-
-        println!("{welcome:?}");
-        // Verification:
-        // * Decrypt the Welcome message:
-        //  * Identify the entry in `welcome.secrets` corresponding to `key_package`
-        let encrypted_group_secrets = CoreGroup::find_key_package_from_welcome_secrets(
-            key_package_bundle
-                .key_package()
-                .hash_ref(backend.crypto())
-                .unwrap(),
-            welcome.secrets(),
-        )
-        .unwrap();
-        println!("{encrypted_group_secrets:?}");
-
-        // // //  * Decrypt the encrypted group secrets using `init_priv`
-        let group_secrets = GroupSecrets::try_from_ciphertext(
-            key_package_bundle.private_key(),
-            encrypted_group_secrets.encrypted_group_secrets(),
-            welcome.encrypted_group_info(),
-            welcome.ciphersuite(),
-            backend.crypto(),
-        )
-        .unwrap();
-        println!("{group_secrets:?}");
-
-        group_secrets.psks
-    };
-
-    let mut passive_client =
-        PassiveClient::new(group_config, psk_ids, test_vector.external_psks.clone());
+    let mut passive_client = PassiveClient::new(group_config, test_vector.external_psks.clone());
 
     passive_client.inject_key_package(
         test_vector.key_package,

@@ -2,12 +2,14 @@
 //! https://openmls.tech/book/message_validation.html#commit-message-validation
 
 use openmls_rust_crypto::OpenMlsRustCrypto;
-use openmls_traits::{key_store::OpenMlsKeyStore, signatures::Signer, types::Ciphersuite};
-use tls_codec::{Deserialize, Serialize};
-
+use openmls_traits::{signatures::Signer, types::Ciphersuite};
 use rstest::*;
 use rstest_reuse::{self, *};
+use tls_codec::{Deserialize, Serialize};
 
+use super::utils::{
+    generate_credential_bundle, generate_key_package, resign_message, CredentialWithKeyAndSigner,
+};
 use crate::{
     binary_tree::LeafNodeIndex,
     ciphersuite::signable::Signable,
@@ -19,10 +21,6 @@ use crate::{
         errors::ApplyUpdatePathError, node::parent_node::PlainUpdatePathNode, treekem::UpdatePath,
     },
     versions::ProtocolVersion,
-};
-
-use super::utils::{
-    generate_credential_bundle, generate_key_package, resign_message, CredentialWithKeyAndSigner,
 };
 
 struct CommitValidationTestSetup {
@@ -270,7 +268,6 @@ fn test_valsem201(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
 
     let psk_proposal = || {
         let secret = Secret::random(ciphersuite, backend, None).unwrap();
-        let psk_bundle = PskBundle::new(secret).unwrap();
         let rand = backend
             .rand()
             .random_vec(ciphersuite.hash_length())
@@ -281,8 +278,9 @@ fn test_valsem201(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
             Psk::External(ExternalPsk::new(rand)),
         )
         .unwrap();
-        let psk_key = psk_id.tls_serialize_detached().unwrap();
-        backend.key_store().store(&psk_key, &psk_bundle).unwrap();
+        psk_id
+            .write_to_key_store(backend, ciphersuite, secret.as_slice())
+            .unwrap();
         queued(Proposal::PreSharedKey(PreSharedKeyProposal::new(psk_id)))
     };
 

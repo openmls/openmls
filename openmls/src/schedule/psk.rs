@@ -178,29 +178,87 @@ pub struct PreSharedKeyId {
 }
 
 impl PreSharedKeyId {
-    /// Create a new `PreSharedKeyID`
+    /// Construct a `PreSharedKeyID` with a random nonce.
     pub fn new(
         ciphersuite: Ciphersuite,
         rand: &impl OpenMlsRand,
         psk: Psk,
     ) -> Result<Self, CryptoError> {
-        Ok(Self {
-            psk,
-            psk_nonce: rand
-                .random_vec(ciphersuite.hash_length())
-                .map_err(|_| CryptoError::InsufficientRandomness)?
-                .into(),
-        })
+        let psk_nonce = rand
+            .random_vec(ciphersuite.hash_length())
+            .map_err(|_| CryptoError::InsufficientRandomness)?
+            .into();
+
+        Ok(Self { psk, psk_nonce })
     }
 
-    /// Return the PSK
+    /// Construct an external `PreSharedKeyID`.
+    pub fn external(psk_id: Vec<u8>, psk_nonce: Vec<u8>) -> Self {
+        let psk = Psk::External(ExternalPsk::new(psk_id));
+
+        Self {
+            psk,
+            psk_nonce: psk_nonce.into(),
+        }
+    }
+
+    /// Construct a resumption `PreSharedKeyID`.
+    pub fn resumption(
+        usage: ResumptionPskUsage,
+        psk_group_id: GroupId,
+        psk_epoch: GroupEpoch,
+        psk_nonce: Vec<u8>,
+    ) -> Self {
+        let psk = Psk::Resumption(ResumptionPsk::new(usage, psk_group_id, psk_epoch));
+
+        Self {
+            psk,
+            psk_nonce: psk_nonce.into(),
+        }
+    }
+
+    /// Return the PSK.
     pub fn psk(&self) -> &Psk {
         &self.psk
     }
 
-    /// Return the PSK nonce
+    /// Return the PSK nonce.
     pub fn psk_nonce(&self) -> &[u8] {
         self.psk_nonce.as_slice()
+    }
+
+    /// Save this `PreSharedKeyId` in the keystore.
+    ///
+    /// Note: The nonce is not saved as it must be unique for each time it's being applied.
+    pub fn write_to_key_store<KeyStore: OpenMlsKeyStore>(
+        &self,
+        backend: &impl OpenMlsCryptoProvider<KeyStoreProvider = KeyStore>,
+        ciphersuite: Ciphersuite,
+        psk: &[u8],
+    ) -> Result<(), PskError> {
+        let keystore_id = self.keystore_id()?;
+
+        let psk_bundle = {
+            let secret = Secret::from_slice(psk, ProtocolVersion::default(), ciphersuite);
+
+            PskBundle { secret }
+        };
+
+        backend
+            .key_store()
+            .store(&keystore_id, &psk_bundle)
+            .map_err(|_| PskError::KeyStore)
+    }
+
+    pub(crate) fn keystore_id(&self) -> Result<Vec<u8>, LibraryError> {
+        let psk_id_with_empty_nonce = PreSharedKeyId {
+            psk: self.psk.clone(),
+            psk_nonce: VLBytes::new(vec![]),
+        };
+
+        psk_id_with_empty_nonce
+            .tls_serialize_detached()
+            .map_err(LibraryError::missing_bound_check)
     }
 }
 
@@ -210,13 +268,6 @@ impl PreSharedKeyId {
         Self {
             psk,
             psk_nonce: psk_nonce.into(),
-        }
-    }
-
-    pub(crate) fn external_id(&self) -> Option<&[u8]> {
-        match self.psk {
-            Psk::External(ref external_psk) => Some(external_psk.psk_id.as_slice()),
-            _ => None,
         }
     }
 }
@@ -274,11 +325,7 @@ impl PskSecret {
         // Fetch the PskBundles from the key store and make sure we have all of them
         let mut psk_bundles: Vec<PskBundle> = Vec::new();
         for psk_id in psk_ids {
-            if let Some(psk_bundle) = backend.key_store().read(
-                &psk_id
-                    .tls_serialize_detached()
-                    .map_err(LibraryError::missing_bound_check)?,
-            ) {
+            if let Some(psk_bundle) = backend.key_store().read(&psk_id.keystore_id()?) {
                 psk_bundles.push(psk_bundle);
             } else {
                 debug_assert!(false, "PSK not found in the key store.");

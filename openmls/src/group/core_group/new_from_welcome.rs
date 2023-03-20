@@ -4,7 +4,6 @@ use openmls_traits::key_store::OpenMlsKeyStore;
 use crate::{
     ciphersuite::hash_ref::HashReference,
     group::{core_group::*, errors::WelcomeError},
-    schedule::errors::PskError,
     treesync::{
         errors::{DerivePathError, PublicTreeError},
         node::encryption_keys::EncryptionKeyPair,
@@ -61,12 +60,7 @@ impl CoreGroup {
         )?;
 
         // Prepare the PskSecret
-        let psk_secret =
-            PskSecret::new(ciphersuite, backend, &group_secrets.psks).map_err(|e| match e {
-                PskError::LibraryError(e) => e.into(),
-                PskError::TooManyKeys => WelcomeError::PskTooManyKeys,
-                PskError::KeyNotFound => WelcomeError::PskNotFound,
-            })?;
+        let psk_secret = PskSecret::new(ciphersuite, backend, &group_secrets.psks)?;
 
         // Create key schedule
         let mut key_schedule = KeySchedule::init(

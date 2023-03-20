@@ -32,13 +32,11 @@
 //!   the psk_secret as described in the specification and verify that it
 //!   matches the provided psk_secret
 
-use ::serde::Deserialize;
-use openmls_traits::{crypto::OpenMlsCrypto, key_store::OpenMlsKeyStore};
-use tls_codec::Serialize;
+use openmls_traits::crypto::OpenMlsCrypto;
+use serde::Deserialize;
 
-use crate::{prelude_test::Secret, test_utils::*, versions::ProtocolVersion};
-
-use super::psk::{ExternalPsk, PreSharedKeyId, Psk, PskBundle, PskSecret};
+use super::psk::{ExternalPsk, PreSharedKeyId, Psk, PskSecret};
+use crate::test_utils::*;
 
 #[derive(Deserialize)]
 struct PskElement {
@@ -79,18 +77,9 @@ fn run_test_vector(test: TestElement, backend: &impl OpenMlsCryptoProvider) -> R
 
             let psk_id = PreSharedKeyId::new_with_nonce(psk_type, psk.psk_nonce.clone());
 
-            let psk_bundle = PskBundle::new(Secret::from_slice(
-                &psk.psk,
-                ProtocolVersion::Mls10,
-                ciphersuite,
-            ))
-            .unwrap();
-
-            backend
-                .key_store()
-                .store(&psk_id.tls_serialize_detached().unwrap(), &psk_bundle)
+            psk_id
+                .write_to_key_store(backend, ciphersuite, &psk.psk)
                 .unwrap();
-
             psk_id
         })
         .collect::<Vec<_>>();
