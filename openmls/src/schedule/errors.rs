@@ -5,8 +5,6 @@ use thiserror::Error;
 
 use crate::error::LibraryError;
 
-// === Public ===
-
 /// PSK secret error
 #[derive(Error, Debug, PartialEq, Clone)]
 pub enum PskError {
@@ -19,6 +17,9 @@ pub enum PskError {
     /// The PSK could not be found in the key store.
     #[error("The PSK could not be found in the key store.")]
     KeyNotFound,
+    /// Failed to write PSK into keystore.
+    #[error("Failed to write PSK into keystore.")]
+    KeyStore,
 }
 
 // === Crate ===

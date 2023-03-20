@@ -147,7 +147,6 @@ impl ResumptionPsk {
 pub enum Psk {
     #[tls_codec(discriminant = 1)]
     External(ExternalPsk),
-    #[tls_codec(discriminant = 2)]
     Resumption(ResumptionPsk),
 }
 
@@ -230,15 +229,14 @@ impl PreSharedKeyId {
 
     /// Save this `PreSharedKeyId` in the keystore.
     ///
-    /// Note: The nonce is not saved as it must be present in the messages when processing PSKs.
+    /// Note: The nonce is not saved as it must be unique for each time it's being applied.
     pub fn write_to_key_store<KeyStore: OpenMlsKeyStore>(
         &self,
         backend: &impl OpenMlsCryptoProvider<KeyStoreProvider = KeyStore>,
         ciphersuite: Ciphersuite,
         psk: &[u8],
-    ) -> Result<(), KeyStore::Error> {
-        // TODO: Introduce PskKeyStoreError? -> Just rely on tls-codec not being broken?
-        let keystore_id = self.keystore_id().unwrap();
+    ) -> Result<(), PskError> {
+        let keystore_id = self.keystore_id()?;
 
         let psk_bundle = {
             let secret = Secret::from_slice(psk, ProtocolVersion::default(), ciphersuite);
@@ -246,20 +244,21 @@ impl PreSharedKeyId {
             PskBundle { secret }
         };
 
-        backend.key_store().store(&keystore_id, &psk_bundle)
+        backend
+            .key_store()
+            .store(&keystore_id, &psk_bundle)
+            .map_err(|_| PskError::KeyStore)
     }
 
     pub(crate) fn keystore_id(&self) -> Result<Vec<u8>, LibraryError> {
-        let psk_id_with_empty_nonce = {
-            let mut psk_id = self.clone();
-            psk_id.psk_nonce = VLBytes::new(vec![]);
-            psk_id
+        let psk_id_with_empty_nonce = PreSharedKeyId {
+            psk: self.psk.clone(),
+            psk_nonce: VLBytes::new(vec![]),
         };
 
         psk_id_with_empty_nonce
-            // TODO: Just rely on tls-codec not being broken?
             .tls_serialize_detached()
-            .map_err(|_| LibraryError::custom("tls-codec failed."))
+            .map_err(LibraryError::missing_bound_check)
     }
 }
 
