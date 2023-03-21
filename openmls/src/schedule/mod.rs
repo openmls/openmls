@@ -146,7 +146,7 @@ pub(crate) mod psk;
 // Private
 use errors::*;
 use message_secrets::MessageSecrets;
-use psk::*;
+use psk::PskSecret;
 
 // Tests
 #[cfg(any(feature = "test-utils", test))]
@@ -157,6 +157,7 @@ pub mod kat_psk_secret;
 mod unit_tests;
 
 // Public types
+pub use psk::{ExternalPsk, PreSharedKeyId, Psk};
 
 /// A group secret that can be used among members to prove that a member was
 /// part of a group in a given epoch.

@@ -290,7 +290,6 @@ impl PreSharedKeyProposal {
     }
 }
 
-#[cfg(test)]
 impl PreSharedKeyProposal {
     /// Create a new PSK proposal
     pub(crate) fn new(psk: PreSharedKeyId) -> Self {

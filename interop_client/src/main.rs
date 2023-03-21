@@ -8,6 +8,7 @@ use clap_derive::*;
 use openmls::prelude::*;
 
 use openmls::prelude::config::CryptoConfig;
+use openmls::schedule::{ExternalPsk, PreSharedKeyId, Psk};
 use openmls::treesync::test_utils::{read_keys_from_key_store, write_keys_from_key_store};
 use openmls_basic_credential::SignatureKeyPair;
 use openmls_traits::OpenMlsCryptoProvider;
@@ -41,6 +42,7 @@ type PendingState = (
     HpkeKeyPair,
     Credential,
     SignatureKeyPair,
+    OpenMlsRustCrypto,
 );
 
 /// This is the main state struct of the interop client. It keeps track of the
@@ -49,8 +51,8 @@ type PendingState = (
 /// transaction ids to key package hashes.
 pub struct MlsClientImpl {
     groups: Mutex<Vec<InteropGroup>>,
-    pending_key_packages: Mutex<HashMap<Vec<u8>, PendingState>>,
-    transaction_id_map: Mutex<HashMap<u32, Vec<Vec<u8>>>>, // List of proposals
+    pending_state: Mutex<HashMap<Vec<u8>, PendingState>>,
+    transaction_id_map: Mutex<HashMap<u32, Vec<u8>>>, // Indirection, linking to pending key packages
 }
 
 impl MlsClientImpl {
@@ -58,7 +60,7 @@ impl MlsClientImpl {
     fn new() -> Self {
         MlsClientImpl {
             groups: Mutex::new(Vec::new()),
-            pending_key_packages: Mutex::new(HashMap::new()),
+            pending_state: Mutex::new(HashMap::new()),
             transaction_id_map: Mutex::new(HashMap::new()),
         }
     }
@@ -236,8 +238,8 @@ impl MlsClient for MlsClientImpl {
         let encryption_key_pair =
             read_keys_from_key_store(&crypto_provider, key_package.leaf_node().encryption_key());
 
-        let transaction_id_map = self.transaction_id_map.lock().unwrap();
-        let transaction_id = transaction_id_map.len() as u32;
+        let transaction_id: [u8; 4] = crypto_provider.rand().random_array().unwrap();
+        let transaction_id = u32::from_be_bytes(transaction_id);
 
         let key_package_msg: MlsMessageOut = key_package.clone().into();
         let response = CreateKeyPackageResponse {
@@ -253,7 +255,11 @@ impl MlsClient for MlsClientImpl {
             signature_priv: signature_keys.private().to_vec(),
         };
 
-        self.pending_key_packages.lock().unwrap().insert(
+        self.transaction_id_map
+            .lock()
+            .unwrap()
+            .insert(transaction_id, create_kp_request.identity.clone());
+        self.pending_state.lock().unwrap().insert(
             create_kp_request.identity.clone(),
             (
                 key_package,
@@ -261,6 +267,7 @@ impl MlsClient for MlsClientImpl {
                 encryption_key_pair,
                 credential,
                 signature_keys,
+                crypto_provider,
             ),
         );
 
@@ -273,7 +280,10 @@ impl MlsClient for MlsClientImpl {
     ) -> Result<tonic::Response<JoinGroupResponse>, tonic::Status> {
         log::debug!("Joining a group");
         let join_group_request = request.get_ref();
-        let crypto_provider = OpenMlsRustCrypto::default();
+        log::trace!(
+            "   {}",
+            String::from_utf8_lossy(&join_group_request.identity)
+        );
 
         let wire_format_policy = wire_format_policy(join_group_request.encrypt_handshake);
         let mls_group_config = MlsGroupConfig::builder()
@@ -281,14 +291,20 @@ impl MlsClient for MlsClientImpl {
             .use_ratchet_tree_extension(true)
             .build();
 
-        let mut pending_key_packages = self.pending_key_packages.lock().unwrap();
-        let (my_key_package, private_key, encryption_keypair, _my_credential, my_signature_keys) =
-            pending_key_packages
-                .remove(&join_group_request.identity)
-                .ok_or(Status::aborted(format!(
-                    "failed to find key package for identity {:x?}",
-                    join_group_request.identity
-                )))?;
+        let mut pending_key_packages = self.pending_state.lock().unwrap();
+        let (
+            my_key_package,
+            private_key,
+            encryption_keypair,
+            _my_credential,
+            my_signature_keys,
+            crypto_provider,
+        ) = pending_key_packages
+            .remove(&join_group_request.identity)
+            .ok_or(Status::aborted(format!(
+                "failed to find key package for identity {:x?}",
+                join_group_request.identity
+            )))?;
 
         // Store keys so OpenMLS can find them.
         crypto_provider
@@ -492,8 +508,67 @@ impl MlsClient for MlsClientImpl {
 
     async fn store_psk(
         &self,
-        _request: tonic::Request<StorePskRequest>,
+        request: tonic::Request<StorePskRequest>,
     ) -> Result<tonic::Response<StorePskResponse>, tonic::Status> {
+        log::debug!("Store PSK");
+        let store_proposal = request.get_ref();
+
+        let raw_psk_id = store_proposal.psk_id.clone();
+        log::trace!("   psk_id {:x?}", raw_psk_id);
+        let external_psk = Psk::External(ExternalPsk::new(raw_psk_id));
+
+        fn store(
+            ciphersuite: Ciphersuite,
+            crypto_provider: &OpenMlsRustCrypto,
+            external_psk: Psk,
+            secret: &[u8],
+        ) -> Result<(), tonic::Status> {
+            let psk_id = PreSharedKeyId::new(ciphersuite, crypto_provider.rand(), external_psk)
+                .map_err(|_| Status::internal("unable to create PreSharedKeyId from raw psk_id"))?;
+            psk_id
+                .write_to_key_store(crypto_provider, ciphersuite, secret)
+                .map_err(|_| tonic::Status::new(tonic::Code::Internal, "unable to store PSK"))?;
+            Ok(())
+        }
+
+        // This might be for a transaction ID or a state ID, so either a group, or not.
+        // Transaction IDs are random. We assume that if it exists, it is what we want.
+        let transaction_id_map = self.transaction_id_map.lock().unwrap();
+        let pending_state_id = transaction_id_map.get(&store_proposal.state_or_transaction_id);
+        if let Some(pending_state_id) = pending_state_id {
+            let mut pending_state = self.pending_state.lock().unwrap();
+            let pending_state = pending_state
+                .get_mut(pending_state_id)
+                .ok_or(Status::internal("Unable to retrieve pending state"))?;
+
+            store(
+                pending_state.0.ciphersuite(),
+                &pending_state.5,
+                external_psk,
+                &store_proposal.psk_secret,
+            )?;
+        } else {
+            // So we have a group
+            let mut groups = self.groups.lock().unwrap();
+            let interop_group = groups
+                .get_mut(store_proposal.state_or_transaction_id as usize)
+                .ok_or_else(|| {
+                    tonic::Status::new(tonic::Code::InvalidArgument, "unknown state_id")
+                })?;
+            log::trace!("   in epoch {:?}", interop_group.group.epoch());
+            log::trace!(
+                "   actor {:x?}",
+                String::from_utf8_lossy(interop_group.group.own_identity().unwrap())
+            );
+
+            store(
+                interop_group.group.ciphersuite(),
+                &interop_group.crypto_provider,
+                external_psk,
+                &store_proposal.psk_secret,
+            )?;
+        }
+
         Ok(Response::new(StorePskResponse::default()))
     }
 
@@ -641,7 +716,7 @@ impl MlsClient for MlsClientImpl {
         &self,
         _request: tonic::Request<ReInitProposalRequest>,
     ) -> Result<tonic::Response<ProposalResponse>, tonic::Status> {
-        Ok(Response::new(ProposalResponse::default()))
+        Err(tonic::Status::unimplemented("Re-init is not implemented"))
     }
 
     async fn commit(
@@ -858,30 +933,110 @@ impl MlsClient for MlsClientImpl {
 
     async fn group_info(
         &self,
-        _request: tonic::Request<GroupInfoRequest>,
+        request: tonic::Request<GroupInfoRequest>,
     ) -> Result<tonic::Response<GroupInfoResponse>, tonic::Status> {
-        Ok(Response::new(GroupInfoResponse::default()))
+        log::debug!("Getting group info");
+        let obj = request.get_ref();
+
+        let mut groups = self.groups.lock().unwrap();
+        let interop_group = groups
+            .get_mut(obj.state_id as usize)
+            .ok_or_else(|| tonic::Status::new(tonic::Code::InvalidArgument, "unknown state_id"))?;
+        log::trace!("   in epoch {:?}", interop_group.group.epoch());
+        log::trace!(
+            "   actor {:x?}",
+            String::from_utf8_lossy(interop_group.group.own_identity().unwrap())
+        );
+
+        let group_info = interop_group
+            .group
+            .export_group_info(
+                &interop_group.crypto_provider,
+                &interop_group.signature_keys,
+                !obj.external_tree,
+            )
+            .map_err(|_| tonic::Status::internal("Unable to export group info from the group"))?
+            .tls_serialize_detached()
+            .map_err(|_| tonic::Status::internal("Unable to serialize group info message."))?;
+
+        let ratchet_tree = if obj.external_tree {
+            interop_group
+                .group
+                .export_ratchet_tree()
+                .tls_serialize_detached()
+                .map_err(|_| tonic::Status::internal("Unable to serialize ratchet tree."))?
+        } else {
+            vec![]
+        };
+
+        Ok(Response::new(GroupInfoResponse {
+            group_info,
+            ratchet_tree,
+        }))
     }
 
     async fn external_psk_proposal(
         &self,
-        _request: tonic::Request<ExternalPskProposalRequest>,
+        request: tonic::Request<ExternalPskProposalRequest>,
     ) -> Result<tonic::Response<ProposalResponse>, tonic::Status> {
-        Ok(Response::new(ProposalResponse::default()))
+        log::debug!("Create external PSK proposal");
+        let psk_proposal_request = request.get_ref();
+
+        let mut groups = self.groups.lock().unwrap();
+        let interop_group = groups
+            .get_mut(psk_proposal_request.state_id as usize)
+            .ok_or_else(|| tonic::Status::new(tonic::Code::InvalidArgument, "unknown state_id"))?;
+        log::trace!("   in epoch {:?}", interop_group.group.epoch());
+        log::trace!(
+            "   actor {:x?}",
+            String::from_utf8_lossy(interop_group.group.own_identity().unwrap())
+        );
+
+        let raw_psk_id = psk_proposal_request.psk_id.clone();
+        log::trace!("   psk_id {:x?}", raw_psk_id);
+        let external_psk = Psk::External(ExternalPsk::new(raw_psk_id));
+
+        let psk_id = PreSharedKeyId::new(
+            interop_group.group.ciphersuite(),
+            interop_group.crypto_provider.rand(),
+            external_psk,
+        )
+        .map_err(|_| Status::internal("unable to create PreSharedKeyId from raw psk_id"))?;
+
+        let proposal = interop_group
+            .group
+            .propose_external_psk(
+                &interop_group.crypto_provider,
+                &interop_group.signature_keys,
+                psk_id,
+            )
+            .map_err(|_| tonic::Status::internal("failed to generate psk proposal"))?;
+
+        // Store the proposal for potential future use.
+        interop_group.messages_out.push(proposal.clone().into());
+
+        // log::trace!("   proposal: {proposal:#x?}");
+        let proposal = proposal.to_bytes().unwrap();
+
+        Ok(Response::new(ProposalResponse { proposal }))
     }
 
     async fn resumption_psk_proposal(
         &self,
         _request: tonic::Request<ResumptionPskProposalRequest>,
     ) -> Result<tonic::Response<ProposalResponse>, tonic::Status> {
-        Ok(Response::new(ProposalResponse::default()))
+        Err(tonic::Status::unimplemented(
+            "Resumption PSK is not implemented",
+        ))
     }
 
     async fn group_context_extensions_proposal(
         &self,
         _request: tonic::Request<GroupContextExtensionsProposalRequest>,
     ) -> Result<tonic::Response<ProposalResponse>, tonic::Status> {
-        Ok(Response::new(ProposalResponse::default()))
+        Err(tonic::Status::unimplemented(
+            "Group context extension is not implemented yet",
+        ))
     }
 }
 
