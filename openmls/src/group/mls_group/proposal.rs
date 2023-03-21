@@ -15,11 +15,9 @@ impl MlsGroup {
     ) -> Result<MlsMessageOut, ProposeAddMemberError> {
         self.is_operational()?;
 
-        let add_proposal = self.group.create_presharedkey_proposal(
-            self.framing_parameters(),
-            psk_id.into(),
-            signer,
-        )?;
+        let add_proposal =
+            self.group
+                .create_presharedkey_proposal(self.framing_parameters(), psk_id, signer)?;
 
         self.proposal_store
             .add(QueuedProposal::from_authenticated_content(
