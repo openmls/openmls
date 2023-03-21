@@ -273,11 +273,16 @@ impl PreSharedKeyId {
 }
 
 /// `PskLabel` is used in the final concatentation of PSKs before they are
-/// injected in the key schedule. struct {
+/// injected in the key schedule.
+///
+/// ```c
+/// // draft-ietf-mls-protocol-18
+/// struct {
 ///     PreSharedKeyID id;
 ///     uint16 index;
 ///     uint16 count;
 /// } PSKLabel;
+/// ```
 #[derive(TlsSerialize, TlsSize)]
 pub(crate) struct PskLabel<'a> {
     pub(crate) id: &'a PreSharedKeyId,
@@ -334,24 +339,38 @@ impl PskSecret {
         }
 
         let mls_version = ProtocolVersion::default();
-        let mut psk_secret = Secret::zero(ciphersuite, mls_version);
-        for ((index, psk_bundle), psk_id) in psk_bundles.iter().enumerate().zip(psk_ids) {
-            let zero_secret = Secret::zero(ciphersuite, mls_version);
-            let psk_extracted = zero_secret
-                .hkdf_extract(backend, psk_bundle.secret())
-                .map_err(LibraryError::unexpected_crypto_error)?;
-            let psk_label = PskLabel::new(psk_id, index as u16, num_psks)
-                .tls_serialize_detached()
-                .map_err(LibraryError::missing_bound_check)?;
 
-            let psk_input = psk_extracted
-                .kdf_expand_label(
-                    backend,
-                    "derived psk",
-                    &psk_label,
-                    ciphersuite.hash_length(),
-                )
-                .map_err(LibraryError::unexpected_crypto_error)?;
+        // Following comments are from `draft-ietf-mls-protocol-18`.
+        //
+        // psk_secret_[0] = 0
+        let mut psk_secret = Secret::zero(ciphersuite, mls_version);
+
+        for ((index, psk_bundle), psk_id) in psk_bundles.iter().enumerate().zip(psk_ids) {
+            // psk_extracted_[i] = KDF.Extract(0, psk_[i])
+            let psk_extracted = {
+                let zero_secret = Secret::zero(ciphersuite, mls_version);
+                zero_secret
+                    .hkdf_extract(backend, psk_bundle.secret())
+                    .map_err(LibraryError::unexpected_crypto_error)?
+            };
+
+            // psk_input_[i] = ExpandWithLabel( psk_extracted_[i], "derived psk", PSKLabel, KDF.Nh)
+            let psk_input = {
+                let psk_label = PskLabel::new(psk_id, index as u16, num_psks)
+                    .tls_serialize_detached()
+                    .map_err(LibraryError::missing_bound_check)?;
+
+                psk_extracted
+                    .kdf_expand_label(
+                        backend,
+                        "derived psk",
+                        &psk_label,
+                        ciphersuite.hash_length(),
+                    )
+                    .map_err(LibraryError::unexpected_crypto_error)?
+            };
+
+            // psk_secret_[i] = KDF.Extract(psk_input_[i-1], psk_secret_[i-1])
             psk_secret = psk_input
                 .hkdf_extract(backend, &psk_secret)
                 .map_err(LibraryError::unexpected_crypto_error)?;
