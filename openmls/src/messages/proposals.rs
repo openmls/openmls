@@ -73,7 +73,7 @@ pub enum ProposalType {
     Add = 1,
     Update = 2,
     Remove = 3,
-    Presharedkey = 4,
+    PreSharedKey = 4,
     Reinit = 5,
     ExternalInit = 6,
     GroupContextExtensions = 7,
@@ -88,7 +88,7 @@ impl ProposalType {
             ProposalType::Add
             | ProposalType::Update
             | ProposalType::Remove
-            | ProposalType::Presharedkey
+            | ProposalType::PreSharedKey
             | ProposalType::Reinit
             | ProposalType::ExternalInit
             | ProposalType::GroupContextExtensions => true,
@@ -100,7 +100,7 @@ impl ProposalType {
     pub fn is_path_required(&self) -> bool {
         match self {
             Self::Add
-            | Self::Presharedkey
+            | Self::PreSharedKey
             | Self::Reinit
             | Self::AppAck
             | Self::GroupContextExtensions => false,
@@ -116,7 +116,7 @@ impl TryFrom<u16> for ProposalType {
             1 => Ok(ProposalType::Add),
             2 => Ok(ProposalType::Update),
             3 => Ok(ProposalType::Remove),
-            4 => Ok(ProposalType::Presharedkey),
+            4 => Ok(ProposalType::PreSharedKey),
             5 => Ok(ProposalType::Reinit),
             6 => Ok(ProposalType::ExternalInit),
             7 => Ok(ProposalType::GroupContextExtensions),
@@ -178,7 +178,7 @@ impl Proposal {
             Proposal::Add(_) => ProposalType::Add,
             Proposal::Update(_) => ProposalType::Update,
             Proposal::Remove(_) => ProposalType::Remove,
-            Proposal::PreSharedKey(_) => ProposalType::Presharedkey,
+            Proposal::PreSharedKey(_) => ProposalType::PreSharedKey,
             Proposal::ReInit(_) => ProposalType::Reinit,
             Proposal::ExternalInit(_) => ProposalType::ExternalInit,
             Proposal::GroupContextExtensions(_) => ProposalType::GroupContextExtensions,
