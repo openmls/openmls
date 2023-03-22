@@ -174,10 +174,10 @@ impl ResumptionPsk {
 #[repr(u8)]
 pub enum Psk {
     /// An external PSK provided by the application.
-    #[tls_codec(discriminant = "PskType::External")]
+    #[tls_codec(discriminant = 1)]
     External(ExternalPsk),
     /// A resumption PSK derived from the MLS key schedule.
-    #[tls_codec(discriminant = "PskType::Resumption")]
+    #[tls_codec(discriminant = 2)]
     Resumption(ResumptionPsk),
 }
 

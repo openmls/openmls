@@ -16,7 +16,7 @@ resolver = "2"
 
 # Patching unreleased crates
 [workspace.dependencies]
-tls_codec = { git = "https://github.com/RustCrypto/formats.git", rev="67ce6cc76ed2020c37db911036b058a2926f778b", features = ["derive", "serde", "mls"] }
+tls_codec = { version = "0.3.0-pre.1", features = ["derive", "serde", "mls"] }
 
 [patch.crates-io.hpke-rs]
 git = "https://github.com/franziskuskiefer/hpke-rs.git"
