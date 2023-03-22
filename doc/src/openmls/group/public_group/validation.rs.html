@@ -397,31 +397,98 @@
 <a href="#397" id="397">397</a>
 <a href="#398" id="398">398</a>
 <a href="#399" id="399">399</a>
+<a href="#400" id="400">400</a>
+<a href="#401" id="401">401</a>
+<a href="#402" id="402">402</a>
+<a href="#403" id="403">403</a>
+<a href="#404" id="404">404</a>
+<a href="#405" id="405">405</a>
+<a href="#406" id="406">406</a>
+<a href="#407" id="407">407</a>
+<a href="#408" id="408">408</a>
+<a href="#409" id="409">409</a>
+<a href="#410" id="410">410</a>
+<a href="#411" id="411">411</a>
+<a href="#412" id="412">412</a>
+<a href="#413" id="413">413</a>
+<a href="#414" id="414">414</a>
+<a href="#415" id="415">415</a>
+<a href="#416" id="416">416</a>
+<a href="#417" id="417">417</a>
+<a href="#418" id="418">418</a>
+<a href="#419" id="419">419</a>
+<a href="#420" id="420">420</a>
+<a href="#421" id="421">421</a>
+<a href="#422" id="422">422</a>
+<a href="#423" id="423">423</a>
+<a href="#424" id="424">424</a>
+<a href="#425" id="425">425</a>
+<a href="#426" id="426">426</a>
+<a href="#427" id="427">427</a>
+<a href="#428" id="428">428</a>
+<a href="#429" id="429">429</a>
+<a href="#430" id="430">430</a>
+<a href="#431" id="431">431</a>
+<a href="#432" id="432">432</a>
+<a href="#433" id="433">433</a>
+<a href="#434" id="434">434</a>
+<a href="#435" id="435">435</a>
+<a href="#436" id="436">436</a>
+<a href="#437" id="437">437</a>
+<a href="#438" id="438">438</a>
+<a href="#439" id="439">439</a>
+<a href="#440" id="440">440</a>
+<a href="#441" id="441">441</a>
+<a href="#442" id="442">442</a>
+<a href="#443" id="443">443</a>
+<a href="#444" id="444">444</a>
+<a href="#445" id="445">445</a>
+<a href="#446" id="446">446</a>
+<a href="#447" id="447">447</a>
+<a href="#448" id="448">448</a>
+<a href="#449" id="449">449</a>
+<a href="#450" id="450">450</a>
+<a href="#451" id="451">451</a>
+<a href="#452" id="452">452</a>
+<a href="#453" id="453">453</a>
+<a href="#454" id="454">454</a>
+<a href="#455" id="455">455</a>
+<a href="#456" id="456">456</a>
+<a href="#457" id="457">457</a>
+<a href="#458" id="458">458</a>
+<a href="#459" id="459">459</a>
+<a href="#460" id="460">460</a>
+<a href="#461" id="461">461</a>
+<a href="#462" id="462">462</a>
+<a href="#463" id="463">463</a>
+<a href="#464" id="464">464</a>
+<a href="#465" id="465">465</a>
 </pre><pre class="rust"><code><span class="doccomment">//! This module contains validation functions for incoming messages
 //! as defined in &lt;https://github.com/openmls/openmls/wiki/Message-validation&gt;
 
-</span><span class="kw">use </span>std::collections::HashSet;
+</span><span class="kw">use </span>std::collections::{BTreeSet, HashSet};
 
+<span class="kw">use </span><span class="kw">super</span>::PublicGroup;
+<span class="attr">#[cfg(test)]
+</span><span class="kw">use </span><span class="kw">crate</span>::treesync::errors::LeafNodeValidationError;
 <span class="kw">use crate</span>::{
     binary_tree::array_representation::LeafNodeIndex,
     framing::{
         mls_auth_content_in::VerifiableAuthenticatedContentIn, ContentType, ProtocolMessage,
         Sender, WireFormat,
     },
-    group::errors::ExternalCommitValidationError,
     group::{
-        errors::{ProposalValidationError, ValidationError},
+        errors::{ExternalCommitValidationError, ProposalValidationError, ValidationError},
         past_secrets::MessageSecretsStore,
         Member, ProposalQueue,
     },
     messages::proposals::{Proposal, ProposalOrRefType, ProposalType},
+    schedule::{
+        errors::PskError,
+        psk::{Psk, ResumptionPskUsage},
+    },
     treesync::node::leaf_node::LeafNode,
 };
-
-<span class="attr">#[cfg(test)]
-</span><span class="kw">use </span><span class="kw">crate</span>::treesync::errors::LeafNodeValidationError;
-
-<span class="kw">use </span><span class="kw">super</span>::PublicGroup;
 
 <span class="kw">impl </span>PublicGroup {
     <span class="comment">// === Messages ===
@@ -705,6 +772,71 @@
             }
         }
         <span class="prelude-val">Ok</span>(encryption_keys)
+    }
+
+    <span class="doccomment">/// Validate PreSharedKey proposals.
+    ///
+    /// This method implements the following checks:
+    ///
+    /// * ValSem401
+    /// * ValSem402
+    /// * ValSem403
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>validate_pre_shared_key_proposals(
+        <span class="kw-2">&amp;</span><span class="self">self</span>,
+        proposal_queue: <span class="kw-2">&amp;</span>ProposalQueue,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;(), ProposalValidationError&gt; {
+        <span class="comment">// ValSem403 (1/2)
+        // TODO(#1335): Duplicate proposals are (likely) filtered.
+        //              Let&#39;s do this check here until we haven&#39;t made sure.
+        </span><span class="kw">let </span><span class="kw-2">mut </span>visited_psk_ids = BTreeSet::new();
+
+        <span class="kw">for </span>proposal <span class="kw">in </span>proposal_queue.psk_proposals() {
+            <span class="kw">let </span>psk_id = proposal.psk_proposal().clone().into_psk_id();
+
+            <span class="comment">// ValSem402
+            </span><span class="kw">match </span>psk_id.psk() {
+                Psk::Resumption(resumption_psk) =&gt; {
+                    <span class="kw">if </span>resumption_psk.usage != ResumptionPskUsage::Application {
+                        <span class="kw">return </span><span class="prelude-val">Err</span>(ProposalValidationError::Psk(PskError::UsageMismatch {
+                            allowed: <span class="macro">vec!</span>[ResumptionPskUsage::Application],
+                            got: resumption_psk.usage,
+                        }));
+                    }
+                }
+                Psk::External(<span class="kw">_</span>) =&gt; {}
+            };
+
+            <span class="comment">// ValSem401
+            </span>{
+                <span class="kw">let </span>expected_nonce_length = <span class="self">self</span>.ciphersuite().hash_length();
+                <span class="kw">let </span>got_nonce_length = psk_id.psk_nonce().len();
+
+                <span class="kw">if </span>expected_nonce_length != got_nonce_length {
+                    <span class="kw">return </span><span class="prelude-val">Err</span>(ProposalValidationError::Psk(
+                        PskError::NonceLengthMismatch {
+                            expected: expected_nonce_length,
+                            got: got_nonce_length,
+                        },
+                    ));
+                }
+            }
+
+            <span class="comment">// ValSem403 (2/2)
+            </span><span class="kw">if </span>!visited_psk_ids.contains(<span class="kw-2">&amp;</span>psk_id) {
+                visited_psk_ids.insert(psk_id);
+            } <span class="kw">else </span>{
+                <span class="kw">return </span><span class="prelude-val">Err</span>(ProposalValidationError::Psk(PskError::Duplicate {
+                    first: psk_id,
+                }));
+            }
+        }
+
+        <span class="comment">// TODO(#1330): Remove this when #1330 is finished.
+        </span><span class="kw">if </span>!visited_psk_ids.is_empty() {
+            <span class="kw">return </span><span class="prelude-val">Err</span>(ProposalValidationError::Psk(PskError::Unsupported));
+        }
+
+        <span class="prelude-val">Ok</span>(())
     }
 
     <span class="doccomment">/// Validate the new key package in a path

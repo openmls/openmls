@@ -126,6 +126,13 @@
 <a href="#126" id="126">126</a>
 <a href="#127" id="127">127</a>
 <a href="#128" id="128">128</a>
+<a href="#129" id="129">129</a>
+<a href="#130" id="130">130</a>
+<a href="#131" id="131">131</a>
+<a href="#132" id="132">132</a>
+<a href="#133" id="133">133</a>
+<a href="#134" id="134">134</a>
+<a href="#135" id="135">135</a>
 </pre><pre class="rust"><code><span class="doccomment">//! Group API for MLS
 //!
 //! This module contains the API to interact with groups.
@@ -174,7 +181,18 @@
 
 <span class="doccomment">/// A group ID. The group ID is chosen by the creator of the group and should be globally unique.
 </span><span class="attr">#[derive(
-    Hash, Eq, Debug, PartialEq, Clone, Serialize, Deserialize, TlsSerialize, TlsDeserialize, TlsSize,
+    Clone,
+    Debug,
+    PartialEq,
+    Eq,
+    PartialOrd,
+    Ord,
+    Hash,
+    Deserialize,
+    Serialize,
+    TlsDeserialize,
+    TlsSerialize,
+    TlsSize,
 )]
 </span><span class="kw">pub struct </span>GroupId {
     value: VLBytes,
@@ -217,14 +235,16 @@
 <span class="doccomment">/// Group epoch. Internally this is stored as a `u64`.
 /// The group epoch is incremented with every valid Commit that is merged into the group state.
 </span><span class="attr">#[derive(
+    Clone,
+    Copy,
     Debug,
     PartialEq,
     Eq,
-    Copy,
-    Clone,
+    PartialOrd,
+    Ord,
     Hash,
-    Serialize,
     Deserialize,
+    Serialize,
     TlsDeserialize,
     TlsSerialize,
     TlsSize,
@@ -241,12 +261,6 @@
     </span><span class="kw">pub fn </span>as_u64(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; u64 {
         <span class="self">self</span>.<span class="number">0
     </span>}
-}
-
-<span class="kw">impl </span>PartialOrd <span class="kw">for </span>GroupEpoch {
-    <span class="kw">fn </span>partial_cmp(<span class="kw-2">&amp;</span><span class="self">self</span>, other: <span class="kw-2">&amp;</span><span class="self">Self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;std::cmp::Ordering&gt; {
-        <span class="self">self</span>.<span class="number">0</span>.partial_cmp(<span class="kw-2">&amp;</span>other.<span class="number">0</span>)
-    }
 }
 
 <span class="kw">impl </span>From&lt;u64&gt; <span class="kw">for </span>GroupEpoch {

@@ -579,7 +579,7 @@
     Add = <span class="number">1</span>,
     Update = <span class="number">2</span>,
     Remove = <span class="number">3</span>,
-    Presharedkey = <span class="number">4</span>,
+    PreSharedKey = <span class="number">4</span>,
     Reinit = <span class="number">5</span>,
     ExternalInit = <span class="number">6</span>,
     GroupContextExtensions = <span class="number">7</span>,
@@ -594,7 +594,7 @@
             ProposalType::Add
             | ProposalType::Update
             | ProposalType::Remove
-            | ProposalType::Presharedkey
+            | ProposalType::PreSharedKey
             | ProposalType::Reinit
             | ProposalType::ExternalInit
             | ProposalType::GroupContextExtensions =&gt; <span class="bool-val">true</span>,
@@ -606,7 +606,7 @@
     </span><span class="kw">pub fn </span>is_path_required(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; bool {
         <span class="kw">match </span><span class="self">self </span>{
             <span class="self">Self</span>::Add
-            | <span class="self">Self</span>::Presharedkey
+            | <span class="self">Self</span>::PreSharedKey
             | <span class="self">Self</span>::Reinit
             | <span class="self">Self</span>::AppAck
             | <span class="self">Self</span>::GroupContextExtensions =&gt; <span class="bool-val">false</span>,
@@ -622,7 +622,7 @@
             <span class="number">1 </span>=&gt; <span class="prelude-val">Ok</span>(ProposalType::Add),
             <span class="number">2 </span>=&gt; <span class="prelude-val">Ok</span>(ProposalType::Update),
             <span class="number">3 </span>=&gt; <span class="prelude-val">Ok</span>(ProposalType::Remove),
-            <span class="number">4 </span>=&gt; <span class="prelude-val">Ok</span>(ProposalType::Presharedkey),
+            <span class="number">4 </span>=&gt; <span class="prelude-val">Ok</span>(ProposalType::PreSharedKey),
             <span class="number">5 </span>=&gt; <span class="prelude-val">Ok</span>(ProposalType::Reinit),
             <span class="number">6 </span>=&gt; <span class="prelude-val">Ok</span>(ProposalType::ExternalInit),
             <span class="number">7 </span>=&gt; <span class="prelude-val">Ok</span>(ProposalType::GroupContextExtensions),
@@ -684,7 +684,7 @@
             Proposal::Add(<span class="kw">_</span>) =&gt; ProposalType::Add,
             Proposal::Update(<span class="kw">_</span>) =&gt; ProposalType::Update,
             Proposal::Remove(<span class="kw">_</span>) =&gt; ProposalType::Remove,
-            Proposal::PreSharedKey(<span class="kw">_</span>) =&gt; ProposalType::Presharedkey,
+            Proposal::PreSharedKey(<span class="kw">_</span>) =&gt; ProposalType::PreSharedKey,
             Proposal::ReInit(<span class="kw">_</span>) =&gt; ProposalType::Reinit,
             Proposal::ExternalInit(<span class="kw">_</span>) =&gt; ProposalType::ExternalInit,
             Proposal::GroupContextExtensions(<span class="kw">_</span>) =&gt; ProposalType::GroupContextExtensions,

@@ -294,7 +294,7 @@
 
         <span class="comment">// Process PSK proposals
         </span><span class="kw">let </span>presharedkeys: Vec&lt;PreSharedKeyId&gt; = proposal_queue
-            .filtered_by_type(ProposalType::Presharedkey)
+            .filtered_by_type(ProposalType::PreSharedKey)
             .filter_map(|queued_proposal| {
                 <span class="kw">if let </span>Proposal::PreSharedKey(psk_proposal) = queued_proposal.proposal() {
                     <span class="prelude-val">Some</span>(psk_proposal.clone().into_psk_id())

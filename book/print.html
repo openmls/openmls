@@ -975,6 +975,14 @@ Further syntax checks are applied for the latter case once the message is decryp
 <div class="table-wrapper"><table><thead><tr><th>ValidationStep</th><th>Description</th><th>Implemented</th><th>Tested</th><th>Test File</th></tr></thead><tbody>
 <tr><td><code>ValSem300</code></td><td>Exported ratchet trees must not have trailing blank nodes.</td><td>Yes</td><td>Yes</td><td><code>openmls/src/treesync/mod.rs</code></td></tr>
 </tbody></table>
+</div>
+<h3 id="psk-validation"><a class="header" href="#psk-validation">PSK Validation</a></h3>
+<div class="table-wrapper"><table><thead><tr><th>ValidationStep</th><th>Description</th><th>Implemented</th><th>Tested</th><th>Test File</th></tr></thead><tbody>
+<tr><td><code>ValSem400</code></td><td>The application SHOULD specify an upper limit on the number of past epochs for which the resumption_psk may be stored.</td><td>❌</td><td>❌</td><td>https://github.com/openmls/openmls/issues/1122</td></tr>
+<tr><td><code>ValSem401</code></td><td>The nonce of a PreSharedKeyID must have length KDF.Nh.</td><td>✅</td><td>✅</td><td><code>openmls/src/group/tests/test_proposal_validation.rs</code></td></tr>
+<tr><td><code>ValSem402</code></td><td>PSK in proposal must be of type Resumption (with usage Application) or External.</td><td>✅</td><td>✅</td><td><code>openmls/src/group/tests/test_proposal_validation.rs</code></td></tr>
+<tr><td><code>ValSem403</code></td><td>Proposal list must not contain multiple PreSharedKey proposals that reference the same PreSharedKeyID.</td><td>✅</td><td>❌</td><td>https://github.com/openmls/openmls/issues/1335</td></tr>
+</tbody></table>
 </div><div style="break-before: page; page-break-before: always;"></div><h1 id="performance"><a class="header" href="#performance">Performance</a></h1>
 <p>How does OpenMLS (and MLS in general) perform in different settings?</p>
 <p>Performance measurements are implemented <a href="https://github.com/openmls/openmls/blob/franziskus/benchmarks/benches/group.rs">here</a> and can be run with <code>cargo bench --bench group</code>.

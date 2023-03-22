@@ -295,7 +295,14 @@
 <a href="#295" id="295">295</a>
 <a href="#296" id="296">296</a>
 <a href="#297" id="297">297</a>
-</pre><pre class="rust"><code><span class="kw">use super</span>::{<span class="kw">super</span>::errors::<span class="kw-2">*</span>, <span class="kw-2">*</span>};
+<a href="#298" id="298">298</a>
+<a href="#299" id="299">299</a>
+<a href="#300" id="300">300</a>
+<a href="#301" id="301">301</a>
+<a href="#302" id="302">302</a>
+</pre><pre class="rust"><code><span class="kw">use </span>std::collections::HashSet;
+
+<span class="kw">use super</span>::{<span class="kw">super</span>::errors::<span class="kw-2">*</span>, <span class="kw-2">*</span>};
 <span class="kw">use crate</span>::{
     ciphersuite::signable::Verifiable,
     framing::{mls_auth_content::AuthenticatedContent, mls_content::FramedContentBody, Sender},
@@ -309,7 +316,6 @@
     messages::{proposals::ProposalOrRef, Commit},
     treesync::node::leaf_node::{LeafNodeTbs, TreeInfoTbs, VerifiableLeafNode},
 };
-<span class="kw">use </span>std::collections::HashSet;
 
 <span class="kw">impl </span>PublicGroup {
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>validate_commit&lt;<span class="lifetime">&#39;a</span>&gt;(
@@ -383,6 +389,10 @@
         <span class="comment">// ValSem107
         // ValSem108
         </span><span class="self">self</span>.validate_remove_proposals(<span class="kw-2">&amp;</span>proposal_queue)<span class="question-mark">?</span>;
+        <span class="comment">// ValSem401
+        // ValSem402
+        // ValSem403
+        </span><span class="self">self</span>.validate_pre_shared_key_proposals(<span class="kw-2">&amp;</span>proposal_queue)<span class="question-mark">?</span>;
 
         <span class="kw">let </span>public_key_set = <span class="kw">match </span>sender {
             Sender::Member(leaf_index) =&gt; {

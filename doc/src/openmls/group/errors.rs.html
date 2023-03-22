@@ -511,6 +511,9 @@
 <a href="#511" id="511">511</a>
 <a href="#512" id="512">512</a>
 <a href="#513" id="513">513</a>
+<a href="#514" id="514">514</a>
+<a href="#515" id="515">515</a>
+<a href="#516" id="516">516</a>
 </pre><pre class="rust"><code><span class="doccomment">//! # MLS group errors
 //!
 //! This module contains errors that originate at lower levels and are partially re-exported in errors thrown by functions of the `MlsGroup` API.
@@ -857,6 +860,9 @@
     <span class="doccomment">/// The capabilities of the add proposal are insufficient for this group.
     </span><span class="attr">#[error(<span class="string">&quot;The capabilities of the add proposal are insufficient for this group.&quot;</span>)]
     </span>InsufficientCapabilities,
+    <span class="doccomment">/// See [`PskError`] for more details.
+    </span><span class="attr">#[error(transparent)]
+    </span>Psk(PskError),
 }
 
 <span class="doccomment">/// External Commit validaton error

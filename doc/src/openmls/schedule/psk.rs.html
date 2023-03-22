@@ -381,6 +381,83 @@
 <a href="#381" id="381">381</a>
 <a href="#382" id="382">382</a>
 <a href="#383" id="383">383</a>
+<a href="#384" id="384">384</a>
+<a href="#385" id="385">385</a>
+<a href="#386" id="386">386</a>
+<a href="#387" id="387">387</a>
+<a href="#388" id="388">388</a>
+<a href="#389" id="389">389</a>
+<a href="#390" id="390">390</a>
+<a href="#391" id="391">391</a>
+<a href="#392" id="392">392</a>
+<a href="#393" id="393">393</a>
+<a href="#394" id="394">394</a>
+<a href="#395" id="395">395</a>
+<a href="#396" id="396">396</a>
+<a href="#397" id="397">397</a>
+<a href="#398" id="398">398</a>
+<a href="#399" id="399">399</a>
+<a href="#400" id="400">400</a>
+<a href="#401" id="401">401</a>
+<a href="#402" id="402">402</a>
+<a href="#403" id="403">403</a>
+<a href="#404" id="404">404</a>
+<a href="#405" id="405">405</a>
+<a href="#406" id="406">406</a>
+<a href="#407" id="407">407</a>
+<a href="#408" id="408">408</a>
+<a href="#409" id="409">409</a>
+<a href="#410" id="410">410</a>
+<a href="#411" id="411">411</a>
+<a href="#412" id="412">412</a>
+<a href="#413" id="413">413</a>
+<a href="#414" id="414">414</a>
+<a href="#415" id="415">415</a>
+<a href="#416" id="416">416</a>
+<a href="#417" id="417">417</a>
+<a href="#418" id="418">418</a>
+<a href="#419" id="419">419</a>
+<a href="#420" id="420">420</a>
+<a href="#421" id="421">421</a>
+<a href="#422" id="422">422</a>
+<a href="#423" id="423">423</a>
+<a href="#424" id="424">424</a>
+<a href="#425" id="425">425</a>
+<a href="#426" id="426">426</a>
+<a href="#427" id="427">427</a>
+<a href="#428" id="428">428</a>
+<a href="#429" id="429">429</a>
+<a href="#430" id="430">430</a>
+<a href="#431" id="431">431</a>
+<a href="#432" id="432">432</a>
+<a href="#433" id="433">433</a>
+<a href="#434" id="434">434</a>
+<a href="#435" id="435">435</a>
+<a href="#436" id="436">436</a>
+<a href="#437" id="437">437</a>
+<a href="#438" id="438">438</a>
+<a href="#439" id="439">439</a>
+<a href="#440" id="440">440</a>
+<a href="#441" id="441">441</a>
+<a href="#442" id="442">442</a>
+<a href="#443" id="443">443</a>
+<a href="#444" id="444">444</a>
+<a href="#445" id="445">445</a>
+<a href="#446" id="446">446</a>
+<a href="#447" id="447">447</a>
+<a href="#448" id="448">448</a>
+<a href="#449" id="449">449</a>
+<a href="#450" id="450">450</a>
+<a href="#451" id="451">451</a>
+<a href="#452" id="452">452</a>
+<a href="#453" id="453">453</a>
+<a href="#454" id="454">454</a>
+<a href="#455" id="455">455</a>
+<a href="#456" id="456">456</a>
+<a href="#457" id="457">457</a>
+<a href="#458" id="458">458</a>
+<a href="#459" id="459">459</a>
+<a href="#460" id="460">460</a>
 </pre><pre class="rust"><code><span class="doccomment">//! # Preshared keys.
 
 </span><span class="kw">use </span>openmls_traits::{
@@ -394,10 +471,10 @@
 <span class="kw">use super</span>::<span class="kw-2">*</span>;
 <span class="kw">use </span><span class="kw">crate</span>::group::{GroupEpoch, GroupId};
 
-<span class="doccomment">/// ResumptionPSKUsage
+<span class="doccomment">/// Resumption PSK usage.
 ///
 /// ```c
-/// // draft-ietf-mls-protocol-18
+/// // draft-ietf-mls-protocol-19
 /// enum {
 ///   reserved(0),
 ///   application(1),
@@ -407,29 +484,48 @@
 /// } ResumptionPSKUsage;
 /// ```
 </span><span class="attr">#[derive(
+    Clone,
+    Copy,
     Debug,
     PartialEq,
     Eq,
-    Clone,
-    Copy,
+    PartialOrd,
+    Ord,
     Hash,
-    Serialize,
     Deserialize,
+    Serialize,
     TlsDeserialize,
     TlsSerialize,
     TlsSize,
 )]
 #[repr(u8)]
-#[allow(missing_docs)]
 </span><span class="kw">pub enum </span>ResumptionPskUsage {
-    Application = <span class="number">1</span>,
-    Reinit = <span class="number">2</span>,
-    Branch = <span class="number">3</span>,
+    <span class="doccomment">/// Application.
+    </span>Application = <span class="number">1</span>,
+    <span class="doccomment">/// Resumption PSK used for group reinitialization.
+    ///
+    /// Note: &quot;Resumption PSKs with usage `reinit` MUST NOT be used in other contexts (than reinitialization).&quot;
+    </span>Reinit = <span class="number">2</span>,
+    <span class="doccomment">/// Resumption PSK used for subgroup branching.
+    ///
+    /// Note: &quot;Resumption PSKs with usage `branch` MUST NOT be used in other contexts (than subgroup branching).&quot;
+    </span>Branch = <span class="number">3</span>,
 }
 
 <span class="doccomment">/// External PSK.
 </span><span class="attr">#[derive(
-    Debug, PartialEq, Eq, Clone, Hash, Serialize, Deserialize, TlsDeserialize, TlsSerialize, TlsSize,
+    Debug,
+    PartialEq,
+    Eq,
+    PartialOrd,
+    Ord,
+    Clone,
+    Hash,
+    Deserialize,
+    Serialize,
+    TlsDeserialize,
+    TlsSerialize,
+    TlsSize,
 )]
 </span><span class="kw">pub struct </span>ExternalPsk {
     psk_id: VLBytes,
@@ -477,7 +573,17 @@
 
 <span class="doccomment">/// Resumption PSK.
 </span><span class="attr">#[derive(
-    Debug, PartialEq, Eq, Clone, Serialize, Deserialize, TlsDeserialize, TlsSerialize, TlsSize,
+    Clone,
+    Debug,
+    PartialEq,
+    Eq,
+    PartialOrd,
+    Ord,
+    Deserialize,
+    Serialize,
+    TlsDeserialize,
+    TlsSerialize,
+    TlsSize,
 )]
 </span><span class="kw">pub struct </span>ResumptionPsk {
     <span class="kw">pub</span>(<span class="kw">crate</span>) usage: ResumptionPskUsage,
@@ -511,10 +617,32 @@
     }
 }
 
-<span class="doccomment">/// PSK enum that can contain the different PSK types
-///
-/// ```c
-/// // draft-ietf-mls-protocol-18
+<span class="doccomment">/// The different PSK types.
+</span><span class="attr">#[derive(
+    Clone,
+    Debug,
+    PartialEq,
+    Eq,
+    PartialOrd,
+    Ord,
+    Deserialize,
+    Serialize,
+    TlsDeserialize,
+    TlsSerialize,
+    TlsSize,
+)]
+#[repr(u8)]
+</span><span class="kw">pub enum </span>Psk {
+    <span class="doccomment">/// An external PSK provided by the application.
+    </span><span class="attr">#[tls_codec(discriminant = <span class="number">1</span>)]
+    </span>External(ExternalPsk),
+    <span class="doccomment">/// A resumption PSK derived from the MLS key schedule.
+    </span><span class="attr">#[tls_codec(discriminant = <span class="number">2</span>)]
+    </span>Resumption(ResumptionPsk),
+}
+
+<span class="doccomment">/// ```c
+/// // draft-ietf-mls-protocol-19
 /// enum {
 ///   reserved(0),
 ///   external(1),
@@ -522,22 +650,18 @@
 ///   (255)
 /// } PSKType;
 /// ```
-</span><span class="attr">#[derive(
-    Debug, PartialEq, Eq, Clone, Serialize, Deserialize, TlsSerialize, TlsDeserialize, TlsSize,
-)]
-#[allow(missing_docs)]
+</span><span class="attr">#[derive(Clone, Copy, Debug, Eq, PartialEq)]
 #[repr(u8)]
-</span><span class="kw">pub enum </span>Psk {
-    <span class="attr">#[tls_codec(discriminant = <span class="number">1</span>)]
-    </span>External(ExternalPsk),
-    Resumption(ResumptionPsk),
+</span><span class="kw">pub enum </span>PskType {
+    External = <span class="number">1</span>,
+    Resumption = <span class="number">2</span>,
 }
 
 <span class="doccomment">/// A `PreSharedKeyID` is used to uniquely identify the PSKs that get injected
 /// in the key schedule.
 ///
 /// ```c
-/// // draft-ietf-mls-protocol-18
+/// // draft-ietf-mls-protocol-19
 /// struct {
 ///   PSKType psktype;
 ///   select (PreSharedKeyID.psktype) {
@@ -553,7 +677,17 @@
 /// } PreSharedKeyID;
 /// ```
 </span><span class="attr">#[derive(
-    Debug, PartialEq, Eq, Clone, Serialize, Deserialize, TlsDeserialize, TlsSerialize, TlsSize,
+    Clone,
+    Debug,
+    PartialEq,
+    Eq,
+    PartialOrd,
+    Ord,
+    Deserialize,
+    Serialize,
+    TlsDeserialize,
+    TlsSerialize,
+    TlsSize,
 )]
 </span><span class="kw">pub struct </span>PreSharedKeyId {
     <span class="kw">pub</span>(<span class="kw">crate</span>) psk: Psk,
@@ -661,11 +795,16 @@
 }
 
 <span class="doccomment">/// `PskLabel` is used in the final concatentation of PSKs before they are
-/// injected in the key schedule. struct {
+/// injected in the key schedule.
+///
+/// ```c
+/// // draft-ietf-mls-protocol-19
+/// struct {
 ///     PreSharedKeyID id;
 ///     uint16 index;
 ///     uint16 count;
 /// } PSKLabel;
+/// ```
 </span><span class="attr">#[derive(TlsSerialize, TlsSize)]
 </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct </span>PskLabel&lt;<span class="lifetime">&#39;a</span>&gt; {
     <span class="kw">pub</span>(<span class="kw">crate</span>) id: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>PreSharedKeyId,
@@ -722,28 +861,43 @@
         }
 
         <span class="kw">let </span>mls_version = ProtocolVersion::default();
-        <span class="kw">let </span><span class="kw-2">mut </span>psk_secret = Secret::zero(ciphersuite, mls_version);
-        <span class="kw">for </span>((index, psk_bundle), psk_id) <span class="kw">in </span>psk_bundles.iter().enumerate().zip(psk_ids) {
-            <span class="kw">let </span>zero_secret = Secret::zero(ciphersuite, mls_version);
-            <span class="kw">let </span>psk_extracted = zero_secret
-                .hkdf_extract(backend, psk_bundle.secret())
-                .map_err(LibraryError::unexpected_crypto_error)<span class="question-mark">?</span>;
-            <span class="kw">let </span>psk_label = PskLabel::new(psk_id, index <span class="kw">as </span>u16, num_psks)
-                .tls_serialize_detached()
-                .map_err(LibraryError::missing_bound_check)<span class="question-mark">?</span>;
 
-            <span class="kw">let </span>psk_input = psk_extracted
-                .kdf_expand_label(
-                    backend,
-                    <span class="string">&quot;derived psk&quot;</span>,
-                    <span class="kw-2">&amp;</span>psk_label,
-                    ciphersuite.hash_length(),
-                )
-                .map_err(LibraryError::unexpected_crypto_error)<span class="question-mark">?</span>;
-            psk_secret = psk_input
+        <span class="comment">// Following comments are from `draft-ietf-mls-protocol-19`.
+        //
+        // psk_secret_[0] = 0
+        </span><span class="kw">let </span><span class="kw-2">mut </span>psk_secret = Secret::zero(ciphersuite, mls_version);
+
+        <span class="kw">for </span>((index, psk_bundle), psk_id) <span class="kw">in </span>psk_bundles.iter().enumerate().zip(psk_ids) {
+            <span class="comment">// psk_extracted_[i] = KDF.Extract(0, psk_[i])
+            </span><span class="kw">let </span>psk_extracted = {
+                <span class="kw">let </span>zero_secret = Secret::zero(ciphersuite, mls_version);
+                zero_secret
+                    .hkdf_extract(backend, psk_bundle.secret())
+                    .map_err(LibraryError::unexpected_crypto_error)<span class="question-mark">?
+            </span>};
+
+            <span class="comment">// psk_input_[i] = ExpandWithLabel( psk_extracted_[i], &quot;derived psk&quot;, PSKLabel, KDF.Nh)
+            </span><span class="kw">let </span>psk_input = {
+                <span class="kw">let </span>psk_label = PskLabel::new(psk_id, index <span class="kw">as </span>u16, num_psks)
+                    .tls_serialize_detached()
+                    .map_err(LibraryError::missing_bound_check)<span class="question-mark">?</span>;
+
+                psk_extracted
+                    .kdf_expand_label(
+                        backend,
+                        <span class="string">&quot;derived psk&quot;</span>,
+                        <span class="kw-2">&amp;</span>psk_label,
+                        ciphersuite.hash_length(),
+                    )
+                    .map_err(LibraryError::unexpected_crypto_error)<span class="question-mark">?
+            </span>};
+
+            <span class="comment">// psk_secret_[i] = KDF.Extract(psk_input_[i-1], psk_secret_[i-1])
+            </span>psk_secret = psk_input
                 .hkdf_extract(backend, <span class="kw-2">&amp;</span>psk_secret)
                 .map_err(LibraryError::unexpected_crypto_error)<span class="question-mark">?</span>;
         }
+
         <span class="prelude-val">Ok</span>(<span class="self">Self </span>{ secret: psk_secret })
     }
 
