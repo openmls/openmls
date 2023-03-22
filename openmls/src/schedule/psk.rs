@@ -24,14 +24,16 @@ use crate::group::{GroupEpoch, GroupId};
 /// } ResumptionPSKUsage;
 /// ```
 #[derive(
+    Clone,
+    Copy,
     Debug,
     PartialEq,
     Eq,
-    Clone,
-    Copy,
+    PartialOrd,
+    Ord,
     Hash,
-    Serialize,
     Deserialize,
+    Serialize,
     TlsDeserialize,
     TlsSerialize,
     TlsSize,
@@ -46,7 +48,18 @@ pub enum ResumptionPskUsage {
 
 /// External PSK.
 #[derive(
-    Debug, PartialEq, Eq, Clone, Hash, Serialize, Deserialize, TlsDeserialize, TlsSerialize, TlsSize,
+    Debug,
+    PartialEq,
+    Eq,
+    PartialOrd,
+    Ord,
+    Clone,
+    Hash,
+    Deserialize,
+    Serialize,
+    TlsDeserialize,
+    TlsSerialize,
+    TlsSize,
 )]
 pub struct ExternalPsk {
     psk_id: VLBytes,
@@ -94,7 +107,17 @@ impl MlsEntity for PskBundle {
 
 /// Resumption PSK.
 #[derive(
-    Debug, PartialEq, Eq, Clone, Serialize, Deserialize, TlsDeserialize, TlsSerialize, TlsSize,
+    Clone,
+    Debug,
+    PartialEq,
+    Eq,
+    PartialOrd,
+    Ord,
+    Deserialize,
+    Serialize,
+    TlsDeserialize,
+    TlsSerialize,
+    TlsSize,
 )]
 pub struct ResumptionPsk {
     pub(crate) usage: ResumptionPskUsage,
@@ -130,7 +153,17 @@ impl ResumptionPsk {
 
 /// PSK enum that can contain the different PSK types.
 #[derive(
-    Debug, PartialEq, Eq, Clone, Serialize, Deserialize, TlsSerialize, TlsDeserialize, TlsSize,
+    Clone,
+    Debug,
+    PartialEq,
+    Eq,
+    PartialOrd,
+    Ord,
+    Deserialize,
+    Serialize,
+    TlsDeserialize,
+    TlsSerialize,
+    TlsSize,
 )]
 #[allow(missing_docs)]
 #[repr(u8)]
@@ -177,7 +210,17 @@ pub enum PskType {
 /// } PreSharedKeyID;
 /// ```
 #[derive(
-    Debug, PartialEq, Eq, Clone, Serialize, Deserialize, TlsDeserialize, TlsSerialize, TlsSize,
+    Clone,
+    Debug,
+    PartialEq,
+    Eq,
+    PartialOrd,
+    Ord,
+    Deserialize,
+    Serialize,
+    TlsDeserialize,
+    TlsSerialize,
+    TlsSize,
 )]
 pub struct PreSharedKeyId {
     pub(crate) psk: Psk,
