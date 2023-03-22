@@ -22,12 +22,12 @@
 use openmls_rust_crypto::OpenMlsRustCrypto;
 use openmls_traits::{crypto::OpenMlsCrypto, key_store::OpenMlsKeyStore, OpenMlsCryptoProvider};
 use serde::{self, Deserialize, Serialize};
-use tls_codec::Serialize as TlsSerialize;
+use tls_codec::{Deserialize as TlsDeserialize, Serialize as TlsSerialize};
 
 use crate::{
     binary_tree::{array_representation::TreeSize, LeafNodeIndex},
     ciphersuite::signable::Verifiable,
-    framing::{MlsMessageIn, MlsMessageInBody, TlsFromBytes},
+    framing::{MlsMessageIn, MlsMessageInBody},
     group::*,
     key_packages::*,
     messages::*,
@@ -122,8 +122,11 @@ pub fn run_test_vector(test_vector: WelcomeTestVector) -> Result<(), &'static st
     };
 
     let key_package: KeyPackage = {
+        let mut mls_message_key_package_slice = test_vector.key_package.as_slice();
         let mls_message_key_package =
-            MlsMessageIn::tls_deserialize_complete(test_vector.key_package.as_slice()).unwrap();
+            MlsMessageIn::tls_deserialize(&mut mls_message_key_package_slice).unwrap();
+        #[cfg(test)]
+        assert!(mls_message_key_package_slice.is_empty());
 
         match mls_message_key_package.body {
             MlsMessageInBody::KeyPackage(key_package) => key_package,
@@ -134,8 +137,11 @@ pub fn run_test_vector(test_vector: WelcomeTestVector) -> Result<(), &'static st
     println!("{key_package:?}");
 
     let welcome: Welcome = {
+        let mut mls_message_welcome_slice = test_vector.welcome.as_slice();
         let mls_message_welcome =
-            MlsMessageIn::tls_deserialize_complete(test_vector.welcome.as_slice()).unwrap();
+            MlsMessageIn::tls_deserialize(&mut mls_message_welcome_slice).unwrap();
+        #[cfg(test)]
+        assert!(mls_message_welcome_slice.is_empty());
 
         match mls_message_welcome.body {
             MlsMessageInBody::Welcome(welcome) => welcome,

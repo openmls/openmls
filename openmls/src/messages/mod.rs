@@ -3,22 +3,10 @@
 //! This module contains the types and implementations for Commit & Welcome messages,
 //! as well as Proposals & the group info used for External Commits.
 
-use openmls_traits::{
-    crypto::OpenMlsCrypto,
-    types::{Ciphersuite, HpkeCiphertext},
-    OpenMlsCryptoProvider,
-};
-// Private
-use proposals::*;
-use serde::{Deserialize, Serialize};
-use thiserror::Error;
-use tls_codec::{Serialize as TlsSerializeTrait, *};
-
 use crate::{
     ciphersuite::{hash_ref::KeyPackageRef, *},
     credentials::CredentialWithKey,
     error::LibraryError,
-    framing::TlsFromBytes,
     schedule::{psk::PreSharedKeyId, JoinerSecret},
     treesync::{
         node::encryption_keys::{EncryptionKey, EncryptionKeyPair, EncryptionPrivateKey},
@@ -26,6 +14,17 @@ use crate::{
     },
     versions::ProtocolVersion,
 };
+use openmls_traits::{
+    crypto::OpenMlsCrypto,
+    types::{Ciphersuite, HpkeCiphertext},
+    OpenMlsCryptoProvider,
+};
+use serde::{Deserialize, Serialize};
+use thiserror::Error;
+
+// Private
+use proposals::*;
+use tls_codec::{Deserialize as TlsDeserialize, Serialize as TlsSerializeTrait, *};
 
 // Public
 pub mod external_proposals;
@@ -36,9 +35,10 @@ pub mod proposals_in;
 // Tests
 #[cfg(test)]
 mod tests;
-use self::proposals_in::ProposalOrRefIn;
 #[cfg(test)]
 use crate::schedule::psk::{ExternalPsk, Psk};
+
+use self::proposals_in::ProposalOrRefIn;
 
 // Public types
 
@@ -379,11 +379,17 @@ impl GroupSecrets {
         )
         .map_err(|_| GroupSecretsError::DecryptionFailed)?;
 
-        // Note: This also check that no extraneous data was encrypted.
-        let group_secrets = GroupSecrets::tls_deserialize_complete(group_secrets_plaintext)
+        let mut group_secrets_plaintext_slice = &mut group_secrets_plaintext.as_slice();
+
+        let group_secrets = GroupSecrets::tls_deserialize(&mut group_secrets_plaintext_slice)
             .map_err(|_| GroupSecretsError::Malformed)?
             // TODO(#1065)
             .config(ciphersuite, ProtocolVersion::Mls10);
+
+        // Check that no extraneous data was encrypted.
+        if !group_secrets_plaintext_slice.is_empty() {
+            return Err(GroupSecretsError::Malformed);
+        }
 
         Ok(group_secrets)
     }

@@ -84,8 +84,7 @@ pub fn run_test_vector(test_vector: TranscriptTestVector) {
     //
     // Verify that `authenticated_content` contains a `Commit`, ...
     let authenticated_content = AuthenticatedContent::from(
-        AuthenticatedContentIn::tls_deserialize_complete(&test_vector.authenticated_content)
-            .unwrap(),
+        AuthenticatedContentIn::try_from_bytes(&test_vector.authenticated_content).unwrap(),
     );
     assert!(matches!(
         authenticated_content.content(),
