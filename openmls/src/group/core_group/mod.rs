@@ -383,7 +383,6 @@ impl CoreGroup {
     //     PreSharedKeyID psk;
     // } PreSharedKey;
     // TODO: #751
-    #[cfg(test)]
     pub(crate) fn create_presharedkey_proposal(
         &self,
         framing_parameters: FramingParameters,
