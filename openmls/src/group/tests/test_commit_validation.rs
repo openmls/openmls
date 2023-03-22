@@ -16,7 +16,6 @@ use crate::{
     framing::*,
     group::{config::CryptoConfig, errors::*, *},
     messages::proposals::*,
-    schedule::psk::*,
     treesync::{
         errors::ApplyUpdatePathError, node::parent_node::PlainUpdatePathNode, treekem::UpdatePath,
     },
