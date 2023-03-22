@@ -61,10 +61,14 @@
 //!     unprotects with the secret tree, `sender_data_secret`, and `signature_pub`
 //!     * When protecting the Commit message, add the supplied confirmation tag
 
-use crate::credentials::{Credential, CredentialWithKey};
+use openmls_basic_credential::SignatureKeyPair;
+use openmls_rust_crypto::OpenMlsRustCrypto;
+use openmls_traits::{types::SignatureScheme, OpenMlsCryptoProvider};
+use serde::{self, Deserialize, Serialize};
+
 use crate::{
     binary_tree::array_representation::LeafNodeIndex,
-    credentials::CredentialType,
+    credentials::{Credential, CredentialType, CredentialWithKey},
     framing::{mls_auth_content::AuthenticatedContent, mls_content::FramedContentBody, *},
     group::*,
     schedule::{EncryptionSecret, SenderDataSecret},
@@ -72,12 +76,6 @@ use crate::{
     tree::{secret_tree::SecretTree, sender_ratchet::SenderRatchetConfiguration},
     versions::ProtocolVersion,
 };
-
-use openmls_basic_credential::SignatureKeyPair;
-use openmls_traits::{types::SignatureScheme, OpenMlsCryptoProvider};
-
-use openmls_rust_crypto::OpenMlsRustCrypto;
-use serde::{self, Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct MessageProtectionTest {
@@ -183,7 +181,7 @@ pub fn run_test_vector(
     backend: &impl OpenMlsCryptoProvider,
 ) -> Result<(), String> {
     use openmls_traits::crypto::OpenMlsCrypto;
-    use tls_codec::{Deserialize, Serialize};
+    use tls_codec::Serialize;
 
     use crate::{
         binary_tree::array_representation::TreeSize,
@@ -327,14 +325,11 @@ pub fn run_test_vector(
 
     // Proposal
     {
-        let proposal =
-            ProposalIn::tls_deserialize(&mut hex_to_bytes(&test.proposal).as_slice()).unwrap();
+        let proposal = ProposalIn::tls_deserialize_complete(hex_to_bytes(&test.proposal)).unwrap();
         let proposal_pub =
-            MlsMessageIn::tls_deserialize(&mut hex_to_bytes(&test.proposal_pub).as_slice())
-                .unwrap();
+            MlsMessageIn::tls_deserialize_complete(hex_to_bytes(&test.proposal_pub)).unwrap();
         let proposal_priv =
-            MlsMessageIn::tls_deserialize(&mut hex_to_bytes(&test.proposal_priv).as_slice())
-                .unwrap();
+            MlsMessageIn::tls_deserialize_complete(hex_to_bytes(&test.proposal_priv)).unwrap();
 
         // Group stuff we need for openmls
         let sender_ratchet_config = SenderRatchetConfiguration::new(0, 0);
@@ -395,11 +390,11 @@ pub fn run_test_vector(
 
     // Commit
     {
-        let commit = CommitIn::tls_deserialize(&mut hex_to_bytes(&test.commit).as_slice()).unwrap();
+        let commit = CommitIn::tls_deserialize_complete(hex_to_bytes(&test.commit)).unwrap();
         let commit_pub =
-            MlsMessageIn::tls_deserialize(&mut hex_to_bytes(&test.commit_pub).as_slice()).unwrap();
+            MlsMessageIn::tls_deserialize_complete(hex_to_bytes(&test.commit_pub)).unwrap();
         let commit_priv =
-            MlsMessageIn::tls_deserialize(&mut hex_to_bytes(&test.commit_priv).as_slice()).unwrap();
+            MlsMessageIn::tls_deserialize_complete(hex_to_bytes(&test.commit_priv)).unwrap();
 
         // Group stuff we need for openmls
         let sender_ratchet_config = SenderRatchetConfiguration::new(10, 10);
@@ -457,8 +452,7 @@ pub fn run_test_vector(
         eprintln!("application_priv: {}", test.application_priv);
         let application = hex_to_bytes(&test.application);
         let application_priv =
-            MlsMessageIn::tls_deserialize(&mut hex_to_bytes(&test.application_priv).as_slice())
-                .unwrap();
+            MlsMessageIn::tls_deserialize_complete(hex_to_bytes(&test.application_priv)).unwrap();
 
         // Group stuff we need for openmls
         let sender_ratchet_config = SenderRatchetConfiguration::new(0, 0);

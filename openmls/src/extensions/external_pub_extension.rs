@@ -32,10 +32,10 @@ impl ExternalPubExtension {
 mod test {
     use openmls_rust_crypto::OpenMlsRustCrypto;
     use openmls_traits::{crypto::OpenMlsCrypto, types::Ciphersuite, OpenMlsCryptoProvider};
-    use tls_codec::{Deserialize, Serialize};
+    use tls_codec::Serialize;
 
     use super::*;
-    use crate::{prelude_test::Secret, versions::ProtocolVersion};
+    use crate::{framing::TlsFromBytes, prelude_test::Secret, versions::ProtocolVersion};
 
     #[test]
     fn test_serialize_deserialize() {
@@ -69,11 +69,7 @@ mod test {
 
         for expected in tests {
             let serialized = expected.tls_serialize_detached().unwrap();
-            let serialized = &mut serialized.as_slice();
-
-            let got = ExternalPubExtension::tls_deserialize(serialized).unwrap();
-
-            assert!(serialized.is_empty());
+            let got = ExternalPubExtension::tls_deserialize_complete(serialized).unwrap();
             assert_eq!(expected, got);
         }
     }

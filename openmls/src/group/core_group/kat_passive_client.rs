@@ -1,7 +1,7 @@
 use openmls_rust_crypto::OpenMlsRustCrypto;
 use openmls_traits::{crypto::OpenMlsCrypto, key_store::OpenMlsKeyStore, OpenMlsCryptoProvider};
 use serde::{self, Deserialize, Serialize};
-use tls_codec::{Deserialize as TlsDeserialize, Serialize as TlsSerialize};
+use tls_codec::Serialize as TlsSerialize;
 
 use crate::{
     framing::{
@@ -169,11 +169,8 @@ impl PassiveClient {
         init_priv: Vec<u8>,
     ) {
         let key_package: KeyPackage = {
-            let mut mls_message_key_package_slice = key_package.as_slice();
             let mls_message_key_package =
-                MlsMessageIn::tls_deserialize(&mut mls_message_key_package_slice).unwrap();
-            #[cfg(test)]
-            assert!(mls_message_key_package_slice.is_empty());
+                MlsMessageIn::tls_deserialize_complete(key_package).unwrap();
 
             match mls_message_key_package.body {
                 MlsMessageInBody::KeyPackage(key_package) => key_package,
@@ -557,10 +554,10 @@ pub fn run_test_vector(test_vector: PassiveClientWelcomeTestVector) {
     let ratchet_tree: Option<RatchetTree> = test_vector
         .ratchet_tree
         .as_ref()
-        .map(|bytes| RatchetTree::tls_deserialize(&mut bytes.0.as_slice()).unwrap());
+        .map(|bytes| RatchetTree::tls_deserialize_complete(&bytes.0).unwrap());
 
     passive_client.join_by_welcome(
-        MlsMessageIn::try_from_bytes(&test_vector.welcome).unwrap(),
+        MlsMessageIn::tls_deserialize_complete(test_vector.welcome).unwrap(),
         ratchet_tree,
     );
 

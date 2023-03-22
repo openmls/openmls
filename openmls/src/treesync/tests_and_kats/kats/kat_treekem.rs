@@ -5,11 +5,12 @@ use openmls_basic_credential::SignatureKeyPair;
 use openmls_rust_crypto::OpenMlsRustCrypto;
 use openmls_traits::{crypto::OpenMlsCrypto, types::Ciphersuite, OpenMlsCryptoProvider};
 use serde::{Deserialize, Serialize};
-use tls_codec::{Deserialize as TlsDeserializeTrait, Serialize as TlsSerializeTrait};
+use tls_codec::Serialize as TlsSerializeTrait;
 
 use crate::{
     binary_tree::{array_representation::ParentNodeIndex, LeafNodeIndex},
     extensions::{Extensions, RatchetTreeExtension},
+    framing::TlsFromBytes,
     group::{GroupContext, GroupEpoch, GroupId},
     messages::PathSecret,
     prelude_test::Secret,
@@ -91,7 +92,7 @@ pub fn run_test_vector(test: TreeKemTest, backend: &impl OpenMlsCryptoProvider) 
 
     let treesync = {
         let ratchet_tree =
-            RatchetTreeExtension::tls_deserialize(&mut test.ratchet_tree.as_slice()).unwrap();
+            RatchetTreeExtension::tls_deserialize_complete(test.ratchet_tree).unwrap();
 
         TreeSync::from_ratchet_tree(backend, ciphersuite, ratchet_tree.ratchet_tree().clone())
             .unwrap()
@@ -160,7 +161,7 @@ pub fn run_test_vector(test: TreeKemTest, backend: &impl OpenMlsCryptoProvider) 
         trace!("Processing update path sent from {}.", path_test.sender);
 
         let update_path = UpdatePath::from(
-            UpdatePathIn::tls_deserialize(&mut path_test.update_path.as_slice()).unwrap(),
+            UpdatePathIn::tls_deserialize_complete(&path_test.update_path).unwrap(),
         );
 
         let mut diff = treesync.empty_diff();
