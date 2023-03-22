@@ -135,9 +135,7 @@ pub fn run_test_vector(test_vector: PassiveClientWelcomeTestVector) {
     }
 
     let group_config = MlsGroupConfig::builder()
-        .crypto_config(CryptoConfig::with_default_version(
-            cipher_suite,
-        ))
+        .crypto_config(CryptoConfig::with_default_version(cipher_suite))
         .use_ratchet_tree_extension(true)
         .wire_format_policy(WireFormatPolicy::new(
             OutgoingWireFormatPolicy::AlwaysPlaintext,
