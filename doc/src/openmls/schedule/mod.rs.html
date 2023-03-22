@@ -1256,6 +1256,7 @@
 <a href="#1256" id="1256">1256</a>
 <a href="#1257" id="1257">1257</a>
 <a href="#1258" id="1258">1258</a>
+<a href="#1259" id="1259">1259</a>
 </pre><pre class="rust"><code><span class="doccomment">//! # Key schedule
 //!
 //! This module contains the types and implementations for key schedule operations.
@@ -1404,7 +1405,7 @@
 <span class="comment">// Private
 </span><span class="kw">use </span>errors::<span class="kw-2">*</span>;
 <span class="kw">use </span>message_secrets::MessageSecrets;
-<span class="kw">use </span>psk::<span class="kw-2">*</span>;
+<span class="kw">use </span>psk::PskSecret;
 
 <span class="comment">// Tests
 </span><span class="attr">#[cfg(any(feature = <span class="string">&quot;test-utils&quot;</span>, test))]
@@ -1415,8 +1416,9 @@
 </span><span class="kw">mod </span>unit_tests;
 
 <span class="comment">// Public types
+</span><span class="kw">pub use </span>psk::{ExternalPsk, PreSharedKeyId, Psk};
 
-</span><span class="doccomment">/// A group secret that can be used among members to prove that a member was
+<span class="doccomment">/// A group secret that can be used among members to prove that a member was
 /// part of a group in a given epoch.
 </span><span class="attr">#[derive(Clone, Debug, Serialize, Deserialize)]
 #[cfg_attr(test, derive(Eq, PartialEq))]

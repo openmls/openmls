@@ -504,7 +504,6 @@
 <a href="#504" id="504">504</a>
 <a href="#505" id="505">505</a>
 <a href="#506" id="506">506</a>
-<a href="#507" id="507">507</a>
 </pre><pre class="rust"><code><span class="doccomment">//! # Proposals
 //!
 //! This module defines all the different types of Proposals.
@@ -797,8 +796,7 @@
     }
 }
 
-<span class="attr">#[cfg(test)]
-</span><span class="kw">impl </span>PreSharedKeyProposal {
+<span class="kw">impl </span>PreSharedKeyProposal {
     <span class="doccomment">/// Create a new PSK proposal
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>new(psk: PreSharedKeyId) -&gt; <span class="self">Self </span>{
         <span class="self">Self </span>{ psk }
