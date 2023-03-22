@@ -579,11 +579,13 @@ pub fn run_test_vector(test_vector: PassiveClientWelcomeTestVector) {
 
         for proposal in epoch.proposals {
             println!("Proposal");
-            passive_client.process_message(MlsMessageIn::try_from_bytes(&proposal.0).unwrap());
+            passive_client
+                .process_message(MlsMessageIn::tls_deserialize_complete(&proposal.0).unwrap());
         }
 
         println!("Commit");
-        passive_client.process_message(MlsMessageIn::try_from_bytes(&epoch.commit).unwrap());
+        passive_client
+            .process_message(MlsMessageIn::tls_deserialize_complete(&epoch.commit).unwrap());
 
         assert_eq!(
             epoch.epoch_authenticator,

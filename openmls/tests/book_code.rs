@@ -293,7 +293,8 @@ fn book_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvide
         .expect("Could not serialize message.");
 
     // ANCHOR: mls_message_in_from_bytes
-    let mls_message = MlsMessageIn::try_from_bytes(bytes).expect("Could not deserialize message.");
+    let mls_message =
+        MlsMessageIn::tls_deserialize_complete(bytes).expect("Could not deserialize message.");
     // ANCHOR_END: mls_message_in_from_bytes
 
     // ANCHOR: process_message
