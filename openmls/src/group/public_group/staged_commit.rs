@@ -87,6 +87,13 @@ impl PublicGroup {
         // ValSem108
         self.validate_remove_proposals(&proposal_queue)?;
 
+        // Validate PreSharedKey proposals.
+        // TODO: ValSem
+        // * The `psk_nonce` of a PreSharedKeyID MUST have length KDF.Nh, where KDF is the KDF for the ciphersuite of the group into which the PSK is being injected.
+        // * The application SHOULD specify an upper limit on the number of past epochs for which the resumption_psk may be stored.
+        // * PSK in proposal MUST be of type Resumption/Application.
+        self.validate_pre_shared_key_proposals(&proposal_queue)?;
+
         let public_key_set = match sender {
             Sender::Member(leaf_index) => {
                 // ValSem110

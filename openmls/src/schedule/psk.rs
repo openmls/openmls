@@ -128,10 +128,21 @@ impl ResumptionPsk {
     }
 }
 
-/// PSK enum that can contain the different PSK types
-///
+/// PSK enum that can contain the different PSK types.
+#[derive(
+    Debug, PartialEq, Eq, Clone, Serialize, Deserialize, TlsSerialize, TlsDeserialize, TlsSize,
+)]
+#[allow(missing_docs)]
+#[repr(u8)]
+pub enum Psk {
+    #[tls_codec(discriminant = "PskType::External")]
+    External(ExternalPsk),
+    #[tls_codec(discriminant = "PskType::Resumption")]
+    Resumption(ResumptionPsk),
+}
+
 /// ```c
-/// // draft-ietf-mls-protocol-18
+/// // draft-ietf-mls-protocol-19
 /// enum {
 ///   reserved(0),
 ///   external(1),
@@ -139,15 +150,11 @@ impl ResumptionPsk {
 ///   (255)
 /// } PSKType;
 /// ```
-#[derive(
-    Debug, PartialEq, Eq, Clone, Serialize, Deserialize, TlsSerialize, TlsDeserialize, TlsSize,
-)]
-#[allow(missing_docs)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
 #[repr(u8)]
-pub enum Psk {
-    #[tls_codec(discriminant = 1)]
-    External(ExternalPsk),
-    Resumption(ResumptionPsk),
+pub enum PskType {
+    External = 1,
+    Resumption = 2,
 }
 
 /// A `PreSharedKeyID` is used to uniquely identify the PSKs that get injected
