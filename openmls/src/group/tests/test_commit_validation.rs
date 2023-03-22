@@ -265,7 +265,8 @@ fn test_valsem201(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
         }))
     };
 
-    // TODO(#1330)
+    // TODO(#1330): We can't use PreSharedKey proposals here for now because they will lead to an
+    //              `PskError::Unsupported`. As soon as #1330 is finished, we can enable this again.
     // let psk_proposal = || {
     //     let secret = Secret::random(ciphersuite, backend, None).unwrap();
     //     let rand = backend
@@ -313,13 +314,15 @@ fn test_valsem201(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
     // in [CoreGroup::apply_proposals()]
     let cases = vec![
         (vec![add_proposal()], false),
-        // TODO(#1330)
+        // TODO(#1330): We can't use PreSharedKey proposals here for now because they will lead to an
+        //              `PskError::Unsupported`. As soon as #1330 is finished, we can enable this again.
         //(vec![psk_proposal()], false),
         (vec![update_proposal.clone()], true),
         (vec![remove_proposal()], true),
         (vec![gce_proposal()], true),
         // !path_required + !path_required = !path_required
-        // TODO(#1330)
+        // TODO(#1330): We can't use PreSharedKey proposals here for now because they will lead to an
+        //              `PskError::Unsupported`. As soon as #1330 is finished, we can enable this again.
         //(vec![add_proposal(), psk_proposal()], false),
         // path_required + !path_required = path_required
         (vec![remove_proposal(), add_proposal()], true),

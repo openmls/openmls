@@ -1400,6 +1400,7 @@ fn test_valsem107(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
         assert_eq!(expected, *got);
     }
 
+    // TODO(#1335)
     // It remains to verify this behaviour on the receiver side. However, this
     // is not really possible, since the `ProposalQueue` logic on the receiver
     // side automatically de-duplicates proposals with the same Proposal
@@ -1974,7 +1975,7 @@ fn test_valsem401_valsem402(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryp
                 }),
             )),
         ),
-        // Note: This can't be tested because duplicate proposals are filtered.
+        // TODO(#1335): We could remove this test after #1335 is closed because it would cover it.
         // ValSem403
         // (
         //     vec![

@@ -321,7 +321,8 @@ impl PublicGroup {
         proposal_queue: &ProposalQueue,
     ) -> Result<(), ProposalValidationError> {
         // ValSem403 (1/2)
-        // Note: Duplicate proposals are (likely) filtered. Let's do this check here anyway.
+        // TODO(#1335): Duplicate proposals are (likely) filtered.
+        //              Let's do this check here until we haven't made sure.
         let mut visited_psk_ids = BTreeSet::new();
 
         for proposal in proposal_queue.psk_proposals() {
