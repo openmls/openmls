@@ -11,10 +11,10 @@ use tls_codec::{Serialize as TlsSerializeTrait, VLBytes};
 use super::*;
 use crate::group::{GroupEpoch, GroupId};
 
-/// ResumptionPSKUsage
+/// Resumption PSK usage.
 ///
 /// ```c
-/// // draft-ietf-mls-protocol-18
+/// // draft-ietf-mls-protocol-19
 /// enum {
 ///   reserved(0),
 ///   application(1),
@@ -24,29 +24,48 @@ use crate::group::{GroupEpoch, GroupId};
 /// } ResumptionPSKUsage;
 /// ```
 #[derive(
+    Clone,
+    Copy,
     Debug,
     PartialEq,
     Eq,
-    Clone,
-    Copy,
+    PartialOrd,
+    Ord,
     Hash,
-    Serialize,
     Deserialize,
+    Serialize,
     TlsDeserialize,
     TlsSerialize,
     TlsSize,
 )]
 #[repr(u8)]
-#[allow(missing_docs)]
 pub enum ResumptionPskUsage {
+    /// Application.
     Application = 1,
+    /// Resumption PSK used for group reinitialization.
+    ///
+    /// Note: "Resumption PSKs with usage `reinit` MUST NOT be used in other contexts (than reinitialization)."
     Reinit = 2,
+    /// Resumption PSK used for subgroup branching.
+    ///
+    /// Note: "Resumption PSKs with usage `branch` MUST NOT be used in other contexts (than subgroup branching)."
     Branch = 3,
 }
 
 /// External PSK.
 #[derive(
-    Debug, PartialEq, Eq, Clone, Hash, Serialize, Deserialize, TlsDeserialize, TlsSerialize, TlsSize,
+    Debug,
+    PartialEq,
+    Eq,
+    PartialOrd,
+    Ord,
+    Clone,
+    Hash,
+    Deserialize,
+    Serialize,
+    TlsDeserialize,
+    TlsSerialize,
+    TlsSize,
 )]
 pub struct ExternalPsk {
     psk_id: VLBytes,
@@ -94,7 +113,17 @@ impl MlsEntity for PskBundle {
 
 /// Resumption PSK.
 #[derive(
-    Debug, PartialEq, Eq, Clone, Serialize, Deserialize, TlsDeserialize, TlsSerialize, TlsSize,
+    Clone,
+    Debug,
+    PartialEq,
+    Eq,
+    PartialOrd,
+    Ord,
+    Deserialize,
+    Serialize,
+    TlsDeserialize,
+    TlsSerialize,
+    TlsSize,
 )]
 pub struct ResumptionPsk {
     pub(crate) usage: ResumptionPskUsage,
@@ -128,10 +157,32 @@ impl ResumptionPsk {
     }
 }
 
-/// PSK enum that can contain the different PSK types
-///
+/// The different PSK types.
+#[derive(
+    Clone,
+    Debug,
+    PartialEq,
+    Eq,
+    PartialOrd,
+    Ord,
+    Deserialize,
+    Serialize,
+    TlsDeserialize,
+    TlsSerialize,
+    TlsSize,
+)]
+#[repr(u8)]
+pub enum Psk {
+    /// An external PSK provided by the application.
+    #[tls_codec(discriminant = 1)]
+    External(ExternalPsk),
+    /// A resumption PSK derived from the MLS key schedule.
+    #[tls_codec(discriminant = 2)]
+    Resumption(ResumptionPsk),
+}
+
 /// ```c
-/// // draft-ietf-mls-protocol-18
+/// // draft-ietf-mls-protocol-19
 /// enum {
 ///   reserved(0),
 ///   external(1),
@@ -139,22 +190,18 @@ impl ResumptionPsk {
 ///   (255)
 /// } PSKType;
 /// ```
-#[derive(
-    Debug, PartialEq, Eq, Clone, Serialize, Deserialize, TlsSerialize, TlsDeserialize, TlsSize,
-)]
-#[allow(missing_docs)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
 #[repr(u8)]
-pub enum Psk {
-    #[tls_codec(discriminant = 1)]
-    External(ExternalPsk),
-    Resumption(ResumptionPsk),
+pub enum PskType {
+    External = 1,
+    Resumption = 2,
 }
 
 /// A `PreSharedKeyID` is used to uniquely identify the PSKs that get injected
 /// in the key schedule.
 ///
 /// ```c
-/// // draft-ietf-mls-protocol-18
+/// // draft-ietf-mls-protocol-19
 /// struct {
 ///   PSKType psktype;
 ///   select (PreSharedKeyID.psktype) {
@@ -170,7 +217,17 @@ pub enum Psk {
 /// } PreSharedKeyID;
 /// ```
 #[derive(
-    Debug, PartialEq, Eq, Clone, Serialize, Deserialize, TlsDeserialize, TlsSerialize, TlsSize,
+    Clone,
+    Debug,
+    PartialEq,
+    Eq,
+    PartialOrd,
+    Ord,
+    Deserialize,
+    Serialize,
+    TlsDeserialize,
+    TlsSerialize,
+    TlsSize,
 )]
 pub struct PreSharedKeyId {
     pub(crate) psk: Psk,
@@ -278,11 +335,16 @@ impl PreSharedKeyId {
 }
 
 /// `PskLabel` is used in the final concatentation of PSKs before they are
-/// injected in the key schedule. struct {
+/// injected in the key schedule.
+///
+/// ```c
+/// // draft-ietf-mls-protocol-19
+/// struct {
 ///     PreSharedKeyID id;
 ///     uint16 index;
 ///     uint16 count;
 /// } PSKLabel;
+/// ```
 #[derive(TlsSerialize, TlsSize)]
 pub(crate) struct PskLabel<'a> {
     pub(crate) id: &'a PreSharedKeyId,
@@ -339,28 +401,43 @@ impl PskSecret {
         }
 
         let mls_version = ProtocolVersion::default();
-        let mut psk_secret = Secret::zero(ciphersuite, mls_version);
-        for ((index, psk_bundle), psk_id) in psk_bundles.iter().enumerate().zip(psk_ids) {
-            let zero_secret = Secret::zero(ciphersuite, mls_version);
-            let psk_extracted = zero_secret
-                .hkdf_extract(backend, psk_bundle.secret())
-                .map_err(LibraryError::unexpected_crypto_error)?;
-            let psk_label = PskLabel::new(psk_id, index as u16, num_psks)
-                .tls_serialize_detached()
-                .map_err(LibraryError::missing_bound_check)?;
 
-            let psk_input = psk_extracted
-                .kdf_expand_label(
-                    backend,
-                    "derived psk",
-                    &psk_label,
-                    ciphersuite.hash_length(),
-                )
-                .map_err(LibraryError::unexpected_crypto_error)?;
+        // Following comments are from `draft-ietf-mls-protocol-19`.
+        //
+        // psk_secret_[0] = 0
+        let mut psk_secret = Secret::zero(ciphersuite, mls_version);
+
+        for ((index, psk_bundle), psk_id) in psk_bundles.iter().enumerate().zip(psk_ids) {
+            // psk_extracted_[i] = KDF.Extract(0, psk_[i])
+            let psk_extracted = {
+                let zero_secret = Secret::zero(ciphersuite, mls_version);
+                zero_secret
+                    .hkdf_extract(backend, psk_bundle.secret())
+                    .map_err(LibraryError::unexpected_crypto_error)?
+            };
+
+            // psk_input_[i] = ExpandWithLabel( psk_extracted_[i], "derived psk", PSKLabel, KDF.Nh)
+            let psk_input = {
+                let psk_label = PskLabel::new(psk_id, index as u16, num_psks)
+                    .tls_serialize_detached()
+                    .map_err(LibraryError::missing_bound_check)?;
+
+                psk_extracted
+                    .kdf_expand_label(
+                        backend,
+                        "derived psk",
+                        &psk_label,
+                        ciphersuite.hash_length(),
+                    )
+                    .map_err(LibraryError::unexpected_crypto_error)?
+            };
+
+            // psk_secret_[i] = KDF.Extract(psk_input_[i-1], psk_secret_[i-1])
             psk_secret = psk_input
                 .hkdf_extract(backend, &psk_secret)
                 .map_err(LibraryError::unexpected_crypto_error)?;
         }
+
         Ok(Self { secret: psk_secret })
     }
 
