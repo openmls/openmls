@@ -256,6 +256,11 @@ impl PreSharedKeyId {
             psk_nonce: VLBytes::new(vec![]),
         };
 
+        log::trace!(
+            "keystore id: {:x?}",
+            psk_id_with_empty_nonce.tls_serialize_detached()
+        );
+
         psk_id_with_empty_nonce
             .tls_serialize_detached()
             .map_err(LibraryError::missing_bound_check)
