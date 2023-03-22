@@ -1,3 +1,5 @@
+use std::collections::HashSet;
+
 use super::{super::errors::*, *};
 use crate::{
     ciphersuite::signable::Verifiable,
@@ -12,7 +14,6 @@ use crate::{
     messages::{proposals::ProposalOrRef, Commit},
     treesync::node::leaf_node::{LeafNodeTbs, TreeInfoTbs, VerifiableLeafNode},
 };
-use std::collections::HashSet;
 
 impl PublicGroup {
     pub(crate) fn validate_commit<'a>(

@@ -1,7 +1,7 @@
 //! This module contains validation functions for incoming messages
 //! as defined in <https://github.com/openmls/openmls/wiki/Message-validation>
 
-use std::collections::HashSet;
+use std::collections::{BTreeSet, HashSet};
 
 use super::PublicGroup;
 #[cfg(test)]
@@ -309,27 +309,25 @@ impl PublicGroup {
         Ok(encryption_keys)
     }
 
-    /// Validate PreSharedKey proposals. This function implements the following checks:
-    /// // TODO: ValSem
-    /// * PSK in proposal must be of type Resumption/Application or External.
-    /// * The application SHOULD specify an upper limit on the number of past epochs for which the resumption_psk may be stored.
-    /// * It contains multiple PreSharedKey proposals that reference the same PreSharedKeyID.
-    /// * Must not contain multiple PreSharedKey proposals that reference the same PreSharedKeyID.
+    /// Validate PreSharedKey proposals.
+    ///
+    /// This method implements the following checks:
+    ///
+    /// * ValSem401
+    /// * ValSem402
+    /// * ValSem403
     pub(crate) fn validate_pre_shared_key_proposals(
         &self,
         proposal_queue: &ProposalQueue,
     ) -> Result<(), ProposalValidationError> {
-        // TODO
-        // ValSemXXX (1/2): Proposal list must not contain multiple PreSharedKey proposals that
-        //                  reference the same PreSharedKeyID.
-        let mut visited_psk_ids = Vec::new();
+        // ValSem403 (1/2)
+        let mut visited_psk_ids = BTreeSet::new();
 
         for proposal in proposal_queue.psk_proposals() {
             let psk_id = proposal.psk_proposal().clone().into_psk_id();
 
+            // ValSem402
             match psk_id.psk() {
-                // TODO
-                // ValSemXXX: PSK in proposal must be of type Resumption/Application ...
                 Psk::Resumption(resumption_psk) => {
                     if resumption_psk.usage != ResumptionPskUsage::Application {
                         return Err(ProposalValidationError::Psk(PskError::UsageMismatch {
@@ -338,12 +336,10 @@ impl PublicGroup {
                         }));
                     }
                 }
-                // ValSemXXX: ... or External.
                 Psk::External(_) => {}
             };
 
-            // TODO
-            // ValSemXXX: The `psk_nonce` of a PreSharedKeyID MUST have length KDF.Nh.
+            // ValSem401
             {
                 let expected_nonce_length = self.ciphersuite().hash_length();
                 let got_nonce_length = psk_id.psk_nonce().len();
@@ -358,11 +354,9 @@ impl PublicGroup {
                 }
             }
 
-            // TODO
-            // ValSemXXX (2/2): Proposal list must not contain multiple PreSharedKey proposals that
-            //                  reference the same PreSharedKeyID.
+            // ValSem403 (2/2)
             if !visited_psk_ids.contains(&psk_id) {
-                visited_psk_ids.push(psk_id);
+                visited_psk_ids.insert(psk_id);
             } else {
                 return Err(ProposalValidationError::Psk(PskError::Duplicate {
                     first: psk_id,
