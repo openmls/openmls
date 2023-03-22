@@ -11,10 +11,10 @@ use tls_codec::{Serialize as TlsSerializeTrait, VLBytes};
 use super::*;
 use crate::group::{GroupEpoch, GroupId};
 
-/// ResumptionPSKUsage
+/// Resumption PSK usage.
 ///
 /// ```c
-/// // draft-ietf-mls-protocol-18
+/// // draft-ietf-mls-protocol-19
 /// enum {
 ///   reserved(0),
 ///   application(1),
@@ -39,10 +39,16 @@ use crate::group::{GroupEpoch, GroupId};
     TlsSize,
 )]
 #[repr(u8)]
-#[allow(missing_docs)]
 pub enum ResumptionPskUsage {
+    /// Application.
     Application = 1,
+    /// Resumption PSK used for group reinitialization.
+    ///
+    /// Note: "Resumption PSKs with usage `reinit` MUST NOT be used in other contexts (than reinitialization)."
     Reinit = 2,
+    /// Resumption PSK used for subgroup branching.
+    ///
+    /// Note: "Resumption PSKs with usage `branch` MUST NOT be used in other contexts (than subgroup branching)."
     Branch = 3,
 }
 
@@ -151,7 +157,7 @@ impl ResumptionPsk {
     }
 }
 
-/// PSK enum that can contain the different PSK types.
+/// The different PSK types.
 #[derive(
     Clone,
     Debug,
@@ -165,11 +171,12 @@ impl ResumptionPsk {
     TlsSerialize,
     TlsSize,
 )]
-#[allow(missing_docs)]
 #[repr(u8)]
 pub enum Psk {
+    /// An external PSK provided by the application.
     #[tls_codec(discriminant = "PskType::External")]
     External(ExternalPsk),
+    /// A resumption PSK derived from the MLS key schedule.
     #[tls_codec(discriminant = "PskType::Resumption")]
     Resumption(ResumptionPsk),
 }
@@ -194,7 +201,7 @@ pub enum PskType {
 /// in the key schedule.
 ///
 /// ```c
-/// // draft-ietf-mls-protocol-18
+/// // draft-ietf-mls-protocol-19
 /// struct {
 ///   PSKType psktype;
 ///   select (PreSharedKeyID.psktype) {
@@ -331,7 +338,7 @@ impl PreSharedKeyId {
 /// injected in the key schedule.
 ///
 /// ```c
-/// // draft-ietf-mls-protocol-18
+/// // draft-ietf-mls-protocol-19
 /// struct {
 ///     PreSharedKeyID id;
 ///     uint16 index;
@@ -395,7 +402,7 @@ impl PskSecret {
 
         let mls_version = ProtocolVersion::default();
 
-        // Following comments are from `draft-ietf-mls-protocol-18`.
+        // Following comments are from `draft-ietf-mls-protocol-19`.
         //
         // psk_secret_[0] = 0
         let mut psk_secret = Secret::zero(ciphersuite, mls_version);
@@ -430,6 +437,7 @@ impl PskSecret {
                 .hkdf_extract(backend, &psk_secret)
                 .map_err(LibraryError::unexpected_crypto_error)?;
         }
+
         Ok(Self { secret: psk_secret })
     }
 
