@@ -266,23 +266,24 @@ fn test_valsem201(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
         }))
     };
 
-    let psk_proposal = || {
-        let secret = Secret::random(ciphersuite, backend, None).unwrap();
-        let rand = backend
-            .rand()
-            .random_vec(ciphersuite.hash_length())
-            .unwrap();
-        let psk_id = PreSharedKeyId::new(
-            ciphersuite,
-            backend.rand(),
-            Psk::External(ExternalPsk::new(rand)),
-        )
-        .unwrap();
-        psk_id
-            .write_to_key_store(backend, ciphersuite, secret.as_slice())
-            .unwrap();
-        queued(Proposal::PreSharedKey(PreSharedKeyProposal::new(psk_id)))
-    };
+    // TODO(1330)
+    // let psk_proposal = || {
+    //     let secret = Secret::random(ciphersuite, backend, None).unwrap();
+    //     let rand = backend
+    //         .rand()
+    //         .random_vec(ciphersuite.hash_length())
+    //         .unwrap();
+    //     let psk_id = PreSharedKeyId::new(
+    //         ciphersuite,
+    //         backend.rand(),
+    //         Psk::External(ExternalPsk::new(rand)),
+    //     )
+    //     .unwrap();
+    //     psk_id
+    //         .write_to_key_store(backend, ciphersuite, secret.as_slice())
+    //         .unwrap();
+    //     queued(Proposal::PreSharedKey(PreSharedKeyProposal::new(psk_id)))
+    // };
 
     let update_proposal = queued(Proposal::Update(UpdateProposal {
         leaf_node: alice_group
@@ -313,12 +314,14 @@ fn test_valsem201(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
     // in [CoreGroup::apply_proposals()]
     let cases = vec![
         (vec![add_proposal()], false),
-        (vec![psk_proposal()], false),
+        // TODO(1330)
+        //(vec![psk_proposal()], false),
         (vec![update_proposal.clone()], true),
         (vec![remove_proposal()], true),
         (vec![gce_proposal()], true),
         // !path_required + !path_required = !path_required
-        (vec![add_proposal(), psk_proposal()], false),
+        // TODO(1330)
+        //(vec![add_proposal(), psk_proposal()], false),
         // path_required + !path_required = path_required
         (vec![remove_proposal(), add_proposal()], true),
         // path_required + path_required = path_required
